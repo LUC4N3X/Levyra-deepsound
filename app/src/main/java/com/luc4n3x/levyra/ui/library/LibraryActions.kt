@@ -52,11 +52,14 @@ import androidx.compose.material.icons.rounded.DragHandle
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.LocalOffer
 import androidx.compose.material.icons.rounded.Photo
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.Storage
@@ -117,11 +120,18 @@ import com.luc4n3x.levyra.domain.PlaylistCoverMode
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.components.LevyraRowText
+import com.luc4n3x.levyra.ui.components.PlayerGlassIconButton
+import com.luc4n3x.levyra.ui.media.ImmersiveTopBarButtonFill
+import com.luc4n3x.levyra.ui.media.ImmersiveTopBarButtonSize
+import com.luc4n3x.levyra.ui.components.levyraDockSurface
+import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.i18n.playlistProCopy
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
 import com.luc4n3x.levyra.ui.i18n.formatLibraryBytes
 import com.luc4n3x.levyra.ui.i18n.formatLibraryDuration
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
+import com.luc4n3x.levyra.ui.theme.LevyraOnAccent
 import com.luc4n3x.levyra.ui.theme.LevyraGlass
 import com.luc4n3x.levyra.ui.theme.LevyraGlassBorder
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
@@ -711,22 +721,20 @@ internal fun PlaylistCoverArt(
 }
 
 @Composable
-internal fun PlaylistDetailHeader(
+internal fun PlaylistDetailTopActions(
     playlist: Playlist,
-    durationMs: Long,
     reorderMode: Boolean,
-    onBack: () -> Unit,
-    onPlay: () -> Unit,
-    onShuffle: () -> Unit,
-    onDownload: () -> Unit,
+    searchActive: Boolean,
+    menuBackground: Color,
+    onToggleSearch: () -> Unit,
+    onSaveOrder: () -> Unit,
     onRename: () -> Unit,
     onReorder: () -> Unit,
-    onSaveOrder: () -> Unit,
-    searchActive: Boolean,
-    onToggleSearch: () -> Unit,
     onChangeCover: () -> Unit,
     onResetCover: () -> Unit,
     onOpenStudio: () -> Unit,
+    onEditTags: () -> Unit,
+    onToggleHidden: () -> Unit,
     isPinnedToHome: Boolean,
     homePinsFull: Boolean,
     onTogglePinToHome: () -> Unit
@@ -735,251 +743,117 @@ internal fun PlaylistDetailHeader(
     val speedDialCopy = remember(strings) { strings.speedDialCopy() }
     var menuExpanded by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+    if (reorderMode) {
+        Surface(
+            color = LevyraCyan,
+            shape = CircleShape,
+            modifier = Modifier
+                .heightIn(min = 40.dp)
+                .clip(CircleShape)
+                .clickable(onClick = onSaveOrder)
         ) {
-            Surface(
-                color = Color.White.copy(alpha = 0.06f),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
-                shape = CircleShape,
-                modifier = Modifier
-                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                    .size(48.dp)
-                    .clickable(onClick = onBack)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.AutoMirrored.Rounded.ArrowBack,
-                        contentDescription = strings.back,
-                        tint = LevyraText,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.weight(1f))
-            if (reorderMode) {
-                Surface(
-                    color = LevyraCyan,
-                    shape = CircleShape,
-                    modifier = Modifier
-                        .heightIn(min = 48.dp)
-                        .clickable(onClick = onSaveOrder)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(Icons.Rounded.Check, contentDescription = null, tint = LevyraBlack, modifier = Modifier.size(18.dp))
-                        Text(strings.save, color = LevyraBlack, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            } else {
-                Surface(
-                    color = if (searchActive) LevyraCyan.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.06f),
-                    border = BorderStroke(1.dp, if (searchActive) LevyraCyan.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.10f)),
-                    shape = CircleShape,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clickable(onClick = onToggleSearch)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            if (searchActive) Icons.Rounded.Close else Icons.Rounded.Search,
-                            contentDescription = if (searchActive) strings.close else strings.search,
-                            tint = if (searchActive) LevyraCyan else LevyraText,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-                Spacer(Modifier.width(8.dp))
-                Box {
-                    Surface(
-                        color = Color.White.copy(alpha = 0.06f),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
-                        shape = CircleShape,
-                        modifier = Modifier
-                            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                            .size(48.dp)
-                            .clickable(onClick = { menuExpanded = true })
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Rounded.MoreVert, contentDescription = strings.more, tint = LevyraText, modifier = Modifier.size(20.dp))
-                        }
-                    }
-                    DropdownMenu(
-                        expanded = menuExpanded,
-                        onDismissRequest = { menuExpanded = false },
-                        modifier = Modifier.background(LevyraPanel)
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(strings.playlistStudioOpen) },
-                            leadingIcon = { Icon(Icons.Rounded.AutoAwesome, null) },
-                            onClick = { menuExpanded = false; onOpenStudio() }
-                        )
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    when {
-                                        isPinnedToHome -> speedDialCopy.removeFromHome
-                                        homePinsFull -> speedDialCopy.homeFull
-                                        else -> speedDialCopy.addToHome
-                                    }
-                                )
-                            },
-                            leadingIcon = { Icon(Icons.Rounded.PushPin, null) },
-                            enabled = isPinnedToHome || !homePinsFull,
-                            onClick = { menuExpanded = false; onTogglePinToHome() }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(strings.playlistName) },
-                            leadingIcon = { Icon(Icons.Rounded.Edit, null) },
-                            onClick = { menuExpanded = false; onRename() }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(strings.dragToReorder) },
-                            leadingIcon = { Icon(Icons.AutoMirrored.Rounded.Sort, null) },
-                            onClick = { menuExpanded = false; onReorder() }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(strings.playlistProCopy().changeCover) },
-                            leadingIcon = { Icon(Icons.Rounded.Photo, null) },
-                            onClick = { menuExpanded = false; onChangeCover() }
-                        )
-                        if (playlist.coverMode == PlaylistCoverMode.CUSTOM) {
-                            DropdownMenuItem(
-                                text = { Text(strings.playlistProCopy().resetAutomaticCover) },
-                                leadingIcon = { Icon(Icons.Rounded.Refresh, null) },
-                                onClick = { menuExpanded = false; onResetCover() }
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(124.dp)
-                    .shadow(
-                        elevation = 14.dp,
-                        shape = RoundedCornerShape(20.dp),
-                        clip = false,
-                        ambientColor = LevyraCyan.copy(alpha = 0.20f),
-                        spotColor = Color.Black.copy(alpha = 0.60f)
-                    )
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(LevyraPanelSoft)
-                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(20.dp))
-            ) {
-                PlaylistCoverArt(
-                    coverMode = playlist.coverMode,
-                    coverUrl = playlist.coverUrl,
-                    tracks = playlist.tracks,
-                    contentDescription = playlist.name,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    text = strings.playlists.uppercase(Locale.ROOT),
-                    color = LevyraCyan,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.2.sp,
-                    maxLines = 1
-                )
-                Text(
-                    text = playlist.name,
-                    color = LevyraText,
-                    fontSize = 22.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(22.sp),
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = (-0.6).sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                val durationText = strings.formatLibraryDuration(durationMs)
-                Text(
-                    text = "${strings.formatTrackCount(playlist.size)}  ·  $durationText",
-                    color = LevyraMuted,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-
-        if (!reorderMode && playlist.tracks.isNotEmpty()) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Surface(
-                    color = LevyraCyan,
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp)
-                        .shadow(12.dp, RoundedCornerShape(16.dp), spotColor = LevyraCyan.copy(alpha = 0.45f))
-                        .clickable(onClick = onPlay)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = LevyraBlack, modifier = Modifier.size(24.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(strings.play, color = LevyraBlack, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-                Surface(
-                    color = Color.White.copy(alpha = 0.06f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clickable(onClick = onShuffle)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.Shuffle, contentDescription = strings.shuffle, tint = LevyraText, modifier = Modifier.size(20.dp))
-                    }
-                }
-                Surface(
-                    color = Color.White.copy(alpha = 0.06f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clickable(onClick = onDownload)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.Download, contentDescription = strings.download, tint = LevyraText, modifier = Modifier.size(20.dp))
-                    }
-                }
+                Icon(Icons.Rounded.Check, contentDescription = null, tint = LevyraOnAccent, modifier = Modifier.size(18.dp))
+                Text(strings.save, color = LevyraOnAccent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             }
         }
-        if (reorderMode) {
-            Text(strings.dragToReorder, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+        return
+    }
+    if (playlist.tracks.isNotEmpty()) {
+        PlayerGlassIconButton(
+            icon = if (searchActive) Icons.Rounded.Close else Icons.Rounded.Search,
+            contentDescription = if (searchActive) strings.close else strings.search,
+            onClick = onToggleSearch,
+            size = ImmersiveTopBarButtonSize,
+            tint = Color.White,
+            fill = ImmersiveTopBarButtonFill,
+            borderTop = Color.Transparent,
+            borderBottom = Color.Transparent
+        )
+    }
+    Box {
+        PlayerGlassIconButton(
+            icon = Icons.Rounded.MoreVert,
+            contentDescription = strings.more,
+            onClick = { menuExpanded = true },
+            size = ImmersiveTopBarButtonSize,
+            tint = Color.White,
+            fill = ImmersiveTopBarButtonFill,
+            borderTop = Color.Transparent,
+            borderBottom = Color.Transparent
+        )
+        DropdownMenu(
+            expanded = menuExpanded,
+            onDismissRequest = { menuExpanded = false },
+            modifier = Modifier.background(menuBackground)
+        ) {
+            DropdownMenuItem(
+                text = { Text(strings.playlistStudioOpen) },
+                leadingIcon = { Icon(Icons.Rounded.AutoAwesome, null) },
+                onClick = { menuExpanded = false; onOpenStudio() }
+            )
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        when {
+                            isPinnedToHome -> speedDialCopy.removeFromHome
+                            homePinsFull -> speedDialCopy.homeFull
+                            else -> speedDialCopy.addToHome
+                        }
+                    )
+                },
+                leadingIcon = { Icon(Icons.Rounded.PushPin, null) },
+                enabled = isPinnedToHome || !homePinsFull,
+                onClick = { menuExpanded = false; onTogglePinToHome() }
+            )
+            DropdownMenuItem(
+                text = { Text(strings.playlistName) },
+                leadingIcon = { Icon(Icons.Rounded.Edit, null) },
+                onClick = { menuExpanded = false; onRename() }
+            )
+            DropdownMenuItem(
+                text = { Text(if (playlist.tags.isEmpty()) strings.playlistTags else strings.editPlaylistTags) },
+                leadingIcon = { Icon(Icons.Rounded.LocalOffer, null) },
+                onClick = { menuExpanded = false; onEditTags() }
+            )
+            if (playlist.tracks.size > 1) {
+                DropdownMenuItem(
+                    text = { Text(strings.dragToReorder) },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.Sort, null) },
+                    onClick = { menuExpanded = false; onReorder() }
+                )
+            }
+            DropdownMenuItem(
+                text = { Text(strings.playlistProCopy().changeCover) },
+                leadingIcon = { Icon(Icons.Rounded.Photo, null) },
+                onClick = { menuExpanded = false; onChangeCover() }
+            )
+            if (playlist.coverMode == PlaylistCoverMode.CUSTOM) {
+                DropdownMenuItem(
+                    text = { Text(strings.playlistProCopy().resetAutomaticCover) },
+                    leadingIcon = { Icon(Icons.Rounded.Refresh, null) },
+                    onClick = { menuExpanded = false; onResetCover() }
+                )
+            }
+            DropdownMenuItem(
+                text = { Text(if (playlist.hidden) strings.unhidePlaylist else strings.hidePlaylist) },
+                leadingIcon = {
+                    Icon(if (playlist.hidden) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff, null)
+                },
+                onClick = { menuExpanded = false; onToggleHidden() }
+            )
         }
     }
+}
+
+internal fun playlistHeroArtworkUrl(playlist: Playlist): String {
+    if (playlist.coverMode == PlaylistCoverMode.CUSTOM && playlist.coverUrl.isNotBlank()) return playlist.coverUrl
+    val first = playlist.tracks.firstOrNull() ?: return ""
+    return first.largeThumbnailUrl.ifBlank { first.thumbnailUrl }
 }
 
 private const val PLAYLIST_REORDER_DRAG_SCALE = 1.012f
@@ -1121,48 +995,43 @@ internal fun LibraryNowPlayingDock(
     nextLabel: String = ""
 ) {
     val strings = LocalLevyraStrings.current
-    Surface(
-        color = LevyraPanel.copy(alpha = 0.98f),
-        shape = RoundedCornerShape(22.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
-        shadowElevation = 12.dp,
-        modifier = modifier.fillMaxWidth().combinedClickable(onClick = onOpen)
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .levyraDockSurface()
+            .combinedClickable(onClick = onOpen)
+            .height(64.dp)
+            .padding(start = 10.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            LibraryArtwork(
-                track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
-                track.title,
-                Modifier.size(52.dp),
-                RoundedCornerShape(14.dp),
-                false
+        LibraryArtwork(
+            track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
+            track.title,
+            Modifier.size(44.dp),
+            LevyraCardDesign.ThumbShape,
+            false
+        )
+        Spacer(Modifier.width(12.dp))
+        LevyraRowText(
+            title = track.title,
+            subtitle = track.artist,
+            modifier = Modifier.weight(1f)
+        )
+        IconButton(onClick = onToggle) {
+            Icon(
+                if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                contentDescription = if (isPlaying) strings.pause else strings.play,
+                tint = LevyraText,
+                modifier = Modifier.size(28.dp)
             )
-            Spacer(Modifier.width(10.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    track.title,
-                    color = LevyraText,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Black,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(track.artist, color = LevyraMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            IconButton(onClick = onToggle) {
+        }
+        if (onNext != null) {
+            IconButton(onClick = onNext, enabled = nextEnabled) {
                 Icon(
-                    if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                    contentDescription = if (isPlaying) strings.pause else strings.play,
-                    tint = LevyraCyan
+                    Icons.Rounded.SkipNext,
+                    contentDescription = nextLabel.ifBlank { strings.next },
+                    tint = if (nextEnabled) LevyraText else LevyraMuted.copy(alpha = 0.4f)
                 )
-            }
-            if (onNext != null) {
-                IconButton(onClick = onNext, enabled = nextEnabled) {
-                    Icon(
-                        Icons.Rounded.SkipNext,
-                        contentDescription = nextLabel.ifBlank { strings.next },
-                        tint = if (nextEnabled) LevyraText else LevyraMuted.copy(alpha = 0.4f)
-                    )
-                }
             }
         }
     }

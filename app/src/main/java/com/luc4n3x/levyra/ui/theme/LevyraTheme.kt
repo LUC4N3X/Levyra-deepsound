@@ -1,9 +1,14 @@
 package com.luc4n3x.levyra.ui.theme
 
-import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
+import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.snap
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.MotionScheme
+import androidx.compose.material3.Shapes
+import androidx.compose.runtime.remember
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
@@ -388,52 +393,45 @@ val LevyraOnAccent: Color
         activePaletteState.value.black
     }
 
-private fun schemeFor(palette: LevyraPalette): ColorScheme {
-    return if (palette.isLight) {
-        lightColorScheme(
-            primary = palette.cyan,
-            onPrimary = Color.White,
-            secondary = palette.violet,
-            onSecondary = Color.White,
-            tertiary = palette.pink,
-            background = palette.black,
-            onBackground = palette.text,
-            surface = palette.ink,
-            onSurface = palette.text,
-            surfaceVariant = palette.panel,
-            onSurfaceVariant = palette.muted,
-            outline = palette.outline
-        )
-    } else {
-        darkColorScheme(
-            primary = palette.cyan,
-            onPrimary = palette.black,
-            secondary = palette.violet,
-            onSecondary = palette.text,
-            tertiary = palette.pink,
-            background = palette.black,
-            onBackground = palette.text,
-            surface = palette.ink,
-            onSurface = palette.text,
-            surfaceVariant = palette.panel,
-            onSurfaceVariant = palette.muted,
-            outline = palette.outline,
-            surfaceContainerLowest = palette.black,
-            surfaceContainerLow = palette.ink,
-            surfaceContainer = palette.panel,
-            surfaceContainerHigh = palette.panelSoft,
-            surfaceContainerHighest = palette.panelSoft
-        )
-    }
+private val LevyraExpressiveShapes = Shapes(
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(16.dp),
+    large = RoundedCornerShape(24.dp),
+    extraLarge = RoundedCornerShape(32.dp)
+)
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private object LevyraStaticMotionScheme : MotionScheme {
+    override fun <T> defaultSpatialSpec(): FiniteAnimationSpec<T> = snap()
+
+    override fun <T> fastSpatialSpec(): FiniteAnimationSpec<T> = snap()
+
+    override fun <T> slowSpatialSpec(): FiniteAnimationSpec<T> = snap()
+
+    override fun <T> defaultEffectsSpec(): FiniteAnimationSpec<T> = snap()
+
+    override fun <T> fastEffectsSpec(): FiniteAnimationSpec<T> = snap()
+
+    override fun <T> slowEffectsSpec(): FiniteAnimationSpec<T> = snap()
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun LevyraTheme(
     fontPreset: LevyraFontPreset? = null,
+    animationsEnabled: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    MaterialTheme(
-        colorScheme = schemeFor(activePaletteState.value),
+    val palette = activePaletteState.value
+    val colorScheme = remember(palette) { levyraColorScheme(palette) }
+    val motionScheme = remember(animationsEnabled) {
+        if (animationsEnabled) MotionScheme.expressive() else LevyraStaticMotionScheme
+    }
+    MaterialExpressiveTheme(
+        colorScheme = colorScheme,
+        motionScheme = motionScheme,
+        shapes = LevyraExpressiveShapes,
         typography = levyraTypographyFor(fontPreset ?: activeFontPresetState.value),
         content = content
     )

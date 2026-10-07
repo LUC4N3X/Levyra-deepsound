@@ -39,7 +39,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -63,18 +63,21 @@ import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.components.LevyraArtistAvatar
+import com.luc4n3x.levyra.ui.components.LevyraRowText
+import com.luc4n3x.levyra.ui.components.LevyraWavyProgress
 import com.luc4n3x.levyra.ui.components.levyraArtistAccent
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.formatLibraryDuration
+import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
 import com.luc4n3x.levyra.ui.theme.LevyraPink
 import com.luc4n3x.levyra.ui.theme.LevyraText
 
-internal val LibraryRowShape = RoundedCornerShape(16.dp)
-internal val LibraryArtworkShape = RoundedCornerShape(12.dp)
-internal val LibraryCardShape = RoundedCornerShape(18.dp)
+internal val LibraryRowShape = LevyraCardDesign.EditorialShape
+internal val LibraryArtworkShape = LevyraCardDesign.ThumbShape
+internal val LibraryCardShape = LevyraCardDesign.SurfaceShape
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -102,193 +105,175 @@ internal fun LibraryTrackRow(
 ) {
     val strings = LocalLevyraStrings.current
     var menuExpanded by remember { mutableStateOf(false) }
-    Surface(
-        color = when {
-            selected -> LevyraCyan.copy(alpha = 0.14f)
-            isCurrent -> LevyraCyan.copy(alpha = 0.08f)
-            else -> Color.Transparent
-        },
-        shape = LibraryRowShape,
-        border = if (selected) BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.55f)) else null,
+    Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(LibraryRowShape)
+            .background(if (selected) LevyraCyan.copy(alpha = 0.14f) else Color.Transparent)
             .semantics { this.selected = selected }
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .padding(start = LevyraCardDesign.RowHorizontalPadding, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                LibraryArtwork(
-                    url = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
-                    title = track.title,
-                    modifier = Modifier.size(52.dp),
-                    shape = LibraryArtworkShape,
-                    selected = selected
-                )
-                if (isPlaying) {
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .clip(LibraryArtworkShape)
-                            .background(Color.Black.copy(alpha = 0.45f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Rounded.GraphicEq,
-                            contentDescription = strings.playing,
-                            tint = LevyraCyan,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    track.title,
-                    color = if (isCurrent) LevyraCyan else LevyraText,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    libraryTrackSubtitle(track, metadata),
-                    color = LevyraMuted,
-                    fontSize = 12.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (downloadProgress != null) {
-                    LinearProgressIndicator(
-                        progress = { downloadProgress.coerceIn(0, 100) / 100f },
-                        modifier = Modifier.fillMaxWidth().padding(top = 3.dp).height(3.dp),
-                        color = LevyraCyan,
-                        trackColor = LevyraPanelSoft
-                    )
-                }
-            }
-            if (selectionActive) {
-                Icon(
-                    if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
-                    contentDescription = null,
-                    tint = if (selected) LevyraCyan else LevyraMuted.copy(alpha = 0.35f),
-                    modifier = Modifier.padding(horizontal = 8.dp)
-                )
-            } else {
-                if (isDownloaded) {
+        Box(contentAlignment = Alignment.Center) {
+            LibraryArtwork(
+                url = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
+                title = track.title,
+                modifier = Modifier.size(LevyraCardDesign.RowThumb),
+                shape = LibraryArtworkShape,
+                selected = selected
+            )
+            if (isPlaying) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clip(LibraryArtworkShape)
+                        .background(Color.Black.copy(alpha = 0.45f)),
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
-                        Icons.Rounded.OfflinePin,
-                        contentDescription = strings.downloaded,
+                        Icons.Rounded.GraphicEq,
+                        contentDescription = strings.playing,
                         tint = LevyraCyan,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(20.dp)
                     )
-                    Spacer(Modifier.width(4.dp))
                 }
-                IconButton(onClick = onFavorite) {
+            }
+        }
+        Spacer(Modifier.width(LevyraCardDesign.RowTextGap))
+        Column(modifier = Modifier.weight(1f)) {
+            LevyraRowText(
+                title = track.title,
+                subtitle = libraryTrackSubtitle(track, metadata),
+                titleColor = if (isCurrent) LevyraCyan else LevyraText,
+                downloaded = isDownloaded,
+                favorite = isFavorite,
+                downloadedLabel = strings.downloaded,
+                favoriteLabel = strings.favoritesPlain
+            )
+            if (downloadProgress != null) {
+                LevyraWavyProgress(
+                    progress = downloadProgress.coerceIn(0, 100) / 100f,
+                    color = LevyraCyan,
+                    trackColor = LevyraPanelSoft,
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
+                )
+            }
+        }
+        if (selectionActive) {
+            Icon(
+                if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                contentDescription = null,
+                tint = if (selected) LevyraCyan else LevyraMuted.copy(alpha = 0.35f),
+                modifier = Modifier.padding(horizontal = 12.dp)
+            )
+        } else {
+            Box {
+                IconButton(onClick = { menuExpanded = true }) {
                     Icon(
-                        if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                        contentDescription = if (isFavorite) strings.removeFromFavorites else strings.addToFavorites,
-                        tint = if (isFavorite) LevyraPink else LevyraMuted,
-                        modifier = Modifier.size(19.dp)
+                        Icons.Rounded.MoreVert,
+                        contentDescription = strings.songOptions,
+                        tint = LevyraMuted,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
-                Box {
-                    IconButton(onClick = { menuExpanded = true }) {
-                        Icon(
-                            Icons.Rounded.MoreVert,
-                            contentDescription = strings.songOptions,
-                            tint = LevyraMuted,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    DropdownMenuItem(
+                        text = { Text(strings.play) },
+                        leadingIcon = { Icon(Icons.Rounded.PlayArrow, contentDescription = null) },
+                        onClick = {
+                            menuExpanded = false
+                            onClick()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(if (isFavorite) strings.removeFromFavorites else strings.addToFavorites) },
+                        leadingIcon = {
+                            Icon(
+                                if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                                contentDescription = null,
+                                tint = if (isFavorite) LevyraPink else LocalContentColor.current
+                            )
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onFavorite()
+                        }
+                    )
+                    if (onQueue != null) {
                         DropdownMenuItem(
-                            text = { Text(strings.play) },
-                            leadingIcon = { Icon(Icons.Rounded.PlayArrow, contentDescription = null) },
+                            text = { Text(strings.addToQueue) },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null) },
                             onClick = {
                                 menuExpanded = false
-                                onClick()
+                                onQueue()
                             }
                         )
-                        if (onQueue != null) {
-                            DropdownMenuItem(
-                                text = { Text(strings.addToQueue) },
-                                leadingIcon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null) },
-                                onClick = {
-                                    menuExpanded = false
-                                    onQueue()
-                                }
-                            )
-                        }
-                        if (onAddToPlaylist != null) {
-                            DropdownMenuItem(
-                                text = { Text(strings.addToPlaylist) },
-                                leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null) },
-                                onClick = {
-                                    menuExpanded = false
-                                    onAddToPlaylist()
-                                }
-                            )
-                        }
-                        if (onEditTags != null) {
-                            DropdownMenuItem(
-                                text = { Text(strings.localEditTags) },
-                                leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
-                                onClick = {
-                                    menuExpanded = false
-                                    onEditTags()
-                                }
-                            )
-                        }
-                        if (onDeleteDownload != null) {
-                            DropdownMenuItem(
-                                text = { Text(strings.deleteDownload, color = LevyraPink) },
-                                leadingIcon = {
-                                    Icon(Icons.Rounded.Delete, contentDescription = null, tint = LevyraPink)
-                                },
-                                onClick = {
-                                    menuExpanded = false
-                                    onDeleteDownload()
-                                }
-                            )
-                        } else if (!isDownloaded && downloadProgress == null) {
-                            DropdownMenuItem(
-                                text = { Text(strings.download) },
-                                leadingIcon = { Icon(Icons.Rounded.Download, contentDescription = null) },
-                                onClick = {
-                                    menuExpanded = false
-                                    onDownload()
-                                }
-                            )
-                        }
-                        if (onChangeMatch != null) {
-                            DropdownMenuItem(
-                                text = { Text(com.luc4n3x.levyra.ui.i18n.playlistImportHubCopy(strings.code)["changeMatch"], color = LevyraText) },
-                                leadingIcon = {
-                                    Icon(Icons.Rounded.SwapHoriz, contentDescription = null, tint = LevyraCyan)
-                                },
-                                onClick = {
-                                    menuExpanded = false
-                                    onChangeMatch()
-                                }
-                            )
-                        }
-                        if (onRemoveFromPlaylist != null) {
-                            DropdownMenuItem(
-                                text = { Text(strings.removeFromPlaylist, color = LevyraPink) },
-                                leadingIcon = {
-                                    Icon(Icons.Rounded.Delete, contentDescription = null, tint = LevyraPink)
-                                },
-                                onClick = {
-                                    menuExpanded = false
-                                    onRemoveFromPlaylist()
-                                }
-                            )
-                        }
+                    }
+                    if (onAddToPlaylist != null) {
+                        DropdownMenuItem(
+                            text = { Text(strings.addToPlaylist) },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null) },
+                            onClick = {
+                                menuExpanded = false
+                                onAddToPlaylist()
+                            }
+                        )
+                    }
+                    if (onEditTags != null) {
+                        DropdownMenuItem(
+                            text = { Text(strings.localEditTags) },
+                            leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
+                            onClick = {
+                                menuExpanded = false
+                                onEditTags()
+                            }
+                        )
+                    }
+                    if (onDeleteDownload != null) {
+                        DropdownMenuItem(
+                            text = { Text(strings.deleteDownload, color = LevyraPink) },
+                            leadingIcon = {
+                                Icon(Icons.Rounded.Delete, contentDescription = null, tint = LevyraPink)
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                onDeleteDownload()
+                            }
+                        )
+                    } else if (!isDownloaded && downloadProgress == null) {
+                        DropdownMenuItem(
+                            text = { Text(strings.download) },
+                            leadingIcon = { Icon(Icons.Rounded.Download, contentDescription = null) },
+                            onClick = {
+                                menuExpanded = false
+                                onDownload()
+                            }
+                        )
+                    }
+                    if (onChangeMatch != null) {
+                        DropdownMenuItem(
+                            text = { Text(com.luc4n3x.levyra.ui.i18n.playlistImportHubCopy(strings.code)["changeMatch"], color = LevyraText) },
+                            leadingIcon = {
+                                Icon(Icons.Rounded.SwapHoriz, contentDescription = null, tint = LevyraCyan)
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                onChangeMatch()
+                            }
+                        )
+                    }
+                    if (onRemoveFromPlaylist != null) {
+                        DropdownMenuItem(
+                            text = { Text(strings.removeFromPlaylist, color = LevyraPink) },
+                            leadingIcon = {
+                                Icon(Icons.Rounded.Delete, contentDescription = null, tint = LevyraPink)
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                onRemoveFromPlaylist()
+                            }
+                        )
                     }
                 }
             }
