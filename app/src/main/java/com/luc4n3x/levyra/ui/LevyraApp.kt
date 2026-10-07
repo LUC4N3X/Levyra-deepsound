@@ -5689,15 +5689,12 @@ private fun ArtistHero(
                 },
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(Icons.Rounded.Verified, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(16.dp))
-                Text(
-                    text = LocalLevyraStrings.current.artistLabel.uppercase(),
-                    color = LevyraText.copy(alpha = 0.78f),
-                    style = LevyraType.overline,
-                    maxLines = 1
-                )
-            }
+            Text(
+                text = LocalLevyraStrings.current.artistLabel.uppercase(),
+                color = LevyraText.copy(alpha = 0.78f),
+                style = LevyraType.overline,
+                maxLines = 1
+            )
             Text(
                 text = profile.name,
                 color = LevyraText,
