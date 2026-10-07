@@ -19,8 +19,8 @@ object LevyraHomeDesign {
     val HorizontalInset: Dp = 16.dp
     val SectionGap: Dp = 7.dp
     val SectionGapCompact: Dp = 5.dp
-    val SectionStride: Dp = 36.dp
-    val SectionStrideCompact: Dp = 28.dp
+    val SectionStride: Dp = 24.dp
+    val SectionStrideCompact: Dp = 20.dp
     val HeaderCorner: Dp = 16.dp
     val HeaderPadding: Dp = 12.dp
     val SettingsControlHeight: Dp = 48.dp
@@ -34,7 +34,7 @@ object LevyraHomeDesign {
     val EditorialMaxWidth: Dp = 520.dp
     val DiscoveryArtworkWidth: Dp = 176.dp
     const val EditorialArtworkRatio: Float = 1.5f
-    val HeroHeight: Dp = 472.dp
+    val HeroHeight: Dp = 328.dp
     val ShelfCorner: Dp = 2.dp
     val ArtworkCorner: Dp = LevyraCardDesign.ArtworkCorner
     val ThumbCorner: Dp = LevyraCardDesign.ThumbCorner
@@ -51,7 +51,7 @@ object LevyraHomeDesign {
     val OrbitPageEndInset: Dp = 20.dp
     val OrbitAvatarSize: Dp = 34.dp
     val OrbitAvatarGap: Dp = 14.dp
-    val OrbitHeaderGap: Dp = 22.dp
+    val OrbitHeaderGap: Dp = 10.dp
     val OrbitDotSize: Dp = 8.dp
     val OrbitDotGap: Dp = 4.5.dp
     val OrbitDotsTopGap: Dp = 8.dp
@@ -66,7 +66,13 @@ object LevyraHomeDesign {
     val CardSubtitleSize = LevyraCardDesign.CardSubtitleSize
     val OrbitTileTitleSize = 15.sp
     val OrbitHeaderNameSize = 15.sp
-    val OrbitHeaderTitleSize = 24.sp
+    val OrbitHeaderTitleSize = 20.sp
+
+    val FeedTitleSize = 14.sp
+    val FeedArtworkShape = RoundedCornerShape(8.dp)
+    val FeedArtworkWidth: Dp = 148.dp
+    const val FEED_ACCESS_COLUMNS: Int = 2
+    const val FEED_ACCESS_PAGE_SIZE: Int = 6
 
     val HeaderShape = RoundedCornerShape(HeaderCorner)
     val SettingsShape = RoundedCornerShape(14.dp)

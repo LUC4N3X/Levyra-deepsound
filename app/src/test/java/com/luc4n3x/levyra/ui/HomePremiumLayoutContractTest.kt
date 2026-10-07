@@ -17,13 +17,13 @@ class HomePremiumLayoutContractTest {
     }
 
     @Test
-    fun `personal orbit is a paged three by three artwork grid`() {
+    fun `personal orbit keeps every selected track in compact paged access`() {
         val shelf = functionBlock("private fun PersonalListeningShelf(")
 
         assertTrue(shelf.contains("homePersonalOrbitPages"))
         assertTrue(shelf.contains("PersonalOrbitTile"))
         assertTrue(shelf.contains("HorizontalPager"))
-        assertTrue(shelf.contains("HOME_PERSONAL_ORBIT_GRID_COLUMNS"))
+        assertTrue(shelf.contains("FEED_ACCESS_COLUMNS"))
         assertTrue(shelf.contains("OrbitWallMinWidth"))
         assertTrue(shelf.contains("onPlayAll"))
         assertTrue(shelf.contains("onTrackActions"))
@@ -33,15 +33,15 @@ class HomePremiumLayoutContractTest {
     }
 
     @Test
-    fun `orbit tiles keep playback actions and a single line title`() {
+    fun `orbit tiles keep playback actions and readable compact titles`() {
         val tile = functionBlock("private fun PersonalOrbitTile(")
 
-        assertTrue(tile.contains("aspectRatio(1f)"))
+        assertTrue(tile.contains("heightIn(min = 64.dp)"))
         assertTrue(tile.contains("levyraPressable("))
         assertTrue(tile.contains("onLongClick = onActions"))
         assertTrue(tile.contains("strings.songOptions"))
-        assertTrue(tile.contains("maxLines = 1"))
-        assertTrue(tile.contains("ActiveTrackEqualizer"))
+        assertTrue(tile.contains("maxLines = 2"))
+        assertTrue(tile.contains("HomeNowPlayingScrim"))
     }
 
     @Test
@@ -69,33 +69,23 @@ class HomePremiumLayoutContractTest {
     }
 
     @Test
-    fun `orbit grid follows the youtube music selezione rapida proportions`() {
-        val phoneTile = (
-            412f -
-                LevyraHomeDesign.HorizontalInset.value -
-                LevyraHomeDesign.OrbitPageEndInset.value -
-                LevyraHomeDesign.OrbitTileGap.value * 2
-            ) / 3f
-
-        assertTrue(phoneTile in 118f..125f)
-        assertTrue(LevyraHomeDesign.OrbitTileCorner.value in 6f..8f)
-        assertTrue(LevyraHomeDesign.OrbitTileGap.value in 4f..5f)
-        assertTrue(LevyraHomeDesign.OrbitTileTitleSize.value in 14f..16f)
-        assertTrue(LevyraHomeDesign.OrbitHeaderTitleSize.value in 22f..26f)
-        assertTrue(LevyraHomeDesign.OrbitAvatarSize.value in 32f..36f)
-        assertTrue(LevyraHomeDesign.OrbitDotSize.value in 7f..9f)
+    fun `compact access leaves room for artwork and readable titles on phones`() {
+        val tileWidth = (
+            360f - LevyraHomeDesign.HorizontalInset.value -
+                LevyraHomeDesign.OrbitPageEndInset.value - LevyraHomeDesign.OrbitTileGap.value
+            ) / LevyraHomeDesign.FEED_ACCESS_COLUMNS
+        val textWidth = tileWidth - 12f - 48f - 8f
+        assertTrue(textWidth >= 80f)
+        assertTrue(LevyraHomeDesign.FEED_ACCESS_PAGE_SIZE % LevyraHomeDesign.FEED_ACCESS_COLUMNS == 0)
     }
 
     @Test
-    fun `orbit grid stays readable on wide windows`() {
-        val wallTile = (
-            LevyraHomeDesign.OrbitWallPageWidth.value -
-                LevyraHomeDesign.HorizontalInset.value -
-                LevyraHomeDesign.OrbitPageEndInset.value -
-                LevyraHomeDesign.OrbitTileGap.value * 2
-            ) / 3f
-
-        assertTrue(wallTile >= 96f)
+    fun `compact access stays readable on wide windows`() {
+        val tileWidth = (
+            LevyraHomeDesign.OrbitWallPageWidth.value - LevyraHomeDesign.HorizontalInset.value -
+                LevyraHomeDesign.OrbitPageEndInset.value - LevyraHomeDesign.OrbitTileGap.value
+            ) / LevyraHomeDesign.FEED_ACCESS_COLUMNS
+        assertTrue(tileWidth - 12f - 48f - 8f >= 80f)
         assertTrue(LevyraHomeDesign.OrbitWallPageWidth < LevyraHomeDesign.OrbitWallMinWidth)
     }
 

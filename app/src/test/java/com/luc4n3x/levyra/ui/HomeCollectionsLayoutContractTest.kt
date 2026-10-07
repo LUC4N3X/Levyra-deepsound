@@ -40,9 +40,8 @@ class HomeCollectionsLayoutContractTest {
         assertTrue(shelf.contains("LazyRow("))
         assertTrue(shelf.contains("items = collections"))
         assertTrue(shelf.contains("key = { collection ->"))
-        assertTrue(shelf.contains("DiscoveryEditorialCard("))
-        assertTrue(shelf.contains("maxWidth - LevyraHomeDesign.EditorialPeek"))
-        assertTrue(shelf.contains("coerceAtMost(LevyraHomeDesign.EditorialMaxWidth)"))
+        assertTrue(shelf.contains("HomeCollectionFeedCard("))
+        assertTrue(shelf.contains("rememberShelfItemWidth(maxWidth, LevyraHomeDesign.FeedArtworkWidth)"))
     }
 
     @Test
