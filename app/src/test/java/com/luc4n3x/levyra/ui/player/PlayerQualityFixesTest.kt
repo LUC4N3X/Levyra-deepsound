@@ -84,9 +84,9 @@ class PlayerQualityFixesTest {
     fun `resolveTransportWeights guarantees touch target of at least 48dp on 320dp narrow screens`() {
         // 320dp width phone with 18dp gutters -> availableWidth = 284dp
         val availableWidth = 284.dp
-        val gap = LevyraPlayerDesign.TransportGap // 5dp
-        val totalGaps = gap * 4 // 20dp
-        val availableSegmentWidth = availableWidth - totalGaps // 264dp
+        val gap = LevyraPlayerDesign.TransportGap // 8dp
+        val totalGaps = gap * 4 // 32dp
+        val availableSegmentWidth = availableWidth - totalGaps // 252dp
 
         val weights = resolveTransportWeights(availableWidth, gap, LevyraPlayerDesign.MinimumTouchTarget)
         val totalWeight = weights.modeWeight * 2 + weights.skipWeight * 2 + weights.playWeight
@@ -105,9 +105,9 @@ class PlayerQualityFixesTest {
     fun `resolveTransportWeights preserves standard proportions on 360dp screens`() {
         // 360dp phone with 18dp gutters -> availableWidth = 324dp
         val availableWidth = 324.dp
-        val gap = LevyraPlayerDesign.TransportGap // 5dp
-        val totalGaps = gap * 4 // 20dp
-        val availableSegmentWidth = availableWidth - totalGaps // 304dp
+        val gap = LevyraPlayerDesign.TransportGap // 8dp
+        val totalGaps = gap * 4 // 32dp
+        val availableSegmentWidth = availableWidth - totalGaps // 292dp
 
         val weights = resolveTransportWeights(availableWidth, gap, LevyraPlayerDesign.MinimumTouchTarget)
         val totalWeight = weights.modeWeight * 2 + weights.skipWeight * 2 + weights.playWeight

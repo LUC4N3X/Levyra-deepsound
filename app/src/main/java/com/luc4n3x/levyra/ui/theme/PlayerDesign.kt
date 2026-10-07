@@ -45,15 +45,15 @@ object LevyraPlayerDesign {
 
     val TransportHeight: Dp = 76.dp
     val TransportHeightCompact: Dp = 64.dp
-    val TransportGap: Dp = 5.dp
+    val TransportGap: Dp = 8.dp
     val TransportInnerCorner: Dp = 12.dp
     val TransportGlyph: Dp = 30.dp
     val TransportGlyphCompact: Dp = 26.dp
     val TransportModeGlyph: Dp = 22.dp
     val TransportPlayGlyph: Dp = 38.dp
     val TransportPlayGlyphCompact: Dp = 32.dp
-    val DockHeight: Dp = 50.dp
-    val DockHeightCompact: Dp = 46.dp
+    val DockHeight: Dp = 48.dp
+    val DockHeightCompact: Dp = 48.dp
     val DockMaxWidth: Dp = 340.dp
     val DockGap: Dp = 3.dp
     val DockInnerCorner: Dp = 6.dp
