@@ -23416,6 +23416,10 @@ private fun ExploreScreen(
     }
 
     val exploreMixAccent = rememberNowPlayingAccent(state.currentTrack, LevyraCyan)
+    val exploreBottomInset = tabBarBottomContentInset(
+        miniPlayerVisible = state.currentTrack != null && !state.isSamplesOpen,
+        animationsEnabled = state.animationsEnabled
+    )
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -23424,7 +23428,7 @@ private fun ExploreScreen(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
-            contentPadding = PaddingValues(top = 20.dp, bottom = 190.dp),
+            contentPadding = PaddingValues(top = 20.dp, bottom = exploreBottomInset),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(
@@ -23451,7 +23455,7 @@ private fun ExploreScreen(
                         Spacer(modifier = Modifier.height(6.dp))
                     }
                     ExploreRow.MixTools -> Column(
-                        modifier = Modifier.padding(horizontal = HomeHorizontalInset, vertical = 20.dp),
+                        modifier = Modifier.padding(horizontal = HomeHorizontalInset),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         ExploreLiveRadioEntry(onClick = { onLiveRadioOpenChange(true) })
