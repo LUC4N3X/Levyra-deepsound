@@ -142,6 +142,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import com.luc4n3x.levyra.ui.components.levyraMarquee
+import com.luc4n3x.levyra.ui.components.carouselDepthEnabled
 import com.luc4n3x.levyra.ui.components.levyraCarouselDepth
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -414,6 +415,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.lifecycle.Lifecycle
@@ -578,6 +580,7 @@ import com.luc4n3x.levyra.domain.ReleaseRadarEntry
 import com.luc4n3x.levyra.domain.Taste
 import com.luc4n3x.levyra.domain.HomeCollectionKind
 import com.luc4n3x.levyra.domain.HomeEditorialCollection
+import com.luc4n3x.levyra.domain.HomeCollectionSource
 import com.luc4n3x.levyra.domain.HomeSpotlightCandidate
 import com.luc4n3x.levyra.domain.HomeSpotlightKind
 import com.luc4n3x.levyra.domain.Track
@@ -2229,7 +2232,10 @@ fun LevyraApp(
                     .nestedScroll(dockState)
                     .glassBackdropSource(dockGlass)
             ) {
-            LevyraBackground()
+            LevyraHomeAtmosphere(
+                isLight = LevyraIsLight,
+                accent = yourSoundAccent
+            )
             AnimatedContent(
                 targetState = backgroundTab,
                 modifier = Modifier
@@ -9139,47 +9145,6 @@ private fun HomeScreen(
         }
     }
     val spotlightTracks = remember(spotlightCandidates) { spotlightCandidates.map { it.track } }
-    var homeAccentStart by remember(spotlightCandidate?.track?.id) {
-        mutableStateOf(Color(spotlightCandidate?.track?.accentStart ?: 0xFF071019.toInt()))
-    }
-    var homeAccentEnd by remember(spotlightCandidate?.track?.id) {
-        mutableStateOf(Color(spotlightCandidate?.track?.accentEnd ?: 0xFF160E24.toInt()))
-    }
-    LaunchedEffect(
-        spotlightCandidate?.track?.id,
-        spotlightCandidate?.track?.thumbnailUrl,
-        spotlightCandidate?.track?.largeThumbnailUrl
-    ) {
-        val track = spotlightCandidate?.track ?: return@LaunchedEffect
-        val paletteKey = ArtworkPaletteCache.key(
-            trackId = track.id,
-            thumbnailUrl = track.thumbnailUrl,
-            largeThumbnailUrl = track.largeThumbnailUrl
-        )
-        val cachedPalette = ArtworkPaletteCache.peek(paletteKey)
-            ?: ArtworkPaletteCache.load(context, paletteKey)
-        val palette = cachedPalette ?: ArtworkPalette(track.accentStart, track.accentEnd)
-        homeAccentStart = Color(palette.start)
-        homeAccentEnd = Color(palette.end)
-    }
-    val animatedHomeAccentStart by animateColorAsState(
-        targetValue = homeAccentStart,
-        animationSpec = if (state.animationsEnabled) {
-            tween(520, easing = FastOutSlowInEasing)
-        } else {
-            snap()
-        },
-        label = "homeAccentStart"
-    )
-    val animatedHomeAccentEnd by animateColorAsState(
-        targetValue = homeAccentEnd,
-        animationSpec = if (state.animationsEnabled) {
-            tween(520, easing = FastOutSlowInEasing)
-        } else {
-            snap()
-        },
-        label = "homeAccentEnd"
-    )
     val visiblePersonalTracks = remember(personalTracks) {
         LevyraPersonalOrbit.distinctRecordings(personalTracks)
             .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
@@ -9292,10 +9257,7 @@ private fun HomeScreen(
                 isCurrent = heroTrack.id == state.currentTrack?.id,
                 isPlaying = state.isPlaying && heroTrack.id == state.currentTrack?.id,
                 isResolving = state.isResolving && heroTrack.id == state.currentTrack?.id,
-                onPaletteChanged = { start, end ->
-                    homeAccentStart = start
-                    homeAccentEnd = end
-                },
+                onPaletteChanged = { _, _ -> },
                 onOpen = {
                     stableSpotlightId = heroTrack.id
                     when {
@@ -9312,10 +9274,8 @@ private fun HomeScreen(
     }
     Box(modifier = Modifier.fillMaxSize()) {
         LevyraHomeAtmosphere(
-            accentStart = animatedHomeAccentStart,
-            accentEnd = animatedHomeAccentEnd,
             isLight = LevyraIsLight,
-            animationsEnabled = state.animationsEnabled,
+            accent = rememberNowPlayingAccent(state.currentTrack, LevyraCyan),
             modifier = Modifier.fillMaxSize()
         )
         LazyColumn(
@@ -9344,6 +9304,16 @@ private fun HomeScreen(
                 } else {
                     homeHeader()
                 }
+            }
+            item(key = "home-genre-chips", contentType = "home-genre-chips") {
+                val chipZones = remember(strings) { ExploreCatalog.getZones(strings) }
+                HomeGenreChips(
+                    zones = chipZones,
+                    contentPadding = PaddingValues(horizontal = HomeHorizontalInset),
+                    onSelect = { zone ->
+                        viewModel.openExploreZone(zone)
+                    }
+                )
             }
             if (speedDialPins.isNotEmpty()) {
                 item(key = "home-speed-dial", contentType = "home-speed-dial") {
@@ -9479,7 +9449,7 @@ private fun HomeScreen(
             if (showDeferredHomeSections && quickPicks != null && quickPicks.tracks.isNotEmpty()) {
                 item(key = "home-quick-picks", contentType = HOME_DENSE_SHELF_CONTENT_TYPE) {
                     HomeSectionLead(compactHome) {
-                        HomeQuickAccessShelf(
+                        HomeQuickPicksShelf(
                             title = quickPicks.title.ifBlank { strings.quickPicks },
                             tracks = quickPicks.tracks,
                             currentId = state.currentTrack?.id,
@@ -9766,6 +9736,20 @@ private fun HomeScreen(
                                 .coerceIn(280.dp, 360.dp)
                         }
                         val chartRowState = key(state.selectedChartId) { rememberLazyListState() }
+                        val podiumTracks = remember(state.charts) { state.charts.take(HomeChartPodiumSize) }
+                        val restTracks = remember(state.charts) { state.charts.drop(HomeChartPodiumSize) }
+                        val rowsPerColumn = remember(restTracks) { chartRowsPerColumn(restTracks.size) }
+                        val restChunks = remember(restTracks, rowsPerColumn) {
+                            restTracks.chunked(rowsPerColumn)
+                        }
+                        val chartDepthEnabled = carouselDepthEnabled()
+                        Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                        HomeChartPodium(
+                            tracks = podiumTracks,
+                            currentId = state.currentTrack?.id,
+                            contentPadding = PaddingValues(horizontal = LevyraHomeDesign.HorizontalInset),
+                            onPlay = { track -> viewModel.playFrom(state.charts, track) }
+                        )
                         LazyRow(
                             state = chartRowState,
                             modifier = Modifier.fillMaxWidth(),
@@ -9776,16 +9760,23 @@ private fun HomeScreen(
                             )
                         ) {
                             itemsIndexed(
-                                items = chartChunks,
+                                items = restChunks,
                                 key = { chunkIndex, _ -> "chart-column-$chunkIndex" },
                                 contentType = { _, _ -> "chart-column" }
                             ) { chunkIndex, chunk ->
+                                val columnKey = "chart-column-$chunkIndex"
                                 Column(
-                                    modifier = Modifier.width(columnWidth),
+                                    modifier = Modifier
+                                        .width(columnWidth)
+                                        .levyraCarouselDepth(
+                                            state = chartRowState,
+                                            key = columnKey,
+                                            enabled = chartDepthEnabled
+                                        ),
                                     verticalArrangement = Arrangement.spacedBy(2.dp)
                                 ) {
                                     chunk.forEachIndexed { itemIndex, track ->
-                                        val rank = chunkIndex * 4 + itemIndex + 1
+                                        val rank = HomeChartPodiumSize + chunkIndex * rowsPerColumn + itemIndex + 1
                                         ChartRow(
                                             rank = rank,
                                             track = track,
@@ -9801,6 +9792,7 @@ private fun HomeScreen(
                                     }
                                 }
                             }
+                        }
                         }
                     }
                 }
@@ -10230,6 +10222,14 @@ private fun HomeStatusBarScrim(listState: LazyListState, height: Dp, canvas: Col
     )
 }
 
+private const val HomeChartPodiumSize = 10
+
+internal fun chartRowsPerColumn(trackCount: Int): Int = when {
+    trackCount <= 0 -> 4
+    trackCount % 4 == 0 -> 4
+    trackCount % 5 == 0 -> 5
+    else -> 4
+}
 private val HOME_HERO_STAGE_BODY_HEIGHT = LevyraHomeDesign.HeroHeight - 88.dp
 private const val HOME_HERO_LANDSCAPE_VIEWPORT_SHARE = 0.62f
 private val HOME_HERO_LANDSCAPE_MIN_HEIGHT = 236.dp
@@ -10331,13 +10331,27 @@ private fun homeCollectionTitle(strings: LevyraStrings, collection: HomeEditoria
     return cleanHomeSectionTitle(title)
 }
 
+private fun exploreEditorialPalette(identity: String): Pair<Color, Color> {
+    val palette = listOf(
+        Color(0xFF7C3AED) to Color(0xFF4C1D95),
+        Color(0xFFD81B60) to Color(0xFF7A1538),
+        Color(0xFF0F8A78) to Color(0xFF075E54),
+        Color(0xFF246BCE) to Color(0xFF173F7A),
+        Color(0xFFB96A16) to Color(0xFF70400F),
+        Color(0xFF238636) to Color(0xFF145325),
+        Color(0xFFB335B5) to Color(0xFF64236C),
+        Color(0xFFD9571C) to Color(0xFF7B3215)
+    )
+    return palette[(identity.hashCode() and Int.MAX_VALUE) % palette.size]
+}
+
 @Composable
 private fun HomeEditorialCollectionsShelf(
     collections: List<HomeEditorialCollection>,
     onOpen: (HomeEditorialCollection) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         HomeSectionHeader(
             title = strings.collectionsTitle,
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
@@ -10346,7 +10360,29 @@ private fun HomeEditorialCollectionsShelf(
             val cardWidth = (maxWidth - LevyraHomeDesign.EditorialPeek)
                 .coerceAtMost(LevyraHomeDesign.EditorialMaxWidth)
             val collectionsState = rememberLazyListState()
-            val collectionsDepth = LocalAnimationsEnabled.current
+            val collectionsDepth = carouselDepthEnabled()
+            val collectionArtworks = remember(collections) {
+                val usedTrackIds = mutableSetOf<String>()
+                collections.associate { collection ->
+                    val nonVideoTracks = collection.tracks.filter { track ->
+                        !YoutubeMusicVideoType.isVideo(track.videoType) &&
+                            !track.thumbnailUrl.contains("/vi/", ignoreCase = true) &&
+                            !track.thumbnailUrl.contains("vi_webp", ignoreCase = true) &&
+                            !track.largeThumbnailUrl.contains("/vi/", ignoreCase = true) &&
+                            !track.largeThumbnailUrl.contains("vi_webp", ignoreCase = true) &&
+                            track.thumbnailUrl.isNotBlank()
+                    }
+                    val selectedTrack = nonVideoTracks.firstOrNull { it.id !in usedTrackIds }
+                        ?: nonVideoTracks.firstOrNull()
+                        ?: collection.tracks.firstOrNull { it.id !in usedTrackIds && !YoutubeMusicVideoType.isVideo(it.videoType) }
+                        ?: collection.tracks.firstOrNull { !YoutubeMusicVideoType.isVideo(it.videoType) }
+                        ?: collection.tracks.firstOrNull()
+                    if (selectedTrack != null) {
+                        usedTrackIds += selectedTrack.id
+                    }
+                    collection.id to selectedTrack
+                }
+            }
             LazyRow(
                 state = collectionsState,
                 modifier = Modifier.fillMaxWidth(),
@@ -10366,10 +10402,20 @@ private fun HomeEditorialCollectionsShelf(
                             .take(2)
                             .joinToString(" · ")
                     }
+                    val artworkTrack = collectionArtworks[collection.id]
+                    val (accentStart, accentEnd) = remember(collection.id, collection.accentStart, collection.accentEnd) {
+                        if (collection.accentStart != 0 && collection.accentEnd != 0 && collection.accentStart != collection.accentEnd) {
+                            Color(collection.accentStart) to Color(collection.accentEnd)
+                        } else {
+                            exploreEditorialPalette(collection.id)
+                        }
+                    }
                     DiscoveryEditorialCard(
                         title = homeCollectionTitle(strings, collection),
                         subtitle = artistLine,
-                        artwork = collection.tracks.firstOrNull(),
+                        artwork = artworkTrack,
+                        accentStart = accentStart,
+                        accentEnd = accentEnd,
                         onOpen = { onOpen(collection) },
                         modifier = Modifier
                             .levyraCarouselDepth(collectionsState, "home-collection-${collection.id}", collectionsDepth)
@@ -10484,63 +10530,6 @@ internal fun homeQuickAccessColumns(tracks: List<Track>): List<List<Track>> {
                 page.filterIndexed { index, _ -> index % 2 != 0 }
             ).filter { it.isNotEmpty() }
         }
-}
-
-@Composable
-private fun HomeQuickAccessShelf(
-    title: String,
-    tracks: List<Track>,
-    currentId: String?,
-    isPlaying: Boolean,
-    isResolving: Boolean,
-    onPlay: (Track) -> Unit,
-    onPlayAll: (() -> Unit)? = null,
-    onTrackActions: ((Track) -> Unit)? = null
-) {
-    val columns = remember(tracks) { tracks.distinctBy(LevyraPersonalOrbit::identityKey).chunked(2) }
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        HomeSectionInset { HomeSectionHeader(title = title, onPlayAll = onPlayAll) }
-        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            val cardWidth = ((maxWidth - HomeHorizontalInset * 2 - LevyraHomeDesign.ShelfItemGap) / 2)
-                .coerceAtMost(LevyraHomeDesign.DiscoveryArtworkWidth)
-            val shelfState = rememberLazyListState()
-            val depthEnabled = LocalAnimationsEnabled.current
-            LazyRow(
-                state = shelfState,
-                horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap),
-                contentPadding = PaddingValues(horizontal = HomeHorizontalInset)
-            ) {
-                items(
-                    items = columns,
-                    key = { column -> LevyraPersonalOrbit.identityKey(column.first()) },
-                    contentType = { "home-artwork-column" }
-                ) { column ->
-                    Column(
-                        modifier = Modifier.levyraCarouselDepth(
-                            state = shelfState,
-                            key = LevyraPersonalOrbit.identityKey(column.first()),
-                            enabled = depthEnabled
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(20.dp)
-                    ) {
-                        column.forEach { track ->
-                            key(LevyraPersonalOrbit.identityKey(track)) {
-                                DiscoveryTrackCard(
-                                    track = track,
-                                    isCurrent = track.id == currentId,
-                                    isPlaying = isPlaying && track.id == currentId,
-                                    isResolving = isResolving && track.id == currentId,
-                                    onPlay = { onPlay(track) },
-                                    onActions = onTrackActions?.let { actions -> { actions(track) } },
-                                    modifier = Modifier.width(cardWidth)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 @Composable
@@ -10855,7 +10844,7 @@ private fun ResonanceShelf(
             val cardWidth = (maxWidth - HomeHorizontalInset - 24.dp)
                 .coerceIn(292.dp, 330.dp)
             val resonanceState = rememberLazyListState()
-            val resonanceDepth = LocalAnimationsEnabled.current
+            val resonanceDepth = carouselDepthEnabled()
             LazyRow(
                 state = resonanceState,
                 modifier = Modifier.fillMaxWidth(),
@@ -10938,11 +10927,18 @@ private fun ResonanceFeaturedCard(
                 commentCount = commentCount,
                 loading = snippet?.isLoading == true
             )
-            when {
-                snippet?.isLoading == true -> ResonanceCommentShimmer()
-                snippet?.disabled == true -> ResonanceQuoteText(strings.commentsDisabled, muted = true)
-                snippet?.hasComment == true -> ResonanceQuoteText(snippet.text, muted = false)
-                else -> ResonanceQuoteText(strings.tapToOpenComments, muted = true)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                when {
+                    snippet?.isLoading == true -> ResonanceCommentShimmer()
+                    snippet?.disabled == true -> ResonanceQuoteText(strings.commentsDisabled, muted = true)
+                    snippet?.hasComment == true -> ResonanceQuoteText(snippet.text, muted = false)
+                    else -> ResonanceQuoteText(strings.tapToOpenComments, muted = true)
+                }
             }
         }
         Row(
@@ -13294,7 +13290,7 @@ private fun RecentSearchesRow(
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionTitle(title)
         val recentState = rememberLazyListState()
-        val recentDepth = LocalAnimationsEnabled.current
+        val recentDepth = carouselDepthEnabled()
         LazyRow(
             state = recentState,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -18374,32 +18370,68 @@ private fun OnboardingFooter(
 
 @Composable
 private fun TasteCard(taste: Taste, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    Surface(
-        color = if (selected) LevyraCyan.copy(alpha = 0.17f) else LevyraAdaptiveCard,
-        border = BorderStroke(1.dp, if (selected) LevyraCyan.copy(alpha = 0.72f) else LevyraAdaptiveHairline),
-        shape = RoundedCornerShape(20.dp),
+    val (tileStart, tileEnd) = remember(taste.id) { tastePalette(taste.id) }
+    val shape = RoundedCornerShape(18.dp)
+    Box(
         modifier = modifier
-            .height(62.dp)
+            .height(96.dp)
+            .graphicsLayer { alpha = if (selected) 1f else 0.82f }
+            .clip(shape)
+            .background(Brush.linearGradient(listOf(tileStart, tileEnd)))
+            .then(if (selected) Modifier.border(2.5.dp, Color.White, shape) else Modifier)
+            .semantics { this.selected = selected }
             .pressable(onClick = onClick)
     ) {
-        Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(9.dp)
-        ) {
-            Text(taste.emoji, fontSize = 21.sp)
-            Text(
-                taste.label,
-                color = LevyraText,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
-            if (selected) Icon(Icons.Rounded.Check, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(18.dp))
+        Text(
+            text = taste.label,
+            color = Color.White,
+            fontSize = 17.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(17.sp),
+            fontWeight = FontWeight.Black,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .fillMaxWidth(0.78f)
+                .padding(start = 14.dp, top = 12.dp)
+        )
+        Text(
+            text = taste.emoji,
+            fontSize = 40.sp,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .offset(x = 6.dp, y = 8.dp)
+                .graphicsLayer { rotationZ = 14f }
+        )
+        if (selected) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(10.dp)
+                    .size(24.dp)
+                    .background(Color.White, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.Check, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+            }
         }
     }
+}
+
+private fun tastePalette(id: String): Pair<Color, Color> {
+    val palette = listOf(
+        Color(0xFFE8115B) to Color(0xFF8C0B37),
+        Color(0xFF1E3264) to Color(0xFF0D1A36),
+        Color(0xFF8D67AB) to Color(0xFF4F3A61),
+        Color(0xFF148A08) to Color(0xFF0A4D04),
+        Color(0xFFE1118C) to Color(0xFF7D0A4E),
+        Color(0xFF0D73EC) to Color(0xFF07407F),
+        Color(0xFFBA5D07) to Color(0xFF6B3604),
+        Color(0xFF477D95) to Color(0xFF274654),
+        Color(0xFFDC148C) to Color(0xFF7A0B4E),
+        Color(0xFF503750) to Color(0xFF2B1E2B)
+    )
+    return palette[(id.hashCode() and Int.MAX_VALUE) % palette.size]
 }
 
 @Composable
@@ -20478,7 +20510,10 @@ private fun SettingsMiniButton(
 }
 
 @Composable
-private fun LevyraLogoMark(size: Dp = 58.dp) {
+private fun LevyraLogoMark(
+    size: Dp = 58.dp,
+    contentDescription: String? = "Levyra"
+) {
     Box(contentAlignment = Alignment.Center) {
         Box(
             modifier = Modifier
@@ -20516,7 +20551,7 @@ private fun LevyraLogoMark(size: Dp = 58.dp) {
         ) {
             Image(
                 painter = painterResource(id = R.drawable.levyra_logo),
-                contentDescription = "Logo Levyra",
+                contentDescription = contentDescription,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxSize()
@@ -20557,33 +20592,52 @@ private fun GreetingBar(
     onSettings: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val greetingHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+    val greetingHour by rememberCurrentGreetingHour()
     val greeting = remember(userName, strings, greetingHour) {
         strings.formatGreeting(userName, greetingHour)
     }
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = LevyraHomeDesign.SettingsControlHeight)
+            .padding(horizontal = 2.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(
             modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(11.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            LevyraLogoMark(size = 38.dp)
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(3.dp)
+            LevyraLogoMark(size = 38.dp, contentDescription = null)
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = LevyraHomeDesign.SettingsControlHeight),
+                contentAlignment = Alignment.CenterStart
             ) {
-                Text(
-                    text = greeting,
-                    color = if (LevyraIsLight) LevyraMuted else Color.White.copy(alpha = 0.92f),
-                    style = LevyraType.screenTitle,
-                    softWrap = true,
-                    modifier = Modifier.fillMaxWidth().semantics { heading() }
-                )
+                Crossfade(
+                    targetState = greeting,
+                    animationSpec = if (animationsEnabled) {
+                        tween(durationMillis = 240, easing = FastOutSlowInEasing)
+                    } else {
+                        snap()
+                    },
+                    label = "homeGreeting"
+                ) { visibleGreeting ->
+                    Text(
+                        text = visibleGreeting,
+                        color = if (LevyraIsLight) LevyraMuted else Color.White.copy(alpha = 0.92f),
+                        style = LevyraType.screenTitle.copy(
+                            fontSize = 20.sp,
+                            lineHeight = 23.sp,
+                            letterSpacing = (-0.35).sp
+                        ),
+                        softWrap = true,
+                        modifier = Modifier.fillMaxWidth().semantics { heading() }
+                    )
+                }
             }
         }
         HomeHeaderIconButton(
@@ -20591,9 +20645,8 @@ private fun GreetingBar(
             contentDescription = strings.search,
             onClick = onSearch
         )
-        OccasionallyRotatingSettingsButton(
-            animationsEnabled = animationsEnabled,
-            busy = isResolving,
+        HomeHeaderIconButton(
+            icon = Icons.Rounded.Settings,
             contentDescription = strings.settings,
             loading = isResolving,
             onClick = onSettings
@@ -20602,54 +20655,19 @@ private fun GreetingBar(
 }
 
 @Composable
-private fun OccasionallyRotatingSettingsButton(
-    animationsEnabled: Boolean,
-    busy: Boolean,
-    contentDescription: String,
-    loading: Boolean,
-    onClick: () -> Unit
+private fun rememberCurrentGreetingHour() = produceState(
+    initialValue = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
 ) {
-    val rotation = remember { Animatable(0f) }
-
-    suspend fun playAttentionSpin() {
-        rotation.snapTo(0f)
-        rotation.animateTo(
-            targetValue = -18f,
-            animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)
-        )
-        rotation.animateTo(
-            targetValue = 26f,
-            animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing)
-        )
-        rotation.animateTo(
-            targetValue = 330f,
-            animationSpec = tween(durationMillis = 950, easing = FastOutSlowInEasing)
-        )
-        rotation.animateTo(
-            targetValue = 360f,
-            animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)
-        )
-        rotation.snapTo(0f)
-    }
-
-    LaunchedEffect(animationsEnabled, busy) {
-        if (!animationsEnabled || busy) {
-            rotation.snapTo(0f)
-            return@LaunchedEffect
+    while (true) {
+        val now = java.util.Calendar.getInstance()
+        val nextHour = (now.clone() as java.util.Calendar).apply {
+            add(java.util.Calendar.HOUR_OF_DAY, 1)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
         }
-        delay(1_400L)
-        while (true) {
-            playAttentionSpin()
-            delay(22_000L)
-        }
-    }
-    Box(modifier = Modifier.graphicsLayer { rotationZ = rotation.value }) {
-        HomeHeaderIconButton(
-            icon = Icons.Rounded.Settings,
-            contentDescription = contentDescription,
-            loading = loading,
-            onClick = onClick
-        )
+        delay((nextHour.timeInMillis - now.timeInMillis).coerceAtLeast(1L))
+        value = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
     }
 }
 
@@ -20665,7 +20683,7 @@ private fun HomeHeaderIconButton(
     val background = if (isLight) {
         Color.White.copy(alpha = 0.86f)
     } else {
-        Color(0xFF12141A).copy(alpha = 0.86f)
+        Color.White.copy(alpha = 0.08f)
     }
     val border = if (isLight) {
         Color(0x1911131F)
@@ -20676,13 +20694,6 @@ private fun HomeHeaderIconButton(
     Box(
         modifier = Modifier
             .size(LevyraHomeDesign.SettingsControlHeight)
-            .shadow(
-                elevation = if (isLight) 2.dp else 8.dp,
-                shape = shape,
-                clip = false,
-                ambientColor = Color.Black.copy(alpha = 0.12f),
-                spotColor = Color.Black.copy(alpha = 0.28f)
-            )
             .clip(shape)
             .background(background)
             .border(Dp.Hairline, border, shape)
@@ -21486,7 +21497,7 @@ private fun ChartRow(
             Box {
                 IconButton(
                     onClick = { expanded = true },
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(48.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.MoreVert,
@@ -23300,6 +23311,12 @@ private fun ExploreScreen(
     var samplesStartIndex by rememberSaveable { mutableStateOf<Int?>(null) }
     var exploreDestination by rememberSaveable { mutableStateOf<String?>(null) }
     var exploreMoodReturn by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(state.exploreOpenRequest) {
+        val requestedZoneId = state.exploreOpenRequest ?: return@LaunchedEffect
+        exploreMoodReturn = null
+        exploreDestination = exploreMoodDestination(requestedZoneId)
+        viewModel.consumeExploreOpenRequest()
+    }
 
     val zones = remember(strings) { ExploreCatalog.getZones(strings) }
     val selectedZone = remember(zones, state.exploreZoneId) {
@@ -23436,7 +23453,7 @@ private fun ExploreScreen(
                         val cardWidth = (maxWidth - LevyraHomeDesign.EditorialPeek)
                             .coerceAtMost(LevyraHomeDesign.EditorialMaxWidth)
                         val freshState = rememberLazyListState()
-                        val freshDepth = LocalAnimationsEnabled.current
+                        val freshDepth = carouselDepthEnabled()
                         LazyRow(
                             state = freshState,
                             contentPadding = PaddingValues(horizontal = HomeHorizontalInset),
@@ -23808,7 +23825,7 @@ private fun ExploreSamplesRow(
     onOpen: (Track) -> Unit
 ) {
     val rowState = rememberLazyListState()
-    val sampleDepth = LocalAnimationsEnabled.current
+    val sampleDepth = carouselDepthEnabled()
     LazyRow(
         state = rowState,
         contentPadding = PaddingValues(horizontal = 24.dp),

@@ -50,6 +50,18 @@ class BrandingAndHomeContrastContractTest {
     }
 
     @Test
+    fun `home identity header stays transparent and compact`() {
+        val greetingBar = functionBlock("private fun GreetingBar(")
+
+        assertTrue(greetingBar.contains(".heightIn(min = LevyraHomeDesign.SettingsControlHeight)"))
+        assertTrue(greetingBar.contains("LevyraLogoMark(size = 38.dp"))
+        assertTrue(greetingBar.contains("fontSize = 20.sp"))
+        assertFalse(greetingBar.contains("cardBackground"))
+        assertFalse(greetingBar.contains("LevyraHomeDesign.HeaderShape"))
+        assertFalse(greetingBar.contains("text = \"LEVYRA\""))
+    }
+
+    @Test
     fun `home greeting wraps instead of truncating long names or translations`() {
         val greetingBar = functionBlock("private fun GreetingBar(")
 
@@ -59,12 +71,33 @@ class BrandingAndHomeContrastContractTest {
     }
 
     @Test
+    fun `home greeting respects reduced motion and refreshes across day parts`() {
+        val greetingBar = functionBlock("private fun GreetingBar(")
+        val greetingClock = functionBlock("private fun rememberCurrentGreetingHour()")
+
+        assertTrue(greetingBar.contains("targetState = greeting"))
+        assertTrue(greetingBar.contains("if (animationsEnabled)"))
+        assertTrue(greetingBar.contains("snap()"))
+        assertTrue(greetingClock.contains("java.util.Calendar.HOUR_OF_DAY"))
+        assertTrue(greetingClock.contains("delay("))
+    }
+
+    @Test
     fun `compact Levyra emblem is optically enlarged inside its header tile`() {
         val logoMark = functionBlock("private fun LevyraLogoMark(")
 
         assertTrue(logoMark.contains(".fillMaxSize()"))
         assertTrue(logoMark.contains("scaleX = 1.45f"))
         assertTrue(logoMark.contains("scaleY = 1.45f"))
+    }
+
+    @Test
+    fun `short resonance comments are vertically balanced`() {
+        val resonanceCard = functionBlock("private fun ResonanceFeaturedCard(")
+
+        assertTrue(resonanceCard.contains(".weight(1f)"))
+        assertTrue(resonanceCard.contains("contentAlignment = Alignment.CenterStart"))
+        assertTrue(resonanceCard.contains("snippet.text"))
     }
 
     private fun functionBlock(signature: String): String {
