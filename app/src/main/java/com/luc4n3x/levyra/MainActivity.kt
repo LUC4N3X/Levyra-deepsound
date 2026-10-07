@@ -85,6 +85,7 @@ import timber.log.Timber
 
 private data class MainActivityUiSlice(
     val fontPreset: LevyraFontPreset,
+    val animationsEnabled: Boolean,
     val liquidGlassEnabled: Boolean,
     val isPlaying: Boolean,
     val showSettings: Boolean,
@@ -97,6 +98,7 @@ private data class MainActivityUiSlice(
 
 private fun LevyraUiState.toMainActivityUiSlice(): MainActivityUiSlice = MainActivityUiSlice(
     fontPreset = interfaceSettings.fontPreset,
+    animationsEnabled = animationsEnabled,
     liquidGlassEnabled = interfaceSettings.liquidGlassEnabled,
     isPlaying = isPlaying,
     showSettings = showSettings,
@@ -162,7 +164,10 @@ class MainActivity : ComponentActivity() {
                 initialValue = initialActivityUiState
             )
 
-            LevyraTheme(fontPreset = activityUiState.fontPreset) {
+            LevyraTheme(
+                fontPreset = activityUiState.fontPreset,
+                animationsEnabled = activityUiState.animationsEnabled
+            ) {
                 var listenedPlaybackMs by rememberSaveable { mutableLongStateOf(0L) }
                 var previousLanguageCode by remember { mutableStateOf(activityUiState.languageCode) }
 
