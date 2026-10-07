@@ -1,5 +1,11 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.components.carouselDepthEnabled
@@ -46,6 +52,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
+import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
 import kotlin.math.min
 
 internal fun homeCanvasColor(isLight: Boolean): Color =
@@ -54,52 +61,115 @@ internal fun homeCanvasColor(isLight: Boolean): Color =
 @Composable
 internal fun LevyraHomeAtmosphere(
     isLight: Boolean,
+    accent: Color,
     modifier: Modifier = Modifier
 ) {
+    val decorativeMotion = LocalLevyraVisualCapabilities.current.decorativeMotion
+    val driftPhase = if (decorativeMotion) {
+        val transition = rememberInfiniteTransition(label = "home-backdrop-drift")
+        transition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 24_000, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "home-backdrop-phase"
+        )
+    } else {
+        null
+    }
     Box(
         modifier = modifier
             .fillMaxSize()
             .drawBehind {
                 drawHomeBackdrop(
                     canvas = homeCanvasColor(isLight),
-                    isLight = isLight
+                    isLight = isLight,
+                    accent = accent,
+                    driftPhase = driftPhase?.value ?: 0.5f
                 )
             }
     )
 }
 
-private fun DrawScope.drawHomeBackdrop(canvas: Color, isLight: Boolean) {
+private fun DrawScope.drawHomeBackdrop(
+    canvas: Color,
+    isLight: Boolean,
+    accent: Color,
+    driftPhase: Float
+) {
     drawRect(canvas)
     val height = min(size.height, HomeBackdropHeight.toPx())
     if (size.width <= 0f || height <= 0f) return
-    val blueCenter = Offset(size.width * 0.18f, 0f)
-    val blueRadius = maxOf(size.width, height) * 0.92f
-    val indigoCenter = Offset(size.width * 0.96f, height * 0.12f)
-    val indigoRadius = size.width * 0.72f
+
+    val primary = mixHomeBackdropColor(accent, HomeBackdropBlue, 0.18f)
+    val secondary = mixHomeBackdropColor(accent, HomeBackdropIndigo, 0.46f)
+    val tertiary = mixHomeBackdropColor(accent, Color.White, if (isLight) 0.20f else 0.08f)
+    val drift = (driftPhase.coerceIn(0f, 1f) - 0.5f) * 2f
+
+    val primaryCenter = Offset(
+        x = size.width * (0.18f + 0.06f * drift),
+        y = height * (0.02f + 0.025f * drift)
+    )
+    val primaryRadius = maxOf(size.width, height) * 0.92f
+    val secondaryCenter = Offset(
+        x = size.width * (0.96f - 0.05f * drift),
+        y = height * (0.12f + 0.035f * drift)
+    )
+    val secondaryRadius = size.width * 0.72f
+    val tertiaryCenter = Offset(
+        x = size.width * (0.52f - 0.035f * drift),
+        y = height * (0.38f - 0.025f * drift)
+    )
+    val tertiaryRadius = maxOf(size.width, height) * 0.58f
+
     drawCircle(
         brush = Brush.radialGradient(
             colors = listOf(
-                HomeBackdropBlue.copy(alpha = if (isLight) 0.09f else 0.13f),
-                HomeBackdropBlue.copy(alpha = if (isLight) 0.025f else 0.035f),
+                primary.copy(alpha = if (isLight) 0.09f else 0.13f),
+                primary.copy(alpha = if (isLight) 0.025f else 0.035f),
                 Color.Transparent
             ),
-            center = blueCenter,
-            radius = blueRadius
+            center = primaryCenter,
+            radius = primaryRadius
         ),
-        center = blueCenter,
-        radius = blueRadius
+        center = primaryCenter,
+        radius = primaryRadius
     )
     drawCircle(
         brush = Brush.radialGradient(
             colors = listOf(
-                HomeBackdropIndigo.copy(alpha = if (isLight) 0.045f else 0.065f),
+                secondary.copy(alpha = if (isLight) 0.045f else 0.065f),
                 Color.Transparent
             ),
-            center = indigoCenter,
-            radius = indigoRadius
+            center = secondaryCenter,
+            radius = secondaryRadius
         ),
-        center = indigoCenter,
-        radius = indigoRadius
+        center = secondaryCenter,
+        radius = secondaryRadius
+    )
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                tertiary.copy(alpha = if (isLight) 0.028f else 0.04f),
+                Color.Transparent
+            ),
+            center = tertiaryCenter,
+            radius = tertiaryRadius
+        ),
+        center = tertiaryCenter,
+        radius = tertiaryRadius
+    )
+}
+
+private fun mixHomeBackdropColor(first: Color, second: Color, amount: Float): Color {
+    val ratio = amount.coerceIn(0f, 1f)
+    return Color(
+        red = first.red + (second.red - first.red) * ratio,
+        green = first.green + (second.green - first.green) * ratio,
+        blue = first.blue + (second.blue - first.blue) * ratio,
+        alpha = 1f
     )
 }
 
