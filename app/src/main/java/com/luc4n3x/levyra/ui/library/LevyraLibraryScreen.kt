@@ -1268,21 +1268,22 @@ internal fun LevyraPlaylistDetailScreen(
         selectedKeys = selectedKeys.intersect(available)
     }
 
-    BackHandler {
-        when {
-            selectionActive -> selectedKeys = emptySet()
-            reorderMode -> {
-                reorderMode = false
-                orderedTracks = playlist.tracks
-            }
-            searchActive -> {
-                query = ""
-                searchActive = false
-            }
-            else -> viewModel.closePlaylist()
+    val closeOrExitMode: () -> Unit = {
+        if (selectionMode) {
+            selectedKeys = clearPlaylistTrackSelection()
+            selectionMode = false
+        } else if (reorderMode) {
+            reorderMode = false
+            orderedTracks = playlist.tracks
+        } else if (searchActive) {
+            query = ""
+            searchActive = false
+        } else {
+            viewModel.closePlaylist()
         }
-        if (selectionActive) selectionMode = false
     }
+
+    BackHandler { closeOrExitMode() }
 
     val heroArtworkUrl = remember(playlist.coverMode, playlist.coverUrl, playlist.tracks) {
         playlistHeroArtworkUrl(playlist)
@@ -1315,20 +1316,6 @@ internal fun LevyraPlaylistDetailScreen(
         )
             .filter { it.isNotBlank() }
             .joinToString(" · ")
-    }
-    val closeOrExitMode: () -> Unit = {
-        if (selectionMode) {
-            selectedKeys = clearPlaylistTrackSelection()
-            selectionMode = false
-        } else if (reorderMode) {
-            reorderMode = false
-            orderedTracks = playlist.tracks
-        } else if (searchActive) {
-            query = ""
-            searchActive = false
-        } else {
-            viewModel.closePlaylist()
-        }
     }
 
     BoxWithConstraints(
