@@ -233,10 +233,14 @@ class SpotifyYouTubeMatcherTest {
             incoming = listOf(spotify)
         )
 
-        assertEquals("local:hello", merged.first().id)
-        assertEquals("Offline", merged.first().source)
-        assertEquals("ytlocal0001", merged[1].id)
-        assertEquals("spotify", merged[1].metadataProvider)
-        assertEquals(2, merged.size)
+        assertEquals(1, merged.size)
+        val enrichedLocal = merged.single()
+        assertEquals("local:hello", enrichedLocal.id)
+        assertEquals("Offline", enrichedLocal.source)
+        assertEquals("spotify", enrichedLocal.metadataProvider)
+        assertEquals("ytlocal0001", enrichedLocal.counterpartVideoId)
+        assertEquals("ytlocal0001", enrichedLocal.audioVideoId)
+        assertEquals(4_000_000_000L, enrichedLocal.youtubeViewCount)
+        assertEquals("content://media/external/audio/1", enrichedLocal.streamUrl)
     }
 }
