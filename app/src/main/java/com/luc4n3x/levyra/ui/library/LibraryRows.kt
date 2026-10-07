@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -39,6 +40,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -74,6 +76,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
 import com.luc4n3x.levyra.ui.theme.LevyraPink
 import com.luc4n3x.levyra.ui.theme.LevyraText
+import com.luc4n3x.levyra.ui.theme.LevyraType
 
 internal val LibraryRowShape = LevyraCardDesign.EditorialShape
 internal val LibraryArtworkShape = LevyraCardDesign.ThumbShape
@@ -308,21 +311,20 @@ internal fun LibraryPlaylistRow(
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
     ) {
         Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            LibraryArtwork(playlist.coverUrl, playlist.name, Modifier.size(56.dp), LibraryArtworkShape, selected)
+            LibraryArtwork(playlist.coverUrl, playlist.name, Modifier.size(64.dp), LibraryArtworkShape, selected)
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     playlist.name,
                     color = LevyraText,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
+                    style = LevyraType.contentTitle,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     "${strings.formatTrackCount(playlist.size)} · ${strings.formatLibraryDuration(playlist.tracks.sumOf { it.durationMs })}",
                     color = LevyraMuted,
-                    fontSize = 11.sp
+                    style = LevyraType.caption
                 )
             }
             if (selectionActive) {
@@ -335,7 +337,7 @@ internal fun LibraryPlaylistRow(
                 IconButton(onClick = onPlay, enabled = playlist.tracks.isNotEmpty()) {
                     Icon(
                         Icons.AutoMirrored.Rounded.PlaylistPlay,
-                        contentDescription = strings.play,
+                        contentDescription = "${strings.play}, ${playlist.name}",
                         tint = if (playlist.tracks.isNotEmpty()) LevyraCyan else LevyraMuted.copy(alpha = 0.35f)
                     )
                 }
@@ -493,7 +495,7 @@ private fun LibraryPlaylistGridCard(
             LibraryArtwork(
                 playlist.coverUrl,
                 playlist.name,
-                Modifier.fillMaxWidth().height(164.dp),
+                Modifier.fillMaxWidth().aspectRatio(1f),
                 LibraryCardShape,
                 selected
             )
@@ -510,12 +512,11 @@ private fun LibraryPlaylistGridCard(
         Text(
             playlist.name,
             color = LevyraText,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Black,
-            maxLines = 1,
+            style = LevyraType.cardTitle,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
-        Text(strings.formatTrackCount(playlist.size), color = LevyraMuted, fontSize = 11.sp)
+        Text(strings.formatTrackCount(playlist.size), color = LevyraMuted, style = LevyraType.caption)
     }
 }
 
@@ -578,7 +579,7 @@ private fun LibraryAlbumGridCard(
             LibraryArtwork(
                 album.artworkUrl,
                 album.title,
-                Modifier.fillMaxWidth().height(164.dp),
+                Modifier.fillMaxWidth().aspectRatio(1f),
                 LibraryCardShape,
                 selected
             )
@@ -595,15 +596,14 @@ private fun LibraryAlbumGridCard(
         Text(
             album.title,
             color = LevyraText,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Black,
-            maxLines = 1,
+            style = LevyraType.cardTitle,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
         Text(
             listOf(album.artist, album.year).filter(String::isNotBlank).joinToString(" · "),
             color = LevyraMuted,
-            fontSize = 11.sp,
+            style = LevyraType.caption,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -663,12 +663,11 @@ private fun LibraryArtistGridCard(
         Text(
             artist.name,
             color = LevyraText,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Black,
-            maxLines = 1,
+            style = LevyraType.cardTitle,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
-        Text(strings.formatTrackCount(artist.tracks.size), color = LevyraMuted, fontSize = 11.sp)
+        Text(strings.formatTrackCount(artist.tracks.size), color = LevyraMuted, style = LevyraType.caption)
     }
 }
 
@@ -697,29 +696,28 @@ internal fun LibraryArtwork(
     shape: androidx.compose.ui.graphics.Shape,
     selected: Boolean
 ) {
+    var failed by remember(url) { mutableStateOf(false) }
+    val colors = MaterialTheme.colorScheme
     Box(
         modifier = modifier
             .clip(shape)
-            .background(LevyraPanelSoft)
-            .border(
-                if (selected) 2.dp else 1.dp,
-                if (selected) LevyraCyan else Color.White.copy(alpha = 0.08f),
-                shape
-            ),
+            .background(colors.surfaceContainerHigh)
+            .then(if (selected) Modifier.border(2.dp, LevyraCyan, shape) else Modifier),
         contentAlignment = Alignment.Center
     ) {
-        if (url.isNotBlank()) {
+        if (url.isNotBlank() && !failed) {
             AsyncImage(
                 model = url,
-                contentDescription = title,
+                contentDescription = null,
                 contentScale = ContentScale.Crop,
+                onError = { failed = true },
                 modifier = Modifier.fillMaxSize()
             )
         } else {
             Icon(
                 Icons.Rounded.LibraryMusic,
                 contentDescription = null,
-                tint = LevyraMuted,
+                tint = colors.onSurfaceVariant,
                 modifier = Modifier.size(28.dp)
             )
         }
