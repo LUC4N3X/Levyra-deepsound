@@ -33,16 +33,13 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -56,62 +53,59 @@ internal fun homeCanvasColor(isLight: Boolean): Color =
 
 @Composable
 internal fun LevyraHomeAtmosphere(
-    accentStart: Color,
-    accentEnd: Color,
     isLight: Boolean,
-    animationsEnabled: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val primary = animateColorAsState(
-        targetValue = accentStart,
-        animationSpec = if (animationsEnabled) tween(620) else snap(),
-        label = "homeAuraPrimary"
-    )
-    val secondary = animateColorAsState(
-        targetValue = accentEnd,
-        animationSpec = if (animationsEnabled) tween(620) else snap(),
-        label = "homeAuraSecondary"
-    )
     Box(
         modifier = modifier
             .fillMaxSize()
             .drawBehind {
                 drawHomeBackdrop(
                     canvas = homeCanvasColor(isLight),
-                    tint = blendHomeAccents(primary.value, secondary.value),
                     isLight = isLight
                 )
             }
     )
 }
 
-private fun DrawScope.drawHomeBackdrop(canvas: Color, tint: Color, isLight: Boolean) {
+private fun DrawScope.drawHomeBackdrop(canvas: Color, isLight: Boolean) {
     drawRect(canvas)
     val height = min(size.height, HomeBackdropHeight.toPx())
     if (size.width <= 0f || height <= 0f) return
-    val strength = if (isLight) 0.10f else 0.18f
-    drawRect(
-        brush = Brush.verticalGradient(
-            colorStops = arrayOf(
-                0f to tint.copy(alpha = strength),
-                0.5f to tint.copy(alpha = strength * 0.35f),
-                1f to Color.Transparent
+    val blueCenter = Offset(size.width * 0.18f, 0f)
+    val blueRadius = maxOf(size.width, height) * 0.92f
+    val indigoCenter = Offset(size.width * 0.96f, height * 0.12f)
+    val indigoRadius = size.width * 0.72f
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                HomeBackdropBlue.copy(alpha = if (isLight) 0.09f else 0.13f),
+                HomeBackdropBlue.copy(alpha = if (isLight) 0.025f else 0.035f),
+                Color.Transparent
             ),
-            startY = 0f,
-            endY = height
+            center = blueCenter,
+            radius = blueRadius
         ),
-        size = Size(size.width, height)
+        center = blueCenter,
+        radius = blueRadius
+    )
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                HomeBackdropIndigo.copy(alpha = if (isLight) 0.045f else 0.065f),
+                Color.Transparent
+            ),
+            center = indigoCenter,
+            radius = indigoRadius
+        ),
+        center = indigoCenter,
+        radius = indigoRadius
     )
 }
 
-private val HomeBackdropHeight = 320.dp
-
-private fun blendHomeAccents(first: Color, second: Color): Color = Color(
-    red = (first.red + second.red) / 2f,
-    green = (first.green + second.green) / 2f,
-    blue = (first.blue + second.blue) / 2f,
-    alpha = 1f
-)
+private val HomeBackdropHeight = 420.dp
+private val HomeBackdropBlue = Color(0xFF0A84FF)
+private val HomeBackdropIndigo = Color(0xFF5E5CE6)
 
 @Composable
 internal fun HomeGenreChips(
@@ -189,18 +183,18 @@ private fun HomeChartPodiumCard(
     ) {
         Text(
             text = rankText,
-            color = LevyraText.copy(alpha = 0.92f),
+            color = LevyraText.copy(alpha = 0.72f),
             style = TextStyle(
-                fontSize = 150.sp,
-                lineHeight = 150.sp,
+                fontSize = 112.sp,
+                lineHeight = 112.sp,
                 fontWeight = FontWeight.Black,
-                letterSpacing = (-10).sp,
-                drawStyle = Stroke(width = 5f)
+                letterSpacing = (-7).sp,
+                drawStyle = Stroke(width = 3.5f)
             ),
             maxLines = 1,
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .offset(y = 26.dp)
+                .offset(x = 2.dp, y = 14.dp)
         )
         Column(
             modifier = Modifier

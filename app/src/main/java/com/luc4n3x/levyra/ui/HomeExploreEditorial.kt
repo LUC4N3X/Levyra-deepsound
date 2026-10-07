@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.progressSemantics
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -33,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
@@ -188,62 +191,98 @@ internal fun DiscoveryTrackActions(
 internal fun DiscoveryEditorialCard(
     title: String,
     subtitle: String,
-    artwork: Track?,
+    artworks: List<Track>,
+    accentStart: Color,
+    accentEnd: Color,
+    featured: Boolean,
     onOpen: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.colorScheme
-    BoxWithConstraints(
+    val shape = LevyraCardDesign.EditorialShape
+    Box(
         modifier = modifier
-            .clip(LevyraCardDesign.SurfaceShape)
-            .background(colors.surfaceContainer)
+            .heightIn(min = if (featured) 172.dp else 148.dp)
+            .clip(shape)
+            .background(colors.surfaceContainerHigh)
+            .border(
+                width = if (featured) 1.5.dp else 1.dp,
+                brush = Brush.linearGradient(
+                    listOf(
+                        accentStart.copy(alpha = if (featured) 0.78f else 0.34f),
+                        accentEnd.copy(alpha = if (featured) 0.52f else 0.20f),
+                        Color.White.copy(alpha = 0.08f)
+                    )
+                ),
+                shape = shape
+            )
             .levyraPressable(onClick = onOpen, role = Role.Button, pressedScale = LevyraPressScale.Tile)
     ) {
-        val stacked = maxWidth < 300.dp || LocalDensity.current.fontScale > 1.4f
-        if (stacked) {
-            Column(
-                modifier = Modifier.padding(LevyraHomeDesign.EditorialPadding),
-                verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.EditorialPadding)
-            ) {
-                DiscoveryEditorialText(title, subtitle)
-                if (artwork != null) {
-                    CoverImage(
-                        track = artwork,
-                        modifier = Modifier.fillMaxWidth()
-                            .aspectRatio(LevyraHomeDesign.EditorialArtworkRatio)
-                            .clip(LevyraCardDesign.ArtworkShape)
+        artworks.firstOrNull()?.let { artwork ->
+            CoverImage(track = artwork, modifier = Modifier.matchParentSize(), highRes = featured)
+        }
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            Color.Black.copy(alpha = if (featured) 0.34f else 0.12f),
+                            Color.Black.copy(alpha = 0.42f),
+                            Color.Black.copy(alpha = 0.88f)
+                        )
                     )
-                }
-            }
-        } else {
-            Row(
-                modifier = Modifier.padding(LevyraHomeDesign.EditorialPadding),
-                horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.EditorialPadding),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                DiscoveryEditorialText(
-                    title = title,
-                    subtitle = subtitle,
-                    modifier = Modifier.weight(1f).heightIn(min = LevyraHomeDesign.EditorialThumb)
                 )
-                if (artwork != null) {
-                    CoverImage(
-                        track = artwork,
-                        modifier = Modifier.size(LevyraHomeDesign.EditorialThumb).clip(LevyraCardDesign.ArtworkShape)
-                    )
-                }
+        )
+        if (featured) {
+            artworks.getOrNull(1)?.let { artwork ->
+                CoverImage(
+                    track = artwork,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 14.dp, end = 18.dp)
+                        .size(68.dp)
+                        .graphicsLayer { rotationZ = -7f }
+                        .clip(LevyraCardDesign.ThumbShape),
+                    highRes = false
+                )
+            }
+            artworks.getOrNull(2)?.let { artwork ->
+                CoverImage(
+                    track = artwork,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 12.dp)
+                        .size(60.dp)
+                        .graphicsLayer { rotationZ = 8f }
+                        .clip(LevyraCardDesign.ThumbShape),
+                    highRes = false
+                )
             }
         }
-    }
-}
-
-@Composable
-private fun DiscoveryEditorialText(title: String, subtitle: String, modifier: Modifier = Modifier) {
-    val colors = MaterialTheme.colorScheme
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)) {
-        Text(title, style = LevyraType.sectionTitle, color = colors.onSurface, softWrap = true)
-        if (subtitle.isNotBlank()) {
-            Text(subtitle, style = LevyraType.metadata, color = colors.onSurfaceVariant, softWrap = true)
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth(if (featured) 0.70f else 1f)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = title,
+                style = if (featured) LevyraType.sectionTitle else LevyraType.artist,
+                color = Color.White,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (subtitle.isNotBlank()) {
+                Text(
+                    text = subtitle,
+                    style = LevyraType.metadata,
+                    color = Color.White.copy(alpha = 0.72f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }

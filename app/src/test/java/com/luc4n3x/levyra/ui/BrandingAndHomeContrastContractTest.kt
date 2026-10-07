@@ -50,15 +50,15 @@ class BrandingAndHomeContrastContractTest {
     }
 
     @Test
-    fun `home identity card uses shared surfaces and artwork accents`() {
+    fun `home identity header stays transparent and compact`() {
         val greetingBar = functionBlock("private fun GreetingBar(")
 
-        assertTrue(greetingBar.contains("LevyraHomeDesign.HeaderSurfaceLight"))
-        assertTrue(greetingBar.contains("LevyraHomeDesign.HeaderSurfaceDark"))
-        assertTrue(greetingBar.contains(".clip(LevyraHomeDesign.HeaderShape)"))
-        assertTrue(greetingBar.contains(".padding(LevyraHomeDesign.HeaderPadding)"))
-        assertTrue(greetingBar.contains("accentStart"))
-        assertTrue(greetingBar.contains("accentEnd"))
+        assertTrue(greetingBar.contains(".heightIn(min = LevyraHomeDesign.SettingsControlHeight)"))
+        assertTrue(greetingBar.contains("LevyraLogoMark(size = 38.dp"))
+        assertTrue(greetingBar.contains("fontSize = 20.sp"))
+        assertFalse(greetingBar.contains("cardBackground"))
+        assertFalse(greetingBar.contains("LevyraHomeDesign.HeaderShape"))
+        assertFalse(greetingBar.contains("text = \"LEVYRA\""))
     }
 
     @Test
@@ -89,6 +89,15 @@ class BrandingAndHomeContrastContractTest {
         assertTrue(logoMark.contains(".fillMaxSize()"))
         assertTrue(logoMark.contains("scaleX = 1.45f"))
         assertTrue(logoMark.contains("scaleY = 1.45f"))
+    }
+
+    @Test
+    fun `short resonance comments are vertically balanced`() {
+        val resonanceCard = functionBlock("private fun ResonanceFeaturedCard(")
+
+        assertTrue(resonanceCard.contains(".weight(1f)"))
+        assertTrue(resonanceCard.contains("contentAlignment = Alignment.CenterStart"))
+        assertTrue(resonanceCard.contains("snippet.text"))
     }
 
     private fun functionBlock(signature: String): String {
