@@ -2,6 +2,9 @@
 package com.luc4n3x.levyra.ui
 
 import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
+import androidx.compose.material3.MaterialTheme
+import com.luc4n3x.levyra.ui.components.levyraExpressiveToggleCorner
+import com.luc4n3x.levyra.ui.components.levyraExpressiveCorner
 import com.luc4n3x.levyra.domain.ChartMarketDirectory
 import com.luc4n3x.levyra.domain.SpeedDial
 import com.luc4n3x.levyra.domain.RecommendationFeedbackKind
@@ -4967,7 +4970,7 @@ private fun ArtistOverlay(
                                     biography = requireNotNull(artist.biography),
                                     accentStart = accentStart,
                                     accentEnd = accentEnd,
-                                    modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 18.dp, bottom = 6.dp)
+                                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 8.dp)
                                 )
                             }
                         }
@@ -5266,42 +5269,24 @@ private fun ArtistPopularTracksShelf(
             Text(
                 text = strings.popularTracks,
                 color = LevyraText,
-                fontSize = 22.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(22.sp),
-                fontWeight = FontWeight.Bold,
-                letterSpacing = (-0.45).sp,
-                modifier = Modifier.weight(1f)
-            )
-            Surface(
-                color = Color.White.copy(alpha = 0.04f),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-                shape = CircleShape,
+                style = LevyraType.sectionTitle,
                 modifier = Modifier
-                    .height(44.dp)
-                    .pressable { onPlayAll(distinctTracks) }
-            ) {
-                Box(
-                    modifier = Modifier.padding(horizontal = 15.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = strings.playAll,
-                        color = LevyraText,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1
-                    )
-                }
-            }
+                    .weight(1f)
+                    .semantics { heading() }
+            )
+            ArtistTonalPill(
+                text = strings.playAll,
+                icon = Icons.Rounded.PlayArrow,
+                onClick = { onPlayAll(distinctTracks) }
+            )
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+                .padding(horizontal = 12.dp)
         ) {
             visibleTracks.forEachIndexed { index, track ->
                 val isCurrent = track.id == currentId
@@ -5325,29 +5310,46 @@ private fun ArtistPopularTracksShelf(
         if (rankedTracks.size > ARTIST_POPULAR_COLLAPSED_COUNT) {
             Spacer(modifier = Modifier.height(12.dp))
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Surface(
-                    color = Color.Transparent,
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)),
-                    shape = CircleShape,
-                    modifier = Modifier
-                        .height(40.dp)
-                        .pressable { onExpandedChange(!expanded) }
-                ) {
-                    Box(
-                        modifier = Modifier.padding(horizontal = 20.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (expanded) strings.showLess else strings.showAll,
-                            color = LevyraText,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1
-                        )
-                    }
-                }
+                ArtistTonalPill(
+                    text = if (expanded) strings.showLess else strings.showAll,
+                    icon = if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+                    onClick = { onExpandedChange(!expanded) }
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun ArtistTonalPill(
+    text: String,
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val corner = levyraExpressiveCorner(
+        interactionSource = interaction,
+        rest = 20.dp,
+        pressed = 12.dp,
+        label = "artist-pill-corner"
+    )
+    Row(
+        modifier = Modifier
+            .heightIn(min = 40.dp)
+            .clip(RoundedCornerShape(corner))
+            .background(LevyraText.copy(alpha = 0.08f))
+            .levyraPressable(
+                onClick = onClick,
+                pressedScale = LevyraPressScale.Control,
+                interactionSource = interaction,
+                role = Role.Button
+            )
+            .padding(start = 12.dp, end = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Icon(imageVector = icon, contentDescription = null, tint = LevyraText, modifier = Modifier.size(18.dp))
+        Text(text = text, color = LevyraText, style = LevyraType.metadata.copy(fontWeight = FontWeight.Bold), maxLines = 1)
     }
 }
 
@@ -5371,36 +5373,34 @@ private fun ArtistPopularTrackRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(LevyraCardDesign.ArtworkShape)
             .then(
                 when {
                     selected -> Modifier.background(LevyraCyan.copy(alpha = 0.16f))
-                    isCurrent -> Modifier.background(LevyraCyan.copy(alpha = 0.08f))
+                    isCurrent -> Modifier.background(LevyraText.copy(alpha = 0.06f))
                     else -> Modifier
                 }
             )
             .semantics { this.selected = selected }
-            .heightIn(min = 62.dp)
+            .heightIn(min = LevyraCardDesign.RowHeight)
             .combinedClickable(onClick = onPlay, onLongClick = onLongClick)
-            .padding(start = 6.dp, top = 4.dp, end = 6.dp, bottom = 4.dp),
+            .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(LevyraCardDesign.RowTextGap)
     ) {
         Text(
             text = rank.toString(),
             color = if (isCurrent) LevyraCyan else LevyraMuted,
-            fontSize = 14.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(14.sp),
-            fontWeight = FontWeight.Bold,
+            style = LevyraType.contentTitle.copy(fontWeight = FontWeight.Bold),
             textAlign = TextAlign.Center,
             maxLines = 1,
-            modifier = Modifier.width(20.dp)
+            modifier = Modifier.width(18.dp)
         )
 
         Box(
             modifier = Modifier
-                .size(52.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .size(LevyraCardDesign.RowThumb)
+                .clip(LevyraCardDesign.ThumbShape)
                 .background(LevyraPanelSoft),
             contentAlignment = Alignment.Center
         ) {
@@ -5410,34 +5410,15 @@ private fun ArtistPopularTrackRow(
             )
         }
 
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            Text(
-                text = track.title,
-                color = if (isCurrent) LevyraCyan else LevyraText,
-                fontSize = 15.5.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(15.5.sp),
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = (-0.25).sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            if (subtitle.isNotBlank()) {
-                Text(
-                    text = subtitle,
-                    color = LevyraMuted,
-                    fontSize = 12.5.sp,
-                    fontWeight = FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
+        LevyraRowText(
+            title = track.title,
+            subtitle = subtitle,
+            titleColor = if (isCurrent) LevyraCyan else LevyraText,
+            modifier = Modifier.weight(1f)
+        )
 
         Box(
-            modifier = Modifier.size(40.dp),
+            modifier = Modifier.size(32.dp),
             contentAlignment = Alignment.Center
         ) {
             when {
@@ -5457,12 +5438,6 @@ private fun ArtistPopularTrackRow(
                     size = 18.dp,
                     contentDescription = strings.playing
                 )
-                else -> Icon(
-                    Icons.Rounded.PlayArrow,
-                    contentDescription = null,
-                    tint = LevyraMuted.copy(alpha = 0.85f),
-                    modifier = Modifier.size(20.dp)
-                )
             }
         }
     }
@@ -5473,10 +5448,8 @@ private fun ArtistSectionTitle(title: String) {
     Text(
         text = title,
         color = LevyraText,
-        fontSize = 22.sp,
-        lineHeight = LevyraTypeRhythm.lineHeight(22.sp),
-        fontWeight = FontWeight.Black,
-        letterSpacing = (-0.55).sp
+        style = LevyraType.sectionTitle,
+        modifier = Modifier.semantics { heading() }
     )
 }
 
@@ -5499,24 +5472,38 @@ private fun ArtistFollowButton(isFollowed: Boolean, onClick: () -> Unit) {
         label = "artist-follow-progress"
     )
     val container by animateColorAsState(
-        targetValue = if (isFollowed) LevyraText.copy(alpha = 0.08f) else LevyraText,
+        targetValue = if (isFollowed) Color.Transparent else LevyraText.copy(alpha = 0.10f),
         animationSpec = LevyraMotion.spec(animated, LevyraMotion.standard()),
         label = "artist-follow-container"
     )
     val outline by animateColorAsState(
-        targetValue = LevyraText.copy(alpha = if (isFollowed) 0.22f else 0f),
+        targetValue = LevyraText.copy(alpha = if (isFollowed) 0.24f else 0f),
         animationSpec = LevyraMotion.spec(animated, LevyraMotion.standard()),
         label = "artist-follow-outline"
     )
+    val interaction = remember { MutableInteractionSource() }
+    val corner = levyraExpressiveToggleCorner(
+        checked = isFollowed,
+        unchecked = 24.dp,
+        checkedCorner = 14.dp,
+        label = "artist-follow-corner"
+    )
+    val pressedCorner = levyraExpressiveCorner(
+        interactionSource = interaction,
+        rest = corner,
+        pressed = 12.dp,
+        label = "artist-follow-press"
+    )
     Surface(
         color = container,
-        shape = CircleShape,
+        shape = RoundedCornerShape(pressedCorner),
         border = BorderStroke(1.dp, outline),
         modifier = Modifier
             .heightIn(min = 48.dp)
             .levyraPressable(
                 onClick = onClick,
                 pressedScale = LevyraPressScale.Control,
+                interactionSource = interaction,
                 role = Role.Switch,
                 haptic = LevyraHapticAction.Confirm
             )
@@ -5533,7 +5520,7 @@ private fun ArtistFollowButton(isFollowed: Boolean, onClick: () -> Unit) {
             ArtistFollowLabel(
                 icon = Icons.Rounded.PersonAdd,
                 text = strings.followArtist,
-                color = LevyraBlack,
+                color = LevyraText,
                 visibility = { 1f - followProgress }
             )
             ArtistFollowLabel(
@@ -5565,7 +5552,7 @@ private fun ArtistFollowLabel(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Icon(imageVector = icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
-        Text(text = text, color = color, fontSize = 14.sp, fontWeight = FontWeight.Black, maxLines = 1)
+        Text(text = text, color = color, style = LevyraType.metadata.copy(fontWeight = FontWeight.Bold), maxLines = 1)
     }
 }
 
@@ -5588,9 +5575,10 @@ private fun ArtistHero(
     val scrim = LevyraBlack
     val statusProtection = if (LevyraIsLight) scrim.copy(alpha = 0.62f) else Color.Black.copy(alpha = 0.46f)
     val nameSize = when {
-        profile.name.length <= 14 -> 42.sp
-        profile.name.length <= 24 -> 36.sp
-        else -> 30.sp
+        profile.name.length <= 12 -> 48.sp
+        profile.name.length <= 18 -> 40.sp
+        profile.name.length <= 28 -> 34.sp
+        else -> 28.sp
     }
     val audience = remember(profile.monthlyListeners, profile.subscribers) {
         listOf(profile.monthlyListeners, profile.subscribers)
@@ -5630,7 +5618,7 @@ private fun ArtistHero(
                     isPlaying = false,
                     pageMode = true,
                     cornerRadius = 0.dp,
-                    presentation = MotionArtworkPresentation.Immersive,
+                    presentation = MotionArtworkPresentation.Cinematic,
                     quality = canvasQuality,
                     staticArtworkMotionEnabled = false,
                     modifier = Modifier.matchParentSize()
@@ -5673,11 +5661,11 @@ private fun ArtistHero(
                         Brush.verticalGradient(
                             colorStops = arrayOf(
                                 0f to statusProtection,
-                                0.20f to Color.Transparent,
-                                0.54f to Color.Black.copy(alpha = 0.08f),
-                                0.74f to Color.Black.copy(alpha = 0.62f),
-                                0.92f to Color.Black.copy(alpha = 0.96f),
-                                1f to Color.Black
+                                0.18f to Color.Transparent,
+                                0.46f to Color.Transparent,
+                                0.68f to scrim.copy(alpha = 0.55f),
+                                0.88f to scrim.copy(alpha = 0.94f),
+                                1f to scrim
                             )
                         )
                     )
@@ -5699,31 +5687,33 @@ private fun ArtistHero(
                     scaleY = scale
                     transformOrigin = TransformOrigin(0f, 1f)
                 },
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(Icons.Rounded.Verified, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(16.dp))
                 Text(
-                    text = profile.name,
-                    color = LevyraText,
-                    fontSize = nameSize,
-                    lineHeight = LevyraTypeRhythm.lineHeight(nameSize),
-                    letterSpacing = (-1.2).sp,
-                    fontWeight = FontWeight.Black,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .weight(1f, fill = false)
-                        .semantics { heading() }
+                    text = LocalLevyraStrings.current.artistLabel.uppercase(),
+                    color = LevyraText.copy(alpha = 0.78f),
+                    style = LevyraType.overline,
+                    maxLines = 1
                 )
-                Icon(Icons.Rounded.Verified, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(24.dp))
             }
+            Text(
+                text = profile.name,
+                color = LevyraText,
+                style = LevyraType.heroTitle.copy(
+                    fontSize = nameSize,
+                    lineHeight = LevyraType.heroLineHeight(nameSize)
+                ),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.semantics { heading() }
+            )
             if (audience.isNotBlank()) {
                 Text(
                     text = audience,
                     color = LevyraText.copy(alpha = 0.72f),
-                    fontSize = 13.5.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(13.5.sp),
-                    fontWeight = FontWeight.SemiBold,
+                    style = LevyraType.metadata,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -5749,9 +5739,23 @@ private fun ArtistActionBar(
     val strings = LocalLevyraStrings.current
     val speedDialCopy = remember(strings) { strings.speedDialCopy() }
     var artistMenuExpanded by remember(profile.browseId, profile.name) { mutableStateOf(false) }
-    val playContainer = if (LevyraIsLight) Color(0xFF11131F) else Color.White
-    val playContent = if (LevyraIsLight) Color.White else Color.Black
+    val playContainer = MaterialTheme.colorScheme.primary
+    val playContent = MaterialTheme.colorScheme.onPrimary
     val playShadow = remember(highlight) { Color.Black.playerMix(highlight, 0.04f) }
+    val shuffleInteraction = remember { MutableInteractionSource() }
+    val shuffleCorner = levyraExpressiveCorner(
+        interactionSource = shuffleInteraction,
+        rest = 24.dp,
+        pressed = 14.dp,
+        label = "artist-shuffle-corner"
+    )
+    val playInteraction = remember { MutableInteractionSource() }
+    val playCorner = levyraExpressiveCorner(
+        interactionSource = playInteraction,
+        rest = 29.dp,
+        pressed = 18.dp,
+        label = "artist-play-corner"
+    )
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -5816,11 +5820,12 @@ private fun ArtistActionBar(
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .clip(CircleShape)
-                    .background(LevyraText.copy(alpha = 0.08f))
+                    .clip(RoundedCornerShape(shuffleCorner))
+                    .background(LevyraText.copy(alpha = 0.10f))
                     .levyraPressable(
                         onClick = onShuffle,
                         pressedScale = LevyraPressScale.Control,
+                        interactionSource = shuffleInteraction,
                         role = Role.Button,
                         haptic = LevyraHapticAction.Transport
                     ),
@@ -5840,14 +5845,15 @@ private fun ArtistActionBar(
                     .size(58.dp)
                     .shadow(
                         elevation = 10.dp,
-                        shape = CircleShape,
+                        shape = RoundedCornerShape(playCorner),
                         ambientColor = Color.Black.copy(alpha = 0.24f),
                         spotColor = playShadow.copy(alpha = 0.18f)
                     )
-                    .background(playContainer, CircleShape)
+                    .background(playContainer, RoundedCornerShape(playCorner))
                     .levyraPressable(
                         onClick = onPlay,
                         pressedScale = LevyraPressScale.Control,
+                        interactionSource = playInteraction,
                         role = Role.Button,
                         haptic = LevyraHapticAction.Transport
                     ),
@@ -5897,13 +5903,16 @@ private fun ArtistTopBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        PlayerRoundIconButton(
+        PlayerGlassIconButton(
             icon = Icons.AutoMirrored.Rounded.ArrowBack,
             contentDescription = strings.back,
+            onClick = onClose,
+            size = ImmersiveTopBarButtonSize,
+            iconSize = 21.dp,
             tint = Color.White,
-            background = Color.Black.copy(alpha = 0.42f),
-            borderColor = Color.White.copy(alpha = 0.14f),
-            onClick = onClose
+            fill = ImmersiveTopBarButtonFill,
+            borderTop = Color.Transparent,
+            borderBottom = Color.Transparent
         )
         if (title != null) {
             Text(
@@ -6005,40 +6014,34 @@ private fun ArtistBio(
     }
     var hasOverflow by remember(biographyText) { mutableStateOf(false) }
     val accentBrush = remember(accentStart, accentEnd) {
-        Brush.horizontalGradient(
+        Brush.linearGradient(
             listOf(
-                accentStart.copy(alpha = 0.78f),
-                accentEnd.copy(alpha = 0.42f)
+                accentStart.copy(alpha = 0.16f),
+                accentEnd.copy(alpha = 0.04f)
             )
         )
     }
 
     Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(LevyraCardDesign.SurfaceShape)
+            .background(LevyraPanel)
+            .background(accentBrush)
+            .padding(start = 18.dp, end = 10.dp, top = 8.dp, bottom = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                Text(
-                    text = strings.biography,
-                    color = LevyraText,
-                    fontSize = 21.sp,
-                    lineHeight = 26.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = (-0.35).sp
-                )
-                Box(
-                    modifier = Modifier
-                        .width(34.dp)
-                        .height(3.dp)
-                        .clip(CircleShape)
-                        .background(accentBrush)
-                )
-            }
+            Text(
+                text = strings.biography,
+                color = LevyraText,
+                style = LevyraType.sectionTitle,
+                modifier = Modifier.semantics { heading() }
+            )
             if (presentation.showSource) {
                 BiographyInlineSource(
                     sourceText = presentation.sourceText,
@@ -6050,15 +6053,17 @@ private fun ArtistBio(
         Text(
             text = biographyText,
             color = LevyraText.copy(alpha = 0.84f),
-            fontSize = 16.sp,
-            lineHeight = 24.sp,
+            fontSize = 15.sp,
+            lineHeight = 23.sp,
             fontWeight = FontWeight.Normal,
-            maxLines = if (expanded) Int.MAX_VALUE else 3,
+            maxLines = if (expanded) Int.MAX_VALUE else 4,
             overflow = TextOverflow.Ellipsis,
             onTextLayout = { result ->
                 if (!expanded) hasOverflow = result.hasVisualOverflow
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(end = 8.dp)
         )
 
         if (expanded || hasOverflow) {
@@ -6073,14 +6078,13 @@ private fun ArtistBio(
             ) {
                 Text(
                     text = if (expanded) strings.showLess else strings.readAll,
-                    color = accentStart,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
+                    color = LevyraText,
+                    style = LevyraType.metadata.copy(fontWeight = FontWeight.Bold)
                 )
                 Icon(
-                    imageVector = if (expanded) Icons.Rounded.Close else Icons.Rounded.KeyboardArrowDown,
+                    imageVector = if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
                     contentDescription = null,
-                    tint = accentStart,
+                    tint = LevyraText,
                     modifier = Modifier.size(18.dp)
                 )
             }
