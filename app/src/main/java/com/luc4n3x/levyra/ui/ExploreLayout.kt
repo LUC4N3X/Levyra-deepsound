@@ -61,6 +61,10 @@ internal sealed interface ExploreRow {
         override val key: String = "explore-samples-carousel"
     }
 
+    data object MixTools : ExploreRow {
+        override val key: String = "explore-mix-tools"
+    }
+
     data class MoodPair(val leading: ExploreZone, val trailing: ExploreZone?) : ExploreRow {
         override val key: String = "explore-mood-${leading.id}"
     }
@@ -93,6 +97,7 @@ internal fun buildExploreRows(
         rows += ExploreRow.Header(ExploreAnchor.Samples)
         rows += ExploreRow.Samples
     }
+    rows += ExploreRow.MixTools
     return rows
 }
 
