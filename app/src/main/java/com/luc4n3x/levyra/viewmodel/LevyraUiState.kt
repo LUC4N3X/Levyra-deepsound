@@ -255,6 +255,7 @@ data class LevyraUiState(
     val downloads: List<DownloadedTrack> = emptyList(),
     val downloadStorageBytes: Long = 0L,
     val exploreZoneId: String? = null,
+    val exploreOpenRequest: String? = null,
     val exploreCategoryParams: String? = null,
     val exploreCategories: List<ExploreCategory> = emptyList(),
     val exploreCategoryArtwork: Map<String, String> = emptyMap(),
