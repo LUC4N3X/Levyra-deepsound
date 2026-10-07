@@ -20642,7 +20642,7 @@ private fun GreetingBar(
             ) {
                 Text(
                     text = greeting,
-                    color = if (LevyraIsLight) LevyraText else Color.White,
+                    color = if (LevyraIsLight) LevyraMuted else Color.White.copy(alpha = 0.92f),
                     style = LevyraType.screenTitle.copy(
                         fontSize = 24.sp,
                         lineHeight = 28.sp,

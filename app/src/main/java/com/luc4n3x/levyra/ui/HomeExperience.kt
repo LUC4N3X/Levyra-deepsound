@@ -1,6 +1,5 @@
 package com.luc4n3x.levyra.ui
 
-import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.components.carouselDepthEnabled
@@ -35,23 +34,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -59,10 +49,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
-import kotlin.math.PI
-import kotlin.math.cos
 import kotlin.math.min
-import kotlin.math.sin
 
 internal fun homeCanvasColor(isLight: Boolean): Color =
     if (isLight) LevyraHomeDesign.CanvasLight else LevyraBlack
@@ -85,108 +72,39 @@ internal fun LevyraHomeAtmosphere(
         animationSpec = if (animationsEnabled) tween(620) else snap(),
         label = "homeAuraSecondary"
     )
-    val drift: State<Float> = if (animationsEnabled && LocalLevyraVisualCapabilities.current.decorativeMotion) {
-        rememberInfiniteTransition(label = "homeAuraDrift").animateFloat(
-            initialValue = 0f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(HomeAuroraCycleMs, easing = LinearEasing),
-                repeatMode = RepeatMode.Restart
-            ),
-            label = "homeAuraPhase"
-        )
-    } else {
-        remember { mutableFloatStateOf(0f) }
-    }
     Box(
         modifier = modifier
             .fillMaxSize()
             .drawBehind {
-                drawHomeAurora(
+                drawHomeBackdrop(
                     canvas = homeCanvasColor(isLight),
-                    primary = primary.value,
-                    secondary = secondary.value,
-                    phase = drift.value,
+                    tint = blendHomeAccents(primary.value, secondary.value),
                     isLight = isLight
                 )
             }
     )
 }
 
-private fun DrawScope.drawHomeAurora(
-    canvas: Color,
-    primary: Color,
-    secondary: Color,
-    phase: Float,
-    isLight: Boolean
-) {
+private fun DrawScope.drawHomeBackdrop(canvas: Color, tint: Color, isLight: Boolean) {
     drawRect(canvas)
-    val width = size.width
-    val height = min(size.height, HomeAuroraHeight.toPx())
-    if (width <= 0f || height <= 0f) return
-    val angle = phase * 2f * PI.toFloat()
-    val strength = if (isLight) 0.22f else 0.55f
-    val blend = blendHomeAccents(primary, secondary)
-
-    drawAuroraBlob(
-        color = primary,
-        alpha = strength,
-        center = Offset(
-            x = width * (0.16f + 0.10f * sin(angle)),
-            y = height * (0.10f + 0.06f * cos(angle))
-        ),
-        radius = width * 0.82f
-    )
-    drawAuroraBlob(
-        color = secondary,
-        alpha = strength * 0.86f,
-        center = Offset(
-            x = width * (0.88f + 0.08f * cos(angle * 2f)),
-            y = height * (0.26f + 0.07f * sin(angle))
-        ),
-        radius = width * 0.74f
-    )
-    drawAuroraBlob(
-        color = blend,
-        alpha = strength * 0.55f,
-        center = Offset(
-            x = width * (0.50f + 0.18f * sin(angle * 2f + 1.3f)),
-            y = height * (0.52f + 0.05f * cos(angle * 2f))
-        ),
-        radius = width * 0.62f
-    )
+    val height = min(size.height, HomeBackdropHeight.toPx())
+    if (size.width <= 0f || height <= 0f) return
+    val strength = if (isLight) 0.10f else 0.18f
     drawRect(
         brush = Brush.verticalGradient(
             colorStops = arrayOf(
-                0f to Color.Transparent,
-                0.55f to canvas.copy(alpha = 0.35f),
-                1f to canvas
+                0f to tint.copy(alpha = strength),
+                0.5f to tint.copy(alpha = strength * 0.35f),
+                1f to Color.Transparent
             ),
             startY = 0f,
             endY = height
         ),
-        size = Size(width, height)
+        size = Size(size.width, height)
     )
 }
 
-private fun DrawScope.drawAuroraBlob(color: Color, alpha: Float, center: Offset, radius: Float) {
-    drawCircle(
-        brush = Brush.radialGradient(
-            colorStops = arrayOf(
-                0f to color.copy(alpha = alpha),
-                0.45f to color.copy(alpha = alpha * 0.42f),
-                1f to Color.Transparent
-            ),
-            center = center,
-            radius = radius
-        ),
-        radius = radius,
-        center = center
-    )
-}
-
-private const val HomeAuroraCycleMs = 24_000
-private val HomeAuroraHeight = 620.dp
+private val HomeBackdropHeight = 320.dp
 
 private fun blendHomeAccents(first: Color, second: Color): Color = Color(
     red = (first.red + second.red) / 2f,
