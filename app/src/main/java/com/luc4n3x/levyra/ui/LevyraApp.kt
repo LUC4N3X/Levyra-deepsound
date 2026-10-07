@@ -415,6 +415,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.lifecycle.Lifecycle
@@ -9340,6 +9341,8 @@ private fun HomeScreen(
                             userName = state.userName,
                             isResolving = state.isResolving,
                             animationsEnabled = state.animationsEnabled,
+                            accentStart = animatedHomeAccentStart,
+                            accentEnd = animatedHomeAccentEnd,
                             onSearch = viewModel::openSearch,
                             onSettings = viewModel::openSettings
                         )
@@ -20541,7 +20544,10 @@ private fun SettingsMiniButton(
 }
 
 @Composable
-private fun LevyraLogoMark(size: Dp = 58.dp) {
+private fun LevyraLogoMark(
+    size: Dp = 58.dp,
+    contentDescription: String? = "Levyra"
+) {
     Box(contentAlignment = Alignment.Center) {
         Box(
             modifier = Modifier
@@ -20579,7 +20585,7 @@ private fun LevyraLogoMark(size: Dp = 58.dp) {
         ) {
             Image(
                 painter = painterResource(id = R.drawable.levyra_logo),
-                contentDescription = "Logo Levyra",
+                contentDescription = contentDescription,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxSize()
@@ -20616,41 +20622,92 @@ private fun GreetingBar(
     userName: String,
     isResolving: Boolean,
     animationsEnabled: Boolean,
+    accentStart: Color,
+    accentEnd: Color,
     onSearch: () -> Unit,
     onSettings: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val greetingHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+    val greetingHour by rememberCurrentGreetingHour()
     val greeting = remember(userName, strings, greetingHour) {
         strings.formatGreeting(userName, greetingHour)
     }
+    val headerSurface = if (LevyraIsLight) {
+        LevyraHomeDesign.HeaderSurfaceLight
+    } else {
+        LevyraHomeDesign.HeaderSurfaceDark
+    }
+    val headerBorder = if (LevyraIsLight) {
+        LevyraHomeDesign.HeaderBorderLight
+    } else {
+        LevyraHomeDesign.HeaderBorderDark
+    }
+    val accentStrength = if (LevyraIsLight) 0.08f else 0.16f
+    val cardBackground = Brush.horizontalGradient(
+        colorStops = arrayOf(
+            0f to lerp(headerSurface, accentStart, accentStrength),
+            0.54f to headerSurface,
+            1f to lerp(headerSurface, accentEnd, accentStrength * 0.72f)
+        )
+    )
+    val cardBorder = Brush.linearGradient(
+        colors = listOf(
+            accentStart.copy(alpha = if (LevyraIsLight) 0.22f else 0.34f),
+            headerBorder,
+            accentEnd.copy(alpha = if (LevyraIsLight) 0.12f else 0.20f)
+        )
+    )
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(LevyraHomeDesign.HeaderShape)
+            .background(cardBackground)
+            .border(1.dp, cardBorder, LevyraHomeDesign.HeaderShape)
+            .padding(LevyraHomeDesign.HeaderPadding),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(
             modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(11.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            LevyraLogoMark(size = 32.dp)
+            LevyraLogoMark(size = 42.dp, contentDescription = null)
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(3.dp)
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
-                    text = greeting,
-                    color = if (LevyraIsLight) LevyraMuted else Color.White.copy(alpha = 0.92f),
-                    style = LevyraType.screenTitle.copy(
-                        fontSize = 24.sp,
-                        lineHeight = 28.sp,
-                        letterSpacing = (-0.6).sp
-                    ),
-                    softWrap = true,
-                    modifier = Modifier.fillMaxWidth().semantics { heading() }
+                    text = "LEVYRA",
+                    color = if (LevyraIsLight) LevyraMuted else Color.White.copy(alpha = 0.62f),
+                    fontSize = 10.sp,
+                    lineHeight = 12.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 1.5.sp,
+                    maxLines = 1
                 )
+                Crossfade(
+                    targetState = greeting,
+                    animationSpec = if (animationsEnabled) {
+                        tween(durationMillis = 240, easing = FastOutSlowInEasing)
+                    } else {
+                        snap()
+                    },
+                    label = "homeGreeting"
+                ) { visibleGreeting ->
+                    Text(
+                        text = visibleGreeting,
+                        color = if (LevyraIsLight) LevyraMuted else Color.White.copy(alpha = 0.92f),
+                        style = LevyraType.screenTitle.copy(
+                            fontSize = 21.sp,
+                            lineHeight = 24.sp,
+                            letterSpacing = (-0.45).sp
+                        ),
+                        softWrap = true,
+                        modifier = Modifier.fillMaxWidth().semantics { heading() }
+                    )
+                }
             }
         }
         HomeHeaderIconButton(
@@ -20658,9 +20715,8 @@ private fun GreetingBar(
             contentDescription = strings.search,
             onClick = onSearch
         )
-        OccasionallyRotatingSettingsButton(
-            animationsEnabled = animationsEnabled,
-            busy = isResolving,
+        HomeHeaderIconButton(
+            icon = Icons.Rounded.Settings,
             contentDescription = strings.settings,
             loading = isResolving,
             onClick = onSettings
@@ -20669,54 +20725,19 @@ private fun GreetingBar(
 }
 
 @Composable
-private fun OccasionallyRotatingSettingsButton(
-    animationsEnabled: Boolean,
-    busy: Boolean,
-    contentDescription: String,
-    loading: Boolean,
-    onClick: () -> Unit
+private fun rememberCurrentGreetingHour() = produceState(
+    initialValue = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
 ) {
-    val rotation = remember { Animatable(0f) }
-
-    suspend fun playAttentionSpin() {
-        rotation.snapTo(0f)
-        rotation.animateTo(
-            targetValue = -18f,
-            animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)
-        )
-        rotation.animateTo(
-            targetValue = 26f,
-            animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing)
-        )
-        rotation.animateTo(
-            targetValue = 330f,
-            animationSpec = tween(durationMillis = 950, easing = FastOutSlowInEasing)
-        )
-        rotation.animateTo(
-            targetValue = 360f,
-            animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)
-        )
-        rotation.snapTo(0f)
-    }
-
-    LaunchedEffect(animationsEnabled, busy) {
-        if (!animationsEnabled || busy) {
-            rotation.snapTo(0f)
-            return@LaunchedEffect
+    while (true) {
+        val now = java.util.Calendar.getInstance()
+        val nextHour = (now.clone() as java.util.Calendar).apply {
+            add(java.util.Calendar.HOUR_OF_DAY, 1)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
         }
-        delay(1_400L)
-        while (true) {
-            playAttentionSpin()
-            delay(22_000L)
-        }
-    }
-    Box(modifier = Modifier.graphicsLayer { rotationZ = rotation.value }) {
-        HomeHeaderIconButton(
-            icon = Icons.Rounded.Settings,
-            contentDescription = contentDescription,
-            loading = loading,
-            onClick = onClick
-        )
+        delay((nextHour.timeInMillis - now.timeInMillis).coerceAtLeast(1L))
+        value = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
     }
 }
 

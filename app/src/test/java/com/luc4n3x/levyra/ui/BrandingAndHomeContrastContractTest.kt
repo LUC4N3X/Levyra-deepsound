@@ -50,12 +50,36 @@ class BrandingAndHomeContrastContractTest {
     }
 
     @Test
+    fun `home identity card uses shared surfaces and artwork accents`() {
+        val greetingBar = functionBlock("private fun GreetingBar(")
+
+        assertTrue(greetingBar.contains("LevyraHomeDesign.HeaderSurfaceLight"))
+        assertTrue(greetingBar.contains("LevyraHomeDesign.HeaderSurfaceDark"))
+        assertTrue(greetingBar.contains(".clip(LevyraHomeDesign.HeaderShape)"))
+        assertTrue(greetingBar.contains(".padding(LevyraHomeDesign.HeaderPadding)"))
+        assertTrue(greetingBar.contains("accentStart"))
+        assertTrue(greetingBar.contains("accentEnd"))
+    }
+
+    @Test
     fun `home greeting wraps instead of truncating long names or translations`() {
         val greetingBar = functionBlock("private fun GreetingBar(")
 
         assertTrue(greetingBar.contains("softWrap = true"))
         assertTrue(greetingBar.contains("modifier = Modifier.fillMaxWidth()"))
         assertFalse(greetingBar.contains("overflow = TextOverflow.Ellipsis"))
+    }
+
+    @Test
+    fun `home greeting respects reduced motion and refreshes across day parts`() {
+        val greetingBar = functionBlock("private fun GreetingBar(")
+        val greetingClock = functionBlock("private fun rememberCurrentGreetingHour()")
+
+        assertTrue(greetingBar.contains("targetState = greeting"))
+        assertTrue(greetingBar.contains("if (animationsEnabled)"))
+        assertTrue(greetingBar.contains("snap()"))
+        assertTrue(greetingClock.contains("java.util.Calendar.HOUR_OF_DAY"))
+        assertTrue(greetingClock.contains("delay("))
     }
 
     @Test
