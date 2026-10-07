@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.data.SpotifyArtistArtworkRepository
+import com.luc4n3x.levyra.domain.ExploreCatalog
 import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
@@ -46,6 +47,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraType
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import java.util.Locale
 
 private val ExploreMoodPortraitLookupSemaphore = Semaphore(2)
 private const val ExploreRapFallbackPortraitUrl = "https://upload.wikimedia.org/wikipedia/commons/5/54/Eminem_in_2021.jpg"
@@ -147,6 +149,25 @@ internal fun exploreMoodPortraitLookupLimit(zoneId: String, candidateCount: Int)
     return requested.coerceAtMost(candidateCount.coerceAtLeast(0))
 }
 
+internal fun exploreMoodPortraitWindow(
+    zoneId: String,
+    zoneIds: List<String>,
+    languageCode: String,
+    rotationBucket: Long
+): List<String> {
+    val claimed = HashSet<String>()
+    for (candidateZoneId in (zoneIds + zoneId).distinct()) {
+        val available = exploreMoodPortraitCandidates(candidateZoneId, languageCode, rotationBucket)
+            .filterNot { artist -> exploreMoodArtistKey(artist) in claimed }
+        val window = available.take(exploreMoodPortraitLookupLimit(candidateZoneId, available.size))
+        if (candidateZoneId == zoneId) return window
+        window.forEach { artist -> claimed += exploreMoodArtistKey(artist) }
+    }
+    return emptyList()
+}
+
+private fun exploreMoodArtistKey(artist: String): String = artist.trim().lowercase(Locale.ROOT)
+
 internal fun exploreMoodHardFallbackPortraitUrl(zoneId: String): String =
     if (zoneId == "rap-drill") ExploreRapFallbackPortraitUrl else ""
 
@@ -157,12 +178,15 @@ internal fun rememberExploreMoodArtworkUrl(zone: ExploreZone): String {
     val context = LocalContext.current
     val artworkRepository = remember(context) { SpotifyArtistArtworkRepository.get(context) }
     val rotationBucket = remember(zone.id) { exploreGenreRotationBucket(System.currentTimeMillis()) }
-    val portraitCandidates = remember(zone.id, strings.code, rotationBucket) {
-        exploreMoodPortraitCandidates(zone.id, strings.code, rotationBucket)
+    val portraitCandidates = remember(zone.id, strings, rotationBucket) {
+        exploreMoodPortraitWindow(
+            zoneId = zone.id,
+            zoneIds = ExploreCatalog.getZones(strings).map { it.id },
+            languageCode = strings.code,
+            rotationBucket = rotationBucket
+        )
     }
-    val portraitLookupLimit = remember(zone.id, portraitCandidates.size) {
-        exploreMoodPortraitLookupLimit(zone.id, portraitCandidates.size)
-    }
+    val portraitLookupLimit = portraitCandidates.size
     val hardFallbackPortraitUrl = remember(zone.id) { exploreMoodHardFallbackPortraitUrl(zone.id) }
     var artworkUrl by remember(portraitCandidates, hardFallbackPortraitUrl) {
         mutableStateOf(hardFallbackPortraitUrl)
@@ -195,12 +219,15 @@ internal fun RowScope.ExploreMoodCard(
     val context = LocalContext.current
     val artworkRepository = remember(context) { SpotifyArtistArtworkRepository.get(context) }
     val rotationBucket = remember(zone.id) { exploreGenreRotationBucket(System.currentTimeMillis()) }
-    val portraitCandidates = remember(zone.id, strings.code, rotationBucket) {
-        exploreMoodPortraitCandidates(zone.id, strings.code, rotationBucket)
+    val portraitCandidates = remember(zone.id, strings, rotationBucket) {
+        exploreMoodPortraitWindow(
+            zoneId = zone.id,
+            zoneIds = ExploreCatalog.getZones(strings).map { it.id },
+            languageCode = strings.code,
+            rotationBucket = rotationBucket
+        )
     }
-    val portraitLookupLimit = remember(zone.id, portraitCandidates.size) {
-        exploreMoodPortraitLookupLimit(zone.id, portraitCandidates.size)
-    }
+    val portraitLookupLimit = portraitCandidates.size
     val hardFallbackPortraitUrl = remember(zone.id) { exploreMoodHardFallbackPortraitUrl(zone.id) }
     var portraitCandidateIndex by remember(portraitCandidates) { mutableStateOf(0) }
     var portraitUrl by remember(portraitCandidates, hardFallbackPortraitUrl) {
