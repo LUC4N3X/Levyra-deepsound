@@ -2230,7 +2230,12 @@ fun LevyraApp(
                     .nestedScroll(dockState)
                     .glassBackdropSource(dockGlass)
             ) {
-            LevyraBackground()
+            LevyraHomeAtmosphere(
+                accentStart = yourSoundAccent,
+                accentEnd = LevyraViolet,
+                isLight = LevyraIsLight,
+                animationsEnabled = state.animationsEnabled
+            )
             AnimatedContent(
                 targetState = backgroundTab,
                 modifier = Modifier
@@ -18396,32 +18401,68 @@ private fun OnboardingFooter(
 
 @Composable
 private fun TasteCard(taste: Taste, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    Surface(
-        color = if (selected) LevyraCyan.copy(alpha = 0.17f) else LevyraAdaptiveCard,
-        border = BorderStroke(1.dp, if (selected) LevyraCyan.copy(alpha = 0.72f) else LevyraAdaptiveHairline),
-        shape = RoundedCornerShape(20.dp),
+    val (tileStart, tileEnd) = remember(taste.id) { tastePalette(taste.id) }
+    val shape = RoundedCornerShape(18.dp)
+    Box(
         modifier = modifier
-            .height(62.dp)
+            .height(96.dp)
+            .graphicsLayer { alpha = if (selected) 1f else 0.82f }
+            .clip(shape)
+            .background(Brush.linearGradient(listOf(tileStart, tileEnd)))
+            .then(if (selected) Modifier.border(2.5.dp, Color.White, shape) else Modifier)
+            .semantics { this.selected = selected }
             .pressable(onClick = onClick)
     ) {
-        Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(9.dp)
-        ) {
-            Text(taste.emoji, fontSize = 21.sp)
-            Text(
-                taste.label,
-                color = LevyraText,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
-            if (selected) Icon(Icons.Rounded.Check, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(18.dp))
+        Text(
+            text = taste.label,
+            color = Color.White,
+            fontSize = 17.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(17.sp),
+            fontWeight = FontWeight.Black,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .fillMaxWidth(0.78f)
+                .padding(start = 14.dp, top = 12.dp)
+        )
+        Text(
+            text = taste.emoji,
+            fontSize = 40.sp,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .offset(x = 6.dp, y = 8.dp)
+                .graphicsLayer { rotationZ = 14f }
+        )
+        if (selected) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(10.dp)
+                    .size(24.dp)
+                    .background(Color.White, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.Check, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+            }
         }
     }
+}
+
+private fun tastePalette(id: String): Pair<Color, Color> {
+    val palette = listOf(
+        Color(0xFFE8115B) to Color(0xFF8C0B37),
+        Color(0xFF1E3264) to Color(0xFF0D1A36),
+        Color(0xFF8D67AB) to Color(0xFF4F3A61),
+        Color(0xFF148A08) to Color(0xFF0A4D04),
+        Color(0xFFE1118C) to Color(0xFF7D0A4E),
+        Color(0xFF0D73EC) to Color(0xFF07407F),
+        Color(0xFFBA5D07) to Color(0xFF6B3604),
+        Color(0xFF477D95) to Color(0xFF274654),
+        Color(0xFFDC148C) to Color(0xFF7A0B4E),
+        Color(0xFF503750) to Color(0xFF2B1E2B)
+    )
+    return palette[(id.hashCode() and Int.MAX_VALUE) % palette.size]
 }
 
 @Composable
