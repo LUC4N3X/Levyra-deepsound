@@ -51,6 +51,19 @@ class PlayerSurfacesTest {
     }
 
     @Test
+    fun `tonal transport pills keep white glyphs readable`() {
+        accents.forEach { accent ->
+            val tonal = playerSurfaceTokens(accent, amoled = false)
+            val tonalFill = tonal.tonal.playerCompositeOver(PlayerDarkSurface)
+            assertTrue("tonal contrast for $accent", playerContrastRatio(tonal.content, tonalFill) >= 4.5f)
+
+            val amoled = playerSurfaceTokens(accent, amoled = true)
+            val amoledFill = amoled.tonal.playerCompositeOver(Color.Black)
+            assertTrue("amoled tonal contrast for $accent", playerContrastRatio(amoled.content, amoledFill) >= 4.5f)
+        }
+    }
+
+    @Test
     fun `amoled controls stay near black and carry an outline`() {
         accents.forEach { accent ->
             val tokens = playerSurfaceTokens(accent, amoled = true)

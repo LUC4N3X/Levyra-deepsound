@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,8 +61,8 @@ internal fun PlayerTrackMetadata(
     onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val titleSize = if (compact) 22.sp else 26.sp
-    val artistSize = if (compact) 15.sp else 17.sp
+    val titleSize = if (compact) 23.sp else 27.sp
+    val artistSize = if (compact) 15.sp else 16.5.sp
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -81,8 +82,8 @@ internal fun PlayerTrackMetadata(
                     color = surfaces.content,
                     fontSize = titleSize,
                     lineHeight = LevyraTypeRhythm.lineHeight(titleSize),
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.6).sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-0.8).sp,
                     maxLines = if (animationsEnabled) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = if (animationsEnabled) {
@@ -98,6 +99,7 @@ internal fun PlayerTrackMetadata(
                     track = shown,
                     color = surfaces.contentMuted,
                     style = TextStyle(
+                        fontFamily = MaterialTheme.typography.titleMedium.fontFamily,
                         fontSize = artistSize,
                         lineHeight = LevyraTypeRhythm.lineHeight(artistSize),
                         fontWeight = FontWeight.Medium,

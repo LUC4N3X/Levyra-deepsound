@@ -105,6 +105,33 @@ import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 import com.luc4n3x.levyra.viewmodel.LibraryViewModel
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalDensity
+import com.luc4n3x.levyra.data.ArtworkPalette
+import com.luc4n3x.levyra.data.ArtworkPaletteCache
+import com.luc4n3x.levyra.ui.LevyraPlayerPane
+import com.luc4n3x.levyra.ui.resolvePlayerPane
+import com.luc4n3x.levyra.ui.album.AlbumNeutralPaletteEnd
+import com.luc4n3x.levyra.ui.album.AlbumNeutralPaletteStart
+import com.luc4n3x.levyra.ui.artwork.ArtworkBackdropWash
+import com.luc4n3x.levyra.ui.artwork.rememberArtworkPalette
+import com.luc4n3x.levyra.ui.i18n.formatLibraryDuration
+import com.luc4n3x.levyra.ui.i18n.speedDialCopy
+import com.luc4n3x.levyra.ui.media.ImmersiveMediaActionRow
+import com.luc4n3x.levyra.ui.media.ImmersiveMediaHero
+import com.luc4n3x.levyra.ui.media.ImmersiveMediaPrimaryAction
+import com.luc4n3x.levyra.ui.media.ImmersiveMediaTopBar
+import com.luc4n3x.levyra.ui.media.animatedImmersiveMediaColors
+import com.luc4n3x.levyra.ui.media.immersiveHeroHeight
+import com.luc4n3x.levyra.ui.media.immersiveMediaColors
+import com.luc4n3x.levyra.ui.media.immersiveMediaGutter
+import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
+import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import java.util.Locale
 
 private val playlistSelectionSaver = listSaver<Set<String>, String>(
@@ -1241,109 +1268,163 @@ internal fun LevyraPlaylistDetailScreen(
         selectedKeys = selectedKeys.intersect(available)
     }
 
-    BackHandler {
-        when {
-            selectionActive -> selectedKeys = emptySet()
-            reorderMode -> {
-                reorderMode = false
-                orderedTracks = playlist.tracks
-            }
-            searchActive -> {
-                query = ""
-                searchActive = false
-            }
-            else -> viewModel.closePlaylist()
+    val closeOrExitMode: () -> Unit = {
+        if (selectionMode) {
+            selectedKeys = clearPlaylistTrackSelection()
+            selectionMode = false
+        } else if (reorderMode) {
+            reorderMode = false
+            orderedTracks = playlist.tracks
+        } else if (searchActive) {
+            query = ""
+            searchActive = false
+        } else {
+            viewModel.closePlaylist()
         }
-        if (selectionActive) selectionMode = false
     }
 
-    Box(
+    BackHandler { closeOrExitMode() }
+
+    val heroArtworkUrl = remember(playlist.coverMode, playlist.coverUrl, playlist.tracks) {
+        playlistHeroArtworkUrl(playlist)
+    }
+    val paletteKey = remember(playlist.id, heroArtworkUrl) {
+        if (heroArtworkUrl.isBlank()) {
+            ""
+        } else {
+            ArtworkPaletteCache.key(
+                trackId = "user-playlist:${playlist.id}",
+                thumbnailUrl = heroArtworkUrl,
+                largeThumbnailUrl = heroArtworkUrl
+            )
+        }
+    }
+    val fallbackPalette = remember {
+        ArtworkPalette(AlbumNeutralPaletteStart.toArgb(), AlbumNeutralPaletteEnd.toArgb())
+    }
+    val palette by rememberArtworkPalette(paletteKey, heroArtworkUrl, fallbackPalette)
+    val lightTheme = LevyraActivePalette.isLight
+    val targetColors = remember(palette, lightTheme) {
+        immersiveMediaColors(Color(palette.start), Color(palette.end), lightTheme)
+    }
+    val colors = animatedImmersiveMediaColors(targetColors, animated = state.animationsEnabled, labelPrefix = "user-playlist")
+    val totalDurationMs = remember(orderedTracks) { orderedTracks.sumOf { it.durationMs.coerceAtLeast(0L) } }
+    val heroMetadata = remember(playlist.size, totalDurationMs, strings) {
+        listOf(
+            strings.formatTrackCount(playlist.size),
+            if (totalDurationMs > 0L) strings.formatLibraryDuration(totalDurationMs) else ""
+        )
+            .filter { it.isNotBlank() }
+            .joinToString(" · ")
+    }
+
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(LevyraInk)
+            .background(colors.base)
             .windowInsetsPadding(LevyraHorizontalSafeInsets)
     ) {
+        val wide = resolvePlayerPane(maxWidth.value, maxHeight.value) == LevyraPlayerPane.SideBySide
+        val topBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
+        val heroHeight = immersiveHeroHeight(wide, maxWidth, maxHeight, topBarHeight)
+        val gutter = immersiveMediaGutter(maxWidth)
+        val collapseThreshold = with(LocalDensity.current) { (heroHeight - topBarHeight).coerceAtLeast(0.dp).toPx() }
+        val collapsedState = remember(playlistListState, collapseThreshold) {
+            derivedStateOf {
+                reorderMode ||
+                    playlistListState.firstVisibleItemIndex > 0 ||
+                    playlistListState.firstVisibleItemScrollOffset > collapseThreshold
+            }
+        }
+
+        ArtworkBackdropWash(
+            artworkUrl = heroArtworkUrl,
+            tint = colors.fieldTop,
+            base = colors.base,
+            modifier = Modifier.fillMaxSize()
+        )
         LazyColumn(
             state = playlistListState,
-            modifier = Modifier.fillMaxSize().statusBarsPadding().then(if (searchActive) Modifier.imePadding() else Modifier),
+            modifier = Modifier.fillMaxSize().then(if (searchActive) Modifier.imePadding() else Modifier),
             contentPadding = PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
-                top = 8.dp,
                 bottom = if (state.currentTrack != null || selectionActive) 220.dp else 110.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            )
         ) {
-            item(key = "playlist-detail-header") {
-                PlaylistDetailHeader(
-                    playlist = playlist,
-                    durationMs = orderedTracks.sumOf { it.durationMs },
-                    reorderMode = reorderMode,
-                    onBack = {
-                        if (selectionMode) {
-                            selectedKeys = clearPlaylistTrackSelection()
-                            selectionMode = false
-                        } else if (reorderMode) {
-                            reorderMode = false
-                            orderedTracks = playlist.tracks
-                        } else if (searchActive) {
-                            query = ""
-                            searchActive = false
-                        } else {
-                            viewModel.closePlaylist()
-                        }
-                    },
-                    onPlay = { viewModel.playPlaylist(playlist.id) },
-                    onShuffle = {
-                        val shuffled = orderedTracks.shuffled()
-                        shuffled.firstOrNull()?.let { first -> viewModel.playFrom(shuffled, first) }
-                    },
-                    onDownload = { viewModel.exportTracks(orderedTracks, strings.offline) },
-                    onRename = { renameDialog = true },
-                    onReorder = {
-                        reorderMode = !reorderMode
-                        orderedTracks = playlist.tracks
-                        selectedKeys = emptySet()
-                        selectionMode = false
-                        searchActive = false
-                        query = ""
-                    },
-                    onSaveOrder = {
-                        viewModel.reorderPlaylist(playlist.id, orderedTracks)
-                        reorderMode = false
-                    },
-                    searchActive = searchActive,
-                    onToggleSearch = {
-                        searchActive = !searchActive
-                        if (!searchActive) query = ""
-                    },
-                    onChangeCover = {
-                        coverPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    },
-                    onResetCover = { viewModel.resetPlaylistCover(playlist.id) },
-                    onOpenStudio = { viewModel.openPlaylistStudio(playlist.id) },
-                    isPinnedToHome = SpeedDial.playlistKey(playlist.id)?.let { key -> state.speedDialPins.any { it.key == key } } == true,
-                    homePinsFull = state.speedDialPins.size >= SpeedDial.MAX_PINS,
-                    onTogglePinToHome = { viewModel.toggleSpeedDialPlaylist(playlist) }
-                )
-            }
-
-            if (!reorderMode) {
-                item(key = "playlist-detail-organization") {
-                    PlaylistOrganizationBar(
-                        playlist = playlist,
-                        onEditTags = { tagEditorOpen = true },
-                        onToggleHidden = { viewModel.setPlaylistHidden(playlist.id, !playlist.hidden) }
+            if (reorderMode) {
+                item(key = "playlist-detail-reorder-hint") {
+                    Text(
+                        text = strings.dragToReorder,
+                        color = colors.contentMuted,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(start = gutter, end = gutter, top = topBarHeight + 8.dp, bottom = 12.dp)
                     )
+                }
+            } else {
+                item(key = "playlist-detail-header", contentType = "playlist-detail-hero") {
+                    ImmersiveMediaHero(
+                        title = playlist.name,
+                        overline = strings.speedDialCopy().playlist,
+                        subtitle = "",
+                        metadata = heroMetadata,
+                        colors = colors,
+                        wide = wide,
+                        viewportWidth = maxWidth,
+                        viewportHeight = maxHeight,
+                        topBarHeight = topBarHeight,
+                        onSubtitleClick = null,
+                        actions = {
+                            ImmersiveMediaActionRow(
+                                primary = ImmersiveMediaPrimaryAction(
+                                    enabled = orderedTracks.isNotEmpty(),
+                                    label = strings.play,
+                                    contentDescription = strings.playAll,
+                                    icon = Icons.Rounded.PlayArrow,
+                                    onClick = { viewModel.playPlaylist(playlist.id) }
+                                ),
+                                shuffleLabel = strings.shuffle,
+                                downloadLabel = strings.downloadPlaylist,
+                                colors = colors,
+                                shuffleEnabled = orderedTracks.size > 1,
+                                downloadEnabled = orderedTracks.isNotEmpty(),
+                                onShuffle = {
+                                    val shuffled = orderedTracks.shuffled()
+                                    shuffled.firstOrNull()?.let { first -> viewModel.playFrom(shuffled, first) }
+                                },
+                                onDownload = { viewModel.exportTracks(orderedTracks, strings.offline) }
+                            )
+                        },
+                        artwork = {
+                            PlaylistCoverArt(
+                                coverMode = playlist.coverMode,
+                                coverUrl = playlist.coverUrl,
+                                tracks = playlist.tracks,
+                                contentDescription = playlist.name,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    )
+                }
+                if (playlist.tags.isNotEmpty()) {
+                    item(key = "playlist-detail-organization") {
+                        PlaylistTagsLine(
+                            playlist = playlist,
+                            contentColor = colors.content,
+                            onEditTags = { tagEditorOpen = true },
+                            modifier = Modifier.padding(start = gutter, end = gutter, bottom = 8.dp)
+                        )
+                    }
                 }
                 item(key = "playlist-detail-search") {
                     AnimatedVisibility(visible = searchActive, enter = fadeIn(), exit = fadeOut()) {
                         OutlinedTextField(
                             value = query,
                             onValueChange = { query = it },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = gutter, end = gutter, bottom = 8.dp),
                             singleLine = true,
-                            shape = RoundedCornerShape(18.dp),
+                            shape = RoundedCornerShape(LevyraCardDesign.EditorialCorner),
                             placeholder = { Text(strings.searchPlaceholder) },
                             leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
                             trailingIcon = if (query.isNotBlank()) {
@@ -1354,8 +1435,13 @@ internal fun LevyraPlaylistDetailScreen(
                 }
             }
 
+            val rowPadding = Modifier.padding(horizontal = gutter - LevyraCardDesign.RowHorizontalPadding)
             if (orderedTracks.isEmpty()) {
-                item { LibraryEmpty(Icons.AutoMirrored.Rounded.QueueMusic, strings.playlistEmpty) }
+                item {
+                    Box(modifier = Modifier.padding(horizontal = gutter)) {
+                        LibraryEmpty(Icons.AutoMirrored.Rounded.QueueMusic, strings.playlistEmpty)
+                    }
+                }
             } else if (reorderMode) {
                 items(orderedTracks, key = { "reorder-${it.id}" }) { track ->
                     val entryKey = track.id
@@ -1396,12 +1482,16 @@ internal fun LevyraPlaylistDetailScreen(
                                 dragOffsetY = 0f
                             }
                         ),
-                        modifier = Modifier.animateItem()
+                        modifier = Modifier
+                            .animateItem()
+                            .padding(horizontal = gutter, vertical = 4.dp)
                     )
                 }
             } else if (visibleTracks.isEmpty()) {
                 item(key = "playlist-search-empty") {
-                    LibraryEmpty(Icons.Rounded.Search, playlistProCopy.noSearchResults)
+                    Box(modifier = Modifier.padding(horizontal = gutter)) {
+                        LibraryEmpty(Icons.Rounded.Search, playlistProCopy.noSearchResults)
+                    }
                 }
             } else {
                 items(visibleTracks, key = { "playlist-track-${playlistEntryKey(it)}" }) { track ->
@@ -1426,11 +1516,57 @@ internal fun LevyraPlaylistDetailScreen(
                         onFavorite = { viewModel.toggleFavorite(track) },
                         onDownload = { viewModel.exportTrack(track) },
                         onRemoveFromPlaylist = { tracksToRemove = listOf(track) },
-                        onChangeMatch = { changeMatchTrack = track }
+                        onChangeMatch = { changeMatchTrack = track },
+                        modifier = rowPadding
                     )
                 }
             }
         }
+
+        ImmersiveMediaTopBar(
+            title = playlist.name,
+            colors = colors,
+            collapsedState = collapsedState,
+            height = topBarHeight,
+            animated = state.animationsEnabled,
+            backLabel = strings.back,
+            onBack = closeOrExitMode,
+            actions = {
+                PlaylistDetailTopActions(
+                    playlist = playlist,
+                    reorderMode = reorderMode,
+                    searchActive = searchActive,
+                    menuBackground = colors.fieldTop,
+                    onToggleSearch = {
+                        searchActive = !searchActive
+                        if (!searchActive) query = ""
+                    },
+                    onSaveOrder = {
+                        viewModel.reorderPlaylist(playlist.id, orderedTracks)
+                        reorderMode = false
+                    },
+                    onRename = { renameDialog = true },
+                    onReorder = {
+                        reorderMode = !reorderMode
+                        orderedTracks = playlist.tracks
+                        selectedKeys = emptySet()
+                        selectionMode = false
+                        searchActive = false
+                        query = ""
+                    },
+                    onChangeCover = {
+                        coverPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    },
+                    onResetCover = { viewModel.resetPlaylistCover(playlist.id) },
+                    onOpenStudio = { viewModel.openPlaylistStudio(playlist.id) },
+                    onEditTags = { tagEditorOpen = true },
+                    onToggleHidden = { viewModel.setPlaylistHidden(playlist.id, !playlist.hidden) },
+                    isPinnedToHome = SpeedDial.playlistKey(playlist.id)?.let { key -> state.speedDialPins.any { it.key == key } } == true,
+                    homePinsFull = state.speedDialPins.size >= SpeedDial.MAX_PINS,
+                    onTogglePinToHome = { viewModel.toggleSpeedDialPlaylist(playlist) }
+                )
+            }
+        )
 
         if (selectionActive) {
             LibrarySelectionBar(
