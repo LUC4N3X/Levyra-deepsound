@@ -86,6 +86,18 @@ class MaterialExpressiveContractTest {
     }
 
     @Test
+    fun `mix slider follows the stateful material3 beta api`() {
+        val mix = source(
+            "app/src/main/java/com/luc4n3x/levyra/ui/LevyraMixPanel.kt",
+            "src/main/java/com/luc4n3x/levyra/ui/LevyraMixPanel.kt"
+        )
+
+        assertTrue(mix.contains("rememberSliderState("))
+        assertTrue(mix.contains("state = sliderState"))
+        assertTrue(mix.contains("sliderState.value = value"))
+    }
+
+    @Test
     fun `material3 expressive uses the current beta api surface`() {
         val versions = source(
             "gradle/libs.versions.toml",
