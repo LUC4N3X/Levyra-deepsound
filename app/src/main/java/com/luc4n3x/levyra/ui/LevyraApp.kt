@@ -10711,7 +10711,7 @@ private fun pickHeroUpdate(state: LevyraUiState): HomeHeroUpdate? {
 @Composable
 internal fun StableRemoteArtwork(
     url: String,
-    contentDescription: String,
+    contentDescription: String?,
     modifier: Modifier,
     contentScale: ContentScale,
     highRes: Boolean = false
@@ -11024,7 +11024,7 @@ private fun ResonanceQuoteHeader(
         if (avatarUrl.isNotBlank()) {
             StableRemoteArtwork(
                 url = avatarUrl,
-                contentDescription = "",
+                contentDescription = null,
                 modifier = Modifier
                     .size(24.dp)
                     .clip(CircleShape),
@@ -16221,7 +16221,7 @@ private fun PlayerSimilarSongsPeek(similarSongs: List<Track>) {
                 if (artworkUrl.isNotBlank()) {
                     StableRemoteArtwork(
                         url = artworkUrl,
-                        contentDescription = "",
+                        contentDescription = null,
                         modifier = Modifier.matchParentSize(),
                         contentScale = ContentScale.Crop
                     )

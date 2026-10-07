@@ -59,6 +59,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -1444,7 +1445,12 @@ private fun ExploreDestinationSurface(
                     modifier = Modifier.size(21.dp)
                 )
             }
-            Column(modifier = Modifier.weight(1f).graphicsLayer { alpha = titleAlpha }) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .graphicsLayer { alpha = titleAlpha }
+                    .then(if (titleVisible) Modifier else Modifier.clearAndSetSemantics { })
+            ) {
                 Text(
                     text = title,
                     color = LevyraText,
