@@ -17,6 +17,7 @@ internal data class PlayerSurfaceTokens(
     val outline: Color,
     val active: Color,
     val activeContent: Color,
+    val tonal: Color,
     val hero: Color,
     val heroContent: Color,
     val content: Color,
@@ -32,6 +33,9 @@ private const val ActiveAlpha = 0.32f
 private const val ActiveContentLift = 0.86f
 private const val AmoledControlDepth = 0.86f
 private const val AmoledQuietDepth = 0.92f
+private const val TonalLift = 0.30f
+private const val TonalAlpha = 0.24f
+private const val AmoledTonalDepth = 0.74f
 
 internal fun playerSurfaceTokens(primary: Color, amoled: Boolean): PlayerSurfaceTokens {
     val accent = primary.copy(alpha = 1f)
@@ -56,6 +60,7 @@ internal fun playerSurfaceTokens(primary: Color, amoled: Boolean): PlayerSurface
             outline = accent.copy(alpha = 0.22f),
             active = active,
             activeContent = activeContent,
+            tonal = accent.playerMix(Color.Black, AmoledTonalDepth),
             hero = hero,
             heroContent = heroContent,
             content = Color.White,
@@ -71,6 +76,7 @@ internal fun playerSurfaceTokens(primary: Color, amoled: Boolean): PlayerSurface
             outline = Color.White.copy(alpha = 0.07f),
             active = active,
             activeContent = activeContent,
+            tonal = accent.playerMix(Color.White, TonalLift).copy(alpha = TonalAlpha),
             hero = hero,
             heroContent = heroContent,
             content = Color.White,

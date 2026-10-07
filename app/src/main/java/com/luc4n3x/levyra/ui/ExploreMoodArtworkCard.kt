@@ -41,6 +41,7 @@ import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 import kotlinx.coroutines.sync.Semaphore
@@ -223,7 +224,7 @@ internal fun RowScope.ExploreMoodCard(
 
     val accentStart = Color(zone.accentStart)
     val accentEnd = Color(zone.accentEnd)
-    val shape = RoundedCornerShape(20.dp)
+    val shape = LevyraCardDesign.EditorialShape
     val backgroundBrush = remember(accentStart, accentEnd) {
         Brush.linearGradient(
             listOf(
@@ -269,9 +270,12 @@ internal fun RowScope.ExploreMoodCard(
             .height(112.dp)
             .clip(shape)
             .background(backgroundBrush)
-            .border(
-                BorderStroke(if (isSelected) 1.5.dp else 1.dp, outlineBrush),
-                shape
+            .then(
+                if (isSelected) {
+                    Modifier.border(BorderStroke(1.5.dp, outlineBrush), shape)
+                } else {
+                    Modifier
+                }
             )
             .semantics(mergeDescendants = true) {
                 role = Role.Button
@@ -341,8 +345,8 @@ internal fun RowScope.ExploreMoodCard(
                 color = Color.White,
                 fontSize = 17.sp,
                 lineHeight = LevyraTypeRhythm.lineHeight(17.sp),
-                letterSpacing = (-0.2).sp,
-                fontWeight = FontWeight.Black,
+                letterSpacing = (-0.3).sp,
+                fontWeight = FontWeight.ExtraBold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 7.dp)

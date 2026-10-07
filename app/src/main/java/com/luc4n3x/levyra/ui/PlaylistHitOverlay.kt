@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import android.content.Intent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -85,6 +86,11 @@ import com.luc4n3x.levyra.ui.media.ImmersiveMediaTopBar
 import com.luc4n3x.levyra.ui.media.animatedImmersiveMediaColors
 import com.luc4n3x.levyra.ui.media.immersiveHeroHeight
 import com.luc4n3x.levyra.ui.media.immersiveMediaColors
+import com.luc4n3x.levyra.ui.media.immersiveMediaGutter
+import com.luc4n3x.levyra.ui.media.ImmersiveTopBarButtonFill
+import com.luc4n3x.levyra.ui.media.ImmersiveTopBarButtonSize
+import com.luc4n3x.levyra.ui.i18n.speedDialCopy
+import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraGlass
 import com.luc4n3x.levyra.ui.theme.LevyraGlassBorder
@@ -230,6 +236,7 @@ private fun PlaylistHitList(
 ) {
     val strings = LocalLevyraStrings.current
     val tracks = preview.tracks
+    val gutter = immersiveMediaGutter(viewportWidth)
     LazyColumn(
         state = state,
         modifier = Modifier.fillMaxSize(),
@@ -238,6 +245,7 @@ private fun PlaylistHitList(
         item(key = "playlist-hit-hero", contentType = "playlist-hit-hero") {
             ImmersiveMediaHero(
                 title = preview.hit.title,
+                overline = strings.speedDialCopy().playlist,
                 subtitle = preview.hit.author,
                 metadata = countLabel,
                 colors = colors,
@@ -285,11 +293,11 @@ private fun PlaylistHitList(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.5.dp, color = colors.accent)
+                    LevyraLoadingIndicator(modifier = Modifier.size(28.dp), color = colors.accent)
                 }
             }
             tracks.isEmpty() -> item(key = "playlist-hit-empty", contentType = "playlist-hit-state") {
-                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                Box(modifier = Modifier.padding(horizontal = gutter)) {
                     LibraryEmpty(Icons.AutoMirrored.Rounded.QueueMusic, strings.albumTracksUnavailable)
                 }
             }
@@ -313,7 +321,7 @@ private fun PlaylistHitList(
                     onFavorite = { onFavorite(track) },
                     onDownload = { onDownloadTrack(track) },
                     onQueue = { onQueueTrack(track) },
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                    modifier = Modifier.padding(horizontal = gutter - LevyraCardDesign.RowHorizontalPadding)
                 )
             }
         }
@@ -346,9 +354,11 @@ private fun PlaylistHitTopBar(
                     icon = Icons.Rounded.MoreVert,
                     contentDescription = strings.more,
                     onClick = { menuExpanded = true },
-                    size = 48.dp,
+                    size = ImmersiveTopBarButtonSize,
                     tint = Color.White,
-                    fill = Color.Black.copy(alpha = 0.34f)
+                    fill = ImmersiveTopBarButtonFill,
+                    borderTop = Color.Transparent,
+                    borderBottom = Color.Transparent
                 )
                 DropdownMenu(
                     expanded = menuExpanded,
