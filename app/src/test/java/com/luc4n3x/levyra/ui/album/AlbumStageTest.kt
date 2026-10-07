@@ -44,10 +44,10 @@ class AlbumStageTest {
 
     @Test
     fun heroHeightStaysProportionalAndBounded() {
-        assertEquals(915.dp * 0.42f, albumStackedHeroHeight(412.dp, 915.dp))
-        assertEquals(640.dp * 0.42f, albumStackedHeroHeight(360.dp, 640.dp))
-        assertEquals(900.dp * 0.42f, albumStackedHeroHeight(1000.dp, 900.dp))
-        assertEquals(400.dp * 0.42f, albumStackedHeroHeight(360.dp, 400.dp))
+        assertEquals(412.dp, albumStackedHeroHeight(412.dp, 915.dp))
+        assertEquals(640.dp * 0.54f, albumStackedHeroHeight(360.dp, 640.dp))
+        assertEquals(900.dp * 0.54f, albumStackedHeroHeight(1000.dp, 900.dp))
+        assertEquals(400.dp * 0.54f, albumStackedHeroHeight(360.dp, 400.dp))
     }
 
     @Test
