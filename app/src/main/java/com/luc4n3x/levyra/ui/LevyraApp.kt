@@ -142,6 +142,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import com.luc4n3x.levyra.ui.components.levyraMarquee
+import com.luc4n3x.levyra.ui.components.levyraCarouselDepth
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.animateScrollBy
@@ -10344,7 +10345,10 @@ private fun HomeEditorialCollectionsShelf(
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val cardWidth = (maxWidth - LevyraHomeDesign.EditorialPeek)
                 .coerceAtMost(LevyraHomeDesign.EditorialMaxWidth)
+            val collectionsState = rememberLazyListState()
+            val collectionsDepth = LocalAnimationsEnabled.current
             LazyRow(
+                state = collectionsState,
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap),
                 contentPadding = PaddingValues(horizontal = HomeHorizontalInset)
@@ -10367,7 +10371,9 @@ private fun HomeEditorialCollectionsShelf(
                         subtitle = artistLine,
                         artwork = collection.tracks.firstOrNull(),
                         onOpen = { onOpen(collection) },
-                        modifier = Modifier.width(cardWidth)
+                        modifier = Modifier
+                            .levyraCarouselDepth(collectionsState, "home-collection-${collection.id}", collectionsDepth)
+                            .width(cardWidth)
                     )
                 }
             }
@@ -10497,7 +10503,10 @@ private fun HomeQuickAccessShelf(
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val cardWidth = ((maxWidth - HomeHorizontalInset * 2 - LevyraHomeDesign.ShelfItemGap) / 2)
                 .coerceAtMost(LevyraHomeDesign.DiscoveryArtworkWidth)
+            val shelfState = rememberLazyListState()
+            val depthEnabled = LocalAnimationsEnabled.current
             LazyRow(
+                state = shelfState,
                 horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap),
                 contentPadding = PaddingValues(horizontal = HomeHorizontalInset)
             ) {
@@ -10506,7 +10515,14 @@ private fun HomeQuickAccessShelf(
                     key = { column -> LevyraPersonalOrbit.identityKey(column.first()) },
                     contentType = { "home-artwork-column" }
                 ) { column ->
-                    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                    Column(
+                        modifier = Modifier.levyraCarouselDepth(
+                            state = shelfState,
+                            key = LevyraPersonalOrbit.identityKey(column.first()),
+                            enabled = depthEnabled
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(20.dp)
+                    ) {
                         column.forEach { track ->
                             key(LevyraPersonalOrbit.identityKey(track)) {
                                 DiscoveryTrackCard(
@@ -10838,7 +10854,10 @@ private fun ResonanceShelf(
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val cardWidth = (maxWidth - HomeHorizontalInset - 24.dp)
                 .coerceIn(292.dp, 330.dp)
+            val resonanceState = rememberLazyListState()
+            val resonanceDepth = LocalAnimationsEnabled.current
             LazyRow(
+                state = resonanceState,
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(
@@ -10850,8 +10869,13 @@ private fun ResonanceShelf(
                     items = displayTracks,
                     key = { index, track -> "resonance-featured-$index-${LevyraPersonalOrbit.identityKey(track)}" },
                     contentType = { _, _ -> "resonance-featured-card" }
-                ) { _, track ->
+                ) { index, track ->
                     ResonanceFeaturedCard(
+                        modifier = Modifier.levyraCarouselDepth(
+                            state = resonanceState,
+                            key = "resonance-featured-$index-${LevyraPersonalOrbit.identityKey(track)}",
+                            enabled = resonanceDepth
+                        ),
                         track = track,
                         snippet = comments[track.id],
                         active = track.id == currentId,
@@ -10876,7 +10900,8 @@ private fun ResonanceFeaturedCard(
     isResolving: Boolean,
     cardWidth: Dp,
     onPlay: () -> Unit,
-    onOpenComments: () -> Unit
+    onOpenComments: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
     val shape = RoundedCornerShape(22.dp)
@@ -10886,7 +10911,7 @@ private fun ResonanceFeaturedCard(
     val author = snippet?.author?.trim().orEmpty()
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .width(cardWidth)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
@@ -10901,7 +10926,7 @@ private fun ResonanceFeaturedCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = ResonanceQuoteMinHeight)
+                .height(ResonanceQuoteHeight)
                 .semantics(mergeDescendants = true) {}
                 .pressable(onClick = onOpenComments)
                 .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 12.dp),
@@ -11064,7 +11089,7 @@ private fun ResonanceQuoteText(text: String, muted: Boolean) {
     )
 }
 
-private val ResonanceQuoteMinHeight = 116.dp
+private val ResonanceQuoteHeight = 128.dp
 
 @Composable
 private fun ResonanceCommentShimmer() {
@@ -13268,7 +13293,10 @@ private fun RecentSearchesRow(
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionTitle(title)
+        val recentState = rememberLazyListState()
+        val recentDepth = LocalAnimationsEnabled.current
         LazyRow(
+            state = recentState,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             contentPadding = PaddingValues(end = 16.dp)
         ) {
@@ -13279,6 +13307,7 @@ private fun RecentSearchesRow(
 
                 Column(
                     modifier = Modifier
+                        .levyraCarouselDepth(recentState, "recent-${track.id}", recentDepth)
                         .width(140.dp)
                         .clickable { onTrackClick(track) },
                     verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -23406,7 +23435,10 @@ private fun ExploreScreen(
                     ExploreRow.FreshCarousel -> BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                         val cardWidth = (maxWidth - LevyraHomeDesign.EditorialPeek)
                             .coerceAtMost(LevyraHomeDesign.EditorialMaxWidth)
+                        val freshState = rememberLazyListState()
+                        val freshDepth = LocalAnimationsEnabled.current
                         LazyRow(
+                            state = freshState,
                             contentPadding = PaddingValues(horizontal = HomeHorizontalInset),
                             horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap)
                         ) {
@@ -23418,7 +23450,9 @@ private fun ExploreScreen(
                                     isResolving = state.isResolving && track.id == state.currentTrack?.id,
                                     onPlay = { viewModel.playFrom(freshTracks, track) },
                                     wide = true,
-                                    modifier = Modifier.width(cardWidth),
+                                    modifier = Modifier
+                                        .levyraCarouselDepth(freshState, "ex-track-${track.id}", freshDepth)
+                                        .width(cardWidth),
                                     trailing = {
                                         DiscoveryTrackActions(
                                             trackTitle = track.title,
@@ -23774,6 +23808,7 @@ private fun ExploreSamplesRow(
     onOpen: (Track) -> Unit
 ) {
     val rowState = rememberLazyListState()
+    val sampleDepth = LocalAnimationsEnabled.current
     LazyRow(
         state = rowState,
         contentPadding = PaddingValues(horizontal = 24.dp),
@@ -23782,12 +23817,14 @@ private fun ExploreSamplesRow(
     ) {
         items(samples, key = { track -> "ex-sample-${track.id}" }) { track ->
             val isCurrent = track.id == currentTrackId
-            ExploreSampleCard(
-                track = track,
-                isCurrent = isCurrent,
-                isPlaying = isPlaying && isCurrent,
-                onClick = { onOpen(track) }
-            )
+            Box(modifier = Modifier.levyraCarouselDepth(rowState, "ex-sample-${track.id}", sampleDepth)) {
+                ExploreSampleCard(
+                    track = track,
+                    isCurrent = isCurrent,
+                    isPlaying = isPlaying && isCurrent,
+                    onClick = { onOpen(track) }
+                )
+            }
         }
     }
 }
