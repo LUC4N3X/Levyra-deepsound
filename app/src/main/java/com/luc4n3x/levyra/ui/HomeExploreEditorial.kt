@@ -38,6 +38,8 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
@@ -197,15 +199,18 @@ internal fun DiscoveryEditorialCard(
     accentStart: Color = Color(0xFF7C3AED),
     accentEnd: Color = Color(0xFF4C1D95)
 ) {
+    val contrastPalette = remember(accentStart, accentEnd) {
+        editorialContrastPalette(accentStart, accentEnd)
+    }
     BoxWithConstraints(
         modifier = modifier
             .clip(LevyraCardDesign.SurfaceShape)
             .background(
                 Brush.linearGradient(
                     listOf(
-                        accentStart,
-                        accentEnd,
-                        accentEnd.copy(alpha = 0.88f)
+                        contrastPalette.start,
+                        contrastPalette.end,
+                        contrastPalette.end
                     )
                 )
             )
@@ -231,7 +236,7 @@ internal fun DiscoveryEditorialCard(
                 modifier = Modifier.padding(LevyraHomeDesign.EditorialPadding),
                 verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.EditorialPadding)
             ) {
-                DiscoveryEditorialText(title, subtitle)
+                DiscoveryEditorialText(title, subtitle, contrastPalette.text)
                 if (artwork != null) {
                     CoverImage(
                         track = artwork,
@@ -251,6 +256,7 @@ internal fun DiscoveryEditorialCard(
                 DiscoveryEditorialText(
                     title = title,
                     subtitle = subtitle,
+                    textColor = contrastPalette.text,
                     modifier = Modifier.weight(1f).heightIn(min = LevyraHomeDesign.EditorialThumb)
                 )
                 if (artwork != null) {
@@ -274,11 +280,61 @@ internal fun DiscoveryEditorialCard(
 }
 
 @Composable
-private fun DiscoveryEditorialText(title: String, subtitle: String, modifier: Modifier = Modifier) {
+private fun DiscoveryEditorialText(
+    title: String,
+    subtitle: String,
+    textColor: Color,
+    modifier: Modifier = Modifier
+) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)) {
-        Text(title, style = LevyraType.sectionTitle, color = Color.White, softWrap = true)
+        Text(title, style = LevyraType.sectionTitle, color = textColor, softWrap = true)
         if (subtitle.isNotBlank()) {
-            Text(subtitle, style = LevyraType.metadata, color = Color.White.copy(alpha = 0.76f), softWrap = true)
+            Text(subtitle, style = LevyraType.metadata, color = textColor, softWrap = true)
         }
     }
 }
+
+private data class EditorialContrastPalette(
+    val start: Color,
+    val end: Color,
+    val text: Color
+)
+
+private fun editorialContrastPalette(start: Color, end: Color): EditorialContrastPalette {
+    var safeStart = start.copy(alpha = 1f)
+    var safeEnd = end.copy(alpha = 1f)
+    repeat(10) {
+        editorialTextColor(safeStart, safeEnd)?.let { textColor ->
+            return EditorialContrastPalette(safeStart, safeEnd, textColor)
+        }
+        safeStart = Color.Black.copy(alpha = 0.10f).compositeOver(safeStart)
+        safeEnd = Color.Black.copy(alpha = 0.10f).compositeOver(safeEnd)
+    }
+    return EditorialContrastPalette(safeStart, safeEnd, Color.White)
+}
+
+private fun editorialTextColor(start: Color, end: Color): Color? {
+    val whiteContrast = minOf(
+        contrastRatio(Color.White, start),
+        contrastRatio(Color.White, end)
+    )
+    if (whiteContrast >= EditorialMinimumContrast) return Color.White
+
+    val effectiveStart = Color.Black.copy(alpha = 0.20f).compositeOver(start)
+    val effectiveEnd = Color.Black.copy(alpha = 0.12f).compositeOver(end)
+    val blackContrast = minOf(
+        contrastRatio(Color.Black, effectiveStart),
+        contrastRatio(Color.Black, effectiveEnd)
+    )
+    return Color.Black.takeIf { blackContrast >= EditorialMinimumContrast }
+}
+
+private fun contrastRatio(foreground: Color, background: Color): Float {
+    val foregroundLuminance = foreground.luminance()
+    val backgroundLuminance = background.luminance()
+    val lighter = maxOf(foregroundLuminance, backgroundLuminance)
+    val darker = minOf(foregroundLuminance, backgroundLuminance)
+    return (lighter + 0.05f) / (darker + 0.05f)
+}
+
+private const val EditorialMinimumContrast = 4.5f
