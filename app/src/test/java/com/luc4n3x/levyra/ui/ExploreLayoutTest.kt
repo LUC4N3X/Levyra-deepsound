@@ -13,6 +13,23 @@ import org.junit.Test
 
 class ExploreLayoutTest {
     @Test
+    fun discoveryContentPrecedesAdvancedMixControls() {
+        val rows = buildExploreRows(zones(4), false, true, true)
+
+        assertTrue(rows.indexOf(ExploreRow.FreshCarousel) < rows.indexOf(ExploreRow.MixTools))
+        assertTrue(rows.indexOf(ExploreRow.Samples) < rows.indexOf(ExploreRow.MixTools))
+        assertEquals(ExploreRow.MixTools, rows.last())
+    }
+
+    @Test
+    fun mixControlsRemainAvailableWhenDiscoveryIsEmpty() {
+        val rows = buildExploreRows(emptyList(), false, false, false)
+
+        assertTrue(rows.contains(ExploreRow.FreshEmpty))
+        assertEquals(1, rows.count { it == ExploreRow.MixTools })
+    }
+
+    @Test
     fun shortcutAnchorsResolveToTheirHeaders() {
         val rows = buildExploreRows(
             zones = zones(3),

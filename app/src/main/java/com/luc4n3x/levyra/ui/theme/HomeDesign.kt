@@ -19,8 +19,8 @@ object LevyraHomeDesign {
     val HorizontalInset: Dp = 16.dp
     val SectionGap: Dp = 7.dp
     val SectionGapCompact: Dp = 5.dp
-    val SectionStride: Dp = 29.dp
-    val SectionStrideCompact: Dp = 23.dp
+    val SectionStride: Dp = 36.dp
+    val SectionStrideCompact: Dp = 28.dp
     val HeaderCorner: Dp = 16.dp
     val HeaderPadding: Dp = 12.dp
     val SettingsControlHeight: Dp = 48.dp
@@ -28,6 +28,12 @@ object LevyraHomeDesign {
     val MoodChipVisualHeight: Dp = 32.dp
     val MoodChipCorner: Dp = 12.dp
     val HeroCorner: Dp = 24.dp
+    val EditorialPadding: Dp = 20.dp
+    val EditorialThumb: Dp = 112.dp
+    val EditorialPeek: Dp = 40.dp
+    val EditorialMaxWidth: Dp = 520.dp
+    val DiscoveryArtworkWidth: Dp = 176.dp
+    const val EditorialArtworkRatio: Float = 1.5f
     val HeroHeight: Dp = 472.dp
     val ShelfCorner: Dp = 2.dp
     val ArtworkCorner: Dp = LevyraCardDesign.ArtworkCorner
