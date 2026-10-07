@@ -6,13 +6,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,8 +28,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -42,8 +37,7 @@ import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
-import com.luc4n3x.levyra.ui.theme.LevyraPanel
-import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
+import com.luc4n3x.levyra.ui.theme.LevyraType
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 
@@ -188,7 +182,8 @@ internal fun RowScope.ExploreMoodCard(
     zone: ExploreZone,
     isSelected: Boolean,
     onClick: () -> Unit,
-    onStartZoneMix: (() -> Unit)? = null
+    onStartZoneMix: (() -> Unit)? = null,
+    prominent: Boolean = false
 ) {
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
@@ -225,32 +220,12 @@ internal fun RowScope.ExploreMoodCard(
     val accentStart = Color(zone.accentStart)
     val accentEnd = Color(zone.accentEnd)
     val shape = LevyraCardDesign.EditorialShape
-    val backgroundBrush = remember(accentStart, accentEnd) {
-        Brush.linearGradient(
-            listOf(
-                LevyraPanel,
-                accentStart.copy(alpha = 0.30f),
-                accentEnd.copy(alpha = 0.22f)
-            )
-        )
-    }
-    val imageScrim = remember(accentStart) {
-        Brush.horizontalGradient(
-            colorStops = arrayOf(
-                0f to LevyraPanel,
-                0.32f to LevyraPanel.copy(alpha = 0.96f),
-                0.56f to accentStart.copy(alpha = 0.42f),
-                0.82f to Color.Transparent,
-                1f to Color.Transparent
-            )
-        )
-    }
     val bottomScrim = remember {
         Brush.verticalGradient(
             listOf(
                 Color.Transparent,
-                Color.Transparent,
-                Color.Black.copy(alpha = 0.44f)
+                Color.Black.copy(alpha = 0.30f),
+                Color.Black.copy(alpha = 0.92f)
             )
         )
     }
@@ -267,9 +242,9 @@ internal fun RowScope.ExploreMoodCard(
     Box(
         modifier = Modifier
             .weight(1f)
-            .height(112.dp)
+            .heightIn(min = if (prominent) 196.dp else 148.dp)
             .clip(shape)
-            .background(backgroundBrush)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .then(
                 if (isSelected) {
                     Modifier.border(BorderStroke(1.5.dp, outlineBrush), shape)
@@ -308,9 +283,7 @@ internal fun RowScope.ExploreMoodCard(
                     }
                 },
                 modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .fillMaxHeight()
-                    .fillMaxWidth(0.76f)
+                    .matchParentSize()
             )
         } else {
             Text(
@@ -323,33 +296,19 @@ internal fun RowScope.ExploreMoodCard(
             )
         }
 
-        Box(modifier = Modifier.fillMaxSize().background(imageScrim))
-        Box(modifier = Modifier.fillMaxSize().background(bottomScrim))
+        Box(modifier = Modifier.matchParentSize().background(bottomScrim))
 
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .fillMaxWidth(0.80f)
-                .padding(start = 15.dp, end = 8.dp, bottom = 14.dp),
+                .fillMaxWidth()
+                .padding(16.dp),
             horizontalAlignment = Alignment.Start
         ) {
-            Box(
-                modifier = Modifier
-                    .width(if (isSelected) 32.dp else 24.dp)
-                    .height(3.5.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(if (isSelected) Color.White else accentEnd.copy(alpha = 0.92f))
-            )
             Text(
                 text = zone.label,
                 color = Color.White,
-                fontSize = 17.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(17.sp),
-                letterSpacing = (-0.3).sp,
-                fontWeight = FontWeight.ExtraBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 7.dp)
+                style = if (prominent) LevyraType.sectionTitle else LevyraType.artist
             )
         }
     }
