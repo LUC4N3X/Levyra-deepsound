@@ -190,6 +190,38 @@ class SearchEntityIdentityTest {
         }
     }
 
+
+
+    @Test
+    fun `local recording keeps offline source when merged with spotify metadata`() {
+        val local = track(
+            id = "local:spotify-yellow",
+            title = "Yellow",
+            artist = "Coldplay",
+            durationMs = 240_000L
+        ).copy(
+            streamUrl = "content://media/external/audio/99",
+            source = "Offline"
+        )
+        val spotify = track(
+            id = "spotify:yellow",
+            title = "Yellow",
+            artist = "Coldplay",
+            durationMs = 240_000L
+        ).copy(
+            videoUrl = "",
+            source = "spotify",
+            metadataProvider = "spotify"
+        )
+
+        val merged = mergeSearchSongs(listOf(spotify), listOf(local)).single()
+
+        assertEquals("local:spotify-yellow", merged.id)
+        assertEquals("Offline", merged.source)
+        assertEquals("content://media/external/audio/99", merged.streamUrl)
+        assertEquals("spotify", merged.metadataProvider)
+    }
+
     @Test
     fun `different song variants remain separate`() {
         val merged = deduplicateSearchSongs(

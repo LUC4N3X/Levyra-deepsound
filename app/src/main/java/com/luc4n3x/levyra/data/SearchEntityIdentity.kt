@@ -524,8 +524,8 @@ internal fun richerSong(current: Track, candidate: Track): Track {
         isrc = metadataDonor.isrc.ifBlank { current.isrc.ifBlank { candidate.isrc } },
         explicit = current.explicit || candidate.explicit,
         source = when {
-            isAnySpotify -> "spotify_youtube"
             isLocalSearchTrack(playbackDonor) -> playbackDonor.source
+            isAnySpotify -> "spotify_youtube"
             else -> current.source.ifBlank { candidate.source }
         },
         metadataProvider = if (isAnySpotify) "spotify" else current.metadataProvider.ifBlank { candidate.metadataProvider },
