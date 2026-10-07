@@ -4,7 +4,6 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -38,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.components.PlayerGlassIconButton
+import com.luc4n3x.levyra.ui.components.levyraMarquee
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LevyraMotion
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
@@ -86,14 +86,10 @@ internal fun PlayerTrackMetadata(
                     letterSpacing = (-0.8).sp,
                     maxLines = if (animationsEnabled) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = if (animationsEnabled) {
-                        Modifier.basicMarquee(
-                            iterations = Int.MAX_VALUE,
-                            repeatDelayMillis = TitleMarqueeDelayMs
-                        )
-                    } else {
-                        Modifier
-                    }
+                    modifier = Modifier.levyraMarquee(
+                        enabled = animationsEnabled,
+                        repeatDelayMillis = TitleMarqueeDelayMs
+                    )
                 )
                 PlayerArtistText(
                     track = shown,

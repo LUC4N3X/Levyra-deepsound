@@ -771,7 +771,7 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
         chartTracks = if (input.showCharts) moodRank(input.charts) else emptyList(),
         preferenceScore = ::moodPreferenceScore
     )
-    val visibleCollectionSections = input.homeSections.filter { section ->
+    val visibleCollectionSections = otherSections.filter { section ->
         isHomeSectionVisible(section.title, input)
     }
     val editorialCollections = HomeEditorialEngine.buildCollections(
