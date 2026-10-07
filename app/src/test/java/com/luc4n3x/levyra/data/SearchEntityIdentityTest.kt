@@ -214,7 +214,7 @@ class SearchEntityIdentityTest {
             metadataProvider = "spotify"
         )
 
-        val merged = mergeSearchSongs(listOf(spotify), listOf(local)).single()
+        val merged = richerSong(spotify, local)
 
         assertEquals("local:spotify-yellow", merged.id)
         assertEquals("Offline", merged.source)
