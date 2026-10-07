@@ -1,8 +1,6 @@
 package com.luc4n3x.levyra.ui.library
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -10,9 +8,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
@@ -62,6 +61,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -73,6 +73,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -111,75 +113,45 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.time.format.TextStyle as DayTextStyle
 import java.util.Locale
+import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
+import com.luc4n3x.levyra.ui.theme.LevyraType
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
 import com.luc4n3x.levyra.domain.ListeningChartProjection
 
 internal val LibraryPillShape = RoundedCornerShape(999.dp)
 
 @Composable
 internal fun LibraryHero(title: String, subtitle: String) {
+    val colors = MaterialTheme.colorScheme
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp)
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Text(
-            text = title,
-            color = LevyraText,
-            fontSize = 28.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(28.sp),
-            fontWeight = FontWeight.Black,
-            letterSpacing = (-0.6).sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.semantics { heading() }
-        )
+        Text(title, color = colors.onSurface, style = LevyraType.heroTitle, softWrap = true, modifier = Modifier.semantics { heading() })
         if (subtitle.isNotBlank()) {
-            Text(
-                text = subtitle,
-                color = LevyraMuted,
-                fontSize = 12.sp,
-                lineHeight = 16.sp,
-                fontWeight = FontWeight.Medium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+            Text(subtitle, color = colors.onSurfaceVariant, style = LevyraType.metadata, softWrap = true)
         }
     }
 }
 
 @Composable
 internal fun LibraryCategoryChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    val container by animateColorAsState(
-        targetValue = if (selected) LevyraCyan.copy(alpha = 0.16f) else LevyraGlass,
-        animationSpec = tween(durationMillis = 160),
-        label = "libraryChipContainer"
-    )
-    val content by animateColorAsState(
-        targetValue = if (selected) LevyraCyan else LevyraMuted,
-        animationSpec = tween(durationMillis = 160),
-        label = "libraryChipContent"
-    )
+    val colors = MaterialTheme.colorScheme
     Surface(
-        color = container,
-        shape = LibraryPillShape,
+        color = if (selected) colors.secondaryContainer else Color.Transparent,
+        shape = LevyraCardDesign.ArtworkShape,
         modifier = Modifier
-            .height(40.dp)
-            .clip(LibraryPillShape)
+            .heightIn(min = 48.dp)
+            .clip(LevyraCardDesign.ArtworkShape)
             .selectable(selected = selected, role = Role.Tab, onClick = onClick)
     ) {
-        Box(
-            modifier = Modifier.fillMaxHeight().padding(horizontal = 16.dp),
-            contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(
-                text = label,
-                color = content,
-                fontSize = 13.sp,
-                fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
-                maxLines = 1
-            )
+            if (selected) Icon(Icons.Rounded.Check, contentDescription = null, tint = colors.onSecondaryContainer, modifier = Modifier.size(16.dp))
+            Text(label, color = if (selected) colors.onSecondaryContainer else colors.onSurfaceVariant, style = LevyraType.cardTitle)
         }
     }
 }
@@ -204,20 +176,21 @@ internal fun LibraryToolbar(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(
+            modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Box {
+            Box(modifier = Modifier.weight(1f)) {
                 Surface(
-                    color = LevyraGlass,
-                    shape = LibraryPillShape,
-                    modifier = Modifier
-                        .height(38.dp)
-                        .clip(LibraryPillShape)
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    shape = LevyraCardDesign.ThumbShape,
+                    modifier = Modifier.fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .clip(LevyraCardDesign.ThumbShape)
                         .clickable(onClick = { onSortExpanded(true) })
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxHeight().padding(horizontal = 14.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(7.dp)
                     ) {
@@ -230,9 +203,9 @@ internal fun LibraryToolbar(
                         Text(
                             text = sort.libraryLabel(strings),
                             color = LevyraText,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
+                            style = LevyraType.caption,
+                            modifier = Modifier.weight(1f),
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
@@ -257,18 +230,18 @@ internal fun LibraryToolbar(
                 }
             }
             Surface(
-                color = LevyraGlass,
-                shape = LibraryPillShape,
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                shape = LevyraCardDesign.ThumbShape,
                 modifier = Modifier
-                    .height(38.dp)
-                    .clip(LibraryPillShape)
+                    .heightIn(min = 48.dp)
+                    .clip(LevyraCardDesign.ThumbShape)
                     .clickable(onClick = onToggleDirection)
                     .semantics {
                         contentDescription = "${strings.librarySortDirection}: ${sort.directionLabel(direction, strings)}"
                     }
             ) {
                 Box(
-                    modifier = Modifier.size(38.dp),
+                    modifier = Modifier.size(48.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -314,36 +287,19 @@ internal fun LibrarySectionTitle(
     action: String? = null,
     onAction: (() -> Unit)? = null
 ) {
+    val colors = MaterialTheme.colorScheme
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(
-                text = title,
-                color = LevyraText,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = (-0.3).sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.semantics { heading() }
-            )
-            if (detail.isNotBlank()) {
-                Text(
-                    text = detail,
-                    color = LevyraMuted,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(title, color = colors.onSurface, style = LevyraType.sectionTitle, softWrap = true, modifier = Modifier.semantics { heading() })
+            if (detail.isNotBlank()) Text(detail, color = colors.onSurfaceVariant, style = LevyraType.caption, softWrap = true)
         }
         if (action != null && onAction != null) {
             TextButton(onClick = onAction) {
-                Text(action, color = LevyraCyan, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                Text(action, color = colors.onSurfaceVariant, style = LevyraType.caption)
             }
         }
     }
@@ -361,6 +317,7 @@ internal fun SmartCollectionGrid(
     val strings = LocalLevyraStrings.current
     val cards = listOf(
         SmartCollection(
+            id = SMART_COLLECTION_FAVORITES,
             title = strings.favoritesPlain,
             detail = strings.formatTrackCount(favorites.size),
             icon = Icons.Rounded.Favorite,
@@ -369,6 +326,7 @@ internal fun SmartCollectionGrid(
             onClick = { onOpenCollection(SMART_COLLECTION_FAVORITES) }
         ),
         SmartCollection(
+            id = "offline",
             title = strings.offline,
             detail = strings.formatTrackCount(downloads.size),
             icon = Icons.Rounded.DownloadDone,
@@ -378,6 +336,7 @@ internal fun SmartCollectionGrid(
             onClick = onOpenOffline
         ),
         SmartCollection(
+            id = SMART_COLLECTION_RECENT,
             title = strings.recent,
             detail = strings.formatTrackCount(recent.size),
             icon = Icons.Rounded.History,
@@ -386,6 +345,7 @@ internal fun SmartCollectionGrid(
             onClick = { onOpenCollection(SMART_COLLECTION_RECENT) }
         ),
         SmartCollection(
+            id = SMART_COLLECTION_MOST_PLAYED,
             title = strings.pulsePlays,
             detail = strings.formatTrackCount(mostPlayed.size),
             icon = Icons.Rounded.Replay,
@@ -395,22 +355,21 @@ internal fun SmartCollectionGrid(
         )
     )
 
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        cards.chunked(2).forEach { rowCards ->
-            Row(
-                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                rowCards.forEach { card ->
-                    SmartCollectionCard(card, Modifier.weight(1f).fillMaxHeight())
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        SmartCollectionCard(cards.first(), Modifier.fillMaxWidth(), featured = true)
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val cardWidth = (maxWidth * 0.52f).coerceAtMost(184.dp)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(items = cards.drop(1), key = { it.id }, contentType = { "library-collection" }) { card ->
+                    SmartCollectionCard(card, Modifier.width(cardWidth))
                 }
-                if (rowCards.size == 1) Spacer(Modifier.weight(1f))
             }
         }
     }
 }
 
 private data class SmartCollection(
+    val id: String,
     val title: String,
     val detail: String,
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -722,76 +681,36 @@ private fun SmartCollectionAction(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun SmartCollectionCard(card: SmartCollection, modifier: Modifier = Modifier) {
+private fun SmartCollectionCard(card: SmartCollection, modifier: Modifier = Modifier, featured: Boolean = false) {
     val artworkUrl = card.tracks.firstOrNull()?.let { track ->
         track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }
     }.orEmpty()
-
-    val shape = RoundedCornerShape(20.dp)
-    Surface(
-        color = LevyraPanel.copy(alpha = 0.88f),
-        shape = shape,
-        border = BorderStroke(1.dp, card.accent.copy(alpha = 0.20f)),
-        modifier = modifier
-            .heightIn(min = 96.dp)
-            .clip(shape)
-            .combinedClickable(
-                enabled = card.tracks.isNotEmpty() || card.enabledWhenEmpty,
-                onClick = card.onClick
-            )
+    val scrim = remember {
+        Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.62f), Color.Black.copy(alpha = 0.88f)))
+    }
+    val enabled = card.tracks.isNotEmpty() || card.enabledWhenEmpty
+    Box(
+        modifier = modifier.heightIn(min = if (featured) 196.dp else 156.dp)
+            .clip(LevyraCardDesign.SurfaceShape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .semantics(mergeDescendants = true) {}
+            .levyraPressable(onClick = card.onClick, enabled = enabled, role = Role.Button, pressedScale = LevyraPressScale.Tile)
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize().background(
-                Brush.linearGradient(listOf(card.accent.copy(alpha = 0.16f), LevyraPanel.copy(alpha = 0.88f)))
-            )
+        if (artworkUrl.isNotBlank()) {
+            AsyncImage(model = artworkUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.matchParentSize())
+        }
+        Box(Modifier.matchParentSize().background(scrim))
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(if (featured) 48.dp else 24.dp)
         ) {
-            if (artworkUrl.isNotBlank()) {
-                AsyncImage(
-                    model = artworkUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.align(Alignment.CenterEnd).width(66.dp).fillMaxHeight()
-                        .clip(RoundedCornerShape(topEnd = 20.dp, bottomEnd = 20.dp))
-                )
-                Box(
-                    modifier = Modifier.align(Alignment.CenterEnd).width(78.dp).fillMaxHeight().background(
-                        Brush.horizontalGradient(listOf(LevyraPanel.copy(alpha = 0.96f), LevyraPanel.copy(alpha = 0f)))
-                    )
-                )
+            Surface(color = Color.Black.copy(alpha = 0.45f), shape = CircleShape) {
+                Icon(card.icon, contentDescription = null, tint = if (featured) card.accent else Color.White, modifier = Modifier.padding(10.dp).size(22.dp))
             }
-            Column(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 13.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.SpaceBetween
-            ) {
-                Surface(color = card.accent.copy(alpha = 0.15f), shape = CircleShape) {
-                    Icon(
-                        imageVector = card.icon,
-                        contentDescription = null,
-                        tint = card.accent,
-                        modifier = Modifier.padding(7.dp).size(18.dp)
-                    )
-                }
-                Column {
-                    Text(
-                        text = card.title,
-                        color = LevyraText,
-                        fontSize = 13.sp,
-                        lineHeight = LevyraTypeRhythm.lineHeight(13.sp),
-                        fontWeight = FontWeight.Black,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = card.detail,
-                        color = LevyraMuted,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(card.title, color = Color.White, style = if (featured) LevyraType.screenTitle else LevyraType.contentTitle, softWrap = true)
+                Text(card.detail, color = Color.White.copy(alpha = 0.78f), style = LevyraType.caption, softWrap = true)
             }
         }
     }
@@ -829,54 +748,39 @@ internal fun LibraryListeningDashboard(
 
     Surface(
         modifier = Modifier.fillMaxWidth().then(openSurface),
-        color = LevyraPanel.copy(alpha = 0.97f),
-        border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.16f)),
-        shape = RoundedCornerShape(24.dp)
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = LevyraCardDesign.SurfaceShape
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(
-                    Brush.linearGradient(
-                        listOf(
-                            LevyraCyan.copy(alpha = 0.09f),
-                            LevyraPanel.copy(alpha = 0.98f),
-                            LevyraViolet.copy(alpha = 0.08f)
-                        )
-                    )
-                )
-                .padding(horizontal = 18.dp, vertical = 16.dp)
+                .padding(20.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.Top,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
                             text = "${number.format(weekMinutes)} ${strings.pulseMinuteShort}",
-                            color = LevyraText,
-                            fontSize = 30.sp,
-                            lineHeight = LevyraTypeRhythm.lineHeight(30.sp),
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = (-0.7).sp
+                            color = MaterialTheme.colorScheme.onSurface,
+                            style = LevyraType.heroTitle
                         )
                         Text(
                             text = strings.pulseWeek,
-                            color = LevyraMuted,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = LevyraType.metadata
                         )
                     }
 
                     Surface(
                         color = LevyraCyan.copy(alpha = 0.12f),
-                        border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.24f)),
                         shape = CircleShape
                     ) {
                         Box(
-                            modifier = Modifier.size(38.dp),
+                            modifier = Modifier.size(48.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -895,26 +799,23 @@ internal fun LibraryListeningDashboard(
                     durationLabel = { strings.formatLibraryDuration(it) }
                 )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     PulsePreviewInsight(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         icon = Icons.Rounded.LocalFireDepartment,
                         label = strings.pulseStreak,
                         value = number.format(pulse.streakDays),
                         accent = LevyraViolet
                     )
                     PulsePreviewInsight(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         icon = Icons.Rounded.Schedule,
                         label = strings.pulsePeakHour,
                         value = peakHour,
                         accent = LevyraCyan
                     )
                     PulsePreviewInsight(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         icon = Icons.Rounded.Person,
                         label = strings.pulseTopArtists,
                         value = topArtist,
@@ -934,38 +835,17 @@ private fun PulsePreviewInsight(
     value: String,
     accent: Color
 ) {
-    Surface(
+    Row(
         modifier = modifier,
-        color = Color.White.copy(alpha = 0.035f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.055f)),
-        shape = RoundedCornerShape(15.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
-            verticalArrangement = Arrangement.spacedBy(5.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = accent,
-                modifier = Modifier.size(15.dp)
-            )
-            Text(
-                text = label,
-                color = LevyraMuted,
-                fontSize = 8.5.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = value,
-                color = LevyraText,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Black,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+        Surface(color = accent.copy(alpha = 0.12f), shape = LevyraCardDesign.ThumbShape) {
+            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.padding(10.dp).size(20.dp))
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = LevyraType.caption)
+            Text(value, color = MaterialTheme.colorScheme.onSurface, style = LevyraType.contentTitle, softWrap = true)
         }
     }
 }
@@ -1043,8 +923,6 @@ private fun LibraryInsightMetric(
     }
 }
 
-private const val WEEK_CHART_MIN_PEAK_MS = 5L * 60L * 1000L
-
 private val LibraryRingPalette = listOf(
     LevyraCyan,
     LevyraViolet,
@@ -1062,82 +940,80 @@ private fun LibraryWeekChart(
     locale: Locale,
     durationLabel: (Long) -> String
 ) {
-    val week = pulse.week.takeLast(7)
-
-    if (week.isEmpty()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().height(82.dp),
-            horizontalArrangement = Arrangement.spacedBy(7.dp),
-            verticalAlignment = Alignment.Bottom
-        ) {
-            repeat(7) {
-                Box(
-                    modifier = Modifier.weight(1f).height(8.dp).clip(RoundedCornerShape(6.dp))
-                        .background(Color.White.copy(alpha = 0.07f))
-                )
-            }
-        }
-        return
-    }
-
-    val fractions = remember(week) {
-        ListeningChartProjection.weekFractions(week, WEEK_CHART_MIN_PEAK_MS)
-    }
-    val peakIndex = remember(week) { ListeningChartProjection.peakDayIndex(week) }
-    val today = remember(week) { week.lastIndex }
-    val reveal by animateFloatAsState(
-        targetValue = if (fractions.any { it > 0f }) 1f else 0f,
-        animationSpec = tween(durationMillis = 560, easing = FastOutSlowInEasing),
-        label = "library-week-reveal"
-    )
-
-    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth().height(76.dp),
-            horizontalArrangement = Arrangement.spacedBy(7.dp),
-            verticalAlignment = Alignment.Bottom
-        ) {
-            week.forEachIndexed { index, day ->
-                val active = day.listenedMs > 0L
-                val fraction = (fractions[index] * reveal).coerceIn(0.10f, 1f)
-                val dayName = day.date.dayOfWeek.getDisplayName(DayTextStyle.FULL, locale)
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(fraction)
-                        .clip(RoundedCornerShape(topStart = 7.dp, topEnd = 7.dp, bottomStart = 3.dp, bottomEnd = 3.dp))
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    weekBarTop(index, peakIndex, today).copy(alpha = if (active) 0.95f else 0.13f),
-                                    LevyraViolet.copy(alpha = if (active) 0.70f else 0.08f)
-                                )
-                            )
-                        )
-                        .semantics {
-                            contentDescription = dayName + " · " + durationLabel(day.listenedMs)
-                        }
-                )
-            }
-        }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-            week.forEachIndexed { index, day ->
-                val label = day.date.dayOfWeek.getDisplayName(DayTextStyle.NARROW, locale).uppercase(locale)
+    val week = remember(pulse.week) { pulse.week.takeLast(7) }
+    val fractions = remember(week) { ListeningChartProjection.weekFractions(week, 1L) }
+    val today = week.lastIndex
+    val dateFormatter = remember(locale) { DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale) }
+    val colors = MaterialTheme.colorScheme
+    val gridColor = colors.outlineVariant.copy(alpha = 0.30f)
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (week.isNotEmpty()) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
                 Text(
-                    text = label,
-                    color = if (index == today) LevyraCyan else LevyraMuted,
-                    fontSize = 9.sp,
-                    fontWeight = if (index == today) FontWeight.SemiBold else FontWeight.Medium,
-                    textAlign = TextAlign.Center,
+                    week.first().date.format(dateFormatter) + " · " + week.last().date.format(dateFormatter),
+                    color = colors.onSurfaceVariant, style = LevyraType.caption,
                     modifier = Modifier.weight(1f)
                 )
+                Text(
+                    durationLabel(week.maxOf { it.listenedMs }),
+                    color = colors.onSurfaceVariant, style = LevyraType.caption, textAlign = TextAlign.End
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().height(132.dp).drawBehind {
+                for (line in 0..2) {
+                    val y = size.height * line / 2f
+                    drawLine(gridColor, Offset(0f, y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
+                }
+            },
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            if (week.isEmpty()) {
+                repeat(7) {
+                    Box(Modifier.weight(1f).height(4.dp).clip(LevyraCardDesign.ThumbShape).background(colors.surfaceContainerHighest))
+                }
+            } else {
+                week.forEachIndexed { index, day ->
+                    Box(
+                        modifier = Modifier.weight(1f).fillMaxHeight().semantics {
+                            contentDescription = day.date.toString() + " · " +
+                                day.date.dayOfWeek.getDisplayName(DayTextStyle.FULL, locale) + " · " + durationLabel(day.listenedMs)
+                        },
+                        contentAlignment = Alignment.BottomCenter
+                    ) {
+                        Box(
+                            Modifier.width(22.dp).fillMaxHeight(fractions[index].coerceAtLeast(0.025f))
+                                .clip(RoundedCornerShape(11.dp))
+                                .background(
+                                    if (day.listenedMs == 0L) colors.outlineVariant
+                                    else if (index == today) colors.primary
+                                    else colors.onSurface.copy(alpha = 0.48f)
+                                )
+                        )
+                    }
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            week.forEachIndexed { index, day ->
+                Column(
+                    Modifier.weight(1f).clip(LevyraCardDesign.ThumbShape)
+                        .background(if (index == today) colors.primaryContainer else Color.Transparent).padding(vertical = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        day.date.dayOfWeek.getDisplayName(DayTextStyle.NARROW, locale),
+                        color = if (index == today) colors.onPrimaryContainer else colors.onSurfaceVariant,
+                        style = LevyraType.caption, textAlign = TextAlign.Center
+                    )
+                    Text(
+                        day.date.dayOfMonth.toString(), color = if (index == today) colors.onPrimaryContainer else colors.onSurfaceVariant,
+                        style = LevyraType.caption, textAlign = TextAlign.Center
+                    )
+                }
             }
         }
     }
-}
-
-private fun weekBarTop(index: Int, peakIndex: Int, todayIndex: Int): Color = when (index) {
-    peakIndex -> LevyraPink
-    todayIndex -> LevyraCyan
-    else -> LevyraCyan.copy(alpha = 0.72f)
 }
