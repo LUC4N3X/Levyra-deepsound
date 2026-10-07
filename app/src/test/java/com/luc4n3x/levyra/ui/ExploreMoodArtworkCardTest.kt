@@ -30,6 +30,36 @@ class ExploreMoodArtworkCardTest {
     }
 
     @Test
+    fun zonePortraitWindowsNeverShareAnArtist() {
+        val zoneIds = listOf(
+            "nuove-uscite",
+            "local-wave",
+            "rap-drill",
+            "elettronica",
+            "pop-global",
+            "rnb-soul",
+            "rock-alt",
+            "latino",
+            "lofi-chill",
+            "anime-jpop"
+        )
+        val languages = listOf("en", "it", "es", "fr", "de", "ja", "ko", "pt")
+
+        languages.forEach { language ->
+            (0L until 12L).forEach { bucket ->
+                val windows = zoneIds.map { zoneId ->
+                    exploreMoodPortraitWindow(zoneId, zoneIds, language, bucket)
+                }
+                windows.forEachIndexed { index, window ->
+                    assertTrue("${zoneIds[index]} $language $bucket", window.isNotEmpty())
+                }
+                val artists = windows.flatten().map { it.lowercase() }
+                assertEquals("$language $bucket", artists.size, artists.toSet().size)
+            }
+        }
+    }
+
+    @Test
     fun portraitChoiceRotatesBetweenWindows() {
         val first = exploreMoodPortraitArtist("pop-global", "it", 3L)
         val next = exploreMoodPortraitArtist("pop-global", "it", 4L)
