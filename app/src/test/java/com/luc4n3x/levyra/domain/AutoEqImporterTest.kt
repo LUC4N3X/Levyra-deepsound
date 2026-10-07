@@ -7,6 +7,39 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AutoEqImporterTest {
+    @Test
+    fun `imports result csv using correction not measured response`() {
+        val profile = success("frequency,raw,equalization\n31,80,-3\n16000,90,-3")
+        assertEquals(List(10) { -25 }, profile.bandLevels)
+    }
+
+    @Test
+    fun `raw measurement csv is not an equalizer preset`() {
+        assertTrue(AutoEqImporter.parse("frequency,raw\n31,80\n16000,90") is AutoEqImporter.ParseResult.Error)
+    }
+
+    @Test
+    fun `imports utf8 bom graphic eq`() {
+        assertEquals(List(10) { 0 }, success("\uFEFFGraphicEQ: 31 0; 16000 0").bandLevels)
+    }
+
+    @Test
+    fun `csv correction provides headroom and reports clipping to engine limits`() {
+        val profile = success("frequency,raw,equalization\n31,80,18\n16000,90,18")
+        assertEquals(-12f, profile.preampDb)
+        assertTrue(profile.clamped)
+    }
+
+    @Test
+    fun `csv rejects malformed rows non finite values and excessive points`() {
+        val header = "frequency,raw,equalization\n"
+        for (rows in listOf("31,80,NaN\n62,80,0", "31,80\n62,80,0", "0,80,0\n62,80,0")) {
+            assertTrue(AutoEqImporter.parse(header + rows) is AutoEqImporter.ParseResult.Error)
+        }
+        val rows = (1..4097).joinToString("\n") { "$it,80,0" }
+        assertEquals(AutoEqImporter.ParseError.TOO_MANY_POINTS, error(header + rows))
+    }
+
 
     private fun success(text: String): AutoEqImporter.ImportedProfile {
         val result = AutoEqImporter.parse(text)

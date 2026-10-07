@@ -30,12 +30,13 @@ class AutoEqCatalogControllerTest {
         assertEquals(AutoEqCatalogStatus.LOADING, controller.state.value.status)
 
         source.catalogResult.complete(catalog)
+        assertEquals(listOf("Sennheiser HD 600", "Sony WH-1000XM4"), controller.state.value.results.map { it.name })
         controller.updateQuery("sony")
 
         assertEquals(AutoEqCatalogStatus.READY, controller.state.value.status)
         assertEquals(listOf("Sony WH-1000XM4"), controller.state.value.results.map { it.name })
         controller.updateQuery(" ")
-        assertTrue(controller.state.value.results.isEmpty())
+        assertEquals(2, controller.state.value.results.size)
     }
 
     @Test
