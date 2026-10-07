@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -95,6 +96,7 @@ import com.luc4n3x.levyra.domain.visibleDownloadBatches
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.formatLibraryBytes
 import com.luc4n3x.levyra.ui.i18n.playlistProCopy
+import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraGlass
 import com.luc4n3x.levyra.ui.theme.LevyraInk
@@ -573,9 +575,9 @@ internal fun LevyraLibraryScreen(
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                     singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
+                    shape = LevyraCardDesign.SurfaceShape,
                     textStyle = MaterialTheme.typography.bodyMedium.copy(
                         color = LevyraText,
                         fontWeight = FontWeight.Medium
@@ -583,8 +585,8 @@ internal fun LevyraLibraryScreen(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = LevyraText,
                         unfocusedTextColor = LevyraText,
-                        focusedContainerColor = LevyraGlass,
-                        unfocusedContainerColor = LevyraGlass,
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
                         focusedBorderColor = LevyraCyan.copy(alpha = 0.45f),
                         unfocusedBorderColor = Color.Transparent,
                         cursorColor = LevyraCyan,
@@ -673,6 +675,27 @@ internal fun LevyraLibraryScreen(
                             onOpenOffline = { switchCategory(LibraryCategory.Offline) }
                         )
                     }
+                    if (visiblePlaylists.isNotEmpty()) {
+                        item(key = "overview-playlists-title") {
+                            LibrarySectionTitle(
+                                title = strings.playlists,
+                                detail = strings.personalPlaylists,
+                                action = strings.showAll,
+                                onAction = { switchCategory(LibraryCategory.Playlists) }
+                            )
+                        }
+                        item(key = "overview-playlist-shelf") {
+                            LibraryPlaylistShelf(
+                                playlists = visiblePlaylists.take(6),
+                                onOpen = { viewModel.openPlaylist(it.id) },
+                                onSelect = {
+                                    switchCategory(LibraryCategory.Playlists)
+                                    selectedKeys = setOf("playlist:${it.id}")
+                                },
+                                onPlay = { viewModel.playPlaylist(it.id) }
+                            )
+                        }
+                    }
                     item(key = "overview-insights-title") {
                         LibrarySectionTitle(
                             title = strings.pulseTitle,
@@ -684,29 +707,6 @@ internal fun LevyraLibraryScreen(
                             pulse = state.listeningPulse,
                             onOpenInsights = viewModel::openListeningInsights
                         )
-                    }
-                    if (visiblePlaylists.isNotEmpty()) {
-                        item(key = "overview-playlists-title") {
-                            LibrarySectionTitle(
-                                title = strings.playlists,
-                                detail = strings.personalPlaylists,
-                                action = strings.showAll,
-                                onAction = { switchCategory(LibraryCategory.Playlists) }
-                            )
-                        }
-                        items(visiblePlaylists.take(3), key = { "overview-playlist-${it.id}" }) { playlist ->
-                            LibraryPlaylistRow(
-                                playlist = playlist,
-                                selected = false,
-                                selectionActive = false,
-                                onClick = { viewModel.openPlaylist(playlist.id) },
-                                onLongClick = {
-                                    switchCategory(LibraryCategory.Playlists)
-                                    selectedKeys = setOf("playlist:${playlist.id}")
-                                },
-                                onPlay = { viewModel.playPlaylist(playlist.id) }
-                            )
-                        }
                     }
                 }
 
