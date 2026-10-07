@@ -8202,6 +8202,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         exportTracksSequential(tracks, if (tracks.size == 1) "Brano condiviso" else "Contenuto condiviso")
     }
 
+    fun openExploreZone(zone: ExploreZone) {
+        selectExploreZone(zone)
+        _state.update { current -> current.copy(exploreOpenRequest = zone.id) }
+        selectTab(LevyraTab.Explore)
+    }
+
+    fun consumeExploreOpenRequest() {
+        _state.update { current -> current.copy(exploreOpenRequest = null) }
+    }
+
     fun selectTab(tab: LevyraTab) {
         moveToTab(tab, rememberCurrent = true)
         if (tab == LevyraTab.Player) {

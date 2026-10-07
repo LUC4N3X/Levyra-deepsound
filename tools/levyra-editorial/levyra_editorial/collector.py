@@ -5,6 +5,7 @@ import logging
 import re
 from collections.abc import Mapping
 from datetime import UTC, datetime
+from html import unescape
 from pathlib import Path
 from typing import Any, Protocol
 from urllib.parse import urlparse
@@ -17,6 +18,11 @@ CONFIG_SCHEMA_VERSION = 1
 COLLECTION_ID_PATTERN = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}")
 SPOTIFY_CANVAS_CATALOG_VERSION = 1
 SPOTIFY_CANVAS_HOST = "canvaz.scdn.co"
+HTML_TAG_PATTERN = re.compile(r"<[^>]*>")
+SPOTIFY_SOURCE_REFERENCE_PATTERN = re.compile(
+    r"(?:https?://open\.spotify\.com/\S+|spotify:(?:track|album|playlist):[A-Za-z0-9]+)",
+    re.IGNORECASE,
+)
 
 
 class EditorialClient(Protocol):
@@ -234,7 +240,7 @@ def _collect_configured_collection(
                 kind=str(item["kind"]).lower(),
                 market=market,
                 title=str(item.get("title") or metadata.get("name") or collection_id).strip(),
-                description=_clean_text(str(metadata.get("description") or "")),
+                description=clean_public_text(str(metadata.get("description") or "")),
                 source_id=playlist_id,
                 source_url=_nested_string(metadata, "external_urls", "spotify"),
                 artwork_url=_first_image_url(metadata.get("images")),
@@ -603,8 +609,10 @@ def _safe_youtube_music_match(value: Any) -> dict[str, Any] | None:
     return output
 
 
-def _clean_text(value: str) -> str:
-    return " ".join(value.split())[:500]
+def clean_public_text(value: str) -> str:
+    without_markup = HTML_TAG_PATTERN.sub(" ", unescape(value))
+    without_source_references = SPOTIFY_SOURCE_REFERENCE_PATTERN.sub(" ", without_markup)
+    return " ".join(without_source_references.split())[:500]
 
 
 def _first_image_url(value: Any) -> str | None:

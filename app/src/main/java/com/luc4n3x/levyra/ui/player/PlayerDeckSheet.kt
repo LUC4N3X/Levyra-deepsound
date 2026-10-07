@@ -1,5 +1,13 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.components.carouselDepthEnabled
+import com.luc4n3x.levyra.ui.components.levyraCarouselDepth
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -85,6 +93,7 @@ internal fun PlayerDeckSheet(
 ) {
     val strings = LocalLevyraStrings.current
     val listState = rememberLazyListState()
+    val depthEnabled = carouselDepthEnabled()
     LaunchedEffect(Unit) {
         val index = PlayerDeckOrder.indexOf(selected)
         if (index > 0) listState.scrollToItem(index)
@@ -122,6 +131,7 @@ internal fun PlayerDeckSheet(
             }
             LazyRow(
                 state = listState,
+                flingBehavior = rememberSnapFlingBehavior(listState),
                 contentPadding = PaddingValues(horizontal = LevyraPlayerDesign.Gutter),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier
@@ -140,9 +150,26 @@ internal fun PlayerDeckSheet(
                         track = track,
                         artworkUrl = artworkUrl,
                         surfaces = surfaces,
-                        onClick = { onSelect(mode) }
+                        onClick = { onSelect(mode) },
+                        modifier = Modifier.levyraCarouselDepth(listState, mode.name, depthEnabled)
                     )
                 }
+            }
+            AnimatedContent(
+                targetState = selected,
+                transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) },
+                label = "player-deck-hint",
+                modifier = Modifier.padding(horizontal = LevyraPlayerDesign.Gutter)
+            ) { mode ->
+                Text(
+                    text = playerDeckHint(mode, strings),
+                    color = surfaces.contentMuted,
+                    fontSize = 14.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(14.sp),
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 2,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
             Text(
                 text = strings.playerDeckLandscapeNote,
@@ -170,7 +197,8 @@ private fun PlayerDeckCard(
     track: Track,
     artworkUrl: String,
     surfaces: PlayerSurfaceTokens,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val lift by animateFloatAsState(
         targetValue = if (spec.selected) 1f else 0f,
@@ -178,7 +206,7 @@ private fun PlayerDeckCard(
         label = "player-deck-lift"
     )
     Column(
-        modifier = Modifier
+        modifier = modifier
             .width(DeckCardWidth)
             .clip(RoundedCornerShape(DeckPreviewCorner))
             .selectable(
