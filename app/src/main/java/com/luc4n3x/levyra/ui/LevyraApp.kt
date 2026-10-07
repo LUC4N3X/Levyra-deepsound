@@ -9275,6 +9275,7 @@ private fun HomeScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         LevyraHomeAtmosphere(
             isLight = LevyraIsLight,
+            accent = rememberNowPlayingAccent(state.currentTrack, LevyraCyan),
             modifier = Modifier.fillMaxSize()
         )
         LazyColumn(
