@@ -173,13 +173,28 @@ internal fun mergeSpotifyAndYoutubeSongs(existing: List<Track>, incoming: List<T
     val availableYoutubeIndices = ordered.indices
         .filter { searchTrackKind(ordered[it]) == SearchTrackKind.Youtube }
         .toMutableSet()
+    val availableLocalIndices = ordered.indices
+        .filter { isLocalSearchTrack(ordered[it]) }
+        .toMutableSet()
     val youtubeIndexById = availableYoutubeIndices
         .associateBy { ordered[it].id.trim() }
     val matchCache = SpotifyYouTubeMatchCache.get()
     val youtubeBySpotifyIndex = HashMap<Int, Int>()
+    val localBySpotifyIndex = HashMap<Int, Int>()
 
     for (spotifyIndex in spotifyIndices) {
         val spotifyTrack = ordered[spotifyIndex]
+        val metadataKey = searchSongMetadataKey(spotifyTrack)
+        if (metadataKey.isNotBlank()) {
+            val localIndex = availableLocalIndices.firstOrNull { localIndex ->
+                searchSongMetadataKey(ordered[localIndex]) == metadataKey
+            }
+            if (localIndex != null) {
+                localBySpotifyIndex[spotifyIndex] = localIndex
+                availableLocalIndices.remove(localIndex)
+            }
+        }
+
         val candidates = availableYoutubeIndices.map { ordered[it] }
         val matched = SpotifyYouTubeMatcher.findBestMatch(spotifyTrack, candidates)?.candidate
         val cachedVideoId = spotifyTrack.id
@@ -199,23 +214,37 @@ internal fun mergeSpotifyAndYoutubeSongs(existing: List<Track>, incoming: List<T
     }
 
     val spotifyIndexByYoutube = youtubeBySpotifyIndex.entries.associate { (spotify, youtube) -> youtube to spotify }
+    val spotifyIndexByLocal = localBySpotifyIndex.entries.associate { (spotify, local) -> local to spotify }
     val result = mutableListOf<Track>()
 
     for (index in ordered.indices) {
         val spotifyIndex = when {
-            index in youtubeBySpotifyIndex -> index
+            index in youtubeBySpotifyIndex || index in localBySpotifyIndex -> index
             index in spotifyIndexByYoutube -> spotifyIndexByYoutube.getValue(index)
+            index in spotifyIndexByLocal -> spotifyIndexByLocal.getValue(index)
             else -> null
         }
         if (spotifyIndex != null) {
-            val youtubeIndex = youtubeBySpotifyIndex.getValue(spotifyIndex)
-            if (index != minOf(spotifyIndex, youtubeIndex)) continue
-            val spotifyTrack = ordered[spotifyIndex]
-            val youtubeTrack = ordered[youtubeIndex]
-            if (spotifyTrack.id.startsWith("spotify:", ignoreCase = true)) {
-                matchCache.put(spotifyTrack.id, youtubeTrack)
+            val participantIndices = buildList {
+                add(spotifyIndex)
+                youtubeBySpotifyIndex[spotifyIndex]?.let(::add)
+                localBySpotifyIndex[spotifyIndex]?.let(::add)
             }
-            result.add(richerSong(spotifyTrack, youtubeTrack))
+            if (index != participantIndices.minOrNull()) continue
+
+            val spotifyTrack = ordered[spotifyIndex]
+            var combined = spotifyTrack
+            youtubeBySpotifyIndex[spotifyIndex]?.let { youtubeIndex ->
+                val youtubeTrack = ordered[youtubeIndex]
+                if (spotifyTrack.id.startsWith("spotify:", ignoreCase = true)) {
+                    matchCache.put(spotifyTrack.id, youtubeTrack)
+                }
+                combined = richerSong(combined, youtubeTrack)
+            }
+            localBySpotifyIndex[spotifyIndex]?.let { localIndex ->
+                combined = richerSong(combined, ordered[localIndex])
+            }
+            result.add(combined)
             continue
         }
 
@@ -282,17 +311,51 @@ private fun mergeComplementarySearchSongMetadata(songs: List<Track>): List<Track
     return merged.filterIndexed { index, _ -> index !in removed }
 }
 
+private fun hasSharedYoutubeIdentity(first: Track, second: Track): Boolean {
+    val firstIds = sequenceOf(first.id, first.counterpartVideoId, first.audioVideoId)
+        .filter(::isPlayableYoutubeId)
+        .toSet()
+    if (firstIds.isEmpty()) return false
+    return sequenceOf(second.id, second.counterpartVideoId, second.audioVideoId)
+        .filter(::isPlayableYoutubeId)
+        .any(firstIds::contains)
+}
+
+private fun sameSearchRecording(first: Track, second: Track): Boolean {
+    val firstIdentity = searchSongIdentityKey(first)
+    if (firstIdentity.isNotBlank() && firstIdentity == searchSongIdentityKey(second)) return true
+
+    val firstIsrc = first.isrc.trim().uppercase(Locale.ROOT)
+    val secondIsrc = second.isrc.trim().uppercase(Locale.ROOT)
+    if (firstIsrc.isNotBlank() && firstIsrc == secondIsrc) return true
+
+    if (hasSharedYoutubeIdentity(first, second)) return true
+
+    val firstMetadata = searchSongMetadataKey(first)
+    if (firstMetadata.isNotBlank() && firstMetadata == searchSongMetadataKey(second)) return true
+
+    if (areComplementarySearchSongResults(first, second)) return true
+
+    val firstSpotify = isSpotifySearchTrack(first)
+    val secondSpotify = isSpotifySearchTrack(second)
+    val firstYoutube = isYoutubeSearchTrack(first)
+    val secondYoutube = isYoutubeSearchTrack(second)
+    return when {
+        firstSpotify && secondYoutube ->
+            SpotifyYouTubeMatcher.scoreMatch(first, second) >= SpotifyYouTubeMatcher.DEFAULT_CONFIDENCE_THRESHOLD
+        secondSpotify && firstYoutube ->
+            SpotifyYouTubeMatcher.scoreMatch(second, first) >= SpotifyYouTubeMatcher.DEFAULT_CONFIDENCE_THRESHOLD
+        else -> false
+    }
+}
+
 private fun mergeTopResultDisplayDuplicates(tracks: List<Track>): List<Track> {
     if (tracks.size < 2) return tracks
     val merged = mutableListOf<Track>()
-    val slotByRecording = HashMap<String, Int>()
     tracks.forEach { candidate ->
-        val recordingKey = searchSongLooseMetadataKey(candidate)
-        val slot = recordingKey.takeIf(String::isNotBlank)?.let(slotByRecording::get)
-        if (slot == null) {
-            val index = merged.size
+        val slot = merged.indexOfFirst { existing -> sameSearchRecording(existing, candidate) }
+        if (slot < 0) {
             merged.add(candidate)
-            if (recordingKey.isNotBlank()) slotByRecording[recordingKey] = index
         } else {
             merged[slot] = richerSong(merged[slot], candidate)
         }
@@ -307,11 +370,8 @@ internal fun selectSearchTopResultTracks(
 ): List<Track> {
     val hero = topTrack ?: return emptyList()
     val merged = mergeTopResultDisplayDuplicates(deduplicateSearchSongs(listOf(hero) + songs))
-    val heroRecordingKey = searchSongLooseMetadataKey(hero)
     val resolvedHero = merged.firstOrNull { candidate ->
-        candidate.id == hero.id ||
-            candidate.counterpartVideoId == hero.id ||
-            (heroRecordingKey.isNotBlank() && searchSongLooseMetadataKey(candidate) == heroRecordingKey)
+        sameSearchRecording(hero, candidate)
     } ?: hero
     val heroArtist = primaryArtistSegment(resolvedHero.artist).ifBlank { resolvedHero.artist.trim() }
     val heroBrowseIds = resolvedHero.artistBrowseIds
@@ -350,21 +410,13 @@ internal fun filterSearchSongsExcludingTopResult(
         .mapNotNullTo(HashSet()) { track -> searchSongIdentityKey(track).takeIf(String::isNotBlank) }
     val topResultMetadataKeys = topResultTracks
         .mapNotNullTo(HashSet()) { track -> searchSongMetadataKey(track).takeIf(String::isNotBlank) }
-    val topResultRecordingKeys = topResultTracks
-        .asSequence()
-        .filter { track -> track.durationMs > 0L }
-        .map(::searchSongLooseMetadataKey)
-        .filter(String::isNotBlank)
-        .toHashSet()
 
     return songs.filterNot { song ->
         val identity = searchSongIdentityKey(song)
         val metadata = searchSongMetadataKey(song)
-        val recording = searchSongLooseMetadataKey(song)
         identity in topResultIds ||
             (metadata.isNotBlank() && metadata in topResultMetadataKeys) ||
-            (recording.isNotBlank() && recording in topResultRecordingKeys) ||
-            topResultTracks.any { topTrack -> areComplementarySearchSongResults(song, topTrack) }
+            topResultTracks.any { topTrack -> sameSearchRecording(song, topTrack) }
     }
 }
 
@@ -525,7 +577,8 @@ internal fun richerSong(current: Track, candidate: Track): Track {
         explicit = current.explicit || candidate.explicit,
         source = when {
             isLocalSearchTrack(playbackDonor) -> playbackDonor.source
-            isAnySpotify -> "spotify_youtube"
+            isAnySpotify && videoId.isNotBlank() -> "spotify_youtube"
+            isAnySpotify -> "spotify"
             else -> current.source.ifBlank { candidate.source }
         },
         metadataProvider = if (isAnySpotify) "spotify" else current.metadataProvider.ifBlank { candidate.metadataProvider },
