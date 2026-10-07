@@ -8,12 +8,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import com.luc4n3x.levyra.data.ArtworkPaletteCache
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
 import com.luc4n3x.levyra.ui.harmonizePlayerAccents
+import com.materialkolor.hct.Hct
 
 const val LevyraNowPlayingAccentDurationMs: Int = 620
+
+private const val NowPlayingAccentMinimumChroma = 16.0
 
 @Composable
 fun rememberNowPlayingAccent(track: Track?, fallback: Color): Color {
@@ -52,5 +56,8 @@ private fun resolveNowPlayingAccent(track: Track?, fallback: Color): Color {
     val start = cached?.start ?: track.accentStart
     val end = cached?.end ?: track.accentEnd
     if (start == 0 && end == 0) return fallback
-    return harmonizePlayerAccents(Color(start), Color(end)).primary
+    return nowPlayingAccentOrFallback(harmonizePlayerAccents(Color(start), Color(end)).primary, fallback)
 }
+
+internal fun nowPlayingAccentOrFallback(candidate: Color, fallback: Color): Color =
+    if (Hct.fromInt(candidate.toArgb()).chroma < NowPlayingAccentMinimumChroma) fallback else candidate
