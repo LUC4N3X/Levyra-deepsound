@@ -133,7 +133,6 @@ import com.luc4n3x.levyra.ui.media.immersiveHeroHeight
 import com.luc4n3x.levyra.ui.media.immersiveMediaColors
 import com.luc4n3x.levyra.ui.media.immersiveMediaGutter
 import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
-import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import java.util.Locale
 
 private val playlistSelectionSaver = listSaver<Set<String>, String>(
