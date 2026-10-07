@@ -82,7 +82,10 @@ class FakeSpotify:
     def get_playlist_metadata(self, playlist_id: str) -> dict:
         return {
             "name": "Spotify Editorial",
-            "description": "Official Spotify selection",
+            "description": (
+                'Official <a href="spotify:playlist:privatePlaylist123">Spotify selection</a> '
+                "from https://open.spotify.com/playlist/privatePlaylist123"
+            ),
             "images": [{"url": "https://i.scdn.co/image/category-cover"}],
             "snapshot_id": "private-snapshot",
             "tracks": {"total": 123},
@@ -131,6 +134,7 @@ def test_spotify_explore_collection_is_sanitized_and_keyed_by_youtube_params(
     assert public["kind"] == "mood"
     assert public["youtubeParams"] == "opaque/+=_"
     assert public["sectionIndex"] == 0
+    assert public["description"] == "Official Spotify selection from"
     assert public["artworkUrl"] == "https://i.scdn.co/image/category-cover"
     assert public["totalSourceItems"] == 123
     assert public["tracks"][0]["album"]["name"] == "Real Album"
@@ -138,6 +142,7 @@ def test_spotify_explore_collection_is_sanitized_and_keyed_by_youtube_params(
 
     serialized = json.dumps(public).lower()
     assert "open.spotify.com" not in serialized
+    assert "spotify:playlist" not in serialized
     assert "spotify:track" not in serialized
     assert "privatesnapshot" not in serialized
     assert "artistprivate" not in serialized

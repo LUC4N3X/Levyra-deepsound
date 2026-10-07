@@ -74,6 +74,8 @@ import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.ui.components.carouselDepthEnabled
+import com.luc4n3x.levyra.ui.components.levyraCarouselDepth
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraBlue
@@ -402,7 +404,10 @@ private fun LazyListScope.exploreFeaturedItems(
         ExploreGenreSectionHeader(strings.popularTracks)
     }
     item(key = "explore-genre-popular") {
+        val featuredState = rememberLazyListState()
+        val featuredDepth = carouselDepthEnabled()
         LazyRow(
+            state = featuredState,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(end = 4.dp)
         ) {
@@ -413,11 +418,19 @@ private fun LazyListScope.exploreFeaturedItems(
                 LaunchedEffect(track.id) {
                     onRequestTrackArtwork(track)
                 }
-                ExploreGenreTrackCard(
-                    track = track,
-                    isCurrent = track.id == currentTrackId,
-                    onClick = { onPlayTrack(track) }
-                )
+                Box(
+                    modifier = Modifier.levyraCarouselDepth(
+                        featuredState,
+                        "explore-featured-${track.id}",
+                        featuredDepth
+                    )
+                ) {
+                    ExploreGenreTrackCard(
+                        track = track,
+                        isCurrent = track.id == currentTrackId,
+                        onClick = { onPlayTrack(track) }
+                    )
+                }
             }
         }
     }
@@ -434,7 +447,10 @@ private fun LazyListScope.exploreArtistItems(
         ExploreGenreSectionHeader(strings.artists)
     }
     item(key = "explore-genre-artists") {
+        val artistState = rememberLazyListState()
+        val artistDepth = carouselDepthEnabled()
         LazyRow(
+            state = artistState,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             contentPadding = PaddingValues(end = 4.dp)
         ) {
@@ -445,10 +461,18 @@ private fun LazyListScope.exploreArtistItems(
                 LaunchedEffect(artist.track.id) {
                     onRequestTrackArtwork(artist.track)
                 }
-                ExploreGenreArtistCard(
-                    artist = artist,
-                    onClick = { onPlayTrack(artist.track) }
-                )
+                Box(
+                    modifier = Modifier.levyraCarouselDepth(
+                        artistState,
+                        "explore-artist-${artist.key}",
+                        artistDepth
+                    )
+                ) {
+                    ExploreGenreArtistCard(
+                        artist = artist,
+                        onClick = { onPlayTrack(artist.track) }
+                    )
+                }
             }
         }
     }
@@ -465,7 +489,10 @@ private fun LazyListScope.exploreAlbumItems(
         ExploreGenreSectionHeader(strings.albumsPlain)
     }
     item(key = "explore-genre-albums") {
+        val albumState = rememberLazyListState()
+        val albumDepth = carouselDepthEnabled()
         LazyRow(
+            state = albumState,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(end = 4.dp)
         ) {
@@ -476,10 +503,18 @@ private fun LazyListScope.exploreAlbumItems(
                 LaunchedEffect(album.track.id) {
                     onRequestTrackArtwork(album.track)
                 }
-                ExploreGenreAlbumCard(
-                    album = album,
-                    onClick = { onPlayTrack(album.track) }
-                )
+                Box(
+                    modifier = Modifier.levyraCarouselDepth(
+                        albumState,
+                        "explore-album-${album.key}",
+                        albumDepth
+                    )
+                ) {
+                    ExploreGenreAlbumCard(
+                        album = album,
+                        onClick = { onPlayTrack(album.track) }
+                    )
+                }
             }
         }
     }
