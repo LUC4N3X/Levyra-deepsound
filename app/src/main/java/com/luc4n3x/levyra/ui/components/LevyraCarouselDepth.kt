@@ -1,14 +1,17 @@
 package com.luc4n3x.levyra.ui.components
 
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
+import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
 import kotlin.math.abs
 
-private const val CarouselDepthMinScale = 0.9f
-private const val CarouselDepthMaxTilt = 9f
-private const val CarouselDepthMinAlpha = 0.72f
+private const val CarouselDepthMinScale = 0.94f
+private const val CarouselDepthMaxTilt = 5f
+private const val CarouselDepthMinAlpha = 0.86f
 private const val CarouselDepthCameraDistance = 14f
 
 internal fun carouselDepthFraction(itemCenter: Float, viewportCenter: Float, viewportWidth: Float): Float {
@@ -41,3 +44,7 @@ fun Modifier.levyraCarouselDepth(
         transformOrigin = TransformOrigin(if (fraction < 0f) 1f else 0f, 0.5f)
     }
 }
+
+@Composable
+fun carouselDepthEnabled(): Boolean =
+    LocalAnimationsEnabled.current && LocalLevyraVisualCapabilities.current.depthTransitions
