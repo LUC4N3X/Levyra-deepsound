@@ -10328,6 +10328,20 @@ private fun homeCollectionTitle(strings: LevyraStrings, collection: HomeEditoria
     return cleanHomeSectionTitle(title)
 }
 
+private fun exploreEditorialPalette(identity: String): Pair<Color, Color> {
+    val palette = listOf(
+        Color(0xFF7C3AED) to Color(0xFF4C1D95),
+        Color(0xFFD81B60) to Color(0xFF7A1538),
+        Color(0xFF0F8A78) to Color(0xFF075E54),
+        Color(0xFF246BCE) to Color(0xFF173F7A),
+        Color(0xFFB96A16) to Color(0xFF70400F),
+        Color(0xFF238636) to Color(0xFF145325),
+        Color(0xFFB335B5) to Color(0xFF64236C),
+        Color(0xFFD9571C) to Color(0xFF7B3215)
+    )
+    return palette[(identity.hashCode() and Int.MAX_VALUE) % palette.size]
+}
+
 @Composable
 private fun HomeEditorialCollectionsShelf(
     collections: List<HomeEditorialCollection>,
@@ -10340,11 +10354,32 @@ private fun HomeEditorialCollectionsShelf(
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
         )
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            val compactCardWidth = ((maxWidth - HomeHorizontalInset * 2 - LevyraHomeDesign.ShelfItemGap) / 2)
-                .coerceIn(156.dp, 190.dp)
-            val featuredCardWidth = (maxWidth - 54.dp).coerceIn(248.dp, 320.dp)
+            val cardWidth = (maxWidth - LevyraHomeDesign.EditorialPeek)
+                .coerceAtMost(LevyraHomeDesign.EditorialMaxWidth)
             val collectionsState = rememberLazyListState()
             val collectionsDepth = carouselDepthEnabled()
+            val collectionArtworks = remember(collections) {
+                val usedTrackIds = mutableSetOf<String>()
+                collections.associate { collection ->
+                    val nonVideoTracks = collection.tracks.filter { track ->
+                        !YoutubeMusicVideoType.isVideo(track.videoType) &&
+                            !track.thumbnailUrl.contains("/vi/", ignoreCase = true) &&
+                            !track.thumbnailUrl.contains("vi_webp", ignoreCase = true) &&
+                            !track.largeThumbnailUrl.contains("/vi/", ignoreCase = true) &&
+                            !track.largeThumbnailUrl.contains("vi_webp", ignoreCase = true) &&
+                            track.thumbnailUrl.isNotBlank()
+                    }
+                    val selectedTrack = nonVideoTracks.firstOrNull { it.id !in usedTrackIds }
+                        ?: nonVideoTracks.firstOrNull()
+                        ?: collection.tracks.firstOrNull { it.id !in usedTrackIds && !YoutubeMusicVideoType.isVideo(it.videoType) }
+                        ?: collection.tracks.firstOrNull { !YoutubeMusicVideoType.isVideo(it.videoType) }
+                        ?: collection.tracks.firstOrNull()
+                    if (selectedTrack != null) {
+                        usedTrackIds += selectedTrack.id
+                    }
+                    collection.id to selectedTrack
+                }
+            }
             LazyRow(
                 state = collectionsState,
                 modifier = Modifier.fillMaxWidth(),
@@ -10364,18 +10399,24 @@ private fun HomeEditorialCollectionsShelf(
                             .take(2)
                             .joinToString(" · ")
                     }
-                    val spotifyEditorial = collection.source == HomeCollectionSource.Editorial
+                    val artworkTrack = collectionArtworks[collection.id]
+                    val (accentStart, accentEnd) = remember(collection.id, collection.accentStart, collection.accentEnd) {
+                        if (collection.accentStart != 0 && collection.accentEnd != 0 && collection.accentStart != collection.accentEnd) {
+                            Color(collection.accentStart) to Color(collection.accentEnd)
+                        } else {
+                            exploreEditorialPalette(collection.id)
+                        }
+                    }
                     DiscoveryEditorialCard(
                         title = homeCollectionTitle(strings, collection),
                         subtitle = artistLine,
-                        artworks = collection.tracks.take(3),
-                        accentStart = Color(collection.accentStart),
-                        accentEnd = Color(collection.accentEnd),
-                        featured = spotifyEditorial,
+                        artwork = artworkTrack,
+                        accentStart = accentStart,
+                        accentEnd = accentEnd,
                         onOpen = { onOpen(collection) },
                         modifier = Modifier
                             .levyraCarouselDepth(collectionsState, "home-collection-${collection.id}", collectionsDepth)
-                            .width(if (spotifyEditorial) featuredCardWidth else compactCardWidth)
+                            .width(cardWidth)
                     )
                 }
             }
