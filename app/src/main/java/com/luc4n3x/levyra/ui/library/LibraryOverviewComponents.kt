@@ -8,7 +8,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -78,6 +77,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -355,19 +355,13 @@ internal fun SmartCollectionGrid(
         )
     )
 
-    val featured = cards.firstOrNull { it.tracks.isNotEmpty() }
-    val shelf = cards.filterNot { it.id == featured?.id }
-
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        if (featured != null) {
-            SmartCollectionCard(featured, Modifier.fillMaxWidth(), featured = true)
-        }
-        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            val cardWidth = (maxWidth * 0.52f).coerceAtMost(184.dp)
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(items = shelf, key = { it.id }, contentType = { "library-collection" }) { card ->
-                    SmartCollectionCard(card, Modifier.width(cardWidth))
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        cards.chunked(2).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { card ->
+                    SmartCollectionShortcut(card, Modifier.weight(1f))
                 }
+                if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
             }
         }
     }
@@ -687,77 +681,47 @@ private fun SmartCollectionAction(
 }
 
 @Composable
-private fun SmartCollectionCard(card: SmartCollection, modifier: Modifier = Modifier, featured: Boolean = false) {
-    val artworkUrls = remember(card.tracks) {
+private fun SmartCollectionShortcut(card: SmartCollection, modifier: Modifier = Modifier) {
+    val colors = MaterialTheme.colorScheme
+    val artworkUrl = remember(card.tracks) {
         card.tracks.asSequence()
             .map { track -> track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } }
-            .filter(String::isNotBlank)
-            .distinct()
-            .take(SmartCollectionMosaicSize)
-            .toList()
+            .firstOrNull(String::isNotBlank)
+            .orEmpty()
     }
-    val scrim = remember {
-        Brush.verticalGradient(
-            0.30f to Color.Transparent,
-            1f to Color.Black.copy(alpha = 0.82f)
-        )
-    }
-    val hasArtwork = artworkUrls.isNotEmpty()
-    val titleColor = if (hasArtwork) Color.White else MaterialTheme.colorScheme.onSurface
-    val detailColor = if (hasArtwork) Color.White.copy(alpha = 0.78f) else MaterialTheme.colorScheme.onSurfaceVariant
     val enabled = card.tracks.isNotEmpty() || card.enabledWhenEmpty
-    Box(
-        modifier = modifier.heightIn(min = if (featured) 196.dp else 156.dp)
-            .clip(LevyraCardDesign.SurfaceShape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+    Row(
+        modifier = modifier
+            .height(SmartCollectionShortcutHeight)
+            .clip(LevyraCardDesign.ThumbShape)
+            .background(colors.onSurface.copy(alpha = 0.08f))
             .semantics(mergeDescendants = true) {}
-            .levyraPressable(onClick = card.onClick, enabled = enabled, role = Role.Button, pressedScale = LevyraPressScale.Tile)
+            .levyraPressable(onClick = card.onClick, enabled = enabled, role = Role.Button, pressedScale = LevyraPressScale.Tile),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        if (featured && artworkUrls.size == SmartCollectionMosaicSize) {
-            SmartCollectionMosaic(artworkUrls, Modifier.matchParentSize())
-        } else if (artworkUrls.isNotEmpty()) {
-            AsyncImage(model = artworkUrls.first(), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.matchParentSize())
-        }
-        if (hasArtwork) {
-            Box(Modifier.matchParentSize().background(scrim))
-        } else {
-            Surface(
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
-                shape = CircleShape,
-                modifier = Modifier.align(Alignment.TopStart).padding(20.dp)
-            ) {
-                Icon(card.icon, contentDescription = null, tint = card.accent, modifier = Modifier.padding(10.dp).size(22.dp))
+        Box(
+            modifier = Modifier
+                .size(SmartCollectionShortcutHeight)
+                .background(Brush.linearGradient(listOf(card.accent, card.accent.copy(alpha = 0.45f).compositeOver(Color.Black)))),
+            contentAlignment = Alignment.Center
+        ) {
+            if (artworkUrl.isNotBlank()) {
+                AsyncImage(model = artworkUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.matchParentSize())
+            } else {
+                Icon(card.icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
             }
         }
         Column(
-            modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            Text(card.title, color = titleColor, style = if (featured) LevyraType.screenTitle else LevyraType.contentTitle, softWrap = true)
-            Text(card.detail, color = detailColor, style = LevyraType.caption, softWrap = true)
+            Text(card.title, color = colors.onSurface, style = LevyraType.cardTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(card.detail, color = colors.onSurfaceVariant, style = LevyraType.caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
 
-@Composable
-private fun SmartCollectionMosaic(artworkUrls: List<String>, modifier: Modifier = Modifier) {
-    Column(modifier = modifier) {
-        artworkUrls.chunked(2).forEach { row ->
-            Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                row.forEach { url ->
-                    AsyncImage(
-                        model = url,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.weight(1f).fillMaxHeight()
-                    )
-                }
-            }
-        }
-    }
-}
-
-private const val SmartCollectionMosaicSize = 4
+private val SmartCollectionShortcutHeight = 60.dp
 
 @Composable
 internal fun LibraryListeningDashboard(

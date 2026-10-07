@@ -9,7 +9,7 @@ from typing import Any
 
 import requests
 
-from .collector import normalize_playlist_items
+from .collector import clean_public_text, normalize_playlist_items
 from .models import Collection
 from .spotify import (
     SourceApiError,
@@ -355,7 +355,7 @@ def collect_spotify_explore_collections(
                     kind=seed.kind,
                     market="GLOBAL",
                     title=seed.title,
-                    description=str(metadata.get("description") or "").strip()[:500],
+                    description=clean_public_text(str(metadata.get("description") or "")),
                     source_id=playlist_id,
                     source_url=(
                         metadata.get("external_urls", {}).get("spotify")
