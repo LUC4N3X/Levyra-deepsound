@@ -29,6 +29,15 @@ class AutoEqCatalogTest {
     private val catalog = AutoEqCatalog.parseIndex(index)
 
     @Test
+    fun browseIncludesEveryMeasurementInAlphabeticalOrder() {
+        val entries = catalog.browse()
+        assertEquals(catalog.size, entries.size)
+        assertEquals(entries.map { it.name }.sortedWith(String.CASE_INSENSITIVE_ORDER), entries.map { it.name })
+        assertEquals(entries.size, entries.map { it.key }.distinct().size)
+        assertEquals(2, entries.count { it.name == "Sennheiser HD 600" })
+    }
+
+    @Test
     fun keepsOnlyWellFormedUniqueEntries() {
         assertEquals(6, catalog.size)
     }
