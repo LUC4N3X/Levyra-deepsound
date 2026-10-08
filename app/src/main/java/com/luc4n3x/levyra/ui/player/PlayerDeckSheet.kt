@@ -3,10 +3,6 @@ package com.luc4n3x.levyra.ui.player
 import com.luc4n3x.levyra.ui.components.carouselDepthEnabled
 import com.luc4n3x.levyra.ui.components.levyraCarouselDepth
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.togetherWith
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.fadeIn
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.animation.animateColorAsState
