@@ -19,7 +19,7 @@ object LevyraHomeDesign {
     val HorizontalInset: Dp = 16.dp
     val SectionGap: Dp = 8.dp
     val SectionGapCompact: Dp = 6.dp
-    val SectionStride: Dp = 20.dp
+    val SectionStride: Dp = 22.dp
     val SectionStrideCompact: Dp = 18.dp
     val HeaderCorner: Dp = 20.dp
     val HeaderPadding: Dp = 12.dp
