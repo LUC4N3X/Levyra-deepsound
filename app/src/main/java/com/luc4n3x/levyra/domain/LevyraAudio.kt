@@ -23,6 +23,72 @@ enum class AudioOffloadPreference(val storageValue: String) {
     }
 }
 
+enum class PlaybackBufferMode(val storageValue: String) {
+    AUTOMATIC("automatic"),
+    CUSTOM("custom");
+
+    companion object {
+        fun fromStorage(value: String?): PlaybackBufferMode =
+            entries.firstOrNull { it.storageValue == value?.trim()?.lowercase() } ?: AUTOMATIC
+    }
+}
+
+data class PlaybackBufferSettings(
+    val mode: PlaybackBufferMode = PlaybackBufferMode.AUTOMATIC,
+    val minBufferSeconds: Float = BALANCED_MIN_SECONDS,
+    val maxBufferSeconds: Float = BALANCED_MAX_SECONDS,
+    val playbackBufferSeconds: Float = BALANCED_PLAYBACK_SECONDS,
+    val rebufferSeconds: Float = BALANCED_REBUFFER_SECONDS
+) {
+    fun normalized(): PlaybackBufferSettings {
+        val minSeconds = minBufferSeconds.normalizedStep(MIN_BUFFER_SECONDS, MAX_MIN_BUFFER_SECONDS)
+        val maxSeconds = maxBufferSeconds
+            .normalizedStep(MIN_BUFFER_SECONDS, MAX_BUFFER_SECONDS)
+            .coerceAtLeast(minSeconds)
+        val thresholdCeiling = minSeconds.coerceAtMost(MAX_THRESHOLD_SECONDS)
+        return copy(
+            minBufferSeconds = minSeconds,
+            maxBufferSeconds = maxSeconds,
+            playbackBufferSeconds = playbackBufferSeconds.normalizedStep(MIN_THRESHOLD_SECONDS, thresholdCeiling),
+            rebufferSeconds = rebufferSeconds.normalizedStep(MIN_THRESHOLD_SECONDS, thresholdCeiling)
+        )
+    }
+
+    companion object {
+        const val MIN_BUFFER_SECONDS = 2f
+        const val MAX_MIN_BUFFER_SECONDS = 45f
+        const val MAX_BUFFER_SECONDS = 60f
+        const val MIN_THRESHOLD_SECONDS = 0.1f
+        const val MAX_THRESHOLD_SECONDS = 10f
+
+        const val BALANCED_MIN_SECONDS = 12f
+        const val BALANCED_MAX_SECONDS = 24f
+        const val BALANCED_PLAYBACK_SECONDS = 1f
+        const val BALANCED_REBUFFER_SECONDS = 2f
+
+        val Reduced = PlaybackBufferSettings(
+            mode = PlaybackBufferMode.CUSTOM,
+            minBufferSeconds = 5f,
+            maxBufferSeconds = 10f,
+            playbackBufferSeconds = 0.5f,
+            rebufferSeconds = 1f
+        )
+        val Balanced = PlaybackBufferSettings(mode = PlaybackBufferMode.CUSTOM)
+        val High = PlaybackBufferSettings(
+            mode = PlaybackBufferMode.CUSTOM,
+            minBufferSeconds = 24f,
+            maxBufferSeconds = 45f,
+            playbackBufferSeconds = 2f,
+            rebufferSeconds = 4f
+        )
+    }
+}
+
+private fun Float.normalizedStep(minimum: Float, maximum: Float): Float {
+    val finite = takeIf(Float::isFinite) ?: minimum
+    return kotlin.math.round(finite.coerceIn(minimum, maximum) * 10f) / 10f
+}
+
 data class ReplayGainMetadata(
     val trackGainDb: Float? = null,
     val albumGainDb: Float? = null,
@@ -86,7 +152,8 @@ data class LevyraAudioSettings(
     val activeParametricProfile: ParametricEqProfile? = null,
     val customParametricProfiles: List<ParametricEqProfile> = emptyList(),
     val enhancedAudioEnabled: Boolean = true,
-    val audioOffloadPreference: AudioOffloadPreference = AudioOffloadPreference.AUTOMATIC
+    val audioOffloadPreference: AudioOffloadPreference = AudioOffloadPreference.AUTOMATIC,
+    val playbackBuffer: PlaybackBufferSettings = PlaybackBufferSettings()
 ) {
     val effectiveReplayGainMode: ReplayGainMode
         get() = if (replayGainMode == ReplayGainMode.OFF && replayGainEnabled) ReplayGainMode.SMART else replayGainMode
@@ -163,7 +230,8 @@ data class LevyraAudioSettings(
             customPresets = custom,
             parametricEqualizerEnabled = parametricEnabled,
             activeParametricProfile = activeParametric,
-            customParametricProfiles = parametricProfiles
+            customParametricProfiles = parametricProfiles,
+            playbackBuffer = playbackBuffer.normalized()
         )
     }
 }

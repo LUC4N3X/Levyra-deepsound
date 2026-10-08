@@ -47,6 +47,8 @@ import com.luc4n3x.levyra.domain.ParametricEqProfile
 import com.luc4n3x.levyra.domain.ParametricFilterType
 import com.luc4n3x.levyra.domain.AudioOffloadPreference
 import com.luc4n3x.levyra.domain.ReplayGainMode
+import com.luc4n3x.levyra.domain.PlaybackBufferMode
+import com.luc4n3x.levyra.domain.PlaybackBufferSettings
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -191,6 +193,11 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_AUDIO_PARAMETRIC_PROFILES] = parametricProfilesToJson(normalizedAudio.customParametricProfiles)
             mutable[KEY_AUDIO_ENHANCED_AUDIO] = normalizedAudio.enhancedAudioEnabled
             mutable[KEY_AUDIO_OFFLOAD_PREFERENCE] = normalizedAudio.audioOffloadPreference.storageValue
+            mutable[KEY_AUDIO_BUFFER_MODE] = normalizedAudio.playbackBuffer.mode.storageValue
+            mutable[KEY_AUDIO_BUFFER_MIN_SECONDS] = normalizedAudio.playbackBuffer.minBufferSeconds
+            mutable[KEY_AUDIO_BUFFER_MAX_SECONDS] = normalizedAudio.playbackBuffer.maxBufferSeconds
+            mutable[KEY_AUDIO_BUFFER_PLAYBACK_SECONDS] = normalizedAudio.playbackBuffer.playbackBufferSeconds
+            mutable[KEY_AUDIO_BUFFER_REBUFFER_SECONDS] = normalizedAudio.playbackBuffer.rebufferSeconds
             mutable[KEY_UI_COMPACT_HOME] = normalizedInterface.compactHome
             mutable[KEY_UI_PERSONAL_ORBIT] = normalizedInterface.showPersonalOrbit
             mutable[KEY_UI_RESONANCE] = normalizedInterface.showResonance
@@ -489,6 +496,11 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_AUDIO_PARAMETRIC_PROFILES] = parametricProfilesToJson(normalized.customParametricProfiles)
             it[KEY_AUDIO_ENHANCED_AUDIO] = normalized.enhancedAudioEnabled
             it[KEY_AUDIO_OFFLOAD_PREFERENCE] = normalized.audioOffloadPreference.storageValue
+            it[KEY_AUDIO_BUFFER_MODE] = normalized.playbackBuffer.mode.storageValue
+            it[KEY_AUDIO_BUFFER_MIN_SECONDS] = normalized.playbackBuffer.minBufferSeconds
+            it[KEY_AUDIO_BUFFER_MAX_SECONDS] = normalized.playbackBuffer.maxBufferSeconds
+            it[KEY_AUDIO_BUFFER_PLAYBACK_SECONDS] = normalized.playbackBuffer.playbackBufferSeconds
+            it[KEY_AUDIO_BUFFER_REBUFFER_SECONDS] = normalized.playbackBuffer.rebufferSeconds
         }
     }
 
@@ -925,7 +937,14 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             activeParametricProfile = activeParametricProfile,
             customParametricProfiles = customParametricProfiles,
             enhancedAudioEnabled = preferences[KEY_AUDIO_ENHANCED_AUDIO] ?: true,
-            audioOffloadPreference = AudioOffloadPreference.fromStorage(preferences[KEY_AUDIO_OFFLOAD_PREFERENCE])
+            audioOffloadPreference = AudioOffloadPreference.fromStorage(preferences[KEY_AUDIO_OFFLOAD_PREFERENCE]),
+            playbackBuffer = PlaybackBufferSettings(
+                mode = PlaybackBufferMode.fromStorage(preferences[KEY_AUDIO_BUFFER_MODE]),
+                minBufferSeconds = preferences[KEY_AUDIO_BUFFER_MIN_SECONDS] ?: PlaybackBufferSettings.BALANCED_MIN_SECONDS,
+                maxBufferSeconds = preferences[KEY_AUDIO_BUFFER_MAX_SECONDS] ?: PlaybackBufferSettings.BALANCED_MAX_SECONDS,
+                playbackBufferSeconds = preferences[KEY_AUDIO_BUFFER_PLAYBACK_SECONDS] ?: PlaybackBufferSettings.BALANCED_PLAYBACK_SECONDS,
+                rebufferSeconds = preferences[KEY_AUDIO_BUFFER_REBUFFER_SECONDS] ?: PlaybackBufferSettings.BALANCED_REBUFFER_SECONDS
+            )
         ).normalized()
     }
 
@@ -1101,6 +1120,11 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_AUDIO_PARAMETRIC_PROFILES = stringPreferencesKey("audio_parametric_profiles")
         val KEY_AUDIO_ENHANCED_AUDIO = booleanPreferencesKey("audio_enhanced_audio_enabled")
         val KEY_AUDIO_OFFLOAD_PREFERENCE = stringPreferencesKey("audio_offload_preference")
+        val KEY_AUDIO_BUFFER_MODE = stringPreferencesKey("audio_playback_buffer_mode")
+        val KEY_AUDIO_BUFFER_MIN_SECONDS = floatPreferencesKey("audio_playback_buffer_min_seconds")
+        val KEY_AUDIO_BUFFER_MAX_SECONDS = floatPreferencesKey("audio_playback_buffer_max_seconds")
+        val KEY_AUDIO_BUFFER_PLAYBACK_SECONDS = floatPreferencesKey("audio_playback_buffer_start_seconds")
+        val KEY_AUDIO_BUFFER_REBUFFER_SECONDS = floatPreferencesKey("audio_playback_buffer_rebuffer_seconds")
         val KEY_LISTENING_PULSE_LAST_PRUNE = longPreferencesKey("listening_pulse_last_prune")
         val KEY_LISTENING_LIFETIME_BACKFILL = intPreferencesKey("listening_lifetime_backfill")
         val KEY_UI_COMPACT_HOME = booleanPreferencesKey("ui_compact_home")
