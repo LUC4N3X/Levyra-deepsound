@@ -783,7 +783,7 @@ private val HOME_ARTIST_CARD_WIDTH = 148.dp
 private val HOME_ARTIST_ARTWORK_SIZE = 140.dp
 private val LevyraTabBarHeight = 76.dp
 private val LevyraTabBarCompactHeight = 54.dp
-private val LevyraMiniPlayerHeight = 77.dp
+private val LevyraMiniPlayerHeight = 82.dp
 private const val LevyraLandscapeDockMiniWeight = 1.1f
 private val LevyraBottomContentGap = 16.dp
 private val LevyraTabIndicatorTop = 12.dp
@@ -22901,7 +22901,7 @@ private const val MiniPlayerCarryFraction = 0.5f
 private val MiniPlayerProgressInset = 18.dp
 private val MiniPlayerProgressHeight = 2.dp
 private val MiniPlayerTrayTop = 8.dp
-private val MiniPlayerTrayBottom = 5.dp
+private val MiniPlayerTrayBottom = 10.dp
 private val MiniPlayerCardGutter = 8.dp
 
 @Composable
@@ -22968,7 +22968,7 @@ private fun MiniPlayer(
         label = "mini-accent-end"
     )
     val miniColors = MaterialTheme.colorScheme
-    val miniSurface = miniColors.surfaceContainerHigh
+    val miniSurface = miniColors.surfaceContainerHighest
     val miniProgressColor = miniColors.primary
     val miniPrimaryContent = miniColors.onSurface
     val miniSecondaryContent = miniColors.onSurfaceVariant
