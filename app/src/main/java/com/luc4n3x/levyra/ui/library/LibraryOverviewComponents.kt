@@ -289,7 +289,7 @@ internal fun LibrarySectionTitle(
 ) {
     val colors = MaterialTheme.colorScheme
     Row(
-        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -693,8 +693,8 @@ private fun SmartCollectionShortcut(card: SmartCollection, modifier: Modifier = 
     Row(
         modifier = modifier
             .height(SmartCollectionShortcutHeight)
-            .clip(LevyraCardDesign.ThumbShape)
-            .background(colors.onSurface.copy(alpha = 0.08f))
+            .clip(LevyraCardDesign.EditorialShape)
+            .background(colors.surfaceContainerHigh)
             .semantics(mergeDescendants = true) {}
             .levyraPressable(onClick = card.onClick, enabled = enabled, role = Role.Button, pressedScale = LevyraPressScale.Tile),
         verticalAlignment = Alignment.CenterVertically
@@ -713,7 +713,7 @@ private fun SmartCollectionShortcut(card: SmartCollection, modifier: Modifier = 
         }
         Column(
             modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+            verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
             Text(card.title, color = colors.onSurface, style = LevyraType.cardTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(card.detail, color = colors.onSurfaceVariant, style = LevyraType.caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
