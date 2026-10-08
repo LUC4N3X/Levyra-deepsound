@@ -147,6 +147,7 @@ import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioPreset
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.PlaybackBufferSettings
 import com.luc4n3x.levyra.domain.queuePrefetchAllowed
 import com.luc4n3x.levyra.domain.ReplayGainMode
 import com.luc4n3x.levyra.domain.AutoEqCatalogEntry
@@ -4342,6 +4343,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setAudioOffloadPreference(value: com.luc4n3x.levyra.domain.AudioOffloadPreference) {
         updateAudioSettings(_state.value.audioSettings.copy(audioOffloadPreference = value))
+    }
+
+    fun setPlaybackBuffer(value: PlaybackBufferSettings) {
+        updateAudioSettings(_state.value.audioSettings.copy(playbackBuffer = value))
     }
 
     fun setVirtualizer(value: Int) {

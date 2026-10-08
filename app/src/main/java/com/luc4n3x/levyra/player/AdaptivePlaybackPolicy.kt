@@ -7,7 +7,10 @@ import android.net.NetworkCapabilities
 import android.os.BatteryManager
 import android.os.Build
 import android.os.PowerManager
+import com.luc4n3x.levyra.domain.PlaybackBufferMode
+import com.luc4n3x.levyra.domain.PlaybackBufferSettings
 import java.util.Locale
+import kotlin.math.roundToInt
 
 class AdaptivePlaybackPolicy(context: Context) {
     private val appContext = context.applicationContext
@@ -103,3 +106,20 @@ data class PlaybackBufferProfile(
     val rebufferMs: Int,
     val backBufferMs: Int
 )
+
+internal fun playbackBufferProfile(
+    automatic: PlaybackBufferProfile,
+    settings: PlaybackBufferSettings
+): PlaybackBufferProfile {
+    val normalized = settings.normalized()
+    if (normalized.mode == PlaybackBufferMode.AUTOMATIC) return automatic
+    return PlaybackBufferProfile(
+        minBufferMs = normalized.minBufferSeconds.secondsToMs(),
+        maxBufferMs = normalized.maxBufferSeconds.secondsToMs(),
+        playbackBufferMs = normalized.playbackBufferSeconds.secondsToMs(),
+        rebufferMs = normalized.rebufferSeconds.secondsToMs(),
+        backBufferMs = automatic.backBufferMs
+    )
+}
+
+private fun Float.secondsToMs(): Int = (this * 1_000f).roundToInt()
