@@ -13,16 +13,17 @@ internal class AudioSettingsPersistenceCoordinator(
     }
 
     fun persist(value: LevyraAudioSettings) {
-        write(value)
         synchronized(lock) {
-            if (pending == value) pending = null
+            if (pending != value) return
+            write(value)
+            pending = null
         }
     }
 
     fun flush() {
-        val value = synchronized(lock) {
-            pending.also { pending = null }
+        synchronized(lock) {
+            pending?.let(write)
+            pending = null
         }
-        value?.let(write)
     }
 }
