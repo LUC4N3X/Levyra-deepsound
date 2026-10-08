@@ -86,7 +86,7 @@ data class PlaybackBufferSettings(
 
 private fun Float.normalizedStep(minimum: Float, maximum: Float): Float {
     val finite = takeIf(Float::isFinite) ?: minimum
-    return (kotlin.math.round(finite.coerceIn(minimum, maximum) * 10f) / 10f)
+            return kotlin.math.round(finite.coerceIn(minimum, maximum) * 10f) / 10f
 }
 
 data class ReplayGainMetadata(
