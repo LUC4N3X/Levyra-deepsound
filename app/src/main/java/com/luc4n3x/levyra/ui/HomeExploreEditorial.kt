@@ -297,7 +297,7 @@ private fun DiscoveryEditorialText(
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically)) {
         Text(title, style = LevyraType.sectionTitle.copy(fontWeight = FontWeight.Bold), color = textColor, softWrap = true)
         if (subtitle.isNotBlank()) {
-            Text(subtitle, style = LevyraType.metadata, color = textColor.copy(alpha = 0.84f), softWrap = true)
+            Text(subtitle, style = LevyraType.metadata, color = textColor, softWrap = true)
         }
     }
 }
