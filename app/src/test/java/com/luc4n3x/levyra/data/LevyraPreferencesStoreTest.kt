@@ -13,6 +13,8 @@ import com.luc4n3x.levyra.domain.LevyraAudioPreset
 import java.io.IOException
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.PlaybackBufferMode
+import com.luc4n3x.levyra.domain.PlaybackBufferSettings
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.LevyraVisualPerformance
@@ -264,6 +266,24 @@ class LevyraPreferencesStoreTest {
         assertEquals(3, reopened.crossfadeSeconds)
         assertEquals(1.25f, reopened.playbackSpeed, 0f)
         assertEquals(0.9f, reopened.pitch, 0f)
+    }
+
+    @Test
+    fun customPlaybackBufferIsVisibleImmediatelyAndSurvivesRecreation() {
+        val (store, preferences) = open()
+        val configured = PlaybackBufferSettings(
+            mode = PlaybackBufferMode.CUSTOM,
+            minBufferSeconds = 9f,
+            maxBufferSeconds = 30f,
+            playbackBufferSeconds = 0.8f,
+            rebufferSeconds = 1.4f
+        )
+
+        preferences.setAudioSettings(LevyraAudioSettings(playbackBuffer = configured))
+        assertEquals(configured, preferences.audioSettings().playbackBuffer)
+        flush(store)
+
+        assertEquals(configured, reopen().audioSettings().playbackBuffer)
     }
 
     @Test

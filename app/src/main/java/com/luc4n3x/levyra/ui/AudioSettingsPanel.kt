@@ -105,6 +105,8 @@ import com.luc4n3x.levyra.domain.AutoEqImporter
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.PlaybackBufferMode
+import com.luc4n3x.levyra.domain.PlaybackBufferSettings
 import com.luc4n3x.levyra.domain.ParametricEqualizer
 import com.luc4n3x.levyra.domain.ParametricEqProfile
 import com.luc4n3x.levyra.domain.AudioOffloadPreference
@@ -118,6 +120,8 @@ import com.luc4n3x.levyra.ui.i18n.crossfadeLabCopy
 import com.luc4n3x.levyra.ui.i18n.localizedAudioPresetLabel
 import com.luc4n3x.levyra.ui.i18n.parametricEqCopy
 import com.luc4n3x.levyra.ui.i18n.parametricProfileCopy
+import com.luc4n3x.levyra.ui.i18n.PlaybackBufferCopy
+import com.luc4n3x.levyra.ui.i18n.playbackBufferCopy
 import com.luc4n3x.levyra.ui.i18n.replayGainCopy
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
@@ -130,6 +134,7 @@ import com.luc4n3x.levyra.viewmodel.AutoEqCatalogUiState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Locale
+import java.text.NumberFormat
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -166,6 +171,7 @@ internal fun AudioSettingsPanel(
     aaudioOutputAvailable: Boolean,
     onAaudioOutput: (Boolean) -> Unit,
     onAudioOffloadPreference: (AudioOffloadPreference) -> Unit = {},
+    onPlaybackBuffer: (PlaybackBufferSettings) -> Unit,
     onResetEqualizer: () -> Unit,
     onApplyAutoEq: (AutoEqImporter.ImportedProfile) -> Unit,
     onSaveAutoEqPreset: (String, AutoEqImporter.ImportedProfile) -> Boolean,
@@ -188,6 +194,7 @@ internal fun AudioSettingsPanel(
     val parametricCopy = strings.parametricEqCopy()
     val parametricProfileCopy = strings.parametricProfileCopy()
     val outputState = rememberLevyraAudioOutputState()
+    val bufferCopy = playbackBufferCopy(strings.code)
     val blocker = remember { MutableInteractionSource() }
     val equalizerEnabled = audioSettings.equalizerEnabled
     var showAutoEqImport by remember { mutableStateOf(false) }
@@ -516,6 +523,80 @@ internal fun AudioSettingsPanel(
                         checked = audioSettings.preloadNextTrack,
                         onCheckedChange = onPreloadNextTrack
                     )
+                }
+                item { AudioSectionLabel(bufferCopy.title) }
+                item {
+                    PlaybackBufferModeCard(
+                        settings = audioSettings.playbackBuffer,
+                        copy = bufferCopy,
+                        onSettings = onPlaybackBuffer
+                    )
+                }
+                if (audioSettings.playbackBuffer.mode == PlaybackBufferMode.CUSTOM) {
+                    item {
+                        PlaybackBufferPresetCard(
+                            settings = audioSettings.playbackBuffer,
+                            copy = bufferCopy,
+                            onSettings = onPlaybackBuffer
+                        )
+                    }
+                    item {
+                        PlaybackBufferSlider(
+                            title = bufferCopy.minimum,
+                            value = audioSettings.playbackBuffer.minBufferSeconds,
+                            range = PlaybackBufferSettings.MIN_BUFFER_SECONDS..PlaybackBufferSettings.MAX_MIN_BUFFER_SECONDS,
+                            languageCode = strings.code,
+                            onValue = { seconds ->
+                                onPlaybackBuffer(audioSettings.playbackBuffer.copy(minBufferSeconds = seconds))
+                            }
+                        )
+                    }
+                    item {
+                        PlaybackBufferSlider(
+                            title = bufferCopy.maximum,
+                            value = audioSettings.playbackBuffer.maxBufferSeconds,
+                            range = audioSettings.playbackBuffer.minBufferSeconds..PlaybackBufferSettings.MAX_BUFFER_SECONDS,
+                            languageCode = strings.code,
+                            onValue = { seconds ->
+                                onPlaybackBuffer(audioSettings.playbackBuffer.copy(maxBufferSeconds = seconds))
+                            }
+                        )
+                    }
+                    item {
+                        PlaybackBufferSlider(
+                            title = bufferCopy.start,
+                            value = audioSettings.playbackBuffer.playbackBufferSeconds,
+                            range = PlaybackBufferSettings.MIN_THRESHOLD_SECONDS..
+                                audioSettings.playbackBuffer.minBufferSeconds.coerceAtMost(PlaybackBufferSettings.MAX_THRESHOLD_SECONDS),
+                            languageCode = strings.code,
+                            onValue = { seconds ->
+                                onPlaybackBuffer(audioSettings.playbackBuffer.copy(playbackBufferSeconds = seconds))
+                            }
+                        )
+                    }
+                    item {
+                        PlaybackBufferSlider(
+                            title = bufferCopy.afterInterruption,
+                            value = audioSettings.playbackBuffer.rebufferSeconds,
+                            range = PlaybackBufferSettings.MIN_THRESHOLD_SECONDS..
+                                audioSettings.playbackBuffer.minBufferSeconds.coerceAtMost(PlaybackBufferSettings.MAX_THRESHOLD_SECONDS),
+                            languageCode = strings.code,
+                            onValue = { seconds ->
+                                onPlaybackBuffer(audioSettings.playbackBuffer.copy(rebufferSeconds = seconds))
+                            }
+                        )
+                    }
+                    item {
+                        AudioActionButton(
+                            label = bufferCopy.restoreAutomatic,
+                            icon = Icons.Rounded.RestartAlt,
+                            primary = false,
+                            enabled = true,
+                            onClick = {
+                                onPlaybackBuffer(audioSettings.playbackBuffer.copy(mode = PlaybackBufferMode.AUTOMATIC))
+                            }
+                        )
+                    }
                 }
                 if (aaudioOutputAvailable) {
                     item {
@@ -1284,6 +1365,87 @@ private fun AudioCard(content: @Composable () -> Unit) {
             content()
         }
     }
+}
+
+@Composable
+private fun PlaybackBufferModeCard(
+    settings: PlaybackBufferSettings,
+    copy: PlaybackBufferCopy,
+    onSettings: (PlaybackBufferSettings) -> Unit
+) {
+    AudioCard {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                copy.description,
+                color = LevyraMuted,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                lineHeight = 18.sp
+            )
+            AudioQualityRow(
+                selected = settings.mode.storageValue,
+                labels = listOf(
+                    copy.automatic to PlaybackBufferMode.AUTOMATIC.storageValue,
+                    copy.custom to PlaybackBufferMode.CUSTOM.storageValue
+                ),
+                onSelect = { selected ->
+                    onSettings(settings.copy(mode = PlaybackBufferMode.fromStorage(selected)))
+                }
+            )
+            Text(
+                if (settings.mode == PlaybackBufferMode.AUTOMATIC) copy.automaticDetail else copy.customDetail,
+                color = LevyraMuted,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                lineHeight = 17.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlaybackBufferPresetCard(
+    settings: PlaybackBufferSettings,
+    copy: PlaybackBufferCopy,
+    onSettings: (PlaybackBufferSettings) -> Unit
+) {
+    AudioCard {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            AudioCardHeader(copy.presets, "")
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val presets = listOf(
+                    copy.reduced to PlaybackBufferSettings.Reduced,
+                    copy.balanced to PlaybackBufferSettings.Balanced,
+                    copy.high to PlaybackBufferSettings.High
+                )
+                items(presets, key = { it.first }) { (label, preset) ->
+                    AudioPresetChip(
+                        label = label,
+                        selected = settings.normalized() == preset,
+                        enabled = true,
+                        onClick = { onSettings(preset) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlaybackBufferSlider(
+    title: String,
+    value: Float,
+    range: ClosedFloatingPointRange<Float>,
+    languageCode: String,
+    onValue: (Float) -> Unit
+) {
+    AudioSliderRow(
+        title = title,
+        valueLabel = "${formatBufferSeconds(value, languageCode)} s",
+        value = value,
+        range = range,
+        onValue = { onValue((it * 10f).roundToInt() / 10f) }
+    )
 }
 
 @Composable
@@ -2119,3 +2281,9 @@ private fun trimAudioSpeed(value: Float): String {
         String.format(Locale.US, "%.2f", rounded).trimEnd('0').trimEnd('.')
     }
 }
+
+private fun formatBufferSeconds(value: Float, languageCode: String): String =
+    NumberFormat.getNumberInstance(Locale.forLanguageTag(languageCode)).apply {
+        minimumFractionDigits = 0
+        maximumFractionDigits = 1
+    }.format(value.toDouble())
