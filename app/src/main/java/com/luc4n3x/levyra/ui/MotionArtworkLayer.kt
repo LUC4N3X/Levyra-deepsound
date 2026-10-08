@@ -106,6 +106,8 @@ internal fun MotionArtworkLayer(
     quality: LevyraCanvasQuality = LevyraCanvasQuality.Auto,
     pageMode: Boolean = false,
     staticArtworkMotionEnabled: Boolean = true,
+    preferCanvasOnEntry: Boolean = false,
+    entryIdentity: String? = null,
     livingArtwork: LivingArtworkColors? = null,
     dynamicBackdropEnabled: Boolean = false,
     onDynamicBackdropPalette: (MotionBackdropPalette?) -> Unit = {},
@@ -141,6 +143,9 @@ internal fun MotionArtworkLayer(
             lifecycleActive &&
             environment.remoteAllowed &&
             !videoUnavailable
+    }
+    val canvasKnownOnEntry = remember(entryIdentity) {
+        preferCanvasOnEntry && artwork != null && enabled && layerActive
     }
     val motionGatesOpen = artwork != null &&
         enabled &&
@@ -199,7 +204,10 @@ internal fun MotionArtworkLayer(
     }
     val visibleBridge = bridgeFrame?.takeIf { retainedArtwork != null }
     val motionVisible = videoReady || visibleBridge != null || !handoffCaptured
-    val showStaticBed = motionStaticBedVisible(motionVisible)
+    val showStaticBed = motionStaticBedVisible(
+        motionVisible = motionVisible,
+        canvasExpectedOnEntry = canvasKnownOnEntry && videoArtwork != null && layerActive
+    )
     LaunchedEffect(artwork?.identityKey, videoArtwork, enabled, lifecycleActive, environment.remoteAllowed, videoUnavailable) {
         if (artwork == null) return@LaunchedEffect
         Timber.d(
@@ -254,7 +262,9 @@ internal fun MotionArtworkLayer(
     )
     val staticBedAlpha by animateFloatAsState(
         targetValue = if (showStaticBed) 1f else 0f,
-        animationSpec = if (!showStaticBed) {
+        animationSpec = if (canvasKnownOnEntry && videoArtwork != null && layerActive) {
+            snap()
+        } else if (!showStaticBed) {
             tween(
                 durationMillis = STATIC_ARTWORK_BED_FADE_MS,
                 delayMillis = if (motionVisible) VIDEO_FADE_IN_MS else 0,
@@ -347,7 +357,10 @@ internal fun motionVideoSlot(
     handoffCaptured: Boolean
 ): MotionArtwork? = if (retained != null && !handoffCaptured) retained else incoming
 
-internal fun motionStaticBedVisible(motionVisible: Boolean): Boolean = !motionVisible
+internal fun motionStaticBedVisible(
+    motionVisible: Boolean,
+    canvasExpectedOnEntry: Boolean = false
+): Boolean = !motionVisible && !canvasExpectedOnEntry
 
 internal fun staticArtworkMotionActive(
     enabled: Boolean,
