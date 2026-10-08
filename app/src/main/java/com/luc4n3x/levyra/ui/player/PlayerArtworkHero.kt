@@ -159,6 +159,8 @@ internal fun PlayerArtworkHero(
                         cornerRadius = cornerRadius,
                         presentation = MotionArtworkPresentation.Card,
                         quality = canvasQuality,
+                        preferCanvasOnEntry = true,
+                        entryIdentity = track.id,
                         livingArtwork = livingArtwork,
                         dynamicBackdropEnabled = dynamicBackdropEnabled,
                         onDynamicBackdropPalette = onDynamicBackdropPalette,
