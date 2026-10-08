@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-08T18:53:51Z",
+  "generatedAt": "2026-10-08T19:05:45Z",
   "items": [
     {
       "song": "WINNER",
@@ -362,7 +362,7 @@
     {
       "song": "Dreams - 2004 Remaster",
       "artist": "Fleetwood Mac",
-      "album": "Rumours (Super Deluxe)",
+      "album": "Rumours",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/2ebfebea50ed443bbaee780cb22cfea8.cnvs.mp4",
       "scope": "track"
     },
@@ -507,6 +507,13 @@
       "scope": "track"
     },
     {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "Man I Need",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Babydoll",
       "artist": "Jamie Miller",
       "album": "Babydoll",
@@ -556,6 +563,13 @@
       "scope": "track"
     },
     {
+      "song": "Dreams - 2004 Remaster",
+      "artist": "Fleetwood Mac",
+      "album": "Rumours (Super Deluxe)",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/2ebfebea50ed443bbaee780cb22cfea8.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "12 to 12",
       "artist": "sombr",
       "album": "I Barely Know Her",
@@ -593,7 +607,7 @@
     {
       "song": "Nice To Each Other",
       "artist": "Olivia Dean",
-      "album": "The Art of Loving",
+      "album": "Nice To Each Other",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/aca2daddec534de8a3bcc1de7200d256.cnvs.mp4",
       "scope": "track"
     },
@@ -1834,13 +1848,6 @@
       "artist": "Justen de Wildt",
       "album": "Cheerio",
       "url": "https://canvaz.scdn.co/upload/licensor/62eayf7iuvlPs7DVWAguRz/video/feaf7353d6694c5dbff43c2de7455cb3.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "Man I Need",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -5176,6 +5183,48 @@
       "scope": "track"
     },
     {
+      "song": "f* delusional",
+      "artist": "Call Dominika, Pam Rabbit",
+      "album": "f* delusional",
+      "url": "https://canvaz.scdn.co/upload/artist/6EBKq4KCXExYanXleLzIVT/video/745a5d5b257b41cd9e48f67e1bb52b9f.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "cc",
+      "artist": "Lajfr, Mat213",
+      "album": "cc",
+      "url": "https://canvaz.scdn.co/upload/artist/5zeSPtcFxpJeejJjDPnkl1/video/a76f05a4e662417ea43ec5d3108e7bb9.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "venku lilo",
+      "artist": "GUFRAU, Cédric",
+      "album": "venku lilo",
+      "url": "https://canvaz.scdn.co/upload/artist/0WpBMqO4ai8W3rh3ffW14Q/video/d940ad0404e841c8b02e06875f5ecb5e.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "1234",
+      "artist": "Dokkeytino, Ego",
+      "album": "1234",
+      "url": "https://canvaz.scdn.co/upload/artist/2LGzzsimaBumgXL5eRCEvE/video/c2957ced13aa4519834f0aac6bae23a6.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Ve vaně",
+      "artist": "UDG",
+      "album": "MÚZY",
+      "url": "https://canvaz.scdn.co/upload/artist/142qig5MMgVIqfwDf1pFae/video/6d93d7fd65ec4092bcef2b66eb9b8017.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Stále v Ballerbynu",
+      "artist": "Maniak",
+      "album": "Stále v Ballerbynu",
+      "url": "https://canvaz.scdn.co/upload/artist/5j8tFACNcARCZifgjtUJa2/video/a4c3fb338e254d5090af3e6911877ae1.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Son Çağrı",
       "artist": "Eda Baba, Cem Adrian",
       "album": "Son Çağrı",
@@ -5516,20 +5565,6 @@
       "artist": "BAMBOO",
       "album": "Alon",
       "url": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/e61f00d70e5a4a91b3e9d503c9c375e6.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Dima Falestini",
-      "artist": "Mocro Stars, Baby Gang, Neima Ezza",
-      "album": "Dima Falestini",
-      "url": "https://canvaz.scdn.co/upload/artist/0ijfVCK7vN5IXtTuPXPdkl/video/0c70d4df6d05451990f76f6d65b43aa1.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "HELEN KELLER",
-      "artist": "Placebo",
-      "album": "HELEN KELLER",
-      "url": "https://canvaz.scdn.co/upload/artist/6RZUqkomCmb8zCRqc9eznB/video/6b1188b451ac4d0d95824ac87e48d8be.cnvs.mp4",
       "scope": "track"
     }
   ]
