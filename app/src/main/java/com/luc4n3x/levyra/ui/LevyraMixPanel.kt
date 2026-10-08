@@ -165,11 +165,12 @@ private fun MixToolAction(
         Icon(icon, contentDescription = null, tint = if (enabled) accent else colors.onSurfaceVariant, modifier = Modifier.size(22.dp))
         Text(label, style = LevyraType.cardTitle, color = if (enabled) colors.onSurface else colors.onSurfaceVariant, softWrap = true, textAlign = if (horizontal) TextAlign.Start else TextAlign.Center)
     }
-    val actionModifier = modifier.heightIn(min = 48.dp)
-        .clip(LevyraCardDesign.ThumbShape)
+    val actionModifier = modifier.heightIn(min = 56.dp)
+        .clip(LevyraCardDesign.EditorialShape)
+        .background(colors.surfaceContainerHigh)
         .semantics(mergeDescendants = true) {}
         .levyraPressable(onClick = onClick, enabled = enabled, pressedScale = LevyraPressScale.Tile, role = Role.Button)
-        .padding(horizontal = 4.dp, vertical = 8.dp)
+        .padding(horizontal = 8.dp, vertical = 10.dp)
     if (horizontal) {
         Row(modifier = actionModifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) { content() }
     } else {
