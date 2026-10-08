@@ -96,6 +96,30 @@ class PixelExpressiveVisualContractTest {
         assertTrue(mix.contains("onClick = onClick"))
     }
 
+    @Test
+    fun `Home action and search chips use material surfaces with large targets`() {
+        val app = readUi("LevyraApp.kt")
+        val actions = app.substringAfter("private fun HomeSectionHeader(")
+            .substringBefore("private fun ChartMarketHeader(")
+        val search = app.substringAfter("private fun QuickChips(")
+            .substringBefore("private fun SearchSummary(")
+        assertTrue(actions.contains("Icons.AutoMirrored.Rounded.ArrowForward"))
+        assertTrue(actions.contains("contentDescription = strings.showAll"))
+        assertTrue(actions.contains(".size(48.dp)"))
+        assertTrue(search.contains("MaterialTheme.colorScheme.surfaceContainerHigh"))
+        assertTrue(search.contains(".heightIn(min = 48.dp)"))
+    }
+
+    @Test
+    fun `bottom nav keeps names in accessibility when only active label is visible`() {
+        val app = readUi("LevyraApp.kt")
+        val nav = app.substringAfter("private fun RowScope.TabButton(")
+            .substringBefore("internal fun ActiveTrackEqualizer(")
+        assertTrue(nav.contains("contentDescription = entry.label"))
+        assertTrue(nav.contains("if (isSelected) dockFade(compaction()) else 0f"))
+        assertTrue(nav.contains("role = Role.Tab"))
+    }
+
     private fun readUi(relativePath: String): String {
         val candidates = listOf(
             Path.of("app/src/main/java/com/luc4n3x/levyra/ui", relativePath),
