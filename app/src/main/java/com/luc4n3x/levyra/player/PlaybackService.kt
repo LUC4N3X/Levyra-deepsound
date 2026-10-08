@@ -2166,7 +2166,7 @@ class PlaybackService : MediaLibraryService() {
                     .setBufferDurationsMs(
                         profile.minBufferMs,
                         profile.maxBufferMs,
-                        profile.playbackBufferMs,
+                        transitionPlaybackBufferMs(profile.playbackBufferMs),
                         profile.rebufferMs
                     )
                     .setBackBuffer(profile.backBufferMs, false)

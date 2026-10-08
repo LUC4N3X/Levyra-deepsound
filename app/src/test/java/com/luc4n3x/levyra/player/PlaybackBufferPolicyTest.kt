@@ -33,4 +33,12 @@ class PlaybackBufferPolicyTest {
         assertEquals(1_500, custom.rebufferMs)
         assertEquals(automatic.backBufferMs, custom.backBufferMs)
     }
+
+    @Test
+    fun transitionStartupBufferIsCappedWithoutChangingSmallerValues() {
+        assertEquals(100, transitionPlaybackBufferMs(100))
+        assertEquals(1_500, transitionPlaybackBufferMs(1_500))
+        assertEquals(2_000, transitionPlaybackBufferMs(2_000))
+        assertEquals(2_000, transitionPlaybackBufferMs(10_000))
+    }
 }

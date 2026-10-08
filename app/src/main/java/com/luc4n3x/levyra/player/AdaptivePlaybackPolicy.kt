@@ -122,4 +122,7 @@ internal fun playbackBufferProfile(
     )
 }
 
+internal fun transitionPlaybackBufferMs(playbackBufferMs: Int): Int =
+    playbackBufferMs.coerceAtMost(2_000)
+
 private fun Float.secondsToMs(): Int = (this * 1_000f).roundToInt()
