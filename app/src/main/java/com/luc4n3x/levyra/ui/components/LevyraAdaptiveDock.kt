@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -216,13 +217,14 @@ fun LevyraAdaptiveDockSurface(
 ) {
     val material = rememberDockMaterial()
     val shape = remember {
-        RoundedCornerShape(topStart = LevyraPlayerDesign.DockTrayCorner, topEnd = LevyraPlayerDesign.DockTrayCorner)
+        RoundedCornerShape(LevyraPlayerDesign.DockTrayCorner)
     }
     val frostBrush = remember(material) { Brush.verticalGradient(listOf(material.frostTop, material.frostBottom)) }
     val solidBrush = remember(material) { Brush.verticalGradient(listOf(material.solidTop, material.solidBottom)) }
     val rimBrush = remember(material) { Brush.verticalGradient(0f to material.rim, 0.35f to Color.Transparent) }
     Column(
         modifier = modifier
+            .padding(horizontal = 10.dp)
             .shadow(material.shadow, shape, clip = true)
             .glassFrost(
                 state = glass,
