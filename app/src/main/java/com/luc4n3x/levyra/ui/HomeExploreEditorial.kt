@@ -266,9 +266,7 @@ internal fun DiscoveryEditorialCard(
                     title = title,
                     subtitle = subtitle,
                     textColor = contrastPalette.text,
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = 116.dp)
+                    modifier = Modifier.weight(1f).heightIn(min = LevyraHomeDesign.EditorialThumb)
                 )
                 if (artwork != null) {
                     val artworkShape = RoundedCornerShape(22.dp)
@@ -297,9 +295,9 @@ private fun DiscoveryEditorialText(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically)) {
-        Text(title, style = LevyraType.sectionTitle.copy(fontWeight = FontWeight.Bold), color = textColor, softWrap = true, maxLines = 3, overflow = TextOverflow.Ellipsis)
+        Text(title, style = LevyraType.sectionTitle.copy(fontWeight = FontWeight.Bold), color = textColor, softWrap = true)
         if (subtitle.isNotBlank()) {
-            Text(subtitle, style = LevyraType.metadata, color = textColor.copy(alpha = 0.84f), softWrap = true, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            Text(subtitle, style = LevyraType.metadata, color = textColor.copy(alpha = 0.84f), softWrap = true)
         }
     }
 }
