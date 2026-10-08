@@ -244,13 +244,17 @@ internal fun PlayerCinematicStage(
                 cornerRadius = 0.dp,
                 presentation = MotionArtworkPresentation.Cinematic,
                 quality = canvasQuality,
+                preferCanvasOnEntry = true,
+                entryIdentity = track.id,
                 livingArtwork = livingArtwork,
                 dynamicBackdropEnabled = dynamicBackdropEnabled,
                 onDynamicBackdropPalette = onDynamicBackdropPalette,
                 modifier = Modifier.fillMaxSize()
             ) {
-                SeamlessArtworkImage(url = artworkUrl, modifier = Modifier.fillMaxSize()) {
-                    InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
+                if (!fullscreenCanvas) {
+                    SeamlessArtworkImage(url = artworkUrl, modifier = Modifier.fillMaxSize()) {
+                        InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
+                    }
                 }
             }
         }
@@ -263,6 +267,8 @@ internal fun PlayerCinematicStage(
                 cornerRadius = 0.dp,
                 presentation = MotionArtworkPresentation.Cinematic,
                 quality = canvasQuality,
+                preferCanvasOnEntry = true,
+                entryIdentity = track.id,
                 livingArtwork = null,
                 dynamicBackdropEnabled = dynamicBackdropEnabled,
                 onDynamicBackdropPalette = onDynamicBackdropPalette,
@@ -272,7 +278,11 @@ internal fun PlayerCinematicStage(
                         alpha = if (morphActive) morphAnchors.stageRevealAlpha() else 1f
                         translationX = swipeOffset() * 0.32f
                     }
-            ) { }
+            ) {
+                SeamlessArtworkImage(url = artworkUrl, modifier = Modifier.fillMaxSize()) {
+                    InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
+                }
+            }
         }
 
         if (fullscreenCanvas || fullscreenDimAlpha > 0.001f) {
