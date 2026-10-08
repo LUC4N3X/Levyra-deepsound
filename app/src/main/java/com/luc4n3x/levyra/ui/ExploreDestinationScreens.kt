@@ -46,6 +46,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -78,6 +79,7 @@ import com.luc4n3x.levyra.ui.components.carouselDepthEnabled
 import com.luc4n3x.levyra.ui.components.levyraCarouselDepth
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
+import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraBlue
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
@@ -1283,7 +1285,8 @@ private fun ExploreDiscoveryCategoryCard(
     onClick: () -> Unit
 ) {
     val (accentStart, accentEnd) = exploreCategoryPalette(identity)
-    val shape = RoundedCornerShape(14.dp)
+    val shape = LevyraCardDesign.EditorialShape
+    val colors = MaterialTheme.colorScheme
     val metrics = exploreCategoryCardMetrics(prominent)
     val longTitle = !prominent && title.length >= 18
     val titleSize = if (longTitle) 15.sp else metrics.titleSize
@@ -1291,32 +1294,19 @@ private fun ExploreDiscoveryCategoryCard(
     Box(
         modifier = modifier
             .clip(shape)
+            .background(colors.surfaceContainerHigh)
             .background(
                 Brush.linearGradient(
                     listOf(
-                        accentStart,
-                        accentEnd,
-                        accentEnd.copy(alpha = 0.88f)
+                        accentStart.copy(alpha = 0.24f),
+                        accentEnd.copy(alpha = 0.10f),
+                        Color.Transparent
                     )
                 )
             )
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), shape)
             .semantics { role = Role.Button }
             .clickable(onClick = onClick)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            LevyraBlack.copy(alpha = 0.18f),
-                            LevyraBlack.copy(alpha = 0.02f),
-                            LevyraBlack.copy(alpha = 0.10f)
-                        )
-                    )
-                )
-        )
         ExploreDiscoveryCategoryArtwork(
             artworkUrl = artworkUrl,
             emoji = emoji,
@@ -1324,10 +1314,10 @@ private fun ExploreDiscoveryCategoryCard(
         )
         Text(
             text = title,
-            color = Color.White,
+            color = colors.onSurface,
             fontSize = titleSize,
             lineHeight = LevyraTypeRhythm.lineHeight(titleSize),
-            fontWeight = FontWeight.Black,
+            fontWeight = FontWeight.Bold,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
@@ -1346,10 +1336,9 @@ private fun BoxScope.ExploreDiscoveryCategoryArtwork(
 ) {
     val artworkModifier = Modifier
         .align(Alignment.BottomEnd)
-        .offset(x = 14.dp, y = 12.dp)
+        .offset(x = 6.dp, y = 6.dp)
         .size(metrics.artworkSize)
-        .rotate(13f)
-        .clip(RoundedCornerShape(9.dp))
+        .clip(LevyraCardDesign.ArtworkShape)
     if (artworkUrl.isNotBlank()) {
         AsyncImage(
             model = artworkUrl,
@@ -1389,28 +1378,18 @@ private fun ExploreDiscoveryCategoryArtworkFallback(
 
 @Composable
 private fun ExploreDiscoveryCategoryPlaceholder(modifier: Modifier = Modifier) {
-    val shape = RoundedCornerShape(14.dp)
+    val shape = LevyraCardDesign.EditorialShape
     Box(
         modifier = modifier
             .clip(shape)
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        LevyraPanelSoft,
-                        LevyraPanel,
-                        LevyraPanel.copy(alpha = 0.92f)
-                    )
-                )
-            )
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.06f)), shape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
     ) {
         Box(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .offset(x = 14.dp, y = 12.dp)
+                .offset(x = 6.dp, y = 6.dp)
                 .size(78.dp)
-                .rotate(13f)
-                .clip(RoundedCornerShape(9.dp))
+                .clip(LevyraCardDesign.ArtworkShape)
                 .background(Color.White.copy(alpha = 0.06f))
         )
     }
@@ -1467,8 +1446,8 @@ private fun ExploreDestinationSurface(
         ) {
             Box(
                 modifier = Modifier
-                    .size(42.dp)
-                    .background(LevyraPanel, CircleShape)
+                    .size(48.dp)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
                     .semantics { role = Role.Button }
                     .clickable(onClick = onBack),
                 contentAlignment = Alignment.Center
@@ -1476,8 +1455,8 @@ private fun ExploreDestinationSurface(
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                     contentDescription = strings.back,
-                    tint = LevyraText,
-                    modifier = Modifier.size(21.dp)
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(22.dp)
                 )
             }
             Column(
