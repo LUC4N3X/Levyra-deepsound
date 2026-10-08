@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,8 +29,11 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -359,23 +363,24 @@ private fun LocalLibraryQualityFilters(
                 LocalLibraryQualityFilter.HighBitrate -> "320K+"
                 LocalLibraryQualityFilter.Recent -> strings.localLibraryRecentFilterLabel()
             }
-            Surface(
-                color = if (active) LevyraCyan.copy(alpha = 0.14f) else Color.Transparent,
-                border = BorderStroke(
-                    1.dp,
-                    if (active) LevyraCyan.copy(alpha = 0.48f) else LevyraMuted.copy(alpha = 0.16f)
+            FilterChip(
+                selected = active,
+                onClick = { onSelect(filter) },
+                label = {
+                    Text(
+                        text = label,
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                shapes = FilterChipDefaults.shapes(
+                    shape = MaterialTheme.shapes.small,
+                    selectedShape = MaterialTheme.shapes.extraLarge,
+                    pressedShape = MaterialTheme.shapes.medium
                 ),
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier.clickable { onSelect(filter) }
-            ) {
-                Text(
-                    text = label,
-                    color = if (active) LevyraCyan else LevyraMuted,
-                    fontSize = 10.5.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                )
-            }
+                colors = FilterChipDefaults.tonalFilterChipColors(),
+                modifier = Modifier.heightIn(min = 48.dp)
+            )
         }
     }
 }

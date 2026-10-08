@@ -8,7 +8,10 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
+import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.carouselDepthEnabled
+import com.luc4n3x.levyra.ui.components.levyraExpressiveCorner
+import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.components.levyraCarouselDepth
 import com.luc4n3x.levyra.domain.Track
 import androidx.compose.ui.unit.sp
@@ -17,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.layout.width
@@ -43,6 +47,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -190,23 +195,38 @@ internal fun HomeGenreChips(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(zones, key = { zone -> "home-chip-${zone.id}" }) { zone ->
+            val interaction = remember(zone.id) { MutableInteractionSource() }
+            val corner = if (LocalAnimationsEnabled.current) {
+                levyraExpressiveCorner(
+                    interactionSource = interaction,
+                    rest = 12.dp,
+                    pressed = 24.dp,
+                    label = "homeGenreChipCorner"
+                )
+            } else {
+                12.dp
+            }
             Text(
                 text = zone.label,
                 color = LevyraText,
                 style = LevyraType.cardTitle,
                 maxLines = 1,
                 modifier = Modifier
-                    .heightIn(min = 40.dp)
-                    .clip(HomeChipShape)
+                    .heightIn(min = 48.dp)
+                    .clip(RoundedCornerShape(corner))
                     .background(LevyraText.copy(alpha = 0.10f))
-                    .clickable(role = Role.Button) { onSelect(zone) }
+                    .levyraPressable(
+                        onClick = { onSelect(zone) },
+                        interactionSource = interaction,
+                        pressedScale = LevyraPressScale.Control,
+                        role = Role.Button
+                    )
                     .padding(horizontal = 16.dp, vertical = 10.dp)
             )
         }
     }
 }
 
-private val HomeChipShape = RoundedCornerShape(10.dp)
 
 @Composable
 internal fun HomeChartPodium(

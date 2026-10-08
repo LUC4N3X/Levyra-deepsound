@@ -1764,7 +1764,7 @@ internal fun backupInterfaceSettingsFromJson(
         canvasQuality = LevyraCanvasQuality.from(json.optString("canvasQuality")),
         canvasSource = LevyraCanvasSource.from(json.optString("canvasSource")),
         visualPerformance = LevyraVisualPerformance.from(json.optString("visualPerformance")),
-        liquidGlassEnabled = json.optBoolean("liquidGlassEnabled", false),
+        liquidGlassEnabled = json.optBoolean("liquidGlassEnabled", true),
         motionArtworkWifiOnly = json.optBoolean("motionArtworkWifiOnly", false),
         enhanceVideoMetadata = json.optBoolean("enhanceVideoMetadata", false),
         pureBlack = json.optBoolean("pureBlack", false),

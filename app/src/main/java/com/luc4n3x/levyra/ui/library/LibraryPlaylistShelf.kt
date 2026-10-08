@@ -1,6 +1,5 @@
 package com.luc4n3x.levyra.ui.library
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -12,11 +11,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,6 +25,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.domain.Playlist
+import com.luc4n3x.levyra.ui.components.LevyraExpressiveIconButton
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -58,13 +57,18 @@ internal fun LibraryPlaylistShelf(
                 ) {
                     Box {
                         LibraryArtwork(playlist.coverUrl, playlist.name, Modifier.fillMaxWidth().aspectRatio(1f), LevyraCardDesign.ArtworkShape, selected = false)
-                        IconButton(
+                        LevyraExpressiveIconButton(
                             onClick = { onPlay(playlist) },
                             enabled = playlist.tracks.isNotEmpty(),
-                            modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp).size(48.dp)
-                                .clip(CircleShape).background(colors.surfaceContainerHigh)
+                            modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp).size(48.dp),
+                            colors = IconButtonDefaults.iconButtonColors(
+                                containerColor = colors.surfaceContainerHigh,
+                                contentColor = colors.onSurface,
+                                disabledContainerColor = colors.surfaceContainerHigh,
+                                disabledContentColor = colors.onSurfaceVariant
+                            )
                         ) {
-                            Icon(Icons.Rounded.PlayArrow, contentDescription = "${strings.play}, ${playlist.name}", tint = if (playlist.tracks.isNotEmpty()) colors.onSurface else colors.onSurfaceVariant)
+                            Icon(Icons.Rounded.PlayArrow, contentDescription = "${strings.play}, ${playlist.name}")
                         }
                     }
                     Text(playlist.name, style = LevyraType.cardTitle, color = colors.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
