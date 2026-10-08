@@ -33,6 +33,7 @@ import com.luc4n3x.levyra.domain.ExploreZone
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyRow
@@ -116,9 +117,9 @@ private fun DrawScope.drawHomeBackdrop(
     val height = min(size.height, HomeBackdropHeight.toPx())
     if (size.width <= 0f || height <= 0f) return
 
-    val primary = mixHomeBackdropColor(accent, HomeBackdropBlue, 0.18f)
-    val secondary = mixHomeBackdropColor(accent, HomeBackdropIndigo, 0.46f)
-    val tertiary = mixHomeBackdropColor(accent, Color.White, if (isLight) 0.20f else 0.08f)
+    val primary = accent
+    val secondary = mixHomeBackdropColor(accent, if (isLight) Color(0xFFDCE1EB) else Color(0xFF323746), 0.52f)
+    val tertiary = mixHomeBackdropColor(accent, if (isLight) Color.White else Color(0xFF8E93A1), 0.64f)
     val drift = (driftPhase.coerceIn(0f, 1f) - 0.5f) * 2f
 
     val primaryCenter = Offset(
@@ -187,8 +188,6 @@ private fun mixHomeBackdropColor(first: Color, second: Color, amount: Float): Co
 }
 
 private val HomeBackdropHeight = 420.dp
-private val HomeBackdropBlue = Color(0xFF0A84FF)
-private val HomeBackdropIndigo = Color(0xFF5E5CE6)
 
 @Composable
 internal fun HomeGenreChips(
@@ -207,12 +206,12 @@ internal fun HomeGenreChips(
             val corner = if (LocalAnimationsEnabled.current) {
                 levyraExpressiveCorner(
                     interactionSource = interaction,
-                    rest = 12.dp,
-                    pressed = 24.dp,
+                    rest = LevyraCardDesign.ArtworkCorner,
+                    pressed = LevyraCardDesign.SurfaceCorner,
                     label = "homeGenreChipCorner"
                 )
             } else {
-                12.dp
+                LevyraCardDesign.ArtworkCorner
             }
             Box(
                 modifier = Modifier
@@ -229,13 +228,13 @@ internal fun HomeGenreChips(
                     modifier = Modifier
                         .heightIn(min = LevyraHomeDesign.MoodChipVisualHeight)
                         .clip(RoundedCornerShape(corner))
-                        .background(LevyraText.copy(alpha = 0.10f))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                         .padding(horizontal = 14.dp, vertical = 6.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = zone.label,
-                        color = LevyraText,
+                        color = MaterialTheme.colorScheme.onSurface,
                         style = LevyraType.cardTitle,
                         maxLines = 1
                     )
@@ -291,13 +290,13 @@ private fun HomeChartPodiumCard(
     ) {
         Text(
             text = rankText,
-            color = LevyraText.copy(alpha = 0.72f),
+            color = LevyraText.copy(alpha = 0.42f),
             style = TextStyle(
-                fontSize = 112.sp,
-                lineHeight = 112.sp,
+                fontSize = 104.sp,
+                lineHeight = 104.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = (-7).sp,
-                drawStyle = Stroke(width = 3.5f)
+                drawStyle = Stroke(width = 2.5f)
             ),
             maxLines = 1,
             modifier = Modifier
