@@ -53,6 +53,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberSliderState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -650,6 +651,14 @@ private fun MixLabSliderSection(
     onValueChange: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val sliderValue = value.coerceIn(0f, 1f)
+    val sliderState = rememberSliderState(
+        value = sliderValue,
+        trackRange = 0f..1f
+    )
+    LaunchedEffect(sliderValue) {
+        if (sliderState.value != sliderValue) sliderState.value = sliderValue
+    }
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -661,8 +670,11 @@ private fun MixLabSliderSection(
             fontWeight = FontWeight.Bold
         )
         Slider(
-            value = value,
-            onValueChange = onValueChange,
+            state = sliderState,
+            onValueChange = { nextValue ->
+                sliderState.value = nextValue
+                onValueChange(nextValue)
+            },
             colors = SliderDefaults.colors(
                 thumbColor = LevyraCyan,
                 activeTrackColor = LevyraCyan,
