@@ -138,11 +138,11 @@ internal fun LibraryHero(title: String, subtitle: String) {
 internal fun LibraryCategoryChip(label: String, selected: Boolean, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Surface(
-        color = if (selected) colors.onSurface.copy(alpha = 0.12f) else Color.Transparent,
-        shape = LevyraCardDesign.ArtworkShape,
+        color = if (selected) colors.secondaryContainer else colors.surfaceContainerLow,
+        shape = LibraryPillShape,
         modifier = Modifier
             .heightIn(min = 48.dp)
-            .clip(LevyraCardDesign.ArtworkShape)
+            .clip(LibraryPillShape)
             .selectable(selected = selected, role = Role.Tab, onClick = onClick)
     ) {
         Row(
@@ -150,8 +150,8 @@ internal fun LibraryCategoryChip(label: String, selected: Boolean, onClick: () -
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (selected) Icon(Icons.Rounded.Check, contentDescription = null, tint = colors.onSurface, modifier = Modifier.size(16.dp))
-            Text(label, color = if (selected) colors.onSurface else colors.onSurfaceVariant, style = LevyraType.cardTitle)
+            if (selected) Icon(Icons.Rounded.Check, contentDescription = null, tint = colors.onSecondaryContainer, modifier = Modifier.size(16.dp))
+            Text(label, color = if (selected) colors.onSecondaryContainer else colors.onSurfaceVariant, style = LevyraType.cardTitle)
         }
     }
 }
