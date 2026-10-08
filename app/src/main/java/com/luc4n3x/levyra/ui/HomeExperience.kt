@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.dp
+import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
@@ -207,13 +208,14 @@ internal fun HomeGenreChips(
             val corner = if (LocalAnimationsEnabled.current) {
                 levyraExpressiveCorner(
                     interactionSource = interaction,
-                    rest = 12.dp,
-                    pressed = 24.dp,
+                    rest = 18.dp,
+                    pressed = 26.dp,
                     label = "homeGenreChipCorner"
                 )
             } else {
-                12.dp
+                18.dp
             }
+            val isLight = LevyraActivePalette.isLight
             Box(
                 modifier = Modifier
                     .heightIn(min = 48.dp)
@@ -229,14 +231,21 @@ internal fun HomeGenreChips(
                     modifier = Modifier
                         .heightIn(min = LevyraHomeDesign.MoodChipVisualHeight)
                         .clip(RoundedCornerShape(corner))
-                        .background(LevyraText.copy(alpha = 0.10f))
-                        .padding(horizontal = 14.dp, vertical = 6.dp),
+                        .background(
+                            if (isLight) Color(0x14101322) else Color.White.copy(alpha = 0.08f)
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = if (isLight) Color(0x18101322) else Color.White.copy(alpha = 0.07f),
+                            shape = RoundedCornerShape(corner)
+                        )
+                        .padding(horizontal = 16.dp, vertical = 7.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = zone.label,
                         color = LevyraText,
-                        style = LevyraType.cardTitle,
+                        style = LevyraType.cardTitle.copy(fontWeight = FontWeight.SemiBold),
                         maxLines = 1
                     )
                 }

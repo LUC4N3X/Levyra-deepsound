@@ -21,13 +21,13 @@ object LevyraHomeDesign {
     val SectionGapCompact: Dp = 8.dp
     val SectionStride: Dp = 26.dp
     val SectionStrideCompact: Dp = 22.dp
-    val HeaderCorner: Dp = 16.dp
+    val HeaderCorner: Dp = 20.dp
     val HeaderPadding: Dp = 12.dp
     val SettingsControlHeight: Dp = 48.dp
     val MoodChipHeight: Dp = 48.dp
-    val MoodChipVisualHeight: Dp = 32.dp
-    val MoodChipCorner: Dp = 12.dp
-    val HeroCorner: Dp = 24.dp
+    val MoodChipVisualHeight: Dp = 36.dp
+    val MoodChipCorner: Dp = 18.dp
+    val HeroCorner: Dp = 28.dp
     val EditorialPadding: Dp = 20.dp
     val EditorialThumb: Dp = 112.dp
     val EditorialPeek: Dp = 40.dp
@@ -35,7 +35,7 @@ object LevyraHomeDesign {
     val DiscoveryArtworkWidth: Dp = 176.dp
     const val EditorialArtworkRatio: Float = 1.5f
     val HeroHeight: Dp = 340.dp
-    val ShelfCorner: Dp = 2.dp
+    val ShelfCorner: Dp = 4.dp
     val ArtworkCorner: Dp = LevyraCardDesign.ArtworkCorner
     val ThumbCorner: Dp = LevyraCardDesign.ThumbCorner
     val ArtworkCardWidth: Dp = 156.dp
@@ -68,7 +68,7 @@ object LevyraHomeDesign {
     val OrbitHeaderTitleSize = 24.sp
 
     val HeaderShape = RoundedCornerShape(HeaderCorner)
-    val SettingsShape = RoundedCornerShape(14.dp)
+    val SettingsShape = RoundedCornerShape(18.dp)
     val MoodChipShape = RoundedCornerShape(MoodChipCorner)
     val HeroShape = RoundedCornerShape(HeroCorner)
     val ShelfShape = RoundedCornerShape(ShelfCorner)

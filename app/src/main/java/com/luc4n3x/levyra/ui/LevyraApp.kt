@@ -787,7 +787,7 @@ private const val LevyraLandscapeDockMiniWeight = 1.1f
 private val LevyraBottomContentGap = 16.dp
 private val LevyraTabIndicatorTop = 11.dp
 private val LevyraTabIndicatorHeight = 36.dp
-private val LevyraTabIndicatorShape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 15.dp, bottomEnd = 15.dp)
+private val LevyraTabIndicatorShape = RoundedCornerShape(percent = 50)
 private val LevyraTabScrimHeight = 22.dp
 private val LevyraNavigationBlue = Color(0xFF0A84FF)
 private val LevyraHomeGlowViolet = Color(0xFF6E5CF0)
@@ -1044,16 +1044,16 @@ private fun RowScope.TabButton(
     val selectedProgress by animateFloatAsState(
         targetValue = if (isSelected) 1f else 0f,
         animationSpec = if (animationsEnabled) {
-            spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)
+            spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessMediumLow)
         } else {
             snap()
         },
         label = "tab-selected-progress"
     )
     val iconScale by animateFloatAsState(
-        targetValue = if (pressed) 0.88f else if (isSelected) 1.06f else 1f,
+        targetValue = if (pressed) 0.88f else if (isSelected) 1.08f else 1f,
         animationSpec = if (animationsEnabled) {
-            spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessMedium)
+            spring(dampingRatio = 0.65f, stiffness = Spring.StiffnessMedium)
         } else {
             snap()
         },
@@ -22893,8 +22893,8 @@ private const val MiniPlayerCarryFraction = 0.5f
 private val MiniPlayerCardBase = PlayerDarkSurface
 private val MiniPlayerTrackColor = Color.White.copy(alpha = 0.12f)
 private val MiniPlayerBufferedColor = Color.White.copy(alpha = 0.20f)
-private val MiniPlayerProgressInset = 18.dp
-private val MiniPlayerProgressHeight = 2.dp
+private val MiniPlayerProgressInset = 16.dp
+private val MiniPlayerProgressHeight = 3.dp
 private val MiniPlayerTrayTop = 8.dp
 private val MiniPlayerTrayBottom = 5.dp
 private val MiniPlayerCardGutter = 8.dp
@@ -23000,6 +23000,16 @@ private fun MiniPlayer(
                     .fillMaxWidth()
                     .dockLerpHeight(compaction, LevyraPlayerDesign.MiniHeight, LevyraPlayerDesign.MiniHeightCompact)
                     .clip(cardShape)
+                    .border(
+                        width = 1.dp,
+                        brush = Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(alpha = 0.14f),
+                                Color.White.copy(alpha = 0.04f)
+                            )
+                        ),
+                        shape = cardShape
+                    )
                     .drawBehind {
                         drawRect(
                             Brush.horizontalGradient(
@@ -23193,18 +23203,26 @@ private fun MiniPlayerToggleButton(
             .pressable(onClick = onToggle),
         contentAlignment = Alignment.Center
     ) {
-        if (isResolving) {
-            LevyraLoadingIndicator(
-                modifier = Modifier.size(22.dp),
-                color = buttonColor
-            )
-        } else {
-            LevyraPlayPauseGlyph(
-                playing = isPlaying,
-                color = buttonColor,
-                contentDescription = if (isPlaying) LocalLevyraStrings.current.pause else LocalLevyraStrings.current.play,
-                modifier = Modifier.size(28.dp)
-            )
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isResolving) {
+                LevyraLoadingIndicator(
+                    modifier = Modifier.size(20.dp),
+                    color = buttonColor
+                )
+            } else {
+                LevyraPlayPauseGlyph(
+                    playing = isPlaying,
+                    color = buttonColor,
+                    contentDescription = if (isPlaying) LocalLevyraStrings.current.pause else LocalLevyraStrings.current.play,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
         }
     }
 }
@@ -24279,13 +24297,13 @@ private fun BottomTabs(
     val indicatorPosition by animateFloatAsState(
         targetValue = selectedIndex.toFloat(),
         animationSpec = if (animationsEnabled) {
-            spring(dampingRatio = 0.76f, stiffness = Spring.StiffnessMediumLow)
+            spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessMediumLow)
         } else {
             snap()
         },
         label = "tab-indicator-position"
     )
-    val indicatorColor = selectedTint.copy(alpha = if (isLight) 0.08f else 0.11f)
+    val indicatorColor = selectedTint.copy(alpha = if (isLight) 0.12f else 0.16f)
 
     Column(modifier = Modifier.fillMaxWidth()) {
             BoxWithConstraints(
@@ -24295,7 +24313,7 @@ private fun BottomTabs(
                     .height(LevyraTabBarHeight)
             ) {
                 val slotWidth = maxWidth / entries.size
-                val indicatorWidth = (slotWidth - 34.dp).coerceIn(40.dp, 52.dp)
+                val indicatorWidth = (slotWidth - 28.dp).coerceIn(46.dp, 58.dp)
                 val density = LocalDensity.current
                 val slotPx = with(density) { slotWidth.toPx() }
                 val indicatorPx = with(density) { indicatorWidth.toPx() }
