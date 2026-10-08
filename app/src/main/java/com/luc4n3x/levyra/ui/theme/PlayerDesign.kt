@@ -67,9 +67,9 @@ object LevyraPlayerDesign {
     const val ArtworkPausedScale: Float = 0.92f
     const val ArtworkTrackChangeScale: Float = 0.965f
 
-    val MiniCorner: Dp = 20.dp
+    val MiniCorner: Dp = 24.dp
     val MiniArtwork: Dp = 46.dp
-    val MiniArtworkCorner: Dp = 13.dp
+    val MiniArtworkCorner: Dp = 14.dp
     val MiniHeight: Dp = 64.dp
     val MiniHeightCompact: Dp = 50.dp
     val MiniArtworkCompact: Dp = 36.dp
