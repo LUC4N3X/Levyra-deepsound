@@ -51,15 +51,15 @@ class PixelExpressiveVisualContractTest {
         assertTrue(dock.contains("colors.surfaceContainerHigh"))
         assertTrue(dock.contains("colors.outlineVariant"))
         assertTrue(dock.contains("pureBlack -> DockMaterial("))
-        assertTrue(dock.contains("RoundedCornerShape(LevyraPlayerDesign.DockTrayCorner)"))
-        assertTrue(dock.contains(".padding(horizontal = 10.dp)"))
+        assertTrue(dock.contains("RoundedCornerShape(topStart = LevyraPlayerDesign.DockTrayCorner, topEnd = LevyraPlayerDesign.DockTrayCorner)"))
+        assertFalse(dock.contains(".padding(horizontal = 10.dp)"))
         assertTrue(dock.contains(".glassFrost("))
         assertTrue(dock.contains("onDrawFallback = { drawRect(solidBrush) }"))
     }
 
     @Test
     fun `home reveals personal discovery earlier without collapsing touch targets`() {
-        assertEquals(296f, LevyraHomeDesign.HeroHeight.value, 0.001f)
+        assertEquals(312f, LevyraHomeDesign.HeroHeight.value, 0.001f)
         assertTrue(LevyraHomeDesign.HeroHeight.value >= 240f)
         assertTrue(LevyraHomeDesign.SectionStride > LevyraHomeDesign.SectionGap * 2f)
         assertTrue(LevyraHomeDesign.MoodChipHeight.value >= 48f)
@@ -120,6 +120,15 @@ class PixelExpressiveVisualContractTest {
         assertTrue(nav.contains("contentDescription = entry.label"))
         assertTrue(nav.contains("if (isSelected) dockFade(compaction()) else 0f"))
         assertTrue(nav.contains("role = Role.Tab"))
+    }
+
+    @Test
+    fun `mini player remains visually separate from main style bottom navigation`() {
+        val app = readUi("LevyraApp.kt")
+        assertTrue(app.contains("private val LevyraMiniPlayerHeight = 82.dp"))
+        assertTrue(app.contains("private val MiniPlayerTrayBottom = 10.dp"))
+        assertTrue(app.contains("val miniSurface = miniColors.surfaceContainerHighest"))
+        assertTrue(app.contains("val miniPrimaryContent = miniColors.onSurface"))
     }
 
     private fun readUi(relativePath: String): String {
