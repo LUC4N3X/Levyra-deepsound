@@ -50,7 +50,7 @@ object LevyraHomeDesign {
     val OrbitTileTitleInset: Dp = 9.dp
     val OrbitPageEndInset: Dp = 20.dp
     val OrbitAvatarSize: Dp = 34.dp
-    val OrbitAvatarGap: Dp = 14.dp
+    val OrbitAvatarGap: Dp = 10.dp
     val OrbitDotSize: Dp = 8.dp
     val OrbitDotGap: Dp = 4.5.dp
     val OrbitDotsTopGap: Dp = 8.dp
@@ -64,8 +64,8 @@ object LevyraHomeDesign {
     val CardTitleSize = LevyraCardDesign.CardTitleSize
     val CardSubtitleSize = LevyraCardDesign.CardSubtitleSize
     val OrbitTileTitleSize = 15.sp
-    val OrbitHeaderNameSize = 15.sp
-    val OrbitHeaderTitleSize = 24.sp
+    val OrbitHeaderNameSize = 12.sp
+    val OrbitHeaderTitleSize = 23.sp
 
     val HeaderShape = RoundedCornerShape(HeaderCorner)
     val SettingsShape = RoundedCornerShape(14.dp)
