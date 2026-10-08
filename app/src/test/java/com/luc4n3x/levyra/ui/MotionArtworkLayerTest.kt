@@ -93,6 +93,32 @@ class MotionArtworkLayerTest {
     }
 
     @Test
+    fun playerWithKnownCanvasSkipsBriefStaticCoverDuringFirstFrameWait() {
+        assertFalse(
+            motionStaticBedVisible(
+                motionVisible = false,
+                canvasExpectedOnEntry = true
+            )
+        )
+    }
+
+    @Test
+    fun lateOrUnavailableCanvasPreservesStaticFallback() {
+        assertTrue(
+            motionStaticBedVisible(
+                motionVisible = false,
+                canvasExpectedOnEntry = false
+            )
+        )
+        assertFalse(
+            motionStaticBedVisible(
+                motionVisible = true,
+                canvasExpectedOnEntry = false
+            )
+        )
+    }
+
+    @Test
     fun pageMotionShowsStaticCoverImmediatelyWhileCanvasIsResolving() {
         assertTrue(
             motionStaticBedVisible(motionVisible = false)
