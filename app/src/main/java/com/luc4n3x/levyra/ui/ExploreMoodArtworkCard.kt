@@ -318,30 +318,10 @@ internal fun RowScope.ExploreMoodCard(
                 modifier = Modifier
                     .matchParentSize()
             )
-        } else {
-            Text(
-                text = zone.emoji,
-                color = Color.White.copy(alpha = 0.28f),
-                fontSize = 42.sp,
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 16.dp)
-            )
         }
 
         Box(modifier = Modifier.matchParentSize().background(ambientScrim))
         Box(modifier = Modifier.matchParentSize().background(bottomScrim))
-
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(12.dp)
-                .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.38f))
-                .padding(horizontal = 10.dp, vertical = 5.dp)
-        ) {
-            Text(zone.emoji, color = Color.White, fontSize = 17.sp)
-        }
 
         Row(
             modifier = Modifier
