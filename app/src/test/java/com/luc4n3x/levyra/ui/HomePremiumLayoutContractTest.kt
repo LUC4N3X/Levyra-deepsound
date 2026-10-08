@@ -53,7 +53,10 @@ class HomePremiumLayoutContractTest {
         assertTrue(header.indexOf("if (initial != null)") < header.indexOf("HomeOrbitAvatar("))
         assertTrue(header.contains("personalOrbitTitle"))
         assertTrue(header.contains("heading()"))
-        assertTrue(header.contains("HomeOutlinedAction"))
+        assertTrue(header.contains("levyraPressable("))
+        assertTrue(header.contains("onClickLabel = strings.playAll"))
+        assertTrue(header.contains("size(38.dp)"))
+        assertFalse(header.contains("HomeOutlinedAction"))
         assertFalse(header.contains("personalOrbitSubtitle"))
     }
 
