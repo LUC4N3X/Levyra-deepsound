@@ -161,7 +161,7 @@ data class LevyraInterfaceSettings(
     val canvasQuality: LevyraCanvasQuality = LevyraCanvasQuality.Auto,
     val canvasSource: LevyraCanvasSource = LevyraCanvasSource.Auto,
     val visualPerformance: LevyraVisualPerformance = LevyraVisualPerformance.Full,
-    val liquidGlassEnabled: Boolean = false,
+    val liquidGlassEnabled: Boolean = true,
     val motionArtworkWifiOnly: Boolean = false,
     val enhanceVideoMetadata: Boolean = false,
     val pureBlack: Boolean = false,
