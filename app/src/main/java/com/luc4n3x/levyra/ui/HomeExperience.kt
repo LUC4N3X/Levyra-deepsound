@@ -204,7 +204,6 @@ internal fun HomeGenreChips(
     modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.colorScheme
-    val isLight = LevyraActivePalette.isLight
     val animationsEnabled = LocalAnimationsEnabled.current
 
     LazyRow(
@@ -225,10 +224,7 @@ internal fun HomeGenreChips(
                 22.dp
             }
             val shape = RoundedCornerShape(corner)
-            val accent = Color(zone.accentStart)
-            val containerColor = accent
-                .copy(alpha = if (isLight) 0.055f else 0.095f)
-                .compositeOver(colors.surfaceContainerHigh)
+            val containerColor = colors.surfaceContainerHigh
 
             Box(
                 modifier = Modifier
@@ -249,7 +245,7 @@ internal fun HomeGenreChips(
                         .background(containerColor)
                         .border(
                             width = 1.dp,
-                            color = colors.outlineVariant.copy(alpha = if (isLight) 0.42f else 0.32f),
+                            color = colors.outlineVariant.copy(alpha = 0.45f),
                             shape = shape
                         )
                         .padding(horizontal = 13.dp, vertical = 7.dp),
@@ -260,13 +256,13 @@ internal fun HomeGenreChips(
                         modifier = Modifier
                             .size(18.dp)
                             .clip(CircleShape)
-                            .background(accent.copy(alpha = if (isLight) 0.13f else 0.18f)),
+                            .background(colors.secondaryContainer.copy(alpha = 0.74f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Box(
                             modifier = Modifier
                                 .size(6.dp)
-                                .background(accent, CircleShape)
+                                .background(colors.onSecondaryContainer.copy(alpha = 0.82f), CircleShape)
                         )
                     }
                     Text(
