@@ -31,7 +31,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSliderState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -243,14 +245,27 @@ private fun MixBalanceSlider(
         disabledThumbColor = colors.onSurfaceVariant,
         disabledActiveTrackColor = colors.onSurfaceVariant
     )
+    val sliderState = rememberSliderState(
+        value = 1f - familiarity,
+        trackRange = 0f..1f
+    )
+    LaunchedEffect(familiarity) {
+        val target = 1f - familiarity
+        if (sliderState.value != target) {
+            sliderState.value = target
+        }
+    }
     Column {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(familiarLabel, modifier = Modifier.weight(1f), style = LevyraType.caption, color = colors.onSurfaceVariant)
             Text(discoveryLabel, modifier = Modifier.weight(1f), style = LevyraType.caption, color = colors.onSurfaceVariant, textAlign = TextAlign.End)
         }
         Slider(
-            value = 1f - familiarity,
-            onValueChange = { onFamiliarityChange(1f - it) },
+            state = sliderState,
+            onValueChange = { value ->
+                sliderState.value = value
+                onFamiliarityChange(1f - value)
+            },
             enabled = enabled,
             colors = sliderColors,
             thumb = {

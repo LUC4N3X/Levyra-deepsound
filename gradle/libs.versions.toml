@@ -2,7 +2,7 @@
 agp = "9.4.1"
 kotlin = "2.4.20"
 composeBom = "2026.09.00"
-material3Expressive = "1.5.0-alpha23"
+material3Expressive = "1.5.0-beta01"
 coreKtx = "1.19.1"
 activityCompose = "1.13.0"
 fragment = "1.9.1"
