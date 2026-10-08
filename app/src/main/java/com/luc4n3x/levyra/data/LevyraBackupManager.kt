@@ -38,6 +38,8 @@ import com.luc4n3x.levyra.domain.normalizePlaylistTagName
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.AudioOffloadPreference
 import com.luc4n3x.levyra.domain.ReplayGainMode
+import com.luc4n3x.levyra.domain.PlaybackBufferMode
+import com.luc4n3x.levyra.domain.PlaybackBufferSettings
 import com.luc4n3x.levyra.domain.LevyraBackupFrequency
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
@@ -1641,6 +1643,12 @@ internal fun backupAudioSettingsToJson(value: LevyraAudioSettings): JSONObject =
     })
     .put("enhancedAudioEnabled", value.enhancedAudioEnabled)
     .put("audioOffloadPreference", value.audioOffloadPreference.storageValue)
+    .put("playbackBuffer", JSONObject()
+        .put("mode", value.playbackBuffer.mode.storageValue)
+        .put("minSeconds", value.playbackBuffer.minBufferSeconds.toDouble())
+        .put("maxSeconds", value.playbackBuffer.maxBufferSeconds.toDouble())
+        .put("playbackSeconds", value.playbackBuffer.playbackBufferSeconds.toDouble())
+        .put("rebufferSeconds", value.playbackBuffer.rebufferSeconds.toDouble()))
 
 internal fun backupAudioQualityFromJson(settings: JSONObject): String =
     LevyraAudioQuality.normalize(settings.optString("audioQuality"))
@@ -1661,6 +1669,18 @@ internal fun backupAudioSettingsFromJson(json: JSONObject?): LevyraAudioSettings
     }
     val legacyReplayGain = json.optBoolean("replayGainEnabled")
     val replayGainMode = ReplayGainMode.fromStorage(json.optString("replayGainMode"), legacyReplayGain)
+    val bufferJson = json.optJSONObject("playbackBuffer")
+    val playbackBuffer = if (bufferJson == null) {
+        PlaybackBufferSettings()
+    } else {
+        PlaybackBufferSettings(
+            mode = PlaybackBufferMode.fromStorage(bufferJson.optString("mode")),
+            minBufferSeconds = bufferJson.optDouble("minSeconds", PlaybackBufferSettings.BALANCED_MIN_SECONDS.toDouble()).toFloat(),
+            maxBufferSeconds = bufferJson.optDouble("maxSeconds", PlaybackBufferSettings.BALANCED_MAX_SECONDS.toDouble()).toFloat(),
+            playbackBufferSeconds = bufferJson.optDouble("playbackSeconds", PlaybackBufferSettings.BALANCED_PLAYBACK_SECONDS.toDouble()).toFloat(),
+            rebufferSeconds = bufferJson.optDouble("rebufferSeconds", PlaybackBufferSettings.BALANCED_REBUFFER_SECONDS.toDouble()).toFloat()
+        )
+    }
     val customParametricArray = json.optJSONArray("customParametricProfiles")
     val customParametricProfiles = if (customParametricArray == null) {
         emptyList()
@@ -1695,7 +1715,8 @@ internal fun backupAudioSettingsFromJson(json: JSONObject?): LevyraAudioSettings
         activeParametricProfile = json.optJSONObject("activeParametricProfile")?.let(::parametricProfileFromJson),
         customParametricProfiles = customParametricProfiles,
         enhancedAudioEnabled = json.optBoolean("enhancedAudioEnabled", true),
-        audioOffloadPreference = AudioOffloadPreference.fromStorage(json.optString("audioOffloadPreference"))
+        audioOffloadPreference = AudioOffloadPreference.fromStorage(json.optString("audioOffloadPreference")),
+        playbackBuffer = playbackBuffer
     ).normalized()
 }
 

@@ -2719,6 +2719,7 @@ fun LevyraApp(
                     aaudioOutputAvailable = remember { NativeAudioIntegration.isAaudioOutputSupported() },
                     onAaudioOutput = viewModel::setAaudioOutputEnabled,
                     onAudioOffloadPreference = viewModel::setAudioOffloadPreference,
+                    onPlaybackBuffer = viewModel::setPlaybackBuffer,
                     onResetEqualizer = viewModel::resetEqualizer,
                     onApplyAutoEq = viewModel::applyAutoEqImport,
                     onSaveAutoEqPreset = viewModel::saveAutoEqCustomPreset,
