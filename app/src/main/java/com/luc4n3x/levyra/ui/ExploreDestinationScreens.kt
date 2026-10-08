@@ -206,22 +206,30 @@ internal fun ExploreCollectionDestinationScreen(
 private fun ExploreCollectionPlayAllButton(
     strings: LevyraStrings,
     onPlayAll: () -> Unit,
-    size: Dp = 42.dp
+    size: Dp = 48.dp
 ) {
+    val colors = androidx.compose.material3.MaterialTheme.colorScheme
     Box(
         modifier = Modifier
             .size(size)
-            .background(LevyraCyan, CircleShape)
             .semantics { role = Role.Button }
             .clickable(onClick = onPlayAll),
         contentAlignment = Alignment.Center
     ) {
-        Icon(
-            imageVector = Icons.Rounded.PlayArrow,
-            contentDescription = strings.play,
-            tint = LevyraBlack,
-            modifier = Modifier.size(size * 0.55f)
-        )
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .clip(CircleShape)
+                .background(colors.primaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.PlayArrow,
+                contentDescription = strings.play,
+                tint = colors.onPrimaryContainer,
+                modifier = Modifier.size(23.dp)
+            )
+        }
     }
 }
 
