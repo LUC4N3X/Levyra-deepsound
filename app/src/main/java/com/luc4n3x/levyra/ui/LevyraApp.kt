@@ -11474,12 +11474,14 @@ private fun HomeOrbitHeader(
     val strings = LocalLevyraStrings.current
     val displayName = userName.trim()
     val initial = remember(displayName) { homePersonalOrbitInitial(displayName) }
+    val colors = MaterialTheme.colorScheme
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         if (initial != null) {
             HomeOrbitAvatar(
@@ -11487,9 +11489,11 @@ private fun HomeOrbitHeader(
                 photoPath = profilePhotoPath,
                 photoVersion = profilePhotoVersion
             )
-            Spacer(modifier = Modifier.width(LevyraHomeDesign.OrbitAvatarGap))
         }
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
             if (initial != null) {
                 Text(
                     text = displayName.uppercase(),
@@ -11507,13 +11511,41 @@ private fun HomeOrbitHeader(
                 fontSize = LevyraHomeDesign.OrbitHeaderTitleSize,
                 lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitHeaderTitleSize),
                 fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                softWrap = true,
                 modifier = Modifier.semantics { heading() }
             )
         }
-        Spacer(modifier = Modifier.width(12.dp))
-        HomeOutlinedAction(label = strings.playAll, onClick = onPlayAll)
+        Box(
+            modifier = Modifier
+                .size(LevyraPlayerDesign.MinimumTouchTarget)
+                .levyraPressable(
+                    onClick = onPlayAll,
+                    pressedScale = LevyraPressScale.Control,
+                    role = Role.Button,
+                    onClickLabel = strings.playAll
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(colors.primaryContainer)
+                    .border(
+                        Dp.Hairline,
+                        colors.onPrimaryContainer.copy(alpha = 0.12f),
+                        CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.PlayArrow,
+                    contentDescription = strings.playAll,
+                    tint = colors.onPrimaryContainer,
+                    modifier = Modifier.size(23.dp)
+                )
+            }
+        }
     }
 }
 
