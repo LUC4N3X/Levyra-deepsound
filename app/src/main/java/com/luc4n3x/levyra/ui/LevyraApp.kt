@@ -783,7 +783,7 @@ private val HOME_ARTIST_CARD_WIDTH = 148.dp
 private val HOME_ARTIST_ARTWORK_SIZE = 140.dp
 private val LevyraTabBarHeight = 76.dp
 private val LevyraTabBarCompactHeight = 54.dp
-private val LevyraMiniPlayerHeight = 82.dp
+private val LevyraMiniPlayerHeight = 77.dp
 private const val LevyraLandscapeDockMiniWeight = 1.1f
 private val LevyraBottomContentGap = 16.dp
 private val LevyraTabIndicatorTop = 12.dp
@@ -9318,10 +9318,13 @@ private fun HomeScreen(
                         )
                     }
                 }
-                if (stagedSpotlight != null) {
-                    spotlightHero(homeHeader, statusBarTop + homeTopPadding)
-                } else {
-                    homeHeader()
+                homeHeader()
+            }
+            if (stagedSpotlight != null) {
+                item(key = "home-featured-radio", contentType = "home-spotlight") {
+                    HomeSectionInset {
+                        spotlightHero(null, 0.dp)
+                    }
                 }
             }
             item(key = "home-genre-chips", contentType = "home-genre-chips") {
@@ -9431,7 +9434,9 @@ private fun HomeScreen(
 
             if (spotlightHeroData != null && stagedSpotlight == null) {
                 item(key = "home-editorial-spotlight", contentType = "home-spotlight") {
-                    spotlightHero(null, 0.dp)
+                    HomeSectionInset {
+                        spotlightHero(null, 0.dp)
+                    }
                 }
             }
 
@@ -10062,8 +10067,8 @@ private fun HomeEditorialSpotlight(
     val soundtrackLead = remember(strings, soundtrackArtists) { strings.homeSoundtrackLead(soundtrackArtists) }
     val isLight = LevyraIsLight
     val canvasColor = homeCanvasColor(isLight)
-    val heroInk = if (isLight) LevyraText else Color.White
-    val heroInkSoft = if (isLight) LevyraText.copy(alpha = 0.80f) else Color.White.copy(alpha = 0.90f)
+    val heroInk = if (staged) { if (isLight) LevyraText else Color.White } else Color.White
+    val heroInkSoft = if (staged && isLight) LevyraText.copy(alpha = 0.80f) else Color.White.copy(alpha = 0.88f)
     val staged = header != null
     val heroBodyHeight = levyraCompactLandscapeHeight(
         preferred = if (staged) HOME_HERO_STAGE_BODY_HEIGHT else LevyraHomeDesign.HeroHeight,
@@ -10071,7 +10076,7 @@ private fun HomeEditorialSpotlight(
         minimum = HOME_HERO_LANDSCAPE_MIN_HEIGHT
     )
 
-    Box(modifier = Modifier.fillMaxWidth()) {
+    Box(modifier = Modifier.fillMaxWidth().clip(LevyraHomeDesign.HeroShape)) {
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -10089,11 +10094,19 @@ private fun HomeEditorialSpotlight(
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .homeHeroBlend(
-                        canvas = canvasColor,
-                        accent = { accentStart },
-                        isLight = isLight,
-                        fadeTop = !staged
+                    .then(
+                        if (staged) Modifier.homeHeroBlend(
+                            canvas = canvasColor,
+                            accent = { accentStart },
+                            isLight = isLight,
+                            fadeTop = false
+                        ) else Modifier.background(
+                            Brush.verticalGradient(
+                                0f to Color.Black.copy(alpha = 0.08f),
+                                0.38f to Color.Black.copy(alpha = 0.22f),
+                                1f to Color.Black.copy(alpha = 0.84f)
+                            )
+                        )
                     )
             )
         }
@@ -10121,7 +10134,7 @@ private fun HomeEditorialSpotlight(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .fillMaxWidth(0.74f)
-                        .padding(start = 20.dp, end = 12.dp, bottom = 32.dp),
+                        .padding(start = 22.dp, end = 12.dp, bottom = 28.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
@@ -11583,6 +11596,8 @@ private fun PersonalListeningShelf(
             ?: "orbit-page-index-$pageIndex"
     }
     val orbitPage: @Composable (Int, Modifier) -> Unit = { pageIndex, pageModifier ->
+        val pageTracks = pages.getOrNull(pageIndex).orEmpty().flatten()
+        val groupSizes = listOf(2, HOME_PERSONAL_ORBIT_GRID_COLUMNS, HOME_PERSONAL_ORBIT_GRID_COLUMNS + 1)
         Column(
             modifier = pageModifier.padding(
                 start = LevyraHomeDesign.HorizontalInset,
@@ -11590,26 +11605,30 @@ private fun PersonalListeningShelf(
             ),
             verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.OrbitTileGap)
         ) {
-            pages.getOrNull(pageIndex).orEmpty().forEach { rowTracks ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.OrbitTileGap)
-                ) {
-                    rowTracks.forEach { track ->
-                        key(LevyraPersonalOrbit.identityKey(track)) {
-                            PersonalOrbitTile(
-                                track = track,
-                                isCurrent = track.id == currentId,
-                                isPlaying = isPlaying && track.id == currentId,
-                                isResolving = isResolving && track.id == currentId,
-                                onPlay = { onPlay(track) },
-                                onActions = { onTrackActions(track) },
-                                modifier = Modifier.weight(1f)
-                            )
+            groupSizes.forEachIndexed { rowIndex, columns ->
+                val rowTracks = pageTracks.drop(groupSizes.take(rowIndex).sum()).take(columns)
+                if (rowTracks.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.OrbitTileGap)
+                    ) {
+                        rowTracks.forEach { track ->
+                            key(LevyraPersonalOrbit.identityKey(track)) {
+                                PersonalOrbitTile(
+                                    track = track,
+                                    isCurrent = track.id == currentId,
+                                    isPlaying = isPlaying && track.id == currentId,
+                                    isResolving = isResolving && track.id == currentId,
+                                    onPlay = { onPlay(track) },
+                                    onActions = { onTrackActions(track) },
+                                    modifier = Modifier.weight(1f),
+                                    tileRatio = if (rowIndex == 0) 1.13f else 1f
+                                )
+                            }
                         }
-                    }
-                    repeat(HOME_PERSONAL_ORBIT_GRID_COLUMNS - rowTracks.size) {
-                        Spacer(modifier = Modifier.weight(1f))
+                        repeat(columns - rowTracks.size) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
                     }
                 }
             }
@@ -11687,14 +11706,15 @@ private fun PersonalOrbitTile(
     isResolving: Boolean,
     onPlay: () -> Unit,
     onActions: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    tileRatio: Float = 1f
 ) {
     val strings = LocalLevyraStrings.current
     val shape = RoundedCornerShape(LevyraHomeDesign.OrbitTileCorner)
 
     Box(
         modifier = modifier
-            .aspectRatio(1f)
+            .aspectRatio(tileRatio)
             .clip(shape)
             .background(LevyraPanel)
             .levyraPressable(
@@ -22901,7 +22921,7 @@ private const val MiniPlayerCarryFraction = 0.5f
 private val MiniPlayerProgressInset = 18.dp
 private val MiniPlayerProgressHeight = 2.dp
 private val MiniPlayerTrayTop = 8.dp
-private val MiniPlayerTrayBottom = 10.dp
+private val MiniPlayerTrayBottom = 5.dp
 private val MiniPlayerCardGutter = 8.dp
 
 @Composable
