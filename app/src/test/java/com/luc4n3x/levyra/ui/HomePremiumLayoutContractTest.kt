@@ -17,13 +17,15 @@ class HomePremiumLayoutContractTest {
     }
 
     @Test
-    fun `personal orbit is a paged three by three artwork grid`() {
+    fun `personal orbit pages use an editorial two three four visual hierarchy`() {
         val shelf = functionBlock("private fun PersonalListeningShelf(")
 
         assertTrue(shelf.contains("homePersonalOrbitPages"))
         assertTrue(shelf.contains("PersonalOrbitTile"))
         assertTrue(shelf.contains("HorizontalPager"))
         assertTrue(shelf.contains("HOME_PERSONAL_ORBIT_GRID_COLUMNS"))
+        assertTrue(shelf.contains("groupSizes = listOf(2, HOME_PERSONAL_ORBIT_GRID_COLUMNS, HOME_PERSONAL_ORBIT_GRID_COLUMNS + 1)"))
+        assertTrue(shelf.contains("pageTracks = pages.getOrNull(pageIndex).orEmpty().flatten()"))
         assertTrue(shelf.contains("OrbitWallMinWidth"))
         assertTrue(shelf.contains("onPlayAll"))
         assertTrue(shelf.contains("onTrackActions"))
@@ -36,7 +38,7 @@ class HomePremiumLayoutContractTest {
     fun `orbit tiles keep playback actions and a single line title`() {
         val tile = functionBlock("private fun PersonalOrbitTile(")
 
-        assertTrue(tile.contains("aspectRatio(1f)"))
+        assertTrue(tile.contains("aspectRatio(tileRatio)"))
         assertTrue(tile.contains("levyraPressable("))
         assertTrue(tile.contains("onLongClick = onActions"))
         assertTrue(tile.contains("strings.songOptions"))
