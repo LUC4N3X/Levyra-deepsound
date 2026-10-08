@@ -78,7 +78,7 @@ internal fun LevyraMixLauncherPanel(
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         LevyraMixHeroCard(
             familiarity = familiarity,
@@ -107,79 +107,74 @@ internal fun LevyraMixHeroCard(
     onStartMix: (LevyraMixKind) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val colors = MaterialTheme.colorScheme
     val heroShape = LevyraCardDesign.SurfaceShape
-    Box(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(heroShape)
-            .background(
-                Brush.linearGradient(
-                    listOf(Color(0xFF283153), Color(0xFF171D35), Color(0xFF101522))
-                )
+            .background(colors.surfaceContainerHigh)
+            .border(
+                1.dp,
+                colors.outlineVariant.copy(alpha = 0.38f),
+                heroShape
             )
-            .border(1.dp, Color.White.copy(alpha = 0.15f), heroShape)
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .size(148.dp)
-                .background(
-                    Brush.radialGradient(
-                        listOf(accent.copy(alpha = 0.22f), Color.Transparent)
-                    )
-                )
-        )
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 18.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            MixCrest(accent = colors.primary, active = loading)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
-                MixCrest(accent = accent, active = loading)
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(3.dp)
-                ) {
-                    Text(
-                        strings.levyraMix,
-                        style = LevyraType.screenTitle,
-                        color = Color.White,
-                        modifier = Modifier.semantics { heading() }
+                Text(
+                    text = strings.levyraMix,
+                    style = LevyraType.sectionTitle,
+                    color = colors.onSurface,
+                    modifier = Modifier.semantics { heading() }
+                )
+                Text(
+                    text = strings.mixCreate,
+                    style = LevyraType.metadata,
+                    color = colors.onSurfaceVariant,
+                    softWrap = true
+                )
+            }
+            FilledIconButton(
+                onClick = { onStartMix(LevyraMixKind.Personalized) },
+                enabled = !loading,
+                shape = CircleShape,
+                colors = androidx.compose.material3.IconButtonDefaults.filledIconButtonColors(
+                    containerColor = colors.primaryContainer,
+                    contentColor = colors.onPrimaryContainer
+                ),
+                modifier = Modifier
+                    .size(48.dp)
+                    .semantics { contentDescription = strings.mixForYou }
+            ) {
+                if (loading) {
+                    DiscoveryLoadingIndicator(modifier = Modifier.size(22.dp), color = colors.onPrimaryContainer)
+                } else {
+                    Icon(
+                        Icons.Rounded.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(26.dp)
                     )
-                    Text(
-                        strings.mixCreate,
-                        style = LevyraType.metadata,
-                        color = Color.White.copy(alpha = 0.70f)
-                    )
-                }
-                FilledIconButton(
-                    onClick = { onStartMix(LevyraMixKind.Personalized) },
-                    enabled = !loading,
-                    shape = CircleShape,
-                    modifier = Modifier
-                        .size(54.dp)
-                        .semantics { contentDescription = strings.mixForYou }
-                ) {
-                    if (loading) {
-                        DiscoveryLoadingIndicator(modifier = Modifier.size(24.dp))
-                    } else {
-                        Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(30.dp))
-                    }
                 }
             }
-            MixBalanceSlider(
-                familiarity,
-                !loading,
-                accent,
-                strings.mixFamiliarLabel,
-                strings.mixDiscoveryLabel,
-                onFamiliarityChange
-            )
         }
+        MixBalanceSlider(
+            familiarity,
+            !loading,
+            colors.primary,
+            strings.mixFamiliarLabel,
+            strings.mixDiscoveryLabel,
+            onFamiliarityChange
+        )
     }
 }
 
@@ -196,9 +191,9 @@ internal fun LevyraSecondaryToolsRow(
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val stacked = maxWidth < 280.dp || LocalDensity.current.fontScale > 1.3f
         val actions: @Composable (Modifier) -> Unit = { actionModifier ->
-            MixToolAction(Icons.Rounded.Casino, strings.surpriseMe, accent, !loading, stacked, actionModifier) { onStartMix(LevyraMixKind.SurpriseMe) }
-            MixToolAction(Icons.Rounded.GraphicEq, strings.yourSound, accent, true, stacked, actionModifier, onOpenYourSound)
-            MixToolAction(Icons.Rounded.Tune, strings.mixLab, accent, true, stacked, actionModifier, onOpenMixLab)
+            MixToolAction(Icons.Rounded.Casino, strings.surpriseMe, MaterialTheme.colorScheme.primary, !loading, stacked, actionModifier) { onStartMix(LevyraMixKind.SurpriseMe) }
+            MixToolAction(Icons.Rounded.GraphicEq, strings.yourSound, MaterialTheme.colorScheme.primary, true, stacked, actionModifier, onOpenYourSound)
+            MixToolAction(Icons.Rounded.Tune, strings.mixLab, MaterialTheme.colorScheme.primary, true, stacked, actionModifier, onOpenMixLab)
         }
         if (stacked) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { actions(Modifier.fillMaxWidth()) }
@@ -237,13 +232,13 @@ private fun MixToolAction(
             modifier = Modifier
                 .size(34.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(accent.copy(alpha = if (enabled) 0.15f else 0.07f)),
+                .background(colors.secondaryContainer.copy(alpha = if (enabled) 0.72f else 0.30f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 icon,
                 contentDescription = null,
-                tint = if (enabled) accent else colors.onSurfaceVariant,
+                tint = if (enabled) colors.onSecondaryContainer else colors.onSurfaceVariant,
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -333,9 +328,9 @@ private fun MixBalanceSlider(
     val sliderColors = SliderDefaults.colors(
         thumbColor = accent,
         activeTrackColor = accent,
-        inactiveTrackColor = Color.White.copy(alpha = 0.24f),
-        disabledThumbColor = Color.White.copy(alpha = 0.50f),
-        disabledActiveTrackColor = Color.White.copy(alpha = 0.40f)
+        inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant,
+        disabledThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        disabledActiveTrackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
     )
     val sliderState = rememberSliderState(
         value = 1f - familiarity,
@@ -349,8 +344,8 @@ private fun MixBalanceSlider(
     }
     Column {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(familiarLabel, modifier = Modifier.weight(1f), style = LevyraType.caption, color = Color.White.copy(alpha = 0.74f))
-            Text(discoveryLabel, modifier = Modifier.weight(1f), style = LevyraType.caption, color = Color.White.copy(alpha = 0.74f), textAlign = TextAlign.End)
+            Text(familiarLabel, modifier = Modifier.weight(1f), style = LevyraType.caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(discoveryLabel, modifier = Modifier.weight(1f), style = LevyraType.caption, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.End)
         }
         Slider(
             state = sliderState,
@@ -361,7 +356,7 @@ private fun MixBalanceSlider(
             enabled = enabled,
             colors = sliderColors,
             thumb = {
-                Box(Modifier.size(width = 4.dp, height = 24.dp).background(if (enabled) accent else Color.White.copy(alpha = 0.50f), CircleShape))
+                Box(Modifier.size(width = 4.dp, height = 24.dp).background(if (enabled) accent else MaterialTheme.colorScheme.onSurfaceVariant, CircleShape))
             },
             track = { sliderState ->
                 SliderDefaults.Track(sliderState = sliderState, colors = sliderColors, enabled = enabled, modifier = Modifier.height(6.dp))
