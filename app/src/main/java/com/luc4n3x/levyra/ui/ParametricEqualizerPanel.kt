@@ -391,7 +391,7 @@ private fun ParametricProfileRow(
                     color = if (active) LevyraCyan else LevyraText,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
@@ -399,7 +399,7 @@ private fun ParametricProfileRow(
                     color = LevyraMuted,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
             }

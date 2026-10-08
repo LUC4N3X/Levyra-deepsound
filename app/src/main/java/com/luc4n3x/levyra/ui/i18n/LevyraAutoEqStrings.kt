@@ -12,7 +12,7 @@ private fun autoEqStrings(
     adjusted: String
 ): Map<String, String> = mapOf(
     "autoEqImport" to importLabel,
-    "autoEqImportHint" to hint,
+    "autoEqImportHint" to hint.replace("GraphicEQ", "GraphicEQ / ParametricEQ / FixedBandEQ / CSV"),
     "autoEqPickFile" to pickFile,
     "autoEqApply" to applyLabel,
     "autoEqSavePreset" to savePreset,
@@ -26,7 +26,7 @@ private val autoEqBundles: Map<String, Map<String, String>> = mapOf(
     "en" to autoEqStrings(
         "Import AutoEQ profile",
         "Paste a GraphicEQ profile or open a text file",
-        "Open file",
+        "Open files",
         "Apply",
         "Save as preset",
         "Preset name",

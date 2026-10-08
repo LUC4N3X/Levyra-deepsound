@@ -10,6 +10,20 @@ import org.junit.Test
 
 class AutoEqCustomPresetPersistenceTest {
 
+    @Test
+    fun twelvePresetsSurviveRepeatedPersistenceAndBackupRoundTrips() {
+        val presets = (1..12).map { index ->
+            LevyraAudioPreset("custom_$index", "Headphones variant $index", List(10) { index }, 0, 0)
+        }
+        var restored = LevyraAudioSettings(customPresets = presets)
+        repeat(3) {
+            restored = backupAudioSettingsFromJson(backupAudioSettingsToJson(restored)).copy(
+                customPresets = customPresetsFromJson(customPresetsToJson(restored.customPresets))
+            ).normalized()
+        }
+        assertEquals(presets, restored.customPresets)
+    }
+
     private val preset = LevyraAudioPreset(
         id = "custom_abc123",
         fallbackLabel = "My HD600 tune",

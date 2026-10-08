@@ -106,7 +106,9 @@ internal class AutoEqCatalogController(
         searchJob?.cancel()
         searchJob = scope.launch {
             if (debounce && searchDebounceMs > 0L) delay(searchDebounceMs)
-            val results = if (query.isBlank()) emptyList() else withContext(searchDispatcher) { index.search(query) }
+            val results = withContext(searchDispatcher) {
+                if (query.isBlank()) index.browse() else index.search(query, limit = index.size)
+            }
             mutableState.update { latest ->
                 if (latest.visible && latest.query == query) latest.copy(results = results, resultsQuery = query) else latest
             }
