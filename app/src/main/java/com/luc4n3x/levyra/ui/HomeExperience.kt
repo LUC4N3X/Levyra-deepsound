@@ -6,8 +6,8 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
+import com.luc4n3x.levyra.ui.components.LevyraCardCaption
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.carouselDepthEnabled
 import com.luc4n3x.levyra.ui.components.levyraExpressiveCorner
@@ -15,7 +15,6 @@ import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.components.levyraCarouselDepth
 import com.luc4n3x.levyra.domain.Track
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -48,7 +47,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -56,9 +57,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
+import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
 import kotlin.math.min
+
+internal val LocalHomeCompactDensity = staticCompositionLocalOf { false }
+
+@Composable
+internal fun homeHeaderContentGap(): Dp =
+    LevyraHomeDesign.headerContentGap(LocalHomeCompactDensity.current)
 
 internal fun homeCanvasColor(isLight: Boolean): Color =
     if (isLight) LevyraHomeDesign.CanvasLight else LevyraBlack
@@ -206,23 +214,33 @@ internal fun HomeGenreChips(
             } else {
                 12.dp
             }
-            Text(
-                text = zone.label,
-                color = LevyraText,
-                style = LevyraType.cardTitle,
-                maxLines = 1,
+            Box(
                 modifier = Modifier
                     .heightIn(min = 48.dp)
-                    .clip(RoundedCornerShape(corner))
-                    .background(LevyraText.copy(alpha = 0.10f))
                     .levyraPressable(
                         onClick = { onSelect(zone) },
                         interactionSource = interaction,
                         pressedScale = LevyraPressScale.Control,
                         role = Role.Button
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .heightIn(min = LevyraHomeDesign.MoodChipVisualHeight)
+                        .clip(RoundedCornerShape(corner))
+                        .background(LevyraText.copy(alpha = 0.10f))
+                        .padding(horizontal = 14.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = zone.label,
+                        color = LevyraText,
+                        style = LevyraType.cardTitle,
+                        maxLines = 1
                     )
-                    .padding(horizontal = 16.dp, vertical = 10.dp)
-            )
+                }
+            }
         }
     }
 }
@@ -268,7 +286,7 @@ private fun HomeChartPodiumCard(
     Box(
         modifier = modifier
             .size(width = if (rankText.length > 1) 236.dp else 196.dp, height = 200.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .clip(LevyraCardDesign.EditorialShape)
             .clickable(role = Role.Button, onClick = onPlay)
     ) {
         Text(
@@ -290,31 +308,27 @@ private fun HomeChartPodiumCard(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .width(132.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.CaptionTopGap)
         ) {
             CoverImage(
                 track = track,
                 modifier = Modifier
                     .size(132.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(LevyraHomeDesign.ArtworkShape)
                     .then(
-                        if (active) Modifier.border(2.dp, LevyraCyan, RoundedCornerShape(14.dp)) else Modifier
+                        if (active) {
+                            Modifier.border(2.dp, LevyraCyan, LevyraHomeDesign.ArtworkShape)
+                        } else {
+                            Modifier
+                        }
                     ),
                 highRes = false
             )
-            Text(
-                text = track.title,
-                color = if (active) LevyraCyan else LevyraText,
-                style = LevyraType.cardTitle,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = track.artist,
-                color = LevyraMuted,
-                style = LevyraType.caption,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+            LevyraCardCaption(
+                title = track.title,
+                subtitle = track.artist,
+                titleColor = if (active) LevyraCyan else LevyraText,
+                titleLines = 1
             )
         }
     }
