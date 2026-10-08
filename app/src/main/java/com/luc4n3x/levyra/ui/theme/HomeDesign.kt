@@ -17,10 +17,10 @@ object LevyraHomeDesign {
     val HeaderBorderLight: Color = Color(0x1811131F)
 
     val HorizontalInset: Dp = 16.dp
-    val SectionGap: Dp = 7.dp
-    val SectionGapCompact: Dp = 5.dp
-    val SectionStride: Dp = 24.dp
-    val SectionStrideCompact: Dp = 20.dp
+    val SectionGap: Dp = 10.dp
+    val SectionGapCompact: Dp = 8.dp
+    val SectionStride: Dp = 26.dp
+    val SectionStrideCompact: Dp = 22.dp
     val HeaderCorner: Dp = 16.dp
     val HeaderPadding: Dp = 12.dp
     val SettingsControlHeight: Dp = 48.dp
@@ -51,7 +51,6 @@ object LevyraHomeDesign {
     val OrbitPageEndInset: Dp = 20.dp
     val OrbitAvatarSize: Dp = 34.dp
     val OrbitAvatarGap: Dp = 14.dp
-    val OrbitHeaderGap: Dp = 12.dp
     val OrbitDotSize: Dp = 8.dp
     val OrbitDotGap: Dp = 4.5.dp
     val OrbitDotsTopGap: Dp = 8.dp
@@ -76,7 +75,9 @@ object LevyraHomeDesign {
     val ArtworkShape = RoundedCornerShape(ArtworkCorner)
     val ThumbShape = RoundedCornerShape(ThumbCorner)
 
-    fun sectionGap(compact: Boolean): Dp = if (compact) SectionGapCompact else SectionGap
+    fun headerContentGap(compact: Boolean): Dp = if (compact) SectionGapCompact else SectionGap
+
+    fun sectionGap(compact: Boolean): Dp = headerContentGap(compact)
 
     fun sectionLead(compact: Boolean): Dp = if (compact) {
         SectionStrideCompact - SectionGapCompact
