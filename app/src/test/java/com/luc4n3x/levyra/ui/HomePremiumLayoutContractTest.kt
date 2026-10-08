@@ -78,7 +78,7 @@ class HomePremiumLayoutContractTest {
             ) / 3f
 
         assertTrue(phoneTile in 118f..125f)
-        assertTrue(LevyraHomeDesign.OrbitTileCorner.value in 6f..8f)
+        assertTrue(LevyraHomeDesign.OrbitTileCorner.value in 14f..18f)
         assertTrue(LevyraHomeDesign.OrbitTileGap.value in 4f..5f)
         assertTrue(LevyraHomeDesign.OrbitTileTitleSize.value in 14f..16f)
         assertTrue(LevyraHomeDesign.OrbitHeaderTitleSize.value in 22f..26f)
