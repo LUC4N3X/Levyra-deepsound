@@ -257,7 +257,7 @@ internal fun RowScope.ExploreMoodCard(
     val shape = LevyraCardDesign.EditorialShape
     val ambientScrim = remember(accentStart, accentEnd) {
         Brush.horizontalGradient(
-            listOf(accentStart.copy(alpha = 0.40f), accentEnd.copy(alpha = 0.12f), Color.Transparent)
+            listOf(accentStart.copy(alpha = 0.11f), accentEnd.copy(alpha = 0.035f), Color.Transparent)
         )
     }
     val bottomScrim = remember {
@@ -269,12 +269,12 @@ internal fun RowScope.ExploreMoodCard(
             )
         )
     }
-    val outlineBrush = remember(accentStart, accentEnd, isSelected) {
+    val colors = MaterialTheme.colorScheme
+    val outlineBrush = remember(colors, isSelected) {
         Brush.linearGradient(
             listOf(
-                accentStart.copy(alpha = if (isSelected) 0.96f else 0.54f),
-                accentEnd.copy(alpha = if (isSelected) 0.72f else 0.30f),
-                Color.White.copy(alpha = if (isSelected) 0.18f else 0.08f)
+                if (isSelected) colors.primary.copy(alpha = 0.78f) else colors.outlineVariant.copy(alpha = 0.58f),
+                if (isSelected) colors.primary.copy(alpha = 0.45f) else colors.outlineVariant.copy(alpha = 0.28f)
             )
         )
     }
@@ -284,7 +284,7 @@ internal fun RowScope.ExploreMoodCard(
             .weight(1f)
             .heightIn(min = if (prominent) 188.dp else 144.dp)
             .clip(shape)
-            .background(Brush.linearGradient(listOf(accentStart, accentEnd)))
+            .background(colors.surfaceContainerHigh)
             .semantics(mergeDescendants = true) {
                 role = Role.Button
                 selected = isSelected
@@ -343,7 +343,7 @@ internal fun RowScope.ExploreMoodCard(
                 modifier = Modifier
                     .size(32.dp)
                     .clip(CircleShape)
-                    .background(if (isSelected) Color.White else Color.White.copy(alpha = 0.18f)),
+                    .background(if (isSelected) Color.White else Color.White.copy(alpha = 0.13f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
