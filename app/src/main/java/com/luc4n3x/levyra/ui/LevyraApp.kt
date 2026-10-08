@@ -1229,7 +1229,10 @@ private fun HomeSectionHeader(
             Text(
                 text = displayTitle,
                 color = LevyraText,
-                style = LevyraType.sectionTitle,
+                style = LevyraType.sectionTitle.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.3f).sp
+                ),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() }
@@ -1319,25 +1322,36 @@ private fun ChartMarketHeader(
 
 @Composable
 private fun HomeOutlinedAction(label: String, onClick: () -> Unit) {
+    val strings = LocalLevyraStrings.current
     Box(
         modifier = Modifier
             .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
-            .pressable(onClick = onClick),
+            .levyraPressable(
+                onClick = onClick,
+                pressedScale = LevyraPressScale.Control,
+                role = Role.Button
+            ),
         contentAlignment = Alignment.Center
     ) {
-        Box(
+        Row(
             modifier = Modifier
-                .heightIn(min = LevyraHomeDesign.MoodChipVisualHeight)
                 .clip(LevyraHomeDesign.MoodChipShape)
-                .background(LevyraAdaptiveChip)
-                .padding(horizontal = 14.dp, vertical = 6.dp),
-            contentAlignment = Alignment.Center
+                .background(LevyraCyan.copy(alpha = if (LevyraIsLight) 0.09f else 0.14f))
+                .padding(horizontal = 12.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
                 text = label,
-                color = LevyraText,
-                style = LevyraType.cardTitle,
+                color = if (LevyraIsLight) LevyraBlue else LevyraCyan,
+                style = LevyraType.cardTitle.copy(fontWeight = FontWeight.SemiBold),
                 maxLines = 1
+            )
+            Icon(
+                imageVector = if (label == strings.playAll) Icons.Rounded.PlayArrow else Icons.Rounded.ChevronRight,
+                contentDescription = null,
+                tint = if (LevyraIsLight) LevyraBlue else LevyraCyan,
+                modifier = Modifier.size(16.dp)
             )
         }
     }
@@ -23395,8 +23409,8 @@ private fun ExploreScreen(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
-            contentPadding = PaddingValues(top = 20.dp, bottom = exploreBottomInset),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            contentPadding = PaddingValues(top = 14.dp, bottom = exploreBottomInset),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(
                 items = rows,
@@ -23405,7 +23419,7 @@ private fun ExploreScreen(
             ) { row ->
                 when (row) {
                     ExploreRow.Shortcuts -> Column(
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         ExplorePageHeader(
                             title = strings.exploreTitle,
@@ -23419,11 +23433,10 @@ private fun ExploreScreen(
                             onOpenRadio = { onLiveRadioOpenChange(true) },
                             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
                     }
                     ExploreRow.MixTools -> Column(
                         modifier = Modifier.padding(horizontal = HomeHorizontalInset),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         ExploreLiveRadioEntry(onClick = { onLiveRadioOpenChange(true) })
                         LevyraMixLauncherPanel(
@@ -23738,7 +23751,7 @@ private fun ExploreSectionHeader(
         subtitle = subtitle,
         onPlayAll = onPlayAll,
         onShowAll = onShowAll,
-        modifier = Modifier.padding(horizontal = HomeHorizontalInset, vertical = 10.dp)
+        modifier = Modifier.padding(horizontal = HomeHorizontalInset, vertical = 4.dp)
     )
 }
 
@@ -23795,41 +23808,103 @@ private fun ExplorePrimaryShortcuts(
 
 @Composable
 private fun ExploreShortcutTile(icon: ImageVector, label: String, onClick: () -> Unit) {
+    val accent = when (icon) {
+        Icons.Rounded.AutoAwesome -> LevyraPink
+        Icons.Rounded.PlayArrow -> LevyraCyan
+        Icons.Rounded.Mood -> LevyraViolet
+        Icons.Rounded.Radio -> LevyraOrange
+        else -> LevyraBlue
+    }
+    val shape = RoundedCornerShape(18.dp)
     Row(
         modifier = Modifier
-            .widthIn(max = 180.dp)
-            .heightIn(min = 48.dp)
-            .clip(MaterialTheme.shapes.medium)
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .levyraPressable(onClick = onClick, role = Role.Button)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .widthIn(max = 192.dp)
+            .heightIn(min = 54.dp)
+            .clip(shape)
+            .background(accent.copy(alpha = if (LevyraIsLight) 0.09f else 0.14f))
+            .border(1.dp, accent.copy(alpha = 0.21f), shape)
+            .levyraPressable(
+                onClick = onClick,
+                role = Role.Button,
+                pressedScale = LevyraPressScale.Tile
+            )
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(9.dp)
     ) {
-        Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
-        Text(label, style = LevyraType.caption, color = MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(accent.copy(alpha = 0.18f), RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = accent, modifier = Modifier.size(20.dp))
+        }
+        Text(
+            text = label,
+            style = LevyraType.cardTitle,
+            color = LevyraText,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
 @Composable
 private fun ExploreLiveRadioEntry(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val radioStrings = com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog.forCode(LocalLevyraStrings.current.code)
+    val shape = LevyraCardDesign.EditorialShape
     Row(
-        modifier = modifier.fillMaxWidth()
-            .heightIn(min = 72.dp)
-            .clip(LevyraCardDesign.EditorialShape)
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .levyraPressable(onClick = onClick, role = Role.Button)
-            .padding(16.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 78.dp)
+            .clip(shape)
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        LevyraBlue.copy(alpha = if (LevyraIsLight) 0.15f else 0.24f),
+                        MaterialTheme.colorScheme.surfaceContainerHigh
+                    )
+                )
+            )
+            .border(1.dp, LevyraBlue.copy(alpha = 0.20f), shape)
+            .levyraPressable(
+                onClick = onClick,
+                role = Role.Button,
+                pressedScale = LevyraPressScale.Tile
+            )
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Icon(Icons.Rounded.Radio, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(radioStrings.title, color = LevyraText, style = LevyraType.contentTitle)
-            Text(radioStrings.exploreSubtitle, color = LevyraMuted, style = LevyraType.caption, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Box(
+            modifier = Modifier
+                .size(46.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(LevyraBlue.copy(alpha = 0.17f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Rounded.Radio,
+                contentDescription = null,
+                tint = LevyraBlue,
+                modifier = Modifier.size(26.dp)
+            )
         }
-        Icon(Icons.Rounded.ChevronRight, null, tint = LevyraMuted)
+        Column(
+            Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Text(radioStrings.title, color = LevyraText, style = LevyraType.contentTitle)
+            Text(
+                radioStrings.exploreSubtitle,
+                color = LevyraMuted,
+                style = LevyraType.caption,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Icon(Icons.Rounded.ChevronRight, null, tint = LevyraText, modifier = Modifier.size(22.dp))
     }
 }
 
