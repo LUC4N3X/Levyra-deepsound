@@ -24,6 +24,14 @@ class AutoEqCatalog private constructor(
 ) {
     val size: Int get() = names.size
 
+    fun browse(): List<AutoEqCatalogEntry> {
+        val order = names.indices.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { names[it] })
+        return object : AbstractList<AutoEqCatalogEntry>() {
+            override val size: Int get() = order.size
+            override fun get(index: Int): AutoEqCatalogEntry = entry(order[index])
+        }
+    }
+
     fun search(query: String, limit: Int = DEFAULT_RESULT_LIMIT): List<AutoEqCatalogEntry> {
         val tokens = query.take(MAX_QUERY_CHARS)
             .split(' ', '\t', '-', '/', '_', '.', ',')

@@ -6,8 +6,9 @@ import kotlin.math.roundToInt
 
 object AutoEqImporter {
 
-    const val MAX_INPUT_CHARS = 16_000
+    const val MAX_INPUT_CHARS = 512_000
     const val MAX_POINTS = 200
+    private const val MAX_CSV_POINTS = 4096
     const val MAX_FREQUENCY_HZ = 96_000.0
     const val MIN_POINTS = 2
 
@@ -63,6 +64,9 @@ object AutoEqImporter {
     fun parse(text: String): ParseResult {
         if (text.isBlank()) return ParseResult.Error(ParseError.EMPTY)
         if (text.length > MAX_INPUT_CHARS) return ParseResult.Error(ParseError.TOO_LARGE)
+        val firstLine = text.lineSequence().map { it.trim().removePrefix("\uFEFF") }
+            .firstOrNull { it.isNotEmpty() && !it.startsWith("#") }.orEmpty()
+        if (firstLine.substringBefore(',').equals("frequency", ignoreCase = true)) return parseCsv(text)
 
         var preampDb = 0f
         var preampClamped = false
@@ -71,7 +75,7 @@ object AutoEqImporter {
         var skipped = 0
 
         for (rawLine in text.lineSequence()) {
-            val line = rawLine.trim()
+            val line = rawLine.trim().removePrefix("\uFEFF")
             if (line.isEmpty()) continue
 
             if (line.startsWith("Preamp", ignoreCase = true)) {
@@ -114,6 +118,44 @@ object AutoEqImporter {
         }
 
         val rawPoints = points ?: return ParseResult.Error(ParseError.NO_GRAPHIC_EQ)
+        return profileFromPoints(rawPoints, name, preampDb, preampClamped, skipped)
+    }
+
+    private fun parseCsv(text: String): ParseResult {
+        val lines = text.lineSequence().map { it.trim().removePrefix("\uFEFF") }
+            .filter { it.isNotEmpty() && !it.startsWith("#") }.iterator()
+        if (!lines.hasNext()) return ParseResult.Error(ParseError.EMPTY)
+        val columns = lines.next().split(',').map { it.trim().lowercase(java.util.Locale.ROOT) }
+        val frequencyIndex = columns.indexOf("frequency")
+        val gainIndex = columns.indexOf("equalization")
+        if (frequencyIndex < 0 || gainIndex < 0 || columns.distinct().size != columns.size) {
+            return ParseResult.Error(ParseError.NO_GRAPHIC_EQ)
+        }
+        val points = ArrayList<Point>()
+        while (lines.hasNext()) {
+            if (points.size >= MAX_CSV_POINTS) return ParseResult.Error(ParseError.TOO_MANY_POINTS)
+            val values = lines.next().split(',')
+            if (values.size != columns.size) return ParseResult.Error(ParseError.INVALID_POINT)
+            val frequency = values[frequencyIndex].trim().toDoubleOrNull()
+                ?: return ParseResult.Error(ParseError.INVALID_POINT)
+            val gain = values[gainIndex].trim().toDoubleOrNull()
+                ?: return ParseResult.Error(ParseError.INVALID_POINT)
+            if (!frequency.isFinite() || !gain.isFinite()) return ParseResult.Error(ParseError.NON_FINITE_VALUE)
+            if (frequency <= 0 || frequency > MAX_FREQUENCY_HZ) return ParseResult.Error(ParseError.INVALID_POINT)
+            points += Point(frequency, gain)
+        }
+        val headroom = -(points.maxOfOrNull { it.gain } ?: 0.0).coerceAtLeast(0.0)
+        val preamp = headroom.coerceIn(MIN_PREAMP_DB.toDouble(), MAX_PREAMP_DB.toDouble()).toFloat()
+        return profileFromPoints(points, null, preamp, headroom < MIN_PREAMP_DB, 0)
+    }
+
+    private fun profileFromPoints(
+        rawPoints: List<Point>,
+        name: String?,
+        preampDb: Float,
+        preampClamped: Boolean,
+        skipped: Int
+    ): ParseResult {
         val deduped = rawPoints.associateBy { it.frequency }.values.sortedBy { it.frequency }
         if (deduped.size < MIN_POINTS) return ParseResult.Error(ParseError.INSUFFICIENT_POINTS)
 
