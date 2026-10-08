@@ -228,14 +228,14 @@ internal fun HomeGenreChips(
                     modifier = Modifier
                         .heightIn(min = LevyraHomeDesign.MoodChipVisualHeight)
                         .clip(RoundedCornerShape(corner))
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                        .background(MaterialTheme.colorScheme.surfaceContainer)
                         .padding(horizontal = 14.dp, vertical = 6.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = zone.label,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        style = LevyraType.cardTitle,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelLarge,
                         maxLines = 1
                     )
                 }
