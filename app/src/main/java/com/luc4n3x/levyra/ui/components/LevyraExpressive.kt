@@ -4,6 +4,9 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonColors
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
@@ -20,6 +23,27 @@ internal fun LevyraLoadingIndicator(
     color: Color = MaterialTheme.colorScheme.primary
 ) {
     LoadingIndicator(modifier = modifier, color = color)
+}
+
+@Composable
+internal fun LevyraExpressiveIconButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    colors: IconButtonColors = IconButtonDefaults.iconButtonColors(),
+    content: @Composable () -> Unit
+) {
+    IconButton(
+        onClick = onClick,
+        shapes = IconButtonDefaults.shapes(
+            shape = MaterialTheme.shapes.extraLarge,
+            pressedShape = MaterialTheme.shapes.medium
+        ),
+        modifier = modifier,
+        enabled = enabled,
+        colors = colors,
+        content = content
+    )
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)

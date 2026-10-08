@@ -25,11 +25,11 @@ class LevyraPreferencesDefaultsTest {
     }
 
     @Test
-    fun liquidGlassDefaultsToDisabledEverywhere() {
-        assertFalse(LevyraInterfaceSettings().liquidGlassEnabled)
-        assertFalse(LevyraUiState().interfaceSettings.liquidGlassEnabled)
-        assertFalse(backupInterfaceSettingsFromJson(JSONObject()).liquidGlassEnabled)
-        assertFalse(backupInterfaceSettingsFromJson(null).liquidGlassEnabled)
+    fun liquidGlassDefaultsToEnabledEverywhere() {
+        assertTrue(LevyraInterfaceSettings().liquidGlassEnabled)
+        assertTrue(LevyraUiState().interfaceSettings.liquidGlassEnabled)
+        assertTrue(backupInterfaceSettingsFromJson(JSONObject()).liquidGlassEnabled)
+        assertTrue(backupInterfaceSettingsFromJson(null).liquidGlassEnabled)
     }
 
     @Test

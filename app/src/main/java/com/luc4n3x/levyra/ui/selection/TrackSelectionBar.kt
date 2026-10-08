@@ -1,10 +1,8 @@
 package com.luc4n3x.levyra.ui.selection
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,8 +10,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
@@ -23,18 +19,19 @@ import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.luc4n3x.levyra.ui.components.LevyraExpressiveIconButton
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraGlass
 import com.luc4n3x.levyra.ui.theme.LevyraGlassBorder
@@ -62,7 +59,7 @@ internal fun TrackSelectionBar(
     Surface(
         color = LevyraGlass,
         border = BorderStroke(1.dp, LevyraGlassBorder),
-        shape = RoundedCornerShape(22.dp),
+        shape = MaterialTheme.shapes.large,
         shadowElevation = 14.dp,
         modifier = modifier
             .fillMaxWidth()
@@ -139,20 +136,13 @@ private fun SelectionAction(
     icon: @Composable () -> Unit,
     onClick: () -> Unit
 ) {
-    Surface(
-        color = Color.Transparent,
-        shape = CircleShape,
+    LevyraExpressiveIconButton(
+        onClick = onClick,
         modifier = Modifier
             .size(48.dp)
-            .semantics { contentDescription = label }
-            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = label },
+        colors = IconButtonDefaults.iconButtonColors(contentColor = LevyraMuted)
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            androidx.compose.material3.ProvideTextStyle(
-                androidx.compose.material3.MaterialTheme.typography.bodyMedium.copy(color = LevyraMuted)
-            ) {
-                icon()
-            }
-        }
+        icon()
     }
 }
