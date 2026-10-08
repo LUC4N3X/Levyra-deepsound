@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +36,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.data.SpotifyArtistArtworkRepository
@@ -253,6 +255,11 @@ internal fun RowScope.ExploreMoodCard(
     val accentStart = Color(zone.accentStart)
     val accentEnd = Color(zone.accentEnd)
     val shape = LevyraCardDesign.EditorialShape
+    val ambientScrim = remember(accentStart, accentEnd) {
+        Brush.horizontalGradient(
+            listOf(accentStart.copy(alpha = 0.40f), accentEnd.copy(alpha = 0.12f), Color.Transparent)
+        )
+    }
     val bottomScrim = remember {
         Brush.verticalGradient(
             listOf(
@@ -275,16 +282,9 @@ internal fun RowScope.ExploreMoodCard(
     Box(
         modifier = Modifier
             .weight(1f)
-            .heightIn(min = if (prominent) 196.dp else 148.dp)
+            .heightIn(min = if (prominent) 188.dp else 144.dp)
             .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .then(
-                if (isSelected) {
-                    Modifier.border(BorderStroke(1.5.dp, outlineBrush), shape)
-                } else {
-                    Modifier
-                }
-            )
+            .background(Brush.linearGradient(listOf(accentStart, accentEnd)))
             .semantics(mergeDescendants = true) {
                 role = Role.Button
                 selected = isSelected
@@ -329,30 +329,59 @@ internal fun RowScope.ExploreMoodCard(
             )
         }
 
+        Box(modifier = Modifier.matchParentSize().background(ambientScrim))
         Box(modifier = Modifier.matchParentSize().background(bottomScrim))
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(12.dp)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.38f))
+                .padding(horizontal = 10.dp, vertical = 5.dp)
+        ) {
+            Text(zone.emoji, color = Color.White, fontSize = 17.sp)
+        }
 
         Row(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = 14.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(
                 text = zone.label,
                 color = Color.White,
-                style = if (prominent) LevyraType.sectionTitle else LevyraType.artist,
+                style = LevyraType.sectionTitle,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
-            if (isSelected) {
-                Box(
-                    modifier = Modifier.size(24.dp).background(Color.White, CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Rounded.Check, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
-                }
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(if (isSelected) Color.White else Color.White.copy(alpha = 0.18f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isSelected) Icons.Rounded.Check else Icons.AutoMirrored.Rounded.ArrowForward,
+                    contentDescription = null,
+                    tint = if (isSelected) Color.Black else Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .border(
+                    width = if (isSelected) 1.5.dp else 1.dp,
+                    brush = outlineBrush,
+                    shape = shape
+                )
+        )
     }
 }
