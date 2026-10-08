@@ -827,7 +827,7 @@ private fun HomeOfflineNotice(
     Surface(
         color = CinematicGlass.copy(alpha = 0.62f),
         border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.20f)),
-        shape = RoundedCornerShape(22.dp),
+        shape = LevyraCardDesign.SurfaceShape,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -863,7 +863,7 @@ private fun HomeOfflineNotice(
             Box(
                 modifier = Modifier
                     .heightIn(min = 48.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(LevyraHomeDesign.MoodChipShape)
                     .levyraPressable(
                         onClick = onRetry,
                         pressedScale = LevyraPressScale.Control,
@@ -1218,15 +1218,13 @@ private fun HomeSectionHeader(
     val displayOverline = subtitle?.trim().orEmpty()
 
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget),
+        modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+            verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.CaptionLineGap)
         ) {
             Text(
                 text = displayTitle,
@@ -1240,9 +1238,7 @@ private fun HomeSectionHeader(
                 Text(
                     text = displayOverline,
                     color = LevyraMuted,
-                    fontSize = 13.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(13.sp),
-                    fontWeight = FontWeight.Medium
+                    style = LevyraType.metadata
                 )
             }
         }
@@ -1286,10 +1282,7 @@ private fun ChartMarketHeader(
                 Text(
                     text = title,
                     color = LevyraText,
-                    fontSize = LevyraHomeDesign.SectionTitleSize,
-                    lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.SectionTitleSize),
-                    letterSpacing = (-0.35).sp,
-                    fontWeight = FontWeight.Bold,
+                    style = LevyraType.sectionTitle,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
@@ -1332,15 +1325,21 @@ private fun HomeOutlinedAction(label: String, onClick: () -> Unit) {
             .pressable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = label,
-            color = LevyraMuted,
-            fontSize = 13.5.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(13.5.sp),
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            modifier = Modifier.padding(horizontal = 6.dp)
-        )
+        Box(
+            modifier = Modifier
+                .height(LevyraHomeDesign.MoodChipVisualHeight)
+                .clip(LevyraHomeDesign.MoodChipShape)
+                .background(LevyraAdaptiveChip)
+                .padding(horizontal = 14.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = label,
+                color = LevyraText,
+                style = LevyraType.cardTitle,
+                maxLines = 1
+            )
+        }
     }
 }
 
@@ -1720,7 +1719,7 @@ private fun HomeTrackColumnsShelf(
 
     val lazyListState = rememberLazyListState()
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(homeHeaderContentGap())) {
         HomeSectionInset {
             HomeSectionHeader(
                 title = title,
@@ -2261,16 +2260,21 @@ fun LevyraApp(
                         LevyraTab.Home -> {
                             val homeViewModel: HomeViewModel = composeViewModel(key = "levyra-home", factory = screenViewModelFactory)
                             val renderSnapshot by homeViewModel.renderState.collectAsStateWithLifecycle()
-                            HomeScreen(
-                                viewModel = homeViewModel,
-                                renderSnapshot = renderSnapshot,
-                                homeListState = homeListState,
-                                deferredSectionsRevealed = homeDeferredSectionsRevealed,
-                                onTrackActions = { track ->
-                                    queueRemovalTarget = null
-                                    trackActionTarget = track
-                                }
-                            )
+                            CompositionLocalProvider(
+                                LocalHomeCompactDensity provides
+                                    renderSnapshot.state.interfaceSettings.compactHome
+                            ) {
+                                HomeScreen(
+                                    viewModel = homeViewModel,
+                                    renderSnapshot = renderSnapshot,
+                                    homeListState = homeListState,
+                                    deferredSectionsRevealed = homeDeferredSectionsRevealed,
+                                    onTrackActions = { track ->
+                                        queueRemovalTarget = null
+                                        trackActionTarget = track
+                                    }
+                                )
+                            }
                         }
                         LevyraTab.Search -> {
                             val searchViewModel: SearchViewModel = composeViewModel(key = "levyra-search", factory = screenViewModelFactory)
@@ -9743,7 +9747,7 @@ private fun HomeScreen(
                             restTracks.chunked(rowsPerColumn)
                         }
                         val chartDepthEnabled = carouselDepthEnabled()
-                        Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap)) {
                         HomeChartPodium(
                             tracks = podiumTracks,
                             currentId = state.currentTrack?.id,
@@ -10351,7 +10355,7 @@ private fun HomeEditorialCollectionsShelf(
     onOpen: (HomeEditorialCollection) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(homeHeaderContentGap())) {
         HomeSectionHeader(
             title = strings.collectionsTitle,
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
@@ -10565,7 +10569,7 @@ private fun HomeQuickPickRow(
     onActions: (() -> Unit)? = null
 ) {
     val strings = LocalLevyraStrings.current
-    val shape = RoundedCornerShape(10.dp)
+    val shape = LevyraCardDesign.ThumbShape
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -10582,7 +10586,7 @@ private fun HomeQuickPickRow(
         Box(
             modifier = Modifier
                 .size(52.dp)
-                .clip(RoundedCornerShape(8.dp)),
+                .clip(LevyraHomeDesign.ThumbShape),
             contentAlignment = Alignment.Center
         ) {
             CoverImage(
@@ -10615,23 +10619,19 @@ private fun HomeQuickPickRow(
         }
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+            verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.CaptionLineGap)
         ) {
             Text(
                 text = track.title,
                 color = if (isCurrent) LevyraCyan else LevyraText,
-                fontSize = 14.5.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(14.5.sp),
-                fontWeight = FontWeight.SemiBold,
+                style = LevyraType.cardTitle,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = track.artist,
                 color = LevyraMuted,
-                fontSize = 12.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(12.sp),
-                fontWeight = FontWeight.Normal,
+                style = LevyraType.caption,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -10733,7 +10733,7 @@ private fun TrendingArtistsShelf(
     onArtistClick: (ArtistHit) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(homeHeaderContentGap())) {
         HomeSectionHeader(
             title = strings.artists,
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
@@ -10784,9 +10784,7 @@ private fun ArtistHitShelfItem(
         Text(
             text = artist.name,
             color = LevyraText,
-            fontSize = 14.5.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(14.5.sp),
-            fontWeight = FontWeight.SemiBold,
+            style = LevyraType.cardTitle,
             textAlign = TextAlign.Center,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
@@ -10834,7 +10832,7 @@ private fun ResonanceShelf(
     val displayTracks = tracks
     if (displayTracks.isEmpty()) return
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(homeHeaderContentGap())) {
         HomeSectionHeader(
             title = strings.mostCommentedTracks,
             subtitle = strings.tapToOpenComments,
@@ -10893,7 +10891,7 @@ private fun ResonanceFeaturedCard(
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
-    val shape = RoundedCornerShape(22.dp)
+    val shape = LevyraCardDesign.EditorialShape
     val commentCount = snippet?.countText
         ?.let(::youtubeCommentCountBadge)
         ?.takeIf(String::isNotBlank)
@@ -10954,12 +10952,12 @@ private fun ResonanceFeaturedCard(
                 track = track,
                 modifier = Modifier
                     .size(48.dp)
-                    .clip(RoundedCornerShape(10.dp)),
+                    .clip(LevyraCardDesign.ThumbShape),
                 highRes = false
             )
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.CaptionLineGap)
             ) {
                 Text(
                     text = track.title,
@@ -11137,7 +11135,7 @@ private fun HomeMusicVideoShelf(
     }
     if (videos.isEmpty()) return
     val playAll = { actions.onPlayAll(videos.first().track) }
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(homeHeaderContentGap())) {
         HomeSectionInset { HomeSectionHeader(title, onPlayAll = playAll) }
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val videoCardWidth = remember(maxWidth) {
@@ -11611,7 +11609,7 @@ private fun PersonalListeningShelf(
         }
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.OrbitHeaderGap)) {
+    Column(verticalArrangement = Arrangement.spacedBy(homeHeaderContentGap())) {
         HomeSectionInset {
             HomeOrbitHeader(
                 userName = userName,
@@ -21074,7 +21072,7 @@ private fun HomeAlbumLoadingRow() {
                     modifier = Modifier
                         .width(cardWidth)
                         .levyraShimmer(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.CaptionTopGap)
                 ) {
                     Box(
                         modifier = Modifier
@@ -21243,7 +21241,7 @@ private fun AlbumCardGrid(tracks: List<Track>, currentId: String?, animationsEna
             ) { _, column ->
                 Column(
                     modifier = Modifier.width(cardWidth),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                    verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap)
                 ) {
                     column.forEach { track ->
                         AlbumArtworkCard(
