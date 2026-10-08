@@ -75,6 +75,7 @@ import com.luc4n3x.levyra.data.playbackRecoveryPlanFor
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
+import com.luc4n3x.levyra.domain.PlaybackBufferMode
 import com.luc4n3x.levyra.domain.ReplayGainMetadata
 import com.luc4n3x.levyra.domain.ReplayGainMode
 import com.luc4n3x.levyra.domain.selectReplayGain
@@ -161,6 +162,7 @@ class PlaybackService : MediaLibraryService() {
     private var transitionPlayer: ExoPlayer? = null
     private var transitionNormalization: NormalizationAudioProcessor? = null
     private var currentAudioSettings = LevyraAudioSettings()
+    private var activeCustomBufferProfile: PlaybackBufferProfile? = null
 
     @Volatile
     private var aaudioOutputRequested = false
@@ -748,7 +750,13 @@ class PlaybackService : MediaLibraryService() {
         resolver = PlaybackResolver.getInstance(this)
         musicRepository = YoutubeMusicRepository(this)
         autoLibrary = AndroidAutoLibrary(this)
-        val bufferProfile = AdaptivePlaybackPolicy(this).serviceBuffers()
+        val prefs = LevyraPreferences(this)
+        val snapshot = prefs.snapshot()
+        val automaticBufferProfile = AdaptivePlaybackPolicy(this).serviceBuffers()
+        val bufferProfile = playbackBufferProfile(automaticBufferProfile, snapshot.audioSettings.playbackBuffer)
+        activeCustomBufferProfile = bufferProfile.takeIf {
+            snapshot.audioSettings.playbackBuffer.mode == PlaybackBufferMode.CUSTOM
+        }
         val stableBufferProfile = AdaptiveStabilityLoadControl.stableProfileOf(bufferProfile)
         val sharedAllocator = androidx.media3.exoplayer.upstream.DefaultAllocator(true, androidx.media3.common.C.DEFAULT_BUFFER_SEGMENT_SIZE)
         fun buildLoadControl(profile: PlaybackBufferProfile) = DefaultLoadControl.Builder()
@@ -876,8 +884,6 @@ class PlaybackService : MediaLibraryService() {
         RuntimeHooks.attachPlayer(player)
         RuntimeHooks.player(RuntimeSignal.PLAYER_CREATED)
         RuntimeHooks.hot(RuntimeSignal.HOT_PLAYER_CREATE)
-        val prefs = LevyraPreferences(this)
-        val snapshot = prefs.snapshot()
         currentAudioSettings = snapshot.audioSettings.normalized()
         currentAudioNormalization = snapshot.audioNormalization
         player.skipSilenceEnabled = snapshot.skipSilence
@@ -2143,7 +2149,7 @@ class PlaybackService : MediaLibraryService() {
             setMediaCodecSelector(NativeAudioIntegration.mediaCodecSelector)
             setExtensionRendererMode(NativeAudioIntegration.EXTENSION_RENDERER_MODE)
         }
-        return ExoPlayer.Builder(this)
+        val builder = ExoPlayer.Builder(this)
             .setRenderersFactory(renderers)
             .setMediaSourceFactory(sharedMediaSourceFactory)
             .setAudioAttributes(
@@ -2154,6 +2160,21 @@ class PlaybackService : MediaLibraryService() {
                 false
             )
             .setHandleAudioBecomingNoisy(false)
+        activeCustomBufferProfile?.let { profile ->
+            builder.setLoadControl(
+                DefaultLoadControl.Builder()
+                    .setBufferDurationsMs(
+                        profile.minBufferMs,
+                        profile.maxBufferMs,
+                        transitionPlaybackBufferMs(profile.playbackBufferMs),
+                        profile.rebufferMs
+                    )
+                    .setBackBuffer(profile.backBufferMs, false)
+                    .setPrioritizeTimeOverSizeThresholds(true)
+                    .build()
+            )
+        }
+        return builder
             .build()
             .also { transitionPlayer ->
                 preferredAudioRouteKey

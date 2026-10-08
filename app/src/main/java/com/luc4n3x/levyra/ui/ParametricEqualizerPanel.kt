@@ -49,6 +49,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSliderState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -801,6 +802,14 @@ private fun ParametricValueEditor(
     val formatted = format(value)
     var text by remember(formatted) { mutableStateOf(formatted) }
     var error by remember(formatted) { mutableStateOf<String?>(null) }
+    val sliderValue = toSlider(value).coerceIn(sliderRange.start, sliderRange.endInclusive)
+    val sliderState = rememberSliderState(
+        value = sliderValue,
+        trackRange = sliderRange
+    )
+    LaunchedEffect(sliderValue) {
+        if (sliderState.value != sliderValue) sliderState.value = sliderValue
+    }
     val commit: () -> Unit = {
         val parsed = ParametricProfiles.parseDecimal(text)
         when {
@@ -836,12 +845,12 @@ private fun ParametricValueEditor(
         }
         error?.let { Text(it, color = LevyraPink, fontSize = 11.sp, fontWeight = FontWeight.Medium) }
         Slider(
-            value = toSlider(value).coerceIn(sliderRange.start, sliderRange.endInclusive),
+            state = sliderState,
             onValueChange = { position ->
+                sliderState.value = position
                 val next = snap(fromSlider(position))
                 if (isValid(next)) onValue(next)
             },
-            valueRange = sliderRange,
             colors = SliderDefaults.colors(
                 thumbColor = LevyraCyan,
                 activeTrackColor = LevyraCyan,
