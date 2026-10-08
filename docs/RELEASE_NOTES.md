@@ -1,76 +1,92 @@
-# Levyra 2.6.3
+# Levyra 2.6.5
 
 ## Highlights
 
-2.6.3 is built around the reports that came in after 2.6.2. The three user issues closed in this cycle are all covered here: playlist imports that could not find tracks which were actually on YouTube, offline downloads that could stop at 83% on older Android versions, and the missing Moods side of Moods & Genres.
+Levyra looks and feels quite different in this update. Home is fuller without feeling crowded, Explore is easier to browse, and Library puts the music you've saved back at the centre of the screen. The new Material 3 Expressive styling runs through the app, with more consistent shapes, spacing, typography and controls.
 
-Beyond those fixes, Explore is faster and steadier, motion artwork can recover from more catalog misses, and Levyra can use Android hardware audio offload when the active playback chain does not need PCM processing. There are also smaller UI and navigation fixes around Home, Library and returning from the Player.
+There's more than a visual refresh here. You can choose how much audio Levyra buffers, import more headphone EQ presets, and do more with the tracks in your queue. Motion Artwork has also gained new sources and smoother fallbacks. Several fixes address problems that showed up in real use, including an Explore crash caused by unnecessary repeated catalog loading.
 
-## ✦ Reported issues fixed
+This release covers the Android changes merged after 2.6.3. The Windows version follows its own release schedule.
 
-- [#823 — Trying to find missing songs](https://github.com/LUC4N3X/Levyra-deepsound/issues/823): playlist import manual search now combines YouTube Music song results with wider YouTube search, prioritizes official audio and music-video candidates, and can retry with a cleaner title when noisy metadata gets in the way.
-- [#825 — Offline downloads fail at 83% on Android 11 and below](https://github.com/LUC4N3X/Levyra-deepsound/issues/825): muxed MP4 downloads can now copy the existing AAC audio directly into the final M4A container instead of depending on device AAC re-encoding. The previous Transformer path remains as a controlled fallback when direct remuxing is not possible.
-- [#831 — Moods](https://github.com/LUC4N3X/Levyra-deepsound/issues/831): Explore now has real provider-native mood and genre sections instead of showing only genres. Categories keep their localized names and provider routing data, and the follow-up navigation work keeps the selected Explore destination in place when the Player is opened and closed.
+## ✦ A more comfortable Home and Explore
 
-## ✦ Moods & Genres is finally both
+Home has been reorganised so you can reach your music sooner. The main feature area takes up less of the first screen, sections have a clearer rhythm, and album artwork carries more of the visual weight.
 
-Explore now reads the provider's real localized mood and genre taxonomy and keeps the exact category routing needed to open each destination. Category state and artwork are cached per language so the screen can come back quickly instead of rebuilding itself every time.
+- A more compact greeting and header, cleaner shortcuts, and less wasted space between section titles and their content.
+- Richer editorial collections and Quick Picks, with clearer artwork and more useful browsing layouts.
+- Genre shortcuts that open the matching Explore destination, rather than stopping at a decorative label.
+- A new presentation for the Top 50, with a podium-style top ten and compact entries for the rest.
+- A subtle Home background influenced by the artwork currently playing, with motion governed by the existing visual settings.
 
-Editorial discovery has also been tightened. When a safe match is available, published category metadata can use official Spotify editorial information while YouTube Music remains the playback identity and runtime fallback. Weak artwork and fake provider-style album labels are filtered out, visible items can still use Levyra's existing metadata enrichment, and the Explore string bundle is complete across all 37 Android languages.
+Explore follows the same calmer design. Moods and genres use artwork-led cards and more coherent destination screens; fresh music, radio, mixes and category shortcuts are easier to tell apart. Some long labels, contrast issues and crowded controls have been refined too. These changes keep the existing discovery and playback actions rather than replacing them.
 
-Opening a track from a mood or category no longer lets a hidden Explore Back handler consume the first Back press behind the expanded Player. Back belongs to the Player first, so collapsing it reveals the same category you were browsing.
+## ✦ Your Library, with the music first
 
-## ✦ Playlist imports search wider
+The Library has a more useful starting point: favourites come first, other saved collections are easier to scan, and playlists have a clearer, artwork-focused shelf.
 
-When an imported playlist contains an unresolved track, Levyra no longer gives up just because the narrow Songs search returned something. Manual and adaptive matching can combine song results with the wider YouTube result set, deduplicate candidates and prefer official recordings before user uploads.
+The weekly listening chart has also been redrawn with slimmer bars, a quieter grid and more readable labels. Search, sorting, playlist import and empty states use the same visual language as the rest of Levyra. Existing playlist actions, saved tracks and navigation are retained.
 
-Switching between Online and Local while reviewing a missing track refreshes the search immediately, and candidate rows are easier to select. The existing fresh-start behavior after completing one playlist import is unchanged.
+## ✦ A cleaner Player and better queue tools
 
-## ✦ Downloads are safer on older Android
+The Player, mini-player, album and playlist surfaces have received a shared visual polish. Typography, control spacing, selection states and accents feel more consistent, while the Player Deck offers clearer style previews and selection feedback. Artist credits and recent-search metadata have also had small usability fixes.
 
-The 83% failure reported on older Android devices came from the audio-extraction stage for muxed MP4 streams. Levyra now uses Android's MediaExtractor and MediaMuxer to remux compatible AAC tracks without decoding and re-encoding them first.
+Queue tools are more capable now, including actions to manage tracks and save queue content as a playlist. The changes build on the existing queue engine rather than replacing playback or saved library data.
 
-That keeps the operation lossless for the existing AAC stream, avoids relying on older device encoders for the common MP4/AAC case, and still leaves a bounded Media3 Transformer fallback for formats that cannot be remuxed directly.
+Material 3 Expressive now reaches more of the controls you actually touch, including contextual actions, playlist playback and multi-selection. The aim is simple: clearer controls and a more consistent feel from one screen to the next.
 
-## ✦ Motion artwork reaches further
+## ✦ Playback buffering, now your choice
 
-Motion Artwork can now use an on-demand Spotify Canvas resolver after local and Community Canvas catalog misses. Matching stays strict, successful and negative results are cached, in-flight work is isolated from rapid track changes, and an unresolved request falls through to the existing Apple, Tidal and static-artwork paths without blocking audio playback.
+Levyra's original buffering behaviour is still the default. If you never open the new setting, nothing changes.
 
-The editorial side also gained an additional Canvas recovery path and stronger cache behavior, while provider credentials stay out of the Android package.
+For anyone who wants finer control, Audio Settings now offers an **Automatic** mode and a **Custom** mode with Reduced, Balanced and High presets, plus manual adjustments within safe limits.
 
-## ✦ Smarter audio efficiency
+Your choice is saved with your other preferences and included in backups. New values take effect when the player is created again, so adjusting a setting does not restart the track you're listening to. The controls and explanations are available across Levyra's 37 supported Android languages.
 
-Audio Settings now includes an automatic hardware audio-offload policy. Levyra can hand eligible playback to the device's offload path when nothing currently needs PCM processing, then move back to the normal software path when features such as EQ, AutoEQ, normalization, crossfade, speed or pitch changes, skip-silence, or other PCM-dependent processing require it.
+## ✦ More headphone presets work with AutoEQ
 
-Enhanced Audio remains conservative for lossy and unknown sources. When a source is positively identified as lossless and Enhanced Audio is already bypassing it, hardware offload can still be used safely instead of being blocked just because the feature is enabled.
+AutoEQ importing is more flexible and more careful about files it cannot represent accurately. Alongside GraphicEQ, Wavelet and Equalizer APO / Peace formats, the importer handles supported ParametricEQ and FixedBandEQ configurations, AutoEq correction CSV files, and compatible SoundSource and Rockbox exports.
 
-## ✦ Small interface fixes that matter
+File detection now looks at the content rather than trusting the extension alone. It also handles more real-world encoding, separator and formatting differences.
 
-The Home header gives the Levyra mark more room and lets long localized greetings or user names wrap instead of being cut off. Library Quick Picks also scale more cleanly with larger font sizes while keeping paired cards aligned.
+Importing shouldn't silently throw away filters, overwrite duplicate points or clip an out-of-range correction. When a preset needs conversion, Levyra identifies the detected format and explains any approximation. Unsupported or incomplete configurations produce an explicit error instead of an apparently successful but inaccurate import.
+
+Levyra's graphic equaliser still has ten bands: converting a high-resolution correction curve is an approximation, not a promise of identical output to a convolution filter or a different EQ engine. Saved presets and the existing preset-selection workflow remain in place.
+
+## ✦ Motion Artwork with fewer rough edges
+
+Motion Artwork has gained Apple Music artwork support on album and artist pages, alongside improvements to the existing Canvas lookup, caching and refresh paths. Static artwork remains available while a suitable animation is being resolved, helping avoid distracting gaps when moving between tracks.
+
+The Player's artwork colours are also handled more consistently, including improved tonal mapping and better fallback accents when a cover has very little colour.
+
+## ✦ Stability and smaller fixes
+
+One important fix is in Explore: the editorial catalog could be read and parsed repeatedly by concurrent requests during a cold start, causing excessive memory use and, in some cases, an out-of-memory crash. The catalog is now shared across those requests instead of being loaded over and over.
+
+Other refinements include more readable text and contrast, tidier recent-search cards, cleaner navigation and updated extractor player-configuration data. Where upstream configurations disagree, the existing conservative validation and fallback rules remain part of the configuration pipeline.
 
 ## Validation
 
-The issue fixes and feature work landed with focused regression coverage in their respective pull requests. The missing-track playlist import flow was exercised on an Android API 35 emulator. The 83% download path was validated with muxed MP4/AAC downloads on Android 10, 11 and 12 emulators, including offline playback after export. Canvas resolver behavior was exercised on an API 37 emulator, including catalog hits, resolver misses and rapid track switching.
+The changes in this release come from merged work on `main` after tag `v2.6.3`, including focused unit and UI contract tests added alongside buffering, AutoEQ, the queue, Motion Artwork, Explore and the Material 3 refresh.
 
-Moods & Genres includes focused coverage for provider category routing, caching, metadata stabilization and localization, and the audio-offload policy has dedicated tests for its eligibility and blocker decisions.
+There is direct manual evidence from individual changes: the buffering modes and preset controls were checked on a Samsung device using Wi-Fi debugging; the Explore cold-start memory fix and several Home/Player Deck interactions were checked on an API 37 emulator. These are tests of the relevant changes, not an end-to-end test of the final 2.6.5 APK.
 
-The GitHub Android release workflow remains the publication gate for 2.6.3. It validates these notes and the version, runs release lint, builds the signed APK, verifies the APK version and signing certificate, writes the SHA-256 checksum, publishes the release, and downloads the published assets again for verification. If those checks fail, the release is not considered published.
+The Android release workflow is the publication gate. It must validate the version and these notes, run Android release lint, assemble a signed APK, check the package version and signing certificate, generate a SHA-256 checksum, publish the GitHub release and verify the downloaded release assets. None of those final 2.6.5 checks is claimed as passed in advance.
+
+A full manual regression pass of the final signed 2.6.5 APK on physical devices, Android Auto, background playback, downloads and every supported Android version has not been completed specifically for this release.
 
 ## Versioning
 
-- Version name: `2.6.3`
-- Version code: `2060300`
+- Version name: `2.6.5`
+- Version code: `2060500`
 
-This is an Android release. Levyra Desktop keeps its own independent version line.
+This is an Android release. Levyra Desktop has a separate version and release line.
 
 ## Upgrade notes
 
-No manual migration is required.
+No manual migration is required. This update does not introduce a new Room database schema or require you to rebuild your Library. Existing favourites, playlists, downloads, listening history, settings and backups remain on their established data paths. The new buffering preference defaults to Automatic for existing users.
 
-This release does not add a new database schema migration. Existing favorites, playlists, downloads, history, settings, import sessions and local library data stay on their current data paths.
-
-GitHub users can update from the signed APK attached to this release once publication completes. F-Droid and other repositories follow their own build and publishing schedules.
+Once the signed APK and checksum have passed the GitHub release workflow, they will appear on this release page. F-Droid and other distribution channels follow their own build and publication schedules.
 
 ## Final note
 
-2.6.3 is a good example of the issue tracker shaping the release directly: all three reports closed since 2.6.2 are represented here, while the surrounding work makes discovery, downloads, motion artwork and playback a little more dependable at the same time.
+2.6.5 is about making Levyra more pleasant to use every day. Your music is easier to find, the screens feel more connected, and there are useful new controls when you want them. Just as importantly, the default listening experience stays familiar.
