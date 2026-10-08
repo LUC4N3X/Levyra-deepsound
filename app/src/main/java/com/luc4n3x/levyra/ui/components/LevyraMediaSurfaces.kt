@@ -14,13 +14,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
@@ -30,7 +30,6 @@ import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
-import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraPink
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraType
@@ -38,11 +37,11 @@ import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 
 @Composable
 internal fun Modifier.levyraDockSurface(): Modifier {
-    val fill = LevyraPanel.copy(alpha = 0.98f)
-    val shadowColor = Color.Black.copy(alpha = if (LevyraActivePalette.isLight) 0.18f else 0.55f)
+    val fill = MaterialTheme.colorScheme.surfaceContainerHigh
+    val shadowColor = Color.Black.copy(alpha = if (LevyraActivePalette.isLight) 0.12f else 0.30f)
     return this
         .shadow(
-            elevation = 18.dp,
+            elevation = 10.dp,
             shape = LevyraCardDesign.SurfaceShape,
             clip = false,
             ambientColor = shadowColor,
@@ -58,13 +57,13 @@ internal fun LevyraDockProgress(progress: Float, modifier: Modifier = Modifier) 
         modifier = modifier
             .fillMaxWidth()
             .height(2.dp)
-            .background(LevyraText.copy(alpha = 0.08f))
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f))
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth(progress.coerceIn(0f, 1f))
                 .fillMaxHeight()
-                .background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraPink)))
+                .background(MaterialTheme.colorScheme.primary)
         )
     }
 }
