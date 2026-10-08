@@ -16,11 +16,11 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -42,6 +42,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.ui.components.LevyraExpressiveIconButton
+import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import com.luc4n3x.levyra.nexus.playlistimport.CandidateOrigin
 import com.luc4n3x.levyra.nexus.playlistimport.MatchEvaluation
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -101,6 +103,12 @@ fun PlaylistChangeMatchSheet(
                                 selected = origin == value,
                                 onClick = { origin = value },
                                 label = { Text(label) },
+                                shapes = FilterChipDefaults.shapes(
+                                    shape = MaterialTheme.shapes.small,
+                                    selectedShape = MaterialTheme.shapes.extraLarge,
+                                    pressedShape = MaterialTheme.shapes.medium
+                                ),
+                                colors = FilterChipDefaults.tonalFilterChipColors(),
                                 modifier = Modifier.heightIn(min = 48.dp)
                             )
                         }
@@ -115,7 +123,9 @@ fun PlaylistChangeMatchSheet(
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = { search() }),
                         trailingIcon = {
-                            IconButton(onClick = ::search) { Icon(Icons.Rounded.Search, contentDescription = copy["searchManually"]) }
+                            LevyraExpressiveIconButton(onClick = ::search) {
+                                Icon(Icons.Rounded.Search, contentDescription = copy["searchManually"])
+                            }
                         }
                     )
                 }
@@ -123,7 +133,7 @@ fun PlaylistChangeMatchSheet(
             when {
                 loading -> item(key = "loading") {
                     Box(Modifier.fillMaxWidth().padding(20.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = LevyraCyan, modifier = Modifier.size(28.dp))
+                        LevyraLoadingIndicator(color = LevyraCyan, modifier = Modifier.size(28.dp))
                     }
                 }
                 results.isEmpty() -> item(key = "empty") { Text(copy["noResults"], color = LevyraMuted, fontSize = 13.sp) }
