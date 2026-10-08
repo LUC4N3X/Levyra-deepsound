@@ -4146,9 +4146,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (autoEqCatalogDelegate.isInitialized()) autoEqCatalogController.close()
     }
 
-    fun saveAutoEqCustomPreset(name: String, profile: AutoEqImporter.ImportedProfile) {
-        val cleanName = name.trim()
-        if (cleanName.isBlank()) return
+    fun saveAutoEqCustomPreset(name: String, profile: AutoEqImporter.ImportedProfile): Boolean {
+        val cleanName = name.trim().take(ParametricEqualizer.MAX_NAME_CHARS)
+        if (cleanName.isBlank()) return false
         val preset = LevyraAudioPreset(
             id = AutoEqImporter.customPresetId(cleanName, profile),
             fallbackLabel = cleanName,
@@ -4157,8 +4157,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             virtualizer = 0,
             preampDb = profile.preampDb
         )
-        val customPresets = (_state.value.audioSettings.customPresets.filterNot { it.id == preset.id } + preset)
-            .takeLast(LevyraAudioPresets.MAX_CUSTOM_PRESETS)
+        val existing = _state.value.audioSettings.customPresets
+        if (existing.none { it.id == preset.id } && existing.size >= LevyraAudioPresets.MAX_CUSTOM_PRESETS) return false
+        val customPresets = existing.filterNot { it.id == preset.id } + preset
         updateAudioSettings(
             _state.value.audioSettings.copy(
                 equalizerEnabled = true,
@@ -4171,6 +4172,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 parametricEqualizerEnabled = false
             )
         )
+        return true
     }
 
     fun setParametricEqualizerEnabled(value: Boolean) {
@@ -4200,9 +4202,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         applyParametricAutoEq(profile)
     }
 
-    fun saveParametricProfile(name: String, profile: ParametricEqProfile) {
+    fun saveParametricProfile(name: String, profile: ParametricEqProfile): Boolean {
         val cleanName = name.trim().take(ParametricEqualizer.MAX_NAME_CHARS)
-        if (cleanName.isEmpty()) return
+        if (cleanName.isEmpty()) return false
         val normalized = profile.copy(
             id = ParametricEqualizer.profileId(
                 prefix = ParametricEqualizer.CUSTOM_PROFILE_PREFIX,
@@ -4211,9 +4213,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 bands = profile.bands
             ),
             name = cleanName
-        ).normalized() ?: return
-        val profiles = (_state.value.audioSettings.customParametricProfiles.filterNot { it.id == normalized.id } + normalized)
-            .takeLast(ParametricEqualizer.MAX_CUSTOM_PROFILES)
+        ).normalized() ?: return false
+        val existing = _state.value.audioSettings.customParametricProfiles
+        if (existing.none { it.id == normalized.id } && existing.size >= ParametricEqualizer.MAX_CUSTOM_PROFILES) return false
+        val profiles = existing.filterNot { it.id == normalized.id } + normalized
         updateAudioSettings(
             _state.value.audioSettings.copy(
                 equalizerEnabled = false,
@@ -4222,6 +4225,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 customParametricProfiles = profiles
             )
         )
+        return true
     }
 
     fun saveParametricProfileDraft(draft: ParametricEqProfile): Boolean {
