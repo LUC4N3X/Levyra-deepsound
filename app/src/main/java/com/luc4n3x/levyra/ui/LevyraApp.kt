@@ -10067,9 +10067,9 @@ private fun HomeEditorialSpotlight(
     val soundtrackLead = remember(strings, soundtrackArtists) { strings.homeSoundtrackLead(soundtrackArtists) }
     val isLight = LevyraIsLight
     val canvasColor = homeCanvasColor(isLight)
-    val heroInk = if (staged) { if (isLight) LevyraText else Color.White } else Color.White
-    val heroInkSoft = if (staged && isLight) LevyraText.copy(alpha = 0.80f) else Color.White.copy(alpha = 0.88f)
     val staged = header != null
+    val heroInk = if (staged && isLight) LevyraText else Color.White
+    val heroInkSoft = if (staged && isLight) LevyraText.copy(alpha = 0.80f) else Color.White.copy(alpha = 0.88f)
     val heroBodyHeight = levyraCompactLandscapeHeight(
         preferred = if (staged) HOME_HERO_STAGE_BODY_HEIGHT else LevyraHomeDesign.HeroHeight,
         viewportShare = HOME_HERO_LANDSCAPE_VIEWPORT_SHARE,
