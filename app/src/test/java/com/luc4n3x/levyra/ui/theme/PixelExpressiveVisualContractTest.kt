@@ -59,7 +59,7 @@ class PixelExpressiveVisualContractTest {
     fun `home reveals personal discovery earlier without collapsing touch targets`() {
         assertEquals(296f, LevyraHomeDesign.HeroHeight.value, 0.001f)
         assertTrue(LevyraHomeDesign.HeroHeight.value >= 240f)
-        assertTrue(LevyraHomeDesign.SectionStride > LevyraHomeDesign.SectionGap * 2)
+        assertTrue(LevyraHomeDesign.SectionStride > LevyraHomeDesign.SectionGap * 2f)
         assertTrue(LevyraHomeDesign.MoodChipHeight.value >= 48f)
         val source = readUi("HomeExperience.kt")
         assertTrue(source.contains("MaterialTheme.typography.labelLarge"))
