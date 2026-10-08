@@ -1141,47 +1141,48 @@ internal fun ActiveTrackEqualizer(
     )
 }
 @Composable
-private fun HomePlayAllButton(onClick: () -> Unit, size: Dp = 36.dp) {
-    val strings = LocalLevyraStrings.current
+private fun HomePlayAllIcon(
+    onClick: () -> Unit,
+    label: String,
+    iconSize: Dp = 23.dp
+) {
+    val colors = MaterialTheme.colorScheme
     Box(
         modifier = Modifier
             .size(LevyraPlayerDesign.MinimumTouchTarget)
-            .pressable(onClick = onClick),
+            .levyraPressable(
+                onClick = onClick,
+                role = Role.Button,
+                pressedScale = LevyraPressScale.Control,
+                onClickLabel = label
+            ),
         contentAlignment = Alignment.Center
     ) {
         Box(
             modifier = Modifier
-                .size(size)
+                .size(38.dp)
                 .clip(CircleShape)
-                .background(
-                    Brush.linearGradient(
-                        listOf(
-                            LevyraCyan.copy(alpha = 0.15f),
-                            LevyraViolet.copy(alpha = 0.11f)
-                        )
-                    ),
-                    CircleShape
-                )
+                .background(colors.primaryContainer)
                 .border(
-                    1.dp,
-                    Brush.linearGradient(
-                        listOf(
-                            LevyraCyan.copy(alpha = 0.45f),
-                            LevyraViolet.copy(alpha = 0.32f)
-                        )
-                    ),
+                    Dp.Hairline,
+                    colors.onPrimaryContainer.copy(alpha = 0.12f),
                     CircleShape
                 ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Rounded.PlayArrow,
-                contentDescription = strings.playAll,
-                tint = LevyraCyan,
-                modifier = Modifier.size(size * 0.55f)
+                contentDescription = null,
+                tint = colors.onPrimaryContainer,
+                modifier = Modifier.size(iconSize)
             )
         }
     }
+}
+
+@Composable
+private fun HomePlayAllButton(onClick: () -> Unit, size: Dp = 36.dp) {
+    HomePlayAllIcon(onClick = onClick, label = LocalLevyraStrings.current.playAll)
 }
 
 @Composable
@@ -1323,36 +1324,41 @@ private fun ChartMarketHeader(
 @Composable
 private fun HomeOutlinedAction(label: String, onClick: () -> Unit) {
     val strings = LocalLevyraStrings.current
-    Box(
-        modifier = Modifier
-            .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
-            .levyraPressable(
-                onClick = onClick,
-                pressedScale = LevyraPressScale.Control,
-                role = Role.Button
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Row(
+    if (label == strings.playAll) {
+        HomePlayAllIcon(onClick = onClick, label = label)
+    } else {
+        Box(
             modifier = Modifier
-                .clip(LevyraHomeDesign.MoodChipShape)
-                .background(LevyraCyan.copy(alpha = if (LevyraIsLight) 0.09f else 0.14f))
-                .padding(horizontal = 12.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
+                .levyraPressable(
+                    onClick = onClick,
+                    role = Role.Button,
+                    pressedScale = LevyraPressScale.Control,
+                    onClickLabel = label
+                ),
+            contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = label,
-                color = if (LevyraIsLight) LevyraBlue else LevyraCyan,
-                style = LevyraType.cardTitle.copy(fontWeight = FontWeight.SemiBold),
-                maxLines = 1
-            )
-            Icon(
-                imageVector = if (label == strings.playAll) Icons.Rounded.PlayArrow else Icons.Rounded.ChevronRight,
-                contentDescription = null,
-                tint = if (LevyraIsLight) LevyraBlue else LevyraCyan,
-                modifier = Modifier.size(16.dp)
-            )
+            Row(
+                modifier = Modifier
+                    .clip(LevyraHomeDesign.MoodChipShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .padding(horizontal = 11.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                Text(
+                    text = label,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = LevyraType.cardTitle,
+                    maxLines = 1
+                )
+                Icon(
+                    imageVector = Icons.Rounded.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         }
     }
 }
@@ -5286,10 +5292,9 @@ private fun ArtistPopularTracksShelf(
                     .weight(1f)
                     .semantics { heading() }
             )
-            ArtistTonalPill(
-                text = strings.playAll,
-                icon = Icons.Rounded.PlayArrow,
-                onClick = { onPlayAll(distinctTracks) }
+            HomePlayAllIcon(
+                onClick = { onPlayAll(distinctTracks) },
+                label = strings.playAll
             )
         }
 
@@ -11414,7 +11419,7 @@ private fun HomeCompactPlayAllHeader(
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text(
             text = title,
@@ -11423,44 +11428,11 @@ private fun HomeCompactPlayAllHeader(
             lineHeight = LevyraTypeRhythm.lineHeight(23.sp),
             fontWeight = FontWeight.Black,
             letterSpacing = (-0.45).sp,
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)
         )
-        Box(
-            modifier = Modifier
-                .height(48.dp)
-                .pressable(onClick = onPlayAll),
-            contentAlignment = Alignment.Center
-        ) {
-            Surface(
-                color = LevyraPanelSoft.copy(alpha = if (LevyraIsLight) 0.72f else 0.48f),
-                border = BorderStroke(Dp.Hairline, LevyraAdaptiveSoftHairline),
-                shape = CircleShape,
-                modifier = Modifier.height(38.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.PlayArrow,
-                        contentDescription = null,
-                        tint = LevyraText.copy(alpha = 0.86f),
-                        modifier = Modifier.size(15.dp)
-                    )
-                    Text(
-                        text = strings.playAll,
-                        color = LevyraText,
-                        fontSize = 11.5.sp,
-                        lineHeight = LevyraTypeRhythm.lineHeight(11.5.sp),
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1
-                    )
-                }
-            }
-        }
+        HomePlayAllIcon(onClick = onPlayAll, label = strings.playAll)
     }
 }
 
@@ -23840,42 +23812,43 @@ private fun ExplorePrimaryShortcuts(
 
 @Composable
 private fun ExploreShortcutTile(icon: ImageVector, label: String, onClick: () -> Unit) {
-    val accent = when (icon) {
-        Icons.Rounded.AutoAwesome -> LevyraPink
-        Icons.Rounded.PlayArrow -> LevyraCyan
-        Icons.Rounded.Mood -> LevyraViolet
-        Icons.Rounded.Radio -> LevyraOrange
-        else -> LevyraBlue
-    }
+    val colors = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(18.dp)
     Row(
         modifier = Modifier
             .widthIn(max = 192.dp)
-            .heightIn(min = 54.dp)
+            .heightIn(min = 50.dp)
             .clip(shape)
-            .background(accent.copy(alpha = if (LevyraIsLight) 0.09f else 0.14f))
-            .border(1.dp, accent.copy(alpha = 0.21f), shape)
+            .background(colors.surfaceContainerHigh)
+            .border(1.dp, colors.outlineVariant.copy(alpha = 0.36f), shape)
             .levyraPressable(
                 onClick = onClick,
                 role = Role.Button,
-                pressedScale = LevyraPressScale.Tile
+                pressedScale = LevyraPressScale.Tile,
+                onClickLabel = label
             )
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(9.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(32.dp)
-                .background(accent.copy(alpha = 0.18f), RoundedCornerShape(12.dp)),
+                .size(30.dp)
+                .clip(RoundedCornerShape(11.dp))
+                .background(colors.secondaryContainer.copy(alpha = 0.7f)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, null, tint = accent, modifier = Modifier.size(20.dp))
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = colors.onSecondaryContainer,
+                modifier = Modifier.size(18.dp)
+            )
         }
         Text(
             text = label,
             style = LevyraType.cardTitle,
-            color = LevyraText,
+            color = colors.onSurface,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
@@ -23885,25 +23858,20 @@ private fun ExploreShortcutTile(icon: ImageVector, label: String, onClick: () ->
 @Composable
 private fun ExploreLiveRadioEntry(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val radioStrings = com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog.forCode(LocalLevyraStrings.current.code)
+    val colors = MaterialTheme.colorScheme
     val shape = LevyraCardDesign.EditorialShape
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 78.dp)
+            .heightIn(min = 76.dp)
             .clip(shape)
-            .background(
-                Brush.horizontalGradient(
-                    listOf(
-                        LevyraBlue.copy(alpha = if (LevyraIsLight) 0.15f else 0.24f),
-                        MaterialTheme.colorScheme.surfaceContainerHigh
-                    )
-                )
-            )
-            .border(1.dp, LevyraBlue.copy(alpha = 0.20f), shape)
+            .background(colors.surfaceContainerHigh)
+            .border(1.dp, colors.outlineVariant.copy(alpha = 0.38f), shape)
             .levyraPressable(
                 onClick = onClick,
                 role = Role.Button,
-                pressedScale = LevyraPressScale.Tile
+                pressedScale = LevyraPressScale.Tile,
+                onClickLabel = radioStrings.title
             )
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -23911,32 +23879,49 @@ private fun ExploreLiveRadioEntry(onClick: () -> Unit, modifier: Modifier = Modi
     ) {
         Box(
             modifier = Modifier
-                .size(46.dp)
+                .size(44.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(LevyraBlue.copy(alpha = 0.17f)),
+                .background(colors.secondaryContainer.copy(alpha = 0.85f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 Icons.Rounded.Radio,
                 contentDescription = null,
-                tint = LevyraBlue,
-                modifier = Modifier.size(26.dp)
+                tint = colors.onSecondaryContainer,
+                modifier = Modifier.size(24.dp)
             )
         }
         Column(
             Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
-            Text(radioStrings.title, color = LevyraText, style = LevyraType.contentTitle)
             Text(
-                radioStrings.exploreSubtitle,
-                color = LevyraMuted,
+                text = radioStrings.title,
+                color = colors.onSurface,
+                style = LevyraType.contentTitle
+            )
+            Text(
+                text = radioStrings.exploreSubtitle,
+                color = colors.onSurfaceVariant,
                 style = LevyraType.caption,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
         }
-        Icon(Icons.Rounded.ChevronRight, null, tint = LevyraText, modifier = Modifier.size(22.dp))
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .clip(CircleShape)
+                .background(colors.surfaceContainerHighest),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Rounded.ChevronRight,
+                contentDescription = null,
+                tint = colors.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
+        }
     }
 }
 
