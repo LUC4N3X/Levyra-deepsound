@@ -107,7 +107,7 @@ internal fun PlayerArtworkHero(
                 scaleY = scale
                 translationX = swipeOffset()
                 translationY = artOffset.toPx()
-                alpha = if (morphActive || isImmersive) 0f else 1f
+                alpha = morphAnchors.fullArtworkAlpha(morphActive = morphActive, immersive = isImmersive)
             }
             .drawBehind {
                 if (glowColor.alpha <= 0f) return@drawBehind

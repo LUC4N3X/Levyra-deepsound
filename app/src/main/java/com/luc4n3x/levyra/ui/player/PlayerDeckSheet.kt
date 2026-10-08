@@ -157,7 +157,7 @@ internal fun PlayerDeckSheet(
             }
             AnimatedContent(
                 targetState = selected,
-                transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) },
+                transitionSpec = { LevyraMotion.contentSwap(animated) },
                 label = "player-deck-hint",
                 modifier = Modifier.padding(horizontal = LevyraPlayerDesign.Gutter)
             ) { mode ->

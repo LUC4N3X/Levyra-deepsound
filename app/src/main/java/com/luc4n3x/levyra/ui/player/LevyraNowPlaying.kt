@@ -310,7 +310,8 @@ fun LevyraNowPlaying(
         state = lyricsFlip,
         enabled = lyricsFlipAvailable,
         rightToLeft = rightToLeft,
-        depth = lyricsFlipDepth
+        depth = lyricsFlipDepth,
+        animated = animated
     )
 
     LaunchedEffect(mediaSeekFeedbackEvent) {
@@ -768,7 +769,7 @@ fun LevyraNowPlaying(
                                     viewModel.seekTo((positionMs.toFloat() / state.durationMs.toFloat()).coerceIn(0f, 1f))
                                 }
                             },
-                            onShowArtwork = { lyricsFlip.show(PlayerLyricsFace.Player, lyricsFlipDepth) },
+                            onShowArtwork = { lyricsFlip.show(PlayerLyricsFace.Player, lyricsFlipDepth, animated) },
                             onOpenFullLyrics = viewModel::openLyrics,
                             modifier = Modifier
                                 .matchParentSize()

@@ -75,9 +75,15 @@ class PlayerMorphAnchors(private val expansion: () -> Float = { PlayerExpansionE
     fun stageRevealAlpha(): Float =
         playerMotionProgress(normalizeFraction(expansion(), StageRevealStart, StageRevealEnd))
 
-    /** Alpha of the flying cover itself; it only dissolves when it lands on the full-bleed stage. */
+    /** The same late hand-off is used by the artwork card and the full-bleed stage. */
     fun flightAlpha(): Float =
-        if (targetsStage) 1f - playerMotionProgress(normalizeFraction(expansion(), StageRevealEnd, StageHandOffEnd)) else 1f
+        1f - playerMotionProgress(normalizeFraction(expansion(), StageRevealEnd, StageHandOffEnd))
+
+    fun fullArtworkAlpha(morphActive: Boolean, immersive: Boolean): Float {
+        if (immersive) return 0f
+        if (!morphActive || miniBounds == null || fullBounds == null) return 1f
+        return playerMotionProgress(normalizeFraction(expansion(), StageRevealEnd, StageHandOffEnd))
+    }
 
     /**
      * Resolves a reversible flight path between the mini artwork and the player's resting artwork.

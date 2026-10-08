@@ -144,10 +144,20 @@ class PlayerLyricsFlipTest {
     }
 
     @Test
+    fun flatLyricsTransitionHasDirectionalTravelAndSafeEndpoints() {
+        assertEquals(0f, lyricsFlipFaceTravel(0f, back = false, rightToLeft = false), 0f)
+        assertEquals(0f, lyricsFlipFaceTravel(1f, back = true, rightToLeft = false), 0f)
+        assertEquals(0.0325f, lyricsFlipFaceTravel(0.5f, back = true, rightToLeft = false), 0.0001f)
+        assertEquals(-0.0325f, lyricsFlipFaceTravel(0.5f, back = true, rightToLeft = true), 0.0001f)
+        assertEquals(0.065f, lyricsFlipFaceTravel(Float.NaN, back = true, rightToLeft = false), 0.0001f)
+    }
+
+    @Test
     fun settleDurationScalesWithRemainingDistance() {
         assertEquals(380, lyricsFlipSettleDurationMs(0f, 1f, depth = true))
         assertEquals(220, lyricsFlipSettleDurationMs(1f, 0f, depth = false))
         assertEquals(110, lyricsFlipSettleDurationMs(0.98f, 1f, depth = true))
+        assertEquals(0, lyricsFlipSettleDurationMs(0f, 1f, depth = true, animated = false))
     }
 
     @Test

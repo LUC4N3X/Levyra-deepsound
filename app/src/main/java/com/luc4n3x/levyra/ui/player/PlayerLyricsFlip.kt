@@ -51,6 +51,7 @@ private const val LyricsFlipDepthDurationMs = 380
 private const val LyricsFlipFadeDurationMs = 220
 private const val LyricsFlipMinDurationMs = 110
 private const val LyricsFlipDepthScale = 0.06f
+private const val LyricsFlipTravelFraction = 0.065f
 private const val LyricsFlipCameraDistance = 14f
 private val LyricsFlipFlingVelocity = 400.dp
 private val LyricsFlipMinFlingDistance = 24.dp
@@ -152,7 +153,14 @@ internal fun lyricsFlipFaceScale(progress: Float, depth: Boolean): Float {
     return 1f - LyricsFlipDepthScale * sin(PI.toFloat() * p)
 }
 
-internal fun lyricsFlipSettleDurationMs(from: Float, to: Float, depth: Boolean): Int {
+internal fun lyricsFlipFaceTravel(progress: Float, back: Boolean, rightToLeft: Boolean): Float {
+    val p = progress.finiteOrZero().coerceIn(0f, 1f)
+    val travel = (if (back) 1f - p else -p) * LyricsFlipTravelFraction
+    return if (rightToLeft) -travel else travel
+}
+
+internal fun lyricsFlipSettleDurationMs(from: Float, to: Float, depth: Boolean, animated: Boolean = true): Int {
+    if (!animated) return 0
     val distance = abs(to.finiteOrZero() - from.finiteOrZero()).coerceIn(0f, 1f)
     val full = if (depth) LyricsFlipDepthDurationMs else LyricsFlipFadeDurationMs
     return (full * distance).roundToInt().coerceAtLeast(LyricsFlipMinDurationMs)
@@ -202,7 +210,8 @@ internal class PlayerLyricsFlipState(private val scope: CoroutineScope) {
         flingVelocityPx: Float,
         minFlingDistancePx: Float,
         rightToLeft: Boolean,
-        depth: Boolean
+        depth: Boolean,
+        animated: Boolean
     ) {
         val target = lyricsFlipSettleTarget(
             startFace = dragStartFace,
@@ -213,15 +222,15 @@ internal class PlayerLyricsFlipState(private val scope: CoroutineScope) {
             minFlingDistancePx = minFlingDistancePx,
             rightToLeft = rightToLeft
         )
-        settleTo(target, depth)
+        settleTo(target, depth, animated)
     }
 
-    fun cancelDrag(depth: Boolean) {
-        settleTo(face, depth)
+    fun cancelDrag(depth: Boolean, animated: Boolean) {
+        settleTo(face, depth, animated)
     }
 
-    fun show(target: PlayerLyricsFace, depth: Boolean) {
-        settleTo(target, depth)
+    fun show(target: PlayerLyricsFace, depth: Boolean, animated: Boolean) {
+        settleTo(target, depth, animated)
     }
 
     fun snapTo(target: PlayerLyricsFace) {
@@ -231,8 +240,12 @@ internal class PlayerLyricsFlipState(private val scope: CoroutineScope) {
         progressState.floatValue = if (target == PlayerLyricsFace.Lyrics) 1f else 0f
     }
 
-    private fun settleTo(target: PlayerLyricsFace, depth: Boolean) {
+    private fun settleTo(target: PlayerLyricsFace, depth: Boolean, animated: Boolean) {
         settleJob?.cancel()
+        if (!animated) {
+            snapTo(target)
+            return
+        }
         face = target
         val start = progressState.floatValue
         val end = if (target == PlayerLyricsFace.Lyrics) 1f else 0f
@@ -263,10 +276,11 @@ internal fun Modifier.playerLyricsFlipDrag(
     state: PlayerLyricsFlipState,
     enabled: Boolean,
     rightToLeft: Boolean,
-    depth: Boolean
+    depth: Boolean,
+    animated: Boolean
 ): Modifier {
     if (!enabled) return this
-    return pointerInput(state, rightToLeft, depth) {
+    return pointerInput(state, rightToLeft, depth, animated) {
         val slop = viewConfiguration.touchSlop
         val flingVelocity = LyricsFlipFlingVelocity.toPx()
         val minFlingDistance = LyricsFlipMinFlingDistance.toPx()
@@ -279,7 +293,8 @@ internal fun Modifier.playerLyricsFlipDrag(
                 minFlingDistancePx = minFlingDistance,
                 widthPx = size.width.toFloat(),
                 rightToLeft = rightToLeft,
-                depth = depth
+                depth = depth,
+                animated = animated
             )
             gesture.start(down)
             try {
@@ -305,7 +320,8 @@ private class LyricsFlipGesture(
     private val minFlingDistancePx: Float,
     private val widthPx: Float,
     private val rightToLeft: Boolean,
-    private val depth: Boolean
+    private val depth: Boolean,
+    private val animated: Boolean
 ) {
     private val velocityTracker = VelocityTracker()
     private var totalX = 0f
@@ -355,14 +371,15 @@ private class LyricsFlipGesture(
             flingVelocityPx = flingVelocityPx,
             minFlingDistancePx = minFlingDistancePx,
             rightToLeft = rightToLeft,
-            depth = depth
+            depth = depth,
+            animated = animated
         )
         settled = true
         change.consume()
     }
 
     fun cancelIfUnsettled() {
-        if (axis == LyricsFlipAxis.Horizontal && !settled) state.cancelDrag(depth)
+        if (axis == LyricsFlipAxis.Horizontal && !settled) state.cancelDrag(depth, animated)
     }
 }
 
@@ -381,6 +398,8 @@ internal fun Modifier.playerLyricsFlipFace(
         scaleX = scale
         scaleY = scale
         cameraDistance = LyricsFlipCameraDistance * density
+    } else {
+        translationX = size.width * lyricsFlipFaceTravel(progress, back, rightToLeft)
     }
 }
 
