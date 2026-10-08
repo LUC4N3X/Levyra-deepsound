@@ -51,6 +51,8 @@ class PixelExpressiveVisualContractTest {
         assertTrue(dock.contains("colors.surfaceContainerHigh"))
         assertTrue(dock.contains("colors.outlineVariant"))
         assertTrue(dock.contains("pureBlack -> DockMaterial("))
+        assertTrue(dock.contains("RoundedCornerShape(LevyraPlayerDesign.DockTrayCorner)"))
+        assertTrue(dock.contains(".padding(horizontal = 10.dp)"))
         assertTrue(dock.contains(".glassFrost("))
         assertTrue(dock.contains("onDrawFallback = { drawRect(solidBrush) }"))
     }
