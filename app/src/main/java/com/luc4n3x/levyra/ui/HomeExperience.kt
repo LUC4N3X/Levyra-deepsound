@@ -23,7 +23,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Column
@@ -228,10 +227,10 @@ internal fun HomeGenreChips(
             ) {
                 Box(
                     modifier = Modifier
-                        .height(LevyraHomeDesign.MoodChipVisualHeight)
+                        .heightIn(min = LevyraHomeDesign.MoodChipVisualHeight)
                         .clip(RoundedCornerShape(corner))
                         .background(LevyraText.copy(alpha = 0.10f))
-                        .padding(horizontal = 14.dp),
+                        .padding(horizontal = 14.dp, vertical = 6.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(

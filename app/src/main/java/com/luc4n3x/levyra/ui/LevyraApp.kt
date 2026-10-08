@@ -1327,10 +1327,10 @@ private fun HomeOutlinedAction(label: String, onClick: () -> Unit) {
     ) {
         Box(
             modifier = Modifier
-                .height(LevyraHomeDesign.MoodChipVisualHeight)
+                .heightIn(min = LevyraHomeDesign.MoodChipVisualHeight)
                 .clip(LevyraHomeDesign.MoodChipShape)
                 .background(LevyraAdaptiveChip)
-                .padding(horizontal = 14.dp),
+                .padding(horizontal = 14.dp, vertical = 6.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
