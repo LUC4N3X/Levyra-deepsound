@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
@@ -35,18 +36,16 @@ import com.luc4n3x.levyra.ui.GlassBackdropState
 import com.luc4n3x.levyra.ui.glassFrost
 import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
-import com.luc4n3x.levyra.ui.theme.LevyraInk
 import com.luc4n3x.levyra.ui.theme.LevyraIsPureBlack
 import com.luc4n3x.levyra.ui.theme.LevyraMotion
-import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import kotlin.math.roundToInt
 
 private val DockCollapseDistance = 56.dp
 private val DockExpandDistance = 24.dp
-private val DockBlurRadius = 28.dp
-private val DockShadowDark = 16.dp
-private val DockShadowLight = 10.dp
+private val DockBlurRadius = 20.dp
+private val DockShadowDark = 10.dp
+private val DockShadowLight = 6.dp
 private const val DockFadeSpan = 0.6f
 
 @Stable
@@ -174,36 +173,35 @@ private data class DockMaterial(
 private fun rememberDockMaterial(): DockMaterial {
     val isLight = LevyraActivePalette.isLight
     val pureBlack = LevyraIsPureBlack
-    val ink = LevyraInk
+    val colors = MaterialTheme.colorScheme
     val black = LevyraBlack
-    val panel = LevyraPanel
-    return remember(isLight, pureBlack, ink, black, panel) {
+    return remember(isLight, pureBlack, black, colors) {
         when {
             isLight -> DockMaterial(
-                ground = black,
-                frostTop = Color.White.copy(alpha = 0.74f),
-                frostBottom = panel.copy(alpha = 0.88f),
-                solidTop = Color.White,
-                solidBottom = panel,
-                rim = Color(0x1A11131F),
+                ground = colors.surface,
+                frostTop = colors.surfaceContainerHigh.copy(alpha = 0.82f),
+                frostBottom = colors.surfaceContainer.copy(alpha = 0.94f),
+                solidTop = colors.surfaceContainerHigh,
+                solidBottom = colors.surfaceContainer,
+                rim = colors.outlineVariant.copy(alpha = 0.42f),
                 shadow = DockShadowLight
             )
             pureBlack -> DockMaterial(
                 ground = Color.Black,
-                frostTop = Color.Black.copy(alpha = 0.74f),
-                frostBottom = Color.Black.copy(alpha = 0.90f),
+                frostTop = Color.Black.copy(alpha = 0.82f),
+                frostBottom = Color.Black.copy(alpha = 0.94f),
                 solidTop = Color.Black,
                 solidBottom = Color.Black,
-                rim = Color.White.copy(alpha = 0.10f),
+                rim = Color.White.copy(alpha = 0.08f),
                 shadow = DockShadowDark
             )
             else -> DockMaterial(
                 ground = black,
-                frostTop = ink.copy(alpha = 0.72f),
-                frostBottom = black.copy(alpha = 0.88f),
-                solidTop = ink,
-                solidBottom = black,
-                rim = Color.White.copy(alpha = 0.12f),
+                frostTop = colors.surfaceContainerHigh.copy(alpha = 0.76f),
+                frostBottom = colors.surfaceContainer.copy(alpha = 0.92f),
+                solidTop = colors.surfaceContainerHigh,
+                solidBottom = colors.surfaceContainer,
+                rim = colors.outlineVariant.copy(alpha = 0.38f),
                 shadow = DockShadowDark
             )
         }
