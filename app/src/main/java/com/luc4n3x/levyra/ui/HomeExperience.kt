@@ -282,7 +282,7 @@ internal fun HomeChartPodium(
         state = listState,
         modifier = modifier.fillMaxWidth(),
         contentPadding = contentPadding,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         itemsIndexed(tracks, key = { index, track -> "chart-podium-$index-${track.id}" }) { index, track ->
             HomeChartPodiumCard(
@@ -304,54 +304,66 @@ private fun HomeChartPodiumCard(
     onPlay: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val rankText = rank.toString()
-    Box(
+    val artworkShape = LevyraHomeDesign.ArtworkShape
+    Column(
         modifier = modifier
-            .size(width = if (rankText.length > 1) 236.dp else 196.dp, height = 200.dp)
-            .clip(LevyraCardDesign.EditorialShape)
-            .clickable(role = Role.Button, onClick = onPlay)
+            .width(174.dp)
+            .clickable(role = Role.Button, onClick = onPlay),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text(
-            text = rankText,
-            color = LevyraText.copy(alpha = 0.72f),
-            style = TextStyle(
-                fontSize = 112.sp,
-                lineHeight = 112.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = (-7).sp,
-                drawStyle = Stroke(width = 3.5f)
-            ),
-            maxLines = 1,
+        Box(
             modifier = Modifier
-                .align(Alignment.BottomStart)
-                .offset(x = 2.dp, y = 14.dp)
-        )
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .width(132.dp),
-            verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.CaptionTopGap)
+                .size(174.dp)
+                .clip(artworkShape)
+                .background(LevyraBlack)
         ) {
             CoverImage(
                 track = track,
-                modifier = Modifier
-                    .size(132.dp)
-                    .clip(LevyraHomeDesign.ArtworkShape)
-                    .then(
-                        if (active) {
-                            Modifier.border(2.dp, LevyraCyan, LevyraHomeDesign.ArtworkShape)
-                        } else {
-                            Modifier
-                        }
-                    ),
+                modifier = Modifier.fillMaxSize(),
                 highRes = false
             )
-            LevyraCardCaption(
-                title = track.title,
-                subtitle = track.artist,
-                titleColor = if (active) LevyraCyan else LevyraText,
-                titleLines = 1
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.Transparent,
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.64f)
+                            )
+                        )
+                    )
             )
+            Text(
+                text = rank.toString(),
+                color = if (active) LevyraCyan else Color.White,
+                style = TextStyle(
+                    fontSize = 66.sp,
+                    lineHeight = 70.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-3).sp
+                ),
+                maxLines = 1,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 12.dp, bottom = 2.dp)
+            )
+            if (active) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .border(2.dp, LevyraCyan, artworkShape)
+                )
+            }
         }
+        LevyraCardCaption(
+            title = track.title,
+            subtitle = track.artist,
+            titleColor = if (active) LevyraCyan else LevyraText,
+            titleLines = 1,
+            reserveTitleLines = false,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
