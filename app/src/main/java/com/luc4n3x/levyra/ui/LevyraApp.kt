@@ -336,6 +336,7 @@ import androidx.compose.material.icons.rounded.SwipeVertical
 import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.DoNotDisturbOn
 import androidx.compose.material.icons.rounded.Recommend
@@ -1077,6 +1078,7 @@ private fun RowScope.TabButton(
             .semantics(mergeDescendants = true) {
                 role = Role.Tab
                 selected = isSelected
+                contentDescription = entry.label
             }
             .pressable(
                 interactionSource = interactionSource,
@@ -1119,7 +1121,7 @@ private fun RowScope.TabButton(
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .padding(horizontal = 3.dp)
-                    .graphicsLayer { alpha = dockFade(compaction()) }
+                    .graphicsLayer { alpha = if (isSelected) dockFade(compaction()) else 0f }
             )
         }
     }
@@ -1243,7 +1245,28 @@ private fun HomeSectionHeader(
             }
         }
         onShowAll?.let { action ->
-            HomeOutlinedAction(label = strings.showAll, onClick = action)
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .semantics { contentDescription = strings.showAll }
+                    .pressable(onClick = action),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
         }
         onPlayAll?.let { action ->
             HomeOutlinedAction(label = strings.playAll, onClick = action)
@@ -11690,13 +11713,14 @@ private fun PersonalOrbitTile(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.45f)
+                .fillMaxHeight(0.56f)
                 .align(Alignment.BottomCenter)
                 .background(
                     Brush.verticalGradient(
                         listOf(
                             Color.Transparent,
-                            Color.Black.copy(alpha = 0.68f)
+                            Color.Black.copy(alpha = 0.30f),
+                            Color.Black.copy(alpha = 0.77f)
                         )
                     )
                 )
@@ -24353,12 +24377,18 @@ private fun QuickChips(languageCode: String, onClick: (String) -> Unit) {
     ) {
         chips.forEach { chip ->
             Surface(
-                color = CinematicGlass.copy(alpha = 0.72f),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-                shape = CircleShape,
-                modifier = Modifier.pressable(onClick = { onClick(chip) })
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shape = RoundedCornerShape(18.dp),
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .pressable(onClick = { onClick(chip) })
             ) {
-                Text(chip, color = LevyraText, fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 13.dp, vertical = 9.dp))
+                Text(
+                    text = chip,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                )
             }
         }
     }
