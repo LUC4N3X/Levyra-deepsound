@@ -26,14 +26,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.border
 import com.luc4n3x.levyra.ui.theme.LevyraType
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.domain.ExploreZone
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.clip
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.layout.padding
@@ -54,8 +57,11 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
+import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
@@ -197,6 +203,9 @@ internal fun HomeGenreChips(
     onSelect: (ExploreZone) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = MaterialTheme.colorScheme
+    val animationsEnabled = LocalAnimationsEnabled.current
+
     LazyRow(
         modifier = modifier.fillMaxWidth(),
         contentPadding = contentPadding,
@@ -204,16 +213,19 @@ internal fun HomeGenreChips(
     ) {
         items(zones, key = { zone -> "home-chip-${zone.id}" }) { zone ->
             val interaction = remember(zone.id) { MutableInteractionSource() }
-            val corner = if (LocalAnimationsEnabled.current) {
+            val corner = if (animationsEnabled) {
                 levyraExpressiveCorner(
                     interactionSource = interaction,
-                    rest = 12.dp,
-                    pressed = 24.dp,
+                    rest = 22.dp,
+                    pressed = 16.dp,
                     label = "homeGenreChipCorner"
                 )
             } else {
-                12.dp
+                22.dp
             }
+            val shape = RoundedCornerShape(corner)
+            val containerColor = colors.surfaceContainerHigh
+
             Box(
                 modifier = Modifier
                     .heightIn(min = 48.dp)
@@ -221,23 +233,49 @@ internal fun HomeGenreChips(
                         onClick = { onSelect(zone) },
                         interactionSource = interaction,
                         pressedScale = LevyraPressScale.Control,
-                        role = Role.Button
+                        role = Role.Button,
+                        onClickLabel = zone.label
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Box(
+                Row(
                     modifier = Modifier
-                        .heightIn(min = LevyraHomeDesign.MoodChipVisualHeight)
-                        .clip(RoundedCornerShape(corner))
-                        .background(LevyraText.copy(alpha = 0.10f))
-                        .padding(horizontal = 14.dp, vertical = 6.dp),
-                    contentAlignment = Alignment.Center
+                        .heightIn(min = 40.dp)
+                        .clip(shape)
+                        .background(containerColor)
+                        .border(
+                            width = 1.dp,
+                            color = colors.outlineVariant.copy(alpha = 0.45f),
+                            shape = shape
+                        )
+                        .padding(horizontal = 13.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    Box(
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clip(CircleShape)
+                            .background(colors.secondaryContainer.copy(alpha = 0.74f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .background(colors.onSecondaryContainer.copy(alpha = 0.82f), CircleShape)
+                        )
+                    }
                     Text(
                         text = zone.label,
-                        color = LevyraText,
-                        style = LevyraType.cardTitle,
-                        maxLines = 1
+                        color = colors.onSurface,
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontSize = 14.sp,
+                            lineHeight = 19.sp,
+                            letterSpacing = 0.1.sp,
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -260,7 +298,7 @@ internal fun HomeChartPodium(
         state = listState,
         modifier = modifier.fillMaxWidth(),
         contentPadding = contentPadding,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         itemsIndexed(tracks, key = { index, track -> "chart-podium-$index-${track.id}" }) { index, track ->
             HomeChartPodiumCard(
@@ -282,54 +320,66 @@ private fun HomeChartPodiumCard(
     onPlay: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val rankText = rank.toString()
-    Box(
+    val artworkShape = LevyraHomeDesign.ArtworkShape
+    Column(
         modifier = modifier
-            .size(width = if (rankText.length > 1) 236.dp else 196.dp, height = 200.dp)
-            .clip(LevyraCardDesign.EditorialShape)
-            .clickable(role = Role.Button, onClick = onPlay)
+            .width(174.dp)
+            .clickable(role = Role.Button, onClick = onPlay),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text(
-            text = rankText,
-            color = LevyraText.copy(alpha = 0.72f),
-            style = TextStyle(
-                fontSize = 112.sp,
-                lineHeight = 112.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = (-7).sp,
-                drawStyle = Stroke(width = 3.5f)
-            ),
-            maxLines = 1,
+        Box(
             modifier = Modifier
-                .align(Alignment.BottomStart)
-                .offset(x = 2.dp, y = 14.dp)
-        )
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .width(132.dp),
-            verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.CaptionTopGap)
+                .size(174.dp)
+                .clip(artworkShape)
+                .background(LevyraBlack)
         ) {
             CoverImage(
                 track = track,
-                modifier = Modifier
-                    .size(132.dp)
-                    .clip(LevyraHomeDesign.ArtworkShape)
-                    .then(
-                        if (active) {
-                            Modifier.border(2.dp, LevyraCyan, LevyraHomeDesign.ArtworkShape)
-                        } else {
-                            Modifier
-                        }
-                    ),
+                modifier = Modifier.fillMaxSize(),
                 highRes = false
             )
-            LevyraCardCaption(
-                title = track.title,
-                subtitle = track.artist,
-                titleColor = if (active) LevyraCyan else LevyraText,
-                titleLines = 1
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.Transparent,
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.64f)
+                            )
+                        )
+                    )
             )
+            Text(
+                text = rank.toString(),
+                color = if (active) LevyraCyan else Color.White,
+                style = TextStyle(
+                    fontSize = 66.sp,
+                    lineHeight = 70.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-3).sp
+                ),
+                maxLines = 1,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 12.dp, bottom = 2.dp)
+            )
+            if (active) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .border(2.dp, LevyraCyan, artworkShape)
+                )
+            }
         }
+        LevyraCardCaption(
+            title = track.title,
+            subtitle = track.artist,
+            titleColor = if (active) LevyraCyan else LevyraText,
+            titleLines = 1,
+            reserveTitleLines = false,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }

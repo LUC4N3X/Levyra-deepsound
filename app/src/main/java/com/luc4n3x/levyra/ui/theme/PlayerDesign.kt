@@ -13,11 +13,11 @@ import androidx.compose.ui.unit.dp
 object LevyraPlayerDesign {
 
     val CornerXxs: Dp = 8.dp
-    val CornerXs: Dp = 12.dp
-    val CornerSm: Dp = 16.dp
-    val CornerMd: Dp = 22.dp
-    val CornerLg: Dp = 28.dp
-    val CornerXl: Dp = 34.dp
+    val CornerXs: Dp = 14.dp
+    val CornerSm: Dp = 18.dp
+    val CornerMd: Dp = 24.dp
+    val CornerLg: Dp = 30.dp
+    val CornerXl: Dp = 36.dp
 
     val ShapeXxs: Shape = RoundedCornerShape(CornerXxs)
     val ShapeXs: Shape = RoundedCornerShape(CornerXs)
@@ -46,7 +46,7 @@ object LevyraPlayerDesign {
     val TransportHeight: Dp = 76.dp
     val TransportHeightCompact: Dp = 64.dp
     val TransportGap: Dp = 8.dp
-    val TransportInnerCorner: Dp = 12.dp
+    val TransportInnerCorner: Dp = 14.dp
     val TransportGlyph: Dp = 30.dp
     val TransportGlyphCompact: Dp = 26.dp
     val TransportModeGlyph: Dp = 22.dp
@@ -61,19 +61,19 @@ object LevyraPlayerDesign {
     val SegmentPressedInnerCorner: Dp = 22.dp
     const val SegmentPressGrowth: Float = 0.16f
 
-    const val ArtworkCornerRatio: Float = 0.075f
-    val ArtworkCornerMin: Dp = 18.dp
-    val ArtworkCornerMax: Dp = 32.dp
+    const val ArtworkCornerRatio: Float = 0.088f
+    val ArtworkCornerMin: Dp = 20.dp
+    val ArtworkCornerMax: Dp = 36.dp
     const val ArtworkPausedScale: Float = 0.92f
     const val ArtworkTrackChangeScale: Float = 0.965f
 
-    val MiniCorner: Dp = 20.dp
-    val MiniArtwork: Dp = 46.dp
-    val MiniArtworkCorner: Dp = 13.dp
-    val MiniHeight: Dp = 64.dp
-    val MiniHeightCompact: Dp = 50.dp
-    val MiniArtworkCompact: Dp = 36.dp
-    val DockTrayCorner: Dp = 28.dp
+    val MiniCorner: Dp = 26.dp
+    val MiniArtwork: Dp = 48.dp
+    val MiniArtworkCorner: Dp = 16.dp
+    val MiniHeight: Dp = 68.dp
+    val MiniHeightCompact: Dp = 54.dp
+    val MiniArtworkCompact: Dp = 38.dp
+    val DockTrayCorner: Dp = 32.dp
 
     val Hairline: Dp = 1.dp
     val TrackHeight: Dp = 4.dp

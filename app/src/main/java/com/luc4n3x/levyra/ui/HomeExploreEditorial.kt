@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.MusicNote
@@ -44,6 +45,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.components.LevyraCardCaption
@@ -106,21 +108,28 @@ internal fun DiscoveryTrackCard(
                 .background(colors.surfaceContainerHigh)
         ) {
             CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = wide)
+            if (isCurrent) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .border(2.dp, colors.primary.copy(alpha = 0.85f), RoundedCornerShape(corner))
+                )
+            }
             if (wide || isCurrent) {
                 Box(Modifier.fillMaxSize().background(scrim))
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(LevyraHomeDesign.HorizontalInset)
-                        .size(48.dp)
-                        .clip(MaterialTheme.shapes.large)
-                        .background(if (isCurrent) colors.primaryContainer else colors.surfaceContainerHigh),
+                        .padding(12.dp)
+                        .size(46.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.96f)),
                     contentAlignment = Alignment.Center
                 ) {
                     when {
-                        isResolving -> DiscoveryLoadingIndicator(Modifier.size(24.dp), colors.onPrimaryContainer)
-                        isCurrent -> LevyraPlayingIndicator(playing = isPlaying, color = colors.onPrimaryContainer)
-                        else -> Icon(Icons.Rounded.PlayArrow, null, tint = colors.onSurface)
+                        isResolving -> DiscoveryLoadingIndicator(Modifier.size(24.dp), Color.Black)
+                        isCurrent -> LevyraPlayingIndicator(playing = isPlaying, color = Color.Black)
+                        else -> Icon(Icons.Rounded.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(28.dp))
                     }
                 }
             }
@@ -260,19 +269,18 @@ internal fun DiscoveryEditorialCard(
                     modifier = Modifier.weight(1f).heightIn(min = LevyraHomeDesign.EditorialThumb)
                 )
                 if (artwork != null) {
-                    Box(
-                        modifier = Modifier.size(LevyraHomeDesign.EditorialThumb),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CoverImage(
-                            track = artwork,
-                            modifier = Modifier
-                                .size(96.dp)
-                                .rotate(11f)
-                                .clip(RoundedCornerShape(10.dp))
-                                .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(10.dp))
-                        )
-                    }
+                    val artworkShape = RoundedCornerShape(22.dp)
+                    CoverImage(
+                        track = artwork,
+                        modifier = Modifier
+                            .size(116.dp)
+                            .clip(artworkShape)
+                            .border(
+                                1.dp,
+                                Color.White.copy(alpha = 0.24f),
+                                artworkShape
+                            )
+                    )
                 }
             }
         }
@@ -286,8 +294,8 @@ private fun DiscoveryEditorialText(
     textColor: Color,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)) {
-        Text(title, style = LevyraType.sectionTitle, color = textColor, softWrap = true)
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically)) {
+        Text(title, style = LevyraType.sectionTitle.copy(fontWeight = FontWeight.Bold), color = textColor, softWrap = true)
         if (subtitle.isNotBlank()) {
             Text(subtitle, style = LevyraType.metadata, color = textColor, softWrap = true)
         }

@@ -7,6 +7,7 @@ import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
@@ -88,9 +89,9 @@ import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 import kotlin.math.abs
 
-private val SpeedDialTileSize = 64.dp
-private val SpeedDialTileGap = 12.dp
-private val SpeedDialTileShape = RoundedCornerShape(14.dp)
+private val SpeedDialTileSize = 70.dp
+private val SpeedDialTileGap = 10.dp
+private val SpeedDialTileShape = RoundedCornerShape(19.dp)
 private val SpeedDialAutoScrollEdge = 40.dp
 private val SpeedDialAutoScrollStep = 14.dp
 private const val SpeedDialLiftScale = 1.08f
@@ -127,7 +128,7 @@ internal fun HomeSpeedDialStrip(
     val autoScrollStepPx = with(density) { SpeedDialAutoScrollStep.toPx() }
     var menuKey by remember { mutableStateOf<String?>(null) }
 
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SpeedDialHeader(copy.title)
         LazyRow(
             state = listState,
@@ -196,20 +197,20 @@ private fun SpeedDialHeader(title: String) {
     Row(
         modifier = Modifier.padding(horizontal = LevyraHomeDesign.HorizontalInset),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.spacedBy(7.dp)
     ) {
         Icon(
             imageVector = Icons.Rounded.PushPin,
             contentDescription = null,
             tint = LevyraMuted.copy(alpha = 0.8f),
-            modifier = Modifier.size(13.dp)
+            modifier = Modifier.size(15.dp)
         )
         Text(
             text = title,
-            color = LevyraMuted,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 0.1.sp,
+            color = LevyraText.copy(alpha = 0.88f),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -412,15 +413,16 @@ private fun SpeedDialTile(
             isCurrent = isCurrent,
             isPlaying = isPlaying && !isResolving
         )
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(5.dp))
         Text(
             text = pin.title,
             color = if (isCurrent) LevyraCyan else LevyraText.copy(alpha = 0.86f),
-            fontSize = 11.5.sp,
-            lineHeight = 14.sp,
-            fontWeight = FontWeight.Medium,
+            fontSize = 12.sp,
+            lineHeight = 15.sp,
+            fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
-            maxLines = 1,
+            maxLines = 2,
+            minLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.fillMaxWidth()
         )
@@ -466,6 +468,11 @@ private fun SpeedDialArtwork(
                 modifier = Modifier.fillMaxSize().clip(shape)
             )
         }
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .border(1.dp, Color.White.copy(alpha = 0.13f), shape)
+        )
         if (isCurrent) {
             Box(
                 modifier = Modifier
