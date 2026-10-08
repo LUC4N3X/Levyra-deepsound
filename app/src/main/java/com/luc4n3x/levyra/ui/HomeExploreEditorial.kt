@@ -202,41 +202,30 @@ internal fun DiscoveryEditorialCard(
     val contrastPalette = remember(accentStart, accentEnd) {
         editorialContrastPalette(accentStart, accentEnd)
     }
+    val colors = MaterialTheme.colorScheme
+    val overlayAlpha = if (colors.surface.luminance() > 0.5f) 0.10f else 0.22f
     BoxWithConstraints(
         modifier = modifier
             .clip(LevyraCardDesign.SurfaceShape)
+            .background(colors.surfaceContainerHigh)
             .background(
                 Brush.linearGradient(
                     listOf(
-                        contrastPalette.start,
-                        contrastPalette.end,
-                        contrastPalette.end
+                        contrastPalette.start.copy(alpha = overlayAlpha),
+                        contrastPalette.end.copy(alpha = overlayAlpha * 0.5f),
+                        Color.Transparent
                     )
                 )
             )
-            .border(1.dp, Color.White.copy(alpha = 0.12f), LevyraCardDesign.SurfaceShape)
             .levyraPressable(onClick = onOpen, role = Role.Button, pressedScale = LevyraPressScale.Tile)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            Color.Black.copy(alpha = 0.20f),
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.12f)
-                        )
-                    )
-                )
-        )
         val stacked = maxWidth < 300.dp || LocalDensity.current.fontScale > 1.4f
         if (stacked) {
             Column(
                 modifier = Modifier.padding(LevyraHomeDesign.EditorialPadding),
                 verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.EditorialPadding)
             ) {
-                DiscoveryEditorialText(title, subtitle, contrastPalette.text)
+                DiscoveryEditorialText(title, subtitle, colors.onSurface)
                 if (artwork != null) {
                     CoverImage(
                         track = artwork,
@@ -256,7 +245,7 @@ internal fun DiscoveryEditorialCard(
                 DiscoveryEditorialText(
                     title = title,
                     subtitle = subtitle,
-                    textColor = contrastPalette.text,
+                    textColor = colors.onSurface,
                     modifier = Modifier.weight(1f).heightIn(min = LevyraHomeDesign.EditorialThumb)
                 )
                 if (artwork != null) {
@@ -267,10 +256,8 @@ internal fun DiscoveryEditorialCard(
                         CoverImage(
                             track = artwork,
                             modifier = Modifier
-                                .size(96.dp)
-                                .rotate(11f)
-                                .clip(RoundedCornerShape(10.dp))
-                                .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(10.dp))
+                                .size(104.dp)
+                                .clip(LevyraCardDesign.ArtworkShape)
                         )
                     }
                 }
