@@ -33,6 +33,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.domain.ExploreZone
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.clip
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
@@ -56,8 +57,10 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
 import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
@@ -200,6 +203,10 @@ internal fun HomeGenreChips(
     onSelect: (ExploreZone) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = MaterialTheme.colorScheme
+    val isLight = LevyraActivePalette.isLight
+    val animationsEnabled = LocalAnimationsEnabled.current
+
     LazyRow(
         modifier = modifier.fillMaxWidth(),
         contentPadding = contentPadding,
@@ -207,18 +214,22 @@ internal fun HomeGenreChips(
     ) {
         items(zones, key = { zone -> "home-chip-${zone.id}" }) { zone ->
             val interaction = remember(zone.id) { MutableInteractionSource() }
-            val corner = if (LocalAnimationsEnabled.current) {
+            val corner = if (animationsEnabled) {
                 levyraExpressiveCorner(
                     interactionSource = interaction,
-                    rest = 18.dp,
-                    pressed = 26.dp,
+                    rest = 22.dp,
+                    pressed = 16.dp,
                     label = "homeGenreChipCorner"
                 )
             } else {
-                18.dp
+                22.dp
             }
-            val isLight = LevyraActivePalette.isLight
+            val shape = RoundedCornerShape(corner)
             val accent = Color(zone.accentStart)
+            val containerColor = accent
+                .copy(alpha = if (isLight) 0.055f else 0.095f)
+                .compositeOver(colors.surfaceContainerHigh)
+
             Box(
                 modifier = Modifier
                     .heightIn(min = 48.dp)
@@ -226,41 +237,50 @@ internal fun HomeGenreChips(
                         onClick = { onSelect(zone) },
                         interactionSource = interaction,
                         pressedScale = LevyraPressScale.Control,
-                        role = Role.Button
+                        role = Role.Button,
+                        onClickLabel = zone.label
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Box(
+                Row(
                     modifier = Modifier
-                        .heightIn(min = LevyraHomeDesign.MoodChipVisualHeight)
-                        .clip(RoundedCornerShape(corner))
-                        .background(
-                            accent.copy(alpha = if (isLight) 0.11f else 0.19f)
-                        )
+                        .heightIn(min = 40.dp)
+                        .clip(shape)
+                        .background(containerColor)
                         .border(
                             width = 1.dp,
-                            color = accent.copy(alpha = if (isLight) 0.22f else 0.28f),
-                            shape = RoundedCornerShape(corner)
+                            color = colors.outlineVariant.copy(alpha = if (isLight) 0.42f else 0.32f),
+                            shape = shape
                         )
-                        .padding(horizontal = 16.dp, vertical = 7.dp),
-                    contentAlignment = Alignment.Center
+                        .padding(horizontal = 13.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clip(CircleShape)
+                            .background(accent.copy(alpha = if (isLight) 0.13f else 0.18f)),
+                        contentAlignment = Alignment.Center
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(7.dp)
+                                .size(6.dp)
                                 .background(accent, CircleShape)
                         )
-                        Text(
-                            text = zone.label,
-                            color = LevyraText,
-                            style = LevyraType.cardTitle.copy(fontWeight = FontWeight.SemiBold),
-                            maxLines = 1
-                        )
                     }
+                    Text(
+                        text = zone.label,
+                        color = colors.onSurface,
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontSize = 14.sp,
+                            lineHeight = 19.sp,
+                            letterSpacing = 0.1.sp,
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         }
