@@ -575,6 +575,7 @@ private fun ExploreGenreTrackCard(
     onClick: () -> Unit
 ) {
     val artwork = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }
+    val colors = androidx.compose.material3.MaterialTheme.colorScheme
     Column(
         modifier = Modifier
             .width(148.dp)
@@ -590,7 +591,7 @@ private fun ExploreGenreTrackCard(
                 .border(
                     BorderStroke(
                         1.dp,
-                        if (isCurrent) LevyraCyan.copy(alpha = 0.72f) else Color.White.copy(alpha = 0.09f)
+                        if (isCurrent) colors.primary.copy(alpha = 0.60f) else colors.outlineVariant.copy(alpha = 0.32f)
                     ),
                     RoundedCornerShape(16.dp)
                 )
@@ -605,14 +606,14 @@ private fun ExploreGenreTrackCard(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(8.dp)
-                    .size(34.dp)
-                    .background(if (isCurrent) LevyraCyan else LevyraBlack.copy(alpha = 0.78f), CircleShape),
+                    .size(36.dp)
+                    .background(colors.primaryContainer.copy(alpha = 0.96f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Rounded.PlayArrow,
                     contentDescription = null,
-                    tint = if (isCurrent) LevyraBlack else Color.White,
+                    tint = colors.onPrimaryContainer,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -749,7 +750,7 @@ private fun ExploreCollectionHero(
                 .matchParentSize()
                 .background(
                     Brush.verticalGradient(
-                        0f to headerColor.copy(alpha = 0.55f),
+                        0f to headerColor.copy(alpha = 0.34f),
                         0.35f to Color.Transparent,
                         0.68f to LevyraBlack.copy(alpha = 0.62f),
                         1f to LevyraBlack
@@ -826,7 +827,7 @@ private fun Modifier.exploreFullBleed(gutter: Dp): Modifier = layout { measurabl
 
 private val ExploreCollectionGutter = 18.dp
 private val ExploreCollectionHeroHeight = 260.dp
-private const val ExploreCollectionHeaderShade = 0.32f
+private const val ExploreCollectionHeaderShade = 0.65f
 
 @Composable
 internal fun ExploreNewReleasesDestinationScreen(
