@@ -19,6 +19,7 @@ import kotlin.math.sin
 
 private const val StageRevealStart = 0.70f
 private const val StageRevealEnd = 0.86f
+private const val ArtworkRevealEnd = 0.92f
 private const val StageHandOffEnd = 0.98f
 
 enum class PlayerMorphSlot {
@@ -75,14 +76,15 @@ class PlayerMorphAnchors(private val expansion: () -> Float = { PlayerExpansionE
     fun stageRevealAlpha(): Float =
         playerMotionProgress(normalizeFraction(expansion(), StageRevealStart, StageRevealEnd))
 
-    /** The same late hand-off is used by the artwork card and the full-bleed stage. */
-    fun flightAlpha(): Float =
-        1f - playerMotionProgress(normalizeFraction(expansion(), StageRevealEnd, StageHandOffEnd))
+    fun flightAlpha(): Float {
+        val start = if (targetsStage) StageRevealEnd else ArtworkRevealEnd
+        return 1f - playerMotionProgress(normalizeFraction(expansion(), start, StageHandOffEnd))
+    }
 
     fun fullArtworkAlpha(morphActive: Boolean, immersive: Boolean): Float {
         if (immersive) return 0f
         if (!morphActive || miniBounds == null || fullBounds == null) return 1f
-        return playerMotionProgress(normalizeFraction(expansion(), StageRevealEnd, StageHandOffEnd))
+        return playerMotionProgress(normalizeFraction(expansion(), StageRevealEnd, ArtworkRevealEnd))
     }
 
     /**
