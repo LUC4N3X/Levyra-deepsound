@@ -125,10 +125,37 @@ class PixelExpressiveVisualContractTest {
     @Test
     fun `mini player remains visually separate from main style bottom navigation`() {
         val app = readUi("LevyraApp.kt")
-        assertTrue(app.contains("private val LevyraMiniPlayerHeight = 82.dp"))
-        assertTrue(app.contains("private val MiniPlayerTrayBottom = 10.dp"))
+        assertTrue(app.contains("private val LevyraMiniPlayerHeight = 77.dp"))
+        assertTrue(app.contains("private val MiniPlayerTrayBottom = 5.dp"))
         assertTrue(app.contains("val miniSurface = miniColors.surfaceContainerHighest"))
         assertTrue(app.contains("val miniPrimaryContent = miniColors.onSurface"))
+    }
+
+    @Test
+    fun `home radio uses a contained card separate from the greeting`() {
+        val app = readUi("LevyraApp.kt")
+        val home = app.substringAfter("private fun HomeScreen(")
+            .substringBefore("private fun homeSoundtrackPrimaryArtist(")
+        val hero = app.substringAfter("private fun HomeEditorialSpotlight(")
+            .substringBefore("private fun HomeStatusBarScrim(")
+        assertTrue(home.contains("homeHeader()"))
+        assertTrue(home.contains("home-featured-radio"))
+        assertTrue(home.contains("HomeSectionInset {\n                        spotlightHero(null, 0.dp)"))
+        assertFalse(home.contains("spotlightHero(homeHeader"))
+        assertTrue(hero.contains(".clip(LevyraHomeDesign.HeroShape)"))
+        assertTrue(hero.contains("Brush.verticalGradient("))
+    }
+
+    @Test
+    fun `personal orbit shows all nine songs in varied artwork widths`() {
+        val app = readUi("LevyraApp.kt")
+        val shelf = app.substringAfter("private fun PersonalListeningShelf(")
+            .substringBefore("private fun PersonalOrbitTile(")
+        assertTrue(shelf.contains("groupSizes = listOf(2, HOME_PERSONAL_ORBIT_GRID_COLUMNS, HOME_PERSONAL_ORBIT_GRID_COLUMNS + 1)"))
+        assertTrue(shelf.contains("pageTracks.drop(groupSizes.take(rowIndex).sum()).take(columns)"))
+        assertTrue(shelf.contains("tileRatio = if (rowIndex == 0) 1.13f else 1f"))
+        assertTrue(shelf.contains("onActions = { onTrackActions(track) }"))
+        assertTrue(shelf.contains("onPlay = { onPlay(track) }"))
     }
 
     private fun readUi(relativePath: String): String {
