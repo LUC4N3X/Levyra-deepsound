@@ -28,7 +28,7 @@ class PixelExpressiveVisualContractTest {
     fun `home chips keep accessible targets and use themed surfaces`() {
         val source = readUi("HomeExperience.kt")
         assertTrue(source.contains(".heightIn(min = 48.dp)"))
-        assertTrue(source.contains(".background(MaterialTheme.colorScheme.surfaceContainerHigh)"))
+        assertTrue(source.contains(".background(MaterialTheme.colorScheme.surfaceContainer)"))
         assertTrue(source.contains("pressed = LevyraCardDesign.SurfaceCorner"))
         assertTrue(source.contains("onSelect(zone)"))
     }
