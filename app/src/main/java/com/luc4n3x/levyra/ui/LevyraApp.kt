@@ -785,10 +785,10 @@ private val LevyraTabBarCompactHeight = 54.dp
 private val LevyraMiniPlayerHeight = 77.dp
 private const val LevyraLandscapeDockMiniWeight = 1.1f
 private val LevyraBottomContentGap = 16.dp
-private val LevyraTabIndicatorTop = 11.dp
-private val LevyraTabIndicatorHeight = 36.dp
-private val LevyraTabIndicatorShape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 15.dp, bottomEnd = 15.dp)
-private val LevyraTabScrimHeight = 22.dp
+private val LevyraTabIndicatorTop = 12.dp
+private val LevyraTabIndicatorHeight = 34.dp
+private val LevyraTabIndicatorShape = RoundedCornerShape(20.dp)
+private val LevyraTabScrimHeight = 14.dp
 private val LevyraNavigationBlue = Color(0xFF0A84FF)
 private val LevyraHomeGlowViolet = Color(0xFF6E5CF0)
 
@@ -1329,14 +1329,14 @@ private fun HomeOutlinedAction(label: String, onClick: () -> Unit) {
             modifier = Modifier
                 .heightIn(min = LevyraHomeDesign.MoodChipVisualHeight)
                 .clip(LevyraHomeDesign.MoodChipShape)
-                .background(LevyraAdaptiveChip)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                 .padding(horizontal = 14.dp, vertical = 6.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = label,
-                color = LevyraText,
-                style = LevyraType.cardTitle,
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.labelLarge,
                 maxLines = 1
             )
         }
@@ -1350,17 +1350,9 @@ private fun HomeChip(
     onClick: () -> Unit,
     exposeSelectionState: Boolean = true
 ) {
-    val background = when {
-        selected && LevyraIsLight -> Color(0xFF11131F)
-        selected -> Color.White
-        LevyraIsLight -> Color(0x1411131F)
-        else -> Color.White.copy(alpha = 0.10f)
-    }
-    val content = when {
-        selected && LevyraIsLight -> Color.White
-        selected -> Color(0xFF07080C)
-        else -> LevyraText
-    }
+    val colors = MaterialTheme.colorScheme
+    val background = if (selected) colors.secondaryContainer else colors.surfaceContainerHigh
+    val content = if (selected) colors.onSecondaryContainer else colors.onSurfaceVariant
     Box(
         modifier = Modifier
             .height(LevyraHomeDesign.MoodChipHeight)
@@ -10135,30 +10127,29 @@ private fun HomeEditorialSpotlight(
                 }
 
                 Surface(
-                    color = LevyraCyan,
+                    color = MaterialTheme.colorScheme.primaryContainer,
                     shape = CircleShape,
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)),
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(end = 18.dp, bottom = 36.dp)
-                        .size(60.dp)
+                        .padding(end = 18.dp, bottom = 28.dp)
+                        .size(56.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         when {
                             isResolving -> DiscoveryLoadingIndicator(
                                 modifier = Modifier.size(24.dp),
-                                color = Color(0xFF07080C)
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                             isCurrent && isPlaying -> Icon(
                                 imageVector = Icons.Rounded.Pause,
                                 contentDescription = strings.pause,
-                                tint = Color(0xFF07080C),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                 modifier = Modifier.size(24.dp)
                             )
                             else -> Icon(
                                 imageVector = Icons.Rounded.PlayArrow,
                                 contentDescription = strings.playNow,
-                                tint = Color(0xFF07080C),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                 modifier = Modifier.size(26.dp)
                             )
                         }
@@ -11520,19 +11511,12 @@ private fun HomeOrbitAvatar(initial: String, photoPath: String, photoVersion: Lo
         modifier = Modifier
             .size(LevyraHomeDesign.OrbitAvatarSize)
             .clip(CircleShape)
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        LevyraCyan.copy(alpha = 0.32f),
-                        LevyraViolet.copy(alpha = 0.32f)
-                    )
-                )
-            ),
+            .background(MaterialTheme.colorScheme.primaryContainer),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = initial,
-            color = LevyraText,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
             fontSize = 15.sp,
             lineHeight = LevyraTypeRhythm.lineHeight(15.sp),
             fontWeight = FontWeight.Bold,
@@ -20677,16 +20661,16 @@ private fun HomeHeaderIconButton(
     onClick: () -> Unit
 ) {
     val isLight = LevyraIsLight
-    val shape = CircleShape
+    val shape = RoundedCornerShape(18.dp)
     val background = if (isLight) {
         Color.White.copy(alpha = 0.86f)
     } else {
-        Color.White.copy(alpha = 0.08f)
+        Color.Black.copy(alpha = 0.26f)
     }
     val border = if (isLight) {
         Color(0x1911131F)
     } else {
-        Color.White.copy(alpha = 0.075f)
+        Color.White.copy(alpha = 0.10f)
     }
 
     Box(
@@ -22890,9 +22874,6 @@ private fun settleMiniPlayerVerticalDrag(
 
 private val PlayerMorphFlightShadow = 18.dp
 private const val MiniPlayerCarryFraction = 0.5f
-private val MiniPlayerCardBase = PlayerDarkSurface
-private val MiniPlayerTrackColor = Color.White.copy(alpha = 0.12f)
-private val MiniPlayerBufferedColor = Color.White.copy(alpha = 0.20f)
 private val MiniPlayerProgressInset = 18.dp
 private val MiniPlayerProgressHeight = 2.dp
 private val MiniPlayerTrayTop = 8.dp
@@ -22962,9 +22943,11 @@ private fun MiniPlayer(
         animationSpec = if (animated) LevyraPlayerDesign.paletteTween() else snap(),
         label = "mini-accent-end"
     )
-    val miniProgressColor = accentStart.playerMix(Color.White, 0.72f)
-    val miniPrimaryContent = LevyraPlayerDesign.TextPrimary
-    val miniSecondaryContent = LevyraPlayerDesign.TextSecondary
+    val miniColors = MaterialTheme.colorScheme
+    val miniSurface = miniColors.surfaceContainerHigh
+    val miniProgressColor = miniColors.primary
+    val miniPrimaryContent = miniColors.onSurface
+    val miniSecondaryContent = miniColors.onSurfaceVariant
     val animatedProgress = animateFloatAsState(
         targetValue = model.progress.coerceIn(0f, 1f),
         animationSpec = if (animated) tween(420, easing = LinearOutSlowInEasing) else snap(),
@@ -23004,9 +22987,9 @@ private fun MiniPlayer(
                         drawRect(
                             Brush.horizontalGradient(
                                 colorStops = arrayOf(
-                                    0f to MiniPlayerCardBase.playerAmbienceMix(accentStart, 0.46f),
-                                    0.45f to MiniPlayerCardBase.playerAmbienceMix(accentStart, 0.26f),
-                                    1f to MiniPlayerCardBase.playerAmbienceMix(accentEnd, 0.14f)
+                                    0f to miniSurface.playerAmbienceMix(accentStart, 0.10f),
+                                    0.45f to miniSurface.playerAmbienceMix(accentStart, 0.055f),
+                                    1f to miniSurface.playerAmbienceMix(accentEnd, 0.025f)
                                 )
                             )
                         )
@@ -23016,7 +22999,7 @@ private fun MiniPlayer(
                         val origin = Offset(inset, size.height - barHeight)
                         val radius = CornerRadius(barHeight / 2f)
                         drawRoundRect(
-                            color = MiniPlayerTrackColor,
+                            color = miniPrimaryContent.copy(alpha = 0.12f),
                             topLeft = origin,
                             size = Size(span, barHeight),
                             cornerRadius = radius
@@ -23030,7 +23013,7 @@ private fun MiniPlayer(
                             )
                         } else {
                             drawRoundRect(
-                                color = MiniPlayerBufferedColor,
+                                color = miniPrimaryContent.copy(alpha = 0.22f),
                                 topLeft = origin,
                                 size = Size(span * animatedBuffered.value, barHeight),
                                 cornerRadius = radius
@@ -23165,7 +23148,7 @@ private fun MiniPlayer(
                         Icon(
                             imageVector = Icons.Rounded.Close,
                             contentDescription = strings.closePlayer,
-                            tint = LevyraPlayerDesign.TextTertiary,
+                            tint = miniSecondaryContent.copy(alpha = 0.82f),
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -24273,8 +24256,7 @@ private fun BottomTabs(
     val entries = rememberLevyraTabEntries()
     val animationsEnabled = LocalAnimationsEnabled.current
     val haptics = LocalLevyraHaptics.current
-    val isLight = LevyraIsLight
-    val selectedTint = LevyraText
+    val selectedTint = MaterialTheme.colorScheme.onSecondaryContainer
     val selectedIndex = entries.indexOfFirst { it.tab == selected }.coerceAtLeast(0)
     val indicatorPosition by animateFloatAsState(
         targetValue = selectedIndex.toFloat(),
@@ -24285,7 +24267,7 @@ private fun BottomTabs(
         },
         label = "tab-indicator-position"
     )
-    val indicatorColor = selectedTint.copy(alpha = if (isLight) 0.08f else 0.11f)
+    val indicatorColor = MaterialTheme.colorScheme.secondaryContainer
 
     Column(modifier = Modifier.fillMaxWidth()) {
             BoxWithConstraints(
