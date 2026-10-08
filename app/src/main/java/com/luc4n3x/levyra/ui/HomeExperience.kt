@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.border
 import com.luc4n3x.levyra.ui.theme.LevyraType
 import com.luc4n3x.levyra.ui.theme.LevyraText
@@ -34,6 +35,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Text
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.layout.padding
@@ -216,6 +218,7 @@ internal fun HomeGenreChips(
                 18.dp
             }
             val isLight = LevyraActivePalette.isLight
+            val accent = Color(zone.accentStart)
             Box(
                 modifier = Modifier
                     .heightIn(min = 48.dp)
@@ -232,22 +235,32 @@ internal fun HomeGenreChips(
                         .heightIn(min = LevyraHomeDesign.MoodChipVisualHeight)
                         .clip(RoundedCornerShape(corner))
                         .background(
-                            if (isLight) Color(0x14101322) else Color.White.copy(alpha = 0.08f)
+                            accent.copy(alpha = if (isLight) 0.11f else 0.19f)
                         )
                         .border(
                             width = 1.dp,
-                            color = if (isLight) Color(0x18101322) else Color.White.copy(alpha = 0.07f),
+                            color = accent.copy(alpha = if (isLight) 0.22f else 0.28f),
                             shape = RoundedCornerShape(corner)
                         )
                         .padding(horizontal = 16.dp, vertical = 7.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = zone.label,
-                        color = LevyraText,
-                        style = LevyraType.cardTitle.copy(fontWeight = FontWeight.SemiBold),
-                        maxLines = 1
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(7.dp)
+                                .background(accent, CircleShape)
+                        )
+                        Text(
+                            text = zone.label,
+                            color = LevyraText,
+                            style = LevyraType.cardTitle.copy(fontWeight = FontWeight.SemiBold),
+                            maxLines = 1
+                        )
+                    }
                 }
             }
         }
