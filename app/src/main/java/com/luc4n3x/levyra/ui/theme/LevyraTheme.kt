@@ -402,7 +402,10 @@ private val LevyraExpressiveShapes = Shapes(
     small = RoundedCornerShape(12.dp),
     medium = RoundedCornerShape(16.dp),
     large = RoundedCornerShape(24.dp),
-    extraLarge = RoundedCornerShape(32.dp)
+    extraLarge = RoundedCornerShape(32.dp),
+    largeIncreased = RoundedCornerShape(28.dp),
+    extraLargeIncreased = RoundedCornerShape(36.dp),
+    extraExtraLarge = RoundedCornerShape(44.dp)
 )
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
