@@ -238,10 +238,16 @@ internal fun exploreReleaseIdentity(track: Track): String {
 internal fun exploreMomentPages(tracks: List<Track>): List<List<Track>> =
     tracks.chunked(ExploreMomentRowsPerPage).take(ExploreMomentPageLimit)
 
-internal fun exploreReleaseKind(track: Track): ExploreReleaseKind = when (track.albumType.trim().lowercase()) {
-    "single" -> ExploreReleaseKind.Single
-    "album", "compilation", "ep" -> ExploreReleaseKind.Album
-    else -> ExploreReleaseKind.Release
+internal fun exploreReleaseKind(track: Track): ExploreReleaseKind {
+    when (track.albumType.trim().lowercase()) {
+        "single" -> return ExploreReleaseKind.Single
+        "album", "compilation", "ep" -> return ExploreReleaseKind.Album
+    }
+    return when {
+        track.trackTotal == 1 -> ExploreReleaseKind.Single
+        track.trackTotal > 1 -> ExploreReleaseKind.Album
+        else -> ExploreReleaseKind.Release
+    }
 }
 
 internal fun exploreReleaseCard(track: Track): ExploreReleaseCard {

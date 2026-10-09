@@ -305,6 +305,39 @@ class ExploreLayoutTest {
     }
 
     @Test
+    fun resolvedCollectionSizeSettlesSingleVersusAlbum() {
+        val base = track("x").copy(title = "Le foglie di te", album = "AMATORE", albumType = "")
+
+        assertEquals(ExploreReleaseKind.Single, exploreReleaseKind(base.copy(trackTotal = 1)))
+        assertEquals(ExploreReleaseKind.Album, exploreReleaseKind(base.copy(trackTotal = 12)))
+        assertEquals(ExploreReleaseKind.Release, exploreReleaseKind(base.copy(trackTotal = 0)))
+    }
+
+    @Test
+    fun aReportedTypeStillOutranksTheCollectionSize() {
+        val base = track("x").copy(title = "Le foglie di te", album = "AMATORE", trackTotal = 12)
+
+        assertEquals(ExploreReleaseKind.Single, exploreReleaseKind(base.copy(albumType = "single")))
+        assertEquals(ExploreReleaseKind.Album, exploreReleaseKind(base.copy(albumType = "album")))
+    }
+
+    @Test
+    fun aSingleNamesTheTrackEvenWhenTheReleaseIsNamedDifferently() {
+        val card = exploreReleaseCard(
+            track("x").copy(
+                title = "Le foglie di te",
+                artist = "Jovanotti, Samurai Jay",
+                album = "AMATORE",
+                albumType = "single"
+            )
+        )
+
+        assertEquals("Le foglie di te", card.title)
+        assertEquals("Jovanotti, Samurai Jay", card.subtitle)
+        assertFalse(card.opensAlbum)
+    }
+
+    @Test
     fun spotlightArtworkPrefersTheCoverOverAVideoStill() {
         val videoHero = track("hero").copy(
             thumbnailUrl = "https://is1-ssl.mzstatic.com/image/thumb/Music/cover/600x600bb.jpg",
@@ -389,7 +422,13 @@ class ExploreLayoutTest {
             track("s").copy(title = "Vertigini", artist = "Fabri Fibra", album = "Vertigini", albumType = "single")
         )
         val unknown = exploreReleaseCard(
-            track("u").copy(title = "Le foglie di te", artist = "Jovanotti", album = "AMATORE", albumType = "")
+            track("u").copy(
+                title = "Le foglie di te",
+                artist = "Jovanotti",
+                album = "AMATORE",
+                albumType = "",
+                trackTotal = 0
+            )
         )
 
         assertEquals("Vertigini", single.title)

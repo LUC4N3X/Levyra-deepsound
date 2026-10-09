@@ -9746,6 +9746,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             releaseDate = apple.releaseDate.ifBlank { releaseDate },
             year = apple.year.ifBlank { year },
             albumArtist = apple.albumArtist.ifBlank { albumArtist },
+            trackTotal = apple.trackTotal.takeIf { it > 0 } ?: trackTotal,
+            discTotal = apple.discTotal.takeIf { it > 0 } ?: discTotal,
             appleSongId = apple.appleSongId.ifBlank { appleSongId },
             appleAlbumId = apple.appleAlbumId.ifBlank { appleAlbumId },
             canonicalAlbumUrl = apple.canonicalAlbumUrl.ifBlank { canonicalAlbumUrl },
