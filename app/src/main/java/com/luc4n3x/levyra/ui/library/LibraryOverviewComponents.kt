@@ -150,8 +150,21 @@ internal fun LibraryCategoryChip(label: String, selected: Boolean, onClick: () -
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (selected) Icon(Icons.Rounded.Check, contentDescription = null, tint = colors.onPrimaryContainer, modifier = Modifier.size(16.dp))
-            Text(label, color = if (selected) colors.onPrimaryContainer else colors.onSurfaceVariant, style = LevyraType.cardTitle)
+            if (selected) {
+                Icon(
+                    Icons.Rounded.Check,
+                    contentDescription = null,
+                    tint = colors.onPrimaryContainer,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+            Text(
+                text = label,
+                color = if (selected) colors.onPrimaryContainer else colors.onSurfaceVariant,
+                style = LevyraType.cardTitle,
+                maxLines = 1,
+                softWrap = false
+            )
         }
     }
 }
