@@ -36,8 +36,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
@@ -55,6 +57,7 @@ import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.theme.LevyraType
+import kotlin.math.absoluteValue
 
 private val FreshChipHeight = 40.dp
 private val FreshArtworkCorner = 20.dp
@@ -188,6 +191,9 @@ internal fun ExploreFreshSpotlight(
                 isCurrent = isCurrent,
                 isPlaying = isPlaying && isCurrent,
                 isResolving = isResolving && isCurrent,
+                pageOffset = {
+                    ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction).absoluteValue
+                },
                 onPlay = { onPlay(track) },
                 actions = { actions(track) }
             )
@@ -208,6 +214,7 @@ private fun ExploreFreshSpotlightPage(
     isCurrent: Boolean,
     isPlaying: Boolean,
     isResolving: Boolean,
+    pageOffset: () -> Float,
     onPlay: () -> Unit,
     actions: @Composable () -> Unit
 ) {
@@ -247,6 +254,7 @@ private fun ExploreFreshSpotlightPage(
             isCurrent = isCurrent,
             isPlaying = isPlaying,
             isResolving = isResolving,
+            pageOffset = pageOffset,
             onPlay = onPlay
         )
     }
@@ -258,10 +266,14 @@ private fun ExploreFreshSpotlightArtwork(
     isCurrent: Boolean,
     isPlaying: Boolean,
     isResolving: Boolean,
+    pageOffset: () -> Float,
     onPlay: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val colors = MaterialTheme.colorScheme
+    val parallax = LocalAnimationsEnabled.current
+    val glowStart = remember(track.accentStart) { Color(track.accentStart) }
+    val glowEnd = remember(track.accentEnd) { Color(track.accentEnd) }
     val scrim = remember {
         Brush.verticalGradient(
             0.55f to Color.Transparent,
@@ -274,6 +286,20 @@ private fun ExploreFreshSpotlightArtwork(
             modifier = Modifier
                 .width(artworkWidth)
                 .aspectRatio(1f)
+                .graphicsLayer {
+                    if (!parallax) return@graphicsLayer
+                    val settled = 1f - pageOffset().coerceIn(0f, 1f)
+                    val scale = 0.94f + 0.06f * settled
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .shadow(
+                    elevation = 22.dp,
+                    shape = RoundedCornerShape(FreshArtworkCorner),
+                    clip = false,
+                    ambientColor = glowStart.copy(alpha = 0.26f),
+                    spotColor = glowEnd.copy(alpha = 0.34f)
+                )
                 .clip(RoundedCornerShape(FreshArtworkCorner))
                 .background(colors.surfaceContainerHigh)
                 .levyraPressable(
@@ -284,7 +310,11 @@ private fun ExploreFreshSpotlightArtwork(
                     pressedScale = LevyraPressScale.Tile
                 )
         ) {
-            CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true)
+            CoverImage(
+                track = exploreCoverArtworkTrack(track),
+                modifier = Modifier.fillMaxSize(),
+                highRes = true
+            )
             if (isCurrent || isResolving) {
                 Box(Modifier.fillMaxSize().background(scrim))
                 Box(

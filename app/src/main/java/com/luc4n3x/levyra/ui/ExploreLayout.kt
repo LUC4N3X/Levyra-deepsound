@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.ui
 import com.luc4n3x.levyra.domain.ExploreCatalog
 import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.domain.ExploreZone
+import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.data.isYoutubeShortTrack
 
@@ -227,4 +228,12 @@ internal fun exploreReleaseKind(track: Track): ExploreReleaseKind {
     } else {
         ExploreReleaseKind.Album
     }
+}
+
+internal fun exploreCoverArtworkTrack(track: Track): Track {
+    val large = track.largeThumbnailUrl.trim()
+    if (large.isBlank() || !LevyraPersonalOrbit.isVideoFrameArtworkUrl(large)) return track
+    val cover = track.thumbnailUrl.trim()
+    if (cover.isBlank() || LevyraPersonalOrbit.isVideoFrameArtworkUrl(cover)) return track
+    return track.copy(largeThumbnailUrl = cover)
 }

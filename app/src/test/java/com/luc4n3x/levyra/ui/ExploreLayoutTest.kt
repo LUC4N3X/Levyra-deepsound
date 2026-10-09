@@ -306,6 +306,34 @@ class ExploreLayoutTest {
         assertEquals(ExploreReleaseKind.Release, exploreReleaseKind(unknown))
     }
 
+    @Test
+    fun spotlightArtworkPrefersTheCoverOverAVideoStill() {
+        val videoHero = track("hero").copy(
+            thumbnailUrl = "https://is1-ssl.mzstatic.com/image/thumb/Music/cover/600x600bb.jpg",
+            largeThumbnailUrl = "https://i.ytimg.com/vi/abcdefghijk/maxresdefault.jpg"
+        )
+
+        assertEquals(
+            "https://is1-ssl.mzstatic.com/image/thumb/Music/cover/600x600bb.jpg",
+            exploreCoverArtworkTrack(videoHero).largeThumbnailUrl
+        )
+    }
+
+    @Test
+    fun spotlightArtworkIsLeftAloneWhenNoCoverIsAvailable() {
+        val coverHero = track("cover").copy(
+            thumbnailUrl = "https://is1-ssl.mzstatic.com/image/thumb/Music/a/300x300bb.jpg",
+            largeThumbnailUrl = "https://is1-ssl.mzstatic.com/image/thumb/Music/a/1400x1400bb.jpg"
+        )
+        val videoOnly = track("video").copy(
+            thumbnailUrl = "https://i.ytimg.com/vi/abcdefghijk/hqdefault.jpg",
+            largeThumbnailUrl = "https://i.ytimg.com/vi/abcdefghijk/maxresdefault.jpg"
+        )
+
+        assertEquals(coverHero, exploreCoverArtworkTrack(coverHero))
+        assertEquals(videoOnly, exploreCoverArtworkTrack(videoOnly))
+    }
+
     private fun zones(count: Int): List<ExploreZone> = List(count) { index ->
         ExploreZone(
             id = "zone-$index",

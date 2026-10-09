@@ -9671,8 +9671,31 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         isExploreLoading = if (current.exploreZoneId == ExploreCatalog.NEW_RELEASES_ZONE_ID) false else current.isExploreLoading
                     )
                 }
-                if (tracks.isNotEmpty()) refreshOfficialMetadataBatch(tracks, 8)
-                if (worldTracks.isNotEmpty()) refreshOfficialMetadataBatch(worldTracks, 6)
+                val appleTracks = appleArtworkFeed(tracks, market)
+                if (freshCurrentsRequestGeneration != requestGeneration || _state.value.languageCode != languageCode) return@launch
+                if (appleTracks !== tracks) {
+                    _state.update { current ->
+                        if (current.languageCode != languageCode) current
+                        else current.copy(
+                            exploreFreshTracks = appleTracks,
+                            exploreTracks = if (current.exploreZoneId == ExploreCatalog.NEW_RELEASES_ZONE_ID) {
+                                appleTracks
+                            } else {
+                                current.exploreTracks
+                            }
+                        )
+                    }
+                }
+                val appleWorldTracks = appleArtworkFeed(worldTracks, market)
+                if (freshCurrentsRequestGeneration != requestGeneration || _state.value.languageCode != languageCode) return@launch
+                if (appleWorldTracks !== worldTracks) {
+                    _state.update { current ->
+                        if (current.languageCode != languageCode) current
+                        else current.copy(exploreWorldFreshTracks = appleWorldTracks)
+                    }
+                }
+                if (appleTracks.isNotEmpty()) refreshOfficialMetadataBatch(appleTracks, 8)
+                if (appleWorldTracks.isNotEmpty()) refreshOfficialMetadataBatch(appleWorldTracks, 6)
             } finally {
                 if (freshCurrentsRequestGeneration == requestGeneration) {
                     _state.update { current ->
@@ -9684,6 +9707,52 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
         }
+    }
+
+    private suspend fun appleArtworkFeed(tracks: List<Track>, market: String): List<Track> {
+        if (tracks.isEmpty()) return tracks
+        val targets = tracks.take(FRESH_APPLE_ARTWORK_LIMIT)
+        val resolved = coroutineScope {
+            targets.map { track ->
+                async {
+                    try {
+                        officialArtworkRepository.findApple(track, market)
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (error: Throwable) {
+                        Timber.w(error, "Apple artwork failed for %s", track.title)
+                        null
+                    }
+                }
+            }.awaitAll()
+        }
+        if (resolved.all { it == null }) return tracks
+        val upgraded = targets.mapIndexed { index, track ->
+            resolved[index]?.let { apple -> track.withAppleArtwork(apple) } ?: track
+        }
+        return upgraded + tracks.drop(targets.size)
+    }
+
+    private fun Track.withAppleArtwork(apple: OfficialArtworkRepository.OfficialArtwork): Track {
+        val thumbnail = apple.thumbnailUrl.trim()
+        val large = apple.largeThumbnailUrl.trim().ifBlank { thumbnail }
+        if (thumbnail.isBlank()) return this
+        return copy(
+            album = apple.album.ifBlank { album },
+            thumbnailUrl = thumbnail,
+            largeThumbnailUrl = large,
+            isrc = isrc.ifBlank { apple.isrc },
+            upc = upc.ifBlank { apple.upc },
+            releaseDate = apple.releaseDate.ifBlank { releaseDate },
+            year = apple.year.ifBlank { year },
+            albumArtist = apple.albumArtist.ifBlank { albumArtist },
+            appleSongId = apple.appleSongId.ifBlank { appleSongId },
+            appleAlbumId = apple.appleAlbumId.ifBlank { appleAlbumId },
+            canonicalAlbumUrl = apple.canonicalAlbumUrl.ifBlank { canonicalAlbumUrl },
+            explicit = explicit || apple.explicit,
+            metadataProvider = apple.provider.ifBlank { metadataProvider },
+            metadataConfidence = maxOf(metadataConfidence, officialMetadataConfidence(apple.score))
+        )
     }
 
     private fun ensureOfficialNewReleasesLoaded(force: Boolean = false) {
@@ -12496,6 +12565,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             "Olivia Rodrigo", "Sabrina Carpenter", "Miley Cyrus", "Harry Styles"
         )
         private const val OFFICIAL_METADATA_MAX_BATCH_SIZE = 8
+        private const val FRESH_APPLE_ARTWORK_LIMIT = 21
         private const val OFFICIAL_METADATA_CONCURRENCY = 2
         const val LISTEN_SESSION_FLUSH_INTERVAL_MS = 30_000L
         const val PULSE_REFRESH_THROTTLE_MS = 5_000L
