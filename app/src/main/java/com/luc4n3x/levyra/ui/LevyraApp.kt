@@ -23378,8 +23378,8 @@ private fun ExploreScreen(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
-            contentPadding = PaddingValues(top = 20.dp, bottom = exploreBottomInset),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            contentPadding = PaddingValues(top = 14.dp, bottom = exploreBottomInset),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             items(
                 items = rows,
@@ -23388,7 +23388,7 @@ private fun ExploreScreen(
             ) { row ->
                 when (row) {
                     ExploreRow.Shortcuts -> Column(
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         ExplorePageHeader(
                             title = strings.exploreTitle,
@@ -23400,9 +23400,8 @@ private fun ExploreScreen(
                             onSelect = onShortcut,
                             onOpenJam = onOpenJam,
                             onOpenRadio = { onLiveRadioOpenChange(true) },
-                            modifier = Modifier.padding(horizontal = HomeHorizontalInset)
+                            modifier = Modifier
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
                     }
                     ExploreRow.MixTools -> Column(
                         modifier = Modifier.padding(horizontal = HomeHorizontalInset),
@@ -23423,7 +23422,8 @@ private fun ExploreScreen(
                         ExploreAnchor.Fresh -> ExploreSectionHeader(
                             title = strings.exploreFresh,
                             subtitle = strings.exploreNewReleases,
-                            onPlayAll = onPlayFresh
+                            onPlayAll = onPlayFresh,
+                            onShowAll = { onShortcut(ExploreShortcut.NewReleases) }
                         )
                         ExploreAnchor.Samples -> ExploreSectionHeader(
                             title = strings.exploreSamples,
@@ -23448,44 +23448,72 @@ private fun ExploreScreen(
                     ExploreRow.FreshEmpty -> Box(modifier = Modifier.padding(horizontal = HomeHorizontalInset)) {
                         EmptyState(strings.exploreEmpty)
                     }
-                    ExploreRow.FreshCarousel -> BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                        val cardWidth = (maxWidth - LevyraHomeDesign.EditorialPeek)
-                            .coerceAtMost(LevyraHomeDesign.EditorialMaxWidth)
-                        val freshState = rememberLazyListState()
-                        val freshDepth = carouselDepthEnabled()
-                        LazyRow(
-                            state = freshState,
-                            contentPadding = PaddingValues(horizontal = HomeHorizontalInset),
-                            horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap)
-                        ) {
-                            items(freshTracks, key = { track -> "ex-track-${track.id}" }, contentType = { "discovery-featured" }) { track ->
-                                DiscoveryTrackCard(
-                                    track = track,
-                                    isCurrent = track.id == state.currentTrack?.id,
-                                    isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
-                                    isResolving = state.isResolving && track.id == state.currentTrack?.id,
-                                    onPlay = { viewModel.playFrom(freshTracks, track) },
-                                    wide = true,
-                                    modifier = Modifier
-                                        .levyraCarouselDepth(freshState, "ex-track-${track.id}", freshDepth)
-                                        .width(cardWidth),
-                                    trailing = {
-                                        DiscoveryTrackActions(
-                                            trackTitle = track.title,
-                                            isFavorite = track.id in state.favoriteIds,
-                                            onFavorite = { viewModel.toggleFavorite(track) },
-                                            onAddToPlaylist = { addToPlaylistTarget = track },
-                                            onShare = {
-                                                val intent = Intent(Intent.ACTION_SEND).apply {
-                                                    type = "text/plain"
-                                                    putExtra(Intent.EXTRA_SUBJECT, track.title)
-                                                    putExtra(Intent.EXTRA_TEXT, "${track.title} - ${track.artist}\n${track.streamUrl}")
-                                                }
-                                                context.startActivity(Intent.createChooser(intent, strings.shareVia))
-                                            }
-                                        )
+                    ExploreRow.FreshCarousel -> Column(
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        val spotlight = freshTracks.first()
+                        val spotlightCurrent = spotlight.id == state.currentTrack?.id
+                        ExploreSpotlightCard(
+                            track = spotlight,
+                            isCurrent = spotlightCurrent,
+                            isPlaying = state.isPlaying && spotlightCurrent,
+                            isResolving = state.isResolving && spotlightCurrent,
+                            onOpenReleases = { onShortcut(ExploreShortcut.NewReleases) },
+                            onPlay = { viewModel.playFrom(freshTracks, spotlight) },
+                            modifier = Modifier.padding(horizontal = HomeHorizontalInset),
+                            actions = {
+                                DiscoveryTrackActions(
+                                    trackTitle = spotlight.title,
+                                    isFavorite = spotlight.id in state.favoriteIds,
+                                    onFavorite = { viewModel.toggleFavorite(spotlight) },
+                                    onAddToPlaylist = { addToPlaylistTarget = spotlight },
+                                    onShare = {
+                                        val intent = Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/plain"
+                                            putExtra(Intent.EXTRA_SUBJECT, spotlight.title)
+                                            putExtra(Intent.EXTRA_TEXT, "${spotlight.title} - ${spotlight.artist}\n${spotlight.streamUrl}")
+                                        }
+                                        context.startActivity(Intent.createChooser(intent, strings.shareVia))
                                     }
                                 )
+                            }
+                        )
+                        val related = remember(freshTracks) { freshTracks.drop(1).take(8) }
+                        if (related.isNotEmpty()) {
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = HomeHorizontalInset),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(
+                                    items = related,
+                                    key = { track -> "explore-secondary-${track.id}" },
+                                    contentType = { "explore-secondary-track" }
+                                ) { track ->
+                                    DiscoveryTrackCard(
+                                        track = track,
+                                        isCurrent = track.id == state.currentTrack?.id,
+                                        isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                                        isResolving = state.isResolving && track.id == state.currentTrack?.id,
+                                        onPlay = { viewModel.playFrom(freshTracks, track) },
+                                        modifier = Modifier.width(152.dp),
+                                        trailing = {
+                                            DiscoveryTrackActions(
+                                                trackTitle = track.title,
+                                                isFavorite = track.id in state.favoriteIds,
+                                                onFavorite = { viewModel.toggleFavorite(track) },
+                                                onAddToPlaylist = { addToPlaylistTarget = track },
+                                                onShare = {
+                                                    val intent = Intent(Intent.ACTION_SEND).apply {
+                                                        type = "text/plain"
+                                                        putExtra(Intent.EXTRA_SUBJECT, track.title)
+                                                        putExtra(Intent.EXTRA_TEXT, "${track.title} - ${track.artist}\n${track.streamUrl}")
+                                                    }
+                                                    context.startActivity(Intent.createChooser(intent, strings.shareVia))
+                                                }
+                                            )
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -23499,48 +23527,35 @@ private fun ExploreScreen(
                                 .coerceAtLeast(0)
                         }
                     )
-                    is ExploreRow.MoodPair -> Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    is ExploreRow.MoodRail -> LazyRow(
+                        state = rememberLazyListState(),
+                        contentPadding = PaddingValues(horizontal = HomeHorizontalInset),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        ExploreMoodCard(
-                            zone = row.leading,
-                            isSelected = row.leading.id == state.exploreZoneId,
-                            prominent = row.leading.id == zones.firstOrNull()?.id,
-                            onClick = {
-                                viewModel.selectExploreZone(row.leading)
-                                exploreMoodReturn = null
-                                exploreDestination = exploreMoodDestination(row.leading.id)
-                            },
-                            onStartZoneMix = {
-                                viewModel.startLevyraMix(
-                                    kind = LevyraMixKind.Genre,
-                                    seedQuery = row.leading.query,
-                                    label = row.leading.label
+                        itemsIndexed(
+                            items = row.zones,
+                            key = { _, zone -> "explore-mood-${zone.id}" },
+                            contentType = { _, _ -> "explore-mood-tile" }
+                        ) { index, zone ->
+                            Row(modifier = Modifier.width(if (index == 0) 224.dp else 186.dp)) {
+                                ExploreMoodCard(
+                                    zone = zone,
+                                    isSelected = zone.id == state.exploreZoneId,
+                                    prominent = index == 0,
+                                    onClick = {
+                                        viewModel.selectExploreZone(zone)
+                                        exploreMoodReturn = null
+                                        exploreDestination = exploreMoodDestination(zone.id)
+                                    },
+                                    onStartZoneMix = {
+                                        viewModel.startLevyraMix(
+                                            kind = LevyraMixKind.Genre,
+                                            seedQuery = zone.query,
+                                            label = zone.label
+                                        )
+                                    }
                                 )
                             }
-                        )
-                        val trailing = row.trailing
-                        if (trailing == null) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        } else {
-                            ExploreMoodCard(
-                                zone = trailing,
-                                isSelected = trailing.id == state.exploreZoneId,
-                                prominent = row.leading.id == zones.firstOrNull()?.id,
-                                onClick = {
-                                    viewModel.selectExploreZone(trailing)
-                                    exploreMoodReturn = null
-                                    exploreDestination = exploreMoodDestination(trailing.id)
-                                },
-                                onStartZoneMix = {
-                                    viewModel.startLevyraMix(
-                                        kind = LevyraMixKind.Genre,
-                                        seedQuery = trailing.query,
-                                        label = trailing.label
-                                    )
-                                }
-                            )
                         }
                     }
                 }
