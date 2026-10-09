@@ -421,58 +421,32 @@ private fun MixBalanceSlider(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = familiarLabel,
-                    style = LevyraType.caption.copy(fontWeight = FontWeight.Medium),
-                    color = colors.onSurfaceVariant,
-                    maxLines = 1,
-                    softWrap = false
-                )
-            }
-
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(colors.surfaceContainerHigh)
-                    .border(0.75.dp, colors.outlineVariant.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
-                    .padding(horizontal = 8.dp, vertical = 3.dp)
-            ) {
-                Text(
-                    text = when {
-                        familiarity >= 0.65f -> "$percentFamiliar% $familiarLabel"
-                        familiarity <= 0.35f -> "$percentDiscovery% $discoveryLabel"
-                        else -> strings.mix
-                    },
-                    style = LevyraType.overline.copy(
-                        color = accent,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 10.sp
-                    ),
-                    maxLines = 1,
-                    softWrap = false
-                )
-            }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = discoveryLabel,
-                    style = LevyraType.caption.copy(fontWeight = FontWeight.Medium),
-                    color = colors.onSurfaceVariant,
-                    textAlign = TextAlign.End,
-                    maxLines = 1,
-                    softWrap = false
-                )
-            }
+            Text(
+                text = familiarLabel,
+                style = LevyraType.caption.copy(fontWeight = FontWeight.Medium),
+                color = colors.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = "$percentFamiliar% / $percentDiscovery%",
+                style = LevyraType.overline.copy(fontWeight = FontWeight.Medium, fontSize = 10.sp),
+                color = colors.onSurfaceVariant,
+                maxLines = 1
+            )
+            Text(
+                text = discoveryLabel,
+                style = LevyraType.caption.copy(fontWeight = FontWeight.Medium),
+                color = colors.onSurfaceVariant,
+                textAlign = TextAlign.End,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
 
         Slider(
@@ -523,7 +497,6 @@ private fun MixBalanceSlider(
                 icon = Icons.Rounded.AutoAwesome,
                 isSelected = familiarity >= 0.70f,
                 enabled = enabled,
-                accent = accent,
                 modifier = Modifier.weight(1f)
             ) {
                 onFamiliarityChange(0.85f)
@@ -535,7 +508,6 @@ private fun MixBalanceSlider(
                 icon = Icons.Rounded.GraphicEq,
                 isSelected = familiarity in 0.35f..0.69f,
                 enabled = enabled,
-                accent = accent,
                 modifier = Modifier.weight(1f)
             ) {
                 onFamiliarityChange(0.50f)
@@ -547,7 +519,6 @@ private fun MixBalanceSlider(
                 icon = Icons.Rounded.Casino,
                 isSelected = familiarity < 0.35f,
                 enabled = enabled,
-                accent = accent,
                 modifier = Modifier.weight(1f)
             ) {
                 onFamiliarityChange(0.15f)
@@ -563,7 +534,6 @@ private fun MixPresetChip(
     icon: ImageVector,
     isSelected: Boolean,
     enabled: Boolean,
-    accent: Color,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
