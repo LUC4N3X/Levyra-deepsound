@@ -66,7 +66,8 @@ private val ExploreMoodGlobalArtistPools = mapOf(
     "rock-alt" to listOf("Måneskin", "Arctic Monkeys", "Paramore", "Linkin Park"),
     "latino" to listOf("Bad Bunny", "KAROL G", "Rauw Alejandro", "Feid"),
     "lofi-chill" to listOf("Joji", "Laufey", "beabadoobee", "keshi"),
-    "anime-jpop" to listOf("Ado", "YOASOBI", "LiSA", "Kenshi Yonezu")
+    "anime-jpop" to listOf("Ado", "YOASOBI", "LiSA", "Kenshi Yonezu"),
+    "afrobeats" to listOf("Burna Boy", "Rema", "Ayra Starr", "Wizkid")
 )
 
 private val ExploreMoodLocalWaveArtistPools = mapOf(
