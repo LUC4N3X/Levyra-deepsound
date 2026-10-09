@@ -20438,13 +20438,18 @@ private fun SmartOfflineTextSetting(
         ) {
             Text(title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleSmall)
             Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            val suffixComposable: (@Composable () -> Unit)? = if (suffix.isNotBlank()) {
+                { Text(suffix) }
+            } else {
+                null
+            }
             OutlinedTextField(
                 value = value,
                 onValueChange = onValueChange,
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 placeholder = { Text(hint) },
-                suffix = if (suffix.isNotBlank()) ({ Text(suffix) }) else null,
+                suffix = suffixComposable,
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                     keyboardType = if (numeric) androidx.compose.ui.text.input.KeyboardType.Number
                     else androidx.compose.ui.text.input.KeyboardType.Text

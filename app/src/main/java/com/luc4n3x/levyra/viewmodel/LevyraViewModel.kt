@@ -7884,36 +7884,38 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         playFrom(profile.topSongs, track)
     }
 
-    fun exportTrack(track: Track) {
-        val downloadKey = downloadKeyFor(track)
+    private fun tryPromoteSmartDownload(track: Track): Boolean {
         val smartDownload = _state.value.downloads.firstOrNull { download ->
             download.trackId == track.id && download.ownership == DownloadOwnership.SMART_OFFLINE
-        }
-        if (smartDownload != null) {
-            viewModelScope.launch {
-                val promoted = withContext(Dispatchers.IO) {
-                    SmartOfflineOwnershipGate.withLock {
-                        downloadedTracksDao.promoteToManual(smartDownload.id) > 0
-                    }
-                }
-                if (promoted) {
-                    _state.update { current ->
-                        current.copy(
-                            downloads = current.downloads.map { download ->
-                                if (download.id == smartDownload.id) {
-                                    download.copy(ownership = DownloadOwnership.MANUAL)
-                                } else {
-                                    download
-                                }
-                            },
-                            offlineExportMessage =
-                                "${LevyraStrings.forCode(current.languageCode).smartOfflineCopy().protectedManual}: ${track.title}"
-                        )
-                    }
+        } ?: return false
+        viewModelScope.launch {
+            val promoted = withContext(Dispatchers.IO) {
+                SmartOfflineOwnershipGate.withLock {
+                    downloadedTracksDao.promoteToManual(smartDownload.id) > 0
                 }
             }
-            return
+            if (promoted) {
+                _state.update { current ->
+                    current.copy(
+                        downloads = current.downloads.map { download ->
+                            if (download.id == smartDownload.id) {
+                                download.copy(ownership = DownloadOwnership.MANUAL)
+                            } else {
+                                download
+                            }
+                        },
+                        offlineExportMessage =
+                            "${LevyraStrings.forCode(current.languageCode).smartOfflineCopy().protectedManual}: ${track.title}"
+                    )
+                }
+            }
         }
+        return true
+    }
+
+    fun exportTrack(track: Track) {
+        if (tryPromoteSmartDownload(track)) return
+        val downloadKey = downloadKeyFor(track)
         if (downloadKey in _state.value.downloadingTrackIds || !activeDownloadKeys.add(downloadKey)) {
             _state.update { it.copy(offlineExportMessage = "Download già in corso: ${track.title}") }
             return
