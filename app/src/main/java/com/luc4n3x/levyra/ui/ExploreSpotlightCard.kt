@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -151,7 +152,7 @@ internal fun ExploreSpotlightCard(
 private fun LevyraSpotlightPlaybackIcon(isPlaying: Boolean, onColor: Color) {
     val strings = LocalLevyraStrings.current
     Icon(
-        imageVector = if (isPlaying) androidx.compose.material.icons.rounded.Pause else Icons.Rounded.PlayArrow,
+        imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
         contentDescription = if (isPlaying) strings.pause else strings.play,
         tint = onColor,
         modifier = Modifier.size(29.dp)
