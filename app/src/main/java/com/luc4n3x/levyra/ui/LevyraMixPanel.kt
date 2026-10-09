@@ -155,15 +155,15 @@ internal fun LevyraSecondaryToolsRow(
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val gap = 8.dp
         val surprise: @Composable (Modifier) -> Unit = { itemModifier ->
-            MixToolAction(Icons.Rounded.Casino, strings.surpriseMe, accent, !loading, itemModifier) {
+            MixToolAction(Icons.Rounded.Casino, strings.surpriseMe, accent, !loading, itemModifier, featured = true) {
                 onStartMix(LevyraMixKind.SurpriseMe)
             }
         }
         val yourSound: @Composable (Modifier) -> Unit = { itemModifier ->
-            MixToolAction(Icons.Rounded.GraphicEq, strings.yourSound, accent, true, itemModifier, onOpenYourSound)
+            MixToolAction(Icons.Rounded.GraphicEq, strings.yourSound, accent, true, itemModifier, onClick = onOpenYourSound)
         }
         val mixLab: @Composable (Modifier) -> Unit = { itemModifier ->
-            MixToolAction(Icons.Rounded.Tune, strings.mixLab, accent, true, itemModifier, onOpenMixLab)
+            MixToolAction(Icons.Rounded.Tune, strings.mixLab, accent, true, itemModifier, onClick = onOpenMixLab)
         }
         when {
             LocalDensity.current.fontScale > 1.3f || maxWidth < 292.dp -> {
@@ -200,14 +200,23 @@ private fun MixToolAction(
     accent: Color,
     enabled: Boolean,
     modifier: Modifier,
+    featured: Boolean = false,
     onClick: () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
     Row(
         modifier = modifier
-            .heightIn(min = 54.dp)
+            .heightIn(min = if (featured) 58.dp else 54.dp)
             .clip(LevyraCardDesign.ArtworkShape)
-            .background(if (enabled) colors.surfaceContainerHigh else colors.surfaceContainer)
+            .background(
+                if (featured && enabled) {
+                    accent.copy(alpha = 0.18f).compositeOver(colors.surfaceContainerHigh)
+                } else if (enabled) {
+                    colors.surfaceContainerHigh
+                } else {
+                    colors.surfaceContainer
+                }
+            )
             .semantics(mergeDescendants = true) {}
             .levyraPressable(
                 onClick = onClick,
@@ -224,7 +233,8 @@ private fun MixToolAction(
                 .size(32.dp)
                 .clip(CircleShape)
                 .background(
-                    if (enabled) accent.copy(alpha = 0.12f)
+                    if (featured && enabled) accent.copy(alpha = 0.25f)
+                    else if (enabled) accent.copy(alpha = 0.12f)
                     else colors.onSurfaceVariant.copy(alpha = 0.08f)
                 ),
             contentAlignment = Alignment.Center
@@ -238,13 +248,21 @@ private fun MixToolAction(
         }
         Text(
             text = label,
-            style = LevyraType.caption,
+            style = if (featured) LevyraType.cardTitle else LevyraType.caption,
             color = if (enabled) colors.onSurface else colors.onSurfaceVariant,
             modifier = Modifier.weight(1f),
             maxLines = 1,
             softWrap = false,
             overflow = TextOverflow.Ellipsis
         )
+        if (featured) {
+            Icon(
+                Icons.Rounded.PlayArrow,
+                contentDescription = null,
+                tint = if (enabled) colors.onSurface else colors.onSurfaceVariant,
+                modifier = Modifier.size(22.dp)
+            )
+        }
     }
 }
 
@@ -340,10 +358,10 @@ private fun MixBalanceSlider(
             enabled = enabled,
             colors = sliderColors,
             thumb = {
-                Box(Modifier.size(width = 4.dp, height = 24.dp).background(if (enabled) accent else colors.onSurfaceVariant, CircleShape))
+                Box(Modifier.size(width = 6.dp, height = 26.dp).background(if (enabled) accent else colors.onSurfaceVariant, CircleShape))
             },
             track = { sliderState ->
-                SliderDefaults.Track(sliderState = sliderState, colors = sliderColors, enabled = enabled, modifier = Modifier.height(6.dp))
+                SliderDefaults.Track(sliderState = sliderState, colors = sliderColors, enabled = enabled, modifier = Modifier.height(8.dp))
             },
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 .semantics { contentDescription = "$familiarLabel / $discoveryLabel" }
