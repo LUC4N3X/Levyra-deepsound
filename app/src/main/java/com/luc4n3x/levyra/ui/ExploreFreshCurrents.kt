@@ -179,7 +179,7 @@ internal fun ExploreFreshSpotlight(
             state = pagerState,
             contentPadding = PaddingValues(
                 start = LevyraHomeDesign.HorizontalInset,
-                end = LevyraHomeDesign.HorizontalInset + (if (multiPage) FreshSpotlightPeek else 0.dp)
+                end = LevyraHomeDesign.HorizontalInset + if (multiPage) FreshSpotlightPeek else 0.dp
             ),
             pageSpacing = 12.dp,
             beyondViewportPageCount = 1
@@ -192,7 +192,7 @@ internal fun ExploreFreshSpotlight(
                 isPlaying = isPlaying && isCurrent,
                 isResolving = isResolving && isCurrent,
                 pageOffset = {
-                    ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction).absoluteValue
+                    (pagerState.currentPage - page + pagerState.currentPageOffsetFraction).absoluteValue
                 },
                 onPlay = { onPlay(track) },
                 actions = { actions(track) }
@@ -422,7 +422,7 @@ internal fun ExploreFreshMomentRail(
         contentPadding = PaddingValues(
             start = LevyraHomeDesign.HorizontalInset,
             end = LevyraHomeDesign.HorizontalInset +
-                (if (pages.size > 1) LevyraHomeDesign.TrackColumnPeek else 0.dp)
+                if (pages.size > 1) LevyraHomeDesign.TrackColumnPeek else 0.dp
         ),
         pageSpacing = LevyraHomeDesign.TrackColumnGap,
         beyondViewportPageCount = 1
