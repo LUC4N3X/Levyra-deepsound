@@ -108,26 +108,20 @@ internal fun DiscoveryTrackCard(
             CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = wide)
             if (wide || isCurrent) {
                 Box(Modifier.fillMaxSize().background(scrim))
-            }
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(if (wide) LevyraHomeDesign.HorizontalInset else 10.dp)
-                    .size(if (wide) 48.dp else 40.dp)
-                    .clip(MaterialTheme.shapes.extraLarge)
-                    .background(
-                        if (isCurrent) colors.primaryContainer
-                        else colors.surfaceContainerHigh.copy(alpha = 0.94f)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                when {
-                    isResolving -> DiscoveryLoadingIndicator(
-                        Modifier.size(24.dp),
-                        if (isCurrent) colors.onPrimaryContainer else colors.onSurface
-                    )
-                    isCurrent -> LevyraPlayingIndicator(playing = isPlaying, color = colors.onPrimaryContainer)
-                    else -> Icon(Icons.Rounded.PlayArrow, null, tint = colors.onSurface)
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(LevyraHomeDesign.HorizontalInset)
+                        .size(48.dp)
+                        .clip(MaterialTheme.shapes.large)
+                        .background(if (isCurrent) colors.primaryContainer else colors.surfaceContainerHigh),
+                    contentAlignment = Alignment.Center
+                ) {
+                    when {
+                        isResolving -> DiscoveryLoadingIndicator(Modifier.size(24.dp), colors.onPrimaryContainer)
+                        isCurrent -> LevyraPlayingIndicator(playing = isPlaying, color = colors.onPrimaryContainer)
+                        else -> Icon(Icons.Rounded.PlayArrow, null, tint = colors.onSurface)
+                    }
                 }
             }
         }
@@ -274,9 +268,9 @@ internal fun DiscoveryEditorialCard(
                             track = artwork,
                             modifier = Modifier
                                 .size(96.dp)
-                                .rotate(5f)
-                                .clip(LevyraCardDesign.ArtworkShape)
-                                .border(1.dp, Color.White.copy(alpha = 0.14f), LevyraCardDesign.ArtworkShape)
+                                .rotate(11f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(10.dp))
                         )
                     }
                 }
