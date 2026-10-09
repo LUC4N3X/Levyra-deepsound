@@ -37,4 +37,9 @@
     <string name="shortcut_library">Bibliotek</string>
     <string name="shortcut_recognition">Gjenkjenn musikk</string>
     <string name="shortcut_resume">Fortsett avspilling</string>
+    <string name="recognition_notification_channel" translatable="false"></string>
+    <string name="ambient_dream_label" translatable="false"></string>
+    <string name="widget_idle_title" translatable="false"></string>
+    <string name="tile_ambient" translatable="false"></string>
+    <string name="app_name" translatable="false"></string>
 </resources>
