@@ -69,6 +69,17 @@ import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraType
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.toShape
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.luminance
+import com.luc4n3x.levyra.ui.components.levyraExpressiveCorner
+import com.luc4n3x.levyra.ui.theme.LevyraPlayerShapes
+import com.luc4n3x.levyra.ui.theme.LevyraSegment
+import com.luc4n3x.levyra.ui.components.levyraExpressiveToggleCorner
+import androidx.compose.ui.semantics.selected
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -91,17 +102,22 @@ internal fun LevyraMixLauncherPanel(
     onOpenMixLab: () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
-    val panelShape = RoundedCornerShape(24.dp)
-    val panelBorder = colors.outlineVariant.copy(alpha = 0.22f)
+    val panelShape = RoundedCornerShape(32.dp)
+    val wash = remember(accent, colors.surfaceContainerHigh) {
+        Brush.verticalGradient(
+            0f to accent.copy(alpha = 0.24f),
+            0.7f to colors.surfaceContainerHigh.copy(alpha = 0f)
+        )
+    }
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(panelShape)
-            .background(colors.surfaceContainerLow)
-            .border(1.dp, panelBorder, panelShape)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+            .background(colors.surfaceContainerHigh)
+            .background(wash)
+            .padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         LevyraMixHeroCard(
             familiarity = familiarity,
@@ -110,7 +126,6 @@ internal fun LevyraMixLauncherPanel(
             onFamiliarityChange = onFamiliarityChange,
             onStartMix = onStartMix
         )
-        HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.25f))
         LevyraSecondaryToolsRow(
             loading = loading,
             onStartMix = onStartMix,
@@ -140,59 +155,19 @@ internal fun LevyraMixHeroCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = strings.levyraMix,
-                    style = LevyraType.sectionTitle,
-                    color = colors.onSurface,
-                    modifier = Modifier.semantics { heading() },
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = strings.mixCreate,
-                    style = LevyraType.metadata,
-                    color = colors.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            FilledIconButton(
-                onClick = { onStartMix(LevyraMixKind.Personalized) },
-                enabled = !loading,
-                shape = CircleShape,
-                colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = colors.primaryContainer,
-                    contentColor = colors.onPrimaryContainer
-                ),
-                modifier = Modifier
-                    .size(46.dp)
-                    .semantics { contentDescription = strings.mixForYou }
-            ) {
-                if (loading) {
-                    DiscoveryLoadingIndicator(
-                        modifier = Modifier.size(22.dp),
-                        color = colors.onPrimaryContainer
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Rounded.PlayArrow,
-                        contentDescription = null,
-                        modifier = Modifier.size(25.dp)
-                    )
-                }
-            }
+            SonicReactorSpectrum(
+                familiarity = familiarity,
+                accent = accent,
+                active = loading,
+                modifier = Modifier.weight(1f)
+            )
+            MixPlayButton(
+                loading = loading,
+                accent = accent,
+                contentDescription = strings.mixForYou,
+                onClick = { onStartMix(LevyraMixKind.Personalized) }
+            )
         }
-
-        SonicReactorSpectrum(
-            familiarity = familiarity,
-            accent = accent,
-            active = loading
-        )
 
         MixBalanceSlider(
             familiarity = familiarity,
@@ -202,6 +177,42 @@ internal fun LevyraMixHeroCard(
             discoveryLabel = strings.mixDiscoveryLabel,
             onFamiliarityChange = onFamiliarityChange
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun MixPlayButton(
+    loading: Boolean,
+    accent: Color,
+    contentDescription: String,
+    onClick: () -> Unit
+) {
+    val content = if (accent.luminance() > 0.5f) Color.Black.copy(alpha = 0.87f) else Color.White
+    Box(
+        modifier = Modifier
+            .size(64.dp)
+            .clip(MaterialShapes.Cookie9Sided.toShape())
+            .background(accent)
+            .levyraPressable(
+                onClick = onClick,
+                enabled = !loading,
+                role = Role.Button,
+                pressedScale = LevyraPressScale.Control
+            )
+            .semantics { this.contentDescription = contentDescription },
+        contentAlignment = Alignment.Center
+    ) {
+        if (loading) {
+            DiscoveryLoadingIndicator(modifier = Modifier.size(26.dp), color = content)
+        } else {
+            Icon(
+                imageVector = Icons.Rounded.PlayArrow,
+                contentDescription = null,
+                tint = content,
+                modifier = Modifier.size(30.dp)
+            )
+        }
     }
 }
 
@@ -220,10 +231,10 @@ private fun SonicReactorSpectrum(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(26.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(colors.surfaceContainer)
-            .padding(horizontal = 10.dp, vertical = 5.dp),
+            .height(64.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(colors.surfaceContainer.copy(alpha = 0.72f))
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
@@ -291,6 +302,7 @@ internal fun LevyraSecondaryToolsRow(
                 icon = Icons.Rounded.Casino,
                 label = strings.surpriseMe,
                 enabled = !loading,
+                segment = if (stacked) LevyraSegment.Single else LevyraSegment.Leading,
                 modifier = actionModifier
             ) { onStartMix(LevyraMixKind.SurpriseMe) }
 
@@ -298,6 +310,7 @@ internal fun LevyraSecondaryToolsRow(
                 icon = Icons.Rounded.GraphicEq,
                 label = strings.yourSound,
                 enabled = true,
+                segment = if (stacked) LevyraSegment.Single else LevyraSegment.Middle,
                 modifier = actionModifier,
                 onClick = onOpenYourSound
             )
@@ -306,6 +319,7 @@ internal fun LevyraSecondaryToolsRow(
                 icon = Icons.Rounded.Tune,
                 label = strings.mixLab,
                 enabled = true,
+                segment = if (stacked) LevyraSegment.Single else LevyraSegment.Trailing,
                 modifier = actionModifier,
                 onClick = onOpenMixLab
             )
@@ -316,7 +330,7 @@ internal fun LevyraSecondaryToolsRow(
                 actions(Modifier.fillMaxWidth())
             }
         } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                 actions(Modifier.weight(1f))
             }
         }
@@ -328,45 +342,45 @@ private fun MixToolAction(
     icon: ImageVector,
     label: String,
     enabled: Boolean,
+    segment: LevyraSegment,
     modifier: Modifier,
     onClick: () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(16.dp)
+    val interaction = remember { MutableInteractionSource() }
+    val innerCorner = levyraExpressiveCorner(
+        interactionSource = interaction,
+        rest = 10.dp,
+        pressed = 24.dp,
+        label = "mix-tool-corner"
+    )
+    val shape = LevyraPlayerShapes.segment(segment, innerCorner)
 
     val actionModifier = modifier
-        .heightIn(min = 60.dp)
+        .heightIn(min = 68.dp)
         .clip(shape)
-        .background(colors.surfaceContainer.copy(alpha = 0.60f))
-        .border(0.75.dp, colors.outlineVariant.copy(alpha = 0.18f), shape)
+        .background(colors.secondaryContainer.copy(alpha = if (enabled) 1f else 0.5f))
         .semantics(mergeDescendants = true) {}
         .levyraPressable(
             onClick = onClick,
             enabled = enabled,
             pressedScale = LevyraPressScale.Control,
-            role = Role.Button
+            role = Role.Button,
+            interactionSource = interaction
         )
-        .padding(horizontal = 4.dp, vertical = 8.dp)
+        .padding(horizontal = 4.dp, vertical = 10.dp)
 
     Column(
         modifier = actionModifier,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(CircleShape)
-                .background(colors.onSurfaceVariant.copy(alpha = if (enabled) 0.07f else 0.04f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = colors.onSurfaceVariant,
-                modifier = Modifier.size(17.dp)
-            )
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = colors.onSecondaryContainer,
+            modifier = Modifier.size(22.dp)
+        )
         Spacer(modifier = Modifier.height(5.dp))
         Text(
             text = label,
@@ -375,7 +389,7 @@ private fun MixToolAction(
                 fontSize = 11.5.sp,
                 letterSpacing = (-0.2).sp
             ),
-            color = if (enabled) colors.onSurface else colors.onSurfaceVariant,
+            color = colors.onSecondaryContainer,
             softWrap = false,
             textAlign = TextAlign.Center,
             maxLines = 1,
@@ -538,26 +552,28 @@ private fun MixPresetChip(
     onClick: () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(10.dp)
+    val corner = levyraExpressiveToggleCorner(
+        checked = isSelected,
+        unchecked = 12.dp,
+        checkedCorner = 24.dp,
+        label = "mix-preset-corner"
+    )
+    val shape = RoundedCornerShape(corner)
     val container by animateColorAsState(
-        targetValue = if (isSelected) colors.primaryContainer.copy(alpha = 0.65f) else colors.surfaceContainer.copy(alpha = 0.50f),
+        targetValue = if (isSelected) colors.primaryContainer else colors.surfaceContainer.copy(alpha = 0.72f),
         label = "mixPresetContainer"
     )
     val contentColor by animateColorAsState(
-        targetValue = if (isSelected) colors.onSurface else colors.onSurfaceVariant,
+        targetValue = if (isSelected) colors.onPrimaryContainer else colors.onSurfaceVariant,
         label = "mixPresetContent"
-    )
-    val borderColor by animateColorAsState(
-        targetValue = if (isSelected) colors.outlineVariant.copy(alpha = 0.60f) else colors.outlineVariant.copy(alpha = 0.16f),
-        label = "mixPresetBorder"
     )
 
     Row(
         modifier = modifier
-            .heightIn(min = 34.dp)
+            .heightIn(min = 48.dp)
             .clip(shape)
             .background(container)
-            .border(1.dp, borderColor, shape)
+            .semantics { selected = isSelected }
             .levyraPressable(
                 onClick = onClick,
                 enabled = enabled,
@@ -572,13 +588,13 @@ private fun MixPresetChip(
             imageVector = icon,
             contentDescription = null,
             tint = contentColor,
-            modifier = Modifier.size(13.dp)
+            modifier = Modifier.size(16.dp)
         )
         Text(
             text = label,
             style = LevyraType.caption.copy(
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                fontSize = 11.sp,
+                fontSize = 12.sp,
                 letterSpacing = (-0.2).sp
             ),
             color = contentColor,

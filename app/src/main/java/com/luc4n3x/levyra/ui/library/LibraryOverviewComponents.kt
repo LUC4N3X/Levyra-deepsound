@@ -29,6 +29,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.automirrored.rounded.ViewList
@@ -87,7 +88,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.luc4n3x.levyra.ui.components.LevyraFilterPill
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
+import com.luc4n3x.levyra.ui.components.LevyraSectionAction
+import com.luc4n3x.levyra.ui.components.LevyraSectionHeader
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.domain.ListeningPulse
 import com.luc4n3x.levyra.domain.Track
@@ -136,37 +140,7 @@ internal fun LibraryHero(title: String, subtitle: String) {
 
 @Composable
 internal fun LibraryCategoryChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    Surface(
-        color = if (selected) colors.primaryContainer else colors.surfaceContainerLow,
-        shape = LibraryPillShape,
-        modifier = Modifier
-            .heightIn(min = 48.dp)
-            .clip(LibraryPillShape)
-            .selectable(selected = selected, role = Role.Tab, onClick = onClick)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            if (selected) {
-                Icon(
-                    Icons.Rounded.Check,
-                    contentDescription = null,
-                    tint = colors.onPrimaryContainer,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-            Text(
-                text = label,
-                color = if (selected) colors.onPrimaryContainer else colors.onSurfaceVariant,
-                style = LevyraType.cardTitle,
-                maxLines = 1,
-                softWrap = false
-            )
-        }
-    }
+    LevyraFilterPill(label = label, selected = selected, onClick = onClick)
 }
 
 @Composable
@@ -303,19 +277,19 @@ internal fun LibrarySectionTitle(
     onAction: (() -> Unit)? = null
 ) {
     val colors = MaterialTheme.colorScheme
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    LevyraSectionHeader(
+        title = title,
+        subtitle = detail,
+        titleColor = colors.onSurface,
+        subtitleColor = colors.onSurfaceVariant,
+        modifier = Modifier.padding(top = 12.dp)
     ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, color = colors.onSurface, style = LevyraType.sectionTitle, softWrap = true, modifier = Modifier.semantics { heading() })
-            if (detail.isNotBlank()) Text(detail, color = colors.onSurfaceVariant, style = LevyraType.caption, softWrap = true)
-        }
         if (action != null && onAction != null) {
-            TextButton(onClick = onAction) {
-                Text(action, color = colors.onSurfaceVariant, style = LevyraType.caption)
-            }
+            LevyraSectionAction(
+                label = action,
+                onClick = onAction,
+                trailingIcon = Icons.AutoMirrored.Rounded.KeyboardArrowRight
+            )
         }
     }
 }

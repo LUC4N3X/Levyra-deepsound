@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraSectionHeader
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.graphics.graphicsLayer
@@ -552,15 +553,7 @@ private fun LazyListScope.exploreEssentialItems(
 
 @Composable
 private fun ExploreGenreSectionHeader(title: String) {
-    Text(
-        text = title,
-        color = LevyraText,
-        fontSize = 20.sp,
-        lineHeight = LevyraTypeRhythm.lineHeight(20.sp),
-        fontWeight = FontWeight.Black,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis
-    )
+    LevyraSectionHeader(title = title)
 }
 
 @Composable
@@ -1233,19 +1226,7 @@ private fun LazyListScope.exploreMoodEmptyItem(
 
 @Composable
 private fun ExploreCategorySectionHeader(title: String) {
-    Text(
-        text = title,
-        color = LevyraText,
-        fontSize = 22.sp,
-        lineHeight = LevyraTypeRhythm.lineHeight(22.sp),
-        fontWeight = FontWeight.Black,
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 4.dp, bottom = 2.dp)
-            .semantics { heading() }
-    )
+    LevyraSectionHeader(title = title)
 }
 
 private data class ExploreCategoryCardMetrics(
