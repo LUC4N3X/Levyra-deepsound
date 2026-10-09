@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data
 
 import com.luc4n3x.levyra.data.local.DownloadEntity
+import com.luc4n3x.levyra.domain.DownloadOwnership
 import org.json.JSONArray
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -26,12 +27,23 @@ class BackupDownloadedTracksTest {
             embeddedMetadata = true,
             downloadPreset = "high",
             downloadQuality = "256k",
-            savedAt = 123_456L
+            savedAt = 123_456L,
+            ownership = DownloadOwnership.SMART_OFFLINE.name
         )
 
         val restored = parseDownloads(JSONArray().put(downloadToJson(download)))
 
         assertEquals(listOf(download), restored)
+    }
+
+    @Test
+    fun legacyBackupWithoutOwnershipRestoresAsProtectedManualDownload() {
+        val legacy = downloadToJson(download("track-1", "content://downloads/1", "Track.m4a"))
+        legacy.remove("ownership")
+
+        val restored = parseDownloads(JSONArray().put(legacy)).single()
+
+        assertEquals(DownloadOwnership.MANUAL.name, restored.ownership)
     }
 
     @Test

@@ -30,6 +30,8 @@ import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraBackupManager
 import com.luc4n3x.levyra.data.PlaylistCoverCrop
 import com.luc4n3x.levyra.data.AutomaticBackupScheduler
+import com.luc4n3x.levyra.data.SmartOfflineScheduler
+import com.luc4n3x.levyra.data.SmartOfflineOwnershipGate
 import com.luc4n3x.levyra.data.VaultPreview
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.ProfilePhotoStore
@@ -114,6 +116,7 @@ import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.ExploreCatalog
 import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import com.luc4n3x.levyra.ui.i18n.smartOfflineCopy
 import com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog
 import com.luc4n3x.levyra.ui.i18n.playlistImportFailureMessage
 import com.luc4n3x.levyra.ui.i18n.playlistImportHubCopy
@@ -159,6 +162,8 @@ import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.LevyraVaultStatus
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
+import com.luc4n3x.levyra.domain.LevyraSmartOfflineSettings
+import com.luc4n3x.levyra.domain.DownloadOwnership
 import com.luc4n3x.levyra.domain.shouldSkipExistingDownload
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.LevyraLocalIntelligence
@@ -965,6 +970,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             lyricsTranslationEnabled = startupSettings.lyricsTranslationEnabled,
             interfaceSettings = startupSettings.interfaceSettings,
             downloadSettings = startupSettings.downloadSettings,
+            smartOfflineSettings = startupSettings.smartOfflineSettings,
             backupSettings = startupSettings.backupSettings,
             automationSettings = startupSettings.automationSettings,
             lastBackupAtMs = vaultRuntimeState.first,
@@ -1698,6 +1704,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         observeQueueSpaces()
         observeLocalLibrary()
         observeDownloads()
+        observeSmartOfflineSettings()
         observeDownloadTasks()
         observeDownloadBatches()
         loadPlaylists()
@@ -3596,6 +3603,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private fun observeSmartOfflineSettings() {
+        viewModelScope.launch {
+            preferences.smartOfflineSettingsFlow.collectLatest { settings ->
+                _state.update { it.copy(smartOfflineSettings = settings) }
+            }
+        }
+    }
+
     private fun DownloadEntity.toDownloadedTrack(sizeBytes: Long): DownloadedTrack = DownloadedTrack(
         id = id,
         trackId = trackId,
@@ -3608,7 +3623,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         mimeType = mimeType,
         embeddedMetadata = embeddedMetadata,
         savedAt = savedAt,
-        sizeBytes = sizeBytes
+        sizeBytes = sizeBytes,
+        ownership = DownloadOwnership.fromStorage(ownership)
     )
 
     private fun downloadedMediaSize(rawUri: String): Long {
@@ -5329,6 +5345,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val normalized = value.normalized()
         preferences.setDownloadSettings(normalized)
         _state.update { it.copy(downloadSettings = normalized) }
+    }
+
+    fun setSmartOfflineSettings(value: LevyraSmartOfflineSettings) {
+        val normalized = value.normalized()
+        _state.update { it.copy(smartOfflineSettings = normalized) }
+        viewModelScope.launch(Dispatchers.IO) {
+            preferences.setSmartOfflineSettings(normalized)
+            SmartOfflineScheduler.schedule(levyraContext, normalized)
+            if (!normalized.enabled) SmartOfflineScheduler.cancelSmartDownloads(levyraContext)
+        }
+    }
+
+    fun refreshSmartOffline() {
+        SmartOfflineScheduler.refresh(levyraContext, _state.value.smartOfflineSettings)
     }
 
     fun setBackupSettings(value: LevyraBackupSettings) {
@@ -7775,7 +7805,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             .filter { it.id.isNotBlank() || it.videoUrl.isNotBlank() || it.title.isNotBlank() }
             .distinctBy { downloadKeyFor(it) }
             .filterNot { track ->
-                currentState.downloadSettings.shouldSkipExistingDownload(
+                val existing = currentState.downloads.firstOrNull { it.trackId == track.id }
+                existing?.ownership != DownloadOwnership.SMART_OFFLINE &&
+                    currentState.downloadSettings.shouldSkipExistingDownload(
                     trackId = track.id,
                     downloadedTrackIds = currentState.downloadedTrackIds
                 )
@@ -7827,7 +7859,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             .filter { it.id.isNotBlank() || it.videoUrl.isNotBlank() || it.title.isNotBlank() }
             .distinctBy { downloadKeyFor(it) }
             .filterNot { track ->
-                currentState.downloadSettings.shouldSkipExistingDownload(
+                val existing = currentState.downloads.firstOrNull { it.trackId == track.id }
+                existing?.ownership != DownloadOwnership.SMART_OFFLINE &&
+                    currentState.downloadSettings.shouldSkipExistingDownload(
                     trackId = track.id,
                     downloadedTrackIds = currentState.downloadedTrackIds
                 )
@@ -7852,6 +7886,34 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun exportTrack(track: Track) {
         val downloadKey = downloadKeyFor(track)
+        val smartDownload = _state.value.downloads.firstOrNull { download ->
+            download.trackId == track.id && download.ownership == DownloadOwnership.SMART_OFFLINE
+        }
+        if (smartDownload != null) {
+            viewModelScope.launch {
+                val promoted = withContext(Dispatchers.IO) {
+                    SmartOfflineOwnershipGate.withLock {
+                        downloadedTracksDao.promoteToManual(smartDownload.id) > 0
+                    }
+                }
+                if (promoted) {
+                    _state.update { current ->
+                        current.copy(
+                            downloads = current.downloads.map { download ->
+                                if (download.id == smartDownload.id) {
+                                    download.copy(ownership = DownloadOwnership.MANUAL)
+                                } else {
+                                    download
+                                }
+                            },
+                            offlineExportMessage =
+                                "${LevyraStrings.forCode(current.languageCode).smartOfflineCopy().protectedManual}: ${track.title}"
+                        )
+                    }
+                }
+            }
+            return
+        }
         if (downloadKey in _state.value.downloadingTrackIds || !activeDownloadKeys.add(downloadKey)) {
             _state.update { it.copy(offlineExportMessage = "Download già in corso: ${track.title}") }
             return

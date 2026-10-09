@@ -128,6 +128,8 @@ import com.luc4n3x.levyra.ui.components.levyraDockSurface
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.i18n.playlistProCopy
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
+import com.luc4n3x.levyra.ui.i18n.smartOfflineCopy
+import com.luc4n3x.levyra.ui.i18n.updatedLabel
 import com.luc4n3x.levyra.ui.i18n.formatLibraryBytes
 import com.luc4n3x.levyra.ui.i18n.formatLibraryDuration
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
@@ -183,6 +185,65 @@ internal fun LibraryOfflineSummary(
                     fontSize = 11.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun LibrarySmartOfflineSummary(
+    songCount: Int,
+    bytes: Long,
+    lastUpdatedAt: Long,
+    onRefresh: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val copy = strings.smartOfflineCopy()
+    Surface(
+        color = LevyraViolet.copy(alpha = 0.14f),
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, LevyraViolet.copy(alpha = 0.28f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Rounded.AutoAwesome,
+                contentDescription = null,
+                tint = LevyraViolet,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    copy.title,
+                    color = LevyraText,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "$songCount ${copy.songs} · ${strings.formatLibraryBytes(bytes)}",
+                    color = LevyraMuted,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    copy.updatedLabel(lastUpdatedAt),
+                    color = LevyraMuted,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            IconButton(onClick = onRefresh) {
+                Icon(
+                    Icons.Rounded.Refresh,
+                    contentDescription = copy.refresh,
+                    tint = LevyraCyan
                 )
             }
         }

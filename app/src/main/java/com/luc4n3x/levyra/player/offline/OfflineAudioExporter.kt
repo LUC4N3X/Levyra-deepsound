@@ -24,6 +24,7 @@ import com.luc4n3x.levyra.data.apple.AppleMetadataEnricher
 import com.luc4n3x.levyra.domain.LevyraDownloadFolderMode
 import com.luc4n3x.levyra.domain.LevyraDownloadPreset
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
+import com.luc4n3x.levyra.domain.DownloadOwnership
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.player.LevyraMediaCache
 import com.luc4n3x.levyra.player.LevyraPlaybackCacheKey
@@ -443,7 +444,8 @@ class OfflineAudioExporter(
     private val progress: suspend (Int) -> Unit = {},
     private val taskKey: String = "",
     private val settings: LevyraDownloadSettings = LevyraDownloadSettings(),
-    private val downloadQualityKey: String = settings.storedQualityKey()
+    private val downloadQualityKey: String = settings.storedQualityKey(),
+    private val ownership: DownloadOwnership = DownloadOwnership.MANUAL
 ) {
     private val rateLimiter = DownloadRateLimiter(settings.effectiveRateKbps)
     private val appleMetadataEnricher = AppleMetadataEnricher(context)
@@ -1299,7 +1301,8 @@ class OfflineAudioExporter(
                     embeddedMetadata = embeddedMetadata,
                     downloadPreset = settings.storedPresetKey,
                     downloadQuality = downloadQualityKey,
-                    savedAt = System.currentTimeMillis()
+                    savedAt = System.currentTimeMillis(),
+                    ownership = ownership.name
                 )
             )
         } catch (error: CancellationException) {

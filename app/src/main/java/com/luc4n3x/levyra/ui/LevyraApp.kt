@@ -335,6 +335,7 @@ import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.Bluetooth
@@ -570,6 +571,7 @@ import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraDownloadFolderMode
 import com.luc4n3x.levyra.domain.LevyraDownloadPreset
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
+import com.luc4n3x.levyra.domain.LevyraSmartOfflineSettings
 import com.luc4n3x.levyra.domain.LevyraBackupFrequency
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.LevyraVaultStatus
@@ -682,6 +684,8 @@ import com.luc4n3x.levyra.ui.i18n.personalizedSearchPromptText
 import com.luc4n3x.levyra.ui.i18n.queueSectionCopy
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.ui.i18n.automationCopy
+import com.luc4n3x.levyra.ui.i18n.smartOfflineCopy
+import com.luc4n3x.levyra.ui.i18n.updatedLabel
 import com.luc4n3x.levyra.ui.i18n.localizedAudioPresetLabel
 import com.luc4n3x.levyra.ui.ambient.LevyraAmbientOverlay
 import com.luc4n3x.levyra.ui.library.AddTracksToPlaylistDialog
@@ -2511,6 +2515,7 @@ fun LevyraApp(
                     ambientSettings = state.ambientSettings,
                     excludedArtists = state.excludedArtists,
                     downloadSettings = state.downloadSettings,
+                    smartOfflineSettings = state.smartOfflineSettings,
                     backupSettings = state.backupSettings,
                     automationSettings = state.automationSettings,
                     vaultStatus = state.vaultStatus,
@@ -2550,6 +2555,8 @@ fun LevyraApp(
                     },
                     onIncludeArtist = viewModel::includeArtist,
                     onDownloadSettings = viewModel::setDownloadSettings,
+                    onSmartOfflineSettings = viewModel::setSmartOfflineSettings,
+                    onRefreshSmartOffline = viewModel::refreshSmartOffline,
                     onSelectDownloadLocation = { downloadLocationLauncher.launch(null) },
                     onClearDownloadLocation = {
                         viewModel.setDownloadSettings(
@@ -18555,6 +18562,7 @@ private fun SettingsOverlay(
     ambientSettings: LevyraAmbientSettings,
     excludedArtists: List<ExcludedArtist>,
     downloadSettings: LevyraDownloadSettings,
+    smartOfflineSettings: LevyraSmartOfflineSettings,
     backupSettings: LevyraBackupSettings,
     automationSettings: LevyraAutomationSettings,
     vaultStatus: LevyraVaultStatus,
@@ -18585,6 +18593,8 @@ private fun SettingsOverlay(
     onOpenAmbient: () -> Unit,
     onIncludeArtist: (ExcludedArtist) -> Unit,
     onDownloadSettings: (LevyraDownloadSettings) -> Unit,
+    onSmartOfflineSettings: (LevyraSmartOfflineSettings) -> Unit,
+    onRefreshSmartOffline: () -> Unit,
     onSelectDownloadLocation: () -> Unit,
     onClearDownloadLocation: () -> Unit,
     onBackupSettings: (LevyraBackupSettings) -> Unit,
@@ -19475,6 +19485,13 @@ private fun SettingsOverlay(
                         }
                         "downloads" -> {
                             item {
+                                SmartOfflineSettingsCard(
+                                    settings = smartOfflineSettings,
+                                    onSettings = onSmartOfflineSettings,
+                                    onRefresh = onRefreshSmartOffline
+                                )
+                            }
+                            item {
                                 SettingsChoiceRow(
                                     icon = Icons.Rounded.Speed,
                                     title = strings.downloadQualityPreset,
@@ -20270,6 +20287,180 @@ private fun LyricsProviderPriorityRow(
         Switch(checked = enabled, onCheckedChange = onEnabled)
     }
 }
+
+@Composable
+private fun SmartOfflineSettingsCard(
+    settings: LevyraSmartOfflineSettings,
+    onSettings: (LevyraSmartOfflineSettings) -> Unit,
+    onRefresh: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val copy = strings.smartOfflineCopy()
+    val presetBytes = LevyraSmartOfflineSettings.PRESET_BYTES
+    var customSelected by rememberSaveable(settings.storageLimitBytes) {
+        mutableStateOf(settings.storageLimitBytes !in presetBytes)
+    }
+    var customMb by rememberSaveable(settings.storageLimitBytes) {
+        mutableStateOf((settings.storageLimitBytes / (1024L * 1024L)).toString())
+    }
+    var excludedArtistsDraft by rememberSaveable(settings.excludedArtists) {
+        mutableStateOf(settings.excludedArtists.sorted().joinToString(", "))
+    }
+    var excludedPlaylistsDraft by rememberSaveable(settings.excludedPlaylists) {
+        mutableStateOf(settings.excludedPlaylists.sorted().joinToString(", "))
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SettingsSectionLabel(copy.title)
+        SettingsInfoCard(
+            icon = Icons.Rounded.AutoAwesome,
+            title = copy.title,
+            subtitle = copy.subtitle
+        )
+        SettingsToggle(
+            icon = Icons.Rounded.OfflinePin,
+            title = copy.enabled,
+            subtitle = copy.enabledSubtitle,
+            checked = settings.enabled,
+            onCheckedChange = { onSettings(settings.copy(enabled = it)) }
+        )
+        if (settings.enabled) {
+            SettingsChoiceRow(
+                icon = Icons.Rounded.Storage,
+                title = copy.storageLimit,
+                subtitle = copy.storageLimitSubtitle,
+                options = listOf(
+                    presetBytes[0].toString() to "500 MB",
+                    presetBytes[1].toString() to "1 GB",
+                    presetBytes[2].toString() to "2 GB",
+                    presetBytes[3].toString() to "5 GB",
+                    "custom" to copy.custom
+                ),
+                selected = if (customSelected) "custom" else settings.storageLimitBytes.toString(),
+                onSelect = { value ->
+                    if (value == "custom") {
+                        customSelected = true
+                    } else {
+                        customSelected = false
+                        value.toLongOrNull()?.let { bytes -> onSettings(settings.copy(storageLimitBytes = bytes)) }
+                    }
+                }
+            )
+            if (customSelected) {
+                SmartOfflineTextSetting(
+                    title = copy.customStorage,
+                    subtitle = copy.customStorageSubtitle,
+                    value = customMb,
+                    suffix = copy.megabytes,
+                    numeric = true,
+                    hint = copy.megabytes,
+                    saveLabel = copy.save,
+                    onValueChange = { customMb = it.filter(Char::isDigit).take(6) },
+                    onSave = {
+                        customMb.toLongOrNull()?.let { megabytes ->
+                            onSettings(settings.copy(storageLimitBytes = megabytes * 1024L * 1024L))
+                        }
+                    }
+                )
+            }
+            SettingsToggle(
+                icon = Icons.Rounded.Wifi,
+                title = copy.wifiOnly,
+                subtitle = copy.wifiOnlySubtitle,
+                checked = settings.wifiOnly,
+                onCheckedChange = { onSettings(settings.copy(wifiOnly = it)) }
+            )
+            SettingsToggle(
+                icon = Icons.Rounded.Bolt,
+                title = copy.chargingOnly,
+                subtitle = copy.chargingOnlySubtitle,
+                checked = settings.chargingOnly,
+                onCheckedChange = { onSettings(settings.copy(chargingOnly = it)) }
+            )
+            SettingsToggle(
+                icon = Icons.Rounded.Favorite,
+                title = copy.preferFavorites,
+                subtitle = copy.preferFavoritesSubtitle,
+                checked = settings.preferFavorites,
+                onCheckedChange = { onSettings(settings.copy(preferFavorites = it)) }
+            )
+            SmartOfflineTextSetting(
+                title = copy.excludedArtists,
+                subtitle = copy.excludedArtistsSubtitle,
+                value = excludedArtistsDraft,
+                hint = copy.commaSeparatedHint,
+                saveLabel = copy.save,
+                onValueChange = { excludedArtistsDraft = it },
+                onSave = {
+                    onSettings(settings.copy(excludedArtists = excludedArtistsDraft.smartOfflineEntries()))
+                }
+            )
+            SmartOfflineTextSetting(
+                title = copy.excludedPlaylists,
+                subtitle = copy.excludedPlaylistsSubtitle,
+                value = excludedPlaylistsDraft,
+                hint = copy.commaSeparatedHint,
+                saveLabel = copy.save,
+                onValueChange = { excludedPlaylistsDraft = it },
+                onSave = {
+                    onSettings(settings.copy(excludedPlaylists = excludedPlaylistsDraft.smartOfflineEntries()))
+                }
+            )
+            SettingsButton(
+                icon = Icons.Rounded.Refresh,
+                title = copy.refresh,
+                subtitle = "${copy.refreshSubtitle} · ${copy.updatedLabel(settings.lastRefreshAt)}",
+                onClick = onRefresh
+            )
+        }
+    }
+}
+
+@Composable
+private fun SmartOfflineTextSetting(
+    title: String,
+    subtitle: String,
+    value: String,
+    hint: String,
+    saveLabel: String,
+    onValueChange: (String) -> Unit,
+    onSave: () -> Unit,
+    suffix: String = "",
+    numeric: Boolean = false
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleSmall)
+            Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            OutlinedTextField(
+                value = value,
+                onValueChange = onValueChange,
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                placeholder = { Text(hint) },
+                suffix = if (suffix.isNotBlank()) ({ Text(suffix) }) else null,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    keyboardType = if (numeric) androidx.compose.ui.text.input.KeyboardType.Number
+                    else androidx.compose.ui.text.input.KeyboardType.Text
+                )
+            )
+            TextButton(onClick = onSave, modifier = Modifier.align(Alignment.End)) {
+                Text(saveLabel)
+            }
+        }
+    }
+}
+
+private fun String.smartOfflineEntries(): Set<String> = split(',')
+    .map(String::trim)
+    .filter(String::isNotBlank)
+    .toSet()
 
 @Composable
 private fun SettingsChoiceRow(
