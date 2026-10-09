@@ -7,6 +7,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -43,7 +44,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
@@ -79,7 +82,20 @@ internal fun LevyraMixLauncherPanel(
     Column(
         modifier = modifier.fillMaxWidth()
             .clip(LevyraCardDesign.SurfaceShape)
-            .background(colors.surfaceContainerLow)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        accent.copy(alpha = 0.12f).compositeOver(colors.surfaceContainerLow),
+                        colors.surfaceContainerLow,
+                        colors.surfaceContainerLow
+                    )
+                )
+            )
+            .border(
+                1.dp,
+                colors.outlineVariant.copy(alpha = 0.24f),
+                LevyraCardDesign.SurfaceShape
+            )
             .padding(LevyraHomeDesign.EditorialPadding),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
