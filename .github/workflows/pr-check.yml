@@ -460,12 +460,22 @@ jobs:
           set -euo pipefail
           SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
           yes | "${SDKMANAGER}" --licenses >/dev/null || true
-          "${SDKMANAGER}" --channel=3 \
-            "platform-tools" \
-            "platforms;android-37.0" \
-            "build-tools;36.0.0" \
-            "ndk;28.2.13676358" \
-            "cmake;3.22.1"
+          for attempt in 1 2 3; do
+            if "${SDKMANAGER}" --channel=3 \
+              "platform-tools" \
+              "platforms;android-37.0" \
+              "build-tools;36.0.0" \
+              "ndk;28.2.13676358" \
+              "cmake;3.22.1"; then
+              break
+            fi
+            if [ "${attempt}" -eq 3 ]; then
+              echo "Android SDK installation failed after 3 attempts." >&2
+              exit 1
+            fi
+            echo "Android SDK download failed, retrying after 10 seconds (${attempt}/3)."
+            sleep 10
+          done
 
       - name: Cache Native Audio Dependencies
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
