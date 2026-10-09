@@ -39,7 +39,7 @@ class HomeEditorialSixCollectionsRegressionTest {
             nowMillis = Instant.parse("2026-06-10T08:00:00Z").toEpochMilli()
         )
 
-        assertEquals(6, collections.size)
+        assertEquals(8, collections.size)
         assertTrue(collections.all { it.tracks.size >= 4 })
         assertEquals(
             collections.size,
@@ -74,7 +74,7 @@ class HomeEditorialSixCollectionsRegressionTest {
             nowMillis = Instant.parse("2026-06-10T08:00:00Z").toEpochMilli()
         )
 
-        assertEquals(6, collections.size)
+        assertEquals(8, collections.size)
         assertTrue(collections.any { it.titleOverride == title })
     }
 
@@ -107,7 +107,7 @@ class HomeEditorialSixCollectionsRegressionTest {
                 nowMillis = base + day * 24L * 60L * 60L * 1000L
             )
 
-            assertEquals(6, collections.size)
+            assertEquals(8, collections.size)
             assertTrue(collections.all { it.tracks.size in 4..18 })
         }
     }
@@ -180,7 +180,7 @@ class HomeEditorialSixCollectionsRegressionTest {
             nowMillis = Instant.parse("2026-06-10T08:00:00Z").toEpochMilli()
         )
 
-        assertEquals(6, collections.size)
+        assertEquals(8, collections.size)
         assertFalse(collections.any { it.kind == HomeCollectionKind.Fresh })
     }
 

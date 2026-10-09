@@ -55,7 +55,7 @@ class BrandingAndHomeContrastContractTest {
 
         assertTrue(greetingBar.contains(".heightIn(min = LevyraHomeDesign.SettingsControlHeight)"))
         assertTrue(greetingBar.contains("LevyraLogoMark(size = 38.dp"))
-        assertTrue(greetingBar.contains("fontSize = 20.sp"))
+        assertTrue(greetingBar.contains("fontSize = 22.sp"))
         assertFalse(greetingBar.contains("cardBackground"))
         assertFalse(greetingBar.contains("LevyraHomeDesign.HeaderShape"))
         assertFalse(greetingBar.contains("text = \"LEVYRA\""))

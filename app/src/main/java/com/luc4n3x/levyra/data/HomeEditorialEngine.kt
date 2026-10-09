@@ -23,7 +23,9 @@ import kotlin.math.absoluteValue
 object HomeEditorialEngine {
     private const val collectionTrackLimit = 18
     private const val minimumCollectionSize = 4
-    private const val targetCollectionCount = 6
+    private const val targetCollectionCount = 8
+    private const val chartCollectionLimit = 50
+    private const val throwbackMinimumAgeYears = 8
     private const val stableCollectionSlots = 3
 
     private val localReleaseDateFormatters = listOf(
@@ -228,7 +230,9 @@ object HomeEditorialEngine {
             source: HomeCollectionSource,
             titleOverride: String = "",
             updatedToday: Boolean = false,
-            allowSmartFill: Boolean = true
+            allowSmartFill: Boolean = true,
+            keepOrder: Boolean = false,
+            limit: Int = collectionTrackLimit
         ) {
             val primaryKeys = tracks.asSequence().map(::identityKey).toHashSet()
             val candidatePool = if (allowSmartFill) {
@@ -236,7 +240,9 @@ object HomeEditorialEngine {
             } else {
                 tracks.asSequence().distinctBy(::identityKey).toList()
             }
-            val selected = candidatePool
+            val selected = if (keepOrder) {
+                candidatePool.asSequence().filter(::isReliableCandidate).take(limit).toList()
+            } else candidatePool
                 .asSequence()
                 .filter(::isReliableCandidate)
                 .sortedWith(
@@ -251,7 +257,7 @@ object HomeEditorialEngine {
                             stableHash("$daySeed|$id|${identityKey(track)}") % 211
                     }.thenBy { track -> stableHash("$id|${identityKey(track)}") }
                 )
-                .take(collectionTrackLimit)
+                .take(limit)
                 .toList()
             if (selected.size < minimumCollectionSize) return
             val accentSeed = selected.take(4)
@@ -308,6 +314,65 @@ object HomeEditorialEngine {
                 kind = HomeCollectionKind.Discovery,
                 tracks = discovery,
                 source = if (chartKeys.isNotEmpty()) HomeCollectionSource.Charts else HomeCollectionSource.Levyra
+            )
+        }
+
+        val chartOrdered = chartTracks.asSequence().filter(::isReliableCandidate).distinctBy(::identityKey).toList()
+        if (chartOrdered.size >= minimumCollectionSize) {
+            addCollection(
+                id = "charts",
+                kind = HomeCollectionKind.Charts,
+                tracks = chartOrdered,
+                source = HomeCollectionSource.Charts,
+                allowSmartFill = false,
+                keepOrder = true,
+                limit = chartCollectionLimit
+            )
+        }
+        val onRepeat = (personalTracks + favorites + libraryTracks)
+            .asSequence()
+            .filter(::isReliableCandidate)
+            .distinctBy(::identityKey)
+            .filter { it.replayScore > 0 }
+            .sortedByDescending { it.replayScore }
+            .toList()
+        if (onRepeat.size >= minimumCollectionSize) {
+            addCollection(
+                id = "repeat",
+                kind = HomeCollectionKind.Repeat,
+                tracks = onRepeat,
+                source = HomeCollectionSource.Levyra,
+                allowSmartFill = false,
+                keepOrder = true
+            )
+        }
+        val throwback = pool.filter { track ->
+            parseReleaseDate(track.releaseDate)
+                ?.let(::localDate)
+                ?.let { release -> release.plusYears(throwbackMinimumAgeYears.toLong()) <= today } == true
+        }
+        if (throwback.size >= minimumCollectionSize) {
+            addCollection(
+                id = "throwback",
+                kind = HomeCollectionKind.Throwback,
+                tracks = throwback,
+                source = HomeCollectionSource.Levyra,
+                allowSmartFill = false
+            )
+        }
+        val gems = (resonanceTracks + quickPickTracks)
+            .asSequence()
+            .filter(::isReliableCandidate)
+            .distinctBy(::identityKey)
+            .filter { identityKey(it) !in chartKeys }
+            .toList()
+        if (gems.size >= minimumCollectionSize) {
+            addCollection(
+                id = "gems",
+                kind = HomeCollectionKind.Gems,
+                tracks = gems,
+                source = HomeCollectionSource.Levyra,
+                allowSmartFill = false
             )
         }
 
@@ -461,30 +526,7 @@ object HomeEditorialEngine {
     ): List<HomeEditorialCollection> {
         if (collections.size < 2) return collections
         val candidatesByCollection = collections.map { collection ->
-            val existingKeys = collection.tracks.asSequence().map(::identityKey).toHashSet()
-            val fallbackTracks = if (collection.kind == HomeCollectionKind.Fresh) {
-                emptyList()
-            } else {
-                fallbackPool
-                    .asSequence()
-                    .filterNot { identityKey(it) in existingKeys }
-                    .sortedWith(
-                        compareByDescending<Track> { track ->
-                            kindAffinity(track, collection.kind) +
-                                track.metadataConfidence.coerceIn(0, 100) * 3 +
-                                track.replayScore.coerceIn(0, 100) * 2 +
-                                track.cacheScore.coerceIn(0, 100)
-                        }.thenBy { track ->
-                            stableHash("cover|$daySeed|${collection.id}|${identityKey(track)}")
-                        }
-                    )
-                    .toList()
-            }
-            (collection.tracks + fallbackTracks)
-                .asSequence()
-                .distinctBy(::identityKey)
-                .filter { artworkIdentity(it).isNotBlank() }
-                .toList()
+            primaryArtworkCandidates(collection, fallbackPool, daySeed)
         }
         val ownerByArtwork = HashMap<String, Int>()
 
@@ -501,30 +543,69 @@ object HomeEditorialEngine {
             return false
         }
 
-        collections.indices.forEach { index ->
-            if (!assign(index, HashSet())) return collections
-        }
+        val assignedIndices = collections.indices.filter { index -> assign(index, HashSet()) }.toHashSet()
+        if (assignedIndices.size < minOf(collections.size, targetCollectionCount - 2)) return collections
 
         val artworkByCollection = arrayOfNulls<String>(collections.size)
         ownerByArtwork.forEach { (artwork, collectionIndex) ->
             artworkByCollection[collectionIndex] = artwork
         }
-        return collections.mapIndexed { index, collection ->
-            val assignedArtwork = artworkByCollection[index] ?: return@mapIndexed collection
-            val primary = candidatesByCollection[index]
-                .firstOrNull { artworkIdentity(it) == assignedArtwork }
-                ?: return@mapIndexed collection
-            val primaryKey = identityKey(primary)
-            if (collection.tracks.firstOrNull()?.let(::identityKey) == primaryKey) return@mapIndexed collection
-            collection.copy(
-                tracks = buildList(collection.tracks.size.coerceAtLeast(minimumCollectionSize)) {
-                    add(primary)
-                    collection.tracks.forEach { track ->
-                        if (identityKey(track) != primaryKey && size < collectionTrackLimit) add(track)
-                    }
-                }
-            )
+        return collections.mapIndexedNotNull { index, collection ->
+            if (index !in assignedIndices) return@mapIndexedNotNull null
+            val primary = artworkByCollection[index]?.let { assignedArtwork ->
+                candidatesByCollection[index].firstOrNull { artworkIdentity(it) == assignedArtwork }
+            }
+            if (primary == null) collection else withPrimaryTrack(collection, primary)
         }
+    }
+
+    private fun primaryArtworkCandidates(
+        collection: HomeEditorialCollection,
+        fallbackPool: List<Track>,
+        daySeed: Int
+    ): List<Track> {
+        val existingKeys = collection.tracks.asSequence().map(::identityKey).toHashSet()
+        val fallbackTracks = if (collection.kind == HomeCollectionKind.Fresh || collection.kind.keepsOrder()) {
+            emptyList()
+        } else {
+            fallbackPool
+                .asSequence()
+                .filterNot { identityKey(it) in existingKeys }
+                .sortedWith(
+                    compareByDescending<Track> { track ->
+                        kindAffinity(track, collection.kind) +
+                            track.metadataConfidence.coerceIn(0, 100) * 3 +
+                            track.replayScore.coerceIn(0, 100) * 2 +
+                            track.cacheScore.coerceIn(0, 100)
+                    }.thenBy { track ->
+                        stableHash("cover|$daySeed|${collection.id}|${identityKey(track)}")
+                    }
+                )
+                .toList()
+        }
+        return (collection.tracks + fallbackTracks)
+            .asSequence()
+            .distinctBy(::identityKey)
+            .filter { artworkIdentity(it).isNotBlank() }
+            .toList()
+    }
+
+    private fun HomeCollectionKind.keepsOrder(): Boolean =
+        this == HomeCollectionKind.Charts || this == HomeCollectionKind.Repeat
+
+    private fun withPrimaryTrack(collection: HomeEditorialCollection, primary: Track): HomeEditorialCollection {
+        if (collection.kind.keepsOrder()) return collection
+        val primaryKey = identityKey(primary)
+        if (collection.tracks.firstOrNull()?.let(::identityKey) == primaryKey) return collection
+        val cap = maxOf(collectionTrackLimit, collection.tracks.size)
+        return collection.copy(
+            tracks = buildList(collection.tracks.size.coerceAtLeast(minimumCollectionSize)) {
+                add(primary)
+                collection.tracks.forEach { track ->
+                    if (identityKey(track) != primaryKey && size < cap) add(track)
+                }
+            }
+        )
     }
 
     private fun collectionQuality(collection: HomeEditorialCollection): Int {
@@ -588,6 +669,10 @@ object HomeEditorialEngine {
                 track.replayScore.coerceIn(0, 100) * 5 + track.energy.coerceIn(0, 100) * 2
             }
             HomeCollectionKind.Editorial -> track.metadataConfidence.coerceIn(0, 100) * 4
+            HomeCollectionKind.Charts -> 0
+            HomeCollectionKind.Repeat -> track.replayScore.coerceIn(0, 100) * 12
+            HomeCollectionKind.Throwback -> 0
+            HomeCollectionKind.Gems -> 0
         }
     }
 

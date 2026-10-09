@@ -110,7 +110,7 @@ class MaterialExpressiveContractTest {
 
         assertTrue(mix.contains("SonicReactorSpectrum("))
         assertTrue(mix.contains("MixPresetChip("))
-        assertTrue(fresh.contains("FreshArtworkCorner = 28.dp"))
+        assertTrue(fresh.contains("FreshArtworkCorner = 36.dp"))
     }
 
     @Test

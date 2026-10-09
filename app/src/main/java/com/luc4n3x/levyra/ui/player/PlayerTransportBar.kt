@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.components.rememberLevyraPlayMorphShape
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -211,6 +212,7 @@ private fun RowScope.PlayerPlaySegment(
         checkedCorner = height / 2,
         label = "player-play-corner"
     )
+    val morphShape = rememberLevyraPlayMorphShape(playing = isPlaying, animated = animated)
     val content by animateColorAsState(
         targetValue = surfaces.heroContent,
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween()),
@@ -229,6 +231,7 @@ private fun RowScope.PlayerPlaySegment(
         contentDescription = playDescription(isPlaying, labels),
         animated = animated,
         haptic = LevyraHapticAction.Transport,
+        shapeOverride = morphShape,
         onClick = onClick
     ) {
         PlayGlyphContent(
