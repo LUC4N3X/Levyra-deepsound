@@ -352,7 +352,6 @@ internal fun LevyraSecondaryToolsRow(
                 label = strings.surpriseMe,
                 accent = accent,
                 enabled = !loading,
-                horizontal = stacked,
                 modifier = actionModifier
             ) { onStartMix(LevyraMixKind.SurpriseMe) }
 
@@ -361,7 +360,6 @@ internal fun LevyraSecondaryToolsRow(
                 label = strings.yourSound,
                 accent = accent,
                 enabled = true,
-                horizontal = stacked,
                 modifier = actionModifier,
                 onClick = onOpenYourSound
             )
@@ -371,7 +369,6 @@ internal fun LevyraSecondaryToolsRow(
                 label = strings.mixLab,
                 accent = accent,
                 enabled = true,
-                horizontal = stacked,
                 modifier = actionModifier,
                 onClick = onOpenMixLab
             )
@@ -395,7 +392,6 @@ private fun MixToolAction(
     label: String,
     accent: Color,
     enabled: Boolean,
-    horizontal: Boolean,
     modifier: Modifier,
     onClick: () -> Unit
 ) {
