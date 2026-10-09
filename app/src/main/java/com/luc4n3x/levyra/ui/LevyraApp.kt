@@ -24145,7 +24145,10 @@ private fun ExploreLiveRadioEntry(onClick: () -> Unit, modifier: Modifier = Modi
                 Text(
                     text = radioStrings.title,
                     color = colors.onSurface,
-                    style = LevyraType.contentTitle.copy(fontWeight = FontWeight.Bold)
+                    style = LevyraType.contentTitle.copy(fontWeight = FontWeight.Bold),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
                 )
                 Box(
                     modifier = Modifier
@@ -24165,7 +24168,7 @@ private fun ExploreLiveRadioEntry(onClick: () -> Unit, modifier: Modifier = Modi
                                 .background(Color(0xFFE53935))
                         )
                         Text(
-                            text = "LIVE",
+                            text = radioStrings.live,
                             color = Color(0xFFE53935),
                             style = LevyraType.overline.copy(
                                 fontWeight = FontWeight.Black,
