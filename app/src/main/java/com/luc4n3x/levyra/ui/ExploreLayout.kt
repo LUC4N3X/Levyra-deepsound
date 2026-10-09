@@ -24,6 +24,13 @@ internal enum class ExploreReleaseKind {
     Release
 }
 
+internal data class ExploreReleaseCard(
+    val kind: ExploreReleaseKind,
+    val title: String,
+    val subtitle: String,
+    val opensAlbum: Boolean
+)
+
 internal data class ExploreFreshFeed(
     val scope: ExploreFreshScope,
     val spotlight: List<Track>,
@@ -231,18 +238,29 @@ internal fun exploreReleaseIdentity(track: Track): String {
 internal fun exploreMomentPages(tracks: List<Track>): List<List<Track>> =
     tracks.chunked(ExploreMomentRowsPerPage).take(ExploreMomentPageLimit)
 
-internal fun exploreReleaseKind(track: Track): ExploreReleaseKind {
-    when (track.albumType.trim().lowercase()) {
-        "single" -> return ExploreReleaseKind.Single
-        "album", "compilation", "ep" -> return ExploreReleaseKind.Album
-    }
+internal fun exploreReleaseKind(track: Track): ExploreReleaseKind = when (track.albumType.trim().lowercase()) {
+    "single" -> ExploreReleaseKind.Single
+    "album", "compilation", "ep" -> ExploreReleaseKind.Album
+    else -> ExploreReleaseKind.Release
+}
+
+internal fun exploreReleaseCard(track: Track): ExploreReleaseCard {
+    val kind = exploreReleaseKind(track)
     val album = track.album.trim()
-    if (album.isEmpty()) return ExploreReleaseKind.Release
-    return if (album.equals(track.title.trim(), ignoreCase = true)) {
-        ExploreReleaseKind.Single
-    } else {
-        ExploreReleaseKind.Album
+    if (kind == ExploreReleaseKind.Album && album.isNotEmpty()) {
+        return ExploreReleaseCard(
+            kind = kind,
+            title = album,
+            subtitle = track.albumArtist.trim().ifBlank { track.artist.trim() },
+            opensAlbum = true
+        )
     }
+    return ExploreReleaseCard(
+        kind = kind,
+        title = track.title.trim(),
+        subtitle = track.artist.trim(),
+        opensAlbum = false
+    )
 }
 
 internal fun exploreCoverArtworkTrack(track: Track): Track {

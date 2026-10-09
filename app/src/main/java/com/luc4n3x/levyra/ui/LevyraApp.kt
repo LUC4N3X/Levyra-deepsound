@@ -23501,6 +23501,7 @@ private fun ExploreScreen(
                             if (track.id == state.currentTrack?.id) viewModel.togglePlay()
                             else viewModel.playFrom(freshTracks, track)
                         },
+                        onOpenAlbum = { track -> viewModel.openAlbum(trackAlbumHit(track)) },
                         actions = { track -> freshTrackActions(track) }
                     )
                     ExploreRow.FreshMoment -> Column(

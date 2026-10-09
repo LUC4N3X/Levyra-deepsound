@@ -6,7 +6,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -39,7 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
@@ -57,12 +57,13 @@ import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.theme.LevyraType
-import kotlin.math.absoluteValue
 
 private val FreshChipHeight = 40.dp
 private val FreshArtworkCorner = 20.dp
-private val FreshArtworkMaxWidth = 420.dp
-private val FreshSpotlightPeek = 44.dp
+private val FreshArtworkMaxWidth = 360.dp
+private val FreshArtworkMinWidth = 180.dp
+private const val FreshArtworkScreenHeightRatio = 0.32f
+private val FreshSpotlightPeek = 52.dp
 private val FreshMomentThumb = 48.dp
 private val FreshMomentRowHeight = 64.dp
 private val FreshMomentDividerInset = FreshMomentThumb + 12.dp
@@ -165,22 +166,28 @@ internal fun ExploreFreshSpotlight(
     isResolving: Boolean,
     modifier: Modifier = Modifier,
     onPlay: (Track) -> Unit,
+    onOpenAlbum: (Track) -> Unit,
     actions: @Composable (Track) -> Unit
 ) {
     if (tracks.isEmpty()) return
     val feedKey = tracks.first().id
     val pagerState = key(feedKey) { rememberPagerState(pageCount = { tracks.size }) }
     val multiPage = tracks.size > 1
+    val configuration = LocalConfiguration.current
+    val cardWidth = remember(configuration.screenWidthDp, configuration.screenHeightDp, multiPage) {
+        val available = configuration.screenWidthDp.dp - LevyraHomeDesign.HorizontalInset * 2 -
+            if (multiPage) FreshSpotlightPeek else 0.dp
+        minOf(available, configuration.screenHeightDp.dp * FreshArtworkScreenHeightRatio, FreshArtworkMaxWidth)
+            .coerceAtLeast(FreshArtworkMinWidth)
+    }
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         HorizontalPager(
             state = pagerState,
-            contentPadding = PaddingValues(
-                start = LevyraHomeDesign.HorizontalInset,
-                end = LevyraHomeDesign.HorizontalInset + if (multiPage) FreshSpotlightPeek else 0.dp
-            ),
+            pageSize = PageSize.Fixed(cardWidth),
+            contentPadding = PaddingValues(horizontal = LevyraHomeDesign.HorizontalInset),
             pageSpacing = 12.dp,
             beyondViewportPageCount = 1
         ) { page ->
@@ -191,10 +198,8 @@ internal fun ExploreFreshSpotlight(
                 isCurrent = isCurrent,
                 isPlaying = isPlaying && isCurrent,
                 isResolving = isResolving && isCurrent,
-                pageOffset = {
-                    (pagerState.currentPage - page + pagerState.currentPageOffsetFraction).absoluteValue
-                },
                 onPlay = { onPlay(track) },
+                onOpenAlbum = { onOpenAlbum(track) },
                 actions = { actions(track) }
             )
         }
@@ -214,18 +219,19 @@ private fun ExploreFreshSpotlightPage(
     isCurrent: Boolean,
     isPlaying: Boolean,
     isResolving: Boolean,
-    pageOffset: () -> Float,
     onPlay: () -> Unit,
+    onOpenAlbum: () -> Unit,
     actions: @Composable () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val colors = MaterialTheme.colorScheme
-    val titleStyle = LevyraType.screenTitle.copy(fontSize = 26.sp, lineHeight = 30.sp)
-    val artistStyle = titleStyle.copy(fontWeight = FontWeight.Normal)
+    val card = exploreReleaseCard(track)
+    val titleStyle = LevyraType.sectionTitle.copy(fontSize = 21.sp, lineHeight = 25.sp)
+    val subtitleStyle = titleStyle.copy(fontWeight = FontWeight.Normal)
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = exploreReleaseEyebrow(track, strings),
+                text = exploreReleaseEyebrow(card.kind, strings),
                 style = LevyraType.overline,
                 color = colors.onSurfaceVariant,
                 maxLines = 1,
@@ -235,27 +241,28 @@ private fun ExploreFreshSpotlightPage(
             actions()
         }
         Text(
-            text = track.title,
+            text = card.title,
             style = titleStyle,
             color = colors.onSurface,
+            minLines = 2,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
         Text(
-            text = track.artist,
-            style = artistStyle,
+            text = card.subtitle,
+            style = subtitleStyle,
             color = colors.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(bottom = 14.dp)
+            modifier = Modifier.padding(bottom = 12.dp)
         )
         ExploreFreshSpotlightArtwork(
             track = track,
-            isCurrent = isCurrent,
+            opensAlbum = card.opensAlbum,
+            isCurrent = isCurrent && !card.opensAlbum,
             isPlaying = isPlaying,
-            isResolving = isResolving,
-            pageOffset = pageOffset,
-            onPlay = onPlay
+            isResolving = isResolving && !card.opensAlbum,
+            onOpen = if (card.opensAlbum) onOpenAlbum else onPlay
         )
     }
 }
@@ -263,15 +270,14 @@ private fun ExploreFreshSpotlightPage(
 @Composable
 private fun ExploreFreshSpotlightArtwork(
     track: Track,
+    opensAlbum: Boolean,
     isCurrent: Boolean,
     isPlaying: Boolean,
     isResolving: Boolean,
-    pageOffset: () -> Float,
-    onPlay: () -> Unit
+    onOpen: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val colors = MaterialTheme.colorScheme
-    val parallax = LocalAnimationsEnabled.current
     val glowStart = remember(track.accentStart) { Color(track.accentStart) }
     val glowEnd = remember(track.accentEnd) { Color(track.accentEnd) }
     val scrim = remember {
@@ -280,57 +286,51 @@ private fun ExploreFreshSpotlightArtwork(
             1f to Color.Black.copy(alpha = 0.55f)
         )
     }
-    BoxWithConstraints {
-        val artworkWidth = minOf(maxWidth, FreshArtworkMaxWidth)
-        Box(
-            modifier = Modifier
-                .width(artworkWidth)
-                .aspectRatio(1f)
-                .graphicsLayer {
-                    if (!parallax) return@graphicsLayer
-                    val settled = 1f - pageOffset().coerceIn(0f, 1f)
-                    val scale = 0.94f + 0.06f * settled
-                    scaleX = scale
-                    scaleY = scale
-                }
-                .shadow(
-                    elevation = 22.dp,
-                    shape = RoundedCornerShape(FreshArtworkCorner),
-                    clip = false,
-                    ambientColor = glowStart.copy(alpha = 0.26f),
-                    spotColor = glowEnd.copy(alpha = 0.34f)
-                )
-                .clip(RoundedCornerShape(FreshArtworkCorner))
-                .background(colors.surfaceContainerHigh)
-                .levyraPressable(
-                    onClick = onPlay,
-                    enabled = !isResolving,
-                    onClickLabel = if (isPlaying) strings.pause else strings.play,
-                    role = Role.Button,
-                    pressedScale = LevyraPressScale.Tile
-                )
-        ) {
-            CoverImage(
-                track = exploreCoverArtworkTrack(track),
-                modifier = Modifier.fillMaxSize(),
-                highRes = true
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .shadow(
+                elevation = 16.dp,
+                shape = RoundedCornerShape(FreshArtworkCorner),
+                clip = false,
+                ambientColor = glowStart.copy(alpha = 0.26f),
+                spotColor = glowEnd.copy(alpha = 0.34f)
             )
-            if (isCurrent || isResolving) {
-                Box(Modifier.fillMaxSize().background(scrim))
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(16.dp)
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(colors.primaryContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (isResolving) {
-                        DiscoveryLoadingIndicator(Modifier.size(18.dp), colors.onPrimaryContainer)
-                    } else {
-                        LevyraPlayingIndicator(playing = isPlaying, color = colors.onPrimaryContainer)
-                    }
+            .clip(RoundedCornerShape(FreshArtworkCorner))
+            .background(colors.surfaceContainerHigh)
+            .levyraPressable(
+                onClick = onOpen,
+                enabled = !isResolving,
+                onClickLabel = when {
+                    opensAlbum -> strings.openAlbum
+                    isPlaying -> strings.pause
+                    else -> strings.play
+                },
+                role = Role.Button,
+                pressedScale = LevyraPressScale.Tile
+            )
+    ) {
+        CoverImage(
+            track = exploreCoverArtworkTrack(track),
+            modifier = Modifier.fillMaxSize(),
+            highRes = true
+        )
+        if (isCurrent || isResolving) {
+            Box(Modifier.fillMaxSize().background(scrim))
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(14.dp)
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(colors.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isResolving) {
+                    DiscoveryLoadingIndicator(Modifier.size(18.dp), colors.onPrimaryContainer)
+                } else {
+                    LevyraPlayingIndicator(playing = isPlaying, color = colors.onPrimaryContainer)
                 }
             }
         }
@@ -520,8 +520,8 @@ private fun ExploreFreshMomentRow(
     }
 }
 
-internal fun exploreReleaseEyebrow(track: Track, strings: LevyraStrings): String =
-    when (exploreReleaseKind(track)) {
+internal fun exploreReleaseEyebrow(kind: ExploreReleaseKind, strings: LevyraStrings): String =
+    when (kind) {
         ExploreReleaseKind.Album -> strings.newAlbum
         ExploreReleaseKind.Single -> strings.newSingle
         ExploreReleaseKind.Release -> strings.newRelease

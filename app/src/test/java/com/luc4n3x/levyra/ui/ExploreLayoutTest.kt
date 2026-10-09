@@ -296,14 +296,12 @@ class ExploreLayoutTest {
     }
 
     @Test
-    fun releaseKindDistinguishesAlbumsFromSingles() {
-        val single = track("single").copy(title = "Vertigini", album = "vertigini")
-        val album = track("album").copy(title = "Vertigini", album = "Zarathustra Style")
-        val unknown = track("unknown").copy(title = "Vertigini", album = "  ")
+    fun releaseKindIsNeverGuessedFromTheTitle() {
+        val trackOnAnAlbum = track("x").copy(title = "Le foglie di te", album = "AMATORE", albumType = "")
+        val selfTitled = track("y").copy(title = "Vertigini", album = "Vertigini", albumType = "")
 
-        assertEquals(ExploreReleaseKind.Single, exploreReleaseKind(single))
-        assertEquals(ExploreReleaseKind.Album, exploreReleaseKind(album))
-        assertEquals(ExploreReleaseKind.Release, exploreReleaseKind(unknown))
+        assertEquals(ExploreReleaseKind.Release, exploreReleaseKind(trackOnAnAlbum))
+        assertEquals(ExploreReleaseKind.Release, exploreReleaseKind(selfTitled))
     }
 
     @Test
@@ -358,22 +356,59 @@ class ExploreLayoutTest {
     }
 
     @Test
-    fun publishedAlbumTypeOutranksTheTitleHeuristic() {
-        val singleNamedAfterAlbum = track("a").copy(
-            title = "Vertigini",
-            album = "Zarathustra Style",
-            albumType = "single"
-        )
-        val albumSharingItsTitle = track("b").copy(
-            title = "Amatore",
-            album = "Amatore",
-            albumType = "album"
-        )
+    fun releaseKindComesFromTheTypeTheSourceReported() {
+        val single = track("a").copy(title = "Vertigini", album = "Vertigini", albumType = "single")
+        val album = track("b").copy(title = "Le foglie di te", album = "AMATORE", albumType = "album")
         val compilation = track("c").copy(title = "X", album = "Best of", albumType = "COMPILATION")
 
-        assertEquals(ExploreReleaseKind.Single, exploreReleaseKind(singleNamedAfterAlbum))
-        assertEquals(ExploreReleaseKind.Album, exploreReleaseKind(albumSharingItsTitle))
+        assertEquals(ExploreReleaseKind.Single, exploreReleaseKind(single))
+        assertEquals(ExploreReleaseKind.Album, exploreReleaseKind(album))
         assertEquals(ExploreReleaseKind.Album, exploreReleaseKind(compilation))
+    }
+
+    @Test
+    fun anAlbumCardNamesTheAlbumAndOpensIt() {
+        val card = exploreReleaseCard(
+            track("x").copy(
+                title = "Le foglie di te",
+                artist = "Jovanotti, Samurai Jay",
+                album = "AMATORE",
+                albumArtist = "Jovanotti",
+                albumType = "album"
+            )
+        )
+
+        assertEquals("AMATORE", card.title)
+        assertEquals("Jovanotti", card.subtitle)
+        assertTrue(card.opensAlbum)
+    }
+
+    @Test
+    fun aTrackCardNamesTheTrackAndNeverOpensAnAlbum() {
+        val single = exploreReleaseCard(
+            track("s").copy(title = "Vertigini", artist = "Fabri Fibra", album = "Vertigini", albumType = "single")
+        )
+        val unknown = exploreReleaseCard(
+            track("u").copy(title = "Le foglie di te", artist = "Jovanotti", album = "AMATORE", albumType = "")
+        )
+
+        assertEquals("Vertigini", single.title)
+        assertEquals("Fabri Fibra", single.subtitle)
+        assertFalse(single.opensAlbum)
+
+        assertEquals("Le foglie di te", unknown.title)
+        assertEquals("Jovanotti", unknown.subtitle)
+        assertFalse(unknown.opensAlbum)
+    }
+
+    @Test
+    fun anAlbumWithoutANameFallsBackToTheTrack() {
+        val card = exploreReleaseCard(
+            track("x").copy(title = "Senza disco", artist = "Tizio", album = "   ", albumType = "album")
+        )
+
+        assertEquals("Senza disco", card.title)
+        assertFalse(card.opensAlbum)
     }
 
     private fun zones(count: Int): List<ExploreZone> = List(count) { index ->
