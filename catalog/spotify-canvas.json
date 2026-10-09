@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-09T06:14:44Z",
+  "generatedAt": "2026-10-09T13:26:23Z",
   "items": [
     {
       "song": "WINNER",
@@ -306,7 +306,7 @@
     {
       "song": "Man I Need",
       "artist": "Olivia Dean",
-      "album": "Man I Need",
+      "album": "The Art of Loving",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
@@ -504,6 +504,13 @@
       "artist": "Taylor Swift",
       "album": "The Life of a Showgirl: The Encore",
       "url": "https://canvaz.scdn.co/upload/artist/06HL4z0CvFAxyc27GXpf02/video/0c1d5b7425cb441391e9efccfe2e3965.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "Man I Need",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4567,6 +4574,13 @@
       "scope": "track"
     },
     {
+      "song": "Wish Upon You",
+      "artist": "Florence Road",
+      "album": "Wish Upon You",
+      "url": "https://canvaz.scdn.co/upload/artist/0zzKEeF2bAVKrWeKc9CyJV/video/dab7c15bdd52418291d968d651726b5c.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Paradise",
       "artist": "Cloonee, Chris Lake, Aliyah's Interlude",
       "album": "Are You Still You?",
@@ -4599,6 +4613,55 @@
       "artist": "Lainey Wilson",
       "album": "Kinda Love It",
       "url": "https://canvaz.scdn.co/upload/licensor/3NnFCwOQTNvcqyyU0Ljxoi/video/9e832ec60bac4cd790be9130212b10b2.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Carnage (feat. Little Simz)",
+      "artist": "Chase & Status, Little Simz",
+      "album": "Generic Everything",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/aa5931719fd44a7498ec3379cfb36cf7.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "wearing all white like an angel",
+      "artist": "Saskia",
+      "album": "Wearing All White Like An Angel",
+      "url": "https://canvaz.scdn.co/upload/artist/400qpwg5b70L39fD95JSaB/video/f0c9a13c505e4f63a7576fa16f612799.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Into The Deep (Seas Cry) (feat. Hans Zimmer)",
+      "artist": "JADE, Hans Zimmer",
+      "album": "Into The Deep (Seas Cry) (feat. Hans Zimmer)",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/9fa0b7e427fd46c3b3cd70084f834e32.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Dead Company",
+      "artist": "Royal Blood",
+      "album": "Dead Company",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/315c4707575a427587e0e0680f5b3ce2.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Waist 36 Leg 32",
+      "artist": "Jamie T",
+      "album": "Waist 36 Leg 32",
+      "url": "https://canvaz.scdn.co/upload/artist/3Rsr4Z96O6U3lToOiV3zBh/video/9ab246c5d05f4d929b75829ed19128fd.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "waiting for me",
+      "artist": "Arlo Parks",
+      "album": "Ambiguous Desire (Deluxe)",
+      "url": "https://canvaz.scdn.co/upload/licensor/3XNlKFM3CNbFtXNiqc2vLt/video/a934a05189934ad5a6dce3d174fd3416.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Moving at Light Speed",
+      "artist": "Thundercat, Button Masher",
+      "album": "Moving at Light Speed",
+      "url": "https://canvaz.scdn.co/upload/licensor/0aoG0YOalg2ScKXBhSVmIQ/video/4837dc4ba95f4c38b35b1fd7fc791156.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4665,13 +4728,6 @@
       "scope": "track"
     },
     {
-      "song": "Sempre soli",
-      "artist": "Nashley",
-      "album": "Sempre soli",
-      "url": "https://canvaz.scdn.co/upload/artist/5RiGhrEoM1SBjZoY25lCfe/video/56e409283b124f73ad4efbd55f5a5e34.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "RETRICA",
       "artist": "Lucho RK",
       "album": "SORDO DE UN PIE",
@@ -4711,6 +4767,13 @@
       "artist": "Kaydy Cain, JAKOBB",
       "album": "Gloria Bendita",
       "url": "https://canvaz.scdn.co/upload/artist/4nXXIxTneJksvGXrlmX8oA/video/f76782bf9dde4da4a583732adfe48b09.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "ANDELAGU",
+      "artist": "Camin",
+      "album": "ANDELAGU",
+      "url": "https://canvaz.scdn.co/upload/artist/3qndygm4Vx7bEW8tNyDKSY/video/6bcad410a7e54aaba1d432f2eea1232c.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4903,6 +4966,13 @@
       "scope": "track"
     },
     {
+      "song": "Hier Moet Je Zijn",
+      "artist": "Bryan Mg",
+      "album": "Hier Moet Je Zijn",
+      "url": "https://canvaz.scdn.co/upload/artist/1PyToLP6F2rzV0ZSR71lgl/video/f5153cd58daf4e6bbb23a8c52db39d6c.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Moaning",
       "artist": "Aluna, Jengi",
       "album": "Moaning",
@@ -4924,6 +4994,13 @@
       "scope": "track"
     },
     {
+      "song": "CYRK",
+      "artist": "bambi, Bedoes 2115",
+      "album": "CYRK",
+      "url": "https://canvaz.scdn.co/upload/artist/5ic8bWWvZHWf0dDBi9ThNk/video/bb7ada4da62c45c2a3ca3650b4b52439.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Teraz mam serce",
       "artist": "Natalia Grosiak",
       "album": "Tamtej dziewczyny już nie ma",
@@ -4938,6 +5015,13 @@
       "scope": "track"
     },
     {
+      "song": "LEJ MI BBY",
+      "artist": "maja janowska, Young Leosia",
+      "album": "LEJ MI BBY",
+      "url": "https://canvaz.scdn.co/upload/artist/7qAu2kYGjO28g0CJERiQhM/video/6cb7365c2bf649099323cfa783961f49.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "WŁODI POZDRAWIA MAMĘ",
       "artist": "Polskii, Włodi, Def Jam World Tour",
       "album": "WŁODI POZDRAWIA MAMĘ",
@@ -4949,6 +5033,13 @@
       "artist": "Dagadana",
       "album": "Płynę nad chmurami",
       "url": "https://canvaz.scdn.co/upload/licensor/7a6QFeXtCEDkv8ZPvSNDIK/video/a49462a551f24294b62f1d54043b02bc.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "3K (KRESKA KROPKA KRESKA)",
+      "artist": "OG ENZO, Malik Montana, CUZCO$",
+      "album": "3K (KRESKA KROPKA KRESKA)",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/00fb649437d946ceb0639169f62cd9e8.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4970,6 +5061,13 @@
       "artist": "Lotta",
       "album": "poKOIk",
       "url": "https://canvaz.scdn.co/upload/artist/07EyVrrbqIAHNLw9FEnQUs/video/189cf29b4118486b8226e6e21d4e88cf.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Arunc cu florile",
+      "artist": "Olivia Addams, Liviu Teodorescu",
+      "album": "Arunc cu florile",
+      "url": "https://canvaz.scdn.co/upload/artist/56o9EclNeDcE7p8txENfLn/video/aa6154600d3e41a38e90089d6af1bc68.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -5036,6 +5134,13 @@
       "scope": "track"
     },
     {
+      "song": "week 25",
+      "artist": "de clair.",
+      "album": "veta begas",
+      "url": "https://canvaz.scdn.co/upload/artist/0XcoKb34hnRUc4u9agLp6o/video/f7b2a0f45e1b4c19a9c2dfc1022de731.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "V.I.P",
       "artist": "Yuti",
       "album": "V.I.P",
@@ -5064,13 +5169,6 @@
       "scope": "track"
     },
     {
-      "song": "Carnage (feat. Little Simz)",
-      "artist": "Chase & Status, Little Simz",
-      "album": "Generic Everything",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/aa5931719fd44a7498ec3379cfb36cf7.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Push It",
       "artist": "Noah Carter",
       "album": "Noahs Ark II",
@@ -5078,7 +5176,7 @@
       "scope": "track"
     },
     {
-      "song": "Ude Fra Indre",
+      "song": "Ude Fra Indre (feat. Freyy)",
       "artist": "Noah Carter, Freyy",
       "album": "Noahs Ark II",
       "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/d52e32c2ca564f4d8dbff75107bec574.cnvs.mp4",
@@ -5183,6 +5281,13 @@
       "scope": "track"
     },
     {
+      "song": "bi kahve yaptım",
+      "artist": "Poizi",
+      "album": "bi kahve yaptım",
+      "url": "https://canvaz.scdn.co/upload/artist/250LLR8V4fFq1XFzAB1ZN5/video/41d39a5714d64b62bf112d2a61794c18.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Beni Kendine Bağladı",
       "artist": "Sıla Şahin, Samet Kardeşler",
       "album": "Beni Kendine Bağladı",
@@ -5239,24 +5344,10 @@
       "scope": "track"
     },
     {
-      "song": "Moving at Light Speed",
-      "artist": "Thundercat, Button Masher",
-      "album": "Moving at Light Speed",
-      "url": "https://canvaz.scdn.co/upload/licensor/0aoG0YOalg2ScKXBhSVmIQ/video/4837dc4ba95f4c38b35b1fd7fc791156.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "MADARA (with Eminem)",
       "artist": "EZ MIL, Eminem, Neil Kaplan, Hideyoshi",
       "album": "MADARA (with Eminem)",
       "url": "https://canvaz.scdn.co/upload/artist/1IQ4CjwKkdARjL5KtYiMt4/video/5b923749ada749ab947d0c63c93ee7ea.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "waiting for me",
-      "artist": "Arlo Parks",
-      "album": "Ambiguous Desire (Deluxe)",
-      "url": "https://canvaz.scdn.co/upload/licensor/3XNlKFM3CNbFtXNiqc2vLt/video/a934a05189934ad5a6dce3d174fd3416.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -5285,6 +5376,13 @@
       "artist": "Norah Jones, Chris Stapleton",
       "album": "April's Gone (with Chris Stapleton)",
       "url": "https://canvaz.scdn.co/upload/artist/2Kx7MNY7cI1ENniW7vT30N/video/f8319abbeabd425398d13f6937710a86.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Is It That Deep?",
+      "artist": "Cat Burns",
+      "album": "Is It That Deep?",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/5993e5bacd984013a42965efab5e9b6c.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -5383,6 +5481,13 @@
       "artist": "LEGO",
       "album": "ไม่รวยไม่คุย (Rich)",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/9b90ca4008c74fdda65eaad0df43744c.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "จะกอดเธอไว้ ไม่ปล่อยให้หายไปอีกเลย",
+      "artist": "No One Else, สยาโม",
+      "album": "จะกอดเธอไว้ ไม่ปล่อยให้หายไปอีกเลย",
+      "url": "https://canvaz.scdn.co/upload/licensor/2ihNpZNPbbQ6eQ6usuTcMm/video/7cf40550984748c6828e69e8505c0e8b.cnvs.mp4",
       "scope": "track"
     },
     {
