@@ -254,6 +254,7 @@ internal fun LevyraLibraryScreen(
     onOpenDownloads: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val colors = MaterialTheme.colorScheme
     val deleteOfflineDownloads = rememberOfflineDeleteHandler(viewModel)
     val catalog = remember(
         state.favorites,
@@ -578,26 +579,26 @@ internal fun LevyraLibraryScreen(
                     singleLine = true,
                     shape = LevyraCardDesign.SurfaceShape,
                     textStyle = MaterialTheme.typography.bodyMedium.copy(
-                        color = LevyraText,
+                        color = colors.onSurface,
                         fontWeight = FontWeight.Medium
                     ),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = LevyraText,
-                        unfocusedTextColor = LevyraText,
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                        focusedBorderColor = LevyraCyan.copy(alpha = 0.45f),
+                        focusedTextColor = colors.onSurface,
+                        unfocusedTextColor = colors.onSurface,
+                        focusedContainerColor = colors.surfaceContainerHigh,
+                        unfocusedContainerColor = colors.surfaceContainer,
+                        focusedBorderColor = colors.primary.copy(alpha = 0.42f),
                         unfocusedBorderColor = Color.Transparent,
-                        cursorColor = LevyraCyan,
-                        focusedLeadingIconColor = LevyraCyan,
-                        unfocusedLeadingIconColor = LevyraMuted,
-                        focusedTrailingIconColor = LevyraMuted,
-                        unfocusedTrailingIconColor = LevyraMuted
+                        cursorColor = colors.primary,
+                        focusedLeadingIconColor = colors.primary,
+                        unfocusedLeadingIconColor = colors.onSurfaceVariant,
+                        focusedTrailingIconColor = colors.onSurfaceVariant,
+                        unfocusedTrailingIconColor = colors.onSurfaceVariant
                     ),
                     placeholder = {
                         Text(
                             if (category == LibraryCategory.Device) strings.localFullTagSearchHint else strings.searchPlaceholder,
-                            color = LevyraMuted,
+                            color = colors.onSurfaceVariant,
                             fontSize = 14.sp,
                             maxLines = 1
                         )
