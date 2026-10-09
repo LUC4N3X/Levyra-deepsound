@@ -23427,11 +23427,10 @@ private fun ExploreScreen(
                         )
                     }
                     is ExploreRow.Header -> when (row.anchor) {
-                        ExploreAnchor.Fresh -> ExploreSectionHeader(
+                        ExploreAnchor.Fresh -> ExploreFreshSectionHeader(
                             title = strings.exploreFresh,
                             subtitle = strings.exploreNewReleases,
-                            onPlayAll = onPlayFresh,
-                            onShowAll = { onShortcut(ExploreShortcut.NewReleases) }
+                            onPlayAll = onPlayFresh
                         )
                         ExploreAnchor.Samples -> ExploreSectionHeader(
                             title = strings.exploreSamples,
@@ -23719,6 +23718,48 @@ private fun ExploreMoodCollectionDestination(
         onPlayTrack = { track -> viewModel.playFrom(tracks, track) },
         onRequestTrackArtwork = viewModel::ensureExploreTrackArtwork
     )
+}
+
+@Composable
+private fun ExploreFreshSectionHeader(
+    title: String,
+    subtitle: String,
+    onPlayAll: (() -> Unit)?
+) {
+    val strings = LocalLevyraStrings.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = HomeHorizontalInset, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text = remember(title) { cleanHomeSectionTitle(title) },
+            color = MaterialTheme.colorScheme.onSurface,
+            style = LevyraType.sectionTitle,
+            maxLines = 2,
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { heading() }
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = subtitle,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = LevyraType.metadata,
+                modifier = Modifier.weight(1f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            onPlayAll?.let { action ->
+                HomeOutlinedAction(label = strings.playAll, onClick = action)
+            }
+        }
+    }
 }
 
 @Composable
