@@ -24,7 +24,7 @@ internal fun personalizedSearchPromptText(code: String, prompt: PersonalizedSear
 }
 
 private val SearchPromptDecorations = Regex(
-    """\s*[(\[][^)\]]*[)\]]|\s+[-\u2013]\s+(Single|EP|Remix|Remastered.*)$""",
+    """\s*[(\[]\s*(feat\.?|ft\.?|featuring|with|prod\.?|from|remix|remaster(ed)?|live|version|edit|radio edit|bonus|official)\b[^)\]]*[)\]]|\s+[-\u2013]\s+(Single|EP|Remix|Remastered.*)$""",
     RegexOption.IGNORE_CASE
 )
 private const val SEARCH_PROMPT_VALUE_LIMIT = 22

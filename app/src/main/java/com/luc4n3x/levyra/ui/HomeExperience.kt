@@ -262,6 +262,7 @@ internal fun HomeGenreChips(
 internal fun HomeChartPodium(
     tracks: List<Track>,
     currentId: String?,
+    isPlaying: Boolean,
     contentPadding: PaddingValues,
     onPlay: (Track) -> Unit,
     modifier: Modifier = Modifier
@@ -279,6 +280,7 @@ internal fun HomeChartPodium(
                 rank = index + 1,
                 track = track,
                 active = track.id == currentId,
+                isPlaying = isPlaying && track.id == currentId,
                 onPlay = { onPlay(track) },
                 modifier = Modifier.levyraCarouselDepth(listState, "chart-podium-$index-${track.id}", depthEnabled)
             )
@@ -291,6 +293,7 @@ private fun HomeChartPodiumCard(
     rank: Int,
     track: Track,
     active: Boolean,
+    isPlaying: Boolean,
     onPlay: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -348,7 +351,7 @@ private fun HomeChartPodiumCard(
                         contentAlignment = Alignment.Center
                     ) {
                         LevyraPlayingIndicator(
-                            playing = false,
+                            playing = isPlaying,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                             size = 16.dp
                         )

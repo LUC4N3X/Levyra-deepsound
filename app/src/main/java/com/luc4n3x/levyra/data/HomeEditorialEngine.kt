@@ -565,7 +565,7 @@ object HomeEditorialEngine {
         daySeed: Int
     ): List<Track> {
         val existingKeys = collection.tracks.asSequence().map(::identityKey).toHashSet()
-        val fallbackTracks = if (collection.kind == HomeCollectionKind.Fresh) {
+        val fallbackTracks = if (collection.kind == HomeCollectionKind.Fresh || collection.kind.keepsOrder()) {
             emptyList()
         } else {
             fallbackPool
@@ -590,7 +590,11 @@ object HomeEditorialEngine {
             .toList()
     }
 
+    private fun HomeCollectionKind.keepsOrder(): Boolean =
+        this == HomeCollectionKind.Charts || this == HomeCollectionKind.Repeat
+
     private fun withPrimaryTrack(collection: HomeEditorialCollection, primary: Track): HomeEditorialCollection {
+        if (collection.kind.keepsOrder()) return collection
         val primaryKey = identityKey(primary)
         if (collection.tracks.firstOrNull()?.let(::identityKey) == primaryKey) return collection
         val cap = maxOf(collectionTrackLimit, collection.tracks.size)

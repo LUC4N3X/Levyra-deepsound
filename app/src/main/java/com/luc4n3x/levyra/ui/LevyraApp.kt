@@ -9830,6 +9830,7 @@ private fun HomeScreen(
                         HomeChartPodium(
                             tracks = podiumTracks,
                             currentId = state.currentTrack?.id,
+                            isPlaying = state.isPlaying,
                             contentPadding = PaddingValues(horizontal = LevyraHomeDesign.HorizontalInset),
                             onPlay = { track -> viewModel.playFrom(state.charts, track) }
                         )
