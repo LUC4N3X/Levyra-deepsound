@@ -23618,6 +23618,7 @@ private fun ExploreContentRow(
         is ExploreRow.MoodRail -> ExploreMoodRailRow(
             zones = row.zones,
             selectedZoneId = state.exploreZoneId,
+            onOpenAll = onOpenMoods,
             onOpenZone = onOpenZone,
             onStartZoneMix = { zone ->
                 viewModel.startLevyraMix(
@@ -23659,27 +23660,57 @@ private fun ExploreAnchorHeader(
 private fun ExploreMoodRailRow(
     zones: List<ExploreZone>,
     selectedZoneId: String?,
+    onOpenAll: () -> Unit,
     onOpenZone: (ExploreZone) -> Unit,
     onStartZoneMix: (ExploreZone) -> Unit
 ) {
+    val strings = LocalLevyraStrings.current
+    val moodZones = remember(zones) {
+        val filtered = zones.filter { it.id != ExploreCatalog.NEW_RELEASES_ZONE_ID }
+        if (filtered.isNotEmpty()) filtered else zones
+    }
+    val pairs = remember(moodZones) { moodZones.chunked(2) }
+
     LazyRow(
         state = rememberLazyListState(),
         contentPadding = PaddingValues(horizontal = HomeHorizontalInset),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        itemsIndexed(
-            items = zones,
-            key = { _, zone -> "explore-mood-${zone.id}" },
-            contentType = { _, _ -> "explore-mood-tile" }
-        ) { index, zone ->
-            Row(modifier = Modifier.width(if (index == 0) 224.dp else 186.dp)) {
-                ExploreMoodCard(
-                    zone = zone,
-                    isSelected = zone.id == selectedZoneId,
-                    prominent = index == 0,
-                    onClick = { onOpenZone(zone) },
-                    onStartZoneMix = { onStartZoneMix(zone) }
-                )
+        items(
+            items = pairs,
+            key = { pair -> "explore-mood-pair-${pair.joinToString("-") { it.id }}" }
+        ) { pair ->
+            Column(
+                modifier = Modifier.width(168.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                pair.forEach { zone ->
+                    val artworkUrl = rememberExploreMoodArtworkUrl(zone)
+                    ExploreDiscoveryCategoryCard(
+                        title = zone.label,
+                        identity = zone.id,
+                        artworkUrl = artworkUrl,
+                        emoji = zone.emoji,
+                        accentColors = Color(zone.accentStart) to Color(zone.accentEnd),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(96.dp),
+                        onLongClick = { onStartZoneMix(zone) },
+                        onClick = { onOpenZone(zone) }
+                    )
+                }
+                if (pair.size == 1) {
+                    ExploreDiscoveryCategoryCard(
+                        title = strings.showAll,
+                        identity = "all-moods",
+                        emoji = "↗",
+                        accentColors = Color(0xFF343C48) to Color(0xFF202632),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(96.dp),
+                        onClick = onOpenAll
+                    )
+                }
             }
         }
     }
@@ -23950,69 +23981,104 @@ private fun ExplorePrimaryShortcuts(
     LazyRow(
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(horizontal = HomeHorizontalInset),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         if (ExploreAnchor.Fresh in availableAnchors) {
             item(key = "releases") {
-                ExploreShortcutTile(Icons.Rounded.AutoAwesome, strings.exploreNewReleases) {
-                    onSelect(ExploreShortcut.NewReleases)
-                }
+                ExploreShortcutTile(
+                    icon = Icons.Rounded.AutoAwesome,
+                    label = strings.exploreNewReleases,
+                    onClick = { onSelect(ExploreShortcut.NewReleases) }
+                )
             }
         }
         item(key = "samples") {
-            ExploreShortcutTile(Icons.Rounded.PlayArrow, strings.exploreSamples) {
-                onSelect(ExploreShortcut.Samples)
-            }
+            ExploreShortcutTile(
+                icon = Icons.Rounded.PlayArrow,
+                label = strings.exploreSamples,
+                onClick = { onSelect(ExploreShortcut.Samples) }
+            )
         }
         if (ExploreAnchor.Moods in availableAnchors) {
             item(key = "moods") {
-                ExploreShortcutTile(Icons.Rounded.Mood, strings.exploreMoods) {
-                    onSelect(ExploreShortcut.Moods)
-                }
+                ExploreShortcutTile(
+                    icon = Icons.Rounded.Mood,
+                    label = strings.exploreMoods,
+                    onClick = { onSelect(ExploreShortcut.Moods) }
+                )
             }
         }
         item(key = "radio") {
-            ExploreShortcutTile(Icons.Rounded.Radio, radioStrings.title, onOpenRadio)
+            ExploreShortcutTile(
+                icon = Icons.Rounded.Radio,
+                label = radioStrings.title,
+                onClick = onOpenRadio
+            )
         }
         item(key = "jam") {
-            ExploreShortcutTile(Icons.Rounded.PersonAdd, strings.jamTitle, onOpenJam)
+            ExploreShortcutTile(
+                icon = Icons.Rounded.PersonAdd,
+                label = strings.jamTitle,
+                onClick = onOpenJam
+            )
         }
     }
 }
 
 @Composable
-private fun ExploreShortcutTile(icon: ImageVector, label: String, onClick: () -> Unit) {
+private fun ExploreShortcutTile(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
     val colors = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(20.dp)
     Column(
         modifier = Modifier
-            .width(92.dp)
+            .width(88.dp)
             .heightIn(min = 96.dp)
-            .clip(MaterialTheme.shapes.large)
-            .levyraPressable(onClick = onClick, onClickLabel = label, role = Role.Button)
-            .padding(horizontal = 5.dp, vertical = 7.dp),
+            .clip(shape)
+            .levyraPressable(onClick = onClick, onClickLabel = label, role = Role.Button, pressedScale = LevyraPressScale.Control)
+            .padding(horizontal = 4.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(52.dp)
-                .clip(MaterialTheme.shapes.large)
-                .background(colors.surfaceContainerHigh),
+                .size(54.dp)
+                .shadow(
+                    elevation = 4.dp,
+                    shape = RoundedCornerShape(18.dp),
+                    clip = false,
+                    ambientColor = Color.Black.copy(alpha = 0.25f),
+                    spotColor = Color.Black.copy(alpha = 0.35f)
+                )
+                .clip(RoundedCornerShape(18.dp))
+                .background(colors.surfaceContainerHigh)
+                .border(
+                    BorderStroke(1.dp, colors.outlineVariant.copy(alpha = 0.30f)),
+                    RoundedCornerShape(18.dp)
+                ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                icon,
+                imageVector = icon,
                 contentDescription = null,
-                tint = colors.primary,
+                tint = colors.onSurface,
                 modifier = Modifier.size(24.dp)
             )
         }
         Text(
             text = label,
-            style = LevyraType.caption,
-            color = colors.onSurface,
+            style = LevyraType.caption.copy(
+                fontWeight = FontWeight.Medium,
+                fontSize = 11.sp,
+                letterSpacing = (-0.2).sp
+            ),
+            color = colors.onSurface.copy(alpha = 0.88f),
             textAlign = TextAlign.Center,
-            maxLines = 2,
+            maxLines = 1,
+            softWrap = false,
             overflow = TextOverflow.Ellipsis
         )
     }
@@ -24022,16 +24088,34 @@ private fun ExploreShortcutTile(icon: ImageVector, label: String, onClick: () ->
 private fun ExploreLiveRadioEntry(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val radioStrings = com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog.forCode(LocalLevyraStrings.current.code)
     val colors = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(24.dp)
+    val borderGradient = Brush.linearGradient(
+        listOf(
+            colors.primary.copy(alpha = 0.40f),
+            colors.outlineVariant.copy(alpha = 0.20f),
+            Color.Transparent
+        )
+    )
+
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 84.dp)
-            .clip(LevyraCardDesign.EditorialShape)
-            .background(colors.surfaceContainerHigh)
+            .heightIn(min = 86.dp)
+            .shadow(
+                elevation = 8.dp,
+                shape = shape,
+                clip = false,
+                ambientColor = colors.primary.copy(alpha = 0.12f),
+                spotColor = colors.primary.copy(alpha = 0.18f)
+            )
+            .clip(shape)
+            .background(colors.surfaceContainer)
+            .border(1.dp, borderGradient, shape)
             .levyraPressable(
                 onClick = onClick,
                 onClickLabel = radioStrings.title,
-                role = Role.Button
+                role = Role.Button,
+                pressedScale = LevyraPressScale.Row
             )
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -24039,29 +24123,75 @@ private fun ExploreLiveRadioEntry(onClick: () -> Unit, modifier: Modifier = Modi
     ) {
         Box(
             modifier = Modifier
-                .size(52.dp)
-                .clip(MaterialTheme.shapes.large)
-                .background(colors.primaryContainer),
+                .size(54.dp)
+                .shadow(6.dp, RoundedCornerShape(18.dp), ambientColor = colors.primary.copy(alpha = 0.3f))
+                .clip(RoundedCornerShape(18.dp))
+                .background(colors.primaryContainer)
+                .border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(18.dp)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 Icons.Rounded.Radio,
                 contentDescription = null,
                 tint = colors.onPrimaryContainer,
-                modifier = Modifier.size(27.dp)
+                modifier = Modifier.size(28.dp)
             )
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(radioStrings.title, color = colors.onSurface, style = LevyraType.contentTitle)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = radioStrings.title,
+                    color = colors.onSurface,
+                    style = LevyraType.contentTitle.copy(fontWeight = FontWeight.Bold),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color(0xFFE53935).copy(alpha = 0.16f))
+                        .border(0.75.dp, Color(0xFFE53935).copy(alpha = 0.45f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(5.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFE53935))
+                        )
+                        Text(
+                            text = radioStrings.live,
+                            color = Color(0xFFE53935),
+                            style = LevyraType.overline.copy(
+                                fontWeight = FontWeight.Black,
+                                fontSize = 8.5.sp
+                            )
+                        )
+                    }
+                }
+            }
             Text(
-                radioStrings.exploreSubtitle,
+                text = radioStrings.exploreSubtitle,
                 color = colors.onSurfaceVariant,
                 style = LevyraType.caption,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
         }
-        Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = colors.onSurfaceVariant)
+        Icon(
+            Icons.Rounded.ChevronRight,
+            contentDescription = null,
+            tint = colors.onSurfaceVariant,
+            modifier = Modifier.size(24.dp)
+        )
     }
 }
 
@@ -24104,14 +24234,14 @@ private fun ExploreSampleCard(
     val strings = LocalLevyraStrings.current
     val accentStart = Color(track.accentStart)
     val accentEnd = Color(track.accentEnd)
-    val shape = RoundedCornerShape(18.dp)
+    val shape = RoundedCornerShape(24.dp)
     val scrim = remember {
         Brush.verticalGradient(
             listOf(
-                Color.Black.copy(alpha = 0.34f),
+                Color.Black.copy(alpha = 0.38f),
                 Color.Transparent,
-                Color.Black.copy(alpha = 0.52f),
-                Color.Black.copy(alpha = 0.86f)
+                Color.Black.copy(alpha = 0.55f),
+                Color.Black.copy(alpha = 0.88f)
             )
         )
     }
@@ -24150,19 +24280,19 @@ private fun Modifier.exploreSampleCardStyle(
     accentEnd: Color,
     shape: RoundedCornerShape
 ): Modifier = this
-    .width(148.dp)
+    .width(152.dp)
     .aspectRatio(9f / 16f)
     .shadow(
-        elevation = if (isCurrent) 22.dp else 14.dp,
+        elevation = if (isCurrent) 24.dp else 14.dp,
         shape = shape,
         clip = false,
-        ambientColor = accentStart.copy(alpha = if (isCurrent) 0.28f else 0.12f),
-        spotColor = accentEnd.copy(alpha = if (isCurrent) 0.30f else 0.14f)
+        ambientColor = accentStart.copy(alpha = if (isCurrent) 0.32f else 0.14f),
+        spotColor = accentEnd.copy(alpha = if (isCurrent) 0.40f else 0.18f)
     )
     .clip(shape)
     .border(
-        width = if (isCurrent) 1.25.dp else Dp.Hairline,
-        color = if (isCurrent) accentStart.copy(alpha = 0.58f) else Color.White.copy(alpha = 0.12f),
+        width = if (isCurrent) 1.5.dp else 0.75.dp,
+        color = if (isCurrent) accentStart.copy(alpha = 0.75f) else Color.White.copy(alpha = 0.14f),
         shape = shape
     )
 
