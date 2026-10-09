@@ -14,7 +14,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,7 +38,6 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.data.SpotifyArtistArtworkRepository
 import com.luc4n3x.levyra.domain.ExploreCatalog
@@ -319,17 +321,43 @@ internal fun RowScope.ExploreMoodCard(
                     .matchParentSize()
             )
         } else {
-            Text(
-                text = zone.emoji,
-                color = Color.White.copy(alpha = 0.28f),
-                fontSize = 42.sp,
+            Box(
                 modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 16.dp)
-            )
+                    .matchParentSize()
+                    .background(Brush.linearGradient(listOf(accentStart, accentEnd)))
+            ) {
+                Icon(
+                    Icons.Rounded.GraphicEq,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.28f),
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 16.dp)
+                        .size(64.dp)
+                )
+            }
         }
 
         Box(modifier = Modifier.matchParentSize().background(bottomScrim))
+
+        if (onStartZoneMix != null) {
+            IconButton(
+                onClick = onStartZoneMix,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(10.dp)
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.94f))
+            ) {
+                Icon(
+                    Icons.Rounded.PlayArrow,
+                    contentDescription = strings.mixStartRadio,
+                    tint = Color.Black,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
+        }
 
         Row(
             modifier = Modifier
