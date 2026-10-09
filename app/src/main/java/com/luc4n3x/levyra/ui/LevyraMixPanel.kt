@@ -51,6 +51,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.domain.LevyraMixKind
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
@@ -136,16 +137,42 @@ internal fun LevyraSecondaryToolsRow(
 ) {
     val strings = LocalLevyraStrings.current
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val stacked = maxWidth < 280.dp || LocalDensity.current.fontScale > 1.3f
-        val actions: @Composable (Modifier) -> Unit = { actionModifier ->
-            MixToolAction(Icons.Rounded.Casino, strings.surpriseMe, accent, !loading, stacked, actionModifier) { onStartMix(LevyraMixKind.SurpriseMe) }
-            MixToolAction(Icons.Rounded.GraphicEq, strings.yourSound, accent, true, stacked, actionModifier, onOpenYourSound)
-            MixToolAction(Icons.Rounded.Tune, strings.mixLab, accent, true, stacked, actionModifier, onOpenMixLab)
+        val gap = 8.dp
+        val surprise: @Composable (Modifier) -> Unit = { itemModifier ->
+            MixToolAction(Icons.Rounded.Casino, strings.surpriseMe, accent, !loading, itemModifier) {
+                onStartMix(LevyraMixKind.SurpriseMe)
+            }
         }
-        if (stacked) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { actions(Modifier.fillMaxWidth()) }
-        } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { actions(Modifier.weight(1f)) }
+        val yourSound: @Composable (Modifier) -> Unit = { itemModifier ->
+            MixToolAction(Icons.Rounded.GraphicEq, strings.yourSound, accent, true, itemModifier, onOpenYourSound)
+        }
+        val mixLab: @Composable (Modifier) -> Unit = { itemModifier ->
+            MixToolAction(Icons.Rounded.Tune, strings.mixLab, accent, true, itemModifier, onOpenMixLab)
+        }
+        when {
+            LocalDensity.current.fontScale > 1.3f || maxWidth < 292.dp -> {
+                Column(verticalArrangement = Arrangement.spacedBy(gap)) {
+                    surprise(Modifier.fillMaxWidth())
+                    yourSound(Modifier.fillMaxWidth())
+                    mixLab(Modifier.fillMaxWidth())
+                }
+            }
+            maxWidth >= 510.dp -> {
+                Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                    surprise(Modifier.weight(1f))
+                    yourSound(Modifier.weight(1f))
+                    mixLab(Modifier.weight(1f))
+                }
+            }
+            else -> {
+                Column(verticalArrangement = Arrangement.spacedBy(gap)) {
+                    surprise(Modifier.fillMaxWidth())
+                    Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                        yourSound(Modifier.weight(1f))
+                        mixLab(Modifier.weight(1f))
+                    }
+                }
+            }
         }
     }
 }
@@ -156,18 +183,32 @@ private fun MixToolAction(
     label: String,
     accent: Color,
     enabled: Boolean,
-    horizontal: Boolean,
     modifier: Modifier,
     onClick: () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
-    val content: @Composable () -> Unit = {
+    Row(
+        modifier = modifier
+            .heightIn(min = 54.dp)
+            .clip(LevyraCardDesign.ArtworkShape)
+            .background(if (enabled) colors.surfaceContainerHigh else colors.surfaceContainer)
+            .semantics(mergeDescendants = true) {}
+            .levyraPressable(
+                onClick = onClick,
+                enabled = enabled,
+                pressedScale = LevyraPressScale.Control,
+                role = Role.Button
+            )
+            .padding(horizontal = 12.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(9.dp)
+    ) {
         Box(
             modifier = Modifier
-                .size(36.dp)
+                .size(32.dp)
                 .clip(CircleShape)
                 .background(
-                    if (enabled) accent.copy(alpha = 0.14f)
+                    if (enabled) accent.copy(alpha = 0.12f)
                     else colors.onSurfaceVariant.copy(alpha = 0.08f)
                 ),
             contentAlignment = Alignment.Center
@@ -176,28 +217,18 @@ private fun MixToolAction(
                 icon,
                 contentDescription = null,
                 tint = if (enabled) accent else colors.onSurfaceVariant,
-                modifier = Modifier.size(21.dp)
+                modifier = Modifier.size(19.dp)
             )
         }
         Text(
-            label,
-            style = LevyraType.cardTitle,
+            text = label,
+            style = LevyraType.caption,
             color = if (enabled) colors.onSurface else colors.onSurfaceVariant,
-            softWrap = true,
-            textAlign = if (horizontal) TextAlign.Start else TextAlign.Center
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis
         )
-    }
-    val actionModifier = modifier
-        .heightIn(min = if (horizontal) 56.dp else 88.dp)
-        .clip(LevyraCardDesign.EditorialShape)
-        .background(if (enabled) colors.surfaceContainerHigh else colors.surfaceContainerLow)
-        .semantics(mergeDescendants = true) {}
-        .levyraPressable(onClick = onClick, enabled = enabled, pressedScale = LevyraPressScale.Tile, role = Role.Button)
-        .padding(horizontal = if (horizontal) 12.dp else 6.dp, vertical = 10.dp)
-    if (horizontal) {
-        Row(modifier = actionModifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) { content() }
-    } else {
-        Column(modifier = actionModifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) { content() }
     }
 }
 
