@@ -36,7 +36,7 @@ object LevyraHomeDesign {
     const val EditorialArtworkRatio: Float = 1.5f
     val HeroHeight: Dp = 340.dp
     val ShelfCorner: Dp = 2.dp
-    val ArtworkCorner: Dp = LevyraCardDesign.ArtworkCorner
+    val ArtworkCorner: Dp = 20.dp
     val ThumbCorner: Dp = LevyraCardDesign.ThumbCorner
     val ArtworkCardWidth: Dp = 156.dp
     val ArtworkGridCardWidth: Dp = 122.dp

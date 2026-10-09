@@ -245,6 +245,7 @@ internal fun fiLocalizationEntries(): Map<String, String> = mapOf(
     "albumUnavailable" to "Albumi ei ole saatavilla",
     "albumTracksUnavailable" to "Albumin kappaleet eivät ole saatavilla",
     "showLess" to "Näytä vähemmän",
+    "showMore" to "Näytä lisää",
     "playing" to "Toistetaan",
     "artistProfileUnavailable" to "Artistiprofiili ei ole saatavilla",
     "popularTracks" to "Suositut kappaleet",

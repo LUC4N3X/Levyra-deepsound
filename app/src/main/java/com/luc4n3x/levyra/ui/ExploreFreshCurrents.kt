@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.levyraGroupedListShape
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
@@ -36,6 +37,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import kotlin.math.abs
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.material3.toShape
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -52,7 +59,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.ui.components.LevyraFilterPill
 import com.luc4n3x.levyra.ui.components.LevyraPlayingIndicator
+import com.luc4n3x.levyra.ui.components.LevyraSectionHeader
+import com.luc4n3x.levyra.ui.components.LevyraSectionShowAll
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
@@ -61,15 +71,15 @@ import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.theme.LevyraType
 
-private val FreshChipHeight = 42.dp
-private val FreshArtworkCorner = 28.dp
+private val FreshArtworkCorner = 36.dp
+private val FreshArtworkCornerResting = 20.dp
+private const val FreshArtworkRestingScale = 0.92f
 private val FreshArtworkMaxWidth = 360.dp
 private val FreshArtworkMinWidth = 180.dp
 private const val FreshArtworkScreenHeightRatio = 0.32f
 private val FreshSpotlightPeek = 52.dp
 private val FreshMomentThumb = 52.dp
 private val FreshMomentRowHeight = 68.dp
-private val FreshMomentDividerInset = FreshMomentThumb + 14.dp
 
 @Composable
 internal fun ExploreFreshScopeRail(
@@ -107,60 +117,12 @@ private fun ExploreFreshScopeChip(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val colors = MaterialTheme.colorScheme
-    val container by animateColorAsState(
-        targetValue = if (isSelected) colors.primaryContainer else colors.surfaceContainerHigh.copy(alpha = 0.45f),
-        label = "freshScopeContainer"
+    LevyraFilterPill(
+        label = label,
+        selected = isSelected,
+        onClick = onClick,
+        leadingIcon = if (global) Icons.Rounded.Public else null
     )
-    val content by animateColorAsState(
-        targetValue = if (isSelected) colors.onPrimaryContainer else colors.onSurfaceVariant,
-        label = "freshScopeContent"
-    )
-    val outline by animateColorAsState(
-        targetValue = if (isSelected) colors.primary.copy(alpha = 0.6f) else colors.outlineVariant.copy(alpha = 0.35f),
-        label = "freshScopeOutline"
-    )
-    Box(
-        modifier = Modifier
-            .heightIn(min = 48.dp)
-            .semantics { selected = isSelected }
-            .levyraPressable(
-                onClick = onClick,
-                onClickLabel = label,
-                role = Role.Tab,
-                pressedScale = LevyraPressScale.Control
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Row(
-            modifier = Modifier
-                .height(FreshChipHeight)
-                .clip(CircleShape)
-                .background(container)
-                .border(1.dp, outline, CircleShape)
-                .padding(horizontal = 18.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            if (global) {
-                Icon(
-                    imageVector = Icons.Rounded.Public,
-                    contentDescription = null,
-                    tint = content,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-            Text(
-                text = label,
-                style = LevyraType.cardTitle.copy(
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                ),
-                color = content,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
 }
 
 @Composable
@@ -199,6 +161,10 @@ internal fun ExploreFreshSpotlight(
             val track = tracks[page]
             val isCurrent = track.id == currentTrackId
             ExploreFreshSpotlightPage(
+                pageFocus = {
+                    val distance = pagerState.currentPage - page + pagerState.currentPageOffsetFraction
+                    (1f - abs(distance)).coerceIn(0f, 1f)
+                },
                 track = track,
                 isCurrent = isCurrent,
                 isPlaying = isPlaying && isCurrent,
@@ -220,6 +186,7 @@ internal fun ExploreFreshSpotlight(
 
 @Composable
 private fun ExploreFreshSpotlightPage(
+    pageFocus: () -> Float,
     track: Track,
     isCurrent: Boolean,
     isPlaying: Boolean,
@@ -249,10 +216,9 @@ private fun ExploreFreshSpotlightPage(
         ) {
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(colors.primaryContainer.copy(alpha = 0.55f))
-                    .border(0.75.dp, colors.primary.copy(alpha = 0.40f), RoundedCornerShape(8.dp))
-                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                    .clip(CircleShape)
+                    .background(colors.onSurface.copy(alpha = 0.10f))
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -268,10 +234,10 @@ private fun ExploreFreshSpotlightPage(
                         text = exploreReleaseEyebrow(card.kind, strings).uppercase(Locale.ROOT),
                         style = LevyraType.overline.copy(
                             fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp,
-                            fontSize = 9.5.sp
+                            letterSpacing = 0.8.sp,
+                            fontSize = 10.5.sp
                         ),
-                        color = colors.onPrimaryContainer,
+                        color = colors.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -306,6 +272,7 @@ private fun ExploreFreshSpotlightPage(
             )
         }
         ExploreFreshSpotlightArtwork(
+            pageFocus = pageFocus,
             track = track,
             opensAlbum = card.opensAlbum,
             isCurrent = isCurrent && !card.opensAlbum,
@@ -318,6 +285,7 @@ private fun ExploreFreshSpotlightPage(
 
 @Composable
 private fun ExploreFreshSpotlightArtwork(
+    pageFocus: () -> Float,
     track: Track,
     opensAlbum: Boolean,
     isCurrent: Boolean,
@@ -327,17 +295,10 @@ private fun ExploreFreshSpotlightArtwork(
 ) {
     val strings = LocalLevyraStrings.current
     val colors = MaterialTheme.colorScheme
+    val animationsEnabled = LocalAnimationsEnabled.current
+    val playingBadgeShape = freshPlayingBadgeShape()
     val glowStart = remember(track.accentStart) { Color(track.accentStart) }
     val glowEnd = remember(track.accentEnd) { Color(track.accentEnd) }
-    val borderGradient = remember(glowStart, glowEnd) {
-        Brush.linearGradient(
-            listOf(
-                glowStart.copy(alpha = 0.55f),
-                glowEnd.copy(alpha = 0.35f),
-                Color.White.copy(alpha = 0.15f)
-            )
-        )
-    }
     val scrim = remember {
         Brush.verticalGradient(
             0.50f to Color.Transparent,
@@ -348,16 +309,19 @@ private fun ExploreFreshSpotlightArtwork(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(1f)
-            .shadow(
-                elevation = 20.dp,
-                shape = RoundedCornerShape(FreshArtworkCorner),
-                clip = false,
-                ambientColor = glowStart.copy(alpha = 0.32f),
-                spotColor = glowEnd.copy(alpha = 0.42f)
-            )
-            .clip(RoundedCornerShape(FreshArtworkCorner))
+            .graphicsLayer {
+                val focus = if (animationsEnabled) pageFocus() else 1f
+                val corner = FreshArtworkCornerResting + (FreshArtworkCorner - FreshArtworkCornerResting) * focus
+                val scale = FreshArtworkRestingScale + (1f - FreshArtworkRestingScale) * focus
+                scaleX = scale
+                scaleY = scale
+                shape = RoundedCornerShape(corner.toPx())
+                clip = true
+                shadowElevation = (20.dp * focus).toPx()
+                ambientShadowColor = glowStart.copy(alpha = 0.32f)
+                spotShadowColor = glowEnd.copy(alpha = 0.42f)
+            }
             .background(colors.surfaceContainerHigh)
-            .border(1.dp, borderGradient, RoundedCornerShape(FreshArtworkCorner))
             .levyraPressable(
                 onClick = onOpen,
                 enabled = !isResolving,
@@ -381,11 +345,9 @@ private fun ExploreFreshSpotlightArtwork(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .padding(16.dp)
-                    .size(46.dp)
-                    .shadow(8.dp, CircleShape, ambientColor = colors.primary.copy(alpha = 0.4f))
-                    .clip(CircleShape)
-                    .background(colors.primaryContainer)
-                    .border(1.dp, Color.White.copy(alpha = 0.25f), CircleShape),
+                    .size(52.dp)
+                    .clip(playingBadgeShape)
+                    .background(colors.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
                 if (isResolving) {
@@ -432,36 +394,11 @@ internal fun ExploreFreshMomentHeader(
     modifier: Modifier = Modifier,
     onShowAll: () -> Unit
 ) {
-    val colors = MaterialTheme.colorScheme
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = LevyraHomeDesign.HorizontalInset)
-            .heightIn(min = 48.dp)
-            .levyraPressable(
-                onClick = onShowAll,
-                onClickLabel = title,
-                role = Role.Button,
-                pressedScale = LevyraPressScale.Row
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(2.dp)
-    ) {
-        Text(
-            text = title,
-            style = LevyraType.sectionTitle,
-            color = colors.onSurface,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f, fill = false).semantics { heading() }
-        )
-        Icon(
-            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-            contentDescription = null,
-            tint = colors.onSurfaceVariant,
-            modifier = Modifier.size(26.dp)
-        )
-    }
+    LevyraSectionHeader(
+        title = title,
+        modifier = modifier.padding(horizontal = LevyraHomeDesign.HorizontalInset),
+        actions = { LevyraSectionShowAll(onClick = onShowAll) }
+    )
 }
 
 @Composable
@@ -489,15 +426,12 @@ internal fun ExploreFreshMomentRail(
         beyondViewportPageCount = 1
     ) { page ->
         Column(modifier = Modifier.fillMaxWidth()) {
-            pages[page].forEachIndexed { index, track ->
-                if (index > 0) {
-                    HorizontalDivider(
-                        modifier = Modifier.padding(start = FreshMomentDividerInset),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
-                    )
-                }
+            val pageTracks = pages[page]
+            pageTracks.forEachIndexed { index, track ->
+                if (index > 0) Spacer(modifier = Modifier.height(3.dp))
                 val isCurrent = track.id == currentTrackId
                 ExploreFreshMomentRow(
+                    groupShape = levyraGroupedListShape(index, pageTracks.size),
                     track = track,
                     isCurrent = isCurrent,
                     isPlaying = isPlaying && isCurrent,
@@ -512,6 +446,7 @@ internal fun ExploreFreshMomentRail(
 
 @Composable
 private fun ExploreFreshMomentRow(
+    groupShape: Shape,
     track: Track,
     isCurrent: Boolean,
     isPlaying: Boolean,
@@ -521,13 +456,12 @@ private fun ExploreFreshMomentRow(
 ) {
     val strings = LocalLevyraStrings.current
     val colors = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(16.dp)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = FreshMomentRowHeight)
-            .clip(shape)
-            .background(if (isCurrent) colors.primary.copy(alpha = 0.08f) else Color.Transparent)
+            .clip(groupShape)
+            .background(colors.surfaceContainerHigh.copy(alpha = if (isCurrent) 0.95f else 0.62f))
             .semantics { selected = isCurrent }
             .levyraPressable(
                 onClick = onPlay,
@@ -535,7 +469,7 @@ private fun ExploreFreshMomentRow(
                 role = Role.Button,
                 pressedScale = LevyraPressScale.Row
             )
-            .padding(horizontal = 6.dp, vertical = 4.dp),
+            .padding(horizontal = 10.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -620,3 +554,7 @@ internal fun exploreReleaseEyebrow(kind: ExploreReleaseKind, strings: LevyraStri
         ExploreReleaseKind.Single -> strings.newSingle
         ExploreReleaseKind.Release -> strings.newRelease
     }
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun freshPlayingBadgeShape(): Shape = MaterialShapes.Cookie9Sided.toShape()
