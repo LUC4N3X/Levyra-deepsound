@@ -261,6 +261,7 @@ data class LevyraUiState(
     val exploreCategoryArtwork: Map<String, String> = emptyMap(),
     val exploreTracks: List<Track> = emptyList(),
     val exploreFreshTracks: List<Track> = emptyList(),
+    val exploreWorldFreshTracks: List<Track> = emptyList(),
     val exploreNewReleases: List<AlbumHit> = emptyList(),
     val exploreVideos: List<Track> = emptyList(),
     val exploreSamples: List<Track> = emptyList(),

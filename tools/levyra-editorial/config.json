@@ -201,6 +201,20 @@
       "playlistId": "37i9dQZF1DX4JAvHpjipBk"
     },
     {
+      "id": "new-releases-gb",
+      "kind": "release",
+      "market": "GB",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistQuery": "New Music Friday UK",
+      "titleHints": [
+        "New Music Friday UK",
+        "New Music Friday United Kingdom"
+      ],
+      "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
       "id": "new-releases-it",
       "kind": "release",
       "market": "IT",
@@ -261,6 +275,21 @@
       "titleHints": [
         "Lançamentos da Semana",
         "New Music Friday Brasil"
+      ],
+      "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
+      "id": "new-releases-mx",
+      "kind": "release",
+      "market": "MX",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistQuery": "New Music Friday México",
+      "titleHints": [
+        "New Music Friday México",
+        "New Music Friday Mexico",
+        "Lanzamientos Viernes México"
       ],
       "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
     },
