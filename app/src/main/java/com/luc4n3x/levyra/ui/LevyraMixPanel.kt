@@ -78,12 +78,12 @@ internal fun LevyraMixLauncherPanel(
     Column(
         modifier = modifier.fillMaxWidth()
             .clip(LevyraCardDesign.SurfaceShape)
-            .background(colors.surfaceContainer)
+            .background(colors.surfaceContainerLow)
             .padding(LevyraHomeDesign.EditorialPadding),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         LevyraMixHeroCard(familiarity, loading, accent, onFamiliarityChange = onFamiliarityChange, onStartMix = onStartMix)
-        HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.5f))
+        HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.36f))
         LevyraSecondaryToolsRow(loading, accent, onStartMix = onStartMix, onOpenYourSound = onOpenYourSound, onOpenMixLab = onOpenMixLab)
     }
 }
@@ -162,18 +162,42 @@ private fun MixToolAction(
 ) {
     val colors = MaterialTheme.colorScheme
     val content: @Composable () -> Unit = {
-        Icon(icon, contentDescription = null, tint = if (enabled) accent else colors.onSurfaceVariant, modifier = Modifier.size(22.dp))
-        Text(label, style = LevyraType.cardTitle, color = if (enabled) colors.onSurface else colors.onSurfaceVariant, softWrap = true, textAlign = if (horizontal) TextAlign.Start else TextAlign.Center)
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(
+                    if (enabled) accent.copy(alpha = 0.14f)
+                    else colors.onSurfaceVariant.copy(alpha = 0.08f)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = if (enabled) accent else colors.onSurfaceVariant,
+                modifier = Modifier.size(21.dp)
+            )
+        }
+        Text(
+            label,
+            style = LevyraType.cardTitle,
+            color = if (enabled) colors.onSurface else colors.onSurfaceVariant,
+            softWrap = true,
+            textAlign = if (horizontal) TextAlign.Start else TextAlign.Center
+        )
     }
-    val actionModifier = modifier.heightIn(min = 48.dp)
-        .clip(LevyraCardDesign.ThumbShape)
+    val actionModifier = modifier
+        .heightIn(min = if (horizontal) 56.dp else 88.dp)
+        .clip(LevyraCardDesign.EditorialShape)
+        .background(if (enabled) colors.surfaceContainerHigh else colors.surfaceContainerLow)
         .semantics(mergeDescendants = true) {}
         .levyraPressable(onClick = onClick, enabled = enabled, pressedScale = LevyraPressScale.Tile, role = Role.Button)
-        .padding(horizontal = 4.dp, vertical = 8.dp)
+        .padding(horizontal = if (horizontal) 12.dp else 6.dp, vertical = 10.dp)
     if (horizontal) {
-        Row(modifier = actionModifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) { content() }
+        Row(modifier = actionModifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) { content() }
     } else {
-        Column(modifier = actionModifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) { content() }
+        Column(modifier = actionModifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) { content() }
     }
 }
 
