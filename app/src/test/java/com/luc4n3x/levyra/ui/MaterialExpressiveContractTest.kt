@@ -98,6 +98,22 @@ class MaterialExpressiveContractTest {
     }
 
     @Test
+    fun `explore screen components preserve expressive styling contracts`() {
+        val mix = source(
+            "app/src/main/java/com/luc4n3x/levyra/ui/LevyraMixPanel.kt",
+            "src/main/java/com/luc4n3x/levyra/ui/LevyraMixPanel.kt"
+        )
+        val fresh = source(
+            "app/src/main/java/com/luc4n3x/levyra/ui/ExploreFreshCurrents.kt",
+            "src/main/java/com/luc4n3x/levyra/ui/ExploreFreshCurrents.kt"
+        )
+
+        assertTrue(mix.contains("SonicReactorSpectrum("))
+        assertTrue(mix.contains("MixPresetChip("))
+        assertTrue(fresh.contains("FreshArtworkCorner = 28.dp"))
+    }
+
+    @Test
     fun `material3 expressive uses the current beta api surface`() {
         val versions = source(
             "gradle/libs.versions.toml",
