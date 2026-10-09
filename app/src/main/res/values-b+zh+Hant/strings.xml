@@ -37,9 +37,4 @@
     <string name="shortcut_library">音樂庫</string>
     <string name="shortcut_recognition">辨識音樂</string>
     <string name="shortcut_resume">繼續播放</string>
-    <string name="recognition_notification_channel" translatable="false"></string>
-    <string name="ambient_dream_label" translatable="false"></string>
-    <string name="widget_idle_title" translatable="false"></string>
-    <string name="tile_ambient" translatable="false"></string>
-    <string name="app_name" translatable="false"></string>
 </resources>
