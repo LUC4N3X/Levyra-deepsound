@@ -212,15 +212,30 @@ internal fun exploreFreshFeed(
         ExploreFreshScope.Local -> localTracks
         ExploreFreshScope.World -> worldTracks
     }.distinctBy { track -> track.id }
-    val spotlight = source.take(ExploreSpotlightLimit)
-    val moment = source.drop(spotlight.size).take(ExploreMomentRowsPerPage * ExploreMomentPageLimit)
+    val releases = LinkedHashMap<String, Track>()
+    source.forEach { track -> releases.putIfAbsent(exploreReleaseIdentity(track), track) }
+    val spotlight = releases.values.take(ExploreSpotlightLimit)
+    val spotlightIds = spotlight.mapTo(HashSet()) { track -> track.id }
+    val moment = source
+        .filterNot { track -> track.id in spotlightIds }
+        .take(ExploreMomentRowsPerPage * ExploreMomentPageLimit)
     return ExploreFreshFeed(resolvedScope, spotlight, moment)
+}
+
+internal fun exploreReleaseIdentity(track: Track): String {
+    val album = track.album.trim().lowercase()
+    if (album.isEmpty()) return "track|${track.id}"
+    return "release|${track.artist.trim().lowercase()}|$album"
 }
 
 internal fun exploreMomentPages(tracks: List<Track>): List<List<Track>> =
     tracks.chunked(ExploreMomentRowsPerPage).take(ExploreMomentPageLimit)
 
 internal fun exploreReleaseKind(track: Track): ExploreReleaseKind {
+    when (track.albumType.trim().lowercase()) {
+        "single" -> return ExploreReleaseKind.Single
+        "album", "compilation", "ep" -> return ExploreReleaseKind.Album
+    }
     val album = track.album.trim()
     if (album.isEmpty()) return ExploreReleaseKind.Release
     return if (album.equals(track.title.trim(), ignoreCase = true)) {

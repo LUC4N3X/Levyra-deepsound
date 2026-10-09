@@ -63,7 +63,8 @@ data class Track(
     val youtubeViewCount: Long = -1L,
     val playbackManifest: ResolvedPlaybackManifest? = null,
     val videoSubtitleTracks: List<VideoSubtitleTrack> = emptyList(),
-    val playlistEntryId: String = ""
+    val playlistEntryId: String = "",
+    val albumType: String = ""
 ) {
     val hasPlayableStream: Boolean
         get() = streamUrl.isNotBlank()

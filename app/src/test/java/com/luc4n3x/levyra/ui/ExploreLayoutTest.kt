@@ -334,6 +334,48 @@ class ExploreLayoutTest {
         assertEquals(videoOnly, exploreCoverArtworkTrack(videoOnly))
     }
 
+    @Test
+    fun oneAlbumNeverFillsTheSpotlightWithItsOwnTracks() {
+        val album = List(4) { index ->
+            track("album-$index").copy(title = "Track $index", artist = "Jova", album = "Il Disco")
+        }
+        val single = track("single").copy(title = "Solo", artist = "Other", album = "Solo")
+
+        val feed = exploreFreshFeed(ExploreFreshScope.Local, album + single, emptyList())
+
+        assertEquals(listOf("album-0", "single"), feed.spotlight.map { it.id })
+        assertEquals(listOf("album-1", "album-2", "album-3"), feed.moment.map { it.id })
+    }
+
+    @Test
+    fun tracksWithoutAnAlbumStayIndividualReleases() {
+        val loose = List(3) { index -> track("loose-$index").copy(album = "  ") }
+
+        val feed = exploreFreshFeed(ExploreFreshScope.Local, loose, emptyList())
+
+        assertEquals(listOf("loose-0", "loose-1", "loose-2"), feed.spotlight.map { it.id })
+        assertTrue(feed.moment.isEmpty())
+    }
+
+    @Test
+    fun publishedAlbumTypeOutranksTheTitleHeuristic() {
+        val singleNamedAfterAlbum = track("a").copy(
+            title = "Vertigini",
+            album = "Zarathustra Style",
+            albumType = "single"
+        )
+        val albumSharingItsTitle = track("b").copy(
+            title = "Amatore",
+            album = "Amatore",
+            albumType = "album"
+        )
+        val compilation = track("c").copy(title = "X", album = "Best of", albumType = "COMPILATION")
+
+        assertEquals(ExploreReleaseKind.Single, exploreReleaseKind(singleNamedAfterAlbum))
+        assertEquals(ExploreReleaseKind.Album, exploreReleaseKind(albumSharingItsTitle))
+        assertEquals(ExploreReleaseKind.Album, exploreReleaseKind(compilation))
+    }
+
     private fun zones(count: Int): List<ExploreZone> = List(count) { index ->
         ExploreZone(
             id = "zone-$index",
