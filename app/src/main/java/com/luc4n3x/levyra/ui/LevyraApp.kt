@@ -533,6 +533,7 @@ import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.domain.ArtistBiography
 import com.luc4n3x.levyra.domain.artistBiographyEditorial
 import com.luc4n3x.levyra.domain.ArtistProfile
+import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistRelease
@@ -23321,16 +23322,38 @@ private fun ExploreScreen(
     val selectedZone = remember(zones, state.exploreZoneId) {
         zones.firstOrNull { zone -> zone.id == state.exploreZoneId }
     }
-    val freshTracks = state.exploreFreshTracks
+    val localFreshTracks = state.exploreFreshTracks
+    val worldFreshTracks = state.exploreWorldFreshTracks
+    var freshScope by rememberSaveable { mutableStateOf(ExploreFreshScope.Local) }
+    val freshScopes = remember(localFreshTracks, worldFreshTracks) {
+        exploreFreshScopes(localFreshTracks, worldFreshTracks)
+    }
+    val freshFeed = remember(freshScope, localFreshTracks, worldFreshTracks) {
+        exploreFreshFeed(freshScope, localFreshTracks, worldFreshTracks)
+    }
+    val freshTracks = remember(freshFeed) { freshFeed.spotlight + freshFeed.moment }
+    val momentPages = remember(freshFeed) { exploreMomentPages(freshFeed.moment) }
+    val freshRegionLabel = remember(state.languageCode) {
+        ChartsCatalog.defaultRegionForLanguage(state.languageCode).label
+    }
     val samples = remember(state.exploreSamples) {
         exploreSampleTracks(state.exploreSamples, ExploreImmersiveSampleLimit)
     }
-    val rows = remember(zones, state.isFreshCurrentsLoading, freshTracks.isNotEmpty(), samples.isNotEmpty()) {
+    val rows = remember(
+        zones,
+        state.isFreshCurrentsLoading,
+        freshFeed.spotlight.isNotEmpty(),
+        freshScopes.size > 1,
+        momentPages.isNotEmpty(),
+        samples.isNotEmpty()
+    ) {
         buildExploreRows(
             zones = zones,
             isFreshLoading = state.isFreshCurrentsLoading,
-            hasFreshTracks = freshTracks.isNotEmpty(),
-            hasSamples = samples.isNotEmpty()
+            hasFreshTracks = freshFeed.spotlight.isNotEmpty(),
+            hasSamples = samples.isNotEmpty(),
+            hasFreshScopes = freshScopes.size > 1,
+            hasFreshMoment = momentPages.isNotEmpty()
         )
     }
     val availableAnchors = remember(rows) { exploreAvailableAnchors(rows) }
@@ -23373,6 +23396,15 @@ private fun ExploreScreen(
             putExtra(Intent.EXTRA_TEXT, "${track.title} - ${track.artist}\n${track.streamUrl}")
         }
         context.startActivity(Intent.createChooser(intent, strings.shareVia))
+    }
+    val freshTrackActions: @Composable (Track) -> Unit = { track ->
+        DiscoveryTrackActions(
+            trackTitle = track.title,
+            isFavorite = track.id in state.favoriteIds,
+            onFavorite = { viewModel.toggleFavorite(track) },
+            onAddToPlaylist = { addToPlaylistTarget = track },
+            onShare = { shareFreshTrack(track) }
+        )
     }
     val exploreBottomInset = tabBarBottomContentInset(
         miniPlayerVisible = state.currentTrack != null && !state.isSamplesOpen,
@@ -23455,63 +23487,42 @@ private fun ExploreScreen(
                     ExploreRow.FreshEmpty -> Box(modifier = Modifier.padding(horizontal = HomeHorizontalInset)) {
                         EmptyState(strings.exploreEmpty)
                     }
-                    ExploreRow.FreshCarousel -> Column(
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ExploreRow.FreshScopes -> ExploreFreshScopeRail(
+                        scopes = freshScopes,
+                        selected = freshFeed.scope,
+                        localLabel = freshRegionLabel,
+                        onSelect = { scope -> freshScope = scope }
+                    )
+                    ExploreRow.FreshSpotlight -> ExploreFreshSpotlight(
+                        tracks = freshFeed.spotlight,
+                        currentTrackId = state.currentTrack?.id,
+                        isPlaying = state.isPlaying,
+                        isResolving = state.isResolving,
+                        onOpenReleases = { onShortcut(ExploreShortcut.NewReleases) },
+                        onPlay = { track ->
+                            if (track.id == state.currentTrack?.id) viewModel.togglePlay()
+                            else viewModel.playFrom(freshTracks, track)
+                        },
+                        actions = { track -> freshTrackActions(track) }
+                    )
+                    ExploreRow.FreshMoment -> Column(
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        val spotlight = freshTracks.first()
-                        val spotlightCurrent = spotlight.id == state.currentTrack?.id
-                        ExploreSpotlightCard(
-                            track = spotlight,
-                            isCurrent = spotlightCurrent,
-                            isPlaying = state.isPlaying && spotlightCurrent,
-                            isResolving = state.isResolving && spotlightCurrent,
-                            onOpenReleases = { onShortcut(ExploreShortcut.NewReleases) },
-                            onPlay = {
-                                if (spotlightCurrent) viewModel.togglePlay()
-                                else viewModel.playFrom(freshTracks, spotlight)
-                            },
-                            modifier = Modifier.padding(horizontal = HomeHorizontalInset),
-                            actions = {
-                                DiscoveryTrackActions(
-                                    trackTitle = spotlight.title,
-                                    isFavorite = spotlight.id in state.favoriteIds,
-                                    onFavorite = { viewModel.toggleFavorite(spotlight) },
-                                    onAddToPlaylist = { addToPlaylistTarget = spotlight },
-                                    onShare = { shareFreshTrack(spotlight) }
-                                )
-                            }
+                        ExploreSectionHeader(
+                            title = strings.freshMomentTitle,
+                            onShowAll = { onShortcut(ExploreShortcut.NewReleases) }
                         )
-                        val related = remember(freshTracks) { freshTracks.drop(1).take(8) }
-                        if (related.isNotEmpty()) {
-                            LazyRow(
-                                contentPadding = PaddingValues(horizontal = HomeHorizontalInset),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                items(
-                                    items = related,
-                                    key = { track -> "explore-secondary-${track.id}" },
-                                    contentType = { "explore-secondary-track" }
-                                ) { track ->
-                                    DiscoveryTrackCard(
-                                        track = track,
-                                        isCurrent = track.id == state.currentTrack?.id,
-                                        isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
-                                        isResolving = state.isResolving && track.id == state.currentTrack?.id,
-                                        onPlay = { viewModel.playFrom(freshTracks, track) },
-                                        modifier = Modifier.width(152.dp),
-                                        trailing = {
-                                            DiscoveryTrackActions(
-                                                trackTitle = track.title,
-                                                isFavorite = track.id in state.favoriteIds,
-                                                onFavorite = { viewModel.toggleFavorite(track) },
-                                                onAddToPlaylist = { addToPlaylistTarget = track },
-                                                onShare = { shareFreshTrack(track) }
-                                            )
-                                        }
-                                    )
-                                }
-                            }
-                        }
+                        ExploreFreshMomentRail(
+                            pages = momentPages,
+                            currentTrackId = state.currentTrack?.id,
+                            isPlaying = state.isPlaying,
+                            isResolving = state.isResolving,
+                            onPlay = { track ->
+                                if (track.id == state.currentTrack?.id) viewModel.togglePlay()
+                                else viewModel.playFrom(freshTracks, track)
+                            },
+                            actions = { track -> freshTrackActions(track) }
+                        )
                     }
                     ExploreRow.Samples -> ExploreSamplesRow(
                         samples = samples.take(ExploreSampleLimit),

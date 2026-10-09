@@ -8758,6 +8758,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
             val exploreTracks = current.exploreTracks.map(::withArtwork)
             val exploreFreshTracks = current.exploreFreshTracks.map(::withArtwork)
+            val exploreWorldFreshTracks = current.exploreWorldFreshTracks.map(::withArtwork)
             val exploreVideos = current.exploreVideos.map(::withArtwork)
             val exploreSamples = current.exploreSamples.map(::withArtwork)
             val recentListens = current.recentListens.map(::withArtwork)
@@ -8830,6 +8831,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 homeSections = homeSections,
                 exploreTracks = exploreTracks,
                 exploreFreshTracks = exploreFreshTracks,
+                exploreWorldFreshTracks = exploreWorldFreshTracks,
                 exploreVideos = exploreVideos,
                 exploreSamples = exploreSamples,
                 recentListens = recentListens,
@@ -9633,6 +9635,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             if (current.languageCode != languageCode) current
             else current.copy(
                 exploreFreshTracks = if (freshCurrentsLoadedLanguage == languageCode) current.exploreFreshTracks else emptyList(),
+                exploreWorldFreshTracks = if (freshCurrentsLoadedLanguage == languageCode) current.exploreWorldFreshTracks else emptyList(),
                 isFreshCurrentsLoading = true
             )
         }
@@ -9649,16 +9652,27 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 if (freshCurrentsRequestGeneration != requestGeneration || _state.value.languageCode != languageCode) return@launch
                 if (tracks.isNotEmpty()) freshCurrentsLoadedLanguage = languageCode
+                val worldTracks = try {
+                    chartsRepository.worldFreshTracks(country = market, localTracks = tracks)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Throwable) {
+                    Timber.w(error, "World fresh currents failed for %s", market)
+                    emptyList()
+                }
+                if (freshCurrentsRequestGeneration != requestGeneration || _state.value.languageCode != languageCode) return@launch
                 _state.update { current ->
                     if (current.languageCode != languageCode) current
                     else current.copy(
                         exploreFreshTracks = tracks,
+                        exploreWorldFreshTracks = worldTracks,
                         exploreTracks = if (current.exploreZoneId == ExploreCatalog.NEW_RELEASES_ZONE_ID) tracks else current.exploreTracks,
                         isFreshCurrentsLoading = false,
                         isExploreLoading = if (current.exploreZoneId == ExploreCatalog.NEW_RELEASES_ZONE_ID) false else current.isExploreLoading
                     )
                 }
                 if (tracks.isNotEmpty()) refreshOfficialMetadataBatch(tracks, 8)
+                if (worldTracks.isNotEmpty()) refreshOfficialMetadataBatch(worldTracks, 6)
             } finally {
                 if (freshCurrentsRequestGeneration == requestGeneration) {
                     _state.update { current ->

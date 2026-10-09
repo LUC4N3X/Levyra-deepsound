@@ -41,28 +41,67 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.resume
 
+internal val WorldFreshMarketPriority: List<String> = listOf(
+    "US", "GB", "KR", "JP", "BR", "FR", "DE", "ES", "IT", "MX", "IN", "SE", "NL", "CA", "AU"
+)
+
+internal fun isFreshCurrentCandidate(track: Track): Boolean =
+    track.id.isNotBlank() &&
+        track.title.isNotBlank() &&
+        track.artist.isNotBlank() &&
+        (track.thumbnailUrl.isNotBlank() || track.largeThumbnailUrl.isNotBlank()) &&
+        !isYoutubeShortTrack(track)
+
+internal fun freshCurrentIdentity(track: Track): String = track.isrc.ifBlank {
+    "${track.artist.trim().lowercase()}|${track.title.trim().lowercase()}"
+}
+
 internal fun selectFreshCurrentTracks(
     editorial: List<Track>,
     fallback: List<Track>,
     limit: Int
 ): List<Track> {
     if (limit <= 0) return emptyList()
-    fun eligible(track: Track): Boolean =
-        track.id.isNotBlank() &&
-            track.title.isNotBlank() &&
-            track.artist.isNotBlank() &&
-            (track.thumbnailUrl.isNotBlank() || track.largeThumbnailUrl.isNotBlank()) &&
-            !isYoutubeShortTrack(track)
-
-    val editorialClean = editorial.filter(::eligible)
-    val source = editorialClean.ifEmpty { fallback.filter(::eligible) }
+    val editorialClean = editorial.filter(::isFreshCurrentCandidate)
+    val source = editorialClean.ifEmpty { fallback.filter(::isFreshCurrentCandidate) }
     return source
-        .distinctBy { track ->
-            track.isrc.ifBlank {
-                "${track.artist.trim().lowercase()}|${track.title.trim().lowercase()}"
-            }
-        }
+        .distinctBy(::freshCurrentIdentity)
         .take(limit)
+}
+
+internal fun blendWorldFreshTracks(
+    homeMarket: String,
+    releasesByMarket: Map<String, List<Track>>,
+    localTracks: List<Track>,
+    limit: Int
+): List<Track> {
+    if (limit <= 0) return emptyList()
+    val home = homeMarket.trim().uppercase()
+    val queues = releasesByMarket
+        .mapKeys { (market, _) -> market.trim().uppercase() }
+        .filterKeys { market -> market.length == 2 && market != home }
+        .mapValues { (_, tracks) -> tracks.filter(::isFreshCurrentCandidate) }
+        .filterValues { tracks -> tracks.isNotEmpty() }
+    if (queues.isEmpty()) return emptyList()
+
+    val orderedMarkets = queues.keys.sortedWith(
+        compareBy<String> { market ->
+            WorldFreshMarketPriority.indexOf(market).takeIf { index -> index >= 0 } ?: WorldFreshMarketPriority.size
+        }.thenBy { market -> market }
+    )
+    val seen = localTracks.mapTo(HashSet<String>(), ::freshCurrentIdentity)
+    val blended = ArrayList<Track>(limit)
+    var depth = 0
+    val deepest = queues.values.maxOf { tracks -> tracks.size }
+    while (depth < deepest && blended.size < limit) {
+        for (market in orderedMarkets) {
+            if (blended.size >= limit) break
+            val track = queues.getValue(market).getOrNull(depth) ?: continue
+            if (seen.add(freshCurrentIdentity(track))) blended += track
+        }
+        depth++
+    }
+    return blended
 }
 
 class ChartsRepository(context: Context) {
@@ -151,6 +190,17 @@ class ChartsRepository(context: Context) {
         }
         val fallback = topSongs(country, safeLimit)
         selectFreshCurrentTracks(emptyList(), fallback, safeLimit)
+    }
+
+    suspend fun worldFreshTracks(
+        country: String,
+        localTracks: List<Track>,
+        limit: Int = 18
+    ): List<Track> = withContext(Dispatchers.IO) {
+        val safeLimit = limit.coerceIn(1, 40)
+        val market = country.trim().uppercase().takeIf { it.length == 2 } ?: return@withContext emptyList()
+        val releasesByMarket = editorialCharts.newReleasesByMarket(safeLimit * 2)
+        blendWorldFreshTracks(market, releasesByMarket, localTracks, safeLimit)
     }
 
     suspend fun officialArtwork(title: String, artist: String, country: String): String? = withContext(Dispatchers.IO) {

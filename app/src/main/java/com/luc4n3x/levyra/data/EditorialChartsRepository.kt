@@ -128,6 +128,16 @@ internal class EditorialChartsRepository private constructor(context: Context) {
         snapshot.newReleases(country, limit)
     }
 
+    suspend fun newReleasesByMarket(limit: Int): Map<String, List<Track>> = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        val snapshot = usableSnapshot(now) ?: return@withContext emptyMap()
+        if (snapshot.needsRefresh(now)) warm()
+        val safeLimit = limit.coerceIn(1, 100)
+        snapshot.releaseByMarket
+            .mapValues { (_, tracks) -> tracks.take(safeLimit) }
+            .filterValues { it.isNotEmpty() }
+    }
+
     suspend fun cachedAllMarkets(limit: Int): Map<String, List<Track>> = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         val snapshot = usableSnapshot(now) ?: refreshAsync().await() ?: return@withContext emptyMap()

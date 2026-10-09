@@ -16,7 +16,7 @@ class ExploreLayoutTest {
     fun discoveryContentPrecedesAdvancedMixControls() {
         val rows = buildExploreRows(zones(4), false, true, true)
 
-        assertTrue(rows.indexOf(ExploreRow.FreshCarousel) < rows.indexOf(ExploreRow.MixTools))
+        assertTrue(rows.indexOf(ExploreRow.FreshSpotlight) < rows.indexOf(ExploreRow.MixTools))
         assertTrue(rows.indexOf(ExploreRow.Samples) < rows.indexOf(ExploreRow.MixTools))
         assertEquals(ExploreRow.MixTools, rows.last())
     }
@@ -79,7 +79,7 @@ class ExploreLayoutTest {
             hasSamples = false
         )
 
-        assertTrue(rows.contains(ExploreRow.FreshCarousel))
+        assertTrue(rows.contains(ExploreRow.FreshSpotlight))
         assertFalse(rows.contains(ExploreRow.FreshLoading))
     }
 
@@ -222,6 +222,88 @@ class ExploreLayoutTest {
         assertFalse(ExploreCatalog.NEW_RELEASES_ZONE_ID in fallbackIds)
         assertFalse(ExploreCatalog.LOCAL_WAVE_ZONE_ID in fallbackIds)
         assertTrue("rap-drill" in fallbackIds)
+    }
+
+    @Test
+    fun scopeRailAppearsOnlyWhenBothFeedsExist() {
+        val local = List(3) { index -> track("local-$index") }
+        val world = List(3) { index -> track("world-$index") }
+
+        assertEquals(listOf(ExploreFreshScope.Local), exploreFreshScopes(local, emptyList()))
+        assertEquals(listOf(ExploreFreshScope.World), exploreFreshScopes(emptyList(), world))
+        assertEquals(
+            listOf(ExploreFreshScope.Local, ExploreFreshScope.World),
+            exploreFreshScopes(local, world)
+        )
+        assertTrue(exploreFreshScopes(emptyList(), emptyList()).isEmpty())
+    }
+
+    @Test
+    fun worldScopeFallsBackToTheLocalFeedWhenNothingInternationalLoaded() {
+        val local = List(6) { index -> track("local-$index") }
+
+        val feed = exploreFreshFeed(ExploreFreshScope.World, local, emptyList())
+
+        assertEquals(ExploreFreshScope.Local, feed.scope)
+        assertEquals(listOf("local-0", "local-1", "local-2", "local-3", "local-4"), feed.spotlight.map { it.id })
+        assertEquals(listOf("local-5"), feed.moment.map { it.id })
+    }
+
+    @Test
+    fun spotlightAndMomentNeverRepeatTheSameTrack() {
+        val source = List(30) { index -> track("id-$index") } + track("id-0")
+
+        val feed = exploreFreshFeed(ExploreFreshScope.Local, source, emptyList())
+        val ids = feed.spotlight.map { it.id } + feed.moment.map { it.id }
+
+        assertEquals(ExploreSpotlightLimit, feed.spotlight.size)
+        assertEquals(ids.size, ids.toSet().size)
+        assertEquals(ExploreMomentRowsPerPage * ExploreMomentPageLimit, feed.moment.size)
+    }
+
+    @Test
+    fun momentPagesStayBoundedAndKeepFeedOrder() {
+        val tracks = List(10) { index -> track("id-$index") }
+
+        val pages = exploreMomentPages(tracks)
+
+        assertEquals(3, pages.size)
+        assertEquals(listOf("id-0", "id-1", "id-2", "id-3"), pages.first().map { it.id })
+        assertEquals(listOf("id-8", "id-9"), pages.last().map { it.id })
+        assertTrue(exploreMomentPages(List(40) { index -> track("x-$index") }).size <= ExploreMomentPageLimit)
+    }
+
+    @Test
+    fun freshRowsFollowTheEditorialOrderAndDropEmptySections() {
+        val rows = buildExploreRows(
+            zones = zones(2),
+            isFreshLoading = false,
+            hasFreshTracks = true,
+            hasSamples = false,
+            hasFreshScopes = true,
+            hasFreshMoment = true
+        )
+
+        val headerIndex = exploreAnchorIndex(rows, ExploreAnchor.Fresh)
+        assertEquals(ExploreRow.FreshScopes, rows[headerIndex + 1])
+        assertEquals(ExploreRow.FreshSpotlight, rows[headerIndex + 2])
+        assertEquals(ExploreRow.FreshMoment, rows[headerIndex + 3])
+
+        val minimal = buildExploreRows(zones(2), false, true, false)
+        assertFalse(minimal.contains(ExploreRow.FreshScopes))
+        assertFalse(minimal.contains(ExploreRow.FreshMoment))
+        assertTrue(minimal.contains(ExploreRow.FreshSpotlight))
+    }
+
+    @Test
+    fun releaseKindDistinguishesAlbumsFromSingles() {
+        val single = track("single").copy(title = "Vertigini", album = "vertigini")
+        val album = track("album").copy(title = "Vertigini", album = "Zarathustra Style")
+        val unknown = track("unknown").copy(title = "Vertigini", album = "  ")
+
+        assertEquals(ExploreReleaseKind.Single, exploreReleaseKind(single))
+        assertEquals(ExploreReleaseKind.Album, exploreReleaseKind(album))
+        assertEquals(ExploreReleaseKind.Release, exploreReleaseKind(unknown))
     }
 
     private fun zones(count: Int): List<ExploreZone> = List(count) { index ->
