@@ -206,7 +206,8 @@ internal fun LibraryToolbar(
                             color = colors.onSurface,
                             style = LevyraType.caption,
                             modifier = Modifier.weight(1f),
-                            maxLines = 2,
+                            maxLines = 1,
+                            softWrap = false,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
