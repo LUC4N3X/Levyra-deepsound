@@ -11,7 +11,7 @@
     <string name="widget_lyrics">متن ترانه</string>
     <string name="radar_channel_name">رادار انتشار</string>
     <string name="radar_channel_description">انتشارهای جدید از هنرمندانی که دنبال می‌کنید</string>
-    <string name="radar_new_release_title">انتشار جدید از &#x2068;%1$s&#x2069;</string>
+    <string name="radar_new_release_title">انتشار جدید از ⁨%1$s⁩</string>
     <string name="automatic_backups">پشتیبان‌گیری خودکار</string>
     <string name="car_home">خانه</string>
     <string name="car_downloads">دانلودها</string>
