@@ -23618,6 +23618,7 @@ private fun ExploreContentRow(
         is ExploreRow.MoodRail -> ExploreMoodRailRow(
             zones = row.zones,
             selectedZoneId = state.exploreZoneId,
+            onOpenAll = onOpenMoods,
             onOpenZone = onOpenZone,
             onStartZoneMix = { zone ->
                 viewModel.startLevyraMix(
@@ -23659,9 +23660,11 @@ private fun ExploreAnchorHeader(
 private fun ExploreMoodRailRow(
     zones: List<ExploreZone>,
     selectedZoneId: String?,
+    onOpenAll: () -> Unit,
     onOpenZone: (ExploreZone) -> Unit,
     onStartZoneMix: (ExploreZone) -> Unit
 ) {
+    val strings = LocalLevyraStrings.current
     val moodZones = remember(zones) {
         val filtered = zones.filter { it.id != ExploreCatalog.NEW_RELEASES_ZONE_ID }
         if (filtered.isNotEmpty()) filtered else zones
@@ -23694,6 +23697,18 @@ private fun ExploreMoodRailRow(
                             .height(96.dp),
                         onLongClick = { onStartZoneMix(zone) },
                         onClick = { onOpenZone(zone) }
+                    )
+                }
+                if (pair.size == 1) {
+                    ExploreDiscoveryCategoryCard(
+                        title = strings.showAll,
+                        identity = "all-moods",
+                        emoji = "↗",
+                        accentColors = Color(0xFF343C48) to Color(0xFF202632),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(96.dp),
+                        onClick = onOpenAll
                     )
                 }
             }
