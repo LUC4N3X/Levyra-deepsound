@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
@@ -240,22 +241,30 @@ private fun ExploreFreshSpotlightPage(
             )
             actions()
         }
-        Text(
-            text = card.title,
-            style = titleStyle,
-            color = colors.onSurface,
-            minLines = 2,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
-        Text(
-            text = card.subtitle,
-            style = subtitleStyle,
-            color = colors.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
+        val textBlockHeight = with(LocalDensity.current) {
+            (titleStyle.lineHeight.toPx() * 2 + subtitleStyle.lineHeight.toPx()).toDp()
+        }
+        Column(
+            modifier = Modifier
+                .padding(bottom = 12.dp)
+                .height(textBlockHeight),
+            verticalArrangement = Arrangement.Bottom
+        ) {
+            Text(
+                text = card.title,
+                style = titleStyle,
+                color = colors.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = card.subtitle,
+                style = subtitleStyle,
+                color = colors.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
         ExploreFreshSpotlightArtwork(
             track = track,
             opensAlbum = card.opensAlbum,
