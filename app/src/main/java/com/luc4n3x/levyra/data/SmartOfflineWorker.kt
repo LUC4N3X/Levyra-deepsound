@@ -60,7 +60,9 @@ class SmartOfflineWorker(
         if (!shouldRunSmartOffline(settings, ranked.size, manualDownloadActive)) {
             return@withLock Result.success()
         }
-        val currentMediaId = PlaybackService.activePlayer?.currentMediaItem?.mediaId.orEmpty()
+        val currentMediaId = withContext(Dispatchers.Main.immediate) {
+            PlaybackService.activePlayer?.currentMediaItem?.mediaId.orEmpty()
+        }
         val activeTasks = database.offlineDownloadTasksDao().active()
         val activeTrackKeys = activeTasks.mapTo(hashSetOf()) { it.taskKey }
         val stored = database.downloadedTracksDao().all().map { entity ->
@@ -247,6 +249,7 @@ class SmartOfflineWorker(
     private suspend fun hasActiveManualDownload(database: LevyraDatabase): Boolean =
         database.offlineDownloadTasksDao().active().any { task ->
             task.state in SMART_OFFLINE_ACTIVE_STATES &&
+                task.state != "PAUSED" &&
                 DownloadOwnership.fromStorage(task.ownership) == DownloadOwnership.MANUAL
         }
 

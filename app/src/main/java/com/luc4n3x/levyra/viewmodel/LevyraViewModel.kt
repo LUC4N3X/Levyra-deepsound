@@ -882,6 +882,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val offlineExporter = OfflineAudioExporter(application.applicationContext, resolver)
     private val favoritesStore = FavoritesStore(application.applicationContext)
     private val favoriteMutationMutex = Mutex()
+    private val smartOfflineSettingsMutationMutex = Mutex()
+    private val smartOfflineSettingsMutationId = AtomicLong()
+    @Volatile private var pendingSmartOfflineSettings: LevyraSmartOfflineSettings? = null
     private val recommendationFeedbackMutationMutex = Mutex()
     private val followedArtistsStore = FollowedArtistsStore(application.applicationContext)
     private val speedDialStore = SpeedDialStore(application.applicationContext)
@@ -3606,7 +3609,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun observeSmartOfflineSettings() {
         viewModelScope.launch {
             preferences.smartOfflineSettingsFlow.collectLatest { settings ->
-                _state.update { it.copy(smartOfflineSettings = settings) }
+                val pending = pendingSmartOfflineSettings
+                if (pending == null || pending == settings) {
+                    _state.update { current ->
+                        val latestPending = pendingSmartOfflineSettings
+                        if (latestPending != null && latestPending != settings) current
+                        else current.copy(smartOfflineSettings = settings)
+                    }
+                    if (pendingSmartOfflineSettings == settings) {
+                        pendingSmartOfflineSettings = null
+                    }
+                }
             }
         }
     }
@@ -5349,11 +5362,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setSmartOfflineSettings(value: LevyraSmartOfflineSettings) {
         val normalized = value.normalized()
+        val mutationId = smartOfflineSettingsMutationId.incrementAndGet()
+        pendingSmartOfflineSettings = normalized
         _state.update { it.copy(smartOfflineSettings = normalized) }
         viewModelScope.launch(Dispatchers.IO) {
-            preferences.setSmartOfflineSettings(normalized)
-            SmartOfflineScheduler.schedule(levyraContext, normalized)
-            if (!normalized.enabled) SmartOfflineScheduler.cancelSmartDownloads(levyraContext)
+            smartOfflineSettingsMutationMutex.withLock {
+                if (mutationId != smartOfflineSettingsMutationId.get()) return@withLock
+                preferences.setSmartOfflineSettings(normalized)
+                if (mutationId != smartOfflineSettingsMutationId.get()) return@withLock
+                SmartOfflineScheduler.schedule(levyraContext, normalized)
+                if (!normalized.enabled) SmartOfflineScheduler.cancelSmartDownloads(levyraContext)
+            }
         }
     }
 

@@ -530,6 +530,10 @@ internal fun LevyraLibraryScreen(
     val selectedPlaylists = remember(selectedKeys, state.playlists) {
         state.playlists.filter { "playlist:${it.id}" in selectedKeys }
     }
+    val smartOfflineSummary = remember(state.downloads) {
+        val smart = state.downloads.filter { it.ownership == DownloadOwnership.SMART_OFFLINE }
+        smart.size to smart.sumOf(DownloadedTrack::sizeBytes)
+    }
     val selectedDownloads = remember(category, selectedKeys, selectedTracks, state.downloads, catalog.offlineItems) {
         if (category == LibraryCategory.Offline) {
             catalog.offlineItems.filter { it.key in selectedKeys }.map { it.download }
@@ -930,9 +934,6 @@ internal fun LevyraLibraryScreen(
                 )
 
                 LibraryCategory.Offline -> {
-                    val smartDownloads = state.downloads.filter {
-                        it.ownership == DownloadOwnership.SMART_OFFLINE
-                    }
                     item(key = "offline-storage") {
                         LibraryOfflineSummary(
                             bytes = state.downloadStorageBytes,
@@ -941,11 +942,11 @@ internal fun LevyraLibraryScreen(
                             }
                         )
                     }
-                    if (state.smartOfflineSettings.enabled || smartDownloads.isNotEmpty()) {
+                    if (state.smartOfflineSettings.enabled || smartOfflineSummary.first > 0) {
                         item(key = "smart-offline-summary") {
                             LibrarySmartOfflineSummary(
-                                songCount = smartDownloads.size,
-                                bytes = smartDownloads.sumOf(DownloadedTrack::sizeBytes),
+                                songCount = smartOfflineSummary.first,
+                                bytes = smartOfflineSummary.second,
                                 lastUpdatedAt = state.smartOfflineSettings.lastRefreshAt,
                                 onRefresh = viewModel::refreshSmartOffline
                             )
@@ -1005,9 +1006,11 @@ internal fun LevyraLibraryScreen(
                                 isDownloaded = true,
                                 downloadProgress = null,
                                 metadata = listOf(
-                                    strings.smartOfflineCopy().title.takeIf {
-                                        item.download.ownership == DownloadOwnership.SMART_OFFLINE
-                                    }.orEmpty(),
+                                    if (item.download.ownership == DownloadOwnership.SMART_OFFLINE) {
+                                        strings.smartOfflineCopy().title
+                                    } else {
+                                        ""
+                                    },
                                     item.download.mimeType.substringAfter('/').uppercase(Locale.ROOT),
                                     strings.formatLibraryBytes(item.download.sizeBytes)
                                 ).filter(String::isNotBlank).joinToString(" · "),

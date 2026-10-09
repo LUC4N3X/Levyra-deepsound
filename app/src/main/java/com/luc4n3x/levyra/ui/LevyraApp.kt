@@ -685,6 +685,7 @@ import com.luc4n3x.levyra.ui.i18n.queueSectionCopy
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.ui.i18n.automationCopy
 import com.luc4n3x.levyra.ui.i18n.smartOfflineCopy
+import com.luc4n3x.levyra.ui.i18n.formatLibraryBytes
 import com.luc4n3x.levyra.ui.i18n.updatedLabel
 import com.luc4n3x.levyra.ui.i18n.localizedAudioPresetLabel
 import com.luc4n3x.levyra.ui.ambient.LevyraAmbientOverlay
@@ -20328,13 +20329,9 @@ private fun SmartOfflineSettingsCard(
                 icon = Icons.Rounded.Storage,
                 title = copy.storageLimit,
                 subtitle = copy.storageLimitSubtitle,
-                options = listOf(
-                    presetBytes[0].toString() to "500 MB",
-                    presetBytes[1].toString() to "1 GB",
-                    presetBytes[2].toString() to "2 GB",
-                    presetBytes[3].toString() to "5 GB",
-                    "custom" to copy.custom
-                ),
+                options = presetBytes.map { bytes ->
+                    bytes.toString() to strings.formatLibraryBytes(bytes)
+                } + ("custom" to copy.custom),
                 selected = if (customSelected) "custom" else settings.storageLimitBytes.toString(),
                 onSelect = { value ->
                     if (value == "custom") {
@@ -20448,6 +20445,7 @@ private fun SmartOfflineTextSetting(
                 onValueChange = onValueChange,
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
+                label = { Text(title) },
                 placeholder = { Text(hint) },
                 suffix = suffixComposable,
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
