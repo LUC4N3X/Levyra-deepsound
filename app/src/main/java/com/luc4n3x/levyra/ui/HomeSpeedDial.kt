@@ -89,8 +89,8 @@ import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 import kotlin.math.abs
 
 private val SpeedDialTileSize = 64.dp
-private val SpeedDialTileGap = 12.dp
-private val SpeedDialTileShape = RoundedCornerShape(14.dp)
+private val SpeedDialTileGap = 10.dp
+private val SpeedDialTileShape = RoundedCornerShape(18.dp)
 private val SpeedDialAutoScrollEdge = 40.dp
 private val SpeedDialAutoScrollStep = 14.dp
 private const val SpeedDialLiftScale = 1.08f
