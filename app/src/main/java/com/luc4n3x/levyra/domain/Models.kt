@@ -311,7 +311,8 @@ object ExploreCatalog {
             ExploreZone("rock-alt", strings.exploreRockAlt, "🦑", rockQuery, 0xFFFF6E40.toInt(), 0xFFFF1744.toInt()),
             ExploreZone("latino", strings.exploreLatino, "🔥", latinoQuery, 0xFFFFC400.toInt(), 0xFFFF6E40.toInt()),
             ExploreZone("lofi-chill", strings.exploreLofiChill, "🫧", chillQuery, 0xFF64FFDA.toInt(), 0xFF00B0FF.toInt()),
-            ExploreZone("anime-jpop", strings.exploreJpopAnime, "🏮", jpopQuery, 0xFFFF5252.toInt(), 0xFFB388FF.toInt())
+            ExploreZone("anime-jpop", strings.exploreJpopAnime, "🏮", jpopQuery, 0xFFFF5252.toInt(), 0xFFB388FF.toInt()),
+            ExploreZone("afrobeats", "Afrobeats", "♪", "afrobeats amapiano music hits 2026", 0xFFD29B65.toInt(), 0xFF735B89.toInt())
         )
     }
 
