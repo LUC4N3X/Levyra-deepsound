@@ -138,11 +138,11 @@ internal fun LibraryHero(title: String, subtitle: String) {
 internal fun LibraryCategoryChip(label: String, selected: Boolean, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Surface(
-        color = if (selected) colors.onSurface.copy(alpha = 0.12f) else Color.Transparent,
-        shape = LevyraCardDesign.ArtworkShape,
+        color = if (selected) colors.primaryContainer else colors.surfaceContainerLow,
+        shape = LibraryPillShape,
         modifier = Modifier
             .heightIn(min = 48.dp)
-            .clip(LevyraCardDesign.ArtworkShape)
+            .clip(LibraryPillShape)
             .selectable(selected = selected, role = Role.Tab, onClick = onClick)
     ) {
         Row(
@@ -150,8 +150,8 @@ internal fun LibraryCategoryChip(label: String, selected: Boolean, onClick: () -
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (selected) Icon(Icons.Rounded.Check, contentDescription = null, tint = colors.onSurface, modifier = Modifier.size(16.dp))
-            Text(label, color = if (selected) colors.onSurface else colors.onSurfaceVariant, style = LevyraType.cardTitle)
+            if (selected) Icon(Icons.Rounded.Check, contentDescription = null, tint = colors.onPrimaryContainer, modifier = Modifier.size(16.dp))
+            Text(label, color = if (selected) colors.onPrimaryContainer else colors.onSurfaceVariant, style = LevyraType.cardTitle)
         }
     }
 }
@@ -170,6 +170,7 @@ internal fun LibraryToolbar(
     onSelectAll: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val colors = MaterialTheme.colorScheme
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -182,11 +183,11 @@ internal fun LibraryToolbar(
         ) {
             Box(modifier = Modifier.weight(1f)) {
                 Surface(
-                    color = MaterialTheme.colorScheme.surfaceContainer,
-                    shape = LevyraCardDesign.ThumbShape,
+                    color = colors.surfaceContainerHigh,
+                    shape = LevyraCardDesign.ArtworkShape,
                     modifier = Modifier.fillMaxWidth()
                         .heightIn(min = 48.dp)
-                        .clip(LevyraCardDesign.ThumbShape)
+                        .clip(LevyraCardDesign.ArtworkShape)
                         .clickable(onClick = { onSortExpanded(true) })
                 ) {
                     Row(
@@ -197,12 +198,12 @@ internal fun LibraryToolbar(
                         Icon(
                             Icons.AutoMirrored.Rounded.Sort,
                             contentDescription = null,
-                            tint = LevyraCyan,
+                            tint = colors.primary,
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
                             text = sort.libraryLabel(strings),
-                            color = LevyraText,
+                            color = colors.onSurface,
                             style = LevyraType.caption,
                             modifier = Modifier.weight(1f),
                             maxLines = 2,
@@ -215,7 +216,7 @@ internal fun LibraryToolbar(
                         DropdownMenuItem(
                             text = { Text(option.libraryLabel(strings)) },
                             leadingIcon = if (option == sort) {
-                                { Icon(Icons.Rounded.Check, contentDescription = null, tint = LevyraCyan) }
+                                { Icon(Icons.Rounded.Check, contentDescription = null, tint = colors.primary) }
                             } else null,
                             onClick = {
                                 if (option == sort) {
@@ -230,11 +231,11 @@ internal fun LibraryToolbar(
                 }
             }
             Surface(
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                shape = LevyraCardDesign.ThumbShape,
+                color = colors.surfaceContainerHigh,
+                shape = LevyraCardDesign.ArtworkShape,
                 modifier = Modifier
                     .heightIn(min = 48.dp)
-                    .clip(LevyraCardDesign.ThumbShape)
+                    .clip(LevyraCardDesign.ArtworkShape)
                     .clickable(onClick = onToggleDirection)
                     .semantics {
                         contentDescription = "${strings.librarySortDirection}: ${sort.directionLabel(direction, strings)}"
@@ -251,7 +252,7 @@ internal fun LibraryToolbar(
                             Icons.Rounded.ArrowDownward
                         },
                         contentDescription = null,
-                        tint = LevyraCyan,
+                        tint = colors.primary,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -262,7 +263,7 @@ internal fun LibraryToolbar(
                 Icon(
                     Icons.Rounded.DoneAll,
                     contentDescription = strings.all,
-                    tint = LevyraMuted,
+                    tint = colors.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -271,7 +272,7 @@ internal fun LibraryToolbar(
                     Icon(
                         if (layout == LibraryLayout.List) Icons.Rounded.GridView else Icons.AutoMirrored.Rounded.ViewList,
                         contentDescription = strings.options,
-                        tint = LevyraMuted,
+                        tint = colors.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -690,38 +691,86 @@ private fun SmartCollectionShortcut(card: SmartCollection, modifier: Modifier = 
             .orEmpty()
     }
     val enabled = card.tracks.isNotEmpty() || card.enabledWhenEmpty
-    Row(
+    val hasArtwork = artworkUrl.isNotBlank()
+    Box(
         modifier = modifier
             .height(SmartCollectionShortcutHeight)
-            .clip(LevyraCardDesign.ThumbShape)
-            .background(colors.onSurface.copy(alpha = 0.08f))
+            .clip(LevyraCardDesign.EditorialShape)
+            .background(colors.surfaceContainerHigh)
             .semantics(mergeDescendants = true) {}
-            .levyraPressable(onClick = card.onClick, enabled = enabled, role = Role.Button, pressedScale = LevyraPressScale.Tile),
-        verticalAlignment = Alignment.CenterVertically
+            .levyraPressable(onClick = card.onClick, enabled = enabled, role = Role.Button, pressedScale = LevyraPressScale.Tile)
     ) {
+        if (hasArtwork) {
+            AsyncImage(
+                model = artworkUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize()
+            )
+            Box(
+                Modifier.matchParentSize().background(
+                    Brush.verticalGradient(
+                        listOf(Color.Black.copy(alpha = 0.08f), Color.Black.copy(alpha = 0.84f))
+                    )
+                )
+            )
+        } else {
+            Box(
+                Modifier.matchParentSize().background(
+                    Brush.linearGradient(
+                        listOf(
+                            card.accent.copy(alpha = 0.26f).compositeOver(colors.surfaceContainerHigh),
+                            colors.surfaceContainerHigh
+                        )
+                    )
+                )
+            )
+        }
         Box(
             modifier = Modifier
-                .size(SmartCollectionShortcutHeight)
-                .background(Brush.linearGradient(listOf(card.accent, card.accent.copy(alpha = 0.45f).compositeOver(Color.Black)))),
+                .align(Alignment.TopStart)
+                .padding(10.dp)
+                .size(30.dp)
+                .clip(CircleShape)
+                .background(
+                    if (hasArtwork) Color.Black.copy(alpha = 0.48f)
+                    else card.accent.copy(alpha = 0.18f)
+                ),
             contentAlignment = Alignment.Center
         ) {
-            if (artworkUrl.isNotBlank()) {
-                AsyncImage(model = artworkUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.matchParentSize())
-            } else {
-                Icon(card.icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
-            }
+            Icon(
+                card.icon,
+                contentDescription = null,
+                tint = if (hasArtwork) Color.White else colors.onSurface,
+                modifier = Modifier.size(18.dp)
+            )
         }
         Column(
-            modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            Text(card.title, color = colors.onSurface, style = LevyraType.cardTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(card.detail, color = colors.onSurfaceVariant, style = LevyraType.caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                card.title,
+                color = if (hasArtwork) Color.White else colors.onSurface,
+                style = LevyraType.cardTitle,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                card.detail,
+                color = if (hasArtwork) Color.White.copy(alpha = 0.82f) else colors.onSurfaceVariant,
+                style = LevyraType.caption,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
 
-private val SmartCollectionShortcutHeight = 60.dp
+private val SmartCollectionShortcutHeight = 104.dp
 
 @Composable
 internal fun LibraryListeningDashboard(
