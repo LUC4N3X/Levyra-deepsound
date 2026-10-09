@@ -705,10 +705,12 @@ private fun SmartCollectionShortcut(card: SmartCollection, modifier: Modifier = 
             .orEmpty()
     }
     val enabled = card.tracks.isNotEmpty() || card.enabledWhenEmpty
-    Row(
+    val hasArtwork = artworkUrl.isNotBlank()
+    val shape = LevyraCardDesign.EditorialShape
+    Box(
         modifier = modifier
             .height(SmartCollectionShortcutHeight)
-            .clip(LevyraCardDesign.ArtworkShape)
+            .clip(shape)
             .background(colors.surfaceContainerHigh)
             .semantics(mergeDescendants = true) {}
             .levyraPressable(
@@ -717,78 +719,84 @@ private fun SmartCollectionShortcut(card: SmartCollection, modifier: Modifier = 
                 enabled = enabled,
                 role = Role.Button,
                 pressedScale = LevyraPressScale.Tile
-            ),
-        verticalAlignment = Alignment.CenterVertically
+            )
     ) {
-        Box(
-            modifier = Modifier.size(SmartCollectionShortcutHeight)
-                .background(
+        if (hasArtwork) {
+            AsyncImage(
+                model = artworkUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize()
+            )
+            Box(
+                Modifier.matchParentSize().background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.Black.copy(alpha = 0.16f),
+                            Color.Black.copy(alpha = 0.32f),
+                            Color.Black.copy(alpha = 0.90f)
+                        )
+                    )
+                )
+            )
+        } else {
+            Box(
+                Modifier.matchParentSize().background(
                     Brush.linearGradient(
                         listOf(
-                            card.accent.copy(alpha = 0.24f).compositeOver(colors.surfaceContainerHigh),
+                            card.accent.copy(alpha = 0.19f).compositeOver(colors.surfaceContainerHigh),
                             colors.surfaceContainerHigh
                         )
                     )
+                )
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(10.dp)
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(
+                    if (hasArtwork) Color.Black.copy(alpha = 0.46f)
+                    else colors.surfaceContainerHighest.copy(alpha = 0.84f)
                 ),
             contentAlignment = Alignment.Center
         ) {
-            if (artworkUrl.isNotBlank()) {
-                AsyncImage(
-                    model = artworkUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.matchParentSize()
-                )
-                Box(
-                    Modifier.matchParentSize().background(
-                        Brush.verticalGradient(
-                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.28f))
-                        )
-                    )
-                )
-            }
-            Box(
-                modifier = Modifier.size(32.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (artworkUrl.isNotBlank()) Color.Black.copy(alpha = 0.48f)
-                        else card.accent.copy(alpha = 0.16f)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    card.icon,
-                    contentDescription = null,
-                    tint = if (artworkUrl.isNotBlank()) Color.White else colors.onSurface,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
+            Icon(
+                card.icon,
+                contentDescription = null,
+                tint = if (hasArtwork) Color.White else colors.primary,
+                modifier = Modifier.size(18.dp)
+            )
         }
         Column(
-            modifier = Modifier.weight(1f).padding(horizontal = 10.dp),
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
             Text(
                 text = card.title,
-                color = colors.onSurface,
+                color = if (hasArtwork) Color.White else colors.onSurface,
                 style = LevyraType.cardTitle,
-                maxLines = 1,
-                softWrap = false,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = card.detail,
-                color = colors.onSurfaceVariant,
+                color = if (hasArtwork) Color.White.copy(alpha = 0.84f) else colors.onSurfaceVariant,
                 style = LevyraType.caption,
                 maxLines = 1,
-                softWrap = false,
                 overflow = TextOverflow.Ellipsis
             )
         }
     }
 }
 
-private val SmartCollectionShortcutHeight = 72.dp
+private val SmartCollectionShortcutHeight = 120.dp
 
 @Composable
 internal fun LibraryListeningDashboard(
