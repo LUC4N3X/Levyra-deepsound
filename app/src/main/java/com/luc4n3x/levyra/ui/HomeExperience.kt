@@ -32,6 +32,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.domain.ExploreZone
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.clip
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.items
@@ -197,6 +198,7 @@ internal fun HomeGenreChips(
     onSelect: (ExploreZone) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = MaterialTheme.colorScheme
     LazyRow(
         modifier = modifier.fillMaxWidth(),
         contentPadding = contentPadding,
@@ -207,12 +209,12 @@ internal fun HomeGenreChips(
             val corner = if (LocalAnimationsEnabled.current) {
                 levyraExpressiveCorner(
                     interactionSource = interaction,
-                    rest = 12.dp,
-                    pressed = 24.dp,
+                    rest = LevyraHomeDesign.MoodChipCorner,
+                    pressed = 28.dp,
                     label = "homeGenreChipCorner"
                 )
             } else {
-                12.dp
+                LevyraHomeDesign.MoodChipCorner
             }
             Box(
                 modifier = Modifier
@@ -229,13 +231,13 @@ internal fun HomeGenreChips(
                     modifier = Modifier
                         .heightIn(min = LevyraHomeDesign.MoodChipVisualHeight)
                         .clip(RoundedCornerShape(corner))
-                        .background(LevyraText.copy(alpha = 0.10f))
-                        .padding(horizontal = 14.dp, vertical = 6.dp),
+                        .background(colors.surfaceContainerHigh)
+                        .padding(horizontal = 16.dp, vertical = 7.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = zone.label,
-                        color = LevyraText,
+                        color = colors.onSurface,
                         style = LevyraType.cardTitle,
                         maxLines = 1
                     )
