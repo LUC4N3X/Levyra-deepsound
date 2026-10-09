@@ -23461,7 +23461,6 @@ private fun ExploreScreen(
                     is ExploreRow.Header -> when (row.anchor) {
                         ExploreAnchor.Fresh -> ExploreFreshSectionHeader(
                             title = strings.exploreFresh,
-                            subtitle = strings.exploreNewReleases,
                             onPlayAll = onPlayFresh
                         )
                         ExploreAnchor.Samples -> ExploreSectionHeader(
@@ -23498,7 +23497,6 @@ private fun ExploreScreen(
                         currentTrackId = state.currentTrack?.id,
                         isPlaying = state.isPlaying,
                         isResolving = state.isResolving,
-                        onOpenReleases = { onShortcut(ExploreShortcut.NewReleases) },
                         onPlay = { track ->
                             if (track.id == state.currentTrack?.id) viewModel.togglePlay()
                             else viewModel.playFrom(freshTracks, track)
@@ -23508,7 +23506,7 @@ private fun ExploreScreen(
                     ExploreRow.FreshMoment -> Column(
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        ExploreSectionHeader(
+                        ExploreFreshMomentHeader(
                             title = strings.freshMomentTitle,
                             onShowAll = { onShortcut(ExploreShortcut.NewReleases) }
                         )
@@ -23734,41 +23732,28 @@ private fun ExploreMoodCollectionDestination(
 @Composable
 private fun ExploreFreshSectionHeader(
     title: String,
-    subtitle: String,
     onPlayAll: (() -> Unit)?
 ) {
     val strings = LocalLevyraStrings.current
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = HomeHorizontalInset, vertical = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+            .padding(horizontal = HomeHorizontalInset, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
             text = remember(title) { cleanHomeSectionTitle(title) },
             color = MaterialTheme.colorScheme.onSurface,
             style = LevyraType.sectionTitle,
             maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier
-                .fillMaxWidth()
+                .weight(1f)
                 .semantics { heading() }
         )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = subtitle,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = LevyraType.metadata,
-                modifier = Modifier.weight(1f),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            onPlayAll?.let { action ->
-                HomeOutlinedAction(label = strings.playAll, onClick = action)
-            }
+        onPlayAll?.let { action ->
+            HomeOutlinedAction(label = strings.playAll, onClick = action)
         }
     }
 }
