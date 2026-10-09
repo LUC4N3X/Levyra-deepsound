@@ -7,10 +7,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 object LevyraCardDesign {
-    val ThumbCorner: Dp = 12.dp
-    val ArtworkCorner: Dp = 16.dp
-    val EditorialCorner: Dp = 24.dp
-    val SurfaceCorner: Dp = 28.dp
+    val ThumbCorner: Dp = 10.dp
+    val ArtworkCorner: Dp = 12.dp
+    val EditorialCorner: Dp = 20.dp
+    val SurfaceCorner: Dp = 24.dp
 
     val ThumbShape: Shape = RoundedCornerShape(ThumbCorner)
     val ArtworkShape: Shape = RoundedCornerShape(ArtworkCorner)
