@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,12 +45,12 @@ internal fun Modifier.levyraDockSurface(): Modifier {
     return this
         .shadow(
             elevation = 18.dp,
-            shape = LevyraCardDesign.SurfaceShape,
+            shape = CircleShape,
             clip = false,
             ambientColor = shadowColor,
             spotColor = shadowColor
         )
-        .clip(LevyraCardDesign.SurfaceShape)
+        .clip(CircleShape)
         .background(fill)
 }
 
@@ -57,13 +59,16 @@ internal fun LevyraDockProgress(progress: Float, modifier: Modifier = Modifier) 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(2.dp)
+            .padding(start = 28.dp, end = 28.dp, bottom = 4.dp)
+            .height(3.dp)
+            .clip(CircleShape)
             .background(LevyraText.copy(alpha = 0.08f))
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth(progress.coerceIn(0f, 1f))
                 .fillMaxHeight()
+                .clip(CircleShape)
                 .background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraPink)))
         )
     }

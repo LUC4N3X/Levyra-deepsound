@@ -245,6 +245,7 @@ internal fun filLocalizationEntries(): Map<String, String> = mapOf(
     "albumUnavailable" to "Hindi available ang album",
     "albumTracksUnavailable" to "Hindi available ang mga kanta ng album",
     "showLess" to "Mas kaunti",
+    "showMore" to "Higit pa",
     "playing" to "Tumutugtog",
     "artistProfileUnavailable" to "Hindi available ang profile ng artist",
     "popularTracks" to "Mga sikat na kanta",
