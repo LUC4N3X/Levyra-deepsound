@@ -238,28 +238,23 @@ internal fun exploreReleaseIdentity(track: Track): String {
 internal fun exploreMomentPages(tracks: List<Track>): List<List<Track>> =
     tracks.chunked(ExploreMomentRowsPerPage).take(ExploreMomentPageLimit)
 
-internal fun exploreReleaseKind(track: Track): ExploreReleaseKind {
-    when (track.albumType.trim().lowercase()) {
-        "single" -> return ExploreReleaseKind.Single
-        "album", "compilation", "ep" -> return ExploreReleaseKind.Album
-    }
-    return when {
-        track.trackTotal == 1 -> ExploreReleaseKind.Single
-        track.trackTotal > 1 -> ExploreReleaseKind.Album
-        else -> ExploreReleaseKind.Release
-    }
-}
+private val ExploreDeclaredAlbumTypes = setOf("album", "compilation", "ep")
 
 internal fun exploreReleaseCard(track: Track): ExploreReleaseCard {
-    val kind = exploreReleaseKind(track)
+    val declaredType = track.albumType.trim().lowercase()
     val album = track.album.trim()
-    if (kind == ExploreReleaseKind.Album && album.isNotEmpty()) {
+    if (declaredType in ExploreDeclaredAlbumTypes && album.isNotEmpty()) {
         return ExploreReleaseCard(
-            kind = kind,
+            kind = ExploreReleaseKind.Album,
             title = album,
             subtitle = track.albumArtist.trim().ifBlank { track.artist.trim() },
             opensAlbum = true
         )
+    }
+    val kind = if (declaredType == "single" || track.trackTotal == 1) {
+        ExploreReleaseKind.Single
+    } else {
+        ExploreReleaseKind.Release
     }
     return ExploreReleaseCard(
         kind = kind,

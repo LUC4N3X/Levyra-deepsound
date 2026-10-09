@@ -296,29 +296,54 @@ class ExploreLayoutTest {
     }
 
     @Test
-    fun releaseKindIsNeverGuessedFromTheTitle() {
-        val trackOnAnAlbum = track("x").copy(title = "Le foglie di te", album = "AMATORE", albumType = "")
-        val selfTitled = track("y").copy(title = "Vertigini", album = "Vertigini", albumType = "")
+    fun aTrackFromANewAlbumStaysTheTrack() {
+        val card = exploreReleaseCard(
+            track("x").copy(
+                title = "Le foglie di te",
+                artist = "Jovanotti, Samurai Jay",
+                album = "AMATORE",
+                albumArtist = "Samurai Jay & Vito Salamandra",
+                albumType = "",
+                trackTotal = 12
+            )
+        )
 
-        assertEquals(ExploreReleaseKind.Release, exploreReleaseKind(trackOnAnAlbum))
-        assertEquals(ExploreReleaseKind.Release, exploreReleaseKind(selfTitled))
+        assertEquals("Le foglie di te", card.title)
+        assertEquals("Jovanotti, Samurai Jay", card.subtitle)
+        assertEquals(ExploreReleaseKind.Release, card.kind)
+        assertFalse(card.opensAlbum)
     }
 
     @Test
-    fun resolvedCollectionSizeSettlesSingleVersusAlbum() {
-        val base = track("x").copy(title = "Le foglie di te", album = "AMATORE", albumType = "")
+    fun aOneTrackReleaseReadsAsASingle() {
+        val card = exploreReleaseCard(
+            track("x").copy(title = "La Falda", artist = "Judeline", album = "La Falda", trackTotal = 1)
+        )
 
-        assertEquals(ExploreReleaseKind.Single, exploreReleaseKind(base.copy(trackTotal = 1)))
-        assertEquals(ExploreReleaseKind.Album, exploreReleaseKind(base.copy(trackTotal = 12)))
-        assertEquals(ExploreReleaseKind.Release, exploreReleaseKind(base.copy(trackTotal = 0)))
+        assertEquals(ExploreReleaseKind.Single, card.kind)
+        assertEquals("La Falda", card.title)
+        assertFalse(card.opensAlbum)
     }
 
     @Test
-    fun aReportedTypeStillOutranksTheCollectionSize() {
-        val base = track("x").copy(title = "Le foglie di te", album = "AMATORE", trackTotal = 12)
+    fun onlyADeclaredAlbumTypeTurnsTheCardIntoAnAlbum() {
+        val base = track("x").copy(
+            title = "Le foglie di te",
+            artist = "Jovanotti, Samurai Jay",
+            album = "AMATORE",
+            albumArtist = "Samurai Jay & Vito Salamandra",
+            trackTotal = 12
+        )
 
-        assertEquals(ExploreReleaseKind.Single, exploreReleaseKind(base.copy(albumType = "single")))
-        assertEquals(ExploreReleaseKind.Album, exploreReleaseKind(base.copy(albumType = "album")))
+        listOf("album", "compilation", "EP").forEach { declared ->
+            val card = exploreReleaseCard(base.copy(albumType = declared))
+            assertEquals(ExploreReleaseKind.Album, card.kind)
+            assertEquals("AMATORE", card.title)
+            assertEquals("Samurai Jay & Vito Salamandra", card.subtitle)
+            assertTrue("$declared should open the album", card.opensAlbum)
+        }
+        assertFalse(exploreReleaseCard(base.copy(albumType = "")).opensAlbum)
+        assertFalse(exploreReleaseCard(base.copy(albumType = "single")).opensAlbum)
     }
 
     @Test
@@ -386,34 +411,6 @@ class ExploreLayoutTest {
 
         assertEquals(listOf("loose-0", "loose-1", "loose-2"), feed.spotlight.map { it.id })
         assertTrue(feed.moment.isEmpty())
-    }
-
-    @Test
-    fun releaseKindComesFromTheTypeTheSourceReported() {
-        val single = track("a").copy(title = "Vertigini", album = "Vertigini", albumType = "single")
-        val album = track("b").copy(title = "Le foglie di te", album = "AMATORE", albumType = "album")
-        val compilation = track("c").copy(title = "X", album = "Best of", albumType = "COMPILATION")
-
-        assertEquals(ExploreReleaseKind.Single, exploreReleaseKind(single))
-        assertEquals(ExploreReleaseKind.Album, exploreReleaseKind(album))
-        assertEquals(ExploreReleaseKind.Album, exploreReleaseKind(compilation))
-    }
-
-    @Test
-    fun anAlbumCardNamesTheAlbumAndOpensIt() {
-        val card = exploreReleaseCard(
-            track("x").copy(
-                title = "Le foglie di te",
-                artist = "Jovanotti, Samurai Jay",
-                album = "AMATORE",
-                albumArtist = "Jovanotti",
-                albumType = "album"
-            )
-        )
-
-        assertEquals("AMATORE", card.title)
-        assertEquals("Jovanotti", card.subtitle)
-        assertTrue(card.opensAlbum)
     }
 
     @Test

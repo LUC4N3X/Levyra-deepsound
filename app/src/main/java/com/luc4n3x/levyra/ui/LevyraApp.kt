@@ -23403,7 +23403,12 @@ private fun ExploreScreen(
             isFavorite = track.id in state.favoriteIds,
             onFavorite = { viewModel.toggleFavorite(track) },
             onAddToPlaylist = { addToPlaylistTarget = track },
-            onShare = { shareFreshTrack(track) }
+            onShare = { shareFreshTrack(track) },
+            onOpenAlbum = if (track.album.isNotBlank()) {
+                { viewModel.openAlbum(trackAlbumHit(track)) }
+            } else {
+                null
+            }
         )
     }
     val exploreBottomInset = tabBarBottomContentInset(
