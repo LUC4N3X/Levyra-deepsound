@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.library
 
+import androidx.compose.foundation.shape.CircleShape
 import android.Manifest
 import android.app.Activity
 import android.os.Build
@@ -577,7 +578,7 @@ internal fun LevyraLibraryScreen(
                     onValueChange = { query = it },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                     singleLine = true,
-                    shape = LevyraCardDesign.SurfaceShape,
+                    shape = CircleShape,
                     textStyle = MaterialTheme.typography.bodyMedium.copy(
                         color = colors.onSurface,
                         fontWeight = FontWeight.Medium

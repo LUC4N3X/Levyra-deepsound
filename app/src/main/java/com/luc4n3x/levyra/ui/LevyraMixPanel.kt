@@ -359,7 +359,7 @@ private fun MixToolAction(
     val actionModifier = modifier
         .heightIn(min = 68.dp)
         .clip(shape)
-        .background(colors.secondaryContainer.copy(alpha = if (enabled) 1f else 0.5f))
+        .background(colors.onSurface.copy(alpha = if (enabled) 0.08f else 0.04f))
         .semantics(mergeDescendants = true) {}
         .levyraPressable(
             onClick = onClick,
@@ -378,7 +378,7 @@ private fun MixToolAction(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = colors.onSecondaryContainer,
+            tint = colors.onSurface,
             modifier = Modifier.size(22.dp)
         )
         Spacer(modifier = Modifier.height(5.dp))
@@ -389,7 +389,7 @@ private fun MixToolAction(
                 fontSize = 11.5.sp,
                 letterSpacing = (-0.2).sp
             ),
-            color = colors.onSecondaryContainer,
+            color = colors.onSurface,
             softWrap = false,
             textAlign = TextAlign.Center,
             maxLines = 1,

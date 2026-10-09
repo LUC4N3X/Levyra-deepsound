@@ -36,7 +36,7 @@ object LevyraHomeDesign {
     const val EditorialArtworkRatio: Float = 1.5f
     val HeroHeight: Dp = 340.dp
     val ShelfCorner: Dp = 2.dp
-    val ArtworkCorner: Dp = LevyraCardDesign.ArtworkCorner
+    val ArtworkCorner: Dp = 20.dp
     val ThumbCorner: Dp = LevyraCardDesign.ThumbCorner
     val ArtworkCardWidth: Dp = 156.dp
     val ArtworkGridCardWidth: Dp = 122.dp
@@ -46,7 +46,7 @@ object LevyraHomeDesign {
     val TrackColumnPeek: Dp = 28.dp
     val TrackColumnGap: Dp = 6.dp
     val OrbitTileGap: Dp = 4.5.dp
-    val OrbitTileCorner: Dp = 16.dp
+    val OrbitTileCorner: Dp = 8.dp
     val OrbitTileTitleInset: Dp = 9.dp
     val OrbitPageEndInset: Dp = 20.dp
     val OrbitAvatarSize: Dp = 34.dp

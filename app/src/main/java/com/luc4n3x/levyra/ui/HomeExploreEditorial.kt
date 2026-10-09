@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.progressSemantics
@@ -207,7 +208,8 @@ internal fun DiscoveryEditorialCard(
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
     accentStart: Color = Color(0xFF7C3AED),
-    accentEnd: Color = Color(0xFF4C1D95)
+    accentEnd: Color = Color(0xFF4C1D95),
+    artworkShape: Shape? = null
 ) {
     val contrastPalette = remember(accentStart, accentEnd) {
         editorialContrastPalette(accentStart, accentEnd)
@@ -274,14 +276,24 @@ internal fun DiscoveryEditorialCard(
                         modifier = Modifier.size(LevyraHomeDesign.EditorialThumb),
                         contentAlignment = Alignment.Center
                     ) {
-                        CoverImage(
-                            track = artwork,
-                            modifier = Modifier
-                                .size(96.dp)
-                                .rotate(11f)
-                                .clip(RoundedCornerShape(10.dp))
-                                .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(10.dp))
-                        )
+                        if (artworkShape != null) {
+                            CoverImage(
+                                track = artwork,
+                                modifier = Modifier
+                                    .size(LevyraHomeDesign.EditorialThumb)
+                                    .rotate(-8f)
+                                    .clip(artworkShape)
+                            )
+                        } else {
+                            CoverImage(
+                                track = artwork,
+                                modifier = Modifier
+                                    .size(96.dp)
+                                    .rotate(11f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(10.dp))
+                            )
+                        }
                     }
                 }
             }

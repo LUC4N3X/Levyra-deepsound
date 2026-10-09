@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.levyraGroupedListShape
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
@@ -79,7 +80,6 @@ private const val FreshArtworkScreenHeightRatio = 0.32f
 private val FreshSpotlightPeek = 52.dp
 private val FreshMomentThumb = 52.dp
 private val FreshMomentRowHeight = 68.dp
-private val FreshMomentDividerInset = FreshMomentThumb + 14.dp
 
 @Composable
 internal fun ExploreFreshScopeRail(
@@ -217,7 +217,7 @@ private fun ExploreFreshSpotlightPage(
             Box(
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(colors.secondaryContainer)
+                    .background(colors.onSurface.copy(alpha = 0.10f))
                     .padding(horizontal = 10.dp, vertical = 4.dp)
             ) {
                 Row(
@@ -237,7 +237,7 @@ private fun ExploreFreshSpotlightPage(
                             letterSpacing = 0.8.sp,
                             fontSize = 10.5.sp
                         ),
-                        color = colors.onSecondaryContainer,
+                        color = colors.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -426,15 +426,12 @@ internal fun ExploreFreshMomentRail(
         beyondViewportPageCount = 1
     ) { page ->
         Column(modifier = Modifier.fillMaxWidth()) {
-            pages[page].forEachIndexed { index, track ->
-                if (index > 0) {
-                    HorizontalDivider(
-                        modifier = Modifier.padding(start = FreshMomentDividerInset),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
-                    )
-                }
+            val pageTracks = pages[page]
+            pageTracks.forEachIndexed { index, track ->
+                if (index > 0) Spacer(modifier = Modifier.height(3.dp))
                 val isCurrent = track.id == currentTrackId
                 ExploreFreshMomentRow(
+                    groupShape = levyraGroupedListShape(index, pageTracks.size),
                     track = track,
                     isCurrent = isCurrent,
                     isPlaying = isPlaying && isCurrent,
@@ -449,6 +446,7 @@ internal fun ExploreFreshMomentRail(
 
 @Composable
 private fun ExploreFreshMomentRow(
+    groupShape: Shape,
     track: Track,
     isCurrent: Boolean,
     isPlaying: Boolean,
@@ -458,13 +456,12 @@ private fun ExploreFreshMomentRow(
 ) {
     val strings = LocalLevyraStrings.current
     val colors = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(16.dp)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = FreshMomentRowHeight)
-            .clip(shape)
-            .background(if (isCurrent) colors.primary.copy(alpha = 0.08f) else Color.Transparent)
+            .clip(groupShape)
+            .background(colors.surfaceContainerHigh.copy(alpha = if (isCurrent) 0.95f else 0.62f))
             .semantics { selected = isCurrent }
             .levyraPressable(
                 onClick = onPlay,
@@ -472,7 +469,7 @@ private fun ExploreFreshMomentRow(
                 role = Role.Button,
                 pressedScale = LevyraPressScale.Row
             )
-            .padding(horizontal = 6.dp, vertical = 4.dp),
+            .padding(horizontal = 10.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {

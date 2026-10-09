@@ -295,15 +295,22 @@ private fun HomeChartPodiumCard(
     modifier: Modifier = Modifier
 ) {
     val rankText = rank.toString()
+    val colors = MaterialTheme.colorScheme
+    val artworkSize = if (rank == 1) PodiumHeroArtwork else PodiumArtwork
+    val artworkShape = PodiumArtworkShape
+    val numeralColor = LevyraText.copy(alpha = if (rank == 1) 0.88f else 0.62f)
     Box(
         modifier = modifier
-            .size(width = if (rankText.length > 1) 236.dp else 196.dp, height = 200.dp)
+            .size(
+                width = (if (rankText.length > 1) 236.dp else 196.dp) + (artworkSize - PodiumArtwork),
+                height = 200.dp + (artworkSize - PodiumArtwork)
+            )
             .clip(LevyraCardDesign.EditorialShape)
             .levyraPressable(onClick = onPlay, role = Role.Button, pressedScale = LevyraPressScale.Tile)
     ) {
         Text(
             text = rankText,
-            color = LevyraText.copy(alpha = 0.72f),
+            color = numeralColor,
             style = TextStyle(
                 fontSize = 112.sp,
                 lineHeight = 112.sp,
@@ -319,15 +326,15 @@ private fun HomeChartPodiumCard(
         Column(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .width(132.dp),
+                .width(artworkSize),
             verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.CaptionTopGap)
         ) {
-            Box(modifier = Modifier.size(132.dp)) {
+            Box(modifier = Modifier.size(artworkSize)) {
                 CoverImage(
                     track = track,
                     modifier = Modifier
                         .matchParentSize()
-                        .clip(PodiumArtworkShape),
+                        .clip(artworkShape),
                     highRes = false
                 )
                 if (active) {
@@ -359,6 +366,8 @@ private fun HomeChartPodiumCard(
 }
 
 private val PodiumArtworkShape = RoundedCornerShape(24.dp)
+private val PodiumArtwork = 132.dp
+private val PodiumHeroArtwork = 156.dp
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable

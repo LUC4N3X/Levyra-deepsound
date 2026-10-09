@@ -24,9 +24,14 @@ private val PlayMorph: Morph by lazy {
     Morph(MaterialShapes.Square.normalized(), MaterialShapes.Cookie12Sided.normalized())
 }
 
-internal class LevyraPlayMorphShape(private val progress: Float) : Shape {
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private val AvatarPressMorph: Morph by lazy {
+    Morph(MaterialShapes.Circle.normalized(), MaterialShapes.Cookie12Sided.normalized())
+}
+
+internal class LevyraMorphShape(private val morph: Morph, private val progress: Float) : Shape {
     override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
-        val path = PlayMorph.toPath(progress.coerceIn(0f, 1f), android.graphics.Path()).asComposePath()
+        val path = morph.toPath(progress.coerceIn(0f, 1f), android.graphics.Path()).asComposePath()
         path.transform(Matrix().apply { scale(size.width, size.height) })
         return Outline.Generic(path)
     }
@@ -43,5 +48,15 @@ internal fun rememberLevyraPlayMorphShape(playing: Boolean, animated: Boolean): 
         },
         label = "levyra-play-morph"
     )
-    return remember(progress) { LevyraPlayMorphShape(progress) }
+    return remember(progress) { LevyraMorphShape(PlayMorph, progress) }
+}
+
+@Composable
+internal fun rememberLevyraAvatarPressShape(pressed: Boolean, animated: Boolean): Shape {
+    val progress by animateFloatAsState(
+        targetValue = if (pressed && animated) 1f else 0f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "levyra-avatar-press-morph"
+    )
+    return remember(progress) { LevyraMorphShape(AvatarPressMorph, progress) }
 }

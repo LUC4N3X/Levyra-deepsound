@@ -1,5 +1,12 @@
 package com.luc4n3x.levyra.ui.library
 
+import com.luc4n3x.levyra.ui.components.levyraGroupedGridShape
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.material3.toShape
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.foundation.text.BasicText
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -344,11 +351,16 @@ internal fun SmartCollectionGrid(
         )
     )
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        cards.chunked(2).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { card ->
-                    SmartCollectionShortcut(card, Modifier.weight(1f))
+    val rows = cards.chunked(2)
+    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        rows.forEachIndexed { rowIndex, row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                row.forEachIndexed { columnIndex, card ->
+                    SmartCollectionShortcut(
+                        card = card,
+                        shape = levyraGroupedGridShape(rowIndex, columnIndex, rows.size, 2),
+                        modifier = Modifier.weight(1f)
+                    )
                 }
                 if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
             }
@@ -669,8 +681,9 @@ private fun SmartCollectionAction(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SmartCollectionShortcut(card: SmartCollection, modifier: Modifier = Modifier) {
+private fun SmartCollectionShortcut(card: SmartCollection, shape: Shape, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
     val artworkUrl = remember(card.tracks) {
         card.tracks.asSequence()
@@ -682,35 +695,43 @@ private fun SmartCollectionShortcut(card: SmartCollection, modifier: Modifier = 
     Row(
         modifier = modifier
             .height(SmartCollectionShortcutHeight)
-            .clip(LevyraCardDesign.ThumbShape)
-            .background(colors.onSurface.copy(alpha = 0.08f))
+            .clip(shape)
+            .background(colors.surfaceContainerHigh.copy(alpha = 0.62f))
             .semantics(mergeDescendants = true) {}
-            .levyraPressable(onClick = card.onClick, enabled = enabled, role = Role.Button, pressedScale = LevyraPressScale.Tile),
+            .levyraPressable(onClick = card.onClick, enabled = enabled, role = Role.Button, pressedScale = LevyraPressScale.Tile)
+            .padding(start = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(SmartCollectionShortcutHeight)
-                .background(Brush.linearGradient(listOf(card.accent, card.accent.copy(alpha = 0.45f).compositeOver(Color.Black)))),
+                .size(44.dp)
+                .clip(if (artworkUrl.isNotBlank()) LevyraCardDesign.ArtworkShape else MaterialShapes.Cookie4Sided.toShape())
+                .background(card.accent.copy(alpha = 0.18f)),
             contentAlignment = Alignment.Center
         ) {
             if (artworkUrl.isNotBlank()) {
                 AsyncImage(model = artworkUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.matchParentSize())
             } else {
-                Icon(card.icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
+                Icon(card.icon, contentDescription = null, tint = card.accent, modifier = Modifier.size(22.dp))
             }
         }
         Column(
-            modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
+            modifier = Modifier.weight(1f).padding(horizontal = 10.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            Text(card.title, color = colors.onSurface, style = LevyraType.cardTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            BasicText(
+                text = card.title,
+                style = LevyraType.cardTitle.copy(color = colors.onSurface),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                autoSize = TextAutoSize.StepBased(minFontSize = 11.sp, maxFontSize = LevyraType.cardTitle.fontSize)
+            )
             Text(card.detail, color = colors.onSurfaceVariant, style = LevyraType.caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
 
-private val SmartCollectionShortcutHeight = 60.dp
+private val SmartCollectionShortcutHeight = 64.dp
 
 @Composable
 internal fun LibraryListeningDashboard(
