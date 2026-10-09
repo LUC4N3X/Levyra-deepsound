@@ -128,6 +128,16 @@ internal class EditorialChartsRepository private constructor(context: Context) {
         snapshot.newReleases(country, limit)
     }
 
+    suspend fun newReleasesByMarket(limit: Int): Map<String, List<Track>> = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        val snapshot = usableSnapshot(now) ?: return@withContext emptyMap()
+        if (snapshot.needsRefresh(now)) warm()
+        val safeLimit = limit.coerceIn(1, 100)
+        snapshot.releaseByMarket
+            .mapValues { (_, tracks) -> tracks.take(safeLimit) }
+            .filterValues { it.isNotEmpty() }
+    }
+
     suspend fun cachedAllMarkets(limit: Int): Map<String, List<Track>> = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         val snapshot = usableSnapshot(now) ?: refreshAsync().await() ?: return@withContext emptyMap()
@@ -411,6 +421,8 @@ internal object EditorialCatalogParser {
             if (title.isBlank() || artist.isBlank()) continue
             val album = item.optJSONObject("album")
             val releaseDate = album?.optString("releaseDate").orEmpty().trim()
+            val albumType = album?.optString("type").orEmpty().trim().lowercase(Locale.ROOT)
+            val albumTotalTracks = album?.optInt("totalTracks", 0)?.coerceAtLeast(0) ?: 0
             val identity = chartIdentity("$title|$artist")
             val catalogTrackId = publishedCatalogTrackId(item.optString("id"))
                 .ifBlank { "chart-${identity.id}" }
@@ -479,6 +491,8 @@ internal object EditorialCatalogParser {
                 accentStart = palette.first,
                 accentEnd = palette.second,
                 releaseDate = releaseDate,
+                albumType = albumType,
+                trackTotal = albumTotalTracks,
                 year = releaseDate.take(4).takeIf { it.length == 4 && it.all(Char::isDigit) }.orEmpty(),
                 explicit = item.optBoolean("explicit", false),
                 isrc = item.optString("isrc").uppercase(Locale.ROOT).filter(Char::isLetterOrDigit),

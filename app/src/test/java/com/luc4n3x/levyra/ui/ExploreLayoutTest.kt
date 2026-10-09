@@ -16,7 +16,7 @@ class ExploreLayoutTest {
     fun discoveryContentPrecedesAdvancedMixControls() {
         val rows = buildExploreRows(zones(4), false, true, true)
 
-        assertTrue(rows.indexOf(ExploreRow.FreshCarousel) < rows.indexOf(ExploreRow.MixTools))
+        assertTrue(rows.indexOf(ExploreRow.FreshSpotlight) < rows.indexOf(ExploreRow.MixTools))
         assertTrue(rows.indexOf(ExploreRow.Samples) < rows.indexOf(ExploreRow.MixTools))
         assertEquals(ExploreRow.MixTools, rows.last())
     }
@@ -60,7 +60,7 @@ class ExploreLayoutTest {
 
         assertTrue(moodsIndex >= 0)
         assertTrue(samplesIndex > moodsIndex)
-        assertTrue(rows.subList(moodsIndex + 1, samplesIndex).any { row -> row is ExploreRow.MoodPair })
+        assertTrue(rows.subList(moodsIndex + 1, samplesIndex).any { row -> row is ExploreRow.MoodRail })
     }
 
     @Test
@@ -79,7 +79,7 @@ class ExploreLayoutTest {
             hasSamples = false
         )
 
-        assertTrue(rows.contains(ExploreRow.FreshCarousel))
+        assertTrue(rows.contains(ExploreRow.FreshSpotlight))
         assertFalse(rows.contains(ExploreRow.FreshLoading))
     }
 
@@ -115,13 +115,12 @@ class ExploreLayoutTest {
     }
 
     @Test
-    fun moodRowsPairZonesAndKeepTheLastOddZone() {
+    fun moodRailKeepsTheCompleteCatalogInSourceOrder() {
         val rows = buildExploreRows(zones(5), isFreshLoading = false, hasFreshTracks = true, hasSamples = true)
-        val pairs = rows.filterIsInstance<ExploreRow.MoodPair>()
+        val rail = rows.filterIsInstance<ExploreRow.MoodRail>().single()
 
-        assertEquals(3, pairs.size)
-        assertEquals(listOf("zone-0", "zone-2", "zone-4"), pairs.map { it.leading.id })
-        assertEquals(listOf("zone-1", "zone-3", null), pairs.map { it.trailing?.id })
+        assertEquals(listOf("zone-0", "zone-1", "zone-2", "zone-3", "zone-4"), rail.zones.map { it.id })
+        assertEquals("explore-mood-rail", rail.key)
     }
 
     @Test
@@ -132,9 +131,7 @@ class ExploreLayoutTest {
         val keys = rows.map { it.key }
 
         assertEquals(keys.size, keys.toSet().size)
-        assertEquals(3, rows.filterIsInstance<ExploreRow.MoodPair>().sumOf { pair ->
-            if (pair.trailing == null) 1 else 2
-        })
+        assertEquals(3, rows.filterIsInstance<ExploreRow.MoodRail>().single().zones.size)
     }
 
     @Test
@@ -225,6 +222,229 @@ class ExploreLayoutTest {
         assertFalse(ExploreCatalog.NEW_RELEASES_ZONE_ID in fallbackIds)
         assertFalse(ExploreCatalog.LOCAL_WAVE_ZONE_ID in fallbackIds)
         assertTrue("rap-drill" in fallbackIds)
+    }
+
+    @Test
+    fun scopeRailAppearsOnlyWhenBothFeedsExist() {
+        val local = List(3) { index -> track("local-$index") }
+        val world = List(3) { index -> track("world-$index") }
+
+        assertEquals(listOf(ExploreFreshScope.Local), exploreFreshScopes(local, emptyList()))
+        assertEquals(listOf(ExploreFreshScope.World), exploreFreshScopes(emptyList(), world))
+        assertEquals(
+            listOf(ExploreFreshScope.Local, ExploreFreshScope.World),
+            exploreFreshScopes(local, world)
+        )
+        assertTrue(exploreFreshScopes(emptyList(), emptyList()).isEmpty())
+    }
+
+    @Test
+    fun worldScopeFallsBackToTheLocalFeedWhenNothingInternationalLoaded() {
+        val local = List(6) { index -> track("local-$index") }
+
+        val feed = exploreFreshFeed(ExploreFreshScope.World, local, emptyList())
+
+        assertEquals(ExploreFreshScope.Local, feed.scope)
+        assertEquals(listOf("local-0", "local-1", "local-2", "local-3", "local-4"), feed.spotlight.map { it.id })
+        assertEquals(listOf("local-5"), feed.moment.map { it.id })
+    }
+
+    @Test
+    fun spotlightAndMomentNeverRepeatTheSameTrack() {
+        val source = List(30) { index -> track("id-$index") } + track("id-0")
+
+        val feed = exploreFreshFeed(ExploreFreshScope.Local, source, emptyList())
+        val ids = feed.spotlight.map { it.id } + feed.moment.map { it.id }
+
+        assertEquals(ExploreSpotlightLimit, feed.spotlight.size)
+        assertEquals(ids.size, ids.toSet().size)
+        assertEquals(ExploreMomentRowsPerPage * ExploreMomentPageLimit, feed.moment.size)
+    }
+
+    @Test
+    fun momentPagesStayBoundedAndKeepFeedOrder() {
+        val tracks = List(10) { index -> track("id-$index") }
+
+        val pages = exploreMomentPages(tracks)
+
+        assertEquals(3, pages.size)
+        assertEquals(listOf("id-0", "id-1", "id-2", "id-3"), pages.first().map { it.id })
+        assertEquals(listOf("id-8", "id-9"), pages.last().map { it.id })
+        assertTrue(exploreMomentPages(List(40) { index -> track("x-$index") }).size <= ExploreMomentPageLimit)
+    }
+
+    @Test
+    fun freshRowsFollowTheEditorialOrderAndDropEmptySections() {
+        val rows = buildExploreRows(
+            zones = zones(2),
+            isFreshLoading = false,
+            hasFreshTracks = true,
+            hasSamples = false,
+            hasFreshScopes = true,
+            hasFreshMoment = true
+        )
+
+        val headerIndex = exploreAnchorIndex(rows, ExploreAnchor.Fresh)
+        assertEquals(ExploreRow.FreshScopes, rows[headerIndex + 1])
+        assertEquals(ExploreRow.FreshSpotlight, rows[headerIndex + 2])
+        assertEquals(ExploreRow.FreshMoment, rows[headerIndex + 3])
+
+        val minimal = buildExploreRows(zones(2), false, true, false)
+        assertFalse(minimal.contains(ExploreRow.FreshScopes))
+        assertFalse(minimal.contains(ExploreRow.FreshMoment))
+        assertTrue(minimal.contains(ExploreRow.FreshSpotlight))
+    }
+
+    @Test
+    fun aTrackFromANewAlbumStaysTheTrack() {
+        val card = exploreReleaseCard(
+            track("x").copy(
+                title = "Le foglie di te",
+                artist = "Jovanotti, Samurai Jay",
+                album = "AMATORE",
+                albumArtist = "Samurai Jay & Vito Salamandra",
+                albumType = "",
+                trackTotal = 12
+            )
+        )
+
+        assertEquals("Le foglie di te", card.title)
+        assertEquals("Jovanotti, Samurai Jay", card.subtitle)
+        assertEquals(ExploreReleaseKind.Release, card.kind)
+        assertFalse(card.opensAlbum)
+    }
+
+    @Test
+    fun aOneTrackReleaseReadsAsASingle() {
+        val card = exploreReleaseCard(
+            track("x").copy(title = "La Falda", artist = "Judeline", album = "La Falda", trackTotal = 1)
+        )
+
+        assertEquals(ExploreReleaseKind.Single, card.kind)
+        assertEquals("La Falda", card.title)
+        assertFalse(card.opensAlbum)
+    }
+
+    @Test
+    fun onlyADeclaredAlbumTypeTurnsTheCardIntoAnAlbum() {
+        val base = track("x").copy(
+            title = "Le foglie di te",
+            artist = "Jovanotti, Samurai Jay",
+            album = "AMATORE",
+            albumArtist = "Samurai Jay & Vito Salamandra",
+            trackTotal = 12
+        )
+
+        listOf("album", "compilation", "EP").forEach { declared ->
+            val card = exploreReleaseCard(base.copy(albumType = declared))
+            assertEquals(ExploreReleaseKind.Album, card.kind)
+            assertEquals("AMATORE", card.title)
+            assertEquals("Samurai Jay & Vito Salamandra", card.subtitle)
+            assertTrue("$declared should open the album", card.opensAlbum)
+        }
+        assertFalse(exploreReleaseCard(base.copy(albumType = "")).opensAlbum)
+        assertFalse(exploreReleaseCard(base.copy(albumType = "single")).opensAlbum)
+    }
+
+    @Test
+    fun aSingleNamesTheTrackEvenWhenTheReleaseIsNamedDifferently() {
+        val card = exploreReleaseCard(
+            track("x").copy(
+                title = "Le foglie di te",
+                artist = "Jovanotti, Samurai Jay",
+                album = "AMATORE",
+                albumType = "single"
+            )
+        )
+
+        assertEquals("Le foglie di te", card.title)
+        assertEquals("Jovanotti, Samurai Jay", card.subtitle)
+        assertFalse(card.opensAlbum)
+    }
+
+    @Test
+    fun spotlightArtworkPrefersTheCoverOverAVideoStill() {
+        val videoHero = track("hero").copy(
+            thumbnailUrl = "https://is1-ssl.mzstatic.com/image/thumb/Music/cover/600x600bb.jpg",
+            largeThumbnailUrl = "https://i.ytimg.com/vi/abcdefghijk/maxresdefault.jpg"
+        )
+
+        assertEquals(
+            "https://is1-ssl.mzstatic.com/image/thumb/Music/cover/600x600bb.jpg",
+            exploreCoverArtworkTrack(videoHero).largeThumbnailUrl
+        )
+    }
+
+    @Test
+    fun spotlightArtworkIsLeftAloneWhenNoCoverIsAvailable() {
+        val coverHero = track("cover").copy(
+            thumbnailUrl = "https://is1-ssl.mzstatic.com/image/thumb/Music/a/300x300bb.jpg",
+            largeThumbnailUrl = "https://is1-ssl.mzstatic.com/image/thumb/Music/a/1400x1400bb.jpg"
+        )
+        val videoOnly = track("video").copy(
+            thumbnailUrl = "https://i.ytimg.com/vi/abcdefghijk/hqdefault.jpg",
+            largeThumbnailUrl = "https://i.ytimg.com/vi/abcdefghijk/maxresdefault.jpg"
+        )
+
+        assertEquals(coverHero, exploreCoverArtworkTrack(coverHero))
+        assertEquals(videoOnly, exploreCoverArtworkTrack(videoOnly))
+    }
+
+    @Test
+    fun oneAlbumNeverFillsTheSpotlightWithItsOwnTracks() {
+        val album = List(4) { index ->
+            track("album-$index").copy(title = "Track $index", artist = "Jova", album = "Il Disco")
+        }
+        val single = track("single").copy(title = "Solo", artist = "Other", album = "Solo")
+
+        val feed = exploreFreshFeed(ExploreFreshScope.Local, album + single, emptyList())
+
+        assertEquals(listOf("album-0", "single"), feed.spotlight.map { it.id })
+        assertEquals(listOf("album-1", "album-2", "album-3"), feed.moment.map { it.id })
+    }
+
+    @Test
+    fun tracksWithoutAnAlbumStayIndividualReleases() {
+        val loose = List(3) { index -> track("loose-$index").copy(album = "  ") }
+
+        val feed = exploreFreshFeed(ExploreFreshScope.Local, loose, emptyList())
+
+        assertEquals(listOf("loose-0", "loose-1", "loose-2"), feed.spotlight.map { it.id })
+        assertTrue(feed.moment.isEmpty())
+    }
+
+    @Test
+    fun aTrackCardNamesTheTrackAndNeverOpensAnAlbum() {
+        val single = exploreReleaseCard(
+            track("s").copy(title = "Vertigini", artist = "Fabri Fibra", album = "Vertigini", albumType = "single")
+        )
+        val unknown = exploreReleaseCard(
+            track("u").copy(
+                title = "Le foglie di te",
+                artist = "Jovanotti",
+                album = "AMATORE",
+                albumType = "",
+                trackTotal = 0
+            )
+        )
+
+        assertEquals("Vertigini", single.title)
+        assertEquals("Fabri Fibra", single.subtitle)
+        assertFalse(single.opensAlbum)
+
+        assertEquals("Le foglie di te", unknown.title)
+        assertEquals("Jovanotti", unknown.subtitle)
+        assertFalse(unknown.opensAlbum)
+    }
+
+    @Test
+    fun anAlbumWithoutANameFallsBackToTheTrack() {
+        val card = exploreReleaseCard(
+            track("x").copy(title = "Senza disco", artist = "Tizio", album = "   ", albumType = "album")
+        )
+
+        assertEquals("Senza disco", card.title)
+        assertFalse(card.opensAlbum)
     }
 
     private fun zones(count: Int): List<ExploreZone> = List(count) { index ->
