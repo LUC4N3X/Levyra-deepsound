@@ -71,6 +71,25 @@ class OfficialArtworkRepository(context: Context) {
         }
     }
 
+    suspend fun findApple(track: Track, country: String): OfficialArtwork? {
+        if (track.title.isBlank() || track.artist.isBlank()) return null
+        val key = "apple|" + cacheKey(track, country)
+        readCache(key)?.let { return it }
+        if (hasFreshMiss(key, System.currentTimeMillis())) return null
+        val keyLock = keyLocks[(key.hashCode() and Int.MAX_VALUE) % keyLocks.size]
+        return keyLock.withLock {
+            readCache(key)?.let { return@withLock it }
+            if (hasFreshMiss(key, System.currentTimeMillis())) return@withLock null
+            val normalizedCountry = country.trim().uppercase(Locale.ROOT).takeIf { it.length == 2 } ?: "IT"
+            val response = searchSlots.withPermit {
+                fetchProvider(APPLE_TIMEOUT_MS) { fetchApple(track, primaryQuery(track), normalizedCountry) }
+            }
+            val outcome = SearchOutcome(bestAccepted(response.items), response.completed)
+            writeOutcome(key, outcome)
+            outcome.artwork
+        }
+    }
+
     private suspend fun search(track: Track, country: String): SearchOutcome = withContext(Dispatchers.IO) {
         val normalizedCountry = country.trim().uppercase(Locale.ROOT).takeIf { it.length == 2 } ?: "IT"
         coroutineScope {

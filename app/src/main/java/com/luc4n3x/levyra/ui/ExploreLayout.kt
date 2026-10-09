@@ -3,11 +3,39 @@ package com.luc4n3x.levyra.ui
 import com.luc4n3x.levyra.domain.ExploreCatalog
 import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.domain.ExploreZone
+import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.data.isYoutubeShortTrack
 
 internal const val ExploreSampleLimit = 10
 internal const val ExploreImmersiveSampleLimit = 24
+internal const val ExploreSpotlightLimit = 5
+internal const val ExploreMomentRowsPerPage = 4
+internal const val ExploreMomentPageLimit = 4
+
+internal enum class ExploreFreshScope {
+    Local,
+    World
+}
+
+internal enum class ExploreReleaseKind {
+    Album,
+    Single,
+    Release
+}
+
+internal data class ExploreReleaseCard(
+    val kind: ExploreReleaseKind,
+    val title: String,
+    val subtitle: String,
+    val opensAlbum: Boolean
+)
+
+internal data class ExploreFreshFeed(
+    val scope: ExploreFreshScope,
+    val spotlight: List<Track>,
+    val moment: List<Track>
+)
 
 internal enum class ExploreCategoryPresentation {
     Atmospheric,
@@ -53,8 +81,16 @@ internal sealed interface ExploreRow {
         override val key: String = "explore-fresh-empty"
     }
 
-    data object FreshCarousel : ExploreRow {
-        override val key: String = "explore-fresh-carousel"
+    data object FreshScopes : ExploreRow {
+        override val key: String = "explore-fresh-scopes"
+    }
+
+    data object FreshSpotlight : ExploreRow {
+        override val key: String = "explore-fresh-spotlight"
+    }
+
+    data object FreshMoment : ExploreRow {
+        override val key: String = "explore-fresh-moment"
     }
 
     data object Samples : ExploreRow {
@@ -65,8 +101,8 @@ internal sealed interface ExploreRow {
         override val key: String = "explore-mix-tools"
     }
 
-    data class MoodPair(val leading: ExploreZone, val trailing: ExploreZone?) : ExploreRow {
-        override val key: String = "explore-mood-${leading.id}"
+    data class MoodRail(val zones: List<ExploreZone>) : ExploreRow {
+        override val key: String = "explore-mood-rail"
     }
 }
 
@@ -74,23 +110,27 @@ internal fun buildExploreRows(
     zones: List<ExploreZone>,
     isFreshLoading: Boolean,
     hasFreshTracks: Boolean,
-    hasSamples: Boolean
+    hasSamples: Boolean,
+    hasFreshScopes: Boolean = false,
+    hasFreshMoment: Boolean = false
 ): List<ExploreRow> {
     val rows = mutableListOf<ExploreRow>()
     rows += ExploreRow.Shortcuts
     rows += ExploreRow.Header(ExploreAnchor.Fresh)
-    rows += when {
-        hasFreshTracks -> ExploreRow.FreshCarousel
-        isFreshLoading -> ExploreRow.FreshLoading
-        else -> ExploreRow.FreshEmpty
+    when {
+        hasFreshTracks -> {
+            if (hasFreshScopes) rows += ExploreRow.FreshScopes
+            rows += ExploreRow.FreshSpotlight
+            if (hasFreshMoment) rows += ExploreRow.FreshMoment
+        }
+        isFreshLoading -> rows += ExploreRow.FreshLoading
+        else -> rows += ExploreRow.FreshEmpty
     }
 
     val distinctZones = zones.distinctBy { it.id }
     if (distinctZones.isNotEmpty()) {
         rows += ExploreRow.Header(ExploreAnchor.Moods)
-        distinctZones.chunked(2).forEach { pair ->
-            rows += ExploreRow.MoodPair(pair.first(), pair.getOrNull(1))
-        }
+        rows += ExploreRow.MoodRail(distinctZones)
     }
 
     if (hasSamples) {
@@ -156,3 +196,78 @@ internal fun exploreFallbackGenres(zones: List<ExploreZone>): List<ExploreZone> 
     }
     .distinctBy { zone -> zone.id }
     .toList()
+
+internal fun exploreFreshScopes(
+    localTracks: List<Track>,
+    worldTracks: List<Track>
+): List<ExploreFreshScope> = buildList {
+    if (localTracks.isNotEmpty()) add(ExploreFreshScope.Local)
+    if (worldTracks.isNotEmpty()) add(ExploreFreshScope.World)
+}
+
+internal fun exploreFreshFeed(
+    scope: ExploreFreshScope,
+    localTracks: List<Track>,
+    worldTracks: List<Track>
+): ExploreFreshFeed {
+    val resolvedScope = if (scope == ExploreFreshScope.World && worldTracks.isEmpty()) {
+        ExploreFreshScope.Local
+    } else {
+        scope
+    }
+    val source = when (resolvedScope) {
+        ExploreFreshScope.Local -> localTracks
+        ExploreFreshScope.World -> worldTracks
+    }.distinctBy { track -> track.id }
+    val releases = LinkedHashMap<String, Track>()
+    source.forEach { track -> releases.putIfAbsent(exploreReleaseIdentity(track), track) }
+    val spotlight = releases.values.take(ExploreSpotlightLimit)
+    val spotlightIds = spotlight.mapTo(HashSet()) { track -> track.id }
+    val moment = source
+        .filterNot { track -> track.id in spotlightIds }
+        .take(ExploreMomentRowsPerPage * ExploreMomentPageLimit)
+    return ExploreFreshFeed(resolvedScope, spotlight, moment)
+}
+
+internal fun exploreReleaseIdentity(track: Track): String {
+    val album = track.album.trim().lowercase()
+    if (album.isEmpty()) return "track|${track.id}"
+    return "release|${track.artist.trim().lowercase()}|$album"
+}
+
+internal fun exploreMomentPages(tracks: List<Track>): List<List<Track>> =
+    tracks.chunked(ExploreMomentRowsPerPage).take(ExploreMomentPageLimit)
+
+private val ExploreDeclaredAlbumTypes = setOf("album", "compilation", "ep")
+
+internal fun exploreReleaseCard(track: Track): ExploreReleaseCard {
+    val declaredType = track.albumType.trim().lowercase()
+    val album = track.album.trim()
+    if (declaredType in ExploreDeclaredAlbumTypes && album.isNotEmpty()) {
+        return ExploreReleaseCard(
+            kind = ExploreReleaseKind.Album,
+            title = album,
+            subtitle = track.albumArtist.trim().ifBlank { track.artist.trim() },
+            opensAlbum = true
+        )
+    }
+    val kind = if (declaredType == "single" || track.trackTotal == 1) {
+        ExploreReleaseKind.Single
+    } else {
+        ExploreReleaseKind.Release
+    }
+    return ExploreReleaseCard(
+        kind = kind,
+        title = track.title.trim(),
+        subtitle = track.artist.trim(),
+        opensAlbum = false
+    )
+}
+
+internal fun exploreCoverArtworkTrack(track: Track): Track {
+    val large = track.largeThumbnailUrl.trim()
+    if (large.isBlank() || !LevyraPersonalOrbit.isVideoFrameArtworkUrl(large)) return track
+    val cover = track.thumbnailUrl.trim()
+    if (cover.isBlank() || LevyraPersonalOrbit.isVideoFrameArtworkUrl(cover)) return track
+    return track.copy(largeThumbnailUrl = cover)
+}
