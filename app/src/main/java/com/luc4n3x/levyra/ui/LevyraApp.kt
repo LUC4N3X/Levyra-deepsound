@@ -23459,7 +23459,10 @@ private fun ExploreScreen(
                             isPlaying = state.isPlaying && spotlightCurrent,
                             isResolving = state.isResolving && spotlightCurrent,
                             onOpenReleases = { onShortcut(ExploreShortcut.NewReleases) },
-                            onPlay = { viewModel.playFrom(freshTracks, spotlight) },
+                            onPlay = {
+                                if (spotlightCurrent) viewModel.togglePlay()
+                                else viewModel.playFrom(freshTracks, spotlight)
+                            },
                             modifier = Modifier.padding(horizontal = HomeHorizontalInset),
                             actions = {
                                 DiscoveryTrackActions(
