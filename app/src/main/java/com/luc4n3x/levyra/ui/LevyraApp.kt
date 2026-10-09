@@ -23366,6 +23366,14 @@ private fun ExploreScreen(
     }
 
     val exploreMixAccent = rememberNowPlayingAccent(state.currentTrack, LevyraCyan)
+    val shareFreshTrack: (Track) -> Unit = { track ->
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, track.title)
+            putExtra(Intent.EXTRA_TEXT, "${track.title} - ${track.artist}\n${track.streamUrl}")
+        }
+        context.startActivity(Intent.createChooser(intent, strings.shareVia))
+    }
     val exploreBottomInset = tabBarBottomContentInset(
         miniPlayerVisible = state.currentTrack != null && !state.isSamplesOpen,
         animationsEnabled = state.animationsEnabled
@@ -23470,14 +23478,7 @@ private fun ExploreScreen(
                                     isFavorite = spotlight.id in state.favoriteIds,
                                     onFavorite = { viewModel.toggleFavorite(spotlight) },
                                     onAddToPlaylist = { addToPlaylistTarget = spotlight },
-                                    onShare = {
-                                        val intent = Intent(Intent.ACTION_SEND).apply {
-                                            type = "text/plain"
-                                            putExtra(Intent.EXTRA_SUBJECT, spotlight.title)
-                                            putExtra(Intent.EXTRA_TEXT, "${spotlight.title} - ${spotlight.artist}\n${spotlight.streamUrl}")
-                                        }
-                                        context.startActivity(Intent.createChooser(intent, strings.shareVia))
-                                    }
+                                    onShare = { shareFreshTrack(spotlight) }
                                 )
                             }
                         )
@@ -23505,14 +23506,7 @@ private fun ExploreScreen(
                                                 isFavorite = track.id in state.favoriteIds,
                                                 onFavorite = { viewModel.toggleFavorite(track) },
                                                 onAddToPlaylist = { addToPlaylistTarget = track },
-                                                onShare = {
-                                                    val intent = Intent(Intent.ACTION_SEND).apply {
-                                                        type = "text/plain"
-                                                        putExtra(Intent.EXTRA_SUBJECT, track.title)
-                                                        putExtra(Intent.EXTRA_TEXT, "${track.title} - ${track.artist}\n${track.streamUrl}")
-                                                    }
-                                                    context.startActivity(Intent.createChooser(intent, strings.shareVia))
-                                                }
+                                                onShare = { shareFreshTrack(track) }
                                             )
                                         }
                                     )
