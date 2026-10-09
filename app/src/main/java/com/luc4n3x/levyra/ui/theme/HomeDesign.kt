@@ -28,7 +28,7 @@ object LevyraHomeDesign {
     val MoodChipVisualHeight: Dp = 32.dp
     val MoodChipCorner: Dp = 16.dp
     val HeroCorner: Dp = 28.dp
-    val EditorialPadding: Dp = 16.dp
+    val EditorialPadding: Dp = 20.dp
     val EditorialThumb: Dp = 104.dp
     val EditorialPeek: Dp = 40.dp
     val EditorialMaxWidth: Dp = 520.dp
