@@ -65,8 +65,8 @@ internal sealed interface ExploreRow {
         override val key: String = "explore-mix-tools"
     }
 
-    data class MoodPair(val leading: ExploreZone, val trailing: ExploreZone?) : ExploreRow {
-        override val key: String = "explore-mood-${leading.id}"
+    data class MoodRail(val zones: List<ExploreZone>) : ExploreRow {
+        override val key: String = "explore-mood-rail"
     }
 }
 
@@ -88,9 +88,7 @@ internal fun buildExploreRows(
     val distinctZones = zones.distinctBy { it.id }
     if (distinctZones.isNotEmpty()) {
         rows += ExploreRow.Header(ExploreAnchor.Moods)
-        distinctZones.chunked(2).forEach { pair ->
-            rows += ExploreRow.MoodPair(pair.first(), pair.getOrNull(1))
-        }
+        rows += ExploreRow.MoodRail(distinctZones)
     }
 
     if (hasSamples) {
