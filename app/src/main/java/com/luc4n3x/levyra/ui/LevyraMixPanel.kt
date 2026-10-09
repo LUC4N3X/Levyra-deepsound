@@ -506,7 +506,7 @@ private fun MixBalanceSlider(
             MixPresetChip(
                 label = strings.mix,
                 icon = Icons.Rounded.GraphicEq,
-                isSelected = familiarity in 0.35f..0.69f,
+                isSelected = familiarity >= 0.35f && familiarity < 0.70f,
                 enabled = enabled,
                 modifier = Modifier.weight(1f)
             ) {
