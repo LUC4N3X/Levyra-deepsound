@@ -23394,10 +23394,16 @@ private fun ExploreScreen(
 
     val exploreMixAccent = rememberNowPlayingAccent(state.currentTrack, LevyraCyan)
     val shareFreshTrack: (Track) -> Unit = { track ->
+        val shareText = buildString {
+            append(track.title)
+            if (track.artist.isNotBlank()) append(" - ").append(track.artist)
+            val link = track.videoUrl.ifBlank { track.streamUrl }
+            if (link.isNotBlank()) append("\n").append(link)
+        }
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
             putExtra(Intent.EXTRA_SUBJECT, track.title)
-            putExtra(Intent.EXTRA_TEXT, "${track.title} - ${track.artist}\n${track.streamUrl}")
+            putExtra(Intent.EXTRA_TEXT, shareText)
         }
         context.startActivity(Intent.createChooser(intent, strings.shareVia))
     }
