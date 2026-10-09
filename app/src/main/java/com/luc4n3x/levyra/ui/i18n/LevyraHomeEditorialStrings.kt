@@ -21,7 +21,11 @@ private val homeEditorialKeys = listOf(
     "collectionPop",
     "collectionDiscovery",
     "collectionUpdatedToday",
-    "collectionEditorial"
+    "collectionEditorial",
+    "collectionCharts",
+    "collectionRepeat",
+    "collectionThrowback",
+    "collectionGems"
 )
 
 private val homeEditorialCatalog = """
@@ -47,6 +51,10 @@ Pop hits
 Discover mix
 Updated today
 Editorial collection
+Charting now
+On repeat
+Throwback
+Hidden gems
 @@it
 Selezione Levyra
 Uscita oggi
@@ -69,6 +77,10 @@ Pop hits
 Discover mix
 Aggiornata oggi
 Collezione editoriale
+In classifica ora
+In loop
+Throwback
+Gemme nascoste
 @@es
 Selección Levyra
 Lanzamiento de hoy
@@ -91,6 +103,10 @@ Pulso pop
 Descubre algo nuevo
 Actualizada hoy
 Colección editorial
+En las listas
+En bucle
+Clásicos de ayer
+Joyas ocultas
 @@fr
 Sélection Levyra
 Sortie aujourd’hui
@@ -113,6 +129,10 @@ Pouls pop
 Découvrez quelque chose de nouveau
 Mise à jour aujourd’hui
 Collection éditoriale
+Dans les charts
+En boucle
+Retour en arrière
+Pépites cachées
 @@de
 Levyra-Auswahl
 Heute veröffentlicht
@@ -135,6 +155,10 @@ Pop-Puls
 Entdecke etwas Neues
 Heute aktualisiert
 Redaktionelle Sammlung
+In den Charts
+Auf Dauerschleife
+Throwback
+Verborgene Perlen
 @@pt
 Seleção Levyra
 Lançado hoje
@@ -157,6 +181,10 @@ Pulso pop
 Descubra algo novo
 Atualizada hoje
 Coleção editorial
+Nas paradas
+No repeat
+Relíquias
+Joias escondidas
 @@nl
 Levyra-selectie
 Vandaag uitgebracht
@@ -179,6 +207,10 @@ Poppuls
 Ontdek iets nieuws
 Vandaag bijgewerkt
 Redactionele collectie
+In de hitlijsten
+Op repeat
+Throwback
+Verborgen pareltjes
 @@pl
 Wybór Levyra
 Premiera dzisiaj
@@ -201,6 +233,10 @@ Puls popu
 Odkryj coś nowego
 Zaktualizowano dzisiaj
 Kolekcja redakcyjna
+Na listach przebojów
+Na repeat
+Powrót do przeszłości
+Ukryte perełki
 @@ro
 Selecția Levyra
 Lansat astăzi
@@ -223,6 +259,10 @@ Puls pop
 Descoperă ceva nou
 Actualizat astăzi
 Colecție editorială
+În topuri acum
+Pe repeat
+Throwback
+Comori ascunse
 @@el
 Επιλογή Levyra
 Κυκλοφόρησε σήμερα
@@ -245,6 +285,10 @@ Levyra Collections
 Ανακάλυψε κάτι νέο
 Ενημερώθηκε σήμερα
 Επιμελημένη συλλογή
+Στα charts τώρα
+Σε επανάληψη
+Αναδρομή
+Κρυμμένα διαμάντια
 @@sv
 Levyra-val
 Släppt idag
@@ -267,6 +311,10 @@ Poppuls
 Upptäck något nytt
 Uppdaterad idag
 Redaktionell samling
+På listorna nu
+På repeat
+Throwback
+Dolda pärlor
 @@da
 Levyra-udvalg
 Udgivet i dag
@@ -289,6 +337,10 @@ Poppuls
 Opdag noget nyt
 Opdateret i dag
 Redaktionel samling
+På hitlisterne nu
+På repeat
+Throwback
+Skjulte perler
 @@cs
 Výběr Levyra
 Vydáno dnes
@@ -311,6 +363,10 @@ Popový puls
 Objevte něco nového
 Aktualizováno dnes
 Redakční kolekce
+Právě v žebříčcích
+Pořád dokola
+Návrat v čase
+Skryté poklady
 @@uk
 Вибір Levyra
 Вийшло сьогодні
@@ -333,6 +389,10 @@ Levyra Collections
 Відкрийте щось нове
 Оновлено сьогодні
 Редакційна колекція
+Зараз у чартах
+На повторі
+Ретро
+Приховані перлини
 @@ru
 Выбор Levyra
 Вышло сегодня
@@ -355,6 +415,10 @@ Levyra Collections
 Откройте что-то новое
 Обновлено сегодня
 Редакционная коллекция
+Сейчас в чартах
+На повторе
+Ретро
+Скрытые жемчужины
 @@tr
 Levyra Seçkisi
 Bugün yayınlandı
@@ -377,6 +441,10 @@ Pop nabzı
 Yeni bir şey keşfet
 Bugün güncellendi
 Editoryal koleksiyon
+Şu an listelerde
+Tekrarda
+Eskiler
+Gizli cevherler
 @@ar
 اختيار Levyra
 صدر اليوم
@@ -399,6 +467,10 @@ Editoryal koleksiyon
 اكتشف شيئًا جديدًا
 تم التحديث اليوم
 مجموعة تحريرية
+في القوائم الآن
+على التكرار
+ذكريات
+جواهر مخفية
 @@zh
 Levyra 精选
 今日发行
@@ -421,6 +493,10 @@ Levyra 合集
 发现新声音
 今日更新
 编辑合集
+正在榜单上
+单曲循环
+怀旧金曲
+遗珠之作
 @@ja
 Levyra セレクション
 本日リリース
@@ -443,6 +519,10 @@ Levyra Collections
 新しい音に出会う
 本日更新
 編集コレクション
+今チャートで話題
+リピート中
+スローバック
+隠れた名曲
 @@ko
 Levyra 셀렉션
 오늘 발매
@@ -465,6 +545,10 @@ Levyra Collections
 새로운 음악 발견
 오늘 업데이트
 에디토리얼 컬렉션
+지금 차트 인기곡
+반복 재생
+추억의 노래
+숨은 명곡
 @@hi
 Levyra चयन
 आज रिलीज़
@@ -487,6 +571,10 @@ Levyra Collections
 कुछ नया खोजें
 आज अपडेट किया गया
 संपादकीय संग्रह
+अभी चार्ट में
+बार-बार सुने
+पुराने हिट
+छिपे रत्न
 @@id
 Pilihan Levyra
 Rilis hari ini
@@ -509,6 +597,10 @@ Denyut pop
 Temukan sesuatu yang baru
 Diperbarui hari ini
 Koleksi editorial
+Sedang di tangga lagu
+Diputar ulang
+Nostalgia
+Permata tersembunyi
 @@vi
 Tuyển chọn Levyra
 Phát hành hôm nay
@@ -531,6 +623,10 @@ Nhịp pop
 Khám phá điều mới
 Cập nhật hôm nay
 Bộ sưu tập biên tập
+Đang trên bảng xếp hạng
+Nghe lặp lại
+Hoài niệm
+Viên ngọc ẩn
 @@th
 Levyra คัดสรร
 เปิดตัววันนี้
@@ -553,6 +649,10 @@ Levyra Collections
 ค้นพบสิ่งใหม่
 อัปเดตวันนี้
 คอลเลกชันบรรณาธิการ
+ติดชาร์ตตอนนี้
+ฟังวนซ้ำ
+ย้อนวันวาน
+เพลงเพราะที่ซ่อนอยู่
 @@fil
 Levyra Selection
 Inilabas ngayong araw
@@ -575,6 +675,10 @@ Tibok ng pop
 Tumuklas ng bago
 Na-update ngayong araw
 Editorial collection
+Nasa charts ngayon
+Paulit-ulit
+Throwback
+Mga nakatagong hiyas
 @@he
 בחירת Levyra
 יצא היום
@@ -597,6 +701,10 @@ Editorial collection
 לגלות משהו חדש
 עודכן היום
 אוסף ערוך
+עכשיו במצעדים
+על ריפיט
+נוסטלגיה
+פנינים נסתרות
 @@fi
 Levyran valinta
 Julkaistu tänään
@@ -619,6 +727,10 @@ Pophitit
 Löytösekoitus
 Päivitetty tänään
 Toimituksen kokoelma
+Listoilla nyt
+Toistolla
+Muistojen bulevardi
+Piilotetut helmet
 @@et
 Levyra valik
 Ilmus täna
@@ -641,6 +753,10 @@ Pophitit
 Avastusmiks
 Uuendatud täna
 Toimetuse kogu
+Edetabelites praegu
+Kordusel
+Nostalgia
+Peidetud pärlid
 """.trimIndent()
 
 private val homeEditorialEntries = buildMap {
