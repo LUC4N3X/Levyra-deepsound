@@ -55,9 +55,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import com.luc4n3x.levyra.ui.components.LevyraPressScale
+import com.luc4n3x.levyra.ui.components.levyraPressable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
@@ -1273,23 +1276,32 @@ private fun exploreCategoryCardMetrics(prominent: Boolean): ExploreCategoryCardM
     }
 
 @Composable
-private fun ExploreDiscoveryCategoryCard(
+internal fun ExploreDiscoveryCategoryCard(
     title: String,
     identity: String,
     artworkUrl: String = "",
     modifier: Modifier = Modifier,
     prominent: Boolean = false,
     emoji: String = "",
+    accentColors: Pair<Color, Color>? = null,
+    onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
-    val (accentStart, accentEnd) = exploreCategoryPalette(identity)
-    val shape = RoundedCornerShape(14.dp)
+    val (accentStart, accentEnd) = accentColors ?: exploreCategoryPalette(identity)
+    val shape = RoundedCornerShape(16.dp)
     val metrics = exploreCategoryCardMetrics(prominent)
     val longTitle = !prominent && title.length >= 18
     val titleSize = if (longTitle) 15.sp else metrics.titleSize
     val titleWidthFraction = if (longTitle) 0.78f else metrics.titleWidthFraction
     Box(
         modifier = modifier
+            .shadow(
+                elevation = 4.dp,
+                shape = shape,
+                clip = false,
+                ambientColor = accentStart.copy(alpha = 0.20f),
+                spotColor = accentEnd.copy(alpha = 0.25f)
+            )
             .clip(shape)
             .background(
                 Brush.linearGradient(
@@ -1300,9 +1312,15 @@ private fun ExploreDiscoveryCategoryCard(
                     )
                 )
             )
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), shape)
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), shape)
             .semantics { role = Role.Button }
-            .clickable(onClick = onClick)
+            .levyraPressable(
+                onClick = onClick,
+                onLongClick = onLongClick,
+                pressedScale = LevyraPressScale.Tile,
+                role = Role.Button,
+                onClickLabel = title
+            )
     ) {
         Box(
             modifier = Modifier
@@ -1328,7 +1346,8 @@ private fun ExploreDiscoveryCategoryCard(
             fontSize = titleSize,
             lineHeight = LevyraTypeRhythm.lineHeight(titleSize),
             fontWeight = FontWeight.Black,
-            maxLines = 2,
+            maxLines = 1,
+            softWrap = false,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .align(Alignment.TopStart)

@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.shadow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.GraphicEq
@@ -255,22 +257,22 @@ internal fun RowScope.ExploreMoodCard(
 
     val accentStart = Color(zone.accentStart)
     val accentEnd = Color(zone.accentEnd)
-    val shape = LevyraCardDesign.EditorialShape
+    val shape = RoundedCornerShape(26.dp)
     val bottomScrim = remember {
         Brush.verticalGradient(
             listOf(
                 Color.Transparent,
-                Color.Black.copy(alpha = 0.30f),
-                Color.Black.copy(alpha = 0.92f)
+                Color.Black.copy(alpha = 0.35f),
+                Color.Black.copy(alpha = 0.94f)
             )
         )
     }
     val outlineBrush = remember(accentStart, accentEnd, isSelected) {
         Brush.linearGradient(
             listOf(
-                accentStart.copy(alpha = if (isSelected) 0.96f else 0.54f),
-                accentEnd.copy(alpha = if (isSelected) 0.72f else 0.30f),
-                Color.White.copy(alpha = if (isSelected) 0.18f else 0.08f)
+                accentStart.copy(alpha = if (isSelected) 0.96f else 0.40f),
+                accentEnd.copy(alpha = if (isSelected) 0.76f else 0.25f),
+                Color.White.copy(alpha = if (isSelected) 0.20f else 0.08f)
             )
         )
     }
@@ -278,15 +280,19 @@ internal fun RowScope.ExploreMoodCard(
     Box(
         modifier = Modifier
             .weight(1f)
-            .heightIn(min = if (prominent) 196.dp else 148.dp)
+            .heightIn(min = if (prominent) 204.dp else 156.dp)
+            .shadow(
+                elevation = if (isSelected) 18.dp else 10.dp,
+                shape = shape,
+                clip = false,
+                ambientColor = accentStart.copy(alpha = if (isSelected) 0.30f else 0.16f),
+                spotColor = accentEnd.copy(alpha = if (isSelected) 0.38f else 0.20f)
+            )
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .then(
-                if (isSelected) {
-                    Modifier.border(BorderStroke(1.5.dp, outlineBrush), shape)
-                } else {
-                    Modifier
-                }
+            .border(
+                BorderStroke(if (isSelected) 1.5.dp else 0.75.dp, outlineBrush),
+                shape
             )
             .semantics(mergeDescendants = true) {
                 role = Role.Button
@@ -383,9 +389,11 @@ private fun BoxScope.ExploreMoodStartMixAction(onStart: () -> Unit, label: Strin
         modifier = Modifier
             .align(Alignment.TopEnd)
             .padding(10.dp)
-            .size(48.dp)
+            .size(46.dp)
+            .shadow(8.dp, CircleShape)
             .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.94f))
+            .background(Color.White.copy(alpha = 0.95f))
+            .border(1.dp, Color.White.copy(alpha = 0.5f), CircleShape)
     ) {
         Icon(
             Icons.Rounded.PlayArrow,
