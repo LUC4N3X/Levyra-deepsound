@@ -138,11 +138,11 @@ internal fun LibraryHero(title: String, subtitle: String) {
 internal fun LibraryCategoryChip(label: String, selected: Boolean, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Surface(
-        color = if (selected) colors.onSurface.copy(alpha = 0.12f) else Color.Transparent,
-        shape = LevyraCardDesign.ArtworkShape,
+        color = if (selected) colors.primaryContainer else colors.surfaceContainerLow,
+        shape = LibraryPillShape,
         modifier = Modifier
             .heightIn(min = 48.dp)
-            .clip(LevyraCardDesign.ArtworkShape)
+            .clip(LibraryPillShape)
             .selectable(selected = selected, role = Role.Tab, onClick = onClick)
     ) {
         Row(
@@ -150,8 +150,21 @@ internal fun LibraryCategoryChip(label: String, selected: Boolean, onClick: () -
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (selected) Icon(Icons.Rounded.Check, contentDescription = null, tint = colors.onSurface, modifier = Modifier.size(16.dp))
-            Text(label, color = if (selected) colors.onSurface else colors.onSurfaceVariant, style = LevyraType.cardTitle)
+            if (selected) {
+                Icon(
+                    Icons.Rounded.Check,
+                    contentDescription = null,
+                    tint = colors.onPrimaryContainer,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+            Text(
+                text = label,
+                color = if (selected) colors.onPrimaryContainer else colors.onSurfaceVariant,
+                style = LevyraType.cardTitle,
+                maxLines = 1,
+                softWrap = false
+            )
         }
     }
 }
@@ -170,6 +183,7 @@ internal fun LibraryToolbar(
     onSelectAll: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val colors = MaterialTheme.colorScheme
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -182,11 +196,11 @@ internal fun LibraryToolbar(
         ) {
             Box(modifier = Modifier.weight(1f)) {
                 Surface(
-                    color = MaterialTheme.colorScheme.surfaceContainer,
-                    shape = LevyraCardDesign.ThumbShape,
+                    color = colors.surfaceContainerHigh,
+                    shape = LevyraCardDesign.ArtworkShape,
                     modifier = Modifier.fillMaxWidth()
                         .heightIn(min = 48.dp)
-                        .clip(LevyraCardDesign.ThumbShape)
+                        .clip(LevyraCardDesign.ArtworkShape)
                         .clickable(onClick = { onSortExpanded(true) })
                 ) {
                     Row(
@@ -197,15 +211,16 @@ internal fun LibraryToolbar(
                         Icon(
                             Icons.AutoMirrored.Rounded.Sort,
                             contentDescription = null,
-                            tint = LevyraCyan,
+                            tint = colors.primary,
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
                             text = sort.libraryLabel(strings),
-                            color = LevyraText,
+                            color = colors.onSurface,
                             style = LevyraType.caption,
                             modifier = Modifier.weight(1f),
-                            maxLines = 2,
+                            maxLines = 1,
+                            softWrap = false,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
@@ -215,7 +230,7 @@ internal fun LibraryToolbar(
                         DropdownMenuItem(
                             text = { Text(option.libraryLabel(strings)) },
                             leadingIcon = if (option == sort) {
-                                { Icon(Icons.Rounded.Check, contentDescription = null, tint = LevyraCyan) }
+                                { Icon(Icons.Rounded.Check, contentDescription = null, tint = colors.primary) }
                             } else null,
                             onClick = {
                                 if (option == sort) {
@@ -230,11 +245,11 @@ internal fun LibraryToolbar(
                 }
             }
             Surface(
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                shape = LevyraCardDesign.ThumbShape,
+                color = colors.surfaceContainerHigh,
+                shape = LevyraCardDesign.ArtworkShape,
                 modifier = Modifier
                     .heightIn(min = 48.dp)
-                    .clip(LevyraCardDesign.ThumbShape)
+                    .clip(LevyraCardDesign.ArtworkShape)
                     .clickable(onClick = onToggleDirection)
                     .semantics {
                         contentDescription = "${strings.librarySortDirection}: ${sort.directionLabel(direction, strings)}"
@@ -251,7 +266,7 @@ internal fun LibraryToolbar(
                             Icons.Rounded.ArrowDownward
                         },
                         contentDescription = null,
-                        tint = LevyraCyan,
+                        tint = colors.primary,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -262,7 +277,7 @@ internal fun LibraryToolbar(
                 Icon(
                     Icons.Rounded.DoneAll,
                     contentDescription = strings.all,
-                    tint = LevyraMuted,
+                    tint = colors.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -271,7 +286,7 @@ internal fun LibraryToolbar(
                     Icon(
                         if (layout == LibraryLayout.List) Icons.Rounded.GridView else Icons.AutoMirrored.Rounded.ViewList,
                         contentDescription = strings.options,
-                        tint = LevyraMuted,
+                        tint = colors.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -783,7 +798,7 @@ internal fun LibraryListeningDashboard(
                     }
 
                     Surface(
-                        color = LevyraCyan.copy(alpha = 0.12f),
+                        color = MaterialTheme.colorScheme.primaryContainer,
                         shape = CircleShape
                     ) {
                         Box(
@@ -793,7 +808,7 @@ internal fun LibraryListeningDashboard(
                             Icon(
                                 imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
                                 contentDescription = null,
-                                tint = LevyraCyan,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -968,7 +983,7 @@ private fun LibraryWeekChart(
             }
         }
         Row(
-            modifier = Modifier.fillMaxWidth().height(132.dp).drawBehind {
+            modifier = Modifier.fillMaxWidth().height(112.dp).drawBehind {
                 for (line in 0..2) {
                     val y = size.height * line / 2f
                     drawLine(gridColor, Offset(0f, y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
@@ -991,12 +1006,12 @@ private fun LibraryWeekChart(
                         contentAlignment = Alignment.BottomCenter
                     ) {
                         Box(
-                            Modifier.width(22.dp).fillMaxHeight(fractions[index].coerceAtLeast(0.025f))
-                                .clip(RoundedCornerShape(11.dp))
+                            Modifier.width(18.dp).fillMaxHeight(fractions[index].coerceAtLeast(0.025f))
+                                .clip(RoundedCornerShape(9.dp))
                                 .background(
                                     if (day.listenedMs == 0L) colors.outlineVariant
                                     else if (index == today) colors.primary
-                                    else colors.onSurface.copy(alpha = 0.48f)
+                                    else colors.secondary.copy(alpha = 0.82f)
                                 )
                         )
                     }
