@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -321,42 +322,13 @@ internal fun RowScope.ExploreMoodCard(
                     .matchParentSize()
             )
         } else {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(Brush.linearGradient(listOf(accentStart, accentEnd)))
-            ) {
-                Icon(
-                    Icons.Rounded.GraphicEq,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.28f),
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 16.dp)
-                        .size(64.dp)
-                )
-            }
+            ExploreMoodFallbackArtwork(accentStart, accentEnd)
         }
 
         Box(modifier = Modifier.matchParentSize().background(bottomScrim))
 
         if (onStartZoneMix != null) {
-            IconButton(
-                onClick = onStartZoneMix,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(10.dp)
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.94f))
-            ) {
-                Icon(
-                    Icons.Rounded.PlayArrow,
-                    contentDescription = strings.mixStartRadio,
-                    tint = Color.Black,
-                    modifier = Modifier.size(26.dp)
-                )
-            }
+            ExploreMoodStartMixAction(onStartZoneMix, strings.mixStartRadio)
         }
 
         Row(
@@ -382,5 +354,44 @@ internal fun RowScope.ExploreMoodCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun BoxScope.ExploreMoodFallbackArtwork(start: Color, end: Color) {
+    Box(
+        modifier = Modifier
+            .matchParentSize()
+            .background(Brush.linearGradient(listOf(start, end)))
+    ) {
+        Icon(
+            Icons.Rounded.GraphicEq,
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.28f),
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 16.dp)
+                .size(64.dp)
+        )
+    }
+}
+
+@Composable
+private fun BoxScope.ExploreMoodStartMixAction(onStart: () -> Unit, label: String) {
+    IconButton(
+        onClick = onStart,
+        modifier = Modifier
+            .align(Alignment.TopEnd)
+            .padding(10.dp)
+            .size(48.dp)
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.94f))
+    ) {
+        Icon(
+            Icons.Rounded.PlayArrow,
+            contentDescription = label,
+            tint = Color.Black,
+            modifier = Modifier.size(26.dp)
+        )
     }
 }
