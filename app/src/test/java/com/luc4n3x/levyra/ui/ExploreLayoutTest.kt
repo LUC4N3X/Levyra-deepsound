@@ -60,7 +60,7 @@ class ExploreLayoutTest {
 
         assertTrue(moodsIndex >= 0)
         assertTrue(samplesIndex > moodsIndex)
-        assertTrue(rows.subList(moodsIndex + 1, samplesIndex).any { row -> row is ExploreRow.MoodPair })
+        assertTrue(rows.subList(moodsIndex + 1, samplesIndex).any { row -> row is ExploreRow.MoodRail })
     }
 
     @Test
@@ -115,13 +115,12 @@ class ExploreLayoutTest {
     }
 
     @Test
-    fun moodRowsPairZonesAndKeepTheLastOddZone() {
+    fun moodRailKeepsTheCompleteCatalogInSourceOrder() {
         val rows = buildExploreRows(zones(5), isFreshLoading = false, hasFreshTracks = true, hasSamples = true)
-        val pairs = rows.filterIsInstance<ExploreRow.MoodPair>()
+        val rail = rows.filterIsInstance<ExploreRow.MoodRail>().single()
 
-        assertEquals(3, pairs.size)
-        assertEquals(listOf("zone-0", "zone-2", "zone-4"), pairs.map { it.leading.id })
-        assertEquals(listOf("zone-1", "zone-3", null), pairs.map { it.trailing?.id })
+        assertEquals(listOf("zone-0", "zone-1", "zone-2", "zone-3", "zone-4"), rail.zones.map { it.id })
+        assertEquals("explore-mood-rail", rail.key)
     }
 
     @Test
@@ -132,9 +131,7 @@ class ExploreLayoutTest {
         val keys = rows.map { it.key }
 
         assertEquals(keys.size, keys.toSet().size)
-        assertEquals(3, rows.filterIsInstance<ExploreRow.MoodPair>().sumOf { pair ->
-            if (pair.trailing == null) 1 else 2
-        })
+        assertEquals(3, rows.filterIsInstance<ExploreRow.MoodRail>().single().zones.size)
     }
 
     @Test
