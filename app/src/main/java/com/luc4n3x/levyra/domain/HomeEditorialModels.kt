@@ -24,7 +24,11 @@ enum class HomeCollectionKind {
     Rap,
     Pop,
     Discovery,
-    Editorial
+    Editorial,
+    Charts,
+    Repeat,
+    Throwback,
+    Gems
 }
 
 enum class HomeCollectionSource {

@@ -23,7 +23,23 @@ internal fun personalizedSearchPromptText(code: String, prompt: PersonalizedSear
     }
 }
 
-private fun String.formatQuoted(value: String): String = replace("%s", "\u201c${value.take(48)}\u201d")
+private val SearchPromptDecorations = Regex(
+    """\s*[(\[]\s*(feat\.?|ft\.?|featuring|with|prod\.?|from|remix|remaster(ed)?|live|version|edit|radio edit|bonus|official)\b[^)\]]*[)\]]|\s+[-\u2013]\s+(Single|EP|Remix|Remastered.*)$""",
+    RegexOption.IGNORE_CASE
+)
+private const val SEARCH_PROMPT_VALUE_LIMIT = 22
+
+internal fun searchPromptDisplayValue(value: String): String {
+    val cleaned = value.replace(SearchPromptDecorations, "").trim().ifBlank { value.trim() }
+    return if (cleaned.length <= SEARCH_PROMPT_VALUE_LIMIT) {
+        cleaned
+    } else {
+        cleaned.take(SEARCH_PROMPT_VALUE_LIMIT - 1).trimEnd() + "\u2026"
+    }
+}
+
+private fun String.formatQuoted(value: String): String =
+    replace("%s", "\u201c${searchPromptDisplayValue(value)}\u201d")
 
 private fun searchCopy(vararg values: String): PersonalizedSearchCopy {
     require(values.size == 4)

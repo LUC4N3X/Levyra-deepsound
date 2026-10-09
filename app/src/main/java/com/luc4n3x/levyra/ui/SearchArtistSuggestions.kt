@@ -1,5 +1,14 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.rememberLevyraAvatarPressShape
+import com.luc4n3x.levyra.ui.components.levyraPressable
+import com.luc4n3x.levyra.ui.components.levyraGroupedListShape
+import com.luc4n3x.levyra.ui.components.LevyraSectionHeader
+import com.luc4n3x.levyra.ui.components.LevyraPressScale
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -52,24 +61,24 @@ internal fun SearchArtistSuggestions(
         .take(7)
         .toList()
 
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = title,
-            color = MaterialTheme.colorScheme.onBackground,
-            style = LevyraType.sectionTitle,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .padding(bottom = 4.dp)
-                .semantics { heading() },
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
+        LevyraSectionHeader(
+            title = title,
+            titleColor = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(bottom = 4.dp)
         )
 
         when {
             visibleArtists.isNotEmpty() -> {
-                visibleArtists.forEach { artist ->
+                visibleArtists.forEachIndexed { index, artist ->
                     SearchArtistRow(
+                        index = index,
+                        count = visibleArtists.size,
                         name = artist.name,
-                        detail = artist.subscribers,
+                        detail = searchArtistAudienceDetail(artist.subscribers),
                         onClick = { onArtistClick(artist) },
                     ) {
                         AsyncImage(
@@ -91,8 +100,11 @@ internal fun SearchArtistSuggestions(
             }
 
             else -> {
-                fallbackNames.take(7).forEach { name ->
+                val fallback = fallbackNames.take(7)
+                fallback.forEachIndexed { index, name ->
                     SearchArtistRow(
+                        index = index,
+                        count = fallback.size,
                         name = name,
                         detail = "",
                         onClick = { onFallbackClick(name) },
@@ -119,24 +131,35 @@ internal fun SearchArtistSuggestions(
 
 @Composable
 private fun SearchArtistRow(
+    index: Int,
+    count: Int,
     name: String,
     detail: String,
     onClick: () -> Unit,
     avatar: @Composable () -> Unit,
 ) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val avatarShape = rememberLevyraAvatarPressShape(pressed = pressed, animated = LocalAnimationsEnabled.current)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = SearchArtistRowHeight)
-            .clip(SearchArtistRowShape)
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(vertical = 8.dp),
+            .clip(levyraGroupedListShape(index, count))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.62f))
+            .levyraPressable(
+                onClick = onClick,
+                role = Role.Button,
+                pressedScale = LevyraPressScale.Row,
+                interactionSource = interaction
+            )
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
                 .size(SearchArtistAvatarSize)
-                .clip(CircleShape),
+                .clip(avatarShape),
         ) {
             avatar()
         }
@@ -214,4 +237,11 @@ private fun SearchArtistSuggestionSkeleton() {
 
 private val SearchArtistAvatarSize = 56.dp
 private val SearchArtistRowHeight = 72.dp
-private val SearchArtistRowShape = RoundedCornerShape(12.dp)
+
+private val SearchArtistLeadingLabel = Regex("^[^•·|]{1,24}\\s*[•·|]\\s*")
+
+internal fun searchArtistAudienceDetail(detail: String): String {
+    val trimmed = detail.trim()
+    val stripped = trimmed.replaceFirst(SearchArtistLeadingLabel, "").trim()
+    return stripped.ifBlank { trimmed }
+}
