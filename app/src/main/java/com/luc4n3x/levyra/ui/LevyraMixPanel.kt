@@ -228,24 +228,7 @@ private fun MixToolAction(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(9.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(CircleShape)
-                .background(
-                    if (featured && enabled) accent.copy(alpha = 0.25f)
-                    else if (enabled) accent.copy(alpha = 0.12f)
-                    else colors.onSurfaceVariant.copy(alpha = 0.08f)
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = if (enabled) accent else colors.onSurfaceVariant,
-                modifier = Modifier.size(19.dp)
-            )
-        }
+        MixToolGlyph(icon, accent, enabled, featured)
         Text(
             text = label,
             style = if (featured) LevyraType.cardTitle else LevyraType.caption,
@@ -263,6 +246,35 @@ private fun MixToolAction(
                 modifier = Modifier.size(22.dp)
             )
         }
+    }
+}
+
+@Composable
+private fun MixToolGlyph(
+    icon: ImageVector,
+    accent: Color,
+    enabled: Boolean,
+    featured: Boolean
+) {
+    val colors = MaterialTheme.colorScheme
+    val iconBackground = when {
+        !enabled -> colors.onSurfaceVariant.copy(alpha = 0.08f)
+        featured -> accent.copy(alpha = 0.25f)
+        else -> accent.copy(alpha = 0.12f)
+    }
+    Box(
+        modifier = Modifier
+            .size(32.dp)
+            .clip(CircleShape)
+            .background(iconBackground),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = if (enabled) accent else colors.onSurfaceVariant,
+            modifier = Modifier.size(19.dp)
+        )
     }
 }
 
