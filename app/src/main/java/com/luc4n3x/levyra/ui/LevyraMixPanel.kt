@@ -600,7 +600,12 @@ private fun MixBalanceSlider(
                 Box(
                     modifier = Modifier
                         .size(width = 16.dp, height = 24.dp)
-                        .shadow(4.dp, RoundedCornerShape(6.dp), ambientColor = Color.Black.copy(alpha = 0.3f), spotColor = Color.Black.copy(alpha = 0.4f))
+                        .shadow(
+                            elevation = 4.dp,
+                            shape = RoundedCornerShape(6.dp),
+                            ambientColor = Color.Black.copy(alpha = 0.3f),
+                            spotColor = Color.Black.copy(alpha = 0.4f)
+                        )
                         .clip(RoundedCornerShape(6.dp))
                         .background(if (enabled) accent else colors.onSurfaceVariant)
                         .border(1.dp, Color.White.copy(alpha = 0.65f), RoundedCornerShape(6.dp)),
