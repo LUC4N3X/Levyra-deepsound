@@ -58,6 +58,18 @@ class LevyraContentLocalesTest {
     }
 
     @Test
+    fun exploreMoodCatalogHasCompletePairsForEverySupportedLanguage() {
+        LevyraLanguageCatalog.languages.forEach { language ->
+            val moods = ExploreCatalog.getZones(LevyraStrings.forCode(language.code))
+                .filterNot { it.id == ExploreCatalog.NEW_RELEASES_ZONE_ID }
+
+            assertEquals("Uneven mood grid for ${language.code}", 0, moods.size % 2)
+            assertEquals("Duplicate mood for ${language.code}", moods.size, moods.map { it.id }.distinct().size)
+            assertTrue("Afrobeats missing for ${language.code}", moods.any { it.id == "afrobeats" })
+        }
+    }
+
+    @Test
     fun majorAsianLanguagesUseLocalizedDiscoveryData() {
         assertEquals("jp", LevyraContentLocales.forLanguage("ja-JP").chartRegionId)
         assertEquals("kr", LevyraContentLocales.forLanguage("ko-KR").chartRegionId)
