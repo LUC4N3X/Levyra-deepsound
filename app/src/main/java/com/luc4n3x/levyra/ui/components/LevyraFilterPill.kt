@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.ui.components
 
+import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.Immutable
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.snap
@@ -40,6 +43,61 @@ import com.luc4n3x.levyra.ui.theme.LevyraType
 private val FilterPillTouchHeight = 48.dp
 private val FilterPillVisualHeight = 40.dp
 
+@Immutable
+private data class FilterPillColors(val container: Color, val content: Color, val outline: Color)
+
+@Composable
+private fun animatedFilterPillColors(selected: Boolean, animationsEnabled: Boolean): FilterPillColors {
+    val colors = MaterialTheme.colorScheme
+    val spec: AnimationSpec<Color> = if (animationsEnabled) LevyraMotion.standard() else snap()
+    val container by animateColorAsState(
+        targetValue = if (selected) colors.primaryContainer else colors.surfaceContainerHigh.copy(alpha = 0.45f),
+        animationSpec = spec,
+        label = "filter-pill-container"
+    )
+    val content by animateColorAsState(
+        targetValue = if (selected) colors.onPrimaryContainer else colors.onSurfaceVariant,
+        animationSpec = spec,
+        label = "filter-pill-content"
+    )
+    val outline by animateColorAsState(
+        targetValue = if (selected) colors.primary.copy(alpha = 0.55f) else colors.outlineVariant.copy(alpha = 0.35f),
+        animationSpec = spec,
+        label = "filter-pill-outline"
+    )
+    return FilterPillColors(container, content, outline)
+}
+
+@Composable
+private fun FilterPillLeading(
+    leadingIcon: ImageVector?,
+    selected: Boolean,
+    tint: Color,
+    animationsEnabled: Boolean
+) {
+    if (leadingIcon != null) {
+        Icon(
+            imageVector = leadingIcon,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.padding(end = 7.dp).size(16.dp)
+        )
+        return
+    }
+    AnimatedVisibility(
+        visible = selected,
+        enter = if (animationsEnabled) fadeIn() + expandHorizontally() else fadeIn(snap()),
+        exit = if (animationsEnabled) fadeOut() + shrinkHorizontally() else fadeOut(snap())
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Check,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.padding(end = 6.dp).size(16.dp)
+        )
+    }
+}
+
 @Composable
 internal fun LevyraFilterPill(
     label: String,
@@ -49,23 +107,8 @@ internal fun LevyraFilterPill(
     leadingIcon: ImageVector? = null,
     role: Role = Role.Tab
 ) {
-    val colors = MaterialTheme.colorScheme
     val animationsEnabled = LocalAnimationsEnabled.current
-    val container by animateColorAsState(
-        targetValue = if (selected) colors.primaryContainer else colors.surfaceContainerHigh.copy(alpha = 0.45f),
-        animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
-        label = "filter-pill-container"
-    )
-    val content by animateColorAsState(
-        targetValue = if (selected) colors.onPrimaryContainer else colors.onSurfaceVariant,
-        animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
-        label = "filter-pill-content"
-    )
-    val outline by animateColorAsState(
-        targetValue = if (selected) colors.primary.copy(alpha = 0.55f) else colors.outlineVariant.copy(alpha = 0.35f),
-        animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
-        label = "filter-pill-outline"
-    )
+    val pillColors = animatedFilterPillColors(selected, animationsEnabled)
     Box(
         modifier = modifier
             .heightIn(min = FilterPillTouchHeight)
@@ -82,38 +125,18 @@ internal fun LevyraFilterPill(
             modifier = Modifier
                 .height(FilterPillVisualHeight)
                 .clip(CircleShape)
-                .background(container)
-                .border(1.dp, outline, CircleShape)
+                .background(pillColors.container)
+                .border(1.dp, pillColors.outline, CircleShape)
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (leadingIcon != null) {
-                Icon(
-                    imageVector = leadingIcon,
-                    contentDescription = null,
-                    tint = content,
-                    modifier = Modifier.padding(end = 7.dp).size(16.dp)
-                )
-            } else {
-                AnimatedVisibility(
-                    visible = selected,
-                    enter = if (animationsEnabled) fadeIn() + expandHorizontally() else fadeIn(snap()),
-                    exit = if (animationsEnabled) fadeOut() + shrinkHorizontally() else fadeOut(snap())
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Check,
-                        contentDescription = null,
-                        tint = content,
-                        modifier = Modifier.padding(end = 6.dp).size(16.dp)
-                    )
-                }
-            }
+            FilterPillLeading(leadingIcon, selected, pillColors.content, animationsEnabled)
             Text(
                 text = label,
                 style = LevyraType.cardTitle.copy(
                     fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
                 ),
-                color = content,
+                color = pillColors.content,
                 maxLines = 1,
                 softWrap = false,
                 overflow = TextOverflow.Ellipsis

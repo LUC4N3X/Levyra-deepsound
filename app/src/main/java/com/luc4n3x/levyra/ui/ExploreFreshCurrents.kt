@@ -162,7 +162,7 @@ internal fun ExploreFreshSpotlight(
             val isCurrent = track.id == currentTrackId
             ExploreFreshSpotlightPage(
                 pageFocus = {
-                    val distance = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+                    val distance = pagerState.currentPage - page + pagerState.currentPageOffsetFraction
                     (1f - abs(distance)).coerceIn(0f, 1f)
                 },
                 track = track,

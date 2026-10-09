@@ -526,30 +526,7 @@ object HomeEditorialEngine {
     ): List<HomeEditorialCollection> {
         if (collections.size < 2) return collections
         val candidatesByCollection = collections.map { collection ->
-            val existingKeys = collection.tracks.asSequence().map(::identityKey).toHashSet()
-            val fallbackTracks = if (collection.kind == HomeCollectionKind.Fresh) {
-                emptyList()
-            } else {
-                fallbackPool
-                    .asSequence()
-                    .filterNot { identityKey(it) in existingKeys }
-                    .sortedWith(
-                        compareByDescending<Track> { track ->
-                            kindAffinity(track, collection.kind) +
-                                track.metadataConfidence.coerceIn(0, 100) * 3 +
-                                track.replayScore.coerceIn(0, 100) * 2 +
-                                track.cacheScore.coerceIn(0, 100)
-                        }.thenBy { track ->
-                            stableHash("cover|$daySeed|${collection.id}|${identityKey(track)}")
-                        }
-                    )
-                    .toList()
-            }
-            (collection.tracks + fallbackTracks)
-                .asSequence()
-                .distinctBy(::identityKey)
-                .filter { artworkIdentity(it).isNotBlank() }
-                .toList()
+            primaryArtworkCandidates(collection, fallbackPool, daySeed)
         }
         val ownerByArtwork = HashMap<String, Int>()
 
@@ -575,22 +552,56 @@ object HomeEditorialEngine {
         }
         return collections.mapIndexedNotNull { index, collection ->
             if (index !in assignedIndices) return@mapIndexedNotNull null
-            val assignedArtwork = artworkByCollection[index] ?: return@mapIndexedNotNull collection
-            val primary = candidatesByCollection[index]
-                .firstOrNull { artworkIdentity(it) == assignedArtwork }
-                ?: return@mapIndexedNotNull collection
-            val primaryKey = identityKey(primary)
-            if (collection.tracks.firstOrNull()?.let(::identityKey) == primaryKey) return@mapIndexedNotNull collection
-            collection.copy(
-                tracks = buildList(collection.tracks.size.coerceAtLeast(minimumCollectionSize)) {
-                    add(primary)
-                    val cap = maxOf(collectionTrackLimit, collection.tracks.size)
-                    collection.tracks.forEach { track ->
-                        if (identityKey(track) != primaryKey && size < cap) add(track)
-                    }
-                }
-            )
+            val primary = artworkByCollection[index]?.let { assignedArtwork ->
+                candidatesByCollection[index].firstOrNull { artworkIdentity(it) == assignedArtwork }
+            }
+            if (primary == null) collection else withPrimaryTrack(collection, primary)
         }
+    }
+
+    private fun primaryArtworkCandidates(
+        collection: HomeEditorialCollection,
+        fallbackPool: List<Track>,
+        daySeed: Int
+    ): List<Track> {
+        val existingKeys = collection.tracks.asSequence().map(::identityKey).toHashSet()
+        val fallbackTracks = if (collection.kind == HomeCollectionKind.Fresh) {
+            emptyList()
+        } else {
+            fallbackPool
+                .asSequence()
+                .filterNot { identityKey(it) in existingKeys }
+                .sortedWith(
+                    compareByDescending<Track> { track ->
+                        kindAffinity(track, collection.kind) +
+                            track.metadataConfidence.coerceIn(0, 100) * 3 +
+                            track.replayScore.coerceIn(0, 100) * 2 +
+                            track.cacheScore.coerceIn(0, 100)
+                    }.thenBy { track ->
+                        stableHash("cover|$daySeed|${collection.id}|${identityKey(track)}")
+                    }
+                )
+                .toList()
+        }
+        return (collection.tracks + fallbackTracks)
+            .asSequence()
+            .distinctBy(::identityKey)
+            .filter { artworkIdentity(it).isNotBlank() }
+            .toList()
+    }
+
+    private fun withPrimaryTrack(collection: HomeEditorialCollection, primary: Track): HomeEditorialCollection {
+        val primaryKey = identityKey(primary)
+        if (collection.tracks.firstOrNull()?.let(::identityKey) == primaryKey) return collection
+        val cap = maxOf(collectionTrackLimit, collection.tracks.size)
+        return collection.copy(
+            tracks = buildList(collection.tracks.size.coerceAtLeast(minimumCollectionSize)) {
+                add(primary)
+                collection.tracks.forEach { track ->
+                    if (identityKey(track) != primaryKey && size < cap) add(track)
+                }
+            }
+        )
     }
 
     private fun collectionQuality(collection: HomeEditorialCollection): Int {
