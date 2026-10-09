@@ -522,7 +522,6 @@ private fun ExploreFreshMomentRow(
     val strings = LocalLevyraStrings.current
     val colors = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(16.dp)
-    val thumbShape = RoundedCornerShape(14.dp)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -540,56 +539,78 @@ private fun ExploreFreshMomentRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(FreshMomentThumb)
-                .shadow(
-                    elevation = if (isCurrent) 8.dp else 4.dp,
-                    shape = thumbShape,
-                    ambientColor = colors.primary.copy(alpha = if (isCurrent) 0.35f else 0.12f),
-                    spotColor = colors.primary.copy(alpha = if (isCurrent) 0.45f else 0.15f)
-                )
-                .clip(thumbShape)
-                .background(colors.surfaceContainerHigh)
-        ) {
-            CoverImage(track = track, modifier = Modifier.fillMaxSize())
-            if (isCurrent || isResolving) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.48f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (isResolving) {
-                        DiscoveryLoadingIndicator(Modifier.size(20.dp), Color.White)
-                    } else {
-                        LevyraPlayingIndicator(playing = isPlaying, color = Color.White)
-                    }
+        ExploreFreshMomentArtwork(track, isCurrent, isPlaying, isResolving)
+        ExploreFreshMomentDetails(track, isCurrent, modifier = Modifier.weight(1f))
+        actions()
+    }
+}
+
+@Composable
+private fun ExploreFreshMomentArtwork(
+    track: Track,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    isResolving: Boolean
+) {
+    val colors = MaterialTheme.colorScheme
+    val thumbShape = RoundedCornerShape(14.dp)
+    Box(
+        modifier = Modifier
+            .size(FreshMomentThumb)
+            .shadow(
+                elevation = if (isCurrent) 8.dp else 4.dp,
+                shape = thumbShape,
+                ambientColor = colors.primary.copy(alpha = if (isCurrent) 0.35f else 0.12f),
+                spotColor = colors.primary.copy(alpha = if (isCurrent) 0.45f else 0.15f)
+            )
+            .clip(thumbShape)
+            .background(colors.surfaceContainerHigh)
+    ) {
+        CoverImage(track = track, modifier = Modifier.fillMaxSize())
+        if (isCurrent || isResolving) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.48f)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isResolving) {
+                    DiscoveryLoadingIndicator(Modifier.size(20.dp), Color.White)
+                } else {
+                    LevyraPlayingIndicator(playing = isPlaying, color = Color.White)
                 }
             }
         }
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.CaptionLineGap)
-        ) {
-            Text(
-                text = track.title,
-                style = LevyraType.contentTitle.copy(
-                    fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.SemiBold
-                ),
-                color = if (isCurrent) colors.primary else colors.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = track.artist,
-                style = LevyraType.caption,
-                color = colors.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        actions()
+    }
+}
+
+@Composable
+private fun ExploreFreshMomentDetails(
+    track: Track,
+    isCurrent: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val colors = MaterialTheme.colorScheme
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.CaptionLineGap)
+    ) {
+        Text(
+            text = track.title,
+            style = LevyraType.contentTitle.copy(
+                fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.SemiBold
+            ),
+            color = if (isCurrent) colors.primary else colors.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = track.artist,
+            style = LevyraType.caption,
+            color = colors.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
