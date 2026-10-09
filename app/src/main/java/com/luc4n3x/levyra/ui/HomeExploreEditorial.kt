@@ -155,7 +155,8 @@ internal fun DiscoveryTrackActions(
     isFavorite: Boolean,
     onFavorite: () -> Unit,
     onShare: () -> Unit,
-    onAddToPlaylist: () -> Unit
+    onAddToPlaylist: () -> Unit,
+    onOpenAlbum: (() -> Unit)? = null
 ) {
     val strings = LocalLevyraStrings.current
     var expanded by remember { mutableStateOf(false) }
@@ -185,6 +186,15 @@ internal fun DiscoveryTrackActions(
                     onShare()
                 }
             )
+            onOpenAlbum?.let { action ->
+                DropdownMenuItem(
+                    text = { Text(strings.openAlbum) },
+                    onClick = {
+                        expanded = false
+                        action()
+                    }
+                )
+            }
         }
     }
 }

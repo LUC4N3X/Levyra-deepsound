@@ -404,6 +404,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableFloatStateOf
@@ -533,6 +534,7 @@ import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.domain.ArtistBiography
 import com.luc4n3x.levyra.domain.artistBiographyEditorial
 import com.luc4n3x.levyra.domain.ArtistProfile
+import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistRelease
@@ -23321,16 +23323,41 @@ private fun ExploreScreen(
     val selectedZone = remember(zones, state.exploreZoneId) {
         zones.firstOrNull { zone -> zone.id == state.exploreZoneId }
     }
-    val freshTracks = state.exploreFreshTracks
+    val localFreshTracks = state.exploreFreshTracks
+    val worldFreshTracks = state.exploreWorldFreshTracks
+    var freshScope by rememberSaveable { mutableStateOf(ExploreFreshScope.Local) }
+    val freshScopes = remember(localFreshTracks, worldFreshTracks) {
+        exploreFreshScopes(localFreshTracks, worldFreshTracks)
+    }
+    val freshFeed = remember(freshScope, localFreshTracks, worldFreshTracks) {
+        exploreFreshFeed(freshScope, localFreshTracks, worldFreshTracks)
+    }
+    val freshTracks = remember(freshFeed) { freshFeed.spotlight + freshFeed.moment }
+    val momentPages = remember(freshFeed) { exploreMomentPages(freshFeed.moment) }
+    val freshRegionLabel = remember(state.languageCode) {
+        ChartsCatalog.defaultRegionForLanguage(state.languageCode).label
+    }
     val samples = remember(state.exploreSamples) {
         exploreSampleTracks(state.exploreSamples, ExploreImmersiveSampleLimit)
     }
-    val rows = remember(zones, state.isFreshCurrentsLoading, freshTracks.isNotEmpty(), samples.isNotEmpty()) {
+    val freshSection = remember(freshScopes, freshFeed, momentPages, freshRegionLabel) {
+        ExploreFreshSection(freshScopes, freshFeed, momentPages, freshRegionLabel)
+    }
+    val rows = remember(
+        zones,
+        state.isFreshCurrentsLoading,
+        freshFeed.spotlight.isNotEmpty(),
+        freshScopes.size > 1,
+        momentPages.isNotEmpty(),
+        samples.isNotEmpty()
+    ) {
         buildExploreRows(
             zones = zones,
             isFreshLoading = state.isFreshCurrentsLoading,
-            hasFreshTracks = freshTracks.isNotEmpty(),
-            hasSamples = samples.isNotEmpty()
+            hasFreshTracks = freshFeed.spotlight.isNotEmpty(),
+            hasSamples = samples.isNotEmpty(),
+            hasFreshScopes = freshScopes.size > 1,
+            hasFreshMoment = momentPages.isNotEmpty()
         )
     }
     val availableAnchors = remember(rows) { exploreAvailableAnchors(rows) }
@@ -23366,6 +23393,38 @@ private fun ExploreScreen(
     }
 
     val exploreMixAccent = rememberNowPlayingAccent(state.currentTrack, LevyraCyan)
+    val shareFreshTrack: (Track) -> Unit = { track ->
+        val shareText = buildString {
+            append(track.title)
+            if (track.artist.isNotBlank()) append(" - ").append(track.artist)
+            val link = track.videoUrl.ifBlank { track.streamUrl }
+            if (link.isNotBlank()) append("\n").append(link)
+        }
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, track.title)
+            putExtra(Intent.EXTRA_TEXT, shareText)
+        }
+        context.startActivity(Intent.createChooser(intent, strings.shareVia))
+    }
+    val onPlayFreshTrack: (Track) -> Unit = { track ->
+        if (track.id == state.currentTrack?.id) viewModel.togglePlay()
+        else viewModel.playFrom(freshTracks, track)
+    }
+    val freshTrackActions: @Composable (Track) -> Unit = { track ->
+        DiscoveryTrackActions(
+            trackTitle = track.title,
+            isFavorite = track.id in state.favoriteIds,
+            onFavorite = { viewModel.toggleFavorite(track) },
+            onAddToPlaylist = { addToPlaylistTarget = track },
+            onShare = { shareFreshTrack(track) },
+            onOpenAlbum = if (track.album.isNotBlank()) {
+                { viewModel.openAlbum(trackAlbumHit(track)) }
+            } else {
+                null
+            }
+        )
+    }
     val exploreBottomInset = tabBarBottomContentInset(
         miniPlayerVisible = state.currentTrack != null && !state.isSamplesOpen,
         animationsEnabled = state.animationsEnabled
@@ -23378,269 +23437,366 @@ private fun ExploreScreen(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
-            contentPadding = PaddingValues(top = 20.dp, bottom = exploreBottomInset),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            contentPadding = PaddingValues(top = 14.dp, bottom = exploreBottomInset),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             items(
                 items = rows,
                 key = { row -> row.key },
                 contentType = { row -> row::class }
             ) { row ->
-                when (row) {
-                    ExploreRow.Shortcuts -> Column(
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        ExplorePageHeader(
-                            title = strings.exploreTitle,
-                            subtitle = strings.exploreSubtitle,
-                            modifier = Modifier.padding(horizontal = HomeHorizontalInset)
-                        )
-                        ExplorePrimaryShortcuts(
-                            availableAnchors = availableAnchors,
-                            onSelect = onShortcut,
-                            onOpenJam = onOpenJam,
-                            onOpenRadio = { onLiveRadioOpenChange(true) },
-                            modifier = Modifier.padding(horizontal = HomeHorizontalInset)
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                    }
-                    ExploreRow.MixTools -> Column(
-                        modifier = Modifier.padding(horizontal = HomeHorizontalInset),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        ExploreLiveRadioEntry(onClick = { onLiveRadioOpenChange(true) })
-                        LevyraMixLauncherPanel(
-                            familiarity = state.mixFamiliarity,
-                            loading = state.mixLoading,
-                            accent = exploreMixAccent,
-                            onFamiliarityChange = viewModel::setMixFamiliarity,
-                            onStartMix = { kind -> viewModel.startLevyraMix(kind) },
-                            onOpenYourSound = viewModel::openYourSound,
-                            onOpenMixLab = { viewModel.openMixLab() }
-                        )
-                    }
-                    is ExploreRow.Header -> when (row.anchor) {
-                        ExploreAnchor.Fresh -> ExploreSectionHeader(
-                            title = strings.exploreFresh,
-                            subtitle = strings.exploreNewReleases,
-                            onPlayAll = onPlayFresh
-                        )
-                        ExploreAnchor.Samples -> ExploreSectionHeader(
-                            title = strings.exploreSamples,
-                            subtitle = strings.exploreSamplesSubtitle,
-                            onPlayAll = onPlaySamples
-                        )
-                        ExploreAnchor.Moods -> ExploreSectionHeader(
-                            title = strings.exploreMoods,
-                            onShowAll = {
-                                samplesStartIndex = null
-                                exploreMoodReturn = null
-                                exploreDestination = ExploreMoodsDestination
-                            }
-                        )
-                    }
-                    ExploreRow.FreshLoading -> Box(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        DiscoveryLoadingIndicator(modifier = Modifier.size(40.dp), color = MaterialTheme.colorScheme.primary)
-                    }
-                    ExploreRow.FreshEmpty -> Box(modifier = Modifier.padding(horizontal = HomeHorizontalInset)) {
-                        EmptyState(strings.exploreEmpty)
-                    }
-                    ExploreRow.FreshCarousel -> BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                        val cardWidth = (maxWidth - LevyraHomeDesign.EditorialPeek)
-                            .coerceAtMost(LevyraHomeDesign.EditorialMaxWidth)
-                        val freshState = rememberLazyListState()
-                        val freshDepth = carouselDepthEnabled()
-                        LazyRow(
-                            state = freshState,
-                            contentPadding = PaddingValues(horizontal = HomeHorizontalInset),
-                            horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap)
-                        ) {
-                            items(freshTracks, key = { track -> "ex-track-${track.id}" }, contentType = { "discovery-featured" }) { track ->
-                                DiscoveryTrackCard(
-                                    track = track,
-                                    isCurrent = track.id == state.currentTrack?.id,
-                                    isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
-                                    isResolving = state.isResolving && track.id == state.currentTrack?.id,
-                                    onPlay = { viewModel.playFrom(freshTracks, track) },
-                                    wide = true,
-                                    modifier = Modifier
-                                        .levyraCarouselDepth(freshState, "ex-track-${track.id}", freshDepth)
-                                        .width(cardWidth),
-                                    trailing = {
-                                        DiscoveryTrackActions(
-                                            trackTitle = track.title,
-                                            isFavorite = track.id in state.favoriteIds,
-                                            onFavorite = { viewModel.toggleFavorite(track) },
-                                            onAddToPlaylist = { addToPlaylistTarget = track },
-                                            onShare = {
-                                                val intent = Intent(Intent.ACTION_SEND).apply {
-                                                    type = "text/plain"
-                                                    putExtra(Intent.EXTRA_SUBJECT, track.title)
-                                                    putExtra(Intent.EXTRA_TEXT, "${track.title} - ${track.artist}\n${track.streamUrl}")
-                                                }
-                                                context.startActivity(Intent.createChooser(intent, strings.shareVia))
-                                            }
-                                        )
-                                    }
-                                )
-                            }
-                        }
-                    }
-                    ExploreRow.Samples -> ExploreSamplesRow(
-                        samples = samples.take(ExploreSampleLimit),
-                        currentTrackId = state.currentTrack?.id,
-                        isPlaying = state.isPlaying,
-                        onOpen = { track ->
-                            viewModel.beginSamplesPlayback()
-                            samplesStartIndex = samples.indexOfFirst { candidate -> candidate.id == track.id }
-                                .coerceAtLeast(0)
-                        }
-                    )
-                    is ExploreRow.MoodPair -> Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        ExploreMoodCard(
-                            zone = row.leading,
-                            isSelected = row.leading.id == state.exploreZoneId,
-                            prominent = row.leading.id == zones.firstOrNull()?.id,
-                            onClick = {
-                                viewModel.selectExploreZone(row.leading)
-                                exploreMoodReturn = null
-                                exploreDestination = exploreMoodDestination(row.leading.id)
-                            },
-                            onStartZoneMix = {
-                                viewModel.startLevyraMix(
-                                    kind = LevyraMixKind.Genre,
-                                    seedQuery = row.leading.query,
-                                    label = row.leading.label
-                                )
-                            }
-                        )
-                        val trailing = row.trailing
-                        if (trailing == null) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        } else {
-                            ExploreMoodCard(
-                                zone = trailing,
-                                isSelected = trailing.id == state.exploreZoneId,
-                                prominent = row.leading.id == zones.firstOrNull()?.id,
-                                onClick = {
-                                    viewModel.selectExploreZone(trailing)
-                                    exploreMoodReturn = null
-                                    exploreDestination = exploreMoodDestination(trailing.id)
-                                },
-                                onStartZoneMix = {
-                                    viewModel.startLevyraMix(
-                                        kind = LevyraMixKind.Genre,
-                                        seedQuery = trailing.query,
-                                        label = trailing.label
-                                    )
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        addToPlaylistTarget?.let { target ->
-            AddToPlaylistDialog(
-                track = target,
-                playlists = state.playlists,
-                onDismiss = { addToPlaylistTarget = null },
-                onAddTo = { playlistId ->
-                    viewModel.addToPlaylist(playlistId, target)
-                    addToPlaylistTarget = null
-                },
-                onCreateWith = { name ->
-                    viewModel.createPlaylist(name, target)
-                    addToPlaylistTarget = null
-                }
-            )
-        }
-
-        when (exploreDestination) {
-            ExploreNewReleasesDestination -> ExploreNewReleasesDestinationScreen(
-                releases = state.exploreNewReleases,
-                isLoading = state.isNewReleasesLoading,
-                strings = strings,
-                backEnabled = backEnabled,
-                onBack = { exploreDestination = null },
-                onOpenRelease = viewModel::openAlbum
-            )
-            ExploreMoodsDestination -> ExploreMoodsDestinationScreen(
-                zones = zones,
-                categories = state.exploreCategories,
-                categoryArtwork = state.exploreCategoryArtwork,
-                isLoading = state.isExploreCategoriesLoading,
-                strings = strings,
-                backEnabled = backEnabled,
-                onBack = { exploreDestination = null },
-                onOpenZone = { zone ->
-                    viewModel.selectExploreZone(zone)
-                    exploreMoodReturn = ExploreMoodsDestination
-                    exploreDestination = exploreMoodDestination(zone.id)
-                },
-                onOpenCategory = { category ->
-                    viewModel.selectExploreCategory(category)
-                    exploreMoodReturn = ExploreMoodsDestination
-                    exploreDestination = exploreCategoryDestination(category)
-                },
-                onRequestCategoryArtwork = viewModel::ensureExploreCategoryArtwork
-            )
-            else -> ExploreMoodCollectionDestination(
-                destination = exploreDestination,
-                returnDestination = exploreMoodReturn,
-                zones = zones,
-                state = state,
-                strings = strings,
-                viewModel = viewModel,
-                backEnabled = backEnabled,
-                onDestinationChange = { exploreDestination = it }
-            )
-        }
-
-        samplesStartIndex?.let { initialPage ->
-                ExploreSamplesScreen(
+                ExploreContentRow(
+                    row = row,
+                    state = state,
+                    viewModel = viewModel,
+                    fresh = freshSection,
                     samples = samples,
-                    initialPage = initialPage,
-                    currentTrack = state.currentTrack,
-                    isPlaying = state.isPlaying,
-                    isResolving = state.isResolving,
-                    isVideoMode = state.isVideoMode,
-                    isLoading = state.isSamplesLoading,
-                    loadFailed = state.samplesLoadFailed,
-                    favoriteIds = state.favoriteIds,
-                    strings = strings,
-                    backEnabled = backEnabled,
-                    onPlaySample = viewModel::playSample,
-                    onTogglePlay = viewModel::togglePlay,
-                    onToggleFavorite = viewModel::toggleFavorite,
-                    onRequestFeed = viewModel::refreshSamples,
-                    onDismiss = {
-                        viewModel.endSamplesPlayback()
+                    availableAnchors = availableAnchors,
+                    mixAccent = exploreMixAccent,
+                    onShortcut = onShortcut,
+                    onPlayFresh = onPlayFresh,
+                    onPlaySamples = onPlaySamples,
+                    onSelectFreshScope = { scope -> freshScope = scope },
+                    onOpenJam = onOpenJam,
+                    onOpenRadio = { onLiveRadioOpenChange(true) },
+                    onOpenMoods = {
                         samplesStartIndex = null
-                    }
+                        exploreMoodReturn = null
+                        exploreDestination = ExploreMoodsDestination
+                    },
+                    onOpenSample = { track ->
+                        viewModel.beginSamplesPlayback()
+                        samplesStartIndex = samples.indexOfFirst { candidate -> candidate.id == track.id }
+                            .coerceAtLeast(0)
+                    },
+                    onOpenZone = { zone ->
+                        viewModel.selectExploreZone(zone)
+                        exploreMoodReturn = null
+                        exploreDestination = exploreMoodDestination(zone.id)
+                    },
+                    onPlayTrack = onPlayFreshTrack,
+                    trackActions = freshTrackActions
                 )
             }
+        }
 
-        if (liveRadioOpen) {
-            LiveRadioScreen(
-                languageCode = state.languageCode,
-                currentStationId = state.currentTrack
-                    ?.takeIf { it.isLiveRadio() }
-                    ?.id
-                    ?.removePrefix("live-radio:"),
-                isPlaying = state.isPlaying,
-                backEnabled = backEnabled,
-                onBack = { onLiveRadioOpenChange(false) },
-                onPlay = viewModel::playLiveRadio
+        ExploreOverlays(
+            state = state,
+            viewModel = viewModel,
+            strings = strings,
+            zones = zones,
+            samples = samples,
+            backEnabled = backEnabled,
+            liveRadioOpen = liveRadioOpen,
+            addToPlaylistTarget = addToPlaylistTarget,
+            samplesStartIndex = samplesStartIndex,
+            exploreDestination = exploreDestination,
+            exploreMoodReturn = exploreMoodReturn,
+            onAddToPlaylistTargetChange = { addToPlaylistTarget = it },
+            onSamplesStartIndexChange = { samplesStartIndex = it },
+            onDestinationChange = { exploreDestination = it },
+            onMoodReturnChange = { exploreMoodReturn = it },
+            onLiveRadioOpenChange = onLiveRadioOpenChange
+        )
+    }
+}
+
+@Immutable
+private class ExploreFreshSection(
+    val scopes: List<ExploreFreshScope>,
+    val feed: ExploreFreshFeed,
+    val momentPages: List<List<Track>>,
+    val regionLabel: String
+)
+
+@Composable
+private fun ExploreContentRow(
+    row: ExploreRow,
+    state: LevyraUiState,
+    viewModel: ExploreViewModel,
+    fresh: ExploreFreshSection,
+    samples: List<Track>,
+    availableAnchors: Set<ExploreAnchor>,
+    mixAccent: Color,
+    onShortcut: (ExploreShortcut) -> Unit,
+    onPlayFresh: (() -> Unit)?,
+    onPlaySamples: (() -> Unit)?,
+    onSelectFreshScope: (ExploreFreshScope) -> Unit,
+    onOpenJam: () -> Unit,
+    onOpenRadio: () -> Unit,
+    onOpenMoods: () -> Unit,
+    onOpenSample: (Track) -> Unit,
+    onOpenZone: (ExploreZone) -> Unit,
+    onPlayTrack: (Track) -> Unit,
+    trackActions: @Composable (Track) -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    when (row) {
+        ExploreRow.Shortcuts -> Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            ExplorePageHeader(
+                title = strings.exploreTitle,
+                subtitle = strings.exploreSubtitle,
+                modifier = Modifier.padding(horizontal = HomeHorizontalInset)
+            )
+            ExplorePrimaryShortcuts(
+                availableAnchors = availableAnchors,
+                onSelect = onShortcut,
+                onOpenJam = onOpenJam,
+                onOpenRadio = onOpenRadio,
+                modifier = Modifier
             )
         }
+        ExploreRow.MixTools -> Column(
+            modifier = Modifier.padding(horizontal = HomeHorizontalInset),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            ExploreLiveRadioEntry(onClick = onOpenRadio)
+            LevyraMixLauncherPanel(
+                familiarity = state.mixFamiliarity,
+                loading = state.mixLoading,
+                accent = mixAccent,
+                onFamiliarityChange = viewModel::setMixFamiliarity,
+                onStartMix = { kind -> viewModel.startLevyraMix(kind) },
+                onOpenYourSound = viewModel::openYourSound,
+                onOpenMixLab = { viewModel.openMixLab() }
+            )
+        }
+        is ExploreRow.Header -> ExploreAnchorHeader(
+            anchor = row.anchor,
+            onPlayFresh = onPlayFresh,
+            onPlaySamples = onPlaySamples,
+            onOpenMoods = onOpenMoods
+        )
+        ExploreRow.FreshLoading -> Box(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            DiscoveryLoadingIndicator(modifier = Modifier.size(40.dp), color = MaterialTheme.colorScheme.primary)
+        }
+        ExploreRow.FreshEmpty -> Box(modifier = Modifier.padding(horizontal = HomeHorizontalInset)) {
+            EmptyState(strings.exploreEmpty)
+        }
+        ExploreRow.FreshScopes -> ExploreFreshScopeRail(
+            scopes = fresh.scopes,
+            selected = fresh.feed.scope,
+            localLabel = fresh.regionLabel,
+            onSelect = onSelectFreshScope
+        )
+        ExploreRow.FreshSpotlight -> ExploreFreshSpotlight(
+            tracks = fresh.feed.spotlight,
+            currentTrackId = state.currentTrack?.id,
+            isPlaying = state.isPlaying,
+            isResolving = state.isResolving,
+            onPlay = onPlayTrack,
+            onOpenAlbum = { track -> viewModel.openAlbum(trackAlbumHit(track)) },
+            actions = { track -> trackActions(track) }
+        )
+        ExploreRow.FreshMoment -> Column(
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            ExploreFreshMomentHeader(
+                title = strings.freshMomentTitle,
+                onShowAll = { onShortcut(ExploreShortcut.NewReleases) }
+            )
+            ExploreFreshMomentRail(
+                pages = fresh.momentPages,
+                currentTrackId = state.currentTrack?.id,
+                isPlaying = state.isPlaying,
+                isResolving = state.isResolving,
+                onPlay = onPlayTrack,
+                actions = { track -> trackActions(track) }
+            )
+        }
+        ExploreRow.Samples -> ExploreSamplesRow(
+            samples = samples.take(ExploreSampleLimit),
+            currentTrackId = state.currentTrack?.id,
+            isPlaying = state.isPlaying,
+            onOpen = onOpenSample
+        )
+        is ExploreRow.MoodRail -> ExploreMoodRailRow(
+            zones = row.zones,
+            selectedZoneId = state.exploreZoneId,
+            onOpenZone = onOpenZone,
+            onStartZoneMix = { zone ->
+                viewModel.startLevyraMix(
+                    kind = LevyraMixKind.Genre,
+                    seedQuery = zone.query,
+                    label = zone.label
+                )
+            }
+        )
+    }
+}
+
+@Composable
+private fun ExploreAnchorHeader(
+    anchor: ExploreAnchor,
+    onPlayFresh: (() -> Unit)?,
+    onPlaySamples: (() -> Unit)?,
+    onOpenMoods: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    when (anchor) {
+        ExploreAnchor.Fresh -> ExploreFreshSectionHeader(
+            title = strings.exploreFresh,
+            onPlayAll = onPlayFresh
+        )
+        ExploreAnchor.Samples -> ExploreSectionHeader(
+            title = strings.exploreSamples,
+            subtitle = strings.exploreSamplesSubtitle,
+            onPlayAll = onPlaySamples
+        )
+        ExploreAnchor.Moods -> ExploreSectionHeader(
+            title = strings.exploreMoods,
+            onShowAll = onOpenMoods
+        )
+    }
+}
+
+@Composable
+private fun ExploreMoodRailRow(
+    zones: List<ExploreZone>,
+    selectedZoneId: String?,
+    onOpenZone: (ExploreZone) -> Unit,
+    onStartZoneMix: (ExploreZone) -> Unit
+) {
+    LazyRow(
+        state = rememberLazyListState(),
+        contentPadding = PaddingValues(horizontal = HomeHorizontalInset),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        itemsIndexed(
+            items = zones,
+            key = { _, zone -> "explore-mood-${zone.id}" },
+            contentType = { _, _ -> "explore-mood-tile" }
+        ) { index, zone ->
+            Row(modifier = Modifier.width(if (index == 0) 224.dp else 186.dp)) {
+                ExploreMoodCard(
+                    zone = zone,
+                    isSelected = zone.id == selectedZoneId,
+                    prominent = index == 0,
+                    onClick = { onOpenZone(zone) },
+                    onStartZoneMix = { onStartZoneMix(zone) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExploreOverlays(
+    state: LevyraUiState,
+    viewModel: ExploreViewModel,
+    strings: LevyraStrings,
+    zones: List<ExploreZone>,
+    samples: List<Track>,
+    backEnabled: Boolean,
+    liveRadioOpen: Boolean,
+    addToPlaylistTarget: Track?,
+    samplesStartIndex: Int?,
+    exploreDestination: String?,
+    exploreMoodReturn: String?,
+    onAddToPlaylistTargetChange: (Track?) -> Unit,
+    onSamplesStartIndexChange: (Int?) -> Unit,
+    onDestinationChange: (String?) -> Unit,
+    onMoodReturnChange: (String?) -> Unit,
+    onLiveRadioOpenChange: (Boolean) -> Unit
+) {
+    addToPlaylistTarget?.let { target ->
+        AddToPlaylistDialog(
+            track = target,
+            playlists = state.playlists,
+            onDismiss = { onAddToPlaylistTargetChange(null) },
+            onAddTo = { playlistId ->
+                viewModel.addToPlaylist(playlistId, target)
+                onAddToPlaylistTargetChange(null)
+            },
+            onCreateWith = { name ->
+                viewModel.createPlaylist(name, target)
+                onAddToPlaylistTargetChange(null)
+            }
+        )
+    }
+
+    when (exploreDestination) {
+        ExploreNewReleasesDestination -> ExploreNewReleasesDestinationScreen(
+            releases = state.exploreNewReleases,
+            isLoading = state.isNewReleasesLoading,
+            strings = strings,
+            backEnabled = backEnabled,
+            onBack = { onDestinationChange(null) },
+            onOpenRelease = viewModel::openAlbum
+        )
+        ExploreMoodsDestination -> ExploreMoodsDestinationScreen(
+            zones = zones,
+            categories = state.exploreCategories,
+            categoryArtwork = state.exploreCategoryArtwork,
+            isLoading = state.isExploreCategoriesLoading,
+            strings = strings,
+            backEnabled = backEnabled,
+            onBack = { onDestinationChange(null) },
+            onOpenZone = { zone ->
+                viewModel.selectExploreZone(zone)
+                onMoodReturnChange(ExploreMoodsDestination)
+                onDestinationChange(exploreMoodDestination(zone.id))
+            },
+            onOpenCategory = { category ->
+                viewModel.selectExploreCategory(category)
+                onMoodReturnChange(ExploreMoodsDestination)
+                onDestinationChange(exploreCategoryDestination(category))
+            },
+            onRequestCategoryArtwork = viewModel::ensureExploreCategoryArtwork
+        )
+        else -> ExploreMoodCollectionDestination(
+            destination = exploreDestination,
+            returnDestination = exploreMoodReturn,
+            zones = zones,
+            state = state,
+            strings = strings,
+            viewModel = viewModel,
+            backEnabled = backEnabled,
+            onDestinationChange = onDestinationChange
+        )
+    }
+
+    samplesStartIndex?.let { initialPage ->
+            ExploreSamplesScreen(
+                samples = samples,
+                initialPage = initialPage,
+                currentTrack = state.currentTrack,
+                isPlaying = state.isPlaying,
+                isResolving = state.isResolving,
+                isVideoMode = state.isVideoMode,
+                isLoading = state.isSamplesLoading,
+                loadFailed = state.samplesLoadFailed,
+                favoriteIds = state.favoriteIds,
+                strings = strings,
+                backEnabled = backEnabled,
+                onPlaySample = viewModel::playSample,
+                onTogglePlay = viewModel::togglePlay,
+                onToggleFavorite = viewModel::toggleFavorite,
+                onRequestFeed = viewModel::refreshSamples,
+                onDismiss = {
+                    viewModel.endSamplesPlayback()
+                    onSamplesStartIndexChange(null)
+                }
+            )
+        }
+
+    if (liveRadioOpen) {
+        LiveRadioScreen(
+            languageCode = state.languageCode,
+            currentStationId = state.currentTrack
+                ?.takeIf { it.isLiveRadio() }
+                ?.id
+                ?.removePrefix("live-radio:"),
+            isPlaying = state.isPlaying,
+            backEnabled = backEnabled,
+            onBack = { onLiveRadioOpenChange(false) },
+            onPlay = viewModel::playLiveRadio
+        )
     }
 }
 
@@ -23710,6 +23866,35 @@ private fun ExploreMoodCollectionDestination(
 }
 
 @Composable
+private fun ExploreFreshSectionHeader(
+    title: String,
+    onPlayAll: (() -> Unit)?
+) {
+    val strings = LocalLevyraStrings.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = HomeHorizontalInset, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = remember(title) { cleanHomeSectionTitle(title) },
+            color = MaterialTheme.colorScheme.onSurface,
+            style = LevyraType.sectionTitle,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .weight(1f)
+                .semantics { heading() }
+        )
+        onPlayAll?.let { action ->
+            HomeOutlinedAction(label = strings.playAll, onClick = action)
+        }
+    }
+}
+
+@Composable
 private fun ExploreSectionHeader(
     title: String,
     subtitle: String? = null,
@@ -23721,7 +23906,7 @@ private fun ExploreSectionHeader(
         subtitle = subtitle,
         onPlayAll = onPlayAll,
         onShowAll = onShowAll,
-        modifier = Modifier.padding(horizontal = HomeHorizontalInset, vertical = 10.dp)
+        modifier = Modifier.padding(horizontal = HomeHorizontalInset, vertical = 6.dp)
     )
 }
 
@@ -23731,18 +23916,20 @@ private fun ExplorePageHeader(
     subtitle: String,
     modifier: Modifier = Modifier
 ) {
+    val colors = MaterialTheme.colorScheme
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Text(
             text = title,
-            color = LevyraText,
-            style = LevyraType.heroTitle
+            color = colors.onSurface,
+            style = LevyraType.heroTitle,
+            modifier = Modifier.semantics { heading() }
         )
         Text(
             text = subtitle,
-            color = LevyraMuted,
+            color = colors.onSurfaceVariant,
             style = LevyraType.metadata,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
@@ -23762,57 +23949,119 @@ private fun ExplorePrimaryShortcuts(
     val radioStrings = com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog.forCode(strings.code)
     LazyRow(
         modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = HomeHorizontalInset),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         if (ExploreAnchor.Fresh in availableAnchors) {
-            item(key = "releases") { ExploreShortcutTile(Icons.Rounded.AutoAwesome, strings.exploreNewReleases) { onSelect(ExploreShortcut.NewReleases) } }
+            item(key = "releases") {
+                ExploreShortcutTile(Icons.Rounded.AutoAwesome, strings.exploreNewReleases) {
+                    onSelect(ExploreShortcut.NewReleases)
+                }
+            }
         }
-        item(key = "samples") { ExploreShortcutTile(Icons.Rounded.PlayArrow, strings.exploreSamples) { onSelect(ExploreShortcut.Samples) } }
+        item(key = "samples") {
+            ExploreShortcutTile(Icons.Rounded.PlayArrow, strings.exploreSamples) {
+                onSelect(ExploreShortcut.Samples)
+            }
+        }
         if (ExploreAnchor.Moods in availableAnchors) {
-            item(key = "moods") { ExploreShortcutTile(Icons.Rounded.Mood, strings.exploreMoods) { onSelect(ExploreShortcut.Moods) } }
+            item(key = "moods") {
+                ExploreShortcutTile(Icons.Rounded.Mood, strings.exploreMoods) {
+                    onSelect(ExploreShortcut.Moods)
+                }
+            }
         }
-        item(key = "radio") { ExploreShortcutTile(Icons.Rounded.Radio, radioStrings.title, onOpenRadio) }
-        item(key = "jam") { ExploreShortcutTile(Icons.Rounded.PersonAdd, strings.jamTitle, onOpenJam) }
+        item(key = "radio") {
+            ExploreShortcutTile(Icons.Rounded.Radio, radioStrings.title, onOpenRadio)
+        }
+        item(key = "jam") {
+            ExploreShortcutTile(Icons.Rounded.PersonAdd, strings.jamTitle, onOpenJam)
+        }
     }
 }
 
 @Composable
 private fun ExploreShortcutTile(icon: ImageVector, label: String, onClick: () -> Unit) {
-    Row(
+    val colors = MaterialTheme.colorScheme
+    Column(
         modifier = Modifier
-            .widthIn(max = 180.dp)
-            .heightIn(min = 48.dp)
-            .clip(MaterialTheme.shapes.medium)
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .levyraPressable(onClick = onClick, role = Role.Button)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+            .width(92.dp)
+            .heightIn(min = 96.dp)
+            .clip(MaterialTheme.shapes.large)
+            .levyraPressable(onClick = onClick, onClickLabel = label, role = Role.Button)
+            .padding(horizontal = 5.dp, vertical = 7.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
-        Text(label, style = LevyraType.caption, color = MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Box(
+            modifier = Modifier
+                .size(52.dp)
+                .clip(MaterialTheme.shapes.large)
+                .background(colors.surfaceContainerHigh),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = colors.primary,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        Text(
+            text = label,
+            style = LevyraType.caption,
+            color = colors.onSurface,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
 @Composable
 private fun ExploreLiveRadioEntry(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val radioStrings = com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog.forCode(LocalLevyraStrings.current.code)
+    val colors = MaterialTheme.colorScheme
     Row(
-        modifier = modifier.fillMaxWidth()
-            .heightIn(min = 72.dp)
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 84.dp)
             .clip(LevyraCardDesign.EditorialShape)
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .levyraPressable(onClick = onClick, role = Role.Button)
-            .padding(16.dp),
+            .background(colors.surfaceContainerHigh)
+            .levyraPressable(
+                onClick = onClick,
+                onClickLabel = radioStrings.title,
+                role = Role.Button
+            )
+            .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Icon(Icons.Rounded.Radio, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(radioStrings.title, color = LevyraText, style = LevyraType.contentTitle)
-            Text(radioStrings.exploreSubtitle, color = LevyraMuted, style = LevyraType.caption, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Box(
+            modifier = Modifier
+                .size(52.dp)
+                .clip(MaterialTheme.shapes.large)
+                .background(colors.primaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Rounded.Radio,
+                contentDescription = null,
+                tint = colors.onPrimaryContainer,
+                modifier = Modifier.size(27.dp)
+            )
         }
-        Icon(Icons.Rounded.ChevronRight, null, tint = LevyraMuted)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(radioStrings.title, color = colors.onSurface, style = LevyraType.contentTitle)
+            Text(
+                radioStrings.exploreSubtitle,
+                color = colors.onSurfaceVariant,
+                style = LevyraType.caption,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = colors.onSurfaceVariant)
     }
 }
 
@@ -23827,7 +24076,7 @@ private fun ExploreSamplesRow(
     val sampleDepth = carouselDepthEnabled()
     LazyRow(
         state = rowState,
-        contentPadding = PaddingValues(horizontal = 24.dp),
+        contentPadding = PaddingValues(horizontal = HomeHorizontalInset),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         flingBehavior = rememberSnapFlingBehavior(rowState)
     ) {
@@ -23901,7 +24150,7 @@ private fun Modifier.exploreSampleCardStyle(
     accentEnd: Color,
     shape: RoundedCornerShape
 ): Modifier = this
-    .width(156.dp)
+    .width(148.dp)
     .aspectRatio(9f / 16f)
     .shadow(
         elevation = if (isCurrent) 22.dp else 14.dp,
