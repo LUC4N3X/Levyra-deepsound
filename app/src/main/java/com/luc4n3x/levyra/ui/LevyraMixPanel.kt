@@ -7,7 +7,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -44,9 +43,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
@@ -54,7 +51,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.domain.LevyraMixKind
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
@@ -82,25 +78,12 @@ internal fun LevyraMixLauncherPanel(
     Column(
         modifier = modifier.fillMaxWidth()
             .clip(LevyraCardDesign.SurfaceShape)
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        accent.copy(alpha = 0.12f).compositeOver(colors.surfaceContainerLow),
-                        colors.surfaceContainerLow,
-                        colors.surfaceContainerLow
-                    )
-                )
-            )
-            .border(
-                1.dp,
-                colors.outlineVariant.copy(alpha = 0.24f),
-                LevyraCardDesign.SurfaceShape
-            )
+            .background(colors.surfaceContainer)
             .padding(LevyraHomeDesign.EditorialPadding),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         LevyraMixHeroCard(familiarity, loading, accent, onFamiliarityChange = onFamiliarityChange, onStartMix = onStartMix)
-        HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.36f))
+        HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.5f))
         LevyraSecondaryToolsRow(loading, accent, onStartMix = onStartMix, onOpenYourSound = onOpenYourSound, onOpenMixLab = onOpenMixLab)
     }
 }
@@ -153,42 +136,16 @@ internal fun LevyraSecondaryToolsRow(
 ) {
     val strings = LocalLevyraStrings.current
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val gap = 8.dp
-        val surprise: @Composable (Modifier) -> Unit = { itemModifier ->
-            MixToolAction(Icons.Rounded.Casino, strings.surpriseMe, accent, !loading, itemModifier, featured = true) {
-                onStartMix(LevyraMixKind.SurpriseMe)
-            }
+        val stacked = maxWidth < 280.dp || LocalDensity.current.fontScale > 1.3f
+        val actions: @Composable (Modifier) -> Unit = { actionModifier ->
+            MixToolAction(Icons.Rounded.Casino, strings.surpriseMe, accent, !loading, stacked, actionModifier) { onStartMix(LevyraMixKind.SurpriseMe) }
+            MixToolAction(Icons.Rounded.GraphicEq, strings.yourSound, accent, true, stacked, actionModifier, onOpenYourSound)
+            MixToolAction(Icons.Rounded.Tune, strings.mixLab, accent, true, stacked, actionModifier, onOpenMixLab)
         }
-        val yourSound: @Composable (Modifier) -> Unit = { itemModifier ->
-            MixToolAction(Icons.Rounded.GraphicEq, strings.yourSound, accent, true, itemModifier, onClick = onOpenYourSound)
-        }
-        val mixLab: @Composable (Modifier) -> Unit = { itemModifier ->
-            MixToolAction(Icons.Rounded.Tune, strings.mixLab, accent, true, itemModifier, onClick = onOpenMixLab)
-        }
-        when {
-            LocalDensity.current.fontScale > 1.3f || maxWidth < 292.dp -> {
-                Column(verticalArrangement = Arrangement.spacedBy(gap)) {
-                    surprise(Modifier.fillMaxWidth())
-                    yourSound(Modifier.fillMaxWidth())
-                    mixLab(Modifier.fillMaxWidth())
-                }
-            }
-            maxWidth >= 510.dp -> {
-                Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    surprise(Modifier.weight(1f))
-                    yourSound(Modifier.weight(1f))
-                    mixLab(Modifier.weight(1f))
-                }
-            }
-            else -> {
-                Column(verticalArrangement = Arrangement.spacedBy(gap)) {
-                    surprise(Modifier.fillMaxWidth())
-                    Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                        yourSound(Modifier.weight(1f))
-                        mixLab(Modifier.weight(1f))
-                    }
-                }
-            }
+        if (stacked) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { actions(Modifier.fillMaxWidth()) }
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { actions(Modifier.weight(1f)) }
         }
     }
 }
@@ -199,82 +156,24 @@ private fun MixToolAction(
     label: String,
     accent: Color,
     enabled: Boolean,
+    horizontal: Boolean,
     modifier: Modifier,
-    featured: Boolean = false,
     onClick: () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
-    Row(
-        modifier = modifier
-            .heightIn(min = if (featured) 58.dp else 54.dp)
-            .clip(LevyraCardDesign.ArtworkShape)
-            .background(
-                if (featured && enabled) {
-                    accent.copy(alpha = 0.18f).compositeOver(colors.surfaceContainerHigh)
-                } else if (enabled) {
-                    colors.surfaceContainerHigh
-                } else {
-                    colors.surfaceContainer
-                }
-            )
-            .semantics(mergeDescendants = true) {}
-            .levyraPressable(
-                onClick = onClick,
-                enabled = enabled,
-                pressedScale = LevyraPressScale.Control,
-                role = Role.Button
-            )
-            .padding(horizontal = 12.dp, vertical = 9.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(9.dp)
-    ) {
-        MixToolGlyph(icon, accent, enabled, featured)
-        Text(
-            text = label,
-            style = if (featured) LevyraType.cardTitle else LevyraType.caption,
-            color = if (enabled) colors.onSurface else colors.onSurfaceVariant,
-            modifier = Modifier.weight(1f),
-            maxLines = 1,
-            softWrap = false,
-            overflow = TextOverflow.Ellipsis
-        )
-        if (featured) {
-            Icon(
-                Icons.Rounded.PlayArrow,
-                contentDescription = null,
-                tint = if (enabled) colors.onSurface else colors.onSurfaceVariant,
-                modifier = Modifier.size(22.dp)
-            )
-        }
+    val content: @Composable () -> Unit = {
+        Icon(icon, contentDescription = null, tint = if (enabled) accent else colors.onSurfaceVariant, modifier = Modifier.size(22.dp))
+        Text(label, style = LevyraType.cardTitle, color = if (enabled) colors.onSurface else colors.onSurfaceVariant, softWrap = true, textAlign = if (horizontal) TextAlign.Start else TextAlign.Center)
     }
-}
-
-@Composable
-private fun MixToolGlyph(
-    icon: ImageVector,
-    accent: Color,
-    enabled: Boolean,
-    featured: Boolean
-) {
-    val colors = MaterialTheme.colorScheme
-    val iconBackground = when {
-        !enabled -> colors.onSurfaceVariant.copy(alpha = 0.08f)
-        featured -> accent.copy(alpha = 0.25f)
-        else -> accent.copy(alpha = 0.12f)
-    }
-    Box(
-        modifier = Modifier
-            .size(32.dp)
-            .clip(CircleShape)
-            .background(iconBackground),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = if (enabled) accent else colors.onSurfaceVariant,
-            modifier = Modifier.size(19.dp)
-        )
+    val actionModifier = modifier.heightIn(min = 48.dp)
+        .clip(LevyraCardDesign.ThumbShape)
+        .semantics(mergeDescendants = true) {}
+        .levyraPressable(onClick = onClick, enabled = enabled, pressedScale = LevyraPressScale.Tile, role = Role.Button)
+        .padding(horizontal = 4.dp, vertical = 8.dp)
+    if (horizontal) {
+        Row(modifier = actionModifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) { content() }
+    } else {
+        Column(modifier = actionModifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) { content() }
     }
 }
 
@@ -370,10 +269,10 @@ private fun MixBalanceSlider(
             enabled = enabled,
             colors = sliderColors,
             thumb = {
-                Box(Modifier.size(width = 6.dp, height = 26.dp).background(if (enabled) accent else colors.onSurfaceVariant, CircleShape))
+                Box(Modifier.size(width = 4.dp, height = 24.dp).background(if (enabled) accent else colors.onSurfaceVariant, CircleShape))
             },
             track = { sliderState ->
-                SliderDefaults.Track(sliderState = sliderState, colors = sliderColors, enabled = enabled, modifier = Modifier.height(8.dp))
+                SliderDefaults.Track(sliderState = sliderState, colors = sliderColors, enabled = enabled, modifier = Modifier.height(6.dp))
             },
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 .semantics { contentDescription = "$familiarLabel / $discoveryLabel" }
