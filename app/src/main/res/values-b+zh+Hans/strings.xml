@@ -37,4 +37,9 @@
     <string name="shortcut_library">媒体库</string>
     <string name="shortcut_recognition">识别音乐</string>
     <string name="shortcut_resume">继续播放</string>
+    <string name="recognition_notification_channel" translatable="false"></string>
+    <string name="ambient_dream_label" translatable="false"></string>
+    <string name="widget_idle_title" translatable="false"></string>
+    <string name="tile_ambient" translatable="false"></string>
+    <string name="app_name" translatable="false"></string>
 </resources>
