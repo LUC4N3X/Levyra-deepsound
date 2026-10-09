@@ -29,7 +29,7 @@ class HomePremiumLayoutContractTest {
         assertTrue(shelf.contains("onTrackActions"))
         assertFalse(shelf.contains("HomeTrackRow"))
         assertFalse(shelf.contains("LazyRow"))
-        assertFalse(shelf.contains("columnIndex"))
+        assertTrue(shelf.contains("levyraGroupedGridShape("))
     }
 
     @Test
@@ -53,7 +53,7 @@ class HomePremiumLayoutContractTest {
         assertTrue(header.indexOf("if (initial != null)") < header.indexOf("HomeOrbitAvatar("))
         assertTrue(header.contains("personalOrbitTitle"))
         assertTrue(header.contains("heading()"))
-        assertTrue(header.contains("HomeOutlinedAction"))
+        assertTrue(header.contains("LevyraSectionPlayAll"))
         assertFalse(header.contains("personalOrbitSubtitle"))
     }
 

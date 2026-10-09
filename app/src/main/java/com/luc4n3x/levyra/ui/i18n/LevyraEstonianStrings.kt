@@ -245,6 +245,7 @@ internal fun etLocalizationEntries(): Map<String, String> = mapOf(
     "albumUnavailable" to "Album pole saadaval",
     "albumTracksUnavailable" to "Albumi lood pole saadaval",
     "showLess" to "Näita vähem",
+    "showMore" to "Näita rohkem",
     "playing" to "Esitatakse",
     "artistProfileUnavailable" to "Esitaja profiil pole saadaval",
     "popularTracks" to "Populaarsed lood",

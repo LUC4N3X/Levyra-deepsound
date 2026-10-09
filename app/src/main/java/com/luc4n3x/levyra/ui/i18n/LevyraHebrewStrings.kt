@@ -245,6 +245,7 @@ internal fun heLocalizationEntries(): Map<String, String> = mapOf(
     "albumUnavailable" to "האלבום אינו זמין",
     "albumTracksUnavailable" to "שירי האלבום אינם זמינים",
     "showLess" to "הצג פחות",
+    "showMore" to "הצג עוד",
     "playing" to "מתנגן",
     "artistProfileUnavailable" to "פרופיל האמן אינו זמין",
     "popularTracks" to "שירים פופולריים",

@@ -60,6 +60,7 @@ internal fun RowScope.PlayerSegmentButton(
     stateDescription: String? = null,
     outline: Color = Color.Transparent,
     haptic: LevyraHapticAction? = null,
+    shapeOverride: Shape? = null,
     content: @Composable BoxScope.() -> Unit
 ) {
     val haptics = LocalLevyraHaptics.current
@@ -81,7 +82,7 @@ internal fun RowScope.PlayerSegmentButton(
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(200)),
         label = "player-segment-fill"
     )
-    val shape = LevyraPlayerShapes.segment(position, corner)
+    val shape = shapeOverride ?: LevyraPlayerShapes.segment(position, corner)
 
     Box(
         modifier = modifier
