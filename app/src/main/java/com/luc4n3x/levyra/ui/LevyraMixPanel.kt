@@ -54,7 +54,6 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
@@ -75,9 +74,6 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
-private const val CrestBarCount = 9
-private val CrestPhases = floatArrayOf(0.35f, 0.72f, 0.44f, 0.95f, 0.58f, 0.86f, 0.40f, 0.68f, 0.30f)
-
 private const val ReactorBarCount = 17
 private val ReactorBasePhases = floatArrayOf(
     0.30f, 0.45f, 0.65f, 0.82f, 0.95f, 0.88f, 0.72f, 0.55f,
@@ -96,26 +92,17 @@ internal fun LevyraMixLauncherPanel(
     onOpenMixLab: () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
-    val panelShape = RoundedCornerShape(28.dp)
-    val panelBorder = remember(colors.outlineVariant) {
-        colors.outlineVariant.copy(alpha = 0.30f)
-    }
+    val panelShape = RoundedCornerShape(24.dp)
+    val panelBorder = colors.outlineVariant.copy(alpha = 0.22f)
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(
-                elevation = 8.dp,
-                shape = panelShape,
-                clip = false,
-                ambientColor = Color.Black.copy(alpha = 0.22f),
-                spotColor = Color.Black.copy(alpha = 0.30f)
-            )
             .clip(panelShape)
-            .background(colors.surfaceContainer)
+            .background(colors.surfaceContainerLow)
             .border(1.dp, panelBorder, panelShape)
-            .padding(18.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         LevyraMixHeroCard(
             familiarity = familiarity,
@@ -124,7 +111,7 @@ internal fun LevyraMixLauncherPanel(
             onFamiliarityChange = onFamiliarityChange,
             onStartMix = onStartMix
         )
-        HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.4f))
+        HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.25f))
         LevyraSecondaryToolsRow(
             loading = loading,
             accent = accent,
@@ -149,59 +136,31 @@ internal fun LevyraMixHeroCard(
 
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = strings.levyraMix,
-                        style = LevyraType.screenTitle,
-                        color = colors.onSurface,
-                        modifier = Modifier.semantics { heading() }
-                    )
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(colors.surfaceContainerHigh)
-                            .border(0.75.dp, colors.outlineVariant.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = "PRO DSP",
-                            style = LevyraType.overline.copy(
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.1.sp,
-                                fontSize = 8.5.sp
-                            ),
-                            color = colors.onSurfaceVariant
-                        )
-                    }
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    MixCrest(accent = accent, active = loading)
-                    Text(
-                        text = strings.mixCreate,
-                        style = LevyraType.metadata,
-                        color = colors.onSurfaceVariant,
-                        modifier = Modifier.weight(1f),
-                        maxLines = 1,
-                        softWrap = false,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                Text(
+                    text = strings.levyraMix,
+                    style = LevyraType.sectionTitle,
+                    color = colors.onSurface,
+                    modifier = Modifier.semantics { heading() },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = strings.mixCreate,
+                    style = LevyraType.metadata,
+                    color = colors.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
 
             FilledIconButton(
@@ -209,30 +168,23 @@ internal fun LevyraMixHeroCard(
                 enabled = !loading,
                 shape = CircleShape,
                 colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = accent,
-                    contentColor = colors.surface
+                    containerColor = colors.primaryContainer,
+                    contentColor = colors.onPrimaryContainer
                 ),
                 modifier = Modifier
-                    .size(50.dp)
-                    .shadow(
-                        elevation = 6.dp,
-                        shape = CircleShape,
-                        clip = false,
-                        ambientColor = Color.Black.copy(alpha = 0.25f),
-                        spotColor = Color.Black.copy(alpha = 0.35f)
-                    )
+                    .size(46.dp)
                     .semantics { contentDescription = strings.mixForYou }
             ) {
                 if (loading) {
                     DiscoveryLoadingIndicator(
                         modifier = Modifier.size(22.dp),
-                        color = colors.surface
+                        color = colors.onPrimaryContainer
                     )
                 } else {
                     Icon(
                         imageVector = Icons.Rounded.PlayArrow,
                         contentDescription = null,
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(25.dp)
                     )
                 }
             }
@@ -263,52 +215,44 @@ private fun SonicReactorSpectrum(
     modifier: Modifier = Modifier
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
-    val phase = rememberReactorPhase(animationsEnabled)
+    val phase = rememberReactorPhase(active && animationsEnabled)
     val colors = MaterialTheme.colorScheme
     val discoveryFactor = (1f - familiarity).coerceIn(0f, 1f)
-    val harmonicColor = remember(accent, colors.secondary, discoveryFactor) {
-        lerp(accent, colors.secondary, discoveryFactor * 0.75f)
-    }
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(42.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(colors.surfaceContainerLowest.copy(alpha = 0.85f))
-            .border(
-                0.75.dp,
-                colors.outlineVariant.copy(alpha = 0.25f),
-                RoundedCornerShape(14.dp)
-            )
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .height(26.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(colors.surfaceContainer)
+            .padding(horizontal = 10.dp, vertical = 5.dp),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val slot = size.width / ReactorBarCount
-            val barWidth = (slot * 0.36f).coerceIn(2.5f, 5.5f)
-            val cornerRad = CornerRadius(1.5f, 1.5f)
-            val drift = if (animationsEnabled) phase.value else 0f
-            val baseEnergy = if (active) 1.3f else 1.0f
+            val barWidth = (slot * 0.32f).coerceIn(1.5f, 3.5f)
+            val cornerRad = CornerRadius(barWidth / 2f, barWidth / 2f)
+            val drift = if (animationsEnabled && active) phase.value else 0f
+            val baseEnergy = if (active) 1.1f else 0.8f
 
             for (index in 0 until ReactorBarCount) {
                 val base = ReactorBasePhases[index]
                 val waveFreq = 1.0f + discoveryFactor * 1.5f
-                val dynamicWave = if (animationsEnabled) {
+                val dynamicWave = if (animationsEnabled && active) {
                     val angle = (drift * waveFreq + index * 0.36f) * 3.14159f
                     abs(sin(angle))
                 } else {
-                    0.5f
+                    0.15f
                 }
                 val heightMultiplier = (base + (1f - base) * dynamicWave * baseEnergy)
                     .coerceIn(0.14f, 1.0f)
                 val barHeight = size.height * heightMultiplier
                 val x = index * slot + (slot - barWidth) / 2f
                 val y = (size.height - barHeight) / 2f
-                val barColor = if (index % 2 == 0) accent else harmonicColor
+                val barColor = if (active) accent else colors.onSurfaceVariant
 
                 drawRoundRect(
-                    color = barColor.copy(alpha = (0.45f + heightMultiplier * 0.55f).coerceIn(0f, 1f)),
+                    color = barColor.copy(alpha = if (active) 0.58f else 0.35f),
                     topLeft = Offset(x, y),
                     size = Size(barWidth, barHeight),
                     cornerRadius = cornerRad
@@ -400,8 +344,8 @@ private fun MixToolAction(
     val actionModifier = modifier
         .heightIn(min = 60.dp)
         .clip(shape)
-        .background(colors.surfaceContainerHigh.copy(alpha = 0.55f))
-        .border(1.dp, colors.outlineVariant.copy(alpha = 0.22f), shape)
+        .background(colors.surfaceContainer.copy(alpha = 0.60f))
+        .border(0.75.dp, colors.outlineVariant.copy(alpha = 0.18f), shape)
         .semantics(mergeDescendants = true) {}
         .levyraPressable(
             onClick = onClick,
@@ -420,13 +364,13 @@ private fun MixToolAction(
             modifier = Modifier
                 .size(32.dp)
                 .clip(CircleShape)
-                .background(if (enabled) accent.copy(alpha = 0.12f) else colors.onSurface.copy(alpha = 0.05f)),
+                .background(colors.onSurfaceVariant.copy(alpha = if (enabled) 0.07f else 0.04f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = if (enabled) accent else colors.onSurfaceVariant,
+                tint = colors.onSurfaceVariant,
                 modifier = Modifier.size(17.dp)
             )
         }
@@ -446,56 +390,6 @@ private fun MixToolAction(
             modifier = Modifier.fillMaxWidth()
         )
     }
-}
-
-@Composable
-private fun MixCrest(accent: Color, active: Boolean) {
-    val animationsEnabled = LocalAnimationsEnabled.current
-    val phase = rememberCrestPhase(active && animationsEnabled)
-    Box(
-        modifier = Modifier
-            .size(38.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(accent.copy(alpha = 0.16f)),
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(modifier = Modifier.size(20.dp)) {
-            val slot = size.width / CrestBarCount
-            val barWidth = slot * 0.52f
-            val radius = CornerRadius(barWidth / 2f, barWidth / 2f)
-            val drift = phase.value
-            for (index in 0 until CrestBarCount) {
-                val base = CrestPhases[index]
-                val wave = if (drift > 0f) {
-                    base + (1f - base) * abs(sin((drift + index * 0.35f) * 3.14159f))
-                } else {
-                    base
-                }
-                val barHeight = (size.height * wave.coerceIn(0.18f, 1f))
-                drawRoundRect(
-                    color = accent,
-                    topLeft = Offset(index * slot + (slot - barWidth) / 2f, (size.height - barHeight) / 2f),
-                    size = Size(barWidth, barHeight),
-                    cornerRadius = radius
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun rememberCrestPhase(active: Boolean): State<Float> {
-    if (!active) return remember { mutableFloatStateOf(0f) }
-    val transition = rememberInfiniteTransition(label = "levyra-mix-crest")
-    return transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1_600),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "levyra-mix-crest-phase"
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -599,23 +493,17 @@ private fun MixBalanceSlider(
             thumb = {
                 Box(
                     modifier = Modifier
-                        .size(width = 16.dp, height = 24.dp)
-                        .shadow(
-                            elevation = 4.dp,
-                            shape = RoundedCornerShape(6.dp),
-                            ambientColor = Color.Black.copy(alpha = 0.3f),
-                            spotColor = Color.Black.copy(alpha = 0.4f)
-                        )
+                        .size(width = 14.dp, height = 22.dp)
                         .clip(RoundedCornerShape(6.dp))
                         .background(if (enabled) accent else colors.onSurfaceVariant)
-                        .border(1.dp, Color.White.copy(alpha = 0.65f), RoundedCornerShape(6.dp)),
+                        .border(0.75.dp, colors.onSurface.copy(alpha = 0.16f), RoundedCornerShape(6.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Box(
                         modifier = Modifier
                             .width(2.dp)
                             .height(10.dp)
-                            .background(Color.White.copy(alpha = 0.85f), CircleShape)
+                            .background(colors.onSurface.copy(alpha = 0.50f), CircleShape)
                     )
                 }
             },
@@ -689,15 +577,15 @@ private fun MixPresetChip(
     val colors = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(10.dp)
     val container by animateColorAsState(
-        targetValue = if (isSelected) accent.copy(alpha = 0.14f) else colors.surfaceContainerHigh.copy(alpha = 0.45f),
+        targetValue = if (isSelected) colors.primaryContainer.copy(alpha = 0.65f) else colors.surfaceContainer.copy(alpha = 0.50f),
         label = "mixPresetContainer"
     )
     val contentColor by animateColorAsState(
-        targetValue = if (isSelected) accent else colors.onSurfaceVariant,
+        targetValue = if (isSelected) colors.onSurface else colors.onSurfaceVariant,
         label = "mixPresetContent"
     )
     val borderColor by animateColorAsState(
-        targetValue = if (isSelected) accent.copy(alpha = 0.45f) else colors.outlineVariant.copy(alpha = 0.22f),
+        targetValue = if (isSelected) colors.outlineVariant.copy(alpha = 0.60f) else colors.outlineVariant.copy(alpha = 0.16f),
         label = "mixPresetBorder"
     )
 
