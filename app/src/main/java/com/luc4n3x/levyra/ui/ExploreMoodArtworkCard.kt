@@ -48,7 +48,6 @@ import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
-import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraType
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
