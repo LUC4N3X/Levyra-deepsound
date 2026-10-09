@@ -49,7 +49,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -114,7 +113,6 @@ internal fun LevyraMixLauncherPanel(
         HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.25f))
         LevyraSecondaryToolsRow(
             loading = loading,
-            accent = accent,
             onStartMix = onStartMix,
             onOpenYourSound = onOpenYourSound,
             onOpenMixLab = onOpenMixLab
@@ -280,7 +278,6 @@ private fun rememberReactorPhase(active: Boolean): State<Float> {
 @Composable
 internal fun LevyraSecondaryToolsRow(
     loading: Boolean,
-    accent: Color,
     modifier: Modifier = Modifier,
     onStartMix: (LevyraMixKind) -> Unit,
     onOpenYourSound: () -> Unit,
@@ -293,7 +290,6 @@ internal fun LevyraSecondaryToolsRow(
             MixToolAction(
                 icon = Icons.Rounded.Casino,
                 label = strings.surpriseMe,
-                accent = accent,
                 enabled = !loading,
                 modifier = actionModifier
             ) { onStartMix(LevyraMixKind.SurpriseMe) }
@@ -301,7 +297,6 @@ internal fun LevyraSecondaryToolsRow(
             MixToolAction(
                 icon = Icons.Rounded.GraphicEq,
                 label = strings.yourSound,
-                accent = accent,
                 enabled = true,
                 modifier = actionModifier,
                 onClick = onOpenYourSound
@@ -310,7 +305,6 @@ internal fun LevyraSecondaryToolsRow(
             MixToolAction(
                 icon = Icons.Rounded.Tune,
                 label = strings.mixLab,
-                accent = accent,
                 enabled = true,
                 modifier = actionModifier,
                 onClick = onOpenMixLab
@@ -333,7 +327,6 @@ internal fun LevyraSecondaryToolsRow(
 private fun MixToolAction(
     icon: ImageVector,
     label: String,
-    accent: Color,
     enabled: Boolean,
     modifier: Modifier,
     onClick: () -> Unit
