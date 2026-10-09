@@ -129,7 +129,6 @@ import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.i18n.playlistProCopy
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
 import com.luc4n3x.levyra.ui.i18n.smartOfflineCopy
-import com.luc4n3x.levyra.ui.i18n.updatedLabel
 import com.luc4n3x.levyra.ui.i18n.formatLibraryBytes
 import com.luc4n3x.levyra.ui.i18n.formatLibraryDuration
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
@@ -225,14 +224,14 @@ internal fun LibrarySmartOfflineSummary(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    "$songCount ${copy.songs} · ${strings.formatLibraryBytes(bytes)}",
+                    "${strings.formatSmartOfflineSongCount(songCount)} · ${strings.formatLibraryBytes(bytes)}",
                     color = LevyraMuted,
                     fontSize = 11.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    copy.updatedLabel(lastUpdatedAt),
+                    strings.formatSmartOfflineUpdatedAt(lastUpdatedAt),
                     color = LevyraMuted,
                     fontSize = 11.sp,
                     maxLines = 1,

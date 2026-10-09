@@ -686,7 +686,6 @@ import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.ui.i18n.automationCopy
 import com.luc4n3x.levyra.ui.i18n.smartOfflineCopy
 import com.luc4n3x.levyra.ui.i18n.formatLibraryBytes
-import com.luc4n3x.levyra.ui.i18n.updatedLabel
 import com.luc4n3x.levyra.ui.i18n.localizedAudioPresetLabel
 import com.luc4n3x.levyra.ui.ambient.LevyraAmbientOverlay
 import com.luc4n3x.levyra.ui.library.AddTracksToPlaylistDialog
@@ -20405,7 +20404,7 @@ private fun SmartOfflineSettingsCard(
             SettingsButton(
                 icon = Icons.Rounded.Refresh,
                 title = copy.refresh,
-                subtitle = "${copy.refreshSubtitle} · ${copy.updatedLabel(settings.lastRefreshAt)}",
+                subtitle = "${copy.refreshSubtitle} · ${strings.formatSmartOfflineUpdatedAt(settings.lastRefreshAt)}",
                 onClick = onRefresh
             )
         }
