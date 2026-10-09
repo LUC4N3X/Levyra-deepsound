@@ -1,15 +1,20 @@
 package com.luc4n3x.levyra.ui.support
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -51,6 +56,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -249,6 +255,16 @@ private fun RemoteAnnouncementDialog(
     onLater: () -> Unit,
     onPassiveDismiss: () -> Unit
 ) {
+    if (announcement.style == AnnouncementStyle.OPEN_SOURCE) {
+        GitHubStarSupportDialog(
+            announcement = announcement,
+            onAction = onAction,
+            onLater = onLater,
+            onPassiveDismiss = onPassiveDismiss
+        )
+        return
+    }
+
     val shape = RoundedCornerShape(30.dp)
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val visuals = announcementVisuals(announcement.style)
@@ -396,6 +412,219 @@ private fun RemoteAnnouncementDialog(
                             text = announcement.copy.laterAction,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GitHubStarSupportDialog(
+    announcement: RemoteAnnouncementPresentation,
+    onAction: () -> Unit,
+    onLater: () -> Unit,
+    onPassiveDismiss: () -> Unit
+) {
+    val shape = RoundedCornerShape(28.dp)
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+    val colors = MaterialTheme.colorScheme
+    val starScale = remember(announcement.id) { Animatable(1f) }
+
+    LaunchedEffect(announcement.id) {
+        if (ValueAnimator.areAnimatorsEnabled()) {
+            starScale.snapTo(0.92f)
+            starScale.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 520, easing = FastOutSlowInEasing)
+            )
+        }
+    }
+
+    Dialog(
+        onDismissRequest = onPassiveDismiss,
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true,
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .widthIn(max = 440.dp)
+                .heightIn(max = screenHeight * 0.88f)
+                .shadow(24.dp, shape),
+            shape = shape,
+            color = colors.surface,
+            border = BorderStroke(1.dp, colors.outline.copy(alpha = 0.24f))
+        ) {
+            Box(
+                modifier = Modifier.background(
+                    brush = Brush.verticalGradient(
+                        listOf(
+                            colors.surfaceContainerHigh,
+                            colors.surface,
+                            colors.surface
+                        )
+                    )
+                )
+            ) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .size(width = 280.dp, height = 175.dp)
+                        .background(
+                            Brush.radialGradient(
+                                listOf(supportStarGold.copy(alpha = 0.14f), Color.Transparent)
+                            )
+                        )
+                )
+                Column(
+                    modifier = Modifier
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 24.dp, vertical = 26.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        modifier = Modifier.size(116.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(112.dp)
+                                .border(
+                                    1.dp,
+                                    supportStarGold.copy(alpha = 0.30f),
+                                    CircleShape
+                                )
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(92.dp)
+                                .background(supportStarGold.copy(alpha = 0.10f), CircleShape)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(72.dp)
+                                .graphicsLayer {
+                                    scaleX = starScale.value
+                                    scaleY = starScale.value
+                                }
+                                .shadow(12.dp, RoundedCornerShape(24.dp))
+                                .background(
+                                    brush = Brush.linearGradient(
+                                        listOf(Color(0xFFFFE5A8), Color(0xFFF5B744))
+                                    ),
+                                    shape = RoundedCornerShape(24.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Star,
+                                contentDescription = null,
+                                tint = Color(0xFF3A290F),
+                                modifier = Modifier.size(39.dp)
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Rounded.Star,
+                            contentDescription = null,
+                            tint = supportStarGold.copy(alpha = 0.85f),
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(top = 7.dp, end = 2.dp)
+                                .size(14.dp)
+                        )
+                        Icon(
+                            imageVector = Icons.Rounded.Star,
+                            contentDescription = null,
+                            tint = supportStarGold.copy(alpha = 0.60f),
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(start = 7.dp, bottom = 10.dp)
+                                .size(10.dp)
+                        )
+                    }
+
+                    Spacer(Modifier.height(18.dp))
+
+                    Text(
+                        text = announcement.copy.badge,
+                        color = colors.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(Modifier.height(10.dp))
+
+                    Text(
+                        text = announcement.copy.title,
+                        color = colors.onSurface,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    Text(
+                        text = announcement.copy.body,
+                        color = colors.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium,
+                        lineHeight = 22.sp,
+                        textAlign = TextAlign.Center
+                    )
+
+                    if (announcement.actionUrl != null && announcement.copy.starAction.isNotBlank()) {
+                        Spacer(Modifier.height(24.dp))
+
+                        Button(
+                            onClick = onAction,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 56.dp),
+                            shape = RoundedCornerShape(17.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = supportStarGold,
+                                contentColor = Color(0xFF30220D)
+                            ),
+                            contentPadding = PaddingValues(
+                                horizontal = 16.dp,
+                                vertical = 12.dp
+                            )
+                        ) {
+                            Text(
+                                text = announcement.copy.starAction,
+                                modifier = Modifier.weight(1f),
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center,
+                                maxLines = 3
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    } else {
+                        Spacer(Modifier.height(16.dp))
+                    }
+
+                    TextButton(
+                        onClick = onLater,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                    ) {
+                        Text(
+                            text = announcement.copy.laterAction,
+                            color = colors.onSurfaceVariant,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
