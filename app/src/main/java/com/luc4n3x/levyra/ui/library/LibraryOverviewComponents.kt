@@ -836,9 +836,9 @@ internal fun LibraryListeningDashboard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp)
+                .padding(18.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.Top,
@@ -858,7 +858,7 @@ internal fun LibraryListeningDashboard(
                     }
 
                     Surface(
-                        color = LevyraCyan.copy(alpha = 0.12f),
+                        color = MaterialTheme.colorScheme.primaryContainer,
                         shape = CircleShape
                     ) {
                         Box(
@@ -868,7 +868,7 @@ internal fun LibraryListeningDashboard(
                             Icon(
                                 imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
                                 contentDescription = null,
-                                tint = LevyraCyan,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -1043,11 +1043,13 @@ private fun LibraryWeekChart(
             }
         }
         Row(
-            modifier = Modifier.fillMaxWidth().height(132.dp).drawBehind {
-                for (line in 0..2) {
-                    val y = size.height * line / 2f
-                    drawLine(gridColor, Offset(0f, y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
-                }
+            modifier = Modifier.fillMaxWidth().height(106.dp).drawBehind {
+                drawLine(
+                    gridColor,
+                    Offset(0f, size.height),
+                    Offset(size.width, size.height),
+                    strokeWidth = 1.dp.toPx()
+                )
             },
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.Bottom
@@ -1065,13 +1067,22 @@ private fun LibraryWeekChart(
                         },
                         contentAlignment = Alignment.BottomCenter
                     ) {
+                        val hasListening = day.listenedMs > 0L
+                        val barTop = if (index == today) colors.primary else colors.secondary
+                        val barBottom = if (index == today) colors.primaryContainer else colors.secondaryContainer
                         Box(
-                            Modifier.width(22.dp).fillMaxHeight(fractions[index].coerceAtLeast(0.025f))
-                                .clip(RoundedCornerShape(11.dp))
+                            Modifier
+                                .width(18.dp)
+                                .fillMaxHeight(if (hasListening) fractions[index].coerceAtLeast(0.08f) else 0.025f)
+                                .clip(RoundedCornerShape(9.dp))
                                 .background(
-                                    if (day.listenedMs == 0L) colors.outlineVariant
-                                    else if (index == today) colors.primary
-                                    else colors.onSurface.copy(alpha = 0.48f)
+                                    if (hasListening) {
+                                        Brush.verticalGradient(listOf(barTop, barBottom))
+                                    } else {
+                                        Brush.verticalGradient(
+                                            listOf(colors.outlineVariant, colors.outlineVariant)
+                                        )
+                                    }
                                 )
                         )
                     }
