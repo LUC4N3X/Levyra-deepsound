@@ -10,6 +10,7 @@ import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.NewPipeRuntime
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.ReleaseRadarWorker
+import com.luc4n3x.levyra.data.SmartOfflineScheduler
 import com.luc4n3x.levyra.data.YoutubeLocalDecoder
 import com.luc4n3x.levyra.data.preloadLevyraPreferences
 import com.luc4n3x.levyra.data.network.LevyraNetworkController
@@ -71,6 +72,12 @@ class LevyraApplication : Application() {
                     LevyraPreferences(this@LevyraApplication).backupSettings()
                 )
             }.onFailure { Timber.w(it, "Automatic backup scheduling failed") }
+            runCatching {
+                SmartOfflineScheduler.schedule(
+                    this@LevyraApplication,
+                    LevyraPreferences(this@LevyraApplication).smartOfflineSettings()
+                )
+            }.onFailure { Timber.w(it, "Smart Offline scheduling failed") }
         }
     }
 

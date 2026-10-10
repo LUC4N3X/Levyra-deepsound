@@ -1,5 +1,22 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.toShape
+import androidx.compose.material3.IconButtonDefaults
+import com.luc4n3x.levyra.ui.components.LevyraExpressiveIconButton
+import com.luc4n3x.levyra.ui.components.levyraExpressiveCorner
+import com.luc4n3x.levyra.ui.components.levyraExpressiveToggleCorner
+import com.luc4n3x.levyra.ui.components.levyraGroupedListShape
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.semantics.role
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
@@ -139,8 +156,14 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private val PanelShape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
-private val CardShape = RoundedCornerShape(20.dp)
-private val ChipShape = RoundedCornerShape(14.dp)
+private val CardShape = RoundedCornerShape(28.dp)
+private val ChipShape = RoundedCornerShape(50)
+private val AudioSegmentInnerCorner = 8.dp
+internal val AudioPanelSurface: Color get() = if (LevyraIsLight) LevyraPanel else Color(0xFF111214)
+internal val AudioCardSurface: Color get() = if (LevyraIsLight) LevyraAdaptiveCard else Color(0xFF1C1D21)
+internal val AudioTonalSurface: Color get() = if (LevyraIsLight) LevyraCyan.copy(alpha = 0.14f) else lerp(Color(0xFF1C1D21), LevyraCyan, 0.30f)
+internal val AudioSelected: Color get() = if (LevyraIsLight) LevyraCyan else lerp(LevyraCyan, Color.White, 0.42f)
+private val AudioSegmentGap = 3.dp
 private const val DISABLED_ALPHA = 0.42f
 private const val CROSSFADE_CURVE_SAMPLE_COUNT = 49
 private val EqualizerHandleRadius = 5.dp
@@ -217,9 +240,8 @@ internal fun AudioSettingsPanel(
         contentAlignment = Alignment.BottomCenter
     ) {
         Surface(
-            color = LevyraPanel,
+            color = AudioPanelSurface,
             shape = PanelShape,
-            border = BorderStroke(1.dp, LevyraAdaptiveHairline),
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(0.94f)
@@ -809,7 +831,7 @@ private fun AutoEqCatalogRow(
 ) {
     val strings = LocalLevyraStrings.current
     Surface(
-        color = LevyraAdaptiveCard,
+        color = AudioCardSurface,
         shape = ChipShape,
         border = BorderStroke(1.dp, LevyraAdaptiveHairline),
         modifier = Modifier
@@ -1138,7 +1160,7 @@ private fun ParametricAutoEqProfilePreview(
     copy: com.luc4n3x.levyra.ui.i18n.ParametricEqCopy
 ) {
     Surface(
-        color = LevyraAdaptiveCard,
+        color = AudioCardSurface,
         shape = CardShape,
         border = BorderStroke(1.dp, LevyraAdaptiveHairline),
         modifier = Modifier.fillMaxWidth()
@@ -1183,7 +1205,7 @@ private fun AutoEqProfilePreview(profile: AutoEqImporter.ImportedProfile, title:
         }.joinToString(", ")
     }
     Surface(
-        color = LevyraAdaptiveCard,
+        color = AudioCardSurface,
         shape = CardShape,
         border = BorderStroke(1.dp, LevyraAdaptiveHairline),
         modifier = Modifier.fillMaxWidth()
@@ -1298,6 +1320,7 @@ private fun AudioPanelHandle() {
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AudioPanelHeader(
     title: String,
@@ -1309,62 +1332,107 @@ private fun AudioPanelHeader(
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(44.dp)
-                .background(LevyraCyan.copy(alpha = 0.16f), RoundedCornerShape(14.dp)),
+                .size(52.dp)
+                .clip(MaterialShapes.Cookie9Sided.toShape())
+                .background(LevyraCyan.copy(alpha = 0.2f)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Rounded.Equalizer, null, tint = LevyraCyan, modifier = Modifier.size(22.dp))
+            Icon(Icons.Rounded.Equalizer, null, tint = LevyraCyan, modifier = Modifier.size(26.dp))
         }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(title, color = LevyraText, fontSize = 22.sp, fontWeight = FontWeight.Black)
-            Text(
-                subtitle,
-                color = LevyraMuted,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                lineHeight = 16.sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(title, color = LevyraText, fontSize = 26.sp, lineHeight = 30.sp, fontWeight = FontWeight.Black)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(
+                    modifier = Modifier
+                        .clip(ChipShape)
+                        .background(LevyraCyan.copy(alpha = 0.16f))
+                        .padding(horizontal = 8.dp, vertical = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(Icons.Rounded.GraphicEq, null, tint = LevyraCyan, modifier = Modifier.size(14.dp))
+                    Text(volumeLabel, color = LevyraCyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+                Text(
+                    subtitle,
+                    color = LevyraMuted,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    lineHeight = 16.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        LevyraExpressiveIconButton(
+            onClick = onClose,
+            modifier = Modifier.size(48.dp),
+            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = AudioCardSurface,
+                contentColor = LevyraText
             )
-        }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Icon(Icons.Rounded.GraphicEq, null, tint = LevyraMuted, modifier = Modifier.size(15.dp))
-            Text(volumeLabel, color = LevyraMuted, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-        }
-        IconButton(onClick = onClose, modifier = Modifier.size(48.dp)) {
-            Icon(Icons.Rounded.Close, contentDescription = closeLabel, tint = LevyraText)
+        ) {
+            Icon(Icons.Rounded.Close, contentDescription = closeLabel)
         }
     }
 }
 
 @Composable
 private fun AudioSectionLabel(text: String) {
+    val strings = LocalLevyraStrings.current
+    val locale = remember(strings.code) { Locale.forLanguageTag(strings.code.replace('_', '-')) }
+    val title = remember(text, locale) {
+        text.trim().lowercase(locale).replaceFirstChar { character ->
+            if (character.isLowerCase()) character.titlecase(locale) else character.toString()
+        }
+    }
     Text(
-        text,
-        color = LevyraMuted,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.Black,
-        letterSpacing = 0.4.sp,
-        modifier = Modifier.padding(top = 10.dp, start = 4.dp)
+        title,
+        color = LevyraCyan,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 0.2.sp,
+        modifier = Modifier.padding(top = 14.dp, start = 6.dp, bottom = 2.dp)
     )
 }
 
 @Composable
 private fun AudioCard(content: @Composable () -> Unit) {
     Surface(
-        color = LevyraAdaptiveCard,
+        color = AudioCardSurface,
         shape = CardShape,
-        border = BorderStroke(1.dp, LevyraAdaptiveHairline),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) {
+        Box(modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp)) {
             content()
         }
     }
+}
+
+@Composable
+private fun AudioExpressiveSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, modifier: Modifier = Modifier) {
+    Switch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        thumbContent = if (checked) {
+            { Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+        } else {
+            null
+        },
+        colors = SwitchDefaults.colors(
+            checkedThumbColor = LevyraBlack,
+            checkedIconColor = LevyraCyan,
+            checkedTrackColor = LevyraCyan,
+            uncheckedThumbColor = LevyraMuted,
+            uncheckedTrackColor = LevyraAdaptiveTrack,
+            uncheckedBorderColor = LevyraMuted.copy(alpha = 0.6f)
+        ),
+        modifier = modifier
+    )
 }
 
 @Composable
@@ -1498,7 +1566,6 @@ private fun CrossfadeCurveLab(
                 }
                 Surface(
                     color = LevyraCyan.copy(alpha = 0.13f),
-                    border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.28f)),
                     shape = ChipShape
                 ) {
                     Text(
@@ -1596,33 +1663,26 @@ private fun AudioEqualizerSwitchRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 48.dp),
+            .heightIn(min = 56.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
+            .semantics { contentDescription = label },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(label, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(label, color = LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Text(
                 subtitle,
                 color = LevyraMuted,
-                fontSize = 12.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                lineHeight = 16.sp,
+                lineHeight = 18.sp,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
         }
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = LevyraBlack,
-                checkedTrackColor = LevyraCyan,
-                uncheckedThumbColor = LevyraMuted,
-                uncheckedTrackColor = LevyraAdaptiveTrack
-            ),
-            modifier = Modifier.semantics { contentDescription = label }
-        )
+        AudioExpressiveSwitch(checked = checked, onCheckedChange = null)
     }
 }
 
@@ -1636,23 +1696,28 @@ private fun AudioCardHeader(title: String, trailing: String) {
         Text(
             title,
             color = LevyraText,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Black,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-        Text(
-            trailing,
-            color = LevyraMuted,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.End,
-            modifier = Modifier
-                .padding(start = 12.dp)
-                .weight(1f, fill = false)
-        )
+        if (trailing.isNotBlank()) {
+            Text(
+                trailing,
+                color = LevyraCyan,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.End,
+                modifier = Modifier
+                    .padding(start = 12.dp)
+                    .weight(1f, fill = false)
+                    .clip(ChipShape)
+                    .background(LevyraCyan.copy(alpha = 0.14f))
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+            )
+        }
     }
 }
 
@@ -1682,42 +1747,35 @@ private fun AudioToggleRow(
     onCheckedChange: (Boolean) -> Unit
 ) {
     Surface(
-        color = LevyraAdaptiveCard,
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        color = AudioCardSurface,
         shape = CardShape,
-        border = BorderStroke(1.dp, LevyraAdaptiveHairline),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 56.dp)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .heightIn(min = 64.dp)
+                .padding(horizontal = 18.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(title, color = LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 if (subtitle.isNotBlank()) {
                     Text(
                         subtitle,
                         color = LevyraMuted,
-                        fontSize = 12.sp,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp,
                         fontWeight = FontWeight.Medium,
-                        maxLines = 2,
+                        maxLines = 3,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
             }
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = LevyraBlack,
-                    checkedTrackColor = LevyraCyan,
-                    uncheckedThumbColor = LevyraMuted,
-                    uncheckedTrackColor = LevyraAdaptiveTrack
-                )
-            )
+            AudioExpressiveSwitch(checked = checked, onCheckedChange = null)
         }
     }
 }
@@ -1732,14 +1790,13 @@ private fun AudioSliderRow(
     onValue: (Float) -> Unit
 ) {
     Surface(
-        color = LevyraAdaptiveCard,
+        color = AudioCardSurface,
         shape = CardShape,
-        border = BorderStroke(1.dp, LevyraAdaptiveHairline),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1748,11 +1805,20 @@ private fun AudioSliderRow(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (icon) {
-                        Icon(Icons.Rounded.SurroundSound, null, tint = LevyraMuted, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Rounded.SurroundSound, null, tint = LevyraCyan, modifier = Modifier.size(18.dp))
                     }
-                    Text(title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                    Text(title, color = LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
-                Text(valueLabel, color = LevyraCyan, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                Text(
+                    valueLabel,
+                    color = LevyraCyan,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier
+                        .clip(ChipShape)
+                        .background(LevyraCyan.copy(alpha = 0.14f))
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                )
             }
             AudioLevelSlider(
                 value = value,
@@ -1767,23 +1833,85 @@ private fun AudioSliderRow(
 
 @Composable
 private fun AudioPresetChip(label: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    val corner = levyraExpressiveToggleCorner(selected, unchecked = 14.dp, checkedCorner = 24.dp, label = "audio-preset-corner")
     Surface(
-        color = if (selected) LevyraCyan.copy(alpha = 0.18f) else LevyraAdaptiveChip,
-        shape = ChipShape,
-        border = BorderStroke(1.dp, if (selected) LevyraCyan.copy(alpha = 0.7f) else LevyraAdaptiveHairline),
+        selected = selected,
+        onClick = onClick,
+        enabled = enabled,
+        color = if (selected) AudioSelected else LevyraAdaptiveChip,
+        contentColor = if (selected) LevyraBlack else LevyraText,
+        shape = RoundedCornerShape(corner),
         modifier = Modifier
             .widthIn(max = 240.dp)
             .heightIn(min = 48.dp)
-            .clickable(enabled = enabled, onClick = onClick)
     ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            AnimatedVisibility(visible = selected) {
+                Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+            }
             Text(
                 label,
-                color = if (selected) LevyraCyan else LevyraText,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+internal fun RowScope.AudioSegment(
+    label: String,
+    selected: Boolean,
+    first: Boolean,
+    last: Boolean,
+    onClick: () -> Unit
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val outer = 26.dp
+    val inner = levyraExpressiveCorner(
+        interactionSource = interaction,
+        rest = if (selected) outer else AudioSegmentInnerCorner,
+        pressed = outer,
+        label = "audio-segment-inner"
+    )
+    Surface(
+        selected = selected,
+        onClick = onClick,
+        interactionSource = interaction,
+        color = if (selected) AudioSelected else LevyraAdaptiveChip,
+        contentColor = if (selected) LevyraBlack else LevyraText,
+        shape = RoundedCornerShape(
+            topStart = if (first) outer else inner,
+            bottomStart = if (first) outer else inner,
+            topEnd = if (last) outer else inner,
+            bottomEnd = if (last) outer else inner
+        ),
+        modifier = Modifier
+            .weight(1f)
+            .heightIn(min = 52.dp)
+            .semantics { role = Role.RadioButton }
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)
+        ) {
+            AnimatedVisibility(visible = selected) {
+                Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+            }
+            Text(
+                label,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center
             )
         }
     }
@@ -1795,31 +1923,18 @@ private fun AudioQualityRow(
     labels: List<Pair<String, String>>,
     onSelect: (String) -> Unit
 ) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        labels.forEach { (label, quality) ->
-            val isSelected = selected.equals(quality, ignoreCase = true)
-            Surface(
-                color = if (isSelected) LevyraCyan.copy(alpha = 0.18f) else LevyraAdaptiveChip,
-                shape = ChipShape,
-                border = BorderStroke(1.dp, if (isSelected) LevyraCyan.copy(alpha = 0.7f) else LevyraAdaptiveHairline),
-                modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = 48.dp)
-                    .clickable { onSelect(quality) }
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        label,
-                        color = if (isSelected) LevyraCyan else LevyraText,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    )
-                }
-            }
+    Row(
+        modifier = Modifier.fillMaxWidth().selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(AudioSegmentGap)
+    ) {
+        labels.forEachIndexed { index, (label, quality) ->
+            AudioSegment(
+                label = label,
+                selected = selected.equals(quality, ignoreCase = true),
+                first = index == 0,
+                last = index == labels.lastIndex,
+                onClick = { onSelect(quality) }
+            )
         }
     }
 }
@@ -1833,48 +1948,61 @@ private fun AlternativeAudioCard(
     onSelect: (HighQualityAudioMode) -> Unit
 ) {
     AudioCard {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                Text(title, color = LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 Text(
                     description,
                     color = LevyraMuted,
-                    fontSize = 12.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
-                    lineHeight = 16.sp
+                    lineHeight = 18.sp
                 )
             }
             Column(
                 modifier = Modifier.selectableGroup(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(AudioSegmentGap)
             ) {
-                options.forEach { (mode, label) ->
+                options.forEachIndexed { index, (mode, label) ->
                     val isSelected = mode == selected
                     Surface(
-                        color = if (isSelected) LevyraCyan.copy(alpha = 0.18f) else LevyraAdaptiveChip,
-                        shape = ChipShape,
-                        border = BorderStroke(1.dp, if (isSelected) LevyraCyan.copy(alpha = 0.7f) else LevyraAdaptiveHairline),
+                        color = if (isSelected) LevyraCyan.copy(alpha = 0.2f) else LevyraAdaptiveChip,
+                        shape = levyraGroupedListShape(index, options.size),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(min = 48.dp)
+                            .heightIn(min = 56.dp)
                             .selectable(
                                 selected = isSelected,
                                 role = Role.RadioButton,
                                 onClick = { onSelect(mode) }
                             )
                     ) {
-                        Box(
-                            contentAlignment = Alignment.CenterStart,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                        Row(
+                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Text(
                                 label,
                                 color = if (isSelected) LevyraCyan else LevyraText,
-                                fontSize = 13.sp,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
                             )
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isSelected) LevyraCyan else Color.Transparent)
+                                    .border(2.dp, if (isSelected) LevyraCyan else LevyraMuted.copy(alpha = 0.6f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (isSelected) {
+                                    Icon(Icons.Rounded.Check, contentDescription = null, tint = LevyraBlack, modifier = Modifier.size(16.dp))
+                                }
+                            }
                         }
                     }
                 }
@@ -2035,7 +2163,7 @@ private fun EqualizerCurvePreview(levels: List<Int>, description: String) {
     val strokeWidthPx = with(LocalDensity.current) { 2.dp.toPx() }
     val curveColor = LevyraCyan
     val gridColor = LevyraMuted.copy(alpha = 0.28f)
-    val handleFill = LevyraAdaptiveCard
+    val handleFill = AudioCardSurface
     Column(
         modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = description },
         verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -2087,11 +2215,13 @@ private fun AudioLevelSlider(
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val density = LocalDensity.current
     val thumbRadius = with(density) { 9.dp.toPx() }
-    val trackHeight = with(density) { 4.dp.toPx() }
-    val ringWidth = with(density) { 3.dp.toPx() }
+    val trackHeight = with(density) { 14.dp.toPx() }
+    val handleWidth = with(density) { 4.dp.toPx() }
+    val handleHeight = with(density) { 36.dp.toPx() }
+    val handleGap = with(density) { 5.dp.toPx() }
     val activeColor = LevyraCyan
     val inactiveColor = LevyraAdaptiveTrack
-    val ringColor = LevyraAdaptiveCard
+    val ringColor = AudioCardSurface
     fun valueAt(x: Float, width: Int): Float {
         val usable = (width - thumbRadius * 2f).coerceAtLeast(1f)
         val raw = ((x - thumbRadius) / usable).coerceIn(0f, 1f)
@@ -2101,7 +2231,7 @@ private fun AudioLevelSlider(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(40.dp)
+            .height(48.dp)
             .progressSemantics(bounded, range, 0)
             .semantics {
                 contentDescription = label
@@ -2128,29 +2258,48 @@ private fun AudioLevelSlider(
                 return thumbRadius + usable * if (rtl) 1f - fraction else fraction
             }
             val centerY = size.height / 2f
-            drawLine(
-                color = inactiveColor,
-                start = Offset(thumbRadius, centerY),
-                end = Offset(size.width - thumbRadius, centerY),
-                strokeWidth = trackHeight,
-                cap = StrokeCap.Round
-            )
-            drawLine(
-                color = activeColor,
-                start = Offset(xOf(origin), centerY),
-                end = Offset(xOf(bounded), centerY),
-                strokeWidth = trackHeight,
-                cap = StrokeCap.Round
-            )
-            if (origin > range.start) {
-                drawCircle(inactiveColor, trackHeight, Offset(xOf(origin), centerY))
+            val handleX = xOf(bounded)
+            val originX = xOf(origin)
+            val trackLeft = thumbRadius - trackHeight / 2f
+            val trackRight = size.width - thumbRadius + trackHeight / 2f
+            val corner = CornerRadius(trackHeight / 2f, trackHeight / 2f)
+            fun segment(left: Float, right: Float, color: Color) {
+                if (right - left <= 0.5f) return
+                drawRoundRect(
+                    color = color,
+                    topLeft = Offset(left, centerY - trackHeight / 2f),
+                    size = Size(right - left, trackHeight),
+                    cornerRadius = corner
+                )
             }
-            drawCircle(ringColor, thumbRadius + ringWidth / 2f, Offset(xOf(bounded), centerY))
-            drawCircle(activeColor, thumbRadius - ringWidth / 2f, Offset(xOf(bounded), centerY))
+            segment(trackLeft, handleX - handleGap, inactiveColor)
+            segment(handleX + handleGap, trackRight, inactiveColor)
+            val originEdge = when {
+                origin > range.start -> originX
+                rtl -> trackRight
+                else -> trackLeft
+            }
+            if (handleX > originEdge) {
+                segment(originEdge, handleX - handleGap, activeColor)
+            } else if (handleX < originEdge) {
+                segment(handleX + handleGap, originEdge, activeColor)
+            }
+            if (origin > range.start) {
+                drawCircle(ringColor, trackHeight / 5f, Offset(originX, centerY))
+            }
+            val stopX = if (rtl) trackLeft + trackHeight / 2f else trackRight - trackHeight / 2f
+            drawCircle(activeColor, trackHeight / 7f, Offset(stopX, centerY))
+            drawRoundRect(
+                color = activeColor,
+                topLeft = Offset(handleX - handleWidth / 2f, centerY - handleHeight / 2f),
+                size = Size(handleWidth, handleHeight),
+                cornerRadius = CornerRadius(handleWidth / 2f, handleWidth / 2f)
+            )
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AudioActionButton(
     label: String,
@@ -2161,26 +2310,34 @@ private fun AudioActionButton(
 ) {
     val contentColor = if (primary) LevyraCyan else LevyraText
     Surface(
+        onClick = onClick,
+        enabled = enabled,
         color = if (primary) LevyraCyan.copy(alpha = 0.14f) else LevyraAdaptiveChip,
-        shape = ChipShape,
-        border = BorderStroke(1.dp, if (primary) LevyraCyan.copy(alpha = 0.45f) else LevyraAdaptiveHairline),
+        shape = RoundedCornerShape(22.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 52.dp)
+            .heightIn(min = 60.dp)
             .alpha(if (enabled) 1f else DISABLED_ALPHA)
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
     ) {
         Row(
-            modifier = Modifier.padding(start = 14.dp, end = 10.dp, top = 12.dp, bottom = 12.dp),
+            modifier = Modifier.padding(start = 10.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Icon(icon, contentDescription = null, tint = contentColor, modifier = Modifier.size(20.dp))
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(MaterialShapes.Cookie4Sided.toShape())
+                    .background(contentColor.copy(alpha = 0.16f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = contentColor, modifier = Modifier.size(20.dp))
+            }
             Text(
                 label,
                 color = contentColor,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Black,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
@@ -2189,7 +2346,7 @@ private fun AudioActionButton(
                 Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                 contentDescription = null,
                 tint = contentColor.copy(alpha = 0.7f),
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(22.dp)
             )
         }
     }
