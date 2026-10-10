@@ -379,6 +379,9 @@ import java.util.concurrent.atomic.AtomicReference
 private const val ARTIST_PROFILE_UNAVAILABLE_ERROR = "artist_profile_unavailable"
 private const val ARTIST_INITIAL_BIOGRAPHY_WAIT_MS = 250L
 private const val EXPLORE_SHORTS_FEED_LIMIT = 24
+private const val ONBOARDING_ARTWORK_PARALLELISM = 4
+private const val ONBOARDING_ARTWORK_SEARCH_LIMIT = 12
+private const val ONBOARDING_ARTWORK_ARTISTS = 3
 private const val EXPLORE_DISCOVERY_DEEP_WARMUP_LIMIT = 6
 private const val EXPLORE_EDITORIAL_MIN_TRACKS = 10
 private const val SIMILAR_SONGS_DEBOUNCE_MS = 400L
@@ -1382,6 +1385,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     val state: StateFlow<LevyraUiState> = _state.asStateFlow()
+    private val _onboardingArtwork = MutableStateFlow<Map<String, List<String>>>(emptyMap())
+    val onboardingArtwork: StateFlow<Map<String, List<String>>> = _onboardingArtwork.asStateFlow()
+    private var onboardingArtworkJob: Job? = null
+    private var onboardingArtworkLanguage: String? = null
     val playerController get() = player.controller
 
     init {
@@ -4545,7 +4552,47 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun loadOnboardingArtwork(languageCode: String) {
+        val code = LevyraLanguageCatalog.normalize(languageCode)
+        if (onboardingArtworkLanguage == code && onboardingArtworkJob?.isActive == true) return
+        if (onboardingArtworkLanguage == code && _onboardingArtwork.value.isNotEmpty()) return
+        onboardingArtworkLanguage = code
+        onboardingArtworkJob?.cancel()
+        _onboardingArtwork.value = emptyMap()
+        val tastes = moodEngine.tastesForLanguage(code)
+        onboardingArtworkJob = viewModelScope.launch {
+            val gate = Semaphore(ONBOARDING_ARTWORK_PARALLELISM)
+            tastes.forEach { taste ->
+                launch {
+                    val portraits = gate.withPermit { onboardingPortraitsFor(taste.query, code) }
+                    if (portraits.isNotEmpty()) _onboardingArtwork.update { it + (taste.id to portraits) }
+                }
+            }
+        }
+    }
+
+    private suspend fun onboardingPortraitsFor(query: String, languageCode: String): List<String> {
+        val tracks = runCatchingPreservingCancellation {
+            repository.search(query, limit = ONBOARDING_ARTWORK_SEARCH_LIMIT, languageCode = languageCode)
+        }.getOrNull().orEmpty()
+        val artists = tracks
+            .map { primaryArtistSegment(it.artist) }
+            .filter { it.isNotBlank() }
+            .distinctBy { it.lowercase(Locale.ROOT) }
+            .take(ONBOARDING_ARTWORK_ARTISTS)
+        return artists.mapNotNull { artist ->
+            runCatchingPreservingCancellation { artistRepository.artistHitFor(artist) }
+                .getOrNull()
+                ?.thumbnailUrl
+                ?.takeIf { it.isNotBlank() }
+        }.distinct()
+    }
+
     fun completeOnboarding(name: String, tasteIds: Set<String>, languageCode: String) {
+        onboardingArtworkJob?.cancel()
+        onboardingArtworkJob = null
+        onboardingArtworkLanguage = null
+        _onboardingArtwork.value = emptyMap()
         val normalizedLanguage = LevyraLanguageCatalog.normalize(languageCode)
         preferences.setLanguageCode(normalizedLanguage)
         preferences.setUserName(name.trim())
