@@ -511,44 +511,79 @@ def generate_explore_mix_crossover(card_w, card_h):
         y_end=740,
     )
 
+    # Glowing Vinyl Record centered at the seam (x = 910)
+    vinyl_size = 660
+    vinyl = Image.new("RGBA", (vinyl_size, vinyl_size), (0, 0, 0, 0))
+    vdraw = ImageDraw.Draw(vinyl)
+    vdraw.ellipse((0, 0, vinyl_size - 1, vinyl_size - 1), fill=(15, 18, 25, 255), outline=(40, 48, 65, 255), width=3)
+
+    for r in range(45, vinyl_size // 2 - 12, 10):
+        opacity = 180 if (r % 30 == 0) else 85
+        width = 2 if (r % 30 == 0) else 1
+        vdraw.ellipse((vinyl_size // 2 - r, vinyl_size // 2 - r, vinyl_size // 2 + r, vinyl_size // 2 + r), outline=(45, 54, 72, opacity), width=width)
+
+    sheen = Image.new("RGBA", (vinyl_size, vinyl_size), (0, 0, 0, 0))
+    sdraw = ImageDraw.Draw(sheen)
+    sdraw.pieslice((0, 0, vinyl_size - 1, vinyl_size - 1), start=38, end=72, fill=(255, 255, 255, 30))
+    sdraw.pieslice((0, 0, vinyl_size - 1, vinyl_size - 1), start=218, end=252, fill=(255, 255, 255, 30))
+    sheen = sheen.filter(ImageFilter.GaussianBlur(14))
+    vinyl = Image.alpha_composite(vinyl, sheen)
+
+    vdraw = ImageDraw.Draw(vinyl)
+    label_r = 110
+    vdraw.ellipse((vinyl_size // 2 - label_r, vinyl_size // 2 - label_r, vinyl_size // 2 + label_r, vinyl_size // 2 + label_r), fill=(18, 120, 220, 255), outline=(0, 225, 245, 255), width=3)
+    vdraw.ellipse((vinyl_size // 2 - label_r + 12, vinyl_size // 2 - label_r + 12, vinyl_size // 2 + label_r - 12, vinyl_size // 2 + label_r - 12), outline=(255, 255, 255, 120), width=1)
+    vdraw.text((vinyl_size // 2 - 55, vinyl_size // 2 - 26), "LEVYRA", font=get_font(26, bold=True), fill=(255, 255, 255, 255))
+    vdraw.text((vinyl_size // 2 - 64, vinyl_size // 2 + 8), "SOUND ENGINE", font=get_font(15, bold=True), fill=(200, 235, 255, 220))
+    vdraw.ellipse((vinyl_size // 2 - 14, vinyl_size // 2 - 14, vinyl_size // 2 + 14, vinyl_size // 2 + 14), fill=(12, 14, 18, 255), outline=(200, 210, 225, 255), width=2)
+
+    vx = pano_w // 2 - vinyl_size // 2
+    vy = 800
+
+    v_glow = Image.new("RGBA", (vinyl_size + 120, vinyl_size + 120), (0, 0, 0, 0))
+    ImageDraw.Draw(v_glow).ellipse((60, 60, vinyl_size + 60, vinyl_size + 60), fill=(0, 200, 245, 110))
+    v_glow = v_glow.filter(ImageFilter.GaussianBlur(55))
+    pano_bg.paste(v_glow, (vx - 60, vy - 40), v_glow)
+    pano_bg.paste(vinyl, (vx, vy), vinyl)
+
     eq_layer = Image.new("RGBA", (pano_w, pano_h), (0, 0, 0, 0))
     eq_draw = ImageDraw.Draw(eq_layer)
 
     xs = np.linspace(0, pano_w, 400)
     ys_center = 1350 + 55 * np.sin(xs * 0.007) + 22 * np.cos(xs * 0.018 + 0.8)
     pts = [(int(x), int(y)) for x, y in zip(xs, ys_center)]
-    eq_draw.line(pts, fill=(0, 225, 245, 160), width=6)
+    eq_draw.line(pts, fill=(0, 225, 245, 170), width=6)
 
     np.random.seed(55)
-    for bx in range(650, 1170, 14):
+    for bx in range(600, 1220, 14):
         dist_from_seam = abs(bx - 910)
-        max_h = max(20, int(110 - dist_from_seam * 0.28))
-        bh = np.random.randint(15, max_h)
+        max_h = max(20, int(120 - dist_from_seam * 0.28))
+        bh = np.random.randint(16, max_h)
         by = int(1350 + 55 * np.sin(bx * 0.007) + 22 * np.cos(bx * 0.018 + 0.8))
         r = int(0 + 40 * (bx / pano_w))
         g = int(220 - 70 * (bx / pano_w))
         b = 250
-        eq_draw.line([(bx, by - bh // 2), (bx, by + bh // 2)], fill=(r, g, b, 190), width=5)
+        eq_draw.line([(bx, by - bh // 2), (bx, by + bh // 2)], fill=(r, g, b, 200), width=5)
 
     eq_glow = eq_layer.filter(ImageFilter.GaussianBlur(16))
     pano_bg = Image.alpha_composite(pano_bg, eq_glow)
     pano_bg = Image.alpha_composite(pano_bg, eq_layer)
 
     with Image.open(s1_path) as src1:
-        phone_exp = create_clean_phone(src1, target_height=1220)
+        phone_exp = create_clean_phone(src1, target_height=1230)
     with Image.open(s2_path) as src2:
-        phone_mix = create_clean_phone(src2, target_height=1220)
+        phone_mix = create_clean_phone(src2, target_height=1230)
 
     rot_exp = phone_exp.rotate(-16, resample=Image.Resampling.BICUBIC, expand=True)
     rot_mix = phone_mix.rotate(16, resample=Image.Resampling.BICUBIC, expand=True)
 
-    exp_x = 160
-    exp_y = 260
-    mix_x = card_w + gutter - 150
-    mix_y = 295
+    exp_x = 190
+    exp_y = 255
+    mix_x = 740
+    mix_y = 290
 
-    g_exp, gp_exp = create_colored_glow(rot_exp, (0, 215, 235), blur=60, opacity=80, offset_y=18)
-    g_mix, gp_mix = create_colored_glow(rot_mix, (25, 130, 250), blur=65, opacity=85, offset_y=20)
+    g_exp, gp_exp = create_colored_glow(rot_exp, (0, 215, 235), blur=60, opacity=85, offset_y=18)
+    g_mix, gp_mix = create_colored_glow(rot_mix, (25, 130, 250), blur=65, opacity=90, offset_y=20)
 
     pano_bg.paste(g_exp, (exp_x - gp_exp, exp_y - gp_exp), g_exp)
     paste_phone_with_studio_depth(pano_bg, rot_exp, exp_x, exp_y)
@@ -591,7 +626,9 @@ def generate_explore_mix_crossover(card_w, card_h):
 
     card_05.convert("RGB").save(os.path.join(OUT_CARDS_DIR, "05_explore.webp"), "WEBP", quality=94, method=4)
     card_06.convert("RGB").save(os.path.join(OUT_CARDS_DIR, "06_levyra_mix.webp"), "WEBP", quality=94, method=4)
-    print("Generated 3D Crossover Diptych: 05_explore.webp, 06_levyra_mix.webp")
+    card_05.convert("RGB").save(os.path.join(OUT_CARDS_DIR, "05_explore_stage.webp"), "WEBP", quality=94, method=4)
+    card_06.convert("RGB").save(os.path.join(OUT_CARDS_DIR, "06_levyra_mix_stage.webp"), "WEBP", quality=94, method=4)
+    print("Generated 3D Crossover Diptych: 05_explore.webp, 06_levyra_mix.webp (and _stage.webp)")
 
 def generate_feature_cards():
     card_w, card_h = 900, 1600
