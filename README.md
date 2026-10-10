@@ -129,8 +129,8 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
   <a href="docs/assets/showcase/cards/04_player_deck.webp"><img src="docs/assets/showcase/cards/04_player_deck.webp?v=s26ultra-20261010" width="200" alt="Levyra customizable player decks" /></a>
 </p>
 <p align="center">
-  <a href="docs/assets/showcase/cards/05_explore_mix.webp"><img src="docs/assets/showcase/cards/05_explore_mix.webp?v=s26ultra-20261010" width="200" alt="Levyra explore and mix hub" /></a>
-  <a href="docs/assets/showcase/cards/06_artist_profile.webp"><img src="docs/assets/showcase/cards/06_artist_profile.webp?v=s26ultra-20261010" width="200" alt="Levyra artist profile and discography" /></a>
+  <a href="docs/assets/showcase/cards/05_explore.webp"><img src="docs/assets/showcase/cards/05_explore.webp?v=s26ultra-20261010" width="200" alt="Levyra explore and fresh currents" /></a>
+  <a href="docs/assets/showcase/cards/06_levyra_mix.webp"><img src="docs/assets/showcase/cards/06_levyra_mix.webp?v=s26ultra-20261010" width="200" alt="Levyra custom mix and live radio" /></a>
   <a href="docs/assets/showcase/cards/07_genres.webp"><img src="docs/assets/showcase/cards/07_genres.webp?v=s26ultra-20261010" width="200" alt="Levyra moods and genres" /></a>
   <a href="docs/assets/showcase/cards/08_audio_tuning.webp"><img src="docs/assets/showcase/cards/08_audio_tuning.webp?v=s26ultra-20261010" width="200" alt="Levyra audio tuning and playback engine" /></a>
 </p>
@@ -148,7 +148,7 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
 </p>
 <p align="center">
   <a href="docs/assets/showcase/cards/17_new_releases.webp"><img src="docs/assets/showcase/cards/17_new_releases.webp?v=s26ultra-20261010" width="200" alt="Levyra new releases" /></a>
-  <a href="docs/assets/showcase/cards/18_fresh_currents.webp"><img src="docs/assets/showcase/cards/18_fresh_currents.webp?v=s26ultra-20261010" width="200" alt="Levyra discovery stream and fresh currents" /></a>
+  <a href="docs/assets/showcase/cards/18_artist_profile.webp"><img src="docs/assets/showcase/cards/18_artist_profile.webp?v=s26ultra-20261010" width="200" alt="Levyra artist profile and discography" /></a>
   <a href="docs/assets/showcase/cards/19_top_50.webp"><img src="docs/assets/showcase/cards/19_top_50.webp?v=s26ultra-20261010" width="200" alt="Levyra Top 50 charts" /></a>
   <a href="docs/assets/showcase/cards/20_soundstage.webp"><img src="docs/assets/showcase/cards/20_soundstage.webp?v=s26ultra-20261010" width="200" alt="Levyra lossless soundstage" /></a>
 </p>

@@ -487,6 +487,89 @@ def generate_explore_mix_card(card_w, card_h):
     bg.convert("RGB").save(out_path, "WEBP", quality=94, method=4)
     print(f"Generated Dual Explore & Mix Card: {out_path}")
 
+def generate_explore_mix_diptych(card_w, card_h):
+    s1_path = resolve_screenshot_path("Screenshot_20261010_132210_LEVYRA.jpg")
+    s2_path = resolve_screenshot_path("Screenshot_20261010_132217_LEVYRA.jpg")
+    if not s1_path or not s2_path:
+        print("Skipping explore mix diptych: missing screenshots")
+        return
+
+    gutter = 20
+    pano_w = card_w * 2 + gutter
+    pano_h = card_h
+
+    C_SEAFOAM = ((238, 246, 248), (166, 198, 202), (145, 188, 192))
+    top_tint, accent_tone, glow_tone = C_SEAFOAM
+
+    pano_bg = create_delicate_bg(
+        pano_w,
+        pano_h,
+        top_tint=top_tint,
+        accent_tone=accent_tone,
+        glow_tone=glow_tone,
+        y_start=1110,
+        y_end=580,
+    )
+
+    rot_angle = 21.0
+
+    with Image.open(s2_path) as src2:
+        phone_mix = create_clean_phone(src2, target_height=1150)
+    rot_mix = phone_mix.rotate(rot_angle, resample=Image.Resampling.BICUBIC, expand=True)
+
+    g2, gpad2 = create_colored_glow(rot_mix, (25, 125, 245), blur=60, opacity=80, offset_y=20)
+    mix_x = card_w + gutter + 255
+    mix_y = 435
+    pano_bg.paste(g2, (mix_x - gpad2, mix_y - gpad2), g2)
+    paste_phone_with_studio_depth(pano_bg, rot_mix, mix_x, mix_y)
+
+    with Image.open(s1_path) as src1:
+        phone_explore = create_clean_phone(src1, target_height=1310)
+    rot_explore = phone_explore.rotate(rot_angle, resample=Image.Resampling.BICUBIC, expand=True)
+
+    g1, gpad1 = create_colored_glow(rot_explore, (0, 205, 230), blur=55, opacity=75, offset_y=16)
+    exp_x = 240
+    exp_y = 22
+    pano_bg.paste(g1, (exp_x - gpad1, exp_y - gpad1), g1)
+    paste_phone_with_studio_depth(pano_bg, rot_explore, exp_x, exp_y)
+
+    pdraw = ImageDraw.Draw(pano_bg)
+
+    c1_tx, c1_ty = 58, 1246
+    draw_accent_pill(pdraw, c1_tx, c1_ty - 22, accent_tone)
+    pdraw.text((c1_tx, c1_ty), "Explore & discover", font=get_font(62, bold=True), fill=(12, 18, 28, 255))
+    pdraw.multiline_text(
+        (c1_tx, c1_ty + 84),
+        "New releases, fresh currents,\nand curated sounds for every vibe.\nZero tracking or logins.",
+        font=get_font(30),
+        fill=(32, 46, 64, 255),
+        spacing=10,
+    )
+
+    c2_left = card_w + gutter
+    text_x = c2_left + 215
+    text_y = 78
+    draw_accent_pill(pdraw, text_x, text_y - 22, accent_tone)
+    pdraw.text((text_x, text_y), "Levyra Mix & radio", font=get_font(64, bold=True), fill=(12, 18, 28, 255))
+    pdraw.multiline_text(
+        (text_x, text_y + 86),
+        "Interactive slider between familiar and new.\nLive radio stations streaming 24/7.",
+        font=get_font(31),
+        fill=(38, 52, 68, 255),
+        spacing=10,
+    )
+
+    card_05 = pano_bg.crop((0, 0, card_w, card_h))
+    card_06 = pano_bg.crop((c2_left, 0, pano_w, card_h))
+
+    border_col = tuple(max(0, int(accent_tone[i] - 18)) for i in range(3))
+    ImageDraw.Draw(card_05).rectangle((0, 0, card_w - 1, card_h - 1), outline=(*border_col, 90), width=2)
+    ImageDraw.Draw(card_06).rectangle((0, 0, card_w - 1, card_h - 1), outline=(*border_col, 90), width=2)
+
+    card_05.convert("RGB").save(os.path.join(OUT_CARDS_DIR, "05_explore.webp"), "WEBP", quality=93, method=4)
+    card_06.convert("RGB").save(os.path.join(OUT_CARDS_DIR, "06_levyra_mix.webp"), "WEBP", quality=93, method=4)
+    print("Generated Explore Diptych Cards: 05_explore.webp, 06_levyra_mix.webp")
+
 def generate_feature_cards():
     card_w, card_h = 900, 1600
     gutter = 20
@@ -567,6 +650,7 @@ def generate_feature_cards():
     print("Generated Hero Cards: 01_home.webp, 02_stay_with_the_song.webp")
 
     generate_explore_mix_card(card_w, card_h)
+    generate_explore_mix_diptych(card_w, card_h)
 
     C_CELESTE = ((238, 245, 250), (170, 196, 218), (148, 185, 210))
     C_SAGE = ((238, 246, 242), (168, 198, 188), (145, 185, 172))
@@ -590,6 +674,7 @@ def generate_feature_cards():
         (13, "16_settings_vault.webp", "Screenshot_20260929_194944_LEVYRA.jpg", "Tailor every detail", "Audio, design, gestures, and local\nsingle-file Vault backups.", C_SAGE),
         (14, "17_new_releases.webp", "Screenshot_20260927_132248_LEVYRA.jpg", "Fresh off the stage", "New singles and albums updated\nevery week directly from artists.", C_CASHMERE),
         (15, "18_fresh_currents.webp", "Screenshot_20260929_212908_LEVYRA.jpg", "Discovery stream", "Artist mixes, deep catalog filters,\nand instant radio stations.", C_SEAFOAM),
+        (15, "18_artist_profile.webp", "Screenshot_20260926_194603_LEVYRA.jpg", "Meet the artist", "Full discography, singles, biographies,\nand top tracks in one tap.", C_TWILIGHT),
         (16, "19_top_50.webp", "Screenshot_20261010_132028_LEVYRA.jpg", "Top 50 charts", "Explore daily country charts,\nviral hits, and top tracks worldwide.", C_TWILIGHT),
         (17, "20_soundstage.webp", "Screenshot_20260926_193948_LEVYRA.jpg", "Pure soundstage", "Experience lossless decoding and\nuncompromised audio fidelity.", C_CELESTE),
     ]
