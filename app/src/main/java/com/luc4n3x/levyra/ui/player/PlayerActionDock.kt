@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.player
 
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.animation.animateColorAsState
 import com.luc4n3x.levyra.ui.components.levyraExpressiveCorner
 import androidx.compose.runtime.remember
@@ -106,12 +107,7 @@ private fun RowScope.PlayerDockSegment(
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(220)),
         label = "player-dock-tint"
     )
-    val shape = RoundedCornerShape(
-        topStart = if (first) outer else inner,
-        bottomStart = if (first) outer else inner,
-        topEnd = if (last) outer else inner,
-        bottomEnd = if (last) outer else inner
-    )
+    val shape = dockSegmentShape(first = first, last = last, outer = outer, inner = inner)
     Box(
         modifier = Modifier
             .weight(1f)
@@ -126,11 +122,7 @@ private fun RowScope.PlayerDockSegment(
                 pressedScale = LevyraPressScale.Control,
                 role = Role.Button
             )
-            .semantics {
-                contentDescription = action.label
-                segmentToggleState(action.toggle, action.active)?.let { toggleableState = it }
-                action.stateDescription?.let { this.stateDescription = it }
-            },
+            .dockActionSemantics(action),
         contentAlignment = Alignment.Center
     ) {
         PlayerSegmentGlyph(action.icon, tint, action.busy, LevyraPlayerDesign.DockGlyph)
@@ -193,6 +185,18 @@ internal fun PlayerToggleControl(
 
 private val ToggleCheckedCorner: Dp = 14.dp
 private const val DisabledDockAlpha = 0.42f
+
+private fun dockSegmentShape(first: Boolean, last: Boolean, outer: Dp, inner: Dp): Shape {
+    val start = if (first) outer else inner
+    val end = if (last) outer else inner
+    return RoundedCornerShape(topStart = start, bottomStart = start, topEnd = end, bottomEnd = end)
+}
+
+private fun Modifier.dockActionSemantics(action: PlayerDockAction): Modifier = semantics {
+    contentDescription = action.label
+    segmentToggleState(action.toggle, action.active)?.let { toggleableState = it }
+    action.stateDescription?.let { stateDescription = it }
+}
 
 private fun dockHeight(compact: Boolean) =
     if (compact) LevyraPlayerDesign.DockHeightCompact else LevyraPlayerDesign.DockHeight
