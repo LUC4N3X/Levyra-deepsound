@@ -6,16 +6,14 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class SettingsSearchLiveUpdateLocalizationTest {
+class SettingsSearchLocalizationTest {
     @Test
-    fun everyCatalogLanguageShipsSettingsSearchAndLiveUpdateCopy() {
+    fun everyCatalogLanguageShipsSettingsSearchCopy() {
         val codes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
         assertEquals(codes, settingsSearchLocalizationCodes())
-        assertEquals(codes, liveUpdateLocalizationCodes())
         LevyraStrings.all().forEach { strings ->
             assertTrue(strings.code, strings.settingsSearchPlaceholder.isNotBlank())
             assertTrue(strings.code, strings.settingsSearchEmpty.isNotBlank())
-            assertTrue(strings.code, strings.liveUpdatePlaybackChannel.isNotBlank())
         }
     }
 
@@ -25,7 +23,6 @@ class SettingsSearchLiveUpdateLocalizationTest {
         LevyraStrings.all().filterNot { it.code == "en" }.forEach { strings ->
             assertNotEquals(strings.code, english.settingsSearchPlaceholder, strings.settingsSearchPlaceholder)
             assertNotEquals(strings.code, english.settingsSearchEmpty, strings.settingsSearchEmpty)
-            assertNotEquals(strings.code, english.liveUpdatePlaybackChannel, strings.liveUpdatePlaybackChannel)
         }
     }
 
