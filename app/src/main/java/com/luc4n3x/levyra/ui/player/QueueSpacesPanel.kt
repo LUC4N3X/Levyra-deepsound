@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.LevyraIsLight
+import com.luc4n3x.levyra.ui.LevyraAdaptiveCard
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.toShape
@@ -608,4 +610,4 @@ internal fun formatQueueSpaceDuration(durationMs: Long): String {
     return if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
 }
 
-private val QueueSpaceSurface: Color = Color(0xFF1C1D21)
+private val QueueSpaceSurface: Color get() = if (LevyraIsLight) LevyraAdaptiveCard else Color(0xFF1C1D21)

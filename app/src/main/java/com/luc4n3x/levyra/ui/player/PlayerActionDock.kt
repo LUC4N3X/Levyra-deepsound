@@ -63,7 +63,7 @@ internal fun PlayerActionDock(
             .widthIn(max = LevyraPlayerDesign.DockMaxWidth)
             .fillMaxWidth()
             .height(dockHeight(compact)),
-        horizontalArrangement = Arrangement.spacedBy(DockSegmentGap),
+        horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.DockGap),
         verticalAlignment = Alignment.CenterVertically
     ) {
         actions.forEachIndexed { index, action ->
@@ -92,7 +92,7 @@ private fun RowScope.PlayerDockSegment(
     val outer = dockHeight(false) / 2
     val inner = levyraExpressiveCorner(
         interactionSource = interaction,
-        rest = if (action.active) outer else DockInnerCorner,
+        rest = if (action.active) outer else LevyraPlayerDesign.DockInnerCorner,
         pressed = outer,
         label = "player-dock-inner"
     )
@@ -192,8 +192,6 @@ internal fun PlayerToggleControl(
 }
 
 private val ToggleCheckedCorner: Dp = 14.dp
-private val DockSegmentGap: Dp = 3.dp
-private val DockInnerCorner: Dp = 8.dp
 private const val DisabledDockAlpha = 0.42f
 
 private fun dockHeight(compact: Boolean) =
