@@ -83,6 +83,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -168,7 +170,7 @@ fun LevyraNowPlaying(
     viewModel: PlayerViewModel,
     state: LevyraUiState,
     morphAnchors: PlayerMorphAnchors,
-    morphActive: Boolean,
+    morphActive: () -> Boolean,
     collapseActions: PlayerCollapseActions,
     modifier: Modifier = Modifier,
     motionSuspended: Boolean = false,
@@ -303,8 +305,11 @@ fun LevyraNowPlaying(
     val lyricsFlip = rememberPlayerLyricsFlipState()
     val lyricsFlipDepth = LocalLevyraVisualCapabilities.current.depthTransitions
     val lyricsFlipAvailable = track != null && !liveRadio && !state.isVideoMode
-    LaunchedEffect(lyricsFlipAvailable, morphActive) {
-        if (!lyricsFlipAvailable || morphActive) lyricsFlip.snapTo(PlayerLyricsFace.Player)
+    val latestMorphActive by rememberUpdatedState(morphActive)
+    LaunchedEffect(lyricsFlipAvailable) {
+        snapshotFlow { latestMorphActive() }.collect { active ->
+            if (!lyricsFlipAvailable || active) lyricsFlip.snapTo(PlayerLyricsFace.Player)
+        }
     }
     val lyricsFlipSwipeModifier = Modifier.playerLyricsFlipDrag(
         state = lyricsFlip,
