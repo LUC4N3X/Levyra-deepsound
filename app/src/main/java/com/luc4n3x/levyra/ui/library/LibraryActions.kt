@@ -179,6 +179,7 @@ internal fun LibrarySmartOfflineSummary(
     songCount: Int,
     bytes: Long,
     lastUpdatedAt: Long,
+    refreshEnabled: Boolean,
     onRefresh: () -> Unit,
     shape: Shape = levyraGroupedListShape(0, 1)
 ) {
@@ -193,17 +194,25 @@ internal fun LibrarySmartOfflineSummary(
             "${strings.formatSmartOfflineSongCount(songCount)} · ${strings.formatLibraryBytes(bytes)}",
             strings.formatSmartOfflineUpdatedAt(lastUpdatedAt)
         ),
-        shape = shape
-    ) {
-        LevyraExpressiveIconButton(
-            onClick = onRefresh,
-            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                containerColor = LevyraCyan.copy(alpha = 0.16f),
-                contentColor = LevyraCyan
-            )
-        ) {
-            Icon(Icons.Rounded.Refresh, contentDescription = copy.refresh)
+        shape = shape,
+        trailing = if (refreshEnabled) {
+            { SmartOfflineRefreshButton(contentDescription = copy.refresh, onRefresh = onRefresh) }
+        } else {
+            null
         }
+    )
+}
+
+@Composable
+private fun SmartOfflineRefreshButton(contentDescription: String, onRefresh: () -> Unit) {
+    LevyraExpressiveIconButton(
+        onClick = onRefresh,
+        colors = IconButtonDefaults.filledTonalIconButtonColors(
+            containerColor = LevyraCyan.copy(alpha = 0.16f),
+            contentColor = LevyraCyan
+        )
+    ) {
+        Icon(Icons.Rounded.Refresh, contentDescription = contentDescription)
     }
 }
 

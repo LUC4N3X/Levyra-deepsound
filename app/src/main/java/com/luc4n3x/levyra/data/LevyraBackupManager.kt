@@ -1593,7 +1593,8 @@ internal fun reconcileDownloadedTracks(
                 fileName = available.fileName.ifBlank { backup.fileName },
                 uri = available.uri,
                 mimeType = backup.mimeType.ifBlank { available.mimeType },
-                savedAt = backup.savedAt.takeIf { it > 0L } ?: available.savedAt
+                savedAt = backup.savedAt.takeIf { it > 0L } ?: available.savedAt,
+                ownership = if (exactIndex >= 0) backup.ownership else DownloadOwnership.MANUAL.name
             ) ?: available.copy(id = 0L)
             if (isReadable(candidate.uri)) add(candidate)
         }

@@ -84,6 +84,26 @@ class BackupDownloadedTracksTest {
     }
 
     @Test
+    fun reconciliationKeepsSmartOwnershipOnlyForTheSameFile() {
+        val smartBackup = download(
+            trackId = "track-1",
+            uri = "content://media/external/audio/media/7",
+            fileName = "Artist - Track.m4a"
+        ).copy(ownership = DownloadOwnership.SMART_OFFLINE.name)
+        val sameFile = smartBackup.copy(trackId = "")
+        val metadataMatch = smartBackup.copy(trackId = "", uri = "content://media/external/audio/media/42", ownership = DownloadOwnership.MANUAL.name)
+
+        val exact = reconcileDownloadedTracks(listOf(smartBackup), listOf(sameFile)) { true }.single()
+        val remapped = reconcileDownloadedTracks(listOf(smartBackup), listOf(metadataMatch)) {
+            it == metadataMatch.uri
+        }.single()
+
+        assertEquals(DownloadOwnership.SMART_OFFLINE.name, exact.ownership)
+        assertEquals(metadataMatch.uri, remapped.uri)
+        assertEquals(DownloadOwnership.MANUAL.name, remapped.ownership)
+    }
+
+    @Test
     fun reconciliationDropsMissingFilesAndDeduplicatesReadableUris() {
         val available = download(
             trackId = "track-1",

@@ -5368,8 +5368,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch(Dispatchers.IO) {
             smartOfflineSettingsMutationMutex.withLock {
                 if (mutationId != smartOfflineSettingsMutationId.get()) return@withLock
-                preferences.setSmartOfflineSettings(normalized)
+                val saved = preferences.setSmartOfflineSettings(normalized)
                 if (mutationId != smartOfflineSettingsMutationId.get()) return@withLock
+                if (!saved) {
+                    pendingSmartOfflineSettings = null
+                    val persisted = preferences.smartOfflineSettings()
+                    _state.update { it.copy(smartOfflineSettings = persisted) }
+                    return@withLock
+                }
                 SmartOfflineScheduler.schedule(levyraContext, normalized)
                 if (!normalized.enabled) SmartOfflineScheduler.cancelSmartDownloads(levyraContext)
             }

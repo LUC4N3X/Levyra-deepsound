@@ -951,6 +951,7 @@ internal fun LevyraLibraryScreen(
                                     songCount = smartOfflineSummary.first,
                                     bytes = smartOfflineSummary.second,
                                     lastUpdatedAt = state.smartOfflineSettings.lastRefreshAt,
+                                    refreshEnabled = state.smartOfflineSettings.enabled,
                                     onRefresh = viewModel::refreshSmartOffline,
                                     shape = levyraGroupedListShape(1, groupCount)
                                 )

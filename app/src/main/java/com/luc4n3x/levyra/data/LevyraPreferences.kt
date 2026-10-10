@@ -430,14 +430,16 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         .map(::smartOfflineSettingsFrom)
         .distinctUntilChanged()
 
-    suspend fun setSmartOfflineSettings(value: LevyraSmartOfflineSettings) {
+    suspend fun setSmartOfflineSettings(value: LevyraSmartOfflineSettings): Boolean {
         val normalized = value.normalized()
-        try {
+        return try {
             store.commit { writeSmartOfflineSettings(it, normalized) }
+            true
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
             Timber.w(error, "DataStore Smart Offline write failed")
+            false
         }
     }
 
