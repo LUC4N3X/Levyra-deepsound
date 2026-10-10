@@ -487,88 +487,69 @@ def generate_explore_mix_card(card_w, card_h):
     bg.convert("RGB").save(out_path, "WEBP", quality=94, method=4)
     print(f"Generated Dual Explore & Mix Card: {out_path}")
 
-def generate_explore_mix_diptych(card_w, card_h):
+def generate_explore_mix_duo(card_w, card_h):
     s1_path = resolve_screenshot_path("Screenshot_20261010_132210_LEVYRA.jpg")
     s2_path = resolve_screenshot_path("Screenshot_20261010_132217_LEVYRA.jpg")
     if not s1_path or not s2_path:
-        print("Skipping explore mix diptych: missing screenshots")
+        print("Skipping explore mix duo: missing screenshots")
         return
 
-    gutter = 20
-    pano_w = card_w * 2 + gutter
-    pano_h = card_h
-
     C_SEAFOAM = ((238, 246, 248), (166, 198, 202), (145, 188, 192))
-    top_tint, accent_tone, glow_tone = C_SEAFOAM
+    C_SAPPHIRE = ((238, 244, 252), (162, 188, 222), (140, 175, 215))
 
-    pano_bg = create_delicate_bg(
-        pano_w,
-        pano_h,
-        top_tint=top_tint,
-        accent_tone=accent_tone,
-        glow_tone=glow_tone,
-        y_start=1110,
-        y_end=580,
+    # Card 05: Explore & discover
+    bg5 = create_delicate_bg(card_w, card_h, C_SEAFOAM[0], C_SEAFOAM[1], C_SEAFOAM[2], y_start=850, y_end=760)
+    draw5 = ImageDraw.Draw(bg5)
+    draw_accent_pill(draw5, 68, 56, C_SEAFOAM[1])
+    draw5.text((68, 78), "Explore & discover", font=get_font(64, bold=True), fill=(12, 18, 28, 255))
+    draw5.multiline_text(
+        (68, 166),
+        "Live radio, fresh currents, and\nsounds crafted for every moment.",
+        font=get_font(31),
+        fill=(40, 54, 68, 255),
+        spacing=10,
     )
-
-    rot_angle = 21.0
-
-    with Image.open(s2_path) as src2:
-        phone_mix = create_clean_phone(src2, target_height=1150)
-    rot_mix = phone_mix.rotate(rot_angle, resample=Image.Resampling.BICUBIC, expand=True)
-
-    g2, gpad2 = create_colored_glow(rot_mix, (25, 125, 245), blur=60, opacity=80, offset_y=20)
-    mix_x = card_w + gutter + 255
-    mix_y = 435
-    pano_bg.paste(g2, (mix_x - gpad2, mix_y - gpad2), g2)
-    paste_phone_with_studio_depth(pano_bg, rot_mix, mix_x, mix_y)
 
     with Image.open(s1_path) as src1:
-        phone_explore = create_clean_phone(src1, target_height=1310)
-    rot_explore = phone_explore.rotate(rot_angle, resample=Image.Resampling.BICUBIC, expand=True)
+        phone1 = create_clean_phone(src1, target_height=1200)
+    rot1 = phone1.rotate(-5, resample=Image.Resampling.BICUBIC, expand=True)
+    glow1, gp1 = create_colored_glow(rot1, (0, 205, 230), blur=55, opacity=70, offset_y=16)
+    px1 = (card_w - rot1.width) // 2 + 10
+    py1 = 310
+    bg5.paste(glow1, (px1 - gp1, py1 - gp1), glow1)
+    paste_phone_with_studio_depth(bg5, rot1, px1, py1)
 
-    g1, gpad1 = create_colored_glow(rot_explore, (0, 205, 230), blur=55, opacity=75, offset_y=16)
-    exp_x = 240
-    exp_y = 22
-    pano_bg.paste(g1, (exp_x - gpad1, exp_y - gpad1), g1)
-    paste_phone_with_studio_depth(pano_bg, rot_explore, exp_x, exp_y)
+    border_col5 = tuple(max(0, int(C_SEAFOAM[1][i] - 18)) for i in range(3))
+    ImageDraw.Draw(bg5).rectangle((0, 0, card_w - 1, card_h - 1), outline=(*border_col5, 90), width=2)
+    bg5.convert("RGB").save(os.path.join(OUT_CARDS_DIR, "05_explore.webp"), "WEBP", quality=94, method=4)
 
-    pdraw = ImageDraw.Draw(pano_bg)
-
-    c1_tx, c1_ty = 58, 1246
-    draw_accent_pill(pdraw, c1_tx, c1_ty - 22, accent_tone)
-    pdraw.text((c1_tx, c1_ty), "Explore & discover", font=get_font(62, bold=True), fill=(12, 18, 28, 255))
-    pdraw.multiline_text(
-        (c1_tx, c1_ty + 84),
-        "New releases, fresh currents,\nand curated sounds for every vibe.\nZero tracking or logins.",
-        font=get_font(30),
-        fill=(32, 46, 64, 255),
-        spacing=10,
-    )
-
-    c2_left = card_w + gutter
-    text_x = c2_left + 215
-    text_y = 78
-    draw_accent_pill(pdraw, text_x, text_y - 22, accent_tone)
-    pdraw.text((text_x, text_y), "Levyra Mix & radio", font=get_font(64, bold=True), fill=(12, 18, 28, 255))
-    pdraw.multiline_text(
-        (text_x, text_y + 86),
-        "Interactive slider between familiar and new.\nLive radio stations streaming 24/7.",
+    # Card 06: Levyra Mix
+    bg6 = create_delicate_bg(card_w, card_h, C_SAPPHIRE[0], C_SAPPHIRE[1], C_SAPPHIRE[2], y_start=760, y_end=850)
+    draw6 = ImageDraw.Draw(bg6)
+    draw_accent_pill(draw6, 68, 56, C_SAPPHIRE[1])
+    draw6.text((68, 78), "Levyra Mix", font=get_font(64, bold=True), fill=(12, 18, 28, 255))
+    draw6.multiline_text(
+        (68, 166),
+        "Interactive slider between familiar and new.\nTuned for right now in one tap.",
         font=get_font(31),
-        fill=(38, 52, 68, 255),
+        fill=(40, 54, 68, 255),
         spacing=10,
     )
 
-    card_05 = pano_bg.crop((0, 0, card_w, card_h))
-    card_06 = pano_bg.crop((c2_left, 0, pano_w, card_h))
+    with Image.open(s2_path) as src2:
+        phone2 = create_clean_phone(src2, target_height=1200)
+    rot2 = phone2.rotate(5, resample=Image.Resampling.BICUBIC, expand=True)
+    glow2, gp2 = create_colored_glow(rot2, (25, 125, 245), blur=55, opacity=75, offset_y=16)
+    px2 = (card_w - rot2.width) // 2 - 10
+    py2 = 310
+    bg6.paste(glow2, (px2 - gp2, py2 - gp2), glow2)
+    paste_phone_with_studio_depth(bg6, rot2, px2, py2)
 
-    border_col = tuple(max(0, int(accent_tone[i] - 18)) for i in range(3))
-    ImageDraw.Draw(card_05).rectangle((0, 0, card_w - 1, card_h - 1), outline=(*border_col, 90), width=2)
-    ImageDraw.Draw(card_06).rectangle((0, 0, card_w - 1, card_h - 1), outline=(*border_col, 90), width=2)
+    border_col6 = tuple(max(0, int(C_SAPPHIRE[1][i] - 18)) for i in range(3))
+    ImageDraw.Draw(bg6).rectangle((0, 0, card_w - 1, card_h - 1), outline=(*border_col6, 90), width=2)
+    bg6.convert("RGB").save(os.path.join(OUT_CARDS_DIR, "06_levyra_mix.webp"), "WEBP", quality=94, method=4)
 
-    card_05.convert("RGB").save(os.path.join(OUT_CARDS_DIR, "05_explore.webp"), "WEBP", quality=93, method=4)
-    card_06.convert("RGB").save(os.path.join(OUT_CARDS_DIR, "06_levyra_mix.webp"), "WEBP", quality=93, method=4)
-    print("Generated Explore Diptych Cards: 05_explore.webp, 06_levyra_mix.webp")
+    print("Generated Explore Duo Cards: 05_explore.webp, 06_levyra_mix.webp")
 
 def generate_feature_cards():
     card_w, card_h = 900, 1600
@@ -650,7 +631,7 @@ def generate_feature_cards():
     print("Generated Hero Cards: 01_home.webp, 02_stay_with_the_song.webp")
 
     generate_explore_mix_card(card_w, card_h)
-    generate_explore_mix_diptych(card_w, card_h)
+    generate_explore_mix_duo(card_w, card_h)
 
     C_CELESTE = ((238, 245, 250), (170, 196, 218), (148, 185, 210))
     C_SAGE = ((238, 246, 242), (168, 198, 188), (145, 185, 172))
