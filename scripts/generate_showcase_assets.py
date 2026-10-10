@@ -630,150 +630,648 @@ def generate_explore_mix_crossover(card_w, card_h):
     card_06.convert("RGB").save(os.path.join(OUT_CARDS_DIR, "06_levyra_mix_stage.webp"), "WEBP", quality=94, method=4)
     print("Generated 3D Crossover Diptych: 05_explore.webp, 06_levyra_mix.webp (and _stage.webp)")
 
+card_w = 900
+card_h = 1600
+gutter = 20
+row_w = card_w * 4 + gutter * 3  # 3660
+row_h = card_h                   # 1600
+
+def create_panoramic_4card_bg(width, height, top_tint, accent_tone, glow_tone=None, y_wave_start=900, y_wave_end=700, wave_wave_freq=3.5):
+    top_arr = np.zeros((height, width, 4), dtype=np.uint8)
+    y_ratios = np.linspace(0.0, 1.0, height)[:, None]
+    for ch in range(3):
+        start_v = min(255, int(top_tint[ch] + 5))
+        end_v = max(0, int(top_tint[ch] - 10))
+        top_arr[:, :, ch] = (start_v * (1.0 - y_ratios) + end_v * y_ratios).astype(np.uint8)
+    top_arr[:, :, 3] = 255
+    canvas = Image.fromarray(top_arr, mode="RGBA")
+
+    w2, h2 = width * 2, height * 2
+    steps = 400
+    t = np.linspace(0.0, 1.0, steps)
+    xs = np.linspace(0.0, w2, steps)
+
+    y1 = y_wave_start * 2
+    y2 = y_wave_end * 2
+    base_y = y1 * (1 - t) + y2 * t
+    wave_offset = 120 * np.sin(t * wave_wave_freq * math.pi) + 40 * np.cos(t * (wave_wave_freq * 2) * math.pi)
+    ys = base_y + wave_offset
+
+    sec_layer = Image.new("RGBA", (w2, h2), (0, 0, 0, 0))
+    sdraw = ImageDraw.Draw(sec_layer)
+    sec_ys = ys - 90 * np.sin(t * 2 * math.pi) - 40
+    sec_poly = [(0, int(sec_ys[0]))] + [(int(x), int(y)) for x, y in zip(xs, sec_ys)] + [(w2, h2), (0, h2)]
+    mid_tone = tuple(int(top_tint[i] * 0.55 + accent_tone[i] * 0.45) for i in range(3))
+    sdraw.polygon(sec_poly, fill=(*mid_tone, 150))
+    canvas = Image.alpha_composite(canvas, sec_layer.resize((width, height), Image.Resampling.LANCZOS))
+
+    wave_layer = Image.new("RGBA", (w2, h2), (0, 0, 0, 0))
+    wdraw = ImageDraw.Draw(wave_layer)
+    poly = [(0, int(ys[0]))] + [(int(x), int(y)) for x, y in zip(xs, ys)] + [(w2, h2), (0, h2)]
+    wdraw.polygon(poly, fill=(*accent_tone, 255))
+    crest_pts = [(int(x), int(y)) for x, y in zip(xs, ys)]
+    wdraw.line(crest_pts, fill=(255, 255, 255, 175), width=5)
+    canvas = Image.alpha_composite(canvas, wave_layer.resize((width, height), Image.Resampling.LANCZOS))
+
+    if glow_tone:
+        glow_canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        gdraw = ImageDraw.Draw(glow_canvas)
+        for c_idx in range(4):
+            cx = c_idx * (card_w + gutter) + card_w // 2
+            gdraw.ellipse((cx - 320, 500, cx + 320, 1280), fill=(*glow_tone, 55))
+        glow_canvas = glow_canvas.filter(ImageFilter.GaussianBlur(95))
+        canvas = Image.alpha_composite(canvas, glow_canvas)
+
+    return canvas
+
+def slice_and_save_cards(bg, filenames_and_titles, accent_tone, preview_name=None):
+    cards = []
+    border_col = tuple(max(0, int(accent_tone[i] - 18)) for i in range(3))
+    for i in range(4):
+        x = i * (card_w + gutter)
+        c = bg.crop((x, 0, x + card_w, card_h))
+        ImageDraw.Draw(c).rectangle((0, 0, card_w - 1, card_h - 1), outline=(*border_col, 90), width=2)
+        cards.append(c)
+        for fn in filenames_and_titles[i]:
+            out_p = os.path.join(OUT_CARDS_DIR, fn)
+            c.convert("RGB").save(out_p, "WEBP", quality=94, method=4)
+            print(f"Saved: {out_p}")
+
+    if preview_name:
+        preview = Image.new("RGB", (row_w, row_h), (250, 250, 252))
+        for i, c in enumerate(cards):
+            preview.paste(c, (i * (card_w + gutter), 0))
+        thumb = preview.resize((row_w // 2, row_h // 2), Image.Resampling.LANCZOS)
+        thumb.save(preview_name, "PNG")
+
+    return cards
+
+def generate_row_1():
+    print("--- GENERATING ROW 1: Stage & Playback ---")
+    top_tint = (238, 245, 250)
+    accent_tone = (166, 194, 218)
+    glow_tone = (142, 180, 210)
+    bg = create_panoramic_4card_bg(row_w, row_h, top_tint, accent_tone, glow_tone, y_wave_start=950, y_wave_end=750)
+
+    s1 = resolve_screenshot_path("Screenshot_20260926_171253_LEVYRA.jpg")  # Home
+    s2 = resolve_screenshot_path("Screenshot_20260926_193948_LEVYRA.jpg")  # Player
+    s3 = resolve_screenshot_path("screen-lyrics.jpg")                      # Lyrics
+    s4 = resolve_screenshot_path("Screenshot_20261010_190538_LEVYRA.jpg")  # Player deck
+
+    with Image.open(s1) as src1:
+        p1 = create_clean_phone(src1, target_height=1310)
+    rot1 = p1.rotate(21, resample=Image.Resampling.BICUBIC, expand=True)
+
+    with Image.open(s2) as src2:
+        p2 = create_clean_phone(src2, target_height=1150)
+    rot2 = p2.rotate(21, resample=Image.Resampling.BICUBIC, expand=True)
+
+    c1_left = card_w + gutter
+    p2_x = c1_left + 255
+    p2_y = 435
+    g2, gp2 = create_colored_glow(rot2, (25, 125, 245), blur=55, opacity=80, offset_y=18)
+    bg.paste(g2, (p2_x - gp2, p2_y - gp2), g2)
+    paste_phone_with_studio_depth(bg, rot2, p2_x, p2_y)
+
+    p1_x = 240
+    p1_y = 22
+    g1, gp1 = create_colored_glow(rot1, (0, 205, 230), blur=55, opacity=75, offset_y=16)
+    bg.paste(g1, (p1_x - gp1, p1_y - gp1), g1)
+    paste_phone_with_studio_depth(bg, rot1, p1_x, p1_y)
+
+    with Image.open(s3) as src3:
+        p3 = create_clean_phone(src3, target_height=1220)
+    rot3 = p3.rotate(-8, resample=Image.Resampling.BICUBIC, expand=True)
+
+    with Image.open(s4) as src4:
+        p4 = create_clean_phone(src4, target_height=1220)
+    rot4 = p4.rotate(8, resample=Image.Resampling.BICUBIC, expand=True)
+
+    c2_left = (card_w + gutter) * 2
+    c3_left = (card_w + gutter) * 3
+
+    p3_x = c2_left + 150
+    p3_y = 280
+    g3, gp3 = create_colored_glow(rot3, (212, 194, 170), blur=55, opacity=70, offset_y=16)
+    bg.paste(g3, (p3_x - gp3, p3_y - gp3), g3)
+    paste_phone_with_studio_depth(bg, rot3, p3_x, p3_y)
+
+    p4_x = c3_left + 70
+    p4_y = 280
+    g4, gp4 = create_colored_glow(rot4, (182, 184, 212), blur=55, opacity=75, offset_y=16)
+    bg.paste(g4, (p4_x - gp4, p4_y - gp4), g4)
+    paste_phone_with_studio_depth(bg, rot4, p4_x, p4_y)
+
+    eq_layer = Image.new("RGBA", (row_w, row_h), (0, 0, 0, 0))
+    eq_draw = ImageDraw.Draw(eq_layer)
+    xs = np.linspace(0, row_w, 600)
+    ys = 1380 + 40 * np.sin(xs * 0.005) + 20 * np.cos(xs * 0.012 + 0.5)
+    pts = [(int(x), int(y)) for x, y in zip(xs, ys)]
+    eq_draw.line(pts, fill=(0, 220, 245, 120), width=4)
+    eq_glow = eq_layer.filter(ImageFilter.GaussianBlur(12))
+    bg = Image.alpha_composite(bg, eq_glow)
+    bg = Image.alpha_composite(bg, eq_layer)
+
+    pdraw = ImageDraw.Draw(bg)
+    # Card 0
+    c0_tx, c0_ty = 58, 1246
+    draw_accent_pill(pdraw, c0_tx, c0_ty - 22, accent_tone)
+    pdraw.text((c0_tx, c0_ty), "Pure listening", font=get_font(62, bold=True), fill=(12, 18, 28, 255))
+    pdraw.multiline_text((c0_tx, c0_ty + 84), "Zero ads, zero accounts.\nZero tracking or logins.\nPlayed natively on your device.", font=get_font(30), fill=(32, 46, 64, 255), spacing=10)
+
+    # Card 1
+    c1_tx, c1_ty = c1_left + 215, 78
+    draw_accent_pill(pdraw, c1_tx, c1_ty - 22, accent_tone)
+    pdraw.text((c1_tx, c1_ty), "Download & keep", font=get_font(64, bold=True), fill=(12, 18, 28, 255))
+    pdraw.multiline_text((c1_tx, c1_ty + 86), "Clean M4A files in device storage.\nFull metadata, artwork, and lyrics.", font=get_font(31), fill=(38, 52, 68, 255), spacing=10)
+
+    # Card 2
+    c2_tx, c2_ty = c2_left + 68, 56
+    draw_accent_pill(pdraw, c2_tx, c2_ty, (212, 194, 170))
+    pdraw.text((c2_tx, c2_ty + 22), "Follow every line", font=get_font(64, bold=True), fill=(12, 18, 28, 255))
+    pdraw.multiline_text((c2_tx, c2_ty + 110), "Synced lyrics move\nwith the music.", font=get_font(31), fill=(40, 54, 68, 255), spacing=10)
+
+    # Card 3
+    c3_tx, c3_ty = c3_left + 68, 56
+    draw_accent_pill(pdraw, c3_tx, c3_ty, (182, 184, 212))
+    pdraw.text((c3_tx, c3_ty + 22), "Style your player", font=get_font(64, bold=True), fill=(12, 18, 28, 255))
+    pdraw.multiline_text((c3_tx, c3_ty + 110), "Canvas, card deck, or classic vinyl.\nSwitch your stage seamlessly.", font=get_font(31), fill=(40, 54, 68, 255), spacing=10)
+
+    filenames = [
+        ["01_home.webp"],
+        ["02_stay_with_the_song.webp"],
+        ["03_now_playing.webp"],
+        ["04_player_deck.webp"],
+    ]
+    slice_and_save_cards(bg, filenames, accent_tone)
+
+def generate_row_2():
+    print("--- GENERATING ROW 2: Discovery & Sound Engine ---")
+    top_tint = (238, 246, 248)
+    accent_tone = (166, 198, 202)
+    glow_tone = (145, 188, 192)
+    bg = create_panoramic_4card_bg(row_w, row_h, top_tint, accent_tone, glow_tone, y_wave_start=860, y_wave_end=740)
+
+    s1 = resolve_screenshot_path("Screenshot_20261010_132210_LEVYRA.jpg")  # Explore
+    s2 = resolve_screenshot_path("Screenshot_20261010_132217_LEVYRA.jpg")  # Levyra Mix
+    s3 = resolve_screenshot_path("Screenshot_20261010_132249_LEVYRA.jpg")  # Genres
+    s4 = resolve_screenshot_path("Screenshot_20261010_190726_LEVYRA.jpg")  # Audio Tuning
+
+    # Sliced Vinyl record portal centered at the seam between Card 0 and Card 1 (x = 910)
+    vinyl_size = 660
+    vinyl = Image.new("RGBA", (vinyl_size, vinyl_size), (0, 0, 0, 0))
+    vdraw = ImageDraw.Draw(vinyl)
+    vdraw.ellipse((0, 0, vinyl_size - 1, vinyl_size - 1), fill=(15, 18, 25, 255), outline=(40, 48, 65, 255), width=3)
+    for r in range(45, vinyl_size // 2 - 12, 10):
+        opacity = 180 if (r % 30 == 0) else 85
+        width = 2 if (r % 30 == 0) else 1
+        vdraw.ellipse((vinyl_size // 2 - r, vinyl_size // 2 - r, vinyl_size // 2 + r, vinyl_size // 2 + r), outline=(45, 54, 72, opacity), width=width)
+    sheen = Image.new("RGBA", (vinyl_size, vinyl_size), (0, 0, 0, 0))
+    sdraw = ImageDraw.Draw(sheen)
+    sdraw.pieslice((0, 0, vinyl_size - 1, vinyl_size - 1), start=38, end=72, fill=(255, 255, 255, 30))
+    sdraw.pieslice((0, 0, vinyl_size - 1, vinyl_size - 1), start=218, end=252, fill=(255, 255, 255, 30))
+    sheen = sheen.filter(ImageFilter.GaussianBlur(14))
+    vinyl = Image.alpha_composite(vinyl, sheen)
+
+    vdraw = ImageDraw.Draw(vinyl)
+    label_r = 110
+    vdraw.ellipse((vinyl_size // 2 - label_r, vinyl_size // 2 - label_r, vinyl_size // 2 + label_r, vinyl_size // 2 + label_r), fill=(18, 120, 220, 255), outline=(0, 225, 245, 255), width=3)
+    vdraw.ellipse((vinyl_size // 2 - label_r + 12, vinyl_size // 2 - label_r + 12, vinyl_size // 2 + label_r - 12, vinyl_size // 2 + label_r - 12), outline=(255, 255, 255, 120), width=1)
+    vdraw.text((vinyl_size // 2 - 55, vinyl_size // 2 - 26), "LEVYRA", font=get_font(26, bold=True), fill=(255, 255, 255, 255))
+    vdraw.text((vinyl_size // 2 - 64, vinyl_size // 2 + 8), "SOUND ENGINE", font=get_font(15, bold=True), fill=(200, 235, 255, 220))
+    vdraw.ellipse((vinyl_size // 2 - 14, vinyl_size // 2 - 14, vinyl_size // 2 + 14, vinyl_size // 2 + 14), fill=(12, 14, 18, 255), outline=(200, 210, 225, 255), width=2)
+
+    vx = 910 - vinyl_size // 2
+    vy = 800
+    v_glow = Image.new("RGBA", (vinyl_size + 120, vinyl_size + 120), (0, 0, 0, 0))
+    ImageDraw.Draw(v_glow).ellipse((60, 60, vinyl_size + 60, vinyl_size + 60), fill=(0, 200, 245, 110))
+    v_glow = v_glow.filter(ImageFilter.GaussianBlur(55))
+    bg.paste(v_glow, (vx - 60, vy - 40), v_glow)
+    bg.paste(vinyl, (vx, vy), vinyl)
+
+    # Connecting Equalizer & Sound Wave extending across Cards 0, 1, 2, and 3
+    eq_layer = Image.new("RGBA", (row_w, row_h), (0, 0, 0, 0))
+    eq_draw = ImageDraw.Draw(eq_layer)
+    xs = np.linspace(0, row_w, 800)
+    ys_center = 1350 + 50 * np.sin(xs * 0.005) + 20 * np.cos(xs * 0.012 + 0.8)
+    pts = [(int(x), int(y)) for x, y in zip(xs, ys_center)]
+    eq_draw.line(pts, fill=(0, 225, 245, 160), width=5)
+
+    np.random.seed(42)
+    for bx in range(400, 3200, 22):
+        dist_from_vinyl = abs(bx - 910)
+        max_h = max(18, int(130 - min(80, dist_from_vinyl * 0.05)))
+        bh = np.random.randint(14, max_h)
+        by = int(1350 + 50 * np.sin(bx * 0.005) + 20 * np.cos(bx * 0.012 + 0.8))
+        r = int(0 + 50 * (bx / row_w))
+        g = int(220 - 50 * (bx / row_w))
+        b = 250
+        eq_draw.line([(bx, by - bh // 2), (bx, by + bh // 2)], fill=(r, g, b, 175), width=5)
+
+    eq_glow = eq_layer.filter(ImageFilter.GaussianBlur(16))
+    bg = Image.alpha_composite(bg, eq_glow)
+    bg = Image.alpha_composite(bg, eq_layer)
+
+    # Phone 0 (Explore, -16°) & Phone 1 (Levyra Mix, +16°) Crossover
+    with Image.open(s1) as src1:
+        p1 = create_clean_phone(src1, target_height=1230)
+    with Image.open(s2) as src2:
+        p2 = create_clean_phone(src2, target_height=1230)
+    rot1 = p1.rotate(-16, resample=Image.Resampling.BICUBIC, expand=True)
+    rot2 = p2.rotate(16, resample=Image.Resampling.BICUBIC, expand=True)
+
+    exp_x = 190
+    exp_y = 255
+    mix_x = 740
+    mix_y = 290
+    g1, gp1 = create_colored_glow(rot1, (0, 215, 235), blur=60, opacity=85, offset_y=18)
+    g2, gp2 = create_colored_glow(rot2, (25, 130, 250), blur=65, opacity=90, offset_y=20)
+    bg.paste(g1, (exp_x - gp1, exp_y - gp1), g1)
+    paste_phone_with_studio_depth(bg, rot1, exp_x, exp_y)
+    bg.paste(g2, (mix_x - gp2, mix_y - gp2), g2)
+    paste_phone_with_studio_depth(bg, rot2, mix_x, mix_y)
+
+    # Phone 2 (Genres, -8°) & Phone 3 (Audio Tuning, +8°)
+    with Image.open(s3) as src3:
+        p3 = create_clean_phone(src3, target_height=1230)
+    with Image.open(s4) as src4:
+        p4 = create_clean_phone(src4, target_height=1230)
+    rot3 = p3.rotate(-8, resample=Image.Resampling.BICUBIC, expand=True)
+    rot4 = p4.rotate(8, resample=Image.Resampling.BICUBIC, expand=True)
+
+    c2_left = (card_w + gutter) * 2
+    c3_left = (card_w + gutter) * 3
+    p3_x = c2_left + 140
+    p3_y = 275
+    p4_x = c3_left + 80
+    p4_y = 275
+
+    g3, gp3 = create_colored_glow(rot3, (168, 198, 188), blur=55, opacity=75, offset_y=16)
+    g4, gp4 = create_colored_glow(rot4, (140, 180, 220), blur=55, opacity=75, offset_y=16)
+    bg.paste(g3, (p3_x - gp3, p3_y - gp3), g3)
+    paste_phone_with_studio_depth(bg, rot3, p3_x, p3_y)
+    bg.paste(g4, (p4_x - gp4, p4_y - gp4), g4)
+    paste_phone_with_studio_depth(bg, rot4, p4_x, p4_y)
+
+    # Texts
+    pdraw = ImageDraw.Draw(bg)
+    draw_accent_pill(pdraw, 68, 56, accent_tone)
+    pdraw.text((68, 78), "Explore & discover", font=get_font(64, bold=True), fill=(12, 18, 28, 255))
+    pdraw.multiline_text((68, 166), "Live radio, fresh currents, and\nsounds crafted for every moment.", font=get_font(31), fill=(40, 54, 68, 255), spacing=10)
+
+    c1_left = card_w + gutter
+    draw_accent_pill(pdraw, c1_left + 68, 56, (162, 188, 222))
+    pdraw.text((c1_left + 68, 78), "Levyra Mix & radio", font=get_font(64, bold=True), fill=(12, 18, 28, 255))
+    pdraw.multiline_text((c1_left + 68, 166), "Interactive slider between familiar and new.\nTuned for right now in one tap.", font=get_font(31), fill=(40, 54, 68, 255), spacing=10)
+
+    draw_accent_pill(pdraw, c2_left + 68, 56, (168, 198, 188))
+    pdraw.text((c2_left + 68, 78), "Pick a direction", font=get_font(64, bold=True), fill=(12, 18, 28, 255))
+    pdraw.multiline_text((c2_left + 68, 166), "Move through moods, vibes, and genres\ncrafted for every moment.", font=get_font(31), fill=(40, 54, 68, 255), spacing=10)
+
+    draw_accent_pill(pdraw, c3_left + 68, 56, (170, 196, 218))
+    pdraw.text((c3_left + 68, 78), "Shape the playback", font=get_font(64, bold=True), fill=(12, 18, 28, 255))
+    pdraw.multiline_text((c3_left + 68, 166), "Sleep timer, tempo tuning, loudness norm,\nand advanced audio engine.", font=get_font(31), fill=(40, 54, 68, 255), spacing=10)
+
+    filenames = [
+        ["05_explore_stage.webp", "05_explore.webp"],
+        ["06_levyra_mix_stage.webp", "06_levyra_mix.webp"],
+        ["07_genres.webp"],
+        ["08_audio_tuning.webp"],
+    ]
+    slice_and_save_cards(bg, filenames, accent_tone)
+
+def generate_row_3():
+    print("--- GENERATING ROW 3: Discography & Collections ---")
+    top_tint = (246, 244, 240)
+    accent_tone = (198, 188, 172)
+    glow_tone = (195, 175, 150)
+    bg = create_panoramic_4card_bg(row_w, row_h, top_tint, accent_tone, glow_tone, y_wave_start=910, y_wave_end=760, wave_wave_freq=3.2)
+
+    s1 = resolve_screenshot_path("Screenshot_20260926_194706_LEVYRA.jpg")  # Album
+    s2 = resolve_screenshot_path("Screenshot_20261010_145010_LEVYRA.jpg")  # Search
+    s3 = resolve_screenshot_path("Screenshot_20261010_132136_LEVYRA.jpg")  # Collections
+    s4 = resolve_screenshot_path("Screenshot_20260927_131943_LEVYRA.jpg")  # Rhythm
+
+    c1_left = card_w + gutter
+    c2_left = (card_w + gutter) * 2
+    c3_left = (card_w + gutter) * 3
+
+    # Album Vinyl Sleeve peeking out behind Phone 0 and crossing across the seam into Card 1
+    sleeve_size = 580
+    sleeve = Image.new("RGBA", (sleeve_size, sleeve_size), (0, 0, 0, 0))
+    s_draw = ImageDraw.Draw(sleeve)
+    s_draw.rounded_rectangle((0, 0, sleeve_size - 1, sleeve_size - 1), radius=28, fill=(35, 30, 28, 255), outline=(180, 160, 140, 180), width=4)
+    s_draw.ellipse((80, 80, sleeve_size - 80, sleeve_size - 80), outline=(220, 195, 160, 120), width=3)
+    s_draw.ellipse((160, 160, sleeve_size - 160, sleeve_size - 160), fill=(20, 18, 16, 255), outline=(230, 205, 170, 200), width=2)
+    s_draw.text((sleeve_size // 2 - 58, sleeve_size // 2 - 16), "DISCOGRAPHY", font=get_font(18, bold=True), fill=(240, 220, 190, 240))
+    sleeve_rot = sleeve.rotate(-18, resample=Image.Resampling.BICUBIC, expand=True)
+
+    sl_x = 420
+    sl_y = 650
+    sl_glow, sl_pad = create_colored_glow(sleeve_rot, (220, 185, 140), blur=50, opacity=80, offset_y=16)
+    bg.paste(sl_glow, (sl_x - sl_pad, sl_y - sl_pad), sl_glow)
+    paste_phone_with_studio_depth(bg, sleeve_rot, sl_x, sl_y)
+
+    # Continuous Golden Heatmap Ribbon across row 3
+    pulse_layer = Image.new("RGBA", (row_w, row_h), (0, 0, 0, 0))
+    pdraw_layer = ImageDraw.Draw(pulse_layer)
+    xs = np.linspace(0, row_w, 600)
+    ys = 1380 + 45 * np.sin(xs * 0.006) + 25 * np.cos(xs * 0.014 + 1.2)
+    pts = [(int(x), int(y)) for x, y in zip(xs, ys)]
+    pdraw_layer.line(pts, fill=(235, 195, 135, 175), width=5)
+
+    np.random.seed(88)
+    for px in range(250, 3400, 28):
+        py = int(1380 + 45 * np.sin(px * 0.006) + 25 * np.cos(px * 0.014 + 1.2))
+        bar_h = np.random.randint(12, 65)
+        pdraw_layer.line([(px, py - bar_h // 2), (px, py + bar_h // 2)], fill=(225, 180, 120, 160), width=4)
+
+    pulse_glow = pulse_layer.filter(ImageFilter.GaussianBlur(14))
+    bg = Image.alpha_composite(bg, pulse_glow)
+    bg = Image.alpha_composite(bg, pulse_layer)
+
+    # Phones: 0 (-14°), 1 (+12°), 2 (-10°), 3 (+10°)
+    with Image.open(s1) as src1:
+        p1 = create_clean_phone(src1, target_height=1220)
+    with Image.open(s2) as src2:
+        p2 = create_clean_phone(src2, target_height=1210)
+    with Image.open(s3) as src3:
+        p3 = create_clean_phone(src3, target_height=1220)
+    with Image.open(s4) as src4:
+        p4 = create_clean_phone(src4, target_height=1220)
+
+    rot1 = p1.rotate(-14, resample=Image.Resampling.BICUBIC, expand=True)
+    rot2 = p2.rotate(12, resample=Image.Resampling.BICUBIC, expand=True)
+    rot3 = p3.rotate(-10, resample=Image.Resampling.BICUBIC, expand=True)
+    rot4 = p4.rotate(10, resample=Image.Resampling.BICUBIC, expand=True)
+
+    p1_x, p1_y = 150, 290
+    p2_x, p2_y = c1_left + 110, 310
+    p3_x, p3_y = c2_left + 130, 295
+    p4_x, p4_y = c3_left + 80, 295
+
+    g1, gp1 = create_colored_glow(rot1, (212, 194, 170), blur=55, opacity=75, offset_y=16)
+    g2, gp2 = create_colored_glow(rot2, (170, 196, 218), blur=55, opacity=75, offset_y=16)
+    g3, gp3 = create_colored_glow(rot3, (182, 184, 212), blur=55, opacity=75, offset_y=16)
+    g4, gp4 = create_colored_glow(rot4, (168, 198, 188), blur=55, opacity=75, offset_y=16)
+
+    bg.paste(g1, (p1_x - gp1, p1_y - gp1), g1)
+    paste_phone_with_studio_depth(bg, rot1, p1_x, p1_y)
+
+    bg.paste(g2, (p2_x - gp2, p2_y - gp2), g2)
+    paste_phone_with_studio_depth(bg, rot2, p2_x, p2_y)
+
+    bg.paste(g3, (p3_x - gp3, p3_y - gp3), g3)
+    paste_phone_with_studio_depth(bg, rot3, p3_x, p3_y)
+
+    bg.paste(g4, (p4_x - gp4, p4_y - gp4), g4)
+    paste_phone_with_studio_depth(bg, rot4, p4_x, p4_y)
+
+    # Texts
+    pdraw = ImageDraw.Draw(bg)
+    draw_accent_pill(pdraw, 68, 56, accent_tone)
+    pdraw.text((68, 78), "Open the album", font=get_font(64, bold=True), fill=(12, 18, 28, 255))
+    pdraw.multiline_text((68, 166), "High-resolution artwork, release info,\nand complete tracklists.", font=get_font(31), fill=(40, 54, 68, 255), spacing=10)
+
+    draw_accent_pill(pdraw, c1_left + 68, 56, (170, 196, 218))
+    pdraw.text((c1_left + 68, 78), "Find it instantly", font=get_font(64, bold=True), fill=(12, 18, 28, 255))
+    pdraw.multiline_text((c1_left + 68, 166), "Recent searches, suggestions, and\ninstant matching across your music.", font=get_font(31), fill=(40, 54, 68, 255), spacing=10)
+
+    draw_accent_pill(pdraw, c2_left + 68, 56, (182, 184, 212))
+    pdraw.text((c2_left + 68, 78), "Curated for you", font=get_font(64, bold=True), fill=(12, 18, 28, 255))
+    pdraw.multiline_text((c2_left + 68, 166), "Handpicked playlists and gems\nrevolving around what you love.", font=get_font(31), fill=(40, 54, 68, 255), spacing=10)
+
+    draw_accent_pill(pdraw, c3_left + 68, 56, (168, 198, 188))
+    pdraw.text((c3_left + 68, 78), "Your listening rhythm", font=get_font(64, bold=True), fill=(12, 18, 28, 255))
+    pdraw.multiline_text((c3_left + 68, 166), "Activity heatmaps, peak hours, and\nyour personal listening cadence.", font=get_font(31), fill=(40, 54, 68, 255), spacing=10)
+
+    filenames = [
+        ["09_album.webp"],
+        ["10_search.webp"],
+        ["11_collections.webp"],
+        ["12_listening_rhythm.webp"],
+    ]
+    slice_and_save_cards(bg, filenames, accent_tone)
+
+def generate_row_4():
+    print("--- GENERATING ROW 4: Personal Orbit & Vault ---")
+    top_tint = (244, 244, 250)
+    accent_tone = (182, 184, 212)
+    glow_tone = (162, 165, 200)
+    bg = create_panoramic_4card_bg(row_w, row_h, top_tint, accent_tone, glow_tone, y_wave_start=940, y_wave_end=730, wave_wave_freq=3.0)
+
+    s1 = resolve_screenshot_path("Screenshot_20261010_132103_LEVYRA.jpg")  # Orbit
+    s2 = resolve_screenshot_path("Screenshot_20261010_132050_LEVYRA.jpg")  # Pulse
+    s3 = resolve_screenshot_path("Screenshot_20261010_144048_LEVYRA.jpg")  # Playlists
+    s4 = resolve_screenshot_path("Screenshot_20261010_140700_LEVYRA.jpg")  # Vault
+
+    c1_left = card_w + gutter
+    c2_left = (card_w + gutter) * 2
+    c3_left = (card_w + gutter) * 3
+
+    # Cosmic Planetary Orbit Path across all 4 cards
+    orbit_layer = Image.new("RGBA", (row_w, row_h), (0, 0, 0, 0))
+    odraw = ImageDraw.Draw(orbit_layer)
+
+    for ellipse_idx, (y_center, w_rad, h_rad, opac) in enumerate([
+        (1100, 1900, 360, 110),
+        (1150, 1750, 310, 85),
+        (1050, 1850, 420, 65),
+    ]):
+        odraw.ellipse((row_w // 2 - w_rad, y_center - h_rad, row_w // 2 + w_rad, y_center + h_rad), outline=(140, 150, 245, opac), width=3)
+
+    for node_x, node_y, r_node in [
+        (450, 1380, 10),
+        (1350, 1430, 14),
+        (2250, 1370, 12),
+        (3150, 1420, 16),
+    ]:
+        odraw.ellipse((node_x - r_node, node_y - r_node, node_x + r_node, node_y + r_node), fill=(180, 195, 255, 230), outline=(255, 255, 255, 255), width=2)
+        odraw.ellipse((node_x - r_node * 2, node_y - r_node * 2, node_x + r_node * 2, node_y + r_node * 2), outline=(130, 140, 240, 120), width=1)
+
+    orbit_glow = orbit_layer.filter(ImageFilter.GaussianBlur(16))
+    bg = Image.alpha_composite(bg, orbit_glow)
+    bg = Image.alpha_composite(bg, orbit_layer)
+
+    # Phones: 0 (-15°), 1 (+13°), 2 (-12°), 3 (+12°)
+    with Image.open(s1) as src1:
+        p1 = create_clean_phone(src1, target_height=1210)
+    with Image.open(s2) as src2:
+        p2 = create_clean_phone(src2, target_height=1200)
+    with Image.open(s3) as src3:
+        p3 = create_clean_phone(src3, target_height=1210)
+    with Image.open(s4) as src4:
+        p4 = create_clean_phone(src4, target_height=1210)
+
+    rot1 = p1.rotate(-15, resample=Image.Resampling.BICUBIC, expand=True)
+    rot2 = p2.rotate(13, resample=Image.Resampling.BICUBIC, expand=True)
+    rot3 = p3.rotate(-12, resample=Image.Resampling.BICUBIC, expand=True)
+    rot4 = p4.rotate(12, resample=Image.Resampling.BICUBIC, expand=True)
+
+    p1_x, p1_y = 150, 295
+    p2_x, p2_y = c1_left + 110, 305
+    p3_x, p3_y = c2_left + 130, 295
+    p4_x, p4_y = c3_left + 80, 295
+
+    g1, gp1 = create_colored_glow(rot1, (182, 184, 212), blur=55, opacity=75, offset_y=16)
+    g2, gp2 = create_colored_glow(rot2, (170, 196, 218), blur=55, opacity=75, offset_y=16)
+    g3, gp3 = create_colored_glow(rot3, (170, 196, 218), blur=55, opacity=75, offset_y=16)
+    g4, gp4 = create_colored_glow(rot4, (168, 198, 188), blur=55, opacity=75, offset_y=16)
+
+    bg.paste(g1, (p1_x - gp1, p1_y - gp1), g1)
+    paste_phone_with_studio_depth(bg, rot1, p1_x, p1_y)
+
+    bg.paste(g2, (p2_x - gp2, p2_y - gp2), g2)
+    paste_phone_with_studio_depth(bg, rot2, p2_x, p2_y)
+
+    bg.paste(g3, (p3_x - gp3, p3_y - gp3), g3)
+    paste_phone_with_studio_depth(bg, rot3, p3_x, p3_y)
+
+    bg.paste(g4, (p4_x - gp4, p4_y - gp4), g4)
+    paste_phone_with_studio_depth(bg, rot4, p4_x, p4_y)
+
+    # Texts
+    pdraw = ImageDraw.Draw(bg)
+    draw_accent_pill(pdraw, 68, 56, accent_tone)
+    pdraw.text((68, 78), "In your orbit", font=get_font(64, bold=True), fill=(12, 18, 28, 255))
+    pdraw.multiline_text((68, 166), "The songs and artists that always return\nto your rotation.", font=get_font(31), fill=(40, 54, 68, 255), spacing=10)
+
+    draw_accent_pill(pdraw, c1_left + 68, 56, (170, 196, 218))
+    pdraw.text((c1_left + 68, 78), "Keep it personal", font=get_font(64, bold=True), fill=(12, 18, 28, 255))
+    pdraw.multiline_text((c1_left + 68, 166), "Private listening stats and charts,\ncomputed strictly on your device.", font=get_font(31), fill=(40, 54, 68, 255), spacing=10)
+
+    draw_accent_pill(pdraw, c2_left + 68, 56, (170, 196, 218))
+    pdraw.text((c2_left + 68, 78), "Artist playlists", font=get_font(64, bold=True), fill=(12, 18, 28, 255))
+    pdraw.multiline_text((c2_left + 68, 166), "Curated sets, tours, and the\nessential catalog of every artist.", font=get_font(31), fill=(40, 54, 68, 255), spacing=10)
+
+    draw_accent_pill(pdraw, c3_left + 68, 56, (168, 198, 188))
+    pdraw.text((c3_left + 68, 78), "Tailor every detail", font=get_font(64, bold=True), fill=(12, 18, 28, 255))
+    pdraw.multiline_text((c3_left + 68, 166), "Audio, design, gestures, and local\nsingle-file Vault backups.", font=get_font(31), fill=(40, 54, 68, 255), spacing=10)
+
+    filenames = [
+        ["13_your_orbit.webp"],
+        ["14_listening_pulse.webp"],
+        ["15_artist_playlists.webp"],
+        ["16_settings_vault.webp"],
+    ]
+    slice_and_save_cards(bg, filenames, accent_tone)
+
+def generate_row_5():
+    print("--- GENERATING ROW 5: Global Charts & Lossless Soundstage ---")
+    top_tint = (245, 242, 246)
+    accent_tone = (192, 180, 210)
+    glow_tone = (170, 160, 200)
+    bg = create_panoramic_4card_bg(row_w, row_h, top_tint, accent_tone, glow_tone, y_wave_start=930, y_wave_end=720, wave_wave_freq=3.4)
+
+    s1 = resolve_screenshot_path("Screenshot_20261010_144144_LEVYRA.jpg")  # New Releases
+    s2 = resolve_screenshot_path("Screenshot_20261010_143646_LEVYRA.jpg")  # Artist Profile
+    s3 = resolve_screenshot_path("Screenshot_20261010_132028_LEVYRA.jpg")  # Top 50
+    s4 = resolve_screenshot_path("Screenshot_20260926_193948_LEVYRA.jpg")  # Soundstage
+
+    c1_left = card_w + gutter
+    c2_left = (card_w + gutter) * 2
+    c3_left = (card_w + gutter) * 3
+
+    # Master Soundstage Harmonic Acoustic Wave Ribbon across Row 5
+    eq_layer = Image.new("RGBA", (row_w, row_h), (0, 0, 0, 0))
+    eq_draw = ImageDraw.Draw(eq_layer)
+    xs = np.linspace(0, row_w, 700)
+    ys = 1360 + 48 * np.sin(xs * 0.0055) + 24 * np.cos(xs * 0.013 + 0.9)
+    pts = [(int(x), int(y)) for x, y in zip(xs, ys)]
+    eq_draw.line(pts, fill=(215, 185, 120, 165), width=5)
+
+    ys2 = ys - 35 * np.cos(xs * 0.009)
+    pts2 = [(int(x), int(y)) for x, y in zip(xs, ys2)]
+    eq_draw.line(pts2, fill=(130, 185, 245, 120), width=3)
+
+    eq_glow = eq_layer.filter(ImageFilter.GaussianBlur(16))
+    bg = Image.alpha_composite(bg, eq_glow)
+    bg = Image.alpha_composite(bg, eq_layer)
+
+    # Phones: 0 (+14°), 1 (-14°), 2 (+10°), 3 (-12°)
+    with Image.open(s1) as src1:
+        p1 = create_clean_phone(src1, target_height=1210)
+    with Image.open(s2) as src2:
+        p2 = create_clean_phone(src2, target_height=1220)
+    with Image.open(s3) as src3:
+        p3 = create_clean_phone(src3, target_height=1200)
+    with Image.open(s4) as src4:
+        p4 = create_clean_phone(src4, target_height=1210)
+
+    rot1 = p1.rotate(14, resample=Image.Resampling.BICUBIC, expand=True)
+    rot2 = p2.rotate(-14, resample=Image.Resampling.BICUBIC, expand=True)
+    rot3 = p3.rotate(10, resample=Image.Resampling.BICUBIC, expand=True)
+    rot4 = p4.rotate(-12, resample=Image.Resampling.BICUBIC, expand=True)
+
+    p1_x, p1_y = 100, 295
+    p2_x, p2_y = c1_left + 150, 285
+    p3_x, p3_y = c2_left + 90, 315
+    p4_x, p4_y = c3_left + 130, 295
+
+    g1, gp1 = create_colored_glow(rot1, (212, 194, 170), blur=55, opacity=75, offset_y=16)
+    g2, gp2 = create_colored_glow(rot2, (182, 184, 212), blur=55, opacity=75, offset_y=16)
+    g3, gp3 = create_colored_glow(rot3, (182, 184, 212), blur=55, opacity=75, offset_y=16)
+    g4, gp4 = create_colored_glow(rot4, (215, 185, 120), blur=55, opacity=75, offset_y=16)
+
+    bg.paste(g1, (p1_x - gp1, p1_y - gp1), g1)
+    paste_phone_with_studio_depth(bg, rot1, p1_x, p1_y)
+
+    bg.paste(g2, (p2_x - gp2, p2_y - gp2), g2)
+    paste_phone_with_studio_depth(bg, rot2, p2_x, p2_y)
+
+    bg.paste(g3, (p3_x - gp3, p3_y - gp3), g3)
+    paste_phone_with_studio_depth(bg, rot3, p3_x, p3_y)
+
+    bg.paste(g4, (p4_x - gp4, p4_y - gp4), g4)
+    paste_phone_with_studio_depth(bg, rot4, p4_x, p4_y)
+
+    # Master Lossless Soundstage Floating Emblem Badge on Card 3
+    badge_w, badge_h = 360, 92
+    badge = Image.new("RGBA", (badge_w, badge_h), (0, 0, 0, 0))
+    bdraw = ImageDraw.Draw(badge)
+    bdraw.rounded_rectangle((0, 0, badge_w - 1, badge_h - 1), radius=24, fill=(18, 22, 34, 245), outline=(225, 195, 130, 255), width=2)
+    bdraw.text((36, 18), "HI-RES LOSSLESS", font=get_font(22, bold=True), fill=(255, 218, 145, 255))
+    bdraw.text((36, 52), "24-BIT / 192 kHz AUDIO ENGINE", font=get_font(15, bold=True), fill=(210, 230, 255, 230))
+    bx, by = c3_left + (card_w - badge_w) // 2, 1420
+    b_glow, b_pad = create_colored_glow(badge, (220, 190, 130), blur=35, opacity=85, offset_y=10)
+    bg.paste(b_glow, (bx - b_pad, by - b_pad), b_glow)
+    bg.paste(badge, (bx, by), badge)
+
+    # Texts
+    pdraw = ImageDraw.Draw(bg)
+    draw_accent_pill(pdraw, 68, 56, (212, 194, 170))
+    pdraw.text((68, 78), "Fresh off the stage", font=get_font(64, bold=True), fill=(12, 18, 28, 255))
+    pdraw.multiline_text((68, 166), "New singles and albums updated\nevery week directly from artists.", font=get_font(31), fill=(40, 54, 68, 255), spacing=10)
+
+    draw_accent_pill(pdraw, c1_left + 68, 56, (182, 184, 212))
+    pdraw.text((c1_left + 68, 78), "Meet the artist", font=get_font(64, bold=True), fill=(12, 18, 28, 255))
+    pdraw.multiline_text((c1_left + 68, 166), "Full discography, singles, biographies,\nand top tracks in one tap.", font=get_font(31), fill=(40, 54, 68, 255), spacing=10)
+
+    draw_accent_pill(pdraw, c2_left + 68, 56, (182, 184, 212))
+    pdraw.text((c2_left + 68, 78), "Top 50 charts", font=get_font(64, bold=True), fill=(12, 18, 28, 255))
+    pdraw.multiline_text((c2_left + 68, 166), "Explore daily country charts,\nviral hits, and top tracks worldwide.", font=get_font(31), fill=(40, 54, 68, 255), spacing=10)
+
+    draw_accent_pill(pdraw, c3_left + 68, 56, (215, 185, 120))
+    pdraw.text((c3_left + 68, 78), "Pure soundstage", font=get_font(64, bold=True), fill=(12, 18, 28, 255))
+    pdraw.multiline_text((c3_left + 68, 166), "Experience lossless decoding and\nuncompromised audio fidelity.", font=get_font(31), fill=(40, 54, 68, 255), spacing=10)
+
+    filenames = [
+        ["17_new_releases.webp"],
+        ["18_artist_profile.webp", "18_fresh_currents.webp"],
+        ["19_top_50.webp"],
+        ["20_soundstage.webp"],
+    ]
+    slice_and_save_cards(bg, filenames, accent_tone)
+
 def generate_feature_cards():
-    card_w, card_h = 900, 1600
-    gutter = 20
-    title_font = get_font(64, bold=True)
-    sub_font = get_font(31, bold=False)
-
-    pano_w = card_w * 2 + gutter
-    pano_h = card_h
-    hero_top = (238, 245, 250)
-    hero_accent = (166, 194, 218)
-    hero_glow = (142, 180, 210)
-    pano_bg = create_delicate_bg(
-        pano_w,
-        pano_h,
-        top_tint=hero_top,
-        accent_tone=hero_accent,
-        glow_tone=hero_glow,
-        y_start=1110,
-        y_end=580,
-    )
-
-    home_file = resolve_screenshot_path("Screenshot_20260926_171253_LEVYRA.jpg")
-    player_file = resolve_screenshot_path("Screenshot_20260926_193948_LEVYRA.jpg")
-    if not home_file:
-        print("Skipping hero cards: home screenshot not found")
-        return
-
-    if player_file:
-        with Image.open(player_file) as p_source:
-            phone_companion = create_clean_phone(p_source, target_height=1150)
-        rot_companion = phone_companion.rotate(21, resample=Image.Resampling.BICUBIC, expand=True)
-        comp_x = card_w + gutter + 255
-        comp_y = 435
-        paste_phone_with_studio_depth(pano_bg, rot_companion, comp_x, comp_y)
-
-    with Image.open(home_file) as source:
-        phone_hero = create_clean_phone(source, target_height=1310)
-
-    rotated_hero = phone_hero.rotate(21, resample=Image.Resampling.BICUBIC, expand=True)
-    hero_x = 240
-    hero_y = 22
-    paste_phone_with_studio_depth(pano_bg, rotated_hero, hero_x, hero_y)
-
-    pdraw = ImageDraw.Draw(pano_bg)
-
-    c1_tx, c1_ty = 58, 1246
-    draw_accent_pill(pdraw, c1_tx, c1_ty - 22, hero_accent)
-    pdraw.text((c1_tx, c1_ty), "Pure listening", font=get_font(62, bold=True), fill=(12, 18, 28, 255))
-    pdraw.multiline_text(
-        (c1_tx, c1_ty + 84),
-        "Zero ads, zero accounts.\nZero tracking or logins.\nPlayed natively on your device.",
-        font=get_font(30),
-        fill=(32, 46, 64, 255),
-        spacing=10,
-    )
-
-    c2_left = card_w + gutter
-    text_x = c2_left + 215
-    text_y = 78
-    draw_accent_pill(pdraw, text_x, text_y - 22, hero_accent)
-    pdraw.text((text_x, text_y), "Download & keep", font=get_font(64, bold=True), fill=(12, 18, 28, 255))
-    pdraw.multiline_text(
-        (text_x, text_y + 86),
-        "Clean M4A files in device storage.\nFull metadata, artwork, and lyrics.",
-        font=get_font(31),
-        fill=(38, 52, 68, 255),
-        spacing=10,
-    )
-
-    card_01 = pano_bg.crop((0, 0, card_w, card_h))
-    card_02 = pano_bg.crop((c2_left, 0, pano_w, card_h))
-    border_col = tuple(max(0, int(hero_accent[i] - 18)) for i in range(3))
-    ImageDraw.Draw(card_01).rectangle((0, 0, card_w - 1, card_h - 1), outline=(*border_col, 90), width=2)
-    ImageDraw.Draw(card_02).rectangle((0, 0, card_w - 1, card_h - 1), outline=(*border_col, 90), width=2)
-
-    card_01.convert("RGB").save(os.path.join(OUT_CARDS_DIR, "01_home.webp"), "WEBP", quality=92, method=4)
-    card_02.convert("RGB").save(os.path.join(OUT_CARDS_DIR, "02_stay_with_the_song.webp"), "WEBP", quality=92, method=4)
-    print("Generated Hero Cards: 01_home.webp, 02_stay_with_the_song.webp")
-
-    generate_explore_mix_card(card_w, card_h)
-    generate_explore_mix_crossover(card_w, card_h)
-
-    C_CELESTE = ((238, 245, 250), (170, 196, 218), (148, 185, 210))
-    C_SAGE = ((238, 246, 242), (168, 198, 188), (145, 185, 172))
-    C_CASHMERE = ((248, 245, 240), (212, 194, 170), (195, 175, 150))
-    C_TWILIGHT = ((244, 244, 250), (182, 184, 212), (162, 165, 200))
-    C_SEAFOAM = ((238, 246, 248), (166, 198, 202), (145, 188, 192))
-
-    single_specs = [
-        (0, "03_now_playing.webp", "screen-lyrics.jpg", "Follow every line", "Synced lyrics move\nwith the music.", C_CASHMERE),
-        (1, "04_player_deck.webp", "Screenshot_20261010_190538_LEVYRA.jpg", "Style your player", "Canvas, card deck, or classic vinyl.\nSwitch your stage seamlessly.", C_TWILIGHT),
-        (3, "06_artist_profile.webp", "Screenshot_20261010_143646_LEVYRA.jpg", "Meet the artist", "Full discography, singles, biographies,\nand top tracks in one tap.", C_TWILIGHT),
-        (4, "07_genres.webp", "Screenshot_20261010_132249_LEVYRA.jpg", "Pick a direction", "Move through moods, vibes, and genres\ncrafted for every moment.", C_SAGE),
-        (5, "08_audio_tuning.webp", "Screenshot_20261010_190726_LEVYRA.jpg", "Shape the playback", "Sleep timer, tempo tuning, loudness norm,\nand advanced audio engine.", C_CELESTE),
-        (6, "09_album.webp", "Screenshot_20260926_194706_LEVYRA.jpg", "Open the album", "High-resolution artwork, release info,\nand complete tracklists.", C_CASHMERE),
-        (7, "10_search.webp", "Screenshot_20261010_145010_LEVYRA.jpg", "Find it instantly", "Recent searches, suggestions, and\ninstant matching across your music.", C_CELESTE),
-        (8, "11_collections.webp", "Screenshot_20261010_132136_LEVYRA.jpg", "Curated for you", "Handpicked playlists and gems\nrevolving around what you love.", C_TWILIGHT),
-        (9, "12_listening_rhythm.webp", "Screenshot_20260927_131943_LEVYRA.jpg", "Your listening rhythm", "Activity heatmaps, peak hours, and\nyour personal listening cadence.", C_SAGE),
-        (10, "13_your_orbit.webp", "Screenshot_20261010_132103_LEVYRA.jpg", "In your orbit", "The songs and artists that always return\nto your rotation.", C_TWILIGHT),
-        (11, "14_listening_pulse.webp", "Screenshot_20261010_132050_LEVYRA.jpg", "Keep it personal", "Private listening stats and charts,\ncomputed strictly on your device.", C_CELESTE),
-        (12, "15_artist_playlists.webp", "Screenshot_20261010_144048_LEVYRA.jpg", "Artist playlists", "Curated sets, tours, and the\nessential catalog of every artist.", C_CELESTE),
-        (13, "16_settings_vault.webp", "Screenshot_20261010_140700_LEVYRA.jpg", "Tailor every detail", "Audio, design, gestures, and local\nsingle-file Vault backups.", C_SAGE),
-        (14, "17_new_releases.webp", "Screenshot_20261010_144144_LEVYRA.jpg", "Fresh off the stage", "New singles and albums updated\nevery week directly from artists.", C_CASHMERE),
-        (15, "18_fresh_currents.webp", "Screenshot_20260929_212908_LEVYRA.jpg", "Discovery stream", "Artist mixes, deep catalog filters,\nand instant radio stations.", C_SEAFOAM),
-        (15, "18_artist_profile.webp", "Screenshot_20261010_143646_LEVYRA.jpg", "Meet the artist", "Full discography, singles, biographies,\nand top tracks in one tap.", C_TWILIGHT),
-        (16, "19_top_50.webp", "Screenshot_20261010_132028_LEVYRA.jpg", "Top 50 charts", "Explore daily country charts,\nviral hits, and top tracks worldwide.", C_TWILIGHT),
-        (17, "20_soundstage.webp", "Screenshot_20260926_193948_LEVYRA.jpg", "Pure soundstage", "Experience lossless decoding and\nuncompromised audio fidelity.", C_CELESTE),
-    ]
-
-    wave_endpoints = [
-        (930, 740),
-        (740, 880),
-        (880, 690),
-        (690, 910),
-    ]
-
-    for wave_idx, filename, screenshot_name, title, subtitle, palette in single_specs:
-        screen_file = resolve_screenshot_path(screenshot_name)
-        if not screen_file:
-            print(f"Skipping {filename}: {screenshot_name} not found")
-            continue
-
-        with Image.open(screen_file) as source:
-            phone = create_clean_phone(source, target_height=1235)
-
-        top_tint, accent_tone, glow_tone = palette
-        y_start, y_end = wave_endpoints[(wave_idx + 2) % 4]
-        bg = create_delicate_bg(card_w, card_h, top_tint, accent_tone, glow_tone, y_start=y_start, y_end=y_end)
-        draw = ImageDraw.Draw(bg)
-
-        draw_accent_pill(draw, 68, 56, accent_tone)
-        draw.text((68, 78), title, font=title_font, fill=(12, 18, 28, 255))
-        draw.multiline_text((68, 166), subtitle, font=sub_font, fill=(40, 54, 68, 255), spacing=10)
-
-        px = (card_w - phone.width) // 2
-        py = 302
-        paste_phone_with_studio_depth(bg, phone, px, py)
-
-        out_path = os.path.join(OUT_CARDS_DIR, filename)
-        bg.convert("RGB").save(out_path, "WEBP", quality=92, method=4)
-        print(f"Generated Feature Card: {out_path}")
+    generate_row_1()
+    generate_row_2()
+    generate_row_3()
+    generate_row_4()
+    generate_row_5()
 
 def main():
-    print("Generating delicate, refined Levyra showcase assets...")
+    print("Generating refined Levyra 5-row continuous panoramic showcase assets...")
     try:
         generate_hero_panoramic_showcase()
     except (FileNotFoundError, OSError) as e:
