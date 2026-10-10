@@ -1,0 +1,1 @@
+Levyra 2.5.2 brings the personal radio hero to the top of Home with a real artist portrait, a Spotify-style artist page with a numbered popular list and a dedicated action bar, artwork cropping that keeps faces visible, and correct back navigation from Explore genres.

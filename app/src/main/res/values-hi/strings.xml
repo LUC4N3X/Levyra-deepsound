@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">मिनी प्लेयर, तुरंत पसंदीदा, डेली फ़्लो, ऑफ़लाइन मिक्स और गीत के बोल</string>
+    <string name="widget_idle_subtitle">सुनने के लिए टैप करें</string>
+    <string name="widget_toggle">चलाएँ/रोकें</string>
+    <string name="widget_next">अगला</string>
+    <string name="widget_previous">पिछला</string>
+    <string name="widget_favorites">पसंदीदा</string>
+    <string name="widget_flow">डेली फ़्लो</string>
+    <string name="widget_offline">ऑफ़लाइन मिक्स</string>
+    <string name="widget_lyrics">गीत के बोल</string>
+    <string name="radar_channel_name">रिलीज़ रडार</string>
+    <string name="radar_channel_description">आपके फ़ॉलो किए कलाकारों की नई रिलीज़</string>
+    <string name="radar_new_release_title">%1$s की नई रिलीज़</string>
+    <string name="automatic_backups">स्वचालित बैकअप</string>
+    <string name="car_home">होम</string>
+    <string name="car_downloads">डाउनलोड</string>
+    <string name="car_favorites">पसंदीदा</string>
+    <string name="car_playlists">प्लेलिस्ट</string>
+    <string name="car_no_content">कोई सामग्री नहीं</string>
+    <string name="car_content_unavailable">सामग्री उपलब्ध नहीं है</string>
+    <string name="car_search_tracks">गाने खोजें</string>
+    <string name="car_no_results">कोई नतीजा नहीं</string>
+    <string name="car_connecting_player">प्लेयर से कनेक्ट हो रहा है</string>
+    <string name="car_now_playing">अभी चल रहा है</string>
+    <string name="car_queue">क्यू</string>
+    <string name="notification_favorite_add">पसंदीदा में जोड़ें</string>
+    <string name="notification_favorite_remove">पसंदीदा से हटाएँ</string>
+    <string name="notification_shuffle_enable">शफ़ल चालू करें</string>
+    <string name="notification_shuffle_disable">शफ़ल बंद करें</string>
+    <string name="notification_repeat_off">दोहराना बंद</string>
+    <string name="notification_repeat_all">सभी दोहराएँ</string>
+    <string name="notification_repeat_one">एक दोहराएँ</string>
+    <string name="tile_recognize_music">संगीत पहचानें</string>
+    <string name="tile_playback">प्लेबैक</string>
+    <string name="shortcut_search">खोजें</string>
+    <string name="shortcut_library">लाइब्रेरी</string>
+    <string name="shortcut_recognition">संगीत पहचानें</string>
+    <string name="shortcut_resume">प्लेबैक फिर से शुरू करें</string>
+</resources>

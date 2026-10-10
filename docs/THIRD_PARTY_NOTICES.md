@@ -1,0 +1,134 @@
+# THIRD_PARTY_NOTICES
+
+This file records open-source acknowledgements and legal notices for Levyra.
+
+Levyra is licensed under the GNU General Public License v3.0. Third-party libraries, services, assets, metadata providers, APIs, and referenced projects retain their own copyright notices, license terms, trademarks, and service terms.
+
+## Project Owner
+
+| Name | Role |
+|:---|:---|
+| LUC4N3X | Creator and lead maintainer of Levyra |
+
+## Core Open-Source References
+
+| Project | URL | Role | Notice |
+|:---|:---|:---|:---|
+| LevyraExtractor | https://github.com/LUC4N3X/LevyraExtractor | Primary extractor playback core used by Levyra resolver logic | GPL-3.0 derivative source and upstream notices must be preserved |
+| Metrolist | https://github.com/MetrolistGroup/Metrolist | Android music client ecosystem reference | GPL-3.0 license notices must be preserved where code is reused |
+| ArchiveTune | https://github.com/rukamori/ArchiveTune | Behavioral reference for music-recognition UX and interoperability research | No ArchiveTune recognition source is vendored or adapted in Levyra |
+| zemer-cipher | https://github.com/ZemerTeam/zemer-cipher | Reference design and validated player configuration data for the local YouTube signature and n-parameter decoder | GPL-3.0; adapted decoder logic and configuration validation retain upstream attribution |
+| faraday | https://github.com/MetrolistGroup/faraday | Independent secondary player-configuration registry consumed by the multi-source synchronization pipeline | Registry data only; no upstream source is vendored or adapted. No upstream license was declared at the time of writing |
+| NewPipeExtractor | https://github.com/TeamNewPipe/NewPipeExtractor | Upstream extractor ecosystem reference | Original copyright and license notices remain with upstream authors |
+| Return YouTube Dislike | https://returnyoutubedislike.com | Read-only estimated dislike metadata | Counts are estimates, not official YouTube statistics; attribution and API rate limits must be preserved |
+| PipePipeExtractor | https://github.com/InfinityLoop1308/PipePipeExtractor | Upstream base for LevyraExtractor | Original copyright and license notices remain with upstream authors |
+| AutoEq | https://github.com/jaakkopasanen/AutoEq | Headphone measurement index and GraphicEQ profiles fetched on demand by the AutoEQ headphone catalog | MIT; profiles are downloaded at runtime and not bundled in the APK |
+| ByeDPI | https://github.com/hufrea/byedpi | Local SOCKS desync proxy behind the experimental YouTube network compatibility option | MIT, Copyright (c) 2024 hufrea; bundled only as a prebuilt `libbyedpi.so` in upstream builds and excluded from F-Droid builds |
+| ByeDPIAndroid | https://github.com/dovecoteescapee/ByeDPIAndroid | JNI wrapper (`io.github.dovecoteescapee.byedpi.core`) around ByeDPI and its native build | GPL-3.0; wrapper source in `app/src/main/java/io/github/dovecoteescapee/byedpi`, prebuilt libraries in `app/src/upstream/jniLibs` |
+
+## Local YouTube Decoder Attribution
+
+Levyra's local player decoder includes an independent integration adapted from the architecture and validated configuration format published by the ZemerTeam `zemer-cipher` project. The integration covers strict player-configuration validation, player JavaScript caching, WebView-based signature deciphering, `n` transformation, renderer recovery, and remote configuration refresh. Levyra-specific orchestration, NewPipe decoder adaptation, fallback behavior, cache layout, and playback integration are maintained in this repository.
+
+Upstream project: https://github.com/ZemerTeam/zemer-cipher
+
+Upstream license: GNU General Public License v3.0
+
+The registry synchronization pipeline also consumes the independent MetrolistGroup `faraday` registry as a secondary source, using the same published configuration schema. Levyra reads and validates that registry data offline in CI; it does not vendor, execute, or adapt any faraday source code, and the app parses both sources into Levyra's own internal configuration representation.
+
+Secondary source: https://github.com/MetrolistGroup/faraday
+
+The analyzer candidate anchored on the player's URL builder (the function that writes `alr=yes`) follows the approach of the yt-dlp EJS `n` solver, as proposed for NewPipeExtractor in TeamNewPipe/NewPipeExtractor#1545. It was reimplemented as a candidate generator for Levyra's existing verified WebView runtime; no EJS or NewPipeExtractor source is vendored for it.
+
+Reference projects: https://github.com/yt-dlp/ejs (Unlicense), https://github.com/TeamNewPipe/NewPipeExtractor (GPL-3.0)
+
+## Metrolist Attribution
+
+Two Levyra behaviors are adapted from the Metrolist project. The consecutive-failure and half-open backoff window that gates rebuilding the local decoder's WebView runtime follows the policy of Metrolist's `RendererRecoveryPolicy`; the surrounding renderer recovery described in the section above remains the zemer-cipher-derived integration. The TTML lyrics parser's global `lyricOffset` handling, line-timing recovery from the earliest child `span`, and namespace-prefix-agnostic attribute lookup follow the behavior of Metrolist's BetterLyrics `TTMLParser`. Both were reimplemented against Levyra's existing decoder and lyric models rather than vendored as separate stacks.
+
+Upstream project: https://github.com/MetrolistGroup/Metrolist
+
+Upstream license: GNU General Public License v3.0
+
+## Recognition Interoperability Reference
+
+Levyra's `:levyra-recognition` module is an independent pure-Kotlin implementation owned and maintained inside this repository. It contains Levyra's acoustic fingerprint analysis, bounded signature generation, and wire-format encoding without vendoring or adapting ArchiveTune's `shazamkit` source. ArchiveTune was consulted only as an external behavioral reference while validating recognition interoperability and Android product behavior.
+
+Independence is verified behaviourally rather than asserted: the module is exercised against an independent reference implementation of the published signature algorithm on identical PCM input, and is required to agree peak for peak on frame index, magnitude, and corrected frequency bin. Agreement is a property of the algorithm being public, not of shared source; no third-party recognition code is vendored, adapted, or linked.
+
+Reference project: https://github.com/rukamori/ArchiveTune
+
+Reference license: GNU General Public License v3.0
+
+## Runtime and Build Dependencies
+
+| Ecosystem | Role |
+|:---|:---|
+| Kotlin | Primary programming language |
+| Jetpack Compose | Native UI framework |
+| AndroidX Media3 / ExoPlayer | Playback engine and media session layer |
+| AndroidX Media3 Transformer | On-device audio-track extraction for offline export (Apache-2.0, same `androidx.media3` version as the player) |
+| AndroidX Car App Library | Android Auto templated media interface |
+| AndroidX Room | Local database |
+| AndroidX DataStore | Local preference storage |
+| AndroidX WorkManager | Background jobs and offline export pipeline |
+| OkHttp | Network transport |
+| Coil | Image loading |
+| kotlinx.serialization | JSON serialization |
+| Gradle / Android Gradle Plugin / KSP | Build and code generation pipeline |
+
+Each dependency keeps its own upstream license. Dependency versions and package coordinates are declared in the Gradle version catalog and module build files.
+
+## External Data and Metadata Services
+
+| Service / Ecosystem | Role |
+|:---|:---|
+| LRCLIB-compatible lyrics metadata | Lyrics lookup where available |
+| SponsorBlock-compatible segment metadata | Optional segment metadata where supported |
+| Return YouTube Dislike API | Optional estimated dislike metadata; Levyra does not submit votes |
+| Third-party music metadata/search endpoints | Search, metadata, and playback resolving where configured by the app |
+
+Levyra does not claim ownership over third-party metadata, album artwork, track names, artist names, lyrics, media content, logos, trademarks, or service names.
+
+## Distribution Requirements
+
+When distributing Levyra or a modified build:
+
+```text
+Keep LICENSE
+Keep THIRD_PARTY_NOTICES.md
+Keep upstream copyright notices
+Keep upstream license notices
+State visible modifications
+Provide complete corresponding source code
+Provide build scripts and dependency configuration
+Release derivative source under GPL-3.0-compatible terms
+```
+
+## Modified-Version Notice
+
+```text
+This build is a modified version of Levyra maintained by LUC4N3X.
+It includes changes to playback resolution, UI, offline export, caching, artwork handling, and release automation.
+The complete corresponding source code is available in this repository under the GNU General Public License v3.0.
+```
+
+## Trademark and Affiliation Notice
+
+Levyra is independent and is not affiliated with, endorsed by, sponsored by, or officially connected to Google, YouTube, YouTube Music, Apple, Apple Music, Spotify, LRCLIB, SponsorBlock, Metrolist, NewPipe, PipePipe, ArchiveTune, Shazam, or any other third-party service or project mentioned in the repository.
+
+All trademarks and service marks belong to their respective owners.
+
+## Content Notice
+
+Levyra does not host, upload, sell, index, or provide copyrighted audio files from its own servers.
+
+Users are responsible for using Levyra only where they have the legal right to access, stream, export, store, or play content, and only in compliance with applicable law and third-party service terms.
+
+Levyra is not intended to bypass DRM, paywalls, authentication walls, geographic restrictions, subscription requirements, private content restrictions, or any other access-control mechanism.
+
+## JioSaavn Integration Notice
+
+The Levyra-specific JioSaavn integration (including its source-resolution flow, identity matching and validation, fallback orchestration, playback integration, and related UI/UX) is part of the Levyra project authored and maintained by **LUC4N3X** and distributed under this repository's **GNU GPL v3.0**. Reuse of Levyra source remains subject to the GPL and its applicable notice and source obligations.
+
+This notice applies only to Levyra's own implementation. **JioSaavn, its service, trademarks, catalogue, media, metadata, and other third-party property remain the property of their respective owners.** Levyra is independent and is not affiliated with, endorsed by, sponsored by, or officially connected with JioSaavn.

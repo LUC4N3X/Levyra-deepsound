@@ -1,0 +1,9262 @@
+package com.luc4n3x.levyra.ui.i18n
+
+import androidx.compose.runtime.compositionLocalOf
+import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import com.luc4n3x.levyra.domain.LyricsProviderId
+import java.text.NumberFormat
+import java.util.Locale
+
+class LevyraStrings private constructor(
+    val code: String,
+    private val entries: Map<String, String>
+) {
+    private fun value(key: String): String = entries.getValue(key)
+    private fun directionalValue(value: String): String {
+        val clean = value.trim()
+        return if (LevyraLanguageCatalog.isRtl(code) && clean.isNotBlank()) "\u2068$clean\u2069" else clean
+    }
+
+    val librarySortBy: String get() = value("librarySortBy")
+    val librarySortDirection: String get() = value("librarySortDirection")
+    val librarySortNewestFirst: String get() = value("librarySortNewestFirst")
+    val librarySortOldestFirst: String get() = value("librarySortOldestFirst")
+    val librarySortLongestFirst: String get() = value("librarySortLongestFirst")
+    val librarySortShortestFirst: String get() = value("librarySortShortestFirst")
+    val librarySortAscending: String get() = value("librarySortAscending")
+    val librarySortDescending: String get() = value("librarySortDescending")
+    val ambientMode: String get() = value("ambientMode")
+    val ambientModeSubtitle: String get() = value("ambientModeSubtitle")
+    val ambientOpen: String get() = value("ambientOpen")
+    val ambientExit: String get() = value("ambientExit")
+    val ambientSettingsTitle: String get() = value("ambientSettingsTitle")
+    val ambientBrightness: String get() = value("ambientBrightness")
+    val ambientAutoDim: String get() = value("ambientAutoDim")
+    val ambientPixelShift: String get() = value("ambientPixelShift")
+    val ambientProximityBlackout: String get() = value("ambientProximityBlackout")
+    val ambientShowLyrics: String get() = value("ambientShowLyrics")
+    val ambientShowCanvas: String get() = value("ambientShowCanvas")
+    val ambientNothingPlaying: String get() = value("ambientNothingPlaying")
+    val ambientLayout: String get() = value("ambientLayout")
+    val ambientLayoutSubtitle: String get() = value("ambientLayoutSubtitle")
+    val ambientShowClockSubtitle: String get() = value("ambientShowClockSubtitle")
+    val ambientShowTitleSubtitle: String get() = value("ambientShowTitleSubtitle")
+    val ambientShowProgressSubtitle: String get() = value("ambientShowProgressSubtitle")
+    val ambientAmoledBlackSubtitle: String get() = value("ambientAmoledBlackSubtitle")
+    val ambientModeMinimal: String get() = value("ambientModeMinimal")
+    val ambientModeArtwork: String get() = value("ambientModeArtwork")
+    val ambientModeSpotlight: String get() = value("ambientModeSpotlight")
+    val ambientModeLyrics: String get() = value("ambientModeLyrics")
+    val ambientShowClock: String get() = value("ambientShowClock")
+    val ambientShowTitle: String get() = value("ambientShowTitle")
+    val ambientShowProgress: String get() = value("ambientShowProgress")
+    val ambientAmoledBlack: String get() = value("ambientAmoledBlack")
+    val themeStudio: String get() = value("themeStudio")
+    val themeStudioSubtitle: String get() = value("themeStudioSubtitle")
+    val themeStudioPreview: String get() = value("themeStudioPreview")
+    val themeAccent: String get() = value("themeAccent")
+    val themeAccentFromPreset: String get() = value("themeAccentFromPreset")
+    val themeAccentBlue: String get() = value("themeAccentBlue")
+    val themeAccentGreen: String get() = value("themeAccentGreen")
+    val themeAccentIndigo: String get() = value("themeAccentIndigo")
+    val themeAccentOrange: String get() = value("themeAccentOrange")
+    val themeAccentPink: String get() = value("themeAccentPink")
+    val themeAccentCyan: String get() = value("themeAccentCyan")
+    val themeAccentPurple: String get() = value("themeAccentPurple")
+    val themeAccentYellow: String get() = value("themeAccentYellow")
+    val playerVisualMode: String get() = value("playerVisualMode")
+    val playerVisualModeSubtitle: String get() = value("playerVisualModeSubtitle")
+    val playerDeck: String get() = value("playerDeck")
+    val playerDeckSubtitle: String get() = value("playerDeckSubtitle")
+    val playerDeckEditorial: String get() = value("playerDeckEditorial")
+    val playerDeckPulse: String get() = value("playerDeckPulse")
+    val playerDeckImmersiveHint: String get() = value("playerDeckImmersiveHint")
+    val playerDeckCardHint: String get() = value("playerDeckCardHint")
+    val playerDeckArtworkHint: String get() = value("playerDeckArtworkHint")
+    val playerDeckEditorialHint: String get() = value("playerDeckEditorialHint")
+    val playerDeckPulseHint: String get() = value("playerDeckPulseHint")
+    val playerDeckLandscapeNote: String get() = value("playerDeckLandscapeNote")
+    val playlistStudio: String get() = value("playlistStudio")
+    val playlistStudioNew: String get() = value("playlistStudioNew")
+    val playlistStudioEdit: String get() = value("playlistStudioEdit")
+    val playlistStudioOpen: String get() = value("playlistStudioOpen")
+    val playlistStudioNameHint: String get() = value("playlistStudioNameHint")
+    val playlistStudioNameRequired: String get() = value("playlistStudioNameRequired")
+    val playlistStudioCover: String get() = value("playlistStudioCover")
+    val playlistStudioCoverCurrent: String get() = value("playlistStudioCoverCurrent")
+    val playlistStudioCoverAutomatic: String get() = value("playlistStudioCoverAutomatic")
+    val playlistStudioCoverArtwork: String get() = value("playlistStudioCoverArtwork")
+    val playlistStudioCoverMosaic: String get() = value("playlistStudioCoverMosaic")
+    val playlistStudioCoverSpotlight: String get() = value("playlistStudioCoverSpotlight")
+    val playlistStudioCoverSignal: String get() = value("playlistStudioCoverSignal")
+    val playlistStudioCoverPhoto: String get() = value("playlistStudioCoverPhoto")
+    val playlistStudioChooseArtwork: String get() = value("playlistStudioChooseArtwork")
+    val playlistStudioAddSongs: String get() = value("playlistStudioAddSongs")
+    val playlistStudioSearchLibrary: String get() = value("playlistStudioSearchLibrary")
+    val playlistStudioInPlaylist: String get() = value("playlistStudioInPlaylist")
+    val playlistStudioStateSaved: String get() = value("playlistStudioStateSaved")
+    val playlistStudioStateUnsaved: String get() = value("playlistStudioStateUnsaved")
+    val playlistStudioStateSaving: String get() = value("playlistStudioStateSaving")
+    val playlistStudioStateFailed: String get() = value("playlistStudioStateFailed")
+    val playlistStudioRetry: String get() = value("playlistStudioRetry")
+    val playlistStudioUndo: String get() = value("playlistStudioUndo")
+    val playlistStudioEmptyTitle: String get() = value("playlistStudioEmptyTitle")
+    val playlistStudioEmptyBody: String get() = value("playlistStudioEmptyBody")
+    val playlistStudioLibraryEmpty: String get() = value("playlistStudioLibraryEmpty")
+    val playlistStudioLoading: String get() = value("playlistStudioLoading")
+    val playlistStudioDiscardTitle: String get() = value("playlistStudioDiscardTitle")
+    val playlistStudioDiscardBody: String get() = value("playlistStudioDiscardBody")
+    val playlistStudioDiscard: String get() = value("playlistStudioDiscard")
+    val playlistStudioKeepEditing: String get() = value("playlistStudioKeepEditing")
+    fun playlistStudioRemoved(title: String): String = value("playlistStudioRemoved").replace("{title}", directionalValue(title))
+    fun playlistStudioMoved(title: String): String = value("playlistStudioMoved").replace("{title}", directionalValue(title))
+    fun chartMarketTitle(count: Int, country: String): String =
+        value("chartMarketTitle").replace("{count}", count.toString()).replace("{country}", directionalValue(country))
+    val chartMarketChange: String get() = value("chartMarketChange")
+    val chartMarketSheetTitle: String get() = value("chartMarketSheetTitle")
+    val chartMarketSearchHint: String get() = value("chartMarketSearchHint")
+    val chartMarketSuggested: String get() = value("chartMarketSuggested")
+    val chartMarketYourRegion: String get() = value("chartMarketYourRegion")
+    val chartMarketAllCountries: String get() = value("chartMarketAllCountries")
+    fun chartMarketNoResults(query: String): String =
+        value("chartMarketNoResults").replace("{query}", directionalValue(query))
+    val homeSoundtrackRadio: String get() = value("homeSoundtrackRadio")
+    val profilePhoto: String get() = value("profilePhoto")
+    val profilePhotoAddSubtitle: String get() = value("profilePhotoAddSubtitle")
+    val profilePhotoChangeSubtitle: String get() = value("profilePhotoChangeSubtitle")
+    val profilePhotoRemove: String get() = value("profilePhotoRemove")
+    val profilePhotoFailed: String get() = value("profilePhotoFailed")
+    val homeSoundtrackTitle: String get() = value("homeSoundtrackTitle")
+    fun homeSoundtrackLead(artists: List<String>): String {
+        val names = artists.asSequence()
+            .map(String::trim)
+            .filter(String::isNotBlank)
+            .distinctBy { it.lowercase() }
+            .take(3)
+            .map(::directionalValue)
+            .toList()
+        if (names.isEmpty()) return value("homeSoundtrackLeadFallback")
+        val joined = if (names.size == 1) {
+            names.first()
+        } else {
+            names.dropLast(1).joinToString(value("homeSoundtrackListSeparator")) +
+                value("homeSoundtrackListLastSeparator") + names.last()
+        }
+        return value("homeSoundtrackLeadArtists").replace("{artists}", joined)
+    }
+    val mixLab: String get() = value("mixLab")
+    val mixLabSubtitle: String get() = value("mixLabSubtitle")
+    val mixLabConfigureTitle: String get() = value("mixLabConfigureTitle")
+    val mixLabFamiliarity: String get() = value("mixLabFamiliarity")
+    val mixLabFamiliarityFavorites: String get() = value("mixLabFamiliarityFavorites")
+    val mixLabFamiliarityDiscovery: String get() = value("mixLabFamiliarityDiscovery")
+    val mixLabRecency: String get() = value("mixLabRecency")
+    val mixLabRecencyClassics: String get() = value("mixLabRecencyClassics")
+    val mixLabRecencyNew: String get() = value("mixLabRecencyNew")
+    val mixLabDuration: String get() = value("mixLabDuration")
+    val mixLabDurationShort: String get() = value("mixLabDurationShort")
+    val mixLabDurationMedium: String get() = value("mixLabDurationMedium")
+    val mixLabDurationLong: String get() = value("mixLabDurationLong")
+    val mixLabDurationAny: String get() = value("mixLabDurationAny")
+    val mixLabTrackCount: String get() = value("mixLabTrackCount")
+    val mixLabGenres: String get() = value("mixLabGenres")
+    val mixLabGenresHint: String get() = value("mixLabGenresHint")
+    val mixLabArtists: String get() = value("mixLabArtists")
+    val mixLabArtistsHint: String get() = value("mixLabArtistsHint")
+    val mixLabMood: String get() = value("mixLabMood")
+    val mixLabMoodHint: String get() = value("mixLabMoodHint")
+    val mixLabPresets: String get() = value("mixLabPresets")
+    val mixLabPresetChill: String get() = value("mixLabPresetChill")
+    val mixLabPresetWorkout: String get() = value("mixLabPresetWorkout")
+    val mixLabPresetLateNight: String get() = value("mixLabPresetLateNight")
+    val mixLabPresetRediscover: String get() = value("mixLabPresetRediscover")
+    val mixLabPresetFreshFinds: String get() = value("mixLabPresetFreshFinds")
+    val mixLabGenerate: String get() = value("mixLabGenerate")
+    val mixLabRegenerate: String get() = value("mixLabRegenerate")
+    val mixLabTuneParameters: String get() = value("mixLabTuneParameters")
+    val mixLabGenerating: String get() = value("mixLabGenerating")
+    val mixLabPreviewTitle: String get() = value("mixLabPreviewTitle")
+    fun mixLabPreviewTracks(count: Int): String = value("mixLabPreviewTracks").replace("{count}", count.toString())
+    fun mixLabPreviewArtists(count: Int): String = value("mixLabPreviewArtists").replace("{count}", count.toString())
+    fun mixLabPreviewFamiliarShare(percent: Int): String = value("mixLabPreviewFamiliarShare").replace("{percent}", percent.toString())
+    fun mixLabPreviewDiscoveryShare(percent: Int): String = value("mixLabPreviewDiscoveryShare").replace("{percent}", percent.toString())
+    val mixLabPlay: String get() = value("mixLabPlay")
+    val mixLabShuffle: String get() = value("mixLabShuffle")
+    val mixLabAddToQueue: String get() = value("mixLabAddToQueue")
+    val mixLabSaveAsPlaylist: String get() = value("mixLabSaveAsPlaylist")
+    val mixLabSaveDialogTitle: String get() = value("mixLabSaveDialogTitle")
+    val mixLabSaveDialogNameHint: String get() = value("mixLabSaveDialogNameHint")
+    val mixLabSaveConfirm: String get() = value("mixLabSaveConfirm")
+    val mixLabSaveCancel: String get() = value("mixLabSaveCancel")
+    val mixLabSaveSuccess: String get() = value("mixLabSaveSuccess")
+    val mixLabSaveFailed: String get() = value("mixLabSaveFailed")
+    val mixLabSaveRetry: String get() = value("mixLabSaveRetry")
+    val mixLabErrorTitle: String get() = value("mixLabErrorTitle")
+    val mixLabErrorBody: String get() = value("mixLabErrorBody")
+    val mixLabErrorRetry: String get() = value("mixLabErrorRetry")
+    val mixLabEmptyArtists: String get() = value("mixLabEmptyArtists")
+    val playerVisualModeArtwork: String get() = value("playerVisualModeArtwork")
+    val playerVisualModeCanvasCard: String get() = value("playerVisualModeCanvasCard")
+    val playerVisualModeCanvasImmersive: String get() = value("playerVisualModeCanvasImmersive")
+    val playerBackground: String get() = value("playerBackground")
+    val playerBackgroundSubtitle: String get() = value("playerBackgroundSubtitle")
+    val playerBackgroundDynamic: String get() = value("playerBackgroundDynamic")
+    val playerBackgroundBlur: String get() = value("playerBackgroundBlur")
+    val playerBackgroundDark: String get() = value("playerBackgroundDark")
+    val playerBackgroundPureBlack: String get() = value("playerBackgroundPureBlack")
+    val playerGestureHorizontalSwipe: String get() = value("playerGestureHorizontalSwipe")
+    val playerGestureHorizontalSwipeSubtitle: String get() = value("playerGestureHorizontalSwipeSubtitle")
+    val playerGestureDoubleTapAction: String get() = value("playerGestureDoubleTapAction")
+    val playerGestureDoubleTapActionSubtitle: String get() = value("playerGestureDoubleTapActionSubtitle")
+    val playerGestureLongPressAction: String get() = value("playerGestureLongPressAction")
+    val playerGestureLongPressActionSubtitle: String get() = value("playerGestureLongPressActionSubtitle")
+    val playerGestureVerticalSwipe: String get() = value("playerGestureVerticalSwipe")
+    val playerGestureVerticalSwipeSubtitle: String get() = value("playerGestureVerticalSwipeSubtitle")
+    val gestureActionSeek: String get() = value("gestureActionSeek")
+    val gestureActionPlayPause: String get() = value("gestureActionPlayPause")
+    val gestureActionFavorite: String get() = value("gestureActionFavorite")
+    val gestureActionQueue: String get() = value("gestureActionQueue")
+    val gestureActionLyrics: String get() = value("gestureActionLyrics")
+    val gestureActionSpeed: String get() = value("gestureActionSpeed")
+    val gestureActionBrightnessVolume: String get() = value("gestureActionBrightnessVolume")
+    val gestureActionVolume: String get() = value("gestureActionVolume")
+    val gestureActionDisabled: String get() = value("gestureActionDisabled")
+    val enterImmersive: String get() = value("enterImmersive")
+    val exitImmersive: String get() = value("exitImmersive")
+    val forgottenFavorites: String get() = value("forgottenFavorites")
+    val forgottenFavoritesSubtitle: String get() = value("forgottenFavoritesSubtitle")
+    val excludeArtist: String get() = value("excludeArtist")
+    val includeArtist: String get() = value("includeArtist")
+    val excludedArtists: String get() = value("excludedArtists")
+    val excludedArtistsEmpty: String get() = value("excludedArtistsEmpty")
+    val playlistTags: String get() = value("playlistTags")
+    val newPlaylistTag: String get() = value("newPlaylistTag")
+    val playlistTagName: String get() = value("playlistTagName")
+    val editPlaylistTags: String get() = value("editPlaylistTags")
+    val filterByTag: String get() = value("filterByTag")
+    val playlistTagLimitReached: String get() = value("playlistTagLimitReached")
+    val hidePlaylist: String get() = value("hidePlaylist")
+    val unhidePlaylist: String get() = value("unhidePlaylist")
+    val hiddenPlaylists: String get() = value("hiddenPlaylists")
+    val hiddenPlaylistsEmpty: String get() = value("hiddenPlaylistsEmpty")
+    val welcomeBadge: String get() = value("welcomeBadge")
+    val levyraMix: String get() = value("levyraMix")
+    val mixCreate: String get() = value("mixCreate")
+    val mixStartRadio: String get() = value("mixStartRadio")
+    val mixFamiliarLabel: String get() = value("mixFamiliarLabel")
+    val mixDiscoveryLabel: String get() = value("mixDiscoveryLabel")
+    val surpriseMe: String get() = value("surpriseMe")
+    val saveSelection: String get() = value("saveSelection")
+    val mixUnavailable: String get() = value("mixUnavailable")
+    val yourSound: String get() = value("yourSound")
+    val yourSoundSubtitle: String get() = value("yourSoundSubtitle")
+    val dnaPeriodWeek: String get() = value("dnaPeriodWeek")
+    val dnaPeriodMonth: String get() = value("dnaPeriodMonth")
+    val dnaPeriodHalfYear: String get() = value("dnaPeriodHalfYear")
+    val dnaPeriodAll: String get() = value("dnaPeriodAll")
+    val dnaDiscovery: String get() = value("dnaDiscovery")
+    val dnaRhythm: String get() = value("dnaRhythm")
+    val dnaEmpty: String get() = value("dnaEmpty")
+    val discoverMore: String get() = value("discoverMore")
+    val welcomeTitle: String get() = value("welcomeTitle")
+    val languageQuestion: String get() = value("languageQuestion")
+    val nameQuestion: String get() = value("nameQuestion")
+    val namePlaceholder: String get() = value("namePlaceholder")
+    val tasteQuestion: String get() = value("tasteQuestion")
+    val skipAndContinue: String get() = value("skipAndContinue")
+    val introHeadline: String get() = value("introHeadline")
+    val introBody: String get() = value("introBody")
+    val introFeatureSound: String get() = value("introFeatureSound")
+    val introFeatureLyrics: String get() = value("introFeatureLyrics")
+    val introFeatureOffline: String get() = value("introFeatureOffline")
+    val introStart: String get() = value("introStart")
+    val expandPlayer: String get() = value("expandPlayer")
+    val collapsePlayer: String get() = value("collapsePlayer")
+    val lyricsFocus: String get() = value("lyricsFocus")
+    val startListening: String get() = value("startListening")
+    val settings: String get() = value("settings")
+    val settingsSubtitle: String get() = value("settingsSubtitle")
+    val design: String get() = value("design")
+    val playback: String get() = value("playback")
+    val preferences: String get() = value("preferences")
+    val app: String get() = value("app")
+    val animations: String get() = value("animations")
+    val animationsSubtitle: String get() = value("animationsSubtitle")
+    val motionArtwork: String get() = value("motionArtwork")
+    val motionArtworkSubtitle: String get() = value("motionArtworkSubtitle")
+    val canvasQuality: String get() = value("canvasQuality")
+    val canvasQualitySubtitle: String get() = value("canvasQualitySubtitle")
+    val canvasQualityAuto: String get() = value("audioQualityAuto")
+    val canvasQualityDataSaver: String get() = value("downloadPresetDataSaver")
+    val canvasQualityHigh: String get() = value("audioQualityHigh")
+    val canvasSource: String get() = value("canvasSource")
+    val canvasSourceSubtitle: String get() = value("canvasSourceSubtitle")
+    val canvasSourceCommunity: String get() = value("canvasSourceCommunity")
+    val canvasSourceAuto: String get() = value("audioQualityAuto")
+    val canvasSourceApple: String get() = "Apple Music"
+    val canvasSourceTidal: String get() = "TIDAL"
+    val motionArtworkWifiOnly: String get() = value("motionArtworkWifiOnly")
+    val motionArtworkWifiOnlySubtitle: String get() = value("motionArtworkWifiOnlySubtitle")
+    val sharePlaylist: String get() = value("sharePlaylist")
+    val enhanceVideoMetadata: String get() = value("enhanceVideoMetadata")
+    val enhanceVideoMetadataSubtitle: String get() = value("enhanceVideoMetadataSubtitle")
+    val recognizeMusic: String get() = value("recognizeMusic")
+    val dynamicColor: String get() = value("dynamicColor")
+    val dynamicColorSubtitle: String get() = value("dynamicColorSubtitle")
+    val sponsorBlock: String get() = value("sponsorBlock")
+    val sponsorBlockSubtitle: String get() = value("sponsorBlockSubtitle")
+    val skipSilence: String get() = value("skipSilence")
+    val skipSilenceSubtitle: String get() = value("skipSilenceSubtitle")
+    val redoQuestionnaire: String get() = value("redoQuestionnaire")
+    val redoQuestionnaireSubtitle: String get() = value("redoQuestionnaireSubtitle")
+    val language: String get() = value("language")
+    val languageSubtitle: String get() = value("languageSubtitle")
+    val home: String get() = value("home")
+    val search: String get() = value("search")
+    val library: String get() = value("library")
+    val player: String get() = value("player")
+    val queue: String get() = value("queue")
+    val lyrics: String get() = value("lyrics")
+    val related: String get() = value("related")
+    val song: String get() = value("song")
+    val video: String get() = value("video")
+    val nowPlaying: String get() = value("nowPlaying")
+    val emptyPlayer: String get() = value("emptyPlayer")
+    val phoneSpeaker: String get() = value("phoneSpeaker")
+    val connected: String get() = value("connected")
+    val volume: String get() = value("volume")
+    val audioQuality: String get() = value("audioQuality")
+    val done: String get() = value("done")
+    val queueEmpty: String get() = value("queueEmpty")
+    val lyricsUnavailable: String get() = value("lyricsUnavailable")
+    val synced: String get() = value("synced")
+    val libraryTitle: String get() = value("libraryTitle")
+    val librarySubtitle: String get() = value("librarySubtitle")
+    val playlists: String get() = value("playlists")
+    val newItem: String get() = value("newItem")
+    val downloads: String get() = value("downloads")
+    val favorites: String get() = value("favorites")
+    val recent: String get() = value("recent")
+    val quickPicks: String get() = value("quickPicks")
+    val play: String get() = value("play")
+    val newReleases: String get() = value("newReleases")
+    val albumsForYou: String get() = value("albumsForYou")
+    val top50Unavailable: String get() = value("top50Unavailable")
+    val artists: String get() = value("artists")
+    val albumsAndSingles: String get() = value("albumsAndSingles")
+    val songs: String get() = value("songs")
+    val searchPlaceholder: String get() = value("searchPlaceholder")
+    val back: String get() = value("back")
+    val clear: String get() = value("clear")
+    val voice: String get() = value("voice")
+    val createPlaylistHint: String get() = value("createPlaylistHint")
+    val selectLanguagePrompt: String get() = value("selectLanguagePrompt")
+    val explore: String get() = value("explore")
+    val exploreTitle: String get() = value("exploreTitle")
+    val exploreSubtitle: String get() = value("exploreSubtitle")
+    val exploreMoods: String get() = value("exploreMoods")
+    val exploreMoodSection: String get() = value("exploreMoodSection")
+    val exploreSamples: String get() = value("exploreSamples")
+    val exploreSamplesSubtitle: String get() = value("exploreSamplesSubtitle")
+    val exploreSamplesError: String get() = value("exploreSamplesError")
+    val exploreSamplesRetry: String get() = value("exploreSamplesRetry")
+    val exploreFresh: String get() = value("exploreFresh")
+    val freshScopeWorld: String get() = value("freshScopeWorld")
+    val freshMomentTitle: String get() = value("freshMomentTitle")
+    val exploreNewVideos: String get() = value("exploreNewVideos")
+    val exploreEmpty: String get() = value("exploreEmpty")
+    val localWaveName: String get() = value("localWaveName")
+    val localWaveEmoji: String get() = value("localWaveEmoji")
+    val localWaveQuery: String get() = value("localWaveQuery")
+    val exploreNewReleases: String get() = value("exploreNewReleases")
+    val exploreRapDrill: String get() = value("exploreRapDrill")
+    val exploreElectronic: String get() = value("exploreElectronic")
+    val explorePopGlobal: String get() = value("explorePopGlobal")
+    val exploreRnbSoul: String get() = value("exploreRnbSoul")
+    val exploreRockAlt: String get() = value("exploreRockAlt")
+    val exploreLatino: String get() = value("exploreLatino")
+    val exploreLofiChill: String get() = value("exploreLofiChill")
+    val exploreJpopAnime: String get() = value("exploreJpopAnime")
+    val exploreAfrobeats: String get() = value("exploreAfrobeats")
+    val followArtist: String get() = value("followArtist")
+    val followingArtist: String get() = value("followingArtist")
+    val releaseRadar: String get() = value("releaseRadar")
+    val similarArtists: String get() = value("similarArtists")
+    val similarToFollowed: String get() = value("similarToFollowed")
+    val theme: String get() = value("theme")
+    val themeSubtitle: String get() = value("themeSubtitle")
+    val appFont: String get() = when (code) {
+        "it" -> "Carattere dell'app"
+        "es" -> "Fuente de la app"
+        "fr" -> "Police de l’application"
+        "de" -> "App-Schrift"
+        "pt" -> "Fonte da aplicação"
+        "nl" -> "App-lettertype"
+        "pl" -> "Czcionka aplikacji"
+        "ro" -> "Fontul aplicației"
+        "el" -> "Γραμματοσειρά εφαρμογής"
+        "sv" -> "Appens typsnitt"
+        "da" -> "Appens skrifttype"
+        "cs" -> "Písmo aplikace"
+        "uk" -> "Шрифт застосунку"
+        "ru" -> "Шрифт приложения"
+        "tr" -> "Uygulama yazı tipi"
+        "ar" -> "خط التطبيق"
+        "zh" -> "应用字体"
+        "ja" -> "アプリのフォント"
+        "ko" -> "앱 글꼴"
+        "hi" -> "ऐप फ़ॉन्ट"
+        "id" -> "Font aplikasi"
+        "vi" -> "Phông chữ ứng dụng"
+        "th" -> "แบบอักษรของแอป"
+        "fil" -> "Font ng app"
+        "he" -> "גופן האפליקציה"
+        else -> "App font"
+    }
+    val appFontSubtitle: String get() = when (code) {
+        "it" -> "Scegli il font usato in tutta Levyra"
+        "es" -> "Elige la tipografía usada en toda Levyra"
+        "fr" -> "Choisissez la police utilisée dans Levyra"
+        "de" -> "Wähle die Schriftart für ganz Levyra"
+        "pt" -> "Escolha o tipo de letra usado em toda a Levyra"
+        "nl" -> "Kies het lettertype voor heel Levyra"
+        "pl" -> "Wybierz krój pisma używany w całej Levyra"
+        "ro" -> "Alege fontul folosit în toată aplicația Levyra"
+        "el" -> "Επίλεξε τη γραμματοσειρά για όλο το Levyra"
+        "sv" -> "Välj typsnittet som används i hela Levyra"
+        "da" -> "Vælg skrifttypen til hele Levyra"
+        "cs" -> "Vyberte písmo používané v celé aplikaci Levyra"
+        "uk" -> "Виберіть шрифт для всього Levyra"
+        "ru" -> "Выберите шрифт для всего Levyra"
+        "tr" -> "Levyra genelinde kullanılacak yazı tipini seç"
+        "ar" -> "اختر الخط المستخدم في جميع أنحاء Levyra"
+        "zh" -> "选择 Levyra 全局使用的字体"
+        "ja" -> "Levyra 全体で使用するフォントを選択"
+        "ko" -> "Levyra 전체에서 사용할 글꼴을 선택하세요"
+        "hi" -> "पूरे Levyra में इस्तेमाल होने वाला फ़ॉन्ट चुनें"
+        "id" -> "Pilih font yang digunakan di seluruh Levyra"
+        "vi" -> "Chọn phông chữ dùng trong toàn bộ Levyra"
+        "th" -> "เลือกแบบอักษรที่ใช้ทั่วทั้ง Levyra"
+        "fil" -> "Piliin ang font na gagamitin sa buong Levyra"
+        "he" -> "בחרו את הגופן שישמש בכל Levyra"
+        else -> "Choose the typeface used across Levyra"
+    }
+    val personalOrbitTitle: String get() = value("personalOrbitTitle")
+    val personalOrbitSubtitle: String get() = value("personalOrbitSubtitle")
+    val voicesTitle: String get() = value("voicesTitle")
+    val voicesSubtitle: String get() = value("voicesSubtitle")
+    val totalComments: String get() = value("totalComments")
+    val engagement: String get() = value("engagement")
+    val commentsLabel: String get() = value("commentsLabel")
+    val mostCommentedTracks: String get() = value("mostCommentedTracks")
+    val tapToOpenComments: String get() = value("tapToOpenComments")
+    val noCommentsAvailable: String get() = value("noCommentsAvailable")
+    val commentsDisabledLabel: String get() = value("commentsDisabled")
+    val commentsDisabled: String get() = value("commentsDisabled")
+    val audioSectionQuality: String get() = value("audioSectionQuality")
+    val audioSectionEqualizer: String get() = value("audioSectionEqualizer")
+    val audioSectionSpatial: String get() = value("audioSectionSpatial")
+    val audioSectionDynamics: String get() = value("audioSectionDynamics")
+    val audioSectionEnhancement: String get() = when (code) {
+        "it" -> "RESTORATION & ENHANCEMENT"
+        else -> "RESTORATION & ENHANCEMENT"
+    }
+    val enhancedAudioTitle: String get() = "Levyra Enhanced Audio"
+    val enhancedAudioSubtitle: String get() = when (code) {
+        "it" -> "Ripristina i dettagli persi durante la compressione lossy lasciando il flusso originale intatto quando l'elaborazione non è benefica."
+        "es" -> "Restaura los detalles perdidos durante la compresión manteniendo el flujo original si no es beneficioso."
+        "fr" -> "Restaure les détails perdus lors de la compression en préservant le flux d'origine si l'amélioration n'est pas bénéfique."
+        "de" -> "Stellt bei verlustbehafteter Kompression verlorene Details wieder her und belässt den Originalstream unverändert."
+        else -> "Restores detail lost during lossy compression while keeping the original stream untouched when enhancement is not beneficial."
+    }
+    val audioEfficiencyTitle: String get() = when (code) {
+        "it" -> "Efficienza audio"
+        "es" -> "Eficiencia de audio"
+        "fr" -> "Efficacité audio"
+        "de" -> "Audio-Effizienz"
+        else -> "Audio efficiency"
+    }
+    val audioEfficiencySubtitle: String get() = when (code) {
+        "it" -> "Usa l'offload audio hardware quando il dispositivo e le impostazioni audio attuali lo supportano."
+        "es" -> "Usa la descarga de audio por hardware cuando tu dispositivo y los ajustes de audio actuales lo admiten."
+        "fr" -> "Utilise le déchargement audio matériel lorsque votre appareil et les réglages audio actuels le permettent."
+        "de" -> "Nutzt Hardware-Audio-Offload, wenn dein Gerät und die aktuellen Audioeinstellungen es unterstützen."
+        else -> "Use hardware audio offload when your device and current audio settings support it."
+    }
+    val audioEfficiencyAutomatic: String get() = when (code) {
+        "it" -> "Automatico"
+        "es" -> "Automático"
+        "fr" -> "Automatique"
+        "de" -> "Automatisch"
+        else -> "Automatic"
+    }
+    val audioEfficiencyOff: String get() = when (code) {
+        "it" -> "Disattivato"
+        "es" -> "Desactivado"
+        "fr" -> "Désactivé"
+        "de" -> "Aus"
+        else -> "Off"
+    }
+    val audioSectionPlayback: String get() = value("audioSectionPlayback")
+    val audioResetEqualizer: String get() = value("audioResetEqualizer")
+    val audioPresetCustom: String get() = value("audioPresetCustom")
+    val audioBands: String get() = value("audioBands")
+    val autoEqImport: String get() = value("autoEqImport")
+    val autoEqImportHint: String get() = value("autoEqImportHint")
+    val autoEqPickFile: String get() = value("autoEqPickFile")
+    val autoEqApply: String get() = value("autoEqApply")
+    val autoEqSavePreset: String get() = value("autoEqSavePreset")
+    val autoEqPresetName: String get() = value("autoEqPresetName")
+    val autoEqInvalidProfile: String get() = value("autoEqInvalidProfile")
+    val autoEqInputTooLarge: String get() = value("autoEqInputTooLarge")
+    val autoEqAdjustedNotice: String get() = value("autoEqAdjustedNotice")
+    val autoEqCatalog: String get() = value("autoEqCatalog")
+    val autoEqCatalogHint: String get() = value("autoEqCatalogHint")
+    val autoEqCatalogSearch: String get() = value("autoEqCatalogSearch")
+    val autoEqCatalogLoading: String get() = value("autoEqCatalogLoading")
+    val autoEqCatalogEmpty: String get() = value("autoEqCatalogEmpty")
+    val autoEqCatalogUnavailable: String get() = value("autoEqCatalogUnavailable")
+    val autoEqCatalogProfileFailed: String get() = value("autoEqCatalogProfileFailed")
+    val autoEqCatalogRetry: String get() = value("autoEqCatalogRetry")
+    val autoEqCatalogAttribution: String get() = value("autoEqCatalogAttribution")
+    val audioEngine: String get() = value("audioEngine")
+    val audioEngineSubtitle: String get() = value("audioEngineSubtitle")
+    val equalizer: String get() = value("equalizer")
+    val equalizerSubtitle: String get() = value("equalizerSubtitle")
+    val preset: String get() = value("preset")
+    val bassBoost: String get() = value("bassBoost")
+    val virtualizer: String get() = value("virtualizer")
+    val preamp: String get() = "Preamp"
+    val truePeakLimiter: String get() = when (code) {
+        "it" -> "Limiter true-peak"
+        "es" -> "Limitador true-peak"
+        "fr" -> "Limiteur true-peak"
+        "de" -> "True-Peak-Limiter"
+        "pt" -> "Limitador true-peak"
+        "nl" -> "True-peaklimiter"
+        "pl" -> "Limiter true peak"
+        "ro" -> "Limitator true-peak"
+        "el" -> "Περιοριστής true-peak"
+        "sv" -> "True-peak-begränsare"
+        "da" -> "True-peak-begrænser"
+        "cs" -> "True-peak limiter"
+        "uk" -> "Лімітер true-peak"
+        "ru" -> "Лимитер true-peak"
+        "tr" -> "True-peak sınırlayıcı"
+        "ar" -> "محدد الذروة الحقيقية"
+        "zh" -> "真峰值限制器"
+        "ja" -> "トゥルーピークリミッター"
+        "ko" -> "트루 피크 리미터"
+        "hi" -> "ट्रू-पीक लिमिटर"
+        "id" -> "Pembatas true-peak"
+        "vi" -> "Bộ giới hạn true-peak"
+        "th" -> "ตัวจำกัดทรูพีก"
+        "fil" -> "Limiter ng true-peak"
+        "he" -> "מגביל שיא אמיתי"
+        else -> "True-peak limiter"
+    }
+    val crossfade: String get() = value("crossfade")
+    val djSoft: String get() = value("djSoft")
+    val replayGain: String get() = value("replayGain")
+    val tempo: String get() = value("tempo")
+    val pitch: String get() = value("pitch")
+    val gapless: String get() = value("gapless")
+    val audioOutputAaudio: String get() = value("audioOutputAaudio")
+    val audioOutputAaudioSubtitle: String get() = value("audioOutputAaudioSubtitle")
+    val restartRequiredTitle: String get() = value("restartRequiredTitle")
+    val restartRequiredBody: String get() = value("restartRequiredBody")
+    val restartNow: String get() = value("restartNow")
+    val later: String get() = value("later")
+    val audioQualityAuto: String get() = value("audioQualityAuto")
+    val audioQualityHigh: String get() = value("audioQualityHigh")
+    val audioQualityLow: String get() = value("audioQualityLow")
+    val alternativeAudioTitle: String get() = value("alternativeAudioTitle")
+    val alternativeAudioSubtitle: String get() = value("alternativeAudioSubtitle")
+    val alternativeAudioOff: String get() = value("alternativeAudioOff")
+    val alternativeAudioAutomatic: String get() = value("alternativeAudioAutomatic")
+    val alternativeAudioPrefer320: String get() = value("alternativeAudioPrefer320")
+    val settingsSearchPlaceholder: String get() = value("settingsSearchPlaceholder")
+    val settingsSearchEmpty: String get() = value("settingsSearchEmpty")
+    val liveUpdatePlaybackChannel: String get() = value("liveUpdatePlaybackChannel")
+    val pulseSectionBand: String get() = value("pulseSectionBand")
+    val pulseTitle: String get() = value("pulseTitle")
+    val pulseSubtitle: String get() = value("pulseSubtitle")
+    val followedArtistsTitle: String get() = value("followedArtistsTitle")
+    val followedArtistsSubtitle: String get() = value("followedArtistsSubtitle")
+    val listeningHistoryEmptyTitle: String get() = value("listeningHistoryEmptyTitle")
+    val listeningHistoryEmptyDetail: String get() = value("listeningHistoryEmptyDetail")
+    val pulseMinutes: String get() = value("pulseMinutes")
+    val pulseMinuteShort: String get() = value("pulseMinuteShort")
+    val pulsePlays: String get() = value("pulsePlays")
+    val pulseStreak: String get() = value("pulseStreak")
+    val pulseCompletion: String get() = value("pulseCompletion")
+    val pulseTopArtists: String get() = value("pulseTopArtists")
+    val pulseWeek: String get() = value("pulseWeek")
+    val pulsePeakHour: String get() = value("pulsePeakHour")
+    val pulseEmpty: String get() = value("pulseEmpty")
+    val listeningRecap: String get() = value("listeningRecap")
+    val recapSubtitle: String get() = value("recapSubtitle")
+    val recapPeriod7Days: String get() = value("recapPeriod7Days")
+    val recapPeriod30Days: String get() = value("recapPeriod30Days")
+    val recapPeriod365Days: String get() = value("recapPeriod365Days")
+    val recapPeriodAllTime: String get() = value("recapPeriodAllTime")
+    val topTracksTitle: String get() = value("topTracksTitle")
+    val topArtistsTitle: String get() = value("topArtistsTitle")
+    val topAlbumsTitle: String get() = value("topAlbumsTitle")
+    val highlightsTitle: String get() = value("highlightsTitle")
+    val streakHighlight: String get() = value("streakHighlight")
+    val favoriteTimeHighlight: String get() = value("favoriteTimeHighlight")
+    val mostActiveDayHighlight: String get() = value("mostActiveDayHighlight")
+    val replayHighlight: String get() = value("replayHighlight")
+    val discoveryHighlight: String get() = value("discoveryHighlight")
+    val emptyRecapTitle: String get() = value("emptyRecapTitle")
+    val emptyRecapSubtitle: String get() = value("emptyRecapSubtitle")
+    val openRecap: String get() = value("openRecap")
+    val pulseProPeak: String get() = value("pulseProPeak")
+    val pulseProAverage: String get() = value("pulseProAverage")
+    val pulseProActivity: String get() = value("pulseProActivity")
+    val daypartMorning: String get() = value("daypartMorning")
+    val daypartAfternoon: String get() = value("daypartAfternoon")
+    val daypartEvening: String get() = value("daypartEvening")
+    val daypartNight: String get() = value("daypartNight")
+    val recapStreakMax: String get() = value("recapStreakMax")
+    val recapUnitDays: String get() = value("recapUnitDays")
+    val recapUnitHours: String get() = value("recapUnitHours")
+    val recapUnitMinutes: String get() = value("recapUnitMinutes")
+    val recapRecentActivity: String get() = value("recapRecentActivity")
+    val recapActivityLast30Days: String get() = value("recapActivityLast30Days")
+    val recapCompletionRate: String get() = value("recapCompletionRate")
+    val recapRepeatLabel: String get() = value("recapRepeatLabel")
+    val listeningInsights: String get() = value("listeningInsights")
+    val listeningInsightsSubtitle: String get() = value("listeningInsightsSubtitle")
+    val insightsPeriod24h: String get() = value("insightsPeriod24h")
+    val insightsPeriod7d: String get() = value("insightsPeriod7d")
+    val insightsPeriod30d: String get() = value("insightsPeriod30d")
+    val insightsPeriod6m: String get() = value("insightsPeriod6m")
+    val insightsPeriodAll: String get() = value("insightsPeriodAll")
+    val insightsListened: String get() = value("insightsListened")
+    val insightsPrevious: String get() = value("insightsPrevious")
+    val insightsActivity: String get() = value("insightsActivity")
+    val insightsRhythm: String get() = value("insightsRhythm")
+    val insightsActiveAround: String get() = value("insightsActiveAround")
+    val insightsDiscovery: String get() = value("insightsDiscovery")
+    val insightsNewTracks: String get() = value("insightsNewTracks")
+    val insightsHistory: String get() = value("insightsHistory")
+    val insightsSearchHistory: String get() = value("insightsSearchHistory")
+    val insightsToday: String get() = value("insightsToday")
+    val insightsYesterday: String get() = value("insightsYesterday")
+    val insightsLoadMore: String get() = value("insightsLoadMore")
+    val insightsDetailAvailable: String get() = value("insightsDetailAvailable")
+    val insightsError: String get() = value("insightsError")
+    val insightsEmpty: String get() = value("insightsEmpty")
+    val insightsLifetime: String get() = value("insightsLifetime")
+    val insightsDetailedTimeline: String get() = value("insightsDetailedTimeline")
+    val listeningHistory: String get() = value("listeningHistory")
+    val listeningHistorySubtitle: String get() = value("listeningHistorySubtitle")
+    val listeningPrompt: String get() = value("listeningPrompt")
+    val voiceSearchUnsupported: String get() = value("voiceSearchUnsupported")
+    val musicFiltersComingSoon: String get() = value("musicFiltersComingSoon")
+    val recentSearches: String get() = value("recentSearches")
+    val actions: String get() = value("actions")
+    val removeFromFavorites: String get() = value("removeFromFavorites")
+    val addToFavorites: String get() = value("addToFavorites")
+    val playNext: String get() = value("playNext")
+    val addToQueue: String get() = value("addToQueue")
+    val addToPlaylist: String get() = value("addToPlaylist")
+    val alreadyOffline: String get() = value("alreadyOffline")
+    val download: String get() = value("download")
+    val openArtist: String get() = value("openArtist")
+    val openAlbum: String get() = value("openAlbum")
+    val deleteDownload: String get() = value("deleteDownload")
+    val share: String get() = value("share")
+    val shareSong: String get() = value("shareSong")
+    val integrations: String get() = value("integrations")
+    val apiKeyLabel: String get() = value("apiKeyLabel")
+    val sharedSecretLabel: String get() = value("sharedSecretLabel")
+    val credentialTokenLabel: String get() = value("credentialTokenLabel")
+    val lastFmApprovalHint: String get() = value("lastFmApprovalHint")
+    val subtitlesOff: String get() = value("subtitlesOff")
+    val subtitlesLabel: String get() = value("subtitlesLabel")
+    val removeFromRecentSearches: String get() = value("removeFromRecentSearches")
+    val songOptions: String get() = value("songOptions")
+    val goToPlayer: String get() = value("goToPlayer")
+    val saveOffline: String get() = value("saveOffline")
+    val favorite: String get() = value("favorite")
+    val downloaded: String get() = value("downloaded")
+    val remove: String get() = value("remove")
+    val removeFromPlaylist: String get() = value("removeFromPlaylist")
+    val youMightAlsoLike: String get() = value("youMightAlsoLike")
+    val topResult: String get() = value("topResult")
+    val currentlyPlaying: String get() = value("currentlyPlaying")
+    val artistLabel: String get() = value("artistLabel")
+    val playNow: String get() = value("playNow")
+    val biography: String get() = value("biography")
+    val newUpdate: String get() = value("newUpdate")
+    val updateDescription: String get() = value("updateDescription")
+    val whatsNew: String get() = value("whatsNew")
+    val update: String get() = value("update")
+    val updateRetry: String get() = value("updateRetry")
+    val updateDownloading: String get() = value("updateDownloading")
+    val updatePreparing: String get() = value("updatePreparing")
+    val updateInstalling: String get() = value("updateInstalling")
+    val updateReadyToInstall: String get() = value("updateReadyToInstall")
+    val updateFailed: String get() = value("updateFailed")
+    val updateAllowInstalls: String get() = value("updateAllowInstalls")
+    val updateLinkUnavailable: String get() = value("updateLinkUnavailable")
+    val cannotOpenDownload: String get() = value("cannotOpenDownload")
+    val externalLinkUnavailable: String get() = value("externalLinkUnavailable")
+    val cannotOpenExternalLink: String get() = value("cannotOpenExternalLink")
+    val continuousRadio: String get() = value("continuousRadio")
+    val continuousRadioSubtitle: String get() = value("continuousRadioSubtitle")
+    val artistsLabelPlural: String get() = value("artistsLabelPlural")
+    val albumMood: String get() = value("albumMood")
+    val openLyricsAnalysis: String get() = value("openLyricsAnalysis")
+    val closeLyrics: String get() = value("closeLyrics")
+    val lyricsDuet: String get() = value("lyricsDuet")
+    val lyricsCinema: String get() = value("lyricsCinema")
+    val lyricsPage: String get() = value("lyricsPage")
+    val lyricsRomanization: String get() = value("lyricsRomanization")
+    val lyricsCompact: String get() = value("lyricsCompact")
+    val startRadio: String get() = value("startRadio")
+    val selectAll: String get() = value("selectAll")
+    val removeFromQueue: String get() = value("removeFromQueue")
+    val selectTrack: String get() = value("selectTrack")
+    val deselectTrack: String get() = value("deselectTrack")
+    val moreLikeThis: String get() = value("moreLikeThis")
+    val lessLikeThis: String get() = value("lessLikeThis")
+    val playbackDiagnostics: String get() = value("playbackDiagnostics")
+    val playbackDiagnosticsSubtitle: String get() = value("playbackDiagnosticsSubtitle")
+    val diagnosticsCopyReport: String get() = value("diagnosticsCopyReport")
+    val diagnosticsCopied: String get() = value("diagnosticsCopied")
+    val diagnosticsPrivacyNote: String get() = value("diagnosticsPrivacyNote")
+    val diagnosticsStatusHealthy: String get() = value("diagnosticsStatusHealthy")
+    val diagnosticsStatusFallback: String get() = value("diagnosticsStatusFallback")
+    val diagnosticsStatusError: String get() = value("diagnosticsStatusError")
+    val diagnosticsStatusIdle: String get() = value("diagnosticsStatusIdle")
+    val diagnosticsSectionPlayback: String get() = value("diagnosticsSectionPlayback")
+    val diagnosticsSectionFormats: String get() = value("diagnosticsSectionFormats")
+    val diagnosticsSectionNetwork: String get() = value("diagnosticsSectionNetwork")
+    val diagnosticsSectionResolver: String get() = value("diagnosticsSectionResolver")
+    val diagnosticsNoPlayback: String get() = value("diagnosticsNoPlayback")
+    val changeLyrics: String get() = value("changeLyrics")
+    val automaticLyrics: String get() = value("automaticLyrics")
+    val selectVerses: String get() = value("selectVerses")
+    val copyVerses: String get() = value("copyVerses")
+    val shareVerses: String get() = value("shareVerses")
+    val shareLyrics: String get() = value("shareLyrics")
+    val shareLyricsContinue: String get() = value("shareLyricsContinue")
+    val shareLyricsPreviewTitle: String get() = value("shareLyricsPreviewTitle")
+    val shareLyricsPreviewDescription: String get() = value("shareLyricsPreviewDescription")
+    val shareLyricsStyleArtwork: String get() = value("shareLyricsStyleArtwork")
+    val shareLyricsStyleGradient: String get() = value("shareLyricsStyleGradient")
+    val shareLyricsStyleMinimal: String get() = value("shareLyricsStyleMinimal")
+    val shareLyricsTextOriginal: String get() = value("shareLyricsTextOriginal")
+    val shareLyricsTextTranslation: String get() = value("shareLyricsTextTranslation")
+    val shareLyricsShareImage: String get() = value("shareLyricsShareImage")
+    val shareLyricsPreparing: String get() = value("shareLyricsPreparing")
+    val shareLyricsFailed: String get() = value("shareLyricsFailed")
+    val shareLyricsLineSelected: String get() = value("shareLyricsLineSelected")
+    val shareLyricsLineNotSelected: String get() = value("shareLyricsLineNotSelected")
+    val shareLyricsHint: String get() = value("shareLyricsHint")
+    val lyricsSyncedStatus: String get() = value("lyricsSyncedStatus")
+    val lyricsUnsyncedStatus: String get() = value("lyricsUnsyncedStatus")
+    val lyricsSource: String get() = value("lyricsSource")
+    val lyricsVersions: String get() = value("lyricsVersions")
+    val lyricsSections: String get() = value("lyricsSections")
+    val lyricsSectionIntro: String get() = value("lyricsSectionIntro")
+    val lyricsSectionVerse: String get() = value("lyricsSectionVerse")
+    val lyricsSectionPreChorus: String get() = value("lyricsSectionPreChorus")
+    val lyricsSectionChorus: String get() = value("lyricsSectionChorus")
+    val lyricsSectionBridge: String get() = value("lyricsSectionBridge")
+    val lyricsSectionInstrumental: String get() = value("lyricsSectionInstrumental")
+    val lyricsSectionOutro: String get() = value("lyricsSectionOutro")
+    val automaticTranslation: String get() = value("automaticTranslation")
+    val automaticTranslationSubtitle: String get() = value("automaticTranslationSubtitle")
+    val atmosphere: String get() = value("atmosphere")
+    val themes: String get() = value("themes")
+    val chorusDetected: String get() = value("chorusDetected")
+    val goToChorus: String get() = value("goToChorus")
+    val close: String get() = value("close")
+    val artworkPreview: String get() = value("artworkPreview")
+    val saveArtwork: String get() = value("saveArtwork")
+    val artworkSaved: String get() = value("artworkSaved")
+    val artworkSaveFailed: String get() = value("artworkSaveFailed")
+    val pulseRhythm: String get() = value("pulseRhythm")
+    val lyricsCalibrate: String get() = value("lyricsCalibrate")
+    val lyricsOffsetEarlier: String get() = value("lyricsOffsetEarlier")
+    val lyricsOffsetLater: String get() = value("lyricsOffsetLater")
+    val lyricsOffsetReset: String get() = value("lyricsOffsetReset")
+    val playbackTileLabel: String get() = value("playbackTileLabel")
+    val playbackPaused: String get() = value("playbackPaused")
+    val visualPerformance: String get() = value("visualPerformance")
+    val visualPerformanceFull: String get() = value("visualPerformanceFull")
+    val visualPerformanceAuto: String get() = value("visualPerformanceAuto")
+    val visualPerformanceSmooth: String get() = value("visualPerformanceSmooth")
+    val visualPerformanceFullSubtitle: String get() = value("visualPerformanceFullSubtitle")
+    val liquidGlass: String get() = value("liquidGlass")
+    val liquidGlassSubtitle: String get() = value("liquidGlassSubtitle")
+    val visualPerformanceAutoSubtitle: String get() = value("visualPerformanceAutoSubtitle")
+    val visualPerformanceSmoothSubtitle: String get() = value("visualPerformanceSmoothSubtitle")
+    val playerLyricsShowArtwork: String get() = value("playerLyricsShowArtwork")
+    val playerLyricsOpenFull: String get() = value("playerLyricsOpenFull")
+    val playerLyricsSearching: String get() = value("playerLyricsSearching")
+    val playerLyricsUnavailable: String get() = value("playerLyricsUnavailable")
+    val playbackTileIdle: String get() = value("playbackTileIdle")
+    val complete: String get() = value("complete")
+    val delete: String get() = value("delete")
+    val newPlaylist: String get() = value("newPlaylist")
+    val playlistName: String get() = value("playlistName")
+    val create: String get() = value("create")
+    val cancel: String get() = value("cancel")
+    val newPlaylistName: String get() = value("newPlaylistName")
+    val createNewPlaylist: String get() = value("createNewPlaylist")
+    val createAndAdd: String get() = value("createAndAdd")
+    val downloadPlaylist: String get() = value("downloadPlaylist")
+    val playAll: String get() = value("playAll")
+    val playingFrom: String get() = value("playingFrom")
+    val closePlayer: String get() = value("closePlayer")
+    val options: String get() = value("options")
+    val showLyrics: String get() = value("showLyrics")
+    val shuffle: String get() = value("shuffle")
+    val previous: String get() = value("previous")
+    val next: String get() = value("next")
+    val repeat: String get() = value("repeat")
+    val persistentQueue: String get() = value("persistentQueue")
+    val continueListening: String get() = value("continueListening")
+    val favoritesPlain: String get() = value("favoritesPlain")
+    val offline: String get() = value("offline")
+    val offlineHomeTitle: String get() = value("offlineHomeTitle")
+    val offlineHomeMessage: String get() = value("offlineHomeMessage")
+    val offlineHomeRetry: String get() = value("offlineHomeRetry")
+    val offlineHomeDownloads: String get() = value("offlineHomeDownloads")
+    val offlineHomePlaylists: String get() = value("offlineHomePlaylists")
+    val offlineHomeFavorites: String get() = value("offlineHomeFavorites")
+    val offlineHomeRecent: String get() = value("offlineHomeRecent")
+    val homeRemoteUnavailable: String get() = value("homeRemoteUnavailable")
+    val homeRemoteEmpty: String get() = value("homeRemoteEmpty")
+    val more: String get() = value("more")
+    val mix: String get() = value("mix")
+    val mixForYou: String get() = value("mixForYou")
+    val genres: String get() = value("genres")
+    val smartMusicProfile: String get() = value("smartMusicProfile")
+    val flow: String get() = value("flow")
+    val pictureInPicture: String get() = value("pictureInPicture")
+    val discoveryFlow: String get() = value("discoveryFlow")
+    val shareDiagnostics: String get() = value("shareDiagnostics")
+    val albumUnavailable: String get() = value("albumUnavailable")
+    val albumTracksUnavailable: String get() = value("albumTracksUnavailable")
+    val showLess: String get() = value("showLess")
+    val showMore: String get() = value("showMore")
+    val playing: String get() = value("playing")
+    val artistProfileUnavailable: String get() = value("artistProfileUnavailable")
+    val popularTracks: String get() = value("popularTracks")
+    val showAll: String get() = value("showAll")
+    val versionLabel: String get() = value("versionLabel")
+    val generalImprovements: String get() = value("generalImprovements")
+    val historyLabel: String get() = value("historyLabel")
+    val undoRemoval: String get() = value("undoRemoval")
+    val lyricsAnalysis: String get() = value("lyricsAnalysis")
+    val linesLabel: String get() = value("linesLabel")
+    val wordsLabel: String get() = value("wordsLabel")
+    val localAnalysis: String get() = value("localAnalysis")
+    val open: String get() = value("open")
+    val newRelease: String get() = value("newRelease")
+    val newReleaseSubtitle: String get() = value("newReleaseSubtitle")
+    val saved: String get() = value("saved")
+    val save: String get() = value("save")
+    val noOfflineDownloads: String get() = value("noOfflineDownloads")
+    val createFirstPlaylist: String get() = value("createFirstPlaylist")
+    val createFirstPlaylistSubtitle: String get() = value("createFirstPlaylistSubtitle")
+    val downloadTrackHint: String get() = value("downloadTrackHint")
+    val savedTracks: String get() = value("savedTracks")
+    val favoritesEmpty: String get() = value("favoritesEmpty")
+    val playlistEmpty: String get() = value("playlistEmpty")
+    val showPersonalListening: String get() = value("showPersonalListening")
+    val showRecentReleases: String get() = value("showRecentReleases")
+    val showRecommendedAlbums: String get() = value("showRecommendedAlbums")
+    val showDiscoveredArtists: String get() = value("showDiscoveredArtists")
+    val showChartsCountry: String get() = value("showChartsCountry")
+    val partialDownloadResume: String get() = value("partialDownloadResume")
+    val lyricsAnalysisSection: String get() = value("lyricsAnalysisSection")
+    val lyricsAnalysisCompact: String get() = value("lyricsAnalysisCompact")
+    val lyricsAnalysisCompactSubtitle: String get() = value("lyricsAnalysisCompactSubtitle")
+    val videoQuality: String get() = value("videoQuality")
+    val videoQualitySubtitle: String get() = value("videoQualitySubtitle")
+    val videoQualityAuto: String get() = value("videoQualityAuto")
+    val videoQualityAutoSubtitle: String get() = value("videoQualityAutoSubtitle")
+    val lyricsProviderPriority: String get() = value("lyricsProviderPriority")
+    val lyricsProviderPrioritySubtitle: String get() = value("lyricsProviderPrioritySubtitle")
+    val lyricsProviderOrderHint: String get() = value("lyricsProviderOrderHint")
+    val lyricsProviderEnabled: String get() = value("lyricsProviderEnabled")
+    val lyricsProviderDisabled: String get() = value("lyricsProviderDisabled")
+    val lyricsProviderMoveUp: String get() = value("lyricsProviderMoveUp")
+    val lyricsProviderMoveDown: String get() = value("lyricsProviderMoveDown")
+
+    fun lyricsProviderName(id: LyricsProviderId): String = when (id) {
+        LyricsProviderId.YOUTUBE_MUSIC -> value("lyricsProviderYoutubeMusic")
+        LyricsProviderId.LRCLIB_EXACT -> value("lyricsProviderLrclibExact")
+        LyricsProviderId.LRCLIB_SEARCH -> value("lyricsProviderLrclibSearch")
+        LyricsProviderId.LYRICS_PLUS -> value("lyricsProviderLyricsPlus")
+        LyricsProviderId.BINIMUM -> value("lyricsProviderBinimum")
+        LyricsProviderId.YOUTUBE_TRANSCRIPT -> value("lyricsProviderYoutubeTranscript")
+        LyricsProviderId.LYRICS_OVH -> value("lyricsProviderLyricsOvh")
+    }
+    val createDataBackup: String get() = value("createDataBackup")
+    val createDataBackupSubtitle: String get() = value("createDataBackupSubtitle")
+    val updateAvailable: String get() = value("updateAvailable")
+    val updates: String get() = value("updates")
+    val checkingLatestVersion: String get() = value("checkingLatestVersion")
+    val latestVersionReady: String get() = value("latestVersionReady")
+    val latestInstalled: String get() = value("latestInstalled")
+    val checkNewVersions: String get() = value("checkNewVersions")
+    val releasePageReady: String get() = value("releasePageReady")
+    val installedVersion: String get() = value("installedVersion")
+    val openPlayer: String get() = value("openPlayer")
+    val searchSongsArtists: String get() = value("searchSongsArtists")
+    val songsPlain: String get() = value("songsPlain")
+    val shareVia: String get() = value("shareVia")
+    val emptySearchPrompt: String get() = value("emptySearchPrompt")
+    val cancelDownload: String get() = value("cancelDownload")
+    val readAll: String get() = value("readAll")
+    val singlesAndEps: String get() = value("singlesAndEps")
+    val compilations: String
+        get() = when (code) {
+            "it" -> "Raccolte"
+            "es" -> "Recopilaciones"
+            "fr" -> "Compilations"
+            "de" -> "Kompilationen"
+            "pt" -> "Compilações"
+            "nl" -> "Verzamelalbums"
+            "pl" -> "Kompilacje"
+            "ro" -> "Compilații"
+            "el" -> "Συλλογές"
+            "sv" -> "Samlingar"
+            "da" -> "Opsamlinger"
+            "cs" -> "Kompilace"
+            "uk" -> "Збірки"
+            "ru" -> "Сборники"
+            "tr" -> "Derlemeler"
+            "ar" -> "ألبومات تجميعية"
+            "zh" -> "合辑"
+            "ja" -> "コンピレーション"
+            "ko" -> "컴필레이션"
+            "hi" -> "संकलन"
+            "id" -> "Kompilasi"
+            "vi" -> "Tuyển tập"
+            "th" -> "อัลบั้มรวมเพลง"
+            "fil" -> "Mga compilation"
+            "he" -> "אוספים"
+            else -> "Compilations"
+        }
+    val tapHeartToAdd: String get() = value("tapHeartToAdd")
+    val all: String get() = value("all")
+    val automaticResume: String get() = value("automaticResume")
+    val simultaneousDownloads: String get() = value("simultaneousDownloads")
+    val simultaneousDownloadsSubtitle: String get() = value("simultaneousDownloadsSubtitle")
+    val backupRestoreSection: String get() = value("backupRestoreSection")
+    val automaticBackup: String get() = if (code == "it") "Backup automatici" else "Automatic backups"
+    val automaticBackupSubtitle: String get() = if (code == "it") {
+        "Crea archivi locali verificati senza includere i file audio"
+    } else {
+        "Create verified local archives without audio files"
+    }
+    val backupFrequency: String get() = if (code == "it") "Frequenza" else "Frequency"
+    val backupRetention: String get() = if (code == "it") "Conservazione" else "Retention"
+    val backupChargingOnly: String get() = if (code == "it") "Solo durante la ricarica" else "Only while charging"
+    val backupChargingOnlySubtitle: String get() = if (code == "it") {
+        "Riduce l'impatto sulla batteria; si applica solo ai backup automatici"
+    } else {
+        "Reduces battery impact; applies only to automatic backups"
+    }
+    fun backupFrequencyLabel(name: String): String = when (name) {
+        "Daily" -> if (code == "it") "Ogni giorno" else "Daily"
+        "Monthly" -> if (code == "it") "Ogni mese" else "Monthly"
+        else -> if (code == "it") "Ogni settimana" else "Weekly"
+    }
+    fun backupRetentionLabel(count: Int): String = if (code == "it") "$count copie" else "$count copies"
+    val vaultTitle: String get() = "Levyra Vault"
+    val vaultSubtitle: String get() = if (code == "it") {
+        "Proteggi playlist, preferiti, cronologia e impostazioni"
+    } else {
+        "Protect playlists, favorites, history and settings"
+    }
+    val backupNow: String get() = if (code == "it") "Backup ora" else "Back up now"
+    val backupNowSubtitle: String get() = if (code == "it") {
+        "Crea subito un backup locale"
+    } else {
+        "Create a local backup now"
+    }
+    val lastBackup: String get() = if (code == "it") "Ultimo backup" else "Last backup"
+    val lastBackupNever: String get() = if (code == "it") "Mai" else "Never"
+    val backupLocation: String get() = if (code == "it") "Posizione backup" else "Backup location"
+    val backupLocationSubtitle: String get() = if (code == "it") {
+        "Scegli dove salvare i backup automatici"
+    } else {
+        "Choose where automatic backups are saved"
+    }
+    val backupLocationSafSelected: String get() = if (code == "it") {
+        "Cartella selezionata con il selettore di sistema"
+    } else {
+        "Folder selected with the system picker"
+    }
+    val backupLocationInternal: String get() = if (code == "it") "Usa memoria interna" else "Use internal storage"
+    val backupLocationInternalSubtitle: String get() = if (code == "it") {
+        "Torna alla cartella interna di Levyra"
+    } else {
+        "Go back to Levyra's internal folder"
+    }
+    val backupBeforeUpdates: String get() = if (code == "it") {
+        "Backup prima degli aggiornamenti"
+    } else {
+        "Back up before updates"
+    }
+    val backupBeforeUpdatesSubtitle: String get() = if (code == "it") {
+        "Crea un backup locale prima di installare un aggiornamento"
+    } else {
+        "Create a local backup before installing an update"
+    }
+    val manageBackups: String get() = if (code == "it") "Gestisci backup" else "Manage backups"
+    val manageBackupsSubtitle: String get() = if (code == "it") {
+        "Apri la cartella dei backup automatici"
+    } else {
+        "Open the automatic backups folder"
+    }
+    val vaultBusy: String get() = if (code == "it") "Operazione Vault in corso..." else "Vault operation in progress..."
+    val restorePreviewTitle: String get() = if (code == "it") "Ripristina Levyra" else "Restore Levyra"
+    val restorePreviewCompatible: String get() = if (code == "it") "Backup compatibile" else "Compatible backup"
+    val restorePreviewIncompatible: String get() = if (code == "it") {
+        "Backup non compatibile con questa versione"
+    } else {
+        "Backup incompatible with this version"
+    }
+    val restorePreviewCreated: String get() = if (code == "it") "Creato" else "Created"
+    val restorePreviewVersion: String get() = if (code == "it") "Versione Levyra" else "Levyra version"
+    val restorePreviewSize: String get() = if (code == "it") "Dimensione" else "Size"
+    val restorePreviewContents: String get() = if (code == "it") "Contenuti" else "Contents"
+    val restoreConfirm: String get() = if (code == "it") "Ripristina" else "Restore"
+    val restoreConfirmBody: String get() = if (code == "it") {
+        "Sostituisce preferiti, playlist, cronologia, coda e impostazioni con i dati del backup."
+    } else {
+        "Replaces favorites, playlists, history, queue and settings with the backup data."
+    }
+    val preUpdateBackupFailedTitle: String get() = if (code == "it") {
+        "Backup prima dell'aggiornamento non riuscito"
+    } else {
+        "Backup before update failed"
+    }
+    val preUpdateBackupFailedBody: String get() = if (code == "it") {
+        "Il backup locale non è riuscito. Puoi riprovare o continuare con l'aggiornamento."
+    } else {
+        "The local backup failed. You can retry or continue with the update."
+    }
+    val preUpdateBackupRetry: String get() = if (code == "it") "Riprova" else "Retry"
+    val preUpdateBackupContinue: String get() = if (code == "it") "Aggiorna comunque" else "Update anyway"
+    val restoreBackup: String get() = value("restoreBackup")
+    val restoreBackupSubtitle: String get() = value("restoreBackupSubtitle")
+    val playbackResilienceSection: String get() = value("playbackResilienceSection")
+    val exportSafeDiagnostics: String get() = value("exportSafeDiagnostics")
+    val batteryUnrestricted: String get() = value("batteryUnrestricted")
+    val batteryUnrestrictedSubtitle: String get() = value("batteryUnrestrictedSubtitle")
+    val batteryUnrestrictedActive: String get() = value("batteryUnrestrictedActive")
+    val downloadQualityPreset: String get() = value("downloadQualityPreset")
+    val downloadQualityPresetSubtitle: String get() = value("downloadQualityPresetSubtitle")
+    val downloadPresetAutomatic: String get() = value("downloadPresetAutomatic")
+    val downloadPresetHighQuality: String get() = value("downloadPresetHighQuality")
+    val downloadPresetDataSaver: String get() = value("downloadPresetDataSaver")
+    val downloadLocation: String get() = value("downloadLocation")
+    val downloadLocationSubtitle: String get() = value("downloadLocationSubtitle")
+    val downloadLocationDefault: String get() = value("downloadLocationDefault")
+    val downloadLocationReset: String get() = value("downloadLocationReset")
+    val downloadLocationResetSubtitle: String get() = value("downloadLocationResetSubtitle")
+    val downloadLocationUnavailable: String get() = value("downloadLocationUnavailable")
+    val downloadLocationPermissionFailed: String get() = value("downloadLocationPermissionFailed")
+    val downloadFolderOrganization: String get() = value("downloadFolderOrganization")
+    val downloadFolderOrganizationSubtitle: String get() = value("downloadFolderOrganizationSubtitle")
+    val downloadFolderArtist: String get() = value("downloadFolderArtist")
+    val downloadFolderArtistAlbum: String get() = value("downloadFolderArtistAlbum")
+    val downloadSpeedLimit: String get() = value("downloadSpeedLimit")
+    val downloadSpeedLimitSubtitle: String get() = value("downloadSpeedLimitSubtitle")
+    val downloadSpeedUnlimited: String get() = value("downloadSpeedUnlimited")
+    val downloadEmbedMetadata: String get() = value("downloadEmbedMetadata")
+    val downloadEmbedMetadataSubtitle: String get() = value("downloadEmbedMetadataSubtitle")
+    val downloadEmbedArtwork: String get() = value("downloadEmbedArtwork")
+    val downloadEmbedArtworkSubtitle: String get() = value("downloadEmbedArtworkSubtitle")
+    val downloadVerifyFile: String get() = value("downloadVerifyFile")
+    val downloadVerifyFileSubtitle: String get() = value("downloadVerifyFileSubtitle")
+    val downloadSkipDuplicates: String get() = value("downloadSkipDuplicates")
+    val downloadSkipDuplicatesSubtitle: String get() = value("downloadSkipDuplicatesSubtitle")
+    val trailTitle: String get() = value("trailTitle")
+    val trailPlays: String get() = value("trailPlays")
+    val trailUnique: String get() = value("trailUnique")
+    val trailLastPlayed: String get() = value("trailLastPlayed")
+    val statPlays: String get() = value("statPlays")
+    val statArtists: String get() = value("statArtists")
+    val statTracks: String get() = value("statTracks")
+
+    val levyraSelection: String get() = value("levyraSelection")
+    val releasedToday: String get() = value("releasedToday")
+    val justReleased: String get() = value("justReleased")
+    val chartTrending: String get() = value("chartTrending")
+    val selectedForYou: String get() = value("selectedForYou")
+    val availableToday: String get() = value("availableToday")
+    val releasedThisWeek: String get() = value("releasedThisWeek")
+    val popularInCharts: String get() = value("popularInCharts")
+    val collectionsTitle: String get() = value("collectionsTitle")
+    val collectionsSubtitle: String get() = value("collectionsSubtitle")
+    val collectionFresh: String get() = value("collectionFresh")
+    val collectionLocal: String get() = value("collectionLocal")
+    val collectionWorkout: String get() = value("collectionWorkout")
+    val collectionChill: String get() = value("collectionChill")
+    val collectionFocus: String get() = value("collectionFocus")
+    val collectionParty: String get() = value("collectionParty")
+    val collectionRap: String get() = value("collectionRap")
+    val collectionPop: String get() = value("collectionPop")
+    val collectionDiscovery: String get() = value("collectionDiscovery")
+    val collectionCharts: String get() = value("collectionCharts")
+    val collectionRepeat: String get() = value("collectionRepeat")
+    val collectionThrowback: String get() = value("collectionThrowback")
+    val collectionGems: String get() = value("collectionGems")
+    val collectionUpdatedToday: String get() = value("collectionUpdatedToday")
+    val collectionEditorial: String get() = value("collectionEditorial")
+    val generateResolverTrace: String get() = value("generateResolverTrace")
+    val safeDiagnosticsSubtitle: String get() = value("safeDiagnosticsSubtitle")
+    val check: String get() = value("check")
+    val checking: String get() = value("checking")
+    val dragToReorder: String get() = value("dragToReorder")
+    val homeInterfaceSection: String get() = value("homeInterfaceSection")
+    val compactHome: String get() = value("compactHome")
+    val compactHomeSubtitle: String get() = value("compactHomeSubtitle")
+    val yourOrbitSetting: String get() = value("yourOrbitSetting")
+    val voicesSetting: String get() = value("voicesSetting")
+    val voicesSettingSubtitle: String get() = value("voicesSettingSubtitle")
+    val newReleasesSetting: String get() = value("newReleasesSetting")
+    val albumsForYouSetting: String get() = value("albumsForYouSetting")
+    val trendingArtists: String get() = value("trendingArtists")
+    val top50Charts: String get() = value("top50Charts")
+    val mobilePlayerSection: String get() = value("mobilePlayerSection")
+    val advancedGestures: String get() = value("advancedGestures")
+    val advancedGesturesSubtitle: String get() = value("advancedGesturesSubtitle")
+    val pureBlack: String get() = value("pureBlack")
+    val pureBlackSubtitle: String get() = value("pureBlackSubtitle")
+    val hapticFeedback: String get() = value("hapticFeedback")
+    val hapticFeedbackSubtitle: String get() = value("hapticFeedbackSubtitle")
+    val doubleTapSeek: String get() = value("doubleTapSeek")
+    val doubleTapSeekSubtitle: String get() = value("doubleTapSeekSubtitle")
+    val longPress: String get() = value("longPress")
+    val longPressSubtitle: String get() = value("longPressSubtitle")
+    val downloadEngineSection: String get() = value("downloadEngineSection")
+    val wifiOnly: String get() = value("wifiOnly")
+    val wifiOnlySubtitle: String get() = value("wifiOnlySubtitle")
+    val chargingOnly: String get() = value("chargingOnly")
+    val chargingOnlySubtitle: String get() = value("chargingOnlySubtitle")
+    val resumeDownload: String get() = value("resumeDownload")
+    val pauseDownload: String get() = value("pauseDownload")
+    val signedApkReady: String get() = value("signedApkReady")
+    val downloadsInProgress: String get() = value("downloadsInProgress")
+    val downloadInProgress: String get() = value("downloadInProgress")
+    val newAlbums: String get() = value("newAlbums")
+    val newSingles: String get() = value("newSingles")
+    val newAlbum: String get() = value("newAlbum")
+    val downloadsFolder: String get() = value("downloadsFolder")
+    val offlineDownloadsPlain: String get() = value("offlineDownloadsPlain")
+    val personalPlaylists: String get() = value("personalPlaylists")
+    val searchingYouTubeMusic: String get() = value("searchingYouTubeMusic")
+    val searchingLyrics: String get() = value("searchingLyrics")
+    val pause: String get() = value("pause")
+    val newSingle: String get() = value("newSingle")
+    val albumsPlain: String get() = value("albumsPlain")
+    val albumPlain: String get() = value("albumPlain")
+    val singlePlain: String get() = value("singlePlain")
+    val playlistsPlain: String get() = value("playlistsPlain")
+    val profileActive: String get() = value("profileActive")
+    val profileLearning: String get() = value("profileLearning")
+    val newBadge: String get() = value("newBadge")
+    val brightness: String get() = value("brightness")
+    val timer: String get() = value("timer")
+    val sleepTimer: String get() = value("sleepTimer")
+    val sleepTimerEndOfTrack: String get() = value("sleepTimerEndOfTrack")
+    val sleepTimerCancel: String get() = value("sleepTimerCancel")
+    val sleepTimerCancelled: String get() = value("sleepTimerCancelled")
+    val sleepTimerRemaining: String get() = value("sleepTimerRemaining")
+    val recognitionListening: String get() = value("recognitionListening")
+    val recognitionProcessing: String get() = value("recognitionProcessing")
+    val recognitionTapToListen: String get() = value("recognitionTapToListen")
+    val recognitionTitle: String get() = value("recognitionTitle")
+    val recognitionSubtitle: String get() = value("recognitionSubtitle")
+    val recognitionListenMicrophone: String get() = value("recognitionListenMicrophone")
+    val recognitionListenDevice: String get() = value("recognitionListenDevice")
+    val recognitionCancelAction: String get() = value("recognitionCancelAction")
+    val recognitionNoMatch: String get() = value("recognitionNoMatch")
+    val recognitionFailed: String get() = value("recognitionFailed")
+    val recognitionPermissionRequired: String get() = value("recognitionPermissionRequired")
+    val recognitionUnavailable: String get() = value("recognitionUnavailable")
+    val recognitionHistoryEmpty: String get() = value("recognitionHistoryEmpty")
+    val recognitionClearHistory: String get() = value("recognitionClearHistory")
+    val recognitionCatalogMatch: String get() = value("recognitionCatalogMatch")
+    val recognitionCatalogMissing: String get() = value("recognitionCatalogMissing")
+    val jamTitle: String get() = value("jamTitle")
+    val jamSubtitle: String get() = value("jamSubtitle")
+    val jamCreate: String get() = value("jamCreate")
+    val jamJoin: String get() = value("jamJoin")
+    val jamLeave: String get() = value("jamLeave")
+    val jamEnd: String get() = value("jamEnd")
+    val jamSessionCode: String get() = value("jamSessionCode")
+    val jamCodeHint: String get() = value("jamCodeHint")
+    val jamParticipants: String get() = value("jamParticipants")
+    val jamPermissions: String get() = value("jamPermissions")
+    val jamPermissionHostOnly: String get() = value("jamPermissionHostOnly")
+    val jamPermissionAddSongs: String get() = value("jamPermissionAddSongs")
+    val jamPermissionCollaborative: String get() = value("jamPermissionCollaborative")
+    val jamDisplayName: String get() = value("jamDisplayName")
+    val jamRoleHost: String get() = value("jamRoleHost")
+    val jamRoleGuest: String get() = value("jamRoleGuest")
+    val jamConnecting: String get() = value("jamConnecting")
+    val jamDisconnected: String get() = value("jamDisconnected")
+    val jamInvalidCode: String get() = value("jamInvalidCode")
+    val jamConnectionFailed: String get() = value("jamConnectionFailed")
+    val jamNotAuthorized: String get() = value("jamNotAuthorized")
+    val jamHostEnded: String get() = value("jamHostEnded")
+    val jamLocalNetworkOnly: String get() = value("jamLocalNetworkOnly")
+    val jamHostControls: String get() = value("jamHostControls")
+    val jamApprovalRequired: String get() = value("jamApprovalRequired")
+    val jamApprovalRequiredSubtitle: String get() = value("jamApprovalRequiredSubtitle")
+    val jamPendingRequests: String get() = value("jamPendingRequests")
+    val jamApprove: String get() = value("jamApprove")
+    val jamReject: String get() = value("jamReject")
+    val jamKick: String get() = value("jamKick")
+    val jamBan: String get() = value("jamBan")
+    val jamBannedGuests: String get() = value("jamBannedGuests")
+    val jamClearBans: String get() = value("jamClearBans")
+    val jamLockSession: String get() = value("jamLockSession")
+    val jamLockSessionSubtitle: String get() = value("jamLockSessionSubtitle")
+    val jamLocked: String get() = value("jamLocked")
+    val jamAwaitingApproval: String get() = value("jamAwaitingApproval")
+    val jamRejected: String get() = value("jamRejected")
+    val jamBannedMessage: String get() = value("jamBannedMessage")
+    val jamSessionLockedMessage: String get() = value("jamSessionLockedMessage")
+    val jamSessionFull: String get() = value("jamSessionFull")
+    val jamRemovedMessage: String get() = value("jamRemovedMessage")
+    val jamNoParticipants: String get() = value("jamNoParticipants")
+    val jamYou: String get() = value("jamYou")
+    val jamShareInvite: String get() = value("jamShareInvite")
+    val networkTitle: String get() = value("networkTitle")
+    val networkSubtitle: String get() = value("networkSubtitle")
+    val networkDns: String get() = value("networkDns")
+    val networkDnsSystem: String get() = value("networkDnsSystem")
+    val networkDnsCustom: String get() = value("networkDnsCustom")
+    val networkCustomDohUrl: String get() = value("networkCustomDohUrl")
+    val networkProxy: String get() = value("networkProxy")
+    val networkProxyDisabled: String get() = value("networkProxyDisabled")
+    val networkProxyHost: String get() = value("networkProxyHost")
+    val networkProxyPort: String get() = value("networkProxyPort")
+    val networkProxyAuthentication: String get() = value("networkProxyAuthentication")
+    val networkProxyUsername: String get() = value("networkProxyUsername")
+    val networkProxyPassword: String get() = value("networkProxyPassword")
+    val networkBypassStreams: String get() = value("networkBypassStreams")
+    val networkBypassStreamsSubtitle: String get() = value("networkBypassStreamsSubtitle")
+    val networkRestrictedCompatibility: String get() = value("networkRestrictedCompatibility")
+    val networkRestrictedCompatibilitySubtitle: String get() = value("networkRestrictedCompatibilitySubtitle")
+    val networkByeDpi: String get() = value("networkByeDpi")
+    val networkByeDpiSubtitle: String get() = value("networkByeDpiSubtitle")
+    val networkYoutubeRegionProfile: String get() = value("networkYoutubeRegionProfile")
+    val networkYoutubeRegionProfileSubtitle: String get() = value("networkYoutubeRegionProfileSubtitle")
+    val networkTest: String get() = value("networkTest")
+    val networkTestSuccess: String get() = value("networkTestSuccess")
+    val networkTestDnsFailed: String get() = value("networkTestDnsFailed")
+    val networkTestProxyAuthFailed: String get() = value("networkTestProxyAuthFailed")
+    val networkTestTimeout: String get() = value("networkTestTimeout")
+    val networkTestRefused: String get() = value("networkTestRefused")
+    val networkTestTls: String get() = value("networkTestTls")
+    val networkTestInvalid: String get() = value("networkTestInvalid")
+    val networkTestUnknown: String get() = value("networkTestUnknown")
+    val networkErrorProxyHost: String get() = value("networkErrorProxyHost")
+    val networkErrorProxyPort: String get() = value("networkErrorProxyPort")
+    val networkErrorProxyCredentials: String get() = value("networkErrorProxyCredentials")
+    val networkErrorDohUrl: String get() = value("networkErrorDohUrl")
+    val networkApplied: String get() = value("networkApplied")
+    fun formatSleepTimerMinutes(minutes: Int): String {
+        val amount = NumberFormat.getIntegerInstance(Locale.forLanguageTag(code))
+            .format(minutes.coerceAtLeast(0))
+        val normalizedCode = LevyraLanguageCatalog.normalize(code)
+        val unit = when (normalizedCode) {
+            "de" -> "Min."
+            "el" -> "λεπ."
+            "uk" -> "хв"
+            "ru" -> "мин"
+            "tr" -> "dk"
+            "ar" -> "د"
+            "zh" -> "分钟"
+            "ja" -> "分"
+            "ko" -> "분"
+            "hi" -> "मि"
+            "id" -> "mnt"
+            "vi" -> "phút"
+            "th" -> "นาที"
+            "he" -> "דק׳"
+            else -> "min"
+        }
+        val separator = if (normalizedCode in setOf("zh", "ja", "ko")) "" else " "
+        return directionalValue("$amount$separator$unit")
+    }
+    val normalizationShort: String get() = value("normalizationShort")
+    val coverAndTags: String get() = value("coverAndTags")
+    val madeWithBy: String get() = value("madeWithBy")
+    val legalInformation: String get() = settingsFooterLegalInformation(code)
+    val activeIndicator: String get() = value("activeIndicator")
+    val queueSpaces: String get() = value("queueSpaces")
+    val queueSpacesSubtitle: String get() = value("queueSpacesSubtitle")
+    val queueSpaceDefaultName: String get() = value("queueSpaceDefaultName")
+    val queueSpaceNew: String get() = value("queueSpaceNew")
+    val queueSpaceNameHint: String get() = value("queueSpaceNameHint")
+    val queueSpaceRename: String get() = value("queueSpaceRename")
+    val queueSpaceDuplicate: String get() = value("queueSpaceDuplicate")
+    val queueSpaceClear: String get() = value("queueSpaceClear")
+    val queueSpaceDelete: String get() = value("queueSpaceDelete")
+    val queueSpaceDeleteConfirm: String get() = value("queueSpaceDeleteConfirm")
+    val queueSpaceDeleteLast: String get() = value("queueSpaceDeleteLast")
+    val queueSpaceAddTo: String get() = value("queueSpaceAddTo")
+    val queueSpaceEmpty: String get() = value("queueSpaceEmpty")
+    val localOnDevice: String get() = value("localOnDevice")
+    val localOnDeviceSubtitle: String get() = value("localOnDeviceSubtitle")
+    val localFolders: String get() = value("localFolders")
+    val localScanQuick: String get() = value("localScanQuick")
+    val localScanFull: String get() = value("localScanFull")
+    val localRebuildLevyra: String get() = value("localRebuildLevyra")
+    val localScanning: String get() = value("localScanning")
+    val localScanFailed: String get() = localScanFailedLocalization(code)
+    val localScanUpToDate: String get() = value("localScanUpToDate")
+    val localEmpty: String get() = value("localEmpty")
+    val localPermissionRequired: String get() = value("localPermissionRequired")
+    val localGrantPermission: String get() = value("localGrantPermission")
+    val localUnknownArtist: String get() = value("localUnknownArtist")
+    val localUnknownAlbum: String get() = value("localUnknownAlbum")
+    val localHideFolder: String get() = value("localHideFolder")
+    val localShowFolder: String get() = value("localShowFolder")
+    val localFileUnavailable: String get() = value("localFileUnavailable")
+    val localDuplicatesHidden: String get() = value("localDuplicatesHidden")
+    val localFullTagSearchHint: String get() = value("localFullTagSearchHint")
+    val localEditTags: String get() = value("localEditTags")
+    val localTagEditorTitle: String get() = value("localTagEditorTitle")
+    val localTagEditorSubtitle: String get() = value("localTagEditorSubtitle")
+    val localTagTitle: String get() = value("localTagTitle")
+    val localTagArtist: String get() = value("localTagArtist")
+    val localTagAlbum: String get() = value("localTagAlbum")
+    val localTagAlbumArtist: String get() = value("localTagAlbumArtist")
+    val localTagGenre: String get() = value("localTagGenre")
+    val localTagYear: String get() = value("localTagYear")
+    val localTagTrack: String get() = value("localTagTrack")
+    val localTagDisc: String get() = value("localTagDisc")
+    val localTagComposer: String get() = value("localTagComposer")
+    val localTagLyricist: String get() = value("localTagLyricist")
+    val localTagComment: String get() = value("localTagComment")
+    val localTagCopyright: String get() = value("localTagCopyright")
+    val localTagCredits: String get() = value("localTagCredits")
+    val localTagSave: String get() = value("localTagSave")
+    val localTagSaving: String get() = value("localTagSaving")
+    val localTagSaved: String get() = value("localTagSaved")
+    val localTagWriteFailed: String get() = value("localTagWriteFailed")
+    val localTagUnsupported: String get() = value("localTagUnsupported")
+    val localTagTooLarge: String get() = value("localTagTooLarge")
+    val localTagPermissionDenied: String get() = value("localTagPermissionDenied")
+    val localTagArtwork: String get() = value("localTagArtwork")
+    val localTagChangeArtwork: String get() = value("localTagChangeArtwork")
+    val localTagRemoveArtwork: String get() = value("localTagRemoveArtwork")
+    val localTagLyrics: String get() = value("localTagLyrics")
+    val localTagFileMissing: String get() = value("localTagFileMissing")
+    val localTagNoSpace: String get() = value("localTagNoSpace")
+    val localTagArtworkInvalid: String get() = value("localTagArtworkInvalid")
+    fun formatReplayPeriod(days: Int): String {
+        val value = NumberFormat.getIntegerInstance(Locale.forLanguageTag(code))
+            .format(days.coerceAtLeast(0))
+        val unit = when (LevyraLanguageCatalog.normalize(code)) {
+            "it" -> "gg"
+            "es" -> "d"
+            "fr" -> "j"
+            "de" -> "T."
+            "pt" -> "dias"
+            "nl" -> "dagen"
+            "pl" -> "dni"
+            "ro" -> "zile"
+            "el" -> "ημέρες"
+            "sv" -> "dagar"
+            "da" -> "dage"
+            "cs" -> "dní"
+            "uk", "ru" -> "дн."
+            "tr" -> "gün"
+            "ar" -> "يومًا"
+            "zh" -> "天"
+            "ja" -> "日"
+            "ko" -> "일"
+            "hi" -> "दिन"
+            "id" -> "hari"
+            "vi" -> "ngày"
+            "th" -> "วัน"
+            "fil" -> "araw"
+            "he" -> "ימים"
+            else -> "days"
+        }
+        val compact = LevyraLanguageCatalog.normalize(code) in setOf("zh", "ja", "ko")
+        return directionalValue(if (compact) "$value$unit" else "$value $unit")
+    }
+
+    fun formatPlayCount(count: Int): String {
+        val formatted = NumberFormat.getIntegerInstance(Locale.forLanguageTag(code))
+            .format(count.coerceAtLeast(0))
+        return directionalValue("$formatted×")
+    }
+
+    fun formatTrackCount(count: Int): String {
+        val value = count.coerceAtLeast(0)
+        val formattedValue = NumberFormat
+            .getIntegerInstance(Locale.forLanguageTag(code))
+            .format(value)
+        return when (code) {
+            "it" -> if (value == 1) "$formattedValue brano" else "$formattedValue brani"
+            "es" -> if (value == 1) "$formattedValue canción" else "$formattedValue canciones"
+            "fr" -> if (value == 1) "$formattedValue titre" else "$formattedValue titres"
+            "de" -> "$formattedValue Titel"
+            "pt" -> if (value == 1) "$formattedValue música" else "$formattedValue músicas"
+            "nl" -> if (value == 1) "$formattedValue nummer" else "$formattedValue nummers"
+            "pl" -> when {
+                value == 1 -> "$formattedValue utwór"
+                value % 10 in 2..4 && value % 100 !in 12..14 -> "$formattedValue utwory"
+                else -> "$formattedValue utworów"
+            }
+            "ro" -> if (value == 1) "$formattedValue piesă" else "$formattedValue piese"
+            "el" -> if (value == 1) "$formattedValue τραγούδι" else "$formattedValue τραγούδια"
+            "sv" -> if (value == 1) "$formattedValue låt" else "$formattedValue låtar"
+            "da" -> if (value == 1) "$formattedValue sang" else "$formattedValue sange"
+            "cs" -> when {
+                value == 1 -> "$formattedValue skladba"
+                value in 2..4 -> "$formattedValue skladby"
+                else -> "$formattedValue skladeb"
+            }
+            "uk" -> when {
+                value % 10 == 1 && value % 100 != 11 -> "$formattedValue трек"
+                value % 10 in 2..4 && value % 100 !in 12..14 -> "$formattedValue треки"
+                else -> "$formattedValue треків"
+            }
+            "ru" -> when {
+                value % 10 == 1 && value % 100 != 11 -> "$formattedValue трек"
+                value % 10 in 2..4 && value % 100 !in 12..14 -> "$formattedValue трека"
+                else -> "$formattedValue треков"
+            }
+            "tr" -> "$formattedValue şarkı"
+            "ar" -> when {
+                value == 0 -> "لا مقاطع"
+                value == 1 -> "مقطع واحد"
+                value == 2 -> "مقطعان"
+                value % 100 in 3..10 -> "$formattedValue مقاطع"
+                else -> "$formattedValue مقطعًا"
+            }
+            "zh" -> "$formattedValue 首歌曲"
+            "ja" -> "$formattedValue 曲"
+            "ko" -> "${formattedValue}곡"
+            "hi" -> "$formattedValue ट्रैक"
+            "id" -> "$formattedValue lagu"
+            "vi" -> "$formattedValue bài hát"
+            "th" -> "$formattedValue เพลง"
+            "fil" -> "$formattedValue kanta"
+            "he" -> if (value == 1) "שיר אחד" else "$formattedValue שירים"
+            "fi" -> if (value == 1) "$formattedValue kappale" else "$formattedValue kappaletta"
+            "et" -> "$formattedValue lugu"
+            else -> if (value == 1) "$formattedValue track" else "$formattedValue tracks"
+        }
+    }
+
+    fun formatArtists(value: String): String = "$artistsLabelPlural: ${directionalValue(value)}"
+
+    fun formatAlbumMood(value: String): String = "$albumMood: ${directionalValue(value)}"
+
+    fun formatPlayingFrom(source: String): String = "$playingFrom ${directionalValue(source)}"
+
+    fun formatQueueSummary(queueSize: Int, historyCount: Int): String = "${formatTrackCount(queueSize)} · ${historyCount.coerceAtLeast(0)} $historyLabel"
+
+    fun formatQueueSpaceSwitched(name: String): String =
+        String.format(value("queueSpaceSwitched"), directionalValue(name))
+
+    fun formatLocalScanSummary(added: Int, updated: Int, unavailable: Int): String = String.format(
+        value("localScanSummary"),
+        added.coerceAtLeast(0),
+        updated.coerceAtLeast(0),
+        unavailable.coerceAtLeast(0)
+    )
+
+    fun formatLyricsAnalysis(lineCount: Int, wordCount: Int): String = "$linesLabel: ${lineCount.coerceAtLeast(0)} · $wordsLabel: ${wordCount.coerceAtLeast(0)} · $localAnalysis"
+
+    fun formatCancelDownload(title: String): String = "$cancelDownload ${directionalValue(title)}"
+
+    fun formatLatestVersionReady(version: String): String = "${directionalValue("LEVYRA $version")} $latestVersionReady"
+
+    fun formatInstalledVersion(version: String): String = "$installedVersion: ${directionalValue(version)}"
+
+    fun formatDownloadProgress(progress: Int): String {
+        val value = progress.coerceIn(0, 100)
+        return when (code) {
+            "es" -> "Descargando $value%"
+            "fr" -> "Téléchargement $value%"
+            "pt" -> "A transferir $value%"
+            "nl" -> "Downloaden $value%"
+            "pl" -> "Pobieranie $value%"
+            "ro" -> "Se descarcă $value%"
+            "el" -> "Λήψη $value%"
+            "sv" -> "Laddar ned $value%"
+            "da" -> "Downloader $value%"
+            "cs" -> "Stahování $value%"
+            "uk" -> "Завантаження $value%"
+            "ru" -> "Загрузка $value%"
+            "tr" -> "İndiriliyor $value%"
+            "ar" -> "جارٍ التنزيل $value%"
+            "zh" -> "正在下载 $value%"
+            "ja" -> "ダウンロード中 $value%"
+            "ko" -> "다운로드 중 $value%"
+            "hi" -> "डाउनलोड हो रहा है $value%"
+            "id" -> "Mengunduh $value%"
+            "vi" -> "Đang tải xuống $value%"
+            "th" -> "กำลังดาวน์โหลด $value%"
+            "fil" -> "Nagda-download $value%"
+            "he" -> "מוריד $value%"
+            "fi" -> "Ladataan $value%"
+            "et" -> "Allalaadimine $value%"
+            else -> "Download $value%"
+        }
+    }
+
+    fun formatDownloadedTrackCount(count: Int): String {
+        val value = count.coerceAtLeast(0)
+        return when (code) {
+            "it" -> if (value == 1) "1 brano scaricato" else "$value brani scaricati"
+            "es" -> if (value == 1) "1 canción descargada" else "$value canciones descargadas"
+            "fr" -> if (value == 1) "1 titre téléchargé" else "$value titres téléchargés"
+            "de" -> if (value == 1) "1 Titel heruntergeladen" else "$value Titel heruntergeladen"
+            "pt" -> if (value == 1) "1 música transferida" else "$value músicas transferidas"
+            "nl" -> if (value == 1) "1 nummer gedownload" else "$value nummers gedownload"
+            "pl" -> "${formatTrackCount(value)} pobrano"
+            "ro" -> if (value == 1) "1 piesă descărcată" else "$value piese descărcate"
+            "el" -> if (value == 1) "1 τραγούδι λήφθηκε" else "$value τραγούδια λήφθηκαν"
+            "sv" -> if (value == 1) "1 låt nedladdad" else "$value låtar nedladdade"
+            "da" -> if (value == 1) "1 sang downloadet" else "$value sange downloadet"
+            "cs" -> "${formatTrackCount(value)} staženo"
+            "uk" -> "${formatTrackCount(value)} завантажено"
+            "ru" -> "${formatTrackCount(value)} скачано"
+            "tr" -> "$value şarkı indirildi"
+            "ar" -> when {
+                value == 0 -> "لم يتم تنزيل أي مقاطع"
+                value == 1 -> "تم تنزيل مقطع واحد"
+                value == 2 -> "تم تنزيل مقطعين"
+                value % 100 in 3..10 -> "تم تنزيل $value مقاطع"
+                else -> "تم تنزيل $value مقطعًا"
+            }
+            "zh" -> "已下载 $value 首歌曲"
+            "ja" -> "$value 曲をダウンロード済み"
+            "ko" -> "${value}곡 다운로드됨"
+            "hi" -> "$value ट्रैक डाउनलोड किए गए"
+            "id" -> "$value lagu diunduh"
+            "vi" -> "Đã tải xuống $value bài hát"
+            "th" -> "ดาวน์โหลดแล้ว $value เพลง"
+            "fil" -> if (value == 1) "1 kanta ang na-download" else "$value kanta ang na-download"
+            "he" -> if (value == 1) "שיר אחד הורד" else "הורדו $value שירים"
+            "fi" -> if (value == 1) "1 kappale ladattu" else "$value kappaletta ladattu"
+            "et" -> if (value == 1) "1 lugu alla laaditud" else "$value lugu alla laaditud"
+            else -> if (value == 1) "1 track downloaded" else "$value tracks downloaded"
+        }
+    }
+
+    val loadingSharedPlaylist: String get() = if (code == "it") "Caricamento playlist" else "Loading playlist"
+    val loadingSharedAlbum: String get() = if (code == "it") "Caricamento album" else "Loading album"
+    val loadingSharedArtist: String get() = if (code == "it") "Caricamento artista" else "Loading artist"
+    val openingSharedContent: String get() = if (code == "it") "Apertura contenuto condiviso" else "Opening shared content"
+    val sharedContentUnavailable: String get() = if (code == "it") "Contenuto non disponibile" else "Content unavailable"
+    val searchFailed: String get() = if (code == "it") "Ricerca non riuscita" else "Search failed"
+    val operationFailed: String get() = if (code == "it") "Operazione non riuscita" else "Operation failed"
+
+    fun formatNoSearchResults(query: String): String {
+        val safeQuery = directionalValue(query)
+        return if (code == "it") "Nessun risultato trovato per $safeQuery" else "No results found for $safeQuery"
+    }
+
+    fun formatOfflineExportSaved(
+        destination: String,
+        fileName: String,
+        embeddedMetadata: Boolean
+    ): String {
+        val safeDestination = directionalValue(destination)
+        val safeFileName = directionalValue(fileName.ifBlank {
+            if (code == "it") "brano esportato" else "exported track"
+        })
+        val tagStatus = when {
+            code == "it" && embeddedMetadata -> "con copertina e tag Levyra"
+            code == "it" -> "con metadati Android"
+            embeddedMetadata -> "with Levyra cover and tags"
+            else -> "with Android metadata"
+        }
+        return if (code == "it") {
+            "Salvato in $safeDestination: $safeFileName ($tagStatus)"
+        } else {
+            "Saved in $safeDestination: $safeFileName ($tagStatus)"
+        }
+    }
+
+    fun localizeUserError(rawMessage: String?, youtubePlayback: Boolean = false): String {
+        val raw = rawMessage?.trim().orEmpty()
+        return when {
+            youtubePlayback && (raw.contains("Timed out waiting", ignoreCase = true) ||
+                raw.contains("sto aspettando lo stream", ignoreCase = true)) -> if (code == "it") {
+                    "YouTube è lento: riprova tra qualche secondo"
+                } else {
+                    "YouTube is slow: try again in a few seconds"
+                }
+            raw.contains("EXTM3U", ignoreCase = true) ||
+                raw.contains("contentIsMalformed", ignoreCase = true) -> if (code == "it") {
+                    "La sorgente audio non è valida: riprova il brano"
+                } else {
+                    "The audio source is invalid: try the track again"
+                }
+            raw.contains("timeout", ignoreCase = true) -> if (code == "it") {
+                "Connessione lenta: riprova tra qualche secondo"
+            } else {
+                "Slow connection: try again in a few seconds"
+            }
+            youtubePlayback && raw.contains("429", ignoreCase = true) -> if (code == "it") {
+                "Troppe richieste a YouTube: attendi qualche secondo"
+            } else {
+                "Too many requests to YouTube: wait a few seconds"
+            }
+            youtubePlayback && (raw.contains("403", ignoreCase = true) ||
+                raw.contains("410", ignoreCase = true) ||
+                raw.contains("Source error", ignoreCase = true)) -> if (code == "it") {
+                    "YouTube ha rifiutato il link del brano: riprova"
+                } else {
+                    "YouTube rejected this track link: try again"
+                }
+            raw.contains("Primary directory Music not allowed", ignoreCase = true) ||
+                raw.contains("content://media/external_primary/file", ignoreCase = true) -> if (code == "it") {
+                    "Questo dispositivo non ha consentito il salvataggio in Music/Levyra"
+                } else {
+                    "This device did not allow saving to Music/Levyra"
+                }
+            else -> operationFailed
+        }
+    }
+
+    fun formatSavedTrackCount(count: Int): String {
+        val value = count.coerceAtLeast(0)
+        return when (code) {
+            "it" -> if (value == 1) "1 brano salvato" else "$value brani salvati"
+            "es" -> if (value == 1) "1 canción guardada" else "$value canciones guardadas"
+            "fr" -> if (value == 1) "1 titre enregistré" else "$value titres enregistrés"
+            "de" -> if (value == 1) "1 Titel gespeichert" else "$value Titel gespeichert"
+            "pt" -> if (value == 1) "1 música guardada" else "$value músicas guardadas"
+            "nl" -> if (value == 1) "1 nummer opgeslagen" else "$value nummers opgeslagen"
+            "pl" -> "${formatTrackCount(value)} zapisano"
+            "ro" -> if (value == 1) "1 piesă salvată" else "$value piese salvate"
+            "el" -> if (value == 1) "1 τραγούδι αποθηκεύτηκε" else "$value τραγούδια αποθηκεύτηκαν"
+            "sv" -> if (value == 1) "1 låt sparad" else "$value låtar sparade"
+            "da" -> if (value == 1) "1 sang gemt" else "$value sange gemt"
+            "cs" -> "${formatTrackCount(value)} uloženo"
+            "uk" -> "${formatTrackCount(value)} збережено"
+            "ru" -> "${formatTrackCount(value)} сохранено"
+            "tr" -> "$value şarkı kaydedildi"
+            "ar" -> when {
+                value == 0 -> "لا توجد مقاطع محفوظة"
+                value == 1 -> "تم حفظ مقطع واحد"
+                value == 2 -> "تم حفظ مقطعين"
+                value % 100 in 3..10 -> "تم حفظ $value مقاطع"
+                else -> "تم حفظ $value مقطعًا"
+            }
+            "zh" -> "已保存 $value 首歌曲"
+            "ja" -> "$value 曲を保存済み"
+            "ko" -> "${value}곡 저장됨"
+            "hi" -> "$value ट्रैक सहेजे गए"
+            "id" -> "$value lagu disimpan"
+            "vi" -> "Đã lưu $value bài hát"
+            "th" -> "บันทึกแล้ว $value เพลง"
+            "fil" -> if (value == 1) "1 kanta ang na-save" else "$value kanta ang na-save"
+            "he" -> if (value == 1) "שיר אחד נשמר" else "נשמרו $value שירים"
+            "fi" -> if (value == 1) "1 kappale tallennettu" else "$value kappaletta tallennettu"
+            "et" -> if (value == 1) "1 lugu salvestatud" else "$value lugu salvestatud"
+            else -> if (value == 1) "1 track saved" else "$value tracks saved"
+        }
+    }
+
+
+    fun formatSearchResults(count: Int): String {
+        val value = count.coerceAtLeast(0)
+        return when (code) {
+            "it" -> if (value == 1) "$value risultato" else "$value risultati"
+            "es" -> if (value == 1) "$value resultado" else "$value resultados"
+            "fr" -> if (value == 1) "$value résultat" else "$value résultats"
+            "de" -> if (value == 1) "$value Ergebnis" else "$value Ergebnisse"
+            "pt" -> if (value == 1) "$value resultado" else "$value resultados"
+            "nl" -> if (value == 1) "$value resultaat" else "$value resultaten"
+            "pl" -> when {
+                value == 1 -> "$value wynik"
+                value % 10 in 2..4 && value % 100 !in 12..14 -> "$value wyniki"
+                else -> "$value wyników"
+            }
+            "ro" -> if (value == 1) "$value rezultat" else "$value rezultate"
+            "el" -> if (value == 1) "$value αποτέλεσμα" else "$value αποτελέσματα"
+            "sv" -> if (value == 1) "$value resultat" else "$value resultat"
+            "da" -> if (value == 1) "$value resultat" else "$value resultater"
+            "cs" -> when {
+                value == 1 -> "$value výsledek"
+                value in 2..4 -> "$value výsledky"
+                else -> "$value výsledků"
+            }
+            "uk" -> when {
+                value % 10 == 1 && value % 100 != 11 -> "$value результат"
+                value % 10 in 2..4 && value % 100 !in 12..14 -> "$value результати"
+                else -> "$value результатів"
+            }
+            "ru" -> when {
+                value % 10 == 1 && value % 100 != 11 -> "$value результат"
+                value % 10 in 2..4 && value % 100 !in 12..14 -> "$value результата"
+                else -> "$value результатов"
+            }
+            "tr" -> "$value sonuç"
+            "ar" -> when {
+                value == 0 -> "لا نتائج"
+                value == 1 -> "نتيجة واحدة"
+                value == 2 -> "نتيجتان"
+                value % 100 in 3..10 -> "$value نتائج"
+                else -> "$value نتيجة"
+            }
+            "zh" -> "$value 个结果"
+            "ja" -> "$value 件の結果"
+            "ko" -> "결과 ${value}개"
+            "hi" -> "$value परिणाम"
+            "id" -> "$value hasil"
+            "vi" -> "$value kết quả"
+            "th" -> "$value ผลลัพธ์"
+            "fil" -> "$value resulta"
+            "he" -> if (value == 1) "תוצאה אחת" else "$value תוצאות"
+            "fi" -> if (value == 1) "$value tulos" else "$value tulosta"
+            "et" -> if (value == 1) "$value tulemus" else "$value tulemust"
+            else -> if (value == 1) "$value result" else "$value results"
+        }
+    }
+
+    fun formatGreeting(userName: String, hour: Int): String {
+        val normalizedHour = hour.coerceIn(0, 23)
+        val dayPart = when (code) {
+            "it" -> when (normalizedHour) { in 5..11 -> "Buongiorno"; in 12..17 -> "Buon pomeriggio"; in 18..22 -> "Buonasera"; else -> "Buonanotte" }
+            "es" -> when (normalizedHour) { in 5..11 -> "Buenos días"; in 12..17 -> "Buenas tardes"; in 18..22 -> "Buenas noches"; else -> "Buenas noches" }
+            "fr" -> when (normalizedHour) { in 5..11 -> "Bonjour"; in 12..17 -> "Bon après-midi"; in 18..22 -> "Bonsoir"; else -> "Bonne nuit" }
+            "de" -> when (normalizedHour) { in 5..11 -> "Guten Morgen"; in 12..17 -> "Guten Tag"; in 18..22 -> "Guten Abend"; else -> "Gute Nacht" }
+            "pt" -> when (normalizedHour) { in 5..11 -> "Bom dia"; in 12..17 -> "Boa tarde"; in 18..22 -> "Boa noite"; else -> "Boa noite" }
+            "nl" -> when (normalizedHour) { in 5..11 -> "Goedemorgen"; in 12..17 -> "Goedemiddag"; in 18..22 -> "Goedenavond"; else -> "Goedenacht" }
+            "pl" -> when (normalizedHour) { in 5..11 -> "Dzień dobry"; in 12..17 -> "Miłego popołudnia"; in 18..22 -> "Dobry wieczór"; else -> "Dobranoc" }
+            "ro" -> when (normalizedHour) { in 5..11 -> "Bună dimineața"; in 12..17 -> "Bună ziua"; in 18..22 -> "Bună seara"; else -> "Noapte bună" }
+            "el" -> when (normalizedHour) { in 5..11 -> "Καλημέρα"; in 12..17 -> "Καλό απόγευμα"; in 18..22 -> "Καλησπέρα"; else -> "Καληνύχτα" }
+            "sv" -> when (normalizedHour) { in 5..11 -> "God morgon"; in 12..17 -> "God eftermiddag"; in 18..22 -> "God kväll"; else -> "God natt" }
+            "da" -> when (normalizedHour) { in 5..11 -> "Godmorgen"; in 12..17 -> "God eftermiddag"; in 18..22 -> "Godaften"; else -> "Godnat" }
+            "cs" -> when (normalizedHour) { in 5..11 -> "Dobré ráno"; in 12..17 -> "Dobré odpoledne"; in 18..22 -> "Dobrý večer"; else -> "Dobrou noc" }
+            "uk" -> when (normalizedHour) { in 5..11 -> "Доброго ранку"; in 12..17 -> "Добрий день"; in 18..22 -> "Добрий вечір"; else -> "Добраніч" }
+            "ru" -> when (normalizedHour) { in 5..11 -> "Доброе утро"; in 12..17 -> "Добрый день"; in 18..22 -> "Добрый вечер"; else -> "Спокойной ночи" }
+            "tr" -> when (normalizedHour) { in 5..11 -> "Günaydın"; in 12..17 -> "İyi günler"; in 18..22 -> "İyi akşamlar"; else -> "İyi geceler" }
+            "ar" -> when (normalizedHour) { in 5..11 -> "صباح الخير"; in 12..17 -> "طاب مساؤك"; in 18..22 -> "مساء الخير"; else -> "تصبح على خير" }
+            "zh" -> when (normalizedHour) { in 5..11 -> "早上好"; in 12..17 -> "下午好"; in 18..22 -> "晚上好"; else -> "晚安" }
+            "ja" -> when (normalizedHour) { in 5..11 -> "おはようございます"; in 12..17 -> "こんにちは"; in 18..22 -> "こんばんは"; else -> "おやすみなさい" }
+            "ko" -> when (normalizedHour) { in 5..11 -> "좋은 아침이에요"; in 12..17 -> "좋은 오후예요"; in 18..22 -> "좋은 저녁이에요"; else -> "편안한 밤 되세요" }
+            "hi" -> when (normalizedHour) { in 5..11 -> "सुप्रभात"; in 12..17 -> "नमस्कार"; in 18..22 -> "शुभ संध्या"; else -> "शुभ रात्रि" }
+            "id" -> when (normalizedHour) { in 5..11 -> "Selamat pagi"; in 12..17 -> "Selamat siang"; in 18..22 -> "Selamat malam"; else -> "Selamat beristirahat" }
+            "vi" -> when (normalizedHour) { in 5..11 -> "Chào buổi sáng"; in 12..17 -> "Chào buổi chiều"; in 18..22 -> "Chào buổi tối"; else -> "Chúc ngủ ngon" }
+            "th" -> when (normalizedHour) { in 5..11 -> "สวัสดีตอนเช้า"; in 12..17 -> "สวัสดีตอนบ่าย"; in 18..22 -> "สวัสดีตอนเย็น"; else -> "ราตรีสวัสดิ์" }
+            "fil" -> when (normalizedHour) { in 5..11 -> "Magandang umaga"; in 12..17 -> "Magandang hapon"; in 18..22 -> "Magandang gabi"; else -> "Magandang gabi" }
+            "he" -> when (normalizedHour) { in 5..11 -> "בוקר טוב"; in 12..17 -> "צהריים טובים"; in 18..22 -> "ערב טוב"; else -> "לילה טוב" }
+            "fi" -> when (normalizedHour) { in 5..11 -> "Hyvää huomenta"; in 12..17 -> "Hyvää iltapäivää"; in 18..22 -> "Hyvää iltaa"; else -> "Hyvää yötä" }
+            "et" -> when (normalizedHour) { in 5..11 -> "Tere hommikust"; in 12..17 -> "Tere päevast"; in 18..22 -> "Tere õhtust"; else -> "Head ööd" }
+            else -> when (normalizedHour) { in 5..11 -> "Good morning"; in 12..17 -> "Good afternoon"; in 18..22 -> "Good evening"; else -> "Good night" }
+        }
+        val name = userName.trim()
+        if (name.isBlank()) return dayPart
+        val directionalName = directionalValue(name)
+        return when (code) {
+            "ar" -> "$dayPart، $directionalName"
+            "he" -> "$dayPart, $directionalName"
+            "zh" -> "$dayPart，$directionalName"
+            "ja" -> "$directionalName、$dayPart"
+            "ko" -> "${directionalName}님, $dayPart"
+            else -> "$dayPart, $directionalName"
+        }
+    }
+
+    fun localizeDownloadState(state: String): String {
+        val normalized = state.trim().uppercase()
+        val key = when (normalized) {
+            "PENDING", "QUEUED", "ENQUEUED" -> "queued"
+            "RUNNING", "DOWNLOADING" -> "downloading"
+            "PAUSED" -> "paused"
+            "FAILED" -> "failed"
+            "COMPLETED", "SUCCEEDED", "DONE" -> "completed"
+            "CANCELLED", "CANCELED" -> "cancelled"
+            else -> normalized.lowercase().replaceFirstChar { it.titlecase() }
+        }
+        val translations = when (code) {
+            "it" -> mapOf("queued" to "In coda", "downloading" to "Download in corso", "paused" to "In pausa", "failed" to "Non riuscito", "completed" to "Completato", "cancelled" to "Annullato")
+            "es" -> mapOf("queued" to "En cola", "downloading" to "Descargando", "paused" to "En pausa", "failed" to "Fallido", "completed" to "Completado", "cancelled" to "Cancelado")
+            "fr" -> mapOf("queued" to "En attente", "downloading" to "Téléchargement", "paused" to "En pause", "failed" to "Échec", "completed" to "Terminé", "cancelled" to "Annulé")
+            "de" -> mapOf("queued" to "In Warteschlange", "downloading" to "Wird heruntergeladen", "paused" to "Pausiert", "failed" to "Fehlgeschlagen", "completed" to "Abgeschlossen", "cancelled" to "Abgebrochen")
+            "pt" -> mapOf("queued" to "Na fila", "downloading" to "A transferir", "paused" to "Em pausa", "failed" to "Falhou", "completed" to "Concluído", "cancelled" to "Cancelado")
+            "nl" -> mapOf("queued" to "In wachtrij", "downloading" to "Downloaden", "paused" to "Gepauzeerd", "failed" to "Mislukt", "completed" to "Voltooid", "cancelled" to "Geannuleerd")
+            "pl" -> mapOf("queued" to "W kolejce", "downloading" to "Pobieranie", "paused" to "Wstrzymano", "failed" to "Niepowodzenie", "completed" to "Ukończono", "cancelled" to "Anulowano")
+            "ro" -> mapOf("queued" to "În așteptare", "downloading" to "Se descarcă", "paused" to "În pauză", "failed" to "Eșuat", "completed" to "Finalizat", "cancelled" to "Anulat")
+            "el" -> mapOf("queued" to "Σε αναμονή", "downloading" to "Γίνεται λήψη", "paused" to "Σε παύση", "failed" to "Απέτυχε", "completed" to "Ολοκληρώθηκε", "cancelled" to "Ακυρώθηκε")
+            "sv" -> mapOf("queued" to "I kö", "downloading" to "Laddar ned", "paused" to "Pausad", "failed" to "Misslyckades", "completed" to "Slutförd", "cancelled" to "Avbruten")
+            "da" -> mapOf("queued" to "I kø", "downloading" to "Downloader", "paused" to "Sat på pause", "failed" to "Mislykkedes", "completed" to "Fuldført", "cancelled" to "Annulleret")
+            "cs" -> mapOf("queued" to "Ve frontě", "downloading" to "Stahování", "paused" to "Pozastaveno", "failed" to "Selhalo", "completed" to "Dokončeno", "cancelled" to "Zrušeno")
+            "uk" -> mapOf("queued" to "У черзі", "downloading" to "Завантаження", "paused" to "Призупинено", "failed" to "Помилка", "completed" to "Завершено", "cancelled" to "Скасовано")
+            "ru" -> mapOf("queued" to "В очереди", "downloading" to "Загрузка", "paused" to "Приостановлено", "failed" to "Ошибка", "completed" to "Завершено", "cancelled" to "Отменено")
+            "tr" -> mapOf("queued" to "Sırada", "downloading" to "İndiriliyor", "paused" to "Duraklatıldı", "failed" to "Başarısız", "completed" to "Tamamlandı", "cancelled" to "İptal edildi")
+            "ar" -> mapOf("queued" to "في قائمة الانتظار", "downloading" to "جارٍ التنزيل", "paused" to "متوقف مؤقتًا", "failed" to "فشل", "completed" to "مكتمل", "cancelled" to "ملغى")
+            "zh" -> mapOf("queued" to "排队中", "downloading" to "正在下载", "paused" to "已暂停", "failed" to "失败", "completed" to "已完成", "cancelled" to "已取消")
+            "ja" -> mapOf("queued" to "待機中", "downloading" to "ダウンロード中", "paused" to "一時停止中", "failed" to "失敗", "completed" to "完了", "cancelled" to "キャンセル済み")
+            "ko" -> mapOf("queued" to "대기 중", "downloading" to "다운로드 중", "paused" to "일시 중지됨", "failed" to "실패", "completed" to "완료", "cancelled" to "취소됨")
+            "hi" -> mapOf("queued" to "कतार में", "downloading" to "डाउनलोड हो रहा है", "paused" to "रुका हुआ", "failed" to "विफल", "completed" to "पूरा", "cancelled" to "रद्द")
+            "id" -> mapOf("queued" to "Dalam antrean", "downloading" to "Mengunduh", "paused" to "Dijeda", "failed" to "Gagal", "completed" to "Selesai", "cancelled" to "Dibatalkan")
+            "vi" -> mapOf("queued" to "Đang chờ", "downloading" to "Đang tải xuống", "paused" to "Đã tạm dừng", "failed" to "Thất bại", "completed" to "Hoàn tất", "cancelled" to "Đã hủy")
+            "th" -> mapOf("queued" to "อยู่ในคิว", "downloading" to "กำลังดาวน์โหลด", "paused" to "หยุดชั่วคราว", "failed" to "ล้มเหลว", "completed" to "เสร็จสิ้น", "cancelled" to "ยกเลิกแล้ว")
+            "fil" -> mapOf("queued" to "Nasa queue", "downloading" to "Nagda-download", "paused" to "Naka-pause", "failed" to "Nabigo", "completed" to "Kumpleto", "cancelled" to "Kinansela")
+            "he" -> mapOf("queued" to "בתור", "downloading" to "מוריד", "paused" to "מושהה", "failed" to "נכשל", "completed" to "הושלם", "cancelled" to "בוטל")
+            "fi" -> mapOf("queued" to "Jonossa", "downloading" to "Ladataan", "paused" to "Tauotettu", "failed" to "Epäonnistui", "completed" to "Valmis", "cancelled" to "Peruutettu")
+            "et" -> mapOf("queued" to "Järjekorras", "downloading" to "Allalaadimine", "paused" to "Peatatud", "failed" to "Ebaõnnestus", "completed" to "Valmis", "cancelled" to "Tühistatud")
+            else -> mapOf("queued" to "Queued", "downloading" to "Downloading", "paused" to "Paused", "failed" to "Failed", "completed" to "Completed", "cancelled" to "Cancelled")
+        }
+        return translations[key] ?: key
+    }
+
+    fun formatResumeDownload(title: String): String = "$resumeDownload ${directionalValue(title)}"
+
+    fun formatPauseDownload(title: String): String = "$pauseDownload ${directionalValue(title)}"
+
+    companion object {
+        private val requiredKeys = setOf("welcomeBadge", "welcomeTitle", "languageQuestion", "nameQuestion", "namePlaceholder", "tasteQuestion", "skipAndContinue", "startListening", "settings", "settingsSubtitle", "design", "playback", "preferences", "app", "animations", "animationsSubtitle", "dynamicColor", "dynamicColorSubtitle", "sponsorBlock", "sponsorBlockSubtitle", "skipSilence", "skipSilenceSubtitle", "redoQuestionnaire", "redoQuestionnaireSubtitle", "language", "languageSubtitle", "home", "search", "library", "player", "queue", "lyrics", "related", "song", "video", "nowPlaying", "emptyPlayer", "phoneSpeaker", "connected", "volume", "audioQuality", "done", "queueEmpty", "lyricsUnavailable", "synced", "libraryTitle", "librarySubtitle", "playlists", "newItem", "downloads", "favorites", "recent", "quickPicks", "play", "newReleases", "albumsForYou", "top50Unavailable", "artists", "albumsAndSingles", "songs", "searchPlaceholder", "back", "clear", "voice", "createPlaylistHint", "selectLanguagePrompt", "explore", "exploreTitle", "exploreSubtitle", "exploreMoods", "exploreSamples", "exploreSamplesSubtitle", "exploreSamplesError", "exploreSamplesRetry", "exploreFresh", "exploreNewVideos", "exploreEmpty", "localWaveName", "localWaveEmoji", "localWaveQuery", "exploreNewReleases", "exploreRapDrill", "exploreElectronic", "explorePopGlobal", "exploreRnbSoul", "exploreRockAlt", "exploreLatino", "exploreLofiChill", "exploreJpopAnime", "followArtist", "followingArtist", "releaseRadar", "similarArtists", "similarToFollowed", "theme", "themeSubtitle", "personalOrbitTitle", "personalOrbitSubtitle", "voicesTitle", "voicesSubtitle", "totalComments", "engagement", "audioEngine", "audioEngineSubtitle", "equalizer", "equalizerSubtitle", "preset", "bassBoost", "virtualizer", "crossfade", "djSoft", "replayGain", "tempo", "pitch", "gapless", "restartRequiredTitle", "restartRequiredBody", "restartNow", "later", "audioQualityAuto", "audioQualityHigh", "audioQualityLow", "pulseSectionBand", "pulseTitle", "pulseSubtitle", "followedArtistsTitle", "followedArtistsSubtitle", "listeningHistoryEmptyTitle", "listeningHistoryEmptyDetail", "pulseMinutes", "pulseMinuteShort", "pulsePlays", "pulseStreak", "pulseCompletion", "pulseTopArtists", "pulseWeek", "pulsePeakHour", "pulseEmpty", "listeningHistory", "listeningHistorySubtitle", "listeningPrompt", "voiceSearchUnsupported", "musicFiltersComingSoon", "recentSearches", "actions", "removeFromFavorites", "addToFavorites", "playNext", "addToQueue", "addToPlaylist", "alreadyOffline", "download", "openArtist", "openAlbum", "deleteDownload", "share", "shareSong", "removeFromRecentSearches", "songOptions", "goToPlayer", "saveOffline", "favorite", "downloaded", "remove", "youMightAlsoLike", "topResult", "currentlyPlaying", "artistLabel", "playNow", "biography", "newUpdate", "updateDescription", "whatsNew", "update", "updateRetry", "updateDownloading", "updatePreparing", "updateInstalling", "updateReadyToInstall", "updateFailed", "updateAllowInstalls", "updateLinkUnavailable", "cannotOpenDownload", "externalLinkUnavailable", "cannotOpenExternalLink", "continuousRadio", "continuousRadioSubtitle", "artistsLabelPlural", "albumMood", "openLyricsAnalysis", "closeLyrics", "lyricsDuet", "lyricsCinema", "lyricsPage", "lyricsRomanization", "lyricsCompact", "changeLyrics", "automaticLyrics", "selectVerses", "copyVerses", "shareVerses", "lyricsVersions", "lyricsSections", "lyricsSectionIntro", "lyricsSectionVerse", "lyricsSectionPreChorus", "lyricsSectionChorus", "lyricsSectionBridge", "lyricsSectionInstrumental", "lyricsSectionOutro", "automaticTranslation", "automaticTranslationSubtitle", "atmosphere", "themes", "chorusDetected", "goToChorus", "close", "complete", "delete", "newPlaylist", "playlistName", "create", "cancel", "newPlaylistName", "createNewPlaylist", "createAndAdd", "downloadPlaylist", "playAll", "playingFrom", "closePlayer", "options", "showLyrics", "shuffle", "previous", "next", "repeat", "persistentQueue", "continueListening", "favoritesPlain", "offline", "more", "mix", "mixForYou", "genres", "smartMusicProfile", "flow", "pictureInPicture", "discoveryFlow", "shareDiagnostics", "albumUnavailable", "albumTracksUnavailable", "showLess", "showMore", "playing", "artistProfileUnavailable", "popularTracks", "showAll", "versionLabel", "generalImprovements", "historyLabel", "undoRemoval", "lyricsAnalysis", "linesLabel", "wordsLabel", "localAnalysis", "open", "newRelease", "newReleaseSubtitle", "saved", "save", "noOfflineDownloads", "createFirstPlaylist", "createFirstPlaylistSubtitle", "downloadTrackHint", "savedTracks", "favoritesEmpty", "playlistEmpty", "showPersonalListening", "showRecentReleases", "showRecommendedAlbums", "showDiscoveredArtists", "showChartsCountry", "partialDownloadResume", "lyricsAnalysisSection", "lyricsAnalysisCompact", "lyricsAnalysisCompactSubtitle", "createDataBackup", "createDataBackupSubtitle", "updateAvailable", "updates", "checkingLatestVersion", "latestVersionReady", "latestInstalled", "checkNewVersions", "releasePageReady", "installedVersion", "openPlayer", "searchSongsArtists", "songsPlain", "shareVia", "emptySearchPrompt", "cancelDownload", "readAll", "singlesAndEps", "tapHeartToAdd", "all", "automaticResume", "simultaneousDownloads", "simultaneousDownloadsSubtitle", "backupRestoreSection", "restoreBackup", "restoreBackupSubtitle", "playbackResilienceSection", "exportSafeDiagnostics", "generateResolverTrace", "safeDiagnosticsSubtitle", "check", "checking", "dragToReorder", "homeInterfaceSection", "compactHome", "compactHomeSubtitle", "yourOrbitSetting", "voicesSetting", "voicesSettingSubtitle", "newReleasesSetting", "albumsForYouSetting", "trendingArtists", "top50Charts", "mobilePlayerSection", "advancedGestures", "advancedGesturesSubtitle", "pureBlack", "pureBlackSubtitle", "hapticFeedback", "hapticFeedbackSubtitle", "doubleTapSeek", "doubleTapSeekSubtitle", "longPress", "longPressSubtitle", "downloadEngineSection", "wifiOnly", "wifiOnlySubtitle", "chargingOnly", "chargingOnlySubtitle", "resumeDownload", "pauseDownload", "signedApkReady", "downloadsInProgress", "downloadInProgress", "newAlbums", "newSingles", "newAlbum", "downloadsFolder", "offlineDownloadsPlain", "personalPlaylists", "searchingYouTubeMusic", "searchingLyrics", "pause", "newSingle", "albumsPlain", "albumPlain", "singlePlain", "playlistsPlain", "profileActive", "profileLearning", "newBadge", "brightness", "timer", "normalizationShort", "coverAndTags", "madeWithBy", "activeIndicator", "batteryUnrestricted", "batteryUnrestrictedSubtitle", "batteryUnrestrictedActive", "levyraSelection", "releasedToday", "justReleased", "chartTrending", "selectedForYou", "availableToday", "releasedThisWeek", "popularInCharts", "collectionsTitle", "collectionsSubtitle", "collectionFresh", "collectionLocal", "collectionWorkout", "collectionChill", "collectionFocus", "collectionParty", "collectionRap", "collectionPop", "collectionDiscovery", "collectionUpdatedToday", "collectionEditorial", "collectionCharts", "collectionRepeat", "collectionThrowback", "collectionGems", "downloadQualityPreset", "downloadQualityPresetSubtitle", "downloadPresetAutomatic", "downloadPresetHighQuality", "downloadPresetDataSaver", "downloadFolderOrganization", "downloadFolderOrganizationSubtitle", "downloadFolderArtist", "downloadFolderArtistAlbum", "downloadSpeedLimit", "downloadSpeedLimitSubtitle", "downloadSpeedUnlimited", "downloadEmbedMetadata", "downloadEmbedMetadataSubtitle", "downloadEmbedArtwork", "downloadEmbedArtworkSubtitle", "downloadVerifyFile", "downloadVerifyFileSubtitle", "downloadSkipDuplicates", "downloadSkipDuplicatesSubtitle", "trailTitle", "trailPlays", "trailUnique", "trailLastPlayed", "statPlays", "statArtists", "statTracks", "introHeadline", "introBody", "introFeatureSound", "introFeatureLyrics", "introFeatureOffline", "introStart", "expandPlayer", "collapsePlayer", "lyricsFocus")
+        private val motionArtworkKeys = setOf("motionArtwork", "motionArtworkSubtitle")
+        private val exploreSectionKeys = setOf("exploreMoodSection", "exploreAfrobeats")
+        private val freshCurrentsKeys = setOf("freshScopeWorld", "freshMomentTitle")
+        private val audioOutputKeys = setOf("audioOutputAaudio", "audioOutputAaudioSubtitle")
+        private val audioKeys = setOf(
+            "audioSectionQuality",
+            "audioSectionEqualizer",
+            "audioSectionSpatial",
+            "audioSectionDynamics",
+            "audioSectionPlayback",
+            "audioResetEqualizer",
+            "audioPresetCustom",
+            "audioBands"
+        )
+        private val autoEqKeys = setOf(
+            "autoEqImport",
+            "autoEqImportHint",
+            "autoEqPickFile",
+            "autoEqApply",
+            "autoEqSavePreset",
+            "autoEqPresetName",
+            "autoEqInvalidProfile",
+            "autoEqInputTooLarge",
+            "autoEqAdjustedNotice",
+            "autoEqCatalog",
+            "autoEqCatalogHint",
+            "autoEqCatalogSearch",
+            "autoEqCatalogLoading",
+            "autoEqCatalogEmpty",
+            "autoEqCatalogUnavailable",
+            "autoEqCatalogProfileFailed",
+            "autoEqCatalogRetry",
+            "autoEqCatalogAttribution"
+        )
+        private val insightKeys = setOf(
+            "artworkPreview",
+            "saveArtwork",
+            "artworkSaved",
+            "artworkSaveFailed",
+            "pulseRhythm",
+            "lyricsCalibrate"
+        )
+
+        private val lyricsOffsetKeys = setOf(
+            "lyricsOffsetEarlier",
+            "lyricsOffsetLater",
+            "lyricsOffsetReset"
+        )
+
+        private val playbackTileKeys = setOf(
+            "playbackTileLabel",
+            "playbackPaused",
+            "playbackTileIdle"
+        )
+
+        private val canvasKeys = setOf(
+            "canvasQuality",
+            "canvasQualitySubtitle",
+            "canvasSource",
+            "canvasSourceSubtitle",
+            "canvasSourceCommunity",
+            "motionArtworkWifiOnly",
+            "motionArtworkWifiOnlySubtitle",
+            "sharePlaylist",
+            "enhanceVideoMetadata",
+            "enhanceVideoMetadataSubtitle",
+            "recognizeMusic"
+        )
+
+        private val systemActionKeys = setOf(
+            "sleepTimer",
+            "sleepTimerEndOfTrack",
+            "sleepTimerCancel",
+            "sleepTimerCancelled",
+            "sleepTimerRemaining",
+            "recognitionListening",
+            "recognitionProcessing",
+            "recognitionTapToListen"
+        )
+
+        private val recognitionKeys = setOf(
+            "recognitionTitle",
+            "recognitionSubtitle",
+            "recognitionListenMicrophone",
+            "recognitionListenDevice",
+            "recognitionCancelAction",
+            "recognitionNoMatch",
+            "recognitionFailed",
+            "recognitionPermissionRequired",
+            "recognitionUnavailable",
+            "recognitionHistoryEmpty",
+            "recognitionClearHistory",
+            "recognitionCatalogMatch",
+            "recognitionCatalogMissing"
+        )
+
+        private val jamKeys = setOf(
+            "jamTitle",
+            "jamSubtitle",
+            "jamCreate",
+            "jamJoin",
+            "jamLeave",
+            "jamEnd",
+            "jamSessionCode",
+            "jamCodeHint",
+            "jamParticipants",
+            "jamPermissions",
+            "jamPermissionHostOnly",
+            "jamPermissionAddSongs",
+            "jamPermissionCollaborative",
+            "jamDisplayName",
+            "jamRoleHost",
+            "jamRoleGuest",
+            "jamConnecting",
+            "jamDisconnected",
+            "jamInvalidCode",
+            "jamConnectionFailed",
+            "jamNotAuthorized",
+            "jamHostEnded",
+            "jamLocalNetworkOnly"
+        )
+
+        private val networkKeys = setOf(
+            "networkTitle",
+            "networkSubtitle",
+            "networkDns",
+            "networkDnsSystem",
+            "networkDnsCustom",
+            "networkCustomDohUrl",
+            "networkProxy",
+            "networkProxyDisabled",
+            "networkProxyHost",
+            "networkProxyPort",
+            "networkProxyAuthentication",
+            "networkProxyUsername",
+            "networkProxyPassword",
+            "networkBypassStreams",
+            "networkBypassStreamsSubtitle",
+            "networkRestrictedCompatibility",
+            "networkRestrictedCompatibilitySubtitle",
+            "networkByeDpi",
+            "networkByeDpiSubtitle",
+            "networkYoutubeRegionProfile",
+            "networkYoutubeRegionProfileSubtitle",
+            "networkTest",
+            "networkTestSuccess",
+            "networkTestDnsFailed",
+            "networkTestProxyAuthFailed",
+            "networkTestTimeout",
+            "networkTestRefused",
+            "networkTestTls",
+            "networkTestInvalid",
+            "networkTestUnknown",
+            "networkErrorProxyHost",
+            "networkErrorProxyPort",
+            "networkErrorProxyCredentials",
+            "networkErrorDohUrl",
+            "networkApplied"
+        )
+
+        private val recapKeys = setOf(
+            "listeningRecap",
+            "recapSubtitle",
+            "recapPeriod7Days",
+            "recapPeriod30Days",
+            "recapPeriod365Days",
+            "recapPeriodAllTime",
+            "topTracksTitle",
+            "topArtistsTitle",
+            "topAlbumsTitle",
+            "highlightsTitle",
+            "streakHighlight",
+            "favoriteTimeHighlight",
+            "mostActiveDayHighlight",
+            "replayHighlight",
+            "discoveryHighlight",
+            "emptyRecapTitle",
+            "emptyRecapSubtitle",
+            "openRecap",
+            "pulseProPeak",
+            "pulseProAverage",
+            "pulseProActivity",
+            "daypartMorning",
+            "daypartAfternoon",
+            "daypartEvening",
+            "daypartNight",
+            "recapStreakMax",
+            "recapUnitDays",
+            "recapUnitHours",
+            "recapUnitMinutes",
+            "recapRecentActivity",
+            "recapActivityLast30Days",
+            "recapCompletionRate",
+            "recapRepeatLabel"
+        )
+
+        private val integrationKeys = setOf(
+            "integrations",
+            "apiKeyLabel",
+            "sharedSecretLabel",
+            "credentialTokenLabel",
+            "lastFmApprovalHint",
+            "subtitlesOff",
+            "subtitlesLabel"
+        )
+
+        private val values: Map<String, LevyraStrings> by lazy(LazyThreadSafetyMode.PUBLICATION) {
+            mapOf(
+                "en" to bundle("en", enEntries()),
+                "it" to bundle("it", itEntries()),
+                "es" to bundle("es", esEntries()),
+                "fr" to bundle("fr", frEntries()),
+                "de" to bundle("de", deEntries()),
+                "pt" to bundle("pt", ptEntries()),
+                "nl" to bundle("nl", nlEntries()),
+                "pl" to bundle("pl", plEntries()),
+                "ro" to bundle("ro", roEntries()),
+                "el" to bundle("el", elEntries()),
+                "sv" to bundle("sv", svEntries()),
+                "da" to bundle("da", daEntries()),
+                "cs" to bundle("cs", csEntries()),
+                "uk" to bundle("uk", ukEntries()),
+                "ru" to bundle("ru", ruEntries()),
+                "tr" to bundle("tr", trEntries()),
+                "ar" to bundle("ar", arEntries()),
+                "zh" to bundle("zh", zhEntries()),
+                "ja" to bundle("ja", jaLocalizationEntries()),
+                "ko" to bundle("ko", koLocalizationEntries()),
+                "hi" to bundle("hi", hiLocalizationEntries()),
+                "id" to bundle("id", idLocalizationEntries()),
+                "vi" to bundle("vi", viLocalizationEntries()),
+                "th" to bundle("th", thLocalizationEntries()),
+                "fil" to bundle("fil", filLocalizationEntries()),
+                "he" to bundle("he", heLocalizationEntries()),
+                "fi" to bundle("fi", fiLocalizationEntries()),
+                "et" to bundle("et", etLocalizationEntries()),
+                "zh-Hant" to bundle("zh-Hant", enEntries() + newLocaleCoreOverrides("zh-Hant")),
+                "hu" to bundle("hu", enEntries() + newLocaleCoreOverrides("hu")),
+                "bg" to bundle("bg", enEntries() + newLocaleCoreOverrides("bg")),
+                "nb" to bundle("nb", enEntries() + newLocaleCoreOverrides("nb")),
+                "ca" to bundle("ca", enEntries() + newLocaleCoreOverrides("ca")),
+                "hr" to bundle("hr", enEntries() + newLocaleCoreOverrides("hr")),
+                "sk" to bundle("sk", enEntries() + newLocaleCoreOverrides("sk")),
+                "ms" to bundle("ms", enEntries() + newLocaleCoreOverrides("ms")),
+                "fa" to bundle("fa", enEntries() + newLocaleCoreOverrides("fa"))
+            )
+        }
+
+        private fun bundle(code: String, entries: Map<String, String>): LevyraStrings {
+            val resolvedEntries = entries + profileLocalizationEntries(code) + freshCurrentsLocalizationEntries(code) + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + lyricsShareLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + audioOutputLocalizationEntries(code) + alternativeAudioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + jamModerationLocalizationEntries(code) + ambientModeLocalizationEntries(code) + themeStudioLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + downloadLocationLocalizationEntries(code) + similarSongsLocalizationEntries(code) + playerVisualLocalizationEntries(code) + playerDeckLocalizationEntries(code) + playerGestureLocalizationEntries(code) + playlistStudioLocalizationEntries(code) + queueSelectionLocalizationEntries(code) + librarySortLocalizationEntries(code) + offlineHomeLocalizationEntries(code) + recapLocalizationEntries(code) + listeningInsightsLocalizationEntries(code) + queueSpaceLocalizationEntries(code) + localLibraryLocalizationEntries(code) + localTagLocalizationEntries(code) + playbackTileLocalizationEntries(code) + visualPerformanceLocalizationEntries(code) + liquidGlassLocalizationEntries(code) + videoQualityLocalizationEntries(code) + lyricsProviderPriorityLocalizationEntries(code) + mixLabLocalizationEntries(code) + chartMarketLocalizationEntries(code) + homeSoundtrackLocalizationEntries(code) + settingsSearchLocalizationEntries(code) + liveUpdateLocalizationEntries(code)
+            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + profileKeys + motionArtworkKeys + exploreSectionKeys + freshCurrentsKeys + canvasKeys + audioKeys + audioOutputKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + jamModerationKeys + ambientModeKeys + themeStudioKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playerGestureKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys + localTagKeys + lyricsOffsetKeys + playbackTileKeys + visualPerformanceKeys + liquidGlassKeys + videoQualityKeys + lyricsProviderPriorityKeys + mixLabKeys + chartMarketKeys + homeSoundtrackKeys + lyricsShareKeys + settingsSearchKeys + liveUpdateKeys
+            require(resolvedEntries.keys == allRequiredKeys) {
+                "Invalid localization bundle $code: missing=${allRequiredKeys - resolvedEntries.keys}, extra=${resolvedEntries.keys - allRequiredKeys}"
+            }
+            return LevyraStrings(code, resolvedEntries)
+        }
+
+        fun forCode(code: String): LevyraStrings = values[LevyraLanguageCatalog.normalize(code)] ?: values.getValue("en")
+
+        fun all(): List<LevyraStrings> = LevyraLanguageCatalog.languages.map { forCode(it.code) }
+
+        fun supportedCodes(): Set<String> = values.keys
+
+        private fun enEntries(): Map<String, String> = mapOf(
+            "welcomeBadge" to "Welcome",
+            "welcomeTitle" to "Let's start.",
+            "languageQuestion" to "Your language?",
+            "nameQuestion" to "What is your name?",
+            "namePlaceholder" to "Your name...",
+            "tasteQuestion" to "Choose 3 or more genres you love.",
+            "skipAndContinue" to "Skip and continue",
+            "startListening" to "Start listening",
+            "settings" to "Settings",
+            "settingsSubtitle" to "Customize LEVYRA",
+            "design" to "DESIGN",
+            "playback" to "PLAYBACK",
+            "preferences" to "PREFERENCES",
+            "app" to "APP",
+            "animations" to "Animations",
+            "animationsSubtitle" to "Effects, transitions and card press feedback",
+            "motionArtwork" to "Player Canvas",
+            "motionArtworkSubtitle" to "Show artist videos; turn off to always use the album cover",
+            "dynamicColor" to "Dynamic color",
+            "dynamicColorSubtitle" to "Background and accents from the current cover",
+            "sponsorBlock" to "SponsorBlock",
+            "sponsorBlockSubtitle" to "Automatically skip sponsors and non-music parts",
+            "skipSilence" to "Skip silence",
+            "skipSilenceSubtitle" to "Compress silent pauses in tracks",
+            "redoQuestionnaire" to "Redo taste questionnaire",
+            "redoQuestionnaireSubtitle" to "Choose your favorite genres again",
+            "language" to "Language",
+            "languageSubtitle" to "Change the app language",
+            "home" to "Home",
+            "search" to "Search",
+            "library" to "Library",
+            "player" to "Player",
+            "queue" to "Queue",
+            "lyrics" to "Lyrics",
+            "related" to "Related",
+            "song" to "Song",
+            "video" to "Video",
+            "nowPlaying" to "NOW PLAYING",
+            "emptyPlayer" to "Search for a song and press play",
+            "phoneSpeaker" to "Phone speaker",
+            "connected" to "Connected",
+            "volume" to "Volume",
+            "audioQuality" to "Audio quality",
+            "done" to "Done",
+            "queueEmpty" to "The queue is empty.",
+            "lyricsUnavailable" to "Lyrics are not available for this track.",
+            "synced" to "Synced",
+            "libraryTitle" to "Library",
+            "librarySubtitle" to "Playlists, favorites, downloads and history",
+            "playlists" to "Your playlists",
+            "newItem" to "New",
+            "downloads" to "Offline downloads",
+            "favorites" to "Favorites",
+            "recent" to "Recently found",
+            "quickPicks" to "Quick Picks",
+            "play" to "Play",
+            "newReleases" to "New Releases",
+            "albumsForYou" to "Recommended Albums",
+            "top50Unavailable" to "Top 50 not available, try again later",
+            "artists" to "Artists",
+            "albumsAndSingles" to "Albums and singles",
+            "songs" to "Songs",
+            "searchPlaceholder" to "Search songs, artists and...",
+            "back" to "Back",
+            "clear" to "Clear",
+            "voice" to "Voice",
+            "createPlaylistHint" to "Create a playlist and add your favorite songs",
+            "selectLanguagePrompt" to "Select a language",
+            "explore" to "Explore",
+            "exploreTitle" to "Explore",
+            "exploreSubtitle" to "Discover new music, trends and videos",
+            "exploreFresh" to "Fresh currents",
+            "exploreNewVideos" to "New music videos",
+            "exploreEmpty" to "No signal from this zone right now, try another one",
+            "localWaveName" to "Local Wave",
+            "localWaveEmoji" to "🌐",
+            "localWaveQuery" to "new local songs 2026",
+            "exploreNewReleases" to "New releases",
+            "exploreRapDrill" to "Rap & Drill",
+            "exploreElectronic" to "Electronic",
+            "explorePopGlobal" to "Pop Global",
+            "exploreRnbSoul" to "R&B / Soul",
+            "exploreRockAlt" to "Rock & Alt",
+            "exploreLatino" to "Latino",
+            "exploreLofiChill" to "Lo-Fi / Chill",
+            "exploreJpopAnime" to "J-Pop / Anime",
+            "followArtist" to "Follow",
+            "followingArtist" to "Following",
+            "releaseRadar" to "Release Radar",
+            "similarArtists" to "Similar artists",
+            "similarToFollowed" to "Similar to artists you follow",
+            "theme" to "Theme",
+            "themeSubtitle" to "Choose your LEVYRA look",
+            "personalOrbitTitle" to "Your orbit",
+            "personalOrbitSubtitle" to "The songs that always come back to you",
+            "voicesTitle" to "Voices that resonate",
+            "voicesSubtitle" to "The most commented tracks, seen as living energy",
+            "totalComments" to "Total comments",
+            "engagement" to "Engagement",
+            "audioEngine" to "Audio",
+            "audioEngineSubtitle" to "Equalizer, crossfade, loudness, tempo, pitch and gapless",
+            "equalizer" to "Equalizer",
+            "equalizerSubtitle" to "Real effects with presets, bass boost and virtualizer",
+            "preset" to "Preset",
+            "bassBoost" to "Bass boost",
+            "virtualizer" to "Virtualizer",
+            "crossfade" to "Crossfade",
+            "djSoft" to "DJ soft mode",
+            "replayGain" to "ReplayGain / smart loudness",
+            "tempo" to "Tempo",
+            "pitch" to "Pitch",
+            "gapless" to "Gapless",
+            "restartRequiredTitle" to "Restart LEVYRA?",
+            "restartRequiredBody" to "The language has been saved. Restart the app now to reload every screen cleanly.",
+            "restartNow" to "Restart now",
+            "later" to "Later",
+            "audioQualityAuto" to "Auto",
+            "audioQualityHigh" to "High",
+            "audioQualityLow" to "Low",
+            "pulseSectionBand" to "Your stats",
+            "pulseTitle" to "Listening Pulse",
+            "pulseSubtitle" to "Private stats, computed only on this device",
+            "followedArtistsTitle" to "Followed artists",
+            "followedArtistsSubtitle" to "The artists you keep close",
+            "listeningHistoryEmptyTitle" to "No listens yet",
+            "listeningHistoryEmptyDetail" to "Play a track and your history builds itself here.",
+            "pulseMinutes" to "Minutes",
+            "pulseMinuteShort" to "min",
+            "pulsePlays" to "Plays",
+            "pulseStreak" to "Day streak",
+            "pulseCompletion" to "Completion",
+            "pulseTopArtists" to "Top artists",
+            "pulseWeek" to "Last 7 days",
+            "pulsePeakHour" to "Peak hour",
+            "pulseEmpty" to "Play something to light up your Pulse",
+            "listeningHistory" to "Listening history",
+            "listeningHistorySubtitle" to "What you actually played",
+            "listeningPrompt" to "Listening...",
+            "voiceSearchUnsupported" to "Voice search is not supported",
+            "musicFiltersComingSoon" to "Music filters are coming soon!",
+            "recentSearches" to "Recent searches",
+            "actions" to "Actions",
+            "removeFromFavorites" to "Remove from favorites",
+            "addToFavorites" to "Add to favorites",
+            "playNext" to "Play next",
+            "addToQueue" to "Add to queue",
+            "addToPlaylist" to "Add to playlist",
+            "alreadyOffline" to "Already offline",
+            "download" to "Download",
+            "openArtist" to "Open artist",
+            "openAlbum" to "Open album",
+            "deleteDownload" to "Delete download",
+            "share" to "Share",
+            "shareSong" to "Share song",
+            "removeFromRecentSearches" to "Remove from recent searches",
+            "songOptions" to "Song options",
+            "goToPlayer" to "Go to player",
+            "saveOffline" to "Save offline",
+            "favorite" to "Favorite",
+            "downloaded" to "Downloaded",
+            "remove" to "Remove",
+            "removeFromPlaylist" to "Remove from playlist",
+            "youMightAlsoLike" to "You might also like",
+            "topResult" to "Top result",
+            "currentlyPlaying" to "Now playing",
+            "artistLabel" to "Artist",
+            "playNow" to "Play now",
+            "biography" to "Biography",
+            "newUpdate" to "NEW UPDATE",
+            "updateDescription" to "A more compact screen, a clearer changelog and scrollable content on every display.",
+            "whatsNew" to "What's new",
+            "update" to "Update",
+            "updateRetry" to "Retry",
+            "updateDownloading" to "Downloading update",
+            "updatePreparing" to "Preparing update",
+            "updateInstalling" to "Installing",
+            "updateReadyToInstall" to "Ready to install",
+            "updateFailed" to "Update failed",
+            "updateAllowInstalls" to "Allow installs to continue",
+            "updateLinkUnavailable" to "Update link unavailable",
+            "cannotOpenDownload" to "Unable to open the download",
+            "externalLinkUnavailable" to "External link unavailable",
+            "cannotOpenExternalLink" to "Unable to open the external link",
+            "continuousRadio" to "Continuous radio",
+            "continuousRadioSubtitle" to "Adds matching songs as the queue is running out",
+            "artistsLabelPlural" to "Artists",
+            "albumMood" to "Album mood",
+            "openLyricsAnalysis" to "Open lyrics analysis",
+            "closeLyrics" to "Close lyrics",
+            "lyricsDuet" to "Duet",
+            "lyricsCinema" to "Cinema",
+            "lyricsPage" to "Page",
+            "lyricsRomanization" to "Romanization",
+            "lyricsCompact" to "Compact",
+            "lyricsSections" to "Song sections",
+            "lyricsSectionIntro" to "Intro",
+            "lyricsSectionVerse" to "Verse",
+            "lyricsSectionPreChorus" to "Pre-chorus",
+            "lyricsSectionChorus" to "Chorus",
+            "lyricsSectionBridge" to "Bridge",
+            "lyricsSectionInstrumental" to "Instrumental",
+            "lyricsSectionOutro" to "Outro",
+            "automaticTranslation" to "Automatic translation",
+            "automaticTranslationSubtitle" to "Uses the languages available in YouTube transcripts",
+            "atmosphere" to "Atmosphere",
+            "themes" to "Themes",
+            "chorusDetected" to "Chorus detected",
+            "goToChorus" to "Go to chorus",
+            "close" to "Close",
+            "complete" to "Complete",
+            "delete" to "Delete",
+            "newPlaylist" to "New playlist",
+            "playlistName" to "Playlist name",
+            "create" to "Create",
+            "cancel" to "Cancel",
+            "newPlaylistName" to "New playlist name",
+            "createNewPlaylist" to "Create new playlist",
+            "createAndAdd" to "Create and add",
+            "downloadPlaylist" to "Download playlist",
+            "playAll" to "Play all",
+            "playingFrom" to "PLAYING FROM",
+            "closePlayer" to "Close player",
+            "options" to "Options",
+            "showLyrics" to "Show lyrics",
+            "shuffle" to "Shuffle",
+            "previous" to "Previous",
+            "next" to "Next",
+            "repeat" to "Repeat",
+            "persistentQueue" to "Persistent queue",
+            "continueListening" to "Continue listening",
+            "favoritesPlain" to "Favorites",
+            "offline" to "Offline",
+            "more" to "More",
+            "mix" to "Mix",
+            "mixForYou" to "Mix for you",
+            "genres" to "Genres",
+            "smartMusicProfile" to "Smart Music Profile",
+            "flow" to "Flow",
+            "pictureInPicture" to "Picture in Picture",
+            "discoveryFlow" to "DISCOVERY FLOW",
+            "shareDiagnostics" to "Share diagnostics",
+            "albumUnavailable" to "Album unavailable",
+            "albumTracksUnavailable" to "Album tracks unavailable",
+            "showLess" to "Show less",
+            "showMore" to "Show more",
+            "playing" to "Playing",
+            "artistProfileUnavailable" to "Artist profile unavailable",
+            "popularTracks" to "Popular tracks",
+            "showAll" to "Show all",
+            "versionLabel" to "Version",
+            "generalImprovements" to "General improvements and bug fixes.",
+            "historyLabel" to "in history",
+            "undoRemoval" to "Undo removal",
+            "lyricsAnalysis" to "Lyrics analysis",
+            "linesLabel" to "Lines",
+            "wordsLabel" to "Words",
+            "localAnalysis" to "Local analysis",
+            "open" to "Open",
+            "newRelease" to "NEW RELEASE",
+            "newReleaseSubtitle" to "A new release has just entered the radar.",
+            "saved" to "Saved",
+            "save" to "Save",
+            "noOfflineDownloads" to "No downloads saved offline.",
+            "createFirstPlaylist" to "Create your first playlist",
+            "createFirstPlaylistSubtitle" to "Collect the songs you want to find again instantly.",
+            "downloadTrackHint" to "Tap download on a song to save it in Music/Levyra.",
+            "savedTracks" to "Saved tracks",
+            "favoritesEmpty" to "No favorites yet",
+            "playlistEmpty" to "This playlist is empty. Add songs from a song's three-dot menu.",
+            "showPersonalListening" to "Show your personal listening activity at the top of Home",
+            "showRecentReleases" to "Show recent releases and the radar for followed artists",
+            "showRecommendedAlbums" to "Show recommended albums on Home",
+            "showDiscoveredArtists" to "Show artists discovered from your music sections",
+            "showChartsCountry" to "Show charts and the country selector",
+            "partialDownloadResume" to "Keep partial bytes and resume with HTTP Range requests",
+            "lyricsAnalysisSection" to "LYRICS ANALYSIS",
+            "lyricsAnalysisCompact" to "Discreet local analysis",
+            "lyricsAnalysisCompactSubtitle" to "Stays compact until opened, shows only useful signals and can take you straight to the chorus.",
+            "createDataBackup" to "Create data backup",
+            "createDataBackupSubtitle" to "Favorites, playlists, history, queue and settings in a SHA-256 verified archive. Audio files remain in Music/Levyra.",
+            "updateAvailable" to "Update available",
+            "updates" to "Updates",
+            "checkingLatestVersion" to "Checking the latest version…",
+            "latestVersionReady" to "ready to download",
+            "latestInstalled" to "You have the latest version installed",
+            "checkNewVersions" to "Check for newly published versions",
+            "releasePageReady" to "Release page ready to open",
+            "installedVersion" to "Installed version",
+            "openPlayer" to "Open player",
+            "searchSongsArtists" to "Search songs and artists...",
+            "songsPlain" to "Songs",
+            "shareVia" to "Share via",
+            "emptySearchPrompt" to "Type a song name and search",
+            "cancelDownload" to "Cancel download",
+            "readAll" to "Read more",
+            "singlesAndEps" to "Singles and EPs",
+            "tapHeartToAdd" to "Tap the heart on a song to add it here.",
+            "all" to "All",
+            "automaticResume" to "Automatic resume",
+            "simultaneousDownloads" to "Simultaneous downloads",
+            "simultaneousDownloadsSubtitle" to "Global limit for memory, network and temperature",
+            "backupRestoreSection" to "BACKUP AND RESTORE",
+            "restoreBackup" to "Restore backup",
+            "restoreBackupSubtitle" to "Verify the schema and checksum before replacing local data",
+            "playbackResilienceSection" to "PLAYBACK RESILIENCE",
+            "exportSafeDiagnostics" to "Export safe diagnostics",
+            "generateResolverTrace" to "Generate the resolver trace",
+            "safeDiagnosticsSubtitle" to "Client health and recent attempts, with URLs and tokens removed",
+            "check" to "Check",
+            "checking" to "Checking",
+            "dragToReorder" to "Drag to reorder",
+            "homeInterfaceSection" to "HOME INTERFACE",
+            "compactHome" to "Compact Home",
+            "compactHomeSubtitle" to "Reduces vertical spacing and makes scrolling lighter",
+            "yourOrbitSetting" to "Your orbit",
+            "voicesSetting" to "Voices that resonate",
+            "voicesSettingSubtitle" to "Keeps the personal selection based on your listening",
+            "newReleasesSetting" to "New releases",
+            "albumsForYouSetting" to "Albums for you",
+            "trendingArtists" to "Trending artists",
+            "top50Charts" to "Top 50 charts",
+            "mobilePlayerSection" to "MOBILE PLAYER",
+            "advancedGestures" to "Advanced gestures",
+            "advancedGesturesSubtitle" to "Double tap, long press, brightness and volume",
+            "pureBlack" to "Pure black",
+            "pureBlackSubtitle" to "True black backgrounds for OLED screens",
+            "hapticFeedback" to "Haptic feedback",
+            "hapticFeedbackSubtitle" to "A short vibration on key actions",
+            "doubleTapSeek" to "Double-tap seek",
+            "doubleTapSeekSubtitle" to "Skip duration on the left and right",
+            "longPress" to "Long press",
+            "longPressSubtitle" to "Temporary speed while you hold",
+            "downloadEngineSection" to "DOWNLOAD ENGINE 3.0",
+            "wifiOnly" to "Wi-Fi only",
+            "wifiOnlySubtitle" to "WorkManager starts downloads only on an unmetered network",
+            "chargingOnly" to "Only while charging",
+            "chargingOnlySubtitle" to "Reduces battery use and temperature during long downloads",
+            "resumeDownload" to "Resume download",
+            "pauseDownload" to "Pause download",
+            "signedApkReady" to "Signed APK ready to install",
+            "downloadsInProgress" to "Downloads in progress",
+            "downloadInProgress" to "Download in progress",
+            "newAlbums" to "New albums",
+            "newSingles" to "New singles",
+            "newAlbum" to "NEW ALBUM",
+            "downloadsFolder" to "Downloads folder",
+            "offlineDownloadsPlain" to "Offline downloads",
+            "personalPlaylists" to "Personal playlists",
+            "searchingYouTubeMusic" to "Searching YouTube Music…",
+            "searchingLyrics" to "Searching for lyrics…",
+            "pause" to "Pause",
+            "newSingle" to "NEW SINGLE",
+            "albumsPlain" to "Albums",
+            "albumPlain" to "Album",
+            "singlePlain" to "Single",
+            "playlistsPlain" to "Playlists",
+            "profileActive" to "Personalization active",
+            "profileLearning" to "Learning from your listening",
+            "newBadge" to "NEW",
+            "brightness" to "Brightness",
+            "timer" to "Timer",
+            "normalizationShort" to "Norm",
+            "coverAndTags" to "cover and tags",
+            "madeWithBy" to "Made with ❤️ by",
+            "activeIndicator" to "ON",
+            "batteryUnrestricted" to "Unrestricted background playback",
+            "batteryUnrestrictedSubtitle" to "Exclude Levyra from battery optimization so music keeps playing with the screen off",
+            "batteryUnrestrictedActive" to "Active — the system will not stop playback",
+            "downloadQualityPreset" to "Quality preset",
+            "downloadQualityPresetSubtitle" to "Balance quality, speed and data usage",
+            "downloadPresetAutomatic" to "Automatic",
+            "downloadPresetHighQuality" to "High quality",
+            "downloadPresetDataSaver" to "Data saver",
+            "downloadFolderOrganization" to "Folder organization",
+            "downloadFolderOrganizationSubtitle" to "Save by artist and album without duplicating files",
+            "downloadFolderArtist" to "Artist",
+            "downloadFolderArtistAlbum" to "Artist / Album",
+            "downloadSpeedLimit" to "Speed limit",
+            "downloadSpeedLimitSubtitle" to "Limit network usage while downloading",
+            "downloadSpeedUnlimited" to "Unlimited",
+            "downloadEmbedMetadata" to "Embedded metadata",
+            "downloadEmbedMetadataSubtitle" to "Write title, artist and album into the file",
+            "downloadEmbedArtwork" to "Embedded artwork",
+            "downloadEmbedArtworkSubtitle" to "Embed the official artwork into the track",
+            "downloadVerifyFile" to "File verification",
+            "downloadVerifyFileSubtitle" to "Validate signature, size and readability before completion",
+            "downloadSkipDuplicates" to "Skip duplicates",
+            "downloadSkipDuplicatesSubtitle" to "Reuse existing valid downloads",
+            "trailTitle" to "YOUR RECENT TRAIL",
+            "trailPlays" to "plays",
+            "trailUnique" to "unique",
+            "trailLastPlayed" to "Last played",
+            "statPlays" to "plays",
+            "statArtists" to "artists",
+            "statTracks" to "tracks"
+        )
+
+        private fun itEntries(): Map<String, String> = mapOf(
+            "welcomeBadge" to "Benvenuto",
+            "welcomeTitle" to "Iniziamo.",
+            "languageQuestion" to "Che lingua vuoi usare?",
+            "nameQuestion" to "Come ti chiami?",
+            "namePlaceholder" to "Il tuo nome...",
+            "tasteQuestion" to "Scegli 3 o più generi che ami.",
+            "skipAndContinue" to "Salta e continua",
+            "startListening" to "Inizia ad ascoltare",
+            "settings" to "Impostazioni",
+            "settingsSubtitle" to "Personalizza LEVYRA",
+            "design" to "DESIGN",
+            "playback" to "RIPRODUZIONE",
+            "preferences" to "PREFERENZE",
+            "app" to "APP",
+            "animations" to "Animazioni",
+            "animationsSubtitle" to "Effetti, transizioni e pressione delle card",
+            "motionArtwork" to "Canvas nel player",
+            "motionArtworkSubtitle" to "Mostra i video degli artisti; disattiva per usare sempre la copertina",
+            "dynamicColor" to "Colore dinamico",
+            "dynamicColorSubtitle" to "Sfondo e accenti presi dalla copertina del brano",
+            "sponsorBlock" to "SponsorBlock",
+            "sponsorBlockSubtitle" to "Salta automaticamente sponsor e parti non musicali",
+            "skipSilence" to "Salta i silenzi",
+            "skipSilenceSubtitle" to "Comprimi le pause silenziose nei brani",
+            "redoQuestionnaire" to "Rifai il questionario gusti",
+            "redoQuestionnaireSubtitle" to "Riscegli i tuoi generi preferiti",
+            "language" to "Lingua",
+            "languageSubtitle" to "Cambia la lingua dell'app",
+            "home" to "Home",
+            "search" to "Cerca",
+            "library" to "Libreria",
+            "player" to "Player",
+            "queue" to "In coda",
+            "lyrics" to "Testo",
+            "related" to "Correlati",
+            "song" to "Brano",
+            "video" to "Video",
+            "nowPlaying" to "IN RIPRODUZIONE",
+            "emptyPlayer" to "Cerca un brano e premi play",
+            "phoneSpeaker" to "Speaker telefono",
+            "connected" to "Connesso",
+            "volume" to "Volume",
+            "audioQuality" to "Qualità audio",
+            "done" to "Fine",
+            "queueEmpty" to "La coda è vuota.",
+            "lyricsUnavailable" to "Testo non disponibile per questo brano.",
+            "synced" to "Sincronizzato",
+            "libraryTitle" to "Libreria",
+            "librarySubtitle" to "Playlist, preferiti, download e cronologia",
+            "playlists" to "Le tue playlist",
+            "newItem" to "Nuova",
+            "downloads" to "Download offline",
+            "favorites" to "Preferiti",
+            "recent" to "Trovati di recente",
+            "quickPicks" to "Scelte rapide",
+            "play" to "Riproduci",
+            "newReleases" to "Nuove uscite",
+            "albumsForYou" to "Album per te",
+            "top50Unavailable" to "Top 50 non disponibile, riprova più tardi",
+            "artists" to "Artisti",
+            "albumsAndSingles" to "Album e singoli",
+            "songs" to "Brani",
+            "searchPlaceholder" to "Cerca brani, artisti e...",
+            "back" to "Indietro",
+            "clear" to "Cancella",
+            "voice" to "Voce",
+            "createPlaylistHint" to "Crea una playlist e aggiungi i tuoi brani preferiti",
+            "selectLanguagePrompt" to "Seleziona una lingua",
+            "explore" to "Esplora",
+            "exploreTitle" to "Esplora",
+            "exploreSubtitle" to "Scopri nuova musica, tendenze e video",
+            "exploreFresh" to "Correnti fresche",
+            "exploreNewVideos" to "Nuovi video musicali",
+            "exploreEmpty" to "Nessun segnale da questa zona ora, prova un'altra",
+            "localWaveName" to "Ita Wave",
+            "localWaveEmoji" to "🇮🇹",
+            "localWaveQuery" to "nuove canzoni italiane 2026",
+            "exploreNewReleases" to "Nuove uscite",
+            "exploreRapDrill" to "Rap & Drill",
+            "exploreElectronic" to "Elettronica",
+            "explorePopGlobal" to "Pop Global",
+            "exploreRnbSoul" to "R&B / Soul",
+            "exploreRockAlt" to "Rock & Alt",
+            "exploreLatino" to "Latino",
+            "exploreLofiChill" to "Lo-Fi / Chill",
+            "exploreJpopAnime" to "J-Pop / Anime",
+            "followArtist" to "Segui",
+            "followingArtist" to "Seguito",
+            "releaseRadar" to "Release Radar",
+            "similarArtists" to "Artisti simili",
+            "similarToFollowed" to "Simili agli artisti che segui",
+            "theme" to "Tema",
+            "themeSubtitle" to "Scegli il look di LEVYRA",
+            "personalOrbitTitle" to "La tua orbita",
+            "personalOrbitSubtitle" to "I brani che tornano sempre da te",
+            "voicesTitle" to "Voci che risuonano",
+            "voicesSubtitle" to "Le tracce più commentate, viste come energia viva",
+            "totalComments" to "Commenti totali",
+            "engagement" to "Coinvolgimento",
+            "audioEngine" to "Audio",
+            "audioEngineSubtitle" to "Equalizer, crossfade, loudness, tempo, pitch e gapless",
+            "equalizer" to "Equalizer",
+            "equalizerSubtitle" to "Effetti reali con preset, bass boost e virtualizer",
+            "preset" to "Preset",
+            "bassBoost" to "Bass boost",
+            "virtualizer" to "Virtualizer",
+            "crossfade" to "Crossfade",
+            "djSoft" to "Modalità DJ soft",
+            "replayGain" to "ReplayGain / loudness intelligente",
+            "tempo" to "Tempo",
+            "pitch" to "Pitch",
+            "gapless" to "Gapless",
+            "restartRequiredTitle" to "Riavviare LEVYRA?",
+            "restartRequiredBody" to "La lingua è stata salvata. Riavvia l'app ora per ricaricare bene tutte le schermate.",
+            "restartNow" to "Riavvia ora",
+            "later" to "Più tardi",
+            "audioQualityAuto" to "Auto",
+            "audioQualityHigh" to "Alta",
+            "audioQualityLow" to "Bassa",
+            "pulseSectionBand" to "Le tue statistiche",
+            "pulseTitle" to "Pulse d'ascolto",
+            "pulseSubtitle" to "Statistiche private, calcolate solo su questo dispositivo",
+            "followedArtistsTitle" to "Artisti seguiti",
+            "followedArtistsSubtitle" to "Gli artisti che tieni vicino",
+            "listeningHistoryEmptyTitle" to "Ancora nessun ascolto",
+            "listeningHistoryEmptyDetail" to "Riproduci un brano e la cronologia si costruisce da sola qui.",
+            "pulseMinutes" to "Minuti",
+            "pulseMinuteShort" to "min",
+            "pulsePlays" to "Riproduzioni",
+            "pulseStreak" to "Giorni di fila",
+            "pulseCompletion" to "Completamento",
+            "pulseTopArtists" to "Artisti più ascoltati",
+            "pulseWeek" to "Ultimi 7 giorni",
+            "pulsePeakHour" to "Ora di punta",
+            "pulseEmpty" to "Riproduci qualcosa per accendere il tuo Pulse",
+            "listeningHistory" to "Cronologia di ascolto",
+            "listeningHistorySubtitle" to "Quello che hai davvero ascoltato",
+            "listeningPrompt" to "In ascolto...",
+            "voiceSearchUnsupported" to "La ricerca vocale non è supportata",
+            "musicFiltersComingSoon" to "I filtri musicali arriveranno presto!",
+            "recentSearches" to "Ricerche recenti",
+            "actions" to "Azioni",
+            "removeFromFavorites" to "Rimuovi dai preferiti",
+            "addToFavorites" to "Aggiungi ai preferiti",
+            "playNext" to "Riproduci dopo",
+            "addToQueue" to "Aggiungi alla coda",
+            "addToPlaylist" to "Aggiungi a una playlist",
+            "alreadyOffline" to "Già disponibile offline",
+            "download" to "Scarica",
+            "openArtist" to "Apri artista",
+            "openAlbum" to "Apri album",
+            "deleteDownload" to "Elimina download",
+            "share" to "Condividi",
+            "shareSong" to "Condividi brano",
+            "removeFromRecentSearches" to "Rimuovi dalle ricerche recenti",
+            "songOptions" to "Opzioni brano",
+            "goToPlayer" to "Vai al player",
+            "saveOffline" to "Salva offline",
+            "favorite" to "Preferito",
+            "downloaded" to "Scaricato",
+            "remove" to "Rimuovi",
+            "removeFromPlaylist" to "Rimuovi dalla playlist",
+            "youMightAlsoLike" to "Potrebbe piacerti anche",
+            "topResult" to "Risultato principale",
+            "currentlyPlaying" to "In riproduzione",
+            "artistLabel" to "Artista",
+            "playNow" to "Riproduci ora",
+            "biography" to "Biografia",
+            "newUpdate" to "NUOVO AGGIORNAMENTO",
+            "updateDescription" to "Schermata più compatta, changelog più leggibile e contenuti scorrevoli su qualsiasi display.",
+            "whatsNew" to "Novità",
+            "update" to "Aggiorna",
+            "updateRetry" to "Riprova",
+            "updateDownloading" to "Download aggiornamento",
+            "updatePreparing" to "Preparazione aggiornamento",
+            "updateInstalling" to "Installazione",
+            "updateReadyToInstall" to "Pronto da installare",
+            "updateFailed" to "Aggiornamento non riuscito",
+            "updateAllowInstalls" to "Consenti le installazioni per continuare",
+            "updateLinkUnavailable" to "Link di aggiornamento non disponibile",
+            "cannotOpenDownload" to "Impossibile aprire il download",
+            "externalLinkUnavailable" to "Link esterno non disponibile",
+            "cannotOpenExternalLink" to "Impossibile aprire il link esterno",
+            "continuousRadio" to "Radio continua",
+            "continuousRadioSubtitle" to "Aggiunge brani coerenti quando la coda sta per terminare",
+            "artistsLabelPlural" to "Artisti",
+            "albumMood" to "Atmosfera degli album",
+            "openLyricsAnalysis" to "Apri l'analisi del testo",
+            "closeLyrics" to "Chiudi il testo",
+            "lyricsDuet" to "Duetto",
+            "lyricsCinema" to "Cinema",
+            "lyricsPage" to "Pagina",
+            "lyricsRomanization" to "Romanizzazione",
+            "lyricsCompact" to "Compatta",
+            "lyricsSections" to "Sezioni del brano",
+            "lyricsSectionIntro" to "Intro",
+            "lyricsSectionVerse" to "Strofa",
+            "lyricsSectionPreChorus" to "Pre-ritornello",
+            "lyricsSectionChorus" to "Ritornello",
+            "lyricsSectionBridge" to "Ponte",
+            "lyricsSectionInstrumental" to "Strumentale",
+            "lyricsSectionOutro" to "Outro",
+            "automaticTranslation" to "Traduzione automatica",
+            "automaticTranslationSubtitle" to "Usa le lingue disponibili nelle trascrizioni di YouTube",
+            "atmosphere" to "Atmosfera",
+            "themes" to "Temi",
+            "chorusDetected" to "Ritornello rilevato",
+            "goToChorus" to "Vai al ritornello",
+            "close" to "Chiudi",
+            "complete" to "Completa",
+            "delete" to "Elimina",
+            "newPlaylist" to "Nuova playlist",
+            "playlistName" to "Nome della playlist",
+            "create" to "Crea",
+            "cancel" to "Annulla",
+            "newPlaylistName" to "Nome della nuova playlist",
+            "createNewPlaylist" to "Crea una nuova playlist",
+            "createAndAdd" to "Crea e aggiungi",
+            "downloadPlaylist" to "Scarica playlist",
+            "playAll" to "Riproduci tutto",
+            "playingFrom" to "RIPRODUZIONE DA",
+            "closePlayer" to "Chiudi player",
+            "options" to "Opzioni",
+            "showLyrics" to "Mostra testo del brano",
+            "shuffle" to "Riproduzione casuale",
+            "previous" to "Precedente",
+            "next" to "Successivo",
+            "repeat" to "Ripeti",
+            "persistentQueue" to "Coda persistente",
+            "continueListening" to "Continua ad ascoltare",
+            "favoritesPlain" to "Preferiti",
+            "offline" to "Offline",
+            "more" to "Altro",
+            "mix" to "Mix",
+            "mixForYou" to "Mix per te",
+            "genres" to "Generi",
+            "smartMusicProfile" to "Profilo musicale intelligente",
+            "flow" to "Flusso",
+            "pictureInPicture" to "Picture in Picture",
+            "discoveryFlow" to "FLUSSO DI SCOPERTA",
+            "shareDiagnostics" to "Condividi diagnostica",
+            "albumUnavailable" to "Album non disponibile",
+            "albumTracksUnavailable" to "Brani dell'album non disponibili",
+            "showLess" to "Mostra meno",
+            "showMore" to "Mostra altro",
+            "playing" to "In riproduzione",
+            "artistProfileUnavailable" to "Profilo artista non disponibile",
+            "popularTracks" to "Brani popolari",
+            "showAll" to "Mostra tutto",
+            "versionLabel" to "Versione",
+            "generalImprovements" to "Miglioramenti generali e correzioni di bug.",
+            "historyLabel" to "nella cronologia",
+            "undoRemoval" to "Annulla rimozione",
+            "lyricsAnalysis" to "Analisi del testo",
+            "linesLabel" to "Versi",
+            "wordsLabel" to "Parole",
+            "localAnalysis" to "Analisi locale",
+            "open" to "Apri",
+            "newRelease" to "NUOVA USCITA",
+            "newReleaseSubtitle" to "Una nuova uscita è appena entrata nel radar.",
+            "saved" to "Salvato",
+            "save" to "Salva",
+            "noOfflineDownloads" to "Nessun download salvato offline.",
+            "createFirstPlaylist" to "Crea la tua prima playlist",
+            "createFirstPlaylistSubtitle" to "Raccogli i brani che vuoi ritrovare subito.",
+            "downloadTrackHint" to "Tocca Scarica su un brano per salvarlo in Music/Levyra.",
+            "savedTracks" to "Brani salvati",
+            "favoritesEmpty" to "Nessun preferito",
+            "playlistEmpty" to "La playlist è vuota. Aggiungi brani dal menu con i tre puntini di un brano.",
+            "showPersonalListening" to "Mostra gli ascolti personali nella parte alta della Home",
+            "showRecentReleases" to "Mostra le uscite recenti e il radar degli artisti seguiti",
+            "showRecommendedAlbums" to "Mostra gli album consigliati nella Home",
+            "showDiscoveredArtists" to "Mostra gli artisti emersi dalle tue sezioni musicali",
+            "showChartsCountry" to "Mostra le classifiche e il selettore del Paese",
+            "partialDownloadResume" to "Conserva i byte parziali e riprende il download con richieste HTTP Range",
+            "lyricsAnalysisSection" to "ANALISI DEL TESTO",
+            "lyricsAnalysisCompact" to "Analisi locale discreta",
+            "lyricsAnalysisCompactSubtitle" to "Rimane compatta finché non la apri, mostra solo segnali utili e può portarti direttamente al ritornello.",
+            "createDataBackup" to "Crea backup dei dati",
+            "createDataBackupSubtitle" to "Preferiti, playlist, cronologia, coda e impostazioni in un archivio verificato con SHA-256. I file audio restano in Music/Levyra.",
+            "updateAvailable" to "Aggiornamento disponibile",
+            "updates" to "Aggiornamenti",
+            "checkingLatestVersion" to "Controllo dell'ultima versione…",
+            "latestVersionReady" to "pronta per il download",
+            "latestInstalled" to "Hai installato la versione più recente",
+            "checkNewVersions" to "Verifica la presenza di nuove versioni pubblicate",
+            "releasePageReady" to "Pagina della release pronta da aprire",
+            "installedVersion" to "Versione installata",
+            "openPlayer" to "Apri player",
+            "searchSongsArtists" to "Cerca brani e artisti...",
+            "songsPlain" to "Brani",
+            "shareVia" to "Condividi tramite",
+            "emptySearchPrompt" to "Scrivi il nome di un brano e avvia la ricerca",
+            "cancelDownload" to "Annulla download",
+            "readAll" to "Continua a leggere",
+            "singlesAndEps" to "Singoli ed EP",
+            "tapHeartToAdd" to "Tocca il cuore su un brano per aggiungerlo qui.",
+            "all" to "Tutti",
+            "automaticResume" to "Ripresa automatica",
+            "simultaneousDownloads" to "Download simultanei",
+            "simultaneousDownloadsSubtitle" to "Limite globale per memoria, rete e temperatura",
+            "backupRestoreSection" to "BACKUP E RIPRISTINO",
+            "restoreBackup" to "Ripristina backup",
+            "restoreBackupSubtitle" to "Verifica schema e checksum prima di sostituire i dati locali",
+            "playbackResilienceSection" to "RESILIENZA DI RIPRODUZIONE",
+            "exportSafeDiagnostics" to "Esporta diagnostica sicura",
+            "generateResolverTrace" to "Genera il tracciato dei resolver",
+            "safeDiagnosticsSubtitle" to "Stato dei client e ultimi tentativi, con URL e token rimossi",
+            "check" to "Controlla",
+            "checking" to "Controllo",
+            "dragToReorder" to "Trascina per riordinare",
+            "homeInterfaceSection" to "INTERFACCIA HOME",
+            "compactHome" to "Home compatta",
+            "compactHomeSubtitle" to "Riduce gli spazi verticali e rende lo scorrimento più leggero",
+            "yourOrbitSetting" to "La tua orbita",
+            "voicesSetting" to "Voci che risuonano",
+            "voicesSettingSubtitle" to "Mantiene la selezione personale basata sui tuoi ascolti",
+            "newReleasesSetting" to "Nuove uscite",
+            "albumsForYouSetting" to "Album per te",
+            "trendingArtists" to "Artisti di tendenza",
+            "top50Charts" to "Classifiche Top 50",
+            "mobilePlayerSection" to "PLAYER MOBILE",
+            "advancedGestures" to "Gesture avanzate",
+            "advancedGesturesSubtitle" to "Doppio tap, pressione prolungata, luminosità e volume",
+            "pureBlack" to "Nero puro",
+            "pureBlackSubtitle" to "Sfondi realmente neri per schermi OLED",
+            "hapticFeedback" to "Feedback aptico",
+            "hapticFeedbackSubtitle" to "Una breve vibrazione sulle azioni chiave",
+            "doubleTapSeek" to "Salto con doppio tap",
+            "doubleTapSeekSubtitle" to "Durata del salto a sinistra e a destra",
+            "longPress" to "Pressione prolungata",
+            "longPressSubtitle" to "Velocità temporanea finché tieni premuto",
+            "downloadEngineSection" to "MOTORE DOWNLOAD 3.0",
+            "wifiOnly" to "Solo Wi-Fi",
+            "wifiOnlySubtitle" to "WorkManager avvia i download solo su reti non a consumo",
+            "chargingOnly" to "Solo durante la ricarica",
+            "chargingOnlySubtitle" to "Riduce consumo e temperatura durante i download lunghi",
+            "resumeDownload" to "Riprendi download",
+            "pauseDownload" to "Metti in pausa il download",
+            "signedApkReady" to "APK firmato pronto da installare",
+            "downloadsInProgress" to "Download multipli in corso",
+            "downloadInProgress" to "Download in corso",
+            "newAlbums" to "Nuovi album",
+            "newSingles" to "Nuovi singoli",
+            "newAlbum" to "NUOVO ALBUM",
+            "downloadsFolder" to "Cartella download",
+            "offlineDownloadsPlain" to "Download offline",
+            "personalPlaylists" to "Playlist personali",
+            "searchingYouTubeMusic" to "Ricerca su YouTube Music…",
+            "searchingLyrics" to "Ricerca del testo…",
+            "pause" to "Pausa",
+            "newSingle" to "NUOVO SINGOLO",
+            "albumsPlain" to "Album",
+            "albumPlain" to "Album",
+            "singlePlain" to "Singolo",
+            "playlistsPlain" to "Playlist",
+            "profileActive" to "Personalizzazione attiva",
+            "profileLearning" to "Sto imparando dai tuoi ascolti",
+            "newBadge" to "NOVITÀ",
+            "brightness" to "Luminosità",
+            "timer" to "Timer",
+            "normalizationShort" to "Norm.",
+            "coverAndTags" to "cover e tag",
+            "madeWithBy" to "Creato con ❤️ da",
+            "activeIndicator" to "ATTIVO",
+            "batteryUnrestricted" to "Riproduzione in background senza limiti",
+            "batteryUnrestrictedSubtitle" to "Escludi Levyra dall'ottimizzazione batteria così la musica continua a schermo spento",
+            "batteryUnrestrictedActive" to "Attivo — il sistema non fermerà la riproduzione",
+            "downloadQualityPreset" to "Preset qualità",
+            "downloadQualityPresetSubtitle" to "Bilancia qualità, velocità e consumo dati",
+            "downloadPresetAutomatic" to "Automatico",
+            "downloadPresetHighQuality" to "Alta qualità",
+            "downloadPresetDataSaver" to "Risparmio dati",
+            "downloadFolderOrganization" to "Organizzazione cartelle",
+            "downloadFolderOrganizationSubtitle" to "Salva per artista e album senza duplicare i file",
+            "downloadFolderArtist" to "Artista",
+            "downloadFolderArtistAlbum" to "Artista / Album",
+            "downloadSpeedLimit" to "Limite velocità",
+            "downloadSpeedLimitSubtitle" to "Riduce l'uso della rete durante i download",
+            "downloadSpeedUnlimited" to "Illimitato",
+            "downloadEmbedMetadata" to "Metadati incorporati",
+            "downloadEmbedMetadataSubtitle" to "Scrive titolo, artista e album nel file",
+            "downloadEmbedArtwork" to "Copertina incorporata",
+            "downloadEmbedArtworkSubtitle" to "Inserisce la copertina ufficiale nel brano",
+            "downloadVerifyFile" to "Verifica file",
+            "downloadVerifyFileSubtitle" to "Controlla firma, dimensione e leggibilità prima di completare",
+            "downloadSkipDuplicates" to "Evita duplicati",
+            "downloadSkipDuplicatesSubtitle" to "Riutilizza i download già presenti e validi",
+            "trailTitle" to "LA TUA SCIA RECENTE",
+            "trailPlays" to "passaggi",
+            "trailUnique" to "unici",
+            "trailLastPlayed" to "Ultimo ascolto",
+            "statPlays" to "ascolti",
+            "statArtists" to "artisti",
+            "statTracks" to "tracce"
+        )
+
+        private fun esEntries(): Map<String, String> = mapOf(
+            "welcomeBadge" to "Bienvenido",
+            "welcomeTitle" to "Empecemos.",
+            "languageQuestion" to "¿Qué idioma quieres usar?",
+            "nameQuestion" to "¿Cómo te llamas?",
+            "namePlaceholder" to "Tu nombre...",
+            "tasteQuestion" to "Elige 3 o más géneros que te gusten.",
+            "skipAndContinue" to "Saltar y continuar",
+            "startListening" to "Empezar a escuchar",
+            "settings" to "Ajustes",
+            "settingsSubtitle" to "Personaliza LEVYRA",
+            "design" to "DISEÑO",
+            "playback" to "REPRODUCCIÓN",
+            "preferences" to "PREFERENCIAS",
+            "app" to "APP",
+            "animations" to "Animaciones",
+            "animationsSubtitle" to "Efectos, transiciones y respuesta al pulsar tarjetas",
+            "motionArtwork" to "Canvas del reproductor",
+            "motionArtworkSubtitle" to "Muestra vídeos de artistas; desactívalo para usar siempre la portada",
+            "dynamicColor" to "Color dinámico",
+            "dynamicColorSubtitle" to "Fondo y acentos tomados de la portada actual",
+            "sponsorBlock" to "SponsorBlock",
+            "sponsorBlockSubtitle" to "Salta automáticamente patrocinadores y partes no musicales",
+            "skipSilence" to "Saltar silencios",
+            "skipSilenceSubtitle" to "Comprime las pausas silenciosas en las canciones",
+            "redoQuestionnaire" to "Rehacer cuestionario de gustos",
+            "redoQuestionnaireSubtitle" to "Elige de nuevo tus géneros favoritos",
+            "language" to "Idioma",
+            "languageSubtitle" to "Cambiar el idioma de la app",
+            "home" to "Inicio",
+            "search" to "Buscar",
+            "library" to "Biblioteca",
+            "player" to "Reproductor",
+            "queue" to "Cola",
+            "lyrics" to "Letra",
+            "related" to "Relacionados",
+            "song" to "Canción",
+            "video" to "Vídeo",
+            "nowPlaying" to "REPRODUCIENDO",
+            "emptyPlayer" to "Busca una canción y pulsa play",
+            "phoneSpeaker" to "Altavoz del teléfono",
+            "connected" to "Conectado",
+            "volume" to "Volumen",
+            "audioQuality" to "Calidad de audio",
+            "done" to "Listo",
+            "queueEmpty" to "La cola está vacía.",
+            "lyricsUnavailable" to "La letra no está disponible para esta canción.",
+            "synced" to "Sincronizada",
+            "libraryTitle" to "Biblioteca",
+            "librarySubtitle" to "Playlists, favoritos, descargas e historial",
+            "playlists" to "Tus playlists",
+            "newItem" to "Nueva",
+            "downloads" to "Descargas offline",
+            "favorites" to "Favoritos",
+            "recent" to "Encontrados recientemente",
+            "quickPicks" to "Selecciones rápidas",
+            "play" to "Reproducir",
+            "newReleases" to "Novedades",
+            "albumsForYou" to "Álbumes para ti",
+            "top50Unavailable" to "Top 50 no disponible, inténtalo más tarde",
+            "artists" to "Artistas",
+            "albumsAndSingles" to "Álbumes y sencillos",
+            "songs" to "Canciones",
+            "searchPlaceholder" to "Busca canciones, artistas y...",
+            "back" to "Atrás",
+            "clear" to "Borrar",
+            "voice" to "Voz",
+            "createPlaylistHint" to "Crea una playlist y añade tus canciones favoritas",
+            "selectLanguagePrompt" to "Selecciona un idioma",
+            "explore" to "Explorar",
+            "exploreTitle" to "Explorar",
+            "exploreSubtitle" to "Descubre nueva música, tendencias y videos",
+            "exploreFresh" to "Corrientes frescas",
+            "exploreNewVideos" to "Nuevos videos",
+            "exploreEmpty" to "Ahora mismo no hay señal en esta zona; prueba con otra",
+            "localWaveName" to "Es Wave",
+            "localWaveEmoji" to "🇪🇸",
+            "localWaveQuery" to "nuevas canciones españolas 2026",
+            "exploreNewReleases" to "Nuevos lanzamientos",
+            "exploreRapDrill" to "Rap y drill",
+            "exploreElectronic" to "Electrónica",
+            "explorePopGlobal" to "Pop global",
+            "exploreRnbSoul" to "R&B / Soul",
+            "exploreRockAlt" to "Rock y alternativo",
+            "exploreLatino" to "Latino",
+            "exploreLofiChill" to "Lo-Fi / Chill",
+            "exploreJpopAnime" to "J-Pop / Anime",
+            "followArtist" to "Seguir",
+            "followingArtist" to "Siguiendo",
+            "releaseRadar" to "Radar de lanzamientos",
+            "similarArtists" to "Artistas similares",
+            "similarToFollowed" to "Similares a los artistas que sigues",
+            "theme" to "Tema",
+            "themeSubtitle" to "Elige el estilo de LEVYRA",
+            "personalOrbitTitle" to "Tu órbita",
+            "personalOrbitSubtitle" to "Las canciones que siempre vuelven a ti",
+            "voicesTitle" to "Voces que resuenan",
+            "voicesSubtitle" to "Las pistas más comentadas vistas como energía viva",
+            "totalComments" to "Comentarios totales",
+            "engagement" to "Interacción",
+            "audioEngine" to "Audio",
+            "audioEngineSubtitle" to "Ecualizador, crossfade, loudness, tempo, pitch y gapless",
+            "equalizer" to "Ecualizador",
+            "equalizerSubtitle" to "Efectos reales con presets, bass boost y virtualizer",
+            "preset" to "Preset",
+            "bassBoost" to "Bass boost",
+            "virtualizer" to "Virtualizer",
+            "crossfade" to "Crossfade",
+            "djSoft" to "Modo DJ suave",
+            "replayGain" to "ReplayGain / loudness inteligente",
+            "tempo" to "Tempo",
+            "pitch" to "Pitch",
+            "gapless" to "Gapless",
+            "restartRequiredTitle" to "¿Reiniciar LEVYRA?",
+            "restartRequiredBody" to "El idioma se ha guardado. Reinicia la app ahora para recargar todas las pantallas correctamente.",
+            "restartNow" to "Reiniciar ahora",
+            "later" to "Más tarde",
+            "audioQualityAuto" to "Auto",
+            "audioQualityHigh" to "Alta",
+            "audioQualityLow" to "Baja",
+            "pulseSectionBand" to "Tus estadísticas",
+            "pulseTitle" to "Pulse de escucha",
+            "pulseSubtitle" to "Estadísticas privadas, calculadas solo en este dispositivo",
+            "followedArtistsTitle" to "Artistas seguidos",
+            "followedArtistsSubtitle" to "Los artistas que tienes cerca",
+            "listeningHistoryEmptyTitle" to "Aún no hay escuchas",
+            "listeningHistoryEmptyDetail" to "Reproduce una pista y tu historial se crea solo aquí.",
+            "pulseMinutes" to "Minutos",
+            "pulseMinuteShort" to "min",
+            "pulsePlays" to "Reproducciones",
+            "pulseStreak" to "Días seguidos",
+            "pulseCompletion" to "Completado",
+            "pulseTopArtists" to "Artistas más escuchados",
+            "pulseWeek" to "Últimos 7 días",
+            "pulsePeakHour" to "Hora pico",
+            "pulseEmpty" to "Reproduce algo para encender tu Pulse",
+            "listeningHistory" to "Historial de escucha",
+            "listeningHistorySubtitle" to "Lo que realmente escuchaste",
+            "listeningPrompt" to "Escuchando...",
+            "voiceSearchUnsupported" to "La búsqueda por voz no es compatible",
+            "musicFiltersComingSoon" to "¡Los filtros musicales estarán disponibles pronto!",
+            "recentSearches" to "Búsquedas recientes",
+            "actions" to "Acciones",
+            "removeFromFavorites" to "Quitar de favoritos",
+            "addToFavorites" to "Añadir a favoritos",
+            "playNext" to "Reproducir a continuación",
+            "addToQueue" to "Añadir a la cola",
+            "addToPlaylist" to "Añadir a una playlist",
+            "alreadyOffline" to "Ya disponible sin conexión",
+            "download" to "Descargar",
+            "openArtist" to "Abrir artista",
+            "openAlbum" to "Abrir álbum",
+            "deleteDownload" to "Eliminar descarga",
+            "share" to "Compartir",
+            "shareSong" to "Compartir canción",
+            "removeFromRecentSearches" to "Quitar de las búsquedas recientes",
+            "songOptions" to "Opciones de la canción",
+            "goToPlayer" to "Ir al reproductor",
+            "saveOffline" to "Guardar sin conexión",
+            "favorite" to "Favorita",
+            "downloaded" to "Descargada",
+            "remove" to "Quitar",
+            "removeFromPlaylist" to "Quitar de la playlist",
+            "youMightAlsoLike" to "También te puede gustar",
+            "topResult" to "Resultado principal",
+            "currentlyPlaying" to "Reproduciendo ahora",
+            "artistLabel" to "Artista",
+            "playNow" to "Reproducir ahora",
+            "biography" to "Biografía",
+            "newUpdate" to "NUEVA ACTUALIZACIÓN",
+            "updateDescription" to "Una pantalla más compacta, un registro de cambios más claro y contenido desplazable en cualquier pantalla.",
+            "whatsNew" to "Novedades",
+            "update" to "Actualizar",
+            "updateRetry" to "Reintentar",
+            "updateDownloading" to "Descargando actualización",
+            "updatePreparing" to "Preparando actualización",
+            "updateInstalling" to "Instalando",
+            "updateReadyToInstall" to "Listo para instalar",
+            "updateFailed" to "Error en la actualización",
+            "updateAllowInstalls" to "Permite las instalaciones para continuar",
+            "updateLinkUnavailable" to "El enlace de actualización no está disponible",
+            "cannotOpenDownload" to "No se puede abrir la descarga",
+            "externalLinkUnavailable" to "Enlace externo no disponible",
+            "cannotOpenExternalLink" to "No se puede abrir el enlace externo",
+            "continuousRadio" to "Radio continua",
+            "continuousRadioSubtitle" to "Añade canciones afines cuando la cola está a punto de terminar",
+            "artistsLabelPlural" to "Artistas",
+            "albumMood" to "Ambiente de los álbumes",
+            "openLyricsAnalysis" to "Abrir el análisis de la letra",
+            "closeLyrics" to "Cerrar la letra",
+            "lyricsDuet" to "Dueto",
+            "lyricsCinema" to "Cine",
+            "lyricsPage" to "Página",
+            "lyricsRomanization" to "Romanización",
+            "lyricsCompact" to "Compacta",
+            "lyricsSections" to "Secciones de la canción",
+            "lyricsSectionIntro" to "Intro",
+            "lyricsSectionVerse" to "Estrofa",
+            "lyricsSectionPreChorus" to "Preestribillo",
+            "lyricsSectionChorus" to "Estribillo",
+            "lyricsSectionBridge" to "Puente",
+            "lyricsSectionInstrumental" to "Instrumental",
+            "lyricsSectionOutro" to "Outro",
+            "automaticTranslation" to "Traducción automática",
+            "automaticTranslationSubtitle" to "Usa los idiomas disponibles en las transcripciones de YouTube",
+            "atmosphere" to "Ambiente",
+            "themes" to "Temas",
+            "chorusDetected" to "Estribillo detectado",
+            "goToChorus" to "Ir al estribillo",
+            "close" to "Cerrar",
+            "complete" to "Completar",
+            "delete" to "Eliminar",
+            "newPlaylist" to "Nueva playlist",
+            "playlistName" to "Nombre de la playlist",
+            "create" to "Crear",
+            "cancel" to "Cancelar",
+            "newPlaylistName" to "Nombre de la nueva playlist",
+            "createNewPlaylist" to "Crear una nueva playlist",
+            "createAndAdd" to "Crear y añadir",
+            "downloadPlaylist" to "Descargar playlist",
+            "playAll" to "Reproducir todo",
+            "playingFrom" to "REPRODUCIENDO DESDE",
+            "closePlayer" to "Cerrar reproductor",
+            "options" to "Opciones",
+            "showLyrics" to "Mostrar letra",
+            "shuffle" to "Aleatorio",
+            "previous" to "Anterior",
+            "next" to "Siguiente",
+            "repeat" to "Repetir",
+            "persistentQueue" to "Cola persistente",
+            "continueListening" to "Seguir escuchando",
+            "favoritesPlain" to "Favoritos",
+            "offline" to "Sin conexión",
+            "more" to "Más",
+            "mix" to "Mix",
+            "mixForYou" to "Mix para ti",
+            "genres" to "Géneros",
+            "smartMusicProfile" to "Perfil musical inteligente",
+            "flow" to "Flujo",
+            "pictureInPicture" to "Imagen en imagen",
+            "discoveryFlow" to "FLUJO DE DESCUBRIMIENTO",
+            "shareDiagnostics" to "Compartir diagnóstico",
+            "albumUnavailable" to "Álbum no disponible",
+            "albumTracksUnavailable" to "Las canciones del álbum no están disponibles",
+            "showLess" to "Mostrar menos",
+            "showMore" to "Mostrar más",
+            "playing" to "Reproduciendo",
+            "artistProfileUnavailable" to "Perfil del artista no disponible",
+            "popularTracks" to "Canciones populares",
+            "showAll" to "Mostrar todo",
+            "versionLabel" to "Versión",
+            "generalImprovements" to "Mejoras generales y correcciones de errores.",
+            "historyLabel" to "en el historial",
+            "undoRemoval" to "Deshacer eliminación",
+            "lyricsAnalysis" to "Análisis de la letra",
+            "linesLabel" to "Versos",
+            "wordsLabel" to "Palabras",
+            "localAnalysis" to "Análisis local",
+            "open" to "Abrir",
+            "newRelease" to "NUEVO LANZAMIENTO",
+            "newReleaseSubtitle" to "Un nuevo lanzamiento acaba de entrar en el radar.",
+            "saved" to "Guardado",
+            "save" to "Guardar",
+            "noOfflineDownloads" to "No hay descargas guardadas sin conexión.",
+            "createFirstPlaylist" to "Crea tu primera playlist",
+            "createFirstPlaylistSubtitle" to "Reúne las canciones que quieras volver a encontrar al instante.",
+            "downloadTrackHint" to "Pulsa Descargar en una canción para guardarla en Music/Levyra.",
+            "savedTracks" to "Canciones guardadas",
+            "favoritesEmpty" to "Aún no hay favoritos",
+            "playlistEmpty" to "La playlist está vacía. Añade canciones desde el menú de tres puntos de una canción.",
+            "showPersonalListening" to "Mostrar tu actividad de escucha personal en la parte superior de Inicio",
+            "showRecentReleases" to "Mostrar lanzamientos recientes y el radar de artistas seguidos",
+            "showRecommendedAlbums" to "Mostrar álbumes recomendados en Inicio",
+            "showDiscoveredArtists" to "Mostrar artistas descubiertos en tus secciones musicales",
+            "showChartsCountry" to "Mostrar listas y selector de país",
+            "partialDownloadResume" to "Conservar los bytes parciales y reanudar con solicitudes HTTP Range",
+            "lyricsAnalysisSection" to "ANÁLISIS DE LA LETRA",
+            "lyricsAnalysisCompact" to "Análisis local discreto",
+            "lyricsAnalysisCompactSubtitle" to "Permanece compacto hasta que lo abras, muestra solo señales útiles y puede llevarte directamente al estribillo.",
+            "createDataBackup" to "Crear copia de seguridad",
+            "createDataBackupSubtitle" to "Favoritos, playlists, historial, cola y ajustes en un archivo verificado con SHA-256. Los archivos de audio permanecen en Music/Levyra.",
+            "updateAvailable" to "Actualización disponible",
+            "updates" to "Actualizaciones",
+            "checkingLatestVersion" to "Comprobando la última versión…",
+            "latestVersionReady" to "lista para descargar",
+            "latestInstalled" to "Tienes instalada la última versión",
+            "checkNewVersions" to "Buscar nuevas versiones publicadas",
+            "releasePageReady" to "Página de la versión lista para abrir",
+            "installedVersion" to "Versión instalada",
+            "openPlayer" to "Abrir reproductor",
+            "searchSongsArtists" to "Buscar canciones y artistas...",
+            "songsPlain" to "Canciones",
+            "shareVia" to "Compartir mediante",
+            "emptySearchPrompt" to "Escribe el nombre de una canción y busca",
+            "cancelDownload" to "Cancelar descarga",
+            "readAll" to "Leer más",
+            "singlesAndEps" to "Sencillos y EP",
+            "tapHeartToAdd" to "Toca el corazón de una canción para añadirla aquí.",
+            "all" to "Todo",
+            "automaticResume" to "Reanudación automática",
+            "simultaneousDownloads" to "Descargas simultáneas",
+            "simultaneousDownloadsSubtitle" to "Límite global de memoria, red y temperatura",
+            "backupRestoreSection" to "COPIA DE SEGURIDAD Y RESTAURACIÓN",
+            "restoreBackup" to "Restaurar copia de seguridad",
+            "restoreBackupSubtitle" to "Verifica el esquema y la suma de comprobación antes de reemplazar los datos locales",
+            "playbackResilienceSection" to "RESILIENCIA DE REPRODUCCIÓN",
+            "exportSafeDiagnostics" to "Exportar diagnóstico seguro",
+            "generateResolverTrace" to "Generar el registro de los resolutores",
+            "safeDiagnosticsSubtitle" to "Estado de los clientes e intentos recientes, sin URL ni tokens",
+            "check" to "Comprobar",
+            "checking" to "Comprobando",
+            "dragToReorder" to "Arrastra para reordenar",
+            "homeInterfaceSection" to "INTERFAZ DE INICIO",
+            "compactHome" to "Inicio compacto",
+            "compactHomeSubtitle" to "Reduce el espacio vertical y hace que el desplazamiento sea más ligero",
+            "yourOrbitSetting" to "Tu órbita",
+            "voicesSetting" to "Voces que resuenan",
+            "voicesSettingSubtitle" to "Mantiene la selección personal basada en lo que escuchas",
+            "newReleasesSetting" to "Nuevos lanzamientos",
+            "albumsForYouSetting" to "Álbumes para ti",
+            "trendingArtists" to "Artistas en tendencia",
+            "top50Charts" to "Listas Top 50",
+            "mobilePlayerSection" to "REPRODUCTOR MÓVIL",
+            "advancedGestures" to "Gestos avanzados",
+            "advancedGesturesSubtitle" to "Doble toque, pulsación prolongada, brillo y volumen",
+            "pureBlack" to "Negro puro",
+            "pureBlackSubtitle" to "Fondos totalmente negros para pantallas OLED",
+            "hapticFeedback" to "Respuesta háptica",
+            "hapticFeedbackSubtitle" to "Una vibración breve en las acciones clave",
+            "doubleTapSeek" to "Salto con doble toque",
+            "doubleTapSeekSubtitle" to "Duración del salto a la izquierda y a la derecha",
+            "longPress" to "Pulsación prolongada",
+            "longPressSubtitle" to "Velocidad temporal mientras mantienes pulsado",
+            "downloadEngineSection" to "MOTOR DE DESCARGAS 3.0",
+            "wifiOnly" to "Solo Wi-Fi",
+            "wifiOnlySubtitle" to "WorkManager inicia las descargas solo en una red sin límite de datos",
+            "chargingOnly" to "Solo durante la carga",
+            "chargingOnlySubtitle" to "Reduce el consumo y la temperatura en descargas largas",
+            "resumeDownload" to "Reanudar descarga",
+            "pauseDownload" to "Pausar descarga",
+            "signedApkReady" to "APK firmado listo para instalar",
+            "downloadsInProgress" to "Descargas en curso",
+            "downloadInProgress" to "Descarga en curso",
+            "newAlbums" to "Álbumes nuevos",
+            "newSingles" to "Sencillos nuevos",
+            "newAlbum" to "NUEVO ÁLBUM",
+            "downloadsFolder" to "Carpeta de descargas",
+            "offlineDownloadsPlain" to "Descargas sin conexión",
+            "personalPlaylists" to "Playlists personales",
+            "searchingYouTubeMusic" to "Buscando en YouTube Music…",
+            "searchingLyrics" to "Buscando la letra…",
+            "pause" to "Pausar",
+            "newSingle" to "NUEVO SENCILLO",
+            "albumsPlain" to "Álbumes",
+            "albumPlain" to "Álbum",
+            "singlePlain" to "Sencillo",
+            "playlistsPlain" to "Listas",
+            "profileActive" to "Personalización activa",
+            "profileLearning" to "Aprendiendo de lo que escuchas",
+            "newBadge" to "NUEVO",
+            "brightness" to "Brillo",
+            "timer" to "Temporizador",
+            "normalizationShort" to "Norm.",
+            "coverAndTags" to "carátula y etiquetas",
+            "madeWithBy" to "Creado con ❤️ por",
+            "activeIndicator" to "ACTIVO",
+            "batteryUnrestricted" to "Reproducción en segundo plano sin límites",
+            "batteryUnrestrictedSubtitle" to "Excluye Levyra de la optimización de batería para que la música siga sonando con la pantalla apagada",
+            "batteryUnrestrictedActive" to "Activo — el sistema no detendrá la reproducción",
+            "downloadQualityPreset" to "Ajuste de calidad",
+            "downloadQualityPresetSubtitle" to "Equilibra calidad, velocidad y consumo de datos",
+            "downloadPresetAutomatic" to "Automático",
+            "downloadPresetHighQuality" to "Alta calidad",
+            "downloadPresetDataSaver" to "Ahorro de datos",
+            "downloadFolderOrganization" to "Organización de carpetas",
+            "downloadFolderOrganizationSubtitle" to "Guarda por artista y álbum sin duplicar archivos",
+            "downloadFolderArtist" to "Artista",
+            "downloadFolderArtistAlbum" to "Artista / Álbum",
+            "downloadSpeedLimit" to "Límite de velocidad",
+            "downloadSpeedLimitSubtitle" to "Limita el uso de red durante las descargas",
+            "downloadSpeedUnlimited" to "Sin límite",
+            "downloadEmbedMetadata" to "Metadatos incrustados",
+            "downloadEmbedMetadataSubtitle" to "Escribe título, artista y álbum en el archivo",
+            "downloadEmbedArtwork" to "Carátula incrustada",
+            "downloadEmbedArtworkSubtitle" to "Incrusta la carátula oficial en la pista",
+            "downloadVerifyFile" to "Verificación de archivos",
+            "downloadVerifyFileSubtitle" to "Valida firma, tamaño y legibilidad antes de completar",
+            "downloadSkipDuplicates" to "Evitar duplicados",
+            "downloadSkipDuplicatesSubtitle" to "Reutiliza las descargas válidas existentes",
+            "trailTitle" to "TU RASTRO RECIENTE",
+            "trailPlays" to "reproducciones",
+            "trailUnique" to "únicas",
+            "trailLastPlayed" to "Última escucha",
+            "statPlays" to "reproducciones",
+            "statArtists" to "artistas",
+            "statTracks" to "pistas"
+        )
+
+        private fun frEntries(): Map<String, String> = mapOf(
+            "welcomeBadge" to "Bienvenue",
+            "welcomeTitle" to "Commençons.",
+            "languageQuestion" to "Quelle langue veux-tu utiliser ?",
+            "nameQuestion" to "Comment tu t'appelles ?",
+            "namePlaceholder" to "Ton nom...",
+            "tasteQuestion" to "Choisis au moins 3 genres que tu aimes.",
+            "skipAndContinue" to "Ignorer et continuer",
+            "startListening" to "Commencer l'écoute",
+            "settings" to "Paramètres",
+            "settingsSubtitle" to "Personnalise LEVYRA",
+            "design" to "DESIGN",
+            "playback" to "LECTURE",
+            "preferences" to "PRÉFÉRENCES",
+            "app" to "APP",
+            "animations" to "Animations",
+            "animationsSubtitle" to "Effets, transitions et retour tactile des cartes",
+            "motionArtwork" to "Canvas du lecteur",
+            "motionArtworkSubtitle" to "Affiche les vidéos des artistes ; désactivez-le pour toujours utiliser la pochette",
+            "dynamicColor" to "Couleur dynamique",
+            "dynamicColorSubtitle" to "Fond et accents tirés de la pochette actuelle",
+            "sponsorBlock" to "SponsorBlock",
+            "sponsorBlockSubtitle" to "Ignore automatiquement les sponsors et parties non musicales",
+            "skipSilence" to "Ignorer les silences",
+            "skipSilenceSubtitle" to "Compresse les pauses silencieuses dans les titres",
+            "redoQuestionnaire" to "Refaire le questionnaire",
+            "redoQuestionnaireSubtitle" to "Choisis à nouveau tes genres préférés",
+            "language" to "Langue",
+            "languageSubtitle" to "Changer la langue de l'app",
+            "home" to "Accueil",
+            "search" to "Recherche",
+            "library" to "Bibliothèque",
+            "player" to "Lecteur",
+            "queue" to "File",
+            "lyrics" to "Paroles",
+            "related" to "Associés",
+            "song" to "Morceau",
+            "video" to "Vidéo",
+            "nowPlaying" to "EN LECTURE",
+            "emptyPlayer" to "Cherche un morceau et appuie sur play",
+            "phoneSpeaker" to "Haut-parleur du téléphone",
+            "connected" to "Connecté",
+            "volume" to "Volume",
+            "audioQuality" to "Qualité audio",
+            "done" to "Terminé",
+            "queueEmpty" to "La file est vide.",
+            "lyricsUnavailable" to "Les paroles ne sont pas disponibles pour ce titre.",
+            "synced" to "Synchronisé",
+            "libraryTitle" to "Bibliothèque",
+            "librarySubtitle" to "Playlists, favoris, téléchargements et historique",
+            "playlists" to "Tes playlists",
+            "newItem" to "Nouvelle",
+            "downloads" to "Téléchargements hors ligne",
+            "favorites" to "Favoris",
+            "recent" to "Trouvés récemment",
+            "quickPicks" to "Sélections rapides",
+            "play" to "Lecture",
+            "newReleases" to "Nouveautés",
+            "albumsForYou" to "Albums pour toi",
+            "top50Unavailable" to "Top 50 indisponible, réessaie plus tard",
+            "artists" to "Artistes",
+            "albumsAndSingles" to "Albums et singles",
+            "songs" to "Titres",
+            "searchPlaceholder" to "Recherche titres, artistes et...",
+            "back" to "Retour",
+            "clear" to "Effacer",
+            "voice" to "Voix",
+            "createPlaylistHint" to "Crée une playlist et ajoute tes morceaux favoris",
+            "selectLanguagePrompt" to "Sélectionne une langue",
+            "explore" to "Explorer",
+            "exploreTitle" to "Explorer",
+            "exploreSubtitle" to "Découvrez de nouvelles musiques, tendances et vidéos",
+            "exploreFresh" to "Courants frais",
+            "exploreNewVideos" to "Nouveaux clips",
+            "exploreEmpty" to "Aucun signal dans cette zone pour le moment, essaie-en une autre",
+            "localWaveName" to "Fr Wave",
+            "localWaveEmoji" to "🇫🇷",
+            "localWaveQuery" to "nouvelles chansons françaises 2026",
+            "exploreNewReleases" to "Nouveautés",
+            "exploreRapDrill" to "Rap et drill",
+            "exploreElectronic" to "Électro",
+            "explorePopGlobal" to "Pop mondiale",
+            "exploreRnbSoul" to "R&B / Soul",
+            "exploreRockAlt" to "Rock et alternatif",
+            "exploreLatino" to "Latino",
+            "exploreLofiChill" to "Lo-Fi / Chill",
+            "exploreJpopAnime" to "J-Pop / Anime",
+            "followArtist" to "Suivre",
+            "followingArtist" to "Suivi",
+            "releaseRadar" to "Radar des sorties",
+            "similarArtists" to "Artistes similaires",
+            "similarToFollowed" to "Similaires aux artistes que tu suis",
+            "theme" to "Thème",
+            "themeSubtitle" to "Choisis le style de LEVYRA",
+            "personalOrbitTitle" to "Ton orbite",
+            "personalOrbitSubtitle" to "Les titres qui reviennent toujours vers toi",
+            "voicesTitle" to "Voix qui résonnent",
+            "voicesSubtitle" to "Les titres les plus commentés vus comme une énergie vivante",
+            "totalComments" to "Commentaires totaux",
+            "engagement" to "Engagement",
+            "audioEngine" to "Audio",
+            "audioEngineSubtitle" to "Égaliseur, crossfade, loudness, tempo, pitch et gapless",
+            "equalizer" to "Égaliseur",
+            "equalizerSubtitle" to "Effets réels avec presets, bass boost et virtualizer",
+            "preset" to "Preset",
+            "bassBoost" to "Bass boost",
+            "virtualizer" to "Virtualizer",
+            "crossfade" to "Crossfade",
+            "djSoft" to "Mode DJ doux",
+            "replayGain" to "ReplayGain / loudness intelligent",
+            "tempo" to "Tempo",
+            "pitch" to "Pitch",
+            "gapless" to "Gapless",
+            "restartRequiredTitle" to "Redémarrer LEVYRA ?",
+            "restartRequiredBody" to "La langue a été enregistrée. Redémarre l'app maintenant pour recharger proprement tous les écrans.",
+            "restartNow" to "Redémarrer",
+            "later" to "Plus tard",
+            "audioQualityAuto" to "Auto",
+            "audioQualityHigh" to "Haute",
+            "audioQualityLow" to "Basse",
+            "pulseSectionBand" to "Tes statistiques",
+            "pulseTitle" to "Pulse d'écoute",
+            "pulseSubtitle" to "Statistiques privées, calculées uniquement sur cet appareil",
+            "followedArtistsTitle" to "Artistes suivis",
+            "followedArtistsSubtitle" to "Les artistes que tu gardes près de toi",
+            "listeningHistoryEmptyTitle" to "Aucune écoute pour l'instant",
+            "listeningHistoryEmptyDetail" to "Lance un titre et ton historique se construit ici.",
+            "pulseMinutes" to "Minutes",
+            "pulseMinuteShort" to "min",
+            "pulsePlays" to "Lectures",
+            "pulseStreak" to "Jours d'affilée",
+            "pulseCompletion" to "Complétion",
+            "pulseTopArtists" to "Artistes les plus écoutés",
+            "pulseWeek" to "7 derniers jours",
+            "pulsePeakHour" to "Heure de pointe",
+            "pulseEmpty" to "Lance un titre pour allumer ton Pulse",
+            "listeningHistory" to "Historique d'écoute",
+            "listeningHistorySubtitle" to "Ce que tu as vraiment écouté",
+            "listeningPrompt" to "À l'écoute...",
+            "voiceSearchUnsupported" to "La recherche vocale n'est pas prise en charge",
+            "musicFiltersComingSoon" to "Les filtres musicaux arrivent bientôt !",
+            "recentSearches" to "Recherches récentes",
+            "actions" to "Actions",
+            "removeFromFavorites" to "Retirer des favoris",
+            "addToFavorites" to "Ajouter aux favoris",
+            "playNext" to "Lire ensuite",
+            "addToQueue" to "Ajouter à la file d'attente",
+            "addToPlaylist" to "Ajouter à une playlist",
+            "alreadyOffline" to "Déjà disponible hors connexion",
+            "download" to "Télécharger",
+            "openArtist" to "Ouvrir l'artiste",
+            "openAlbum" to "Ouvrir l'album",
+            "deleteDownload" to "Supprimer le téléchargement",
+            "share" to "Partager",
+            "shareSong" to "Partager le titre",
+            "removeFromRecentSearches" to "Retirer des recherches récentes",
+            "songOptions" to "Options du titre",
+            "goToPlayer" to "Accéder au lecteur",
+            "saveOffline" to "Enregistrer hors connexion",
+            "favorite" to "Favori",
+            "downloaded" to "Téléchargé",
+            "remove" to "Retirer",
+            "removeFromPlaylist" to "Retirer de la playlist",
+            "youMightAlsoLike" to "Vous aimerez peut-être aussi",
+            "topResult" to "Meilleur résultat",
+            "currentlyPlaying" to "En cours de lecture",
+            "artistLabel" to "Artiste",
+            "playNow" to "Lire maintenant",
+            "biography" to "Biographie",
+            "newUpdate" to "NOUVELLE MISE À JOUR",
+            "updateDescription" to "Un écran plus compact, un journal des modifications plus lisible et un contenu défilable sur tous les écrans.",
+            "whatsNew" to "Nouveautés",
+            "update" to "Mettre à jour",
+            "updateRetry" to "Réessayer",
+            "updateDownloading" to "Téléchargement de la mise à jour",
+            "updatePreparing" to "Préparation de la mise à jour",
+            "updateInstalling" to "Installation",
+            "updateReadyToInstall" to "Prêt à installer",
+            "updateFailed" to "Échec de la mise à jour",
+            "updateAllowInstalls" to "Autoriser les installations pour continuer",
+            "updateLinkUnavailable" to "Lien de mise à jour indisponible",
+            "cannotOpenDownload" to "Impossible d'ouvrir le téléchargement",
+            "externalLinkUnavailable" to "Lien externe indisponible",
+            "cannotOpenExternalLink" to "Impossible d’ouvrir le lien externe",
+            "continuousRadio" to "Radio continue",
+            "continuousRadioSubtitle" to "Ajoute des titres cohérents lorsque la file d'attente touche à sa fin",
+            "artistsLabelPlural" to "Artistes",
+            "albumMood" to "Ambiance des albums",
+            "openLyricsAnalysis" to "Ouvrir l'analyse des paroles",
+            "closeLyrics" to "Fermer les paroles",
+            "lyricsDuet" to "Duo",
+            "lyricsCinema" to "Cinéma",
+            "lyricsPage" to "Page",
+            "lyricsRomanization" to "Romanisation",
+            "lyricsCompact" to "Compact",
+            "lyricsSections" to "Sections du morceau",
+            "lyricsSectionIntro" to "Intro",
+            "lyricsSectionVerse" to "Couplet",
+            "lyricsSectionPreChorus" to "Pré-refrain",
+            "lyricsSectionChorus" to "Refrain",
+            "lyricsSectionBridge" to "Pont",
+            "lyricsSectionInstrumental" to "Instrumental",
+            "lyricsSectionOutro" to "Outro",
+            "automaticTranslation" to "Traduction automatique",
+            "automaticTranslationSubtitle" to "Utilise les langues disponibles dans les transcriptions YouTube",
+            "atmosphere" to "Ambiance",
+            "themes" to "Thèmes",
+            "chorusDetected" to "Refrain détecté",
+            "goToChorus" to "Aller au refrain",
+            "close" to "Fermer",
+            "complete" to "Terminer",
+            "delete" to "Supprimer",
+            "newPlaylist" to "Nouvelle playlist",
+            "playlistName" to "Nom de la playlist",
+            "create" to "Créer",
+            "cancel" to "Annuler",
+            "newPlaylistName" to "Nom de la nouvelle playlist",
+            "createNewPlaylist" to "Créer une nouvelle playlist",
+            "createAndAdd" to "Créer et ajouter",
+            "downloadPlaylist" to "Télécharger la playlist",
+            "playAll" to "Tout lire",
+            "playingFrom" to "LECTURE DEPUIS",
+            "closePlayer" to "Fermer le lecteur",
+            "options" to "Options",
+            "showLyrics" to "Afficher les paroles",
+            "shuffle" to "Lecture aléatoire",
+            "previous" to "Précédent",
+            "next" to "Suivant",
+            "repeat" to "Répéter",
+            "persistentQueue" to "File d'attente persistante",
+            "continueListening" to "Continuer l'écoute",
+            "favoritesPlain" to "Favoris",
+            "offline" to "Hors connexion",
+            "more" to "Plus",
+            "mix" to "Mix",
+            "mixForYou" to "Mix pour vous",
+            "genres" to "Genres",
+            "smartMusicProfile" to "Profil musical intelligent",
+            "flow" to "Flux",
+            "pictureInPicture" to "Image dans l'image",
+            "discoveryFlow" to "FLUX DE DÉCOUVERTE",
+            "shareDiagnostics" to "Partager le diagnostic",
+            "albumUnavailable" to "Album indisponible",
+            "albumTracksUnavailable" to "Titres de l'album indisponibles",
+            "showLess" to "Afficher moins",
+            "showMore" to "Afficher plus",
+            "playing" to "En cours de lecture",
+            "artistProfileUnavailable" to "Profil de l'artiste indisponible",
+            "popularTracks" to "Titres populaires",
+            "showAll" to "Tout afficher",
+            "versionLabel" to "Version",
+            "generalImprovements" to "Améliorations générales et corrections de bugs.",
+            "historyLabel" to "dans l'historique",
+            "undoRemoval" to "Annuler la suppression",
+            "lyricsAnalysis" to "Analyse des paroles",
+            "linesLabel" to "Vers",
+            "wordsLabel" to "Mots",
+            "localAnalysis" to "Analyse locale",
+            "open" to "Ouvrir",
+            "newRelease" to "NOUVELLE SORTIE",
+            "newReleaseSubtitle" to "Une nouvelle sortie vient d'entrer dans le radar.",
+            "saved" to "Enregistré",
+            "save" to "Enregistrer",
+            "noOfflineDownloads" to "Aucun téléchargement enregistré hors connexion.",
+            "createFirstPlaylist" to "Créez votre première playlist",
+            "createFirstPlaylistSubtitle" to "Regroupez les titres que vous souhaitez retrouver instantanément.",
+            "downloadTrackHint" to "Touchez Télécharger sur un titre pour l'enregistrer dans Music/Levyra.",
+            "savedTracks" to "Titres enregistrés",
+            "favoritesEmpty" to "Aucun favori pour le moment",
+            "playlistEmpty" to "La playlist est vide. Ajoutez des titres depuis le menu à trois points d'un titre.",
+            "showPersonalListening" to "Afficher votre activité d'écoute personnelle en haut de l'accueil",
+            "showRecentReleases" to "Afficher les sorties récentes et le radar des artistes suivis",
+            "showRecommendedAlbums" to "Afficher les albums recommandés sur l'accueil",
+            "showDiscoveredArtists" to "Afficher les artistes découverts dans vos sections musicales",
+            "showChartsCountry" to "Afficher les classements et le sélecteur de pays",
+            "partialDownloadResume" to "Conserver les octets partiels et reprendre avec des requêtes HTTP Range",
+            "lyricsAnalysisSection" to "ANALYSE DES PAROLES",
+            "lyricsAnalysisCompact" to "Analyse locale discrète",
+            "lyricsAnalysisCompactSubtitle" to "Reste compacte jusqu'à son ouverture, n'affiche que les signaux utiles et peut vous mener directement au refrain.",
+            "createDataBackup" to "Créer une sauvegarde des données",
+            "createDataBackupSubtitle" to "Favoris, playlists, historique, file d'attente et réglages dans une archive vérifiée par SHA-256. Les fichiers audio restent dans Music/Levyra.",
+            "updateAvailable" to "Mise à jour disponible",
+            "updates" to "Mises à jour",
+            "checkingLatestVersion" to "Recherche de la dernière version…",
+            "latestVersionReady" to "prête à être téléchargée",
+            "latestInstalled" to "Vous disposez de la dernière version",
+            "checkNewVersions" to "Rechercher de nouvelles versions publiées",
+            "releasePageReady" to "Page de la version prête à être ouverte",
+            "installedVersion" to "Version installée",
+            "openPlayer" to "Ouvrir le lecteur",
+            "searchSongsArtists" to "Rechercher des titres et des artistes...",
+            "songsPlain" to "Titres",
+            "shareVia" to "Partager via",
+            "emptySearchPrompt" to "Saisissez le nom d'un titre et lancez la recherche",
+            "cancelDownload" to "Annuler le téléchargement",
+            "readAll" to "Lire la suite",
+            "singlesAndEps" to "Singles et EP",
+            "tapHeartToAdd" to "Touchez le cœur d'un titre pour l'ajouter ici.",
+            "all" to "Tout",
+            "automaticResume" to "Reprise automatique",
+            "simultaneousDownloads" to "Téléchargements simultanés",
+            "simultaneousDownloadsSubtitle" to "Limite globale pour la mémoire, le réseau et la température",
+            "backupRestoreSection" to "SAUVEGARDE ET RESTAURATION",
+            "restoreBackup" to "Restaurer une sauvegarde",
+            "restoreBackupSubtitle" to "Vérifie le schéma et la somme de contrôle avant de remplacer les données locales",
+            "playbackResilienceSection" to "RÉSILIENCE DE LECTURE",
+            "exportSafeDiagnostics" to "Exporter un diagnostic sécurisé",
+            "generateResolverTrace" to "Générer la trace des résolveurs",
+            "safeDiagnosticsSubtitle" to "État des clients et dernières tentatives, sans URL ni jetons",
+            "check" to "Vérifier",
+            "checking" to "Vérification",
+            "dragToReorder" to "Faites glisser pour réorganiser",
+            "homeInterfaceSection" to "INTERFACE D'ACCUEIL",
+            "compactHome" to "Accueil compact",
+            "compactHomeSubtitle" to "Réduit les espaces verticaux et allège le défilement",
+            "yourOrbitSetting" to "Votre orbite",
+            "voicesSetting" to "Voix qui résonnent",
+            "voicesSettingSubtitle" to "Conserve la sélection personnelle basée sur vos écoutes",
+            "newReleasesSetting" to "Nouvelles sorties",
+            "albumsForYouSetting" to "Albums pour vous",
+            "trendingArtists" to "Artistes tendance",
+            "top50Charts" to "Classements Top 50",
+            "mobilePlayerSection" to "LECTEUR MOBILE",
+            "advancedGestures" to "Gestes avancés",
+            "advancedGesturesSubtitle" to "Double toucher, appui prolongé, luminosité et volume",
+            "pureBlack" to "Noir absolu",
+            "pureBlackSubtitle" to "Fonds vraiment noirs pour écrans OLED",
+            "hapticFeedback" to "Retour haptique",
+            "hapticFeedbackSubtitle" to "Une brève vibration sur les actions clés",
+            "doubleTapSeek" to "Saut par double toucher",
+            "doubleTapSeekSubtitle" to "Durée du saut à gauche et à droite",
+            "longPress" to "Appui prolongé",
+            "longPressSubtitle" to "Vitesse temporaire tant que vous maintenez l'appui",
+            "downloadEngineSection" to "MOTEUR DE TÉLÉCHARGEMENT 3.0",
+            "wifiOnly" to "Wi-Fi uniquement",
+            "wifiOnlySubtitle" to "WorkManager lance les téléchargements uniquement sur un réseau non limité",
+            "chargingOnly" to "Uniquement pendant la charge",
+            "chargingOnlySubtitle" to "Réduit la consommation et la température pendant les longs téléchargements",
+            "resumeDownload" to "Reprendre le téléchargement",
+            "pauseDownload" to "Suspendre le téléchargement",
+            "signedApkReady" to "APK signé prêt à être installé",
+            "downloadsInProgress" to "Téléchargements en cours",
+            "downloadInProgress" to "Téléchargement en cours",
+            "newAlbums" to "Nouveaux albums",
+            "newSingles" to "Nouveaux singles",
+            "newAlbum" to "NOUVEL ALBUM",
+            "downloadsFolder" to "Dossier des téléchargements",
+            "offlineDownloadsPlain" to "Téléchargements hors connexion",
+            "personalPlaylists" to "Playlists personnelles",
+            "searchingYouTubeMusic" to "Recherche sur YouTube Music…",
+            "searchingLyrics" to "Recherche des paroles…",
+            "pause" to "Pause",
+            "newSingle" to "NOUVEAU SINGLE",
+            "albumsPlain" to "Albums",
+            "albumPlain" to "Album",
+            "singlePlain" to "Single",
+            "playlistsPlain" to "Playlists",
+            "profileActive" to "Personnalisation active",
+            "profileLearning" to "J’apprends de vos écoutes",
+            "newBadge" to "NOUVEAU",
+            "brightness" to "Luminosité",
+            "timer" to "Minuteur",
+            "normalizationShort" to "Norm.",
+            "coverAndTags" to "pochette et tags",
+            "madeWithBy" to "Créé avec ❤️ par",
+            "activeIndicator" to "ACTIF",
+            "batteryUnrestricted" to "Lecture en arrière-plan sans limites",
+            "batteryUnrestrictedSubtitle" to "Exclure Levyra de l'optimisation de la batterie pour que la musique continue écran éteint",
+            "batteryUnrestrictedActive" to "Actif — le système n'arrêtera pas la lecture",
+            "downloadQualityPreset" to "Préréglage de qualité",
+            "downloadQualityPresetSubtitle" to "Équilibre qualité, vitesse et consommation de données",
+            "downloadPresetAutomatic" to "Automatique",
+            "downloadPresetHighQuality" to "Haute qualité",
+            "downloadPresetDataSaver" to "Économiseur de données",
+            "downloadFolderOrganization" to "Organisation des dossiers",
+            "downloadFolderOrganizationSubtitle" to "Enregistre par artiste et album sans dupliquer les fichiers",
+            "downloadFolderArtist" to "Artiste",
+            "downloadFolderArtistAlbum" to "Artiste / Album",
+            "downloadSpeedLimit" to "Limite de vitesse",
+            "downloadSpeedLimitSubtitle" to "Limite l'usage du réseau pendant les téléchargements",
+            "downloadSpeedUnlimited" to "Illimité",
+            "downloadEmbedMetadata" to "Métadonnées intégrées",
+            "downloadEmbedMetadataSubtitle" to "Écrit le titre, l'artiste et l'album dans le fichier",
+            "downloadEmbedArtwork" to "Pochette intégrée",
+            "downloadEmbedArtworkSubtitle" to "Intègre la pochette officielle dans le morceau",
+            "downloadVerifyFile" to "Vérification des fichiers",
+            "downloadVerifyFileSubtitle" to "Valide signature, taille et lisibilité avant de terminer",
+            "downloadSkipDuplicates" to "Éviter les doublons",
+            "downloadSkipDuplicatesSubtitle" to "Réutilise les téléchargements valides existants",
+            "trailTitle" to "VOTRE TRACE RÉCENTE",
+            "trailPlays" to "écoutes",
+            "trailUnique" to "uniques",
+            "trailLastPlayed" to "Dernière écoute",
+            "statPlays" to "écoutes",
+            "statArtists" to "artistes",
+            "statTracks" to "titres"
+        )
+
+        private fun deEntries(): Map<String, String> = mapOf(
+            "welcomeBadge" to "Willkommen",
+            "welcomeTitle" to "Los geht's.",
+            "languageQuestion" to "Welche Sprache möchtest du verwenden?",
+            "nameQuestion" to "Wie heißt du?",
+            "namePlaceholder" to "Dein Name...",
+            "tasteQuestion" to "Wähle 3 oder mehr Genres, die du magst.",
+            "skipAndContinue" to "Überspringen und weiter",
+            "startListening" to "Anhören starten",
+            "settings" to "Einstellungen",
+            "settingsSubtitle" to "Passe LEVYRA an",
+            "design" to "DESIGN",
+            "playback" to "WIEDERGABE",
+            "preferences" to "EINSTELLUNGEN",
+            "app" to "APP",
+            "animations" to "Animationen",
+            "animationsSubtitle" to "Effekte, Übergänge und Karten-Feedback",
+            "motionArtwork" to "Player-Canvas",
+            "motionArtworkSubtitle" to "Zeigt Künstlervideos; deaktivieren, um immer das Cover zu verwenden",
+            "dynamicColor" to "Dynamische Farbe",
+            "dynamicColorSubtitle" to "Hintergrund und Akzente aus dem aktuellen Cover",
+            "sponsorBlock" to "SponsorBlock",
+            "sponsorBlockSubtitle" to "Überspringt automatisch Sponsoren und nichtmusikalische Teile",
+            "skipSilence" to "Stille überspringen",
+            "skipSilenceSubtitle" to "Komprimiert stille Pausen in Titeln",
+            "redoQuestionnaire" to "Geschmacksfragebogen wiederholen",
+            "redoQuestionnaireSubtitle" to "Wähle deine Lieblingsgenres erneut",
+            "language" to "Sprache",
+            "languageSubtitle" to "App-Sprache ändern",
+            "home" to "Start",
+            "search" to "Suche",
+            "library" to "Bibliothek",
+            "player" to "Wiedergabe",
+            "queue" to "Warteschlange",
+            "lyrics" to "Songtext",
+            "related" to "Ähnlich",
+            "song" to "Titel",
+            "video" to "Video",
+            "nowPlaying" to "LÄUFT GERADE",
+            "emptyPlayer" to "Suche einen Song und drücke Play",
+            "phoneSpeaker" to "Telefonlautsprecher",
+            "connected" to "Verbunden",
+            "volume" to "Lautstärke",
+            "audioQuality" to "Audioqualität",
+            "done" to "Fertig",
+            "queueEmpty" to "Die Warteschlange ist leer.",
+            "lyricsUnavailable" to "Lyrics sind für diesen Titel nicht verfügbar.",
+            "synced" to "Synchronisiert",
+            "libraryTitle" to "Bibliothek",
+            "librarySubtitle" to "Playlists, Favoriten, Downloads und Verlauf",
+            "playlists" to "Deine Playlists",
+            "newItem" to "Neu",
+            "downloads" to "Offline-Downloads",
+            "favorites" to "Favoriten",
+            "recent" to "Zuletzt gefunden",
+            "quickPicks" to "Schnellauswahl",
+            "play" to "Abspielen",
+            "newReleases" to "Neue Releases",
+            "albumsForYou" to "Alben für dich",
+            "top50Unavailable" to "Top 50 nicht verfügbar, versuche es später erneut",
+            "artists" to "Künstler",
+            "albumsAndSingles" to "Alben und Singles",
+            "songs" to "Songs",
+            "searchPlaceholder" to "Songs, Künstler und ... suchen",
+            "back" to "Zurück",
+            "clear" to "Löschen",
+            "voice" to "Stimme",
+            "createPlaylistHint" to "Erstelle eine Playlist und füge deine Lieblingssongs hinzu",
+            "selectLanguagePrompt" to "Sprache auswählen",
+            "explore" to "Entdecken",
+            "exploreTitle" to "Entdecken",
+            "exploreSubtitle" to "Entdecke neue Musik, Trends und Videos",
+            "exploreFresh" to "Frische Strömungen",
+            "exploreNewVideos" to "Neue Musikvideos",
+            "exploreEmpty" to "Aus diesem Bereich kommt gerade kein Signal. Probiere einen anderen",
+            "localWaveName" to "De Wave",
+            "localWaveEmoji" to "🇩🇪",
+            "localWaveQuery" to "neue deutsche lieder 2026",
+            "exploreNewReleases" to "Neue Releases",
+            "exploreRapDrill" to "Rap & Drill",
+            "exploreElectronic" to "Electronic",
+            "explorePopGlobal" to "Global Pop",
+            "exploreRnbSoul" to "R&B / Soul",
+            "exploreRockAlt" to "Rock & Alternative",
+            "exploreLatino" to "Latino",
+            "exploreLofiChill" to "Lo-Fi / Chill",
+            "exploreJpopAnime" to "J-Pop / Anime",
+            "followArtist" to "Folgen",
+            "followingArtist" to "Gefolgt",
+            "releaseRadar" to "Release Radar",
+            "similarArtists" to "Ähnliche Künstler",
+            "similarToFollowed" to "Ähnlich wie Künstler, denen du folgst",
+            "theme" to "Design",
+            "themeSubtitle" to "Wähle deinen LEVYRA-Look",
+            "personalOrbitTitle" to "Deine Umlaufbahn",
+            "personalOrbitSubtitle" to "Die Songs, die immer wieder zu dir zurückkehren",
+            "voicesTitle" to "Stimmen, die nachklingen",
+            "voicesSubtitle" to "Die meistkommentierten Tracks als lebendige Energie",
+            "totalComments" to "Kommentare gesamt",
+            "engagement" to "Engagement",
+            "audioEngine" to "Audio",
+            "audioEngineSubtitle" to "Equalizer, Crossfade, Loudness, Tempo, Pitch und Gapless",
+            "equalizer" to "Equalizer",
+            "equalizerSubtitle" to "Echte Effekte mit Presets, Bass Boost und Virtualizer",
+            "preset" to "Preset",
+            "bassBoost" to "Bass Boost",
+            "virtualizer" to "Virtualizer",
+            "crossfade" to "Crossfade",
+            "djSoft" to "DJ-Soft-Modus",
+            "replayGain" to "ReplayGain / smarte Lautstärke",
+            "tempo" to "Tempo",
+            "pitch" to "Pitch",
+            "gapless" to "Gapless",
+            "restartRequiredTitle" to "LEVYRA neu starten?",
+            "restartRequiredBody" to "Die Sprache wurde gespeichert. Starte die App neu, damit alle Ansichten sauber geladen werden.",
+            "restartNow" to "Jetzt neu starten",
+            "later" to "Später",
+            "audioQualityAuto" to "Auto",
+            "audioQualityHigh" to "Hoch",
+            "audioQualityLow" to "Niedrig",
+            "pulseSectionBand" to "Deine Statistiken",
+            "pulseTitle" to "Hör-Pulse",
+            "pulseSubtitle" to "Private Statistiken, nur auf diesem Gerät berechnet",
+            "followedArtistsTitle" to "Gefolgte Künstler",
+            "followedArtistsSubtitle" to "Die Künstler, die du nah bei dir hältst",
+            "listeningHistoryEmptyTitle" to "Noch keine Wiedergaben",
+            "listeningHistoryEmptyDetail" to "Spiele einen Titel und dein Verlauf entsteht hier von selbst.",
+            "pulseMinutes" to "Minuten",
+            "pulseMinuteShort" to "Min.",
+            "pulsePlays" to "Wiedergaben",
+            "pulseStreak" to "Tage in Folge",
+            "pulseCompletion" to "Abschlussrate",
+            "pulseTopArtists" to "Top-Künstler",
+            "pulseWeek" to "Letzte 7 Tage",
+            "pulsePeakHour" to "Stoßzeit",
+            "pulseEmpty" to "Spiele etwas ab, um deinen Pulse zu aktivieren",
+            "listeningHistory" to "Hörverlauf",
+            "listeningHistorySubtitle" to "Was du wirklich gehört hast",
+            "listeningPrompt" to "Ich höre zu...",
+            "voiceSearchUnsupported" to "Die Sprachsuche wird nicht unterstützt",
+            "musicFiltersComingSoon" to "Musikfilter folgen in Kürze!",
+            "recentSearches" to "Letzte Suchanfragen",
+            "actions" to "Aktionen",
+            "removeFromFavorites" to "Aus Favoriten entfernen",
+            "addToFavorites" to "Zu Favoriten hinzufügen",
+            "playNext" to "Als Nächstes abspielen",
+            "addToQueue" to "Zur Warteschlange hinzufügen",
+            "addToPlaylist" to "Zu einer Playlist hinzufügen",
+            "alreadyOffline" to "Bereits offline verfügbar",
+            "download" to "Herunterladen",
+            "openArtist" to "Künstler öffnen",
+            "openAlbum" to "Album öffnen",
+            "deleteDownload" to "Download löschen",
+            "share" to "Teilen",
+            "shareSong" to "Titel teilen",
+            "removeFromRecentSearches" to "Aus letzten Suchanfragen entfernen",
+            "songOptions" to "Titeloptionen",
+            "goToPlayer" to "Zum Player",
+            "saveOffline" to "Offline speichern",
+            "favorite" to "Favorit",
+            "downloaded" to "Heruntergeladen",
+            "remove" to "Entfernen",
+            "removeFromPlaylist" to "Aus Playlist entfernen",
+            "youMightAlsoLike" to "Das könnte dir auch gefallen",
+            "topResult" to "Top-Ergebnis",
+            "currentlyPlaying" to "Wird gerade abgespielt",
+            "artistLabel" to "Künstler",
+            "playNow" to "Jetzt abspielen",
+            "biography" to "Biografie",
+            "newUpdate" to "NEUES UPDATE",
+            "updateDescription" to "Kompaktere Ansicht, übersichtlicheres Änderungsprotokoll und scrollbare Inhalte auf jedem Bildschirm.",
+            "whatsNew" to "Neuigkeiten",
+            "update" to "Aktualisieren",
+            "updateRetry" to "Erneut versuchen",
+            "updateDownloading" to "Update wird heruntergeladen",
+            "updatePreparing" to "Update wird vorbereitet",
+            "updateInstalling" to "Wird installiert",
+            "updateReadyToInstall" to "Bereit zur Installation",
+            "updateFailed" to "Update fehlgeschlagen",
+            "updateAllowInstalls" to "Installationen zulassen, um fortzufahren",
+            "updateLinkUnavailable" to "Update-Link nicht verfügbar",
+            "cannotOpenDownload" to "Download kann nicht geöffnet werden",
+            "externalLinkUnavailable" to "Externer Link nicht verfügbar",
+            "cannotOpenExternalLink" to "Der externe Link kann nicht geöffnet werden",
+            "continuousRadio" to "Endlosradio",
+            "continuousRadioSubtitle" to "Fügt passende Titel hinzu, wenn die Warteschlange fast zu Ende ist",
+            "artistsLabelPlural" to "Künstler",
+            "albumMood" to "Albumstimmung",
+            "openLyricsAnalysis" to "Songtextanalyse öffnen",
+            "closeLyrics" to "Songtext schließen",
+            "lyricsDuet" to "Duett",
+            "lyricsCinema" to "Kino",
+            "lyricsPage" to "Seite",
+            "lyricsRomanization" to "Romanisierung",
+            "lyricsCompact" to "Kompakt",
+            "lyricsSections" to "Songabschnitte",
+            "lyricsSectionIntro" to "Intro",
+            "lyricsSectionVerse" to "Strophe",
+            "lyricsSectionPreChorus" to "Pre-Chorus",
+            "lyricsSectionChorus" to "Refrain",
+            "lyricsSectionBridge" to "Bridge",
+            "lyricsSectionInstrumental" to "Instrumental",
+            "lyricsSectionOutro" to "Outro",
+            "automaticTranslation" to "Automatische Übersetzung",
+            "automaticTranslationSubtitle" to "Verwendet die in YouTube-Transkripten verfügbaren Sprachen",
+            "atmosphere" to "Atmosphäre",
+            "themes" to "Themen",
+            "chorusDetected" to "Refrain erkannt",
+            "goToChorus" to "Zum Refrain",
+            "close" to "Schließen",
+            "complete" to "Abschließen",
+            "delete" to "Löschen",
+            "newPlaylist" to "Neue Playlist",
+            "playlistName" to "Name der Playlist",
+            "create" to "Erstellen",
+            "cancel" to "Abbrechen",
+            "newPlaylistName" to "Name der neuen Playlist",
+            "createNewPlaylist" to "Neue Playlist erstellen",
+            "createAndAdd" to "Erstellen und hinzufügen",
+            "downloadPlaylist" to "Playlist herunterladen",
+            "playAll" to "Alle abspielen",
+            "playingFrom" to "WIEDERGABE VON",
+            "closePlayer" to "Player schließen",
+            "options" to "Optionen",
+            "showLyrics" to "Songtext anzeigen",
+            "shuffle" to "Zufallswiedergabe",
+            "previous" to "Zurück",
+            "next" to "Weiter",
+            "repeat" to "Wiederholen",
+            "persistentQueue" to "Dauerhafte Warteschlange",
+            "continueListening" to "Weiterhören",
+            "favoritesPlain" to "Favoriten",
+            "offline" to "Offline",
+            "more" to "Mehr",
+            "mix" to "Mix",
+            "mixForYou" to "Mix für dich",
+            "genres" to "Genres",
+            "smartMusicProfile" to "Intelligentes Musikprofil",
+            "flow" to "Flow",
+            "pictureInPicture" to "Bild-in-Bild",
+            "discoveryFlow" to "ENTDECKUNGS-FLOW",
+            "shareDiagnostics" to "Diagnose teilen",
+            "albumUnavailable" to "Album nicht verfügbar",
+            "albumTracksUnavailable" to "Albumtitel nicht verfügbar",
+            "showLess" to "Weniger anzeigen",
+            "showMore" to "Mehr anzeigen",
+            "playing" to "Wird abgespielt",
+            "artistProfileUnavailable" to "Künstlerprofil nicht verfügbar",
+            "popularTracks" to "Beliebte Titel",
+            "showAll" to "Alle anzeigen",
+            "versionLabel" to "Version",
+            "generalImprovements" to "Allgemeine Verbesserungen und Fehlerbehebungen.",
+            "historyLabel" to "im Verlauf",
+            "undoRemoval" to "Entfernen rückgängig machen",
+            "lyricsAnalysis" to "Songtextanalyse",
+            "linesLabel" to "Zeilen",
+            "wordsLabel" to "Wörter",
+            "localAnalysis" to "Lokale Analyse",
+            "open" to "Öffnen",
+            "newRelease" to "NEUE VERÖFFENTLICHUNG",
+            "newReleaseSubtitle" to "Eine neue Veröffentlichung ist gerade im Radar erschienen.",
+            "saved" to "Gespeichert",
+            "save" to "Speichern",
+            "noOfflineDownloads" to "Keine Offline-Downloads gespeichert.",
+            "createFirstPlaylist" to "Erstelle deine erste Playlist",
+            "createFirstPlaylistSubtitle" to "Sammle die Titel, die du sofort wiederfinden möchtest.",
+            "downloadTrackHint" to "Tippe bei einem Titel auf Herunterladen, um ihn in Music/Levyra zu speichern.",
+            "savedTracks" to "Gespeicherte Titel",
+            "favoritesEmpty" to "Noch keine Favoriten",
+            "playlistEmpty" to "Die Playlist ist leer. Füge Titel über das Drei-Punkte-Menü eines Titels hinzu.",
+            "showPersonalListening" to "Persönliche Höraktivität oben auf der Startseite anzeigen",
+            "showRecentReleases" to "Neue Veröffentlichungen und Radar gefolgter Künstler anzeigen",
+            "showRecommendedAlbums" to "Empfohlene Alben auf der Startseite anzeigen",
+            "showDiscoveredArtists" to "Künstler aus deinen Musikbereichen anzeigen",
+            "showChartsCountry" to "Charts und Länderauswahl anzeigen",
+            "partialDownloadResume" to "Teilweise geladene Bytes behalten und mit HTTP-Range-Anfragen fortsetzen",
+            "lyricsAnalysisSection" to "SONGTEXTANALYSE",
+            "lyricsAnalysisCompact" to "Diskrete lokale Analyse",
+            "lyricsAnalysisCompactSubtitle" to "Bleibt kompakt, bis du sie öffnest, zeigt nur nützliche Hinweise und kann dich direkt zum Refrain bringen.",
+            "createDataBackup" to "Datensicherung erstellen",
+            "createDataBackupSubtitle" to "Favoriten, Playlists, Verlauf, Warteschlange und Einstellungen in einem SHA-256-geprüften Archiv. Audiodateien bleiben in Music/Levyra.",
+            "updateAvailable" to "Update verfügbar",
+            "updates" to "Updates",
+            "checkingLatestVersion" to "Neueste Version wird geprüft…",
+            "latestVersionReady" to "steht zum Download bereit",
+            "latestInstalled" to "Die neueste Version ist installiert",
+            "checkNewVersions" to "Nach neu veröffentlichten Versionen suchen",
+            "releasePageReady" to "Release-Seite kann geöffnet werden",
+            "installedVersion" to "Installierte Version",
+            "openPlayer" to "Player öffnen",
+            "searchSongsArtists" to "Titel und Künstler suchen...",
+            "songsPlain" to "Titel",
+            "shareVia" to "Teilen über",
+            "emptySearchPrompt" to "Gib einen Titelnamen ein und starte die Suche",
+            "cancelDownload" to "Download abbrechen",
+            "readAll" to "Mehr lesen",
+            "singlesAndEps" to "Singles und EPs",
+            "tapHeartToAdd" to "Tippe bei einem Titel auf das Herz, um ihn hier hinzuzufügen.",
+            "all" to "Alle",
+            "automaticResume" to "Automatisch fortsetzen",
+            "simultaneousDownloads" to "Gleichzeitige Downloads",
+            "simultaneousDownloadsSubtitle" to "Globales Limit für Speicher, Netzwerk und Temperatur",
+            "backupRestoreSection" to "SICHERN UND WIEDERHERSTELLEN",
+            "restoreBackup" to "Sicherung wiederherstellen",
+            "restoreBackupSubtitle" to "Schema und Prüfsumme vor dem Ersetzen lokaler Daten prüfen",
+            "playbackResilienceSection" to "WIEDERGABERESILIENZ",
+            "exportSafeDiagnostics" to "Sichere Diagnose exportieren",
+            "generateResolverTrace" to "Resolver-Ablauf erzeugen",
+            "safeDiagnosticsSubtitle" to "Clientstatus und letzte Versuche ohne URLs und Tokens",
+            "check" to "Prüfen",
+            "checking" to "Wird geprüft",
+            "dragToReorder" to "Zum Sortieren ziehen",
+            "homeInterfaceSection" to "STARTSEITEN-OBERFLÄCHE",
+            "compactHome" to "Kompakte Startseite",
+            "compactHomeSubtitle" to "Reduziert vertikale Abstände und macht das Scrollen flüssiger",
+            "yourOrbitSetting" to "Deine Umlaufbahn",
+            "voicesSetting" to "Stimmen, die berühren",
+            "voicesSettingSubtitle" to "Behält die persönliche Auswahl auf Grundlage deiner Höraktivität",
+            "newReleasesSetting" to "Neue Veröffentlichungen",
+            "albumsForYouSetting" to "Alben für dich",
+            "trendingArtists" to "Angesagte Künstler",
+            "top50Charts" to "Top-50-Charts",
+            "mobilePlayerSection" to "MOBILER PLAYER",
+            "advancedGestures" to "Erweiterte Gesten",
+            "advancedGesturesSubtitle" to "Doppeltippen, langes Drücken, Helligkeit und Lautstärke",
+            "pureBlack" to "Reines Schwarz",
+            "pureBlackSubtitle" to "Wirklich schwarze Hintergründe für OLED-Displays",
+            "hapticFeedback" to "Haptisches Feedback",
+            "hapticFeedbackSubtitle" to "Kurze Vibration bei wichtigen Aktionen",
+            "doubleTapSeek" to "Sprung per Doppeltippen",
+            "doubleTapSeekSubtitle" to "Sprungdauer nach links und rechts",
+            "longPress" to "Langes Drücken",
+            "longPressSubtitle" to "Temporäres Tempo, solange du gedrückt hältst",
+            "downloadEngineSection" to "DOWNLOAD-ENGINE 3.0",
+            "wifiOnly" to "Nur WLAN",
+            "wifiOnlySubtitle" to "WorkManager startet Downloads nur in einem nicht getakteten Netzwerk",
+            "chargingOnly" to "Nur beim Laden",
+            "chargingOnlySubtitle" to "Reduziert Verbrauch und Temperatur bei langen Downloads",
+            "resumeDownload" to "Download fortsetzen",
+            "pauseDownload" to "Download pausieren",
+            "signedApkReady" to "Signierte APK kann installiert werden",
+            "downloadsInProgress" to "Downloads laufen",
+            "downloadInProgress" to "Download läuft",
+            "newAlbums" to "Neue Alben",
+            "newSingles" to "Neue Singles",
+            "newAlbum" to "NEUES ALBUM",
+            "downloadsFolder" to "Download-Ordner",
+            "offlineDownloadsPlain" to "Offline-Downloads",
+            "personalPlaylists" to "Persönliche Playlists",
+            "searchingYouTubeMusic" to "YouTube Music wird durchsucht…",
+            "searchingLyrics" to "Songtext wird gesucht…",
+            "pause" to "Pause",
+            "newSingle" to "NEUE SINGLE",
+            "albumsPlain" to "Alben",
+            "albumPlain" to "Album",
+            "singlePlain" to "Single",
+            "playlistsPlain" to "Playlists",
+            "profileActive" to "Personalisierung aktiv",
+            "profileLearning" to "Ich lerne aus deinen Hörgewohnheiten",
+            "newBadge" to "NEU",
+            "brightness" to "Helligkeit",
+            "timer" to "Timer",
+            "normalizationShort" to "Norm.",
+            "coverAndTags" to "Cover und Tags",
+            "madeWithBy" to "Mit ❤️ erstellt von",
+            "activeIndicator" to "AKTIV",
+            "batteryUnrestricted" to "Uneingeschränkte Hintergrundwiedergabe",
+            "batteryUnrestrictedSubtitle" to "Levyra von der Akku-Optimierung ausschließen, damit die Musik bei ausgeschaltetem Bildschirm weiterläuft",
+            "batteryUnrestrictedActive" to "Aktiv — das System stoppt die Wiedergabe nicht",
+            "downloadQualityPreset" to "Qualitätsvoreinstellung",
+            "downloadQualityPresetSubtitle" to "Balanciert Qualität, Tempo und Datenverbrauch",
+            "downloadPresetAutomatic" to "Automatisch",
+            "downloadPresetHighQuality" to "Hohe Qualität",
+            "downloadPresetDataSaver" to "Datensparmodus",
+            "downloadFolderOrganization" to "Ordnerstruktur",
+            "downloadFolderOrganizationSubtitle" to "Nach Interpret und Album speichern, ohne Dateien zu duplizieren",
+            "downloadFolderArtist" to "Interpret",
+            "downloadFolderArtistAlbum" to "Interpret / Album",
+            "downloadSpeedLimit" to "Geschwindigkeitslimit",
+            "downloadSpeedLimitSubtitle" to "Begrenzt die Netzwerknutzung beim Herunterladen",
+            "downloadSpeedUnlimited" to "Unbegrenzt",
+            "downloadEmbedMetadata" to "Eingebettete Metadaten",
+            "downloadEmbedMetadataSubtitle" to "Schreibt Titel, Interpret und Album in die Datei",
+            "downloadEmbedArtwork" to "Eingebettetes Cover",
+            "downloadEmbedArtworkSubtitle" to "Bettet das offizielle Cover in den Titel ein",
+            "downloadVerifyFile" to "Dateiprüfung",
+            "downloadVerifyFileSubtitle" to "Prüft Signatur, Größe und Lesbarkeit vor dem Abschluss",
+            "downloadSkipDuplicates" to "Duplikate überspringen",
+            "downloadSkipDuplicatesSubtitle" to "Vorhandene gültige Downloads wiederverwenden",
+            "trailTitle" to "DEINE LETZTE SPUR",
+            "trailPlays" to "Wiedergaben",
+            "trailUnique" to "einzigartig",
+            "trailLastPlayed" to "Zuletzt gehört",
+            "statPlays" to "Wiedergaben",
+            "statArtists" to "Interpreten",
+            "statTracks" to "Titel"
+        )
+
+        private fun ptEntries(): Map<String, String> = mapOf(
+            "welcomeBadge" to "Bem-vindo",
+            "welcomeTitle" to "Vamos começar.",
+            "languageQuestion" to "Que idioma queres usar?",
+            "nameQuestion" to "Como te chamas?",
+            "namePlaceholder" to "O teu nome...",
+            "tasteQuestion" to "Escolhe 3 ou mais géneros que adoras.",
+            "skipAndContinue" to "Saltar e continuar",
+            "startListening" to "Começar a ouvir",
+            "settings" to "Definições",
+            "settingsSubtitle" to "Personaliza o LEVYRA",
+            "design" to "DESIGN",
+            "playback" to "REPRODUÇÃO",
+            "preferences" to "PREFERÊNCIAS",
+            "app" to "APP",
+            "animations" to "Animações",
+            "animationsSubtitle" to "Efeitos, transições e resposta ao tocar nos cartões",
+            "motionArtwork" to "Canvas do reprodutor",
+            "motionArtworkSubtitle" to "Mostra vídeos dos artistas; desative para usar sempre a capa",
+            "dynamicColor" to "Cor dinâmica",
+            "dynamicColorSubtitle" to "Fundo e detalhes tirados da capa atual",
+            "sponsorBlock" to "SponsorBlock",
+            "sponsorBlockSubtitle" to "Salta automaticamente sponsors e partes não musicais",
+            "skipSilence" to "Saltar silêncios",
+            "skipSilenceSubtitle" to "Comprime pausas silenciosas nas faixas",
+            "redoQuestionnaire" to "Refazer questionário de gostos",
+            "redoQuestionnaireSubtitle" to "Escolhe de novo os teus géneros favoritos",
+            "language" to "Idioma",
+            "languageSubtitle" to "Alterar o idioma da app",
+            "home" to "Início",
+            "search" to "Pesquisar",
+            "library" to "Biblioteca",
+            "player" to "Reprodutor",
+            "queue" to "Fila",
+            "lyrics" to "Letra",
+            "related" to "Relacionados",
+            "song" to "Música",
+            "video" to "Vídeo",
+            "nowPlaying" to "A TOCAR",
+            "emptyPlayer" to "Pesquisa uma música e toca em play",
+            "phoneSpeaker" to "Altifalante do telefone",
+            "connected" to "Ligado",
+            "volume" to "Volume",
+            "audioQuality" to "Qualidade de áudio",
+            "done" to "Concluído",
+            "queueEmpty" to "A fila está vazia.",
+            "lyricsUnavailable" to "A letra não está disponível para esta faixa.",
+            "synced" to "Sincronizado",
+            "libraryTitle" to "Biblioteca",
+            "librarySubtitle" to "Playlists, favoritos, downloads e histórico",
+            "playlists" to "As tuas playlists",
+            "newItem" to "Nova",
+            "downloads" to "Downloads offline",
+            "favorites" to "Favoritos",
+            "recent" to "Encontradas recentemente",
+            "quickPicks" to "Escolhas rápidas",
+            "play" to "Tocar",
+            "newReleases" to "Novidades",
+            "albumsForYou" to "Álbuns para ti",
+            "top50Unavailable" to "Top 50 indisponível, tenta novamente mais tarde",
+            "artists" to "Artistas",
+            "albumsAndSingles" to "Álbuns e singles",
+            "songs" to "Músicas",
+            "searchPlaceholder" to "Pesquisar músicas, artistas e...",
+            "back" to "Voltar",
+            "clear" to "Limpar",
+            "voice" to "Voz",
+            "createPlaylistHint" to "Cria uma playlist e adiciona as tuas músicas favoritas",
+            "selectLanguagePrompt" to "Seleciona um idioma",
+            "explore" to "Explorar",
+            "exploreTitle" to "Explorar",
+            "exploreSubtitle" to "Descubra novas músicas, tendências e vídeos",
+            "exploreFresh" to "Correntes frescas",
+            "exploreNewVideos" to "Novos videoclipes",
+            "exploreEmpty" to "Não há sinal desta zona agora; experimente outra",
+            "localWaveName" to "Pt Wave",
+            "localWaveEmoji" to "🇵🇹",
+            "localWaveQuery" to "novas músicas portuguesas 2026",
+            "exploreNewReleases" to "Novos lançamentos",
+            "exploreRapDrill" to "Rap e drill",
+            "exploreElectronic" to "Eletrônica",
+            "explorePopGlobal" to "Pop global",
+            "exploreRnbSoul" to "R&B / Soul",
+            "exploreRockAlt" to "Rock e alternativo",
+            "exploreLatino" to "Latino",
+            "exploreLofiChill" to "Lo-Fi / Chill",
+            "exploreJpopAnime" to "J-Pop / Anime",
+            "followArtist" to "Seguir",
+            "followingArtist" to "Seguindo",
+            "releaseRadar" to "Radar de lançamentos",
+            "similarArtists" to "Artistas semelhantes",
+            "similarToFollowed" to "Semelhantes aos artistas que você segue",
+            "theme" to "Tema",
+            "themeSubtitle" to "Escolha o visual do LEVYRA",
+            "personalOrbitTitle" to "A tua órbita",
+            "personalOrbitSubtitle" to "As músicas que voltam sempre para ti",
+            "voicesTitle" to "Vozes que ressoam",
+            "voicesSubtitle" to "As faixas mais comentadas vistas como energia viva",
+            "totalComments" to "Comentários totais",
+            "engagement" to "Interação",
+            "audioEngine" to "Áudio",
+            "audioEngineSubtitle" to "Equalizador, crossfade, loudness, tempo, pitch e gapless",
+            "equalizer" to "Equalizador",
+            "equalizerSubtitle" to "Efeitos reais com presets, bass boost e virtualizer",
+            "preset" to "Preset",
+            "bassBoost" to "Bass boost",
+            "virtualizer" to "Virtualizer",
+            "crossfade" to "Crossfade",
+            "djSoft" to "Modo DJ suave",
+            "replayGain" to "ReplayGain / loudness inteligente",
+            "tempo" to "Tempo",
+            "pitch" to "Pitch",
+            "gapless" to "Gapless",
+            "restartRequiredTitle" to "Reiniciar LEVYRA?",
+            "restartRequiredBody" to "O idioma foi guardado. Reinicia a app agora para recarregar todos os ecrãs corretamente.",
+            "restartNow" to "Reiniciar agora",
+            "later" to "Mais tarde",
+            "audioQualityAuto" to "Auto",
+            "audioQualityHigh" to "Alta",
+            "audioQualityLow" to "Baixa",
+            "pulseSectionBand" to "As tuas estatísticas",
+            "pulseTitle" to "Pulse de escuta",
+            "pulseSubtitle" to "Estatísticas privadas, calculadas apenas neste dispositivo",
+            "followedArtistsTitle" to "Artistas seguidos",
+            "followedArtistsSubtitle" to "Os artistas que manténs por perto",
+            "listeningHistoryEmptyTitle" to "Ainda sem escutas",
+            "listeningHistoryEmptyDetail" to "Toca uma faixa e o teu histórico constrói-se aqui.",
+            "pulseMinutes" to "Minutos",
+            "pulseMinuteShort" to "min",
+            "pulsePlays" to "Reproduções",
+            "pulseStreak" to "Dias seguidos",
+            "pulseCompletion" to "Conclusão",
+            "pulseTopArtists" to "Artistas mais ouvidos",
+            "pulseWeek" to "Últimos 7 dias",
+            "pulsePeakHour" to "Hora de pico",
+            "pulseEmpty" to "Toque algo para acender o seu Pulse",
+            "listeningHistory" to "Histórico de escuta",
+            "listeningHistorySubtitle" to "O que você realmente ouviu",
+            "listeningPrompt" to "A ouvir...",
+            "voiceSearchUnsupported" to "A pesquisa por voz não é suportada",
+            "musicFiltersComingSoon" to "Os filtros de música estarão disponíveis em breve!",
+            "recentSearches" to "Pesquisas recentes",
+            "actions" to "Ações",
+            "removeFromFavorites" to "Remover dos favoritos",
+            "addToFavorites" to "Adicionar aos favoritos",
+            "playNext" to "Reproduzir a seguir",
+            "addToQueue" to "Adicionar à fila",
+            "addToPlaylist" to "Adicionar a uma playlist",
+            "alreadyOffline" to "Já disponível offline",
+            "download" to "Transferir",
+            "openArtist" to "Abrir artista",
+            "openAlbum" to "Abrir álbum",
+            "deleteDownload" to "Eliminar transferência",
+            "share" to "Partilhar",
+            "shareSong" to "Partilhar música",
+            "removeFromRecentSearches" to "Remover das pesquisas recentes",
+            "songOptions" to "Opções da música",
+            "goToPlayer" to "Ir para o leitor",
+            "saveOffline" to "Guardar offline",
+            "favorite" to "Favorita",
+            "downloaded" to "Transferida",
+            "remove" to "Remover",
+            "removeFromPlaylist" to "Remover da playlist",
+            "youMightAlsoLike" to "Também poderás gostar",
+            "topResult" to "Melhor resultado",
+            "currentlyPlaying" to "A reproduzir",
+            "artistLabel" to "Artista",
+            "playNow" to "Reproduzir agora",
+            "biography" to "Biografia",
+            "newUpdate" to "NOVA ATUALIZAÇÃO",
+            "updateDescription" to "Um ecrã mais compacto, um registo de alterações mais legível e conteúdo deslocável em qualquer ecrã.",
+            "whatsNew" to "Novidades",
+            "update" to "Atualizar",
+            "updateRetry" to "Tentar novamente",
+            "updateDownloading" to "A transferir atualização",
+            "updatePreparing" to "A preparar atualização",
+            "updateInstalling" to "A instalar",
+            "updateReadyToInstall" to "Pronto para instalar",
+            "updateFailed" to "A atualização falhou",
+            "updateAllowInstalls" to "Permitir instalações para continuar",
+            "updateLinkUnavailable" to "Ligação de atualização indisponível",
+            "cannotOpenDownload" to "Não foi possível abrir a transferência",
+            "externalLinkUnavailable" to "Ligação externa indisponível",
+            "cannotOpenExternalLink" to "Não foi possível abrir a ligação externa",
+            "continuousRadio" to "Rádio contínua",
+            "continuousRadioSubtitle" to "Adiciona músicas semelhantes quando a fila está quase a terminar",
+            "artistsLabelPlural" to "Artistas",
+            "albumMood" to "Ambiente dos álbuns",
+            "openLyricsAnalysis" to "Abrir análise da letra",
+            "closeLyrics" to "Fechar letra",
+            "lyricsDuet" to "Dueto",
+            "lyricsCinema" to "Cinema",
+            "lyricsPage" to "Página",
+            "lyricsRomanization" to "Romanização",
+            "lyricsCompact" to "Compacto",
+            "lyricsSections" to "Secções da música",
+            "lyricsSectionIntro" to "Introdução",
+            "lyricsSectionVerse" to "Verso",
+            "lyricsSectionPreChorus" to "Pré-refrão",
+            "lyricsSectionChorus" to "Refrão",
+            "lyricsSectionBridge" to "Ponte",
+            "lyricsSectionInstrumental" to "Instrumental",
+            "lyricsSectionOutro" to "Final",
+            "automaticTranslation" to "Tradução automática",
+            "automaticTranslationSubtitle" to "Usa os idiomas disponíveis nas transcrições do YouTube",
+            "atmosphere" to "Ambiente",
+            "themes" to "Temas",
+            "chorusDetected" to "Refrão detetado",
+            "goToChorus" to "Ir para o refrão",
+            "close" to "Fechar",
+            "complete" to "Concluir",
+            "delete" to "Eliminar",
+            "newPlaylist" to "Nova playlist",
+            "playlistName" to "Nome da playlist",
+            "create" to "Criar",
+            "cancel" to "Cancelar",
+            "newPlaylistName" to "Nome da nova playlist",
+            "createNewPlaylist" to "Criar nova playlist",
+            "createAndAdd" to "Criar e adicionar",
+            "downloadPlaylist" to "Transferir playlist",
+            "playAll" to "Reproduzir tudo",
+            "playingFrom" to "A REPRODUZIR DE",
+            "closePlayer" to "Fechar leitor",
+            "options" to "Opções",
+            "showLyrics" to "Mostrar letra",
+            "shuffle" to "Aleatório",
+            "previous" to "Anterior",
+            "next" to "Seguinte",
+            "repeat" to "Repetir",
+            "persistentQueue" to "Fila persistente",
+            "continueListening" to "Continuar a ouvir",
+            "favoritesPlain" to "Favoritos",
+            "offline" to "Offline",
+            "more" to "Mais",
+            "mix" to "Mix",
+            "mixForYou" to "Mix para ti",
+            "genres" to "Géneros",
+            "smartMusicProfile" to "Perfil musical inteligente",
+            "flow" to "Fluxo",
+            "pictureInPicture" to "Imagem em imagem",
+            "discoveryFlow" to "FLUXO DE DESCOBERTA",
+            "shareDiagnostics" to "Partilhar diagnóstico",
+            "albumUnavailable" to "Álbum indisponível",
+            "albumTracksUnavailable" to "Músicas do álbum indisponíveis",
+            "showLess" to "Mostrar menos",
+            "showMore" to "Mostrar mais",
+            "playing" to "A reproduzir",
+            "artistProfileUnavailable" to "Perfil do artista indisponível",
+            "popularTracks" to "Músicas populares",
+            "showAll" to "Mostrar tudo",
+            "versionLabel" to "Versão",
+            "generalImprovements" to "Melhorias gerais e correções de erros.",
+            "historyLabel" to "no histórico",
+            "undoRemoval" to "Anular remoção",
+            "lyricsAnalysis" to "Análise da letra",
+            "linesLabel" to "Versos",
+            "wordsLabel" to "Palavras",
+            "localAnalysis" to "Análise local",
+            "open" to "Abrir",
+            "newRelease" to "NOVA EDIÇÃO",
+            "newReleaseSubtitle" to "Uma nova edição acabou de entrar no radar.",
+            "saved" to "Guardado",
+            "save" to "Guardar",
+            "noOfflineDownloads" to "Não existem transferências guardadas offline.",
+            "createFirstPlaylist" to "Cria a tua primeira playlist",
+            "createFirstPlaylistSubtitle" to "Reúne as músicas que queres reencontrar de imediato.",
+            "downloadTrackHint" to "Toca em Transferir numa música para a guardar em Music/Levyra.",
+            "savedTracks" to "Músicas guardadas",
+            "favoritesEmpty" to "Ainda não há favoritos",
+            "playlistEmpty" to "A playlist está vazia. Adiciona músicas através do menu de três pontos de uma música.",
+            "showPersonalListening" to "Mostrar a tua atividade de audição pessoal no topo da página inicial",
+            "showRecentReleases" to "Mostrar edições recentes e o radar dos artistas seguidos",
+            "showRecommendedAlbums" to "Mostrar álbuns recomendados na página inicial",
+            "showDiscoveredArtists" to "Mostrar artistas descobertos nas tuas secções musicais",
+            "showChartsCountry" to "Mostrar tabelas e seletor de país",
+            "partialDownloadResume" to "Manter bytes parciais e retomar com pedidos HTTP Range",
+            "lyricsAnalysisSection" to "ANÁLISE DA LETRA",
+            "lyricsAnalysisCompact" to "Análise local discreta",
+            "lyricsAnalysisCompactSubtitle" to "Mantém-se compacta até ser aberta, mostra apenas sinais úteis e pode levar-te diretamente ao refrão.",
+            "createDataBackup" to "Criar cópia de segurança dos dados",
+            "createDataBackupSubtitle" to "Favoritos, playlists, histórico, fila e definições num arquivo verificado por SHA-256. Os ficheiros de áudio permanecem em Music/Levyra.",
+            "updateAvailable" to "Atualização disponível",
+            "updates" to "Atualizações",
+            "checkingLatestVersion" to "A verificar a versão mais recente…",
+            "latestVersionReady" to "pronta para transferir",
+            "latestInstalled" to "Tens instalada a versão mais recente",
+            "checkNewVersions" to "Procurar novas versões publicadas",
+            "releasePageReady" to "Página da versão pronta a abrir",
+            "installedVersion" to "Versão instalada",
+            "openPlayer" to "Abrir leitor",
+            "searchSongsArtists" to "Pesquisar músicas e artistas...",
+            "songsPlain" to "Músicas",
+            "shareVia" to "Partilhar através de",
+            "emptySearchPrompt" to "Escreve o nome de uma música e pesquisa",
+            "cancelDownload" to "Cancelar transferência",
+            "readAll" to "Ler mais",
+            "singlesAndEps" to "Singles e EP",
+            "tapHeartToAdd" to "Toca no coração de uma música para a adicionar aqui.",
+            "all" to "Tudo",
+            "automaticResume" to "Retoma automática",
+            "simultaneousDownloads" to "Transferências simultâneas",
+            "simultaneousDownloadsSubtitle" to "Limite global para memória, rede e temperatura",
+            "backupRestoreSection" to "CÓPIA DE SEGURANÇA E RESTAURO",
+            "restoreBackup" to "Restaurar cópia de segurança",
+            "restoreBackupSubtitle" to "Verifica o esquema e a soma de controlo antes de substituir os dados locais",
+            "playbackResilienceSection" to "RESILIÊNCIA DE REPRODUÇÃO",
+            "exportSafeDiagnostics" to "Exportar diagnóstico seguro",
+            "generateResolverTrace" to "Gerar o rastreio dos resolvedores",
+            "safeDiagnosticsSubtitle" to "Estado dos clientes e últimas tentativas, sem URL nem tokens",
+            "check" to "Verificar",
+            "checking" to "A verificar",
+            "dragToReorder" to "Arrasta para reordenar",
+            "homeInterfaceSection" to "INTERFACE DA PÁGINA INICIAL",
+            "compactHome" to "Página inicial compacta",
+            "compactHomeSubtitle" to "Reduz o espaçamento vertical e torna o deslocamento mais leve",
+            "yourOrbitSetting" to "A tua órbita",
+            "voicesSetting" to "Vozes que ressoam",
+            "voicesSettingSubtitle" to "Mantém a seleção pessoal baseada no que ouves",
+            "newReleasesSetting" to "Novas edições",
+            "albumsForYouSetting" to "Álbuns para ti",
+            "trendingArtists" to "Artistas em destaque",
+            "top50Charts" to "Tabelas Top 50",
+            "mobilePlayerSection" to "LEITOR MÓVEL",
+            "advancedGestures" to "Gestos avançados",
+            "advancedGesturesSubtitle" to "Toque duplo, pressão prolongada, brilho e volume",
+            "pureBlack" to "Preto puro",
+            "pureBlackSubtitle" to "Fundos realmente pretos para ecrãs OLED",
+            "hapticFeedback" to "Resposta tátil",
+            "hapticFeedbackSubtitle" to "Uma vibração curta nas ações principais",
+            "doubleTapSeek" to "Salto com toque duplo",
+            "doubleTapSeekSubtitle" to "Duração do salto para a esquerda e para a direita",
+            "longPress" to "Pressão prolongada",
+            "longPressSubtitle" to "Velocidade temporária enquanto manténs premido",
+            "downloadEngineSection" to "MOTOR DE TRANSFERÊNCIAS 3.0",
+            "wifiOnly" to "Apenas Wi-Fi",
+            "wifiOnlySubtitle" to "O WorkManager inicia transferências apenas numa rede sem limite de dados",
+            "chargingOnly" to "Apenas durante o carregamento",
+            "chargingOnlySubtitle" to "Reduz o consumo e a temperatura durante transferências longas",
+            "resumeDownload" to "Retomar transferência",
+            "pauseDownload" to "Pausar transferência",
+            "signedApkReady" to "APK assinado pronto a instalar",
+            "downloadsInProgress" to "Transferências em curso",
+            "downloadInProgress" to "Transferência em curso",
+            "newAlbums" to "Novos álbuns",
+            "newSingles" to "Novos singles",
+            "newAlbum" to "NOVO ÁLBUM",
+            "downloadsFolder" to "Pasta de transferências",
+            "offlineDownloadsPlain" to "Transferências offline",
+            "personalPlaylists" to "Playlists pessoais",
+            "searchingYouTubeMusic" to "A pesquisar no YouTube Music…",
+            "searchingLyrics" to "A procurar a letra…",
+            "pause" to "Pausar",
+            "newSingle" to "NOVO SINGLE",
+            "albumsPlain" to "Álbuns",
+            "albumPlain" to "Álbum",
+            "singlePlain" to "Single",
+            "playlistsPlain" to "Playlists",
+            "profileActive" to "Personalização ativa",
+            "profileLearning" to "A aprender com o que ouve",
+            "newBadge" to "NOVO",
+            "brightness" to "Brilho",
+            "timer" to "Temporizador",
+            "normalizationShort" to "Norm.",
+            "coverAndTags" to "capa e etiquetas",
+            "madeWithBy" to "Criado com ❤️ por",
+            "activeIndicator" to "ATIVO",
+            "batteryUnrestricted" to "Reprodução em segundo plano sem limites",
+            "batteryUnrestrictedSubtitle" to "Exclua o Levyra da otimização de bateria para a música continuar com a tela desligada",
+            "batteryUnrestrictedActive" to "Ativo — o sistema não interromperá a reprodução",
+            "downloadQualityPreset" to "Predefinição de qualidade",
+            "downloadQualityPresetSubtitle" to "Equilibra qualidade, velocidade e consumo de dados",
+            "downloadPresetAutomatic" to "Automático",
+            "downloadPresetHighQuality" to "Alta qualidade",
+            "downloadPresetDataSaver" to "Poupança de dados",
+            "downloadFolderOrganization" to "Organização de pastas",
+            "downloadFolderOrganizationSubtitle" to "Guarda por artista e álbum sem duplicar ficheiros",
+            "downloadFolderArtist" to "Artista",
+            "downloadFolderArtistAlbum" to "Artista / Álbum",
+            "downloadSpeedLimit" to "Limite de velocidade",
+            "downloadSpeedLimitSubtitle" to "Limita o uso da rede durante as transferências",
+            "downloadSpeedUnlimited" to "Ilimitado",
+            "downloadEmbedMetadata" to "Metadados incorporados",
+            "downloadEmbedMetadataSubtitle" to "Escreve título, artista e álbum no ficheiro",
+            "downloadEmbedArtwork" to "Capa incorporada",
+            "downloadEmbedArtworkSubtitle" to "Incorpora a capa oficial na faixa",
+            "downloadVerifyFile" to "Verificação de ficheiros",
+            "downloadVerifyFileSubtitle" to "Valida assinatura, tamanho e legibilidade antes de concluir",
+            "downloadSkipDuplicates" to "Evitar duplicados",
+            "downloadSkipDuplicatesSubtitle" to "Reutiliza as transferências válidas existentes",
+            "trailTitle" to "O TEU RASTO RECENTE",
+            "trailPlays" to "reproduções",
+            "trailUnique" to "únicas",
+            "trailLastPlayed" to "Última audição",
+            "statPlays" to "reproduções",
+            "statArtists" to "artistas",
+            "statTracks" to "faixas"
+        )
+
+        private fun nlEntries(): Map<String, String> = mapOf(
+            "welcomeBadge" to "Welkom",
+            "welcomeTitle" to "Laten we beginnen.",
+            "languageQuestion" to "Welke taal wil je gebruiken?",
+            "nameQuestion" to "Hoe heet je?",
+            "namePlaceholder" to "Je naam...",
+            "tasteQuestion" to "Kies 3 of meer genres die je leuk vindt.",
+            "skipAndContinue" to "Overslaan en doorgaan",
+            "startListening" to "Begin met luisteren",
+            "settings" to "Instellingen",
+            "settingsSubtitle" to "Pas LEVYRA aan",
+            "design" to "DESIGN",
+            "playback" to "AFSPELEN",
+            "preferences" to "VOORKEUREN",
+            "app" to "APP",
+            "animations" to "Animaties",
+            "animationsSubtitle" to "Effecten, overgangen en kaartfeedback",
+            "motionArtwork" to "Canvas in de speler",
+            "motionArtworkSubtitle" to "Toont artiestenvideo's; schakel uit om altijd de albumhoes te gebruiken",
+            "dynamicColor" to "Dynamische kleur",
+            "dynamicColorSubtitle" to "Achtergrond en accenten uit de huidige cover",
+            "sponsorBlock" to "SponsorBlock",
+            "sponsorBlockSubtitle" to "Slaat automatisch sponsors en niet-muzikale delen over",
+            "skipSilence" to "Stiltes overslaan",
+            "skipSilenceSubtitle" to "Comprimeert stille pauzes in nummers",
+            "redoQuestionnaire" to "Smaakvragenlijst opnieuw doen",
+            "redoQuestionnaireSubtitle" to "Kies je favoriete genres opnieuw",
+            "language" to "Taal",
+            "languageSubtitle" to "Wijzig de app-taal",
+            "home" to "Start",
+            "search" to "Zoeken",
+            "library" to "Bibliotheek",
+            "player" to "Speler",
+            "queue" to "Wachtrij",
+            "lyrics" to "Songtekst",
+            "related" to "Gerelateerd",
+            "song" to "Nummer",
+            "video" to "Video",
+            "nowPlaying" to "NU AAN HET SPELEN",
+            "emptyPlayer" to "Zoek een nummer en druk op play",
+            "phoneSpeaker" to "Telefoonluidspreker",
+            "connected" to "Verbonden",
+            "volume" to "Volume",
+            "audioQuality" to "Audiokwaliteit",
+            "done" to "Klaar",
+            "queueEmpty" to "De wachtrij is leeg.",
+            "lyricsUnavailable" to "Songtekst is niet beschikbaar voor dit nummer.",
+            "synced" to "Gesynchroniseerd",
+            "libraryTitle" to "Bibliotheek",
+            "librarySubtitle" to "Playlists, favorieten, downloads en geschiedenis",
+            "playlists" to "Je playlists",
+            "newItem" to "Nieuw",
+            "downloads" to "Offline downloads",
+            "favorites" to "Favorieten",
+            "recent" to "Recent gevonden",
+            "quickPicks" to "Snelle keuzes",
+            "play" to "Afspelen",
+            "newReleases" to "Nieuwe releases",
+            "albumsForYou" to "Albums voor jou",
+            "top50Unavailable" to "Top 50 niet beschikbaar, probeer later opnieuw",
+            "artists" to "Artiesten",
+            "albumsAndSingles" to "Albums en singles",
+            "songs" to "Nummers",
+            "searchPlaceholder" to "Zoek nummers, artiesten en...",
+            "back" to "Terug",
+            "clear" to "Wissen",
+            "voice" to "Stem",
+            "createPlaylistHint" to "Maak een playlist en voeg je favoriete nummers toe",
+            "selectLanguagePrompt" to "Selecteer een taal",
+            "explore" to "Ontdekken",
+            "exploreTitle" to "Ontdekken",
+            "exploreSubtitle" to "Ontdek nieuwe muziek, trends en video's",
+            "exploreFresh" to "Verse stromingen",
+            "exploreNewVideos" to "Nieuwe muziekvideo's",
+            "exploreEmpty" to "Op dit moment komt er geen signaal uit deze zone; probeer een andere",
+            "localWaveName" to "Nl Wave",
+            "localWaveEmoji" to "🇳🇱",
+            "localWaveQuery" to "nieuwe nederlandse liedjes 2026",
+            "exploreNewReleases" to "Nieuwe releases",
+            "exploreRapDrill" to "Rap & drill",
+            "exploreElectronic" to "Elektronisch",
+            "explorePopGlobal" to "Wereldwijde pop",
+            "exploreRnbSoul" to "R&B / Soul",
+            "exploreRockAlt" to "Rock & alternatief",
+            "exploreLatino" to "Latino",
+            "exploreLofiChill" to "Lo-Fi / Chill",
+            "exploreJpopAnime" to "J-Pop / Anime",
+            "followArtist" to "Volgen",
+            "followingArtist" to "Volgend",
+            "releaseRadar" to "Release Radar",
+            "similarArtists" to "Vergelijkbare artiesten",
+            "similarToFollowed" to "Vergelijkbaar met artiesten die je volgt",
+            "theme" to "Thema",
+            "themeSubtitle" to "Kies de uitstraling van LEVYRA",
+            "personalOrbitTitle" to "Jouw baan",
+            "personalOrbitSubtitle" to "De nummers die steeds bij je terugkomen",
+            "voicesTitle" to "Stemmen die resoneren",
+            "voicesSubtitle" to "De meest besproken nummers als levende energie",
+            "totalComments" to "Totaal aantal reacties",
+            "engagement" to "Betrokkenheid",
+            "audioEngine" to "Audio",
+            "audioEngineSubtitle" to "Equalizer, crossfade, loudness, tempo, pitch en gapless",
+            "equalizer" to "Equalizer",
+            "equalizerSubtitle" to "Echte effecten met presets, bass boost en virtualizer",
+            "preset" to "Preset",
+            "bassBoost" to "Bass boost",
+            "virtualizer" to "Virtualizer",
+            "crossfade" to "Crossfade",
+            "djSoft" to "Zachte DJ-modus",
+            "replayGain" to "ReplayGain / slimme luidheid",
+            "tempo" to "Tempo",
+            "pitch" to "Toonhoogte",
+            "gapless" to "Naadloos",
+            "restartRequiredTitle" to "LEVYRA opnieuw starten?",
+            "restartRequiredBody" to "De taal is opgeslagen. Start de app nu opnieuw om elk scherm correct te laden.",
+            "restartNow" to "Nu opnieuw starten",
+            "later" to "Later",
+            "audioQualityAuto" to "Automatisch",
+            "audioQualityHigh" to "Hoog",
+            "audioQualityLow" to "Laag",
+            "pulseSectionBand" to "Jouw statistieken",
+            "pulseTitle" to "Luisterpuls",
+            "pulseSubtitle" to "Privéstatistieken, alleen op dit apparaat berekend",
+            "followedArtistsTitle" to "Gevolgde artiesten",
+            "followedArtistsSubtitle" to "De artiesten die je dichtbij houdt",
+            "listeningHistoryEmptyTitle" to "Nog niets beluisterd",
+            "listeningHistoryEmptyDetail" to "Speel een nummer af en je geschiedenis wordt hier automatisch opgebouwd.",
+            "pulseMinutes" to "Minuten",
+            "pulseMinuteShort" to "min",
+            "pulsePlays" to "Afgespeeld",
+            "pulseStreak" to "Dagenreeks",
+            "pulseCompletion" to "Voltooiing",
+            "pulseTopArtists" to "Topartiesten",
+            "pulseWeek" to "Afgelopen 7 dagen",
+            "pulsePeakHour" to "Piekuur",
+            "pulseEmpty" to "Speel iets af om je Luisterpuls tot leven te brengen",
+            "listeningHistory" to "Luistergeschiedenis",
+            "listeningHistorySubtitle" to "Wat je echt hebt afgespeeld",
+            "listeningPrompt" to "Luisteren...",
+            "voiceSearchUnsupported" to "Spraakgestuurd zoeken wordt niet ondersteund",
+            "musicFiltersComingSoon" to "Muziekfilters komen binnenkort!",
+            "recentSearches" to "Recente zoekopdrachten",
+            "actions" to "Acties",
+            "removeFromFavorites" to "Uit favorieten verwijderen",
+            "addToFavorites" to "Aan favorieten toevoegen",
+            "playNext" to "Hierna afspelen",
+            "addToQueue" to "Toevoegen aan wachtrij",
+            "addToPlaylist" to "Toevoegen aan een playlist",
+            "alreadyOffline" to "Al offline beschikbaar",
+            "download" to "Downloaden",
+            "openArtist" to "Artiest openen",
+            "openAlbum" to "Album openen",
+            "deleteDownload" to "Download verwijderen",
+            "share" to "Delen",
+            "shareSong" to "Nummer delen",
+            "removeFromRecentSearches" to "Uit recente zoekopdrachten verwijderen",
+            "songOptions" to "Nummeropties",
+            "goToPlayer" to "Naar speler",
+            "saveOffline" to "Offline opslaan",
+            "favorite" to "Favoriet",
+            "downloaded" to "Gedownload",
+            "remove" to "Verwijderen",
+            "removeFromPlaylist" to "Uit playlist verwijderen",
+            "youMightAlsoLike" to "Dit vind je misschien ook leuk",
+            "topResult" to "Beste resultaat",
+            "currentlyPlaying" to "Wordt nu afgespeeld",
+            "artistLabel" to "Artiest",
+            "playNow" to "Nu afspelen",
+            "biography" to "Biografie",
+            "newUpdate" to "NIEUWE UPDATE",
+            "updateDescription" to "Een compacter scherm, een duidelijker wijzigingsoverzicht en scrolbare inhoud op elk scherm.",
+            "whatsNew" to "Nieuw",
+            "update" to "Bijwerken",
+            "updateRetry" to "Opnieuw proberen",
+            "updateDownloading" to "Update downloaden",
+            "updatePreparing" to "Update voorbereiden",
+            "updateInstalling" to "Installeren",
+            "updateReadyToInstall" to "Klaar om te installeren",
+            "updateFailed" to "Update mislukt",
+            "updateAllowInstalls" to "Sta installaties toe om door te gaan",
+            "updateLinkUnavailable" to "Updatelink niet beschikbaar",
+            "cannotOpenDownload" to "De download kan niet worden geopend",
+            "externalLinkUnavailable" to "Externe link niet beschikbaar",
+            "cannotOpenExternalLink" to "De externe link kan niet worden geopend",
+            "continuousRadio" to "Doorlopende radio",
+            "continuousRadioSubtitle" to "Voegt passende nummers toe wanneer de wachtrij bijna is afgelopen",
+            "artistsLabelPlural" to "Artiesten",
+            "albumMood" to "Albumsfeer",
+            "openLyricsAnalysis" to "Songtekstanalyse openen",
+            "closeLyrics" to "Songtekst sluiten",
+            "lyricsDuet" to "Duet",
+            "lyricsCinema" to "Cinema",
+            "lyricsPage" to "Pagina",
+            "lyricsRomanization" to "Romanisatie",
+            "lyricsCompact" to "Compact",
+            "lyricsSections" to "Nummersecties",
+            "lyricsSectionIntro" to "Intro",
+            "lyricsSectionVerse" to "Couplet",
+            "lyricsSectionPreChorus" to "Pre-refrein",
+            "lyricsSectionChorus" to "Refrein",
+            "lyricsSectionBridge" to "Brug",
+            "lyricsSectionInstrumental" to "Instrumentaal",
+            "lyricsSectionOutro" to "Outro",
+            "automaticTranslation" to "Automatische vertaling",
+            "automaticTranslationSubtitle" to "Gebruikt de beschikbare talen in YouTube-transcripties",
+            "atmosphere" to "Sfeer",
+            "themes" to "Thema's",
+            "chorusDetected" to "Refrein gedetecteerd",
+            "goToChorus" to "Naar refrein",
+            "close" to "Sluiten",
+            "complete" to "Voltooien",
+            "delete" to "Verwijderen",
+            "newPlaylist" to "Nieuwe playlist",
+            "playlistName" to "Naam van de playlist",
+            "create" to "Maken",
+            "cancel" to "Annuleren",
+            "newPlaylistName" to "Naam van de nieuwe playlist",
+            "createNewPlaylist" to "Nieuwe playlist maken",
+            "createAndAdd" to "Maken en toevoegen",
+            "downloadPlaylist" to "Playlist downloaden",
+            "playAll" to "Alles afspelen",
+            "playingFrom" to "AFSPELEN VAN",
+            "closePlayer" to "Speler sluiten",
+            "options" to "Opties",
+            "showLyrics" to "Songtekst tonen",
+            "shuffle" to "Willekeurig",
+            "previous" to "Vorige",
+            "next" to "Volgende",
+            "repeat" to "Herhalen",
+            "persistentQueue" to "Blijvende wachtrij",
+            "continueListening" to "Verder luisteren",
+            "favoritesPlain" to "Favorieten",
+            "offline" to "Offline",
+            "more" to "Meer",
+            "mix" to "Mix",
+            "mixForYou" to "Mix voor jou",
+            "genres" to "Genres",
+            "smartMusicProfile" to "Slim muziekprofiel",
+            "flow" to "Flow",
+            "pictureInPicture" to "Beeld-in-beeld",
+            "discoveryFlow" to "ONTDEKKINGSFLOW",
+            "shareDiagnostics" to "Diagnostiek delen",
+            "albumUnavailable" to "Album niet beschikbaar",
+            "albumTracksUnavailable" to "Albumnummers niet beschikbaar",
+            "showLess" to "Minder tonen",
+            "showMore" to "Meer tonen",
+            "playing" to "Wordt afgespeeld",
+            "artistProfileUnavailable" to "Artiestenprofiel niet beschikbaar",
+            "popularTracks" to "Populaire nummers",
+            "showAll" to "Alles tonen",
+            "versionLabel" to "Versie",
+            "generalImprovements" to "Algemene verbeteringen en bugfixes.",
+            "historyLabel" to "in de geschiedenis",
+            "undoRemoval" to "Verwijderen ongedaan maken",
+            "lyricsAnalysis" to "Songtekstanalyse",
+            "linesLabel" to "Regels",
+            "wordsLabel" to "Woorden",
+            "localAnalysis" to "Lokale analyse",
+            "open" to "Openen",
+            "newRelease" to "NIEUWE RELEASE",
+            "newReleaseSubtitle" to "Er is zojuist een nieuwe release op de radar verschenen.",
+            "saved" to "Opgeslagen",
+            "save" to "Opslaan",
+            "noOfflineDownloads" to "Geen downloads offline opgeslagen.",
+            "createFirstPlaylist" to "Maak je eerste playlist",
+            "createFirstPlaylistSubtitle" to "Verzamel de nummers die je direct terug wilt vinden.",
+            "downloadTrackHint" to "Tik bij een nummer op Downloaden om het in Music/Levyra op te slaan.",
+            "savedTracks" to "Opgeslagen nummers",
+            "favoritesEmpty" to "Nog geen favorieten",
+            "playlistEmpty" to "De playlist is leeg. Voeg nummers toe via het menu met de drie puntjes van een nummer.",
+            "showPersonalListening" to "Toon je persoonlijke luisteractiviteit bovenaan Start",
+            "showRecentReleases" to "Toon recente releases en de radar van gevolgde artiesten",
+            "showRecommendedAlbums" to "Toon aanbevolen albums op Start",
+            "showDiscoveredArtists" to "Toon artiesten die uit je muzieksecties naar voren komen",
+            "showChartsCountry" to "Toon hitlijsten en de landenkiezer",
+            "partialDownloadResume" to "Bewaar gedeeltelijke bytes en hervat met HTTP Range-verzoeken",
+            "lyricsAnalysisSection" to "SONGTEKSTANALYSE",
+            "lyricsAnalysisCompact" to "Discrete lokale analyse",
+            "lyricsAnalysisCompactSubtitle" to "Blijft compact tot je deze opent, toont alleen nuttige signalen en kan je rechtstreeks naar het refrein brengen.",
+            "createDataBackup" to "Gegevensback-up maken",
+            "createDataBackupSubtitle" to "Favorieten, playlists, geschiedenis, wachtrij en instellingen in een met SHA-256 geverifieerd archief. Audiobestanden blijven in Music/Levyra.",
+            "updateAvailable" to "Update beschikbaar",
+            "updates" to "Updates",
+            "checkingLatestVersion" to "Nieuwste versie controleren…",
+            "latestVersionReady" to "klaar om te downloaden",
+            "latestInstalled" to "Je hebt de nieuwste versie geïnstalleerd",
+            "checkNewVersions" to "Controleren op nieuw gepubliceerde versies",
+            "releasePageReady" to "Releasepagina klaar om te openen",
+            "installedVersion" to "Geïnstalleerde versie",
+            "openPlayer" to "Speler openen",
+            "searchSongsArtists" to "Nummers en artiesten zoeken...",
+            "songsPlain" to "Nummers",
+            "shareVia" to "Delen via",
+            "emptySearchPrompt" to "Typ de naam van een nummer en zoek",
+            "cancelDownload" to "Download annuleren",
+            "readAll" to "Meer lezen",
+            "singlesAndEps" to "Singles en EP's",
+            "tapHeartToAdd" to "Tik bij een nummer op het hart om het hier toe te voegen.",
+            "all" to "Alles",
+            "automaticResume" to "Automatisch hervatten",
+            "simultaneousDownloads" to "Gelijktijdige downloads",
+            "simultaneousDownloadsSubtitle" to "Algemene limiet voor geheugen, netwerk en temperatuur",
+            "backupRestoreSection" to "BACK-UP EN HERSTEL",
+            "restoreBackup" to "Back-up herstellen",
+            "restoreBackupSubtitle" to "Controleer het schema en de controlesom voordat lokale gegevens worden vervangen",
+            "playbackResilienceSection" to "ROBUUSTE WEERGAVE",
+            "exportSafeDiagnostics" to "Veilige diagnostiek exporteren",
+            "generateResolverTrace" to "Resolvertrace genereren",
+            "safeDiagnosticsSubtitle" to "Clientstatus en recente pogingen, zonder URL's en tokens",
+            "check" to "Controleren",
+            "checking" to "Controleren",
+            "dragToReorder" to "Sleep om opnieuw te ordenen",
+            "homeInterfaceSection" to "STARTINTERFACE",
+            "compactHome" to "Compact Start",
+            "compactHomeSubtitle" to "Vermindert verticale ruimte en maakt scrollen lichter",
+            "yourOrbitSetting" to "Jouw baan",
+            "voicesSetting" to "Stemmen die raken",
+            "voicesSettingSubtitle" to "Behoudt de persoonlijke selectie op basis van je luistergedrag",
+            "newReleasesSetting" to "Nieuwe releases",
+            "albumsForYouSetting" to "Albums voor jou",
+            "trendingArtists" to "Trending artiesten",
+            "top50Charts" to "Top 50-hitlijsten",
+            "mobilePlayerSection" to "MOBIELE SPELER",
+            "advancedGestures" to "Geavanceerde gebaren",
+            "advancedGesturesSubtitle" to "Dubbeltikken, lang indrukken, helderheid en volume",
+            "pureBlack" to "Puur zwart",
+            "pureBlackSubtitle" to "Echt zwarte achtergronden voor OLED-schermen",
+            "hapticFeedback" to "Haptische feedback",
+            "hapticFeedbackSubtitle" to "Een korte trilling bij belangrijke acties",
+            "doubleTapSeek" to "Springen met dubbeltik",
+            "doubleTapSeekSubtitle" to "Sprongduur links en rechts",
+            "longPress" to "Lang indrukken",
+            "longPressSubtitle" to "Tijdelijke snelheid zolang je ingedrukt houdt",
+            "downloadEngineSection" to "DOWNLOADENGINE 3.0",
+            "wifiOnly" to "Alleen wifi",
+            "wifiOnlySubtitle" to "WorkManager start downloads alleen op een netwerk zonder datalimiet",
+            "chargingOnly" to "Alleen tijdens opladen",
+            "chargingOnlySubtitle" to "Vermindert verbruik en temperatuur tijdens lange downloads",
+            "resumeDownload" to "Download hervatten",
+            "pauseDownload" to "Download pauzeren",
+            "signedApkReady" to "Ondertekende APK klaar voor installatie",
+            "downloadsInProgress" to "Downloads bezig",
+            "downloadInProgress" to "Download bezig",
+            "newAlbums" to "Nieuwe albums",
+            "newSingles" to "Nieuwe singles",
+            "newAlbum" to "NIEUW ALBUM",
+            "downloadsFolder" to "Downloadmap",
+            "offlineDownloadsPlain" to "Offline downloads",
+            "personalPlaylists" to "Persoonlijke playlists",
+            "searchingYouTubeMusic" to "YouTube Music doorzoeken…",
+            "searchingLyrics" to "Songtekst zoeken…",
+            "pause" to "Pauzeren",
+            "newSingle" to "NIEUWE SINGLE",
+            "albumsPlain" to "Albums",
+            "albumPlain" to "Album",
+            "singlePlain" to "Single",
+            "playlistsPlain" to "Afspeellijsten",
+            "profileActive" to "Personalisatie actief",
+            "profileLearning" to "Ik leer van wat je luistert",
+            "newBadge" to "NIEUW",
+            "brightness" to "Helderheid",
+            "timer" to "Timer",
+            "normalizationShort" to "Norm.",
+            "coverAndTags" to "hoes en tags",
+            "madeWithBy" to "Gemaakt met ❤️ door",
+            "activeIndicator" to "ACTIEF",
+            "batteryUnrestricted" to "Onbeperkt afspelen op de achtergrond",
+            "batteryUnrestrictedSubtitle" to "Sluit Levyra uit van batterijoptimalisatie zodat muziek blijft spelen met het scherm uit",
+            "batteryUnrestrictedActive" to "Actief — het systeem stopt het afspelen niet",
+            "downloadQualityPreset" to "Kwaliteitsvoorinstelling",
+            "downloadQualityPresetSubtitle" to "Balanceert kwaliteit, snelheid en dataverbruik",
+            "downloadPresetAutomatic" to "Automatisch",
+            "downloadPresetHighQuality" to "Hoge kwaliteit",
+            "downloadPresetDataSaver" to "Databesparing",
+            "downloadFolderOrganization" to "Mapindeling",
+            "downloadFolderOrganizationSubtitle" to "Opslaan per artiest en album zonder bestanden te dupliceren",
+            "downloadFolderArtist" to "Artiest",
+            "downloadFolderArtistAlbum" to "Artiest / Album",
+            "downloadSpeedLimit" to "Snelheidslimiet",
+            "downloadSpeedLimitSubtitle" to "Beperkt netwerkgebruik tijdens downloaden",
+            "downloadSpeedUnlimited" to "Onbeperkt",
+            "downloadEmbedMetadata" to "Ingesloten metadata",
+            "downloadEmbedMetadataSubtitle" to "Schrijft titel, artiest en album in het bestand",
+            "downloadEmbedArtwork" to "Ingesloten hoes",
+            "downloadEmbedArtworkSubtitle" to "Sluit de officiële hoes in bij het nummer",
+            "downloadVerifyFile" to "Bestandsverificatie",
+            "downloadVerifyFileSubtitle" to "Valideert handtekening, grootte en leesbaarheid vóór voltooiing",
+            "downloadSkipDuplicates" to "Duplicaten overslaan",
+            "downloadSkipDuplicatesSubtitle" to "Hergebruikt bestaande geldige downloads",
+            "trailTitle" to "JOUW RECENTE SPOOR",
+            "trailPlays" to "afspeelbeurten",
+            "trailUnique" to "uniek",
+            "trailLastPlayed" to "Laatst afgespeeld",
+            "statPlays" to "afspeelbeurten",
+            "statArtists" to "artiesten",
+            "statTracks" to "nummers"
+        )
+
+        private fun plEntries(): Map<String, String> = mapOf(
+            "welcomeBadge" to "Witaj",
+            "welcomeTitle" to "Zaczynamy.",
+            "languageQuestion" to "Jakiego języka chcesz używać?",
+            "nameQuestion" to "Jak masz na imię?",
+            "namePlaceholder" to "Twoje imię...",
+            "tasteQuestion" to "Wybierz 3 lub więcej gatunków, które lubisz.",
+            "skipAndContinue" to "Pomiń i kontynuuj",
+            "startListening" to "Zacznij słuchać",
+            "settings" to "Ustawienia",
+            "settingsSubtitle" to "Dostosuj LEVYRA",
+            "design" to "WYGLĄD",
+            "playback" to "ODTWARZANIE",
+            "preferences" to "PREFERENCJE",
+            "app" to "APP",
+            "animations" to "Animacje",
+            "animationsSubtitle" to "Efekty, przejścia i reakcje kart",
+            "motionArtwork" to "Canvas odtwarzacza",
+            "motionArtworkSubtitle" to "Pokazuje filmy artystów; wyłącz, aby zawsze używać okładki albumu",
+            "dynamicColor" to "Kolor dynamiczny",
+            "dynamicColorSubtitle" to "Tło i akcenty z aktualnej okładki",
+            "sponsorBlock" to "SponsorBlock",
+            "sponsorBlockSubtitle" to "Automatycznie pomija sponsorów i części niemuzyczne",
+            "skipSilence" to "Pomijaj ciszę",
+            "skipSilenceSubtitle" to "Kompresuje ciche przerwy w utworach",
+            "redoQuestionnaire" to "Powtórz ankietę gustu",
+            "redoQuestionnaireSubtitle" to "Wybierz ponownie ulubione gatunki",
+            "language" to "Język",
+            "languageSubtitle" to "Zmień język aplikacji",
+            "home" to "Start",
+            "search" to "Szukaj",
+            "library" to "Biblioteka",
+            "player" to "Odtwarzacz",
+            "queue" to "Kolejka",
+            "lyrics" to "Tekst",
+            "related" to "Podobne",
+            "song" to "Utwór",
+            "video" to "Wideo",
+            "nowPlaying" to "TERAZ ODTWARZANE",
+            "emptyPlayer" to "Wyszukaj utwór i naciśnij play",
+            "phoneSpeaker" to "Głośnik telefonu",
+            "connected" to "Połączono",
+            "volume" to "Głośność",
+            "audioQuality" to "Jakość audio",
+            "done" to "Gotowe",
+            "queueEmpty" to "Kolejka jest pusta.",
+            "lyricsUnavailable" to "Tekst nie jest dostępny dla tego utworu.",
+            "synced" to "Zsynchronizowane",
+            "libraryTitle" to "Biblioteka",
+            "librarySubtitle" to "Playlisty, ulubione, pobrane i historia",
+            "playlists" to "Twoje playlisty",
+            "newItem" to "Nowa",
+            "downloads" to "Pobrane offline",
+            "favorites" to "Ulubione",
+            "recent" to "Ostatnio znalezione",
+            "quickPicks" to "Szybkie wybory",
+            "play" to "Odtwórz",
+            "newReleases" to "Nowości",
+            "albumsForYou" to "Albumy dla Ciebie",
+            "top50Unavailable" to "Top 50 niedostępne, spróbuj później",
+            "artists" to "Artyści",
+            "albumsAndSingles" to "Albumy i single",
+            "songs" to "Utwory",
+            "searchPlaceholder" to "Szukaj utworów, artystów i...",
+            "back" to "Wstecz",
+            "clear" to "Wyczyść",
+            "voice" to "Głos",
+            "createPlaylistHint" to "Utwórz playlistę i dodaj ulubione utwory",
+            "selectLanguagePrompt" to "Wybierz język",
+            "explore" to "Odkrywaj",
+            "exploreTitle" to "Odkrywaj",
+            "exploreSubtitle" to "Odkrywaj nową muzykę, trendy i wideo",
+            "exploreFresh" to "Świeże nurty",
+            "exploreNewVideos" to "Nowe teledyski",
+            "exploreEmpty" to "Ta strefa jest teraz bez sygnału — wybierz inną",
+            "localWaveName" to "Pl Wave",
+            "localWaveEmoji" to "🇵🇱",
+            "localWaveQuery" to "nowe polskie piosenki 2026",
+            "exploreNewReleases" to "Nowości",
+            "exploreRapDrill" to "Rap i drill",
+            "exploreElectronic" to "Elektronika",
+            "explorePopGlobal" to "Światowy pop",
+            "exploreRnbSoul" to "R&B / Soul",
+            "exploreRockAlt" to "Rock i alternatywa",
+            "exploreLatino" to "Latino",
+            "exploreLofiChill" to "Lo-Fi / Chill",
+            "exploreJpopAnime" to "J-Pop / Anime",
+            "followArtist" to "Obserwuj",
+            "followingArtist" to "Obserwujesz",
+            "releaseRadar" to "Radar premier",
+            "similarArtists" to "Podobni artyści",
+            "similarToFollowed" to "Podobni do obserwowanych artystów",
+            "theme" to "Motyw",
+            "themeSubtitle" to "Wybierz wygląd LEVYRA",
+            "personalOrbitTitle" to "Twoja orbita",
+            "personalOrbitSubtitle" to "Utwory, które zawsze do ciebie wracają",
+            "voicesTitle" to "Głosy, które rezonują",
+            "voicesSubtitle" to "Najczęściej komentowane utwory jako żywa energia",
+            "totalComments" to "Łączna liczba komentarzy",
+            "engagement" to "Zaangażowanie",
+            "audioEngine" to "Dźwięk",
+            "audioEngineSubtitle" to "Korektor, crossfade, głośność, tempo, wysokość dźwięku i gapless",
+            "equalizer" to "Korektor",
+            "equalizerSubtitle" to "Prawdziwe efekty z presetami, podbiciem basu i wirtualizatorem",
+            "preset" to "Preset",
+            "bassBoost" to "Podbicie basu",
+            "virtualizer" to "Wirtualizator",
+            "crossfade" to "Crossfade",
+            "djSoft" to "Łagodny tryb DJ",
+            "replayGain" to "ReplayGain / inteligentna głośność",
+            "tempo" to "Tempo",
+            "pitch" to "Wysokość dźwięku",
+            "gapless" to "Odtwarzanie bez przerw",
+            "restartRequiredTitle" to "Uruchomić LEVYRA ponownie?",
+            "restartRequiredBody" to "Język został zapisany. Uruchom aplikację ponownie, aby wszystkie ekrany wczytały się poprawnie.",
+            "restartNow" to "Uruchom ponownie",
+            "later" to "Później",
+            "audioQualityAuto" to "Automatyczna",
+            "audioQualityHigh" to "Wysoka",
+            "audioQualityLow" to "Niska",
+            "pulseSectionBand" to "Twoje statystyki",
+            "pulseTitle" to "Puls słuchania",
+            "pulseSubtitle" to "Prywatne statystyki obliczane wyłącznie na tym urządzeniu",
+            "followedArtistsTitle" to "Obserwowani artyści",
+            "followedArtistsSubtitle" to "Artyści, których trzymasz blisko",
+            "listeningHistoryEmptyTitle" to "Brak odsłuchów",
+            "listeningHistoryEmptyDetail" to "Odtwórz utwór, a historia zacznie tworzyć się tutaj.",
+            "pulseMinutes" to "Minuty",
+            "pulseMinuteShort" to "min",
+            "pulsePlays" to "Odtworzenia",
+            "pulseStreak" to "Seria dni",
+            "pulseCompletion" to "Ukończenie",
+            "pulseTopArtists" to "Najlepsi artyści",
+            "pulseWeek" to "Ostatnie 7 dni",
+            "pulsePeakHour" to "Najaktywniejsza godzina",
+            "pulseEmpty" to "Odtwórz coś, aby rozświetlić swój Puls",
+            "listeningHistory" to "Historia słuchania",
+            "listeningHistorySubtitle" to "To, czego naprawdę słuchałeś",
+            "listeningPrompt" to "Słucham...",
+            "voiceSearchUnsupported" to "Wyszukiwanie głosowe nie jest obsługiwane",
+            "musicFiltersComingSoon" to "Filtry muzyczne pojawią się wkrótce!",
+            "recentSearches" to "Ostatnie wyszukiwania",
+            "actions" to "Działania",
+            "removeFromFavorites" to "Usuń z ulubionych",
+            "addToFavorites" to "Dodaj do ulubionych",
+            "playNext" to "Odtwórz jako następne",
+            "addToQueue" to "Dodaj do kolejki",
+            "addToPlaylist" to "Dodaj do playlisty",
+            "alreadyOffline" to "Już dostępne offline",
+            "download" to "Pobierz",
+            "openArtist" to "Otwórz artystę",
+            "openAlbum" to "Otwórz album",
+            "deleteDownload" to "Usuń pobrane",
+            "share" to "Udostępnij",
+            "shareSong" to "Udostępnij utwór",
+            "removeFromRecentSearches" to "Usuń z ostatnich wyszukiwań",
+            "songOptions" to "Opcje utworu",
+            "goToPlayer" to "Przejdź do odtwarzacza",
+            "saveOffline" to "Zapisz offline",
+            "favorite" to "Ulubiony",
+            "downloaded" to "Pobrano",
+            "remove" to "Usuń",
+            "removeFromPlaylist" to "Usuń z playlisty",
+            "youMightAlsoLike" to "Może Ci się też spodobać",
+            "topResult" to "Najlepszy wynik",
+            "currentlyPlaying" to "Teraz odtwarzane",
+            "artistLabel" to "Artysta",
+            "playNow" to "Odtwórz teraz",
+            "biography" to "Biografia",
+            "newUpdate" to "NOWA AKTUALIZACJA",
+            "updateDescription" to "Bardziej kompaktowy ekran, czytelniejsza lista zmian i przewijana zawartość na każdym wyświetlaczu.",
+            "whatsNew" to "Co nowego",
+            "update" to "Aktualizuj",
+            "updateRetry" to "Ponów",
+            "updateDownloading" to "Pobieranie aktualizacji",
+            "updatePreparing" to "Przygotowywanie aktualizacji",
+            "updateInstalling" to "Instalowanie",
+            "updateReadyToInstall" to "Gotowe do instalacji",
+            "updateFailed" to "Aktualizacja nie powiodła się",
+            "updateAllowInstalls" to "Zezwól na instalacje, aby kontynuować",
+            "updateLinkUnavailable" to "Link do aktualizacji jest niedostępny",
+            "cannotOpenDownload" to "Nie można otworzyć pobierania",
+            "externalLinkUnavailable" to "Link zewnętrzny jest niedostępny",
+            "cannotOpenExternalLink" to "Nie można otworzyć linku zewnętrznego",
+            "continuousRadio" to "Radio ciągłe",
+            "continuousRadioSubtitle" to "Dodaje pasujące utwory, gdy kolejka zbliża się do końca",
+            "artistsLabelPlural" to "Artyści",
+            "albumMood" to "Klimat albumów",
+            "openLyricsAnalysis" to "Otwórz analizę tekstu",
+            "closeLyrics" to "Zamknij tekst",
+            "lyricsDuet" to "Duet",
+            "lyricsCinema" to "Kino",
+            "lyricsPage" to "Strona",
+            "lyricsRomanization" to "Romanizacja",
+            "lyricsCompact" to "Kompaktowy",
+            "lyricsSections" to "Sekcje utworu",
+            "lyricsSectionIntro" to "Intro",
+            "lyricsSectionVerse" to "Zwrotka",
+            "lyricsSectionPreChorus" to "Pre-chorus",
+            "lyricsSectionChorus" to "Refren",
+            "lyricsSectionBridge" to "Bridge",
+            "lyricsSectionInstrumental" to "Instrumental",
+            "lyricsSectionOutro" to "Outro",
+            "automaticTranslation" to "Tłumaczenie automatyczne",
+            "automaticTranslationSubtitle" to "Korzysta z języków dostępnych w transkrypcjach YouTube",
+            "atmosphere" to "Klimat",
+            "themes" to "Motywy",
+            "chorusDetected" to "Wykryto refren",
+            "goToChorus" to "Przejdź do refrenu",
+            "close" to "Zamknij",
+            "complete" to "Zakończ",
+            "delete" to "Usuń",
+            "newPlaylist" to "Nowa playlista",
+            "playlistName" to "Nazwa playlisty",
+            "create" to "Utwórz",
+            "cancel" to "Anuluj",
+            "newPlaylistName" to "Nazwa nowej playlisty",
+            "createNewPlaylist" to "Utwórz nową playlistę",
+            "createAndAdd" to "Utwórz i dodaj",
+            "downloadPlaylist" to "Pobierz playlistę",
+            "playAll" to "Odtwórz wszystko",
+            "playingFrom" to "ODTWARZANIE Z",
+            "closePlayer" to "Zamknij odtwarzacz",
+            "options" to "Opcje",
+            "showLyrics" to "Pokaż tekst",
+            "shuffle" to "Losowo",
+            "previous" to "Poprzedni",
+            "next" to "Następny",
+            "repeat" to "Powtarzaj",
+            "persistentQueue" to "Trwała kolejka",
+            "continueListening" to "Słuchaj dalej",
+            "favoritesPlain" to "Ulubione",
+            "offline" to "Offline",
+            "more" to "Więcej",
+            "mix" to "Mix",
+            "mixForYou" to "Mix dla Ciebie",
+            "genres" to "Gatunki",
+            "smartMusicProfile" to "Inteligentny profil muzyczny",
+            "flow" to "Przepływ",
+            "pictureInPicture" to "Obraz w obrazie",
+            "discoveryFlow" to "STRUMIEŃ ODKRYWANIA",
+            "shareDiagnostics" to "Udostępnij diagnostykę",
+            "albumUnavailable" to "Album jest niedostępny",
+            "albumTracksUnavailable" to "Utwory z albumu są niedostępne",
+            "showLess" to "Pokaż mniej",
+            "showMore" to "Pokaż więcej",
+            "playing" to "Odtwarzanie",
+            "artistProfileUnavailable" to "Profil artysty jest niedostępny",
+            "popularTracks" to "Popularne utwory",
+            "showAll" to "Pokaż wszystko",
+            "versionLabel" to "Wersja",
+            "generalImprovements" to "Ogólne ulepszenia i poprawki błędów.",
+            "historyLabel" to "w historii",
+            "undoRemoval" to "Cofnij usunięcie",
+            "lyricsAnalysis" to "Analiza tekstu",
+            "linesLabel" to "Wersy",
+            "wordsLabel" to "Słowa",
+            "localAnalysis" to "Analiza lokalna",
+            "open" to "Otwórz",
+            "newRelease" to "NOWA PREMIERA",
+            "newReleaseSubtitle" to "Nowa premiera właśnie pojawiła się na radarze.",
+            "saved" to "Zapisano",
+            "save" to "Zapisz",
+            "noOfflineDownloads" to "Brak pobrań zapisanych offline.",
+            "createFirstPlaylist" to "Utwórz pierwszą playlistę",
+            "createFirstPlaylistSubtitle" to "Zbierz utwory, do których chcesz szybko wracać.",
+            "downloadTrackHint" to "Dotknij Pobierz przy utworze, aby zapisać go w Music/Levyra.",
+            "savedTracks" to "Zapisane utwory",
+            "favoritesEmpty" to "Brak ulubionych",
+            "playlistEmpty" to "Playlista jest pusta. Dodaj utwory z menu z trzema kropkami przy utworze.",
+            "showPersonalListening" to "Pokaż osobistą aktywność słuchania u góry ekranu głównego",
+            "showRecentReleases" to "Pokaż najnowsze premiery i radar obserwowanych artystów",
+            "showRecommendedAlbums" to "Pokaż polecane albumy na ekranie głównym",
+            "showDiscoveredArtists" to "Pokaż artystów odkrytych w Twoich sekcjach muzycznych",
+            "showChartsCountry" to "Pokaż listy przebojów i wybór kraju",
+            "partialDownloadResume" to "Zachowuj częściowo pobrane dane i wznawiaj przez żądania HTTP Range",
+            "lyricsAnalysisSection" to "ANALIZA TEKSTU",
+            "lyricsAnalysisCompact" to "Dyskretna analiza lokalna",
+            "lyricsAnalysisCompactSubtitle" to "Pozostaje zwinięta, dopóki jej nie otworzysz, pokazuje tylko przydatne informacje i może przenieść Cię prosto do refrenu.",
+            "createDataBackup" to "Utwórz kopię zapasową danych",
+            "createDataBackupSubtitle" to "Ulubione, playlisty, historia, kolejka i ustawienia w archiwum zweryfikowanym SHA-256. Pliki audio pozostają w Music/Levyra.",
+            "updateAvailable" to "Dostępna aktualizacja",
+            "updates" to "Aktualizacje",
+            "checkingLatestVersion" to "Sprawdzanie najnowszej wersji…",
+            "latestVersionReady" to "gotowa do pobrania",
+            "latestInstalled" to "Masz zainstalowaną najnowszą wersję",
+            "checkNewVersions" to "Sprawdź nowo opublikowane wersje",
+            "releasePageReady" to "Strona wydania jest gotowa do otwarcia",
+            "installedVersion" to "Zainstalowana wersja",
+            "openPlayer" to "Otwórz odtwarzacz",
+            "searchSongsArtists" to "Szukaj utworów i artystów...",
+            "songsPlain" to "Utwory",
+            "shareVia" to "Udostępnij przez",
+            "emptySearchPrompt" to "Wpisz nazwę utworu i wyszukaj",
+            "cancelDownload" to "Anuluj pobieranie",
+            "readAll" to "Czytaj więcej",
+            "singlesAndEps" to "Single i EP-ki",
+            "tapHeartToAdd" to "Dotknij serca przy utworze, aby dodać go tutaj.",
+            "all" to "Wszystko",
+            "automaticResume" to "Automatyczne wznawianie",
+            "simultaneousDownloads" to "Równoczesne pobieranie",
+            "simultaneousDownloadsSubtitle" to "Globalny limit użycia pamięci, sieci i temperatury",
+            "backupRestoreSection" to "KOPIA ZAPASOWA I PRZYWRACANIE",
+            "restoreBackup" to "Przywróć kopię zapasową",
+            "restoreBackupSubtitle" to "Sprawdza schemat i sumę kontrolną przed zastąpieniem danych lokalnych",
+            "playbackResilienceSection" to "ODPORNOŚĆ ODTWARZANIA",
+            "exportSafeDiagnostics" to "Eksportuj bezpieczne dane diagnostyczne",
+            "generateResolverTrace" to "Wygeneruj ślad resolvera",
+            "safeDiagnosticsSubtitle" to "Stan klientów i ostatnie próby, bez adresów URL i tokenów",
+            "check" to "Sprawdź",
+            "checking" to "Sprawdzanie",
+            "dragToReorder" to "Przeciągnij, aby zmienić kolejność",
+            "homeInterfaceSection" to "INTERFEJS EKRANU GŁÓWNEGO",
+            "compactHome" to "Kompaktowy ekran główny",
+            "compactHomeSubtitle" to "Zmniejsza odstępy w pionie i usprawnia przewijanie",
+            "yourOrbitSetting" to "Twoja orbita",
+            "voicesSetting" to "Głosy, które rezonują",
+            "voicesSettingSubtitle" to "Zachowuje osobisty wybór oparty na tym, czego słuchasz",
+            "newReleasesSetting" to "Nowości",
+            "albumsForYouSetting" to "Albumy dla Ciebie",
+            "trendingArtists" to "Popularni artyści",
+            "top50Charts" to "Listy Top 50",
+            "mobilePlayerSection" to "ODTWARZACZ MOBILNY",
+            "advancedGestures" to "Zaawansowane gesty",
+            "advancedGesturesSubtitle" to "Podwójne dotknięcie, przytrzymanie, jasność i głośność",
+            "pureBlack" to "Czysta czerń",
+            "pureBlackSubtitle" to "Naprawdę czarne tła dla ekranów OLED",
+            "hapticFeedback" to "Wibracje dotykowe",
+            "hapticFeedbackSubtitle" to "Krótka wibracja przy kluczowych akcjach",
+            "doubleTapSeek" to "Przewijanie podwójnym dotknięciem",
+            "doubleTapSeekSubtitle" to "Czas przeskoku po lewej i prawej stronie",
+            "longPress" to "Przytrzymanie",
+            "longPressSubtitle" to "Tymczasowa prędkość podczas przytrzymywania",
+            "downloadEngineSection" to "SILNIK POBIERANIA 3.0",
+            "wifiOnly" to "Tylko Wi‑Fi",
+            "wifiOnlySubtitle" to "WorkManager uruchamia pobieranie wyłącznie w sieci bez limitu danych",
+            "chargingOnly" to "Tylko podczas ładowania",
+            "chargingOnlySubtitle" to "Zmniejsza zużycie baterii i temperaturę podczas długich pobrań",
+            "resumeDownload" to "Wznów pobieranie",
+            "pauseDownload" to "Wstrzymaj pobieranie",
+            "signedApkReady" to "Podpisany plik APK jest gotowy do instalacji",
+            "downloadsInProgress" to "Trwa kilka pobrań",
+            "downloadInProgress" to "Trwa pobieranie",
+            "newAlbums" to "Nowe albumy",
+            "newSingles" to "Nowe single",
+            "newAlbum" to "NOWY ALBUM",
+            "downloadsFolder" to "Folder pobierania",
+            "offlineDownloadsPlain" to "Pobrane offline",
+            "personalPlaylists" to "Osobiste playlisty",
+            "searchingYouTubeMusic" to "Wyszukiwanie w YouTube Music…",
+            "searchingLyrics" to "Wyszukiwanie tekstu…",
+            "pause" to "Pauza",
+            "newSingle" to "NOWY SINGIEL",
+            "albumsPlain" to "Albumy",
+            "albumPlain" to "Album",
+            "singlePlain" to "Singiel",
+            "playlistsPlain" to "Playlisty",
+            "profileActive" to "Personalizacja aktywna",
+            "profileLearning" to "Uczę się na podstawie tego, czego słuchasz",
+            "newBadge" to "NOWOŚĆ",
+            "brightness" to "Jasność",
+            "timer" to "Minutnik",
+            "normalizationShort" to "Norm.",
+            "coverAndTags" to "okładka i tagi",
+            "madeWithBy" to "Stworzone z ❤️ przez",
+            "activeIndicator" to "AKTYWNE",
+            "batteryUnrestricted" to "Nieograniczone odtwarzanie w tle",
+            "batteryUnrestrictedSubtitle" to "Wyklucz Levyra z optymalizacji baterii, aby muzyka grała przy wyłączonym ekranie",
+            "batteryUnrestrictedActive" to "Aktywne — system nie zatrzyma odtwarzania",
+            "downloadQualityPreset" to "Ustawienie jakości",
+            "downloadQualityPresetSubtitle" to "Równoważy jakość, szybkość i zużycie danych",
+            "downloadPresetAutomatic" to "Automatycznie",
+            "downloadPresetHighQuality" to "Wysoka jakość",
+            "downloadPresetDataSaver" to "Oszczędzanie danych",
+            "downloadFolderOrganization" to "Organizacja folderów",
+            "downloadFolderOrganizationSubtitle" to "Zapisuje według artysty i albumu bez duplikowania plików",
+            "downloadFolderArtist" to "Artysta",
+            "downloadFolderArtistAlbum" to "Artysta / Album",
+            "downloadSpeedLimit" to "Limit prędkości",
+            "downloadSpeedLimitSubtitle" to "Ogranicza użycie sieci podczas pobierania",
+            "downloadSpeedUnlimited" to "Bez limitu",
+            "downloadEmbedMetadata" to "Osadzone metadane",
+            "downloadEmbedMetadataSubtitle" to "Zapisuje tytuł, artystę i album w pliku",
+            "downloadEmbedArtwork" to "Osadzona okładka",
+            "downloadEmbedArtworkSubtitle" to "Osadza oficjalną okładkę w utworze",
+            "downloadVerifyFile" to "Weryfikacja plików",
+            "downloadVerifyFileSubtitle" to "Sprawdza podpis, rozmiar i czytelność przed zakończeniem",
+            "downloadSkipDuplicates" to "Pomijaj duplikaty",
+            "downloadSkipDuplicatesSubtitle" to "Wykorzystuje istniejące poprawne pobrania",
+            "trailTitle" to "TWÓJ OSTATNI ŚLAD",
+            "trailPlays" to "odtworzeń",
+            "trailUnique" to "unikalnych",
+            "trailLastPlayed" to "Ostatnio odtwarzane",
+            "statPlays" to "odtworzeń",
+            "statArtists" to "artystów",
+            "statTracks" to "utworów"
+        )
+
+        private fun roEntries(): Map<String, String> = mapOf(
+            "welcomeBadge" to "Bun venit",
+            "welcomeTitle" to "Să începem.",
+            "languageQuestion" to "Ce limbă vrei să folosești?",
+            "nameQuestion" to "Cum te cheamă?",
+            "namePlaceholder" to "Numele tău...",
+            "tasteQuestion" to "Alege 3 sau mai multe genuri pe care le iubești.",
+            "skipAndContinue" to "Sari și continuă",
+            "startListening" to "Începe să asculți",
+            "settings" to "Setări",
+            "settingsSubtitle" to "Personalizează LEVYRA",
+            "design" to "DESIGN",
+            "playback" to "REDARE",
+            "preferences" to "PREFERINȚE",
+            "app" to "APP",
+            "animations" to "Animații",
+            "animationsSubtitle" to "Efecte, tranziții și feedback la carduri",
+            "motionArtwork" to "Canvas în player",
+            "motionArtworkSubtitle" to "Afișează videoclipurile artiștilor; dezactivează pentru a folosi mereu coperta",
+            "dynamicColor" to "Culoare dinamică",
+            "dynamicColorSubtitle" to "Fundal și accente din coperta curentă",
+            "sponsorBlock" to "SponsorBlock",
+            "sponsorBlockSubtitle" to "Sare automat sponsorii și părțile non-muzicale",
+            "skipSilence" to "Sari peste tăceri",
+            "skipSilenceSubtitle" to "Comprimă pauzele silențioase din piese",
+            "redoQuestionnaire" to "Refă chestionarul de gusturi",
+            "redoQuestionnaireSubtitle" to "Alege din nou genurile preferate",
+            "language" to "Limbă",
+            "languageSubtitle" to "Schimbă limba aplicației",
+            "home" to "Acasă",
+            "search" to "Caută",
+            "library" to "Bibliotecă",
+            "player" to "Redare",
+            "queue" to "Coadă",
+            "lyrics" to "Versuri",
+            "related" to "Similare",
+            "song" to "Piesă",
+            "video" to "Video",
+            "nowPlaying" to "SE REDĂ ACUM",
+            "emptyPlayer" to "Caută o piesă și apasă play",
+            "phoneSpeaker" to "Difuzor telefon",
+            "connected" to "Conectat",
+            "volume" to "Volum",
+            "audioQuality" to "Calitate audio",
+            "done" to "Gata",
+            "queueEmpty" to "Coada este goală.",
+            "lyricsUnavailable" to "Versurile nu sunt disponibile pentru această piesă.",
+            "synced" to "Sincronizat",
+            "libraryTitle" to "Bibliotecă",
+            "librarySubtitle" to "Playlisturi, favorite, descărcări și istoric",
+            "playlists" to "Playlisturile tale",
+            "newItem" to "Nouă",
+            "downloads" to "Descărcări offline",
+            "favorites" to "Favorite",
+            "recent" to "Găsite recent",
+            "quickPicks" to "Alegeri rapide",
+            "play" to "Redă",
+            "newReleases" to "Lansări noi",
+            "albumsForYou" to "Albume pentru tine",
+            "top50Unavailable" to "Top 50 indisponibil, încearcă mai târziu",
+            "artists" to "Artiști",
+            "albumsAndSingles" to "Albume și single-uri",
+            "songs" to "Piese",
+            "searchPlaceholder" to "Caută piese, artiști și...",
+            "back" to "Înapoi",
+            "clear" to "Șterge",
+            "voice" to "Voce",
+            "createPlaylistHint" to "Creează un playlist și adaugă piesele preferate",
+            "selectLanguagePrompt" to "Selectează o limbă",
+            "explore" to "Explorează",
+            "exploreTitle" to "Explorează",
+            "exploreSubtitle" to "Descoperă muzică nouă, tendințe și videoclipuri",
+            "exploreFresh" to "Curente noi",
+            "exploreNewVideos" to "Videoclipuri muzicale noi",
+            "exploreEmpty" to "Momentan nu există semnal din această zonă; încearcă alta",
+            "localWaveName" to "Val local",
+            "localWaveEmoji" to "🌐",
+            "localWaveQuery" to "melodii românești noi 2026",
+            "exploreNewReleases" to "Lansări noi",
+            "exploreRapDrill" to "Rap și drill",
+            "exploreElectronic" to "Electronică",
+            "explorePopGlobal" to "Pop global",
+            "exploreRnbSoul" to "R&B / Soul",
+            "exploreRockAlt" to "Rock și alternativ",
+            "exploreLatino" to "Latino",
+            "exploreLofiChill" to "Lo-Fi / Chill",
+            "exploreJpopAnime" to "J-Pop / Anime",
+            "followArtist" to "Urmărește",
+            "followingArtist" to "Urmărit",
+            "releaseRadar" to "Radar de lansări",
+            "similarArtists" to "Artiști similari",
+            "similarToFollowed" to "Similari cu artiștii pe care îi urmărești",
+            "theme" to "Temă",
+            "themeSubtitle" to "Alege aspectul LEVYRA",
+            "personalOrbitTitle" to "Orbita ta",
+            "personalOrbitSubtitle" to "Melodiile care revin mereu la tine",
+            "voicesTitle" to "Voci care rezonează",
+            "voicesSubtitle" to "Cele mai comentate piese, văzute ca energie vie",
+            "totalComments" to "Total comentarii",
+            "engagement" to "Interacțiune",
+            "audioEngine" to "Audio",
+            "audioEngineSubtitle" to "Egalizator, crossfade, loudness, tempo, pitch și redare fără pauze",
+            "equalizer" to "Egalizator",
+            "equalizerSubtitle" to "Efecte reale cu presetări, amplificare de bas și virtualizator",
+            "preset" to "Presetare",
+            "bassBoost" to "Amplificare bas",
+            "virtualizer" to "Virtualizator",
+            "crossfade" to "Crossfade",
+            "djSoft" to "Mod DJ delicat",
+            "replayGain" to "ReplayGain / volum inteligent",
+            "tempo" to "Tempo",
+            "pitch" to "Înălțime",
+            "gapless" to "Fără pauze",
+            "restartRequiredTitle" to "Repornești LEVYRA?",
+            "restartRequiredBody" to "Limba a fost salvată. Repornește aplicația pentru a reîncărca corect toate ecranele.",
+            "restartNow" to "Repornește acum",
+            "later" to "Mai târziu",
+            "audioQualityAuto" to "Automată",
+            "audioQualityHigh" to "Ridicată",
+            "audioQualityLow" to "Scăzută",
+            "pulseSectionBand" to "Statisticile tale",
+            "pulseTitle" to "Pulsul ascultării",
+            "pulseSubtitle" to "Statistici private, calculate doar pe acest dispozitiv",
+            "followedArtistsTitle" to "Artiști urmăriți",
+            "followedArtistsSubtitle" to "Artiștii pe care îi ții aproape",
+            "listeningHistoryEmptyTitle" to "Nicio ascultare încă",
+            "listeningHistoryEmptyDetail" to "Redă o piesă, iar istoricul tău se va construi aici.",
+            "pulseMinutes" to "Minute",
+            "pulseMinuteShort" to "min",
+            "pulsePlays" to "Redări",
+            "pulseStreak" to "Serie de zile",
+            "pulseCompletion" to "Finalizare",
+            "pulseTopArtists" to "Artiști de top",
+            "pulseWeek" to "Ultimele 7 zile",
+            "pulsePeakHour" to "Ora de vârf",
+            "pulseEmpty" to "Redă ceva pentru a-ți aprinde Pulsul",
+            "listeningHistory" to "Istoric de ascultare",
+            "listeningHistorySubtitle" to "Ce ai ascultat cu adevărat",
+            "listeningPrompt" to "Ascult...",
+            "voiceSearchUnsupported" to "Căutarea vocală nu este disponibilă",
+            "musicFiltersComingSoon" to "Filtrele muzicale vor fi disponibile în curând!",
+            "recentSearches" to "Căutări recente",
+            "actions" to "Acțiuni",
+            "removeFromFavorites" to "Elimină din favorite",
+            "addToFavorites" to "Adaugă la favorite",
+            "playNext" to "Redă în continuare",
+            "addToQueue" to "Adaugă în coadă",
+            "addToPlaylist" to "Adaugă într-un playlist",
+            "alreadyOffline" to "Deja disponibil offline",
+            "download" to "Descarcă",
+            "openArtist" to "Deschide artistul",
+            "openAlbum" to "Deschide albumul",
+            "deleteDownload" to "Șterge descărcarea",
+            "share" to "Distribuie",
+            "shareSong" to "Distribuie piesa",
+            "removeFromRecentSearches" to "Elimină din căutările recente",
+            "songOptions" to "Opțiunile piesei",
+            "goToPlayer" to "Mergi la player",
+            "saveOffline" to "Salvează offline",
+            "favorite" to "Favorită",
+            "downloaded" to "Descărcată",
+            "remove" to "Elimină",
+            "removeFromPlaylist" to "Elimină din playlist",
+            "youMightAlsoLike" to "S-ar putea să-ți placă și",
+            "topResult" to "Rezultat principal",
+            "currentlyPlaying" to "Se redă acum",
+            "artistLabel" to "Artist",
+            "playNow" to "Redă acum",
+            "biography" to "Biografie",
+            "newUpdate" to "ACTUALIZARE NOUĂ",
+            "updateDescription" to "Un ecran mai compact, un jurnal de modificări mai clar și conținut derulabil pe orice ecran.",
+            "whatsNew" to "Noutăți",
+            "update" to "Actualizează",
+            "updateRetry" to "Reîncearcă",
+            "updateDownloading" to "Se descarcă actualizarea",
+            "updatePreparing" to "Se pregătește actualizarea",
+            "updateInstalling" to "Se instalează",
+            "updateReadyToInstall" to "Gata de instalare",
+            "updateFailed" to "Actualizarea a eșuat",
+            "updateAllowInstalls" to "Permite instalările pentru a continua",
+            "updateLinkUnavailable" to "Linkul de actualizare nu este disponibil",
+            "cannotOpenDownload" to "Descărcarea nu poate fi deschisă",
+            "externalLinkUnavailable" to "Link extern indisponibil",
+            "cannotOpenExternalLink" to "Linkul extern nu poate fi deschis",
+            "continuousRadio" to "Radio continuu",
+            "continuousRadioSubtitle" to "Adaugă piese potrivite când coada este aproape de final",
+            "artistsLabelPlural" to "Artiști",
+            "albumMood" to "Atmosfera albumelor",
+            "openLyricsAnalysis" to "Deschide analiza versurilor",
+            "closeLyrics" to "Închide versurile",
+            "lyricsDuet" to "Duet",
+            "lyricsCinema" to "Cinema",
+            "lyricsPage" to "Pagină",
+            "lyricsRomanization" to "Romanizare",
+            "lyricsCompact" to "Compact",
+            "lyricsSections" to "Secțiunile piesei",
+            "lyricsSectionIntro" to "Intro",
+            "lyricsSectionVerse" to "Strofă",
+            "lyricsSectionPreChorus" to "Pre-refren",
+            "lyricsSectionChorus" to "Refren",
+            "lyricsSectionBridge" to "Bridge",
+            "lyricsSectionInstrumental" to "Instrumental",
+            "lyricsSectionOutro" to "Outro",
+            "automaticTranslation" to "Traducere automată",
+            "automaticTranslationSubtitle" to "Folosește limbile disponibile în transcrierile YouTube",
+            "atmosphere" to "Atmosferă",
+            "themes" to "Teme",
+            "chorusDetected" to "Refren detectat",
+            "goToChorus" to "Mergi la refren",
+            "close" to "Închide",
+            "complete" to "Finalizează",
+            "delete" to "Șterge",
+            "newPlaylist" to "Playlist nou",
+            "playlistName" to "Numele playlistului",
+            "create" to "Creează",
+            "cancel" to "Anulează",
+            "newPlaylistName" to "Numele noului playlist",
+            "createNewPlaylist" to "Creează un playlist nou",
+            "createAndAdd" to "Creează și adaugă",
+            "downloadPlaylist" to "Descarcă playlistul",
+            "playAll" to "Redă tot",
+            "playingFrom" to "SE REDĂ DIN",
+            "closePlayer" to "Închide playerul",
+            "options" to "Opțiuni",
+            "showLyrics" to "Afișează versurile",
+            "shuffle" to "Amestecă",
+            "previous" to "Anterior",
+            "next" to "Următor",
+            "repeat" to "Repetă",
+            "persistentQueue" to "Coadă persistentă",
+            "continueListening" to "Continuă să asculți",
+            "favoritesPlain" to "Favorite",
+            "offline" to "Offline",
+            "more" to "Mai multe",
+            "mix" to "Mix",
+            "mixForYou" to "Mix pentru tine",
+            "genres" to "Genuri",
+            "smartMusicProfile" to "Profil muzical inteligent",
+            "flow" to "Flux",
+            "pictureInPicture" to "Imagine în imagine",
+            "discoveryFlow" to "FLUX DE DESCOPERIRE",
+            "shareDiagnostics" to "Distribuie diagnosticul",
+            "albumUnavailable" to "Album indisponibil",
+            "albumTracksUnavailable" to "Piesele albumului nu sunt disponibile",
+            "showLess" to "Afișează mai puțin",
+            "showMore" to "Afișează mai mult",
+            "playing" to "Se redă",
+            "artistProfileUnavailable" to "Profilul artistului nu este disponibil",
+            "popularTracks" to "Piese populare",
+            "showAll" to "Afișează tot",
+            "versionLabel" to "Versiune",
+            "generalImprovements" to "Îmbunătățiri generale și remedieri de erori.",
+            "historyLabel" to "în istoric",
+            "undoRemoval" to "Anulează eliminarea",
+            "lyricsAnalysis" to "Analiza versurilor",
+            "linesLabel" to "Versuri",
+            "wordsLabel" to "Cuvinte",
+            "localAnalysis" to "Analiză locală",
+            "open" to "Deschide",
+            "newRelease" to "LANSARE NOUĂ",
+            "newReleaseSubtitle" to "O lansare nouă tocmai a apărut pe radar.",
+            "saved" to "Salvat",
+            "save" to "Salvează",
+            "noOfflineDownloads" to "Nu există descărcări salvate offline.",
+            "createFirstPlaylist" to "Creează primul tău playlist",
+            "createFirstPlaylistSubtitle" to "Adună piesele pe care vrei să le găsești imediat.",
+            "downloadTrackHint" to "Apasă Descarcă pe o piesă pentru a o salva în Music/Levyra.",
+            "savedTracks" to "Piese salvate",
+            "favoritesEmpty" to "Nu există încă favorite",
+            "playlistEmpty" to "Playlistul este gol. Adaugă piese din meniul cu trei puncte al unei piese.",
+            "showPersonalListening" to "Afișează activitatea personală de ascultare în partea de sus a paginii Acasă",
+            "showRecentReleases" to "Afișează lansările recente și radarul artiștilor urmăriți",
+            "showRecommendedAlbums" to "Afișează albumele recomandate pe pagina Acasă",
+            "showDiscoveredArtists" to "Afișează artiștii descoperiți în secțiunile tale muzicale",
+            "showChartsCountry" to "Afișează clasamentele și selectorul de țară",
+            "partialDownloadResume" to "Păstrează octeții parțiali și reia cu cereri HTTP Range",
+            "lyricsAnalysisSection" to "ANALIZA VERSURILOR",
+            "lyricsAnalysisCompact" to "Analiză locală discretă",
+            "lyricsAnalysisCompactSubtitle" to "Rămâne compactă până o deschizi, afișează doar semnalele utile și te poate duce direct la refren.",
+            "createDataBackup" to "Creează o copie de siguranță a datelor",
+            "createDataBackupSubtitle" to "Favorite, playlisturi, istoric, coadă și setări într-o arhivă verificată SHA-256. Fișierele audio rămân în Music/Levyra.",
+            "updateAvailable" to "Actualizare disponibilă",
+            "updates" to "Actualizări",
+            "checkingLatestVersion" to "Se verifică cea mai recentă versiune…",
+            "latestVersionReady" to "gata de descărcare",
+            "latestInstalled" to "Ai instalată cea mai recentă versiune",
+            "checkNewVersions" to "Verifică versiunile publicate recent",
+            "releasePageReady" to "Pagina versiunii este gata de deschis",
+            "installedVersion" to "Versiune instalată",
+            "openPlayer" to "Deschide playerul",
+            "searchSongsArtists" to "Caută piese și artiști...",
+            "songsPlain" to "Piese",
+            "shareVia" to "Distribuie prin",
+            "emptySearchPrompt" to "Scrie numele unei piese și caută",
+            "cancelDownload" to "Anulează descărcarea",
+            "readAll" to "Citește mai mult",
+            "singlesAndEps" to "Single-uri și EP-uri",
+            "tapHeartToAdd" to "Atinge inima de lângă o piesă pentru a o adăuga aici.",
+            "all" to "Toate",
+            "automaticResume" to "Reluare automată",
+            "simultaneousDownloads" to "Descărcări simultane",
+            "simultaneousDownloadsSubtitle" to "Limită globală pentru memorie, rețea și temperatură",
+            "backupRestoreSection" to "COPIE DE SIGURANȚĂ ȘI RESTAURARE",
+            "restoreBackup" to "Restaurează copia de siguranță",
+            "restoreBackupSubtitle" to "Verifică schema și suma de control înainte de a înlocui datele locale",
+            "playbackResilienceSection" to "REZILIENȚA REDĂRII",
+            "exportSafeDiagnostics" to "Exportă diagnosticul în siguranță",
+            "generateResolverTrace" to "Generează traseul resolverului",
+            "safeDiagnosticsSubtitle" to "Starea clienților și încercările recente, fără URL-uri și tokenuri",
+            "check" to "Verifică",
+            "checking" to "Se verifică",
+            "dragToReorder" to "Trage pentru a reordona",
+            "homeInterfaceSection" to "INTERFAȚA PAGINII PRINCIPALE",
+            "compactHome" to "Pagină principală compactă",
+            "compactHomeSubtitle" to "Reduce spațierea verticală și face derularea mai fluidă",
+            "yourOrbitSetting" to "Orbita ta",
+            "voicesSetting" to "Voci care rezonează",
+            "voicesSettingSubtitle" to "Păstrează selecția personală bazată pe ceea ce asculți",
+            "newReleasesSetting" to "Lansări noi",
+            "albumsForYouSetting" to "Albume pentru tine",
+            "trendingArtists" to "Artiști în tendințe",
+            "top50Charts" to "Topuri 50",
+            "mobilePlayerSection" to "PLAYER MOBIL",
+            "advancedGestures" to "Gesturi avansate",
+            "advancedGesturesSubtitle" to "Atingere dublă, apăsare lungă, luminozitate și volum",
+            "pureBlack" to "Negru pur",
+            "pureBlackSubtitle" to "Fundaluri complet negre pentru ecrane OLED",
+            "hapticFeedback" to "Feedback haptic",
+            "hapticFeedbackSubtitle" to "O vibrație scurtă la acțiunile importante",
+            "doubleTapSeek" to "Derulare prin atingere dublă",
+            "doubleTapSeekSubtitle" to "Durata saltului în stânga și în dreapta",
+            "longPress" to "Apăsare lungă",
+            "longPressSubtitle" to "Viteză temporară cât timp ții apăsat",
+            "downloadEngineSection" to "MOTOR DE DESCĂRCARE 3.0",
+            "wifiOnly" to "Numai prin Wi‑Fi",
+            "wifiOnlySubtitle" to "WorkManager pornește descărcările numai într-o rețea fără tarifare",
+            "chargingOnly" to "Numai în timpul încărcării",
+            "chargingOnlySubtitle" to "Reduce consumul bateriei și temperatura în timpul descărcărilor lungi",
+            "resumeDownload" to "Reia descărcarea",
+            "pauseDownload" to "Întrerupe descărcarea",
+            "signedApkReady" to "APK-ul semnat este gata de instalare",
+            "downloadsInProgress" to "Descărcări în curs",
+            "downloadInProgress" to "Descărcare în curs",
+            "newAlbums" to "Albume noi",
+            "newSingles" to "Single-uri noi",
+            "newAlbum" to "ALBUM NOU",
+            "downloadsFolder" to "Dosar de descărcări",
+            "offlineDownloadsPlain" to "Descărcări offline",
+            "personalPlaylists" to "Playlisturi personale",
+            "searchingYouTubeMusic" to "Se caută pe YouTube Music…",
+            "searchingLyrics" to "Se caută versurile…",
+            "pause" to "Pauză",
+            "newSingle" to "SINGLE NOU",
+            "albumsPlain" to "Albume",
+            "albumPlain" to "Album",
+            "singlePlain" to "Single",
+            "playlistsPlain" to "Playlisturi",
+            "profileActive" to "Personalizare activă",
+            "profileLearning" to "Învăț din ceea ce asculți",
+            "newBadge" to "NOU",
+            "brightness" to "Luminozitate",
+            "timer" to "Temporizator",
+            "normalizationShort" to "Norm.",
+            "coverAndTags" to "copertă și etichete",
+            "madeWithBy" to "Creat cu ❤️ de",
+            "activeIndicator" to "ACTIV",
+            "batteryUnrestricted" to "Redare în fundal fără limite",
+            "batteryUnrestrictedSubtitle" to "Exclude Levyra din optimizarea bateriei pentru ca muzica să continue cu ecranul stins",
+            "batteryUnrestrictedActive" to "Activ — sistemul nu va opri redarea",
+            "downloadQualityPreset" to "Presetare calitate",
+            "downloadQualityPresetSubtitle" to "Echilibrează calitatea, viteza și consumul de date",
+            "downloadPresetAutomatic" to "Automat",
+            "downloadPresetHighQuality" to "Calitate înaltă",
+            "downloadPresetDataSaver" to "Economie de date",
+            "downloadFolderOrganization" to "Organizarea folderelor",
+            "downloadFolderOrganizationSubtitle" to "Salvează după artist și album fără a duplica fișierele",
+            "downloadFolderArtist" to "Artist",
+            "downloadFolderArtistAlbum" to "Artist / Album",
+            "downloadSpeedLimit" to "Limită de viteză",
+            "downloadSpeedLimitSubtitle" to "Limitează utilizarea rețelei în timpul descărcărilor",
+            "downloadSpeedUnlimited" to "Nelimitat",
+            "downloadEmbedMetadata" to "Metadate încorporate",
+            "downloadEmbedMetadataSubtitle" to "Scrie titlul, artistul și albumul în fișier",
+            "downloadEmbedArtwork" to "Coperta încorporată",
+            "downloadEmbedArtworkSubtitle" to "Încorporează coperta oficială în piesă",
+            "downloadVerifyFile" to "Verificarea fișierelor",
+            "downloadVerifyFileSubtitle" to "Validează semnătura, dimensiunea și lizibilitatea înainte de finalizare",
+            "downloadSkipDuplicates" to "Evită duplicatele",
+            "downloadSkipDuplicatesSubtitle" to "Refolosește descărcările valide existente",
+            "trailTitle" to "URMA TA RECENTĂ",
+            "trailPlays" to "redări",
+            "trailUnique" to "unice",
+            "trailLastPlayed" to "Ultima ascultare",
+            "statPlays" to "redări",
+            "statArtists" to "artiști",
+            "statTracks" to "piese"
+        )
+
+        private fun elEntries(): Map<String, String> = mapOf(
+            "welcomeBadge" to "Καλώς ήρθες",
+            "welcomeTitle" to "Ας ξεκινήσουμε.",
+            "languageQuestion" to "Ποια γλώσσα θέλεις να χρησιμοποιήσεις;",
+            "nameQuestion" to "Πώς σε λένε;",
+            "namePlaceholder" to "Το όνομά σου...",
+            "tasteQuestion" to "Διάλεξε 3 ή περισσότερα είδη που αγαπάς.",
+            "skipAndContinue" to "Παράλειψη και συνέχεια",
+            "startListening" to "Έναρξη ακρόασης",
+            "settings" to "Ρυθμίσεις",
+            "settingsSubtitle" to "Προσαρμογή LEVYRA",
+            "design" to "ΣΧΕΔΙΑΣΗ",
+            "playback" to "ΑΝΑΠΑΡΑΓΩΓΗ",
+            "preferences" to "ΠΡΟΤΙΜΗΣΕΙΣ",
+            "app" to "APP",
+            "animations" to "Κινήσεις",
+            "animationsSubtitle" to "Εφέ, μεταβάσεις και ανάδραση καρτών",
+            "motionArtwork" to "Canvas αναπαραγωγής",
+            "motionArtworkSubtitle" to "Εμφανίζει βίντεο καλλιτεχνών· απενεργοποιήστε το για να χρησιμοποιείται πάντα το εξώφυλλο",
+            "dynamicColor" to "Δυναμικό χρώμα",
+            "dynamicColorSubtitle" to "Φόντο και τονισμοί από το τρέχον εξώφυλλο",
+            "sponsorBlock" to "SponsorBlock",
+            "sponsorBlockSubtitle" to "Παραλείπει αυτόματα χορηγούς και μη μουσικά μέρη",
+            "skipSilence" to "Παράλειψη σιωπών",
+            "skipSilenceSubtitle" to "Συμπιέζει τις σιωπηλές παύσεις στα κομμάτια",
+            "redoQuestionnaire" to "Επανάληψη ερωτηματολογίου",
+            "redoQuestionnaireSubtitle" to "Διάλεξε ξανά τα αγαπημένα σου είδη",
+            "language" to "Γλώσσα",
+            "languageSubtitle" to "Αλλαγή γλώσσας εφαρμογής",
+            "home" to "Αρχική",
+            "search" to "Αναζήτηση",
+            "library" to "Βιβλιοθήκη",
+            "player" to "Αναπαραγωγή",
+            "queue" to "Ουρά",
+            "lyrics" to "Στίχοι",
+            "related" to "Σχετικά",
+            "song" to "Τραγούδι",
+            "video" to "Βίντεο",
+            "nowPlaying" to "ΑΝΑΠΑΡΑΓΕΤΑΙ",
+            "emptyPlayer" to "Αναζήτησε τραγούδι και πάτα play",
+            "phoneSpeaker" to "Ηχείο τηλεφώνου",
+            "connected" to "Συνδεδεμένο",
+            "volume" to "Ένταση",
+            "audioQuality" to "Ποιότητα ήχου",
+            "done" to "Τέλος",
+            "queueEmpty" to "Η ουρά είναι άδεια.",
+            "lyricsUnavailable" to "Οι στίχοι δεν είναι διαθέσιμοι για αυτό το κομμάτι.",
+            "synced" to "Συγχρονισμένο",
+            "libraryTitle" to "Βιβλιοθήκη",
+            "librarySubtitle" to "Playlists, αγαπημένα, λήψεις και ιστορικό",
+            "playlists" to "Οι playlists σου",
+            "newItem" to "Νέα",
+            "downloads" to "Λήψεις offline",
+            "favorites" to "Αγαπημένα",
+            "recent" to "Πρόσφατα",
+            "quickPicks" to "Γρήγορες επιλογές",
+            "play" to "Αναπαραγωγή",
+            "newReleases" to "Νέες κυκλοφορίες",
+            "albumsForYou" to "Άλμπουμ για σένα",
+            "top50Unavailable" to "Top 50 μη διαθέσιμο, δοκίμασε αργότερα",
+            "artists" to "Καλλιτέχνες",
+            "albumsAndSingles" to "Άλμπουμ και singles",
+            "songs" to "Τραγούδια",
+            "searchPlaceholder" to "Αναζήτηση τραγουδιών, καλλιτεχνών και...",
+            "back" to "Πίσω",
+            "clear" to "Καθαρισμός",
+            "voice" to "Φωνή",
+            "createPlaylistHint" to "Δημιούργησε playlist και πρόσθεσε αγαπημένα τραγούδια",
+            "selectLanguagePrompt" to "Επίλεξε γλώσσα",
+            "explore" to "Εξερεύνηση",
+            "exploreTitle" to "Εξερεύνηση",
+            "exploreSubtitle" to "Ανακάλυψε νέα μουσική, τάσεις και βίντεο",
+            "exploreFresh" to "Νέα ρεύματα",
+            "exploreNewVideos" to "Νέα μουσικά βίντεο",
+            "exploreEmpty" to "Δεν υπάρχει σήμα από αυτή τη ζώνη αυτή τη στιγμή· δοκίμασε άλλη",
+            "localWaveName" to "Τοπικό κύμα",
+            "localWaveEmoji" to "🌐",
+            "localWaveQuery" to "νέα ελληνικά τραγούδια 2026",
+            "exploreNewReleases" to "Νέες κυκλοφορίες",
+            "exploreRapDrill" to "Rap και drill",
+            "exploreElectronic" to "Ηλεκτρονική",
+            "explorePopGlobal" to "Παγκόσμια pop",
+            "exploreRnbSoul" to "R&B / Soul",
+            "exploreRockAlt" to "Rock και alternative",
+            "exploreLatino" to "Latino",
+            "exploreLofiChill" to "Lo-Fi / Chill",
+            "exploreJpopAnime" to "J-Pop / Anime",
+            "followArtist" to "Ακολούθηση",
+            "followingArtist" to "Ακολουθείς",
+            "releaseRadar" to "Ραντάρ κυκλοφοριών",
+            "similarArtists" to "Παρόμοιοι καλλιτέχνες",
+            "similarToFollowed" to "Παρόμοιοι με καλλιτέχνες που ακολουθείς",
+            "theme" to "Θέμα",
+            "themeSubtitle" to "Διάλεξε την εμφάνιση του LEVYRA",
+            "personalOrbitTitle" to "Η τροχιά σου",
+            "personalOrbitSubtitle" to "Τα τραγούδια που επιστρέφουν πάντα σε εσένα",
+            "voicesTitle" to "Φωνές που αντηχούν",
+            "voicesSubtitle" to "Τα κομμάτια με τα περισσότερα σχόλια ως ζωντανή ενέργεια",
+            "totalComments" to "Συνολικά σχόλια",
+            "engagement" to "Αλληλεπίδραση",
+            "audioEngine" to "Ήχος",
+            "audioEngineSubtitle" to "Ισοσταθμιστής, crossfade, ένταση, tempo, pitch και gapless",
+            "equalizer" to "Ισοσταθμιστής",
+            "equalizerSubtitle" to "Πραγματικά εφέ με presets, ενίσχυση μπάσων και virtualizer",
+            "preset" to "Προεπιλογή",
+            "bassBoost" to "Ενίσχυση μπάσων",
+            "virtualizer" to "Virtualizer",
+            "crossfade" to "Crossfade",
+            "djSoft" to "Ήπια λειτουργία DJ",
+            "replayGain" to "ReplayGain / έξυπνη ένταση",
+            "tempo" to "Ρυθμός",
+            "pitch" to "Τονικό ύψος",
+            "gapless" to "Χωρίς κενά",
+            "restartRequiredTitle" to "Επανεκκίνηση του LEVYRA;",
+            "restartRequiredBody" to "Η γλώσσα αποθηκεύτηκε. Επανεκκίνησε τώρα την εφαρμογή για να φορτωθούν σωστά όλες οι οθόνες.",
+            "restartNow" to "Επανεκκίνηση τώρα",
+            "later" to "Αργότερα",
+            "audioQualityAuto" to "Αυτόματη",
+            "audioQualityHigh" to "Υψηλή",
+            "audioQualityLow" to "Χαμηλή",
+            "pulseSectionBand" to "Τα στατιστικά σου",
+            "pulseTitle" to "Παλμός ακρόασης",
+            "pulseSubtitle" to "Ιδιωτικά στατιστικά, υπολογισμένα μόνο σε αυτή τη συσκευή",
+            "followedArtistsTitle" to "Καλλιτέχνες που ακολουθείς",
+            "followedArtistsSubtitle" to "Οι καλλιτέχνες που κρατάς κοντά σου",
+            "listeningHistoryEmptyTitle" to "Καμία ακρόαση ακόμη",
+            "listeningHistoryEmptyDetail" to "Παίξε ένα κομμάτι και το ιστορικό σου θα αρχίσει να δημιουργείται εδώ.",
+            "pulseMinutes" to "Λεπτά",
+            "pulseMinuteShort" to "λεπ.",
+            "pulsePlays" to "Αναπαραγωγές",
+            "pulseStreak" to "Σερί ημερών",
+            "pulseCompletion" to "Ολοκλήρωση",
+            "pulseTopArtists" to "Κορυφαίοι καλλιτέχνες",
+            "pulseWeek" to "Τελευταίες 7 ημέρες",
+            "pulsePeakHour" to "Ώρα αιχμής",
+            "pulseEmpty" to "Παίξε κάτι για να ζωντανέψει ο Παλμός σου",
+            "listeningHistory" to "Ιστορικό ακρόασης",
+            "listeningHistorySubtitle" to "Τι άκουσες πραγματικά",
+            "listeningPrompt" to "Ακούω...",
+            "voiceSearchUnsupported" to "Η φωνητική αναζήτηση δεν υποστηρίζεται",
+            "musicFiltersComingSoon" to "Τα μουσικά φίλτρα έρχονται σύντομα!",
+            "recentSearches" to "Πρόσφατες αναζητήσεις",
+            "actions" to "Ενέργειες",
+            "removeFromFavorites" to "Αφαίρεση από τα αγαπημένα",
+            "addToFavorites" to "Προσθήκη στα αγαπημένα",
+            "playNext" to "Αναπαραγωγή στη συνέχεια",
+            "addToQueue" to "Προσθήκη στην ουρά",
+            "addToPlaylist" to "Προσθήκη σε playlist",
+            "alreadyOffline" to "Ήδη διαθέσιμο offline",
+            "download" to "Λήψη",
+            "openArtist" to "Άνοιγμα καλλιτέχνη",
+            "openAlbum" to "Άνοιγμα άλμπουμ",
+            "deleteDownload" to "Διαγραφή λήψης",
+            "share" to "Κοινοποίηση",
+            "shareSong" to "Κοινοποίηση τραγουδιού",
+            "removeFromRecentSearches" to "Αφαίρεση από τις πρόσφατες αναζητήσεις",
+            "songOptions" to "Επιλογές τραγουδιού",
+            "goToPlayer" to "Μετάβαση στην αναπαραγωγή",
+            "saveOffline" to "Αποθήκευση offline",
+            "favorite" to "Αγαπημένο",
+            "downloaded" to "Λήφθηκε",
+            "remove" to "Αφαίρεση",
+            "removeFromPlaylist" to "Αφαίρεση από τη λίστα αναπαραγωγής",
+            "youMightAlsoLike" to "Μπορεί επίσης να σου αρέσει",
+            "topResult" to "Κορυφαίο αποτέλεσμα",
+            "currentlyPlaying" to "Αναπαράγεται τώρα",
+            "artistLabel" to "Καλλιτέχνης",
+            "playNow" to "Αναπαραγωγή τώρα",
+            "biography" to "Βιογραφία",
+            "newUpdate" to "ΝΕΑ ΕΝΗΜΕΡΩΣΗ",
+            "updateDescription" to "Πιο συμπαγής οθόνη, πιο ευανάγνωστο αρχείο αλλαγών και περιεχόμενο με κύλιση σε κάθε οθόνη.",
+            "whatsNew" to "Τι νέο υπάρχει",
+            "update" to "Ενημέρωση",
+            "updateRetry" to "Δοκιμάστε ξανά",
+            "updateDownloading" to "Λήψη ενημέρωσης",
+            "updatePreparing" to "Προετοιμασία ενημέρωσης",
+            "updateInstalling" to "Εγκατάσταση",
+            "updateReadyToInstall" to "Έτοιμο για εγκατάσταση",
+            "updateFailed" to "Η ενημέρωση απέτυχε",
+            "updateAllowInstalls" to "Επιτρέψτε τις εγκαταστάσεις για να συνεχίσετε",
+            "updateLinkUnavailable" to "Ο σύνδεσμος ενημέρωσης δεν είναι διαθέσιμος",
+            "cannotOpenDownload" to "Δεν είναι δυνατό το άνοιγμα της λήψης",
+            "externalLinkUnavailable" to "Ο εξωτερικός σύνδεσμος δεν είναι διαθέσιμος",
+            "cannotOpenExternalLink" to "Δεν είναι δυνατό το άνοιγμα του εξωτερικού συνδέσμου",
+            "continuousRadio" to "Συνεχές ραδιόφωνο",
+            "continuousRadioSubtitle" to "Προσθέτει σχετικά τραγούδια όταν η ουρά πλησιάζει στο τέλος",
+            "artistsLabelPlural" to "Καλλιτέχνες",
+            "albumMood" to "Ατμόσφαιρα άλμπουμ",
+            "openLyricsAnalysis" to "Άνοιγμα ανάλυσης στίχων",
+            "closeLyrics" to "Κλείσιμο στίχων",
+            "lyricsDuet" to "Ντουέτο",
+            "lyricsCinema" to "Κινηματογράφος",
+            "lyricsPage" to "Σελίδα",
+            "lyricsRomanization" to "Μεταγραφή",
+            "lyricsCompact" to "Συμπαγές",
+            "lyricsSections" to "Ενότητες τραγουδιού",
+            "lyricsSectionIntro" to "Εισαγωγή",
+            "lyricsSectionVerse" to "Κουπλέ",
+            "lyricsSectionPreChorus" to "Προ-ρεφρέν",
+            "lyricsSectionChorus" to "Ρεφρέν",
+            "lyricsSectionBridge" to "Γέφυρα",
+            "lyricsSectionInstrumental" to "Ορχηστρικό",
+            "lyricsSectionOutro" to "Φινάλε",
+            "automaticTranslation" to "Αυτόματη μετάφραση",
+            "automaticTranslationSubtitle" to "Χρησιμοποιεί τις διαθέσιμες γλώσσες στις μεταγραφές του YouTube",
+            "atmosphere" to "Ατμόσφαιρα",
+            "themes" to "Θέματα",
+            "chorusDetected" to "Εντοπίστηκε ρεφρέν",
+            "goToChorus" to "Μετάβαση στο ρεφρέν",
+            "close" to "Κλείσιμο",
+            "complete" to "Ολοκλήρωση",
+            "delete" to "Διαγραφή",
+            "newPlaylist" to "Νέα playlist",
+            "playlistName" to "Όνομα playlist",
+            "create" to "Δημιουργία",
+            "cancel" to "Ακύρωση",
+            "newPlaylistName" to "Όνομα νέας playlist",
+            "createNewPlaylist" to "Δημιουργία νέας playlist",
+            "createAndAdd" to "Δημιουργία και προσθήκη",
+            "downloadPlaylist" to "Λήψη playlist",
+            "playAll" to "Αναπαραγωγή όλων",
+            "playingFrom" to "ΑΝΑΠΑΡΑΓΩΓΗ ΑΠΟ",
+            "closePlayer" to "Κλείσιμο αναπαραγωγής",
+            "options" to "Επιλογές",
+            "showLyrics" to "Εμφάνιση στίχων",
+            "shuffle" to "Τυχαία σειρά",
+            "previous" to "Προηγούμενο",
+            "next" to "Επόμενο",
+            "repeat" to "Επανάληψη",
+            "persistentQueue" to "Μόνιμη ουρά",
+            "continueListening" to "Συνέχισε να ακούς",
+            "favoritesPlain" to "Αγαπημένα",
+            "offline" to "Offline",
+            "more" to "Περισσότερα",
+            "mix" to "Mix",
+            "mixForYou" to "Mix για σένα",
+            "genres" to "Είδη",
+            "smartMusicProfile" to "Έξυπνο μουσικό προφίλ",
+            "flow" to "Ροή",
+            "pictureInPicture" to "Εικόνα σε εικόνα",
+            "discoveryFlow" to "ΡΟΗ ΑΝΑΚΑΛΥΨΗΣ",
+            "shareDiagnostics" to "Κοινοποίηση διαγνωστικών",
+            "albumUnavailable" to "Το άλμπουμ δεν είναι διαθέσιμο",
+            "albumTracksUnavailable" to "Τα κομμάτια του άλμπουμ δεν είναι διαθέσιμα",
+            "showLess" to "Εμφάνιση λιγότερων",
+            "showMore" to "Εμφάνιση περισσότερων",
+            "playing" to "Αναπαραγωγή",
+            "artistProfileUnavailable" to "Το προφίλ του καλλιτέχνη δεν είναι διαθέσιμο",
+            "popularTracks" to "Δημοφιλή κομμάτια",
+            "showAll" to "Εμφάνιση όλων",
+            "versionLabel" to "Έκδοση",
+            "generalImprovements" to "Γενικές βελτιώσεις και διορθώσεις σφαλμάτων.",
+            "historyLabel" to "στο ιστορικό",
+            "undoRemoval" to "Αναίρεση αφαίρεσης",
+            "lyricsAnalysis" to "Ανάλυση στίχων",
+            "linesLabel" to "Στίχοι",
+            "wordsLabel" to "Λέξεις",
+            "localAnalysis" to "Τοπική ανάλυση",
+            "open" to "Άνοιγμα",
+            "newRelease" to "ΝΕΑ ΚΥΚΛΟΦΟΡΙΑ",
+            "newReleaseSubtitle" to "Μια νέα κυκλοφορία μόλις εμφανίστηκε στο ραντάρ.",
+            "saved" to "Αποθηκεύτηκε",
+            "save" to "Αποθήκευση",
+            "noOfflineDownloads" to "Δεν υπάρχουν λήψεις αποθηκευμένες offline.",
+            "createFirstPlaylist" to "Δημιούργησε την πρώτη σου playlist",
+            "createFirstPlaylistSubtitle" to "Συγκέντρωσε τα τραγούδια που θέλεις να βρίσκεις ξανά αμέσως.",
+            "downloadTrackHint" to "Πάτησε Λήψη σε ένα τραγούδι για να το αποθηκεύσεις στο Music/Levyra.",
+            "savedTracks" to "Αποθηκευμένα τραγούδια",
+            "favoritesEmpty" to "Δεν υπάρχουν ακόμη αγαπημένα",
+            "playlistEmpty" to "Η playlist είναι άδεια. Πρόσθεσε τραγούδια από το μενού με τις τρεις τελείες ενός τραγουδιού.",
+            "showPersonalListening" to "Εμφάνιση της προσωπικής δραστηριότητας ακρόασης στο επάνω μέρος της Αρχικής",
+            "showRecentReleases" to "Εμφάνιση πρόσφατων κυκλοφοριών και ραντάρ καλλιτεχνών που ακολουθείς",
+            "showRecommendedAlbums" to "Εμφάνιση προτεινόμενων άλμπουμ στην Αρχική",
+            "showDiscoveredArtists" to "Εμφάνιση καλλιτεχνών που ανακαλύφθηκαν από τις μουσικές ενότητές σου",
+            "showChartsCountry" to "Εμφάνιση charts και επιλογέα χώρας",
+            "partialDownloadResume" to "Διατήρηση μερικών byte και συνέχιση με αιτήματα HTTP Range",
+            "lyricsAnalysisSection" to "ΑΝΑΛΥΣΗ ΣΤΙΧΩΝ",
+            "lyricsAnalysisCompact" to "Διακριτική τοπική ανάλυση",
+            "lyricsAnalysisCompactSubtitle" to "Παραμένει συμπτυγμένη μέχρι να την ανοίξεις, δείχνει μόνο χρήσιμα στοιχεία και μπορεί να σε μεταφέρει απευθείας στο ρεφρέν.",
+            "createDataBackup" to "Δημιουργία αντιγράφου ασφαλείας δεδομένων",
+            "createDataBackupSubtitle" to "Αγαπημένα, playlists, ιστορικό, ουρά και ρυθμίσεις σε αρχείο επαληθευμένο με SHA-256. Τα αρχεία ήχου παραμένουν στο Music/Levyra.",
+            "updateAvailable" to "Διαθέσιμη ενημέρωση",
+            "updates" to "Ενημερώσεις",
+            "checkingLatestVersion" to "Έλεγχος της πιο πρόσφατης έκδοσης…",
+            "latestVersionReady" to "έτοιμη για λήψη",
+            "latestInstalled" to "Έχεις εγκαταστήσει την πιο πρόσφατη έκδοση",
+            "checkNewVersions" to "Έλεγχος για νέες δημοσιευμένες εκδόσεις",
+            "releasePageReady" to "Η σελίδα της έκδοσης είναι έτοιμη να ανοίξει",
+            "installedVersion" to "Εγκατεστημένη έκδοση",
+            "openPlayer" to "Άνοιγμα αναπαραγωγής",
+            "searchSongsArtists" to "Αναζήτηση τραγουδιών και καλλιτεχνών...",
+            "songsPlain" to "Τραγούδια",
+            "shareVia" to "Κοινοποίηση μέσω",
+            "emptySearchPrompt" to "Γράψε το όνομα ενός τραγουδιού και αναζήτησε",
+            "cancelDownload" to "Ακύρωση λήψης",
+            "readAll" to "Διαβάστε περισσότερα",
+            "singlesAndEps" to "Singles και EP",
+            "tapHeartToAdd" to "Πατήστε την καρδιά σε ένα τραγούδι για να το προσθέσετε εδώ.",
+            "all" to "Όλα",
+            "automaticResume" to "Αυτόματη συνέχιση",
+            "simultaneousDownloads" to "Ταυτόχρονες λήψεις",
+            "simultaneousDownloadsSubtitle" to "Καθολικό όριο για μνήμη, δίκτυο και θερμοκρασία",
+            "backupRestoreSection" to "ΑΝΤΙΓΡΑΦΟ ΑΣΦΑΛΕΙΑΣ ΚΑΙ ΕΠΑΝΑΦΟΡΑ",
+            "restoreBackup" to "Επαναφορά αντιγράφου ασφαλείας",
+            "restoreBackupSubtitle" to "Ελέγχει το σχήμα και το άθροισμα ελέγχου πριν αντικαταστήσει τα τοπικά δεδομένα",
+            "playbackResilienceSection" to "ΑΝΘΕΚΤΙΚΟΤΗΤΑ ΑΝΑΠΑΡΑΓΩΓΗΣ",
+            "exportSafeDiagnostics" to "Ασφαλής εξαγωγή διαγνωστικών",
+            "generateResolverTrace" to "Δημιουργία ίχνους resolver",
+            "safeDiagnosticsSubtitle" to "Κατάσταση πελατών και πρόσφατες προσπάθειες, χωρίς URL και διακριτικά",
+            "check" to "Έλεγχος",
+            "checking" to "Γίνεται έλεγχος",
+            "dragToReorder" to "Σύρετε για αναδιάταξη",
+            "homeInterfaceSection" to "ΔΙΕΠΑΦΗ ΑΡΧΙΚΗΣ",
+            "compactHome" to "Συμπαγής αρχική",
+            "compactHomeSubtitle" to "Μειώνει τα κατακόρυφα κενά και κάνει την κύλιση πιο ομαλή",
+            "yourOrbitSetting" to "Η τροχιά σου",
+            "voicesSetting" to "Φωνές που αντηχούν",
+            "voicesSettingSubtitle" to "Διατηρεί την προσωπική επιλογή με βάση όσα ακούτε",
+            "newReleasesSetting" to "Νέες κυκλοφορίες",
+            "albumsForYouSetting" to "Άλμπουμ για εσάς",
+            "trendingArtists" to "Δημοφιλείς καλλιτέχνες",
+            "top50Charts" to "Κατάταξη Top 50",
+            "mobilePlayerSection" to "PLAYER ΓΙΑ ΚΙΝΗΤΑ",
+            "advancedGestures" to "Σύνθετες χειρονομίες",
+            "advancedGesturesSubtitle" to "Διπλό πάτημα, παρατεταμένο πάτημα, φωτεινότητα και ένταση",
+            "pureBlack" to "Καθαρό μαύρο",
+            "pureBlackSubtitle" to "Πραγματικά μαύρα φόντα για οθόνες OLED",
+            "hapticFeedback" to "Απτική ανάδραση",
+            "hapticFeedbackSubtitle" to "Σύντομη δόνηση στις βασικές ενέργειες",
+            "doubleTapSeek" to "Μετακίνηση με διπλό πάτημα",
+            "doubleTapSeekSubtitle" to "Διάρκεια μετακίνησης αριστερά και δεξιά",
+            "longPress" to "Παρατεταμένο πάτημα",
+            "longPressSubtitle" to "Προσωρινή ταχύτητα όσο κρατάτε πατημένο",
+            "downloadEngineSection" to "ΜΗΧΑΝΗ ΛΗΨΕΩΝ 3.0",
+            "wifiOnly" to "Μόνο μέσω Wi‑Fi",
+            "wifiOnlySubtitle" to "Το WorkManager ξεκινά λήψεις μόνο σε δίκτυο χωρίς ογκοχρέωση",
+            "chargingOnly" to "Μόνο κατά τη φόρτιση",
+            "chargingOnlySubtitle" to "Μειώνει την κατανάλωση μπαταρίας και τη θερμοκρασία στις μεγάλες λήψεις",
+            "resumeDownload" to "Συνέχιση λήψης",
+            "pauseDownload" to "Παύση λήψης",
+            "signedApkReady" to "Το υπογεγραμμένο APK είναι έτοιμο για εγκατάσταση",
+            "downloadsInProgress" to "Λήψεις σε εξέλιξη",
+            "downloadInProgress" to "Λήψη σε εξέλιξη",
+            "newAlbums" to "Νέα άλμπουμ",
+            "newSingles" to "Νέα singles",
+            "newAlbum" to "ΝΕΟ ΑΛΜΠΟΥΜ",
+            "downloadsFolder" to "Φάκελος λήψεων",
+            "offlineDownloadsPlain" to "Λήψεις εκτός σύνδεσης",
+            "personalPlaylists" to "Προσωπικές λίστες αναπαραγωγής",
+            "searchingYouTubeMusic" to "Αναζήτηση στο YouTube Music…",
+            "searchingLyrics" to "Αναζήτηση στίχων…",
+            "pause" to "Παύση",
+            "newSingle" to "ΝΕΟ SINGLE",
+            "albumsPlain" to "Άλμπουμ",
+            "albumPlain" to "Άλμπουμ",
+            "singlePlain" to "Single",
+            "playlistsPlain" to "Λίστες αναπαραγωγής",
+            "profileActive" to "Η εξατομίκευση είναι ενεργή",
+            "profileLearning" to "Μαθαίνω από όσα ακούτε",
+            "newBadge" to "ΝΕΟ",
+            "brightness" to "Φωτεινότητα",
+            "timer" to "Χρονοδιακόπτης",
+            "normalizationShort" to "Κανον.",
+            "coverAndTags" to "εξώφυλλο και ετικέτες",
+            "madeWithBy" to "Δημιουργήθηκε με ❤️ από",
+            "activeIndicator" to "ΕΝΕΡΓΟ",
+            "batteryUnrestricted" to "Απεριόριστη αναπαραγωγή στο παρασκήνιο",
+            "batteryUnrestrictedSubtitle" to "Εξαιρέστε το Levyra από τη βελτιστοποίηση μπαταρίας ώστε η μουσική να συνεχίζει με σβηστή οθόνη",
+            "batteryUnrestrictedActive" to "Ενεργό — το σύστημα δεν θα σταματήσει την αναπαραγωγή",
+            "downloadQualityPreset" to "Προρύθμιση ποιότητας",
+            "downloadQualityPresetSubtitle" to "Ισορροπεί ποιότητα, ταχύτητα και κατανάλωση δεδομένων",
+            "downloadPresetAutomatic" to "Αυτόματα",
+            "downloadPresetHighQuality" to "Υψηλή ποιότητα",
+            "downloadPresetDataSaver" to "Εξοικονόμηση δεδομένων",
+            "downloadFolderOrganization" to "Οργάνωση φακέλων",
+            "downloadFolderOrganizationSubtitle" to "Αποθηκεύει ανά καλλιτέχνη και άλμπουμ χωρίς διπλότυπα αρχεία",
+            "downloadFolderArtist" to "Καλλιτέχνης",
+            "downloadFolderArtistAlbum" to "Καλλιτέχνης / Άλμπουμ",
+            "downloadSpeedLimit" to "Όριο ταχύτητας",
+            "downloadSpeedLimitSubtitle" to "Περιορίζει τη χρήση δικτύου κατά τη λήψη",
+            "downloadSpeedUnlimited" to "Απεριόριστο",
+            "downloadEmbedMetadata" to "Ενσωματωμένα μεταδεδομένα",
+            "downloadEmbedMetadataSubtitle" to "Γράφει τίτλο, καλλιτέχνη και άλμπουμ στο αρχείο",
+            "downloadEmbedArtwork" to "Ενσωματωμένο εξώφυλλο",
+            "downloadEmbedArtworkSubtitle" to "Ενσωματώνει το επίσημο εξώφυλλο στο κομμάτι",
+            "downloadVerifyFile" to "Έλεγχος αρχείων",
+            "downloadVerifyFileSubtitle" to "Επαληθεύει υπογραφή, μέγεθος και αναγνωσιμότητα πριν από την ολοκλήρωση",
+            "downloadSkipDuplicates" to "Παράλειψη διπλότυπων",
+            "downloadSkipDuplicatesSubtitle" to "Επαναχρησιμοποιεί έγκυρες υπάρχουσες λήψεις",
+            "trailTitle" to "ΤΟ ΠΡΟΣΦΑΤΟ ΣΟΥ ΧΝΑΡΙ",
+            "trailPlays" to "αναπαραγωγές",
+            "trailUnique" to "μοναδικά",
+            "trailLastPlayed" to "Τελευταία ακρόαση",
+            "statPlays" to "αναπαραγωγές",
+            "statArtists" to "καλλιτέχνες",
+            "statTracks" to "κομμάτια"
+        )
+
+        private fun svEntries(): Map<String, String> = mapOf(
+            "welcomeBadge" to "Välkommen",
+            "welcomeTitle" to "Nu börjar vi.",
+            "languageQuestion" to "Vilket språk vill du använda?",
+            "nameQuestion" to "Vad heter du?",
+            "namePlaceholder" to "Ditt namn...",
+            "tasteQuestion" to "Välj 3 eller fler genrer du gillar.",
+            "skipAndContinue" to "Hoppa över och fortsätt",
+            "startListening" to "Börja lyssna",
+            "settings" to "Inställningar",
+            "settingsSubtitle" to "Anpassa LEVYRA",
+            "design" to "DESIGN",
+            "playback" to "UPPSPELNING",
+            "preferences" to "INSTÄLLNINGAR",
+            "app" to "APP",
+            "animations" to "Animationer",
+            "animationsSubtitle" to "Effekter, övergångar och kortfeedback",
+            "motionArtwork" to "Canvas i spelaren",
+            "motionArtworkSubtitle" to "Visar artistvideor; stäng av för att alltid använda albumomslaget",
+            "dynamicColor" to "Dynamisk färg",
+            "dynamicColorSubtitle" to "Bakgrund och accenter från aktuellt omslag",
+            "sponsorBlock" to "SponsorBlock",
+            "sponsorBlockSubtitle" to "Hoppar automatiskt över sponsorer och icke-musikdelar",
+            "skipSilence" to "Hoppa över tystnad",
+            "skipSilenceSubtitle" to "Komprimerar tysta pauser i låtar",
+            "redoQuestionnaire" to "Gör om smakfrågor",
+            "redoQuestionnaireSubtitle" to "Välj dina favoritgenrer igen",
+            "language" to "Språk",
+            "languageSubtitle" to "Ändra appens språk",
+            "home" to "Hem",
+            "search" to "Sök",
+            "library" to "Bibliotek",
+            "player" to "Spelare",
+            "queue" to "Kö",
+            "lyrics" to "Text",
+            "related" to "Relaterat",
+            "song" to "Låt",
+            "video" to "Video",
+            "nowPlaying" to "SPELAR NU",
+            "emptyPlayer" to "Sök en låt och tryck play",
+            "phoneSpeaker" to "Telefonhögtalare",
+            "connected" to "Ansluten",
+            "volume" to "Volym",
+            "audioQuality" to "Ljudkvalitet",
+            "done" to "Klar",
+            "queueEmpty" to "Kön är tom.",
+            "lyricsUnavailable" to "Text är inte tillgänglig för den här låten.",
+            "synced" to "Synkat",
+            "libraryTitle" to "Bibliotek",
+            "librarySubtitle" to "Playlists, favoriter, nedladdningar och historik",
+            "playlists" to "Dina playlists",
+            "newItem" to "Ny",
+            "downloads" to "Offline-nedladdningar",
+            "favorites" to "Favoriter",
+            "recent" to "Senast hittade",
+            "quickPicks" to "Snabbval",
+            "play" to "Spela",
+            "newReleases" to "Nya släpp",
+            "albumsForYou" to "Album för dig",
+            "top50Unavailable" to "Top 50 är inte tillgängligt, försök senare",
+            "artists" to "Artister",
+            "albumsAndSingles" to "Album och singlar",
+            "songs" to "Låtar",
+            "searchPlaceholder" to "Sök låtar, artister och...",
+            "back" to "Tillbaka",
+            "clear" to "Rensa",
+            "voice" to "Röst",
+            "createPlaylistHint" to "Skapa en playlist och lägg till dina favoritlåtar",
+            "selectLanguagePrompt" to "Välj språk",
+            "explore" to "Utforska",
+            "exploreTitle" to "Utforska",
+            "exploreSubtitle" to "Upptäck ny musik, trender och videor",
+            "exploreFresh" to "Nya strömningar",
+            "exploreNewVideos" to "Nya musikvideor",
+            "exploreEmpty" to "Inget att visa från den här zonen just nu. Prova en annan.",
+            "localWaveName" to "Lokala vågen",
+            "localWaveEmoji" to "🇸🇪",
+            "localWaveQuery" to "nya svenska låtar 2026",
+            "exploreNewReleases" to "Nya släpp",
+            "exploreRapDrill" to "Rap och drill",
+            "exploreElectronic" to "Elektroniskt",
+            "explorePopGlobal" to "Global pop",
+            "exploreRnbSoul" to "R&B och soul",
+            "exploreRockAlt" to "Rock och alternativt",
+            "exploreLatino" to "Latinskt",
+            "exploreLofiChill" to "Lo-fi och chill",
+            "exploreJpopAnime" to "J-pop och anime",
+            "followArtist" to "Följ",
+            "followingArtist" to "Följer",
+            "releaseRadar" to "Släppradar",
+            "similarArtists" to "Liknande artister",
+            "similarToFollowed" to "Liknar artister du följer",
+            "theme" to "Tema",
+            "themeSubtitle" to "Välj hur LEVYRA ska se ut",
+            "personalOrbitTitle" to "Din omloppsbana",
+            "personalOrbitSubtitle" to "Låtarna du alltid återvänder till",
+            "voicesTitle" to "Röster som berör",
+            "voicesSubtitle" to "De mest kommenterade låtarna, visualiserade som levande energi",
+            "totalComments" to "Kommentarer totalt",
+            "engagement" to "Engagemang",
+            "audioEngine" to "Ljud",
+            "audioEngineSubtitle" to "Equalizer, crossfade, ljudstyrka, tempo, tonhöjd och gapless",
+            "equalizer" to "Equalizer",
+            "equalizerSubtitle" to "Riktiga effekter med förinställningar, basförstärkning och virtualizer",
+            "preset" to "Förinställning",
+            "bassBoost" to "Basförstärkning",
+            "virtualizer" to "Virtualizer",
+            "crossfade" to "Crossfade",
+            "djSoft" to "Mjukt DJ-läge",
+            "replayGain" to "ReplayGain / smart ljudstyrka",
+            "tempo" to "Tempo",
+            "pitch" to "Tonhöjd",
+            "gapless" to "Gapless",
+            "restartRequiredTitle" to "Starta om LEVYRA?",
+            "restartRequiredBody" to "Språket har sparats. Starta om appen nu så att alla skärmar läses in korrekt.",
+            "restartNow" to "Starta om nu",
+            "later" to "Senare",
+            "audioQualityAuto" to "Automatisk",
+            "audioQualityHigh" to "Hög",
+            "audioQualityLow" to "Låg",
+            "pulseSectionBand" to "Din statistik",
+            "pulseTitle" to "Lyssningspuls",
+            "pulseSubtitle" to "Privat statistik som bara beräknas på den här enheten",
+            "followedArtistsTitle" to "Artister du följer",
+            "followedArtistsSubtitle" to "Artisterna du håller nära",
+            "listeningHistoryEmptyTitle" to "Ingen lyssningshistorik än",
+            "listeningHistoryEmptyDetail" to "Spela en låt så börjar historiken byggas här.",
+            "pulseMinutes" to "Minuter",
+            "pulseMinuteShort" to "min",
+            "pulsePlays" to "Uppspelningar",
+            "pulseStreak" to "Dagar i följd",
+            "pulseCompletion" to "Slutfört",
+            "pulseTopArtists" to "Toppartister",
+            "pulseWeek" to "Senaste 7 dagarna",
+            "pulsePeakHour" to "Mest aktiva timme",
+            "pulseEmpty" to "Spela något för att väcka din lyssningspuls",
+            "listeningHistory" to "Lyssningshistorik",
+            "listeningHistorySubtitle" to "Det du faktiskt har spelat",
+            "listeningPrompt" to "Lyssnar...",
+            "voiceSearchUnsupported" to "Röstsökning stöds inte",
+            "musicFiltersComingSoon" to "Musikfilter kommer snart!",
+            "recentSearches" to "Senaste sökningar",
+            "actions" to "Åtgärder",
+            "removeFromFavorites" to "Ta bort från favoriter",
+            "addToFavorites" to "Lägg till i favoriter",
+            "playNext" to "Spela härnäst",
+            "addToQueue" to "Lägg till i kön",
+            "addToPlaylist" to "Lägg till i en playlist",
+            "alreadyOffline" to "Redan tillgänglig offline",
+            "download" to "Ladda ned",
+            "openArtist" to "Öppna artist",
+            "openAlbum" to "Öppna album",
+            "deleteDownload" to "Radera nedladdning",
+            "share" to "Dela",
+            "shareSong" to "Dela låt",
+            "removeFromRecentSearches" to "Ta bort från senaste sökningar",
+            "songOptions" to "Låtalternativ",
+            "goToPlayer" to "Gå till spelaren",
+            "saveOffline" to "Spara offline",
+            "favorite" to "Favorit",
+            "downloaded" to "Nedladdad",
+            "remove" to "Ta bort",
+            "removeFromPlaylist" to "Ta bort från spellistan",
+            "youMightAlsoLike" to "Du kanske också gillar",
+            "topResult" to "Bästa resultat",
+            "currentlyPlaying" to "Spelas nu",
+            "artistLabel" to "Artist",
+            "playNow" to "Spela nu",
+            "biography" to "Biografi",
+            "newUpdate" to "NY UPPDATERING",
+            "updateDescription" to "En kompaktare vy, en tydligare ändringslogg och rullningsbart innehåll på alla skärmar.",
+            "whatsNew" to "Nyheter",
+            "update" to "Uppdatera",
+            "updateRetry" to "Försök igen",
+            "updateDownloading" to "Laddar ner uppdatering",
+            "updatePreparing" to "Förbereder uppdatering",
+            "updateInstalling" to "Installerar",
+            "updateReadyToInstall" to "Redo att installera",
+            "updateFailed" to "Uppdateringen misslyckades",
+            "updateAllowInstalls" to "Tillåt installationer för att fortsätta",
+            "updateLinkUnavailable" to "Uppdateringslänken är inte tillgänglig",
+            "cannotOpenDownload" to "Det går inte att öppna nedladdningen",
+            "externalLinkUnavailable" to "Extern länk är inte tillgänglig",
+            "cannotOpenExternalLink" to "Det går inte att öppna den externa länken",
+            "continuousRadio" to "Kontinuerlig radio",
+            "continuousRadioSubtitle" to "Lägger till passande låtar när kön börjar ta slut",
+            "artistsLabelPlural" to "Artister",
+            "albumMood" to "Albumkänsla",
+            "openLyricsAnalysis" to "Öppna textanalys",
+            "closeLyrics" to "Stäng låttext",
+            "lyricsDuet" to "Duett",
+            "lyricsCinema" to "Bio",
+            "lyricsPage" to "Sida",
+            "lyricsRomanization" to "Romanisering",
+            "lyricsCompact" to "Kompakt",
+            "lyricsSections" to "Låtsektioner",
+            "lyricsSectionIntro" to "Intro",
+            "lyricsSectionVerse" to "Vers",
+            "lyricsSectionPreChorus" to "Förrefräng",
+            "lyricsSectionChorus" to "Refräng",
+            "lyricsSectionBridge" to "Brygga",
+            "lyricsSectionInstrumental" to "Instrumental",
+            "lyricsSectionOutro" to "Outro",
+            "automaticTranslation" to "Automatisk översättning",
+            "automaticTranslationSubtitle" to "Använder språken som finns i YouTube-transkriptioner",
+            "atmosphere" to "Stämning",
+            "themes" to "Teman",
+            "chorusDetected" to "Refräng hittad",
+            "goToChorus" to "Gå till refrängen",
+            "close" to "Stäng",
+            "complete" to "Slutför",
+            "delete" to "Radera",
+            "newPlaylist" to "Ny playlist",
+            "playlistName" to "Playlistens namn",
+            "create" to "Skapa",
+            "cancel" to "Avbryt",
+            "newPlaylistName" to "Namn på ny playlist",
+            "createNewPlaylist" to "Skapa en ny playlist",
+            "createAndAdd" to "Skapa och lägg till",
+            "downloadPlaylist" to "Ladda ned playlist",
+            "playAll" to "Spela alla",
+            "playingFrom" to "SPELAR FRÅN",
+            "closePlayer" to "Stäng spelaren",
+            "options" to "Alternativ",
+            "showLyrics" to "Visa låttext",
+            "shuffle" to "Blanda",
+            "previous" to "Föregående",
+            "next" to "Nästa",
+            "repeat" to "Upprepa",
+            "persistentQueue" to "Beständig kö",
+            "continueListening" to "Fortsätt lyssna",
+            "favoritesPlain" to "Favoriter",
+            "offline" to "Offline",
+            "more" to "Mer",
+            "mix" to "Mix",
+            "mixForYou" to "Mix för dig",
+            "genres" to "Genrer",
+            "smartMusicProfile" to "Smart musikprofil",
+            "flow" to "Flöde",
+            "pictureInPicture" to "Bild-i-bild",
+            "discoveryFlow" to "UPPTÄCKTSFLÖDE",
+            "shareDiagnostics" to "Dela diagnostik",
+            "albumUnavailable" to "Albumet är inte tillgängligt",
+            "albumTracksUnavailable" to "Albumets låtar är inte tillgängliga",
+            "showLess" to "Visa mindre",
+            "showMore" to "Visa fler",
+            "playing" to "Spelas",
+            "artistProfileUnavailable" to "Artistprofilen är inte tillgänglig",
+            "popularTracks" to "Populära låtar",
+            "showAll" to "Visa alla",
+            "versionLabel" to "Version",
+            "generalImprovements" to "Allmänna förbättringar och felrättningar.",
+            "historyLabel" to "i historiken",
+            "undoRemoval" to "Ångra borttagning",
+            "lyricsAnalysis" to "Textanalys",
+            "linesLabel" to "Rader",
+            "wordsLabel" to "Ord",
+            "localAnalysis" to "Lokal analys",
+            "open" to "Öppna",
+            "newRelease" to "NYTT SLÄPP",
+            "newReleaseSubtitle" to "Ett nytt släpp har precis dykt upp på radarn.",
+            "saved" to "Sparad",
+            "save" to "Spara",
+            "noOfflineDownloads" to "Inga nedladdningar har sparats offline.",
+            "createFirstPlaylist" to "Skapa din första playlist",
+            "createFirstPlaylistSubtitle" to "Samla låtarna du vill kunna hitta direkt igen.",
+            "downloadTrackHint" to "Tryck på Ladda ned vid en låt för att spara den i Music/Levyra.",
+            "savedTracks" to "Sparade låtar",
+            "favoritesEmpty" to "Inga favoriter än",
+            "playlistEmpty" to "Playlisten är tom. Lägg till låtar från trepunktsmenyn på en låt.",
+            "showPersonalListening" to "Visa din personliga lyssningsaktivitet högst upp på Hem",
+            "showRecentReleases" to "Visa nya släpp och radarn för artister du följer",
+            "showRecommendedAlbums" to "Visa rekommenderade album på Hem",
+            "showDiscoveredArtists" to "Visa artister som upptäckts i dina musiksektioner",
+            "showChartsCountry" to "Visa topplistor och landsväljare",
+            "partialDownloadResume" to "Behåll delvis hämtade byte och fortsätt med HTTP Range-anrop",
+            "lyricsAnalysisSection" to "TEXTANALYS",
+            "lyricsAnalysisCompact" to "Diskret lokal analys",
+            "lyricsAnalysisCompactSubtitle" to "Förblir kompakt tills du öppnar den, visar bara användbara signaler och kan ta dig direkt till refrängen.",
+            "createDataBackup" to "Skapa säkerhetskopia",
+            "createDataBackupSubtitle" to "Favoriter, playlists, historik, kö och inställningar i ett SHA-256-verifierat arkiv. Ljudfilerna ligger kvar i Music/Levyra.",
+            "updateAvailable" to "Uppdatering tillgänglig",
+            "updates" to "Uppdateringar",
+            "checkingLatestVersion" to "Söker efter den senaste versionen…",
+            "latestVersionReady" to "klar att laddas ned",
+            "latestInstalled" to "Du har den senaste versionen installerad",
+            "checkNewVersions" to "Sök efter nya publicerade versioner",
+            "releasePageReady" to "Versionssidan är klar att öppnas",
+            "installedVersion" to "Installerad version",
+            "openPlayer" to "Öppna spelaren",
+            "searchSongsArtists" to "Sök låtar och artister...",
+            "songsPlain" to "Låtar",
+            "shareVia" to "Dela via",
+            "emptySearchPrompt" to "Skriv namnet på en låt och sök",
+            "cancelDownload" to "Avbryt nedladdning",
+            "readAll" to "Läs mer",
+            "singlesAndEps" to "Singlar och EP-skivor",
+            "tapHeartToAdd" to "Tryck på hjärtat vid en låt för att lägga till den här.",
+            "all" to "Alla",
+            "automaticResume" to "Automatisk återupptagning",
+            "simultaneousDownloads" to "Samtidiga hämtningar",
+            "simultaneousDownloadsSubtitle" to "Global gräns för minne, nätverk och temperatur",
+            "backupRestoreSection" to "SÄKERHETSKOPIERING OCH ÅTERSTÄLLNING",
+            "restoreBackup" to "Återställ säkerhetskopia",
+            "restoreBackupSubtitle" to "Kontrollerar schema och kontrollsumma innan lokala data ersätts",
+            "playbackResilienceSection" to "ROBUST UPPSPELNING",
+            "exportSafeDiagnostics" to "Exportera säker diagnostik",
+            "generateResolverTrace" to "Skapa resolverspårning",
+            "safeDiagnosticsSubtitle" to "Klientstatus och senaste försök, utan webbadresser och token",
+            "check" to "Kontrollera",
+            "checking" to "Kontrollerar",
+            "dragToReorder" to "Dra för att ändra ordning",
+            "homeInterfaceSection" to "STARTSIDANS GRÄNSSNITT",
+            "compactHome" to "Kompakt startsida",
+            "compactHomeSubtitle" to "Minskar det lodräta avståndet och gör rullningen smidigare",
+            "yourOrbitSetting" to "Din omloppsbana",
+            "voicesSetting" to "Röster som berör",
+            "voicesSettingSubtitle" to "Behåller det personliga urvalet utifrån det du lyssnar på",
+            "newReleasesSetting" to "Nya släpp",
+            "albumsForYouSetting" to "Album för dig",
+            "trendingArtists" to "Trendande artister",
+            "top50Charts" to "Topplistor: Top 50",
+            "mobilePlayerSection" to "MOBILSPELARE",
+            "advancedGestures" to "Avancerade gester",
+            "advancedGesturesSubtitle" to "Dubbeltryck, långtryck, ljusstyrka och volym",
+            "pureBlack" to "Rent svart",
+            "pureBlackSubtitle" to "Helsvarta bakgrunder för OLED-skärmar",
+            "hapticFeedback" to "Haptisk återkoppling",
+            "hapticFeedbackSubtitle" to "En kort vibration vid viktiga handlingar",
+            "doubleTapSeek" to "Spola med dubbeltryck",
+            "doubleTapSeekSubtitle" to "Hopplängd på vänster och höger sida",
+            "longPress" to "Långtryck",
+            "longPressSubtitle" to "Tillfällig hastighet medan du håller ned",
+            "downloadEngineSection" to "HÄMTNINGSMOTOR 3.0",
+            "wifiOnly" to "Endast Wi‑Fi",
+            "wifiOnlySubtitle" to "WorkManager startar bara hämtningar på nätverk utan databegränsning",
+            "chargingOnly" to "Endast under laddning",
+            "chargingOnlySubtitle" to "Minskar batteriförbrukning och värme vid långa hämtningar",
+            "resumeDownload" to "Återuppta hämtning",
+            "pauseDownload" to "Pausa hämtning",
+            "signedApkReady" to "Signerad APK är klar att installera",
+            "downloadsInProgress" to "Hämtningar pågår",
+            "downloadInProgress" to "Hämtning pågår",
+            "newAlbums" to "Nya album",
+            "newSingles" to "Nya singlar",
+            "newAlbum" to "NYTT ALBUM",
+            "downloadsFolder" to "Hämtningsmapp",
+            "offlineDownloadsPlain" to "Offlinehämtningar",
+            "personalPlaylists" to "Personliga spellistor",
+            "searchingYouTubeMusic" to "Söker på YouTube Music…",
+            "searchingLyrics" to "Söker efter låttext…",
+            "pause" to "Pausa",
+            "newSingle" to "NY SINGEL",
+            "albumsPlain" to "Album",
+            "albumPlain" to "Album",
+            "singlePlain" to "Singel",
+            "playlistsPlain" to "Spellistor",
+            "profileActive" to "Personalisering aktiv",
+            "profileLearning" to "Jag lär mig av det du lyssnar på",
+            "newBadge" to "NYTT",
+            "brightness" to "Ljusstyrka",
+            "timer" to "Timer",
+            "normalizationShort" to "Norm.",
+            "coverAndTags" to "omslag och taggar",
+            "madeWithBy" to "Skapad med ❤️ av",
+            "activeIndicator" to "AKTIV",
+            "batteryUnrestricted" to "Obegränsad bakgrundsuppspelning",
+            "batteryUnrestrictedSubtitle" to "Undanta Levyra från batterioptimering så att musiken fortsätter med släckt skärm",
+            "batteryUnrestrictedActive" to "Aktiv — systemet stoppar inte uppspelningen",
+            "downloadQualityPreset" to "Kvalitetsförval",
+            "downloadQualityPresetSubtitle" to "Balanserar kvalitet, hastighet och dataförbrukning",
+            "downloadPresetAutomatic" to "Automatiskt",
+            "downloadPresetHighQuality" to "Hög kvalitet",
+            "downloadPresetDataSaver" to "Databesparing",
+            "downloadFolderOrganization" to "Mappstruktur",
+            "downloadFolderOrganizationSubtitle" to "Sparar efter artist och album utan att duplicera filer",
+            "downloadFolderArtist" to "Artist",
+            "downloadFolderArtistAlbum" to "Artist / Album",
+            "downloadSpeedLimit" to "Hastighetsgräns",
+            "downloadSpeedLimitSubtitle" to "Begränsar nätverksanvändning vid nedladdning",
+            "downloadSpeedUnlimited" to "Obegränsat",
+            "downloadEmbedMetadata" to "Inbäddade metadata",
+            "downloadEmbedMetadataSubtitle" to "Skriver titel, artist och album i filen",
+            "downloadEmbedArtwork" to "Inbäddat omslag",
+            "downloadEmbedArtworkSubtitle" to "Bäddar in det officiella omslaget i spåret",
+            "downloadVerifyFile" to "Filverifiering",
+            "downloadVerifyFileSubtitle" to "Validerar signatur, storlek och läsbarhet innan slutförande",
+            "downloadSkipDuplicates" to "Hoppa över dubbletter",
+            "downloadSkipDuplicatesSubtitle" to "Återanvänder befintliga giltiga nedladdningar",
+            "trailTitle" to "DITT SENASTE SPÅR",
+            "trailPlays" to "spelningar",
+            "trailUnique" to "unika",
+            "trailLastPlayed" to "Senast spelad",
+            "statPlays" to "spelningar",
+            "statArtists" to "artister",
+            "statTracks" to "spår"
+        )
+
+        private fun daEntries(): Map<String, String> = mapOf(
+            "welcomeBadge" to "Velkommen",
+            "welcomeTitle" to "Lad os starte.",
+            "languageQuestion" to "Hvilket sprog vil du bruge?",
+            "nameQuestion" to "Hvad hedder du?",
+            "namePlaceholder" to "Dit navn...",
+            "tasteQuestion" to "Vælg 3 eller flere genrer, du elsker.",
+            "skipAndContinue" to "Spring over og fortsæt",
+            "startListening" to "Begynd at lytte",
+            "settings" to "Indstillinger",
+            "settingsSubtitle" to "Tilpas LEVYRA",
+            "design" to "DESIGN",
+            "playback" to "AFSPILNING",
+            "preferences" to "PRÆFERENCER",
+            "app" to "APP",
+            "animations" to "Animationer",
+            "animationsSubtitle" to "Effekter, overgange og kortfeedback",
+            "motionArtwork" to "Canvas i afspilleren",
+            "motionArtworkSubtitle" to "Viser kunstnervideoer; slå fra for altid at bruge albumcoveret",
+            "dynamicColor" to "Dynamisk farve",
+            "dynamicColorSubtitle" to "Baggrund og accenter fra det aktuelle cover",
+            "sponsorBlock" to "SponsorBlock",
+            "sponsorBlockSubtitle" to "Springer automatisk sponsorer og ikke-musikdele over",
+            "skipSilence" to "Spring stilhed over",
+            "skipSilenceSubtitle" to "Komprimerer stille pauser i numre",
+            "redoQuestionnaire" to "Gentag smagsspørgsmål",
+            "redoQuestionnaireSubtitle" to "Vælg dine yndlingsgenrer igen",
+            "language" to "Sprog",
+            "languageSubtitle" to "Skift appens sprog",
+            "home" to "Hjem",
+            "search" to "Søg",
+            "library" to "Bibliotek",
+            "player" to "Afspiller",
+            "queue" to "Kø",
+            "lyrics" to "Tekst",
+            "related" to "Relateret",
+            "song" to "Sang",
+            "video" to "Video",
+            "nowPlaying" to "AFSPILLER NU",
+            "emptyPlayer" to "Søg efter en sang og tryk play",
+            "phoneSpeaker" to "Telefonhøjttaler",
+            "connected" to "Forbundet",
+            "volume" to "Lydstyrke",
+            "audioQuality" to "Lydkvalitet",
+            "done" to "Færdig",
+            "queueEmpty" to "Køen er tom.",
+            "lyricsUnavailable" to "Tekst er ikke tilgængelig for dette nummer.",
+            "synced" to "Synkroniseret",
+            "libraryTitle" to "Bibliotek",
+            "librarySubtitle" to "Playlists, favoritter, downloads og historik",
+            "playlists" to "Dine playlists",
+            "newItem" to "Ny",
+            "downloads" to "Offline downloads",
+            "favorites" to "Favoritter",
+            "recent" to "Fundet for nylig",
+            "quickPicks" to "Hurtige valg",
+            "play" to "Afspil",
+            "newReleases" to "Nye udgivelser",
+            "albumsForYou" to "Albums til dig",
+            "top50Unavailable" to "Top 50 er ikke tilgængelig, prøv senere",
+            "artists" to "Kunstnere",
+            "albumsAndSingles" to "Albums og singler",
+            "songs" to "Sange",
+            "searchPlaceholder" to "Søg sange, kunstnere og...",
+            "back" to "Tilbage",
+            "clear" to "Ryd",
+            "voice" to "Stemme",
+            "createPlaylistHint" to "Opret en playlist og tilføj dine yndlingssange",
+            "selectLanguagePrompt" to "Vælg et sprog",
+            "explore" to "Udforsk",
+            "exploreTitle" to "Udforsk",
+            "exploreSubtitle" to "Opdag ny musik, trends og videoer",
+            "exploreFresh" to "Nye strømninger",
+            "exploreNewVideos" to "Nye musikvideoer",
+            "exploreEmpty" to "Der er ikke noget at vise fra denne zone lige nu. Prøv en anden.",
+            "localWaveName" to "Den lokale bølge",
+            "localWaveEmoji" to "🇩🇰",
+            "localWaveQuery" to "nye danske sange 2026",
+            "exploreNewReleases" to "Nye udgivelser",
+            "exploreRapDrill" to "Rap og drill",
+            "exploreElectronic" to "Elektronisk",
+            "explorePopGlobal" to "Global pop",
+            "exploreRnbSoul" to "R&B og soul",
+            "exploreRockAlt" to "Rock og alternativ",
+            "exploreLatino" to "Latin",
+            "exploreLofiChill" to "Lo-fi og chill",
+            "exploreJpopAnime" to "J-pop og anime",
+            "followArtist" to "Følg",
+            "followingArtist" to "Følger",
+            "releaseRadar" to "Udgivelsesradar",
+            "similarArtists" to "Lignende kunstnere",
+            "similarToFollowed" to "Ligner kunstnere, du følger",
+            "theme" to "Tema",
+            "themeSubtitle" to "Vælg, hvordan LEVYRA skal se ud",
+            "personalOrbitTitle" to "Din bane",
+            "personalOrbitSubtitle" to "Sangene, du altid vender tilbage til",
+            "voicesTitle" to "Stemmer, der rammer",
+            "voicesSubtitle" to "De mest kommenterede numre visualiseret som levende energi",
+            "totalComments" to "Kommentarer i alt",
+            "engagement" to "Engagement",
+            "audioEngine" to "Lyd",
+            "audioEngineSubtitle" to "Equalizer, crossfade, lydstyrke, tempo, tonehøjde og gapless",
+            "equalizer" to "Equalizer",
+            "equalizerSubtitle" to "Ægte effekter med forudindstillinger, basforstærkning og virtualizer",
+            "preset" to "Forudindstilling",
+            "bassBoost" to "Basforstærkning",
+            "virtualizer" to "Virtualizer",
+            "crossfade" to "Crossfade",
+            "djSoft" to "Blød DJ-tilstand",
+            "replayGain" to "ReplayGain / intelligent lydstyrke",
+            "tempo" to "Tempo",
+            "pitch" to "Tonehøjde",
+            "gapless" to "Gapless",
+            "restartRequiredTitle" to "Genstart LEVYRA?",
+            "restartRequiredBody" to "Sproget er gemt. Genstart appen nu, så alle skærme indlæses korrekt.",
+            "restartNow" to "Genstart nu",
+            "later" to "Senere",
+            "audioQualityAuto" to "Automatisk",
+            "audioQualityHigh" to "Høj",
+            "audioQualityLow" to "Lav",
+            "pulseSectionBand" to "Din statistik",
+            "pulseTitle" to "Lyttepuls",
+            "pulseSubtitle" to "Privat statistik, der kun beregnes på denne enhed",
+            "followedArtistsTitle" to "Kunstnere, du følger",
+            "followedArtistsSubtitle" to "Kunstnerne, du holder tæt på",
+            "listeningHistoryEmptyTitle" to "Ingen afspilninger endnu",
+            "listeningHistoryEmptyDetail" to "Afspil et nummer, så begynder historikken at blive bygget her.",
+            "pulseMinutes" to "Minutter",
+            "pulseMinuteShort" to "min.",
+            "pulsePlays" to "Afspilninger",
+            "pulseStreak" to "Dage i træk",
+            "pulseCompletion" to "Gennemførelse",
+            "pulseTopArtists" to "Topkunstnere",
+            "pulseWeek" to "Seneste 7 dage",
+            "pulsePeakHour" to "Mest aktive tidspunkt",
+            "pulseEmpty" to "Afspil noget for at vække din lyttepuls",
+            "listeningHistory" to "Lyttehistorik",
+            "listeningHistorySubtitle" to "Det, du faktisk har afspillet",
+            "listeningPrompt" to "Lytter...",
+            "voiceSearchUnsupported" to "Stemmesøgning understøttes ikke",
+            "musicFiltersComingSoon" to "Musikfiltre kommer snart!",
+            "recentSearches" to "Seneste søgninger",
+            "actions" to "Handlinger",
+            "removeFromFavorites" to "Fjern fra favoritter",
+            "addToFavorites" to "Føj til favoritter",
+            "playNext" to "Afspil som den næste",
+            "addToQueue" to "Føj til køen",
+            "addToPlaylist" to "Føj til en playlist",
+            "alreadyOffline" to "Allerede tilgængelig offline",
+            "download" to "Download",
+            "openArtist" to "Åbn kunstner",
+            "openAlbum" to "Åbn album",
+            "deleteDownload" to "Slet download",
+            "share" to "Del",
+            "shareSong" to "Del sang",
+            "removeFromRecentSearches" to "Fjern fra seneste søgninger",
+            "songOptions" to "Sangindstillinger",
+            "goToPlayer" to "Gå til afspilleren",
+            "saveOffline" to "Gem offline",
+            "favorite" to "Favorit",
+            "downloaded" to "Downloadet",
+            "remove" to "Fjern",
+            "removeFromPlaylist" to "Fjern fra playlisten",
+            "youMightAlsoLike" to "Du vil måske også synes om",
+            "topResult" to "Bedste resultat",
+            "currentlyPlaying" to "Afspilles nu",
+            "artistLabel" to "Kunstner",
+            "playNow" to "Afspil nu",
+            "biography" to "Biografi",
+            "newUpdate" to "NY OPDATERING",
+            "updateDescription" to "En mere kompakt visning, en tydeligere ændringslog og indhold, der kan rulles på alle skærme.",
+            "whatsNew" to "Nyheder",
+            "update" to "Opdater",
+            "updateRetry" to "Prøv igen",
+            "updateDownloading" to "Downloader opdatering",
+            "updatePreparing" to "Forbereder opdatering",
+            "updateInstalling" to "Installerer",
+            "updateReadyToInstall" to "Klar til installation",
+            "updateFailed" to "Opdateringen mislykkedes",
+            "updateAllowInstalls" to "Tillad installationer for at fortsætte",
+            "updateLinkUnavailable" to "Opdateringslinket er ikke tilgængeligt",
+            "cannotOpenDownload" to "Downloaden kan ikke åbnes",
+            "externalLinkUnavailable" to "Eksternt link er ikke tilgængeligt",
+            "cannotOpenExternalLink" to "Det eksterne link kan ikke åbnes",
+            "continuousRadio" to "Kontinuerlig radio",
+            "continuousRadioSubtitle" to "Tilføjer passende sange, når køen er ved at være slut",
+            "artistsLabelPlural" to "Kunstnere",
+            "albumMood" to "Albumstemning",
+            "openLyricsAnalysis" to "Åbn tekstanalyse",
+            "closeLyrics" to "Luk sangtekst",
+            "lyricsDuet" to "Duet",
+            "lyricsCinema" to "Biograf",
+            "lyricsPage" to "Side",
+            "lyricsRomanization" to "Romanisering",
+            "lyricsCompact" to "Kompakt",
+            "lyricsSections" to "Sangsektioner",
+            "lyricsSectionIntro" to "Intro",
+            "lyricsSectionVerse" to "Vers",
+            "lyricsSectionPreChorus" to "Før-omkvæd",
+            "lyricsSectionChorus" to "Omkvæd",
+            "lyricsSectionBridge" to "Bro",
+            "lyricsSectionInstrumental" to "Instrumental",
+            "lyricsSectionOutro" to "Outro",
+            "automaticTranslation" to "Automatisk oversættelse",
+            "automaticTranslationSubtitle" to "Bruger de sprog, der findes i YouTube-transskriptioner",
+            "atmosphere" to "Stemning",
+            "themes" to "Temaer",
+            "chorusDetected" to "Omkvæd fundet",
+            "goToChorus" to "Gå til omkvædet",
+            "close" to "Luk",
+            "complete" to "Fuldfør",
+            "delete" to "Slet",
+            "newPlaylist" to "Ny playlist",
+            "playlistName" to "Playlistens navn",
+            "create" to "Opret",
+            "cancel" to "Annuller",
+            "newPlaylistName" to "Navn på ny playlist",
+            "createNewPlaylist" to "Opret en ny playlist",
+            "createAndAdd" to "Opret og tilføj",
+            "downloadPlaylist" to "Download playlist",
+            "playAll" to "Afspil alle",
+            "playingFrom" to "AFSPILLER FRA",
+            "closePlayer" to "Luk afspilleren",
+            "options" to "Indstillinger",
+            "showLyrics" to "Vis sangtekst",
+            "shuffle" to "Bland",
+            "previous" to "Forrige",
+            "next" to "Næste",
+            "repeat" to "Gentag",
+            "persistentQueue" to "Vedvarende kø",
+            "continueListening" to "Fortsæt med at lytte",
+            "favoritesPlain" to "Favoritter",
+            "offline" to "Offline",
+            "more" to "Mere",
+            "mix" to "Mix",
+            "mixForYou" to "Mix til dig",
+            "genres" to "Genrer",
+            "smartMusicProfile" to "Smart musikprofil",
+            "flow" to "Flow",
+            "pictureInPicture" to "Billede-i-billede",
+            "discoveryFlow" to "OPDAGELSESFLOW",
+            "shareDiagnostics" to "Del diagnostik",
+            "albumUnavailable" to "Albummet er ikke tilgængeligt",
+            "albumTracksUnavailable" to "Albummets sange er ikke tilgængelige",
+            "showLess" to "Vis mindre",
+            "showMore" to "Vis flere",
+            "playing" to "Afspilles",
+            "artistProfileUnavailable" to "Kunstnerprofilen er ikke tilgængelig",
+            "popularTracks" to "Populære sange",
+            "showAll" to "Vis alle",
+            "versionLabel" to "Version",
+            "generalImprovements" to "Generelle forbedringer og fejlrettelser.",
+            "historyLabel" to "i historikken",
+            "undoRemoval" to "Fortryd fjernelse",
+            "lyricsAnalysis" to "Tekstanalyse",
+            "linesLabel" to "Linjer",
+            "wordsLabel" to "Ord",
+            "localAnalysis" to "Lokal analyse",
+            "open" to "Åbn",
+            "newRelease" to "NY UDGIVELSE",
+            "newReleaseSubtitle" to "En ny udgivelse er lige dukket op på radaren.",
+            "saved" to "Gemt",
+            "save" to "Gem",
+            "noOfflineDownloads" to "Ingen downloads er gemt offline.",
+            "createFirstPlaylist" to "Opret din første playlist",
+            "createFirstPlaylistSubtitle" to "Saml de sange, du vil kunne finde igen med det samme.",
+            "downloadTrackHint" to "Tryk på Download ved en sang for at gemme den i Music/Levyra.",
+            "savedTracks" to "Gemte sange",
+            "favoritesEmpty" to "Ingen favoritter endnu",
+            "playlistEmpty" to "Playlisten er tom. Tilføj sange fra menuen med tre prikker på en sang.",
+            "showPersonalListening" to "Vis din personlige lytteaktivitet øverst på Hjem",
+            "showRecentReleases" to "Vis nye udgivelser og radaren for kunstnere, du følger",
+            "showRecommendedAlbums" to "Vis anbefalede albums på Hjem",
+            "showDiscoveredArtists" to "Vis kunstnere, der er fundet i dine musiksektioner",
+            "showChartsCountry" to "Vis hitlister og landevælger",
+            "partialDownloadResume" to "Behold delvise byte, og fortsæt med HTTP Range-anmodninger",
+            "lyricsAnalysisSection" to "TEKSTANALYSE",
+            "lyricsAnalysisCompact" to "Diskret lokal analyse",
+            "lyricsAnalysisCompactSubtitle" to "Forbliver kompakt, indtil du åbner den, viser kun nyttige signaler og kan føre dig direkte til omkvædet.",
+            "createDataBackup" to "Opret sikkerhedskopi af data",
+            "createDataBackupSubtitle" to "Favoritter, playlists, historik, kø og indstillinger i et SHA-256-verificeret arkiv. Lydfiler forbliver i Music/Levyra.",
+            "updateAvailable" to "Opdatering tilgængelig",
+            "updates" to "Opdateringer",
+            "checkingLatestVersion" to "Søger efter den nyeste version…",
+            "latestVersionReady" to "klar til download",
+            "latestInstalled" to "Du har den nyeste version installeret",
+            "checkNewVersions" to "Søg efter nye udgivne versioner",
+            "releasePageReady" to "Udgivelsessiden er klar til at åbne",
+            "installedVersion" to "Installeret version",
+            "openPlayer" to "Åbn afspilleren",
+            "searchSongsArtists" to "Søg efter sange og kunstnere...",
+            "songsPlain" to "Sange",
+            "shareVia" to "Del via",
+            "emptySearchPrompt" to "Skriv navnet på en sang, og søg",
+            "cancelDownload" to "Annuller download",
+            "readAll" to "Læs mere",
+            "singlesAndEps" to "Singler og EP'er",
+            "tapHeartToAdd" to "Tryk på hjertet ved en sang for at tilføje den her.",
+            "all" to "Alle",
+            "automaticResume" to "Automatisk genoptagelse",
+            "simultaneousDownloads" to "Samtidige downloads",
+            "simultaneousDownloadsSubtitle" to "Global grænse for hukommelse, netværk og temperatur",
+            "backupRestoreSection" to "SIKKERHEDSKOPIERING OG GENDANNELSE",
+            "restoreBackup" to "Gendan sikkerhedskopi",
+            "restoreBackupSubtitle" to "Kontrollerer skema og kontrolsum, før lokale data erstattes",
+            "playbackResilienceSection" to "ROBUST AFSPILNING",
+            "exportSafeDiagnostics" to "Eksportér sikker diagnostik",
+            "generateResolverTrace" to "Opret resolver-sporing",
+            "safeDiagnosticsSubtitle" to "Klientstatus og seneste forsøg uden webadresser og tokens",
+            "check" to "Kontrollér",
+            "checking" to "Kontrollerer",
+            "dragToReorder" to "Træk for at ændre rækkefølge",
+            "homeInterfaceSection" to "STARTSIDENS BRUGERFLADE",
+            "compactHome" to "Kompakt startside",
+            "compactHomeSubtitle" to "Reducerer lodret afstand og gør rulning lettere",
+            "yourOrbitSetting" to "Dit kredsløb",
+            "voicesSetting" to "Stemmer, der giver genklang",
+            "voicesSettingSubtitle" to "Bevarer det personlige udvalg baseret på det, du lytter til",
+            "newReleasesSetting" to "Nye udgivelser",
+            "albumsForYouSetting" to "Album til dig",
+            "trendingArtists" to "Populære kunstnere",
+            "top50Charts" to "Top 50-hitlister",
+            "mobilePlayerSection" to "MOBILAFSPILLER",
+            "advancedGestures" to "Avancerede bevægelser",
+            "advancedGesturesSubtitle" to "Dobbelttryk, langt tryk, lysstyrke og lydstyrke",
+            "pureBlack" to "Rent sort",
+            "pureBlackSubtitle" to "Helt sorte baggrunde til OLED-skærme",
+            "hapticFeedback" to "Haptisk feedback",
+            "hapticFeedbackSubtitle" to "En kort vibration ved vigtige handlinger",
+            "doubleTapSeek" to "Søg med dobbelttryk",
+            "doubleTapSeekSubtitle" to "Springlængde i venstre og højre side",
+            "longPress" to "Langt tryk",
+            "longPressSubtitle" to "Midlertidig hastighed, mens du holder nede",
+            "downloadEngineSection" to "DOWNLOADMOTOR 3.0",
+            "wifiOnly" to "Kun Wi‑Fi",
+            "wifiOnlySubtitle" to "WorkManager starter kun downloads på et netværk uden databegrænsning",
+            "chargingOnly" to "Kun under opladning",
+            "chargingOnlySubtitle" to "Reducerer batteriforbrug og varme ved lange downloads",
+            "resumeDownload" to "Genoptag download",
+            "pauseDownload" to "Sæt download på pause",
+            "signedApkReady" to "Den signerede APK er klar til installation",
+            "downloadsInProgress" to "Downloads i gang",
+            "downloadInProgress" to "Download i gang",
+            "newAlbums" to "Nye album",
+            "newSingles" to "Nye singler",
+            "newAlbum" to "NYT ALBUM",
+            "downloadsFolder" to "Downloadmappe",
+            "offlineDownloadsPlain" to "Offline-downloads",
+            "personalPlaylists" to "Personlige playlister",
+            "searchingYouTubeMusic" to "Søger på YouTube Music…",
+            "searchingLyrics" to "Søger efter sangtekst…",
+            "pause" to "Pause",
+            "newSingle" to "NY SINGLE",
+            "albumsPlain" to "Album",
+            "albumPlain" to "Album",
+            "singlePlain" to "Single",
+            "playlistsPlain" to "Playlister",
+            "profileActive" to "Personalisering aktiv",
+            "profileLearning" to "Jeg lærer af det, du lytter til",
+            "newBadge" to "NYT",
+            "brightness" to "Lysstyrke",
+            "timer" to "Timer",
+            "normalizationShort" to "Norm.",
+            "coverAndTags" to "cover og tags",
+            "madeWithBy" to "Skabt med ❤️ af",
+            "activeIndicator" to "AKTIV",
+            "batteryUnrestricted" to "Ubegrænset baggrundsafspilning",
+            "batteryUnrestrictedSubtitle" to "Undtag Levyra fra batterioptimering, så musikken fortsætter med slukket skærm",
+            "batteryUnrestrictedActive" to "Aktiv — systemet stopper ikke afspilningen",
+            "downloadQualityPreset" to "Kvalitetsforvalg",
+            "downloadQualityPresetSubtitle" to "Balancerer kvalitet, hastighed og dataforbrug",
+            "downloadPresetAutomatic" to "Automatisk",
+            "downloadPresetHighQuality" to "Høj kvalitet",
+            "downloadPresetDataSaver" to "Databesparelse",
+            "downloadFolderOrganization" to "Mappestruktur",
+            "downloadFolderOrganizationSubtitle" to "Gemmer efter kunstner og album uden at duplikere filer",
+            "downloadFolderArtist" to "Kunstner",
+            "downloadFolderArtistAlbum" to "Kunstner / Album",
+            "downloadSpeedLimit" to "Hastighedsgrænse",
+            "downloadSpeedLimitSubtitle" to "Begrænser netværksforbrug under download",
+            "downloadSpeedUnlimited" to "Ubegrænset",
+            "downloadEmbedMetadata" to "Indlejrede metadata",
+            "downloadEmbedMetadataSubtitle" to "Skriver titel, kunstner og album i filen",
+            "downloadEmbedArtwork" to "Indlejret omslag",
+            "downloadEmbedArtworkSubtitle" to "Indlejrer det officielle omslag i nummeret",
+            "downloadVerifyFile" to "Filverificering",
+            "downloadVerifyFileSubtitle" to "Validerer signatur, størrelse og læsbarhed før afslutning",
+            "downloadSkipDuplicates" to "Spring dubletter over",
+            "downloadSkipDuplicatesSubtitle" to "Genbruger eksisterende gyldige downloads",
+            "trailTitle" to "DIT SENESTE SPOR",
+            "trailPlays" to "afspilninger",
+            "trailUnique" to "unikke",
+            "trailLastPlayed" to "Sidst afspillet",
+            "statPlays" to "afspilninger",
+            "statArtists" to "kunstnere",
+            "statTracks" to "numre"
+        )
+
+        private fun csEntries(): Map<String, String> = mapOf(
+            "welcomeBadge" to "Vítej",
+            "welcomeTitle" to "Začínáme.",
+            "languageQuestion" to "Jaký jazyk chceš používat?",
+            "nameQuestion" to "Jak se jmenuješ?",
+            "namePlaceholder" to "Tvoje jméno...",
+            "tasteQuestion" to "Vyber 3 nebo více žánrů, které máš rád.",
+            "skipAndContinue" to "Přeskočit a pokračovat",
+            "startListening" to "Začít poslouchat",
+            "settings" to "Nastavení",
+            "settingsSubtitle" to "Přizpůsobit LEVYRA",
+            "design" to "DESIGN",
+            "playback" to "PŘEHRÁVÁNÍ",
+            "preferences" to "PŘEDVOLBY",
+            "app" to "APP",
+            "animations" to "Animace",
+            "animationsSubtitle" to "Efekty, přechody a odezva karet",
+            "motionArtwork" to "Canvas přehrávače",
+            "motionArtworkSubtitle" to "Zobrazuje videa interpretů; vypnutím se vždy použije obal alba",
+            "dynamicColor" to "Dynamická barva",
+            "dynamicColorSubtitle" to "Pozadí a akcenty z aktuálního obalu",
+            "sponsorBlock" to "SponsorBlock",
+            "sponsorBlockSubtitle" to "Automaticky přeskočí sponzory a nehudební části",
+            "skipSilence" to "Přeskakovat ticho",
+            "skipSilenceSubtitle" to "Zkracuje tiché pauzy ve skladbách",
+            "redoQuestionnaire" to "Vyplnit dotazník znovu",
+            "redoQuestionnaireSubtitle" to "Znovu vyber oblíbené žánry",
+            "language" to "Jazyk",
+            "languageSubtitle" to "Změnit jazyk aplikace",
+            "home" to "Domů",
+            "search" to "Hledat",
+            "library" to "Knihovna",
+            "player" to "Přehrávač",
+            "queue" to "Fronta",
+            "lyrics" to "Text",
+            "related" to "Související",
+            "song" to "Skladba",
+            "video" to "Video",
+            "nowPlaying" to "PRÁVĚ HRAJE",
+            "emptyPlayer" to "Vyhledej skladbu a stiskni play",
+            "phoneSpeaker" to "Reproduktor telefonu",
+            "connected" to "Připojeno",
+            "volume" to "Hlasitost",
+            "audioQuality" to "Kvalita zvuku",
+            "done" to "Hotovo",
+            "queueEmpty" to "Fronta je prázdná.",
+            "lyricsUnavailable" to "Text není pro tuto skladbu dostupný.",
+            "synced" to "Synchronizováno",
+            "libraryTitle" to "Knihovna",
+            "librarySubtitle" to "Playlisty, oblíbené, stažené a historie",
+            "playlists" to "Tvoje playlisty",
+            "newItem" to "Nový",
+            "downloads" to "Offline stažení",
+            "favorites" to "Oblíbené",
+            "recent" to "Nedávno nalezené",
+            "quickPicks" to "Rychlé volby",
+            "play" to "Přehrát",
+            "newReleases" to "Novinky",
+            "albumsForYou" to "Alba pro tebe",
+            "top50Unavailable" to "Top 50 není dostupné, zkus to později",
+            "artists" to "Interpreti",
+            "albumsAndSingles" to "Alba a singly",
+            "songs" to "Skladby",
+            "searchPlaceholder" to "Hledat skladby, interprety a...",
+            "back" to "Zpět",
+            "clear" to "Vymazat",
+            "voice" to "Hlas",
+            "createPlaylistHint" to "Vytvoř playlist a přidej oblíbené skladby",
+            "selectLanguagePrompt" to "Vyber jazyk",
+            "explore" to "Objevovat",
+            "exploreTitle" to "Objevovat",
+            "exploreSubtitle" to "Objevuj novou hudbu, trendy a videa",
+            "exploreFresh" to "Čerstvé proudy",
+            "exploreNewVideos" to "Nová hudební videa",
+            "exploreEmpty" to "V této zóně teď není co zobrazit. Zkus jinou.",
+            "localWaveName" to "Místní vlna",
+            "localWaveEmoji" to "🇨🇿",
+            "localWaveQuery" to "nové české písničky 2026",
+            "exploreNewReleases" to "Novinky",
+            "exploreRapDrill" to "Rap a drill",
+            "exploreElectronic" to "Elektronika",
+            "explorePopGlobal" to "Světový pop",
+            "exploreRnbSoul" to "R&B a soul",
+            "exploreRockAlt" to "Rock a alternativa",
+            "exploreLatino" to "Latino",
+            "exploreLofiChill" to "Lo-fi a chill",
+            "exploreJpopAnime" to "J-pop a anime",
+            "followArtist" to "Sledovat",
+            "followingArtist" to "Sleduješ",
+            "releaseRadar" to "Radar novinek",
+            "similarArtists" to "Podobní interpreti",
+            "similarToFollowed" to "Podobní interpretům, které sleduješ",
+            "theme" to "Motiv",
+            "themeSubtitle" to "Vyber vzhled aplikace LEVYRA",
+            "personalOrbitTitle" to "Tvoje oběžná dráha",
+            "personalOrbitSubtitle" to "Skladby, ke kterým se pořád vracíš",
+            "voicesTitle" to "Hlasy, které rezonují",
+            "voicesSubtitle" to "Nejkomentovanější skladby zobrazené jako živá energie",
+            "totalComments" to "Komentářů celkem",
+            "engagement" to "Zapojení",
+            "audioEngine" to "Zvuk",
+            "audioEngineSubtitle" to "Ekvalizér, crossfade, hlasitost, tempo, výška tónu a gapless",
+            "equalizer" to "Ekvalizér",
+            "equalizerSubtitle" to "Skutečné efekty s předvolbami, zesílením basů a virtualizérem",
+            "preset" to "Předvolba",
+            "bassBoost" to "Zesílení basů",
+            "virtualizer" to "Virtualizér",
+            "crossfade" to "Crossfade",
+            "djSoft" to "Jemný režim DJ",
+            "replayGain" to "ReplayGain / chytrá hlasitost",
+            "tempo" to "Tempo",
+            "pitch" to "Výška tónu",
+            "gapless" to "Plynulé přehrávání",
+            "restartRequiredTitle" to "Restartovat LEVYRA?",
+            "restartRequiredBody" to "Jazyk byl uložen. Restartuj aplikaci, aby se všechny obrazovky správně načetly.",
+            "restartNow" to "Restartovat teď",
+            "later" to "Později",
+            "audioQualityAuto" to "Automatická",
+            "audioQualityHigh" to "Vysoká",
+            "audioQualityLow" to "Nízká",
+            "pulseSectionBand" to "Tvoje statistiky",
+            "pulseTitle" to "Poslechový puls",
+            "pulseSubtitle" to "Soukromé statistiky počítané pouze v tomto zařízení",
+            "followedArtistsTitle" to "Sledovaní interpreti",
+            "followedArtistsSubtitle" to "Interpreti, které máš nablízku",
+            "listeningHistoryEmptyTitle" to "Zatím žádný poslech",
+            "listeningHistoryEmptyDetail" to "Přehraj skladbu a historie se tu začne sama vytvářet.",
+            "pulseMinutes" to "Minuty",
+            "pulseMinuteShort" to "min",
+            "pulsePlays" to "Přehrání",
+            "pulseStreak" to "Dní v řadě",
+            "pulseCompletion" to "Dokončení",
+            "pulseTopArtists" to "Nejlepší interpreti",
+            "pulseWeek" to "Posledních 7 dní",
+            "pulsePeakHour" to "Nejaktivnější hodina",
+            "pulseEmpty" to "Přehraj něco a probuď svůj poslechový puls",
+            "listeningHistory" to "Historie poslechu",
+            "listeningHistorySubtitle" to "Co jsi skutečně přehrál",
+            "listeningPrompt" to "Poslouchám...",
+            "voiceSearchUnsupported" to "Hlasové vyhledávání není podporováno",
+            "musicFiltersComingSoon" to "Hudební filtry budou brzy k dispozici!",
+            "recentSearches" to "Nedávná vyhledávání",
+            "actions" to "Akce",
+            "removeFromFavorites" to "Odebrat z oblíbených",
+            "addToFavorites" to "Přidat do oblíbených",
+            "playNext" to "Přehrát jako další",
+            "addToQueue" to "Přidat do fronty",
+            "addToPlaylist" to "Přidat do playlistu",
+            "alreadyOffline" to "Již dostupné offline",
+            "download" to "Stáhnout",
+            "openArtist" to "Otevřít interpreta",
+            "openAlbum" to "Otevřít album",
+            "deleteDownload" to "Smazat stažené",
+            "share" to "Sdílet",
+            "shareSong" to "Sdílet skladbu",
+            "removeFromRecentSearches" to "Odebrat z nedávných vyhledávání",
+            "songOptions" to "Možnosti skladby",
+            "goToPlayer" to "Přejít do přehrávače",
+            "saveOffline" to "Uložit offline",
+            "favorite" to "Oblíbená",
+            "downloaded" to "Staženo",
+            "remove" to "Odebrat",
+            "removeFromPlaylist" to "Odebrat z playlistu",
+            "youMightAlsoLike" to "Mohlo by se ti také líbit",
+            "topResult" to "Nejlepší výsledek",
+            "currentlyPlaying" to "Právě hraje",
+            "artistLabel" to "Interpret",
+            "playNow" to "Přehrát teď",
+            "biography" to "Biografie",
+            "newUpdate" to "NOVÁ AKTUALIZACE",
+            "updateDescription" to "Kompaktnější obrazovka, přehlednější seznam změn a posuvný obsah na každém displeji.",
+            "whatsNew" to "Co je nového",
+            "update" to "Aktualizovat",
+            "updateRetry" to "Zkusit znovu",
+            "updateDownloading" to "Stahování aktualizace",
+            "updatePreparing" to "Příprava aktualizace",
+            "updateInstalling" to "Instalace",
+            "updateReadyToInstall" to "Připraveno k instalaci",
+            "updateFailed" to "Aktualizace se nezdařila",
+            "updateAllowInstalls" to "Povolte instalace a pokračujte",
+            "updateLinkUnavailable" to "Odkaz na aktualizaci není dostupný",
+            "cannotOpenDownload" to "Stažení nelze otevřít",
+            "externalLinkUnavailable" to "Externí odkaz není k dispozici",
+            "cannotOpenExternalLink" to "Externí odkaz nelze otevřít",
+            "continuousRadio" to "Nepřetržité rádio",
+            "continuousRadioSubtitle" to "Přidává související skladby, když se fronta blíží ke konci",
+            "artistsLabelPlural" to "Interpreti",
+            "albumMood" to "Nálada alb",
+            "openLyricsAnalysis" to "Otevřít analýzu textu",
+            "closeLyrics" to "Zavřít text",
+            "lyricsDuet" to "Duet",
+            "lyricsCinema" to "Kino",
+            "lyricsPage" to "Stránka",
+            "lyricsRomanization" to "Romanizace",
+            "lyricsCompact" to "Kompaktní",
+            "lyricsSections" to "Části skladby",
+            "lyricsSectionIntro" to "Intro",
+            "lyricsSectionVerse" to "Sloka",
+            "lyricsSectionPreChorus" to "Předrefrén",
+            "lyricsSectionChorus" to "Refrén",
+            "lyricsSectionBridge" to "Bridge",
+            "lyricsSectionInstrumental" to "Instrumentál",
+            "lyricsSectionOutro" to "Outro",
+            "automaticTranslation" to "Automatický překlad",
+            "automaticTranslationSubtitle" to "Používá jazyky dostupné v přepisech YouTube",
+            "atmosphere" to "Atmosféra",
+            "themes" to "Témata",
+            "chorusDetected" to "Rozpoznán refrén",
+            "goToChorus" to "Přejít na refrén",
+            "close" to "Zavřít",
+            "complete" to "Dokončit",
+            "delete" to "Smazat",
+            "newPlaylist" to "Nový playlist",
+            "playlistName" to "Název playlistu",
+            "create" to "Vytvořit",
+            "cancel" to "Zrušit",
+            "newPlaylistName" to "Název nového playlistu",
+            "createNewPlaylist" to "Vytvořit nový playlist",
+            "createAndAdd" to "Vytvořit a přidat",
+            "downloadPlaylist" to "Stáhnout playlist",
+            "playAll" to "Přehrát vše",
+            "playingFrom" to "PŘEHRÁVÁNÍ Z",
+            "closePlayer" to "Zavřít přehrávač",
+            "options" to "Možnosti",
+            "showLyrics" to "Zobrazit text",
+            "shuffle" to "Náhodně",
+            "previous" to "Předchozí",
+            "next" to "Další",
+            "repeat" to "Opakovat",
+            "persistentQueue" to "Trvalá fronta",
+            "continueListening" to "Pokračovat v poslechu",
+            "favoritesPlain" to "Oblíbené",
+            "offline" to "Offline",
+            "more" to "Více",
+            "mix" to "Mix",
+            "mixForYou" to "Mix pro tebe",
+            "genres" to "Žánry",
+            "smartMusicProfile" to "Chytrý hudební profil",
+            "flow" to "Proud",
+            "pictureInPicture" to "Obraz v obraze",
+            "discoveryFlow" to "PROUD OBJEVOVÁNÍ",
+            "shareDiagnostics" to "Sdílet diagnostiku",
+            "albumUnavailable" to "Album není dostupné",
+            "albumTracksUnavailable" to "Skladby alba nejsou dostupné",
+            "showLess" to "Zobrazit méně",
+            "showMore" to "Zobrazit více",
+            "playing" to "Přehrává se",
+            "artistProfileUnavailable" to "Profil interpreta není dostupný",
+            "popularTracks" to "Oblíbené skladby",
+            "showAll" to "Zobrazit vše",
+            "versionLabel" to "Verze",
+            "generalImprovements" to "Obecná vylepšení a opravy chyb.",
+            "historyLabel" to "v historii",
+            "undoRemoval" to "Vrátit odebrání",
+            "lyricsAnalysis" to "Analýza textu",
+            "linesLabel" to "Řádky",
+            "wordsLabel" to "Slova",
+            "localAnalysis" to "Místní analýza",
+            "open" to "Otevřít",
+            "newRelease" to "NOVINKA",
+            "newReleaseSubtitle" to "Na radaru se právě objevila nová nahrávka.",
+            "saved" to "Uloženo",
+            "save" to "Uložit",
+            "noOfflineDownloads" to "Žádné stažené soubory nejsou uloženy offline.",
+            "createFirstPlaylist" to "Vytvoř svůj první playlist",
+            "createFirstPlaylistSubtitle" to "Shromáždi skladby, které chceš rychle znovu najít.",
+            "downloadTrackHint" to "Klepni u skladby na Stáhnout a ulož ji do Music/Levyra.",
+            "savedTracks" to "Uložené skladby",
+            "favoritesEmpty" to "Zatím žádné oblíbené",
+            "playlistEmpty" to "Playlist je prázdný. Přidej skladby z nabídky se třemi tečkami u skladby.",
+            "showPersonalListening" to "Zobrazit osobní aktivitu poslechu v horní části Domů",
+            "showRecentReleases" to "Zobrazit nové nahrávky a radar sledovaných interpretů",
+            "showRecommendedAlbums" to "Zobrazit doporučená alba na Domů",
+            "showDiscoveredArtists" to "Zobrazit interprety objevené v hudebních sekcích",
+            "showChartsCountry" to "Zobrazit žebříčky a výběr země",
+            "partialDownloadResume" to "Zachovat částečně stažená data a pokračovat pomocí požadavků HTTP Range",
+            "lyricsAnalysisSection" to "ANALÝZA TEXTU",
+            "lyricsAnalysisCompact" to "Nenápadná místní analýza",
+            "lyricsAnalysisCompactSubtitle" to "Zůstává sbalená, dokud ji neotevřeš, zobrazuje jen užitečné informace a může tě přenést přímo na refrén.",
+            "createDataBackup" to "Vytvořit zálohu dat",
+            "createDataBackupSubtitle" to "Oblíbené, playlisty, historie, fronta a nastavení v archivu ověřeném SHA-256. Zvukové soubory zůstávají v Music/Levyra.",
+            "updateAvailable" to "Je dostupná aktualizace",
+            "updates" to "Aktualizace",
+            "checkingLatestVersion" to "Kontrola nejnovější verze…",
+            "latestVersionReady" to "připravena ke stažení",
+            "latestInstalled" to "Máš nainstalovanou nejnovější verzi",
+            "checkNewVersions" to "Vyhledat nově vydané verze",
+            "releasePageReady" to "Stránka vydání je připravena k otevření",
+            "installedVersion" to "Nainstalovaná verze",
+            "openPlayer" to "Otevřít přehrávač",
+            "searchSongsArtists" to "Hledat skladby a interprety...",
+            "songsPlain" to "Skladby",
+            "shareVia" to "Sdílet pomocí",
+            "emptySearchPrompt" to "Napiš název skladby a vyhledej ji",
+            "cancelDownload" to "Zrušit stahování",
+            "readAll" to "Číst více",
+            "singlesAndEps" to "Singly a EP",
+            "tapHeartToAdd" to "Klepnutím na srdce u skladby ji přidáte sem.",
+            "all" to "Vše",
+            "automaticResume" to "Automatické obnovení",
+            "simultaneousDownloads" to "Souběžná stahování",
+            "simultaneousDownloadsSubtitle" to "Globální limit pro paměť, síť a teplotu",
+            "backupRestoreSection" to "ZÁLOHOVÁNÍ A OBNOVENÍ",
+            "restoreBackup" to "Obnovit zálohu",
+            "restoreBackupSubtitle" to "Před nahrazením místních dat ověří schéma a kontrolní součet",
+            "playbackResilienceSection" to "ODOLNOST PŘEHRÁVÁNÍ",
+            "exportSafeDiagnostics" to "Bezpečně exportovat diagnostiku",
+            "generateResolverTrace" to "Vygenerovat trasování resolveru",
+            "safeDiagnosticsSubtitle" to "Stav klientů a poslední pokusy bez adres URL a tokenů",
+            "check" to "Zkontrolovat",
+            "checking" to "Kontroluje se",
+            "dragToReorder" to "Přetažením změňte pořadí",
+            "homeInterfaceSection" to "ROZHRANÍ DOMOVSKÉ OBRAZOVKY",
+            "compactHome" to "Kompaktní domovská obrazovka",
+            "compactHomeSubtitle" to "Zmenšuje svislé rozestupy a usnadňuje posouvání",
+            "yourOrbitSetting" to "Tvoje oběžná dráha",
+            "voicesSetting" to "Hlasy, které rezonují",
+            "voicesSettingSubtitle" to "Zachová osobní výběr podle toho, co posloucháte",
+            "newReleasesSetting" to "Novinky",
+            "albumsForYouSetting" to "Alba pro vás",
+            "trendingArtists" to "Populární interpreti",
+            "top50Charts" to "Žebříčky Top 50",
+            "mobilePlayerSection" to "MOBILNÍ PŘEHRÁVAČ",
+            "advancedGestures" to "Pokročilá gesta",
+            "advancedGesturesSubtitle" to "Dvojité klepnutí, dlouhé stisknutí, jas a hlasitost",
+            "pureBlack" to "Čistá černá",
+            "pureBlackSubtitle" to "Skutečně černá pozadí pro OLED displeje",
+            "hapticFeedback" to "Haptická odezva",
+            "hapticFeedbackSubtitle" to "Krátká vibrace u klíčových akcí",
+            "doubleTapSeek" to "Posun dvojitým klepnutím",
+            "doubleTapSeekSubtitle" to "Délka skoku vlevo a vpravo",
+            "longPress" to "Dlouhé stisknutí",
+            "longPressSubtitle" to "Dočasná rychlost po dobu přidržení",
+            "downloadEngineSection" to "MODUL STAHOVÁNÍ 3.0",
+            "wifiOnly" to "Pouze přes Wi‑Fi",
+            "wifiOnlySubtitle" to "WorkManager spustí stahování pouze v síti bez omezení dat",
+            "chargingOnly" to "Pouze při nabíjení",
+            "chargingOnlySubtitle" to "Snižuje spotřebu baterie a zahřívání při dlouhém stahování",
+            "resumeDownload" to "Pokračovat ve stahování",
+            "pauseDownload" to "Pozastavit stahování",
+            "signedApkReady" to "Podepsaný soubor APK je připraven k instalaci",
+            "downloadsInProgress" to "Probíhá více stahování",
+            "downloadInProgress" to "Probíhá stahování",
+            "newAlbums" to "Nová alba",
+            "newSingles" to "Nové singly",
+            "newAlbum" to "NOVÉ ALBUM",
+            "downloadsFolder" to "Složka se staženými soubory",
+            "offlineDownloadsPlain" to "Stažené položky offline",
+            "personalPlaylists" to "Osobní playlisty",
+            "searchingYouTubeMusic" to "Vyhledávání na YouTube Music…",
+            "searchingLyrics" to "Vyhledávání textu…",
+            "pause" to "Pozastavit",
+            "newSingle" to "NOVÝ SINGL",
+            "albumsPlain" to "Alba",
+            "albumPlain" to "Album",
+            "singlePlain" to "Singl",
+            "playlistsPlain" to "Playlisty",
+            "profileActive" to "Přizpůsobení je aktivní",
+            "profileLearning" to "Učím se z toho, co posloucháte",
+            "newBadge" to "NOVINKA",
+            "brightness" to "Jas",
+            "timer" to "Časovač",
+            "normalizationShort" to "Norm.",
+            "coverAndTags" to "obal a tagy",
+            "madeWithBy" to "Vytvořeno s ❤️ od",
+            "activeIndicator" to "AKTIVNÍ",
+            "batteryUnrestricted" to "Neomezené přehrávání na pozadí",
+            "batteryUnrestrictedSubtitle" to "Vyjměte Levyra z optimalizace baterie, aby hudba hrála i s vypnutou obrazovkou",
+            "batteryUnrestrictedActive" to "Aktivní — systém přehrávání nezastaví",
+            "downloadQualityPreset" to "Předvolba kvality",
+            "downloadQualityPresetSubtitle" to "Vyvažuje kvalitu, rychlost a spotřebu dat",
+            "downloadPresetAutomatic" to "Automaticky",
+            "downloadPresetHighQuality" to "Vysoká kvalita",
+            "downloadPresetDataSaver" to "Úspora dat",
+            "downloadFolderOrganization" to "Organizace složek",
+            "downloadFolderOrganizationSubtitle" to "Ukládá podle interpreta a alba bez duplikace souborů",
+            "downloadFolderArtist" to "Interpret",
+            "downloadFolderArtistAlbum" to "Interpret / Album",
+            "downloadSpeedLimit" to "Limit rychlosti",
+            "downloadSpeedLimitSubtitle" to "Omezuje využití sítě při stahování",
+            "downloadSpeedUnlimited" to "Neomezené",
+            "downloadEmbedMetadata" to "Vložená metadata",
+            "downloadEmbedMetadataSubtitle" to "Zapíše název, interpreta a album do souboru",
+            "downloadEmbedArtwork" to "Vložený obal",
+            "downloadEmbedArtworkSubtitle" to "Vloží oficiální obal do skladby",
+            "downloadVerifyFile" to "Ověření souborů",
+            "downloadVerifyFileSubtitle" to "Ověří podpis, velikost a čitelnost před dokončením",
+            "downloadSkipDuplicates" to "Přeskočit duplicity",
+            "downloadSkipDuplicatesSubtitle" to "Znovu použije existující platná stažení",
+            "trailTitle" to "TVOJE NEDÁVNÁ STOPA",
+            "trailPlays" to "přehrání",
+            "trailUnique" to "unikátních",
+            "trailLastPlayed" to "Naposledy přehráno",
+            "statPlays" to "přehrání",
+            "statArtists" to "interpretů",
+            "statTracks" to "skladeb"
+        )
+
+        private fun ukEntries(): Map<String, String> = mapOf(
+            "welcomeBadge" to "Вітаємо",
+            "welcomeTitle" to "Почнімо.",
+            "languageQuestion" to "Яку мову хочеш використовувати?",
+            "nameQuestion" to "Як тебе звати?",
+            "namePlaceholder" to "Твоє ім'я...",
+            "tasteQuestion" to "Вибери 3 або більше жанрів, які любиш.",
+            "skipAndContinue" to "Пропустити й продовжити",
+            "startListening" to "Почати слухати",
+            "settings" to "Налаштування",
+            "settingsSubtitle" to "Налаштувати LEVYRA",
+            "design" to "ДИЗАЙН",
+            "playback" to "ВІДТВОРЕННЯ",
+            "preferences" to "ПАРАМЕТРИ",
+            "app" to "APP",
+            "animations" to "Анімації",
+            "animationsSubtitle" to "Ефекти, переходи та відгук карток",
+            "motionArtwork" to "Canvas у програвачі",
+            "motionArtworkSubtitle" to "Показує відео виконавців; вимкніть, щоб завжди використовувати обкладинку",
+            "dynamicColor" to "Динамічний колір",
+            "dynamicColorSubtitle" to "Фон і акценти з поточної обкладинки",
+            "sponsorBlock" to "SponsorBlock",
+            "sponsorBlockSubtitle" to "Автоматично пропускає спонсорів і немузичні частини",
+            "skipSilence" to "Пропускати тишу",
+            "skipSilenceSubtitle" to "Стискає тихі паузи у треках",
+            "redoQuestionnaire" to "Повторити анкету смаків",
+            "redoQuestionnaireSubtitle" to "Знову вибери улюблені жанри",
+            "language" to "Мова",
+            "languageSubtitle" to "Змінити мову застосунку",
+            "home" to "Головна",
+            "search" to "Пошук",
+            "library" to "Бібліотека",
+            "player" to "Плеєр",
+            "queue" to "Черга",
+            "lyrics" to "Текст",
+            "related" to "Схоже",
+            "song" to "Пісня",
+            "video" to "Відео",
+            "nowPlaying" to "ЗАРАЗ ГРАЄ",
+            "emptyPlayer" to "Знайди пісню й натисни play",
+            "phoneSpeaker" to "Динамік телефону",
+            "connected" to "Підключено",
+            "volume" to "Гучність",
+            "audioQuality" to "Якість аудіо",
+            "done" to "Готово",
+            "queueEmpty" to "Черга порожня.",
+            "lyricsUnavailable" to "Текст недоступний для цього треку.",
+            "synced" to "Синхронізовано",
+            "libraryTitle" to "Бібліотека",
+            "librarySubtitle" to "Плейлисти, обране, завантаження та історія",
+            "playlists" to "Твої плейлисти",
+            "newItem" to "Новий",
+            "downloads" to "Офлайн-завантаження",
+            "favorites" to "Обране",
+            "recent" to "Нещодавно знайдене",
+            "quickPicks" to "Швидкий вибір",
+            "play" to "Відтворити",
+            "newReleases" to "Нові релізи",
+            "albumsForYou" to "Альбоми для тебе",
+            "top50Unavailable" to "Top 50 недоступний, спробуй пізніше",
+            "artists" to "Артисти",
+            "albumsAndSingles" to "Альбоми й сингли",
+            "songs" to "Пісні",
+            "searchPlaceholder" to "Шукати пісні, артистів і...",
+            "back" to "Назад",
+            "clear" to "Очистити",
+            "voice" to "Голос",
+            "createPlaylistHint" to "Створи плейлист і додай улюблені пісні",
+            "selectLanguagePrompt" to "Вибери мову",
+            "explore" to "Огляд",
+            "exploreTitle" to "Огляд",
+            "exploreSubtitle" to "Відкривай нову музику, тренди та відео",
+            "exploreFresh" to "Свіжі хвилі",
+            "exploreNewVideos" to "Нові музичні відео",
+            "exploreEmpty" to "У цій зоні зараз нічого немає. Спробуй іншу.",
+            "localWaveName" to "Місцева хвиля",
+            "localWaveEmoji" to "🇺🇦",
+            "localWaveQuery" to "нові українські пісні 2026",
+            "exploreNewReleases" to "Нові релізи",
+            "exploreRapDrill" to "Реп і дрил",
+            "exploreElectronic" to "Електронна музика",
+            "explorePopGlobal" to "Світовий поп",
+            "exploreRnbSoul" to "R&B і соул",
+            "exploreRockAlt" to "Рок і альтернатива",
+            "exploreLatino" to "Латино",
+            "exploreLofiChill" to "Lo-fi і чіл",
+            "exploreJpopAnime" to "J-pop і аніме",
+            "followArtist" to "Стежити",
+            "followingArtist" to "Відстежується",
+            "releaseRadar" to "Радар релізів",
+            "similarArtists" to "Схожі артисти",
+            "similarToFollowed" to "Схожі на артистів, за якими ти стежиш",
+            "theme" to "Тема",
+            "themeSubtitle" to "Вибери вигляд LEVYRA",
+            "personalOrbitTitle" to "Твоя орбіта",
+            "personalOrbitSubtitle" to "Пісні, до яких ти завжди повертаєшся",
+            "voicesTitle" to "Голоси, що резонують",
+            "voicesSubtitle" to "Найбільш коментовані треки як жива енергія",
+            "totalComments" to "Усього коментарів",
+            "engagement" to "Залученість",
+            "audioEngine" to "Звук",
+            "audioEngineSubtitle" to "Еквалайзер, crossfade, гучність, темп, висота тону та gapless",
+            "equalizer" to "Еквалайзер",
+            "equalizerSubtitle" to "Справжні ефекти з пресетами, підсиленням басів і віртуалізатором",
+            "preset" to "Пресет",
+            "bassBoost" to "Підсилення басів",
+            "virtualizer" to "Віртуалізатор",
+            "crossfade" to "Crossfade",
+            "djSoft" to "М'який режим DJ",
+            "replayGain" to "ReplayGain / розумна гучність",
+            "tempo" to "Темп",
+            "pitch" to "Висота тону",
+            "gapless" to "Без пауз",
+            "restartRequiredTitle" to "Перезапустити LEVYRA?",
+            "restartRequiredBody" to "Мову збережено. Перезапусти застосунок, щоб усі екрани завантажилися правильно.",
+            "restartNow" to "Перезапустити зараз",
+            "later" to "Пізніше",
+            "audioQualityAuto" to "Автоматична",
+            "audioQualityHigh" to "Висока",
+            "audioQualityLow" to "Низька",
+            "pulseSectionBand" to "Твоя статистика",
+            "pulseTitle" to "Пульс прослуховування",
+            "pulseSubtitle" to "Приватна статистика, що обчислюється лише на цьому пристрої",
+            "followedArtistsTitle" to "Артисти, за якими ти стежиш",
+            "followedArtistsSubtitle" to "Артисти, яких ти тримаєш поруч",
+            "listeningHistoryEmptyTitle" to "Прослуховувань ще немає",
+            "listeningHistoryEmptyDetail" to "Відтвори трек, і тут почне формуватися історія.",
+            "pulseMinutes" to "Хвилини",
+            "pulseMinuteShort" to "хв",
+            "pulsePlays" to "Відтворення",
+            "pulseStreak" to "Днів поспіль",
+            "pulseCompletion" to "Завершення",
+            "pulseTopArtists" to "Найкращі артисти",
+            "pulseWeek" to "Останні 7 днів",
+            "pulsePeakHour" to "Пікова година",
+            "pulseEmpty" to "Увімкни щось, щоб оживити свій пульс",
+            "listeningHistory" to "Історія прослуховування",
+            "listeningHistorySubtitle" to "Що ти насправді слухав",
+            "listeningPrompt" to "Слухаю...",
+            "voiceSearchUnsupported" to "Голосовий пошук не підтримується",
+            "musicFiltersComingSoon" to "Музичні фільтри з'являться незабаром!",
+            "recentSearches" to "Недавні пошуки",
+            "actions" to "Дії",
+            "removeFromFavorites" to "Видалити з обраного",
+            "addToFavorites" to "Додати до обраного",
+            "playNext" to "Відтворити наступним",
+            "addToQueue" to "Додати до черги",
+            "addToPlaylist" to "Додати до плейлиста",
+            "alreadyOffline" to "Уже доступно офлайн",
+            "download" to "Завантажити",
+            "openArtist" to "Відкрити артиста",
+            "openAlbum" to "Відкрити альбом",
+            "deleteDownload" to "Видалити завантаження",
+            "share" to "Поділитися",
+            "shareSong" to "Поділитися піснею",
+            "removeFromRecentSearches" to "Видалити з недавніх пошуків",
+            "songOptions" to "Параметри пісні",
+            "goToPlayer" to "Перейти до плеєра",
+            "saveOffline" to "Зберегти офлайн",
+            "favorite" to "Обране",
+            "downloaded" to "Завантажено",
+            "remove" to "Видалити",
+            "removeFromPlaylist" to "Видалити з плейлиста",
+            "youMightAlsoLike" to "Тобі також може сподобатися",
+            "topResult" to "Найкращий результат",
+            "currentlyPlaying" to "Зараз відтворюється",
+            "artistLabel" to "Артист",
+            "playNow" to "Відтворити зараз",
+            "biography" to "Біографія",
+            "newUpdate" to "НОВЕ ОНОВЛЕННЯ",
+            "updateDescription" to "Компактніший екран, зрозуміліший список змін і прокручуваний вміст на будь-якому дисплеї.",
+            "whatsNew" to "Що нового",
+            "update" to "Оновити",
+            "updateRetry" to "Повторити",
+            "updateDownloading" to "Завантаження оновлення",
+            "updatePreparing" to "Підготовка оновлення",
+            "updateInstalling" to "Встановлення",
+            "updateReadyToInstall" to "Готово до встановлення",
+            "updateFailed" to "Не вдалося оновити",
+            "updateAllowInstalls" to "Дозвольте встановлення, щоб продовжити",
+            "updateLinkUnavailable" to "Посилання на оновлення недоступне",
+            "cannotOpenDownload" to "Не вдалося відкрити завантаження",
+            "externalLinkUnavailable" to "Зовнішнє посилання недоступне",
+            "cannotOpenExternalLink" to "Не вдалося відкрити зовнішнє посилання",
+            "continuousRadio" to "Безперервне радіо",
+            "continuousRadioSubtitle" to "Додає схожі пісні, коли черга добігає кінця",
+            "artistsLabelPlural" to "Артисти",
+            "albumMood" to "Настрій альбомів",
+            "openLyricsAnalysis" to "Відкрити аналіз тексту",
+            "closeLyrics" to "Закрити текст",
+            "lyricsDuet" to "Дует",
+            "lyricsCinema" to "Кіно",
+            "lyricsPage" to "Сторінка",
+            "lyricsRomanization" to "Романізація",
+            "lyricsCompact" to "Компактно",
+            "lyricsSections" to "Частини пісні",
+            "lyricsSectionIntro" to "Вступ",
+            "lyricsSectionVerse" to "Куплет",
+            "lyricsSectionPreChorus" to "Передприспів",
+            "lyricsSectionChorus" to "Приспів",
+            "lyricsSectionBridge" to "Брідж",
+            "lyricsSectionInstrumental" to "Інструментал",
+            "lyricsSectionOutro" to "Аутро",
+            "automaticTranslation" to "Автоматичний переклад",
+            "automaticTranslationSubtitle" to "Використовує мови, доступні в транскрипціях YouTube",
+            "atmosphere" to "Атмосфера",
+            "themes" to "Теми",
+            "chorusDetected" to "Приспів розпізнано",
+            "goToChorus" to "Перейти до приспіву",
+            "close" to "Закрити",
+            "complete" to "Завершити",
+            "delete" to "Видалити",
+            "newPlaylist" to "Новий плейлист",
+            "playlistName" to "Назва плейлиста",
+            "create" to "Створити",
+            "cancel" to "Скасувати",
+            "newPlaylistName" to "Назва нового плейлиста",
+            "createNewPlaylist" to "Створити новий плейлист",
+            "createAndAdd" to "Створити й додати",
+            "downloadPlaylist" to "Завантажити плейлист",
+            "playAll" to "Відтворити все",
+            "playingFrom" to "ВІДТВОРЕННЯ З",
+            "closePlayer" to "Закрити плеєр",
+            "options" to "Параметри",
+            "showLyrics" to "Показати текст",
+            "shuffle" to "Перемішати",
+            "previous" to "Попередній",
+            "next" to "Наступний",
+            "repeat" to "Повторювати",
+            "persistentQueue" to "Постійна черга",
+            "continueListening" to "Продовжити слухати",
+            "favoritesPlain" to "Обране",
+            "offline" to "Офлайн",
+            "more" to "Більше",
+            "mix" to "Мікс",
+            "mixForYou" to "Мікс для тебе",
+            "genres" to "Жанри",
+            "smartMusicProfile" to "Розумний музичний профіль",
+            "flow" to "Потік",
+            "pictureInPicture" to "Картинка в картинці",
+            "discoveryFlow" to "ПОТІК ВІДКРИТТІВ",
+            "shareDiagnostics" to "Поділитися діагностикою",
+            "albumUnavailable" to "Альбом недоступний",
+            "albumTracksUnavailable" to "Треки альбому недоступні",
+            "showLess" to "Показати менше",
+            "showMore" to "Показати більше",
+            "playing" to "Відтворюється",
+            "artistProfileUnavailable" to "Профіль артиста недоступний",
+            "popularTracks" to "Популярні треки",
+            "showAll" to "Показати все",
+            "versionLabel" to "Версія",
+            "generalImprovements" to "Загальні покращення та виправлення помилок.",
+            "historyLabel" to "в історії",
+            "undoRemoval" to "Скасувати видалення",
+            "lyricsAnalysis" to "Аналіз тексту",
+            "linesLabel" to "Рядки",
+            "wordsLabel" to "Слова",
+            "localAnalysis" to "Локальний аналіз",
+            "open" to "Відкрити",
+            "newRelease" to "НОВИЙ РЕЛІЗ",
+            "newReleaseSubtitle" to "Новий реліз щойно з'явився на радарі.",
+            "saved" to "Збережено",
+            "save" to "Зберегти",
+            "noOfflineDownloads" to "Офлайн-завантажень ще немає.",
+            "createFirstPlaylist" to "Створи свій перший плейлист",
+            "createFirstPlaylistSubtitle" to "Збери пісні, які хочеш миттєво знаходити знову.",
+            "downloadTrackHint" to "Натисни Завантажити біля пісні, щоб зберегти її в Music/Levyra.",
+            "savedTracks" to "Збережені треки",
+            "favoritesEmpty" to "Обраного ще немає",
+            "playlistEmpty" to "Плейлист порожній. Додай треки з меню з трьома крапками біля треку.",
+            "showPersonalListening" to "Показувати особисту активність прослуховування у верхній частині Головної",
+            "showRecentReleases" to "Показувати нові релізи та радар артистів, за якими ти стежиш",
+            "showRecommendedAlbums" to "Показувати рекомендовані альбоми на Головній",
+            "showDiscoveredArtists" to "Показувати артистів, знайдених у твоїх музичних розділах",
+            "showChartsCountry" to "Показувати чарти та вибір країни",
+            "partialDownloadResume" to "Зберігати частково завантажені байти й продовжувати через HTTP Range-запити",
+            "lyricsAnalysisSection" to "АНАЛІЗ ТЕКСТУ",
+            "lyricsAnalysisCompact" to "Ненав'язливий локальний аналіз",
+            "lyricsAnalysisCompactSubtitle" to "Залишається згорнутим, доки ти його не відкриєш, показує лише корисні сигнали й може одразу перенести до приспіву.",
+            "createDataBackup" to "Створити резервну копію даних",
+            "createDataBackupSubtitle" to "Обране, плейлисти, історія, черга та налаштування в архіві, перевіреному SHA-256. Аудіофайли залишаються в Music/Levyra.",
+            "updateAvailable" to "Доступне оновлення",
+            "updates" to "Оновлення",
+            "checkingLatestVersion" to "Перевіряється найновіша версія…",
+            "latestVersionReady" to "готова до завантаження",
+            "latestInstalled" to "У тебе встановлена найновіша версія",
+            "checkNewVersions" to "Перевірити нові опубліковані версії",
+            "releasePageReady" to "Сторінка релізу готова до відкриття",
+            "installedVersion" to "Встановлена версія",
+            "openPlayer" to "Відкрити плеєр",
+            "searchSongsArtists" to "Шукати треки й артистів...",
+            "songsPlain" to "Треки",
+            "shareVia" to "Поділитися через",
+            "emptySearchPrompt" to "Введи назву пісні та виконай пошук",
+            "cancelDownload" to "Скасувати завантаження",
+            "readAll" to "Читати далі",
+            "singlesAndEps" to "Сингли та мініальбоми",
+            "tapHeartToAdd" to "Торкніться сердечка біля треку, щоб додати його сюди.",
+            "all" to "Усе",
+            "automaticResume" to "Автоматичне відновлення",
+            "simultaneousDownloads" to "Одночасні завантаження",
+            "simultaneousDownloadsSubtitle" to "Загальне обмеження для пам’яті, мережі й температури",
+            "backupRestoreSection" to "РЕЗЕРВНЕ КОПІЮВАННЯ ТА ВІДНОВЛЕННЯ",
+            "restoreBackup" to "Відновити резервну копію",
+            "restoreBackupSubtitle" to "Перевіряє схему й контрольну суму перед заміною локальних даних",
+            "playbackResilienceSection" to "СТІЙКІСТЬ ВІДТВОРЕННЯ",
+            "exportSafeDiagnostics" to "Безпечно експортувати діагностику",
+            "generateResolverTrace" to "Створити трасування резолвера",
+            "safeDiagnosticsSubtitle" to "Стан клієнтів і останні спроби без URL-адрес і токенів",
+            "check" to "Перевірити",
+            "checking" to "Перевірка",
+            "dragToReorder" to "Перетягніть, щоб змінити порядок",
+            "homeInterfaceSection" to "ІНТЕРФЕЙС ГОЛОВНОЇ",
+            "compactHome" to "Компактна головна",
+            "compactHomeSubtitle" to "Зменшує вертикальні відступи й полегшує прокручування",
+            "yourOrbitSetting" to "Твоя орбіта",
+            "voicesSetting" to "Голоси, що відгукуються",
+            "voicesSettingSubtitle" to "Зберігає персональний добір на основі того, що ви слухаєте",
+            "newReleasesSetting" to "Нові релізи",
+            "albumsForYouSetting" to "Альбоми для вас",
+            "trendingArtists" to "Популярні виконавці",
+            "top50Charts" to "Чарти Top 50",
+            "mobilePlayerSection" to "МОБІЛЬНИЙ ПРОГРАВАЧ",
+            "advancedGestures" to "Розширені жести",
+            "advancedGesturesSubtitle" to "Подвійний дотик, довге натискання, яскравість і гучність",
+            "pureBlack" to "Чистий чорний",
+            "pureBlackSubtitle" to "Справді чорні фони для OLED-екранів",
+            "hapticFeedback" to "Тактильний відгук",
+            "hapticFeedbackSubtitle" to "Коротка вібрація на ключових діях",
+            "doubleTapSeek" to "Перемотування подвійним дотиком",
+            "doubleTapSeekSubtitle" to "Тривалість переходу ліворуч і праворуч",
+            "longPress" to "Довге натискання",
+            "longPressSubtitle" to "Тимчасова швидкість, поки ви утримуєте",
+            "downloadEngineSection" to "МОДУЛЬ ЗАВАНТАЖЕНЬ 3.0",
+            "wifiOnly" to "Лише через Wi‑Fi",
+            "wifiOnlySubtitle" to "WorkManager починає завантаження лише в мережі без тарифікації",
+            "chargingOnly" to "Лише під час заряджання",
+            "chargingOnlySubtitle" to "Зменшує витрати заряду й нагрівання під час тривалих завантажень",
+            "resumeDownload" to "Продовжити завантаження",
+            "pauseDownload" to "Призупинити завантаження",
+            "signedApkReady" to "Підписаний APK готовий до встановлення",
+            "downloadsInProgress" to "Тривають завантаження",
+            "downloadInProgress" to "Триває завантаження",
+            "newAlbums" to "Нові альбоми",
+            "newSingles" to "Нові сингли",
+            "newAlbum" to "НОВИЙ АЛЬБОМ",
+            "downloadsFolder" to "Папка завантажень",
+            "offlineDownloadsPlain" to "Офлайн-завантаження",
+            "personalPlaylists" to "Особисті плейлисти",
+            "searchingYouTubeMusic" to "Пошук у YouTube Music…",
+            "searchingLyrics" to "Пошук тексту пісні…",
+            "pause" to "Пауза",
+            "newSingle" to "НОВИЙ СИНГЛ",
+            "albumsPlain" to "Альбоми",
+            "albumPlain" to "Альбом",
+            "singlePlain" to "Сингл",
+            "playlistsPlain" to "Плейлисти",
+            "profileActive" to "Персоналізацію ввімкнено",
+            "profileLearning" to "Навчаюся на основі того, що ви слухаєте",
+            "newBadge" to "НОВЕ",
+            "brightness" to "Яскравість",
+            "timer" to "Таймер",
+            "normalizationShort" to "Норм.",
+            "coverAndTags" to "обкладинка й теги",
+            "madeWithBy" to "Створено з ❤️ автором",
+            "activeIndicator" to "АКТИВНО",
+            "batteryUnrestricted" to "Необмежене відтворення у фоні",
+            "batteryUnrestrictedSubtitle" to "Виключіть Levyra з оптимізації батареї, щоб музика грала з вимкненим екраном",
+            "batteryUnrestrictedActive" to "Активно — система не зупинить відтворення",
+            "downloadQualityPreset" to "Пресет якості",
+            "downloadQualityPresetSubtitle" to "Балансує якість, швидкість і витрату трафіку",
+            "downloadPresetAutomatic" to "Автоматично",
+            "downloadPresetHighQuality" to "Висока якість",
+            "downloadPresetDataSaver" to "Економія трафіку",
+            "downloadFolderOrganization" to "Організація тек",
+            "downloadFolderOrganizationSubtitle" to "Зберігає за виконавцем і альбомом без дублювання файлів",
+            "downloadFolderArtist" to "Виконавець",
+            "downloadFolderArtistAlbum" to "Виконавець / Альбом",
+            "downloadSpeedLimit" to "Обмеження швидкості",
+            "downloadSpeedLimitSubtitle" to "Обмежує використання мережі під час завантаження",
+            "downloadSpeedUnlimited" to "Без обмежень",
+            "downloadEmbedMetadata" to "Вбудовані метадані",
+            "downloadEmbedMetadataSubtitle" to "Записує назву, виконавця та альбом у файл",
+            "downloadEmbedArtwork" to "Вбудована обкладинка",
+            "downloadEmbedArtworkSubtitle" to "Вбудовує офіційну обкладинку в трек",
+            "downloadVerifyFile" to "Перевірка файлів",
+            "downloadVerifyFileSubtitle" to "Перевіряє підпис, розмір і читність перед завершенням",
+            "downloadSkipDuplicates" to "Пропускати дублікати",
+            "downloadSkipDuplicatesSubtitle" to "Повторно використовує наявні дійсні завантаження",
+            "trailTitle" to "ТВІЙ НЕЩОДАВНІЙ СЛІД",
+            "trailPlays" to "прослуховувань",
+            "trailUnique" to "унікальних",
+            "trailLastPlayed" to "Останнє прослуховування",
+            "statPlays" to "прослуховувань",
+            "statArtists" to "виконавців",
+            "statTracks" to "треків"
+        )
+
+        private fun ruEntries(): Map<String, String> = mapOf(
+            "welcomeBadge" to "Добро пожаловать",
+            "welcomeTitle" to "Начнём.",
+            "languageQuestion" to "Какой язык ты хочешь использовать?",
+            "nameQuestion" to "Как тебя зовут?",
+            "namePlaceholder" to "Твоё имя...",
+            "tasteQuestion" to "Выбери не менее 3 жанров, которые тебе нравятся.",
+            "skipAndContinue" to "Пропустить и продолжить",
+            "startListening" to "Начать слушать",
+            "settings" to "Настройки",
+            "settingsSubtitle" to "Настрой LEVYRA под себя",
+            "design" to "ДИЗАЙН",
+            "playback" to "ВОСПРОИЗВЕДЕНИЕ",
+            "preferences" to "ПРЕДПОЧТЕНИЯ",
+            "app" to "ПРИЛОЖЕНИЕ",
+            "animations" to "Анимации",
+            "animationsSubtitle" to "Эффекты, переходы и отклик карточек",
+            "motionArtwork" to "Canvas в плеере",
+            "motionArtworkSubtitle" to "Показывает видео исполнителей; отключите, чтобы всегда использовать обложку",
+            "dynamicColor" to "Динамические цвета",
+            "dynamicColorSubtitle" to "Фон и акценты на основе текущей обложки",
+            "sponsorBlock" to "SponsorBlock",
+            "sponsorBlockSubtitle" to "Автоматически пропускает рекламу и немузыкальные фрагменты",
+            "skipSilence" to "Пропускать тишину",
+            "skipSilenceSubtitle" to "Сокращает тихие паузы в треках",
+            "redoQuestionnaire" to "Пройти опрос заново",
+            "redoQuestionnaireSubtitle" to "Снова выбери любимые жанры",
+            "language" to "Язык",
+            "languageSubtitle" to "Изменить язык приложения",
+            "home" to "Главная",
+            "search" to "Поиск",
+            "library" to "Медиатека",
+            "player" to "Плеер",
+            "queue" to "Очередь",
+            "lyrics" to "Текст песни",
+            "related" to "Похожие",
+            "song" to "Трек",
+            "video" to "Видео",
+            "nowPlaying" to "СЕЙЧАС ИГРАЕТ",
+            "emptyPlayer" to "Найди трек и нажми воспроизведение",
+            "phoneSpeaker" to "Динамик телефона",
+            "connected" to "Подключено",
+            "volume" to "Громкость",
+            "audioQuality" to "Качество звука",
+            "done" to "Готово",
+            "queueEmpty" to "Очередь пуста.",
+            "lyricsUnavailable" to "Текст этой песни недоступен.",
+            "synced" to "Синхронизировано",
+            "libraryTitle" to "Медиатека",
+            "librarySubtitle" to "Плейлисты, избранное, загрузки и история",
+            "playlists" to "Твои плейлисты",
+            "newItem" to "Новый",
+            "downloads" to "Офлайн-загрузки",
+            "favorites" to "Избранное",
+            "recent" to "Недавно найденное",
+            "quickPicks" to "Быстрый выбор",
+            "play" to "Воспроизвести",
+            "newReleases" to "Новые релизы",
+            "albumsForYou" to "Альбомы для тебя",
+            "top50Unavailable" to "Топ-50 недоступен. Попробуй позже",
+            "artists" to "Исполнители",
+            "albumsAndSingles" to "Альбомы и синглы",
+            "songs" to "Треки",
+            "searchPlaceholder" to "Искать треки, исполнителей и...",
+            "back" to "Назад",
+            "clear" to "Очистить",
+            "voice" to "Голос",
+            "createPlaylistHint" to "Создай плейлист и добавь любимые треки",
+            "selectLanguagePrompt" to "Выбери язык",
+            "explore" to "Обзор",
+            "exploreTitle" to "Обзор",
+            "exploreSubtitle" to "Открывай новую музыку, тренды и видео",
+            "exploreFresh" to "Свежие волны",
+            "exploreNewVideos" to "Новые музыкальные видео",
+            "exploreEmpty" to "В этой зоне пока ничего нет. Попробуй другую.",
+            "localWaveName" to "Местная волна",
+            "localWaveEmoji" to "🇷🇺",
+            "localWaveQuery" to "новые русские песни 2026",
+            "exploreNewReleases" to "Новые релизы",
+            "exploreRapDrill" to "Рэп и дрилл",
+            "exploreElectronic" to "Электронная музыка",
+            "explorePopGlobal" to "Мировой поп",
+            "exploreRnbSoul" to "R&B и соул",
+            "exploreRockAlt" to "Рок и альтернатива",
+            "exploreLatino" to "Латино",
+            "exploreLofiChill" to "Lo-fi и чилл",
+            "exploreJpopAnime" to "J-pop и аниме",
+            "followArtist" to "Подписаться",
+            "followingArtist" to "Вы подписаны",
+            "releaseRadar" to "Радар релизов",
+            "similarArtists" to "Похожие исполнители",
+            "similarToFollowed" to "Похожи на исполнителей, на которых ты подписан",
+            "theme" to "Тема",
+            "themeSubtitle" to "Выбери оформление LEVYRA",
+            "personalOrbitTitle" to "Твоя орбита",
+            "personalOrbitSubtitle" to "Треки, к которым ты всегда возвращаешься",
+            "voicesTitle" to "Голоса, которые находят отклик",
+            "voicesSubtitle" to "Самые обсуждаемые треки в виде живой энергии",
+            "totalComments" to "Всего комментариев",
+            "engagement" to "Вовлечённость",
+            "audioEngine" to "Звук",
+            "audioEngineSubtitle" to "Эквалайзер, crossfade, громкость, темп, высота тона и gapless",
+            "equalizer" to "Эквалайзер",
+            "equalizerSubtitle" to "Настоящие эффекты с пресетами, усилением басов и виртуализатором",
+            "preset" to "Пресет",
+            "bassBoost" to "Усиление басов",
+            "virtualizer" to "Виртуализатор",
+            "crossfade" to "Crossfade",
+            "djSoft" to "Мягкий режим DJ",
+            "replayGain" to "ReplayGain / умная громкость",
+            "tempo" to "Темп",
+            "pitch" to "Высота тона",
+            "gapless" to "Без пауз",
+            "restartRequiredTitle" to "Перезапустить LEVYRA?",
+            "restartRequiredBody" to "Язык сохранён. Перезапусти приложение, чтобы все экраны загрузились корректно.",
+            "restartNow" to "Перезапустить сейчас",
+            "later" to "Позже",
+            "audioQualityAuto" to "Автоматически",
+            "audioQualityHigh" to "Высокое",
+            "audioQualityLow" to "Низкое",
+            "pulseSectionBand" to "Твоя статистика",
+            "pulseTitle" to "Пульс прослушивания",
+            "pulseSubtitle" to "Приватная статистика, которая рассчитывается только на этом устройстве",
+            "followedArtistsTitle" to "Исполнители, на которых ты подписан",
+            "followedArtistsSubtitle" to "Исполнители, которых ты держишь рядом",
+            "listeningHistoryEmptyTitle" to "Прослушиваний пока нет",
+            "listeningHistoryEmptyDetail" to "Включи трек, и здесь начнёт формироваться история.",
+            "pulseMinutes" to "Минуты",
+            "pulseMinuteShort" to "мин",
+            "pulsePlays" to "Прослушивания",
+            "pulseStreak" to "Дней подряд",
+            "pulseCompletion" to "Дослушано",
+            "pulseTopArtists" to "Лучшие исполнители",
+            "pulseWeek" to "Последние 7 дней",
+            "pulsePeakHour" to "Пиковый час",
+            "pulseEmpty" to "Включи что-нибудь, чтобы оживить свой пульс",
+            "listeningHistory" to "История прослушивания",
+            "listeningHistorySubtitle" to "Что ты действительно слушал",
+            "listeningPrompt" to "Слушаю...",
+            "voiceSearchUnsupported" to "Голосовой поиск не поддерживается",
+            "musicFiltersComingSoon" to "Музыкальные фильтры скоро появятся!",
+            "recentSearches" to "Недавние запросы",
+            "actions" to "Действия",
+            "removeFromFavorites" to "Удалить из избранного",
+            "addToFavorites" to "Добавить в избранное",
+            "playNext" to "Воспроизвести следующим",
+            "addToQueue" to "Добавить в очередь",
+            "addToPlaylist" to "Добавить в плейлист",
+            "alreadyOffline" to "Уже доступно офлайн",
+            "download" to "Скачать",
+            "openArtist" to "Открыть исполнителя",
+            "openAlbum" to "Открыть альбом",
+            "deleteDownload" to "Удалить загрузку",
+            "share" to "Поделиться",
+            "shareSong" to "Поделиться треком",
+            "removeFromRecentSearches" to "Удалить из недавних запросов",
+            "songOptions" to "Параметры трека",
+            "goToPlayer" to "Перейти к плееру",
+            "saveOffline" to "Сохранить офлайн",
+            "favorite" to "В избранном",
+            "downloaded" to "Скачано",
+            "remove" to "Удалить",
+            "removeFromPlaylist" to "Удалить из плейлиста",
+            "youMightAlsoLike" to "Тебе также может понравиться",
+            "topResult" to "Лучший результат",
+            "currentlyPlaying" to "Сейчас играет",
+            "artistLabel" to "Исполнитель",
+            "playNow" to "Воспроизвести сейчас",
+            "biography" to "Биография",
+            "newUpdate" to "НОВОЕ ОБНОВЛЕНИЕ",
+            "updateDescription" to "Более компактный экран, понятный список изменений и прокручиваемое содержимое на любом дисплее.",
+            "whatsNew" to "Что нового",
+            "update" to "Обновить",
+            "updateRetry" to "Повторить",
+            "updateDownloading" to "Загрузка обновления",
+            "updatePreparing" to "Подготовка обновления",
+            "updateInstalling" to "Установка",
+            "updateReadyToInstall" to "Готово к установке",
+            "updateFailed" to "Не удалось обновить",
+            "updateAllowInstalls" to "Разрешите установку, чтобы продолжить",
+            "updateLinkUnavailable" to "Ссылка на обновление недоступна",
+            "cannotOpenDownload" to "Не удалось открыть загрузку",
+            "externalLinkUnavailable" to "Внешняя ссылка недоступна",
+            "cannotOpenExternalLink" to "Не удалось открыть внешнюю ссылку",
+            "continuousRadio" to "Бесконечное радио",
+            "continuousRadioSubtitle" to "Добавляет похожие треки, когда очередь подходит к концу",
+            "artistsLabelPlural" to "Исполнители",
+            "albumMood" to "Настроение альбомов",
+            "openLyricsAnalysis" to "Открыть анализ текста",
+            "closeLyrics" to "Закрыть текст",
+            "lyricsDuet" to "Дуэт",
+            "lyricsCinema" to "Кино",
+            "lyricsPage" to "Страница",
+            "lyricsRomanization" to "Романизация",
+            "lyricsCompact" to "Компактно",
+            "lyricsSections" to "Части песни",
+            "lyricsSectionIntro" to "Вступление",
+            "lyricsSectionVerse" to "Куплет",
+            "lyricsSectionPreChorus" to "Предприпев",
+            "lyricsSectionChorus" to "Припев",
+            "lyricsSectionBridge" to "Бридж",
+            "lyricsSectionInstrumental" to "Инструментал",
+            "lyricsSectionOutro" to "Аутро",
+            "automaticTranslation" to "Автоматический перевод",
+            "automaticTranslationSubtitle" to "Использует языки, доступные в расшифровках YouTube",
+            "atmosphere" to "Атмосфера",
+            "themes" to "Темы",
+            "chorusDetected" to "Припев распознан",
+            "goToChorus" to "Перейти к припеву",
+            "close" to "Закрыть",
+            "complete" to "Завершить",
+            "delete" to "Удалить",
+            "newPlaylist" to "Новый плейлист",
+            "playlistName" to "Название плейлиста",
+            "create" to "Создать",
+            "cancel" to "Отмена",
+            "newPlaylistName" to "Название нового плейлиста",
+            "createNewPlaylist" to "Создать новый плейлист",
+            "createAndAdd" to "Создать и добавить",
+            "downloadPlaylist" to "Скачать плейлист",
+            "playAll" to "Воспроизвести всё",
+            "playingFrom" to "ВОСПРОИЗВЕДЕНИЕ ИЗ",
+            "closePlayer" to "Закрыть плеер",
+            "options" to "Параметры",
+            "showLyrics" to "Показать текст",
+            "shuffle" to "Перемешать",
+            "previous" to "Предыдущий",
+            "next" to "Следующий",
+            "repeat" to "Повторять",
+            "persistentQueue" to "Постоянная очередь",
+            "continueListening" to "Продолжить слушать",
+            "favoritesPlain" to "Избранное",
+            "offline" to "Офлайн",
+            "more" to "Ещё",
+            "mix" to "Микс",
+            "mixForYou" to "Микс для тебя",
+            "genres" to "Жанры",
+            "smartMusicProfile" to "Умный музыкальный профиль",
+            "flow" to "Поток",
+            "pictureInPicture" to "Картинка в картинке",
+            "discoveryFlow" to "ПОТОК ОТКРЫТИЙ",
+            "shareDiagnostics" to "Поделиться диагностикой",
+            "albumUnavailable" to "Альбом недоступен",
+            "albumTracksUnavailable" to "Треки альбома недоступны",
+            "showLess" to "Показать меньше",
+            "showMore" to "Показать больше",
+            "playing" to "Воспроизводится",
+            "artistProfileUnavailable" to "Профиль исполнителя недоступен",
+            "popularTracks" to "Популярные треки",
+            "showAll" to "Показать все",
+            "versionLabel" to "Версия",
+            "generalImprovements" to "Общие улучшения и исправления ошибок.",
+            "historyLabel" to "в истории",
+            "undoRemoval" to "Отменить удаление",
+            "lyricsAnalysis" to "Анализ текста",
+            "linesLabel" to "Строки",
+            "wordsLabel" to "Слова",
+            "localAnalysis" to "Локальный анализ",
+            "open" to "Открыть",
+            "newRelease" to "НОВЫЙ РЕЛИЗ",
+            "newReleaseSubtitle" to "Новый релиз только что появился на радаре.",
+            "saved" to "Сохранено",
+            "save" to "Сохранить",
+            "noOfflineDownloads" to "Офлайн-загрузок пока нет.",
+            "createFirstPlaylist" to "Создай свой первый плейлист",
+            "createFirstPlaylistSubtitle" to "Собери треки, которые хочешь мгновенно находить снова.",
+            "downloadTrackHint" to "Нажми Скачать рядом с треком, чтобы сохранить его в Music/Levyra.",
+            "savedTracks" to "Сохранённые треки",
+            "favoritesEmpty" to "В избранном пока пусто",
+            "playlistEmpty" to "Плейлист пуст. Добавь треки через меню с тремя точками рядом с треком.",
+            "showPersonalListening" to "Показывать личную активность прослушивания в верхней части Главной",
+            "showRecentReleases" to "Показывать новые релизы и радар исполнителей, на которых ты подписан",
+            "showRecommendedAlbums" to "Показывать рекомендованные альбомы на Главной",
+            "showDiscoveredArtists" to "Показывать исполнителей, найденных в твоих музыкальных разделах",
+            "showChartsCountry" to "Показывать чарты и выбор страны",
+            "partialDownloadResume" to "Сохранять частично загруженные байты и продолжать через HTTP Range-запросы",
+            "lyricsAnalysisSection" to "АНАЛИЗ ТЕКСТА",
+            "lyricsAnalysisCompact" to "Ненавязчивый локальный анализ",
+            "lyricsAnalysisCompactSubtitle" to "Остаётся свёрнутым, пока ты его не откроешь, показывает только полезные сигналы и может сразу перейти к припеву.",
+            "createDataBackup" to "Создать резервную копию данных",
+            "createDataBackupSubtitle" to "Избранное, плейлисты, история, очередь и настройки в архиве, проверенном SHA-256. Аудиофайлы остаются в Music/Levyra.",
+            "updateAvailable" to "Доступно обновление",
+            "updates" to "Обновления",
+            "checkingLatestVersion" to "Проверяется последняя версия…",
+            "latestVersionReady" to "готова к скачиванию",
+            "latestInstalled" to "У тебя установлена последняя версия",
+            "checkNewVersions" to "Проверить новые опубликованные версии",
+            "releasePageReady" to "Страница релиза готова к открытию",
+            "installedVersion" to "Установленная версия",
+            "openPlayer" to "Открыть плеер",
+            "searchSongsArtists" to "Искать треки и исполнителей...",
+            "songsPlain" to "Треки",
+            "shareVia" to "Поделиться через",
+            "emptySearchPrompt" to "Введи название трека и выполни поиск",
+            "cancelDownload" to "Отменить загрузку",
+            "readAll" to "Читать дальше",
+            "singlesAndEps" to "Синглы и мини-альбомы",
+            "tapHeartToAdd" to "Нажмите на сердечко рядом с треком, чтобы добавить его сюда.",
+            "all" to "Все",
+            "automaticResume" to "Автоматическое возобновление",
+            "simultaneousDownloads" to "Одновременные загрузки",
+            "simultaneousDownloadsSubtitle" to "Общее ограничение для памяти, сети и температуры",
+            "backupRestoreSection" to "РЕЗЕРВНОЕ КОПИРОВАНИЕ И ВОССТАНОВЛЕНИЕ",
+            "restoreBackup" to "Восстановить резервную копию",
+            "restoreBackupSubtitle" to "Проверяет схему и контрольную сумму перед заменой локальных данных",
+            "playbackResilienceSection" to "УСТОЙЧИВОСТЬ ВОСПРОИЗВЕДЕНИЯ",
+            "exportSafeDiagnostics" to "Безопасно экспортировать диагностику",
+            "generateResolverTrace" to "Создать трассировку резолвера",
+            "safeDiagnosticsSubtitle" to "Состояние клиентов и последние попытки без URL-адресов и токенов",
+            "check" to "Проверить",
+            "checking" to "Проверка",
+            "dragToReorder" to "Перетащите, чтобы изменить порядок",
+            "homeInterfaceSection" to "ИНТЕРФЕЙС ГЛАВНОЙ",
+            "compactHome" to "Компактная главная",
+            "compactHomeSubtitle" to "Уменьшает вертикальные отступы и упрощает прокрутку",
+            "yourOrbitSetting" to "Твоя орбита",
+            "voicesSetting" to "Голоса, которые находят отклик",
+            "voicesSettingSubtitle" to "Сохраняет персональную подборку на основе того, что вы слушаете",
+            "newReleasesSetting" to "Новые релизы",
+            "albumsForYouSetting" to "Альбомы для вас",
+            "trendingArtists" to "Популярные исполнители",
+            "top50Charts" to "Чарты Top 50",
+            "mobilePlayerSection" to "МОБИЛЬНЫЙ ПРОИГРЫВАТЕЛЬ",
+            "advancedGestures" to "Расширенные жесты",
+            "advancedGesturesSubtitle" to "Двойное касание, удержание, яркость и громкость",
+            "pureBlack" to "Чистый чёрный",
+            "pureBlackSubtitle" to "По-настоящему чёрные фоны для OLED-экранов",
+            "hapticFeedback" to "Тактильный отклик",
+            "hapticFeedbackSubtitle" to "Короткая вибрация при ключевых действиях",
+            "doubleTapSeek" to "Перемотка двойным касанием",
+            "doubleTapSeekSubtitle" to "Интервал перехода слева и справа",
+            "longPress" to "Удержание",
+            "longPressSubtitle" to "Временная скорость, пока вы удерживаете",
+            "downloadEngineSection" to "МОДУЛЬ ЗАГРУЗОК 3.0",
+            "wifiOnly" to "Только по Wi‑Fi",
+            "wifiOnlySubtitle" to "WorkManager запускает загрузки только в сети без тарификации",
+            "chargingOnly" to "Только во время зарядки",
+            "chargingOnlySubtitle" to "Снижает расход заряда и нагрев при длительных загрузках",
+            "resumeDownload" to "Возобновить загрузку",
+            "pauseDownload" to "Приостановить загрузку",
+            "signedApkReady" to "Подписанный APK готов к установке",
+            "downloadsInProgress" to "Идут загрузки",
+            "downloadInProgress" to "Идёт загрузка",
+            "newAlbums" to "Новые альбомы",
+            "newSingles" to "Новые синглы",
+            "newAlbum" to "НОВЫЙ АЛЬБОМ",
+            "downloadsFolder" to "Папка загрузок",
+            "offlineDownloadsPlain" to "Офлайн-загрузки",
+            "personalPlaylists" to "Личные плейлисты",
+            "searchingYouTubeMusic" to "Поиск в YouTube Music…",
+            "searchingLyrics" to "Поиск текста песни…",
+            "pause" to "Пауза",
+            "newSingle" to "НОВЫЙ СИНГЛ",
+            "albumsPlain" to "Альбомы",
+            "albumPlain" to "Альбом",
+            "singlePlain" to "Сингл",
+            "playlistsPlain" to "Плейлисты",
+            "profileActive" to "Персонализация включена",
+            "profileLearning" to "Учусь на основе того, что вы слушаете",
+            "newBadge" to "НОВОЕ",
+            "brightness" to "Яркость",
+            "timer" to "Таймер",
+            "normalizationShort" to "Норм.",
+            "coverAndTags" to "обложка и теги",
+            "madeWithBy" to "Создано с ❤️ автором",
+            "activeIndicator" to "АКТИВНО",
+            "batteryUnrestricted" to "Фоновое воспроизведение без ограничений",
+            "batteryUnrestrictedSubtitle" to "Исключите Levyra из оптимизации батареи, чтобы музыка играла при выключенном экране",
+            "batteryUnrestrictedActive" to "Активно — система не остановит воспроизведение",
+            "downloadQualityPreset" to "Пресет качества",
+            "downloadQualityPresetSubtitle" to "Балансирует качество, скорость и расход трафика",
+            "downloadPresetAutomatic" to "Автоматически",
+            "downloadPresetHighQuality" to "Высокое качество",
+            "downloadPresetDataSaver" to "Экономия трафика",
+            "downloadFolderOrganization" to "Организация папок",
+            "downloadFolderOrganizationSubtitle" to "Сохраняет по исполнителю и альбому без дублирования файлов",
+            "downloadFolderArtist" to "Исполнитель",
+            "downloadFolderArtistAlbum" to "Исполнитель / Альбом",
+            "downloadSpeedLimit" to "Ограничение скорости",
+            "downloadSpeedLimitSubtitle" to "Ограничивает использование сети во время загрузки",
+            "downloadSpeedUnlimited" to "Без ограничений",
+            "downloadEmbedMetadata" to "Встроенные метаданные",
+            "downloadEmbedMetadataSubtitle" to "Записывает название, исполнителя и альбом в файл",
+            "downloadEmbedArtwork" to "Встроенная обложка",
+            "downloadEmbedArtworkSubtitle" to "Встраивает официальную обложку в трек",
+            "downloadVerifyFile" to "Проверка файлов",
+            "downloadVerifyFileSubtitle" to "Проверяет подпись, размер и читаемость перед завершением",
+            "downloadSkipDuplicates" to "Пропускать дубликаты",
+            "downloadSkipDuplicatesSubtitle" to "Повторно использует существующие корректные загрузки",
+            "trailTitle" to "ТВОЙ НЕДАВНИЙ СЛЕД",
+            "trailPlays" to "прослушиваний",
+            "trailUnique" to "уникальных",
+            "trailLastPlayed" to "Последнее прослушивание",
+            "statPlays" to "прослушиваний",
+            "statArtists" to "исполнителей",
+            "statTracks" to "треков"
+        )
+
+        private fun trEntries(): Map<String, String> = mapOf(
+            "welcomeBadge" to "Hoş geldin",
+            "welcomeTitle" to "Başlayalım.",
+            "languageQuestion" to "Hangi dili kullanmak istiyorsun?",
+            "nameQuestion" to "Adın ne?",
+            "namePlaceholder" to "Adın...",
+            "tasteQuestion" to "Sevdiğin en az 3 müzik türünü seç.",
+            "skipAndContinue" to "Atla ve devam et",
+            "startListening" to "Dinlemeye başla",
+            "settings" to "Ayarlar",
+            "settingsSubtitle" to "LEVYRA'yı özelleştir",
+            "design" to "TASARIM",
+            "playback" to "OYNATMA",
+            "preferences" to "TERCİHLER",
+            "app" to "UYGULAMA",
+            "animations" to "Animasyonlar",
+            "animationsSubtitle" to "Efektler, geçişler ve kart dokunma geri bildirimi",
+            "motionArtwork" to "Oynatıcı Canvas'ı",
+            "motionArtworkSubtitle" to "Sanatçı videolarını gösterir; her zaman albüm kapağını kullanmak için kapatın",
+            "dynamicColor" to "Dinamik renk",
+            "dynamicColorSubtitle" to "Geçerli kapaktan alınan arka plan ve vurgu renkleri",
+            "sponsorBlock" to "SponsorBlock",
+            "sponsorBlockSubtitle" to "Sponsorları ve müzik dışı bölümleri otomatik olarak atlar",
+            "skipSilence" to "Sessizliği atla",
+            "skipSilenceSubtitle" to "Şarkılardaki sessiz araları kısaltır",
+            "redoQuestionnaire" to "Müzik zevki anketini yeniden yap",
+            "redoQuestionnaireSubtitle" to "Sevdiğin türleri yeniden seç",
+            "language" to "Dil",
+            "languageSubtitle" to "Uygulama dilini değiştir",
+            "home" to "Ana sayfa",
+            "search" to "Ara",
+            "library" to "Kitaplık",
+            "player" to "Oynatıcı",
+            "queue" to "Sıra",
+            "lyrics" to "Şarkı sözleri",
+            "related" to "Benzer",
+            "song" to "Şarkı",
+            "video" to "Video",
+            "nowPlaying" to "ŞİMDİ ÇALIYOR",
+            "emptyPlayer" to "Bir şarkı ara ve oynat düğmesine bas",
+            "phoneSpeaker" to "Telefon hoparlörü",
+            "connected" to "Bağlandı",
+            "volume" to "Ses düzeyi",
+            "audioQuality" to "Ses kalitesi",
+            "done" to "Bitti",
+            "queueEmpty" to "Sıra boş.",
+            "lyricsUnavailable" to "Bu şarkının sözleri kullanılamıyor.",
+            "synced" to "Eşzamanlandı",
+            "libraryTitle" to "Kitaplık",
+            "librarySubtitle" to "Playlistler, favoriler, indirmeler ve geçmiş",
+            "playlists" to "Playlistlerin",
+            "newItem" to "Yeni",
+            "downloads" to "Çevrimdışı indirmeler",
+            "favorites" to "Favoriler",
+            "recent" to "Son bulunanlar",
+            "quickPicks" to "Hızlı seçimler",
+            "play" to "Oynat",
+            "newReleases" to "Yeni çıkanlar",
+            "albumsForYou" to "Senin için albümler",
+            "top50Unavailable" to "İlk 50 kullanılamıyor, daha sonra tekrar dene",
+            "artists" to "Sanatçılar",
+            "albumsAndSingles" to "Albümler ve single'lar",
+            "songs" to "Şarkılar",
+            "searchPlaceholder" to "Şarkı, sanatçı ve daha fazlasını ara...",
+            "back" to "Geri",
+            "clear" to "Temizle",
+            "voice" to "Ses",
+            "createPlaylistHint" to "Bir playlist oluştur ve sevdiğin şarkıları ekle",
+            "selectLanguagePrompt" to "Bir dil seç",
+            "explore" to "Keşfet",
+            "exploreTitle" to "Keşfet",
+            "exploreSubtitle" to "Yeni müzikleri, trendleri ve videoları keşfet",
+            "exploreFresh" to "Yeni akımlar",
+            "exploreNewVideos" to "Yeni müzik videoları",
+            "exploreEmpty" to "Bu alanda şu anda gösterilecek bir şey yok. Başka birini dene.",
+            "localWaveName" to "Yerel dalga",
+            "localWaveEmoji" to "🇹🇷",
+            "localWaveQuery" to "yeni Türkçe şarkılar 2026",
+            "exploreNewReleases" to "Yeni çıkanlar",
+            "exploreRapDrill" to "Rap ve drill",
+            "exploreElectronic" to "Elektronik",
+            "explorePopGlobal" to "Global pop",
+            "exploreRnbSoul" to "R&B ve soul",
+            "exploreRockAlt" to "Rock ve alternatif",
+            "exploreLatino" to "Latin",
+            "exploreLofiChill" to "Lo-fi ve chill",
+            "exploreJpopAnime" to "J-pop ve anime",
+            "followArtist" to "Takip et",
+            "followingArtist" to "Takip ediliyor",
+            "releaseRadar" to "Yeni çıkanlar radarı",
+            "similarArtists" to "Benzer sanatçılar",
+            "similarToFollowed" to "Takip ettiğin sanatçılara benzer",
+            "theme" to "Tema",
+            "themeSubtitle" to "LEVYRA'nın görünümünü seç",
+            "personalOrbitTitle" to "Yörüngen",
+            "personalOrbitSubtitle" to "Her zaman geri döndüğün şarkılar",
+            "voicesTitle" to "Yankı uyandıran sesler",
+            "voicesSubtitle" to "En çok yorum alan parçalar, canlı enerji olarak görselleştirildi",
+            "totalComments" to "Toplam yorum",
+            "engagement" to "Etkileşim",
+            "audioEngine" to "Ses",
+            "audioEngineSubtitle" to "Ekolayzır, crossfade, ses yüksekliği, tempo, perde ve kesintisiz oynatma",
+            "equalizer" to "Ekolayzır",
+            "equalizerSubtitle" to "Ön ayarlar, bas güçlendirme ve sanallaştırıcı ile gerçek efektler",
+            "preset" to "Ön ayar",
+            "bassBoost" to "Bas güçlendirme",
+            "virtualizer" to "Sanallaştırıcı",
+            "crossfade" to "Crossfade",
+            "djSoft" to "Yumuşak DJ modu",
+            "replayGain" to "ReplayGain / akıllı ses düzeyi",
+            "tempo" to "Tempo",
+            "pitch" to "Perde",
+            "gapless" to "Kesintisiz oynatma",
+            "restartRequiredTitle" to "LEVYRA yeniden başlatılsın mı?",
+            "restartRequiredBody" to "Dil kaydedildi. Tüm ekranların doğru yüklenmesi için uygulamayı şimdi yeniden başlat.",
+            "restartNow" to "Şimdi yeniden başlat",
+            "later" to "Daha sonra",
+            "audioQualityAuto" to "Otomatik",
+            "audioQualityHigh" to "Yüksek",
+            "audioQualityLow" to "Düşük",
+            "pulseSectionBand" to "İstatistiklerin",
+            "pulseTitle" to "Dinleme ritmi",
+            "pulseSubtitle" to "Yalnızca bu cihazda hesaplanan özel istatistikler",
+            "followedArtistsTitle" to "Takip ettiğin sanatçılar",
+            "followedArtistsSubtitle" to "Yakınında tuttuğun sanatçılar",
+            "listeningHistoryEmptyTitle" to "Henüz dinleme yok",
+            "listeningHistoryEmptyDetail" to "Bir şarkı çal; geçmişin burada oluşmaya başlasın.",
+            "pulseMinutes" to "Dakika",
+            "pulseMinuteShort" to "dk",
+            "pulsePlays" to "Oynatma",
+            "pulseStreak" to "Günlük seri",
+            "pulseCompletion" to "Tamamlama",
+            "pulseTopArtists" to "En çok dinlenen sanatçılar",
+            "pulseWeek" to "Son 7 gün",
+            "pulsePeakHour" to "En yoğun saat",
+            "pulseEmpty" to "Dinleme ritmini canlandırmak için bir şeyler çal",
+            "listeningHistory" to "Dinleme geçmişi",
+            "listeningHistorySubtitle" to "Gerçekte dinlediklerin",
+            "listeningPrompt" to "Dinliyorum...",
+            "voiceSearchUnsupported" to "Sesli arama desteklenmiyor",
+            "musicFiltersComingSoon" to "Müzik filtreleri yakında geliyor!",
+            "recentSearches" to "Son aramalar",
+            "actions" to "İşlemler",
+            "removeFromFavorites" to "Favorilerden kaldır",
+            "addToFavorites" to "Favorilere ekle",
+            "playNext" to "Sıradaki olarak oynat",
+            "addToQueue" to "Sıraya ekle",
+            "addToPlaylist" to "Playliste ekle",
+            "alreadyOffline" to "Zaten çevrimdışı kullanılabilir",
+            "download" to "İndir",
+            "openArtist" to "Sanatçıyı aç",
+            "openAlbum" to "Albümü aç",
+            "deleteDownload" to "İndirmeyi sil",
+            "share" to "Paylaş",
+            "shareSong" to "Şarkıyı paylaş",
+            "removeFromRecentSearches" to "Son aramalardan kaldır",
+            "songOptions" to "Şarkı seçenekleri",
+            "goToPlayer" to "Oynatıcıya git",
+            "saveOffline" to "Çevrimdışı kaydet",
+            "favorite" to "Favori",
+            "downloaded" to "İndirildi",
+            "remove" to "Kaldır",
+            "removeFromPlaylist" to "Çalma listesinden kaldır",
+            "youMightAlsoLike" to "Bunları da beğenebilirsin",
+            "topResult" to "En iyi sonuç",
+            "currentlyPlaying" to "Şimdi çalıyor",
+            "artistLabel" to "Sanatçı",
+            "playNow" to "Şimdi oynat",
+            "biography" to "Biyografi",
+            "newUpdate" to "YENİ GÜNCELLEME",
+            "updateDescription" to "Daha kompakt bir ekran, daha okunaklı bir değişiklik listesi ve her ekranda kaydırılabilir içerik.",
+            "whatsNew" to "Yenilikler",
+            "update" to "Güncelle",
+            "updateRetry" to "Yeniden dene",
+            "updateDownloading" to "Güncelleme indiriliyor",
+            "updatePreparing" to "Güncelleme hazırlanıyor",
+            "updateInstalling" to "Yükleniyor",
+            "updateReadyToInstall" to "Yüklemeye hazır",
+            "updateFailed" to "Güncelleme başarısız",
+            "updateAllowInstalls" to "Devam etmek için yüklemelere izin ver",
+            "updateLinkUnavailable" to "Güncelleme bağlantısı kullanılamıyor",
+            "cannotOpenDownload" to "İndirme açılamıyor",
+            "externalLinkUnavailable" to "Harici bağlantı kullanılamıyor",
+            "cannotOpenExternalLink" to "Harici bağlantı açılamıyor",
+            "continuousRadio" to "Kesintisiz radyo",
+            "continuousRadioSubtitle" to "Sıra bitmek üzereyken uyumlu şarkılar ekler",
+            "artistsLabelPlural" to "Sanatçılar",
+            "albumMood" to "Albüm havası",
+            "openLyricsAnalysis" to "Şarkı sözü analizini aç",
+            "closeLyrics" to "Şarkı sözlerini kapat",
+            "lyricsDuet" to "Düet",
+            "lyricsCinema" to "Sinema",
+            "lyricsPage" to "Sayfa",
+            "lyricsRomanization" to "Latinleştirme",
+            "lyricsCompact" to "Kompakt",
+            "lyricsSections" to "Şarkı bölümleri",
+            "lyricsSectionIntro" to "Giriş",
+            "lyricsSectionVerse" to "Kıta",
+            "lyricsSectionPreChorus" to "Ön nakarat",
+            "lyricsSectionChorus" to "Nakarat",
+            "lyricsSectionBridge" to "Köprü",
+            "lyricsSectionInstrumental" to "Enstrümantal",
+            "lyricsSectionOutro" to "Çıkış",
+            "automaticTranslation" to "Otomatik çeviri",
+            "automaticTranslationSubtitle" to "YouTube transkriptlerindeki kullanılabilir dilleri kullanır",
+            "atmosphere" to "Atmosfer",
+            "themes" to "Temalar",
+            "chorusDetected" to "Nakarat algılandı",
+            "goToChorus" to "Nakarata git",
+            "close" to "Kapat",
+            "complete" to "Tamamla",
+            "delete" to "Sil",
+            "newPlaylist" to "Yeni playlist",
+            "playlistName" to "Playlist adı",
+            "create" to "Oluştur",
+            "cancel" to "İptal",
+            "newPlaylistName" to "Yeni playlist adı",
+            "createNewPlaylist" to "Yeni playlist oluştur",
+            "createAndAdd" to "Oluştur ve ekle",
+            "downloadPlaylist" to "Playlisti indir",
+            "playAll" to "Tümünü oynat",
+            "playingFrom" to "ŞURADAN OYNATILIYOR",
+            "closePlayer" to "Oynatıcıyı kapat",
+            "options" to "Seçenekler",
+            "showLyrics" to "Şarkı sözlerini göster",
+            "shuffle" to "Karışık çal",
+            "previous" to "Önceki",
+            "next" to "Sonraki",
+            "repeat" to "Tekrarla",
+            "persistentQueue" to "Kalıcı sıra",
+            "continueListening" to "Dinlemeye devam et",
+            "favoritesPlain" to "Favoriler",
+            "offline" to "Çevrimdışı",
+            "more" to "Daha fazla",
+            "mix" to "Mix",
+            "mixForYou" to "Senin için mix",
+            "genres" to "Türler",
+            "smartMusicProfile" to "Akıllı müzik profili",
+            "flow" to "Akış",
+            "pictureInPicture" to "Resim içinde resim",
+            "discoveryFlow" to "KEŞİF AKIŞI",
+            "shareDiagnostics" to "Tanılamayı paylaş",
+            "albumUnavailable" to "Albüm kullanılamıyor",
+            "albumTracksUnavailable" to "Albümdeki şarkılar kullanılamıyor",
+            "showLess" to "Daha az göster",
+            "showMore" to "Daha fazla göster",
+            "playing" to "Oynatılıyor",
+            "artistProfileUnavailable" to "Sanatçı profili kullanılamıyor",
+            "popularTracks" to "Popüler şarkılar",
+            "showAll" to "Tümünü göster",
+            "versionLabel" to "Sürüm",
+            "generalImprovements" to "Genel iyileştirmeler ve hata düzeltmeleri.",
+            "historyLabel" to "geçmişte",
+            "undoRemoval" to "Kaldırmayı geri al",
+            "lyricsAnalysis" to "Şarkı sözü analizi",
+            "linesLabel" to "Satırlar",
+            "wordsLabel" to "Kelimeler",
+            "localAnalysis" to "Yerel analiz",
+            "open" to "Aç",
+            "newRelease" to "YENİ ÇIKIŞ",
+            "newReleaseSubtitle" to "Yeni bir çıkış az önce radara girdi.",
+            "saved" to "Kaydedildi",
+            "save" to "Kaydet",
+            "noOfflineDownloads" to "Çevrimdışı kaydedilmiş indirme yok.",
+            "createFirstPlaylist" to "İlk playlistini oluştur",
+            "createFirstPlaylistSubtitle" to "Hemen yeniden bulmak istediğin şarkıları bir araya getir.",
+            "downloadTrackHint" to "Bir şarkıyı Music/Levyra'ya kaydetmek için İndir'e dokun.",
+            "savedTracks" to "Kaydedilen şarkılar",
+            "favoritesEmpty" to "Henüz favori yok",
+            "playlistEmpty" to "Playlist boş. Bir şarkının üç noktalı menüsünden şarkı ekle.",
+            "showPersonalListening" to "Kişisel dinleme etkinliğini Ana sayfanın üst kısmında göster",
+            "showRecentReleases" to "Yeni çıkışları ve takip ettiğin sanatçıların radarını göster",
+            "showRecommendedAlbums" to "Önerilen albümleri Ana sayfada göster",
+            "showDiscoveredArtists" to "Müzik bölümlerinden keşfedilen sanatçıları göster",
+            "showChartsCountry" to "Listeleri ve ülke seçiciyi göster",
+            "partialDownloadResume" to "Kısmi baytları koru ve HTTP Range istekleriyle devam et",
+            "lyricsAnalysisSection" to "ŞARKI SÖZÜ ANALİZİ",
+            "lyricsAnalysisCompact" to "Göze batmayan yerel analiz",
+            "lyricsAnalysisCompactSubtitle" to "Sen açana kadar küçük kalır, yalnızca yararlı işaretleri gösterir ve seni doğrudan nakarata götürebilir.",
+            "createDataBackup" to "Veri yedeği oluştur",
+            "createDataBackupSubtitle" to "Favoriler, playlistler, geçmiş, sıra ve ayarlar SHA-256 ile doğrulanmış bir arşivde tutulur. Ses dosyaları Music/Levyra'da kalır.",
+            "updateAvailable" to "Güncelleme mevcut",
+            "updates" to "Güncellemeler",
+            "checkingLatestVersion" to "En son sürüm kontrol ediliyor…",
+            "latestVersionReady" to "indirilmeye hazır",
+            "latestInstalled" to "En son sürüm yüklü",
+            "checkNewVersions" to "Yeni yayımlanan sürümleri kontrol et",
+            "releasePageReady" to "Sürüm sayfası açılmaya hazır",
+            "installedVersion" to "Yüklü sürüm",
+            "openPlayer" to "Oynatıcıyı aç",
+            "searchSongsArtists" to "Şarkı ve sanatçı ara...",
+            "songsPlain" to "Şarkılar",
+            "shareVia" to "Şununla paylaş",
+            "emptySearchPrompt" to "Bir şarkı adı yaz ve ara",
+            "cancelDownload" to "İndirmeyi iptal et",
+            "readAll" to "Devamını oku",
+            "singlesAndEps" to "Single'lar ve EP'ler",
+            "tapHeartToAdd" to "Bir parçayı buraya eklemek için yanındaki kalbe dokunun.",
+            "all" to "Tümü",
+            "automaticResume" to "Otomatik sürdürme",
+            "simultaneousDownloads" to "Eş zamanlı indirmeler",
+            "simultaneousDownloadsSubtitle" to "Bellek, ağ ve sıcaklık için genel sınır",
+            "backupRestoreSection" to "YEDEKLEME VE GERİ YÜKLEME",
+            "restoreBackup" to "Yedeği geri yükle",
+            "restoreBackupSubtitle" to "Yerel verileri değiştirmeden önce şemayı ve sağlama toplamını doğrular",
+            "playbackResilienceSection" to "OYNATMA DAYANIKLILIĞI",
+            "exportSafeDiagnostics" to "Güvenli tanılamayı dışa aktar",
+            "generateResolverTrace" to "Çözümleyici izini oluştur",
+            "safeDiagnosticsSubtitle" to "URL'ler ve belirteçler çıkarılmış istemci durumu ve son denemeler",
+            "check" to "Kontrol et",
+            "checking" to "Kontrol ediliyor",
+            "dragToReorder" to "Yeniden sıralamak için sürükleyin",
+            "homeInterfaceSection" to "ANA SAYFA ARAYÜZÜ",
+            "compactHome" to "Kompakt ana sayfa",
+            "compactHomeSubtitle" to "Dikey boşlukları azaltır ve kaydırmayı daha akıcı hâle getirir",
+            "yourOrbitSetting" to "Yörüngen",
+            "voicesSetting" to "Yankı uyandıran sesler",
+            "voicesSettingSubtitle" to "Dinlediklerinize göre kişisel seçimi korur",
+            "newReleasesSetting" to "Yeni çıkanlar",
+            "albumsForYouSetting" to "Sizin için albümler",
+            "trendingArtists" to "Trend sanatçılar",
+            "top50Charts" to "Top 50 listeleri",
+            "mobilePlayerSection" to "MOBİL OYNATICI",
+            "advancedGestures" to "Gelişmiş hareketler",
+            "advancedGesturesSubtitle" to "Çift dokunma, uzun basma, parlaklık ve ses",
+            "pureBlack" to "Saf siyah",
+            "pureBlackSubtitle" to "OLED ekranlar için gerçek siyah arka planlar",
+            "hapticFeedback" to "Dokunsal geri bildirim",
+            "hapticFeedbackSubtitle" to "Önemli işlemlerde kısa titreşim",
+            "doubleTapSeek" to "Çift dokunarak atlama",
+            "doubleTapSeekSubtitle" to "Sol ve sağ taraftaki atlama süresi",
+            "longPress" to "Uzun basma",
+            "longPressSubtitle" to "Basılı tuttuğunuz sürece geçici hız",
+            "downloadEngineSection" to "İNDİRME MOTORU 3.0",
+            "wifiOnly" to "Yalnızca Wi‑Fi",
+            "wifiOnlySubtitle" to "WorkManager indirmeleri yalnızca ölçülmeyen bir ağda başlatır",
+            "chargingOnly" to "Yalnızca şarj olurken",
+            "chargingOnlySubtitle" to "Uzun indirmelerde pil kullanımını ve sıcaklığı azaltır",
+            "resumeDownload" to "İndirmeyi sürdür",
+            "pauseDownload" to "İndirmeyi duraklat",
+            "signedApkReady" to "İmzalı APK kuruluma hazır",
+            "downloadsInProgress" to "İndirmeler sürüyor",
+            "downloadInProgress" to "İndirme sürüyor",
+            "newAlbums" to "Yeni albümler",
+            "newSingles" to "Yeni single'lar",
+            "newAlbum" to "YENİ ALBÜM",
+            "downloadsFolder" to "İndirilenler klasörü",
+            "offlineDownloadsPlain" to "Çevrimdışı indirmeler",
+            "personalPlaylists" to "Kişisel çalma listeleri",
+            "searchingYouTubeMusic" to "YouTube Music'te aranıyor…",
+            "searchingLyrics" to "Şarkı sözleri aranıyor…",
+            "pause" to "Duraklat",
+            "newSingle" to "YENİ SINGLE",
+            "albumsPlain" to "Albümler",
+            "albumPlain" to "Albüm",
+            "singlePlain" to "Single",
+            "playlistsPlain" to "Çalma listeleri",
+            "profileActive" to "Kişiselleştirme etkin",
+            "profileLearning" to "Dinlediklerinizden öğreniyorum",
+            "newBadge" to "YENİ",
+            "brightness" to "Parlaklık",
+            "timer" to "Zamanlayıcı",
+            "normalizationShort" to "Norm.",
+            "coverAndTags" to "kapak ve etiketler",
+            "madeWithBy" to "❤️ ile hazırlayan",
+            "activeIndicator" to "ETKİN",
+            "batteryUnrestricted" to "Sınırsız arka plan oynatma",
+            "batteryUnrestrictedSubtitle" to "Ekran kapalıyken müziğin devam etmesi için Levyra'yı pil optimizasyonundan hariç tutun",
+            "batteryUnrestrictedActive" to "Etkin — sistem oynatmayı durdurmayacak",
+            "downloadQualityPreset" to "Kalite ön ayarı",
+            "downloadQualityPresetSubtitle" to "Kalite, hız ve veri kullanımını dengeler",
+            "downloadPresetAutomatic" to "Otomatik",
+            "downloadPresetHighQuality" to "Yüksek kalite",
+            "downloadPresetDataSaver" to "Veri tasarrufu",
+            "downloadFolderOrganization" to "Klasör düzeni",
+            "downloadFolderOrganizationSubtitle" to "Dosyaları çoğaltmadan sanatçı ve albüme göre kaydeder",
+            "downloadFolderArtist" to "Sanatçı",
+            "downloadFolderArtistAlbum" to "Sanatçı / Albüm",
+            "downloadSpeedLimit" to "Hız sınırı",
+            "downloadSpeedLimitSubtitle" to "İndirme sırasında ağ kullanımını sınırlar",
+            "downloadSpeedUnlimited" to "Sınırsız",
+            "downloadEmbedMetadata" to "Gömülü meta veriler",
+            "downloadEmbedMetadataSubtitle" to "Başlık, sanatçı ve albümü dosyaya yazar",
+            "downloadEmbedArtwork" to "Gömülü kapak",
+            "downloadEmbedArtworkSubtitle" to "Resmi kapağı parçaya gömer",
+            "downloadVerifyFile" to "Dosya doğrulama",
+            "downloadVerifyFileSubtitle" to "Tamamlamadan önce imza, boyut ve okunabilirliği doğrular",
+            "downloadSkipDuplicates" to "Yinelenenleri atla",
+            "downloadSkipDuplicatesSubtitle" to "Mevcut geçerli indirmeleri yeniden kullanır",
+            "trailTitle" to "SON İZLERİN",
+            "trailPlays" to "çalma",
+            "trailUnique" to "benzersiz",
+            "trailLastPlayed" to "Son dinlenen",
+            "statPlays" to "çalma",
+            "statArtists" to "sanatçı",
+            "statTracks" to "parça"
+        )
+
+        private fun arEntries(): Map<String, String> = mapOf(
+            "welcomeBadge" to "مرحبًا",
+            "welcomeTitle" to "لنبدأ.",
+            "languageQuestion" to "ما لغتك؟",
+            "nameQuestion" to "ما اسمك؟",
+            "namePlaceholder" to "اسمك...",
+            "tasteQuestion" to "اختر 3 أنواع موسيقية أو أكثر تحبها.",
+            "skipAndContinue" to "تخطَّ وتابع",
+            "startListening" to "ابدأ الاستماع",
+            "settings" to "الإعدادات",
+            "settingsSubtitle" to "خصّص LEVYRA",
+            "design" to "التصميم",
+            "playback" to "التشغيل",
+            "preferences" to "التفضيلات",
+            "app" to "التطبيق",
+            "animations" to "الحركات",
+            "animationsSubtitle" to "المؤثرات والانتقالات واستجابة الضغط على البطاقات",
+            "motionArtwork" to "Canvas في المشغّل",
+            "motionArtworkSubtitle" to "يعرض فيديوهات الفنانين؛ عطّله لاستخدام غلاف الألبوم دائمًا",
+            "dynamicColor" to "الألوان الديناميكية",
+            "dynamicColorSubtitle" to "خلفية وألوان بارزة مستوحاة من الغلاف الحالي",
+            "sponsorBlock" to "SponsorBlock",
+            "sponsorBlockSubtitle" to "تخطّي الإعلانات المدمجة والمقاطع غير الموسيقية تلقائيًا",
+            "skipSilence" to "تخطّي الصمت",
+            "skipSilenceSubtitle" to "تقليص فترات الصمت داخل المقاطع",
+            "redoQuestionnaire" to "إعادة استبيان الذوق",
+            "redoQuestionnaireSubtitle" to "اختر أنواعك الموسيقية المفضلة من جديد",
+            "language" to "اللغة",
+            "languageSubtitle" to "تغيير لغة التطبيق",
+            "home" to "الرئيسية",
+            "search" to "البحث",
+            "library" to "المكتبة",
+            "player" to "المشغّل",
+            "queue" to "قائمة الانتظار",
+            "lyrics" to "كلمات الأغاني",
+            "related" to "ذات صلة",
+            "song" to "أغنية",
+            "video" to "فيديو",
+            "nowPlaying" to "قيد التشغيل الآن",
+            "emptyPlayer" to "ابحث عن أغنية واضغط تشغيل",
+            "phoneSpeaker" to "مكبّر صوت الهاتف",
+            "connected" to "متصل",
+            "volume" to "مستوى الصوت",
+            "audioQuality" to "جودة الصوت",
+            "done" to "تم",
+            "queueEmpty" to "قائمة الانتظار فارغة.",
+            "lyricsUnavailable" to "كلمات هذه الأغنية غير متاحة.",
+            "synced" to "متزامنة",
+            "libraryTitle" to "المكتبة",
+            "librarySubtitle" to "قوائم التشغيل والمفضلة والتنزيلات والسجل",
+            "playlists" to "قوائم تشغيلك",
+            "newItem" to "جديد",
+            "downloads" to "التنزيلات بلا إنترنت",
+            "favorites" to "المفضلة",
+            "recent" to "ما عثرت عليه مؤخرًا",
+            "quickPicks" to "اختيارات سريعة",
+            "play" to "تشغيل",
+            "newReleases" to "إصدارات جديدة",
+            "albumsForYou" to "ألبومات مقترحة",
+            "top50Unavailable" to "قائمة أفضل 50 غير متاحة، حاول لاحقًا",
+            "artists" to "الفنانون",
+            "albumsAndSingles" to "الألبومات والأغاني المنفردة",
+            "songs" to "الأغاني",
+            "searchPlaceholder" to "ابحث عن أغنيات وفنانين و...",
+            "back" to "رجوع",
+            "clear" to "مسح",
+            "voice" to "صوت",
+            "createPlaylistHint" to "أنشئ قائمة تشغيل وأضف أغنياتك المفضلة",
+            "selectLanguagePrompt" to "اختر لغة",
+            "explore" to "استكشاف",
+            "exploreTitle" to "استكشاف",
+            "exploreSubtitle" to "اكتشف موسيقى واتجاهات وفيديوهات جديدة",
+            "exploreFresh" to "تيارات جديدة",
+            "exploreNewVideos" to "فيديوهات موسيقية جديدة",
+            "exploreEmpty" to "لا توجد إشارة من هذه المنطقة الآن، جرّب منطقة أخرى",
+            "localWaveName" to "الموجة العربية",
+            "localWaveEmoji" to "🌙",
+            "localWaveQuery" to "أغاني عربية جديدة 2026",
+            "exploreNewReleases" to "إصدارات جديدة",
+            "exploreRapDrill" to "راب ودرِل",
+            "exploreElectronic" to "إلكترونية",
+            "explorePopGlobal" to "بوب عالمي",
+            "exploreRnbSoul" to "R&B / سول",
+            "exploreRockAlt" to "روك وبديل",
+            "exploreLatino" to "لاتيني",
+            "exploreLofiChill" to "Lo-Fi / هادئة",
+            "exploreJpopAnime" to "J-Pop / أنمي",
+            "followArtist" to "متابعة",
+            "followingArtist" to "تتابعه",
+            "releaseRadar" to "رادار الإصدارات",
+            "similarArtists" to "فنانون مشابهون",
+            "similarToFollowed" to "مشابه لفنانين تتابعهم",
+            "theme" to "السمة",
+            "themeSubtitle" to "اختر مظهر LEVYRA",
+            "personalOrbitTitle" to "مدارك",
+            "personalOrbitSubtitle" to "الأغنيات التي تعود إليك دائمًا",
+            "voicesTitle" to "أصوات تلامس الإحساس",
+            "voicesSubtitle" to "المقاطع الأكثر تعليقًا، في صورة طاقة حيّة",
+            "totalComments" to "إجمالي التعليقات",
+            "engagement" to "التفاعل",
+            "audioEngine" to "الصوت",
+            "audioEngineSubtitle" to "معادل صوت وتداخل تدريجي ومستوى ذكي وإيقاع وطبقة وتشغيل بلا فواصل",
+            "equalizer" to "معادل الصوت",
+            "equalizerSubtitle" to "مؤثرات حقيقية مع إعدادات مسبقة وتعزيز الجهير والصوت المحيطي",
+            "preset" to "إعداد مسبق",
+            "bassBoost" to "تعزيز الجهير",
+            "virtualizer" to "الصوت المحيطي",
+            "crossfade" to "تداخل تدريجي",
+            "djSoft" to "وضع DJ ناعم",
+            "replayGain" to "ReplayGain / مستوى صوت ذكي",
+            "tempo" to "الإيقاع",
+            "pitch" to "الطبقة",
+            "gapless" to "تشغيل بلا فواصل",
+            "restartRequiredTitle" to "إعادة تشغيل LEVYRA؟",
+            "restartRequiredBody" to "تم حفظ اللغة. أعد تشغيل التطبيق الآن لإعادة تحميل كل الشاشات بصورة سليمة.",
+            "restartNow" to "إعادة التشغيل الآن",
+            "later" to "لاحقًا",
+            "audioQualityAuto" to "تلقائية",
+            "audioQualityHigh" to "عالية",
+            "audioQualityLow" to "منخفضة",
+            "pulseSectionBand" to "إحصاءاتك",
+            "pulseTitle" to "نبض الاستماع",
+            "pulseSubtitle" to "إحصاءات خاصة تُحسب على هذا الجهاز فقط",
+            "followedArtistsTitle" to "الفنانون الذين تتابعهم",
+            "followedArtistsSubtitle" to "الفنانون الأقرب إلى ذوقك",
+            "listeningHistoryEmptyTitle" to "لا توجد استماعات بعد",
+            "listeningHistoryEmptyDetail" to "شغّل مقطعًا وسيبدأ سجلك بالظهور هنا تلقائيًا.",
+            "pulseMinutes" to "الدقائق",
+            "pulseMinuteShort" to "د",
+            "pulsePlays" to "مرات التشغيل",
+            "pulseStreak" to "أيام متتالية",
+            "pulseCompletion" to "نسبة الإكمال",
+            "pulseTopArtists" to "أبرز الفنانين",
+            "pulseWeek" to "آخر 7 أيام",
+            "pulsePeakHour" to "ساعة الذروة",
+            "pulseEmpty" to "شغّل شيئًا لإضاءة نبضك",
+            "listeningHistory" to "سجل الاستماع",
+            "listeningHistorySubtitle" to "ما استمعت إليه فعليًا",
+            "listeningPrompt" to "جارٍ الاستماع...",
+            "voiceSearchUnsupported" to "البحث الصوتي غير مدعوم",
+            "musicFiltersComingSoon" to "مرشحات الموسيقى ستتوفر قريبًا!",
+            "recentSearches" to "عمليات البحث الأخيرة",
+            "actions" to "الإجراءات",
+            "removeFromFavorites" to "إزالة من المفضلة",
+            "addToFavorites" to "إضافة إلى المفضلة",
+            "playNext" to "تشغيل التالي",
+            "addToQueue" to "إضافة إلى قائمة الانتظار",
+            "addToPlaylist" to "إضافة إلى قائمة تشغيل",
+            "alreadyOffline" to "محفوظ بلا إنترنت بالفعل",
+            "download" to "تنزيل",
+            "openArtist" to "فتح صفحة الفنان",
+            "openAlbum" to "فتح الألبوم",
+            "deleteDownload" to "حذف التنزيل",
+            "share" to "مشاركة",
+            "shareSong" to "مشاركة الأغنية",
+            "removeFromRecentSearches" to "إزالة من عمليات البحث الأخيرة",
+            "songOptions" to "خيارات الأغنية",
+            "goToPlayer" to "الانتقال إلى المشغّل",
+            "saveOffline" to "حفظ بلا إنترنت",
+            "favorite" to "مفضلة",
+            "downloaded" to "تم التنزيل",
+            "remove" to "إزالة",
+            "removeFromPlaylist" to "إزالة من قائمة التشغيل",
+            "youMightAlsoLike" to "قد يعجبك أيضًا",
+            "topResult" to "أفضل نتيجة",
+            "currentlyPlaying" to "قيد التشغيل الآن",
+            "artistLabel" to "الفنان",
+            "playNow" to "تشغيل الآن",
+            "biography" to "السيرة الذاتية",
+            "newUpdate" to "تحديث جديد",
+            "updateDescription" to "شاشة أكثر تكثيفًا، وسجل تغييرات أوضح، ومحتوى قابل للتمرير على كل الشاشات.",
+            "whatsNew" to "ما الجديد",
+            "update" to "تحديث",
+            "updateRetry" to "إعادة المحاولة",
+            "updateDownloading" to "جارٍ تنزيل التحديث",
+            "updatePreparing" to "جارٍ تحضير التحديث",
+            "updateInstalling" to "جارٍ التثبيت",
+            "updateReadyToInstall" to "جاهز للتثبيت",
+            "updateFailed" to "فشل التحديث",
+            "updateAllowInstalls" to "اسمح بالتثبيت للمتابعة",
+            "updateLinkUnavailable" to "رابط التحديث غير متاح",
+            "cannotOpenDownload" to "تعذّر فتح التنزيل",
+            "externalLinkUnavailable" to "الرابط الخارجي غير متاح",
+            "cannotOpenExternalLink" to "تعذّر فتح الرابط الخارجي",
+            "continuousRadio" to "راديو مستمر",
+            "continuousRadioSubtitle" to "يضيف أغنيات متناسقة عندما توشك قائمة الانتظار على الانتهاء",
+            "artistsLabelPlural" to "الفنانون",
+            "albumMood" to "طابع الألبوم",
+            "openLyricsAnalysis" to "فتح تحليل كلمات الأغنية",
+            "closeLyrics" to "إغلاق كلمات الأغنية",
+            "lyricsDuet" to "ثنائي",
+            "lyricsCinema" to "سينما",
+            "lyricsPage" to "صفحة",
+            "lyricsRomanization" to "الكتابة بالحروف اللاتينية",
+            "lyricsCompact" to "مضغوط",
+            "lyricsSections" to "أقسام الأغنية",
+            "lyricsSectionIntro" to "مقدمة",
+            "lyricsSectionVerse" to "مقطع غنائي",
+            "lyricsSectionPreChorus" to "ما قبل اللازمة",
+            "lyricsSectionChorus" to "اللازمة",
+            "lyricsSectionBridge" to "جسر",
+            "lyricsSectionInstrumental" to "موسيقي",
+            "lyricsSectionOutro" to "خاتمة",
+            "automaticTranslation" to "ترجمة تلقائية",
+            "automaticTranslationSubtitle" to "يستخدم اللغات المتاحة في نصوص YouTube",
+            "atmosphere" to "الأجواء",
+            "themes" to "السمات",
+            "chorusDetected" to "تم اكتشاف اللازمة",
+            "goToChorus" to "الانتقال إلى اللازمة",
+            "close" to "إغلاق",
+            "complete" to "إكمال",
+            "delete" to "حذف",
+            "newPlaylist" to "قائمة تشغيل جديدة",
+            "playlistName" to "اسم قائمة التشغيل",
+            "create" to "إنشاء",
+            "cancel" to "إلغاء",
+            "newPlaylistName" to "اسم قائمة التشغيل الجديدة",
+            "createNewPlaylist" to "إنشاء قائمة تشغيل جديدة",
+            "createAndAdd" to "إنشاء وإضافة",
+            "downloadPlaylist" to "تنزيل قائمة التشغيل",
+            "playAll" to "تشغيل الكل",
+            "playingFrom" to "التشغيل من",
+            "closePlayer" to "إغلاق المشغّل",
+            "options" to "الخيارات",
+            "showLyrics" to "إظهار كلمات الأغنية",
+            "shuffle" to "تشغيل عشوائي",
+            "previous" to "السابق",
+            "next" to "التالي",
+            "repeat" to "تكرار",
+            "persistentQueue" to "قائمة انتظار دائمة",
+            "continueListening" to "متابعة الاستماع",
+            "favoritesPlain" to "المفضلة",
+            "offline" to "بلا إنترنت",
+            "more" to "المزيد",
+            "mix" to "مزيج",
+            "mixForYou" to "مزيج لك",
+            "genres" to "الأنواع الموسيقية",
+            "smartMusicProfile" to "ملف موسيقي ذكي",
+            "flow" to "Flow",
+            "pictureInPicture" to "صورة داخل صورة",
+            "discoveryFlow" to "تدفق الاكتشاف",
+            "shareDiagnostics" to "مشاركة التشخيصات",
+            "albumUnavailable" to "الألبوم غير متاح",
+            "albumTracksUnavailable" to "مقاطع الألبوم غير متاحة",
+            "showLess" to "عرض أقل",
+            "showMore" to "عرض المزيد",
+            "playing" to "قيد التشغيل",
+            "artistProfileUnavailable" to "صفحة الفنان غير متاحة",
+            "popularTracks" to "المقاطع الشائعة",
+            "showAll" to "عرض الكل",
+            "versionLabel" to "الإصدار",
+            "generalImprovements" to "تحسينات عامة وإصلاحات للأخطاء.",
+            "historyLabel" to "في السجل",
+            "undoRemoval" to "التراجع عن الإزالة",
+            "lyricsAnalysis" to "تحليل كلمات الأغنية",
+            "linesLabel" to "الأسطر",
+            "wordsLabel" to "الكلمات",
+            "localAnalysis" to "تحليل محلي",
+            "open" to "فتح",
+            "newRelease" to "إصدار جديد",
+            "newReleaseSubtitle" to "دخل إصدار جديد إلى الرادار للتو.",
+            "saved" to "محفوظ",
+            "save" to "حفظ",
+            "noOfflineDownloads" to "لا توجد تنزيلات محفوظة بلا إنترنت.",
+            "createFirstPlaylist" to "أنشئ أول قائمة تشغيل",
+            "createFirstPlaylistSubtitle" to "اجمع الأغنيات التي تريد العثور عليها مجددًا فورًا.",
+            "downloadTrackHint" to "اضغط تنزيل على أي أغنية لحفظها في Music/Levyra.",
+            "savedTracks" to "المقاطع المحفوظة",
+            "favoritesEmpty" to "لا توجد مفضلات بعد",
+            "playlistEmpty" to "قائمة التشغيل هذه فارغة. أضف الأغنيات من قائمة النقاط الثلاث لأي أغنية.",
+            "showPersonalListening" to "إظهار نشاط استماعك الشخصي أعلى الصفحة الرئيسية",
+            "showRecentReleases" to "إظهار الإصدارات الحديثة ورادار الفنانين الذين تتابعهم",
+            "showRecommendedAlbums" to "إظهار الألبومات المقترحة في الصفحة الرئيسية",
+            "showDiscoveredArtists" to "إظهار الفنانين المكتشفين من أقسام موسيقاك",
+            "showChartsCountry" to "إظهار القوائم ومحدد البلد",
+            "partialDownloadResume" to "الاحتفاظ بالبيانات الجزئية واستئناف التنزيل باستخدام طلبات HTTP Range",
+            "lyricsAnalysisSection" to "تحليل كلمات الأغنية",
+            "lyricsAnalysisCompact" to "تحليل محلي هادئ",
+            "lyricsAnalysisCompactSubtitle" to "يبقى مضغوطًا حتى تفتحه، ويعرض الإشارات المفيدة فقط، ويمكنه نقلك مباشرةً إلى اللازمة.",
+            "createDataBackup" to "إنشاء نسخة احتياطية للبيانات",
+            "createDataBackupSubtitle" to "المفضلة وقوائم التشغيل والسجل وقائمة الانتظار والإعدادات داخل أرشيف متحقق منه بخوارزمية SHA-256. تبقى ملفات الصوت في Music/Levyra.",
+            "updateAvailable" to "يتوفر تحديث",
+            "updates" to "التحديثات",
+            "checkingLatestVersion" to "جارٍ التحقق من أحدث إصدار…",
+            "latestVersionReady" to "جاهز للتنزيل",
+            "latestInstalled" to "أحدث إصدار مثبت لديك",
+            "checkNewVersions" to "التحقق من الإصدارات المنشورة حديثًا",
+            "releasePageReady" to "صفحة الإصدار جاهزة للفتح",
+            "installedVersion" to "الإصدار المثبت",
+            "openPlayer" to "فتح المشغّل",
+            "searchSongsArtists" to "ابحث عن الأغنيات والفنانين...",
+            "songsPlain" to "الأغنيات",
+            "shareVia" to "مشاركة عبر",
+            "emptySearchPrompt" to "اكتب اسم أغنية وابحث",
+            "cancelDownload" to "إلغاء التنزيل",
+            "readAll" to "قراءة المزيد",
+            "singlesAndEps" to "الأغاني المنفردة وEP",
+            "tapHeartToAdd" to "اضغط القلب بجانب أغنية لإضافتها هنا.",
+            "all" to "الكل",
+            "automaticResume" to "استئناف تلقائي",
+            "simultaneousDownloads" to "تنزيلات متزامنة",
+            "simultaneousDownloadsSubtitle" to "الحد العام للذاكرة والشبكة ودرجة الحرارة",
+            "backupRestoreSection" to "النسخ الاحتياطي والاستعادة",
+            "restoreBackup" to "استعادة النسخة الاحتياطية",
+            "restoreBackupSubtitle" to "التحقق من البنية وقيمة التحقق قبل استبدال البيانات المحلية",
+            "playbackResilienceSection" to "موثوقية التشغيل",
+            "exportSafeDiagnostics" to "تصدير تشخيصات آمنة",
+            "generateResolverTrace" to "إنشاء سجل المتتبّع",
+            "safeDiagnosticsSubtitle" to "حالة العميل والمحاولات الأخيرة بعد إزالة الروابط والرموز",
+            "check" to "تحقق",
+            "checking" to "جارٍ التحقق",
+            "dragToReorder" to "اسحب لإعادة الترتيب",
+            "homeInterfaceSection" to "واجهة الصفحة الرئيسية",
+            "compactHome" to "صفحة رئيسية مضغوطة",
+            "compactHomeSubtitle" to "تقلل المسافات الرأسية وتجعل التمرير أخف",
+            "yourOrbitSetting" to "مدارك",
+            "voicesSetting" to "أصوات تلامس الإحساس",
+            "voicesSettingSubtitle" to "يحافظ على الاختيار الشخصي استنادًا إلى استماعك",
+            "newReleasesSetting" to "الإصدارات الجديدة",
+            "albumsForYouSetting" to "ألبومات لك",
+            "trendingArtists" to "الفنانون الرائجون",
+            "top50Charts" to "قوائم أفضل 50",
+            "mobilePlayerSection" to "مشغّل الهاتف",
+            "advancedGestures" to "إيماءات متقدمة",
+            "advancedGesturesSubtitle" to "النقر المزدوج والضغط المطوّل والسطوع ومستوى الصوت",
+            "pureBlack" to "أسود نقي",
+            "pureBlackSubtitle" to "خلفيات سوداء حقيقية لشاشات OLED",
+            "hapticFeedback" to "استجابة لمسية",
+            "hapticFeedbackSubtitle" to "اهتزاز قصير عند الإجراءات المهمة",
+            "doubleTapSeek" to "تقديم أو ترجيع بالنقر المزدوج",
+            "doubleTapSeekSubtitle" to "مدة التخطي في الجهتين اليسرى واليمنى",
+            "longPress" to "الضغط المطوّل",
+            "longPressSubtitle" to "سرعة مؤقتة ما دمت ضاغطًا",
+            "downloadEngineSection" to "محرك التنزيل 3.0",
+            "wifiOnly" to "Wi‑Fi فقط",
+            "wifiOnlySubtitle" to "يبدأ WorkManager التنزيلات فقط عبر شبكة غير محدودة",
+            "chargingOnly" to "أثناء الشحن فقط",
+            "chargingOnlySubtitle" to "يقلل استهلاك البطارية والحرارة أثناء التنزيلات الطويلة",
+            "resumeDownload" to "استئناف التنزيل",
+            "pauseDownload" to "إيقاف التنزيل مؤقتًا",
+            "signedApkReady" to "ملف APK موقّع جاهز للتثبيت",
+            "downloadsInProgress" to "تنزيلات قيد التنفيذ",
+            "downloadInProgress" to "تنزيل قيد التنفيذ",
+            "newAlbums" to "ألبومات جديدة",
+            "newSingles" to "أغانٍ منفردة جديدة",
+            "newAlbum" to "ألبوم جديد",
+            "downloadsFolder" to "مجلد التنزيلات",
+            "offlineDownloadsPlain" to "التنزيلات بلا إنترنت",
+            "personalPlaylists" to "قوائم تشغيل شخصية",
+            "searchingYouTubeMusic" to "جارٍ البحث في YouTube Music…",
+            "searchingLyrics" to "جارٍ البحث عن كلمات الأغنية…",
+            "pause" to "إيقاف مؤقت",
+            "newSingle" to "أغنية منفردة جديدة",
+            "albumsPlain" to "الألبومات",
+            "albumPlain" to "ألبوم",
+            "singlePlain" to "أغنية منفردة",
+            "playlistsPlain" to "قوائم التشغيل",
+            "profileActive" to "التخصيص نشط",
+            "profileLearning" to "نتعلّم من استماعك",
+            "newBadge" to "جديد",
+            "brightness" to "السطوع",
+            "timer" to "المؤقت",
+            "normalizationShort" to "تسوية",
+            "coverAndTags" to "الغلاف والوسوم",
+            "madeWithBy" to "صُنع بـ ❤️ بواسطة",
+            "activeIndicator" to "مفعّل",
+            "batteryUnrestricted" to "تشغيل غير مقيد في الخلفية",
+            "batteryUnrestrictedSubtitle" to "استثنِ Levyra من تحسين البطارية ليستمر تشغيل الموسيقى مع إطفاء الشاشة",
+            "batteryUnrestrictedActive" to "مفعّل — لن يوقف النظام التشغيل",
+            "downloadQualityPreset" to "إعداد الجودة",
+            "downloadQualityPresetSubtitle" to "يوازن بين الجودة والسرعة واستهلاك البيانات",
+            "downloadPresetAutomatic" to "تلقائي",
+            "downloadPresetHighQuality" to "جودة عالية",
+            "downloadPresetDataSaver" to "توفير البيانات",
+            "downloadFolderOrganization" to "تنظيم المجلدات",
+            "downloadFolderOrganizationSubtitle" to "يحفظ حسب الفنان والألبوم دون تكرار الملفات",
+            "downloadFolderArtist" to "الفنان",
+            "downloadFolderArtistAlbum" to "الفنان / الألبوم",
+            "downloadSpeedLimit" to "حد السرعة",
+            "downloadSpeedLimitSubtitle" to "يحد من استخدام الشبكة أثناء التنزيل",
+            "downloadSpeedUnlimited" to "غير محدود",
+            "downloadEmbedMetadata" to "بيانات وصفية مضمنة",
+            "downloadEmbedMetadataSubtitle" to "يكتب العنوان والفنان والألبوم في الملف",
+            "downloadEmbedArtwork" to "غلاف مضمّن",
+            "downloadEmbedArtworkSubtitle" to "يضمّن الغلاف الرسمي في المقطوعة",
+            "downloadVerifyFile" to "التحقق من الملف",
+            "downloadVerifyFileSubtitle" to "يتحقق من التوقيع والحجم وإمكانية القراءة قبل الإكمال",
+            "downloadSkipDuplicates" to "تجاهل المكرر",
+            "downloadSkipDuplicatesSubtitle" to "يعيد استخدام التنزيلات الصالحة الموجودة",
+            "trailTitle" to "أثرك الأخير",
+            "trailPlays" to "تشغيل",
+            "trailUnique" to "فريدة",
+            "trailLastPlayed" to "آخر استماع",
+            "statPlays" to "تشغيل",
+            "statArtists" to "فنانين",
+            "statTracks" to "مقطوعات"
+        )
+
+        private fun zhEntries(): Map<String, String> = mapOf(
+            "welcomeBadge" to "欢迎",
+            "welcomeTitle" to "开始吧。",
+            "languageQuestion" to "你的语言？",
+            "nameQuestion" to "你叫什么名字？",
+            "namePlaceholder" to "你的名字...",
+            "tasteQuestion" to "请选择至少 3 个你喜爱的音乐流派。",
+            "skipAndContinue" to "跳过并继续",
+            "startListening" to "开始聆听",
+            "settings" to "设置",
+            "settingsSubtitle" to "自定义 LEVYRA",
+            "design" to "设计",
+            "playback" to "播放",
+            "preferences" to "偏好设置",
+            "app" to "应用",
+            "animations" to "动画",
+            "animationsSubtitle" to "特效、转场与卡片按压反馈",
+            "motionArtwork" to "播放器 Canvas",
+            "motionArtworkSubtitle" to "显示艺人视频；关闭后始终使用专辑封面",
+            "dynamicColor" to "动态配色",
+            "dynamicColorSubtitle" to "从当前封面提取背景与强调色",
+            "sponsorBlock" to "SponsorBlock",
+            "sponsorBlockSubtitle" to "自动跳过赞助内容和非音乐片段",
+            "skipSilence" to "跳过静音",
+            "skipSilenceSubtitle" to "压缩歌曲中的静音停顿",
+            "redoQuestionnaire" to "重新填写音乐偏好",
+            "redoQuestionnaireSubtitle" to "再次选择你喜爱的音乐流派",
+            "language" to "语言",
+            "languageSubtitle" to "更改应用语言",
+            "home" to "首页",
+            "search" to "搜索",
+            "library" to "音乐库",
+            "player" to "播放器",
+            "queue" to "播放队列",
+            "lyrics" to "歌词",
+            "related" to "相关内容",
+            "song" to "歌曲",
+            "video" to "视频",
+            "nowPlaying" to "正在播放",
+            "emptyPlayer" to "搜索歌曲并点击播放",
+            "phoneSpeaker" to "手机扬声器",
+            "connected" to "已连接",
+            "volume" to "音量",
+            "audioQuality" to "音质",
+            "done" to "完成",
+            "queueEmpty" to "播放队列为空。",
+            "lyricsUnavailable" to "这首歌暂无歌词。",
+            "synced" to "已同步",
+            "libraryTitle" to "音乐库",
+            "librarySubtitle" to "播放列表、收藏、下载与历史记录",
+            "playlists" to "你的播放列表",
+            "newItem" to "新建",
+            "downloads" to "离线下载",
+            "favorites" to "收藏",
+            "recent" to "最近发现",
+            "quickPicks" to "快捷精选",
+            "play" to "播放",
+            "newReleases" to "新发行",
+            "albumsForYou" to "推荐专辑",
+            "top50Unavailable" to "Top 50 暂不可用，请稍后重试",
+            "artists" to "歌手",
+            "albumsAndSingles" to "专辑与单曲",
+            "songs" to "歌曲",
+            "searchPlaceholder" to "搜索歌曲、歌手和...",
+            "back" to "返回",
+            "clear" to "清除",
+            "voice" to "语音",
+            "createPlaylistHint" to "创建播放列表并添加你喜爱的歌曲",
+            "selectLanguagePrompt" to "选择语言",
+            "explore" to "探索",
+            "exploreTitle" to "探索",
+            "exploreSubtitle" to "发现新音乐、流行趋势与视频",
+            "exploreFresh" to "新鲜潮流",
+            "exploreNewVideos" to "最新音乐视频",
+            "exploreEmpty" to "当前分区暂无内容，请尝试其他分区",
+            "localWaveName" to "华语热浪",
+            "localWaveEmoji" to "🀄",
+            "localWaveQuery" to "2026 华语新歌",
+            "exploreNewReleases" to "新发行",
+            "exploreRapDrill" to "说唱与 Drill",
+            "exploreElectronic" to "电子音乐",
+            "explorePopGlobal" to "全球流行",
+            "exploreRnbSoul" to "R&B / 灵魂乐",
+            "exploreRockAlt" to "摇滚与另类",
+            "exploreLatino" to "拉丁音乐",
+            "exploreLofiChill" to "Lo-Fi / 放松",
+            "exploreJpopAnime" to "J-Pop / 动漫",
+            "followArtist" to "关注",
+            "followingArtist" to "已关注",
+            "releaseRadar" to "新歌雷达",
+            "similarArtists" to "相似歌手",
+            "similarToFollowed" to "与你关注的歌手相似",
+            "theme" to "主题",
+            "themeSubtitle" to "选择你的 LEVYRA 风格",
+            "personalOrbitTitle" to "你的音乐星轨",
+            "personalOrbitSubtitle" to "那些总会回到你身边的歌曲",
+            "voicesTitle" to "引发共鸣的声音",
+            "voicesSubtitle" to "评论最热烈的歌曲，化作鲜活能量",
+            "totalComments" to "评论总数",
+            "engagement" to "互动度",
+            "audioEngine" to "音频",
+            "audioEngineSubtitle" to "均衡器、交叉淡化、智能响度、速度、音高与无缝播放",
+            "equalizer" to "均衡器",
+            "equalizerSubtitle" to "支持预设、低音增强和虚拟环绕的真实音效",
+            "preset" to "预设",
+            "bassBoost" to "低音增强",
+            "virtualizer" to "虚拟环绕",
+            "crossfade" to "交叉淡化",
+            "djSoft" to "柔和 DJ 模式",
+            "replayGain" to "ReplayGain / 智能响度",
+            "tempo" to "速度",
+            "pitch" to "音高",
+            "gapless" to "无缝播放",
+            "restartRequiredTitle" to "重新启动 LEVYRA？",
+            "restartRequiredBody" to "语言已保存。立即重新启动应用，以完整刷新所有界面。",
+            "restartNow" to "立即重启",
+            "later" to "稍后",
+            "audioQualityAuto" to "自动",
+            "audioQualityHigh" to "高",
+            "audioQualityLow" to "低",
+            "pulseSectionBand" to "你的统计",
+            "pulseTitle" to "聆听脉搏",
+            "pulseSubtitle" to "仅在本设备上计算的私密统计",
+            "followedArtistsTitle" to "已关注歌手",
+            "followedArtistsSubtitle" to "你始终关注的歌手",
+            "listeningHistoryEmptyTitle" to "还没有播放记录",
+            "listeningHistoryEmptyDetail" to "播放一首歌，你的历史记录会自动出现在这里。",
+            "pulseMinutes" to "分钟",
+            "pulseMinuteShort" to "分钟",
+            "pulsePlays" to "播放次数",
+            "pulseStreak" to "连续天数",
+            "pulseCompletion" to "完成度",
+            "pulseTopArtists" to "热门歌手",
+            "pulseWeek" to "最近 7 天",
+            "pulsePeakHour" to "高峰时段",
+            "pulseEmpty" to "播放音乐，点亮你的聆听脉搏",
+            "listeningHistory" to "聆听历史",
+            "listeningHistorySubtitle" to "你实际播放过的内容",
+            "listeningPrompt" to "正在聆听...",
+            "voiceSearchUnsupported" to "暂不支持语音搜索",
+            "musicFiltersComingSoon" to "音乐筛选功能即将推出！",
+            "recentSearches" to "最近搜索",
+            "actions" to "操作",
+            "removeFromFavorites" to "从收藏中移除",
+            "addToFavorites" to "添加到收藏",
+            "playNext" to "下一首播放",
+            "addToQueue" to "添加到播放队列",
+            "addToPlaylist" to "添加到播放列表",
+            "alreadyOffline" to "已离线保存",
+            "download" to "下载",
+            "openArtist" to "打开歌手页面",
+            "openAlbum" to "打开专辑",
+            "deleteDownload" to "删除下载内容",
+            "share" to "分享",
+            "shareSong" to "分享歌曲",
+            "removeFromRecentSearches" to "从最近搜索中移除",
+            "songOptions" to "歌曲选项",
+            "goToPlayer" to "前往播放器",
+            "saveOffline" to "离线保存",
+            "favorite" to "收藏",
+            "downloaded" to "已下载",
+            "remove" to "移除",
+            "removeFromPlaylist" to "从播放列表中移除",
+            "youMightAlsoLike" to "你可能还喜欢",
+            "topResult" to "最佳结果",
+            "currentlyPlaying" to "正在播放",
+            "artistLabel" to "歌手",
+            "playNow" to "立即播放",
+            "biography" to "简介",
+            "newUpdate" to "新版本",
+            "updateDescription" to "更紧凑的界面、更清晰的更新日志，以及适配所有屏幕的可滚动内容。",
+            "whatsNew" to "更新内容",
+            "update" to "更新",
+            "updateRetry" to "重试",
+            "updateDownloading" to "正在下载更新",
+            "updatePreparing" to "正在准备更新",
+            "updateInstalling" to "正在安装",
+            "updateReadyToInstall" to "准备安装",
+            "updateFailed" to "更新失败",
+            "updateAllowInstalls" to "允许安装以继续",
+            "updateLinkUnavailable" to "更新链接不可用",
+            "cannotOpenDownload" to "无法打开下载",
+            "externalLinkUnavailable" to "外部链接不可用",
+            "cannotOpenExternalLink" to "无法打开外部链接",
+            "continuousRadio" to "连续电台",
+            "continuousRadioSubtitle" to "当播放队列即将结束时自动添加风格匹配的歌曲",
+            "artistsLabelPlural" to "歌手",
+            "albumMood" to "专辑氛围",
+            "openLyricsAnalysis" to "打开歌词分析",
+            "closeLyrics" to "关闭歌词",
+            "lyricsDuet" to "对唱",
+            "lyricsCinema" to "影院",
+            "lyricsPage" to "页面",
+            "lyricsRomanization" to "罗马音",
+            "lyricsCompact" to "紧凑",
+            "lyricsSections" to "歌曲段落",
+            "lyricsSectionIntro" to "前奏",
+            "lyricsSectionVerse" to "主歌",
+            "lyricsSectionPreChorus" to "预副歌",
+            "lyricsSectionChorus" to "副歌",
+            "lyricsSectionBridge" to "桥段",
+            "lyricsSectionInstrumental" to "器乐段",
+            "lyricsSectionOutro" to "尾奏",
+            "automaticTranslation" to "自动翻译",
+            "automaticTranslationSubtitle" to "使用 YouTube 字幕中提供的语言",
+            "atmosphere" to "氛围",
+            "themes" to "主题",
+            "chorusDetected" to "已检测到副歌",
+            "goToChorus" to "跳转到副歌",
+            "close" to "关闭",
+            "complete" to "完成",
+            "delete" to "删除",
+            "newPlaylist" to "新建播放列表",
+            "playlistName" to "播放列表名称",
+            "create" to "创建",
+            "cancel" to "取消",
+            "newPlaylistName" to "新播放列表名称",
+            "createNewPlaylist" to "创建新播放列表",
+            "createAndAdd" to "创建并添加",
+            "downloadPlaylist" to "下载播放列表",
+            "playAll" to "全部播放",
+            "playingFrom" to "播放来源",
+            "closePlayer" to "关闭播放器",
+            "options" to "选项",
+            "showLyrics" to "显示歌词",
+            "shuffle" to "随机播放",
+            "previous" to "上一首",
+            "next" to "下一首",
+            "repeat" to "重复播放",
+            "persistentQueue" to "持久播放队列",
+            "continueListening" to "继续聆听",
+            "favoritesPlain" to "收藏",
+            "offline" to "离线",
+            "more" to "更多",
+            "mix" to "混音",
+            "mixForYou" to "为你混音",
+            "genres" to "音乐流派",
+            "smartMusicProfile" to "智能音乐画像",
+            "flow" to "Flow",
+            "pictureInPicture" to "画中画",
+            "discoveryFlow" to "探索流",
+            "shareDiagnostics" to "分享诊断信息",
+            "albumUnavailable" to "专辑不可用",
+            "albumTracksUnavailable" to "专辑曲目不可用",
+            "showLess" to "收起",
+            "showMore" to "显示更多",
+            "playing" to "正在播放",
+            "artistProfileUnavailable" to "歌手资料不可用",
+            "popularTracks" to "热门歌曲",
+            "showAll" to "查看全部",
+            "versionLabel" to "版本",
+            "generalImprovements" to "常规改进与错误修复。",
+            "historyLabel" to "条历史记录",
+            "undoRemoval" to "撤销移除",
+            "lyricsAnalysis" to "歌词分析",
+            "linesLabel" to "行",
+            "wordsLabel" to "词",
+            "localAnalysis" to "本地分析",
+            "open" to "打开",
+            "newRelease" to "新发行",
+            "newReleaseSubtitle" to "一项新发行刚刚进入雷达。",
+            "saved" to "已保存",
+            "save" to "保存",
+            "noOfflineDownloads" to "没有离线保存的下载内容。",
+            "createFirstPlaylist" to "创建你的第一个播放列表",
+            "createFirstPlaylistSubtitle" to "收集那些想要随时再次找到的歌曲。",
+            "downloadTrackHint" to "点击歌曲的下载按钮，将其保存到 Music/Levyra。",
+            "savedTracks" to "已保存歌曲",
+            "favoritesEmpty" to "还没有收藏",
+            "playlistEmpty" to "此播放列表为空。请通过歌曲的三点菜单添加歌曲。",
+            "showPersonalListening" to "在首页顶部显示你的个人聆听动态",
+            "showRecentReleases" to "显示近期发行和已关注歌手的新歌雷达",
+            "showRecommendedAlbums" to "在首页显示推荐专辑",
+            "showDiscoveredArtists" to "显示从你的音乐分区中发现的歌手",
+            "showChartsCountry" to "显示排行榜和国家或地区选择器",
+            "partialDownloadResume" to "保留部分下载数据，并通过 HTTP Range 请求继续下载",
+            "lyricsAnalysisSection" to "歌词分析",
+            "lyricsAnalysisCompact" to "低调的本地分析",
+            "lyricsAnalysisCompactSubtitle" to "未打开时保持紧凑，只显示有用信息，并可直接跳转到副歌。",
+            "createDataBackup" to "创建数据备份",
+            "createDataBackupSubtitle" to "将收藏、播放列表、历史记录、播放队列和设置保存到经 SHA-256 校验的压缩包中。音频文件仍保留在 Music/Levyra。",
+            "updateAvailable" to "有可用更新",
+            "updates" to "更新",
+            "checkingLatestVersion" to "正在检查最新版本…",
+            "latestVersionReady" to "可供下载",
+            "latestInstalled" to "已安装最新版本",
+            "checkNewVersions" to "检查新发布的版本",
+            "releasePageReady" to "版本发布页面已可打开",
+            "installedVersion" to "已安装版本",
+            "openPlayer" to "打开播放器",
+            "searchSongsArtists" to "搜索歌曲和歌手...",
+            "songsPlain" to "歌曲",
+            "shareVia" to "分享方式",
+            "emptySearchPrompt" to "输入歌曲名称并搜索",
+            "cancelDownload" to "取消下载",
+            "readAll" to "阅读更多",
+            "singlesAndEps" to "单曲与 EP",
+            "tapHeartToAdd" to "点击歌曲旁的爱心，将它添加到这里。",
+            "all" to "全部",
+            "automaticResume" to "自动续传",
+            "simultaneousDownloads" to "同时下载",
+            "simultaneousDownloadsSubtitle" to "内存、网络与温度的全局限制",
+            "backupRestoreSection" to "备份与恢复",
+            "restoreBackup" to "恢复备份",
+            "restoreBackupSubtitle" to "替换本地数据前验证数据结构和校验和",
+            "playbackResilienceSection" to "播放可靠性",
+            "exportSafeDiagnostics" to "导出安全诊断",
+            "generateResolverTrace" to "生成解析器跟踪记录",
+            "safeDiagnosticsSubtitle" to "已移除网址和令牌的客户端状态与近期尝试记录",
+            "check" to "检查",
+            "checking" to "正在检查",
+            "dragToReorder" to "拖动以重新排序",
+            "homeInterfaceSection" to "首页界面",
+            "compactHome" to "紧凑首页",
+            "compactHomeSubtitle" to "减少垂直间距，让滚动更轻快",
+            "yourOrbitSetting" to "你的音乐星轨",
+            "voicesSetting" to "引发共鸣的声音",
+            "voicesSettingSubtitle" to "根据你的聆听记录保留个性化精选",
+            "newReleasesSetting" to "新发行",
+            "albumsForYouSetting" to "为你推荐的专辑",
+            "trendingArtists" to "热门歌手",
+            "top50Charts" to "Top 50 排行榜",
+            "mobilePlayerSection" to "移动播放器",
+            "advancedGestures" to "高级手势",
+            "advancedGesturesSubtitle" to "双击、长按、亮度与音量",
+            "pureBlack" to "纯黑",
+            "pureBlackSubtitle" to "为 OLED 屏幕使用纯黑背景",
+            "hapticFeedback" to "触感反馈",
+            "hapticFeedbackSubtitle" to "关键操作时的轻微震动",
+            "doubleTapSeek" to "双击快进或快退",
+            "doubleTapSeekSubtitle" to "左右两侧的跳转时长",
+            "longPress" to "长按",
+            "longPressSubtitle" to "按住时临时调整播放速度",
+            "downloadEngineSection" to "下载引擎 3.0",
+            "wifiOnly" to "仅限 Wi‑Fi",
+            "wifiOnlySubtitle" to "WorkManager 仅在非计费网络上启动下载",
+            "chargingOnly" to "仅在充电时",
+            "chargingOnlySubtitle" to "减少长时间下载时的电量消耗和发热",
+            "resumeDownload" to "继续下载",
+            "pauseDownload" to "暂停下载",
+            "signedApkReady" to "已签名 APK，可直接安装",
+            "downloadsInProgress" to "下载进行中",
+            "downloadInProgress" to "正在下载",
+            "newAlbums" to "新专辑",
+            "newSingles" to "新单曲",
+            "newAlbum" to "新专辑",
+            "downloadsFolder" to "下载文件夹",
+            "offlineDownloadsPlain" to "离线下载",
+            "personalPlaylists" to "个人播放列表",
+            "searchingYouTubeMusic" to "正在搜索 YouTube Music…",
+            "searchingLyrics" to "正在搜索歌词…",
+            "pause" to "暂停",
+            "newSingle" to "新单曲",
+            "albumsPlain" to "专辑",
+            "albumPlain" to "专辑",
+            "singlePlain" to "单曲",
+            "playlistsPlain" to "播放列表",
+            "profileActive" to "个性化已启用",
+            "profileLearning" to "正在根据你的聆听习惯学习",
+            "newBadge" to "新",
+            "brightness" to "亮度",
+            "timer" to "定时器",
+            "normalizationShort" to "标准化",
+            "coverAndTags" to "封面和标签",
+            "madeWithBy" to "由 ❤️ 倾心打造",
+            "activeIndicator" to "已启用",
+            "batteryUnrestricted" to "不受限制的后台播放",
+            "batteryUnrestrictedSubtitle" to "将 Levyra 排除在电池优化之外，熄屏时音乐继续播放",
+            "batteryUnrestrictedActive" to "已启用 — 系统不会停止播放",
+            "downloadQualityPreset" to "质量预设",
+            "downloadQualityPresetSubtitle" to "平衡质量、速度与流量消耗",
+            "downloadPresetAutomatic" to "自动",
+            "downloadPresetHighQuality" to "高质量",
+            "downloadPresetDataSaver" to "省流量",
+            "downloadFolderOrganization" to "文件夹组织",
+            "downloadFolderOrganizationSubtitle" to "按艺术家和专辑保存，不重复文件",
+            "downloadFolderArtist" to "艺术家",
+            "downloadFolderArtistAlbum" to "艺术家 / 专辑",
+            "downloadSpeedLimit" to "速度限制",
+            "downloadSpeedLimitSubtitle" to "下载时限制网络使用",
+            "downloadSpeedUnlimited" to "不限制",
+            "downloadEmbedMetadata" to "嵌入元数据",
+            "downloadEmbedMetadataSubtitle" to "将标题、艺术家和专辑写入文件",
+            "downloadEmbedArtwork" to "嵌入封面",
+            "downloadEmbedArtworkSubtitle" to "将官方封面嵌入歌曲",
+            "downloadVerifyFile" to "文件验证",
+            "downloadVerifyFileSubtitle" to "完成前验证签名、大小和可读性",
+            "downloadSkipDuplicates" to "跳过重复",
+            "downloadSkipDuplicatesSubtitle" to "重用已有的有效下载",
+            "trailTitle" to "你的最近轨迹",
+            "trailPlays" to "次播放",
+            "trailUnique" to "首不重复",
+            "trailLastPlayed" to "最后播放",
+            "statPlays" to "播放",
+            "statArtists" to "艺术家",
+            "statTracks" to "歌曲"
+        )
+    }
+}
+
+val LocalLevyraStrings = compositionLocalOf { LevyraStrings.forCode("en") }

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Мініпрогравач, швидкий доступ до обраного, щоденний мікс, офлайн і тексти пісень</string>
+    <string name="widget_idle_subtitle">Торкніться, щоб слухати</string>
+    <string name="widget_toggle">Відтворити/Пауза</string>
+    <string name="widget_next">Наступний</string>
+    <string name="widget_previous">Попередній</string>
+    <string name="widget_favorites">Обране</string>
+    <string name="widget_flow">Щоденний мікс</string>
+    <string name="widget_offline">Офлайн-мікс</string>
+    <string name="widget_lyrics">Тексти пісень</string>
+    <string name="radar_channel_name">Радар релізів</string>
+    <string name="radar_channel_description">Нові релізи виконавців, за якими ви стежите</string>
+    <string name="radar_new_release_title">Новий реліз від %1$s</string>
+    <string name="automatic_backups">Автоматичні резервні копії</string>
+    <string name="car_home">Головна</string>
+    <string name="car_downloads">Завантаження</string>
+    <string name="car_favorites">Обране</string>
+    <string name="car_playlists">Добірки</string>
+    <string name="car_no_content">Немає вмісту</string>
+    <string name="car_content_unavailable">Вміст недоступний</string>
+    <string name="car_search_tracks">Пошук треків</string>
+    <string name="car_no_results">Немає результатів</string>
+    <string name="car_connecting_player">З’єднання з програвачем</string>
+    <string name="car_now_playing">Зараз грає</string>
+    <string name="car_queue">Черга</string>
+    <string name="notification_favorite_add">Додати до обраного</string>
+    <string name="notification_favorite_remove">Видалити з обраного</string>
+    <string name="notification_shuffle_enable">Увімкнути перемішування</string>
+    <string name="notification_shuffle_disable">Вимкнути перемішування</string>
+    <string name="notification_repeat_off">Повтор вимкнено</string>
+    <string name="notification_repeat_all">Повторювати все</string>
+    <string name="notification_repeat_one">Повторювати трек</string>
+    <string name="tile_recognize_music">Розпізнати музику</string>
+    <string name="tile_playback">Відтворення</string>
+    <string name="shortcut_search">Пошук</string>
+    <string name="shortcut_library">Бібліотека</string>
+    <string name="shortcut_recognition">Розпізнати музику</string>
+    <string name="shortcut_resume">Продовжити відтворення</string>
+</resources>

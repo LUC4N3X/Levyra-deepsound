@@ -1,0 +1,235 @@
+package com.luc4n3x.levyra.data
+
+import com.luc4n3x.levyra.domain.AlbumHit
+import com.luc4n3x.levyra.domain.AlbumRecommendationSeed
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class AlbumRecommendationPolicyTest {
+    @Test
+    fun localizedAlbumLabelsAreAccepted() {
+        val labels = listOf(
+            "Album",
+            "ÁLBUM",
+            "Άλμπουμ",
+            "Albüm",
+            "Альбом",
+            "ألبوم",
+            "专辑",
+            "專輯",
+            "アルバム",
+            "앨범",
+            "एल्बम",
+            "อัลบั้ม",
+            "אלבום"
+        )
+
+        labels.forEach { label -> assertTrue(label, levyraIsAlbumLabel(label)) }
+    }
+
+    @Test
+    fun seedDeduplicationUsesBrowseIdAsTheWholeIdentityWhenPresent() {
+        val first = AlbumRecommendationSeed(
+            query = "PER NOI album",
+            artist = "Geolier, Sfera Ebbasta",
+            album = "PER NOI",
+            browseId = "MPRE_CANONICAL",
+            moodTags = setOf("rap")
+        )
+        val second = AlbumRecommendationSeed(
+            query = "TUTTO È POSSIBILE Geolier album",
+            artist = "Geolier",
+            album = "TUTTO È POSSIBILE",
+            browseId = "mpre_canonical",
+            moodTags = setOf("hip hop")
+        )
+
+        assertEquals(
+            albumRecommendationSeedDeduplicationKey(first),
+            albumRecommendationSeedDeduplicationKey(second)
+        )
+    }
+
+    @Test
+    fun seedDeduplicationFallsBackToMetadataWhenBrowseIdIsMissing() {
+        val first = AlbumRecommendationSeed(query = "Bresh album", artist = "Bresh")
+        val second = AlbumRecommendationSeed(query = "ANNA album", artist = "ANNA")
+
+        assertTrue(
+            albumRecommendationSeedDeduplicationKey(first) !=
+                albumRecommendationSeedDeduplicationKey(second)
+        )
+    }
+
+    @Test
+    fun ambiguousCanonicalBrowseSeedNeverFallsBackToTextSearch() {
+        val ambiguous = AlbumRecommendationSeed(
+            query = "Santana Money Gang album",
+            album = "Santana Money Gang",
+            browseId = "MPRE_CANONICAL"
+        )
+        val verifiedSingleArtist = ambiguous.copy(artist = "Shiva")
+        val searchOnly = ambiguous.copy(browseId = "")
+
+        assertTrue(!shouldSearchAlbumSeedFallback(ambiguous))
+        assertTrue(shouldSearchAlbumSeedFallback(verifiedSingleArtist))
+        assertTrue(shouldSearchAlbumSeedFallback(searchOnly))
+    }
+
+    @Test
+    fun artistSeedRejectsDifferentArtist() {
+        val seed = AlbumRecommendationSeed(
+            query = "Bresh album",
+            artist = "Bresh",
+            weight = 400
+        )
+
+        assertEquals(
+            LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE,
+            levyraAlbumRecommendationMatchScore(album("Vera Baddie", "ANNA"), seed)
+        )
+    }
+
+    @Test
+    fun canonicalBrowseIdOverridesStaleTrackLevelAlbumText() {
+        val seed = AlbumRecommendationSeed(
+            query = "PER NOI album",
+            artist = "Geolier, Sfera Ebbasta",
+            album = "PER NOI",
+            browseId = "MPRE_CANONICAL",
+            weight = 500
+        )
+        val canonical = album("TUTTO È POSSIBILE", "Geolier").copy(
+            browseId = "MPRE_CANONICAL"
+        )
+
+        assertEquals(2_400, levyraAlbumRecommendationMatchScore(canonical, seed))
+    }
+
+    @Test
+    fun exactArtistAlbumIsAccepted() {
+        val seed = AlbumRecommendationSeed(
+            query = "Bresh album",
+            artist = "Bresh",
+            weight = 400
+        )
+
+        assertTrue(levyraAlbumRecommendationMatchScore(album("Oro Blu", "Bresh"), seed) > 0)
+    }
+
+    @Test
+    fun commonAlbumTitleCannotOverrideArtistMismatch() {
+        val seed = AlbumRecommendationSeed(
+            query = "Greatest Hits Bresh album",
+            artist = "Bresh",
+            album = "Greatest Hits",
+            weight = 500
+        )
+
+        assertEquals(
+            LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE,
+            levyraAlbumRecommendationMatchScore(album("Greatest Hits", "Other Artist"), seed)
+        )
+    }
+
+    @Test
+    fun singleWordArtistDoesNotMatchLongerUnrelatedName() {
+        val seed = AlbumRecommendationSeed(
+            query = "ANNA album",
+            artist = "ANNA",
+            weight = 400
+        )
+
+        assertEquals(
+            LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE,
+            levyraAlbumRecommendationMatchScore(album("La ragazza dei tuoi sogni", "Anna Tatangelo"), seed)
+        )
+    }
+
+    @Test
+    fun albumIdentityCollapsesEquivalentRecommendations() {
+        val first = album("AMATORE", "Samurai Jay")
+        val duplicate = album("  Amatore  ", "SAMURAI JAY")
+
+        assertEquals(albumRecommendationIdentityKey(first), albumRecommendationIdentityKey(duplicate))
+    }
+
+    @Test
+    fun albumDeduplicationCollapsesSameReleaseWithExpandedArtistCredits() {
+        val first = album("AMATORE", "Samurai Jay").copy(
+            thumbnailUrl = "https://lh3.googleusercontent.com/cover=w544-h544"
+        )
+        val duplicate = album("AMATORE", "Samurai Jay, Vito Salamanca").copy(
+            thumbnailUrl = "https://lh3.googleusercontent.com/cover=w1200-h1200"
+        )
+
+        assertEquals(
+            albumRecommendationDeduplicationKey(first),
+            albumRecommendationDeduplicationKey(duplicate)
+        )
+    }
+
+    @Test
+    fun albumDeduplicationIgnoresDifferentUpcAndBrowseIdsForSameVisibleRelease() {
+        val first = album("AMATORE", "Samurai Jay").copy(
+            upc = "0602475840112",
+            browseId = "MPREb_first"
+        )
+        val duplicate = album("AMATORE", "Samurai Jay").copy(
+            upc = "0602475840999",
+            browseId = "MPREb_second"
+        )
+
+        assertEquals(
+            albumRecommendationDeduplicationKey(first),
+            albumRecommendationDeduplicationKey(duplicate)
+        )
+    }
+
+    @Test
+    fun albumDeduplicationCollapsesEditionSuffixesForTheSameArtist() {
+        val standard = album("AMATORE", "Samurai Jay")
+        val deluxe = album("AMATORE Deluxe Edition", "Samurai Jay")
+
+        assertEquals(
+            albumRecommendationDeduplicationKey(standard),
+            albumRecommendationDeduplicationKey(deluxe)
+        )
+    }
+
+    private fun album(title: String, artist: String): AlbumHit = AlbumHit(
+        title = title,
+        artist = artist,
+        year = "",
+        thumbnailUrl = "https://example.test/cover.jpg",
+        query = "$title $artist",
+        browseId = "MPREb_test"
+    )
+
+    @Test
+    fun albumRecommendationTextKeyNormalizesAccentsCreditsAndPunctuation() {
+        assertEquals("cafe del mar", albumRecommendationTextKey("Café Del Mar"))
+        assertEquals("random access memories", albumRecommendationTextKey("Random Access Memories (Official Audio)"))
+        assertEquals("no time", albumRecommendationTextKey("No Time feat. Someone Else"))
+        assertEquals("a b", albumRecommendationTextKey("  A  &  B  "))
+    }
+
+    @Test
+    fun albumRecommendationTextKeyIsStableAcrossRepeatedAndEvictingCalls() {
+        val probe = "Discovery (Remastered) feat. Guest"
+        val expected = albumRecommendationTextKey(probe)
+        assertEquals(expected, albumRecommendationTextKey(probe))
+
+        repeat(2_048) { index -> albumRecommendationTextKey("Filler Release $index") }
+        assertEquals(expected, albumRecommendationTextKey(probe))
+    }
+
+    @Test
+    fun albumRecommendationTextKeyHandlesValuesBeyondTheMemoizationLimit() {
+        val long = "Café ".repeat(120)
+        val normalized = albumRecommendationTextKey(long)
+        assertTrue(normalized.length > 256)
+        assertEquals(normalized, albumRecommendationTextKey(long))
+    }
+}

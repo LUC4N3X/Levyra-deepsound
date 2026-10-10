@@ -1,0 +1,469 @@
+name: Editorial Catalog
+
+on:
+  pull_request:
+    paths:
+      - "tools/levyra-editorial/**"
+      - "catalog/community-canvas-sources.json"
+      - "scripts/sync_community_canvas.py"
+      - "app/src/main/java/com/luc4n3x/levyra/feature/motion/CommunityCanvasProvider.kt"
+      - "app/src/test/java/com/luc4n3x/levyra/feature/motion/MotionArtworkDestinationPolicyTest.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/data/EditorialChartsRepository.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/data/ChartsRepository.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/data/ChartOfficialArtworkResolver.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicChartsRepository.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt"
+      - "app/src/test/java/com/luc4n3x/levyra/data/Editorial*.kt"
+      - ".github/workflows/editorial-catalog.yml"
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: editorial-catalog-${{ github.event_name == 'pull_request' && github.ref || 'publisher' }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify Collector
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: tools/levyra-editorial/pyproject.toml
+      - name: Install Collector
+        run: python -m pip install --disable-pip-version-check -e "tools/levyra-editorial[dev]"
+      - name: Static Checks
+        run: |
+          set -euo pipefail
+          python -m compileall -q tools/levyra-editorial/levyra_editorial
+          ruff check tools/levyra-editorial
+      - name: Unit Tests
+        run: pytest tools/levyra-editorial/tests
+
+  integration:
+    name: Test Live Editorial Collection
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref_type == 'branch' &&
+      (github.ref == 'refs/heads/main' ||
+      (github.actor == github.repository_owner && github.triggering_actor == github.repository_owner))
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      LEVYRA_EDITORIAL_SP_DC: ${{ secrets.LEVYRA_EDITORIAL_SP_DC }}
+      LEVYRA_EDITORIAL_YTM_COOKIE: ${{ secrets.LEVYRA_EDITORIAL_YTM_COOKIE }}
+    steps:
+      - name: Checkout Selected Trusted Ref
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: tools/levyra-editorial/pyproject.toml
+      - name: Install Collector
+        run: python -m pip install --disable-pip-version-check -e "tools/levyra-editorial"
+      - name: Check Editorial Secrets
+        run: |
+          set -euo pipefail
+          test -n "${LEVYRA_EDITORIAL_SP_DC:-}" || { echo "::error::Missing LEVYRA_EDITORIAL_SP_DC"; exit 1; }
+          if [ -z "${LEVYRA_EDITORIAL_YTM_COOKIE:-}" ]; then
+            echo "::warning::LEVYRA_EDITORIAL_YTM_COOKIE is not configured; testing Spotify-only fallback"
+          fi
+      - name: Generate and Validate Live Catalog
+        run: |
+          set -euo pipefail
+          timeout --foreground 360s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json --canvas-output build/editorial/spotify-canvas.json --require-canvas --paxsenix-canvas-only
+          levyra-editorial --validate build/editorial/catalog.json
+          test "$(jq '.collections | length' build/editorial/catalog.json)" -ge 26
+          if jq -e 'any(.. | objects; has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' build/editorial/catalog.json >/dev/null; then
+            echo "::error::Catalog contains private source identifiers"
+            exit 1
+          fi
+          if jq -e 'any(.. | objects | select(has("isrc")); ((.isrc | type) != "string" or (.isrc | test("^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$") | not)))' build/editorial/catalog.json >/dev/null; then
+            echo "::error::Catalog contains an invalid ISRC"
+            exit 1
+          fi
+          if grep -qiE '"(cookie|cookies|authorization|access_token|sp_dc|sapisid)"[[:space:]]*:' build/editorial/catalog.json; then
+            echo "::error::Catalog contains credential-related material"
+            exit 1
+          fi
+          # Cover artwork is published on purpose, but only from the source image CDN.
+          if jq -e 'any(.. | objects | select(has("artworkUrl")); (.artworkUrl | test("^https://([a-z0-9-]+\\.)*scdn\\.co/|^https://image-cdn-ak\\.spotifycdn\\.com/") | not))' build/editorial/catalog.json >/dev/null; then
+            echo "::error::Catalog contains artwork outside the allowed image CDN"
+            exit 1
+          fi
+          if grep -qE 'open\.spotify\.com|spotify:(track|album|playlist):' build/editorial/catalog.json; then
+            echo "::error::Catalog contains source page URLs or URIs"
+            exit 1
+          fi
+          if [ -f build/editorial/spotify-canvas.json ]; then
+            levyra-editorial --validate-canvas build/editorial/spotify-canvas.json
+            test "$(jq '.items | length' build/editorial/spotify-canvas.json)" -ge 1
+            if ! jq -e 'all(.items[]; ((.url | type) == "string") and (.url | test("^https://canvaz\\.scdn\\.co/[^?#]+\\.mp4$"; "i")))' build/editorial/spotify-canvas.json >/dev/null; then
+              echo "::error::Spotify Canvas artifact contains a non-allowlisted media URL"
+              exit 1
+            fi
+            if grep -qiE '"(cookie|cookies|authorization|access_token|sp_dc|sapisid|client-token)"[[:space:]]*:|sp_dc=|authorization:[[:space:]]*bearer|bearer[[:space:]]+[a-z0-9._~-]{16,}' build/editorial/catalog.json build/editorial/spotify-canvas.json; then
+              echo "::error::Editorial artifacts contain credential-related material"
+              exit 1
+            fi
+          else
+            echo "::warning::Spotify Canvas was unavailable; validating static provider fallback"
+          fi
+          sha256sum build/editorial/catalog.json > build/editorial/catalog.sha256
+      - name: Upload Pull Request Diagnostics
+        uses: actions/upload-artifact@v7
+        with:
+          name: editorial-pr-${{ github.run_number }}
+          path: |
+            build/editorial/catalog.json
+            build/editorial/catalog.sha256
+            build/editorial/spotify-canvas.json
+          if-no-files-found: error
+          retention-days: 7
+
+
+  preview-apk:
+    name: Build Trusted Full Preview APK
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref_type == 'branch' &&
+      github.actor == github.repository_owner &&
+      github.triggering_actor == github.repository_owner
+    needs:
+      - verify
+      - integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: ${{ secrets.YOUTUBE_INNERTUBE_API_KEY }}
+      LEVYRA_CANVAS_RESOLVER_URL: ${{ secrets.LEVYRA_CANVAS_RESOLVER_URL }}
+      LEVYRA_CANVAS_CLIENT_KEY: ${{ secrets.LEVYRA_CANVAS_CLIENT_KEY }}
+      LEVYRA_KEYSTORE_FILE: app/levyra-release.jks
+      LEVYRA_KEYSTORE_PASSWORD: ${{ secrets.LEVYRA_KEYSTORE_PASSWORD }}
+      LEVYRA_KEY_ALIAS: ${{ secrets.LEVYRA_KEY_ALIAS }}
+      LEVYRA_KEY_PASSWORD: ${{ secrets.LEVYRA_KEY_PASSWORD }}
+      ORG_GRADLE_PROJECT_levyraNativeAudio: "true"
+    steps:
+      - name: Checkout Selected Trusted Ref
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
+      - name: Download Sanitized Editorial Catalog
+        uses: actions/download-artifact@v7
+        with:
+          name: editorial-pr-${{ github.run_number }}
+          path: build/trusted-editorial
+
+      - name: Install Trusted Editorial Bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          CATALOG_PATH="$(find build/trusted-editorial -type f -name catalog.json -print -quit)"
+          test -n "${CATALOG_PATH}"
+          test -s "${CATALOG_PATH}"
+          test "$(jq -r '.schemaVersion' "${CATALOG_PATH}")" = "1"
+          if ! jq -e 'any(.collections[]; .kind == "mood" or .kind == "genre")' "${CATALOG_PATH}" >/dev/null; then
+            echo "::error::Trusted preview catalog has no Spotify-first Mood or Genre collections"
+            exit 1
+          fi
+          if jq -e 'any(.. | objects; has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' "${CATALOG_PATH}" >/dev/null; then
+            echo "::error::Trusted preview catalog contains private source identifiers"
+            exit 1
+          fi
+          if grep -qiE '"(cookie|cookies|authorization|access_token|sp_dc|sapisid|client-token)"[[:space:]]*:|sp_dc=|authorization:[[:space:]]*bearer|bearer[[:space:]]+[a-z0-9._~-]{16,}' "${CATALOG_PATH}"; then
+            echo "::error::Trusted preview catalog contains credential-related material"
+            exit 1
+          fi
+          mkdir -p app/src/main/assets/editorial
+          cp "${CATALOG_PATH}" app/src/main/assets/editorial/spotify-bootstrap.json
+          echo "EDITORIAL_BOOTSTRAP_SHA256=$(sha256sum "${CATALOG_PATH}" | awk '{print $1}')" >> "${GITHUB_ENV}"
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+          cache-read-only: true
+
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0" \
+            "ndk;28.2.13676358" \
+            "cmake;3.22.1"
+
+      - name: Cache Native Audio Dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .gradle/levyra-native-deps
+          key: levyra-native-deps-${{ runner.os }}-${{ hashFiles('levyra-native-audio/native-deps/prepare_native_deps.sh', 'levyra-native-audio/build.gradle.kts') }}
+
+      - name: Resolve Preview Version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(grep -E '^levyraVersionName=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs)"
+          VERSION_CODE="$(grep -E '^levyraVersionCode=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs)"
+          test -n "${VERSION}"
+          test -n "${VERSION_CODE}"
+          {
+            echo "VERSION=${VERSION}"
+            echo "VERSION_CODE=${VERSION_CODE}"
+            echo "SOURCE_REF=${GITHUB_REF_NAME}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Prepare Release Signing
+        shell: bash
+        env:
+          LEVYRA_KEYSTORE_BASE64: ${{ secrets.LEVYRA_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "${YOUTUBE_INNERTUBE_API_KEY}"
+          test -n "${LEVYRA_CANVAS_RESOLVER_URL}"
+          test -n "${LEVYRA_CANVAS_CLIENT_KEY}"
+          test -n "${LEVYRA_KEYSTORE_BASE64}"
+          test -n "${LEVYRA_KEYSTORE_PASSWORD}"
+          test -n "${LEVYRA_KEY_ALIAS}"
+          test -n "${LEVYRA_KEY_PASSWORD}"
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          printf '%s' "${LEVYRA_KEYSTORE_BASE64}" | tr -d '\r\n' | base64 --decode > "${LEVYRA_KEYSTORE_FILE}"
+          keytool -list \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
+            -alias "${LEVYRA_KEY_ALIAS}" \
+            >/dev/null
+
+      - name: Build Full Preview APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew --no-configuration-cache assemblePrDiagnostics \
+            -PlevyraVersionName="${VERSION}" \
+            -PlevyraVersionCode="${VERSION_CODE}"
+
+      - name: Verify Full Preview APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          APK="app/build/outputs/apk/prDiagnostics/app-prDiagnostics.apk"
+          test -f "${APK}"
+          "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --verbose --print-certs "${APK}" > artifacts/apk-signing-certs.txt
+          python3 scripts/verify_diagnostics_isolation.py --apk "${APK}" --expect present
+
+          unzip -p "${APK}" assets/editorial/spotify-bootstrap.json > /tmp/embedded-editorial.json
+          test "$(jq -r '.schemaVersion' /tmp/embedded-editorial.json)" = "1"
+          jq -e 'any(.collections[]; .kind == "mood" or .kind == "genre")' /tmp/embedded-editorial.json >/dev/null
+          if grep -qiE '"(cookie|cookies|authorization|access_token|sp_dc|sapisid|client-token)"[[:space:]]*:|sp_dc=|authorization:[[:space:]]*bearer|bearer[[:space:]]+[a-z0-9._~-]{16,}' /tmp/embedded-editorial.json; then
+            echo "::error::Embedded editorial bootstrap contains credential-related material"
+            exit 1
+          fi
+
+          TARGET="artifacts/LEVYRA-${VERSION}-TRUSTED-PREVIEW-${GITHUB_RUN_NUMBER}.apk"
+          cp "${APK}" "${TARGET}"
+          sha256sum "${TARGET}" > "${TARGET}.sha256"
+          {
+            echo "LEVYRA trusted full preview APK"
+            echo "version=${VERSION}"
+            echo "versionCode=${VERSION_CODE}"
+            echo "branch=${SOURCE_REF}"
+            echo "commit=${GITHUB_SHA}"
+            echo "spotifyEditorial=embedded-sanitized"
+            echo "spotifySessionSecretInApk=false"
+            echo "editorialBootstrapSha256=${EDITORIAL_BOOTSTRAP_SHA256}"
+            echo "builtAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > artifacts/build-info.txt
+
+      - name: Upload Trusted Full Preview APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: levyra-trusted-preview-${{ github.ref_name }}-${{ github.run_number }}
+          path: artifacts
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Cleanup Signing Material
+        if: always()
+        shell: bash
+        run: rm -f "${LEVYRA_KEYSTORE_FILE}"
+
+
+  collect:
+    name: Collect and Publish
+    if: >-
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: write
+    env:
+      LEVYRA_EDITORIAL_SP_DC: ${{ secrets.LEVYRA_EDITORIAL_SP_DC }}
+      LEVYRA_EDITORIAL_YTM_COOKIE: ${{ secrets.LEVYRA_EDITORIAL_YTM_COOKIE }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: tools/levyra-editorial/pyproject.toml
+      - name: Install Collector
+        run: python -m pip install --disable-pip-version-check -e "tools/levyra-editorial"
+      - name: Check Editorial Availability
+        id: availability
+        run: |
+          set -euo pipefail
+          if [ -z "${LEVYRA_EDITORIAL_SP_DC:-}" ]; then
+            echo "::warning::Spotify editorial session is unavailable; preserving the last valid catalogs"
+            echo "available=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          echo "available=true" >> "${GITHUB_OUTPUT}"
+          if [ -z "${LEVYRA_EDITORIAL_YTM_COOKIE:-}" ]; then
+            echo "::warning::LEVYRA_EDITORIAL_YTM_COOKIE is not configured; publishing Spotify-only metadata"
+          fi
+      - name: Generate Catalog
+        id: generate
+        if: steps.availability.outputs.available == 'true'
+        run: |
+          set -euo pipefail
+          if ! timeout --foreground 360s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json --canvas-output build/editorial/spotify-canvas.json; then
+            echo "::warning::Editorial refresh failed; preserving the last valid catalogs"
+            echo "ready=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          levyra-editorial --validate build/editorial/catalog.json
+          test "$(jq '.collections | length' build/editorial/catalog.json)" -ge 26
+          if jq -e 'any(.. | objects; has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' build/editorial/catalog.json >/dev/null; then
+            echo "::error::Catalog contains private source identifiers"
+            exit 1
+          fi
+          if jq -e 'any(.. | objects | select(has("isrc")); ((.isrc | type) != "string" or (.isrc | test("^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$") | not)))' build/editorial/catalog.json >/dev/null; then
+            echo "::error::Catalog contains an invalid ISRC"
+            exit 1
+          fi
+          if grep -qiE '"(cookie|cookies|authorization|access_token|sp_dc|sapisid)"[[:space:]]*:' build/editorial/catalog.json; then
+            echo "::error::Catalog contains credential-related material"
+            exit 1
+          fi
+          # Cover artwork is published on purpose, but only from the source image CDN.
+          if jq -e 'any(.. | objects | select(has("artworkUrl")); (.artworkUrl | test("^https://([a-z0-9-]+\\.)*scdn\\.co/|^https://image-cdn-ak\\.spotifycdn\\.com/") | not))' build/editorial/catalog.json >/dev/null; then
+            echo "::error::Catalog contains artwork outside the allowed image CDN"
+            exit 1
+          fi
+          if grep -qE 'open\.spotify\.com|spotify:(track|album|playlist):' build/editorial/catalog.json; then
+            echo "::error::Catalog contains source page URLs or URIs"
+            exit 1
+          fi
+          if [ -f build/editorial/spotify-canvas.json ]; then
+            levyra-editorial --validate-canvas build/editorial/spotify-canvas.json
+          else
+            echo "::warning::Spotify Canvas refresh unavailable; preserving the last valid catalog"
+          fi
+          sha256sum build/editorial/catalog.json > build/editorial/catalog.sha256
+          echo "ready=true" >> "${GITHUB_OUTPUT}"
+      - name: Upload Diagnostics
+        if: steps.generate.outputs.ready == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: editorial-catalog-${{ github.run_number }}
+          path: |
+            build/editorial/catalog.json
+            build/editorial/catalog.sha256
+            build/editorial/spotify-canvas.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Publish Last Valid Catalog
+        if: steps.generate.outputs.ready == 'true'
+        run: |
+          set -euo pipefail
+          branch="editorial-data"
+          source_ref="$(git rev-parse HEAD)"
+          cp build/editorial/catalog.json /tmp/editorial.json
+          if [ -f build/editorial/spotify-canvas.json ]; then
+            cp build/editorial/spotify-canvas.json /tmp/spotify-canvas.json
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git ls-remote --exit-code origin "refs/heads/${branch}" >/dev/null 2>&1; then
+            git fetch origin "refs/heads/${branch}:refs/remotes/origin/${branch}"
+            git switch --force-create "${branch}" "origin/${branch}"
+            changed=0
+            if [ -f catalog/editorial.json ]; then
+              jq -S 'del(.generatedAt)' catalog/editorial.json > /tmp/current-editorial-content.json
+              jq -S 'del(.generatedAt)' /tmp/editorial.json > /tmp/new-editorial-content.json
+              cmp -s /tmp/current-editorial-content.json /tmp/new-editorial-content.json || changed=1
+            else
+              changed=1
+            fi
+            if [ -f /tmp/spotify-canvas.json ]; then
+              if [ -f catalog/spotify-canvas.json ]; then
+                jq -S 'del(.generatedAt)' catalog/spotify-canvas.json > /tmp/current-canvas-content.json
+                jq -S 'del(.generatedAt)' /tmp/spotify-canvas.json > /tmp/new-canvas-content.json
+                cmp -s /tmp/current-canvas-content.json /tmp/new-canvas-content.json || changed=1
+              else
+                changed=1
+              fi
+            fi
+            if [ "${changed}" -eq 0 ]; then
+              echo "Editorial and Spotify Canvas content are unchanged; publication skipped."
+              git switch --detach "${source_ref}"
+              exit 0
+            fi
+          else
+            git switch --orphan "${branch}"
+            git rm -rf --ignore-unmatch .
+          fi
+
+          mkdir -p catalog
+          cp /tmp/editorial.json catalog/editorial.json
+          if [ -f /tmp/spotify-canvas.json ]; then
+            cp /tmp/spotify-canvas.json catalog/spotify-canvas.json
+          fi
+          git add catalog/editorial.json
+          if [ -f catalog/spotify-canvas.json ]; then
+            git add catalog/spotify-canvas.json
+          fi
+          git commit -m "chore(editorial): refresh catalog from run ${GITHUB_RUN_NUMBER}"
+          git push origin "HEAD:refs/heads/${branch}"
+          git switch --detach "${source_ref}"
+          echo "Published editorial data to ${branch}/catalog/"

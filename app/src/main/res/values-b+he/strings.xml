@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">נגן קטן, מועדפים מהירים, Flow יומי, אופליין ומילות שירים</string>
+    <string name="widget_idle_subtitle">הקישו כדי להאזין</string>
+    <string name="widget_toggle">הפעלה/השהיה</string>
+    <string name="widget_next">הבא</string>
+    <string name="widget_previous">הקודם</string>
+    <string name="widget_favorites">מועדפים</string>
+    <string name="widget_flow">Flow יומי</string>
+    <string name="widget_offline">מיקס אופליין</string>
+    <string name="widget_lyrics">מילות השיר</string>
+    <string name="radar_channel_name">רדאר ההשקות</string>
+    <string name="radar_channel_description">השקות חדשות מאמנים שבמעקב שלך</string>
+    <string name="radar_new_release_title">השקה חדשה מאת ⁨%1$s⁩</string>
+    <string name="automatic_backups">גיבויים אוטומטיים</string>
+    <string name="car_home">דף הבית</string>
+    <string name="car_downloads">הורדות</string>
+    <string name="car_favorites">מועדפים</string>
+    <string name="car_playlists">פלייליסטים</string>
+    <string name="car_no_content">אין תוכן</string>
+    <string name="car_content_unavailable">התוכן לא זמין</string>
+    <string name="car_search_tracks">חיפוש שירים</string>
+    <string name="car_no_results">אין תוצאות</string>
+    <string name="car_connecting_player">מתחבר לנגן</string>
+    <string name="car_now_playing">מתנגן עכשיו</string>
+    <string name="car_queue">תור</string>
+    <string name="notification_favorite_add">הוספה למועדפים</string>
+    <string name="notification_favorite_remove">הסרה מהמועדפים</string>
+    <string name="notification_shuffle_enable">הפעלת ערבוב</string>
+    <string name="notification_shuffle_disable">כיבוי ערבוב</string>
+    <string name="notification_repeat_off">חזרה כבויה</string>
+    <string name="notification_repeat_all">חזרה על הכול</string>
+    <string name="notification_repeat_one">חזרה על שיר אחד</string>
+    <string name="tile_recognize_music">זיהוי מוזיקה</string>
+    <string name="tile_playback">השמעה</string>
+    <string name="shortcut_search">חיפוש</string>
+    <string name="shortcut_library">ספרייה</string>
+    <string name="shortcut_recognition">זיהוי מוזיקה</string>
+    <string name="shortcut_resume">המשך השמעה</string>
+</resources>

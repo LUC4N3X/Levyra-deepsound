@@ -1,0 +1,65 @@
+name: Feature request
+description: Suggest an improvement or new feature for Levyra
+labels:
+  - feature request
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to suggest an improvement for Levyra.
+
+        Please describe the problem or use case first, then explain the solution you would like to see.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched open and closed issues and did not find the same request.
+          required: true
+        - label: This request is related to Levyra itself rather than an unrelated upstream service.
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What problem would this feature solve, or what would it make easier?
+      placeholder: Describe the situation and why the current behavior is limiting.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe what you would like Levyra to do.
+      placeholder: Explain the behavior or feature you would like to see.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Android
+        - Windows Desktop
+        - Android and Windows Desktop
+        - Shared infrastructure or extractor
+        - Not platform-specific
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional. Mention any workaround or alternative approach you have tried.
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: Add screenshots, examples, links, mockups, or anything else that helps explain the idea.

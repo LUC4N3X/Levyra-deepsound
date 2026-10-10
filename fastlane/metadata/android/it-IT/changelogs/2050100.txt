@@ -1,0 +1,1 @@
+Levyra 2.5.1 aggiunge Google Cast reale, riconoscimento musicale più intelligente, sessioni Jam in LAN, recupero playback YouTube/SABR più robusto, miglioramenti per artisti e nuove uscite, import AutoEQ, motion artwork più ricchi, controlli di rete più sicuri e backup/ripristino locale più affidabile.

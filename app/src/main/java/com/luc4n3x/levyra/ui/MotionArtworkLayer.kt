@@ -1,0 +1,893 @@
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+
+package com.luc4n3x.levyra.ui
+
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.Uri
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.os.PowerManager
+import android.view.TextureView
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
+import androidx.media3.exoplayer.ExoPlayer
+import com.luc4n3x.levyra.domain.LevyraCanvasQuality
+import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
+import com.luc4n3x.levyra.ui.theme.nonNegativeCornerRadius
+import com.luc4n3x.levyra.ui.artwork.LivingArtworkColors
+import com.luc4n3x.levyra.ui.artwork.LivingArtworkLayer
+import com.luc4n3x.levyra.feature.motion.MotionArtwork
+import com.luc4n3x.levyra.feature.motion.MotionArtworkNetworkPolicy
+import com.luc4n3x.levyra.feature.motion.MotionCanvasConditions
+import com.luc4n3x.levyra.feature.motion.MotionCanvasProfile
+import com.luc4n3x.levyra.feature.motion.MotionCanvasQualityPolicy
+import com.luc4n3x.levyra.feature.motion.MotionCanvasSurface
+import com.luc4n3x.levyra.runtime.RuntimeHooks
+import com.luc4n3x.levyra.runtime.RuntimeSignal
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import timber.log.Timber
+
+internal enum class MotionArtworkPresentation {
+    Card,
+    Immersive,
+    Cinematic
+}
+
+@Immutable
+internal data class MotionBackdropPalette(
+    val identityKey: String,
+    val primary: Color,
+    val secondary: Color
+)
+
+internal fun motionArtworkMaxZoom(presentation: MotionArtworkPresentation): Float = when (presentation) {
+    MotionArtworkPresentation.Card -> MotionArtworkCardMaxZoom
+    MotionArtworkPresentation.Immersive -> MotionArtworkImmersiveMaxZoom
+    MotionArtworkPresentation.Cinematic -> MotionArtworkCinematicMaxZoom
+}
+
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
+@Composable
+internal fun MotionArtworkLayer(
+    artwork: MotionArtwork?,
+    enabled: Boolean,
+    isPlaying: Boolean,
+    cornerRadius: Dp,
+    modifier: Modifier = Modifier,
+    presentation: MotionArtworkPresentation = MotionArtworkPresentation.Card,
+    quality: LevyraCanvasQuality = LevyraCanvasQuality.Auto,
+    pageMode: Boolean = false,
+    staticArtworkMotionEnabled: Boolean = true,
+    livingArtwork: LivingArtworkColors? = null,
+    dynamicBackdropEnabled: Boolean = false,
+    onDynamicBackdropPalette: (MotionBackdropPalette?) -> Unit = {},
+    staticArtwork: @Composable () -> Unit
+) {
+    val lifecycleActive = rememberMotionArtworkLifecycleActive()
+    val decorativeMotion = LocalLevyraVisualCapabilities.current.decorativeMotion
+    val environment = rememberMotionArtworkEnvironment(enabled && lifecycleActive)
+    val surface = when (presentation) {
+        MotionArtworkPresentation.Card -> MotionCanvasSurface.Card
+        MotionArtworkPresentation.Immersive,
+        MotionArtworkPresentation.Cinematic -> MotionCanvasSurface.Immersive
+    }
+    val profile = remember(quality, presentation, environment.conditions) {
+        MotionCanvasQualityPolicy.profile(
+            quality = quality,
+            surface = surface,
+            conditions = environment.conditions
+        )
+    }
+    val layerActive = isPlaying || pageMode
+    var videoUnavailable by remember(artwork?.identityKey, artwork?.url, artwork?.mimeType, presentation, profile) {
+        mutableStateOf(false)
+    }
+    var videoReady by remember(artwork?.identityKey, artwork?.url, artwork?.mimeType, presentation, profile) {
+        mutableStateOf(false)
+    }
+    var videoRetryCount by remember(artwork?.identityKey, artwork?.url, artwork?.mimeType, presentation, profile) {
+        mutableStateOf(0)
+    }
+    val videoArtwork = artwork?.takeIf {
+        enabled &&
+            lifecycleActive &&
+            environment.remoteAllowed &&
+            !videoUnavailable
+    }
+    val motionGatesOpen = artwork != null &&
+        enabled &&
+        lifecycleActive &&
+        environment.remoteAllowed
+    var displayedArtwork by remember { mutableStateOf<MotionArtwork?>(null) }
+    val retainedArtwork = retainedMotionArtwork(
+        displayed = displayedArtwork,
+        incoming = artwork,
+        gatesOpen = motionGatesOpen
+    )
+    LaunchedEffect(videoArtwork) {
+        if (videoArtwork == null) videoReady = false
+    }
+    val currentOnDynamicBackdropPalette by rememberUpdatedState(onDynamicBackdropPalette)
+    val ownsDynamicBackdrop = dynamicBackdropEnabled && videoArtwork != null
+    DisposableEffect(ownsDynamicBackdrop, videoArtwork?.identityKey) {
+        if (!ownsDynamicBackdrop) {
+            return@DisposableEffect onDispose { }
+        }
+        onDispose {
+            currentOnDynamicBackdropPalette(null)
+        }
+    }
+    val artworkIdentityKey = artwork?.identityKey
+    LaunchedEffect(motionGatesOpen, artworkIdentityKey) {
+        if (!motionGatesOpen || displayedArtwork?.identityKey != artworkIdentityKey) {
+            displayedArtwork = null
+        }
+    }
+    LaunchedEffect(videoReady, videoArtwork) {
+        val ready = videoArtwork ?: return@LaunchedEffect
+        if (!videoReady) return@LaunchedEffect
+        delay(VIDEO_FADE_IN_MS.toLong())
+        displayedArtwork = ready
+    }
+    val frameSource = remember { MotionVideoFrameSource() }
+    var bridgeFrame by remember { mutableStateOf<MotionBridgeFrame?>(null) }
+    var bridgeCapturedFor by remember { mutableStateOf<String?>(null) }
+    val handoffCaptured = retainedArtwork == null || bridgeCapturedFor == artwork?.url
+    val videoSlot = motionVideoSlot(
+        retained = retainedArtwork,
+        incoming = videoArtwork,
+        handoffCaptured = handoffCaptured
+    )
+    LaunchedEffect(handoffCaptured, artwork?.url) {
+        if (handoffCaptured) return@LaunchedEffect
+        bridgeFrame = frameSource.capture()
+        bridgeCapturedFor = artwork?.url
+    }
+    LaunchedEffect(retainedArtwork == null) {
+        if (retainedArtwork == null) {
+            bridgeFrame = null
+            bridgeCapturedFor = null
+        }
+    }
+    val visibleBridge = bridgeFrame?.takeIf { retainedArtwork != null }
+    val motionVisible = videoReady || visibleBridge != null || !handoffCaptured
+    val showStaticBed = motionStaticBedVisible(motionVisible)
+    LaunchedEffect(artwork?.identityKey, videoArtwork, enabled, lifecycleActive, environment.remoteAllowed, videoUnavailable) {
+        if (artwork == null) return@LaunchedEffect
+        Timber.d(
+            "Canvas layer artwork=%s provider=%s video=%b enabled=%b lifecycle=%b remoteAllowed=%b unavailable=%b presentation=%s",
+            artwork.identityKey,
+            artwork.provider,
+            videoArtwork != null,
+            enabled,
+            lifecycleActive,
+            environment.remoteAllowed,
+            videoUnavailable,
+            presentation
+        )
+    }
+    LaunchedEffect(
+        videoUnavailable,
+        enabled,
+        lifecycleActive,
+        environment.remoteAllowed,
+        layerActive,
+    ) {
+        if (
+            !videoUnavailable ||
+            !enabled ||
+            !lifecycleActive ||
+            !environment.remoteAllowed ||
+            !layerActive ||
+            videoRetryCount >= MAX_VIDEO_RETRIES
+        ) {
+            return@LaunchedEffect
+        }
+        delay(VIDEO_RETRY_DELAY_MS)
+        if (
+            enabled &&
+            lifecycleActive &&
+            environment.remoteAllowed &&
+            layerActive &&
+            videoRetryCount < MAX_VIDEO_RETRIES
+        ) {
+            videoRetryCount += 1
+            videoUnavailable = false
+        }
+    }
+    val animateStatic = staticArtworkMotionActive(
+        enabled = enabled,
+        staticArtworkMotionEnabled = staticArtworkMotionEnabled,
+        decorativeMotion = decorativeMotion,
+        lifecycleActive = lifecycleActive,
+        localAllowed = environment.localAllowed,
+        layerActive = layerActive,
+        staticBedVisible = showStaticBed
+    )
+    val staticBedAlpha by animateFloatAsState(
+        targetValue = if (showStaticBed) 1f else 0f,
+        animationSpec = if (!showStaticBed) {
+            tween(
+                durationMillis = STATIC_ARTWORK_BED_FADE_MS,
+                delayMillis = if (motionVisible) VIDEO_FADE_IN_MS else 0,
+                easing = FastOutSlowInEasing
+            )
+        } else if (pageMode) {
+            tween(durationMillis = PAGE_STATIC_FALLBACK_FADE_MS, easing = FastOutSlowInEasing)
+        } else {
+            snap()
+        },
+        label = "motion-artwork-bed-alpha"
+    )
+
+    Box(modifier = modifier) {
+        MotionArtworkStaticFallback(
+            animated = animateStatic,
+            presentation = presentation,
+            cornerRadius = cornerRadius,
+            alpha = { staticBedAlpha },
+            modifier = Modifier.fillMaxSize(),
+            content = staticArtwork
+        )
+        if (livingArtwork != null) {
+            LivingArtworkLayer(
+                colors = livingArtwork,
+                active = livingArtworkActive(
+                    enabled = enabled && decorativeMotion,
+                    lifecycleActive = lifecycleActive,
+                    localAllowed = environment.localAllowed,
+                    isPlaying = layerActive,
+                    realCanvasReady = motionVisible
+                ),
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(RoundedCornerShape(nonNegativeCornerRadius(cornerRadius)))
+            )
+        }
+        visibleBridge?.let { frame ->
+            Image(
+                bitmap = frame.image,
+                contentDescription = null,
+                contentScale = ContentScale.FillBounds,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(nonNegativeCornerRadius(cornerRadius)))
+                    .graphicsLayer {
+                        scaleX = frame.scaleX
+                        scaleY = frame.scaleY
+                    }
+            )
+        }
+        videoSlot?.let { slot ->
+            key(slot.identityKey, slot.url) {
+                val incoming = slot === videoArtwork
+                MotionArtworkVideo(
+                    artwork = slot,
+                    isPlaying = layerActive,
+                    cornerRadius = cornerRadius,
+                    presentation = presentation,
+                    profile = profile,
+                    frameSource = frameSource,
+                    dynamicBackdropEnabled = dynamicBackdropEnabled,
+                    onDynamicBackdropPalette = onDynamicBackdropPalette,
+                    onFirstFrame = {
+                        if (incoming) {
+                            videoReady = true
+                            videoRetryCount = 0
+                        }
+                    },
+                    onUnavailable = {
+                        if (incoming) {
+                            videoReady = false
+                            videoUnavailable = true
+                            onDynamicBackdropPalette(null)
+                            if (bridgeFrame != null) displayedArtwork = null
+                        } else if (displayedArtwork?.url == slot.url) {
+                            displayedArtwork = null
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+    }
+}
+
+internal fun motionVideoSlot(
+    retained: MotionArtwork?,
+    incoming: MotionArtwork?,
+    handoffCaptured: Boolean
+): MotionArtwork? = if (retained != null && !handoffCaptured) retained else incoming
+
+internal fun motionStaticBedVisible(motionVisible: Boolean): Boolean = !motionVisible
+
+internal fun staticArtworkMotionActive(
+    enabled: Boolean,
+    staticArtworkMotionEnabled: Boolean,
+    decorativeMotion: Boolean,
+    lifecycleActive: Boolean,
+    localAllowed: Boolean,
+    layerActive: Boolean,
+    staticBedVisible: Boolean
+): Boolean = enabled &&
+    staticArtworkMotionEnabled &&
+    decorativeMotion &&
+    lifecycleActive &&
+    localAllowed &&
+    layerActive &&
+    staticBedVisible
+
+internal class MotionBridgeFrame(
+    val image: ImageBitmap,
+    val scaleX: Float,
+    val scaleY: Float
+)
+
+internal class MotionVideoFrameSource {
+    var textureView: TextureView? = null
+    var frameReady: Boolean = false
+    var fitScaleX: Float = 1f
+    var fitScaleY: Float = 1f
+
+    fun sampleBackdropPalette(identityKey: String): MotionBackdropPalette? {
+        val view = textureView
+        val surfaceReady = view != null && frameReady && view.isAvailable
+        val surfaceSized = (view?.width ?: 0) > 1 && (view?.height ?: 0) > 1
+        if (!surfaceReady || !surfaceSized) return null
+        val bitmap = try {
+            view.getBitmap(DYNAMIC_BACKDROP_SAMPLE_SIZE, DYNAMIC_BACKDROP_SAMPLE_SIZE)
+        } catch (error: IllegalStateException) {
+            Timber.d(error, "Canvas dynamic backdrop frame capture failed")
+            null
+        }
+        return bitmap?.let { frame ->
+            try {
+                val pixels = IntArray(frame.width * frame.height)
+                frame.getPixels(pixels, 0, frame.width, 0, 0, frame.width, frame.height)
+                motionBackdropPalette(identityKey, pixels, frame.width, frame.height)
+            } finally {
+                frame.recycle()
+            }
+        }
+    }
+
+    fun capture(): MotionBridgeFrame? {
+        val view = textureView ?: return null
+        if (!frameReady || !view.isAvailable || view.width <= 1 || view.height <= 1) return null
+        val bitmap = try {
+            view.getBitmap(view.width / 2, view.height / 2)
+        } catch (error: IllegalStateException) {
+            Timber.d(error, "Canvas bridge frame capture failed")
+            null
+        } ?: return null
+        return MotionBridgeFrame(bitmap.asImageBitmap(), fitScaleX, fitScaleY)
+    }
+}
+
+internal fun motionBackdropPalette(
+    identityKey: String,
+    pixels: IntArray,
+    width: Int,
+    height: Int
+): MotionBackdropPalette? {
+    val identityValid = identityKey.isNotBlank()
+    val dimensionsValid = width > 0 && height > 0
+    val pixelBufferValid = dimensionsValid && pixels.size >= width * height
+    if (!identityValid || !dimensionsValid || !pixelBufferValid) return null
+    val top = MotionPaletteAccumulator()
+    val bottom = MotionPaletteAccumulator()
+    val all = MotionPaletteAccumulator()
+    val pixelCount = width * height
+    for (index in 0 until pixelCount) {
+        val pixel = pixels[index]
+        val alpha = (pixel ushr 24) and 0xFF
+        if (alpha < DYNAMIC_BACKDROP_MIN_ALPHA) continue
+        val red = ((pixel ushr 16) and 0xFF) / 255f
+        val green = ((pixel ushr 8) and 0xFF) / 255f
+        val blue = (pixel and 0xFF) / 255f
+        val luminance = 0.2126f * red + 0.7152f * green + 0.0722f * blue
+        if (luminance >= DYNAMIC_BACKDROP_MIN_LUMINANCE) {
+            val chroma = maxOf(red, green, blue) - minOf(red, green, blue)
+            val amount = 0.35f + chroma * 1.6f + luminance * 0.25f
+            all.add(red, green, blue, amount)
+            if (index / width < height / 2) {
+                top.add(red, green, blue, amount)
+            } else {
+                bottom.add(red, green, blue, amount)
+            }
+        }
+    }
+
+    val fallback = all.color()
+    return fallback?.let { base ->
+        MotionBackdropPalette(
+            identityKey = identityKey,
+            primary = top.color() ?: base,
+            secondary = bottom.color() ?: base
+        )
+    }
+}
+
+private class MotionPaletteAccumulator {
+    private var red = 0f
+    private var green = 0f
+    private var blue = 0f
+    private var weight = 0f
+
+    fun add(r: Float, g: Float, b: Float, amount: Float) {
+        red += r * amount
+        green += g * amount
+        blue += b * amount
+        weight += amount
+    }
+
+    fun color(): Color? {
+        if (weight <= 0f) return null
+        return Color(
+            red = (red / weight).coerceIn(0f, 1f),
+            green = (green / weight).coerceIn(0f, 1f),
+            blue = (blue / weight).coerceIn(0f, 1f),
+            alpha = 1f
+        )
+    }
+}
+
+internal fun retainedMotionArtwork(
+    displayed: MotionArtwork?,
+    incoming: MotionArtwork?,
+    gatesOpen: Boolean
+): MotionArtwork? {
+    if (!gatesOpen || displayed == null || incoming == null) return null
+    if (displayed.identityKey != incoming.identityKey) return null
+    return displayed.takeIf { it.url != incoming.url }
+}
+
+internal fun livingArtworkActive(
+    enabled: Boolean,
+    lifecycleActive: Boolean,
+    localAllowed: Boolean,
+    isPlaying: Boolean,
+    realCanvasReady: Boolean
+): Boolean = enabled && lifecycleActive && localAllowed && isPlaying && !realCanvasReady
+
+@Composable
+private fun rememberMotionArtworkLifecycleActive(): Boolean {
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var active by remember(lifecycleOwner) {
+        mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))
+    }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, _ ->
+            active = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    return active
+}
+
+@Composable
+private fun rememberMotionArtworkEnvironment(observe: Boolean): MotionArtworkEnvironment {
+    val context = LocalContext.current.applicationContext
+    var revision by remember { mutableIntStateOf(0) }
+    DisposableEffect(context, observe) {
+        if (!observe) return@DisposableEffect onDispose { }
+        val mainHandler = Handler(Looper.getMainLooper())
+        val refresh: () -> Unit = {
+            mainHandler.post { revision++ }
+        }
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                refresh()
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
+            addAction(ConnectivityManager.ACTION_RESTRICT_BACKGROUND_CHANGED)
+        }
+        val receiverRegistered = runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                @Suppress("DEPRECATION")
+                context.registerReceiver(receiver, filter)
+            }
+        }.isSuccess
+        val connectivity = context.getSystemService(ConnectivityManager::class.java)
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                refresh()
+            }
+
+            override fun onLost(network: Network) {
+                refresh()
+            }
+
+            override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+                refresh()
+            }
+        }
+        val callbackRegistered = runCatching {
+            connectivity?.registerDefaultNetworkCallback(callback)
+        }.isSuccess
+        onDispose {
+            if (receiverRegistered) runCatching { context.unregisterReceiver(receiver) }
+            if (callbackRegistered) runCatching { connectivity?.unregisterNetworkCallback(callback) }
+            mainHandler.removeCallbacksAndMessages(null)
+        }
+    }
+    return remember(context, observe, revision) {
+        if (!observe) {
+            MotionArtworkEnvironment(
+                remoteAllowed = false,
+                localAllowed = false,
+                conditions = MotionArtworkNetworkPolicy.conditions(context)
+            )
+        } else {
+            MotionArtworkEnvironment(
+                remoteAllowed = MotionArtworkNetworkPolicy.canUseMotionArtwork(context),
+                localAllowed = MotionArtworkNetworkPolicy.canAnimateLocally(context),
+                conditions = MotionArtworkNetworkPolicy.conditions(context)
+            )
+        }
+    }
+}
+
+@Composable
+private fun MotionArtworkStaticFallback(
+    animated: Boolean,
+    presentation: MotionArtworkPresentation,
+    cornerRadius: Dp,
+    alpha: () -> Float,
+    modifier: Modifier,
+    content: @Composable () -> Unit
+) {
+    val shape = RoundedCornerShape(nonNegativeCornerRadius(cornerRadius))
+    var artworkSize by remember { mutableStateOf(IntSize.Zero) }
+    val zoomPhase = remember { Animatable(0f) }
+    val horizontalDrift = remember { Animatable(0f) }
+    val verticalDrift = remember { Animatable(0f) }
+    val motionAmount by animateFloatAsState(
+        targetValue = if (animated) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = if (animated) STATIC_ARTWORK_MOTION_ENTER_MS else STATIC_ARTWORK_MOTION_EXIT_MS,
+            easing = FastOutSlowInEasing
+        ),
+        label = "static-artwork-motion-amount"
+    )
+
+    val immersive = presentation != MotionArtworkPresentation.Card
+    val zoomDurationMs = if (immersive) 14_000 else STATIC_ARTWORK_ZOOM_DURATION_MS
+    val horizontalDurationMs = if (immersive) 18_000 else STATIC_ARTWORK_HORIZONTAL_DURATION_MS
+    val verticalDurationMs = if (immersive) 21_000 else STATIC_ARTWORK_VERTICAL_DURATION_MS
+
+    LaunchedEffect(animated, presentation) {
+        if (!animated) {
+            coroutineScope {
+                launch {
+                    zoomPhase.animateTo(
+                        0f,
+                        tween(STATIC_ARTWORK_MOTION_EXIT_MS, easing = FastOutSlowInEasing)
+                    )
+                }
+                launch {
+                    horizontalDrift.animateTo(
+                        0f,
+                        tween(STATIC_ARTWORK_MOTION_EXIT_MS, easing = FastOutSlowInEasing)
+                    )
+                }
+                launch {
+                    verticalDrift.animateTo(
+                        0f,
+                        tween(STATIC_ARTWORK_MOTION_EXIT_MS, easing = FastOutSlowInEasing)
+                    )
+                }
+            }
+            return@LaunchedEffect
+        }
+        coroutineScope {
+            launch {
+                while (isActive) {
+                    zoomPhase.animateTo(
+                        1f,
+                        tween(zoomDurationMs, easing = FastOutSlowInEasing)
+                    )
+                    zoomPhase.animateTo(
+                        0f,
+                        tween(zoomDurationMs, easing = FastOutSlowInEasing)
+                    )
+                }
+            }
+            launch {
+                while (isActive) {
+                    horizontalDrift.animateTo(
+                        1f,
+                        tween(horizontalDurationMs, easing = FastOutSlowInEasing)
+                    )
+                    horizontalDrift.animateTo(
+                        -1f,
+                        tween(horizontalDurationMs, easing = FastOutSlowInEasing)
+                    )
+                }
+            }
+            launch {
+                while (isActive) {
+                    verticalDrift.animateTo(
+                        -1f,
+                        tween(verticalDurationMs, easing = FastOutSlowInEasing)
+                    )
+                    verticalDrift.animateTo(
+                        1f,
+                        tween(verticalDurationMs, easing = FastOutSlowInEasing)
+                    )
+                }
+            }
+        }
+    }
+
+    Box(modifier = modifier.clip(shape)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .onSizeChanged { artworkSize = it }
+                .graphicsLayer {
+                    this.alpha = alpha()
+                    val amount = motionAmount
+                    val baseZoom = if (immersive) 0.064f else 0.042f
+                    val pulseZoom = if (immersive) 0.030f else 0.022f
+                    val horizontalTravel = if (immersive) 0.026f else 0.016f
+                    val verticalTravel = if (immersive) 0.020f else 0.012f
+                    val scale = 1f + amount * (baseZoom + zoomPhase.value * pulseZoom)
+                    scaleX = scale
+                    scaleY = scale
+                    translationX = artworkSize.width * horizontalTravel * horizontalDrift.value * amount
+                    translationY = artworkSize.height * verticalTravel * verticalDrift.value * amount
+                    rotationZ = if (immersive) horizontalDrift.value * amount * 0.22f else 0f
+                }
+        ) {
+            content()
+        }
+    }
+}
+
+@Composable
+private fun MotionArtworkVideo(
+    artwork: MotionArtwork,
+    isPlaying: Boolean,
+    cornerRadius: Dp,
+    presentation: MotionArtworkPresentation,
+    profile: MotionCanvasProfile,
+    frameSource: MotionVideoFrameSource,
+    dynamicBackdropEnabled: Boolean,
+    onDynamicBackdropPalette: (MotionBackdropPalette?) -> Unit,
+    onFirstFrame: () -> Unit,
+    onUnavailable: () -> Unit,
+    modifier: Modifier
+) {
+    val context = LocalContext.current
+    val currentOnFirstFrame by rememberUpdatedState(onFirstFrame)
+    val currentOnUnavailable by rememberUpdatedState(onUnavailable)
+    val currentOnDynamicBackdropPalette by rememberUpdatedState(onDynamicBackdropPalette)
+    var firstFrameRendered by remember(artwork.identityKey, artwork.url, artwork.mimeType, presentation, profile) {
+        mutableStateOf(false)
+    }
+    var failed by remember(artwork.identityKey, artwork.url, artwork.mimeType, presentation, profile) {
+        mutableStateOf(false)
+    }
+    var videoSize by remember(artwork.identityKey, artwork.url, artwork.mimeType, presentation, profile) {
+        mutableStateOf(VideoSize.UNKNOWN)
+    }
+    var surfaceSize by remember { mutableStateOf(IntSize.Zero) }
+    val maxZoom = motionArtworkMaxZoom(presentation)
+    val player = remember(artwork.identityKey, artwork.url, artwork.mimeType, presentation, profile) {
+        ExoPlayer.Builder(context).build().apply {
+            repeatMode = Player.REPEAT_MODE_ONE
+            volume = 0f
+            trackSelectionParameters = trackSelectionParameters.buildUpon()
+                .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true)
+                .setViewportSize(profile.maxDimensionPx, profile.maxDimensionPx, false)
+                .setMaxVideoSize(profile.maxDimensionPx, profile.maxDimensionPx)
+                .setMaxVideoBitrate(profile.maxBitrateBps)
+                .setForceHighestSupportedBitrate(profile.forceHighestSupportedBitrate)
+                .build()
+        }
+    }
+    val textureView = remember(player) { TextureView(context) }
+    val videoAlpha by animateFloatAsState(
+        targetValue = if (firstFrameRendered && !failed) 1f else 0f,
+        animationSpec = tween(durationMillis = VIDEO_FADE_IN_MS, easing = FastOutSlowInEasing),
+        label = "motion-artwork-alpha"
+    )
+
+    DisposableEffect(player, textureView, artwork.url, artwork.mimeType) {
+        val listener = object : Player.Listener {
+            override fun onRenderedFirstFrame() {
+                Timber.d("Canvas player FIRST_FRAME provider=%s", artwork.provider)
+                firstFrameRendered = true
+                if (frameSource.textureView === textureView) frameSource.frameReady = true
+                RuntimeHooks.canvas(RuntimeSignal.CANVAS_FIRST_FRAME)
+                currentOnFirstFrame()
+            }
+
+            override fun onVideoSizeChanged(size: VideoSize) {
+                videoSize = size
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                Timber.d(
+                    error,
+                    "Canvas player ERROR provider=%s code=%s host=%s",
+                    artwork.provider,
+                    error.errorCodeName,
+                    motionArtworkHost(artwork.url)
+                )
+                failed = true
+                RuntimeHooks.canvas(RuntimeSignal.CANVAS_FALLBACK)
+                currentOnUnavailable()
+            }
+        }
+        RuntimeHooks.canvas(RuntimeSignal.CANVAS_STARTED)
+        Timber.d(
+            "Canvas player PREPARE provider=%s mime=%s host=%s",
+            artwork.provider,
+            artwork.mimeType,
+            motionArtworkHost(artwork.url)
+        )
+        frameSource.textureView = textureView
+        frameSource.frameReady = false
+        player.addListener(listener)
+        player.setVideoTextureView(textureView)
+        player.setMediaItem(
+            MediaItem.Builder()
+                .setUri(artwork.url)
+                .setMimeType(artwork.mimeType.takeIf { it.isNotBlank() })
+                .build()
+        )
+        player.prepare()
+        onDispose {
+            RuntimeHooks.canvas(RuntimeSignal.CANVAS_STOPPED)
+            if (frameSource.textureView === textureView) {
+                frameSource.textureView = null
+                frameSource.frameReady = false
+            }
+            player.removeListener(listener)
+            player.clearVideoTextureView(textureView)
+            player.release()
+        }
+    }
+
+    LaunchedEffect(player, isPlaying, failed) {
+        if (failed) {
+            player.playWhenReady = false
+            player.stop()
+            player.clearMediaItems()
+        } else {
+            player.playWhenReady = isPlaying
+        }
+    }
+
+    LaunchedEffect(player, isPlaying, firstFrameRendered, failed) {
+        if (!isPlaying || firstFrameRendered || failed) return@LaunchedEffect
+        delay(VIDEO_FIRST_FRAME_TIMEOUT_MS)
+        if (!firstFrameRendered && !failed) {
+            Timber.d("Canvas player FALLBACK reason=first-frame-timeout provider=%s", artwork.provider)
+            RuntimeHooks.canvas(RuntimeSignal.CANVAS_FALLBACK)
+            currentOnUnavailable()
+        }
+    }
+
+    LaunchedEffect(
+        player,
+        artwork.identityKey,
+        dynamicBackdropEnabled,
+        isPlaying,
+        firstFrameRendered,
+        failed
+    ) {
+        if (!dynamicBackdropEnabled || !isPlaying) return@LaunchedEffect
+        if (!firstFrameRendered || failed) return@LaunchedEffect
+        delay(DYNAMIC_BACKDROP_INITIAL_DELAY_MS)
+        while (isActive) {
+            frameSource.sampleBackdropPalette(artwork.identityKey)
+                ?.let(currentOnDynamicBackdropPalette)
+            delay(DYNAMIC_BACKDROP_SAMPLE_INTERVAL_MS)
+        }
+    }
+
+    AndroidView(
+        factory = { textureView },
+        modifier = modifier
+            .clip(RoundedCornerShape(nonNegativeCornerRadius(cornerRadius)))
+            .onSizeChanged { surfaceSize = it }
+            .graphicsLayer {
+                alpha = videoAlpha
+                val fit = motionArtworkFit(
+                    videoWidth = videoSize.width,
+                    videoHeight = videoSize.height,
+                    pixelWidthHeightRatio = videoSize.pixelWidthHeightRatio,
+                    containerWidth = surfaceSize.width,
+                    containerHeight = surfaceSize.height,
+                    maxZoom = maxZoom
+                )
+                scaleX = fit.scaleX
+                scaleY = fit.scaleY
+                if (frameSource.textureView === textureView) {
+                    frameSource.fitScaleX = fit.scaleX
+                    frameSource.fitScaleY = fit.scaleY
+                }
+            }
+    )
+}
+
+private fun motionArtworkHost(url: String): String = Uri.parse(url).host.orEmpty()
+
+private data class MotionArtworkEnvironment(
+    val remoteAllowed: Boolean,
+    val localAllowed: Boolean,
+    val conditions: MotionCanvasConditions
+)
+
+private const val STATIC_ARTWORK_ZOOM_DURATION_MS = 11_000
+private const val STATIC_ARTWORK_HORIZONTAL_DURATION_MS = 14_000
+private const val STATIC_ARTWORK_VERTICAL_DURATION_MS = 17_000
+private const val STATIC_ARTWORK_MOTION_ENTER_MS = 360
+private const val STATIC_ARTWORK_MOTION_EXIT_MS = 220
+private const val STATIC_ARTWORK_BED_FADE_MS = 420
+private const val PAGE_STATIC_FALLBACK_FADE_MS = 180
+private const val VIDEO_FADE_IN_MS = 620
+private const val VIDEO_FIRST_FRAME_TIMEOUT_MS = 9_000L
+private const val VIDEO_RETRY_DELAY_MS = 4_000L
+private const val MAX_VIDEO_RETRIES = 1
+private const val DYNAMIC_BACKDROP_SAMPLE_SIZE = 24
+private const val DYNAMIC_BACKDROP_INITIAL_DELAY_MS = 240L
+private const val DYNAMIC_BACKDROP_SAMPLE_INTERVAL_MS = 6_000L
+private const val DYNAMIC_BACKDROP_MIN_ALPHA = 128
+private const val DYNAMIC_BACKDROP_MIN_LUMINANCE = 0.035f

@@ -1,0 +1,153 @@
+name: Quick APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: "APK build type"
+        required: true
+        default: "release"
+        type: choice
+        options:
+          - "release"
+          - "debug"
+      clean:
+        description: "Run clean before build"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      refresh_dependencies:
+        description: "Refresh Gradle dependencies"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quick-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quick-apk:
+    name: Build quick APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: ${{ secrets.YOUTUBE_INNERTUBE_API_KEY }}
+      LEVYRA_CANVAS_RESOLVER_URL: ${{ secrets.LEVYRA_CANVAS_RESOLVER_URL }}
+      LEVYRA_CANVAS_CLIENT_KEY: ${{ secrets.LEVYRA_CANVAS_CLIENT_KEY }}
+      LEVYRA_KEYSTORE_FILE: app/levyra-release.jks
+      LEVYRA_KEYSTORE_PASSWORD: ${{ secrets.LEVYRA_KEYSTORE_PASSWORD }}
+      LEVYRA_KEY_ALIAS: ${{ secrets.LEVYRA_KEY_ALIAS }}
+      LEVYRA_KEY_PASSWORD: ${{ secrets.LEVYRA_KEY_PASSWORD }}
+      ORG_GRADLE_PROJECT_levyraNativeAudio: "true"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"             "platform-tools"             "platforms;android-36"             "build-tools;36.0.0"             "ndk;28.2.13676358"             "cmake;3.22.1"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6.4.0
+        with:
+          cache-disabled: true
+
+      - name: Cache Native Audio Dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .gradle/levyra-native-deps
+          key: levyra-native-deps-${{ runner.os }}-${{ hashFiles('levyra-native-audio/native-deps/prepare_native_deps.sh', 'levyra-native-audio/build.gradle.kts') }}
+
+      - name: Prepare Release Signing
+        if: ${{ inputs.build_type == 'release' }}
+        shell: bash
+        env:
+          LEVYRA_KEYSTORE_BASE64: ${{ secrets.LEVYRA_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          test -n "${YOUTUBE_INNERTUBE_API_KEY}"
+          test -n "${LEVYRA_CANVAS_RESOLVER_URL}"
+          test -n "${LEVYRA_CANVAS_CLIENT_KEY}"
+          test -n "${LEVYRA_KEYSTORE_BASE64}"
+          test -n "${LEVYRA_KEYSTORE_PASSWORD}"
+          test -n "${LEVYRA_KEY_ALIAS}"
+          test -n "${LEVYRA_KEY_PASSWORD}"
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          printf "%s" "${LEVYRA_KEYSTORE_BASE64}" | tr -d '\r\n' | base64 --decode > "${LEVYRA_KEYSTORE_FILE}"
+          keytool -list -keystore "${LEVYRA_KEYSTORE_FILE}" -storepass "${LEVYRA_KEYSTORE_PASSWORD}" -alias "${LEVYRA_KEY_ALIAS}" >/dev/null
+
+      - name: Build APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUILD_TYPE="${{ inputs.build_type }}"
+          TASK="assembleRelease"
+          OUTPUT_DIR="app/build/outputs/apk/release"
+          if [ "${BUILD_TYPE}" = "debug" ]; then
+            TASK="assembleDebug"
+            OUTPUT_DIR="app/build/outputs/apk/debug"
+          fi
+          ARGS=()
+          if [ "${{ inputs.clean }}" = "true" ]; then
+            ARGS+=(clean)
+          fi
+          ARGS+=("${TASK}")
+          if [ "${{ inputs.refresh_dependencies }}" = "true" ]; then
+            ./gradlew --no-daemon --refresh-dependencies "${ARGS[@]}"
+          else
+            ./gradlew --no-daemon "${ARGS[@]}"
+          fi
+          echo "OUTPUT_DIR=${OUTPUT_DIR}" >> "${GITHUB_ENV}"
+          echo "BUILD_TYPE=${BUILD_TYPE}" >> "${GITHUB_ENV}"
+
+      - name: Package quick artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          VERSION="$(grep -E '^levyraVersionName=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs)"
+          VERSION_CODE="$(grep -E '^levyraVersionCode=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs)"
+          APK="$(find "${OUTPUT_DIR}" -name '*.apk' -print -quit)"
+          test -f "${APK}"
+          cp "${APK}" "artifacts/LEVYRA-${VERSION}-${BUILD_TYPE}-quick.apk"
+          sha256sum "artifacts/LEVYRA-${VERSION}-${BUILD_TYPE}-quick.apk" > "artifacts/LEVYRA-${VERSION}-${BUILD_TYPE}-quick.apk.sha256"
+          "${ANDROID_HOME}/build-tools/36.0.0/aapt" dump badging "${APK}" > artifacts/apk-badging.txt
+          if [ "${BUILD_TYPE}" = "release" ]; then
+            "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --print-certs "${APK}" > artifacts/apk-signing-certs.txt
+          fi
+          {
+            echo "LEVYRA quick APK"
+            echo "version=${VERSION}"
+            echo "versionCode=${VERSION_CODE}"
+            echo "buildType=${BUILD_TYPE}"
+            echo "commit=${GITHUB_SHA}"
+            echo "branch=${GITHUB_REF_NAME}"
+            echo "builtAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > artifacts/build-info.txt
+
+      - name: Upload quick APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: levyra-${{ env.BUILD_TYPE }}-quick-apk-${{ github.run_number }}
+          path: artifacts
+          if-no-files-found: error

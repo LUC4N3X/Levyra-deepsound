@@ -1,0 +1,298 @@
+package com.luc4n3x.levyra.domain
+
+enum class ReplayGainMode(val storageValue: String) {
+    OFF("off"),
+    TRACK("track"),
+    ALBUM("album"),
+    SMART("smart");
+
+    companion object {
+        fun fromStorage(value: String?, legacyEnabled: Boolean = false): ReplayGainMode =
+            entries.firstOrNull { it.storageValue == value?.trim()?.lowercase() }
+                ?: if (legacyEnabled) SMART else OFF
+    }
+}
+
+enum class AudioOffloadPreference(val storageValue: String) {
+    AUTOMATIC("automatic"),
+    OFF("off");
+
+    companion object {
+        fun fromStorage(value: String?): AudioOffloadPreference =
+            entries.firstOrNull { it.storageValue == value?.trim()?.lowercase() } ?: AUTOMATIC
+    }
+}
+
+enum class PlaybackBufferMode(val storageValue: String) {
+    AUTOMATIC("automatic"),
+    CUSTOM("custom");
+
+    companion object {
+        fun fromStorage(value: String?): PlaybackBufferMode =
+            entries.firstOrNull { it.storageValue == value?.trim()?.lowercase() } ?: AUTOMATIC
+    }
+}
+
+data class PlaybackBufferSettings(
+    val mode: PlaybackBufferMode = PlaybackBufferMode.AUTOMATIC,
+    val minBufferSeconds: Float = BALANCED_MIN_SECONDS,
+    val maxBufferSeconds: Float = BALANCED_MAX_SECONDS,
+    val playbackBufferSeconds: Float = BALANCED_PLAYBACK_SECONDS,
+    val rebufferSeconds: Float = BALANCED_REBUFFER_SECONDS
+) {
+    fun normalized(): PlaybackBufferSettings {
+        val minSeconds = minBufferSeconds.normalizedStep(MIN_BUFFER_SECONDS, MAX_MIN_BUFFER_SECONDS)
+        val maxSeconds = maxBufferSeconds
+            .normalizedStep(MIN_BUFFER_SECONDS, MAX_BUFFER_SECONDS)
+            .coerceAtLeast(minSeconds)
+        val thresholdCeiling = minSeconds.coerceAtMost(MAX_THRESHOLD_SECONDS)
+        return copy(
+            minBufferSeconds = minSeconds,
+            maxBufferSeconds = maxSeconds,
+            playbackBufferSeconds = playbackBufferSeconds.normalizedStep(MIN_THRESHOLD_SECONDS, thresholdCeiling),
+            rebufferSeconds = rebufferSeconds.normalizedStep(MIN_THRESHOLD_SECONDS, thresholdCeiling)
+        )
+    }
+
+    companion object {
+        const val MIN_BUFFER_SECONDS = 2f
+        const val MAX_MIN_BUFFER_SECONDS = 45f
+        const val MAX_BUFFER_SECONDS = 60f
+        const val MIN_THRESHOLD_SECONDS = 0.1f
+        const val MAX_THRESHOLD_SECONDS = 10f
+
+        const val BALANCED_MIN_SECONDS = 12f
+        const val BALANCED_MAX_SECONDS = 24f
+        const val BALANCED_PLAYBACK_SECONDS = 1f
+        const val BALANCED_REBUFFER_SECONDS = 2f
+
+        val Reduced = PlaybackBufferSettings(
+            mode = PlaybackBufferMode.CUSTOM,
+            minBufferSeconds = 5f,
+            maxBufferSeconds = 10f,
+            playbackBufferSeconds = 0.5f,
+            rebufferSeconds = 1f
+        )
+        val Balanced = PlaybackBufferSettings(mode = PlaybackBufferMode.CUSTOM)
+        val High = PlaybackBufferSettings(
+            mode = PlaybackBufferMode.CUSTOM,
+            minBufferSeconds = 24f,
+            maxBufferSeconds = 45f,
+            playbackBufferSeconds = 2f,
+            rebufferSeconds = 4f
+        )
+    }
+}
+
+private fun Float.normalizedStep(minimum: Float, maximum: Float): Float {
+    val finite = takeIf(Float::isFinite) ?: minimum
+    return kotlin.math.round(finite.coerceIn(minimum, maximum) * 10f) / 10f
+}
+
+data class ReplayGainMetadata(
+    val trackGainDb: Float? = null,
+    val albumGainDb: Float? = null,
+    val trackPeak: Float? = null,
+    val albumPeak: Float? = null
+)
+
+data class ReplayGainSelection(
+    val gainDb: Float,
+    val peak: Float?
+)
+
+fun selectReplayGain(
+    mode: ReplayGainMode,
+    metadata: ReplayGainMetadata,
+    albumContext: Boolean
+): ReplayGainSelection? {
+    fun track(): ReplayGainSelection? =
+        metadata.trackGainDb?.takeIf { it.isFinite() }?.let { ReplayGainSelection(it, metadata.trackPeak) }
+    fun album(): ReplayGainSelection? =
+        metadata.albumGainDb?.takeIf { it.isFinite() }?.let { ReplayGainSelection(it, metadata.albumPeak) }
+
+    return when (mode) {
+        ReplayGainMode.OFF -> null
+        ReplayGainMode.TRACK -> track()
+        ReplayGainMode.ALBUM -> album() ?: track()
+        ReplayGainMode.SMART -> if (albumContext) album() ?: track() else track() ?: album()
+    }
+}
+
+data class LevyraAudioPreset(
+    val id: String,
+    val fallbackLabel: String,
+    val levels: List<Int>,
+    val bassBoost: Int,
+    val virtualizer: Int,
+    val preampDb: Float = 0f
+)
+
+data class LevyraAudioSettings(
+    val equalizerEnabled: Boolean = false,
+    val presetId: String = LevyraAudioPresets.FLAT,
+    val bandLevels: List<Int> = LevyraAudioPresets.flatLevels,
+    val bassBoost: Int = 0,
+    val virtualizer: Int = 0,
+    val preampDb: Float = 0f,
+    val limiterEnabled: Boolean = true,
+    val crossfadeSeconds: Int = 0,
+    val djSoftMode: Boolean = false,
+    val replayGainEnabled: Boolean = false,
+    val replayGainMode: ReplayGainMode = ReplayGainMode.OFF,
+    val replayGainPreampDb: Float = 0f,
+    val replayGainPreventClipping: Boolean = true,
+    val playbackSpeed: Float = 1f,
+    val pitch: Float = 1f,
+    val gaplessEnabled: Boolean = true,
+    val preloadNextTrack: Boolean = true,
+    val aaudioOutputEnabled: Boolean = false,
+    val customPresets: List<LevyraAudioPreset> = emptyList(),
+    val parametricEqualizerEnabled: Boolean = false,
+    val activeParametricProfile: ParametricEqProfile? = null,
+    val customParametricProfiles: List<ParametricEqProfile> = emptyList(),
+    val enhancedAudioEnabled: Boolean = true,
+    val audioOffloadPreference: AudioOffloadPreference = AudioOffloadPreference.AUTOMATIC,
+    val playbackBuffer: PlaybackBufferSettings = PlaybackBufferSettings()
+) {
+    val effectiveReplayGainMode: ReplayGainMode
+        get() = if (replayGainMode == ReplayGainMode.OFF && replayGainEnabled) ReplayGainMode.SMART else replayGainMode
+
+    val replayGainActive: Boolean
+        get() = effectiveReplayGainMode != ReplayGainMode.OFF
+
+    fun withReplayGainMode(mode: ReplayGainMode): LevyraAudioSettings =
+        copy(replayGainMode = mode, replayGainEnabled = mode != ReplayGainMode.OFF)
+
+    fun withNeutralEqualizer(): LevyraAudioSettings {
+        val flat = LevyraAudioPresets.preset(LevyraAudioPresets.FLAT)
+        return copy(
+            equalizerEnabled = true,
+            presetId = flat.id,
+            bandLevels = flat.levels,
+            bassBoost = flat.bassBoost,
+            preampDb = 0f,
+            parametricEqualizerEnabled = false
+        )
+    }
+
+    fun withNeutralParametricEqualizer(): LevyraAudioSettings = copy(
+        equalizerEnabled = false,
+        parametricEqualizerEnabled = true,
+        activeParametricProfile = ParametricEqualizer.defaultProfile
+    )
+
+    fun normalized(): LevyraAudioSettings {
+        val builtInIds = LevyraAudioPresets.presets.map { it.id }.toSet()
+        val custom = customPresets
+            .mapNotNull { candidate ->
+                if (candidate.id.isBlank() || candidate.id in builtInIds) return@mapNotNull null
+                if (!candidate.id.startsWith(LevyraAudioPresets.CUSTOM_PRESET_PREFIX)) return@mapNotNull null
+                if (candidate.levels.size != LevyraAudioPresets.bandCount) return@mapNotNull null
+                candidate.copy(
+                    levels = candidate.levels.map { it.coerceIn(-100, 100) },
+                    bassBoost = candidate.bassBoost.coerceIn(0, 100),
+                    virtualizer = candidate.virtualizer.coerceIn(0, 100),
+                    preampDb = candidate.preampDb.coerceIn(-12f, 3f)
+                )
+            }
+            .distinctBy { it.id }
+            .take(LevyraAudioPresets.MAX_CUSTOM_PRESETS)
+        val preset = if (custom.any { it.id == presetId }) {
+            presetId
+        } else {
+            LevyraAudioPresets.normalizePreset(presetId)
+        }
+        val fallbackLevels = custom.firstOrNull { it.id == preset }?.levels
+            ?: LevyraAudioPresets.levelsFor(preset)
+        val levels = bandLevels.takeIf { it.size == LevyraAudioPresets.bandCount } ?: fallbackLevels
+        val normalizedReplayGainMode = effectiveReplayGainMode
+        val parametricProfiles = customParametricProfiles
+            .mapNotNull(ParametricEqProfile::normalized)
+            .filter { it.id.startsWith(ParametricEqualizer.CUSTOM_PROFILE_PREFIX) }
+            .distinctBy { it.id }
+            .takeLast(ParametricEqualizer.MAX_CUSTOM_PROFILES)
+        val activeParametric = activeParametricProfile?.normalized()
+        val parametricEnabled = parametricEqualizerEnabled && activeParametric != null
+        return copy(
+            equalizerEnabled = equalizerEnabled && !parametricEnabled,
+            presetId = preset,
+            bandLevels = levels.map { it.coerceIn(-100, 100) },
+            bassBoost = bassBoost.coerceIn(0, 100),
+            virtualizer = virtualizer.coerceIn(0, 100),
+            preampDb = preampDb.coerceIn(-12f, 3f),
+            replayGainEnabled = normalizedReplayGainMode != ReplayGainMode.OFF,
+            replayGainMode = normalizedReplayGainMode,
+            replayGainPreampDb = replayGainPreampDb.coerceIn(-12f, 12f),
+            crossfadeSeconds = crossfadeSeconds.coerceIn(0, 12),
+            playbackSpeed = playbackSpeed.coerceIn(0.5f, 2.0f),
+            pitch = pitch.coerceIn(0.5f, 2.0f),
+            customPresets = custom,
+            parametricEqualizerEnabled = parametricEnabled,
+            activeParametricProfile = activeParametric,
+            customParametricProfiles = parametricProfiles,
+            playbackBuffer = playbackBuffer.normalized()
+        )
+    }
+}
+
+object LevyraAudioPresets {
+    const val FLAT = "flat"
+    const val BASS_BOOST = "bass_boost"
+    const val VOCAL = "vocal"
+    const val NIGHT = "night"
+    const val GYM = "gym"
+    const val CAR = "car"
+    const val ROCK = "rock"
+    const val POP = "pop"
+    const val ELECTRONIC = "electronic"
+    const val JAZZ = "jazz"
+    const val ACOUSTIC = "acoustic"
+    const val CLASSICAL = "classical"
+    const val AIRPODS_PRO = "autoeq_airpods_pro"
+    const val SONY_XM4 = "autoeq_sony_xm4"
+    const val SONY_XM5 = "autoeq_sony_xm5"
+    const val SENNHEISER_HD600 = "autoeq_hd600"
+    const val bandCount = 10
+    const val maxBandDb = 12f
+    const val CUSTOM_PRESET_PREFIX = "custom_"
+    const val MAX_CUSTOM_PRESETS = 24
+
+    val bandFrequencyLabels = listOf("31", "62", "125", "250", "500", "1k", "2k", "4k", "8k", "16k")
+
+    fun bandDb(level: Int): Float = level.coerceIn(-100, 100) / 100f * maxBandDb
+
+    fun bandLevelFromVerticalFraction(fraction: Float): Int =
+        ((1f - 2f * fraction.coerceIn(0f, 1f)) * 100f).toInt().coerceIn(-100, 100)
+
+    val flatLevels = listOf(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+
+    val presets = listOf(
+        LevyraAudioPreset(FLAT, "Flat", flatLevels, 0, 0),
+        LevyraAudioPreset(BASS_BOOST, "Bass Boost", listOf(72, 58, 38, 18, 4, 0, 8, 16, 22, 24), 72, 18),
+        LevyraAudioPreset(VOCAL, "Vocal", listOf(-20, -12, 0, 24, 48, 54, 42, 20, 8, 0), 8, 6),
+        LevyraAudioPreset(NIGHT, "Night", listOf(-24, -18, -8, 4, 10, 12, 6, -2, -8, -16), 0, 0),
+        LevyraAudioPreset(GYM, "Gym", listOf(76, 64, 42, 18, 4, 6, 22, 42, 56, 48), 80, 34),
+        LevyraAudioPreset(CAR, "Car", listOf(44, 38, 26, 10, 0, 8, 24, 34, 38, 32), 48, 22),
+        LevyraAudioPreset(ROCK, "Rock", listOf(52, 38, 16, -8, -14, 0, 18, 32, 44, 50), 50, 15),
+        LevyraAudioPreset(POP, "Pop", listOf(-10, 24, 42, 36, 12, -8, -12, 14, 30, 22), 30, 10),
+        LevyraAudioPreset(ELECTRONIC, "Electronic", listOf(68, 54, 28, 0, -16, 12, 24, 42, 58, 62), 65, 25),
+        LevyraAudioPreset(JAZZ, "Jazz", listOf(24, 16, 8, 12, -10, -10, 0, 14, 28, 34), 20, 10),
+        LevyraAudioPreset(ACOUSTIC, "Acoustic", listOf(28, 18, 10, 12, 18, 14, 22, 30, 26, 18), 15, 5),
+        LevyraAudioPreset(CLASSICAL, "Classical", listOf(32, 24, 16, 8, -4, -4, 0, 16, 24, 28), 10, 15),
+        LevyraAudioPreset(AIRPODS_PRO, "AirPods Pro · Device tune", listOf(-12, -6, 4, 8, 2, -4, 6, 12, 8, -4), 10, 10),
+        LevyraAudioPreset(SONY_XM4, "Sony WH-1000XM4 · Device tune", listOf(-28, -18, -8, 2, 8, 6, 4, 14, 10, -8), 0, 10),
+        LevyraAudioPreset(SONY_XM5, "Sony WH-1000XM5 · Device tune", listOf(-22, -14, -4, 4, 6, 4, 6, 12, 6, -6), 0, 10),
+        LevyraAudioPreset(SENNHEISER_HD600, "Sennheiser HD600 · Device tune", listOf(42, 32, 14, 2, -2, -4, 2, 8, 4, -12), 35, 5)
+    )
+
+    fun normalizePreset(id: String): String = presets.firstOrNull { it.id == id }?.id ?: FLAT
+
+    fun preset(id: String): LevyraAudioPreset = presets.firstOrNull { it.id == normalizePreset(id) } ?: presets.first()
+
+    fun levelsFor(id: String): List<Int> = preset(id).levels
+
+    fun labelFor(id: String): String = preset(id).fallbackLabel
+}
+
+fun queuePrefetchAllowed(settings: LevyraAudioSettings): Boolean = settings.preloadNextTrack

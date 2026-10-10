@@ -1,0 +1,97 @@
+package com.luc4n3x.levyra.player
+
+import com.luc4n3x.levyra.data.PlaybackSourceIdentity
+import com.luc4n3x.levyra.domain.Track
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
+
+object LevyraPlaybackCacheKey {
+    private val itagPattern = Regex("(?:[?&]|%26)itag(?:=|%3D)(\\d+)", RegexOption.IGNORE_CASE)
+
+    fun stream(track: Track): String {
+        // Keyed on the resolved source, not the catalog id: in native-video mode the audio stream
+        // belongs to the official video, so a catalog-id key collided with the art track whenever
+        // both used the same itag and Media3 replayed one recording's bytes for the other.
+        val id = PlaybackSourceIdentity.sourceVideoId(track)
+            .ifBlank { stableId(track) }
+            .replace(':', '_')
+        return "levyra:$id:stream-v2:${streamVariant(track)}"
+    }
+
+    fun offlineStream(track: Track): String {
+        val id = PlaybackSourceIdentity.sourceVideoId(track)
+            .ifBlank { stableId(track) }
+            .replace(':', '_')
+        return "levyra:$id:offline-v1:${variant(track.streamUrl)}"
+    }
+
+    fun video(track: Track): String {
+        val id = PlaybackSourceIdentity.sourceVideoId(track)
+            .ifBlank { stableId(track) }
+            .replace(':', '_')
+        val url = track.videoStreamUrl.ifBlank { track.streamUrl }
+        return "levyra:$id:video-v5:${variant(url)}"
+    }
+
+    private fun stableId(track: Track): String = track.id.trim()
+        .ifBlank { track.videoUrl.trim() }
+        .ifBlank { "${track.artist.trim()}-${track.title.trim()}" }
+        .replace(':', '_')
+
+    private fun streamVariant(track: Track): String {
+        val alternative = track.playbackManifest?.alternativeSource ?: return variant(track.streamUrl)
+        val identity = "${alternative.providerId}\u0000${alternative.providerTrackId}\u0000${alternative.bitrateKbps}"
+        return "alt-${sha256(identity)}"
+    }
+
+    private fun sha256(value: String): String {
+        val bytes = MessageDigest.getInstance("SHA-256").digest(value.toByteArray(StandardCharsets.UTF_8))
+        val hex = "0123456789abcdef"
+        return buildString(bytes.size * 2) {
+            bytes.forEach { byte ->
+                val number = byte.toInt() and 0xFF
+                append(hex[number ushr 4])
+                append(hex[number and 0x0F])
+            }
+        }
+    }
+
+    private fun variant(url: String): String {
+        val clean = url.lowercase()
+        val itag = itagPattern.find(url)?.groupValues?.getOrNull(1)
+        if (!itag.isNullOrBlank()) {
+            val rawXtags = com.luc4n3x.levyra.data.AudioLanguageIntelligence.extractXtagsFromUrl(url)
+            val lang = com.luc4n3x.levyra.data.AudioLanguageIntelligence
+                .normalizeLanguage(
+                    com.luc4n3x.levyra.data.AudioLanguageIntelligence.extractXtag(rawXtags, "lang")
+                )
+                .takeIf { it.isNotBlank() }
+            val audioContent = com.luc4n3x.levyra.data.AudioLanguageIntelligence
+                .extractXtag(rawXtags, "acont")
+                ?.trim()
+                ?.lowercase()
+                ?.filter { it.isLetterOrDigit() || it == '-' || it == '_' }
+                ?.take(32)
+                ?.takeIf { it.isNotBlank() }
+            val clen = com.luc4n3x.levyra.player.offline.audioContentLengthFromUrl(url).takeIf { it > 0L }
+            return if (!lang.isNullOrBlank() || !audioContent.isNullOrBlank() || clen != null) {
+                buildString {
+                    append("itag-$itag")
+                    if (!lang.isNullOrBlank()) append("-lang-$lang")
+                    if (!audioContent.isNullOrBlank()) append("-acont-$audioContent")
+                    if (clen != null) append("-clen-$clen")
+                }
+            } else {
+                "itag-$itag"
+            }
+        }
+        return when {
+            clean.contains(".m3u8") || clean.contains("/hls_playlist") || clean.contains("/manifest/hls") -> "hls"
+            clean.contains("mime=audio%2fwebm") || clean.contains("mime=audio/webm") -> "audio-webm"
+            clean.contains("mime=audio%2fmp4") || clean.contains("mime=audio/mp4") -> "audio-mp4"
+            clean.contains("mime=video%2fwebm") || clean.contains("mime=video/webm") -> "video-webm"
+            clean.contains("mime=video%2fmp4") || clean.contains("mime=video/mp4") -> "video-mp4"
+            else -> "direct"
+        }
+    }
+}

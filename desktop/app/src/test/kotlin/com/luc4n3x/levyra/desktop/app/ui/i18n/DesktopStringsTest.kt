@@ -1,0 +1,110 @@
+package com.luc4n3x.levyra.desktop.app.ui.i18n
+
+import com.luc4n3x.levyra.desktop.core.model.AppLanguage
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class DesktopStringsTest {
+    @Test
+    fun everyAndroidLanguageBuildsACompleteDesktopCatalog() {
+        AppLanguage.entries.forEach { language ->
+            val strings = stringsFor(language, "Luca", 9)
+            val required = listOf(
+                strings.appName,
+                strings.navHome,
+                strings.navDiscover,
+                strings.navSearch,
+                strings.navLibrary,
+                strings.navSettings,
+                strings.navNowPlaying,
+                strings.searchPlaceholder,
+                strings.searchExploreTitle,
+                strings.homeGreeting,
+                strings.homeSubtitle,
+                strings.homeOrbitTitle,
+                strings.homeOrbitSubtitle,
+                strings.homeTop50,
+                strings.libraryTitle,
+                strings.librarySubtitle,
+                strings.libraryPlaylists,
+                strings.libraryFavorites,
+                strings.libraryDownloads,
+                strings.libraryHistory,
+                strings.downloadAction,
+                strings.downloadCancel,
+                strings.downloadCompleted,
+                strings.downloadRemove,
+                strings.playbackPlay,
+                strings.playbackClose,
+                strings.settingsLanguage,
+                strings.settingsCountry,
+                strings.settingsSponsorBlock,
+                strings.settingsSponsorBlockBody,
+                strings.onboardingWelcomeBadge,
+                strings.onboardingWelcomeTitle,
+                strings.onboardingLanguageQuestion,
+                strings.onboardingNameQuestion,
+                strings.onboardingTasteQuestion,
+                strings.onboardingContinue,
+                strings.onboardingSkip,
+                strings.onboardingStart
+            )
+            assertTrue("Missing desktop translation for ${language.tag}", required.all { it.isNotBlank() })
+            assertEquals(language.tag, strings.languageCode)
+        }
+    }
+
+    @Test
+    fun desktopOnlyLabelCatalogCoversEverySupportedLanguage() {
+        assertEquals(
+            AppLanguage.entries.map { it.tag }.toSet(),
+            DesktopExtras.supportedTags()
+        )
+    }
+
+    @Test
+    fun desktopOnlyLabelsAreTranslatedForEveryLanguage() {
+        val english = stringsFor(AppLanguage.ENGLISH)
+        AppLanguage.entries.forEach { language ->
+            val strings = stringsFor(language)
+            val desktopOnly = listOf(
+                strings.settingsSleepTimer,
+                strings.sleepTimerOff,
+                strings.sleepTimerEndOfTrack,
+                strings.settingsSpeed,
+                strings.settingsPreloadNext,
+                strings.settingsPreloadNextBody,
+                strings.settingsMediaKeys,
+                strings.settingsMediaKeysBody,
+                strings.settingsShortcuts,
+                strings.shortcutSeek,
+                strings.miniPlayer,
+                strings.playlistOverwriteTitle,
+                strings.playlistOverwriteConfirm,
+                strings.playlistExportSuccess,
+                strings.playlistExportFailed
+            )
+            assertTrue("Missing desktop label for ${language.tag}", desktopOnly.all { it.isNotBlank() })
+            if (language != AppLanguage.ENGLISH && language != AppLanguage.FILIPINO) {
+                assertNotEquals(
+                    "Untranslated sleep timer label for ${language.tag}",
+                    english.settingsSleepTimer,
+                    strings.settingsSleepTimer
+                )
+            }
+        }
+    }
+
+    @Test
+    fun rtlLanguagesRemainMarkedForBidirectionalLayout() {
+        assertTrue(AppLanguage.ARABIC.isRtl)
+        assertTrue(AppLanguage.HEBREW.isRtl)
+        assertTrue(
+            stringsFor(AppLanguage.ARABIC)
+                .formatPlaylistOverwriteConfirm("mix.m3u8")
+                .contains("\u2068mix.m3u8\u2069")
+        )
+    }
+}

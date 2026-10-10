@@ -1,0 +1,602 @@
+package com.luc4n3x.levyra.domain
+
+import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import java.util.Locale
+import kotlin.math.absoluteValue
+
+data class VideoSubtitleTrack(
+    val id: String,
+    val label: String,
+    val languageCode: String,
+    val vttUrl: String
+)
+
+data class Track(
+    val id: String,
+    val title: String,
+    val artist: String,
+    val album: String,
+    val durationMs: Long,
+    val streamUrl: String,
+    val videoUrl: String,
+    val thumbnailUrl: String,
+    val largeThumbnailUrl: String,
+    val source: String,
+    val moodTags: Set<String>,
+    val energy: Int,
+    val vocal: Int,
+    val replayScore: Int,
+    val cacheScore: Int,
+    val accentStart: Int,
+    val accentEnd: Int,
+    val videoStreamUrl: String = "",
+    val sponsorSegments: List<SponsorSegment> = emptyList(),
+    val youtubeLoudnessDb: Float? = null,
+    val youtubePerceptualLoudnessDb: Float? = null,
+    val replayGainTrackDb: Float? = null,
+    val replayGainAlbumDb: Float? = null,
+    val replayGainTrackPeak: Float? = null,
+    val replayGainAlbumPeak: Float? = null,
+    val isrc: String = "",
+    val upc: String = "",
+    val releaseDate: String = "",
+    val year: String = "",
+    val trackNumber: Int = 0,
+    val discNumber: Int = 0,
+    val trackTotal: Int = 0,
+    val discTotal: Int = 0,
+    val composer: String = "",
+    val albumArtist: String = "",
+    val copyright: String = "",
+    val appleSongId: String = "",
+    val appleAlbumId: String = "",
+    val explicit: Boolean = false,
+    val albumBrowseId: String = "",
+    val artistBrowseIds: List<String> = emptyList(),
+    val counterpartVideoId: String = "",
+    val videoType: String = "",
+    val audioVideoId: String = "",
+    val metadataProvider: String = "",
+    val metadataConfidence: Int = 0,
+    val canonicalAlbumUrl: String = "",
+    val youtubeLikeCount: Long = -1L,
+    val youtubeViewCount: Long = -1L,
+    val playbackManifest: ResolvedPlaybackManifest? = null,
+    val videoSubtitleTracks: List<VideoSubtitleTrack> = emptyList(),
+    val playlistEntryId: String = "",
+    val albumType: String = ""
+) {
+    val hasPlayableStream: Boolean
+        get() = streamUrl.isNotBlank()
+}
+
+data class Mood(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val icon: String,
+    val energyTarget: Int,
+    val tags: Set<String>,
+    val accentStart: Int,
+    val accentEnd: Int
+)
+
+data class Taste(
+    val id: String,
+    val label: String,
+    val emoji: String,
+    val query: String
+)
+
+data class HomeSection(
+    val title: String,
+    val tracks: List<Track>
+)
+
+data class ChartRegion(
+    val id: String,
+    val label: String,
+    val emoji: String,
+    val country: String
+)
+
+object ChartsCatalog {
+    val regions: List<ChartRegion> = listOf(
+        ChartRegion("it", "Italia", "🇮🇹", "it"),
+        ChartRegion("us", "USA", "🇺🇸", "us"),
+        ChartRegion("gb", "UK", "🇬🇧", "gb"),
+        ChartRegion("es", "España", "🇪🇸", "es"),
+        ChartRegion("fr", "France", "🇫🇷", "fr"),
+        ChartRegion("de", "Deutschland", "🇩🇪", "de"),
+        ChartRegion("pt", "Portugal", "🇵🇹", "pt"),
+        ChartRegion("br", "Brasil", "🇧🇷", "br"),
+        ChartRegion("mx", "México", "🇲🇽", "mx"),
+        ChartRegion("nl", "Nederland", "🇳🇱", "nl"),
+        ChartRegion("pl", "Polska", "🇵🇱", "pl"),
+        ChartRegion("ro", "România", "🇷🇴", "ro"),
+        ChartRegion("gr", "Ελλάδα", "🇬🇷", "gr"),
+        ChartRegion("se", "Sverige", "🇸🇪", "se"),
+        ChartRegion("dk", "Danmark", "🇩🇰", "dk"),
+        ChartRegion("cz", "Česko", "🇨🇿", "cz"),
+        ChartRegion("ua", "Україна", "🇺🇦", "ua"),
+        ChartRegion("ru", "Россия", "🇷🇺", "ru"),
+        ChartRegion("tr", "Türkiye", "🇹🇷", "tr"),
+        ChartRegion("sa", "السعودية", "🇸🇦", "sa"),
+        ChartRegion("cn", "中国", "🇨🇳", "cn"),
+        ChartRegion("jp", "日本", "🇯🇵", "jp"),
+        ChartRegion("kr", "대한민국", "🇰🇷", "kr"),
+        ChartRegion("in", "भारत", "🇮🇳", "in"),
+        ChartRegion("id", "Indonesia", "🇮🇩", "id"),
+        ChartRegion("vn", "Việt Nam", "🇻🇳", "vn"),
+        ChartRegion("th", "ประเทศไทย", "🇹🇭", "th"),
+        ChartRegion("ph", "Pilipinas", "🇵🇭", "ph"),
+        ChartRegion("il", "ישראל", "🇮🇱", "il"),
+        ChartRegion("tw", "台灣", "🇹🇼", "tw"),
+        ChartRegion("hu", "Magyarország", "🇭🇺", "hu"),
+        ChartRegion("bg", "България", "🇧🇬", "bg"),
+        ChartRegion("fi", "Suomi", "🇫🇮", "fi"),
+        ChartRegion("no", "Norge", "🇳🇴", "no"),
+        ChartRegion("hr", "Hrvatska", "🇭🇷", "hr"),
+        ChartRegion("sk", "Slovensko", "🇸🇰", "sk"),
+        ChartRegion("my", "Malaysia", "🇲🇾", "my")
+    )
+
+    fun region(id: String): ChartRegion = regions.firstOrNull { it.id == id } ?: regions.first()
+
+    fun supportedRegion(id: String): ChartRegion? {
+        val normalized = id.trim().lowercase(Locale.ROOT)
+        return regions.firstOrNull { it.id == normalized }
+    }
+
+    fun defaultRegionForLanguage(languageCode: String): ChartRegion =
+        region(LevyraContentLocales.forLanguage(languageCode).chartRegionId)
+
+    fun startupRegion(storedRegionId: String, deviceCountry: String, languageCode: String): ChartRegion =
+        supportedRegion(storedRegionId)
+            ?: supportedRegion(deviceCountry)
+            ?: defaultRegionForLanguage(languageCode)
+
+    fun requiresReload(requestedId: String, currentId: String, hasCharts: Boolean, isLoading: Boolean): Boolean =
+        requestedId != currentId || (!hasCharts && !isLoading)
+}
+
+enum class LyricVocalRole {
+    MAIN,
+    BACKGROUND,
+    DUET_LEFT,
+    DUET_RIGHT
+}
+
+enum class LyricsTranslationState {
+    DISABLED,
+    PENDING,
+    PROVIDER,
+    ON_DEVICE,
+    SAME_LANGUAGE,
+    MODEL_DOWNLOAD_REQUIRED,
+    MODEL_DOWNLOADING,
+    UNAVAILABLE,
+    FAILED
+}
+
+enum class LyricSectionType {
+    INTRO,
+    VERSE,
+    PRE_CHORUS,
+    CHORUS,
+    BRIDGE,
+    INSTRUMENTAL,
+    OUTRO
+}
+
+data class LyricSection(
+    val type: LyricSectionType,
+    val ordinal: Int,
+    val startLineIndex: Int,
+    val endLineIndex: Int,
+    val startMs: Long,
+    val endMs: Long,
+    val confidence: Int
+)
+
+data class LyricLine(
+    val startMs: Long,
+    val endMs: Long,
+    val text: String,
+    val translated: String = "",
+    val words: List<LyricWord> = emptyList(),
+    val romanized: String = "",
+    val role: LyricVocalRole = LyricVocalRole.MAIN,
+    val isInstrumental: Boolean = false,
+    val isMetadata: Boolean = false
+)
+
+data class LyricWord(
+    val startMs: Long,
+    val endMs: Long,
+    val text: String,
+    val romanized: String = ""
+)
+
+data class CacheReport(
+    val offlineReady: Int,
+    val smartCached: Int,
+    val nextPreload: Int,
+    val totalTracks: Int
+)
+
+data class SmartMusicTasteSeed(
+    val label: String,
+    val query: String,
+    val weight: Int
+)
+
+data class SmartMusicProfile(
+    val plays: Int = 0,
+    val completedPlays: Int = 0,
+    val favoriteSignals: Int = 0,
+    val downloadSignals: Int = 0,
+    val albumOpenSignals: Int = 0,
+    val topArtists: List<SmartMusicTasteSeed> = emptyList(),
+    val topAlbums: List<SmartMusicTasteSeed> = emptyList(),
+    val topMoods: List<SmartMusicTasteSeed> = emptyList(),
+    val lastUpdated: Long = 0L
+) {
+    val isWarm: Boolean
+        get() = plays + completedPlays + favoriteSignals + downloadSignals + albumOpenSignals >= 4
+
+    val albumQueries: List<String>
+        get() = topAlbums.map { it.query }
+
+    val artistQueries: List<String>
+        get() = topArtists.map { it.query }
+}
+
+enum class LevyraTab {
+    Home,
+    Search,
+    Explore,
+    Library,
+    Player
+}
+
+data class ExploreZone(
+    val id: String,
+    val label: String,
+    val emoji: String,
+    val query: String,
+    val accentStart: Int,
+    val accentEnd: Int
+)
+
+data class ExploreCategory(
+    val title: String,
+    val params: String,
+    val section: String = "",
+    val sectionIndex: Int = -1
+)
+
+object ExploreCatalog {
+    const val NEW_RELEASES_ZONE_ID = "nuove-uscite"
+    const val LOCAL_WAVE_ZONE_ID = "local-wave"
+
+    fun getZones(strings: LevyraStrings): List<ExploreZone> {
+        val locale = LevyraContentLocales.forLanguage(strings.code)
+        val localQuery = strings.localWaveQuery.ifBlank { locale.homeQueries.firstOrNull().orEmpty() }
+        val newReleaseQuery = "${locale.homeQueries.firstOrNull().orEmpty()} new releases 2026".trim()
+        val rapQuery = locale.queryForTaste("rap")
+        val popQuery = locale.queryForTaste("pop")
+        val electroQuery = locale.queryForTaste("electro")
+        val rnbQuery = locale.queryForTaste("rnb")
+        val rockQuery = locale.queryForTaste("rock")
+        val chillQuery = locale.queryForTaste("chill")
+        val latinoQuery = when (locale.languageCode) {
+            "es" -> "reggaeton latino música latina nueva 2026"
+            "pt" -> "música latina novos êxitos 2026"
+            else -> "latin music new hits 2026"
+        }
+        val jpopQuery = when (locale.languageCode) {
+            "ja" -> "アニメ J-POP 2026"
+            "zh" -> "动漫 J-POP 2026"
+            "ko" -> "애니메이션 J-POP 2026"
+            else -> "anime j-pop music 2026"
+        }
+        return listOf(
+            ExploreZone(NEW_RELEASES_ZONE_ID, strings.exploreNewReleases, "🌊", newReleaseQuery, 0xFF00E5FF.toInt(), 0xFF2979FF.toInt()),
+            ExploreZone(LOCAL_WAVE_ZONE_ID, strings.localWaveName, strings.localWaveEmoji, localQuery, 0xFF00E676.toInt(), 0xFF00B0FF.toInt()),
+            ExploreZone("rap-drill", strings.exploreRapDrill, "🐙", rapQuery, 0xFF9D4EDD.toInt(), 0xFF7C4DFF.toInt()),
+            ExploreZone("elettronica", strings.exploreElectronic, "⚡", electroQuery, 0xFF18FFFF.toInt(), 0xFF9D4EDD.toInt()),
+            ExploreZone("pop-global", strings.explorePopGlobal, "🌍", popQuery, 0xFFFF4081.toInt(), 0xFF7C4DFF.toInt()),
+            ExploreZone("rnb-soul", strings.exploreRnbSoul, "🌒", rnbQuery, 0xFFB388FF.toInt(), 0xFFFF4081.toInt()),
+            ExploreZone("rock-alt", strings.exploreRockAlt, "🦑", rockQuery, 0xFFFF6E40.toInt(), 0xFFFF1744.toInt()),
+            ExploreZone("latino", strings.exploreLatino, "🔥", latinoQuery, 0xFFFFC400.toInt(), 0xFFFF6E40.toInt()),
+            ExploreZone("lofi-chill", strings.exploreLofiChill, "🫧", chillQuery, 0xFF64FFDA.toInt(), 0xFF00B0FF.toInt()),
+            ExploreZone("anime-jpop", strings.exploreJpopAnime, "🏮", jpopQuery, 0xFFFF5252.toInt(), 0xFFB388FF.toInt()),
+            ExploreZone("afrobeats", strings.exploreAfrobeats, "♪", "afrobeats amapiano music hits 2026", 0xFFD29B65.toInt(), 0xFF735B89.toInt())
+        )
+    }
+
+    fun byId(id: String?, strings: LevyraStrings): ExploreZone? = getZones(strings).firstOrNull { it.id == id }
+}
+
+enum class RepeatMode {
+    Off,
+    All,
+    One
+}
+
+fun RepeatMode.nextInCycle(): RepeatMode = when (this) {
+    RepeatMode.Off -> RepeatMode.All
+    RepeatMode.All -> RepeatMode.One
+    RepeatMode.One -> RepeatMode.Off
+}
+
+const val SPONSOR_SEGMENT_ACTION_SKIP = "skip"
+
+data class SponsorSegment(
+    val startMs: Long,
+    val endMs: Long,
+    val category: String,
+    val uuid: String = "",
+    val actionType: String = SPONSOR_SEGMENT_ACTION_SKIP
+)
+
+data class AppUpdateInfo(
+    val currentVersionName: String,
+    val latestVersionName: String,
+    val latestTag: String,
+    val releaseTitle: String,
+    val releaseNotes: String,
+    val publishedAtEpochMs: Long,
+    val downloadUrl: String,
+    val releaseUrl: String,
+    val assetName: String,
+    val directApk: Boolean,
+    val isNewer: Boolean,
+    val assetSizeBytes: Long = 0L
+)
+
+fun Track.smartWeightFor(mood: Mood?): Int {
+    if (mood == null) return replayScore
+    val tagScore = mood.tags.intersect(moodTags).size * 18
+    val energyPenalty = (energy - mood.energyTarget).absoluteValue
+    return (replayScore + cacheScore + tagScore - energyPenalty).coerceIn(0, 100)
+}
+
+data class ArtistBiography(
+    val text: String,
+    val description: String = "",
+    val sourceLabel: String = "",
+    val sourceUrl: String = "",
+    val languageCode: String = "",
+    val pageTitle: String = "",
+    val pageId: Int = 0,
+    val entityId: String = "",
+    val thumbnailUrl: String = "",
+    val originalImageUrl: String = "",
+    val confidence: Int = 0,
+    val cached: Boolean = false
+)
+
+data class ArtistProfile(
+    val browseId: String,
+    val name: String,
+    val biography: ArtistBiography? = null,
+    val subscribers: String,
+    val monthlyListeners: String,
+    val thumbnailUrl: String,
+    val bannerUrl: String,
+    val topSongs: List<Track>,
+    val albums: List<ArtistRelease>,
+    val singles: List<ArtistRelease>,
+    val accentStart: Int,
+    val accentEnd: Int,
+    val relatedArtists: List<ArtistHit> = emptyList(),
+    val videos: List<Track> = emptyList(),
+    val shufflePlaylistId: String = "",
+    val radioPlaylistId: String = "",
+    val songsBrowseId: String = "",
+    val albumsBrowseId: String = "",
+    val albumsParams: String = "",
+    val singlesBrowseId: String = "",
+    val singlesParams: String = "",
+    val videosBrowseId: String = "",
+    val videosParams: String = "",
+    val compilations: List<ArtistRelease> = emptyList()
+) {
+    val bio: String
+        get() = biography?.text.orEmpty()
+
+    val hasBio: Boolean
+        get() = bio.isNotBlank()
+}
+
+data class FollowedArtist(
+    val browseId: String,
+    val name: String,
+    val thumbnailUrl: String,
+    val followedAt: Long
+) {
+    val key: String
+        get() = browseId.ifBlank { name.trim().lowercase() }
+}
+
+data class ReleaseRadarEntry(
+    val artistName: String,
+    val artistBrowseId: String,
+    val release: ArtistRelease,
+    val isFresh: Boolean
+)
+
+data class ArtistRelease(
+    val browseId: String,
+    val title: String,
+    val subtitle: String,
+    val thumbnailUrl: String,
+    val year: String,
+    val params: String = "",
+    val playlistId: String = "",
+    val explicit: Boolean = false,
+    val releaseType: ReleaseType = ReleaseType.Unknown
+)
+
+data class DownloadedTrack(
+    val id: Long,
+    val trackId: String,
+    val title: String,
+    val artist: String,
+    val album: String,
+    val durationMs: Long,
+    val fileName: String,
+    val uri: String,
+    val mimeType: String,
+    val embeddedMetadata: Boolean,
+    val savedAt: Long,
+    val sizeBytes: Long = 0L
+)
+
+data class ArtistHit(
+    val name: String,
+    val subscribers: String,
+    val thumbnailUrl: String,
+    val accentStart: Int,
+    val accentEnd: Int,
+    val browseId: String = "",
+    val officialArtwork: Boolean = false
+)
+
+data class AlbumHit(
+    val title: String,
+    val artist: String,
+    val year: String,
+    val thumbnailUrl: String,
+    val query: String,
+    val browseId: String = "",
+    val artistBrowseId: String = "",
+    val audioPlaylistId: String = "",
+    val explicit: Boolean = false,
+    val releaseDate: String = "",
+    val upc: String = "",
+    val canonicalUrl: String = "",
+    val metadataProvider: String = "",
+    val metadataConfidence: Int = 0,
+    val releaseType: ReleaseType = ReleaseType.Unknown
+)
+
+data class AlbumRecommendationSeed(
+    val query: String,
+    val artist: String = "",
+    val album: String = "",
+    val browseId: String = "",
+    val moodTags: Set<String> = emptySet(),
+    val weight: Int = 0
+)
+
+data class AlbumDetail(
+    val album: AlbumHit,
+    val description: String,
+    val tracks: List<Track>,
+    val otherVersions: List<AlbumHit> = emptyList(),
+    val trackCount: Int = tracks.size,
+    val durationMs: Long = tracks.sumOf { it.durationMs }
+)
+
+data class PlaylistHit(
+    val title: String,
+    val author: String,
+    val thumbnailUrl: String,
+    val playlistId: String = "",
+    val browseId: String = "",
+    val trackCountLabel: String = ""
+)
+
+data class PlaylistHitPreview(
+    val hit: PlaylistHit,
+    val tracks: List<Track> = emptyList(),
+    val loading: Boolean = true,
+    val failed: Boolean = false
+)
+
+fun PlaylistHitPreview.nextTrackAfter(currentTrackId: String?): Track? {
+    if (tracks.isEmpty()) return null
+    val index = tracks.indexOfFirst { it.id == currentTrackId }
+    return if (index < 0) tracks.first() else tracks.getOrNull(index + 1)
+}
+
+fun PlaylistHit.displayTrackCount(loadedTracks: Int, format: (Int) -> String): String =
+    trackCountLabel.trim().ifBlank { if (loadedTracks > 0) format(loadedTracks) else "" }
+
+fun PlaylistHitPreview.resolvedWith(
+    playlistId: String,
+    author: String,
+    thumbnailUrl: String,
+    tracks: List<Track>
+): PlaylistHitPreview? =
+    if (hit.playlistId != playlistId) {
+        null
+    } else {
+        copy(
+            hit = hit.copy(
+                author = hit.author.ifBlank { author },
+                thumbnailUrl = hit.thumbnailUrl.ifBlank { thumbnailUrl }
+            ),
+            tracks = tracks,
+            loading = false,
+            failed = tracks.isEmpty()
+        )
+    }
+
+data class SearchResults(
+    val topTrack: Track? = null,
+    val songs: List<Track> = emptyList(),
+    val artists: List<ArtistHit> = emptyList(),
+    val albums: List<AlbumHit> = emptyList(),
+    val playlists: List<PlaylistHit> = emptyList(),
+    val videos: List<Track> = emptyList(),
+    val failedSections: Set<SearchFilter> = emptySet()
+) {
+    val isEmpty: Boolean
+        get() = topTrack == null &&
+            songs.isEmpty() &&
+            artists.isEmpty() &&
+            albums.isEmpty() &&
+            playlists.isEmpty() &&
+            videos.isEmpty()
+}
+
+enum class SearchFilter {
+    All,
+    Songs,
+    Artists,
+    Albums,
+    Playlists,
+    Videos
+}
+
+data class SearchPage<T>(
+    val items: List<T> = emptyList(),
+    val continuation: String = ""
+)
+
+enum class PlaylistCoverMode {
+    AUTO,
+    CUSTOM;
+
+    companion object {
+        fun from(value: String): PlaylistCoverMode = entries.firstOrNull { it.name == value } ?: AUTO
+    }
+}
+
+data class Playlist(
+    val id: String,
+    val name: String,
+    val coverUrl: String,
+    val tracks: List<Track>,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val tags: List<PlaylistTag> = emptyList(),
+    val hidden: Boolean = false,
+    val coverMode: PlaylistCoverMode = PlaylistCoverMode.AUTO
+) {
+    val size: Int get() = tracks.size
+}

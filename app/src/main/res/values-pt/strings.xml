@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Minirreprodutor, favoritos rápidos, flow diário, offline e letras</string>
+    <string name="widget_idle_subtitle">Toque para ouvir</string>
+    <string name="widget_toggle">Reproduzir/Pausar</string>
+    <string name="widget_next">Seguinte</string>
+    <string name="widget_previous">Anterior</string>
+    <string name="widget_favorites">Favoritos</string>
+    <string name="widget_flow">Flow diário</string>
+    <string name="widget_offline">Mix offline</string>
+    <string name="widget_lyrics">Letras</string>
+    <string name="radar_channel_name">Radar de lançamentos</string>
+    <string name="radar_channel_description">Novos lançamentos dos artistas que segue</string>
+    <string name="radar_new_release_title">Novo lançamento de %1$s</string>
+    <string name="automatic_backups">Cópias de segurança automáticas</string>
+    <string name="car_home">Início</string>
+    <string name="car_downloads">Downloads</string>
+    <string name="car_favorites">Favoritos</string>
+    <string name="car_playlists">Playlists</string>
+    <string name="car_no_content">Sem conteúdo</string>
+    <string name="car_content_unavailable">Conteúdo indisponível</string>
+    <string name="car_search_tracks">Pesquisar faixas</string>
+    <string name="car_no_results">Sem resultados</string>
+    <string name="car_connecting_player">A ligar ao leitor</string>
+    <string name="car_now_playing">A reproduzir</string>
+    <string name="car_queue">Fila</string>
+    <string name="notification_favorite_add">Adicionar aos favoritos</string>
+    <string name="notification_favorite_remove">Remover dos favoritos</string>
+    <string name="notification_shuffle_enable">Ativar aleatório</string>
+    <string name="notification_shuffle_disable">Desativar aleatório</string>
+    <string name="notification_repeat_off">Repetição desativada</string>
+    <string name="notification_repeat_all">Repetir tudo</string>
+    <string name="notification_repeat_one">Repetir faixa</string>
+    <string name="tile_recognize_music">Reconhecer música</string>
+    <string name="tile_playback">Reprodução</string>
+    <string name="shortcut_search">Pesquisar</string>
+    <string name="shortcut_library">Biblioteca</string>
+    <string name="shortcut_recognition">Reconhecer música</string>
+    <string name="shortcut_resume">Retomar reprodução</string>
+</resources>

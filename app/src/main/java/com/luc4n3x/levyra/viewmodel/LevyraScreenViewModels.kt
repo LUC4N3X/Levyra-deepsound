@@ -1,0 +1,1408 @@
+package com.luc4n3x.levyra.viewmodel
+
+import androidx.compose.runtime.Immutable
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import com.luc4n3x.levyra.data.HomeContentAvailability
+import com.luc4n3x.levyra.data.HomeOfflineContent
+import com.luc4n3x.levyra.data.HomeOfflineContentBuilder
+import com.luc4n3x.levyra.data.HomeEditorialEngine
+import com.luc4n3x.levyra.data.LevyraStartupCatalog
+import com.luc4n3x.levyra.data.deduplicateHomeAlbums
+import com.luc4n3x.levyra.domain.AlbumHit
+import com.luc4n3x.levyra.domain.ArtistExclusions
+import com.luc4n3x.levyra.domain.BatchDownload
+import com.luc4n3x.levyra.domain.PlaylistHit
+import com.luc4n3x.levyra.domain.ArtistHit
+import com.luc4n3x.levyra.domain.ChartRegion
+import com.luc4n3x.levyra.domain.DownloadedTrack
+import com.luc4n3x.levyra.domain.ExploreZone
+import com.luc4n3x.levyra.domain.ExploreCategory
+import com.luc4n3x.levyra.domain.FollowedArtist
+import com.luc4n3x.levyra.domain.HomeSection
+import com.luc4n3x.levyra.domain.HomeEditorialCollection
+import com.luc4n3x.levyra.domain.HomeSpotlightCandidate
+import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.LevyraContentLocales
+import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
+import com.luc4n3x.levyra.domain.LevyraTab
+import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.LibrarySort
+import com.luc4n3x.levyra.domain.LibrarySortDirection
+import com.luc4n3x.levyra.domain.PlayerBackgroundMode
+import com.luc4n3x.levyra.domain.PlayerVisualMode
+import com.luc4n3x.levyra.domain.LevyraMixKind
+import com.luc4n3x.levyra.domain.ListeningPulse
+import com.luc4n3x.levyra.domain.LyricLine
+import com.luc4n3x.levyra.domain.Mood
+import com.luc4n3x.levyra.domain.OfflineDownloadTask
+import com.luc4n3x.levyra.domain.Playlist
+import com.luc4n3x.levyra.domain.PlaylistTag
+import com.luc4n3x.levyra.domain.ReleaseRadarEntry
+import com.luc4n3x.levyra.domain.ResonanceCommentSnippet
+import com.luc4n3x.levyra.domain.RepeatMode
+import com.luc4n3x.levyra.domain.SearchFilter
+import com.luc4n3x.levyra.domain.SearchResults
+import com.luc4n3x.levyra.domain.SmartMusicProfile
+import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.YoutubeEngagementState
+import com.luc4n3x.levyra.domain.prepareMixPlaybackTracks
+import com.luc4n3x.levyra.feature.motion.MotionArtwork
+import com.luc4n3x.levyra.feature.recognition.RecognitionState
+import com.luc4n3x.levyra.feature.radio.RadioStation
+import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.scan
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.withContext
+import java.util.Locale
+
+internal fun stabilizeResolvingPlaybackUi(
+    previous: LevyraUiState,
+    current: LevyraUiState
+): LevyraUiState {
+    if (!current.isResolving) return current
+    val previousTrack = previous.currentTrack ?: return current
+    val currentTrack = current.currentTrack ?: return current
+    if (playbackIdentity(previousTrack) != playbackIdentity(currentTrack)) return current
+
+    val lostPosition = current.positionMs <= 0L && previous.positionMs > 0L
+    val lostDuration = current.durationMs <= 0L && previous.durationMs > 0L
+    val lostBuffer = current.bufferedPositionMs <= 0L && previous.bufferedPositionMs > 0L
+    if (!lostPosition && !lostDuration && !lostBuffer) return current
+
+    val stableDuration = if (lostDuration) previous.durationMs else current.durationMs
+    val candidatePosition = if (lostPosition) previous.positionMs else current.positionMs
+    val stablePosition = if (stableDuration > 0L) candidatePosition.coerceAtMost(stableDuration) else candidatePosition
+    val candidateBuffered = if (lostBuffer) previous.bufferedPositionMs else current.bufferedPositionMs
+    val stableBuffered = if (stableDuration > 0L) {
+        candidateBuffered.coerceIn(stablePosition, stableDuration)
+    } else {
+        candidateBuffered.coerceAtLeast(stablePosition)
+    }
+
+    return current.copy(
+        positionMs = stablePosition,
+        bufferedPositionMs = stableBuffered,
+        durationMs = stableDuration
+    )
+}
+
+internal class ResolvingPlaybackUiStabilizer(initial: LevyraUiState) {
+    private var previous = initial
+
+    fun apply(current: LevyraUiState): LevyraUiState =
+        stabilizeResolvingPlaybackUi(previous, current).also { stable -> previous = stable }
+}
+
+abstract class LevyraScreenViewModel(
+    protected val root: LevyraViewModel,
+    projection: (LevyraUiState) -> Any
+) : ViewModel() {
+    private val playbackUiStabilizer = ResolvingPlaybackUiStabilizer(root.state.value)
+
+    protected val stablePlaybackState: StateFlow<LevyraUiState> = flow {
+        root.state.collect { current ->
+            emit(playbackUiStabilizer.apply(current))
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000L),
+        initialValue = root.state.value
+    )
+
+    val state: StateFlow<LevyraUiState> = stablePlaybackState
+        .map { it }
+        .distinctUntilChanged { previous, current -> projection(previous) == projection(current) }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000L),
+            initialValue = root.state.value
+        )
+}
+
+class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeProjection) {
+    fun openExploreZone(zone: ExploreZone) = root.openExploreZone(zone)
+
+    private val freezeHomeContent = MutableStateFlow(false)
+    private val explicitMoodSelection = MutableStateFlow<Mood?>(null)
+    private var homeRenderSettleJob: Job? = null
+
+    internal val renderState: StateFlow<HomeRenderSnapshot> = combine(
+        state,
+        freezeHomeContent,
+        explicitMoodSelection
+    ) { snapshot, freeze, selectedMood ->
+        HomeRenderInput(
+            state = snapshot.copy(selectedMood = selectedMood),
+            freezeContent = freeze
+        )
+    }
+        .scan(buildHomeRenderSnapshot(root.state.value.copy(selectedMood = null))) { previous, input ->
+            withContext(Dispatchers.Default) {
+                buildStableHomeRenderSnapshot(
+                    state = input.state,
+                    previous = previous,
+                    freezeContent = input.freezeContent
+                )
+            }
+        }
+        .distinctUntilChanged(::sameHomeRenderSnapshot)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000L),
+            initialValue = buildHomeRenderSnapshot(root.state.value.copy(selectedMood = null))
+        )
+    fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
+    fun addToQueue(track: Track) = root.addToQueue(track)
+    fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
+    fun openAlbum(album: AlbumHit) = root.openAlbum(album)
+    fun openArtistByName(name: String) = root.openArtistByName(name)
+    fun openArtistFromHit(hit: ArtistHit) = root.openArtistFromHit(hit)
+    fun openSettings() = root.openSettings()
+    fun openSearch() = root.selectTab(LevyraTab.Search)
+    fun playAlbumRecommendations(albums: List<AlbumHit>) = root.playAlbumRecommendations(albums)
+    fun refreshHomeArtists() = root.refreshHomeArtists()
+    fun refreshHomeResonanceComments(tracks: List<Track>) = root.refreshHomeResonanceComments(tracks)
+    fun retryHomeContent() = root.retryHomeContent()
+    fun openPlaylist(playlistId: String) = root.openPlaylist(playlistId)
+    fun openSpeedDialPin(pin: com.luc4n3x.levyra.domain.SpeedDialPin) = root.openSpeedDialPin(pin)
+    fun removeSpeedDialPin(key: String) = root.removeSpeedDialPin(key)
+    fun reorderSpeedDial(orderedKeys: List<String>) = root.reorderSpeedDial(orderedKeys)
+    fun openYoutubeCommentsFor(track: Track) = root.openYoutubeCommentsFor(track)
+    fun playAll(tracks: List<Track>) = root.playAll(tracks)
+    fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) {
+        val current = root.state.value
+        if (!current.isVideoMode && current.currentTrack?.id == track.id) {
+            root.togglePlay()
+        } else {
+            root.playAudioFrom(list, track, loopOnCompletion)
+        }
+    }
+    fun playVideoQueue(list: List<Track>, first: Track) = root.playVideoFrom(list, first)
+    fun playVideoFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) {
+        val current = root.state.value
+        if (current.isVideoMode && current.currentTrack?.id == track.id) {
+            root.togglePlay()
+        } else {
+            root.playVideoFrom(list, track, loopOnCompletion)
+        }
+    }
+    fun searchNow() = root.searchNow()
+    fun searchNow(query: String) = root.searchNow(query)
+    fun selectChart(regionId: String) = root.selectChart(regionId)
+    fun selectMood(mood: Mood) {
+        explicitMoodSelection.value = mood
+        root.selectMood(mood)
+    }
+    fun toggleFavorite(track: Track) = root.toggleFavorite(track)
+    fun togglePlay() = root.togglePlay()
+    fun onHomeEntered(atTop: Boolean) {
+        homeRenderSettleJob?.cancel()
+        freezeHomeContent.value = shouldFreezeHomeStructure(scrollInProgress = false, atTop = atTop)
+        root.onHomeEntered(atTop)
+    }
+
+    fun onHomeLeft() {
+        homeRenderSettleJob?.cancel()
+        freezeHomeContent.value = false
+        root.onHomeLeft()
+    }
+
+    fun setHomeViewport(scrollInProgress: Boolean, atTop: Boolean) {
+        root.setHomeViewport(scrollInProgress, atTop)
+        homeRenderSettleJob?.cancel()
+        if (shouldFreezeHomeStructure(scrollInProgress, atTop)) {
+            freezeHomeContent.value = true
+        } else {
+            homeRenderSettleJob = viewModelScope.launch {
+                delay(HOME_RENDER_SETTLE_MS)
+                freezeHomeContent.value = false
+            }
+        }
+    }
+}
+
+class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::searchProjection) {
+    fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
+    fun addTracksToPlaylist(playlistId: String, tracks: List<Track>) = root.addTracksToPlaylist(playlistId, tracks)
+    fun addToQueue(track: Track) = root.addToQueue(track)
+    fun addTracksToQueue(tracks: List<Track>) = root.addTracksToQueue(tracks)
+    fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
+    fun createPlaylistWithTracks(name: String, tracks: List<Track>) = root.createPlaylistWithTracks(name, tracks)
+    fun deleteDownload(download: DownloadedTrack) = root.deleteDownload(download)
+    fun exportTrack(track: Track) = root.exportTrack(track)
+    fun exportTracks(tracks: List<Track>, label: String) = root.exportTracks(tracks, label)
+    fun openAlbum(album: AlbumHit) = root.openAlbum(album)
+    fun openArtist(track: Track) = root.openArtist(track)
+    fun openArtistFromHit(hit: ArtistHit) = root.openArtistFromHit(hit)
+    fun play(track: Track) = root.play(track)
+    fun playDownloaded(download: DownloadedTrack) = root.playDownloaded(download)
+    fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) = root.playFrom(list, track, loopOnCompletion)
+    fun playNext(track: Track) = root.playNext(track)
+    fun playTracksNext(tracks: List<Track>) = root.playTracksNext(tracks)
+    fun removeRecentSearch(track: Track) = root.removeRecentSearch(track)
+    fun refreshArtistSuggestions() = root.refreshHomeArtists()
+    fun searchNow() = root.searchNow()
+    fun searchNow(query: String) = root.searchNow(query)
+    fun setQuery(query: String) = root.setQuery(query)
+    fun startMusicRecognition() = root.startMusicRecognition()
+    fun cancelMusicRecognition() = root.cancelMusicRecognition()
+    fun setSearchFilter(filter: SearchFilter) = root.setSearchFilter(filter)
+    fun loadMoreSearchSection(filter: SearchFilter) = root.loadMoreSearchSection(filter)
+    fun openPlaylistHit(playlist: PlaylistHit) = root.openPlaylistHit(playlist)
+    fun playPlaylistHit(playlist: PlaylistHit) = root.playPlaylistHit(playlist)
+    fun exportPlaylistHit(playlist: PlaylistHit) = root.exportPlaylistHit(playlist)
+    fun exportAlbumHit(album: AlbumHit) = root.exportAlbumHit(album)
+    fun toggleFavorite(track: Track) = root.toggleFavorite(track)
+    fun toggleFavorites(tracks: List<Track>) = root.toggleFavorites(tracks)
+    fun startSongRadio() = root.startSongRadio()
+    fun startSongRadioFrom(track: Track, context: List<Track> = emptyList()) = root.startSongRadioFrom(track, context)
+}
+
+class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::exploreProjection) {
+    fun consumeExploreOpenRequest() = root.consumeExploreOpenRequest()
+    private var mixPresentationJob: Job? = null
+
+    fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
+    fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
+    fun ensureExplore(strings: LevyraStrings) = root.ensureExplore(strings)
+    fun openAlbum(album: AlbumHit) = root.openAlbum(album)
+    fun ensureSamples() = root.ensureExploreSamples()
+    fun refreshSamples() = root.refreshExploreSamples()
+    fun beginSamplesPlayback() = root.beginSamplesPlayback()
+    fun endSamplesPlayback() = root.endSamplesPlayback()
+    fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) = root.playFrom(list, track, loopOnCompletion)
+    fun playSample(list: List<Track>, track: Track) = root.playSample(list, track)
+    fun playLiveRadio(station: RadioStation) = root.playLiveRadio(station)
+    fun selectExploreZone(zone: ExploreZone) = root.selectExploreZone(zone)
+    fun selectExploreCategory(category: ExploreCategory) = root.selectExploreCategory(category)
+    fun ensureExploreTrackArtwork(track: Track) = root.ensureExploreTrackArtwork(track)
+    fun ensureExploreCategoryArtwork(params: String, allowTrackFallback: Boolean) =
+        root.ensureExploreCategoryArtwork(params, allowTrackFallback)
+    fun setMixFamiliarity(value: Float) = root.setMixFamiliarity(value)
+
+    fun startLevyraMix(
+        kind: LevyraMixKind,
+        seedTrack: Track? = null,
+        seedQuery: String = "",
+        label: String = ""
+    ) {
+        mixPresentationJob?.cancel()
+        mixPresentationJob = viewModelScope.launch {
+            val previousQueue = root.state.value.queue
+            root.startLevyraMix(kind, seedTrack, seedQuery, label)
+            val generated = root.state.first { snapshot ->
+                !snapshot.mixLoading && (
+                    snapshot.mixMessage != null ||
+                        (snapshot.activeMix != null && snapshot.queue.isNotEmpty() && snapshot.queue !== previousQueue)
+                )
+            }
+            if (generated.mixMessage != null || generated.activeMix == null || generated.queue.isEmpty()) {
+                return@launch
+            }
+
+            val canonicalSources = buildList {
+                addAll(generated.charts)
+                generated.homeSections.forEach { section -> addAll(section.tracks) }
+                addAll(generated.tracks)
+                addAll(generated.personalOrbitTracks)
+                addAll(generated.favorites)
+                addAll(generated.recentListens)
+                addAll(generated.exploreFreshTracks)
+                addAll(generated.exploreTracks)
+                addAll(generated.homeResonanceTracks)
+            }
+            val prepared = withContext(Dispatchers.Default) {
+                prepareMixPlaybackTracks(generated.queue, canonicalSources)
+            }
+            if (prepared.isNotEmpty() && (generated.isVideoMode || prepared != generated.queue)) {
+                root.playAudioFrom(prepared, prepared.first(), loopOnCompletion = true)
+            }
+            root.openQueue()
+        }
+    }
+
+    fun openYourSound() = root.openYourSound()
+    fun openMixLab(initialParams: com.luc4n3x.levyra.domain.MixLabParams = com.luc4n3x.levyra.domain.MixLabParams()) = root.openMixLab(initialParams)
+    fun openListeningRecap() = root.openListeningRecap()
+    fun openListeningInsights() = root.openListeningInsights()
+    fun toggleFavorite(track: Track) = root.toggleFavorite(track)
+    fun togglePlay() = root.togglePlay()
+}
+
+class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::libraryProjection) {
+    fun openYourSound() = root.openYourSound()
+    fun openMixLab(initialParams: com.luc4n3x.levyra.domain.MixLabParams = com.luc4n3x.levyra.domain.MixLabParams()) = root.openMixLab(initialParams)
+    fun openListeningRecap() = root.openListeningRecap()
+    fun openListeningInsights() = root.openListeningInsights()
+    fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
+    fun addTracksToPlaylist(playlistId: String, tracks: List<Track>) = root.addTracksToPlaylist(playlistId, tracks)
+    fun addToQueue(track: Track) = root.addToQueue(track)
+    fun addTracksToQueue(tracks: List<Track>) = root.addTracksToQueue(tracks)
+    fun playLocalTracks(tracks: List<Track>, track: Track) = root.playLocalTracks(tracks, track)
+    fun requestLocalLibraryScan(mode: com.luc4n3x.levyra.data.locallibrary.LocalScanMode) =
+        root.requestLocalLibraryScan(mode, force = mode != com.luc4n3x.levyra.data.locallibrary.LocalScanMode.Quick)
+    fun refreshLocalLibraryAccess() = root.refreshLocalLibraryAccess()
+    fun saveLocalAudioTags(
+        identityKey: String,
+        edits: com.luc4n3x.levyra.data.locallibrary.LocalTagEdits,
+        onResult: (com.luc4n3x.levyra.data.locallibrary.LocalTagWriteResult) -> Unit
+    ) = root.saveLocalAudioTags(identityKey, edits, onResult)
+    fun loadLocalEmbeddedLyrics(identityKey: String, onResult: (String) -> Unit) =
+        root.loadLocalEmbeddedLyrics(identityKey, onResult)
+    fun setLocalFolderHidden(folderKey: String, hidden: Boolean) = root.setLocalFolderExcluded(folderKey, hidden)
+    fun cancelDownload(taskKey: String) = root.cancelDownload(taskKey)
+    fun retryBatchDownload(batchKey: String) = root.retryBatchDownload(batchKey)
+    fun cancelBatchDownload(batchKey: String) = root.cancelBatchDownload(batchKey)
+    fun closePlaylist() = root.closePlaylist()
+    fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
+    fun createPlaylistWithTracks(name: String, tracks: List<Track>) = root.createPlaylistWithTracks(name, tracks)
+    fun deleteDownload(download: DownloadedTrack) = root.deleteDownload(download)
+    fun deleteDownloads(downloads: List<DownloadedTrack>) = root.deleteDownloads(downloads)
+    fun deletePlaylist(playlistId: String) = root.deletePlaylist(playlistId)
+    fun deletePlaylists(playlistIds: Collection<String>) = root.deletePlaylists(playlistIds)
+    fun exportOpenPlaylist() = root.exportOpenPlaylist()
+    fun exportTrack(track: Track) = root.exportTrack(track)
+    fun exportTracks(tracks: List<Track>, label: String) = root.exportTracks(tracks, label)
+    fun openPlaylistImport(prefill: String? = null) = root.openPlaylistImport(prefill)
+
+    fun importPlaylistFile(uri: android.net.Uri) = root.importPlaylistFile(uri)
+
+    fun replacePlaylistTrack(playlistId: String, oldTrackId: String, replacement: Track) =
+        root.replacePlaylistTrack(playlistId, oldTrackId, replacement)
+
+    fun searchPlaylistReplacements(
+        reference: Track,
+        query: String,
+        origin: com.luc4n3x.levyra.nexus.playlistimport.CandidateOrigin,
+        onResult: (List<Pair<com.luc4n3x.levyra.nexus.playlistimport.MatchEvaluation, Track>>) -> Unit
+    ) = root.searchPlaylistReplacements(reference, query, origin, onResult)
+    fun openAlbum(album: AlbumHit) = root.openAlbum(album)
+    fun openArtist(track: Track) = root.openArtist(track)
+    fun openArtistByName(name: String) = root.openArtistByName(name)
+    fun openArtistReference(name: String, browseId: String, thumbnailUrl: String) = root.openArtistFromHit(
+        ArtistHit(
+            name = name,
+            subscribers = "",
+            thumbnailUrl = thumbnailUrl,
+            accentStart = 0,
+            accentEnd = 0,
+            browseId = browseId
+        )
+    )
+    fun openPlayerScreen() = root.openPlayerScreen()
+    fun openYoutubeCommentsFor(track: Track) = root.openYoutubeCommentsFor(track)
+    fun openPlaylist(playlistId: String) = root.openPlaylist(playlistId)
+    fun openPlaylistStudio(playlistId: String? = null) = root.openPlaylistStudio(playlistId)
+    fun pauseDownload(taskKey: String) = root.pauseDownload(taskKey)
+    fun playDownloaded(download: DownloadedTrack) = root.playDownloaded(download)
+    fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) = root.playFrom(list, track, loopOnCompletion)
+    fun playPlaylist(playlistId: String, startTrackId: String? = null) = root.playPlaylist(playlistId, startTrackId)
+    fun playTracksNext(tracks: List<Track>) = root.playTracksNext(tracks)
+    fun removeFavorites(tracks: List<Track>) = root.removeFavorites(tracks)
+    fun removeFromPlaylist(playlistId: String, trackId: String) = root.removeFromPlaylist(playlistId, trackId)
+    fun removeTracksFromPlaylist(playlistId: String, tracks: List<Track>) = root.removeTracksFromPlaylist(playlistId, tracks)
+    fun renamePlaylist(playlistId: String, name: String) = root.renamePlaylist(playlistId, name)
+    fun setPlaylistCover(playlistId: String, source: android.net.Uri, crop: com.luc4n3x.levyra.data.PlaylistCoverCrop) =
+        root.setPlaylistCover(playlistId, source, crop)
+    fun resetPlaylistCover(playlistId: String) = root.resetPlaylistCover(playlistId)
+    fun setPlaylistHidden(playlistId: String, hidden: Boolean) = root.setPlaylistHidden(playlistId, hidden)
+    fun setLibrarySort(sort: LibrarySort, direction: LibrarySortDirection) {
+        val current = root.state.value.interfaceSettings
+        if (current.librarySort == sort && current.librarySortDirection == direction) return
+        root.setInterfaceSettings(current.copy(librarySort = sort, librarySortDirection = direction))
+    }
+    fun createPlaylistTag(name: String, assignToPlaylistId: String? = null) =
+        root.createPlaylistTag(name, assignToPlaylistId)
+    fun renamePlaylistTag(tagId: String, name: String) = root.renamePlaylistTag(tagId, name)
+    fun deletePlaylistTag(tagId: String) = root.deletePlaylistTag(tagId)
+    fun setPlaylistTags(playlistId: String, tagIds: List<String>) = root.setPlaylistTags(playlistId, tagIds)
+    fun reorderPlaylist(playlistId: String, tracks: List<Track>) = root.reorderPlaylist(playlistId, tracks)
+    fun resumeDownload(taskKey: String) = root.resumeDownload(taskKey)
+    fun toggleFavorite(track: Track) = root.toggleFavorite(track)
+    fun toggleFavorites(tracks: List<Track>) = root.toggleFavorites(tracks)
+    fun togglePlay() = root.togglePlay()
+}
+
+class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::playerProjection) {
+    fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
+    fun addToQueue(track: Track) = root.addToQueue(track)
+    fun closePlayer() = root.closePlayer()
+    fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
+    fun cycleSpeed() = root.cycleSpeed()
+    fun playSimilarSong(track: Track) = root.playSimilarSong(track)
+    fun startSongRadio() = root.startSongRadio()
+    fun openSleepTimer() = root.openSleepTimer()
+    fun openAmbient() = root.openAmbient()
+    fun exportCurrentTrack() = root.exportCurrentTrack()
+    fun next() = root.next()
+    suspend fun playerArtistHits(track: Track, resolveArtwork: Boolean = true): List<ArtistHit> =
+        root.playerArtistHits(track, resolveArtwork)
+    fun openArtist(track: Track, artistIndex: Int = 0) {
+        val reference = artistReferenceOf(track, artistIndex) ?: return
+        root.openArtistFromPlayer(
+            track.copy(
+                artist = reference.name,
+                artistBrowseIds = if (reference.browseId.isNotBlank()) {
+                    listOf(reference.browseId)
+                } else {
+                    emptyList()
+                }
+            )
+        )
+    }
+    fun openArtist(hit: ArtistHit) = root.openArtistFromPlayer(hit)
+    fun openAudioQualityPanel() = root.openAudioQualityPanel()
+    fun openLyrics() = root.openLyrics()
+    fun openQueue() = root.openQueue()
+    fun openYoutubeComments() = root.openYoutubeComments()
+    fun closeYoutubeComments() = root.closeYoutubeComments()
+    fun retryYoutubeComments() = root.retryYoutubeComments()
+    fun loadMoreYoutubeComments() = root.loadMoreYoutubeComments()
+    fun retryYoutubeCommentsPage() = root.retryYoutubeCommentsPage()
+    fun toggleYoutubeCommentReplies(commentId: String) = root.toggleYoutubeCommentReplies(commentId)
+    fun loadMoreYoutubeCommentReplies(commentId: String) = root.loadMoreYoutubeCommentReplies(commentId)
+    fun previous() = root.previous()
+    fun seekBy(deltaMs: Long) = root.seekBy(deltaMs)
+    fun seekTo(progress: Float) = root.seekTo(progress)
+    fun selectTab(tab: LevyraTab) = root.selectTab(tab)
+    fun toggleAudioNormalization() = root.toggleAudioNormalization()
+    fun setMotionArtworkEnabled(value: Boolean) = root.setMotionArtworkEnabled(value)
+    fun refreshCurrentMotionArtwork() = root.refreshCurrentMotionArtwork()
+    fun toggleFavorite(track: Track) = root.toggleFavorite(track)
+    fun togglePlay() = root.togglePlay()
+    fun toggleRepeat() = root.toggleRepeat()
+    fun toggleShuffle() = root.toggleShuffle()
+    fun toggleVideoMode() = root.toggleVideoMode()
+    fun selectVideoSubtitle(trackId: String?) = root.selectVideoSubtitle(trackId)
+    fun selectVideoQuality(targetLabel: String?) = root.selectVideoQuality(targetLabel)
+    fun setTemporaryPlaybackSpeed(value: Float) = root.setTemporaryPlaybackSpeed(value)
+    fun setPlayerVisualMode(mode: PlayerVisualMode) = root.setPlayerVisualMode(mode)
+    fun setPlayerBackground(mode: PlayerBackgroundMode) = root.setPlayerBackground(mode)
+}
+
+class LevyraScreenViewModelFactory(
+    private val root: LevyraViewModel
+) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        return when {
+            modelClass.isAssignableFrom(HomeViewModel::class.java) -> HomeViewModel(root)
+            modelClass.isAssignableFrom(SearchViewModel::class.java) -> SearchViewModel(root)
+            modelClass.isAssignableFrom(ExploreViewModel::class.java) -> ExploreViewModel(root)
+            modelClass.isAssignableFrom(LibraryViewModel::class.java) -> LibraryViewModel(root)
+            modelClass.isAssignableFrom(PlayerViewModel::class.java) -> PlayerViewModel(root)
+            else -> throw IllegalArgumentException("Unsupported screen ViewModel: ${modelClass.name}")
+        } as T
+    }
+}
+
+private const val HOME_RENDER_SETTLE_MS = 360L
+
+internal fun shouldFreezeHomeStructure(scrollInProgress: Boolean, atTop: Boolean): Boolean {
+    return scrollInProgress || !atTop
+}
+
+private data class HomeRenderInput(
+    val state: LevyraUiState,
+    val freezeContent: Boolean
+)
+
+internal fun buildStableHomeRenderSnapshot(
+    state: LevyraUiState,
+    previous: HomeRenderSnapshot,
+    freezeContent: Boolean
+): HomeRenderSnapshot {
+    val visibleState = if (freezeContent) state.withFrozenHomeContent(previous.state) else state
+    return buildHomeRenderSnapshot(visibleState, previous)
+}
+
+private fun LevyraUiState.withFrozenHomeContent(previous: LevyraUiState): LevyraUiState {
+    val sameChartIdentity = languageCode == previous.languageCode &&
+        selectedChartId == previous.selectedChartId
+    return copy(
+        tracks = previous.tracks,
+        recentSearches = previous.recentSearches,
+        recentListens = previous.recentListens,
+        personalOrbitTracks = personalOrbitTracks,
+        favorites = previous.favorites,
+        charts = if (sameChartIdentity) previous.charts else charts,
+        isLoadingCharts = if (sameChartIdentity) previous.isLoadingCharts else isLoadingCharts,
+        homeSections = previous.homeSections,
+        homeAlbums = previous.homeAlbums,
+        homeArtists = previous.homeArtists,
+        homeResonanceTracks = previous.homeResonanceTracks,
+        homeResonanceComments = previous.homeResonanceComments,
+        homeArtistsLoading = previous.homeArtistsLoading,
+        homeAlbumsLoading = previous.homeAlbumsLoading,
+        isLoadingHome = previous.isLoadingHome,
+        homeError = previous.homeError,
+        isDeviceOffline = previous.isDeviceOffline,
+        downloads = previous.downloads,
+        releaseRadar = previous.releaseRadar,
+        similarArtists = previous.similarArtists
+    )
+}
+
+internal fun sameHomeRenderSnapshot(previous: HomeRenderSnapshot, current: HomeRenderSnapshot): Boolean {
+    return homeProjection(previous.state) == homeProjection(current.state) && previous.derived == current.derived
+}
+
+@Immutable
+internal data class HomeRenderSnapshot(
+    val state: LevyraUiState,
+    val derived: HomeDerivedState
+)
+
+@Immutable
+internal data class HomeDerivedState(
+    val resonanceTracks: List<Track>,
+    val artistRefreshFingerprint: String,
+    val quickPicks: HomeSection?,
+    val newReleases: HomeSection?,
+    val otherSections: List<HomeSection>,
+    val spotlightCandidates: List<HomeSpotlightCandidate>,
+    val editorialCollections: List<HomeEditorialCollection>,
+    val chartChunks: List<List<Track>>,
+    val contentAvailability: HomeContentAvailability,
+    val contentFingerprint: String,
+    val offlineContent: HomeOfflineContent
+)
+
+private data class HomeDerivedInput(
+    val languageCode: String,
+    val recentListens: List<Track>,
+    val personalOrbitTracks: List<Track>,
+    val favorites: List<Track>,
+    val tracks: List<Track>,
+    val homeSections: List<HomeSection>,
+    val homeAlbums: List<AlbumHit>,
+    val charts: List<Track>,
+    val quickPickSeeds: List<Track>,
+    val cachedResonanceTracks: List<Track>,
+    val releaseRadar: List<ReleaseRadarEntry>,
+    val similarArtists: List<ArtistHit>,
+    val currentTrack: Track?,
+    val selectedMood: Mood?,
+    val deviceOffline: Boolean,
+    val downloads: List<DownloadedTrack>,
+    val playlists: List<Playlist>,
+    val showNewReleases: Boolean,
+    val showPersonalOrbit: Boolean,
+    val showResonance: Boolean,
+    val showCharts: Boolean,
+    val artistExclusions: ArtistExclusions
+)
+
+internal fun buildHomeRenderSnapshot(state: LevyraUiState): HomeRenderSnapshot {
+    val renderState = state.withoutExcludedArtists().withDeduplicatedHomeAlbums()
+    return HomeRenderSnapshot(
+        state = renderState,
+        derived = buildHomeDerivedState(renderState.toHomeDerivedInput())
+    )
+}
+
+internal fun buildHomeRenderSnapshot(
+    state: LevyraUiState,
+    previous: HomeRenderSnapshot
+): HomeRenderSnapshot {
+    val renderState = state.withoutExcludedArtists().withDeduplicatedHomeAlbums()
+    val derived = if (sameHomeDerivedInputs(previous.state, renderState)) {
+        previous.derived
+    } else {
+        buildHomeDerivedState(renderState.toHomeDerivedInput())
+    }
+    return HomeRenderSnapshot(state = renderState, derived = derived)
+}
+
+private fun LevyraUiState.withDeduplicatedHomeAlbums(): LevyraUiState {
+    val distinctAlbums = deduplicateHomeAlbums(homeAlbums)
+    return if (distinctAlbums.size == homeAlbums.size) this else copy(homeAlbums = distinctAlbums)
+}
+
+private fun LevyraUiState.withoutExcludedArtists(): LevyraUiState {
+    val exclusions = artistExclusions
+    if (exclusions.isEmpty) return this
+    val filteredSections = exclusions.filterHomeSections(homeSections)
+    val filteredAlbums = exclusions.filterAlbumHits(homeAlbums)
+    val filteredArtists = exclusions.filterArtistHits(homeArtists)
+    val filteredSimilar = exclusions.filterArtistHits(similarArtists)
+    val filteredOrbit = exclusions.filterTracks(personalOrbitTracks)
+    val filteredResonance = exclusions.filterTracks(homeResonanceTracks)
+    val filteredRadar = exclusions.filterReleaseRadar(releaseRadar)
+    val filteredTracks = exclusions.filterTracks(tracks)
+    val filteredForgotten = exclusions.filterTracks(forgottenFavorites)
+    val unchanged = filteredSections === homeSections &&
+        filteredAlbums === homeAlbums &&
+        filteredArtists === homeArtists &&
+        filteredSimilar === similarArtists &&
+        filteredOrbit === personalOrbitTracks &&
+        filteredResonance === homeResonanceTracks &&
+        filteredRadar === releaseRadar &&
+        filteredTracks === tracks &&
+        filteredForgotten === forgottenFavorites
+    if (unchanged) return this
+    return copy(
+        homeSections = filteredSections,
+        homeAlbums = filteredAlbums,
+        homeArtists = filteredArtists,
+        similarArtists = filteredSimilar,
+        personalOrbitTracks = filteredOrbit,
+        homeResonanceTracks = filteredResonance,
+        releaseRadar = filteredRadar,
+        tracks = filteredTracks,
+        forgottenFavorites = filteredForgotten
+    )
+}
+
+private fun sameHomeDerivedInputs(previous: LevyraUiState, current: LevyraUiState): Boolean {
+    return previous.languageCode == current.languageCode &&
+        previous.currentTrack === current.currentTrack &&
+        previous.recentListens === current.recentListens &&
+        previous.personalOrbitTracks === current.personalOrbitTracks &&
+        previous.favorites === current.favorites &&
+        previous.tracks === current.tracks &&
+        previous.homeSections === current.homeSections &&
+        previous.homeAlbums === current.homeAlbums &&
+        previous.charts === current.charts &&
+        previous.quickPickSeeds === current.quickPickSeeds &&
+        previous.homeResonanceTracks === current.homeResonanceTracks &&
+        previous.releaseRadar === current.releaseRadar &&
+        previous.similarArtists === current.similarArtists &&
+        previous.selectedMood == current.selectedMood &&
+        previous.isDeviceOffline == current.isDeviceOffline &&
+        previous.downloads === current.downloads &&
+        previous.playlists === current.playlists &&
+        previous.interfaceSettings.showNewReleases == current.interfaceSettings.showNewReleases &&
+        previous.interfaceSettings.showPersonalOrbit == current.interfaceSettings.showPersonalOrbit &&
+        previous.interfaceSettings.showResonance == current.interfaceSettings.showResonance &&
+        previous.interfaceSettings.showCharts == current.interfaceSettings.showCharts &&
+        previous.artistExclusions == current.artistExclusions
+}
+
+private fun LevyraUiState.toHomeDerivedInput(): HomeDerivedInput {
+    return HomeDerivedInput(
+        languageCode = languageCode,
+        recentListens = recentListens,
+        personalOrbitTracks = personalOrbitTracks,
+        favorites = favorites,
+        tracks = tracks,
+        homeSections = homeSections,
+        homeAlbums = homeAlbums,
+        charts = charts,
+        quickPickSeeds = quickPickSeeds,
+        cachedResonanceTracks = homeResonanceTracks,
+        releaseRadar = releaseRadar,
+        similarArtists = similarArtists,
+        currentTrack = currentTrack,
+        selectedMood = selectedMood,
+        deviceOffline = isDeviceOffline,
+        downloads = downloads,
+        playlists = playlists,
+        showNewReleases = interfaceSettings.showNewReleases,
+        showPersonalOrbit = interfaceSettings.showPersonalOrbit,
+        showResonance = interfaceSettings.showResonance,
+        showCharts = interfaceSettings.showCharts,
+        artistExclusions = artistExclusions
+    )
+}
+
+private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
+    val mood = input.selectedMood
+    fun moodPreferenceScore(track: Track): Int {
+        if (mood == null) return 0
+        val tagMatches = track.moodTags.count { tag ->
+            mood.tags.any { moodTag -> moodTag.equals(tag, ignoreCase = true) }
+        }
+        val energyFit = 100 - kotlin.math.abs(track.energy - mood.energyTarget).coerceIn(0, 100)
+        return (
+            tagMatches * 900 +
+                energyFit * 28 +
+                track.replayScore.coerceIn(0, 100) * 3
+        ).coerceIn(0, 6_000)
+    }
+    fun moodRank(tracks: List<Track>): List<Track> {
+        if (mood == null || tracks.size < 2) return tracks
+        return tracks.sortedByDescending(::moodPreferenceScore)
+    }
+    val quickPicks = buildQuickPicks(input)?.let { section ->
+        section.copy(tracks = moodRank(section.tracks))
+    }
+    val newReleases = input.homeSections.firstOrNull {
+        isVerifiedHomeReleaseSectionTitle(it.title, input.languageCode)
+    }?.let { it.copy(tracks = moodRank(it.tracks)) }
+    val otherSections = input.homeSections.filter {
+        !isVerifiedHomeReleaseSectionTitle(it.title, input.languageCode) &&
+            !isHomeQuickPicksSectionTitle(it.title) &&
+            !isHomePersonalOrbitSectionTitle(it.title, input.languageCode)
+    }
+    val contentAvailability = HomeContentAvailability(
+        trackCount = input.tracks.size,
+        homeSectionCount = input.homeSections.size,
+        homeSectionTrackCount = input.homeSections.sumOf { it.tracks.size },
+        albumCount = input.homeAlbums.size,
+        chartCount = input.charts.size,
+        personalOrbitCount = input.personalOrbitTracks.size,
+        releaseRadarCount = input.releaseRadar.size,
+        similarArtistCount = input.similarArtists.size,
+        hasCurrentTrack = input.currentTrack != null
+    )
+    val resonanceTracks = input.cachedResonanceTracks.ifEmpty { buildHomeResonanceTracks(input) }
+    val spotlightCandidates = HomeEditorialEngine.buildSpotlightCandidates(
+        showNewReleases = input.showNewReleases,
+        newReleaseTracks = moodRank(newReleases?.tracks.orEmpty()),
+        showPersonalOrbit = input.showPersonalOrbit,
+        personalTracks = moodRank(input.personalOrbitTracks.take(LevyraPersonalOrbit.DISPLAY_LIMIT)),
+        showResonance = input.showResonance,
+        resonanceTracks = moodRank(resonanceTracks),
+        quickPickTracks = moodRank(quickPicks?.tracks.orEmpty()),
+        fallbackSections = otherSections.map { moodRank(it.tracks) },
+        chartTracks = if (input.showCharts) moodRank(input.charts) else emptyList(),
+        preferenceScore = ::moodPreferenceScore
+    )
+    val visibleCollectionSections = otherSections.filter { section ->
+        isHomeSectionVisible(section.title, input)
+    }
+    val editorialCollections = HomeEditorialEngine.buildCollections(
+        homeSections = visibleCollectionSections,
+        newReleaseTracks = if (input.showNewReleases) moodRank(newReleases?.tracks.orEmpty()) else emptyList(),
+        personalTracks = if (input.showPersonalOrbit) moodRank(input.personalOrbitTracks) else emptyList(),
+        resonanceTracks = if (input.showResonance) moodRank(resonanceTracks) else emptyList(),
+        quickPickTracks = moodRank(quickPicks?.tracks.orEmpty()),
+        chartTracks = if (input.showCharts) moodRank(input.charts) else emptyList(),
+        favorites = input.favorites,
+        libraryTracks = input.tracks,
+        includeFresh = input.showNewReleases
+    )
+    return HomeDerivedState(
+        resonanceTracks = resonanceTracks,
+        artistRefreshFingerprint = buildHomeArtistRefreshFingerprint(input),
+        quickPicks = quickPicks,
+        newReleases = newReleases,
+        otherSections = otherSections,
+        spotlightCandidates = spotlightCandidates,
+        editorialCollections = editorialCollections,
+        chartChunks = input.charts.chunked(4),
+        contentAvailability = contentAvailability,
+        contentFingerprint = buildHomeContentFingerprint(input, contentAvailability),
+        offlineContent = if (input.deviceOffline) {
+            HomeOfflineContentBuilder.build(
+                deviceOffline = true,
+                downloads = input.downloads,
+                playlists = input.playlists,
+                favorites = input.favorites,
+                recentListens = input.recentListens,
+                artworkPool = input.recentListens + input.favorites + input.personalOrbitTracks + input.tracks
+            )
+        } else {
+            HomeOfflineContent.Empty
+        }
+    )
+}
+
+private const val HOME_QUICK_PICKS_LIMIT = 20
+private const val HOME_QUICK_PICKS_ARTIST_LIMIT = 2
+
+private fun buildQuickPicks(input: HomeDerivedInput): HomeSection? {
+    val orbitKeys = input.personalOrbitTracks
+        .asSequence()
+        .map { track -> LevyraPersonalOrbit.identityKey(track) }
+        .filter(String::isNotBlank)
+        .toHashSet()
+    val candidates = input.artistExclusions.filterTracks(buildList {
+        input.homeSections
+            .firstOrNull { isHomeQuickPicksSectionTitle(it.title) }
+            ?.tracks
+            ?.let(::addAll)
+        input.homeSections
+            .asSequence()
+            .filter { section -> isHomeSectionVisible(section.title, input) }
+            .filterNot {
+                isHomeQuickPicksSectionTitle(it.title) ||
+                    isHomePersonalOrbitSectionTitle(it.title, input.languageCode)
+            }
+            .forEach { section -> addAll(section.tracks) }
+        if (input.showCharts) addAll(input.charts)
+        addAll(input.recentListens)
+        addAll(input.favorites)
+        addAll(input.tracks)
+        input.currentTrack?.let(::add)
+        addAll(input.quickPickSeeds)
+        addAll(LevyraStartupCatalog.quickPickSeeds(input.languageCode))
+    })
+
+    val selected = ArrayList<Track>(HOME_QUICK_PICKS_LIMIT)
+    val seen = HashSet<String>()
+    val artistCounts = HashMap<String, Int>()
+
+    fun addCandidate(
+        track: Track,
+        enforceArtistLimit: Boolean,
+        allowOrbitOverlap: Boolean
+    ) {
+        if (selected.size >= HOME_QUICK_PICKS_LIMIT) return
+        if (track.id.length != 11 && !LevyraStartupCatalog.isStartupSeedId(track.id)) return
+        if (!isReliableHomeMusicCandidate(track)) return
+        val identity = LevyraPersonalOrbit.identityKey(track)
+        if (identity.isBlank() || (!allowOrbitOverlap && identity in orbitKeys) || !seen.add(identity)) return
+        val artistKey = track.artist.trim().lowercase(Locale.ROOT)
+        val artistCount = artistCounts[artistKey] ?: 0
+        if (enforceArtistLimit && artistKey.isNotBlank() && artistCount >= HOME_QUICK_PICKS_ARTIST_LIMIT) {
+            seen.remove(identity)
+            return
+        }
+        selected += track
+        if (artistKey.isNotBlank()) artistCounts[artistKey] = artistCount + 1
+    }
+
+    candidates.forEach { track ->
+        addCandidate(track, enforceArtistLimit = true, allowOrbitOverlap = false)
+    }
+    if (selected.size < HOME_QUICK_PICKS_LIMIT) {
+        candidates.forEach { track ->
+            addCandidate(track, enforceArtistLimit = false, allowOrbitOverlap = false)
+        }
+    }
+    if (selected.size < HOME_QUICK_PICKS_LIMIT) {
+        candidates.forEach { track ->
+            addCandidate(track, enforceArtistLimit = false, allowOrbitOverlap = true)
+        }
+    }
+    if (selected.isEmpty()) return null
+
+    return HomeSection(
+        title = LevyraContentLocales.forLanguage(input.languageCode).quickSectionTitle,
+        tracks = selected
+    )
+}
+
+private fun buildHomeResonanceTracks(input: HomeDerivedInput): List<Track> {
+    val directCommentedSectionTracks = input.homeSections
+        .filter { isHomeResonanceSectionTitle(it.title, input.languageCode) }
+        .flatMap { it.tracks }
+    val directCommentedIds = directCommentedSectionTracks.map { it.id }.toSet()
+    return buildList {
+        addAll(directCommentedSectionTracks)
+        addAll(input.charts)
+        input.homeSections.forEach { section -> addAll(section.tracks) }
+        addAll(input.favorites)
+        addAll(input.tracks)
+        input.currentTrack?.let(::add)
+    }
+        .asSequence()
+        .filter { it.id.length == 11 && isReliableHomeMusicCandidate(it) }
+        .distinctBy { it.id }
+        .sortedWith(
+            compareByDescending<Track> {
+                (if (directCommentedIds.contains(it.id)) 1000 else 0) +
+                    it.replayScore + it.vocal + it.cacheScore / 2
+            }.thenBy { it.title }
+        )
+        .take(8)
+        .toList()
+}
+
+internal fun buildHomeResonanceTracks(state: LevyraUiState): List<Track> {
+    return buildHomeResonanceTracks(state.toHomeDerivedInput())
+}
+
+private fun buildHomeArtistRefreshFingerprint(input: HomeDerivedInput): String {
+    val tracks = sequence {
+        yieldAll(input.recentListens)
+        yieldAll(input.personalOrbitTracks)
+        yieldAll(input.favorites)
+        yieldAll(input.tracks)
+        input.homeSections.forEach { section -> yieldAll(section.tracks) }
+        yieldAll(input.charts)
+    }
+    return buildString {
+        append(input.languageCode)
+        append('|')
+        append(
+            tracks
+                .filter { it.artistBrowseIds.firstOrNull().orEmpty().isNotBlank() }
+                .distinctBy { it.artistBrowseIds.first().lowercase() }
+                .take(48)
+                .joinToString(",") { track ->
+                    "${track.artist}:${track.artistBrowseIds.first()}"
+                }
+        )
+    }
+}
+
+private fun buildHomeContentFingerprint(
+    input: HomeDerivedInput,
+    availability: HomeContentAvailability
+): String {
+    return buildString {
+        append(availability.copy(chartCount = 0, hasCurrentTrack = false).fingerprint())
+        append('|')
+        append(input.tracks.take(12).joinToString(",") { it.id })
+        append('|')
+        append(
+            input.homeSections.joinToString(",") { section ->
+                "${section.title}:${section.tracks.take(4).joinToString(".") { it.id }}"
+            }
+        )
+        append('|')
+        append(input.homeAlbums.take(10).joinToString(",") { it.browseId.ifBlank { "${it.title}:${it.artist}" } })
+    }
+}
+
+private fun isReliableHomeMusicCandidate(track: Track): Boolean {
+    val title = track.title.trim()
+    val artist = track.artist.trim()
+    if (title.length < 2 || artist.length < 2) return false
+    if (artist.equals("YouTube Music", ignoreCase = true) || artist.equals("YouTube", ignoreCase = true)) return false
+    return !isLikelyHomePlaylistOrCompilation(track)
+}
+
+private fun isVerifiedHomeReleaseSectionTitle(title: String, languageCode: String = "en"): Boolean {
+    val normalized = title.trim().lowercase(Locale.ROOT)
+    val localized = LevyraStrings.forCode(languageCode).newReleases.trim().lowercase(Locale.ROOT)
+    return normalized == localized ||
+        normalized.contains("novità") ||
+        normalized.contains("nuove uscite") ||
+        normalized.contains("appena usciti") ||
+        normalized.contains("ultime uscite") ||
+        normalized.contains("nuovi album") ||
+        normalized.contains("nuovi singoli") ||
+        normalized.contains("new releases") ||
+        normalized.contains("new release") ||
+        normalized.contains("latest releases") ||
+        normalized.contains("latest release") ||
+        normalized.contains("new albums") ||
+        normalized.contains("new singles")
+}
+
+private fun isHomeQuickPicksSectionTitle(title: String): Boolean {
+    val normalized = title.lowercase(Locale.ROOT)
+    return normalized.contains("scelte rapide") ||
+        normalized.contains("quick picks") ||
+        normalized.contains("quick pick") ||
+        normalized.contains("scelte per te")
+}
+
+private fun isHomePersonalOrbitSectionTitle(title: String, languageCode: String = "en"): Boolean {
+    val normalized = title.trim().lowercase(Locale.ROOT)
+    val localized = LevyraStrings.forCode(languageCode).personalOrbitTitle.trim().lowercase(Locale.ROOT)
+    return normalized == localized ||
+        normalized.contains("nella tua orbita") ||
+        normalized.contains("la tua orbita") ||
+        normalized.contains("your orbit") ||
+        normalized.contains("in your orbit") ||
+        normalized.contains("tu órbita") ||
+        normalized.contains("ton orbite") ||
+        normalized.contains("deine umlaufbahn") ||
+        normalized.contains("jouw baan") ||
+        normalized.contains("twoja orbita")
+}
+
+private fun isHomeSectionVisible(title: String, input: HomeDerivedInput): Boolean {
+    if (!input.showNewReleases && isVerifiedHomeReleaseSectionTitle(title, input.languageCode)) return false
+    if (!input.showPersonalOrbit && isHomePersonalOrbitSectionTitle(title, input.languageCode)) return false
+    if (!input.showResonance && isHomeResonanceSectionTitle(title, input.languageCode)) return false
+    return true
+}
+
+private fun isHomeResonanceSectionTitle(title: String, languageCode: String): Boolean {
+    val normalized = title.trim().lowercase(Locale.ROOT)
+    val localized = LevyraStrings.forCode(languageCode).voicesTitle.trim().lowercase(Locale.ROOT)
+    val localizedCommented = LevyraStrings.forCode(languageCode).mostCommentedTracks.trim().lowercase(Locale.ROOT)
+    return normalized == localized ||
+        normalized == localizedCommented ||
+        normalized.contains("voices that resonate") ||
+        normalized.contains("voci che risuonano") ||
+        normalized.contains("voces que resuenan") ||
+        normalized.contains("voix qui résonnent") ||
+        normalized.contains("stimmen, die nachklingen") ||
+        normalized.contains("tracce più commentate") ||
+        normalized.contains("più commentate") ||
+        normalized.contains("most discussed") ||
+        normalized.contains("most commented")
+}
+
+private fun isLikelyHomePlaylistOrCompilation(track: Track): Boolean {
+    val combined = listOf(track.title, track.artist, track.album).joinToString(" ").lowercase()
+    return listOf(
+        "playlist",
+        "mix",
+        "top hit",
+        "top hits",
+        "hit italiane",
+        "canzoni italiane",
+        "musica italiana",
+        "estate mix",
+        "summer mix",
+        "best of",
+        "compilation",
+        "classifica",
+        "radio edit",
+        "sped up",
+        "slowed",
+        "nightcore"
+    ).any(combined::contains)
+}
+
+internal data class HomeProjection(
+    val animationsEnabled: Boolean,
+    val artistExclusions: ArtistExclusions,
+    val chartRegions: List<ChartRegion>,
+    val charts: List<Track>,
+    val currentTrack: Track?,
+    val downloadedTrackIds: Set<String>,
+    val downloadingTrackIds: Set<String>,
+    val favoriteIds: Set<String>,
+    val favorites: List<Track>,
+    val forgottenFavorites: List<Track>,
+    val homeAlbums: List<AlbumHit>,
+    val homeArtists: List<ArtistHit>,
+    val homeResonanceTracks: List<Track>,
+    val homeResonanceComments: Map<String, ResonanceCommentSnippet>,
+    val homeArtistsLoading: Boolean,
+    val homeAlbumsLoading: Boolean,
+    val homeSections: List<HomeSection>,
+    val downloads: List<DownloadedTrack>,
+    val isDeviceOffline: Boolean,
+    val isLoadingCharts: Boolean,
+    val isLoadingHome: Boolean,
+    val isPlaying: Boolean,
+    val isResolving: Boolean,
+    val isVideoMode: Boolean,
+    val languageCode: String,
+    val moods: List<Mood>,
+    val personalOrbitTracks: List<Track>,
+    val playlists: List<Playlist>,
+    val recentListens: List<Track>,
+    val recentSearches: List<Track>,
+    val releaseRadar: List<ReleaseRadarEntry>,
+    val selectedChartId: String,
+    val selectedMood: Mood?,
+    val homeError: String?,
+    val playerError: String?,
+    val similarArtists: List<ArtistHit>,
+    val tracks: List<Track>,
+    val userName: String,
+    val profilePhotoPath: String,
+    val profilePhotoVersion: Long,
+    val interfaceSettings: LevyraInterfaceSettings,
+    val speedDialPins: List<com.luc4n3x.levyra.domain.SpeedDialPin>,
+    val localSongs: List<Track>?
+)
+
+internal fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjection(
+    animationsEnabled = state.animationsEnabled,
+    artistExclusions = state.artistExclusions,
+    chartRegions = state.chartRegions,
+    charts = state.charts,
+    currentTrack = state.currentTrack,
+    downloadedTrackIds = state.downloadedTrackIds,
+    downloadingTrackIds = state.downloadingTrackIds,
+    favoriteIds = state.favoriteIds,
+    favorites = state.favorites,
+    forgottenFavorites = state.forgottenFavorites,
+    homeAlbums = state.homeAlbums,
+    homeArtists = state.homeArtists,
+    homeResonanceTracks = state.homeResonanceTracks,
+    homeResonanceComments = state.homeResonanceComments,
+    homeArtistsLoading = state.homeArtistsLoading,
+    homeAlbumsLoading = state.homeAlbumsLoading,
+    homeSections = state.homeSections,
+    downloads = state.downloads,
+    isDeviceOffline = state.isDeviceOffline,
+    isLoadingCharts = state.isLoadingCharts,
+    isLoadingHome = state.isLoadingHome,
+    isPlaying = state.isPlaying,
+    isResolving = state.isResolving,
+    isVideoMode = state.isVideoMode,
+    languageCode = state.languageCode,
+    moods = state.moods,
+    personalOrbitTracks = state.personalOrbitTracks,
+    playlists = state.playlists,
+    recentListens = state.recentListens,
+    recentSearches = state.recentSearches,
+    releaseRadar = state.releaseRadar,
+    selectedChartId = state.selectedChartId,
+    selectedMood = state.selectedMood,
+    homeError = state.homeError,
+    playerError = state.playerError,
+    similarArtists = state.similarArtists,
+    tracks = state.tracks,
+    userName = state.userName,
+    profilePhotoPath = state.profilePhotoPath,
+    profilePhotoVersion = state.profilePhotoVersion,
+    interfaceSettings = state.interfaceSettings,
+    speedDialPins = state.speedDialPins,
+    localSongs = state.localLibrary.completedScanSongs()
+)
+
+internal fun LocalLibraryUiState.completedScanSongs(): List<Track>? =
+    if (permissionGranted && lastScanAt > 0L) catalog.songs else null
+
+internal data class SearchProjection(
+    val currentTrack: Track?,
+    val downloadProgressByTrackId: Map<String, Int>,
+    val downloadedTrackIds: Set<String>,
+    val downloadingTrackIds: Set<String>,
+    val downloads: List<DownloadedTrack>,
+    val favoriteIds: Set<String>,
+    val favorites: List<Track>,
+    val homeArtists: List<ArtistHit>,
+    val homeArtistsLoading: Boolean,
+    val isPlaying: Boolean,
+    val isResolving: Boolean,
+    val isSearching: Boolean,
+    val languageCode: String,
+    val playlists: List<Playlist>,
+    val personalOrbitTracks: List<Track>,
+    val query: String,
+    val recognitionAvailable: Boolean,
+    val recognitionState: RecognitionState,
+    val recentSearches: List<Track>,
+    val recentListens: List<Track>,
+    val searchData: SearchResults,
+    val searchError: String?,
+    val searchFilter: SearchFilter,
+    val searchResults: List<Track>,
+    val searchSectionContinuations: Map<SearchFilter, String>,
+    val searchSectionLoading: Set<SearchFilter>,
+    val searchSuggestions: List<String>,
+    val searchPending: Boolean,
+    val smartProfile: SmartMusicProfile
+)
+
+internal fun searchProjection(state: LevyraUiState): SearchProjection = SearchProjection(
+    currentTrack = state.currentTrack,
+    downloadProgressByTrackId = state.downloadProgressByTrackId,
+    downloadedTrackIds = state.downloadedTrackIds,
+    downloadingTrackIds = state.downloadingTrackIds,
+    downloads = state.downloads,
+    favoriteIds = state.favoriteIds,
+    favorites = state.favorites,
+    homeArtists = state.homeArtists,
+    homeArtistsLoading = state.homeArtistsLoading,
+    isPlaying = state.isPlaying,
+    isResolving = state.isResolving,
+    isSearching = state.isSearching,
+    languageCode = state.languageCode,
+    playlists = state.playlists,
+    personalOrbitTracks = state.personalOrbitTracks,
+    query = state.query,
+    recognitionAvailable = state.recognitionAvailable,
+    recognitionState = state.recognitionState,
+    recentSearches = state.recentSearches,
+    recentListens = state.recentListens,
+    searchData = state.searchData,
+    searchError = state.searchError,
+    searchFilter = state.searchFilter,
+    searchResults = state.searchResults,
+    searchSectionContinuations = state.searchSectionContinuations,
+    searchSectionLoading = state.searchSectionLoading,
+    searchSuggestions = state.searchSuggestions,
+    searchPending = state.searchPending,
+    smartProfile = state.smartProfile
+)
+
+internal data class ExploreProjection(
+    val currentTrack: Track?,
+    val exploreOpenRequest: String?,
+    val exploreTracks: List<Track>,
+    val exploreFreshTracks: List<Track>,
+    val exploreWorldFreshTracks: List<Track>,
+    val exploreNewReleases: List<AlbumHit>,
+    val exploreVideos: List<Track>,
+    val exploreSamples: List<Track>,
+    val exploreZoneId: String?,
+    val exploreCategoryParams: String?,
+    val exploreCategories: List<ExploreCategory>,
+    val exploreCategoryArtwork: Map<String, String>,
+    val favoriteIds: Set<String>,
+    val isExploreLoading: Boolean,
+    val isExploreCategoriesLoading: Boolean,
+    val isFreshCurrentsLoading: Boolean,
+    val isNewReleasesLoading: Boolean,
+    val newReleasesLoadFailed: Boolean,
+    val isPlaying: Boolean,
+    val isResolving: Boolean,
+    val isVideoMode: Boolean,
+    val isSamplesLoading: Boolean,
+    val samplesLoadFailed: Boolean,
+    val isSamplesOpen: Boolean,
+    val playlists: List<Playlist>,
+    val mixFamiliarity: Float,
+    val mixLoading: Boolean,
+    val mixMessage: String?
+)
+
+internal fun exploreProjection(state: LevyraUiState): ExploreProjection = ExploreProjection(
+    currentTrack = state.currentTrack,
+    exploreOpenRequest = state.exploreOpenRequest,
+    exploreTracks = state.exploreTracks,
+    exploreFreshTracks = state.exploreFreshTracks,
+    exploreWorldFreshTracks = state.exploreWorldFreshTracks,
+    exploreNewReleases = state.exploreNewReleases,
+    exploreVideos = state.exploreVideos,
+    exploreSamples = state.exploreSamples,
+    exploreZoneId = state.exploreZoneId,
+    exploreCategoryParams = state.exploreCategoryParams,
+    exploreCategories = state.exploreCategories,
+    exploreCategoryArtwork = state.exploreCategoryArtwork,
+    favoriteIds = state.favoriteIds,
+    isExploreLoading = state.isExploreLoading,
+    isExploreCategoriesLoading = state.isExploreCategoriesLoading,
+    isFreshCurrentsLoading = state.isFreshCurrentsLoading,
+    isNewReleasesLoading = state.isNewReleasesLoading,
+    newReleasesLoadFailed = state.newReleasesLoadFailed,
+    isPlaying = state.isPlaying,
+    isResolving = state.isResolving,
+    isVideoMode = state.isVideoMode,
+    isSamplesLoading = state.isSamplesLoading,
+    samplesLoadFailed = state.samplesLoadFailed,
+    isSamplesOpen = state.isSamplesOpen,
+    playlists = state.playlists,
+    mixFamiliarity = state.mixFamiliarity,
+    mixLoading = state.mixLoading,
+    mixMessage = state.mixMessage
+)
+
+internal data class LibraryProjection(
+    val currentTrack: Track?,
+    val downloadProgressByTrackId: Map<String, Int>,
+    val downloadedTrackIds: Set<String>,
+    val downloadingTrackIds: Set<String>,
+    val downloadQueue: List<OfflineDownloadTask>,
+    val downloadBatches: List<BatchDownload>,
+    val downloadStorageBytes: Long,
+    val downloads: List<DownloadedTrack>,
+    val favoriteIds: Set<String>,
+    val favorites: List<Track>,
+    val followedArtists: List<FollowedArtist>,
+    val isPlaying: Boolean,
+    val isResolving: Boolean,
+    val listeningPulse: ListeningPulse,
+    val openPlaylist: Playlist?,
+    val playlists: List<Playlist>,
+    val playlistTags: List<PlaylistTag>,
+    val recentListens: List<Track>,
+    val librarySort: LibrarySort,
+    val librarySortDirection: LibrarySortDirection,
+    val localLibrary: LocalLibraryUiState,
+    val queueUnavailableUris: Set<String>
+)
+
+internal fun libraryProjection(state: LevyraUiState): LibraryProjection = LibraryProjection(
+    currentTrack = state.currentTrack,
+    downloadProgressByTrackId = state.downloadProgressByTrackId,
+    downloadedTrackIds = state.downloadedTrackIds,
+    downloadingTrackIds = state.downloadingTrackIds,
+    downloadQueue = state.downloadQueue,
+    downloadBatches = state.downloadBatches,
+    downloadStorageBytes = state.downloadStorageBytes,
+    downloads = state.downloads,
+    favoriteIds = state.favoriteIds,
+    favorites = state.favorites,
+    followedArtists = state.followedArtists,
+    isPlaying = state.isPlaying,
+    isResolving = state.isResolving,
+    listeningPulse = state.listeningPulse,
+    openPlaylist = state.openPlaylist,
+    playlists = state.playlists,
+    playlistTags = state.playlistTags,
+    recentListens = state.recentListens,
+    librarySort = state.interfaceSettings.librarySort,
+    librarySortDirection = state.interfaceSettings.librarySortDirection,
+    localLibrary = state.localLibrary,
+    queueUnavailableUris = state.queueUnavailableUris
+)
+
+internal data class PlayerProjection(
+    val animationsEnabled: Boolean,
+    val audioSettings: LevyraAudioSettings,
+    val motionArtworkEnabled: Boolean,
+    val motionArtwork: MotionArtwork?,
+    val motionArtworkLoading: Boolean,
+    val audioNormalization: Boolean,
+    val bufferedPositionMs: Long,
+    val currentTrack: Track?,
+    val liveRadioStation: RadioStation?,
+    val liveRadioNowPlaying: String,
+    val liveRadioReconnectAttempt: Int,
+    val durationMs: Long,
+    val favoriteIds: Set<String>,
+    val isOfflineExporting: Boolean,
+    val isPlaying: Boolean,
+    val isResolving: Boolean,
+    val isVideoMode: Boolean,
+    val selectedVideoSubtitleId: String?,
+    val lyrics: List<LyricLine>,
+    val lyricsLoading: Boolean,
+    val playbackSpeed: Float,
+    val playerError: String?,
+    val positionMs: Long,
+    val repeatMode: RepeatMode,
+    val shuffleEnabled: Boolean,
+    val sleepTimerMinutes: Int,
+    val sleepTimerEndOfTrack: Boolean,
+    val interfaceSettings: LevyraInterfaceSettings,
+    val youtubeEngagement: YoutubeEngagementState,
+    val similarSongs: List<Track>,
+    val similarSongsLoading: Boolean,
+    val radioEnabled: Boolean,
+    val queue: List<Track>,
+    val artistExclusions: ArtistExclusions,
+    val canPlaySimilarSongNow: Boolean,
+    val canQueueSimilarSong: Boolean
+)
+
+internal fun playerProjection(state: LevyraUiState): PlayerProjection = PlayerProjection(
+    animationsEnabled = state.animationsEnabled,
+    audioSettings = state.audioSettings,
+    motionArtworkEnabled = state.motionArtworkEnabled,
+    motionArtwork = state.motionArtwork,
+    motionArtworkLoading = state.motionArtworkLoading,
+    audioNormalization = state.audioNormalization,
+    bufferedPositionMs = state.bufferedPositionMs,
+    currentTrack = state.currentTrack,
+    liveRadioStation = state.liveRadioStation,
+    liveRadioNowPlaying = state.liveRadioNowPlaying,
+    liveRadioReconnectAttempt = state.liveRadioReconnectAttempt,
+    durationMs = state.durationMs,
+    favoriteIds = state.favoriteIds,
+    isOfflineExporting = state.isOfflineExporting,
+    isPlaying = state.isPlaying,
+    isResolving = state.isResolving,
+    isVideoMode = state.isVideoMode,
+    selectedVideoSubtitleId = state.selectedVideoSubtitleId,
+    lyrics = state.lyrics,
+    lyricsLoading = state.lyricsLoading,
+    playbackSpeed = state.playbackSpeed,
+    playerError = state.playerError,
+    positionMs = state.positionMs,
+    repeatMode = state.repeatMode,
+    shuffleEnabled = state.shuffleEnabled,
+    sleepTimerMinutes = state.sleepTimerMinutes,
+    sleepTimerEndOfTrack = state.sleepTimerEndOfTrack,
+    interfaceSettings = state.interfaceSettings,
+    youtubeEngagement = state.youtubeEngagement,
+    similarSongs = state.similarSongs,
+    similarSongsLoading = state.similarSongsLoading,
+    radioEnabled = state.radioEnabled,
+    queue = state.queue,
+    artistExclusions = state.artistExclusions,
+    canPlaySimilarSongNow = !state.jam.isActive || state.jam.canControlPlayback,
+    canQueueSimilarSong = !state.jam.isActive || state.jam.canAddTracks
+)

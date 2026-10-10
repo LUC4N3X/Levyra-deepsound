@@ -1,0 +1,228 @@
+name: APK Artifact
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: apk-artifact-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    name: Signed PR Diagnostics APK
+    if: ${{ github.actor == 'LUC4N3X' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: ${{ secrets.YOUTUBE_INNERTUBE_API_KEY }}
+      LEVYRA_CANVAS_RESOLVER_URL: ${{ secrets.LEVYRA_CANVAS_RESOLVER_URL }}
+      LEVYRA_CANVAS_CLIENT_KEY: ${{ secrets.LEVYRA_CANVAS_CLIENT_KEY }}
+      LEVYRA_KEYSTORE_FILE: app/levyra-release.jks
+      LEVYRA_KEYSTORE_PASSWORD: ${{ secrets.LEVYRA_KEYSTORE_PASSWORD }}
+      LEVYRA_KEY_ALIAS: ${{ secrets.LEVYRA_KEY_ALIAS }}
+      LEVYRA_KEY_PASSWORD: ${{ secrets.LEVYRA_KEY_PASSWORD }}
+      ORG_GRADLE_PROJECT_levyraNativeAudio: "true"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # PR builds must not execute checked-out collector code with provider session secrets.
+      # Spotify editorial data is produced only by the trusted Editorial Catalog publisher.
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+          cache-read-only: true
+
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0" \
+            "ndk;28.2.13676358" \
+            "cmake;3.22.1"
+
+      - name: Cache Native Audio Dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .gradle/levyra-native-deps
+          key: levyra-native-deps-${{ runner.os }}-${{ hashFiles('levyra-native-audio/native-deps/prepare_native_deps.sh', 'levyra-native-audio/build.gradle.kts') }}
+
+      - name: Validate Gradle Wrapper
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -x ./gradlew
+          test -f gradle/wrapper/gradle-wrapper.jar
+          test -f gradle/wrapper/gradle-wrapper.properties
+          ./gradlew --version
+
+      - name: Android Runtime Compatibility Scan
+        run: python3 scripts/check_android_regex_compatibility.py
+
+      - name: Resolve APK Version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(grep -E '^levyraVersionName=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs)"
+          VERSION_CODE="$(grep -E '^levyraVersionCode=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs)"
+          test -n "${VERSION}"
+          test -n "${VERSION_CODE}"
+          printf '%s' "${VERSION_CODE}" | grep -Eq '^[1-9][0-9]*$'
+          {
+            echo "VERSION=${VERSION}"
+            echo "VERSION_CODE=${VERSION_CODE}"
+            echo "PR_NUMBER=${{ github.event.pull_request.number || github.run_number }}"
+            echo "SOURCE_REF=${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+            echo "PR_HEAD_SHA=${{ github.event.pull_request.head.sha || github.sha }}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Prepare Sanitized Editorial Bootstrap
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/levyra-editorial app/src/main/assets/editorial
+          rm -rf /tmp/levyra-editorial/*
+
+          TRUSTED_RUN_ID="$(
+            gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/editorial-catalog.yml/runs?event=workflow_dispatch&branch=${SOURCE_REF}&status=success&per_page=30" \
+              --jq ".workflow_runs[] | select(.head_sha == \"${PR_HEAD_SHA}\" and .conclusion == \"success\") | .id" \
+              | head -n 1
+          )"
+
+          EDITORIAL_SOURCE="official"
+          if [ -n "${TRUSTED_RUN_ID}" ]; then
+            gh run download "${TRUSTED_RUN_ID}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --dir /tmp/levyra-editorial
+            CATALOG_PATH="$(find /tmp/levyra-editorial -type f -name catalog.json -print -quit)"
+            if [ -n "${CATALOG_PATH}" ]; then
+              EDITORIAL_SOURCE="trusted-preview:${TRUSTED_RUN_ID}"
+            fi
+          fi
+
+          if [ "${EDITORIAL_SOURCE}" = "official" ]; then
+            CATALOG_PATH="/tmp/levyra-editorial/official-editorial.json"
+            curl --fail --silent --show-error --location --retry 3 \
+              "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/editorial-data/catalog/editorial.json" \
+              --output "${CATALOG_PATH}"
+          fi
+
+          test -s "${CATALOG_PATH}"
+          test "$(jq -r '.schemaVersion' "${CATALOG_PATH}")" = "1"
+          test "$(jq '.collections | length' "${CATALOG_PATH}")" -gt 0
+
+          if jq -e 'any(.. | objects; has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' "${CATALOG_PATH}" >/dev/null; then
+            echo "::error::Editorial bootstrap contains private source identifiers"
+            exit 1
+          fi
+          if grep -qiE '"(cookie|cookies|authorization|access_token|sp_dc|sapisid|client-token)"[[:space:]]*:|sp_dc=|authorization:[[:space:]]*bearer|bearer[[:space:]]+[a-z0-9._~-]{16,}' "${CATALOG_PATH}"; then
+            echo "::error::Editorial bootstrap contains credential-related material"
+            exit 1
+          fi
+          if jq -e 'any(.. | objects | select(has("artworkUrl") and (.artworkUrl != "")); (.artworkUrl | test("^https://([a-z0-9-]+\\.)*scdn\\.co/|^https://image-cdn-ak\\.spotifycdn\\.com/") | not))' "${CATALOG_PATH}" >/dev/null; then
+            echo "::error::Editorial bootstrap contains artwork outside the Spotify CDN allowlist"
+            exit 1
+          fi
+
+          cp "${CATALOG_PATH}" app/src/main/assets/editorial/spotify-bootstrap.json
+          {
+            echo "EDITORIAL_BOOTSTRAP_SOURCE=${EDITORIAL_SOURCE}"
+            echo "EDITORIAL_BOOTSTRAP_SHA256=$(sha256sum "${CATALOG_PATH}" | awk '{print $1}')"
+          } >> "${GITHUB_ENV}"
+
+      - name: Prepare Release Signing
+        shell: bash
+        env:
+          LEVYRA_KEYSTORE_BASE64: ${{ secrets.LEVYRA_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          test -n "${YOUTUBE_INNERTUBE_API_KEY}"
+          test -n "${LEVYRA_CANVAS_RESOLVER_URL}"
+          test -n "${LEVYRA_CANVAS_CLIENT_KEY}"
+          test -n "${LEVYRA_KEYSTORE_BASE64}"
+          test -n "${LEVYRA_KEYSTORE_PASSWORD}"
+          test -n "${LEVYRA_KEY_ALIAS}"
+          test -n "${LEVYRA_KEY_PASSWORD}"
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          printf '%s' "${LEVYRA_KEYSTORE_BASE64}" | tr -d '\r\n' | base64 --decode > "${LEVYRA_KEYSTORE_FILE}"
+          keytool -list \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
+            -alias "${LEVYRA_KEY_ALIAS}" \
+            >/dev/null
+
+      - name: Build PR Diagnostics APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew --no-configuration-cache assemblePrDiagnostics \
+            -PlevyraVersionName="${VERSION}" \
+            -PlevyraVersionCode="${VERSION_CODE}"
+
+      - name: Verify PR Diagnostics APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          APK="app/build/outputs/apk/prDiagnostics/app-prDiagnostics.apk"
+          test -f "${APK}"
+          SIZE_BYTES="$(stat -c%s "${APK}")"
+          test "${SIZE_BYTES}" -gt 1048576
+          BADGING="$("${ANDROID_HOME}/build-tools/36.0.0/aapt" dump badging "${APK}")"
+          printf '%s\n' "${BADGING}" > artifacts/apk-badging.txt
+          printf '%s\n' "${BADGING}" | grep -F "package: name='com.luc4n3x.levyra.prdiagnostics'"
+          printf '%s\n' "${BADGING}" | grep -F "versionName='${VERSION}-pr-diagnostics'"
+          printf '%s\n' "${BADGING}" | grep -F "versionCode='${VERSION_CODE}'"
+          "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --verbose --print-certs "${APK}" > artifacts/apk-signing-certs.txt
+          python3 scripts/verify_diagnostics_isolation.py --apk "${APK}" --expect present
+          cp "${APK}" "artifacts/LEVYRA-${VERSION}-PR-${PR_NUMBER}-DIAGNOSTICS.apk"
+          sha256sum "artifacts/LEVYRA-${VERSION}-PR-${PR_NUMBER}-DIAGNOSTICS.apk" > "artifacts/LEVYRA-${VERSION}-PR-${PR_NUMBER}-DIAGNOSTICS.apk.sha256"
+          {
+            echo "LEVYRA signed PR diagnostics APK"
+            echo "version=${VERSION}"
+            echo "versionCode=${VERSION_CODE}"
+            echo "pullRequest=${PR_NUMBER}"
+            echo "signingProfile=release-pr-diagnostics"
+            echo "diagnosticsMarker=LEVYRA_PR_DIAGNOSTICS_V1"
+            echo "commit=${GITHUB_SHA}"
+            echo "branch=${SOURCE_REF}"
+            echo "editorialBootstrap=${EDITORIAL_BOOTSTRAP_SOURCE}"
+            echo "editorialBootstrapSha256=${EDITORIAL_BOOTSTRAP_SHA256}"
+            echo "sizeBytes=${SIZE_BYTES}"
+            echo "builtAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > artifacts/build-info.txt
+          if [ -f app/build/outputs/mapping/prDiagnostics/mapping.txt ]; then
+            cp app/build/outputs/mapping/prDiagnostics/mapping.txt artifacts/mapping.txt
+          fi
+
+      - name: Upload Signed PR Diagnostics APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: levyra-pr-${{ env.PR_NUMBER }}-diagnostics-${{ env.VERSION }}-run-${{ github.run_number }}
+          path: artifacts
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Cleanup Signing Material
+        if: always()
+        shell: bash
+        run: rm -f "${LEVYRA_KEYSTORE_FILE}"

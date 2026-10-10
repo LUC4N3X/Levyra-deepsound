@@ -1,0 +1,603 @@
+name: Publish Release APK
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - gradle.properties
+      - docs/RELEASE_NOTES.md
+  workflow_dispatch:
+    inputs:
+      publish_fdroid_asset:
+        description: "Publish the reproducible APK in a commit-bound F-Droid release"
+        required: false
+        type: boolean
+        default: false
+      fdroid_release_suffix:
+        description: "F-Droid release suffix; keep r6 for the automatic update channel"
+        required: false
+        type: string
+        default: "r6"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-release-apk-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Validate, Build and Publish Signed APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    outputs:
+      publish: ${{ steps.version.outputs.publish }}
+    env:
+      LEVYRA_SIGNING_CERT_SHA256: 90221b5db83ec605c349fb256efe6801a4b0f2e6ed5da19e18dba6fa1f23e97b
+      ORG_GRADLE_PROJECT_levyraNativeAudio: "true"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve Release Version
+        id: version
+        shell: bash
+        env:
+          BEFORE_SHA: ${{ github.event.before || '' }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          read_property() {
+            local file="$1"
+            local key="$2"
+            grep -E "^${key}=" "${file}" | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs
+          }
+
+          if [ "${GITHUB_REF_NAME}" != "main" ]; then
+            echo "Release publishing is allowed only from main."
+            exit 1
+          fi
+
+          VERSION="$(read_property gradle.properties levyraVersionName)"
+          VERSION_CODE="$(read_property gradle.properties levyraVersionCode)"
+          test -n "${VERSION}"
+          test -n "${VERSION_CODE}"
+          printf '%s' "${VERSION}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?$'
+          printf '%s' "${VERSION_CODE}" | grep -Eq '^[1-9][0-9]*$'
+
+          if [ "${GITHUB_EVENT_NAME}" = "push" ] && [ -n "${BEFORE_SHA}" ] && ! printf '%s' "${BEFORE_SHA}" | grep -Eq '^0+$'; then
+            if git cat-file -e "${BEFORE_SHA}:gradle.properties" 2>/dev/null; then
+              git show "${BEFORE_SHA}:gradle.properties" > previous-gradle.properties
+              PREVIOUS_VERSION="$(read_property previous-gradle.properties levyraVersionName)"
+              PREVIOUS_VERSION_CODE="$(read_property previous-gradle.properties levyraVersionCode)"
+
+              if [ "${VERSION}" != "${PREVIOUS_VERSION}" ] && [ "${VERSION_CODE}" = "${PREVIOUS_VERSION_CODE}" ]; then
+                echo "levyraVersionCode must change together with levyraVersionName."
+                exit 1
+              fi
+
+              if [ "${VERSION}" = "${PREVIOUS_VERSION}" ] && [ "${VERSION_CODE}" != "${PREVIOUS_VERSION_CODE}" ]; then
+                echo "levyraVersionName must change together with levyraVersionCode."
+                exit 1
+              fi
+            fi
+          fi
+
+          TAG="v${VERSION}"
+          APK_NAME="LEVYRA-${VERSION}.apk"
+          CHECKSUM_NAME="${APK_NAME}.sha256"
+          PUBLISH="true"
+
+          if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            PUBLISH="false"
+          else
+            git fetch --tags --force "https://github.com/${GITHUB_REPOSITORY}.git"
+            if git rev-parse "refs/tags/${TAG}" >/dev/null 2>&1; then
+              TAG_SHA="$(git rev-list -n 1 "${TAG}")"
+              if [ "${TAG_SHA}" != "${GITHUB_SHA}" ]; then
+                echo "Tag ${TAG} already points to ${TAG_SHA}, not ${GITHUB_SHA}."
+                exit 1
+              fi
+            fi
+          fi
+
+          {
+            echo "VERSION=${VERSION}"
+            echo "VERSION_CODE=${VERSION_CODE}"
+            echo "TAG=${TAG}"
+            echo "APK_NAME=${APK_NAME}"
+            echo "CHECKSUM_NAME=${CHECKSUM_NAME}"
+          } >> "${GITHUB_ENV}"
+
+          echo "publish=${PUBLISH}" >> "${GITHUB_OUTPUT}"
+
+      - name: Validate Release Notes
+        if: steps.version.outputs.publish == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          NOTES_FILE="docs/RELEASE_NOTES.md"
+          test -f "${NOTES_FILE}"
+          test "$(sed -n '/./{p;q;}' "${NOTES_FILE}")" = "# Levyra ${VERSION}"
+          grep -Fx -- "- Version name: \`${VERSION}\`" "${NOTES_FILE}"
+          grep -Fx -- "- Version code: \`${VERSION_CODE}\`" "${NOTES_FILE}"
+          grep -Fx -- "## Highlights" "${NOTES_FILE}"
+          grep -Fx -- "## Versioning" "${NOTES_FILE}"
+          grep -Fx -- "## Validation" "${NOTES_FILE}"
+          grep -Fx -- "## Upgrade notes" "${NOTES_FILE}"
+          grep -Fx -- "## Final note" "${NOTES_FILE}"
+
+          NOTES_BYTES="$(wc -c < "${NOTES_FILE}")"
+          test "${NOTES_BYTES}" -ge 2000
+
+          if grep -Eiq '\b(TODO|TBD|PLACEHOLDER)\b|Closes #[[:space:]]*$|Related to #[[:space:]]*$' "${NOTES_FILE}"; then
+            echo "Release notes contain unfinished placeholders."
+            exit 1
+          fi
+
+      - name: Setup Java
+        if: steps.version.outputs.publish == 'true'
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        if: steps.version.outputs.publish == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-37.0" \
+            "build-tools;36.0.0" \
+            "ndk;28.2.13676358" \
+            "cmake;3.22.1"
+
+      - name: Setup Gradle
+        if: steps.version.outputs.publish == 'true'
+        uses: gradle/actions/setup-gradle@v6.4.0
+        with:
+          cache-disabled: true
+
+      - name: Validate Gradle Wrapper
+        if: steps.version.outputs.publish == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -x ./gradlew
+          test -f gradle/wrapper/gradle-wrapper.jar
+          test -f gradle/wrapper/gradle-wrapper.properties
+          ./gradlew --no-daemon --version
+
+      - name: Prepare Release Signing
+        if: steps.version.outputs.publish == 'true'
+        shell: bash
+        env:
+          LEVYRA_KEYSTORE_BASE64: ${{ secrets.LEVYRA_KEYSTORE_BASE64 }}
+          YOUTUBE_INNERTUBE_API_KEY: ${{ secrets.YOUTUBE_INNERTUBE_API_KEY }}
+          LEVYRA_CANVAS_RESOLVER_URL: ${{ secrets.LEVYRA_CANVAS_RESOLVER_URL }}
+          LEVYRA_CANVAS_CLIENT_KEY: ${{ secrets.LEVYRA_CANVAS_CLIENT_KEY }}
+          LEVYRA_KEYSTORE_FILE: app/levyra-release.jks
+          LEVYRA_KEYSTORE_PASSWORD: ${{ secrets.LEVYRA_KEYSTORE_PASSWORD }}
+          LEVYRA_KEY_ALIAS: ${{ secrets.LEVYRA_KEY_ALIAS }}
+          LEVYRA_KEY_PASSWORD: ${{ secrets.LEVYRA_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "${YOUTUBE_INNERTUBE_API_KEY}"
+          test -n "${LEVYRA_CANVAS_RESOLVER_URL}"
+          test -n "${LEVYRA_CANVAS_CLIENT_KEY}"
+          test -n "${LEVYRA_KEYSTORE_BASE64}"
+          test -n "${LEVYRA_KEYSTORE_PASSWORD}"
+          test -n "${LEVYRA_KEY_ALIAS}"
+          test -n "${LEVYRA_KEY_PASSWORD}"
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          printf '%s' "${LEVYRA_KEYSTORE_BASE64}" | tr -d '\r\n' | base64 --decode > "${LEVYRA_KEYSTORE_FILE}"
+          keytool -list \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
+            -alias "${LEVYRA_KEY_ALIAS}" \
+            >/dev/null
+
+      - name: Android Lint
+        if: steps.version.outputs.publish == 'true'
+        shell: bash
+        env:
+          YOUTUBE_INNERTUBE_API_KEY: ${{ secrets.YOUTUBE_INNERTUBE_API_KEY }}
+          LEVYRA_CANVAS_RESOLVER_URL: ${{ secrets.LEVYRA_CANVAS_RESOLVER_URL }}
+          LEVYRA_CANVAS_CLIENT_KEY: ${{ secrets.LEVYRA_CANVAS_CLIENT_KEY }}
+          LEVYRA_KEYSTORE_FILE: app/levyra-release.jks
+          LEVYRA_KEYSTORE_PASSWORD: ${{ secrets.LEVYRA_KEYSTORE_PASSWORD }}
+          LEVYRA_KEY_ALIAS: ${{ secrets.LEVYRA_KEY_ALIAS }}
+          LEVYRA_KEY_PASSWORD: ${{ secrets.LEVYRA_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          ./gradlew \
+            --no-daemon \
+            --no-configuration-cache \
+            --stacktrace \
+            :app:lintRelease \
+            -PlevyraVersionName="${VERSION}" \
+            -PlevyraVersionCode="${VERSION_CODE}"
+
+      - name: Build Signed Release APK
+        if: steps.version.outputs.publish == 'true'
+        shell: bash
+        env:
+          YOUTUBE_INNERTUBE_API_KEY: ${{ secrets.YOUTUBE_INNERTUBE_API_KEY }}
+          LEVYRA_CANVAS_RESOLVER_URL: ${{ secrets.LEVYRA_CANVAS_RESOLVER_URL }}
+          LEVYRA_CANVAS_CLIENT_KEY: ${{ secrets.LEVYRA_CANVAS_CLIENT_KEY }}
+          LEVYRA_KEYSTORE_FILE: app/levyra-release.jks
+          LEVYRA_KEYSTORE_PASSWORD: ${{ secrets.LEVYRA_KEYSTORE_PASSWORD }}
+          LEVYRA_KEY_ALIAS: ${{ secrets.LEVYRA_KEY_ALIAS }}
+          LEVYRA_KEY_PASSWORD: ${{ secrets.LEVYRA_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          ./gradlew \
+            --no-daemon \
+            --no-configuration-cache \
+            --stacktrace \
+            :app:assembleRelease \
+            -PlevyraVersionName="${VERSION}" \
+            -PlevyraVersionCode="${VERSION_CODE}"
+
+      - name: Remove Release Signing Key
+        if: always()
+        shell: bash
+        run: rm -f app/levyra-release.jks
+
+      - name: Verify Release APK
+        if: steps.version.outputs.publish == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          SOURCE_APK="app/build/outputs/apk/release/app-release.apk"
+          APK_PATH="release-assets/${APK_NAME}"
+          CHECKSUM_PATH="release-assets/${CHECKSUM_NAME}"
+          test -f "${SOURCE_APK}"
+
+          SIZE_BYTES="$(stat -c%s "${SOURCE_APK}")"
+          test "${SIZE_BYTES}" -gt 1048576
+
+          BADGING="$("${ANDROID_HOME}/build-tools/36.0.0/aapt" dump badging "${SOURCE_APK}")"
+          printf '%s\n' "${BADGING}" | grep -F "versionName='${VERSION}'"
+          printf '%s\n' "${BADGING}" | grep -F "versionCode='${VERSION_CODE}'"
+          CERTS="$("${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --verbose --print-certs "${SOURCE_APK}")"
+          printf '%s\n' "${CERTS}"
+          SIGNER_SHA256="$(printf '%s\n' "${CERTS}" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | tr '[:upper:]' '[:lower:]')"
+          test "${SIGNER_SHA256}" = "${LEVYRA_SIGNING_CERT_SHA256}"
+
+          cp "${SOURCE_APK}" "${APK_PATH}"
+          (cd release-assets && sha256sum "${APK_NAME}" > "${CHECKSUM_NAME}")
+
+          {
+            echo "APK_PATH=${APK_PATH}"
+            echo "CHECKSUM_PATH=${CHECKSUM_PATH}"
+            echo "APK_SHA256=$(sha256sum "${APK_PATH}" | awk '{print $1}')"
+          } >> "${GITHUB_ENV}"
+
+      - name: Create GitHub Release and Upload APK
+        if: steps.version.outputs.publish == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          RELEASE_FLAGS=(
+            --target "${GITHUB_SHA}"
+            --title "Levyra ${VERSION}"
+            --notes-file docs/RELEASE_NOTES.md
+            --repo "${GITHUB_REPOSITORY}"
+          )
+
+          if [[ "${VERSION}" == *-* ]]; then
+            RELEASE_FLAGS+=(--prerelease)
+          else
+            RELEASE_FLAGS+=(--latest)
+          fi
+
+          gh release create "${TAG}" \
+            "${APK_PATH}#LEVYRA Android APK" \
+            "${CHECKSUM_PATH}#SHA-256 checksum" \
+            "${RELEASE_FLAGS[@]}"
+
+      - name: Verify Published Release
+        if: steps.version.outputs.publish == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          rm -rf release-verification
+          mkdir -p release-verification
+
+          gh release download "${TAG}" \
+            --pattern "${APK_NAME}" \
+            --pattern "${CHECKSUM_NAME}" \
+            --dir release-verification \
+            --clobber \
+            --repo "${GITHUB_REPOSITORY}"
+
+          PUBLISHED_APK="release-verification/${APK_NAME}"
+          PUBLISHED_CHECKSUM="release-verification/${CHECKSUM_NAME}"
+          test -f "${PUBLISHED_APK}"
+          test -f "${PUBLISHED_CHECKSUM}"
+          test "$(sha256sum "${PUBLISHED_APK}" | awk '{print $1}')" = "${APK_SHA256}"
+          (
+            cd release-verification
+            sha256sum --check "${CHECKSUM_NAME}"
+          )
+
+          gh release view "${TAG}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --json body,isDraft,isPrerelease,name,tagName,url \
+            > published-release.json
+
+          test "$(jq -r '.tagName' published-release.json)" = "${TAG}"
+          test "$(jq -r '.name' published-release.json)" = "Levyra ${VERSION}"
+          test "$(jq -r '.isDraft' published-release.json)" = "false"
+          jq -r '.body' published-release.json | grep -Fx "# Levyra ${VERSION}"
+          jq -r '.body' published-release.json | grep -Fx -- "- Version code: \`${VERSION_CODE}\`"
+          jq -r '.url' published-release.json
+
+      - name: Skip Existing Release
+        if: steps.version.outputs.publish != 'true'
+        shell: bash
+        run: echo "Release ${TAG} already exists; no assets or release notes were overwritten."
+
+  fdroid:
+    name: Build and Publish Reproducible F-Droid APK
+    needs: release
+    if: ${{ (github.event_name == 'push' && needs.release.outputs.publish == 'true') || (github.event_name == 'workflow_dispatch' && inputs.publish_fdroid_asset) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      LEVYRA_SIGNING_CERT_SHA256: 90221b5db83ec605c349fb256efe6801a4b0f2e6ed5da19e18dba6fa1f23e97b
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate F-Droid Review Contract
+        run: python3 scripts/validate_fdroid_review_contract.py
+
+      - name: Resolve F-Droid Asset
+        id: fdroid
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FDROID_RELEASE_SUFFIX: ${{ inputs.fdroid_release_suffix || 'r6' }}
+        run: |
+          set -euo pipefail
+
+          read_property() {
+            local key="$1"
+            grep -E "^${key}=" gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs
+          }
+
+          VERSION="$(read_property levyraVersionName)"
+          VERSION_CODE="$(read_property levyraVersionCode)"
+          printf '%s' "${VERSION}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?$'
+          printf '%s' "${VERSION_CODE}" | grep -Eq '^[1-9][0-9]*$'
+          if [[ -n "${FDROID_RELEASE_SUFFIX}" ]]; then
+            printf '%s' "${FDROID_RELEASE_SUFFIX}" | grep -Eq '^[0-9A-Za-z][0-9A-Za-z.-]*$'
+            FDROID_TAG="fdroid-${VERSION}-${FDROID_RELEASE_SUFFIX}"
+          else
+            FDROID_TAG="fdroid-${VERSION}"
+          fi
+          FDROID_APK_NAME="LEVYRA-${VERSION}-fdroid.apk"
+          FDROID_CHECKSUM_NAME="${FDROID_APK_NAME}.sha256"
+
+          gh release view "v${VERSION}" --repo "${GITHUB_REPOSITORY}" >/dev/null
+          git fetch --tags --force "https://github.com/${GITHUB_REPOSITORY}.git"
+
+          RELEASE_EXISTS=false
+          TAG_EXISTS=false
+          if gh release view "${FDROID_TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            RELEASE_EXISTS=true
+          fi
+          if git rev-parse "refs/tags/${FDROID_TAG}^{commit}" >/dev/null 2>&1; then
+            TAG_EXISTS=true
+          fi
+
+          if [[ "${RELEASE_EXISTS}" != "${TAG_EXISTS}" ]]; then
+            echo "F-Droid release/tag state is incomplete for ${FDROID_TAG}; refusing to overwrite it."
+            exit 1
+          fi
+
+          if [[ "${RELEASE_EXISTS}" == "true" ]]; then
+            TAG_SHA="$(git rev-parse "refs/tags/${FDROID_TAG}^{commit}")"
+            RELEASE_TARGET="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${FDROID_TAG}" --jq '.target_commitish')"
+            test "${TAG_SHA}" = "${GITHUB_SHA}"
+            test "${RELEASE_TARGET}" = "${GITHUB_SHA}"
+            PUBLISH_FDROID=false
+            echo "F-Droid release ${FDROID_TAG} already targets ${GITHUB_SHA}; it will be verified without overwrite."
+          else
+            PUBLISH_FDROID=true
+          fi
+
+          {
+            echo "VERSION=${VERSION}"
+            echo "VERSION_CODE=${VERSION_CODE}"
+            echo "FDROID_TAG=${FDROID_TAG}"
+            echo "FDROID_APK_NAME=${FDROID_APK_NAME}"
+            echo "FDROID_CHECKSUM_NAME=${FDROID_CHECKSUM_NAME}"
+          } >> "${GITHUB_ENV}"
+          echo "publish=${PUBLISH_FDROID}" >> "${GITHUB_OUTPUT}"
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-37.0" \
+            "build-tools;36.0.0"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6.4.0
+        with:
+          cache-disabled: true
+
+      - name: Prepare Levyra Signing Key
+        shell: bash
+        env:
+          LEVYRA_KEYSTORE_BASE64: ${{ secrets.LEVYRA_KEYSTORE_BASE64 }}
+          LEVYRA_KEYSTORE_FILE: app/levyra-release.jks
+          LEVYRA_KEYSTORE_PASSWORD: ${{ secrets.LEVYRA_KEYSTORE_PASSWORD }}
+          LEVYRA_KEY_ALIAS: ${{ secrets.LEVYRA_KEY_ALIAS }}
+          LEVYRA_KEY_PASSWORD: ${{ secrets.LEVYRA_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "${LEVYRA_KEYSTORE_BASE64}"
+          test -n "${LEVYRA_KEYSTORE_PASSWORD}"
+          test -n "${LEVYRA_KEY_ALIAS}"
+          test -n "${LEVYRA_KEY_PASSWORD}"
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          printf '%s' "${LEVYRA_KEYSTORE_BASE64}" | tr -d '\r\n' | base64 --decode > "${LEVYRA_KEYSTORE_FILE}"
+          keytool -list \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
+            -alias "${LEVYRA_KEY_ALIAS}" \
+            >/dev/null
+
+      - name: Build Signed F-Droid APK
+        shell: bash
+        env:
+          LEVYRA_KEYSTORE_FILE: app/levyra-release.jks
+          LEVYRA_KEYSTORE_PASSWORD: ${{ secrets.LEVYRA_KEYSTORE_PASSWORD }}
+          LEVYRA_KEY_ALIAS: ${{ secrets.LEVYRA_KEY_ALIAS }}
+          LEVYRA_KEY_PASSWORD: ${{ secrets.LEVYRA_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          ./gradlew \
+            --no-daemon \
+            --no-configuration-cache \
+            --stacktrace \
+            :app:assembleRelease \
+            -PlevyraFdroidBuild=true \
+            -PlevyraVersionName="${VERSION}" \
+            -PlevyraVersionCode="${VERSION_CODE}"
+
+      - name: Remove Levyra Signing Key
+        if: always()
+        shell: bash
+        run: rm -f app/levyra-release.jks
+
+      - name: Verify F-Droid APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p fdroid-assets
+          SOURCE_APK="app/build/outputs/apk/release/app-release.apk"
+          FDROID_APK_PATH="fdroid-assets/${FDROID_APK_NAME}"
+          FDROID_CHECKSUM_PATH="fdroid-assets/${FDROID_CHECKSUM_NAME}"
+          test -f "${SOURCE_APK}"
+
+          BADGING="$("${ANDROID_HOME}/build-tools/36.0.0/aapt" dump badging "${SOURCE_APK}")"
+          printf '%s\n' "${BADGING}" | grep -F "versionName='${VERSION}'"
+          printf '%s\n' "${BADGING}" | grep -F "versionCode='${VERSION_CODE}'"
+          CERTS="$("${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --verbose --print-certs "${SOURCE_APK}")"
+          printf '%s\n' "${CERTS}"
+          SIGNER_SHA256="$(printf '%s\n' "${CERTS}" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | tr '[:upper:]' '[:lower:]')"
+          test "${SIGNER_SHA256}" = "${LEVYRA_SIGNING_CERT_SHA256}"
+
+          cp "${SOURCE_APK}" "${FDROID_APK_PATH}"
+          (
+            cd fdroid-assets
+            sha256sum "${FDROID_APK_NAME}" > "${FDROID_CHECKSUM_NAME}"
+          )
+          {
+            echo "FDROID_APK_PATH=${FDROID_APK_PATH}"
+            echo "FDROID_CHECKSUM_PATH=${FDROID_CHECKSUM_PATH}"
+            echo "FDROID_APK_SHA256=$(sha256sum "${FDROID_APK_PATH}" | awk '{print $1}')"
+          } >> "${GITHUB_ENV}"
+
+      - name: Verify Canonical Levyra Signer
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p canonical-verification
+          gh release download "v${VERSION}" \
+            --pattern "LEVYRA-${VERSION}.apk" \
+            --dir canonical-verification \
+            --repo "${GITHUB_REPOSITORY}"
+          CANONICAL_CERTS="$("${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --print-certs "canonical-verification/LEVYRA-${VERSION}.apk")"
+          CANONICAL_SHA256="$(printf '%s\n' "${CANONICAL_CERTS}" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | tr '[:upper:]' '[:lower:]')"
+          test "${CANONICAL_SHA256}" = "${LEVYRA_SIGNING_CERT_SHA256}"
+
+      - name: Create F-Droid GitHub Release
+        if: steps.fdroid.outputs.publish == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "${FDROID_TAG}" \
+            "${FDROID_APK_PATH}#Reproducible F-Droid APK" \
+            "${FDROID_CHECKSUM_PATH}#F-Droid APK SHA-256 checksum" \
+            --target "${GITHUB_SHA}" \
+            --title "Levyra ${VERSION} for F-Droid" \
+            --notes "Upstream-signed F-Droid variant built from commit ${GITHUB_SHA}. F-Droid must reproduce this APK before publishing it." \
+            --prerelease \
+            --repo "${GITHUB_REPOSITORY}"
+
+      - name: Verify Published F-Droid Asset
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          rm -rf fdroid-verification
+          mkdir -p fdroid-verification
+          gh release download "${FDROID_TAG}" \
+            --pattern "${FDROID_APK_NAME}" \
+            --pattern "${FDROID_CHECKSUM_NAME}" \
+            --dir fdroid-verification \
+            --repo "${GITHUB_REPOSITORY}"
+          test "$(sha256sum "fdroid-verification/${FDROID_APK_NAME}" | awk '{print $1}')" = "${FDROID_APK_SHA256}"
+          (
+            cd fdroid-verification
+            sha256sum --check "${FDROID_CHECKSUM_NAME}"
+          )
+
+      - name: Render Canonical F-Droid Metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s scripts/tests -p 'test_fdroid_metadata.py'
+          python3 scripts/render_fdroid_metadata.py \
+            --commit "${GITHUB_SHA}" \
+            --output "fdroid-submission/metadata/com.luc4n3x.levyra.yml"
+
+      - name: Upload F-Droid Metadata Submission
+        uses: actions/upload-artifact@v7
+        with:
+          name: fdroid-metadata-${{ steps.fdroid.outputs.version }}-${{ github.sha }}
+          path: fdroid-submission/metadata/com.luc4n3x.levyra.yml
+          if-no-files-found: error

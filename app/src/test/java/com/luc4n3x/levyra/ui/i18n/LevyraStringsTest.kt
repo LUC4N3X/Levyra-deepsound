@@ -1,0 +1,525 @@
+package com.luc4n3x.levyra.ui.i18n
+
+import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import java.nio.file.Files
+import java.nio.file.Path
+
+class LevyraStringsTest {
+    @Test
+    fun catalogAndStringBundlesStayInSync() {
+        val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        assertEquals(catalogCodes, LevyraStrings.supportedCodes())
+        assertEquals(catalogCodes, LevyraStrings.all().map { it.code }.toSet())
+        assertEquals(catalogCodes, lyricsActionLocalizationCodes())
+        assertEquals(catalogCodes, playerExperienceLocalizationCodes())
+        assertEquals(catalogCodes, exploreLocalizationCodes())
+        assertEquals(catalogCodes, experienceLocalizationCodes())
+        assertEquals(catalogCodes, insightLocalizationCodes())
+        assertEquals(catalogCodes, integrationLocalizationCodes())
+        assertEquals(catalogCodes, resonanceLocalizationCodes())
+        assertEquals(catalogCodes, downloadLocationLocalizationCodes())
+        assertEquals(catalogCodes, similarSongsLocalizationCodes())
+        assertEquals(catalogCodes, playerVisualLocalizationCodes())
+        assertEquals(catalogCodes, queueSelectionLocalizationCodes())
+        assertEquals(catalogCodes, offlineHomeLocalizationCodes())
+        assertEquals(catalogCodes, recapLocalizationCodes())
+        assertEquals(catalogCodes, listeningInsightsLocalizationCodes())
+        assertEquals(catalogCodes, settingsFooterLocalizationCodes())
+        LevyraStrings.all().forEach { strings ->
+            assertTrue(strings.listeningInsights.isNotBlank())
+            assertTrue(strings.listeningInsightsSubtitle.isNotBlank())
+            assertTrue(strings.insightsLifetime.isNotBlank())
+            assertTrue(strings.insightsDetailedTimeline.isNotBlank())
+            assertTrue(strings.listeningRecap.isNotBlank())
+            assertTrue(strings.recapSubtitle.isNotBlank())
+            assertTrue(strings.recapPeriod7Days.isNotBlank())
+            assertTrue(strings.recapPeriod30Days.isNotBlank())
+            assertTrue(strings.recapPeriod365Days.isNotBlank())
+            assertTrue(strings.recapPeriodAllTime.isNotBlank())
+            assertTrue(strings.topTracksTitle.isNotBlank())
+            assertTrue(strings.topArtistsTitle.isNotBlank())
+            assertTrue(strings.topAlbumsTitle.isNotBlank())
+            assertTrue(strings.recapUnitHours.isNotBlank())
+            assertTrue(strings.recapRepeatLabel.isNotBlank())
+            assertTrue(strings.openRecap.isNotBlank())
+            assertTrue(strings.pulseProPeak.isNotBlank())
+            assertTrue(strings.pulseProAverage.isNotBlank())
+            assertTrue(strings.pulseProActivity.isNotBlank())
+            assertTrue(strings.moreLikeThis.isNotBlank())
+            assertTrue(strings.mix.isNotBlank())
+            assertTrue(strings.offlineHomeTitle.isNotBlank())
+            assertTrue(strings.offlineHomeMessage.isNotBlank())
+            assertTrue(strings.offlineHomeRetry.isNotBlank())
+            assertTrue(strings.offlineHomeDownloads.isNotBlank())
+            assertTrue(strings.offlineHomePlaylists.isNotBlank())
+            assertTrue(strings.offlineHomeFavorites.isNotBlank())
+            assertTrue(strings.offlineHomeRecent.isNotBlank())
+            assertTrue(strings.homeRemoteUnavailable.isNotBlank())
+            assertTrue(strings.homeRemoteEmpty.isNotBlank())
+            assertTrue(strings.lessLikeThis.isNotBlank())
+            assertTrue(strings.playbackDiagnostics.isNotBlank())
+            assertTrue(strings.playbackDiagnosticsSubtitle.isNotBlank())
+            assertTrue(strings.diagnosticsCopyReport.isNotBlank())
+            assertTrue(strings.diagnosticsCopied.isNotBlank())
+            assertTrue(strings.diagnosticsPrivacyNote.isNotBlank())
+            assertTrue(strings.diagnosticsStatusHealthy.isNotBlank())
+            assertTrue(strings.diagnosticsStatusFallback.isNotBlank())
+            assertTrue(strings.diagnosticsStatusError.isNotBlank())
+            assertTrue(strings.diagnosticsStatusIdle.isNotBlank())
+            assertTrue(strings.diagnosticsSectionPlayback.isNotBlank())
+            assertTrue(strings.diagnosticsSectionFormats.isNotBlank())
+            assertTrue(strings.diagnosticsSectionNetwork.isNotBlank())
+            assertTrue(strings.diagnosticsSectionResolver.isNotBlank())
+            assertTrue(strings.diagnosticsNoPlayback.isNotBlank())
+            assertTrue(strings.commentsLabel.isNotBlank())
+            assertTrue(strings.mostCommentedTracks.isNotBlank())
+            assertTrue(strings.tapToOpenComments.isNotBlank())
+            assertTrue(strings.noCommentsAvailable.isNotBlank())
+            assertTrue(strings.introHeadline.isNotBlank())
+            assertTrue(strings.introBody.isNotBlank())
+            assertTrue(strings.introFeatureSound.isNotBlank())
+            assertTrue(strings.introFeatureLyrics.isNotBlank())
+            assertTrue(strings.introFeatureOffline.isNotBlank())
+            assertTrue(strings.introStart.isNotBlank())
+            assertTrue(strings.expandPlayer.isNotBlank())
+            assertTrue(strings.collapsePlayer.isNotBlank())
+            assertTrue(strings.motionArtwork.isNotBlank())
+            assertTrue(strings.artworkPreview.isNotBlank())
+            assertTrue(strings.saveArtwork.isNotBlank())
+            assertTrue(strings.artworkSaved.isNotBlank())
+            assertTrue(strings.artworkSaveFailed.isNotBlank())
+            assertTrue(strings.pulseRhythm.isNotBlank())
+            assertTrue(strings.lyricsCalibrate.isNotBlank())
+            assertTrue(strings.motionArtworkSubtitle.isNotBlank())
+            assertTrue(strings.lyricsFocus.isNotBlank())
+            assertTrue(strings.startRadio.isNotBlank())
+            assertTrue(strings.changeLyrics.isNotBlank())
+            assertTrue(strings.automaticLyrics.isNotBlank())
+            assertTrue(strings.selectVerses.isNotBlank())
+            assertTrue(strings.copyVerses.isNotBlank())
+            assertTrue(strings.shareVerses.isNotBlank())
+            assertTrue(strings.lyricsVersions.isNotBlank())
+            assertTrue(strings.exploreMoods.isNotBlank())
+            assertTrue(strings.exploreMoodSection.isNotBlank())
+            assertTrue(strings.exploreSamples.isNotBlank())
+            assertTrue(strings.exploreSamplesSubtitle.isNotBlank())
+            assertTrue(strings.exploreSamplesError.isNotBlank())
+            assertTrue(strings.exploreSamplesRetry.isNotBlank())
+            assertTrue(strings.integrations.isNotBlank())
+            assertTrue(strings.apiKeyLabel.isNotBlank())
+            assertTrue(strings.sharedSecretLabel.isNotBlank())
+            assertTrue(strings.credentialTokenLabel.isNotBlank())
+            assertTrue(strings.lastFmApprovalHint.isNotBlank())
+            assertTrue(strings.subtitlesOff.isNotBlank())
+            assertTrue(strings.subtitlesLabel.isNotBlank())
+            assertTrue(strings.playerVisualMode.isNotBlank())
+            assertTrue(strings.playerBackground.isNotBlank())
+            assertTrue(strings.enterImmersive.isNotBlank())
+            assertTrue(strings.exitImmersive.isNotBlank())
+            assertTrue(strings.legalInformation.isNotBlank())
+        }
+    }
+
+
+    @Test
+    fun settingsFooterLegalInformationUsesSelectedLanguage() {
+        assertEquals("Legal information", LevyraStrings.forCode("en").legalInformation)
+        assertEquals("Informazioni legali", LevyraStrings.forCode("it").legalInformation)
+        assertEquals("法的情報", LevyraStrings.forCode("ja").legalInformation)
+        assertEquals("מידע משפטי", LevyraStrings.forCode("he").legalInformation)
+    }
+
+    @Test
+    fun regionAndScriptVariantsResolveToSupportedBundles() {
+        assertEquals("nl", LevyraStrings.forCode("nl-NL").code)
+        assertEquals("pt", LevyraStrings.forCode("pt_BR").code)
+        assertEquals("uk", LevyraStrings.forCode("uk-UA").code)
+        assertEquals("ja", LevyraStrings.forCode("ja-JP").code)
+        assertEquals("ko", LevyraStrings.forCode("ko_KR").code)
+        assertEquals("id", LevyraStrings.forCode("in-ID").code)
+        assertEquals("fil", LevyraStrings.forCode("fil-PH").code)
+        assertEquals("fil", LevyraStrings.forCode("tl_PH").code)
+        assertEquals("he", LevyraStrings.forCode("he-IL").code)
+        assertEquals("he", LevyraStrings.forCode("iw_IL").code)
+        assertEquals("zh", LevyraStrings.forCode("zh-Hans-CN").code)
+        assertEquals("zh-Hant", LevyraStrings.forCode("zh-Hant-TW").code)
+        assertEquals("zh-Hant", LevyraStrings.forCode("zh-TW").code)
+        assertEquals("zh-Hant", LevyraStrings.forCode("zh-HK").code)
+        assertEquals("hu", LevyraStrings.forCode("hu-HU").code)
+        assertEquals("bg", LevyraStrings.forCode("bg-BG").code)
+        assertEquals("fi", LevyraStrings.forCode("fi-FI").code)
+        assertEquals("nb", LevyraStrings.forCode("nb-NO").code)
+        assertEquals("ca", LevyraStrings.forCode("ca-ES").code)
+        assertEquals("hr", LevyraStrings.forCode("hr-HR").code)
+        assertEquals("sk", LevyraStrings.forCode("sk-SK").code)
+        assertEquals("ms", LevyraStrings.forCode("ms-MY").code)
+        assertEquals("fa", LevyraStrings.forCode("fa-IR").code)
+        assertEquals("en", LevyraStrings.forCode("xx-YY").code)
+    }
+
+    @Test
+    fun recapPeriod365DaysUsesRollingWindowSemanticsAcrossLocales() {
+        assertEquals("Last 365 Days", LevyraStrings.forCode("en").recapPeriod365Days)
+        assertEquals("Ultimi 365 giorni", LevyraStrings.forCode("it").recapPeriod365Days)
+        assertEquals("Últimos 365 días", LevyraStrings.forCode("es").recapPeriod365Days)
+        assertEquals("Letzte 365 Tage", LevyraStrings.forCode("de").recapPeriod365Days)
+        val calendarYearWords = listOf("This Year", "Quest'anno", "Este año", "Cette année", "Dieses Jahr", "Este ano", "Dit jaar", "Ten rok")
+        LevyraStrings.all().forEach { strings ->
+            calendarYearWords.forEach { banned ->
+                assertFalse(
+                    "recapPeriod365Days for ${strings.code} implies calendar year ($banned)",
+                    strings.recapPeriod365Days.equals(banned, ignoreCase = true)
+                )
+            }
+        }
+    }
+
+    @Test
+    fun replayValuesUseTheSelectedLocale() {
+        assertEquals("30 days", LevyraStrings.forCode("en").formatReplayPeriod(30))
+        assertEquals("30 gg", LevyraStrings.forCode("it").formatReplayPeriod(30))
+        assertEquals("30日", LevyraStrings.forCode("ja").formatReplayPeriod(30))
+        assertEquals("1,234×", LevyraStrings.forCode("en").formatPlayCount(1_234))
+    }
+
+    @Test
+    fun dutchBundleDoesNotLeakItalianSearchCopy() {
+        val strings = LevyraStrings.forCode("nl")
+        assertEquals("Recente zoekopdrachten", strings.recentSearches)
+        assertEquals("Toevoegen aan wachtrij", strings.addToQueue)
+        assertEquals("Spraakgestuurd zoeken wordt niet ondersteund", strings.voiceSearchUnsupported)
+        assertEquals("YouTube Music doorzoeken…", strings.searchingYouTubeMusic)
+        assertEquals("Ontdek nieuwe muziek, trends en video's", strings.exploreSubtitle)
+        assertEquals("De externe link kan niet worden geopend", strings.cannotOpenExternalLink)
+        assertFalse(strings.exploreSubtitle.contains("\\"))
+        assertFalse(strings.recentSearches.contains("Ricerche", ignoreCase = true))
+    }
+
+    @Test
+    fun editorialCollectionsUseNeutralProfessionalCopyInEveryLanguage() {
+        val externalBrands = listOf("Spotify", "Amazon Music", "YouTube Music")
+        LevyraStrings.all().forEach { strings ->
+            val subtitle = strings.collectionsSubtitle
+            assertTrue("Missing collections subtitle for ${strings.code}", subtitle.isNotBlank())
+            externalBrands.forEach { brand ->
+                assertFalse(
+                    "Collections subtitle for ${strings.code} exposes external brand $brand",
+                    subtitle.contains(brand, ignoreCase = true)
+                )
+            }
+        }
+    }
+
+
+    @Test
+    fun greekAndFilipinoCollectionLabelsStayLocalized() {
+        val greek = LevyraStrings.forCode("el")
+        val filipino = LevyraStrings.forCode("fil")
+
+        assertEquals("Ροή ραπ", greek.collectionRap)
+        assertEquals("Παλμός ποπ", greek.collectionPop)
+        assertEquals("Ikot ng rap", filipino.collectionRap)
+        assertEquals("Tibok ng pop", filipino.collectionPop)
+    }
+
+    @Test
+    fun newlyAddedLanguagesContainNativeCoreCopy() {
+        val russian = LevyraStrings.forCode("ru")
+        val turkish = LevyraStrings.forCode("tr")
+        assertEquals("Недавние запросы", russian.recentSearches)
+        assertEquals("Son aramalar", turkish.recentSearches)
+        assertEquals("Все", russian.all)
+        assertEquals("Tümü", turkish.all)
+    }
+
+
+    @Test
+    fun majorAsianBundlesContainNativeCoreCopy() {
+        val japanese = LevyraStrings.forCode("ja")
+        val korean = LevyraStrings.forCode("ko")
+        val hindi = LevyraStrings.forCode("hi")
+        val indonesian = LevyraStrings.forCode("id")
+        val vietnamese = LevyraStrings.forCode("vi")
+        val thai = LevyraStrings.forCode("th")
+        val filipino = LevyraStrings.forCode("fil")
+        val hebrew = LevyraStrings.forCode("he")
+
+        assertEquals("最近の検索", japanese.recentSearches)
+        assertEquals("재생 대기열에 추가", korean.addToQueue)
+        assertEquals("वॉइस सर्च समर्थित नहीं है", hindi.voiceSearchUnsupported)
+        assertEquals("Jelajahi", indonesian.explore)
+        assertEquals("Lời bài hát", vietnamese.lyrics)
+        assertEquals("รายการโปรด", thai.favoritesPlain)
+        assertEquals("Mga kamakailang paghahanap", filipino.recentSearches)
+        assertEquals("Idagdag sa queue", filipino.addToQueue)
+        assertEquals("חיפושים אחרונים", hebrew.recentSearches)
+        assertEquals("הוספה לתור", hebrew.addToQueue)
+    }
+
+    @Test
+    fun majorAsianFormattersUseSelectedLanguage() {
+        assertEquals("3 曲", LevyraStrings.forCode("ja").formatTrackCount(3))
+        assertEquals("결과 4개", LevyraStrings.forCode("ko").formatSearchResults(4))
+        assertEquals("5 ट्रैक डाउनलोड किए गए", LevyraStrings.forCode("hi").formatDownloadedTrackCount(5))
+        assertEquals("Mengunduh 67%", LevyraStrings.forCode("id").formatDownloadProgress(67))
+        assertEquals("Đã lưu 2 bài hát", LevyraStrings.forCode("vi").formatSavedTrackCount(2))
+        assertEquals("กำลังดาวน์โหลด", LevyraStrings.forCode("th").localizeDownloadState("RUNNING"))
+        assertEquals("3 kanta ang na-download", LevyraStrings.forCode("fil").formatDownloadedTrackCount(3))
+        assertEquals("Nagda-download", LevyraStrings.forCode("fil").localizeDownloadState("RUNNING"))
+        assertEquals("הורדו 3 שירים", LevyraStrings.forCode("he").formatDownloadedTrackCount(3))
+        assertEquals("מוריד", LevyraStrings.forCode("iw-IL").localizeDownloadState("RUNNING"))
+    }
+
+    @Test
+    fun androidResourcesLocaleConfigAndSelectorCatalogStayInSync() {
+        val resourceRoot = sequenceOf(
+            Path.of("app/src/main/res"),
+            Path.of("src/main/res")
+        ).firstOrNull(Files::exists) ?: error("Android resources not found")
+
+        val baseFile = resourceRoot.resolve("values").resolve("strings.xml")
+        val stringPattern = Regex("""<string\s+name="([^"]+)"([^>]*)>""")
+        val expectedKeys = stringPattern.findAll(Files.readString(baseFile))
+            .filterNot { it.groupValues[2].contains("translatable=\"false\"") }
+            .map { it.groupValues[1] }
+            .toSet()
+
+        assertEquals(37, expectedKeys.size)
+
+        val localizedDirs = Files.list(resourceRoot).use { stream ->
+            stream.filter { Files.isDirectory(it) }
+                .filter { it.fileName.toString().startsWith("values-") }
+                .filter { Files.exists(it.resolve("strings.xml")) }
+                .toList()
+        }
+
+        localizedDirs.forEach { directory ->
+            val file = directory.resolve("strings.xml")
+            val names = stringPattern.findAll(Files.readString(file)).map { it.groupValues[1] }.toSet()
+            assertEquals("Invalid resource keys in ${directory.fileName}", expectedKeys, names)
+        }
+
+        fun qualifierToTag(name: String): String {
+            val suffix = name.removePrefix("values-")
+            return if (suffix.startsWith("b+")) {
+                suffix.removePrefix("b+").replace('+', '-')
+            } else {
+                suffix
+            }
+        }
+
+        val resourceCodes = localizedDirs
+            .map { LevyraLanguageCatalog.normalize(qualifierToTag(it.fileName.toString())) }
+            .toSet()
+        val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        assertEquals(catalogCodes - "en", resourceCodes)
+
+        val localeConfig = resourceRoot.resolve("xml").resolve("locales_config.xml")
+        val localePattern = Regex("""<locale\s+android:name="([^"]+)"\s*/>""")
+        val configCodes = localePattern.findAll(Files.readString(localeConfig))
+            .map { LevyraLanguageCatalog.normalize(it.groupValues[1]) }
+            .toSet()
+        assertEquals(catalogCodes, configCodes)
+    }
+
+    @Test
+    fun newlySelectableLocalesResolveWithoutFallingBackToEnglish() {
+        val codes = listOf("zh-Hant", "hu", "bg", "fi", "nb", "ca", "hr", "sk", "ms", "fa")
+        codes.forEach { code ->
+            val strings = LevyraStrings.forCode(code)
+            assertEquals(code, strings.code)
+            assertFalse("Core language label fell back to English for $code", strings.language == "Language")
+            assertFalse("Core settings label fell back to English for $code", strings.settings == "Settings")
+        }
+    }
+
+    @Test
+    fun lyricsControlsUseLocalizedLabels() {
+        val italian = LevyraStrings.forCode("it")
+        val ukrainian = LevyraStrings.forCode("uk")
+        assertEquals("Duetto", italian.lyricsDuet)
+        assertEquals("Pagina", italian.lyricsPage)
+        assertEquals("Compatta", italian.lyricsCompact)
+        assertEquals("Ritornello", italian.lyricsSectionChorus)
+        assertEquals("Романізація", ukrainian.lyricsRomanization)
+        assertEquals("Кіно", ukrainian.lyricsCinema)
+    }
+
+    @Test
+    fun mainUiDoesNotContainKnownItalianLocalizationLeaks() {
+        val source = sequenceOf(
+            Path.of("app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt"),
+            Path.of("src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt")
+        ).firstOrNull(Files::exists) ?: error("LevyraApp.kt not found")
+        val content = Files.readString(source)
+        val forbidden = listOf(
+            "\"Ricerche recenti\"",
+            "\"Profilo artista non disponibile\"",
+            "\"Brani popolari\"",
+            "\"Singoli ed EP\"",
+            "\"Cartella download\"",
+            "\"Nessun download offline\"",
+            "\"INTERFACCIA HOME\"",
+            "\"BACKUP E RIPRISTINO\"",
+            "\"Sto cercando su YouTube Music…\"",
+            "\"Cerco il testo…\"",
+            "\"Legal information\""
+        )
+        forbidden.forEach { leaked -> assertFalse("Hardcoded localization leak: $leaked", content.contains(leaked)) }
+    }
+
+    @Test
+    fun viewModelDoesNotStoreLocalizedArtistErrorCopy() {
+        val source = sequenceOf(
+            Path.of("app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt"),
+            Path.of("src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt")
+        ).firstOrNull(Files::exists) ?: error("LevyraViewModel.kt not found")
+
+        assertFalse(Files.readString(source).contains("Profilo artista non disponibile"))
+    }
+
+    @Test
+    fun viewModelDoesNotLeakReportedItalianRuntimeMessages() {
+        val source = sequenceOf(
+            Path.of("app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt"),
+            Path.of("src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt")
+        ).firstOrNull(Files::exists) ?: error("LevyraViewModel.kt not found")
+        val content = Files.readString(source)
+
+        listOf(
+            "Salvato in $",
+            "Caricamento playlist",
+            "Nessun risultato trovato per $"
+        ).forEach { leaked ->
+            assertFalse("Hardcoded runtime localization leak: $leaked", content.contains(leaked))
+        }
+        assertTrue(LevyraStrings.forCode("en").formatOfflineExportSaved("Music/Levyra", "track.m4a", true).startsWith("Saved in Music/Levyra"))
+        assertEquals("Loading playlist", LevyraStrings.forCode("en").loadingSharedPlaylist)
+        assertEquals("No results found for Levyra", LevyraStrings.forCode("en").formatNoSearchResults("Levyra"))
+    }
+
+    @Test
+    fun localizedFormattersUseSelectedLanguage() {
+        val dutch = LevyraStrings.forCode("nl")
+        val polish = LevyraStrings.forCode("pl")
+        val turkish = LevyraStrings.forCode("tr")
+        assertEquals("2 resultaten", dutch.formatSearchResults(2))
+        assertEquals("3 wyniki", polish.formatSearchResults(3))
+        assertEquals("İndiriliyor", turkish.localizeDownloadState("RUNNING"))
+        assertTrue(dutch.formatGreeting("Luca", 9).startsWith("Goedemorgen, Luca"))
+    }
+
+    @Test
+    fun rtlLanguagesResolveThroughTheCatalog() {
+        assertTrue(LevyraLanguageCatalog.isRtl("ar-SA"))
+        assertTrue(LevyraLanguageCatalog.isRtl("he-IL"))
+        assertTrue(LevyraLanguageCatalog.isRtl("iw_IL"))
+        assertTrue(LevyraLanguageCatalog.isRtl("fa-IR"))
+        assertFalse(LevyraLanguageCatalog.isRtl("en-US"))
+    }
+
+    @Test
+    fun rtlDynamicLatinTextUsesBidiIsolation() {
+        listOf("he", "ar", "fa").forEach { code ->
+            val strings = LevyraStrings.forCode(code)
+            assertTrue(strings.formatGreeting("Luca 96", 9).contains("\u2068Luca 96\u2069"))
+            assertTrue(strings.formatArtists("The Weeknd").contains("\u2068The Weeknd\u2069"))
+            assertTrue(strings.formatInstalledVersion("2.3.11").contains("\u20682.3.11\u2069"))
+            assertTrue(strings.formatLatestVersionReady("2.3.11").contains("\u2068LEVYRA 2.3.11\u2069"))
+        }
+    }
+
+    @Test
+    fun appAndOnboardingUseTheSharedRtlResolver() {
+        val source = sequenceOf(
+            Path.of("app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt"),
+            Path.of("src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt")
+        ).firstOrNull(Files::exists) ?: error("LevyraApp.kt not found")
+        val content = Files.readString(source)
+        assertTrue(Regex("LevyraLanguageCatalog\\.isRtl").findAll(content).count() >= 2)
+        assertFalse(content.contains("== \"ar\") LayoutDirection.Rtl"))
+    }
+
+    @Test
+    fun arabicFewPluralUsesModuloOneHundredAcrossFormatters() {
+        val strings = LevyraStrings.forCode("ar")
+        val cases = listOf(
+            3 to listOf("٣ مقاطع", "تم تنزيل 3 مقاطع", "تم حفظ 3 مقاطع", "3 نتائج"),
+            10 to listOf("١٠ مقاطع", "تم تنزيل 10 مقاطع", "تم حفظ 10 مقاطع", "10 نتائج"),
+            11 to listOf("١١ مقطعًا", "تم تنزيل 11 مقطعًا", "تم حفظ 11 مقطعًا", "11 نتيجة"),
+            103 to listOf("١٠٣ مقاطع", "تم تنزيل 103 مقاطع", "تم حفظ 103 مقاطع", "103 نتائج"),
+            111 to listOf("١١١ مقطعًا", "تم تنزيل 111 مقطعًا", "تم حفظ 111 مقطعًا", "111 نتيجة")
+        )
+
+        cases.forEach { (value, expected) ->
+            assertEquals(expected[0], strings.formatTrackCount(value))
+            assertEquals(expected[1], strings.formatDownloadedTrackCount(value))
+            assertEquals(expected[2], strings.formatSavedTrackCount(value))
+            assertEquals(expected[3], strings.formatSearchResults(value))
+        }
+    }
+
+    @Test
+    fun formatTrackCountAcrossLocalesRespectsPluralsAndNumberFormat() {
+        val italian = LevyraStrings.forCode("it")
+        assertEquals("1 brano", italian.formatTrackCount(1))
+        assertEquals("5 brani", italian.formatTrackCount(5))
+
+        val polish = LevyraStrings.forCode("pl")
+        assertEquals("1 utwór", polish.formatTrackCount(1))
+        assertEquals("2 utwory", polish.formatTrackCount(2))
+        assertEquals("5 utworów", polish.formatTrackCount(5))
+        assertEquals("22 utwory", polish.formatTrackCount(22))
+        assertEquals("25 utworów", polish.formatTrackCount(25))
+
+        val russian = LevyraStrings.forCode("ru")
+        assertEquals("1 трек", russian.formatTrackCount(1))
+        assertEquals("2 трека", russian.formatTrackCount(2))
+        assertEquals("5 треков", russian.formatTrackCount(5))
+        assertEquals("21 трек", russian.formatTrackCount(21))
+        assertEquals("22 трека", russian.formatTrackCount(22))
+        assertEquals("25 треков", russian.formatTrackCount(25))
+
+        val arabic = LevyraStrings.forCode("ar")
+        assertEquals("لا مقاطع", arabic.formatTrackCount(0))
+        assertEquals("مقطع واحد", arabic.formatTrackCount(1))
+        assertEquals("مقطعان", arabic.formatTrackCount(2))
+        assertEquals("٣ مقاطع", arabic.formatTrackCount(3))
+        assertEquals("١١ مقطعًا", arabic.formatTrackCount(11))
+    }
+
+    @Test
+    fun onboardingAndArtistHeadingsDoNotUseDecorativeEmoji() {
+        LevyraStrings.all().forEach { strings ->
+            listOf(strings.welcomeBadge, strings.popularTracks, strings.singlesAndEps).forEach { heading ->
+                val hasDecorativeSymbol = heading.codePoints().anyMatch { codePoint ->
+                    Character.getType(codePoint) == Character.OTHER_SYMBOL.toInt() ||
+                        Character.getType(codePoint) == Character.MODIFIER_SYMBOL.toInt()
+                }
+                assertFalse("Decorative emoji found in ${strings.code}: $heading", hasDecorativeSymbol)
+            }
+        }
+    }
+
+
+    @Test
+    fun youtubePlaybackErrorsRequirePlaybackContext() {
+        val english = LevyraStrings.forCode("en")
+        val italian = LevyraStrings.forCode("it")
+
+        assertEquals(english.operationFailed, english.localizeUserError("HTTP 403"))
+        assertEquals(italian.operationFailed, italian.localizeUserError("HTTP 429"))
+        assertEquals(
+            "YouTube rejected this track link: try again",
+            english.localizeUserError("HTTP 403", youtubePlayback = true)
+        )
+        assertEquals(
+            "Troppe richieste a YouTube: attendi qualche secondo",
+            italian.localizeUserError("HTTP 429", youtubePlayback = true)
+        )
+    }
+}

@@ -1,0 +1,98 @@
+name: Sync Player Configs
+
+on:
+  schedule:
+    - cron: "0 0,12 * * *"
+  workflow_dispatch:
+    inputs:
+      base_branch:
+        description: "Base branch"
+        required: true
+        default: "main"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sync-player-configs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    name: Sync YouTube player configs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.base_branch || 'main' }}
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Test player config selection pipeline
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s scripts/tests -p 'test_player_config_pipeline.py' -v
+
+      - name: Synchronize multi-source player configs
+        id: sync
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf artifacts/player-config-sync
+          python scripts/sync_player_configs.py \
+            --assets-dir app/src/main/assets \
+            --report artifacts/player-config-sync/report.json \
+            --summary artifacts/player-config-sync/summary.md \
+            --github-output "${GITHUB_OUTPUT}"
+
+      - name: Publish pipeline summary
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f artifacts/player-config-sync/summary.md ]; then
+            cat artifacts/player-config-sync/summary.md >> "${GITHUB_STEP_SUMMARY}"
+          fi
+
+      - name: Upload sync diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: player-config-sync-${{ github.run_number }}
+          path: artifacts/player-config-sync
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Create pull request
+        if: steps.sync.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v8
+        with:
+          base: ${{ github.event.inputs.base_branch || 'main' }}
+          branch: chore/sync-player-configs
+          delete-branch: true
+          commit-message: "chore(extractor): sync player configs"
+          title: "chore(extractor): sync player configs"
+          body-path: artifacts/player-config-sync/summary.md
+          add-paths: |
+            app/src/main/assets/player_configs.json
+            app/src/main/assets/player_configs.meta.json
+            app/src/main/assets/player_dates.json
+          labels: |
+            dependencies
+            extractor
+
+      - name: No changes
+        if: steps.sync.outputs.changed != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Selected player configuration is already current; repository assets left untouched."

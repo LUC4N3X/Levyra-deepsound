@@ -1,0 +1,237 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "skillListingBudgetFraction": 0.01,
+  "maxSkillDescriptionChars": 768,
+  "includeGitInstructions": false,
+  "extraKnownMarketplaces": {
+    "chrisbanes-skills": {
+      "source": {
+        "source": "github",
+        "repo": "chrisbanes/skills"
+      }
+    },
+    "Kotlin": {
+      "source": {
+        "source": "github",
+        "repo": "Kotlin/kotlin-agent-skills"
+      }
+    },
+    "karpathy-skills": {
+      "source": {
+        "source": "github",
+        "repo": "multica-ai/andrej-karpathy-skills"
+      }
+    },
+    "android-reverse-engineering-skill": {
+      "source": {
+        "source": "github",
+        "repo": "SimoneAvogadro/android-reverse-engineering-skill"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "chrisbanes-skills@chrisbanes-skills": true,
+    "kotlin-agent-skills@Kotlin": true,
+    "andrej-karpathy-skills@karpathy-skills": true,
+    "mattpocock-skills@claude-plugins-official": true,
+    "android-reverse-engineering@android-reverse-engineering-skill": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew --no-daemon :app:testDebugUnitTest*)",
+      "Bash(./gradlew --no-daemon :app:lintRelease*)",
+      "Bash(./gradlew --no-daemon --version)",
+      "Bash(./gradlew --no-daemon tasks*)",
+      "Bash(./gradlew --no-daemon projects)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git status*)",
+      "Bash(git branch --show-current)",
+      "Bash(git branch --list*)",
+      "Bash(python3 scripts/check_android_regex_compatibility.py)",
+      "mcp__jcodemunch"
+    ],
+    "deny": [
+      "Read(./local.properties)",
+      "Read(./**/*.jks)",
+      "Read(./**/*.keystore)",
+      "Read(./**/.env)",
+      "Read(./**/.env.*)",
+      "Edit(./local.properties)",
+      "Edit(./**/*.jks)",
+      "Edit(./**/*.keystore)",
+      "Edit(./**/.env)",
+      "Edit(./**/.env.*)"
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash -lc 'bash \"${CLAUDE_PROJECT_DIR}/scripts/claude-statusline.sh\"'",
+    "padding": 0,
+    "refreshInterval": 10
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'root=\"${CLAUDE_PROJECT_DIR}\"; for p in python3 python py; do if command -v \"$p\" >/dev/null 2>&1; then \"$p\" \"$root/scripts/sync_agent_runtime.py\" --runtime claude --quiet >/dev/null 2>&1 || true; break; fi; done; exit 0'",
+            "timeout": 30,
+            "statusMessage": "Refreshing Levyra Claude runtime"
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/.agents/claude/hooks/session-start.sh\"",
+            "timeout": 600,
+            "statusMessage": "Preparing Levyra tooling"
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/.agents/claude/hooks/jcodemunch-start.sh\"",
+            "timeout": 600,
+            "statusMessage": "Preparing Levyra jCodeMunch"
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/scripts/run-agent-harness.sh\" session-start",
+            "timeout": 30,
+            "statusMessage": "Loading Levyra always-on guards"
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/scripts/run-agent-harness.sh\" checkpoint session-start",
+            "timeout": 30,
+            "statusMessage": "Restoring Levyra task checkpoint"
+          }
+        ]
+      },
+      {
+        "matcher": "clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/scripts/run-agent-harness.sh\" session-start",
+            "timeout": 30,
+            "statusMessage": "Reloading Levyra guards"
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/scripts/run-agent-harness.sh\" checkpoint session-start",
+            "timeout": 30,
+            "statusMessage": "Restoring Levyra task checkpoint"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/scripts/run-agent-harness.sh\" checkpoint user-prompt",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/scripts/run-agent-harness.sh\" user-prompt",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/.agents/claude/hooks/user-prompt-submit.sh\"",
+            "timeout": 30,
+            "statusMessage": "Routing Levyra skills"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "^(Edit|Write)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/scripts/run-agent-harness.sh\" pre-tool",
+            "timeout": 30,
+            "statusMessage": "Applying Levyra mutation guards"
+          }
+        ]
+      },
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/scripts/run-agent-harness.sh\" checkpoint pre-tool",
+            "timeout": 30,
+            "statusMessage": "Checking Levyra retry discipline"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "^(Read|Edit|Write|Bash)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/scripts/run-agent-harness.sh\" post-tool",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "^(Edit|Write)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/scripts/run-comment-guard.sh\"",
+            "timeout": 30,
+            "statusMessage": "Checking new source comments"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/scripts/run-agent-harness.sh\" checkpoint post-failure",
+            "timeout": 30,
+            "statusMessage": "Recording Levyra failure checkpoint"
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "matcher": "manual|auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/scripts/run-agent-harness.sh\" post-compact",
+            "timeout": 30,
+            "statusMessage": "Re-anchoring Levyra task state"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/scripts/run-agent-harness.sh\" audit stop",
+            "timeout": 90,
+            "statusMessage": "Auditing Levyra completion evidence"
+          }
+        ]
+      }
+    ]
+  }
+}

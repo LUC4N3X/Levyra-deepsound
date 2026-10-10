@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">เครื่องเล่นขนาดเล็ก รายการโปรดด่วน Flow รายวัน ออฟไลน์ และเนื้อเพลง</string>
+    <string name="widget_idle_subtitle">แตะเพื่อฟัง</string>
+    <string name="widget_toggle">เล่น/หยุดชั่วคราว</string>
+    <string name="widget_next">ถัดไป</string>
+    <string name="widget_previous">ก่อนหน้า</string>
+    <string name="widget_favorites">รายการโปรด</string>
+    <string name="widget_flow">Flow รายวัน</string>
+    <string name="widget_offline">มิกซ์ออฟไลน์</string>
+    <string name="widget_lyrics">เนื้อเพลง</string>
+    <string name="radar_channel_name">เรดาร์ผลงานใหม่</string>
+    <string name="radar_channel_description">ผลงานใหม่จากศิลปินที่คุณติดตาม</string>
+    <string name="radar_new_release_title">ผลงานใหม่จาก %1$s</string>
+    <string name="automatic_backups">สำรองข้อมูลอัตโนมัติ</string>
+    <string name="car_home">หน้าหลัก</string>
+    <string name="car_downloads">ดาวน์โหลด</string>
+    <string name="car_favorites">รายการโปรด</string>
+    <string name="car_playlists">เพลย์ลิสต์</string>
+    <string name="car_no_content">ไม่มีเนื้อหา</string>
+    <string name="car_content_unavailable">ไม่สามารถใช้งานเนื้อหานี้ได้</string>
+    <string name="car_search_tracks">ค้นหาเพลง</string>
+    <string name="car_no_results">ไม่พบผลลัพธ์</string>
+    <string name="car_connecting_player">กำลังเชื่อมต่อกับเครื่องเล่น</string>
+    <string name="car_now_playing">กำลังเล่น</string>
+    <string name="car_queue">คิว</string>
+    <string name="notification_favorite_add">เพิ่มในรายการโปรด</string>
+    <string name="notification_favorite_remove">นำออกจากรายการโปรด</string>
+    <string name="notification_shuffle_enable">เปิดการสุ่มเพลง</string>
+    <string name="notification_shuffle_disable">ปิดการสุ่มเพลง</string>
+    <string name="notification_repeat_off">ปิดการเล่นซ้ำ</string>
+    <string name="notification_repeat_all">เล่นซ้ำทั้งหมด</string>
+    <string name="notification_repeat_one">เล่นซ้ำเพลงเดียว</string>
+    <string name="tile_recognize_music">ระบุเพลง</string>
+    <string name="tile_playback">การเล่น</string>
+    <string name="shortcut_search">ค้นหา</string>
+    <string name="shortcut_library">คลัง</string>
+    <string name="shortcut_recognition">ระบุเพลง</string>
+    <string name="shortcut_resume">เล่นต่อ</string>
+</resources>

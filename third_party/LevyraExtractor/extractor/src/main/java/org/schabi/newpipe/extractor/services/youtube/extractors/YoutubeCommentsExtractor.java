@@ -1,0 +1,735 @@
+package org.schabi.newpipe.extractor.services.youtube.extractors;
+
+import com.grack.nanojson.JsonArray;
+import com.grack.nanojson.JsonObject;
+import com.grack.nanojson.JsonWriter;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.schabi.newpipe.extractor.Page;
+import org.schabi.newpipe.extractor.StreamingService;
+import org.schabi.newpipe.extractor.comments.CommentsExtractor;
+import org.schabi.newpipe.extractor.comments.CommentsInfoItem;
+import org.schabi.newpipe.extractor.comments.CommentsInfoItemsCollector;
+import org.schabi.newpipe.extractor.downloader.Downloader;
+import org.schabi.newpipe.extractor.exceptions.ExtractionException;
+import org.schabi.newpipe.extractor.exceptions.ParsingException;
+import org.schabi.newpipe.extractor.linkhandler.ListLinkHandler;
+import org.schabi.newpipe.extractor.localization.Localization;
+import org.schabi.newpipe.extractor.localization.TimeAgoParser;
+import org.schabi.newpipe.extractor.utils.JsonUtils;
+import org.schabi.newpipe.extractor.utils.Utils;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+
+import static org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper.*;
+import static org.schabi.newpipe.extractor.utils.Utils.isNullOrEmpty;
+
+public class YoutubeCommentsExtractor extends CommentsExtractor {
+
+    private static final String COMMENT_VIEW_MODEL_KEY = "commentViewModel";
+    private static final String COMMENT_RENDERER_KEY = "commentRenderer";
+
+    static final String LIVE_CHAT_PAGE_URL = "live_chat";
+    static final String LIVE_CHAT_REPLAY_PAGE_URL = "live_chat_replay";
+
+    private static final String LIVE_CHAT_ENDPOINT = "live_chat/get_live_chat";
+    private static final String LIVE_CHAT_REPLAY_ENDPOINT = "live_chat/get_live_chat_replay";
+
+    private static final int MAX_LIVE_CHAT_ACTIONS = 500;
+    private static final long MAX_LIVE_CHAT_POLL_DELAY_MS = 60_000L;
+
+    private static final String[] LIVE_CHAT_CONTINUATION_KEYS = {
+            "invalidationContinuationData",
+            "timedContinuationData",
+            "liveChatReplayContinuationData",
+            "reloadContinuationData",
+            "playerSeekContinuationData"
+    };
+
+    /**
+     * Whether comments are disabled on video.
+     */
+    private boolean commentsDisabled;
+
+    /** Human-readable total comment count returned by YouTube. */
+    private String commentsCountText = "";
+
+    /**
+     * The second ajax <b>/next</b> response.
+     */
+    private JsonObject ajaxJson;
+    private JSONObject ajaxJsonSafe;
+
+    @Nullable
+    private String liveChatContinuation;
+    private boolean liveChatReplay;
+
+    public YoutubeCommentsExtractor(
+            final StreamingService service,
+            final ListLinkHandler uiHandler) {
+        super(service, uiHandler);
+    }
+
+    @Nonnull
+    @Override
+    public InfoItemsPage<CommentsInfoItem> getInitialPage()
+            throws IOException, ExtractionException {
+
+        if (liveChatContinuation != null) {
+            return getLiveChatPage(liveChatContinuation, liveChatReplay);
+        }
+
+        if (commentsDisabled) {
+            return getInfoItemsPageForDisabledComments();
+        }
+
+        return extractComments(ajaxJson, ajaxJsonSafe);
+    }
+
+    /**
+     * Finds the initial comments token and initializes commentsDisabled.
+     * <br/>
+     * Also sets {@link #commentsDisabled}.
+     *
+     * @return the continuation token or null if none was found
+     */
+    @Nullable
+    private String findInitialCommentsToken(final JsonObject nextResponse) {
+        final JsonArray contents = getJsonContents(nextResponse);
+
+        // For videos where comments are unavailable, this would be null
+        if (contents == null) {
+            return null;
+        }
+
+        final String token = contents.stream()
+                // Only use JsonObjects
+                .filter(JsonObject.class::isInstance)
+                .map(JsonObject.class::cast)
+                // Check if the comment-section is present
+                .filter(jObj -> {
+                    try {
+                        return "comments-section".equals(
+                                JsonUtils.getString(jObj, "itemSectionRenderer.targetId"));
+                    } catch (final ParsingException ignored) {
+                        return false;
+                    }
+                })
+                .findFirst()
+                // Extract the token (or null in case of error)
+                .map(itemSectionRenderer -> {
+                    try {
+                        return JsonUtils.getString(
+                                itemSectionRenderer
+                                        .getObject("itemSectionRenderer")
+                                        .getArray("contents").getObject(0),
+                                "continuationItemRenderer.continuationEndpoint"
+                                        + ".continuationCommand.token");
+                    } catch (final ParsingException ignored) {
+                        return null;
+                    }
+                })
+                .orElse(null);
+
+        // The comments are disabled if we couldn't get a token
+        commentsDisabled = token == null;
+
+        return token;
+    }
+
+    @Nullable
+    private JsonArray getJsonContents(final JsonObject nextResponse) {
+        try {
+            return JsonUtils.getArray(nextResponse,
+                    "contents.twoColumnWatchNextResults.results.results.contents");
+        } catch (final ParsingException e) {
+            return null;
+        }
+    }
+
+    @Nonnull
+    private JsonObject getMutationPayloadFromEntityKey(@Nonnull final JsonArray mutations,
+                                                       @Nonnull final String commentKey)
+            throws ParsingException {
+        return mutations.stream()
+                .filter(JsonObject.class::isInstance)
+                .map(JsonObject.class::cast)
+                .filter(mutation -> commentKey.equals(
+                        mutation.getString("entityKey")))
+                .findFirst()
+                .orElseThrow(() -> new ParsingException(
+                        "Could not get comment entity payload mutation"))
+                .getObject("payload");
+    }
+
+    @Nonnull
+    private InfoItemsPage<CommentsInfoItem> getInfoItemsPageForDisabledComments() {
+        return new InfoItemsPage<>(Collections.emptyList(), null, Collections.emptyList());
+    }
+
+    @Nullable
+    private Page getNextPage(@Nonnull final JsonObject jsonObject, JSONObject jsonObjectSafe) throws ExtractionException {
+        final JsonArray onResponseReceivedEndpoints =
+                jsonObject.getArray("onResponseReceivedEndpoints");
+
+        // Prevent ArrayIndexOutOfBoundsException
+        if (onResponseReceivedEndpoints.isEmpty()) {
+            return null;
+        }
+
+        if (jsonObjectSafe == null) {
+            try {
+                return getNextPage(onResponseReceivedEndpoints
+                        .getObject(0)
+                        .getObject("reloadContinuationItemsCommand")
+                        .getArray("continuationItems")
+                        .getObject(0)
+                        .getObject("commentsHeaderRenderer")
+                        .getObject("sortMenu")
+                        .getObject("sortFilterSubMenuRenderer")
+                        .getArray("subMenuItems")
+                        .getObject(0)
+                        .getObject("serviceEndpoint")
+                        .getObject("continuationCommand")
+                        .getString("token"));
+            } catch (final Exception ignored) {
+                return null;
+            }
+        }
+
+        final JsonArray continuationItemsArray;
+        try {
+            final JsonObject endpoint = onResponseReceivedEndpoints
+                    .getObject(onResponseReceivedEndpoints.size() - 1);
+            continuationItemsArray = endpoint
+                    .getObject("reloadContinuationItemsCommand",
+                            endpoint.getObject("appendContinuationItemsAction"))
+                    .getArray("continuationItems");
+        } catch (final Exception e) {
+            return null;
+        }
+        // Prevent ArrayIndexOutOfBoundsException
+        if (continuationItemsArray.isEmpty()) {
+            return null;
+        }
+
+        JSONArray continuationItems = null;
+        try {
+            try {
+                continuationItems = jsonObjectSafe
+                        .getJSONArray("onResponseReceivedEndpoints")
+                        .getJSONObject(onResponseReceivedEndpoints.size() - 1)
+                        .getJSONObject("reloadContinuationItemsCommand")
+                        .getJSONArray("continuationItems");
+            } catch (final Exception ignored) {
+
+            }
+            // fall back to "appendContinuationItemsAction"
+            if (continuationItems == null) {
+                continuationItems = jsonObjectSafe
+                        .getJSONArray("onResponseReceivedEndpoints")
+                        .getJSONObject(onResponseReceivedEndpoints.size() - 1)
+                        .getJSONObject("appendContinuationItemsAction")
+                        .getJSONArray("continuationItems");
+            }
+
+            final JSONObject continuationItemRenderer = continuationItems
+                    .getJSONObject(continuationItems.length() - 1)
+                    .getJSONObject("continuationItemRenderer");
+
+            if(continuationItemRenderer.has("button")) { // replies
+                //TODO: seems reply send 2 useless requests which should be avoided
+                //button.buttonRenderer.command.continuationCommand.token
+                return getNextPage(continuationItemRenderer
+                        .getJSONObject("button")
+                        .getJSONObject("buttonRenderer")
+                        .getJSONObject("command")
+                        .getJSONObject("continuationCommand")
+                        .getString("token")
+                );
+            }
+
+
+            return getNextPage(continuationItemRenderer
+                    .getJSONObject("continuationEndpoint")
+                    .getJSONObject("continuationCommand")
+                    .getString("token")
+            );
+        } catch (JSONException e) {
+            return null;
+        }
+    }
+
+    @Nonnull
+    private Page getNextPage(final String continuation) throws ParsingException {
+        return new Page(getUrl(), continuation); // URL is ignored tho
+    }
+
+    @Override
+    public InfoItemsPage<CommentsInfoItem> getPage(final Page page)
+            throws IOException, ExtractionException {
+
+        if (isLiveChatPage(page)) {
+            return getLiveChatPage(page.getId(),
+                    LIVE_CHAT_REPLAY_PAGE_URL.equals(page.getUrl()));
+        }
+
+        if (commentsDisabled) {
+            return getInfoItemsPageForDisabledComments();
+        }
+
+        if (page == null || isNullOrEmpty(page.getId())) {
+            throw new IllegalArgumentException("Page doesn't have the continuation.");
+        }
+
+        final Localization localization = getExtractorLocalization();
+        // @formatter:off
+        final byte[] body = JsonWriter.string(
+                        prepareDesktopJsonBuilder(localization, getExtractorContentCountry())
+                                .value("continuation", page.getId())
+                                .done())
+                .getBytes(StandardCharsets.UTF_8);
+        // @formatter:on
+
+        String resp = getJsonPostResponseRaw("next", body, localization);
+        final JsonObject jsonObject = JsonUtils.toJsonObject(resp);
+        JSONObject jsonObjectSafe = null;
+        try {
+            jsonObjectSafe = new JSONObject(resp);
+        } catch (final JSONException ignored) {
+            // NanoJSON already parsed the response. The org.json representation is optional and
+            // only used for a few defensive continuation/count fallbacks.
+        }
+
+        return extractComments(jsonObject, jsonObjectSafe);
+    }
+
+    private InfoItemsPage<CommentsInfoItem> extractComments(final JsonObject jsonObject, final JSONObject jsonObjectSafe)
+            throws ExtractionException {
+        final CommentsInfoItemsCollector collector = new CommentsInfoItemsCollector(
+                getServiceId());
+        collectCommentsFrom(collector, jsonObject);
+        return new InfoItemsPage<>(
+                collector.getItems(),
+                getNextPage(jsonObject, jsonObjectSafe),
+                collector.getErrors(),
+                true);
+    }
+
+    private void collectCommentsFrom(@Nonnull final CommentsInfoItemsCollector collector,
+                                     @Nonnull final JsonObject jsonObject)
+            throws ParsingException {
+
+        final JsonArray onResponseReceivedEndpoints =
+                jsonObject.getArray("onResponseReceivedEndpoints");
+        // Prevent ArrayIndexOutOfBoundsException
+        if (onResponseReceivedEndpoints.isEmpty()) {
+            return;
+        }
+        final JsonObject commentsEndpoint =
+                onResponseReceivedEndpoints.getObject(onResponseReceivedEndpoints.size() - 1);
+
+        final String path;
+
+        if (commentsEndpoint.has("reloadContinuationItemsCommand")) {
+            path = "reloadContinuationItemsCommand.continuationItems";
+        } else if (commentsEndpoint.has("appendContinuationItemsAction")) {
+            path = "appendContinuationItemsAction.continuationItems";
+        } else {
+            // No comments
+            return;
+        }
+
+        final JsonArray contents;
+        try {
+            contents = JsonUtils.getArray(commentsEndpoint, path);
+        } catch (final Exception e) {
+            // No comments
+            return;
+        }
+
+        final int index = contents.size() - 1;
+        if (!contents.isEmpty() && contents.getObject(index).has("continuationItemRenderer")) {
+            contents.remove(index);
+        }
+
+        // The mutations object, which is returned in the comments' continuation
+        // It contains parts of comment data when comments are returned with a view model
+        final JsonArray mutations = jsonObject.getObject("frameworkUpdates")
+                .getObject("entityBatchUpdate")
+                .getArray("mutations");
+        final String videoUrl = getUrl();
+        final TimeAgoParser timeAgoParser = getTimeAgoParser();
+
+        for (final Object o : contents) {
+            if (!(o instanceof JsonObject)) {
+                continue;
+            }
+
+            collectCommentItem(mutations, (JsonObject) o, collector, videoUrl, timeAgoParser);
+        }
+    }
+
+    private void collectCommentItem(@Nonnull final JsonArray mutations,
+                                    @Nonnull final JsonObject content,
+                                    @Nonnull final CommentsInfoItemsCollector collector,
+                                    @Nonnull final String videoUrl,
+                                    @Nonnull final TimeAgoParser timeAgoParser)
+            throws ParsingException {
+        if (content.has("commentThreadRenderer")) {
+            final JsonObject commentThreadRenderer =
+                    content.getObject("commentThreadRenderer");
+            if (commentThreadRenderer.has(COMMENT_VIEW_MODEL_KEY)) {
+                final JsonObject commentViewModel =
+                        commentThreadRenderer.getObject(COMMENT_VIEW_MODEL_KEY)
+                                .getObject(COMMENT_VIEW_MODEL_KEY);
+                collector.commit(new YoutubeCommentsEUVMInfoItemExtractor(
+                        commentViewModel,
+                        commentThreadRenderer.getObject("replies")
+                                .getObject("commentRepliesRenderer"),
+                        getMutationPayloadFromEntityKey(mutations,
+                                commentViewModel.getString("commentKey", ""))
+                                .getObject("commentEntityPayload"),
+                        getMutationPayloadFromEntityKey(mutations,
+                                commentViewModel.getString("toolbarStateKey", ""))
+                                .getObject("engagementToolbarStateEntityPayload"),
+                        videoUrl,
+                        timeAgoParser));
+            } else if (commentThreadRenderer.has("comment")) {
+                collector.commit(new YoutubeCommentsInfoItemExtractor(
+                        commentThreadRenderer.getObject("comment")
+                                .getObject(COMMENT_RENDERER_KEY),
+                        commentThreadRenderer.getObject("replies")
+                                .getObject("commentRepliesRenderer"),
+                        videoUrl,
+                        timeAgoParser));
+            }
+        } else if (content.has(COMMENT_VIEW_MODEL_KEY)) {
+            final JsonObject commentViewModel = content.getObject(COMMENT_VIEW_MODEL_KEY);
+            collector.commit(new YoutubeCommentsEUVMInfoItemExtractor(
+                    commentViewModel,
+                    null,
+                    getMutationPayloadFromEntityKey(mutations,
+                            commentViewModel.getString("commentKey", ""))
+                            .getObject("commentEntityPayload"),
+                    getMutationPayloadFromEntityKey(mutations,
+                            commentViewModel.getString("toolbarStateKey", ""))
+                            .getObject("engagementToolbarStateEntityPayload"),
+                    videoUrl,
+                    timeAgoParser));
+        } else if (content.has(COMMENT_RENDERER_KEY)) {
+            // commentRenderers are directly returned for comment replies, so there is no
+            // commentRepliesRenderer to provide
+            // Also, YouTube has only one comment reply level
+            collector.commit(new YoutubeCommentsInfoItemExtractor(
+                    content.getObject(COMMENT_RENDERER_KEY),
+                    null,
+                    videoUrl,
+                    timeAgoParser));
+        }
+    }
+
+    @Nonnull
+    @Override
+    public String getCommentsCountText() {
+        return commentsCountText;
+    }
+
+    @Nonnull
+    static String extractCommentsCountText(@Nullable final JSONObject root) {
+        if (root == null) {
+            return "";
+        }
+        final JSONObject header = findObjectForKey(root, "commentsHeaderRenderer", 0);
+        if (header == null) {
+            return "";
+        }
+        return extractText(header.optJSONObject("countText")).trim();
+    }
+
+    @Nullable
+    private static JSONObject findObjectForKey(@Nullable final Object node,
+                                               @Nonnull final String key,
+                                               final int depth) {
+        if (node == null || depth > 48) {
+            return null;
+        }
+        if (node instanceof JSONObject) {
+            final JSONObject object = (JSONObject) node;
+            final JSONObject direct = object.optJSONObject(key);
+            if (direct != null) {
+                return direct;
+            }
+            final java.util.Iterator<String> keys = object.keys();
+            while (keys.hasNext()) {
+                final JSONObject found = findObjectForKey(object.opt(keys.next()), key, depth + 1);
+                if (found != null) {
+                    return found;
+                }
+            }
+        } else if (node instanceof JSONArray) {
+            final JSONArray array = (JSONArray) node;
+            for (int index = 0; index < array.length(); index++) {
+                final JSONObject found = findObjectForKey(array.opt(index), key, depth + 1);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
+    @Nonnull
+    private static String extractText(@Nullable final JSONObject textObject) {
+        if (textObject == null) {
+            return "";
+        }
+        final String simpleText = textObject.optString("simpleText", "").trim();
+        if (!simpleText.isEmpty()) {
+            return simpleText;
+        }
+        final JSONArray runs = textObject.optJSONArray("runs");
+        if (runs == null) {
+            return "";
+        }
+        final StringBuilder builder = new StringBuilder();
+        for (int index = 0; index < runs.length(); index++) {
+            final JSONObject run = runs.optJSONObject(index);
+            if (run != null) {
+                builder.append(run.optString("text", ""));
+            }
+        }
+        return builder.toString();
+    }
+
+    @Override
+    public void onFetchPage(@Nonnull final Downloader downloader)
+            throws IOException, ExtractionException {
+        final Localization localization = getExtractorLocalization();
+        // @formatter:off
+        final byte[] body = JsonWriter.string(
+                        prepareDesktopJsonBuilder(localization, getExtractorContentCountry())
+                                .value("videoId", getId())
+                                .done())
+                .getBytes(StandardCharsets.UTF_8);
+        // @formatter:on
+
+        final JsonObject nextResponse = getJsonPostResponse("next", body, localization);
+        final String initialToken = findInitialCommentsToken(nextResponse);
+
+        if (initialToken == null) {
+            final LiveChatContinuation continuation =
+                    extractInitialLiveChatContinuation(nextResponse);
+            if (continuation != null) {
+                liveChatContinuation = continuation.token;
+                liveChatReplay = continuation.replay;
+            }
+            return;
+        }
+
+        // @formatter:off
+        final byte[] ajaxBody = JsonWriter.string(
+                        prepareDesktopJsonBuilder(localization, getExtractorContentCountry())
+                                .value("continuation", initialToken)
+                                .done())
+                .getBytes(StandardCharsets.UTF_8);
+        // @formatter:on
+
+        String resp = getJsonPostResponseRaw("next", ajaxBody, localization);
+        ajaxJson = JsonUtils.toJsonObject(resp);
+        try {
+            ajaxJsonSafe = new JSONObject(resp);
+            commentsCountText = extractCommentsCountText(ajaxJsonSafe);
+        } catch (JSONException e) {
+            ajaxJsonSafe = null;
+            commentsCountText = "";
+        }
+    }
+
+
+    @Override
+    public boolean isCommentsDisabled() {
+        return commentsDisabled && liveChatContinuation == null;
+    }
+
+    @Override
+    public boolean isLiveChat() {
+        return liveChatContinuation != null;
+    }
+
+    private static boolean isLiveChatPage(@Nullable final Page page) {
+        return page != null
+                && !isNullOrEmpty(page.getId())
+                && (LIVE_CHAT_PAGE_URL.equals(page.getUrl())
+                        || LIVE_CHAT_REPLAY_PAGE_URL.equals(page.getUrl()));
+    }
+
+    private InfoItemsPage<CommentsInfoItem> getLiveChatPage(final String continuation,
+                                                            final boolean replay)
+            throws IOException, ExtractionException {
+        final Localization localization = getExtractorLocalization();
+        final byte[] body = JsonWriter.string(
+                        prepareDesktopJsonBuilder(localization, getExtractorContentCountry())
+                                .value("continuation", continuation)
+                                .done())
+                .getBytes(StandardCharsets.UTF_8);
+
+        final JsonObject liveChatContinuationObject = getJsonPostResponse(
+                        replay ? LIVE_CHAT_REPLAY_ENDPOINT : LIVE_CHAT_ENDPOINT, body, localization)
+                .getObject("continuationContents")
+                .getObject("liveChatContinuation");
+
+        final CommentsInfoItemsCollector collector =
+                new CommentsInfoItemsCollector(getServiceId());
+        collectLiveChatMessages(liveChatContinuationObject, collector, getUrl());
+
+        final LiveChatContinuation nextContinuation =
+                extractNextLiveChatContinuationData(liveChatContinuationObject, replay);
+        final Page nextPage = nextContinuation == null
+                ? null
+                : new Page(
+                        nextContinuation.replay
+                                ? LIVE_CHAT_REPLAY_PAGE_URL : LIVE_CHAT_PAGE_URL,
+                        nextContinuation.token,
+                        null,
+                        null,
+                        nextContinuation.pollDelayMs > 0
+                                ? Long.toString(nextContinuation.pollDelayMs)
+                                        .getBytes(StandardCharsets.UTF_8)
+                                : null);
+
+        return new InfoItemsPage<>(collector.getItems(), nextPage, collector.getErrors(), true);
+    }
+
+    @Nullable
+    static LiveChatContinuation extractInitialLiveChatContinuation(
+            @Nullable final JsonObject nextResponse) {
+        if (nextResponse == null) {
+            return null;
+        }
+        final JsonObject liveChatRenderer = nextResponse.getObject("contents")
+                .getObject("twoColumnWatchNextResults")
+                .getObject("conversationBar")
+                .getObject("liveChatRenderer");
+        if (liveChatRenderer.isEmpty()) {
+            return null;
+        }
+        return extractLiveChatContinuation(
+                liveChatRenderer.getArray("continuations"),
+                liveChatRenderer.getBoolean("isReplay", false));
+    }
+
+    @Nullable
+    static String extractNextLiveChatContinuation(
+            @Nullable final JsonObject liveChatContinuationObject) {
+        final LiveChatContinuation continuation =
+                extractNextLiveChatContinuationData(liveChatContinuationObject, false);
+        return continuation == null ? null : continuation.token;
+    }
+
+    @Nullable
+    static LiveChatContinuation extractNextLiveChatContinuationData(
+            @Nullable final JsonObject liveChatContinuationObject,
+            final boolean replay) {
+        if (liveChatContinuationObject == null) {
+            return null;
+        }
+        return extractLiveChatContinuation(
+                liveChatContinuationObject.getArray("continuations"), replay);
+    }
+
+    @Nullable
+    private static LiveChatContinuation extractLiveChatContinuation(
+            @Nullable final JsonArray continuations,
+            final boolean replay) {
+        if (continuations == null) {
+            return null;
+        }
+        for (final String continuationKey : LIVE_CHAT_CONTINUATION_KEYS) {
+            for (final Object continuation : continuations) {
+                if (!(continuation instanceof JsonObject)) {
+                    continue;
+                }
+                final JsonObject continuationData =
+                        ((JsonObject) continuation).getObject(continuationKey);
+                final String candidate = continuationData.getString("continuation", "");
+                if (isNullOrEmpty(candidate)) {
+                    continue;
+                }
+                final Object timeoutValue = continuationData.get("timeoutMs");
+                final long rawPollDelayMs = timeoutValue instanceof Number
+                        ? ((Number) timeoutValue).longValue() : 0L;
+                final long pollDelayMs = Math.max(0L,
+                        Math.min(rawPollDelayMs, MAX_LIVE_CHAT_POLL_DELAY_MS));
+                return new LiveChatContinuation(candidate, replay, pollDelayMs);
+            }
+        }
+        return null;
+    }
+
+    static void collectLiveChatMessages(@Nullable final JsonObject liveChatContinuationObject,
+                                        @Nonnull final CommentsInfoItemsCollector collector,
+                                        @Nonnull final String videoUrl) {
+        if (liveChatContinuationObject == null) {
+            return;
+        }
+        int inspected = 0;
+        for (final Object action : liveChatContinuationObject.getArray("actions")) {
+            if (inspected >= MAX_LIVE_CHAT_ACTIONS) {
+                break;
+            }
+            inspected++;
+            if (!(action instanceof JsonObject)) {
+                continue;
+            }
+            final JsonObject actionObject = (JsonObject) action;
+            if (actionObject.has("replayChatItemAction")) {
+                for (final Object replayAction
+                        : actionObject.getObject("replayChatItemAction").getArray("actions")) {
+                    if (inspected >= MAX_LIVE_CHAT_ACTIONS) {
+                        break;
+                    }
+                    inspected++;
+                    if (replayAction instanceof JsonObject) {
+                        collectLiveChatMessage((JsonObject) replayAction, collector, videoUrl);
+                    }
+                }
+            } else {
+                collectLiveChatMessage(actionObject, collector, videoUrl);
+            }
+        }
+    }
+
+    private static void collectLiveChatMessage(
+            @Nonnull final JsonObject action,
+            @Nonnull final CommentsInfoItemsCollector collector,
+            @Nonnull final String videoUrl) {
+        final JsonObject renderer = action.getObject("addChatItemAction")
+                .getObject("item")
+                .getObject("liveChatTextMessageRenderer");
+        if (renderer.isEmpty()) {
+            return;
+        }
+        collector.commit(new YoutubeLiveChatInfoItemExtractor(renderer, videoUrl));
+    }
+
+    static final class LiveChatContinuation {
+        @Nonnull
+        final String token;
+        final boolean replay;
+        final long pollDelayMs;
+
+        LiveChatContinuation(@Nonnull final String token,
+                             final boolean replay,
+                             final long pollDelayMs) {
+            this.token = token;
+            this.replay = replay;
+            this.pollDelayMs = pollDelayMs;
+        }
+    }
+}

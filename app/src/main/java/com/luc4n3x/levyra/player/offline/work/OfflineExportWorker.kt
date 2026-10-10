@@ -1,0 +1,469 @@
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+package com.luc4n3x.levyra.player.offline.work
+
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.os.Build
+import android.os.SystemClock
+import android.provider.DocumentsContract
+import android.provider.MediaStore
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.work.BackoffPolicy
+import androidx.work.Constraints
+import androidx.work.CoroutineWorker
+import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
+import androidx.work.ForegroundInfo
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.WorkerParameters
+import androidx.work.workDataOf
+import com.luc4n3x.levyra.MainActivity
+import com.luc4n3x.levyra.R
+import com.luc4n3x.levyra.data.LevyraPreferences
+import com.luc4n3x.levyra.data.TrackPayloadCodec
+import com.luc4n3x.levyra.data.local.LevyraDatabase
+import com.luc4n3x.levyra.data.local.OfflineDownloadTaskEntity
+import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.retainsExistingBatchMembership
+import com.luc4n3x.levyra.player.liveupdate.DownloadBatchProgress
+import com.luc4n3x.levyra.player.liveupdate.DownloadLiveUpdateContent
+import com.luc4n3x.levyra.player.liveupdate.DownloadLiveUpdateMapper
+import com.luc4n3x.levyra.player.liveupdate.DownloadLiveUpdateSlot
+import com.luc4n3x.levyra.player.liveupdate.LiveUpdatePolicy
+import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
+import com.luc4n3x.levyra.player.offline.OfflineExportPipeline
+import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import java.io.IOException
+import java.util.UUID
+import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import timber.log.Timber
+
+data class OfflineDownloadBatchRef(
+    val key: String,
+    val title: String,
+    val kind: String,
+    val artworkUrl: String,
+    val position: Int
+)
+
+private object OfflineDownloadConcurrencyGate {
+    private val mutex = Mutex()
+    private var active = 0
+
+    suspend fun <T> withLimit(limit: Int, block: suspend () -> T): T {
+        val normalized = limit.coerceIn(1, 4)
+        while (true) {
+            val acquired = mutex.withLock {
+                if (active < normalized) {
+                    active += 1
+                    true
+                } else {
+                    false
+                }
+            }
+            if (acquired) break
+            delay(120L)
+        }
+        return try {
+            block()
+        } finally {
+            mutex.withLock { active = (active - 1).coerceAtLeast(0) }
+        }
+    }
+}
+
+class OfflineExportWorker(
+    appContext: Context,
+    params: WorkerParameters
+) : CoroutineWorker(appContext, params) {
+    override suspend fun doWork(): Result {
+        val payload = inputData.getString(KEY_TRACK_PAYLOAD).orEmpty()
+        val taskKey = inputData.getString(KEY_TASK_KEY).orEmpty().ifBlank { id.toString() }
+        val track = TrackPayloadCodec.decode(payload) ?: return Result.failure(errorData("invalid_track_payload"))
+        val taskDao = LevyraDatabase.get(applicationContext).offlineDownloadTasksDao()
+        val preferences = LevyraPreferences(applicationContext)
+        val strings = LevyraStrings.forCode(preferences.languageCode())
+        val settings = preferences.downloadSettings()
+        val downloadQualityKey = settings.storedQualityKey(preferences.audioQuality())
+        val workId = id.toString()
+        if (settings.skipExisting && track.id.isNotBlank()) {
+            val existing = LevyraDatabase.get(applicationContext).downloadedTracksDao().byTrackIdAndProfile(
+                trackId = track.id,
+                downloadPreset = settings.storedPresetKey,
+                downloadQuality = downloadQualityKey
+            )
+            if (existing != null && isStoredDownloadReadable(existing.uri)) {
+                if (taskDao.updateStateForWork(taskKey, workId, "SUCCEEDED", 100, "", System.currentTimeMillis()) == 0) {
+                    return Result.failure(errorData(ERROR_SUPERSEDED))
+                }
+                return Result.success(
+                    workDataOf(
+                        KEY_FILE_NAME to existing.fileName,
+                        KEY_EMBEDDED_METADATA to existing.embeddedMetadata,
+                        KEY_MIME_TYPE to existing.mimeType,
+                        KEY_URI to existing.uri,
+                        KEY_DESTINATION_LABEL to existingDownloadDestinationLabel(existing.uri)
+                    )
+                )
+            }
+        }
+
+        val previousProgress = taskDao.byKey(taskKey)?.progress?.coerceIn(1, 99) ?: 1
+        if (taskDao.updateStateForWork(taskKey, workId, "RUNNING", previousProgress, "", System.currentTimeMillis()) == 0) {
+            return Result.failure(errorData(ERROR_SUPERSEDED))
+        }
+        val batchTask = if (LiveUpdatePolicy.isSupported()) taskDao.byKey(taskKey) else null
+        val batchKey = batchTask?.batchKey.orEmpty()
+        val batchTitle = batchTask?.batchTitle.orEmpty()
+        return try {
+            setProgress(workDataOf(KEY_PROGRESS to previousProgress))
+            setForeground(
+                createForegroundInfo(track, taskKey, previousProgress, strings, liveUpdateFor(taskKey, previousProgress, batchKey, batchTitle))
+            )
+            var persistedProgress = previousProgress
+            var persistedAtMs = SystemClock.elapsedRealtime()
+            var foregroundProgress = previousProgress
+            var foregroundAtMs = persistedAtMs
+            val publishProgress: suspend (Int) -> Unit = { value ->
+                val safeProgress = value.coerceIn(0, 100)
+                val monotonicProgress = maxOf(safeProgress, persistedProgress)
+                val nowElapsed = SystemClock.elapsedRealtime()
+                val progressAdvanced = monotonicProgress > persistedProgress
+                val shouldPersist = monotonicProgress == 100 ||
+                    progressAdvanced && (
+                        monotonicProgress >= persistedProgress + PROGRESS_PERSIST_STEP ||
+                            nowElapsed - persistedAtMs >= PROGRESS_PERSIST_INTERVAL_MS
+                        )
+                if (shouldPersist) {
+                    persistedProgress = monotonicProgress
+                    persistedAtMs = nowElapsed
+                    setProgress(workDataOf(KEY_PROGRESS to monotonicProgress))
+                    val updated = taskDao.updateRunningProgress(taskKey, workId, monotonicProgress, System.currentTimeMillis())
+                    if (updated == 0) throw CancellationException("Download no longer active")
+                }
+                val foregroundAdvanced = monotonicProgress > foregroundProgress
+                val shouldRefreshForeground = monotonicProgress == 100 ||
+                    foregroundAdvanced && (
+                        monotonicProgress >= foregroundProgress + FOREGROUND_PROGRESS_STEP ||
+                            nowElapsed - foregroundAtMs >= FOREGROUND_PROGRESS_INTERVAL_MS
+                        )
+                if (shouldRefreshForeground) {
+                    foregroundProgress = monotonicProgress
+                    foregroundAtMs = nowElapsed
+                    setForeground(
+                        createForegroundInfo(track, taskKey, monotonicProgress, strings, liveUpdateFor(taskKey, monotonicProgress, batchKey, batchTitle))
+                    )
+                }
+            }
+            val pipeline = OfflineExportPipeline(
+                context = applicationContext,
+                progress = publishProgress,
+                taskKey = taskKey,
+                settings = settings,
+                downloadQualityKey = downloadQualityKey
+            )
+            val result = OfflineDownloadConcurrencyGate.withLimit(settings.maxConcurrentDownloads) {
+                pipeline.export(track)
+            }
+            if (taskDao.updateStateForWork(taskKey, workId, "SUCCEEDED", 100, "", System.currentTimeMillis()) == 0) {
+                return Result.failure(errorData(ERROR_SUPERSEDED))
+            }
+            Result.success(
+                workDataOf(
+                    KEY_FILE_NAME to result.fileName,
+                    KEY_EMBEDDED_METADATA to result.fileMetadataEmbedded,
+                    KEY_MIME_TYPE to result.mimeType,
+                    KEY_URI to result.uri.toString(),
+                    KEY_DESTINATION_LABEL to result.destinationLabel
+                )
+            )
+        } catch (error: CancellationException) {
+            val current = taskDao.byKey(taskKey)
+            if (current?.workId == workId) {
+                if (current.state !in setOf("PAUSED", "CANCELLED")) {
+                    taskDao.updateStateForWork(taskKey, workId, "PAUSED", current.progress, "", System.currentTimeMillis())
+                }
+                if (current.state == "CANCELLED") {
+                    OfflineAudioExporter.discardPartialDownload(applicationContext, taskKey)
+                }
+            }
+            throw error
+        } catch (error: Throwable) {
+            val current = taskDao.byKey(taskKey)
+            val unsupportedSource = error.message.orEmpty().let { message ->
+                message.contains("Offline export requires an M4A audio source", ignoreCase = true) ||
+                    message.contains("Offline export received a non-audio MP4 source", ignoreCase = true)
+            }
+            if (current == null || current.workId != workId) {
+                Result.failure(errorData(ERROR_SUPERSEDED))
+            } else if (error is IOException && !unsupportedSource && runAttemptCount < 2) {
+                taskDao.updateStateForWork(taskKey, workId, "RETRYING", current.progress, error.message.orEmpty(), System.currentTimeMillis())
+                Timber.w(error, "Offline export retry scheduled")
+                Result.retry()
+            } else {
+                taskDao.updateStateForWork(taskKey, workId, "FAILED", current.progress, error.message.orEmpty(), System.currentTimeMillis())
+                Timber.e(error, "Offline export failed")
+                Result.failure(errorData(if (unsupportedSource) "contentIsMalformed" else error.message ?: "offline_export_failed"))
+            }
+        } finally {
+            if (LiveUpdatePolicy.isSupported()) DownloadLiveUpdateSlot.release(taskKey)
+        }
+    }
+
+    private suspend fun liveUpdateFor(
+        taskKey: String,
+        progress: Int,
+        batchKey: String,
+        batchTitle: String
+    ): DownloadLiveUpdateContent? {
+        if (!LiveUpdatePolicy.isSupported()) return null
+        val batch = if (batchKey.isBlank()) {
+            null
+        } else {
+            val counts = LevyraDatabase.get(applicationContext).offlineDownloadTasksDao().batchCounts(batchKey)
+            DownloadBatchProgress(title = batchTitle, completed = counts.completed, total = counts.total)
+        }
+        val notifications = NotificationManagerCompat.from(applicationContext)
+        val promotionAllowed = progress < 100 &&
+            notifications.canPostPromotedNotifications() &&
+            DownloadLiveUpdateSlot.claim(taskKey)
+        return DownloadLiveUpdateMapper.map(progress, batch, promotionAllowed)
+    }
+
+    private fun errorData(message: String): Data = workDataOf(KEY_ERROR to message)
+
+    private fun existingDownloadDestinationLabel(rawUri: String): String {
+        val uri = runCatching { android.net.Uri.parse(rawUri) }.getOrNull() ?: return "Music/Levyra"
+        if (uri.authority == MediaStore.AUTHORITY) return "Music/Levyra"
+        val documentId = runCatching {
+            if (DocumentsContract.isDocumentUri(applicationContext, uri)) {
+                DocumentsContract.getDocumentId(uri)
+            } else {
+                ""
+            }
+        }.getOrDefault("")
+        val relativePath = documentId
+            .substringAfter(':', "")
+            .substringBeforeLast('/', "")
+            .trim('/')
+        return relativePath.ifBlank { "Music/Levyra" }
+    }
+
+    private fun isStoredDownloadReadable(rawUri: String): Boolean {
+        if (rawUri.isBlank()) return false
+        return runCatching {
+            applicationContext.contentResolver.openFileDescriptor(android.net.Uri.parse(rawUri), "r")?.use { descriptor ->
+                descriptor.statSize != 0L
+            } ?: false
+        }.getOrDefault(false)
+    }
+
+    private fun createForegroundInfo(
+        track: Track,
+        taskKey: String,
+        progress: Int,
+        strings: LevyraStrings,
+        liveUpdate: DownloadLiveUpdateContent?
+    ): ForegroundInfo {
+        ensureNotificationChannel(strings)
+        val notification = buildForegroundNotification(track, taskKey, progress.coerceIn(0, 100), strings, liveUpdate)
+        val notificationId = NOTIFICATION_ID_BASE + (track.id.hashCode() and Int.MAX_VALUE) % NOTIFICATION_ID_RANGE
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ForegroundInfo(notificationId, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            ForegroundInfo(notificationId, notification)
+        }
+    }
+
+    private fun buildForegroundNotification(
+        track: Track,
+        taskKey: String,
+        progress: Int,
+        strings: LevyraStrings,
+        liveUpdate: DownloadLiveUpdateContent?
+    ): Notification {
+        val title = track.title.ifBlank { strings.offlineDownloadsPlain }
+        val artist = track.artist.ifBlank { "LEVYRA" }
+        val percent = progress.coerceIn(0, 100)
+        return NotificationCompat.Builder(applicationContext, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_widget_download)
+            .setContentTitle(strings.offlineDownloadsPlain)
+            .setContentText("$percent% - $title")
+            .setStyle(NotificationCompat.BigTextStyle().bigText("$title\n$artist"))
+            .setContentIntent(openAppIntent())
+            .apply {
+                if (percent < 100) {
+                    addAction(android.R.drawable.ic_menu_close_clear_cancel, strings.cancelDownload, cancelDownloadIntent(taskKey))
+                }
+            }
+            .setOngoing(percent < 100)
+            .setOnlyAlertOnce(true)
+            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setProgress(100, percent, false)
+            .apply {
+                if (liveUpdate != null) {
+                    setShortCriticalText(liveUpdate.shortCriticalText)
+                    setRequestPromotedOngoing(liveUpdate.requestPromotion)
+                    liveUpdate.subText?.let { setSubText(it) }
+                }
+            }
+            .build()
+    }
+
+    private fun openAppIntent(): PendingIntent {
+        val intent = Intent(applicationContext, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        return PendingIntent.getActivity(applicationContext, 0, intent, flags)
+    }
+
+    private fun cancelDownloadIntent(taskKey: String): PendingIntent {
+        val intent = Intent(applicationContext, OfflineDownloadCancelReceiver::class.java).apply {
+            action = OfflineDownloadCancelReceiver.ACTION_CANCEL_DOWNLOAD
+            data = android.net.Uri.Builder()
+                .scheme("levyra")
+                .authority("download-cancel")
+                .appendPath(taskKey)
+                .build()
+            putExtra(OfflineDownloadCancelReceiver.EXTRA_TASK_KEY, taskKey)
+        }
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        return PendingIntent.getBroadcast(applicationContext, taskKey.hashCode() and Int.MAX_VALUE, intent, flags)
+    }
+
+    private fun ensureNotificationChannel(strings: LevyraStrings) {
+        val manager = applicationContext.getSystemService(NotificationManager::class.java)
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            strings.offlineDownloadsPlain,
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = strings.downloads
+        }
+        manager.createNotificationChannel(channel)
+    }
+
+    companion object {
+        const val KEY_TRACK_PAYLOAD = "track_payload"
+        const val KEY_TASK_KEY = "task_key"
+        const val KEY_FILE_NAME = "file_name"
+        const val KEY_EMBEDDED_METADATA = "embedded_metadata"
+        const val KEY_MIME_TYPE = "mime_type"
+        const val KEY_URI = "uri"
+        const val KEY_DESTINATION_LABEL = "destination_label"
+        const val KEY_ERROR = "error"
+        const val KEY_PROGRESS = "progress"
+        const val ERROR_SUPERSEDED = "task_superseded"
+        private const val CHANNEL_ID = "levyra_offline_downloads"
+        private const val PROGRESS_PERSIST_STEP = 3
+        private const val PROGRESS_PERSIST_INTERVAL_MS = 750L
+        private const val FOREGROUND_PROGRESS_STEP = 5
+        private const val FOREGROUND_PROGRESS_INTERVAL_MS = 2_000L
+        private const val NOTIFICATION_ID_BASE = 4200
+        private const val NOTIFICATION_ID_RANGE = 5000
+        private const val COMPLETED_TASK_RETENTION_MS = 7L * 24L * 60L * 60L * 1000L
+
+        suspend fun enqueue(
+            context: Context,
+            trackId: String,
+            trackPayload: String,
+            batch: OfflineDownloadBatchRef? = null
+        ): UUID {
+            val appContext = context.applicationContext
+            val workManager = WorkManager.getInstance(appContext)
+            val uniqueName = uniqueNameFor(trackId)
+            val settings = LevyraPreferences(appContext).downloadSettings()
+            val request = OneTimeWorkRequestBuilder<OfflineExportWorker>()
+                .setInputData(workDataOf(KEY_TRACK_PAYLOAD to trackPayload, KEY_TASK_KEY to trackId))
+                .setConstraints(
+                    Constraints.Builder()
+                        .setRequiredNetworkType(if (settings.wifiOnly) NetworkType.UNMETERED else NetworkType.CONNECTED)
+                        .setRequiresCharging(settings.chargingOnly)
+                        .build()
+                )
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)
+                .addTag("levyra_offline_export")
+                .addTag(uniqueName)
+                .build()
+            val dao = LevyraDatabase.get(appContext).offlineDownloadTasksDao()
+            val track = TrackPayloadCodec.decode(trackPayload)
+            val previous = dao.byKey(trackId)
+            val retainedBatch = previous
+                ?.takeIf {
+                    retainsExistingBatchMembership(
+                        previousBatchKey = it.batchKey,
+                        previousState = it.state,
+                        requestedBatchKey = batch?.key.orEmpty()
+                    )
+                }
+                ?.let { OfflineDownloadBatchRef(it.batchKey, it.batchTitle, it.batchKind, it.batchArtworkUrl, it.batchPosition) }
+            val now = System.currentTimeMillis()
+            dao.prune(now - COMPLETED_TASK_RETENTION_MS)
+            dao.upsert(
+                OfflineDownloadTaskEntity(
+                    taskKey = trackId,
+                    trackId = track?.id.orEmpty(),
+                    payload = trackPayload,
+                    title = track?.title.orEmpty(),
+                    artist = track?.artist.orEmpty(),
+                    state = "QUEUED",
+                    progress = previous?.progress?.coerceIn(0, 99) ?: 0,
+                    workId = request.id.toString(),
+                    error = "",
+                    createdAt = previous?.createdAt ?: now,
+                    updatedAt = now,
+                    batchKey = retainedBatch?.key ?: batch?.key.orEmpty(),
+                    batchTitle = retainedBatch?.title ?: batch?.title.orEmpty(),
+                    batchKind = retainedBatch?.kind ?: batch?.kind.orEmpty(),
+                    batchArtworkUrl = retainedBatch?.artworkUrl ?: batch?.artworkUrl.orEmpty(),
+                    batchPosition = retainedBatch?.position ?: batch?.position ?: 0
+                )
+            )
+            workManager.enqueueUniqueWork(uniqueName, ExistingWorkPolicy.REPLACE, request)
+            return request.id
+        }
+
+        suspend fun pause(context: Context, taskKey: String) {
+            val appContext = context.applicationContext
+            val dao = LevyraDatabase.get(appContext).offlineDownloadTasksDao()
+            val current = dao.byKey(taskKey) ?: return
+            dao.updateState(taskKey, "PAUSED", current.progress.coerceIn(0, 99), "", System.currentTimeMillis())
+            WorkManager.getInstance(appContext).cancelUniqueWork(uniqueNameFor(taskKey))
+        }
+
+        suspend fun resume(context: Context, taskKey: String): UUID? {
+            val appContext = context.applicationContext
+            val task = LevyraDatabase.get(appContext).offlineDownloadTasksDao().byKey(taskKey) ?: return null
+            if (task.state !in setOf("PAUSED", "FAILED", "RETRYING")) return null
+            return enqueue(appContext, taskKey, task.payload)
+        }
+
+        suspend fun cancel(context: Context, taskKey: String) {
+            val appContext = context.applicationContext
+            val dao = LevyraDatabase.get(appContext).offlineDownloadTasksDao()
+            val current = dao.byKey(taskKey) ?: return
+            dao.updateState(taskKey, "CANCELLED", current.progress.coerceIn(0, 100), "", System.currentTimeMillis())
+            WorkManager.getInstance(appContext).cancelUniqueWork(uniqueNameFor(taskKey))
+            OfflineAudioExporter.discardPartialDownload(appContext, taskKey)
+        }
+
+        private fun uniqueNameFor(trackId: String): String {
+            val safe = trackId.trim().ifBlank { "unknown" }.replace(Regex("[^A-Za-z0-9_.-]+"), "_").take(120)
+            return "levyra_offline_export_$safe"
+        }
+    }
+}

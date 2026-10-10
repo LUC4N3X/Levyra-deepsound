@@ -1,0 +1,1 @@
+Levyra 2.5.8 improves playback and discovery with Audio Intelligence 3.0, searchable AutoEQ profiles, smarter album continuity, more resilient high-quality audio and safer player-config fallback. It also adds Listening Recap and Insights, Live Radio, Playlist Pro, configurable download folders, refreshed Home/Search/Explore experiences and more reliable Motion Artwork.

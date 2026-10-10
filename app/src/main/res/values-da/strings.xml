@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Miniafspiller, hurtige favoritter, dagligt flow, offline og sangtekster</string>
+    <string name="widget_idle_subtitle">Tryk for at lytte</string>
+    <string name="widget_toggle">Afspil/Pause</string>
+    <string name="widget_next">Næste</string>
+    <string name="widget_previous">Forrige</string>
+    <string name="widget_favorites">Favoritter</string>
+    <string name="widget_flow">Dagligt flow</string>
+    <string name="widget_offline">Offline-mix</string>
+    <string name="widget_lyrics">Sangtekster</string>
+    <string name="radar_channel_name">Udgivelsesradar</string>
+    <string name="radar_channel_description">Nye udgivelser fra kunstnere, du følger</string>
+    <string name="radar_new_release_title">Ny udgivelse fra %1$s</string>
+    <string name="automatic_backups">Automatiske sikkerhedskopier</string>
+    <string name="car_home">Start</string>
+    <string name="car_downloads">Downloads</string>
+    <string name="car_favorites">Favoritter</string>
+    <string name="car_playlists">Playlister</string>
+    <string name="car_no_content">Intet indhold</string>
+    <string name="car_content_unavailable">Indholdet er ikke tilgængeligt</string>
+    <string name="car_search_tracks">Søg efter numre</string>
+    <string name="car_no_results">Ingen resultater</string>
+    <string name="car_connecting_player">Opretter forbindelse til afspilleren</string>
+    <string name="car_now_playing">Afspilles nu</string>
+    <string name="car_queue">Kø</string>
+    <string name="notification_favorite_add">Føj til favoritter</string>
+    <string name="notification_favorite_remove">Fjern fra favoritter</string>
+    <string name="notification_shuffle_enable">Slå bland til</string>
+    <string name="notification_shuffle_disable">Slå bland fra</string>
+    <string name="notification_repeat_off">Gentagelse fra</string>
+    <string name="notification_repeat_all">Gentag alle</string>
+    <string name="notification_repeat_one">Gentag én</string>
+    <string name="tile_recognize_music">Genkend musik</string>
+    <string name="tile_playback">Afspilning</string>
+    <string name="shortcut_search">Søg</string>
+    <string name="shortcut_library">Bibliotek</string>
+    <string name="shortcut_recognition">Genkend musik</string>
+    <string name="shortcut_resume">Genoptag afspilning</string>
+</resources>

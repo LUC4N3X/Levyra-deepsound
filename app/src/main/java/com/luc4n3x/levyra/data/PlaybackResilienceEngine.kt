@@ -1,0 +1,363 @@
+package com.luc4n3x.levyra.data
+
+import android.content.Context
+import org.json.JSONArray
+import org.json.JSONObject
+import java.util.ArrayDeque
+import java.util.Locale
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+
+internal enum class PlaybackFailureKind {
+    Forbidden,
+    Gone,
+    RateLimited,
+    NotFound,
+    ResourceMissing,
+    RangeNotSatisfiable,
+    ServerError,
+    LoginRequired,
+    ContentRestricted,
+    ExpiredUrl,
+    Signature,
+    NTransform,
+    PoToken,
+    ClientRejected,
+    Renderer,
+    UnsupportedFormat,
+    MalformedContainer,
+    Decoder,
+    Network,
+    Timeout,
+    Truncated,
+    Unknown
+}
+
+internal data class PlaybackRecoveryPlan(
+    val invalidateStream: Boolean,
+    val rotateClient: Boolean,
+    val rotateCodec: Boolean,
+    val refreshSecurity: Boolean,
+    val quarantineMs: Long,
+    val invalidateCache: Boolean = false,
+    val refreshDecoder: Boolean = false,
+    val refreshClientPolicy: Boolean = false
+)
+
+internal data class PlaybackTraceEvent(
+    val atMs: Long,
+    val phase: String,
+    val profile: String,
+    val mode: String,
+    val latencyMs: Long,
+    val outcome: String,
+    val detail: String
+)
+
+private val playbackHttpStatusPattern = Regex(
+    """\b(?:http(?:\s+status)?|status(?:\s+code)?|response\s+code)\s*[:=]?\s*(403|404|410|416|429|500|502|503|504)\b""",
+    RegexOption.IGNORE_CASE
+)
+
+private val serverErrorHttpStatuses = setOf(500, 502, 503, 504)
+
+internal fun classifyPlaybackFailureReason(raw: String): PlaybackFailureKind {
+    val value = raw.lowercase(Locale.ROOT)
+    val httpStatus = playbackHttpStatusPattern.find(raw)?.groupValues?.getOrNull(1)?.toIntOrNull()
+    return when {
+        value.contains("login_required") ||
+            value.contains("confirm you're not a bot") ||
+            value.contains("confirm you’re not a bot") ||
+            value.contains("confirm you are not a bot") ||
+            value.contains("sign in to confirm") ||
+            value.contains("accedi per confermare") -> PlaybackFailureKind.LoginRequired
+        value.contains("age restrict") ||
+            value.contains("age-restrict") -> PlaybackFailureKind.ContentRestricted
+        value.contains("renderer process") || value.contains("webview renderer") -> PlaybackFailureKind.Renderer
+        httpStatus == 403 || value.contains("forbidden") -> PlaybackFailureKind.Forbidden
+        httpStatus == 410 || value.contains("gone") -> PlaybackFailureKind.Gone
+        httpStatus == 429 || value.contains("rate limit") -> PlaybackFailureKind.RateLimited
+        httpStatus == null && (
+            value.contains("enoent") ||
+                value.contains("no such file") ||
+                value.contains("file not found") ||
+                value.contains("filenotfoundexception")
+            ) -> PlaybackFailureKind.ResourceMissing
+        httpStatus == 404 || value.contains("not found") -> PlaybackFailureKind.NotFound
+        httpStatus == 416 || value.contains("range not satisfiable") -> PlaybackFailureKind.RangeNotSatisfiable
+        httpStatus in serverErrorHttpStatuses ||
+            value.contains("server error") ||
+            value.contains("service unavailable") ||
+            value.contains("bad gateway") ||
+            value.contains("gateway timeout") -> PlaybackFailureKind.ServerError
+        value.contains("expired") || value.contains("scadut") || value.contains("stream non valido") -> PlaybackFailureKind.ExpiredUrl
+        value.contains("potoken") || value.contains("po token") -> PlaybackFailureKind.PoToken
+        value.contains("n-transform") || value.contains("throttling parameter") -> PlaybackFailureKind.NTransform
+        value.contains("signature") -> PlaybackFailureKind.Signature
+        value.contains("client rejected") || value.contains("invalid client") || value.contains("unsupported client") -> PlaybackFailureKind.ClientRejected
+        value.contains("unsupported format") ||
+            value.contains("format unsupported") ||
+            value.contains("unsupported media") -> PlaybackFailureKind.UnsupportedFormat
+        value.contains("malformed container") ||
+            value.contains("malformed media") ||
+            value.contains("unrecognized input format") ||
+            value.contains("unrecognizedinputformatexception") -> PlaybackFailureKind.MalformedContainer
+        value.contains("decoder") || value.contains("codec") || value.contains("format") -> PlaybackFailureKind.Decoder
+        value.contains("truncated") ||
+            value.contains("unexpected end of stream") ||
+            value.contains("connection reset") ||
+            value.contains("premature end") -> PlaybackFailureKind.Truncated
+        value.contains("timeout") || value.contains("timed out") || value.contains("lento") -> PlaybackFailureKind.Timeout
+        value.contains("network") || value.contains("socket") || value.contains("dns") || value.contains("connection") || value.contains("host") -> PlaybackFailureKind.Network
+        else -> PlaybackFailureKind.Unknown
+    }
+}
+
+internal fun playbackRecoveryPlanFor(kind: PlaybackFailureKind): PlaybackRecoveryPlan = when (kind) {
+    PlaybackFailureKind.Forbidden -> PlaybackRecoveryPlan(
+        invalidateStream = true,
+        rotateClient = false,
+        rotateCodec = false,
+        refreshSecurity = false,
+        quarantineMs = 10L * 60L * 1000L,
+        refreshDecoder = true
+    )
+    PlaybackFailureKind.Gone -> PlaybackRecoveryPlan(true, false, false, false, 10L * 60L * 1000L)
+    PlaybackFailureKind.RateLimited -> PlaybackRecoveryPlan(true, true, false, false, 10L * 60L * 1000L)
+    PlaybackFailureKind.LoginRequired,
+    PlaybackFailureKind.PoToken -> PlaybackRecoveryPlan(true, false, false, true, 10L * 60L * 1000L)
+    PlaybackFailureKind.ClientRejected -> PlaybackRecoveryPlan(
+        invalidateStream = true,
+        rotateClient = true,
+        rotateCodec = false,
+        refreshSecurity = false,
+        quarantineMs = 10L * 60L * 1000L,
+        refreshClientPolicy = true
+    )
+    PlaybackFailureKind.ContentRestricted -> PlaybackRecoveryPlan(true, false, false, false, 0L)
+    PlaybackFailureKind.NotFound -> PlaybackRecoveryPlan(true, false, false, false, 60_000L)
+    PlaybackFailureKind.RangeNotSatisfiable -> PlaybackRecoveryPlan(
+        invalidateStream = true,
+        rotateClient = false,
+        rotateCodec = false,
+        refreshSecurity = false,
+        quarantineMs = 60_000L,
+        invalidateCache = true
+    )
+    PlaybackFailureKind.ResourceMissing -> PlaybackRecoveryPlan(
+        invalidateStream = true,
+        rotateClient = false,
+        rotateCodec = false,
+        refreshSecurity = false,
+        quarantineMs = 0L,
+        invalidateCache = true
+    )
+    PlaybackFailureKind.ServerError,
+    PlaybackFailureKind.Truncated -> PlaybackRecoveryPlan(true, false, false, false, 30_000L)
+    PlaybackFailureKind.ExpiredUrl -> PlaybackRecoveryPlan(true, false, false, false, 2L * 60L * 1000L)
+    PlaybackFailureKind.Signature,
+    PlaybackFailureKind.NTransform,
+    PlaybackFailureKind.Renderer -> PlaybackRecoveryPlan(
+        invalidateStream = true,
+        rotateClient = false,
+        rotateCodec = false,
+        refreshSecurity = false,
+        quarantineMs = 10L * 60L * 1000L,
+        refreshDecoder = true
+    )
+    PlaybackFailureKind.UnsupportedFormat -> PlaybackRecoveryPlan(true, false, true, false, 0L)
+    PlaybackFailureKind.MalformedContainer -> PlaybackRecoveryPlan(
+        invalidateStream = true,
+        rotateClient = false,
+        rotateCodec = false,
+        refreshSecurity = false,
+        quarantineMs = 0L,
+        invalidateCache = true
+    )
+    PlaybackFailureKind.Decoder -> PlaybackRecoveryPlan(true, false, true, false, 30L * 60L * 1000L)
+    PlaybackFailureKind.Timeout,
+    PlaybackFailureKind.Network -> PlaybackRecoveryPlan(true, false, false, false, 45_000L)
+    PlaybackFailureKind.Unknown -> PlaybackRecoveryPlan(true, false, false, false, 20_000L)
+}
+
+internal fun isTerminalPlaybackFailure(kind: PlaybackFailureKind): Boolean =
+    kind == PlaybackFailureKind.UnsupportedFormat || kind == PlaybackFailureKind.MalformedContainer
+
+internal class PlaybackResilienceEngine(context: Context) {
+    private val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val events = ArrayDeque<PlaybackTraceEvent>(MAX_EVENTS)
+    private val eventLock = Any()
+    private val persistenceScheduled = AtomicBoolean(false)
+    private val persistenceExecutor = Executors.newSingleThreadScheduledExecutor { runnable ->
+        Thread(runnable, "levyra-playback-trace").apply { isDaemon = true }
+    }
+
+    init {
+        restore()
+    }
+
+    fun recordAttempt(profile: String, mode: String) {
+        append(
+            PlaybackTraceEvent(
+                atMs = System.currentTimeMillis(),
+                phase = "resolve",
+                profile = profile,
+                mode = mode,
+                latencyMs = 0L,
+                outcome = "attempt",
+                detail = ""
+            ),
+            persist = false
+        )
+    }
+
+    fun recordSuccess(profile: String, mode: String, latencyMs: Long, source: String) {
+        append(
+            PlaybackTraceEvent(
+                atMs = System.currentTimeMillis(),
+                phase = "resolve",
+                profile = profile,
+                mode = mode,
+                latencyMs = latencyMs.coerceAtLeast(1L),
+                outcome = "success",
+                detail = sanitize(source)
+            ),
+            persist = true
+        )
+    }
+
+    fun recordFailure(profile: String, mode: String, latencyMs: Long?, error: Throwable) {
+        val detail = error.message.orEmpty().ifBlank { error::class.java.simpleName }
+        append(
+            PlaybackTraceEvent(
+                atMs = System.currentTimeMillis(),
+                phase = "resolve",
+                profile = profile,
+                mode = mode,
+                latencyMs = latencyMs?.coerceAtLeast(1L) ?: 0L,
+                outcome = classifyPlaybackFailureReason(detail).name,
+                detail = sanitize(detail)
+            ),
+            persist = true
+        )
+    }
+
+    fun recordPlayerFailure(trackId: String, videoMode: Boolean, reason: String) {
+        append(
+            PlaybackTraceEvent(
+                atMs = System.currentTimeMillis(),
+                phase = "player",
+                profile = "active",
+                mode = if (videoMode) "video" else "audio",
+                latencyMs = 0L,
+                outcome = classifyPlaybackFailureReason(reason).name,
+                detail = "${trackId.take(20)} ${sanitize(reason)}".trim()
+            ),
+            persist = true
+        )
+    }
+
+    fun recoveryPlan(reason: String): PlaybackRecoveryPlan =
+        playbackRecoveryPlanFor(classifyPlaybackFailureReason(reason))
+
+    fun diagnostics(clientHealth: Map<String, JSONObject>): String {
+        val eventSnapshot = synchronized(eventLock) { events.toList() }
+        val root = JSONObject()
+            .put("schemaVersion", 1)
+            .put("generatedAt", System.currentTimeMillis())
+        val clients = JSONObject()
+        clientHealth.toSortedMap().forEach { (name, snapshot) -> clients.put(name, snapshot) }
+        root.put("clients", clients)
+        val trace = JSONArray()
+        eventSnapshot.forEach { event ->
+            trace.put(event.toJson())
+        }
+        root.put("trace", trace)
+        return root.toString(2)
+    }
+
+    private fun sanitize(value: String): String {
+        return value
+            .replace(Regex("""[a-zA-Z][a-zA-Z0-9+.-]*://[^\s]+"""), "<redacted-url>")
+            .replace(Regex("""(?i)(authorization|cookie|visitor|token|signature)=[^&\s]+""")) { match ->
+                "${match.groupValues[1]}=<redacted>"
+            }
+            .replace(Regex("""\s+"""), " ")
+            .trim()
+            .take(280)
+    }
+
+    private fun append(event: PlaybackTraceEvent, persist: Boolean) {
+        synchronized(eventLock) {
+            while (events.size >= MAX_EVENTS) events.removeFirst()
+            events.addLast(event)
+        }
+        if (persist) schedulePersist()
+    }
+
+    private fun restore() {
+        val raw = prefs.getString(KEY_EVENTS, null).orEmpty()
+        if (raw.isBlank()) return
+        runCatching {
+            val array = JSONArray(raw)
+            val start = (array.length() - MAX_EVENTS).coerceAtLeast(0)
+            val restored = buildList {
+                for (index in start until array.length()) {
+                    val json = array.optJSONObject(index) ?: continue
+                    add(
+                        PlaybackTraceEvent(
+                            atMs = json.optLong("atMs"),
+                            phase = json.optString("phase"),
+                            profile = json.optString("profile"),
+                            mode = json.optString("mode"),
+                            latencyMs = json.optLong("latencyMs"),
+                            outcome = json.optString("outcome"),
+                            detail = json.optString("detail")
+                        )
+                    )
+                }
+            }
+            synchronized(eventLock) { restored.forEach(events::addLast) }
+        }
+    }
+
+    private fun schedulePersist() {
+        if (!persistenceScheduled.compareAndSet(false, true)) return
+        persistenceExecutor.schedule(
+            {
+                persistenceScheduled.set(false)
+                persistSnapshot()
+            },
+            PERSIST_DEBOUNCE_MS,
+            TimeUnit.MILLISECONDS
+        )
+    }
+
+    private fun persistSnapshot() {
+        val snapshot = synchronized(eventLock) {
+            events.filterNot { it.outcome == "attempt" }
+                .takeLast(MAX_PERSISTED_EVENTS)
+        }
+        val array = JSONArray()
+        snapshot.forEach { array.put(it.toJson()) }
+        prefs.edit().putString(KEY_EVENTS, array.toString()).apply()
+    }
+
+    private fun PlaybackTraceEvent.toJson(): JSONObject = JSONObject()
+        .put("atMs", atMs)
+        .put("phase", phase)
+        .put("profile", profile)
+        .put("mode", mode)
+        .put("latencyMs", latencyMs)
+        .put("outcome", outcome)
+        .put("detail", detail)
+
+    private companion object {
+        const val PREFS_NAME = "levyra_playback_resilience"
+        const val KEY_EVENTS = "events"
+        const val MAX_EVENTS = 80
+        const val MAX_PERSISTED_EVENTS = 64
+        const val PERSIST_DEBOUNCE_MS = 1_500L
+    }
+}

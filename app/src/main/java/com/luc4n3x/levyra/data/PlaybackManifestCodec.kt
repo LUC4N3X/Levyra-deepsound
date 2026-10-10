@@ -1,0 +1,181 @@
+package com.luc4n3x.levyra.data
+
+import com.luc4n3x.levyra.domain.AlternativeAudioSource
+import com.luc4n3x.levyra.domain.AlternativeMatchVerdict
+import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
+import com.luc4n3x.levyra.domain.PlaybackStreamDescriptor
+import com.luc4n3x.levyra.domain.PlaybackStreamKind
+import com.luc4n3x.levyra.domain.PlaybackStreamProvenance
+import com.luc4n3x.levyra.domain.ResolvedPlaybackManifest
+import org.json.JSONArray
+import org.json.JSONObject
+
+object PlaybackManifestCodec {
+    fun encode(manifest: ResolvedPlaybackManifest): String {
+        val streams = JSONArray()
+        manifest.compact().streams.forEach { stream ->
+            streams.put(
+                JSONObject()
+                    .put("url", stream.url)
+                    .put("kind", stream.kind.name)
+                    .put("deliveryMethod", stream.deliveryMethod.name)
+                    .put("container", stream.container)
+                    .put("mimeType", stream.mimeType)
+                    .put("codec", stream.codec)
+                    .put("bitrate", stream.bitrate)
+                    .put("averageBitrate", stream.averageBitrate)
+                    .put("sampleRate", stream.sampleRate)
+                    .put("bitDepth", stream.bitDepth)
+                    .put("width", stream.width)
+                    .put("height", stream.height)
+                    .put("fps", stream.fps)
+                    .put("itag", stream.itag)
+                    .put("qualityLabel", stream.qualityLabel)
+                    .put("expiresAtMs", stream.expiresAtMs)
+                    .put("selected", stream.selected)
+            )
+        }
+        return JSONObject()
+            .put("schemaVersion", 2)
+            .put("sourceVideoId", manifest.sourceVideoId)
+            .put("provider", manifest.provider)
+            .put("resolvedAtMs", manifest.resolvedAtMs)
+            .put("expiresAtMs", manifest.expiresAtMs)
+            .put("durationMs", manifest.durationMs)
+            .put("selectedAudioUrl", manifest.selectedAudioUrl)
+            .put("selectedVideoUrl", manifest.selectedVideoUrl)
+            .put("loudnessDb", manifest.loudnessDb)
+            .put("perceptualLoudnessDb", manifest.perceptualLoudnessDb)
+            .put("provenance", manifest.provenance?.toJson())
+            .put("alternativeSource", manifest.alternativeSource?.toJson())
+            .put("streams", streams)
+            .toString()
+    }
+
+    fun decode(raw: String): ResolvedPlaybackManifest? = runCatching {
+        val root = JSONObject(raw)
+        if (root.optInt("schemaVersion", 0) !in 1..2) return@runCatching null
+        val streamArray = root.optJSONArray("streams") ?: JSONArray()
+        val streams = buildList {
+            for (index in 0 until streamArray.length()) {
+                val json = streamArray.optJSONObject(index) ?: continue
+                val url = json.optString("url")
+                if (url.isBlank()) continue
+                add(
+                    PlaybackStreamDescriptor(
+                        url = url,
+                        kind = json.optEnum("kind", PlaybackStreamKind.AUDIO),
+                        deliveryMethod = json.optEnum("deliveryMethod", PlaybackDeliveryMethod.UNKNOWN),
+                        container = json.optString("container"),
+                        mimeType = json.optString("mimeType"),
+                        codec = json.optString("codec"),
+                        bitrate = json.optInt("bitrate", 0),
+                        averageBitrate = json.optInt("averageBitrate", 0),
+                        sampleRate = json.optInt("sampleRate", 0),
+                        bitDepth = json.optInt("bitDepth", 0),
+                        width = json.optInt("width", 0),
+                        height = json.optInt("height", 0),
+                        fps = json.optInt("fps", 0),
+                        itag = json.optInt("itag", -1),
+                        qualityLabel = json.optString("qualityLabel"),
+                        expiresAtMs = json.optLong("expiresAtMs", 0L),
+                        selected = json.optBoolean("selected", false)
+                    )
+                )
+            }
+        }
+        val selectedAudioUrl = root.optString("selectedAudioUrl")
+        if (selectedAudioUrl.isBlank()) return@runCatching null
+        ResolvedPlaybackManifest(
+            sourceVideoId = root.optString("sourceVideoId"),
+            provider = root.optString("provider"),
+            resolvedAtMs = root.optLong("resolvedAtMs", 0L),
+            expiresAtMs = root.optLong("expiresAtMs", 0L),
+            durationMs = root.optLong("durationMs", 0L),
+            selectedAudioUrl = selectedAudioUrl,
+            selectedVideoUrl = root.optString("selectedVideoUrl"),
+            streams = streams,
+            loudnessDb = root.optNullableFloat("loudnessDb"),
+            perceptualLoudnessDb = root.optNullableFloat("perceptualLoudnessDb"),
+            provenance = root.optJSONObject("provenance")?.toPlaybackStreamProvenance(),
+            alternativeSource = root.optJSONObject("alternativeSource")?.toAlternativeAudioSource()
+        )
+    }.getOrNull()
+}
+
+private fun PlaybackStreamProvenance.toJson(): JSONObject = JSONObject()
+    .put("clientName", clientName)
+    .put("clientHeaderName", clientHeaderName)
+    .put("clientVersion", clientVersion)
+    .put("userAgent", userAgent)
+    .put("origin", origin)
+    .put("referer", referer)
+    .put("requiresPoToken", requiresPoToken)
+    .put("resolverGeneration", resolverGeneration)
+    .put("preferredAudioLanguage", preferredAudioLanguage)
+    .put("playerHash", playerHash)
+    .put("playerConfigIdentity", playerConfigIdentity)
+    .put("playerConfigEpoch", playerConfigEpoch)
+    .put("playerConfigOrigin", playerConfigOrigin)
+    .put("securitySessionGeneration", securitySessionGeneration)
+    .put("poTokenGeneration", poTokenGeneration)
+    .put("networkGeneration", networkGeneration)
+    .put("networkRoute", networkRoute)
+    .put("resolvedAtMs", resolvedAtMs)
+    .put("expiresAtMs", expiresAtMs)
+
+private fun JSONObject.toPlaybackStreamProvenance(): PlaybackStreamProvenance = PlaybackStreamProvenance(
+    clientName = optString("clientName"),
+    clientHeaderName = optString("clientHeaderName"),
+    clientVersion = optString("clientVersion"),
+    userAgent = optString("userAgent"),
+    origin = optString("origin"),
+    referer = optString("referer"),
+    requiresPoToken = optBoolean("requiresPoToken", false),
+    resolverGeneration = optLong("resolverGeneration", -1L),
+    preferredAudioLanguage = if (has("preferredAudioLanguage")) {
+        AudioLanguageIntelligence.normalizeLanguage(optString("preferredAudioLanguage"))
+    } else {
+        null
+    },
+    playerHash = optString("playerHash"),
+    playerConfigIdentity = optString("playerConfigIdentity"),
+    playerConfigEpoch = optLong("playerConfigEpoch", -1L),
+    playerConfigOrigin = optString("playerConfigOrigin"),
+    securitySessionGeneration = optLong("securitySessionGeneration", -1L),
+    poTokenGeneration = optLong("poTokenGeneration", -1L),
+    networkGeneration = optLong("networkGeneration", -1L),
+    networkRoute = optString("networkRoute"),
+    resolvedAtMs = optLong("resolvedAtMs", 0L),
+    expiresAtMs = optLong("expiresAtMs", 0L)
+)
+
+private fun AlternativeAudioSource.toJson(): JSONObject = JSONObject()
+    .put("providerId", providerId)
+    .put("providerTrackId", providerTrackId)
+    .put("bitrateKbps", bitrateKbps)
+    .put("verdict", verdict.name)
+    .put("confidence", confidence)
+
+private fun JSONObject.toAlternativeAudioSource(): AlternativeAudioSource? {
+    val providerId = optString("providerId")
+    val providerTrackId = optString("providerTrackId")
+    val verdict = optEnum("verdict", AlternativeMatchVerdict.REJECTED)
+    if (providerId.isBlank() || providerTrackId.isBlank() || verdict == AlternativeMatchVerdict.REJECTED) return null
+    return AlternativeAudioSource(
+        providerId = providerId,
+        providerTrackId = providerTrackId,
+        bitrateKbps = optInt("bitrateKbps", 0),
+        verdict = verdict,
+        confidence = optInt("confidence", 0)
+    )
+}
+
+private inline fun <reified T : Enum<T>> JSONObject.optEnum(key: String, fallback: T): T {
+    return enumValues<T>().firstOrNull { it.name == optString(key) } ?: fallback
+}
+
+private fun JSONObject.optNullableFloat(key: String): Float? {
+    if (!has(key) || isNull(key)) return null
+    return optDouble(key, Double.NaN).takeIf { it.isFinite() }?.toFloat()
+}

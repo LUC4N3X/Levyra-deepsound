@@ -1,0 +1,438 @@
+package com.luc4n3x.levyra.data
+
+import com.luc4n3x.levyra.domain.AlbumHit
+import org.json.JSONObject
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Test
+
+class YoutubeMusicRepositoryTest {
+    @Test
+    fun cleanAlbumDescriptionRemovesWikipediaAttribution() {
+        val raw = """
+            Mediterraneo è il terzo album in studio del cantautore italiano Bresh, pubblicato il 6 giugno 2025 dalla Epic.
+            L'album contiene il singolo La tana del granchio.
+            Da
+            Wikipedia
+            (https://it.wikipedia.org/wiki/Mediterraneo)
+            soggetto a Creative Commons Attribution CC-BY-SA 3.0
+            (https://creativecommons.org/licenses/by-sa/3.0/)
+        """.trimIndent()
+
+        val clean = raw.cleanAlbumDescription()
+
+        assertEquals(
+            "Mediterraneo è il terzo album in studio del cantautore italiano Bresh, pubblicato il 6 giugno 2025 dalla Epic. L'album contiene il singolo La tana del granchio.",
+            clean
+        )
+        assertFalse(clean.contains("wikipedia", ignoreCase = true))
+        assertFalse(clean.contains("creative commons", ignoreCase = true))
+        assertFalse(clean.contains("http", ignoreCase = true))
+    }
+
+    @Test
+    fun cleanAlbumDescriptionKeepsTextBeforeInlineAttribution() {
+        val clean = "Un album caldo e luminoso. Da Wikipedia (https://example.com) CC-BY-SA 3.0"
+            .cleanAlbumDescription()
+
+        assertEquals("Un album caldo e luminoso.", clean)
+    }
+
+    @Test
+    fun artistReferencesUseOrderedSubtitleBrowseIds() {
+        val renderer = JSONObject(
+            """
+            {
+              "flexColumns": [
+                {
+                  "musicResponsiveListItemFlexColumnRenderer": {
+                    "text": {
+                      "runs": [
+                        {"text": "La testa gira"}
+                      ]
+                    }
+                  }
+                },
+                {
+                  "musicResponsiveListItemFlexColumnRenderer": {
+                    "text": {
+                      "runs": [
+                        {
+                          "text": "Fred De Palma",
+                          "navigationEndpoint": {
+                            "browseEndpoint": {
+                              "browseId": "UC_FRED",
+                              "browseEndpointContextSupportedConfigs": {
+                                "browseEndpointContextMusicConfig": {
+                                  "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                                }
+                              }
+                            }
+                          }
+                        },
+                        {"text": " & "},
+                        {
+                          "text": "Anitta",
+                          "navigationEndpoint": {
+                            "browseEndpoint": {
+                              "browseId": "UC_ANITTA",
+                              "browseEndpointContextSupportedConfigs": {
+                                "browseEndpointContextMusicConfig": {
+                                  "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+            """.trimIndent()
+        )
+
+        val references = YoutubeMusicRepository().extractYoutubeMusicArtistReferences(
+            renderer,
+            "Fred De Palma & Anitta"
+        )
+
+        assertEquals(listOf("Fred De Palma", "Anitta"), references.map { it.name })
+        assertEquals(listOf("UC_FRED", "UC_ANITTA"), references.map { it.browseId })
+    }
+    @Test
+    fun artistReferencesIgnoreUnrelatedNestedArtistEndpoints() {
+        val renderer = JSONObject(
+            """
+            {
+              "flexColumns": [
+                {
+                  "musicResponsiveListItemFlexColumnRenderer": {
+                    "text": {
+                      "runs": [
+                        {"text": "Take 5"}
+                      ]
+                    }
+                  }
+                },
+                {
+                  "musicResponsiveListItemFlexColumnRenderer": {
+                    "text": {
+                      "runs": [
+                        {"text": "Brano"},
+                        {"text": " • "},
+                        {
+                          "text": "Shiva",
+                          "navigationEndpoint": {
+                            "browseEndpoint": {
+                              "browseId": "UC_SHIVA_OFFICIAL",
+                              "browseEndpointContextSupportedConfigs": {
+                                "browseEndpointContextMusicConfig": {
+                                  "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                                }
+                              }
+                            }
+                          }
+                        },
+                        {"text": " & "},
+                        {
+                          "text": "Geolier",
+                          "navigationEndpoint": {
+                            "browseEndpoint": {
+                              "browseId": "UC_GEOLIER_OFFICIAL",
+                              "browseEndpointContextSupportedConfigs": {
+                                "browseEndpointContextMusicConfig": {
+                                  "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                                }
+                              }
+                            }
+                          }
+                        },
+                        {"text": " • "},
+                        {"text": "2026"}
+                      ]
+                    }
+                  }
+                }
+              ],
+              "menu": {
+                "menuRenderer": {
+                  "items": [
+                    {
+                      "navigationEndpoint": {
+                        "browseEndpoint": {
+                          "browseId": "UC_UNRELATED_SHIVA",
+                          "browseEndpointContextSupportedConfigs": {
+                            "browseEndpointContextMusicConfig": {
+                              "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                            }
+                          }
+                        }
+                      },
+                      "text": "Shiva"
+                    }
+                  ]
+                }
+              }
+            }
+            """.trimIndent()
+        )
+
+        val references = YoutubeMusicRepository().extractYoutubeMusicArtistReferences(
+            renderer,
+            "Shiva & Geolier"
+        )
+
+        assertEquals(listOf("Shiva", "Geolier"), references.map { it.name })
+        assertEquals(
+            listOf("UC_SHIVA_OFFICIAL", "UC_GEOLIER_OFFICIAL"),
+            references.map { it.browseId }
+        )
+    }
+
+    @Test
+    fun directArtistResultUsesRendererBrowseEndpoint() {
+        val renderer = JSONObject(
+            """
+            {
+              "navigationEndpoint": {
+                "browseEndpoint": {
+                  "browseId": "UC_ANNA_OFFICIAL",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              },
+              "flexColumns": [
+                {
+                  "musicResponsiveListItemFlexColumnRenderer": {
+                    "text": {
+                      "runs": [
+                        {"text": "ANNA"}
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+            """.trimIndent()
+        )
+
+        val reference = YoutubeMusicRepository().extractYoutubeMusicArtistReference(renderer, "ANNA")
+
+        assertEquals("ANNA", reference?.name)
+        assertEquals("UC_ANNA_OFFICIAL", reference?.browseId)
+    }
+
+    @Test
+    fun bareChannelBrowseIdIsNotAcceptedAsArtist() {
+        val renderer = JSONObject(
+            """
+            {
+              "flexColumns": [
+                {
+                  "musicResponsiveListItemFlexColumnRenderer": {
+                    "text": {
+                      "runs": [
+                        {"text": "Estate Mix"}
+                      ]
+                    }
+                  }
+                },
+                {
+                  "musicResponsiveListItemFlexColumnRenderer": {
+                    "text": {
+                      "runs": [
+                        {
+                          "text": "Estate Mix",
+                          "navigationEndpoint": {
+                            "browseEndpoint": {
+                              "browseId": "UC_CURATOR_CHANNEL"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+            """.trimIndent()
+        )
+
+        val references = YoutubeMusicRepository().extractYoutubeMusicArtistReferences(
+            renderer,
+            "Estate Mix"
+        )
+
+        assertEquals(emptyList<String>(), references.map { it.browseId })
+    }
+
+    @Test
+    fun playableSongDoesNotPromoteBareUploaderChannelsToArtists() {
+        val renderer = JSONObject(
+            """
+            {
+              "playlistItemData": {
+                "videoId": "VIDEO_1"
+              },
+              "flexColumns": [
+                {
+                  "musicResponsiveListItemFlexColumnRenderer": {
+                    "text": {
+                      "runs": [
+                        {"text": "Take 5"}
+                      ]
+                    }
+                  }
+                },
+                {
+                  "musicResponsiveListItemFlexColumnRenderer": {
+                    "text": {
+                      "runs": [
+                        {
+                          "text": "HIT CANZONI SANREMO 2026",
+                          "navigationEndpoint": {
+                            "browseEndpoint": {
+                              "browseId": "UC_CURATOR_CHANNEL"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+            """.trimIndent()
+        )
+
+        val references = YoutubeMusicRepository().extractYoutubeMusicArtistReferences(
+            renderer,
+            "HIT CANZONI SANREMO 2026"
+        )
+
+        assertEquals(emptyList<String>(), references.map { it.browseId })
+    }
+
+
+    @Test
+    fun albumRecoveryAcceptsExactTitleAndPrimaryArtistWithNewBrowseId() {
+        val seed = AlbumHit(
+            title = "SACRO",
+            artist = "Serena Brancale, Levante, DELIA",
+            year = "2026",
+            thumbnailUrl = "https://example.test/sacro.jpg",
+            query = "SACRO Serena Brancale Levante DELIA",
+            browseId = "MPRE_OLD"
+        )
+        val candidate = seed.copy(
+            title = "Sacro",
+            artist = "Serena Brancale",
+            browseId = "MPRE_NEW"
+        )
+
+        val selected = selectAlbumRecoveryCandidate(
+            album = seed,
+            candidates = listOf(candidate),
+            excludedBrowseIds = setOf(seed.browseId)
+        )
+
+        assertEquals("MPRE_NEW", selected?.browseId)
+    }
+
+    @Test
+    fun albumRecoveryRejectsDifferentTitle() {
+        val seed = AlbumHit(
+            title = "SACRO",
+            artist = "Serena Brancale, Levante, DELIA",
+            year = "2026",
+            thumbnailUrl = "",
+            query = "SACRO Serena Brancale",
+            browseId = "MPRE_OLD"
+        )
+        val candidate = seed.copy(
+            title = "Anema e core",
+            artist = "Serena Brancale",
+            browseId = "MPRE_OTHER"
+        )
+
+        val selected = selectAlbumRecoveryCandidate(
+            album = seed,
+            candidates = listOf(candidate),
+            excludedBrowseIds = setOf(seed.browseId)
+        )
+
+        assertEquals(null, selected)
+    }
+
+    @Test
+    fun albumRecoveryRejectsAlreadyAttemptedBrowseId() {
+        val seed = AlbumHit(
+            title = "SACRO",
+            artist = "Serena Brancale",
+            year = "2026",
+            thumbnailUrl = "",
+            query = "SACRO Serena Brancale",
+            browseId = "MPRE_OLD"
+        )
+        val candidate = seed.copy(browseId = "MPRE_OLD")
+
+        val selected = selectAlbumRecoveryCandidate(
+            album = seed,
+            candidates = listOf(candidate),
+            excludedBrowseIds = setOf(seed.browseId)
+        )
+
+        assertEquals(null, selected)
+    }
+
+    @Test
+    fun albumRecoveryKeepsMultipleMatchingAlternativesInSearchOrder() {
+        val seed = AlbumHit(
+            title = "AMATORE",
+            artist = "Samurai Jay, Vito Salamanca",
+            year = "2026",
+            thumbnailUrl = "",
+            query = "AMATORE Samurai Jay Vito Salamanca",
+            browseId = "MPRE_OLD"
+        )
+        val first = seed.copy(artist = "Samurai Jay", browseId = "MPRE_FIRST")
+        val second = seed.copy(artist = "Vito Salamanca, Samurai Jay", browseId = "MPRE_SECOND")
+
+        val selected = selectAlbumRecoveryCandidates(
+            album = seed,
+            candidates = listOf(first, second),
+            excludedBrowseIds = setOf(seed.browseId)
+        )
+
+        assertEquals(listOf("MPRE_FIRST", "MPRE_SECOND"), selected.map { it.browseId })
+    }
+
+    @Test
+    fun albumRecoveryCandidatesExcludeAlreadyAttemptedAndDifferentArtists() {
+        val seed = AlbumHit(
+            title = "AMATORE",
+            artist = "Samurai Jay, Vito Salamanca",
+            year = "2026",
+            thumbnailUrl = "",
+            query = "AMATORE Samurai Jay Vito Salamanca",
+            browseId = "MPRE_OLD"
+        )
+        val attempted = seed.copy(artist = "Samurai Jay", browseId = "MPRE_TRIED")
+        val unrelated = seed.copy(artist = "Different Artist", browseId = "MPRE_OTHER")
+        val valid = seed.copy(artist = "Vito Salamanca", browseId = "MPRE_VALID")
+
+        val selected = selectAlbumRecoveryCandidates(
+            album = seed,
+            candidates = listOf(attempted, unrelated, valid),
+            excludedBrowseIds = setOf(seed.browseId, attempted.browseId)
+        )
+
+        assertEquals(listOf("MPRE_VALID"), selected.map { it.browseId })
+    }
+
+}

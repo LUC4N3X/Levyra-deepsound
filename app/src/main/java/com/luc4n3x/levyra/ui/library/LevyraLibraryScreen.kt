@@ -1,0 +1,1716 @@
+package com.luc4n3x.levyra.ui.library
+
+import androidx.compose.foundation.shape.CircleShape
+import android.Manifest
+import android.app.Activity
+import android.os.Build
+import com.luc4n3x.levyra.data.local.LocalMediaEntity
+import com.luc4n3x.levyra.data.locallibrary.LocalScanMode
+import com.luc4n3x.levyra.data.locallibrary.LocalTagEdits
+import com.luc4n3x.levyra.data.locallibrary.LocalTagWriteResult
+import com.luc4n3x.levyra.data.locallibrary.toLocalTrack
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListLayoutInfo
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.OfflinePin
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.luc4n3x.levyra.domain.SpeedDial
+import com.luc4n3x.levyra.domain.offlineDownloadStageOf
+import com.luc4n3x.levyra.ui.LevyraHorizontalSafeInsets
+import com.luc4n3x.levyra.ui.components.LevyraConnectedPosition
+import com.luc4n3x.levyra.domain.DownloadedTrack
+import com.luc4n3x.levyra.domain.LibrarySort
+import com.luc4n3x.levyra.domain.LibrarySortDirection
+import com.luc4n3x.levyra.domain.Playlist
+import com.luc4n3x.levyra.domain.filterByTagIds
+import com.luc4n3x.levyra.domain.hiddenInLibrary
+import com.luc4n3x.levyra.domain.visibleInLibrary
+import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.visibleDownloadBatches
+import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.formatLibraryBytes
+import com.luc4n3x.levyra.ui.i18n.playlistProCopy
+import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
+import com.luc4n3x.levyra.ui.theme.LevyraCyan
+import com.luc4n3x.levyra.ui.theme.LevyraGlass
+import com.luc4n3x.levyra.ui.theme.LevyraInk
+import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
+import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
+import com.luc4n3x.levyra.ui.theme.LevyraMuted
+import com.luc4n3x.levyra.ui.theme.LevyraText
+import com.luc4n3x.levyra.viewmodel.LevyraUiState
+import com.luc4n3x.levyra.viewmodel.LevyraViewModel
+import com.luc4n3x.levyra.viewmodel.LibraryViewModel
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalDensity
+import com.luc4n3x.levyra.data.ArtworkPalette
+import com.luc4n3x.levyra.data.ArtworkPaletteCache
+import com.luc4n3x.levyra.ui.LevyraPlayerPane
+import com.luc4n3x.levyra.ui.resolvePlayerPane
+import com.luc4n3x.levyra.ui.album.AlbumNeutralPaletteEnd
+import com.luc4n3x.levyra.ui.album.AlbumNeutralPaletteStart
+import com.luc4n3x.levyra.ui.artwork.ArtworkBackdropWash
+import com.luc4n3x.levyra.ui.artwork.rememberArtworkPalette
+import com.luc4n3x.levyra.ui.i18n.formatLibraryDuration
+import com.luc4n3x.levyra.ui.i18n.speedDialCopy
+import com.luc4n3x.levyra.ui.media.ImmersiveMediaActionRow
+import com.luc4n3x.levyra.ui.media.ImmersiveMediaHero
+import com.luc4n3x.levyra.ui.media.ImmersiveMediaPrimaryAction
+import com.luc4n3x.levyra.ui.media.ImmersiveMediaTopBar
+import com.luc4n3x.levyra.ui.media.animatedImmersiveMediaColors
+import com.luc4n3x.levyra.ui.media.immersiveHeroHeight
+import com.luc4n3x.levyra.ui.media.immersiveMediaColors
+import com.luc4n3x.levyra.ui.media.immersiveMediaGutter
+import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
+import java.util.Locale
+
+private val playlistSelectionSaver = listSaver<Set<String>, String>(
+    save = { it.toList() },
+    restore = { it.toSet() }
+)
+
+private const val PLAYLIST_DRAG_EDGE_FACTOR = 1.35f
+private const val PLAYLIST_DRAG_SCROLL_FACTOR = 0.38f
+private const val DEVICE_LIBRARY_PARENT_LEADING_ITEMS = 4
+
+private data class PlaylistDragUpdate(
+    val targetIndex: Int = -1,
+    val offsetAdjustment: Float = 0f,
+    val scrollDelta: Float = 0f
+)
+
+private fun playlistDragUpdate(
+    layoutInfo: LazyListLayoutInfo,
+    draggedEntryKey: String,
+    orderedTracks: List<Track>,
+    dragOffsetY: Float
+): PlaylistDragUpdate {
+    val draggedLayout = layoutInfo.visibleItemsInfo.firstOrNull {
+        it.key == "reorder-$draggedEntryKey"
+    } ?: return PlaylistDragUpdate()
+
+    val draggedCenter = draggedLayout.offset + draggedLayout.size / 2f + dragOffsetY
+    val targetLayout = layoutInfo.visibleItemsInfo
+        .asSequence()
+        .filter { (it.key as? String)?.startsWith("reorder-") == true }
+        .minByOrNull { item ->
+            kotlin.math.abs(item.offset + item.size / 2f - draggedCenter)
+        }
+
+    val targetKey = (targetLayout?.key as? String)
+        ?.takeIf { it != draggedLayout.key }
+        ?.removePrefix("reorder-")
+    val targetIndex = targetKey?.let { key ->
+        orderedTracks.indexOfFirst { it.id == key }
+    } ?: -1
+    val offsetAdjustment = if (targetIndex >= 0 && targetLayout != null) {
+        (draggedLayout.offset - targetLayout.offset).toFloat()
+    } else {
+        0f
+    }
+
+    val edge = draggedLayout.size.coerceAtLeast(1) * PLAYLIST_DRAG_EDGE_FACTOR
+    val viewportStart = layoutInfo.viewportStartOffset.toFloat()
+    val viewportEnd = layoutInfo.viewportEndOffset.toFloat()
+    val scrollDelta = when {
+        draggedCenter < viewportStart + edge ->
+            -((viewportStart + edge - draggedCenter) / edge)
+                .coerceIn(0f, 1f) * draggedLayout.size * PLAYLIST_DRAG_SCROLL_FACTOR
+        draggedCenter > viewportEnd - edge ->
+            ((draggedCenter - (viewportEnd - edge)) / edge)
+                .coerceIn(0f, 1f) * draggedLayout.size * PLAYLIST_DRAG_SCROLL_FACTOR
+        else -> 0f
+    }
+
+    return PlaylistDragUpdate(
+        targetIndex = targetIndex,
+        offsetAdjustment = offsetAdjustment,
+        scrollDelta = scrollDelta
+    )
+}
+
+internal data class PlaylistDragSnapshot(
+    val entryKey: String,
+    val orderedTracks: List<Track>,
+    val dragOffsetY: Float
+)
+
+internal data class PlaylistDragFrameActions(
+    val onMove: (fromIndex: Int, toIndex: Int, offsetAdjustment: Float) -> Unit,
+    val onScrollConsumed: (Float) -> Unit
+)
+
+@Composable
+internal fun PlaylistDragFrameLoop(
+    activeEntryKey: String?,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    snapshotProvider: () -> PlaylistDragSnapshot?,
+    actions: PlaylistDragFrameActions
+) {
+    val currentSnapshotProvider by rememberUpdatedState(snapshotProvider)
+    val currentActions by rememberUpdatedState(actions)
+
+    LaunchedEffect(activeEntryKey, listState) {
+        if (activeEntryKey == null) return@LaunchedEffect
+        while (true) {
+            withFrameNanos { }
+            val snapshot = currentSnapshotProvider() ?: break
+            val update = playlistDragUpdate(
+                layoutInfo = listState.layoutInfo,
+                draggedEntryKey = snapshot.entryKey,
+                orderedTracks = snapshot.orderedTracks,
+                dragOffsetY = snapshot.dragOffsetY
+            )
+            val currentIndex = snapshot.orderedTracks.indexOfFirst {
+                it.id == snapshot.entryKey
+            }
+            if (currentIndex >= 0 && update.targetIndex >= 0 && currentIndex != update.targetIndex) {
+                currentActions.onMove(currentIndex, update.targetIndex, update.offsetAdjustment)
+            }
+            if (update.scrollDelta != 0f) {
+                val consumed = listState.scrollBy(update.scrollDelta)
+                if (consumed != 0f) currentActions.onScrollConsumed(consumed)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun LevyraLibraryScreen(
+    viewModel: LibraryViewModel,
+    state: LevyraUiState,
+    onOpenDownloads: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val colors = MaterialTheme.colorScheme
+    val deleteOfflineDownloads = rememberOfflineDeleteHandler(viewModel)
+    val catalog = remember(
+        state.favorites,
+        state.favoriteTimestamps,
+        state.playlists,
+        state.downloads,
+        state.recentListens,
+        state.mostPlayedTracks,
+        state.followedArtists
+    ) {
+        buildLibraryCatalog(
+            favorites = state.favorites,
+            playlists = state.playlists,
+            downloads = state.downloads,
+            recentListens = state.recentListens,
+            followedArtists = state.followedArtists,
+            mostPlayedTracks = state.mostPlayedTracks,
+            favoriteTimestamps = state.favoriteTimestamps
+        )
+    }
+
+    var categoryName by rememberSaveable { mutableStateOf(LibraryCategory.Overview.name) }
+    val category = LibraryCategory.entries.firstOrNull { it.name == categoryName } ?: LibraryCategory.Overview
+    var layoutName by rememberSaveable { mutableStateOf(LibraryLayout.List.name) }
+    val layout = LibraryLayout.entries.firstOrNull { it.name == layoutName } ?: LibraryLayout.List
+    val sort = state.interfaceSettings.librarySort
+    val direction = state.interfaceSettings.librarySortDirection
+    var query by rememberSaveable { mutableStateOf("") }
+    var selectedKeys by remember { mutableStateOf(emptySet<String>()) }
+    var sortExpanded by remember { mutableStateOf(false) }
+    var addToPlaylistTracks by remember { mutableStateOf<List<Track>>(emptyList()) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    var pendingDownloadDelete by remember { mutableStateOf<DownloadedTrack?>(null) }
+    var showImportPlaylistCard by rememberSaveable { mutableStateOf(true) }
+    var openSmartCollectionName by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedTagIds by rememberSaveable { mutableStateOf(emptySet<String>()) }
+    var showHiddenPlaylists by rememberSaveable { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+    val scrollPositions = remember { mutableStateMapOf<String, Pair<Int, Int>>() }
+
+    fun switchCategory(next: LibraryCategory) {
+        if (next == category) return
+        scrollPositions[category.name] = listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
+        categoryName = next.name
+        selectedKeys = emptySet()
+        if (next != LibraryCategory.Playlists) {
+            selectedTagIds = emptySet()
+            showHiddenPlaylists = false
+        }
+    }
+
+    LaunchedEffect(categoryName) {
+        val position = scrollPositions[categoryName] ?: (0 to 0)
+        runCatching { listState.scrollToItem(position.first, position.second) }
+    }
+
+    val hiddenPlaylistCount = remember(state.playlists) { state.playlists.count { it.hidden } }
+    val knownTagIds = remember(state.playlistTags) { state.playlistTags.mapTo(hashSetOf()) { it.id } }
+    LaunchedEffect(knownTagIds) {
+        val pruned = selectedTagIds.filterTo(hashSetOf()) { it in knownTagIds }
+        if (pruned.size != selectedTagIds.size) selectedTagIds = pruned
+    }
+    LaunchedEffect(hiddenPlaylistCount) {
+        if (hiddenPlaylistCount == 0 && showHiddenPlaylists) showHiddenPlaylists = false
+    }
+    val scopedPlaylists = remember(state.playlists, showHiddenPlaylists, selectedTagIds) {
+        val scoped = if (showHiddenPlaylists) state.playlists.hiddenInLibrary() else state.playlists.visibleInLibrary()
+        scoped.filterByTagIds(selectedTagIds)
+    }
+    val visiblePlaylists = remember(scopedPlaylists, query, sort, direction) {
+        filterLibraryPlaylists(scopedPlaylists, query, sort, direction)
+    }
+    val visibleAlbums = remember(catalog.albums, query, sort, direction) {
+        filterLibraryAlbums(catalog.albums, query, sort, direction)
+    }
+    val visibleArtists = remember(catalog.artists, query, sort, direction) {
+        filterLibraryArtists(catalog.artists, query, sort, direction)
+    }
+    val visibleTracks = remember(catalog.tracks, query, sort, direction, catalog.trackRecency) {
+        filterLibraryTracks(
+            tracks = catalog.tracks,
+            query = query,
+            sort = sort,
+            direction = direction,
+            recencyProvider = catalog::recencyOf
+        )
+    }
+    var localTabName by rememberSaveable { mutableStateOf(LocalLibraryTab.Songs.name) }
+    val localTab = LocalLibraryTab.entries.firstOrNull { it.name == localTabName } ?: LocalLibraryTab.Songs
+    var localQualityFilterName by rememberSaveable { mutableStateOf(LocalLibraryQualityFilter.All.name) }
+    val localQualityFilter = LocalLibraryQualityFilter.entries
+        .firstOrNull { it.name == localQualityFilterName }
+        ?: LocalLibraryQualityFilter.All
+    val localFilterNowMs = remember(state.localLibrary.catalog.mediaByUri) { System.currentTimeMillis() }
+    val localAlphabetIndex = remember(
+        state.localLibrary,
+        localTab,
+        localQualityFilter,
+        query,
+        localFilterNowMs,
+        sort,
+        direction
+    ) {
+        localLibraryAlphabetIndex(
+            library = state.localLibrary,
+            tab = localTab,
+            qualityFilter = localQualityFilter,
+            query = query,
+            nowMs = localFilterNowMs,
+            songsAlphabetical = sort == LibrarySort.Title &&
+                direction == LibrarySortDirection.Ascending
+        )
+    }
+    val localContentStartIndex = remember(state.localLibrary, localFilterNowMs) {
+        DEVICE_LIBRARY_PARENT_LEADING_ITEMS +
+            localLibraryLeadingItemCount(state.localLibrary, localFilterNowMs)
+    }
+    val localActiveAlphabetLetter by remember(localAlphabetIndex, localContentStartIndex) {
+        derivedStateOf {
+            localAlphabetIndex.targets
+                .lastOrNull { target ->
+                    localContentStartIndex + target.contentIndex <= listState.firstVisibleItemIndex
+                }
+                ?.letter
+                ?: localAlphabetIndex.targets.firstOrNull()?.letter
+        }
+    }
+    var expandedLocalGroupKey by rememberSaveable { mutableStateOf<String?>(null) }
+    var localTagEditorTarget by remember { mutableStateOf<LocalMediaEntity?>(null) }
+    var localTagEditorSaving by remember { mutableStateOf(false) }
+    var localTagEditorError by remember { mutableStateOf<String?>(null) }
+    var localTagEditorLyrics by remember { mutableStateOf<String?>(null) }
+    var pendingLocalTagWrite by remember { mutableStateOf<Pair<LocalMediaEntity, LocalTagEdits>?>(null) }
+
+    fun handleTagWriteResult(
+        target: LocalMediaEntity,
+        edits: LocalTagEdits,
+        result: LocalTagWriteResult,
+        allowPermissionRequest: Boolean,
+        permissionLauncher: ((android.content.IntentSender) -> Unit)?
+    ) {
+        when (result) {
+            is LocalTagWriteResult.Success -> {
+                localTagEditorSaving = false
+                localTagEditorError = null
+                localTagEditorTarget = null
+                pendingLocalTagWrite = null
+            }
+            is LocalTagWriteResult.PermissionRequired -> {
+                localTagEditorSaving = false
+                if (allowPermissionRequest && permissionLauncher != null) {
+                    pendingLocalTagWrite = target to edits
+                    permissionLauncher(result.intentSender)
+                } else {
+                    localTagEditorError = strings.localTagPermissionDenied
+                }
+            }
+            LocalTagWriteResult.UnsupportedFormat -> {
+                localTagEditorSaving = false
+                localTagEditorError = strings.localTagUnsupported
+            }
+            LocalTagWriteResult.FileTooLarge -> {
+                localTagEditorSaving = false
+                localTagEditorError = strings.localTagTooLarge
+            }
+            LocalTagWriteResult.FileUnavailable -> {
+                localTagEditorSaving = false
+                localTagEditorError = strings.localTagFileMissing
+            }
+            LocalTagWriteResult.WriteDenied -> {
+                localTagEditorSaving = false
+                localTagEditorError = strings.localTagPermissionDenied
+            }
+            LocalTagWriteResult.InsufficientSpace -> {
+                localTagEditorSaving = false
+                localTagEditorError = strings.localTagNoSpace
+            }
+            LocalTagWriteResult.InvalidArtwork -> {
+                localTagEditorSaving = false
+                localTagEditorError = strings.localTagArtworkInvalid
+            }
+            LocalTagWriteResult.Failed -> {
+                localTagEditorSaving = false
+                localTagEditorError = strings.localTagWriteFailed
+            }
+        }
+    }
+
+    val localMediaPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        Manifest.permission.READ_MEDIA_AUDIO
+    } else {
+        Manifest.permission.READ_EXTERNAL_STORAGE
+    }
+    val localPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { viewModel.refreshLocalLibraryAccess() }
+    val localTagWritePermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { activityResult ->
+        val pending = pendingLocalTagWrite
+        pendingLocalTagWrite = null
+        if (activityResult.resultCode == Activity.RESULT_OK && pending != null) {
+            val (target, edits) = pending
+            localTagEditorSaving = true
+            localTagEditorError = null
+            viewModel.saveLocalAudioTags(target.identityKey, edits) { retry ->
+                handleTagWriteResult(
+                    target = target,
+                    edits = edits,
+                    result = retry,
+                    allowPermissionRequest = false,
+                    permissionLauncher = null
+                )
+            }
+        } else if (pending != null) {
+            localTagEditorSaving = false
+            localTagEditorError = strings.localTagPermissionDenied
+        }
+    }
+    val localLibraryCallbacks = remember(viewModel, state.localLibrary.catalog.mediaByUri) {
+        LocalLibraryCallbacks(
+            onPlay = viewModel::playLocalTracks,
+            onAddToQueue = viewModel::addTracksToQueue,
+            onToggleFavorite = viewModel::toggleFavorite,
+            onQuickScan = { viewModel.requestLocalLibraryScan(LocalScanMode.Quick) },
+            onFullScan = { viewModel.requestLocalLibraryScan(LocalScanMode.Full) },
+            onRebuildLevyra = { viewModel.requestLocalLibraryScan(LocalScanMode.RebuildLevyra) },
+            onGrantPermission = { localPermissionLauncher.launch(localMediaPermission) },
+            onToggleFolderHidden = viewModel::setLocalFolderHidden,
+            onEditTags = { track ->
+                state.localLibrary.catalog.mediaByUri[track.streamUrl]?.let { media ->
+                    localTagEditorTarget = media
+                    localTagEditorError = null
+                    localTagEditorLyrics = null
+                    viewModel.loadLocalEmbeddedLyrics(media.identityKey) { lyrics ->
+                        if (localTagEditorTarget?.identityKey == media.identityKey) localTagEditorLyrics = lyrics
+                    }
+                }
+            }
+        )
+    }
+    LaunchedEffect(category) {
+        if (category == LibraryCategory.Device) {
+            viewModel.refreshLocalLibraryAccess()
+        }
+    }
+
+    val visibleOffline = remember(catalog.offlineItems, query, sort, direction) {
+        filterLibraryOfflineItems(catalog.offlineItems, query, sort, direction)
+    }
+
+    val selectedTracks = remember(category, selectedKeys, catalog, state.playlists) {
+        when (category) {
+            LibraryCategory.Playlists -> state.playlists
+                .filter { "playlist:${it.id}" in selectedKeys }
+                .flatMap { it.tracks }
+            LibraryCategory.Albums -> catalog.albums
+                .filter { "album:${it.key}" in selectedKeys }
+                .flatMap { it.tracks }
+            LibraryCategory.Artists -> catalog.artists
+                .filter { "artist:${it.key}" in selectedKeys }
+                .flatMap { it.tracks }
+            LibraryCategory.Offline -> catalog.offlineItems
+                .filter { it.key in selectedKeys }
+                .map { it.track }
+            LibraryCategory.Device -> emptyList()
+            LibraryCategory.Overview, LibraryCategory.Songs -> catalog.tracks.filter { libraryTrackKey(it) in selectedKeys }
+        }.distinctBy(::libraryTrackKey)
+    }
+    val selectedPlaylists = remember(selectedKeys, state.playlists) {
+        state.playlists.filter { "playlist:${it.id}" in selectedKeys }
+    }
+    val selectedDownloads = remember(category, selectedKeys, selectedTracks, state.downloads, catalog.offlineItems) {
+        if (category == LibraryCategory.Offline) {
+            catalog.offlineItems.filter { it.key in selectedKeys }.map { it.download }
+        } else {
+            selectedTracks.mapNotNull { libraryDownloadForTrack(it, state.downloads) }.distinctBy { it.id }
+        }
+    }
+    val selectionActive = selectedKeys.isNotEmpty()
+
+    BackHandler(enabled = !selectionActive && openSmartCollectionName == null && category != LibraryCategory.Overview) {
+        switchCategory(LibraryCategory.Overview)
+    }
+    BackHandler(enabled = !selectionActive && openSmartCollectionName != null) { openSmartCollectionName = null }
+    BackHandler(enabled = selectionActive) { selectedKeys = emptySet() }
+
+    Box(modifier = Modifier.fillMaxSize().background(LevyraInk)) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize().statusBarsPadding(),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = 12.dp,
+                bottom = if (state.currentTrack != null || selectionActive) 230.dp else 116.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            item(key = "library-title") {
+                LibraryHero(
+                    title = strings.libraryTitle,
+                    subtitle = when (category) {
+                        LibraryCategory.Overview -> ""
+                        LibraryCategory.Songs -> strings.formatTrackCount(catalog.tracks.size)
+                        LibraryCategory.Playlists -> "${visiblePlaylists.size} ${strings.playlistsPlain}"
+                        LibraryCategory.Albums -> "${catalog.albums.size} ${strings.albumsPlain}"
+                        LibraryCategory.Artists -> "${catalog.artists.size} ${strings.artists}"
+                        LibraryCategory.Offline ->
+                            strings.formatDownloadedTrackCount(state.downloads.size)
+                        LibraryCategory.Device ->
+                            strings.formatTrackCount(state.localLibrary.catalog.totalCount)
+                    }
+                )
+            }
+
+            item(key = "library-search") {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                    singleLine = true,
+                    shape = CircleShape,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        color = colors.onSurface,
+                        fontWeight = FontWeight.Medium
+                    ),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = colors.onSurface,
+                        unfocusedTextColor = colors.onSurface,
+                        focusedContainerColor = colors.surfaceContainerHigh,
+                        unfocusedContainerColor = colors.surfaceContainer,
+                        focusedBorderColor = colors.primary.copy(alpha = 0.42f),
+                        unfocusedBorderColor = Color.Transparent,
+                        cursorColor = colors.primary,
+                        focusedLeadingIconColor = colors.primary,
+                        unfocusedLeadingIconColor = colors.onSurfaceVariant,
+                        focusedTrailingIconColor = colors.onSurfaceVariant,
+                        unfocusedTrailingIconColor = colors.onSurfaceVariant
+                    ),
+                    placeholder = {
+                        Text(
+                            if (category == LibraryCategory.Device) strings.localFullTagSearchHint else strings.searchPlaceholder,
+                            color = colors.onSurfaceVariant,
+                            fontSize = 14.sp,
+                            maxLines = 1
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(20.dp))
+                    },
+                    trailingIcon = {
+                        if (query.isNotBlank()) {
+                            IconButton(onClick = { query = "" }) {
+                                Icon(Icons.Rounded.Close, contentDescription = strings.clear, modifier = Modifier.size(20.dp))
+                            }
+                        }
+                    }
+                )
+            }
+
+            item(key = "library-categories") {
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    LibraryCategory.entries.forEach { item ->
+                        LibraryCategoryChip(
+                            label = item.libraryLabel(strings),
+                            selected = item == category,
+                            onClick = { switchCategory(item) }
+                        )
+                    }
+                }
+            }
+
+            if (category != LibraryCategory.Overview && (category != LibraryCategory.Playlists || state.playlists.isNotEmpty())) {
+                item(key = "library-toolbar") {
+                    LibraryToolbar(
+                        category = category,
+                        sort = sort,
+                        direction = direction,
+                        layout = layout,
+                        sortExpanded = sortExpanded,
+                        onSortExpanded = { sortExpanded = it },
+                        onSort = { nextSort, nextDirection -> viewModel.setLibrarySort(nextSort, nextDirection) },
+                        onToggleDirection = { viewModel.setLibrarySort(sort, direction.inverted) },
+                        onLayout = {
+                            layoutName = if (layout == LibraryLayout.List) LibraryLayout.Grid.name else LibraryLayout.List.name
+                        },
+                        onSelectAll = {
+                            selectedKeys = when (category) {
+                                LibraryCategory.Playlists -> visiblePlaylists.mapTo(linkedSetOf()) { "playlist:${it.id}" }
+                                LibraryCategory.Albums -> visibleAlbums.mapTo(linkedSetOf()) { "album:${it.key}" }
+                                LibraryCategory.Artists -> visibleArtists.mapTo(linkedSetOf()) { "artist:${it.key}" }
+                                LibraryCategory.Offline -> visibleOffline.mapTo(linkedSetOf()) { it.key }
+                                LibraryCategory.Device -> linkedSetOf()
+                                LibraryCategory.Overview, LibraryCategory.Songs ->
+                                    visibleTracks.mapTo(linkedSetOf(), ::libraryTrackKey)
+                            }
+                        }
+                    )
+                }
+            }
+
+            when (category) {
+                LibraryCategory.Overview -> {
+                    item(key = "overview-smart-title") {
+                        LibrarySectionTitle(strings.quickPicks, "")
+                    }
+                    item(key = "overview-smart-grid") {
+                        SmartCollectionGrid(
+                            favorites = state.favorites,
+                            downloads = catalog.offlineTracks,
+                            recent = catalog.recent,
+                            mostPlayed = catalog.mostPlayed,
+                            onOpenCollection = { openSmartCollectionName = it },
+                            onOpenOffline = { switchCategory(LibraryCategory.Offline) }
+                        )
+                    }
+                    if (visiblePlaylists.isNotEmpty()) {
+                        item(key = "overview-playlists-title") {
+                            LibrarySectionTitle(
+                                title = strings.playlists,
+                                detail = strings.personalPlaylists,
+                                action = strings.showAll,
+                                onAction = { switchCategory(LibraryCategory.Playlists) }
+                            )
+                        }
+                        item(key = "overview-playlist-shelf") {
+                            LibraryPlaylistShelf(
+                                playlists = visiblePlaylists.take(6),
+                                onOpen = { viewModel.openPlaylist(it.id) },
+                                onSelect = {
+                                    switchCategory(LibraryCategory.Playlists)
+                                    selectedKeys = setOf("playlist:${it.id}")
+                                },
+                                onPlay = { viewModel.playPlaylist(it.id) }
+                            )
+                        }
+                    }
+                    item(key = "overview-insights-title") {
+                        LibrarySectionTitle(
+                            title = strings.pulseTitle,
+                            detail = strings.pulseSubtitle
+                        )
+                    }
+                    item(key = "overview-insights-card") {
+                        LibraryListeningDashboard(
+                            pulse = state.listeningPulse,
+                            onOpenInsights = viewModel::openListeningInsights
+                        )
+                    }
+                }
+
+                LibraryCategory.Playlists -> {
+                    item(key = "playlist-filters") {
+                        LibraryPlaylistFilterRow(
+                            tags = state.playlistTags,
+                            selectedTagIds = selectedTagIds,
+                            hiddenVisible = showHiddenPlaylists,
+                            hiddenCount = hiddenPlaylistCount,
+                            onClearTags = { selectedTagIds = emptySet() },
+                            onToggleTag = { tagId -> selectedTagIds = selectedTagIds.toggle(tagId) },
+                            onToggleHidden = {
+                                showHiddenPlaylists = !showHiddenPlaylists
+                                selectedKeys = emptySet()
+                            }
+                        )
+                    }
+                    item(key = "playlist-import-action") {
+                        if (showImportPlaylistCard) {
+                            LibraryImportPlaylistCard(
+                                onClick = { viewModel.openPlaylistImport() },
+                                onDismiss = { showImportPlaylistCard = false }
+                            )
+                        } else {
+                            LibraryImportPlaylistCompactAction(onClick = { viewModel.openPlaylistImport() })
+                        }
+                    }
+                    if (visiblePlaylists.isEmpty()) {
+                        item {
+                            when {
+                                query.isNotBlank() -> LibraryEmpty(Icons.Rounded.Search, strings.emptySearchPrompt)
+                                showHiddenPlaylists -> LibraryEmpty(
+                                    Icons.AutoMirrored.Rounded.QueueMusic,
+                                    strings.hiddenPlaylistsEmpty
+                                )
+                                selectedTagIds.isNotEmpty() -> LibraryEmpty(
+                                    Icons.AutoMirrored.Rounded.QueueMusic,
+                                    strings.filterByTag
+                                )
+                                else -> LibraryPlaylistEmpty(onCreate = { viewModel.openPlaylistStudio() })
+                            }
+                        }
+                    } else if (layout == LibraryLayout.List) {
+                        items(visiblePlaylists, key = { "playlist-${it.id}" }) { playlist ->
+                            val key = "playlist:${playlist.id}"
+                            LibraryPlaylistRow(
+                                playlist = playlist,
+                                selected = key in selectedKeys,
+                                selectionActive = selectionActive,
+                                onClick = {
+                                    if (selectionActive) selectedKeys = selectedKeys.toggle(key)
+                                    else viewModel.openPlaylist(playlist.id)
+                                },
+                                onLongClick = { selectedKeys = selectedKeys.toggle(key) },
+                                onPlay = { viewModel.playPlaylist(playlist.id) }
+                            )
+                        }
+                    } else {
+                        items(
+                            items = visiblePlaylists.chunked(2),
+                            key = { row -> "playlist-grid-row-${row.joinToString("-") { it.id }}" }
+                        ) { rowItems ->
+                            LibraryPlaylistGridRow(
+                                playlists = rowItems,
+                                selectedKeys = selectedKeys,
+                                selectionActive = selectionActive,
+                                onOpen = { playlist ->
+                                    val key = "playlist:${playlist.id}"
+                                    if (selectionActive) selectedKeys = selectedKeys.toggle(key)
+                                    else viewModel.openPlaylist(playlist.id)
+                                },
+                                onSelect = { playlist -> selectedKeys = selectedKeys.toggle("playlist:${playlist.id}") }
+                            )
+                        }
+                    }
+                }
+
+                LibraryCategory.Albums -> {
+                    if (visibleAlbums.isEmpty()) {
+                        item {
+                            LibraryEmpty(
+                                Icons.Rounded.Album,
+                                if (query.isBlank()) strings.albumUnavailable else strings.emptySearchPrompt,
+                                if (query.isBlank()) strings.savedTracks else null
+                            )
+                        }
+                    } else if (layout == LibraryLayout.Grid) {
+                        items(
+                            items = visibleAlbums.chunked(2),
+                            key = { row -> "album-grid-row-${row.joinToString("-") { it.key }}" }
+                        ) { rowItems ->
+                            LibraryAlbumGridRow(
+                                albums = rowItems,
+                                selectedKeys = selectedKeys,
+                                selectionActive = selectionActive,
+                                onOpen = { album ->
+                                    val key = "album:${album.key}"
+                                    if (selectionActive) selectedKeys = selectedKeys.toggle(key)
+                                    else viewModel.openAlbum(album.toAlbumHit())
+                                },
+                                onSelect = { album -> selectedKeys = selectedKeys.toggle("album:${album.key}") }
+                            )
+                        }
+                    } else {
+                        items(visibleAlbums, key = { "album-${it.key}" }) { album ->
+                            val key = "album:${album.key}"
+                            LibraryAlbumRow(
+                                album = album,
+                                selected = key in selectedKeys,
+                                selectionActive = selectionActive,
+                                onClick = {
+                                    if (selectionActive) selectedKeys = selectedKeys.toggle(key)
+                                    else viewModel.openAlbum(album.toAlbumHit())
+                                },
+                                onLongClick = { selectedKeys = selectedKeys.toggle(key) },
+                                onPlay = { album.tracks.firstOrNull()?.let { viewModel.playFrom(album.tracks, it) } }
+                            )
+                        }
+                    }
+                }
+
+                LibraryCategory.Artists -> {
+                    if (visibleArtists.isEmpty()) {
+                        item {
+                            LibraryEmpty(
+                                Icons.Rounded.Person,
+                                if (query.isBlank()) strings.artistProfileUnavailable else strings.emptySearchPrompt,
+                                if (query.isBlank()) strings.followedArtistsSubtitle else null
+                            )
+                        }
+                    } else if (layout == LibraryLayout.Grid) {
+                        items(
+                            items = visibleArtists.chunked(2),
+                            key = { row -> "artist-grid-row-${row.joinToString("-") { it.key }}" }
+                        ) { rowItems ->
+                            LibraryArtistGridRow(
+                                artists = rowItems,
+                                selectedKeys = selectedKeys,
+                                selectionActive = selectionActive,
+                                onOpen = { artist ->
+                                    val key = "artist:${artist.key}"
+                                    if (selectionActive) selectedKeys = selectedKeys.toggle(key)
+                                    else viewModel.openArtistReference(artist.name, artist.browseId, artist.artworkUrl)
+                                },
+                                onSelect = { artist -> selectedKeys = selectedKeys.toggle("artist:${artist.key}") }
+                            )
+                        }
+                    } else {
+                        items(visibleArtists, key = { "artist-${it.key}" }) { artist ->
+                            val key = "artist:${artist.key}"
+                            LibraryArtistRow(
+                                artist = artist,
+                                selected = key in selectedKeys,
+                                selectionActive = selectionActive,
+                                onClick = {
+                                    if (selectionActive) selectedKeys = selectedKeys.toggle(key)
+                                    else viewModel.openArtistReference(artist.name, artist.browseId, artist.artworkUrl)
+                                },
+                                onLongClick = { selectedKeys = selectedKeys.toggle(key) },
+                                onPlay = { artist.tracks.firstOrNull()?.let { viewModel.playFrom(artist.tracks, it) } }
+                            )
+                        }
+                    }
+                }
+
+                LibraryCategory.Songs -> {
+                    if (visibleTracks.isEmpty()) {
+                        item {
+                            LibraryEmpty(
+                                if (query.isBlank()) Icons.Rounded.MusicNote else Icons.Rounded.Search,
+                                if (query.isBlank()) strings.savedTracks else strings.emptySearchPrompt,
+                                if (query.isBlank()) strings.tapHeartToAdd else null
+                            )
+                        }
+                    } else {
+                        items(visibleTracks, key = { "song-${libraryTrackKey(it)}" }) { track ->
+                            val key = libraryTrackKey(track)
+                            LibraryTrackRow(
+                                track = track,
+                                selected = key in selectedKeys,
+                                selectionActive = selectionActive,
+                                isCurrent = track.id == state.currentTrack?.id,
+                                isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                                isFavorite = track.id in state.favoriteIds,
+                                isDownloaded = libraryDownloadForTrack(track, state.downloads) != null,
+                                downloadProgress = downloadProgressFor(track, state),
+                                onClick = {
+                                    if (selectionActive) selectedKeys = selectedKeys.toggle(key)
+                                    else viewModel.playFrom(visibleTracks, track)
+                                },
+                                onLongClick = { selectedKeys = selectedKeys.toggle(key) },
+                                onFavorite = { viewModel.toggleFavorite(track) },
+                                onDownload = { viewModel.exportTrack(track) },
+                                onQueue = { viewModel.addToQueue(track) },
+                                onAddToPlaylist = { addToPlaylistTracks = listOf(track) },
+                                modifier = Modifier.animateItem()
+                            )
+                        }
+                    }
+                }
+
+                LibraryCategory.Device -> localLibrarySection(
+                    library = state.localLibrary,
+                    tab = localTab,
+                    onTab = { localTabName = it.name },
+                    qualityFilter = localQualityFilter,
+                    onQualityFilter = { localQualityFilterName = it.name },
+                    nowMs = localFilterNowMs,
+                    expandedGroupKey = expandedLocalGroupKey,
+                    onExpandGroup = { expandedLocalGroupKey = it },
+                    query = query,
+                    currentTrack = state.currentTrack,
+                    isPlaying = state.isPlaying,
+                    favoriteIds = state.favoriteIds,
+                    unavailableUris = state.queueUnavailableUris,
+                    callbacks = localLibraryCallbacks
+                )
+
+                LibraryCategory.Offline -> {
+                    item(key = "offline-storage") {
+                        LibraryOfflineSummary(
+                            bytes = state.downloadStorageBytes,
+                            activeCount = state.downloadQueue.count {
+                                offlineDownloadStageOf(it.state).isActive
+                            }
+                        )
+                    }
+                    val activeBatches = visibleDownloadBatches(state.downloadBatches)
+                    val hasTransfers = activeBatches.isNotEmpty() || state.downloadQueue.isNotEmpty()
+                    if (hasTransfers) {
+                        item(key = "offline-queue-title") {
+                            LibrarySectionTitle(strings.downloadsInProgress, strings.downloadInProgress)
+                        }
+                    }
+                    items(activeBatches, key = { "batch-${it.key}" }) { batch ->
+                        LibraryBatchDownloadRow(
+                            batch = batch,
+                            onRetry = { viewModel.retryBatchDownload(batch.key) },
+                            onCancel = { viewModel.cancelBatchDownload(batch.key) }
+                        )
+                    }
+                    itemsIndexed(
+                        state.downloadQueue,
+                        key = { _, task -> "task-${task.taskKey}" },
+                        contentType = { _, _ -> "download-task" }
+                    ) { _, task ->
+                        LibraryDownloadTaskRow(
+                            task = task,
+                            onPause = { viewModel.pauseDownload(task.taskKey) },
+                            onResume = { viewModel.resumeDownload(task.taskKey) },
+                            onCancel = { viewModel.cancelDownload(task.taskKey) },
+                            position = LevyraConnectedPosition.Single
+                        )
+                    }
+                    if (hasTransfers && visibleOffline.isNotEmpty()) {
+                        item(key = "offline-saved-title") {
+                            LibrarySectionTitle(strings.downloaded, "")
+                        }
+                    }
+                    if (visibleOffline.isEmpty()) {
+                        item {
+                            LibraryEmpty(
+                                if (query.isBlank()) Icons.Rounded.OfflinePin else Icons.Rounded.Search,
+                                if (query.isBlank()) strings.noOfflineDownloads else strings.emptySearchPrompt,
+                                if (query.isBlank()) strings.downloadTrackHint else null
+                            )
+                        }
+                    } else {
+                        items(visibleOffline, key = { "offline-${it.key}" }) { item ->
+                            val track = item.track
+                            val key = item.key
+                            LibraryTrackRow(
+                                track = track,
+                                selected = key in selectedKeys,
+                                selectionActive = selectionActive,
+                                isCurrent = track.id == state.currentTrack?.id,
+                                isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                                isFavorite = track.id in state.favoriteIds,
+                                isDownloaded = true,
+                                downloadProgress = null,
+                                metadata = listOf(
+                                    item.download.mimeType.substringAfter('/').uppercase(Locale.ROOT),
+                                    strings.formatLibraryBytes(item.download.sizeBytes)
+                                ).filter(String::isNotBlank).joinToString(" · "),
+                                onClick = {
+                                    if (selectionActive) selectedKeys = selectedKeys.toggle(key)
+                                    else viewModel.playDownloaded(item.download)
+                                },
+                                onLongClick = { selectedKeys = selectedKeys.toggle(key) },
+                                onFavorite = { viewModel.toggleFavorite(track) },
+                                onDownload = {},
+                                onQueue = { viewModel.addToQueue(track) },
+                                onAddToPlaylist = { addToPlaylistTracks = listOf(track) },
+                                onDeleteDownload = { pendingDownloadDelete = item.download },
+                                modifier = Modifier.animateItem()
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        if (category == LibraryCategory.Device && localAlphabetIndex.visible) {
+            LocalLibraryAlphabetRail(
+                index = localAlphabetIndex,
+                activeLetter = localActiveAlphabetLetter,
+                onJump = { contentIndex ->
+                    listState.requestScrollToItem(localContentStartIndex + contentIndex)
+                },
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 3.dp)
+            )
+        }
+
+        AnimatedVisibility(
+            visible = selectionActive,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(start = 12.dp, end = 12.dp, bottom = if (state.currentTrack != null) 160.dp else 84.dp)
+        ) {
+            LibrarySelectionBar(
+                count = selectedKeys.size,
+                canOperateTracks = selectedTracks.isNotEmpty(),
+                canDelete = when (category) {
+                    LibraryCategory.Playlists -> selectedPlaylists.isNotEmpty()
+                    LibraryCategory.Offline -> selectedDownloads.isNotEmpty()
+                    else -> selectedTracks.any { it.id in state.favoriteIds }
+                },
+                onClear = { selectedKeys = emptySet() },
+                onPlay = {
+                    selectedTracks.firstOrNull()?.let { viewModel.playFrom(selectedTracks, it) }
+                    selectedKeys = emptySet()
+                },
+                onQueue = {
+                    viewModel.addTracksToQueue(selectedTracks)
+                    selectedKeys = emptySet()
+                },
+                onDownload = {
+                    viewModel.exportTracks(selectedTracks, strings.offline)
+                    selectedKeys = emptySet()
+                },
+                onAddToPlaylist = { addToPlaylistTracks = selectedTracks },
+                onDelete = { confirmDelete = true },
+                canQueueTracks = selectedTracks.isNotEmpty() && (
+                    !state.jam.isActive ||
+                        state.jam.canAddTracks && (selectedTracks.size == 1 || state.jam.supportsBatchAddTracks)
+                    )
+            )
+        }
+
+        if (category == LibraryCategory.Playlists && !selectionActive && (state.playlists.isNotEmpty() || query.isNotBlank() || showHiddenPlaylists || selectedTagIds.isNotEmpty())) {
+            FloatingActionButton(
+                onClick = { viewModel.openPlaylistStudio() },
+                containerColor = LevyraCyan,
+                contentColor = Color.Black,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .navigationBarsPadding()
+                    .padding(end = 18.dp, bottom = if (state.currentTrack != null) 168.dp else 92.dp)
+            ) {
+                Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = strings.newPlaylist)
+            }
+        }
+
+        openSmartCollectionName?.let { collectionId ->
+            SmartCollectionDetail(
+                collectionId = collectionId,
+                state = state,
+                tracks = when (collectionId) {
+                    SMART_COLLECTION_RECENT -> catalog.recent
+                    SMART_COLLECTION_MOST_PLAYED -> catalog.mostPlayed
+                    else -> state.favorites
+                },
+                viewModel = viewModel,
+                onClose = { openSmartCollectionName = null }
+            )
+        }
+    }
+
+    localTagEditorTarget?.let { target ->
+        val targetArtwork = remember(target) { target.toLocalTrack().thumbnailUrl }
+        LocalTagEditorSheet(
+            media = target,
+            artworkModel = targetArtwork,
+            embeddedLyrics = localTagEditorLyrics,
+            saving = localTagEditorSaving,
+            error = localTagEditorError,
+            onDismiss = {
+                if (!localTagEditorSaving) {
+                    localTagEditorTarget = null
+                    localTagEditorError = null
+                    localTagEditorLyrics = null
+                    pendingLocalTagWrite = null
+                }
+            },
+            onSave = { edits ->
+                localTagEditorSaving = true
+                localTagEditorError = null
+                viewModel.saveLocalAudioTags(target.identityKey, edits) { result ->
+                    handleTagWriteResult(
+                        target = target,
+                        edits = edits,
+                        result = result,
+                        allowPermissionRequest = true,
+                        permissionLauncher = { sender ->
+                            localTagWritePermissionLauncher.launch(
+                                IntentSenderRequest.Builder(sender).build()
+                            )
+                        }
+                    )
+                }
+            }
+        )
+    }
+
+    if (addToPlaylistTracks.isNotEmpty()) {
+        AddTracksToPlaylistDialog(
+            tracks = addToPlaylistTracks,
+            playlists = state.playlists,
+            onDismiss = { addToPlaylistTracks = emptyList() },
+            onAdd = { playlistId ->
+                viewModel.addTracksToPlaylist(playlistId, addToPlaylistTracks)
+                addToPlaylistTracks = emptyList()
+                selectedKeys = emptySet()
+            },
+            onCreate = { name ->
+                viewModel.createPlaylistWithTracks(name, addToPlaylistTracks)
+                addToPlaylistTracks = emptyList()
+                selectedKeys = emptySet()
+            }
+        )
+    }
+
+    pendingDownloadDelete?.let { download ->
+        AlertDialog(
+            onDismissRequest = { pendingDownloadDelete = null },
+            title = { Text(strings.deleteDownload) },
+            text = { Text(download.title) },
+            confirmButton = {
+                TextButton(onClick = {
+                    deleteOfflineDownloads(listOf(download))
+                    selectedKeys = selectedKeys - "download:${download.id}"
+                    pendingDownloadDelete = null
+                }) { Text(strings.delete) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDownloadDelete = null }) { Text(strings.cancel) }
+            }
+        )
+    }
+
+    if (confirmDelete) {
+        val targetCount = when (category) {
+            LibraryCategory.Playlists -> selectedPlaylists.size
+            LibraryCategory.Offline -> selectedDownloads.size
+            else -> selectedTracks.size
+        }
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text(strings.check) },
+            text = { Text("${category.libraryLabel(strings)} · $targetCount") },
+            confirmButton = {
+                TextButton(onClick = {
+                    when (category) {
+                        LibraryCategory.Playlists -> viewModel.deletePlaylists(selectedPlaylists.map { it.id })
+                        LibraryCategory.Offline -> deleteOfflineDownloads(selectedDownloads)
+                        else -> viewModel.removeFavorites(selectedTracks)
+                    }
+                    selectedKeys = emptySet()
+                    confirmDelete = false
+                }) { Text(strings.delete) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDelete = false }) { Text(strings.cancel) }
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun LevyraPlaylistDetailScreen(
+    viewModel: LevyraViewModel,
+    state: LevyraUiState
+) {
+    val playlist = state.openPlaylist ?: return
+    val strings = LocalLevyraStrings.current
+    val playlistProCopy = strings.playlistProCopy()
+    var query by rememberSaveable(playlist.id) { mutableStateOf("") }
+    var searchActive by rememberSaveable(playlist.id) { mutableStateOf(false) }
+    var selectedKeys by rememberSaveable(playlist.id, stateSaver = playlistSelectionSaver) {
+        mutableStateOf(emptySet<String>())
+    }
+    var selectionMode by rememberSaveable(playlist.id) { mutableStateOf(false) }
+    var reorderMode by rememberSaveable(playlist.id) { mutableStateOf(false) }
+    var orderedTracks by remember(playlist.id) { mutableStateOf(playlist.tracks) }
+    var renameDialog by remember { mutableStateOf(false) }
+    var tagEditorOpen by remember(playlist.id) { mutableStateOf(false) }
+    var tracksToRemove by remember(playlist.id) { mutableStateOf<List<Track>>(emptyList()) }
+    var addTracksDialog by remember { mutableStateOf(false) }
+    var changeMatchTrack by remember(playlist.id) { mutableStateOf<Track?>(null) }
+    var coverSource by remember(playlist.id) { mutableStateOf<android.net.Uri?>(null) }
+    val coverPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) coverSource = uri
+    }
+    val playlistListState = rememberLazyListState()
+    val haptics = LocalLevyraHaptics.current
+    var draggedEntryKey by remember(playlist.id) { mutableStateOf<String?>(null) }
+    var dragOffsetY by remember(playlist.id) { mutableStateOf(0f) }
+
+    PlaylistDragFrameLoop(
+        activeEntryKey = draggedEntryKey,
+        listState = playlistListState,
+        snapshotProvider = {
+            draggedEntryKey?.let { entryKey ->
+                PlaylistDragSnapshot(entryKey, orderedTracks, dragOffsetY)
+            }
+        },
+        actions = PlaylistDragFrameActions(
+            onMove = { fromIndex, toIndex, offsetAdjustment ->
+                orderedTracks = orderedTracks.move(fromIndex, toIndex)
+                dragOffsetY += offsetAdjustment
+                haptics.perform(LevyraHapticAction.Reorder)
+            },
+            onScrollConsumed = { consumedScroll ->
+                dragOffsetY += consumedScroll
+            }
+        )
+    )
+
+    LaunchedEffect(playlist.tracks, reorderMode) {
+        if (!reorderMode) {
+            orderedTracks = playlist.tracks
+            draggedEntryKey = null
+            dragOffsetY = 0f
+        }
+    }
+
+    val searchIndex = remember(orderedTracks) { buildPlaylistSearchIndex(orderedTracks) }
+    val visibleTracks = remember(orderedTracks, query, searchIndex) {
+        filterPlaylistTracks(orderedTracks, query, searchIndex)
+    }
+    val selectedTracks = remember(orderedTracks, selectedKeys) {
+        selectedPlaylistTracks(orderedTracks, selectedKeys)
+    }
+    val selectionActive = selectionMode
+
+    LaunchedEffect(orderedTracks) {
+        val available = selectAllPlaylistTrackKeys(orderedTracks)
+        selectedKeys = selectedKeys.intersect(available)
+    }
+
+    val closeOrExitMode: () -> Unit = {
+        if (selectionMode) {
+            selectedKeys = clearPlaylistTrackSelection()
+            selectionMode = false
+        } else if (reorderMode) {
+            reorderMode = false
+            orderedTracks = playlist.tracks
+        } else if (searchActive) {
+            query = ""
+            searchActive = false
+        } else {
+            viewModel.closePlaylist()
+        }
+    }
+
+    BackHandler { closeOrExitMode() }
+
+    val heroArtworkUrl = remember(playlist.coverMode, playlist.coverUrl, playlist.tracks) {
+        playlistHeroArtworkUrl(playlist)
+    }
+    val paletteKey = remember(playlist.id, heroArtworkUrl) {
+        if (heroArtworkUrl.isBlank()) {
+            ""
+        } else {
+            ArtworkPaletteCache.key(
+                trackId = "user-playlist:${playlist.id}",
+                thumbnailUrl = heroArtworkUrl,
+                largeThumbnailUrl = heroArtworkUrl
+            )
+        }
+    }
+    val fallbackPalette = remember {
+        ArtworkPalette(AlbumNeutralPaletteStart.toArgb(), AlbumNeutralPaletteEnd.toArgb())
+    }
+    val palette by rememberArtworkPalette(paletteKey, heroArtworkUrl, fallbackPalette)
+    val lightTheme = LevyraActivePalette.isLight
+    val targetColors = remember(palette, lightTheme) {
+        immersiveMediaColors(Color(palette.start), Color(palette.end), lightTheme)
+    }
+    val colors = animatedImmersiveMediaColors(targetColors, animated = state.animationsEnabled, labelPrefix = "user-playlist")
+    val totalDurationMs = remember(orderedTracks) { orderedTracks.sumOf { it.durationMs.coerceAtLeast(0L) } }
+    val heroMetadata = remember(playlist.size, totalDurationMs, strings) {
+        listOf(
+            strings.formatTrackCount(playlist.size),
+            if (totalDurationMs > 0L) strings.formatLibraryDuration(totalDurationMs) else ""
+        )
+            .filter { it.isNotBlank() }
+            .joinToString(" · ")
+    }
+
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colors.base)
+            .windowInsetsPadding(LevyraHorizontalSafeInsets)
+    ) {
+        val wide = resolvePlayerPane(maxWidth.value, maxHeight.value) == LevyraPlayerPane.SideBySide
+        val topBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
+        val heroHeight = immersiveHeroHeight(wide, maxWidth, maxHeight, topBarHeight)
+        val gutter = immersiveMediaGutter(maxWidth)
+        val collapseThreshold = with(LocalDensity.current) { (heroHeight - topBarHeight).coerceAtLeast(0.dp).toPx() }
+        val collapsedState = remember(playlistListState, collapseThreshold) {
+            derivedStateOf {
+                reorderMode ||
+                    playlistListState.firstVisibleItemIndex > 0 ||
+                    playlistListState.firstVisibleItemScrollOffset > collapseThreshold
+            }
+        }
+
+        ArtworkBackdropWash(
+            artworkUrl = heroArtworkUrl,
+            tint = colors.fieldTop,
+            base = colors.base,
+            modifier = Modifier.fillMaxSize()
+        )
+        LazyColumn(
+            state = playlistListState,
+            modifier = Modifier.fillMaxSize().then(if (searchActive) Modifier.imePadding() else Modifier),
+            contentPadding = PaddingValues(
+                bottom = if (state.currentTrack != null || selectionActive) 220.dp else 110.dp
+            )
+        ) {
+            if (reorderMode) {
+                item(key = "playlist-detail-reorder-hint") {
+                    Text(
+                        text = strings.dragToReorder,
+                        color = colors.contentMuted,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(start = gutter, end = gutter, top = topBarHeight + 8.dp, bottom = 12.dp)
+                    )
+                }
+            } else {
+                item(key = "playlist-detail-header", contentType = "playlist-detail-hero") {
+                    ImmersiveMediaHero(
+                        title = playlist.name,
+                        overline = strings.speedDialCopy().playlist,
+                        subtitle = "",
+                        metadata = heroMetadata,
+                        colors = colors,
+                        wide = wide,
+                        viewportWidth = maxWidth,
+                        viewportHeight = maxHeight,
+                        topBarHeight = topBarHeight,
+                        onSubtitleClick = null,
+                        actions = {
+                            ImmersiveMediaActionRow(
+                                primary = ImmersiveMediaPrimaryAction(
+                                    enabled = orderedTracks.isNotEmpty(),
+                                    label = strings.play,
+                                    contentDescription = strings.playAll,
+                                    icon = Icons.Rounded.PlayArrow,
+                                    onClick = { viewModel.playPlaylist(playlist.id) }
+                                ),
+                                shuffleLabel = strings.shuffle,
+                                downloadLabel = strings.downloadPlaylist,
+                                colors = colors,
+                                shuffleEnabled = orderedTracks.size > 1,
+                                downloadEnabled = orderedTracks.isNotEmpty(),
+                                onShuffle = {
+                                    val shuffled = orderedTracks.shuffled()
+                                    shuffled.firstOrNull()?.let { first -> viewModel.playFrom(shuffled, first) }
+                                },
+                                onDownload = { viewModel.exportTracks(orderedTracks, strings.offline) }
+                            )
+                        },
+                        artwork = {
+                            PlaylistCoverArt(
+                                coverMode = playlist.coverMode,
+                                coverUrl = playlist.coverUrl,
+                                tracks = playlist.tracks,
+                                contentDescription = playlist.name,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    )
+                }
+                if (playlist.tags.isNotEmpty()) {
+                    item(key = "playlist-detail-organization") {
+                        PlaylistTagsLine(
+                            playlist = playlist,
+                            contentColor = colors.content,
+                            onEditTags = { tagEditorOpen = true },
+                            modifier = Modifier.padding(start = gutter, end = gutter, bottom = 8.dp)
+                        )
+                    }
+                }
+                item(key = "playlist-detail-search") {
+                    AnimatedVisibility(visible = searchActive, enter = fadeIn(), exit = fadeOut()) {
+                        OutlinedTextField(
+                            value = query,
+                            onValueChange = { query = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = gutter, end = gutter, bottom = 8.dp),
+                            singleLine = true,
+                            shape = RoundedCornerShape(LevyraCardDesign.EditorialCorner),
+                            placeholder = { Text(strings.searchPlaceholder) },
+                            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                            trailingIcon = if (query.isNotBlank()) {
+                                { IconButton(onClick = { query = "" }) { Icon(Icons.Rounded.Close, contentDescription = strings.clear) } }
+                            } else null
+                        )
+                    }
+                }
+            }
+
+            val rowPadding = Modifier.padding(horizontal = gutter - LevyraCardDesign.RowHorizontalPadding)
+            if (orderedTracks.isEmpty()) {
+                item {
+                    Box(modifier = Modifier.padding(horizontal = gutter)) {
+                        LibraryEmpty(Icons.AutoMirrored.Rounded.QueueMusic, strings.playlistEmpty)
+                    }
+                }
+            } else if (reorderMode) {
+                items(orderedTracks, key = { "reorder-${it.id}" }) { track ->
+                    val entryKey = track.id
+                    val index = orderedTracks.indexOfFirst { it.id == entryKey }
+                    if (index < 0) return@items
+                    val isDragging = draggedEntryKey == entryKey
+                    PlaylistReorderRow(
+                        track = track,
+                        state = PlaylistReorderRowState(
+                            index = index,
+                            count = orderedTracks.size,
+                            isDragging = isDragging,
+                            dragOffsetY = if (isDragging) dragOffsetY else 0f
+                        ),
+                        actions = PlaylistReorderRowActions(
+                            onMoveUp = {
+                                if (index > 0) {
+                                    orderedTracks = orderedTracks.move(index, index - 1)
+                                    haptics.perform(LevyraHapticAction.Reorder)
+                                }
+                            },
+                            onMoveDown = {
+                                if (index in 0 until orderedTracks.lastIndex) {
+                                    orderedTracks = orderedTracks.move(index, index + 1)
+                                    haptics.perform(LevyraHapticAction.Reorder)
+                                }
+                            },
+                            onDragStart = {
+                                draggedEntryKey = entryKey
+                                dragOffsetY = 0f
+                            },
+                            onDrag = drag@{ deltaY ->
+                                if (draggedEntryKey != entryKey) return@drag
+                                dragOffsetY += deltaY
+                            },
+                            onDragEnd = {
+                                draggedEntryKey = null
+                                dragOffsetY = 0f
+                            }
+                        ),
+                        modifier = Modifier
+                            .animateItem()
+                            .padding(horizontal = gutter, vertical = 4.dp)
+                    )
+                }
+            } else if (visibleTracks.isEmpty()) {
+                item(key = "playlist-search-empty") {
+                    Box(modifier = Modifier.padding(horizontal = gutter)) {
+                        LibraryEmpty(Icons.Rounded.Search, playlistProCopy.noSearchResults)
+                    }
+                }
+            } else {
+                items(visibleTracks, key = { "playlist-track-${playlistEntryKey(it)}" }) { track ->
+                    val key = playlistEntryKey(track)
+                    LibraryTrackRow(
+                        track = track,
+                        selected = key in selectedKeys,
+                        selectionActive = selectionActive,
+                        isCurrent = track.id == state.currentTrack?.id,
+                        isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                        isFavorite = track.id in state.favoriteIds,
+                        isDownloaded = libraryDownloadForTrack(track, state.downloads) != null,
+                        downloadProgress = downloadProgressFor(track, state),
+                        onClick = {
+                            if (selectionActive) selectedKeys = togglePlaylistTrackSelection(selectedKeys, key)
+                            else viewModel.playPlaylist(playlist.id, track.id)
+                        },
+                        onLongClick = {
+                            selectionMode = true
+                            selectedKeys = togglePlaylistTrackSelection(selectedKeys, key)
+                        },
+                        onFavorite = { viewModel.toggleFavorite(track) },
+                        onDownload = { viewModel.exportTrack(track) },
+                        onRemoveFromPlaylist = { tracksToRemove = listOf(track) },
+                        onChangeMatch = { changeMatchTrack = track },
+                        modifier = rowPadding
+                    )
+                }
+            }
+        }
+
+        ImmersiveMediaTopBar(
+            title = playlist.name,
+            colors = colors,
+            collapsedState = collapsedState,
+            height = topBarHeight,
+            animated = state.animationsEnabled,
+            backLabel = strings.back,
+            onBack = closeOrExitMode,
+            actions = {
+                PlaylistDetailTopActions(
+                    playlist = playlist,
+                    reorderMode = reorderMode,
+                    searchActive = searchActive,
+                    menuBackground = colors.fieldTop,
+                    onToggleSearch = {
+                        searchActive = !searchActive
+                        if (!searchActive) query = ""
+                    },
+                    onSaveOrder = {
+                        viewModel.reorderPlaylist(playlist.id, orderedTracks)
+                        reorderMode = false
+                    },
+                    onRename = { renameDialog = true },
+                    onReorder = {
+                        reorderMode = !reorderMode
+                        orderedTracks = playlist.tracks
+                        selectedKeys = emptySet()
+                        selectionMode = false
+                        searchActive = false
+                        query = ""
+                    },
+                    onChangeCover = {
+                        coverPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    },
+                    onResetCover = { viewModel.resetPlaylistCover(playlist.id) },
+                    onOpenStudio = { viewModel.openPlaylistStudio(playlist.id) },
+                    onEditTags = { tagEditorOpen = true },
+                    onToggleHidden = { viewModel.setPlaylistHidden(playlist.id, !playlist.hidden) },
+                    isPinnedToHome = SpeedDial.playlistKey(playlist.id)?.let { key -> state.speedDialPins.any { it.key == key } } == true,
+                    homePinsFull = state.speedDialPins.size >= SpeedDial.MAX_PINS,
+                    onTogglePinToHome = { viewModel.toggleSpeedDialPlaylist(playlist) }
+                )
+            }
+        )
+
+        if (selectionActive) {
+            LibrarySelectionBar(
+                count = selectedKeys.size,
+                canOperateTracks = selectedTracks.isNotEmpty(),
+                canDelete = selectedTracks.isNotEmpty(),
+                onClear = {
+                    selectedKeys = clearPlaylistTrackSelection()
+                    selectionMode = false
+                },
+                onPlay = {
+                    viewModel.playTracksNext(selectedTracks)
+                    selectedKeys = clearPlaylistTrackSelection()
+                    selectionMode = false
+                },
+                onQueue = {
+                    viewModel.addTracksToQueue(selectedTracks)
+                    selectedKeys = clearPlaylistTrackSelection()
+                    selectionMode = false
+                },
+                onDownload = {
+                    viewModel.exportTracks(selectedTracks, strings.offline)
+                    selectedKeys = clearPlaylistTrackSelection()
+                    selectionMode = false
+                },
+                onAddToPlaylist = { addTracksDialog = true },
+                onDelete = { tracksToRemove = selectedTracks },
+                deleteLabel = strings.remove,
+                onSelectAll = { selectedKeys = selectPlaylistTracks(selectedKeys, visibleTracks) },
+                allSelected = areAllPlaylistTracksSelected(visibleTracks, selectedKeys),
+                primaryLabel = strings.playNext,
+                canPlayTracks = selectedTracks.isNotEmpty() && (!state.jam.isActive || state.jam.isHost),
+                canQueueTracks = selectedTracks.isNotEmpty() && (
+                    !state.jam.isActive ||
+                        state.jam.canAddTracks && (selectedTracks.size == 1 || state.jam.supportsBatchAddTracks)
+                    ),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(start = 12.dp, end = 12.dp, bottom = if (state.currentTrack != null) 82.dp else 12.dp)
+            )
+        } else if (state.currentTrack != null) {
+            LibraryNowPlayingDock(
+                track = state.currentTrack,
+                isPlaying = state.isPlaying,
+                onToggle = viewModel::togglePlay,
+                onOpen = viewModel::openPlayerScreen,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(14.dp)
+            )
+        }
+    }
+
+    changeMatchTrack?.let { target ->
+        com.luc4n3x.levyra.ui.playlistimport.PlaylistChangeMatchSheet(
+            track = target,
+            onSearch = { query, origin, onResult -> viewModel.searchPlaylistReplacements(target, query, origin, onResult) },
+            onReplace = { replacement ->
+                viewModel.replacePlaylistTrack(playlist.id, target.id, replacement)
+                changeMatchTrack = null
+            },
+            onDismiss = { changeMatchTrack = null }
+        )
+    }
+
+    if (tagEditorOpen) {
+        val assignedTagIds = remember(playlist.tags) { playlist.tags.mapTo(hashSetOf()) { it.id } }
+        PlaylistTagEditorDialog(
+            assignedTagIds = assignedTagIds,
+            tags = state.playlistTags,
+            onDismiss = { tagEditorOpen = false },
+            onToggleTag = { tagId ->
+                val next = if (tagId in assignedTagIds) {
+                    playlist.tags.map { it.id }.filterNot { it == tagId }
+                } else {
+                    playlist.tags.map { it.id } + tagId
+                }
+                viewModel.setPlaylistTags(playlist.id, next)
+            },
+            onCreateTag = { name -> viewModel.createPlaylistTag(name, playlist.id) },
+            onRenameTag = { tagId, name -> viewModel.renamePlaylistTag(tagId, name) },
+            onDeleteTag = { tagId -> viewModel.deletePlaylistTag(tagId) }
+        )
+    }
+
+    if (renameDialog) {
+        LibraryNameDialog(
+            title = strings.playlistName,
+            initialValue = playlist.name,
+            confirmLabel = strings.save,
+            onDismiss = { renameDialog = false },
+            onConfirm = { name ->
+                viewModel.renamePlaylist(playlist.id, name)
+                renameDialog = false
+            }
+        )
+    }
+
+    if (addTracksDialog && selectedTracks.isNotEmpty()) {
+        AddTracksToPlaylistDialog(
+            tracks = selectedTracks,
+            playlists = state.playlists,
+            onDismiss = { addTracksDialog = false },
+            onAdd = { playlistId ->
+                viewModel.addTracksToPlaylist(playlistId, selectedTracks)
+                selectedKeys = clearPlaylistTrackSelection()
+                selectionMode = false
+                addTracksDialog = false
+            },
+            onCreate = { name ->
+                viewModel.createPlaylistWithTracks(name, selectedTracks)
+                selectedKeys = clearPlaylistTrackSelection()
+                selectionMode = false
+                addTracksDialog = false
+            }
+        )
+    }
+
+    if (tracksToRemove.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = { tracksToRemove = emptyList() },
+            title = { Text(strings.removeFromPlaylist) },
+            text = { Text(strings.formatTrackCount(tracksToRemove.size)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.removeTracksFromPlaylist(playlist.id, tracksToRemove)
+                    selectedKeys = clearPlaylistTrackSelection()
+                    selectionMode = false
+                    tracksToRemove = emptyList()
+                }) { Text(strings.remove) }
+            },
+            dismissButton = {
+                TextButton(onClick = { tracksToRemove = emptyList() }) { Text(strings.cancel) }
+            }
+        )
+    }
+
+    coverSource?.let { source ->
+        PlaylistCoverCropDialog(
+            source = source,
+            onDismiss = { coverSource = null },
+            onConfirm = { crop ->
+                viewModel.setPlaylistCover(playlist.id, source, crop)
+                coverSource = null
+            }
+        )
+    }
+}

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Minipleier, kiirlemmikud, igapäevane voog, võrguühenduseta režiim ja laulusõnad</string>
+    <string name="widget_idle_subtitle">Kuulamiseks klõpsa</string>
+    <string name="widget_toggle">Esita/Peata esitus</string>
+    <string name="widget_next">Järgmine</string>
+    <string name="widget_previous">Eelmine</string>
+    <string name="widget_favorites">Lemmikud</string>
+    <string name="widget_flow">Igapäevane voog</string>
+    <string name="widget_offline">Võrguühenduseta miks</string>
+    <string name="widget_lyrics">Laulusõnad</string>
+    <string name="radar_channel_name">Uute lugude radar</string>
+    <string name="radar_channel_description">Uued väljaanded esitajatelt, keda jälgid</string>
+    <string name="radar_new_release_title">Uus väljaanne esitajalt %1$s</string>
+    <string name="automatic_backups">Automaatne varundus</string>
+    <string name="car_home">Avaleht</string>
+    <string name="car_downloads">Allalaadimised</string>
+    <string name="car_favorites">Lemmikud</string>
+    <string name="car_playlists">Esitusloendid</string>
+    <string name="car_no_content">Sisu puudub</string>
+    <string name="car_content_unavailable">Sisu pole saadaval</string>
+    <string name="car_search_tracks">Otsi lugusid</string>
+    <string name="car_no_results">Tulemusi pole</string>
+    <string name="car_connecting_player">Ühendamisel pleieriga</string>
+    <string name="car_now_playing">Hetkel esitamisel</string>
+    <string name="car_queue">Esitusjärjekord</string>
+    <string name="notification_favorite_add">Lisa lemmikutesse</string>
+    <string name="notification_favorite_remove">Eemalda lemmikutest</string>
+    <string name="notification_shuffle_enable">Lülita juhuesitus sisse</string>
+    <string name="notification_shuffle_disable">Lülita juhuesitus välja</string>
+    <string name="notification_repeat_off">Kordus väljas</string>
+    <string name="notification_repeat_all">Korda kõiki</string>
+    <string name="notification_repeat_one">Korda ühte</string>
+    <string name="tile_recognize_music">Tuvasta muusika</string>
+    <string name="tile_playback">Taasesitus</string>
+    <string name="shortcut_search">Otsi</string>
+    <string name="shortcut_library">Muusikakogu</string>
+    <string name="shortcut_recognition">Tuvasta muusika</string>
+    <string name="shortcut_resume">Jätka esitust</string>
+</resources>

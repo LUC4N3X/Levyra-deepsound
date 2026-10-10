@@ -1,0 +1,239 @@
+[CmdletBinding()]
+param(
+    [switch] $DryRun,
+    [switch] $InstallRtk,
+    [switch] $Plugins,
+    [switch] $ClaudeMem,
+    [switch] $SkipHooks,
+    [switch] $SkipMattSkills
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+$repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$pluginManifest = Join-Path $repoRoot '.agents/config/codex-plugins.txt'
+$rtkGitRevision = 'b34be37caf3796b69a50952a28e60e32b5daad43'
+$mattSkillSource = 'mattpocock/skills'
+$mattSkills = @(
+    'setup-matt-pocock-skills',
+    'grill-with-docs',
+    'wayfinder',
+    'to-spec',
+    'to-tickets',
+    'implement',
+    'tdd',
+    'diagnosing-bugs',
+    'code-review',
+    'domain-modeling'
+)
+
+function Test-Command {
+    param([Parameter(Mandatory)][string] $Name)
+    return [bool](Get-Command $Name -ErrorAction SilentlyContinue)
+}
+
+function Test-RtkTokenKiller {
+    if (-not (Test-Command 'rtk')) {
+        return $false
+    }
+
+    $global:LASTEXITCODE = 0
+    & rtk gain *> $null
+    return $LASTEXITCODE -eq 0
+}
+
+function Invoke-SetupCommand {
+    param(
+        [Parameter(Mandatory)][string] $Label,
+        [Parameter(Mandatory)][scriptblock] $Command
+    )
+
+    if ($DryRun) {
+        Write-Output "[dry-run] $Label"
+        return
+    }
+
+    Write-Output "[run] $Label"
+    $global:LASTEXITCODE = 0
+    & $Command
+    if ($LASTEXITCODE -ne 0) {
+        throw "$Label failed with exit code $LASTEXITCODE"
+    }
+}
+
+Write-Output "Levyra AI efficiency setup"
+Write-Output "Repository: $repoRoot"
+
+if ($ClaudeMem) {
+    $claudeMemSetup = Join-Path $PSScriptRoot 'setup-claude-mem.ps1'
+    if (-not (Test-Path -LiteralPath $claudeMemSetup -PathType Leaf)) {
+        Write-Warning "claude-mem setup script not found: $claudeMemSetup"
+    }
+    else {
+        try {
+            if ($DryRun) {
+                & $claudeMemSetup -DryRun
+            }
+            else {
+                & $claudeMemSetup
+            }
+        }
+        catch {
+            Write-Warning "claude-mem setup did not complete: $($_.Exception.Message)"
+            Write-Warning 'Continuing Levyra AI setup without persistent memory.'
+        }
+    }
+}
+
+if (-not (Test-RtkTokenKiller)) {
+    if (-not $InstallRtk) {
+        Write-Warning 'The official RTK Token Killer is missing. Re-run with -InstallRtk to install the pinned build through Cargo.'
+    }
+    elseif (-not (Test-Command 'cargo')) {
+        throw 'Cargo is required for -InstallRtk. Install Rust/Cargo or install the official RTK Windows release manually.'
+    }
+    else {
+        Invoke-SetupCommand 'Install RTK from rtk-ai/rtk' {
+            cargo install --git https://github.com/rtk-ai/rtk --rev $rtkGitRevision --force
+        }
+    }
+}
+
+if (Test-RtkTokenKiller) {
+    Invoke-SetupCommand 'Verify RTK' { rtk --version }
+    Invoke-SetupCommand 'Verify RTK Token Killer commands' { rtk gain }
+
+    if (-not $SkipHooks) {
+        if (Test-Command 'codex') {
+            Invoke-SetupCommand 'Install global RTK instructions for Codex' {
+                rtk init -g --codex
+            }
+        }
+        else {
+            Write-Output '[skip] Codex command not detected'
+        }
+
+        if (Test-Command 'claude') {
+            Invoke-SetupCommand 'Configure the global RTK hook for Claude Code' {
+                rtk init -g
+            }
+        }
+        else {
+            Write-Output '[skip] Claude Code command not detected'
+        }
+
+        if (Test-Command 'opencode') {
+            Invoke-SetupCommand 'Configure the global RTK integration for OpenCode' {
+                rtk init -g --opencode
+            }
+        }
+        else {
+            Write-Output '[skip] OpenCode command not detected'
+        }
+
+        Invoke-SetupCommand 'Configure the repository-local RTK integration for Antigravity' {
+            Push-Location $repoRoot
+            try {
+                rtk init --agent antigravity
+            }
+            finally {
+                Pop-Location
+            }
+        }
+    }
+
+    Invoke-SetupCommand 'Show the active RTK configuration' { rtk init --show }
+}
+
+if (-not $SkipMattSkills) {
+    if (-not (Test-Command 'codex')) {
+        Write-Output '[skip] Codex command not detected; Matt Pocock Codex skills were not installed'
+    }
+    elseif (-not (Test-Command 'npx')) {
+        Write-Warning 'Codex is installed but npx is unavailable. Matt Pocock skills bootstrap is blocked; install Node.js/npm or re-run with -SkipMattSkills.'
+    }
+    else {
+        Invoke-SetupCommand 'Install focused Matt Pocock engineering skills for Codex' {
+            $skillArgs = @('skills@latest', 'add', $mattSkillSource, '-g', '-a', 'codex', '-y')
+            foreach ($skill in $mattSkills) {
+                $skillArgs += @('-s', $skill)
+            }
+            & npx @skillArgs
+        }
+    }
+}
+
+if ($Plugins) {
+    if (-not (Test-Path -LiteralPath $pluginManifest -PathType Leaf)) {
+        throw "Plugin manifest not found: $pluginManifest"
+    }
+    if (-not (Test-Command 'codex')) {
+        throw 'Codex is required when using -Plugins.'
+    }
+
+    Get-Content -LiteralPath $pluginManifest |
+        ForEach-Object {
+            $plugin = $_.Trim()
+            if ($plugin -and -not $plugin.StartsWith('#')) {
+                Invoke-SetupCommand "Install Codex plugin $plugin" {
+                    codex plugin add $plugin
+                }
+            }
+        }
+}
+
+$pythonCommand = if (Test-Command 'python3') {
+    'python3'
+}
+elseif (Test-Command 'python') {
+    'python'
+}
+elseif (Test-Command 'py') {
+    'py'
+}
+else {
+    $null
+}
+
+if (-not $pythonCommand) {
+    throw 'Validation blocked: Python is required to materialize and verify Levyra agent runtime configuration.'
+}
+
+Invoke-SetupCommand 'Refresh Claude Code and Codex native runtime projections from .agents' {
+    Push-Location $repoRoot
+    try {
+        & $pythonCommand scripts/sync_agent_runtime.py --runtime all --quiet
+    }
+    finally {
+        Pop-Location
+    }
+}
+
+foreach ($validationScript in @(
+    'scripts/validate_agent_config.py',
+    'scripts/validate_ai_efficiency.py',
+    'scripts/validate_matt_skills.py',
+    'scripts/validate_claude_mem.py'
+)) {
+    Invoke-SetupCommand "Validate with $validationScript" {
+        Push-Location $repoRoot
+        try {
+            & $pythonCommand $validationScript
+        }
+        finally {
+            Pop-Location
+        }
+    }
+}
+
+Write-Output ''
+Write-Output 'Setup complete.'
+Write-Output 'The tracked source of truth is .agents/. Native .claude/ and .codex/ directories are generated locally, ignored by Git, and refreshed from .agents.'
+Write-Output 'Restart each detected coding agent or start a new conversation so newly projected settings, hooks, rules, and skills are loaded.'
+Write-Output 'Claude Code discovers Levyra skills from the generated .claude/skills projection of canonical .agents/skills.'
+Write-Output 'Codex discovers canonical .agents/skills directly; its generated .codex projection supplies project config and hooks.'
+Write-Output 'Use -ClaudeMem once when you explicitly want the pinned claude-mem integration for detected Claude Code, Codex CLI, and Antigravity runtimes.'
+Write-Output 'ChatGPT uses claude-mem only when a compatible MCP app is connected; see docs/ai/CLAUDE_MEM.md.'
+Write-Output 'Antigravity and ChatGPT use the repository-native levyra-real-engineering adapter; see docs/ai/MATT_POCOCK_SKILLS.md.'
+Write-Output 'Use `rtk gain` and `rtk discover --all --since 7` to measure real command-output savings.'

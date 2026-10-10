@@ -1,0 +1,298 @@
+package com.luc4n3x.levyra.domain
+
+enum class LevyraCanvasQuality {
+    Auto,
+    DataSaver,
+    High;
+
+    companion object {
+        fun from(value: String): LevyraCanvasQuality =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: Auto
+    }
+}
+
+enum class LevyraCanvasSource {
+    Auto,
+    Community,
+    Apple,
+    Tidal;
+
+    companion object {
+        fun from(value: String): LevyraCanvasSource =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: Auto
+    }
+}
+
+enum class LevyraVisualPerformance {
+    Full,
+    Auto,
+    Smooth;
+
+    companion object {
+        fun from(value: String): LevyraVisualPerformance =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: Full
+    }
+}
+
+enum class LibrarySort {
+    Recent,
+    Title,
+    Artist,
+    Album,
+    Duration;
+
+    val defaultDirection: LibrarySortDirection
+        get() = when (this) {
+            Recent, Duration -> LibrarySortDirection.Descending
+            Title, Artist, Album -> LibrarySortDirection.Ascending
+        }
+
+    companion object {
+        fun from(value: String): LibrarySort =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: Recent
+    }
+}
+
+enum class LibrarySortDirection {
+    Ascending,
+    Descending;
+
+    val inverted: LibrarySortDirection
+        get() = if (this == Ascending) Descending else Ascending
+
+    fun orient(comparison: Int): Int = if (this == Descending) -comparison else comparison
+
+    companion object {
+        fun from(value: String, fallback: LibrarySortDirection): LibrarySortDirection =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: fallback
+    }
+}
+
+enum class PlayerVisualMode {
+    Artwork,
+    CanvasCard,
+    CanvasImmersive,
+    Editorial,
+    Pulse;
+
+    companion object {
+        fun from(value: String): PlayerVisualMode =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) }
+                ?: when (value.trim().lowercase()) {
+                    "canvas_card", "card" -> CanvasCard
+                    "canvas_immersive", "immersive" -> CanvasImmersive
+                    else -> Artwork
+                }
+    }
+}
+
+enum class PlayerBackgroundMode {
+    Dynamic,
+    Blur,
+    Dark,
+    PureBlack;
+
+    companion object {
+        fun from(value: String): PlayerBackgroundMode =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) }
+                ?: when (value.trim().lowercase()) {
+                    "adaptive", "dynamic" -> Dynamic
+                    "blur" -> Blur
+                    "dark" -> Dark
+                    "pure_black", "pureblack", "black" -> PureBlack
+                    else -> Dynamic
+                }
+    }
+}
+
+enum class PlayerDoubleTapAction {
+    Seek,
+    PlayPause,
+    Favorite,
+    Disabled;
+
+    companion object {
+        fun from(value: String): PlayerDoubleTapAction =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: Seek
+    }
+}
+
+enum class PlayerLongPressAction {
+    Speed,
+    Favorite,
+    Queue,
+    Lyrics,
+    Disabled;
+
+    companion object {
+        fun from(value: String): PlayerLongPressAction =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: Speed
+    }
+}
+
+enum class PlayerVerticalSwipeAction {
+    BrightnessAndVolume,
+    Volume,
+    Disabled;
+
+    companion object {
+        fun from(value: String): PlayerVerticalSwipeAction =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: BrightnessAndVolume
+    }
+}
+
+data class LevyraInterfaceSettings(
+    val compactHome: Boolean = false,
+    val showPersonalOrbit: Boolean = true,
+    val showResonance: Boolean = true,
+    val showNewReleases: Boolean = true,
+    val releaseNotificationsEnabled: Boolean = false,
+    val showAlbumsForYou: Boolean = true,
+    val showTrendingArtists: Boolean = true,
+    val showCharts: Boolean = true,
+    val fontPreset: LevyraFontPreset = LevyraFontPreset.Outfit,
+    val playerGesturesEnabled: Boolean = true,
+    val swipeTrackChangeEnabled: Boolean = true,
+    val doubleTapAction: PlayerDoubleTapAction = PlayerDoubleTapAction.Seek,
+    val doubleTapSeekSeconds: Int = 10,
+    val longPressAction: PlayerLongPressAction = PlayerLongPressAction.Speed,
+    val longPressSpeed: Float = 2f,
+    val verticalSwipeAction: PlayerVerticalSwipeAction = PlayerVerticalSwipeAction.BrightnessAndVolume,
+    val canvasQuality: LevyraCanvasQuality = LevyraCanvasQuality.Auto,
+    val canvasSource: LevyraCanvasSource = LevyraCanvasSource.Auto,
+    val visualPerformance: LevyraVisualPerformance = LevyraVisualPerformance.Full,
+    val liquidGlassEnabled: Boolean = true,
+    val motionArtworkWifiOnly: Boolean = false,
+    val enhanceVideoMetadata: Boolean = false,
+    val pureBlack: Boolean = false,
+    val hapticFeedback: Boolean = true,
+    val playerVisualMode: PlayerVisualMode = PlayerVisualMode.CanvasImmersive,
+    val playerBackground: PlayerBackgroundMode = PlayerBackgroundMode.Dynamic,
+    val librarySort: LibrarySort = LibrarySort.Recent,
+    val librarySortDirection: LibrarySortDirection = LibrarySort.Recent.defaultDirection
+) {
+    fun normalized(): LevyraInterfaceSettings = copy(
+        doubleTapSeekSeconds = doubleTapSeekSeconds.coerceIn(5, 30),
+        longPressSpeed = longPressSpeed.coerceIn(1.25f, 3f)
+    )
+}
+
+enum class LevyraDownloadPreset {
+    Automatic,
+    HighQuality,
+    DataSaver;
+
+    companion object {
+        fun from(value: String): LevyraDownloadPreset = entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: Automatic
+    }
+}
+
+enum class LevyraDownloadFolderMode {
+    Flat,
+    Artist,
+    ArtistAlbum;
+
+    companion object {
+        fun from(value: String): LevyraDownloadFolderMode = entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: ArtistAlbum
+    }
+}
+
+data class LevyraDownloadSettings(
+    val wifiOnly: Boolean = false,
+    val chargingOnly: Boolean = false,
+    val resumable: Boolean = true,
+    val maxConcurrentDownloads: Int = 2,
+    val preset: LevyraDownloadPreset = LevyraDownloadPreset.Automatic,
+    val folderMode: LevyraDownloadFolderMode = LevyraDownloadFolderMode.ArtistAlbum,
+    val destinationTreeUri: String = "",
+    val maxRateKbps: Int = 0,
+    val embedMetadata: Boolean = true,
+    val embedArtwork: Boolean = true,
+    val verifyFile: Boolean = true,
+    val skipExisting: Boolean = true
+) {
+    fun normalized(): LevyraDownloadSettings = copy(
+        maxConcurrentDownloads = maxConcurrentDownloads.coerceIn(1, 4),
+        destinationTreeUri = destinationTreeUri.trim(),
+        maxRateKbps = maxRateKbps.takeIf { it in setOf(0, 512, 1024, 2048, 4096, 8192) } ?: 0
+    )
+
+    val effectiveRateKbps: Int
+        get() = maxRateKbps.coerceAtLeast(0)
+
+    val maxParallelFragments: Int
+        get() = when (preset) {
+            LevyraDownloadPreset.HighQuality -> 24
+            LevyraDownloadPreset.Automatic -> 20
+            LevyraDownloadPreset.DataSaver -> 16
+        }
+
+    val resolverAudioQuality: String?
+        get() = when (preset) {
+            LevyraDownloadPreset.HighQuality -> "High"
+            LevyraDownloadPreset.DataSaver -> "Low"
+            LevyraDownloadPreset.Automatic -> null
+        }
+
+    val storedPresetKey: String
+        get() = preset.name
+
+    fun storedQualityKey(automaticQuality: String = "Auto"): String {
+        return resolverAudioQuality ?: automaticQuality.trim().ifBlank { "Auto" }
+    }
+}
+
+enum class LevyraBackupFrequency(val intervalDays: Long) {
+    Daily(1L),
+    Weekly(7L),
+    Monthly(30L);
+
+    companion object {
+        fun from(value: String): LevyraBackupFrequency = entries.firstOrNull {
+            it.name.equals(value, ignoreCase = true)
+        } ?: Weekly
+    }
+}
+
+data class LevyraBackupSettings(
+    val enabled: Boolean = false,
+    val frequency: LevyraBackupFrequency = LevyraBackupFrequency.Weekly,
+    val retentionCount: Int = 5,
+    val chargingOnly: Boolean = true,
+    val preUpdate: Boolean = true
+) {
+    fun normalized(): LevyraBackupSettings = copy(retentionCount = retentionCount.coerceIn(1, 12))
+}
+
+enum class LevyraVaultStatus { Idle, Running, Completed, Error }
+
+internal fun LevyraDownloadSettings.shouldSkipExistingDownload(
+    trackId: String,
+    downloadedTrackIds: Set<String>
+): Boolean {
+    return skipExisting && trackId.isNotBlank() && trackId in downloadedTrackIds
+}
+
+data class LevyraIntelligenceSummary(
+    val overview: String = "",
+    val mood: String = "",
+    val themes: List<String> = emptyList(),
+    val repeatedPhrases: List<String> = emptyList(),
+    val lexicalDensity: Int = 0,
+    val lineCount: Int = 0,
+    val wordCount: Int = 0,
+    val localOnly: Boolean = true
+) {
+    val available: Boolean
+        get() = overview.isNotBlank() || themes.isNotEmpty() || repeatedPhrases.isNotEmpty()
+}
+
+data class OfflineDownloadTask(
+    val taskKey: String,
+    val trackId: String,
+    val title: String,
+    val artist: String,
+    val state: String,
+    val progress: Int,
+    val error: String
+)

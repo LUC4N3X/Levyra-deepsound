@@ -1,0 +1,886 @@
+{
+ "total": 63,
+ "start": 1,
+ "results": [
+  {
+   "id": "tvxo4Jm0",
+   "title": "Save Your Tears",
+   "type": "song",
+   "language": "english",
+   "year": "2021",
+   "explicit_content": "1",
+   "more_info": {
+    "album": "The Highlights",
+    "duration": "215",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-tvxo4Jm0",
+    "rights": {
+     "code": "0",
+     "cacheable": "true",
+     "delete_cached_object": "false",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [],
+     "artists": [
+      {
+       "name": "Max Martin",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Max Martin",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "XaFAVKX2",
+   "title": "Save Your Tears",
+   "type": "song",
+   "language": "english",
+   "year": "2020",
+   "explicit_content": "1",
+   "more_info": {
+    "album": "After Hours",
+    "duration": "215",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-XaFAVKX2",
+    "rights": {
+     "code": "0",
+     "cacheable": "true",
+     "delete_cached_object": "false",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [],
+     "artists": [
+      {
+       "name": "Max Martin",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Max Martin",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "tlMMxTHp",
+   "title": "Save Your Tears (Remix)",
+   "type": "song",
+   "language": "english",
+   "year": "2021",
+   "explicit_content": "0",
+   "more_info": {
+    "album": "Save Your Tears (Remix)",
+    "duration": "191",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-tlMMxTHp",
+    "rights": {
+     "code": "0",
+     "cacheable": "true",
+     "delete_cached_object": "false",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      },
+      {
+       "name": "Ariana Grande",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [],
+     "artists": [
+      {
+       "name": "Max Martin",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Ariana Grande",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Max Martin",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Ariana Grande",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "Jer2XBCh",
+   "title": "Save Your Tears",
+   "type": "song",
+   "language": "english",
+   "year": "2022",
+   "explicit_content": "1",
+   "more_info": {
+    "album": "After Hours (Deluxe)",
+    "duration": "215",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-Jer2XBCh",
+    "rights": {
+     "code": "0",
+     "cacheable": "true",
+     "delete_cached_object": "false",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [],
+     "artists": [
+      {
+       "name": "Max Martin",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Max Martin",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "ebwxChIF",
+   "title": "Save Your Tears",
+   "type": "song",
+   "language": "english",
+   "year": "2021",
+   "explicit_content": "0",
+   "more_info": {
+    "album": "The Highlights",
+    "duration": "215",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-ebwxChIF",
+    "rights": {
+     "code": "0",
+     "cacheable": "true",
+     "delete_cached_object": "false",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [],
+     "artists": [
+      {
+       "name": "Max Martin",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Max Martin",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "SrCzxNR3",
+   "title": "Save Your Tears",
+   "type": "song",
+   "language": "english",
+   "year": "2020",
+   "explicit_content": "0",
+   "more_info": {
+    "album": "After Hours (Deluxe)",
+    "duration": "215",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-SrCzxNR3",
+    "rights": {
+     "code": "0",
+     "cacheable": "true",
+     "delete_cached_object": "false",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [],
+     "artists": [
+      {
+       "name": "Max Martin",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Max Martin",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "cgax4Hcy",
+   "title": "Save Your Tears",
+   "type": "song",
+   "language": "english",
+   "year": "2024",
+   "explicit_content": "1",
+   "more_info": {
+    "album": "The Highlights (Deluxe)",
+    "duration": "215",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-cgax4Hcy",
+    "rights": {
+     "code": "0",
+     "cacheable": "true",
+     "delete_cached_object": "false",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [],
+     "artists": [
+      {
+       "name": "Max Martin",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Max Martin",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "ltPvo1pX",
+   "title": "Save Your Tears",
+   "type": "song",
+   "language": "english",
+   "year": "2020",
+   "explicit_content": "1",
+   "more_info": {
+    "album": "After Hours (Deluxe)",
+    "duration": "215",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-ltPvo1pX",
+    "rights": {
+     "code": "0",
+     "cacheable": "true",
+     "delete_cached_object": "false",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [],
+     "artists": [
+      {
+       "name": "Max Martin",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Max Martin",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "VFrfwGup",
+   "title": "Save Your Tears",
+   "type": "song",
+   "language": "english",
+   "year": "2020",
+   "explicit_content": "0",
+   "more_info": {
+    "album": "After Hours",
+    "duration": "215",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-VFrfwGup",
+    "rights": {
+     "code": "0",
+     "cacheable": "true",
+     "delete_cached_object": "false",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [],
+     "artists": [
+      {
+       "name": "Max Martin",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Max Martin",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "UVS4rH_G",
+   "title": "Save Your Tears",
+   "type": "song",
+   "language": "english",
+   "year": "2023",
+   "explicit_content": "1",
+   "more_info": {
+    "album": "PARTY LIEDER 2023 ",
+    "duration": "215",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-UVS4rH_G",
+    "rights": {
+     "code": "0",
+     "cacheable": "false",
+     "delete_cached_object": "true",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [],
+     "artists": [
+      {
+       "name": "Max Martin",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Max Martin",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,881 @@
+# Levyra Architecture
+ 
+**Current application version:** 2.5.11
+**Platform:** Android 8.0 and newer  
+**Primary stack:** Kotlin, Jetpack Compose, AndroidX Media3, Room, WorkManager, OkHttp, Coil
+ 
+---
+ 
+## 1. Architectural goals
+ 
+Levyra is designed around five non-negotiable goals:
+ 
+1. user-triggered playback must begin through the lowest-latency valid path;
+2. expensive fallback systems must not delay the common path;
+3. startup and scrolling must remain responsive on low-RAM devices;
+4. network, storage, decoding, and metadata work must remain outside the UI thread;
+5. state visible to Compose must be stable, deduplicated, and independently projectable by screen.
+ 
+These goals produce two priority classes:
+ 
+```text
+Critical path
+├── track tap
+├── stream cache lookup
+├── active in-flight resolution
+├── LevyraExtractor and Android VR race
+├── MediaItem preparation
+└── Media3 playback
+ 
+Secondary path
+├── Home refresh
+├── chart enrichment
+├── artwork persistence
+├── Release Radar
+├── diagnostics
+└── speculative warm-up
+```
+ 
+The secondary path may yield, shrink, or wait. The critical path may not.
+ 
+---
+ 
+## 2. High-level topology
+ 
+```mermaid
+graph TD
+    ACT[MainActivity] --> APP[LevyraApplication]
+    ACT --> COMPOSE[Jetpack Compose UI]
+ 
+    COMPOSE --> SCREENVM[Screen ViewModels]
+    SCREENVM --> ROOTVM[LevyraViewModel]
+ 
+    ROOTVM --> DATA[Repositories and stores]
+    ROOTVM --> PLAYERCTRL[Player controller]
+    ROOTVM --> JOBS[Background jobs]
+ 
+    DATA --> ROOM[Room database]
+    DATA --> PREFS[Preferences]
+    DATA --> YTM[YouTube Music InnerTube]
+    DATA --> ART[Artwork cache]
+ 
+    PLAYERCTRL --> RESOLVER[PlaybackResolver]
+    PLAYERCTRL --> MEDIA3[PlaybackService and Media3]
+ 
+    RESOLVER --> STREAMCACHE[Stream cache]
+    RESOLVER --> EXTRACTOR[LevyraExtractor]
+    RESOLVER --> CLIENTS[InnerTube clients]
+    CLIENTS --> VR[Android VR]
+    CLIENTS --> WEB[Web and Web Remix]
+    WEB --> SECURITY[BotGuard and PO Token]
+ 
+    MEDIA3 --> AUDIO[NormalizationAudioProcessor]
+    JOBS --> DOWNLOAD[Offline download and export]
+```
+ 
+---
+ 
+## 3. Application and UI layer
+ 
+### 3.1 Application bootstrap
+ 
+`LevyraApplication` owns process-wide objects such as the shared Coil image loader and startup instrumentation.
+ 
+`MainActivity` performs the Android activity bootstrap, loads the configured theme, connects the Compose tree, and handles platform lifecycle integration.
+ 
+### 3.2 Compose state model
+ 
+Levyra uses unidirectional data flow:
+ 
+```text
+User input
+→ ViewModel intent
+→ repository, store, or player operation
+→ immutable state update
+→ screen projection
+→ Compose rendering
+```
+ 
+Screen-specific ViewModels expose reduced projections so unrelated state changes do not force every screen to recompose.
+ 
+The Home projection deliberately excludes continuously changing playback position. Progress is exposed separately through `HomePlaybackProgress`, allowing only the component that displays progress to update each tick.
+ 
+### 3.3 Stable list identity
+ 
+Lazy layouts require unique keys. Levyra uses stable media identifiers where available:
+ 
+```text
+Track       videoId
+Album       browseId
+Artist      channelId or browseId
+Playlist    playlistId
+```
+ 
+Home sections may not always expose a remote unique identifier. Their key therefore combines normalized content identity with a positional fallback. The position prevents collisions when two sections have the same title and leading tracks, while the content portion keeps the key understandable and deterministic for the current payload.
+ 
+---
+ 
+## 4. Home startup architecture
+ 
+### 4.1 Snapshot-first rendering
+ 
+The Home pipeline restores previously saved content before requesting remote updates:
+ 
+```text
+Cold process start
+├── load Home snapshot
+├── load local history and preferences
+├── resolve persistent artwork paths
+├── publish usable local content
+└── start remote refresh
+```
+ 
+Cached content is considered real content. It is not replaced by shimmer merely because a refresh is active.
+ 
+### 4.2 Shimmer policy
+ 
+`HomeLoadingPolicy` permits shimmer only when a section has no usable content and is actively loading.
+ 
+```text
+Usable content exists
+→ keep content visible
+→ suppress shimmer
+ 
+No usable content exists and request is active
+→ allow section shimmer
+ 
+No usable content exists and no request is active
+→ hide section or show empty state
+```
+ 
+This prevents loading placeholders from replacing real data during ordinary launches.
+ 
+### 4.3 Interaction gate
+ 
+`HomeInteractionGate` protects frame time while the user scrolls.
+ 
+Its interaction state is stored as one immutable object inside `AtomicReference`:
+ 
+```text
+InteractionState
+├── scrolling
+└── lastInteractionMs
+```
+ 
+Both values are updated through compare-and-set. Background coroutines therefore cannot observe a new scrolling flag with an old timestamp.
+ 
+Secondary work calls `awaitIdle()` before proceeding. The gate waits until:
+ 
+1. scrolling has stopped;
+2. the device-specific idle window has elapsed.
+ 
+### 4.4 Device-specific startup work plans
+ 
+`HomeStartupWorkPolicy` builds one of three work plans.
+ 
+| Profile | Idle window | Priority artwork | Enrichment concurrency | Chart warm-up |
+|:---|---:|---:|---:|---:|
+| Standard | 420 ms | 6 | 2 | 2 |
+| Power constrained | 600 ms | 3 | 1 | 1 |
+| Low RAM | 700 ms | 2 | 1 | 0 |
+ 
+The policy also limits refreshed artwork, persistent writes, chart enrichment, Release Radar artists, and releases per artist.
+ 
+### 4.5 Playback warm-up remains separate
+ 
+`StartupPlaybackWarmPolicy` is independent from the Home interaction gate.
+ 
+| Profile | Delay | Track count | Concurrency |
+|:---|---:|---:|---:|
+| Standard | 100 ms | 3 | 1-2 |
+| Power constrained | 140 ms | 1 | 1 |
+| Low RAM | 180 ms | 1 | 1 |
+ 
+This work may improve the next playback request, but a direct user tap never waits for it.
+ 
+---
+ 
+## 5. Artwork architecture
+ 
+### 5.1 Shared image loader
+ 
+Levyra uses one shared Coil `ImageLoader`. A single process-wide loader prevents fragmented memory and disk caches.
+ 
+Artwork lookup order:
+ 
+```text
+Persistent local artwork
+→ Coil memory cache
+→ Coil disk cache
+→ remote URL
+```
+ 
+Persistent files are stored separately from ordinary temporary cache entries for important startup artwork.
+ 
+### 5.2 Adaptive memory budget
+ 
+`ArtworkMemoryCachePolicy` computes the image-memory budget from:
+ 
+- Android memory class;
+- large-memory class;
+- low-RAM state;
+- runtime maximum heap.
+ 
+The result is clamped to:
+ 
+```text
+Minimum       24 MB
+Maximum      112 MB
+Heap ceiling  25%
+```
+ 
+This prevents large modern devices from using an unnecessarily small cache and older devices from losing too much heap to decoded bitmaps.
+ 
+### 5.3 Stable rendering
+ 
+Persistent local files render without an unnecessary crossfade. Existing artwork remains visible during remote refresh instead of returning to a placeholder.
+ 
+Artwork enrichment is bounded and batched. The Home state is published only after meaningful changes exist.
+ 
+### 5.4 Startup diagnostics
+ 
+`LevyraArtworkStartupMetrics` records:
+ 
+- first real artwork latency;
+- unique artwork requests;
+- persistent-cache hits;
+- remote requests;
+- missing sources;
+- load failures;
+- model changes;
+- placeholders shown after successful artwork;
+- visible Home emissions;
+- shimmer with usable content.
+ 
+The report is persisted on `Dispatchers.IO` to:
+ 
+```text
+files/diagnostics/artwork-startup-metrics.json
+```
+ 
+---
+ 
+## 6. Playback resolver
+ 
+### 6.1 Resolution entry
+
+`PlaybackResolver` receives a `Track` and resolves a playable stream. Song and native-video requests use the server-driven compatibility policy as the allowlisted strategy order; local strategy health may reorder only strategies already allowed by that policy.
+
+```text
+resolve(track)
+├── validate local/persistent state where the selected strategy allows it
+├── join existing in-flight Deferred
+├── read the last-known-good compatibility policy
+├── apply local strategy-health ordering
+└── resolve through the first healthy policy strategy
+```
+
+Individual strategies may still hedge LevyraExtractor and InnerTube work internally. The first valid result wins and losing work is cancelled when safe.
+
+The bundled song policy tries the existing Reel audio-only formats before Reel muxed media, persisted URLs, direct resolution and search fallback. Muxed playback remains available for compatibility, but it is not the preferred Music Mode resource shape.
+
+### 6.2 In-flight deduplication
+ 
+Concurrent requests for the same media key share one `Deferred`.
+ 
+The map insertion is race-safe. When a newly created lazy `Deferred` loses `putIfAbsent`, it is cancelled before the existing request is awaited. This prevents an unstarted child from keeping the parent `coroutineScope` alive indefinitely.
+ 
+### 6.3 InnerTube client order
+ 
+The standard client path is:
+ 
+```text
+Android VR
+→ Android Music
+→ Android
+→ iOS
+→ Web Remix with PO Token
+→ Web with PO Token
+→ embedded fallback
+```
+ 
+Android VR is the primary profile:
+ 
+```text
+Client    ANDROID_VR
+Version   1.65.10
+Priority  0
+Start     immediate
+```
+ 
+It remains first even when dynamic client-health ranking is active.
+ 
+### 6.4 Client and strategy health
+
+The resolver tracks per-client:
+
+- successes;
+- consecutive failures;
+- average latency;
+- temporary blocks;
+- last update time.
+
+It also keeps local, privacy-preserving health for the higher-level audio and video strategies. Server policy remains the authority for which strategies are allowed; local health can only reorder that allowlist. A newly introduced first strategy receives one policy-order canary before historical health may reorder it. Repeated resolution failures open a temporary circuit, while a hard runtime rejection such as `403`, `410`, `429`, `LOGIN_REQUIRED`, or a signature/PO-Token failure can quarantine the strategy immediately. Open strategies remain last-resort fallbacks and become half-open after cooldown.
+
+The URL that reached Media3 is associated in memory with the strategy that produced it, so a later player-side rejection is charged to the correct strategy instead of being mistaken for a successful resolve.
+
+Dynamic client health can delay unhealthy fallback clients, but it does not demote Android VR inside the standard InnerTube client path.
+
+Resolved stream entries, failed-playback URL quarantine and rejected-video URL quarantine prune expired entries when updated and enforce fixed entry limits. The Media3 disk cache remains a separate bounded LRU owner.
+
+### 6.5 Server-driven compatibility policy
+
+`PlaybackCompatibilityPolicyStore` fetches the bounded JSON policy from the Levyra repository with short timeouts, ETag support, no redirects, monotonic revisions, and a bundled last-resort policy. Unknown future strategy names are ignored rather than executed. The policy may constrain audio/video strategy order, known client overrides, Android Reel client version, expiry, and supported Android version-code range; it cannot provide executable code or arbitrary endpoints.
+
+Expired, malformed, downgraded, or app-incompatible policies do not replace the last usable built-in behavior. Rejected playback can force a policy refresh without putting the fetch on the direct tap-to-play critical path.
+
+### 6.6 Multi-source player configuration synchronization
+
+The player-configuration assets shipped in `app/src/main/assets/` are produced by `scripts/sync_player_configs.py` from two independent upstreams: the primary ZemerTeam `zemer-cipher` registry and the secondary MetrolistGroup `faraday` registry. Each payload is bounded, structurally validated and normalized into one internal representation before comparison, so the app never consumes an upstream schema directly.
+
+A player identity is its primary hash plus its aliases, so entries are grouped into logical players before comparison even when the two sources publish different primary hashes for the same player. Candidates are classified as confirmed by both sources, provided by one source, conflicting, or invalid. Selection follows a conservative policy: both-source agreement, then primary, then the existing last known good entry, then secondary only when the primary is unavailable, then omission. A secondary-only player is not promoted while the primary is healthy, a conflict never silently replaces the last known good entry, and a newer signature timestamp never wins by itself. When no source is usable the assets are left untouched and the run still succeeds.
+
+Trusted assets are replaced atomically only after the candidate round-trips through the same validation the Android decoder enforces, and provenance/health metadata is written to `app/src/main/assets/player_configs.meta.json`. At runtime the decoder keeps its bounded TTL and cooldown behavior and separates trust levels: the CI-built repository mirror is `VERIFIED` and fetched first, while raw Zemer and Faraday are `PROVISIONAL` emergency sources cached separately and never allowed to become the verified last known good. Multi-source resilience therefore never adds latency to a healthy playback start.
+
+### 6.7 Protected URL processing
+
+Selected formats may contain `signatureCipher`, `s`, or `n`.
+ 
+Processing order:
+ 
+```text
+Base URL
+→ signature decipher
+→ n transformation
+→ streaming PO Token injection
+→ final URL
+```
+ 
+Formats are ranked before JavaScript work. Only the selected candidate is transformed, and the JavaScript decoder starts only when the URL actually requires it.
+ 
+---
+ 
+## 7. YouTube playback security
+ 
+### 7.1 Guest session
+ 
+The session manager retains:
+ 
+- `visitorData`;
+- session generation;
+- last update time;
+- last rotation time.
+ 
+Rotation may occur after:
+ 
+- explicit rejected PO Token responses;
+- explicit bot detection;
+- abnormal `LOGIN_REQUIRED`;
+- eligible repeated HTTP 403;
+- HTTP 410;
+- HTTP 429;
+- automated-traffic warnings.
+ 
+Geographic restrictions are not treated as bot failures. A cooldown prevents rotation loops.
+ 
+### 7.2 PO Tokens
+ 
+Levyra distinguishes:
+ 
+- Player PO Token bound to one video ID;
+- Streaming or GVS PO Token bound to the guest session.
+ 
+The isolated WebView runtime performs BotGuard initialization and token generation only for profiles that need it.
+
+One runtime is shared process-wide by the direct resolver and the vendored extractor. Its build runs
+in a scope owned by the generator rather than in the first caller, so a losing race branch or an
+abandoned prefetch never destroys a runtime another track is waiting on. Consequences:
+
+- the runtime is warmed once from the startup idle path, gated by the low-RAM and power-constrained
+  plan, so a cold BotGuard start is normally paid before the first tap rather than during it; the
+  warm-up never runs from the tap path, because building the WebView happens on the main thread;
+- a profile that declares `requiresPoToken` fails its branch rather than sending a token-less
+  request, so a bot gate cannot rotate the guest session and discard the build it was waiting for;
+- concurrent client profiles join the same build and the same per-video mint instead of serializing;
+- an approaching integrity-token expiry is replaced in the background while the current runtime keeps
+  serving, so expiry normally does not land as a cold rebuild on playback. The replacement is
+  best-effort: if it fails, or if the runtime fails afterwards, a cold rebuild still happens;
+- repeated build failures back off exponentially (2s to 60s), so a resolve fails over to the clients
+  that need no PO Token instead of re-paying an initialization timeout each attempt;
+- best-effort callers wait only briefly for a cold build and degrade rather than hold a race slot,
+  while the build continues for whoever asks next.
+ 
+```text
+Player token
+→ serviceIntegrityDimensions.poToken
+ 
+Streaming token
+→ final URL pot parameter
+```
+ 
+Tokens are cached with expiration safety margins and invalidated when their session rotates.
+ 
+### 7.3 Runtime recovery
+ 
+The security runtime can be rebuilt after failure. Sensitive token values are never written in full to logs.
+ 
+---
+ 
+## 8. YouTube Music Watch Context
+ 
+`YoutubeMusicWatchRepository` treats `/youtubei/v1/next` as the central context for a selected track.
+ 
+The parser extracts:
+ 
+- radio queue;
+- radio playlist ID;
+- lyrics browse ID;
+- related browse ID;
+- album metadata;
+- artists and browse IDs;
+- duration;
+- artwork;
+- explicit state;
+- video type;
+- audio/video counterparts;
+- continuation commands.
+ 
+Supported continuation forms include:
+ 
+- `nextRadioContinuationData`;
+- `nextContinuationData`;
+- `reloadContinuationData`;
+- `continuationCommand`;
+- `ctoken` and `continuation` requests.
+ 
+Continuation tracks are deduplicated before queue insertion.
+ 
+The parsed Watch Context is cached so queue, lyrics, and Related requests do not independently fetch the same response.
+ 
+---
+ 
+## 9. Related content and quality filtering
+ 
+The Related parser supports mixed shelves containing:
+ 
+- tracks;
+- music videos;
+- albums;
+- playlists;
+- artists;
+- artist information.
+ 
+Radio generation priority:
+ 
+```text
+Watch queue
+→ Related tracks
+→ text search
+```
+ 
+A shared quality filter rejects common alternate variants:
+ 
+- karaoke;
+- nightcore;
+- slowed;
+- slowed and reverb;
+- sped up;
+- reaction video;
+- first reaction;
+- reacts to.
+ 
+The filter is contextual and does not reject legitimate titles merely containing the word `reaction`.
+ 
+---
+ 
+## 10. Lyrics architecture
+ 
+The native YouTube Music path is:
+ 
+```text
+videoId
+→ /next
+→ lyricsBrowseId
+→ /browse
+```
+ 
+The provider chain is:
+ 
+```text
+Synchronized YouTube Music
+→ synchronized LRCLIB
+→ plain YouTube Music
+→ plain LRCLIB
+→ YouTube Transcript
+→ Lyrics.ovh
+```
+ 
+The parser supports timestamps, plain text, source attribution, multiple runs, and explicit line-break preservation.
+ 
+Provider failures are isolated so one source cannot prevent later fallbacks.
+ 
+---
+ 
+## 11. Audio normalization
+ 
+The resolver extracts:
+ 
+```text
+playerConfig.audioConfig.loudnessDb
+playerConfig.audioConfig.perceptualLoudnessDb
+```
+ 
+Data flow:
+ 
+```text
+Player response
+→ resolved stream
+→ Track
+→ JSON and payload codecs
+→ MediaItem extras
+→ PlaybackService
+→ NormalizationAudioProcessor
+```
+ 
+The processor:
+ 
+1. prefers perceptual loudness;
+2. falls back to standard loudness;
+3. converts decibels to linear gain;
+4. attenuates loud masters;
+5. prevents unsafe boost levels;
+6. falls back to existing RMS normalization;
+7. ramps gain changes gradually.
+ 
+---
+ 
+## 12. Media3 playback service
+ 
+`PlaybackService` owns the long-running audible ExoPlayer, its audio processors and the MediaSession lifecycle.
+ 
+Responsibilities include:
+ 
+- audio focus;
+- notification and lock-screen controls;
+- queue and MediaItem transitions;
+- playback recovery;
+- normalization processor integration;
+- SponsorBlock coordination;
+- background playback;
+- media-session commands;
+- player state publication to the application layer.
+ 
+The UI does not own audible playback. Decorative Canvas artwork is the narrow exception: its muted, audio-disabled ExoPlayer is owned by the mounted artwork layer and releases its listener, surface and player on disposal.
+
+On Android 16+ the Media3 notification provider is wrapped by `LiveUpdateMediaNotificationProvider` (`player/liveupdate/`). The MediaStyle notification stays unchanged; `PlaybackLiveUpdateNotifier` mirrors the same session (title, artist, Media3's decoded artwork and session activity) into a silent promoted Live Update only while playback is active and the system allows promoted notifications. It is driven by player events, uses a system chronometer instead of polling, and is cancelled on pause, stop, end of queue and service destruction. Offline download workers add the Live Update chip, batch counter and promotion request to their existing foreground notification, with a single promoted download at a time. Older Android versions keep the previous notification path.
+
+The service memory guard samples native allocation outside the Main dispatcher, then returns to Main and revalidates the active playing instance before any player mutation. Recovery reuses the measured value and the existing primary ExoPlayer while restoring the current item, position and play intent.
+
+### 12.1 Real crossfade and AutoMix
+
+`PlaybackService` owns the complete transition lifecycle. Near the end of an
+audio-mode track it resolves and prepares the next persistent-queue item in a
+secondary ExoPlayer that does not request audio focus. The secondary player has
+independent normalization, equalizer, spatial, limiter, and PCM processors
+configured from the same settings as the primary player. Its renderer factory
+does not create video renderers, so muxed compatibility fallback cannot allocate
+a video decoder during an audio-mode overlap.
+
+The transition uses equal-power gains. After the overlap, the resolved queue
+item is selected once, the primary player resumes at the secondary player's
+position, and a short handoff returns sole ownership to the MediaSession player.
+Queue generation and durable track identity cancel stale work. Pause, backward
+seek, queue mutation, repeat-one, native-video mode, low-memory pressure, and
+service destruction also cancel and release the secondary player.
+Cancellation and normal completion converge on one idempotent secondary cleanup
+path that clears the service reference before pausing, clearing and releasing the
+player.
+
+AutoMix changes only the bounded overlap duration, using local energy and vocal
+metadata. It does not claim beat, BPM, or key matching.
+
+### 12.2 Android Auto surfaces
+
+`AndroidAutoLibrary` remains the single browse catalog used by the classic
+MediaBrowser integration. `LevyraCarAppService` adds the Car App templated
+surface (Home, Download, Favorites, Playlists, search, queue, and now playing)
+through a MediaBrowser connected to the same `PlaybackService`.
+
+The car host receives a compat-wrapped platform MediaSession token through a
+restricted custom session command. The template service never creates another
+queue, player, resolver, or persistent catalog. Release builds validate hosts;
+only debuggable builds allow arbitrary development hosts.
+ 
+---
+ 
+## 13. Persistent queue
+ 
+The Room-backed queue stores:
+ 
+- ordered media entries;
+- active index;
+- playback position;
+- shuffle state;
+- repeat state;
+- queue metadata required for reconstruction.
+ 
+Queue restoration occurs independently from Home refresh, allowing playback state to survive process death.
+ 
+Precache work is cancelled or recalculated when queue identity changes.
+ 
+---
+ 
+## 14. Downloads and offline export
+ 
+The offline pipeline is based on WorkManager and MediaStore.
+ 
+```text
+Download request
+→ Room task
+→ WorkManager worker
+→ stream resolution
+→ bounded network copy
+→ content-length validation
+→ metadata and artwork tagging
+→ MediaStore registration
+→ completed Room state
+```
+ 
+Output directory:
+ 
+```text
+Music/Levyra
+```
+ 
+Workers use retry policies for eligible network failures and reject incomplete media files.
+
+### Offline source eligibility
+
+A googlevideo `videoplayback` URL without `ratebypass` and without a
+proof-of-origin token can serve only an initial portion before later requests are
+rejected. `YoutubeStreamCapability.servesCompleteStream` identifies sources that
+can serve the complete object. The effective offline pipeline accepts only
+complete Android Reel-derived sources and rejects legacy MP4 resolver results
+before prefetch or file transfer begins.
+
+Reel/PO-Token downloads use a serial resumable transfer instead of aggressive
+parallel fan-out. If a URL is rejected, the exporter stops retrying that exact
+URL, reports it to playback recovery, resolves a fresh source, and resumes only
+when the stored partial-file identity still matches the source video ID, itag,
+content length, and MIME type. A mismatched or identity-less partial is discarded
+instead of being appended to a different representation.
+
+When the selected Reel source is a progressive muxed MP4, the export reduces it
+to its audio track with `androidx.media3:media3-transformer`
+(`OfflineAudioTrackExtractor`). The extraction runs on device, keeps the AAC
+audio, and produces the same `.m4a` output the tagger and MediaStore steps expect.
+
+---
+
+## 15. Local persistence
+ 
+Room stores structured application state including:
+ 
+- favorite tracks;
+- playlists;
+- playback queue;
+- download tasks;
+- completed downloads;
+- listening history;
+- listening events.
+ 
+Preferences store lightweight settings such as theme, content locale, playback options, and feature toggles.
+ 
+Home snapshots and important artwork use dedicated local files where atomic replacement is required.
+
+### 15.1 Local intelligence and automatic backups
+
+Listening events are also projected into local smart playlists. Recent listens
+remain recency ordered; the 30-day most-played list ranks total listening time,
+then play count and recency, and removes ephemeral stream URLs before state
+publication. No new Room schema or remote profile is introduced.
+
+Automatic backup preferences live in DataStore and are included in the existing
+backward-compatible backup payload. WorkManager runs the opt-in job with battery
+and storage constraints. Archives are written to `files/backups` through a
+temporary file, finalized atomically, checksum-protected, and pruned by an exact
+filename boundary to the configured retention count. Downloaded audio remains
+outside the archive; manual export and restore remain available.
+ 
+---
+ 
+## 16. Threading and concurrency rules
+ 
+### Main thread
+ 
+Allowed:
+ 
+- Compose state publication;
+- lightweight UI mapping;
+- Android lifecycle callbacks;
+- direct player commands that are non-blocking.
+ 
+Not allowed:
+ 
+- network requests;
+- database queries;
+- file writes;
+- artwork persistence;
+- JSON diagnostic persistence;
+- blocking decoder work.
+ 
+### IO dispatcher
+ 
+Used for:
+ 
+- network requests;
+- Room operations;
+- files and MediaStore;
+- artwork persistence;
+- diagnostic reports;
+- download copying.
+ 
+### Structured concurrency
+ 
+- Resolver races are scoped and cancelled after a winner.
+- In-flight requests are deduplicated.
+- Background startup work waits on the interaction gate.
+- Concurrency is bounded by device profile.
+- Session and interaction state use atomic snapshots where multi-field consistency matters.
+ 
+---
+ 
+## 17. Error handling and recovery
+ 
+The resolver differentiates:
+ 
+- unavailable content;
+- geographic restriction;
+- invalid or expired URLs;
+- signature failure;
+- token rejection;
+- bot detection;
+- transport timeout;
+- repeated HTTP status failures.
+ 
+Recovery may include:
+ 
+- trying the next client;
+- refreshing JavaScript decoder state;
+- invalidating cached streams;
+- rebuilding the BotGuard runtime;
+- rotating guest session;
+- regenerating PO Tokens;
+- falling back from video to audio-compatible sources.
+ 
+Geographic restrictions do not trigger security-session churn.
+ 
+---
+ 
+## 18. Recognition, Jam, and network configuration
+
+Music recognition is process-owned by `LevyraRecognitionCenter`. A foreground
+`MusicRecognitionService` owns each microphone or media-projection run and its
+notification lifecycle. `MusicRecognitionController` bounds capture and
+provider time, applies the Shazam-first/AudD-fallback policy, and publishes one
+generation-checked state flow. Successful results pass through
+`RecognitionCatalogMatcher` and the Room-backed bounded history.
+
+Jam preserves the existing queue and player as the playback source of truth:
+
+```text
+local player intent -> JamController -> host authorization -> JamPlayerBridge
+host snapshot -> bounded LAN protocol -> guest JamController -> existing queue/player
+```
+
+`LanJamHostTransport` binds only to a private IPv4 interface. Session codes
+carry the private address, ephemeral port, and a 128-bit SecureRandom join secret. Weak legacy
+40-bit session codes are rejected at parse and transport boundaries. The host
+binds authenticated sockets to participant identities, validates guest
+permissions, publishes monotonic revisions, and closes authenticated and
+pre-authentication sockets on release. Guests ignore stale revisions and use
+bounded reconnect attempts without a permanent background service.
+
+`LevyraNetworkConfiguration` is the single runtime owner of DNS and proxy
+selection. `LevyraNetworkStore` persists non-secret settings while proxy
+passwords remain in the Android keystore-backed credential store. A generation
+change invalidates shared HTTP clients and rebuilds DNS/proxy behavior; the
+stream client may explicitly bypass the proxy without changing catalog and
+integration clients.
+
+---
+
+## 19. Tests and release gates
+ 
+Regression coverage includes:
+ 
+- Watch queue and continuation parsing;
+- lyrics and Related browse IDs;
+- audio/video counterparts;
+- mixed Related shelves;
+- lyrics provider priority;
+- unwanted-variant filtering;
+- BotGuard parsing;
+- guest-session rotation;
+- geographic-restriction exclusion;
+- loudness persistence and priority;
+- resolver latency budgets;
+- parallel-resolution behaviour;
+- Home shimmer policy;
+- adaptive image-memory budgets;
+- artwork startup metrics;
+- low-RAM startup plans;
+- atomic interaction-gate behaviour;
+- Home section key uniqueness.
+ 
+Release verification commands:
+ 
+```bash
+./gradlew --no-daemon :app:lintRelease
+./gradlew --no-daemon testReleaseUnitTest
+./gradlew --no-daemon assembleRelease
+```
+ 
+GitHub Actions also checks APK structure, artifact naming, version metadata, workflow duplication, and accidental release of sensitive files.
+ 
+---
+ 
+## 20. Project layout
+ 
+```text
+app/src/main/java/com/luc4n3x/levyra
+├── architecture       Experimental architectural primitives
+├── data               Repositories, resolver, caches, preferences, network logic
+│   ├── local          Room entities and DAOs
+│   ├── network        Shared HTTP construction
+│   └── security       Request-header and key handling
+├── domain             Immutable models and domain engines
+├── feature            Feature-oriented player foundations
+├── player             Media3 service, audio processors, policies, offline pipeline
+├── ui                 Compose UI, navigation, themes, visual components
+└── viewmodel          Root and screen-specific state projections
+ 
+LevyraExtractor
+├── extractor          Extraction implementation
+└── timeago-parser     Supporting parser module
+```
+ 
+---
+ 
+## 21. Extension rules
+ 
+New features should preserve these invariants:
+ 
+- user taps must bypass secondary startup gates;
+- every lazy item requires a unique stable key;
+- multi-field cross-thread state must be atomically published;
+- network and disk work must not run on the main thread;
+- fallback systems must remain lazy;
+- new Home data should not replace usable content with loading placeholders;
+- low-RAM plans must remain bounded;
+- every resolver or navigation change should include a regression test.

@@ -1,0 +1,369 @@
+import java.util.Properties
+
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.licensee)
+    alias(libs.plugins.androidx.baselineprofile)
+}
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.isFile) {
+        file.inputStream().use { load(it) }
+    }
+}
+
+fun envOrProperty(name: String, propertyName: String = name): String {
+    val gradleProperty = findProperty(propertyName) as? String
+    val localProperty = if (localProperties.containsKey(propertyName)) {
+        localProperties.getProperty(propertyName)
+    } else {
+        null
+    }
+    val environmentValue = System.getenv(name)
+    return (gradleProperty ?: localProperty ?: environmentValue ?: "").trim()
+}
+
+fun buildConfigString(value: String): String {
+    val escaped = value
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+    return "\"$escaped\""
+}
+
+fun isPerformanceTaskRequested(): Boolean =
+    gradle.startParameter.taskNames.any { task ->
+        task.contains("baselineprofile", ignoreCase = true) || task.contains("benchmark", ignoreCase = true)
+    }
+
+fun isPrDiagnosticsTaskRequested(): Boolean =
+    gradle.startParameter.taskNames.any { task ->
+        task.contains("PrDiagnostics", ignoreCase = true)
+    }
+
+fun isPrDiagnosticsArtifactTaskRequested(): Boolean =
+    gradle.startParameter.taskNames.any { task ->
+        task.contains("assemblePrDiagnostics", ignoreCase = true) ||
+            task.contains("bundlePrDiagnostics", ignoreCase = true) ||
+            task.contains("packagePrDiagnostics", ignoreCase = true) ||
+            task.contains("installPrDiagnostics", ignoreCase = true)
+    }
+
+fun isReleaseTaskRequested(): Boolean =
+    !isPerformanceTaskRequested() && (
+        isPrDiagnosticsArtifactTaskRequested() ||
+            gradle.startParameter.taskNames.any { task ->
+                task.contains("Release", ignoreCase = true) || task.equals("bundle", ignoreCase = true) || task.equals("assemble", ignoreCase = true)
+            }
+        )
+
+val isFdroidBuild = providers.gradleProperty("levyraFdroidBuild")
+    .map(String::toBoolean)
+    .getOrElse(false)
+// Public InnerTube client identifier, not a private developer credential. Keep this
+// aligned with LevyraExtractor's Android client so F-Droid can rebuild from source.
+val publicYoutubeInnertubeApiKey = "AIzaSyA8eiZmM1FaDVjRy-df2KTyQ_vz_yYM39w"
+val youtubeInnertubeApiKey = if (isFdroidBuild) {
+    publicYoutubeInnertubeApiKey
+} else {
+    envOrProperty("YOUTUBE_INNERTUBE_API_KEY", "youtubeInnertubeApiKey")
+}
+val canvasResolverUrl = if (isFdroidBuild) {
+    ""
+} else {
+    envOrProperty("LEVYRA_CANVAS_RESOLVER_URL", "levyraCanvasResolverUrl")
+}
+val canvasClientKey = if (isFdroidBuild) {
+    ""
+} else {
+    envOrProperty("LEVYRA_CANVAS_CLIENT_KEY", "levyraCanvasClientKey")
+}
+val releaseStoreFilePath = envOrProperty("LEVYRA_KEYSTORE_FILE", "levyraStoreFile").ifBlank { "app/levyra-release.jks" }
+val releaseStorePassword = envOrProperty("LEVYRA_KEYSTORE_PASSWORD", "levyraStorePassword")
+val releaseKeyAlias = envOrProperty("LEVYRA_KEY_ALIAS", "levyraKeyAlias")
+val releaseKeyPassword = envOrProperty("LEVYRA_KEY_PASSWORD", "levyraKeyPassword")
+val releaseStoreFile = rootProject.file(releaseStoreFilePath)
+val releaseSigningAvailable = releaseStoreFile.isFile && releaseStorePassword.isNotBlank() && releaseKeyAlias.isNotBlank() && releaseKeyPassword.isNotBlank()
+
+if (isFdroidBuild && isPrDiagnosticsTaskRequested()) {
+    throw GradleException("PR diagnostics and F-Droid builds are mutually exclusive.")
+}
+
+if (isReleaseTaskRequested() && !isFdroidBuild && youtubeInnertubeApiKey.isBlank()) {
+    throw GradleException("Missing YOUTUBE_INNERTUBE_API_KEY. Set it as a GitHub Actions secret or in local.properties as youtubeInnertubeApiKey.")
+}
+
+if (isPrDiagnosticsArtifactTaskRequested() && canvasResolverUrl.isBlank()) {
+    throw GradleException("Missing LEVYRA_CANVAS_RESOLVER_URL. Configure LEVYRA_CANVAS_RESOLVER_URL as a GitHub Actions secret or in local.properties as levyraCanvasResolverUrl.")
+}
+
+if (isPrDiagnosticsArtifactTaskRequested() && canvasClientKey.isBlank()) {
+    throw GradleException("Missing LEVYRA_CANVAS_CLIENT_KEY. Configure LEVYRA_CANVAS_CLIENT_KEY as a GitHub Actions secret or in local.properties as levyraCanvasClientKey.")
+}
+
+if (isReleaseTaskRequested() && !isFdroidBuild && !releaseSigningAvailable) {
+    throw GradleException("Missing release signing config. Set LEVYRA_KEYSTORE_BASE64, LEVYRA_KEYSTORE_PASSWORD, LEVYRA_KEY_ALIAS and LEVYRA_KEY_PASSWORD in GitHub Actions secrets.")
+}
+
+fun normalizedVersionName(value: String): String {
+    val clean = value.trim().removePrefix("v").removePrefix("V")
+    val match = Regex("\\d+(?:\\.\\d+){0,3}(?:[-+][0-9A-Za-z.-]+)?").find(clean)?.value
+    return match ?: clean.ifBlank { "2.6.5" }
+}
+
+fun generatedVersionCode(versionName: String): Int {
+    val parts = Regex("\\d+")
+        .findAll(versionName)
+        .mapNotNull { it.value.toIntOrNull() }
+        .take(4)
+        .toList()
+    val major = parts.getOrElse(0) { 0 }.coerceIn(0, 999)
+    val minor = parts.getOrElse(1) { 0 }.coerceIn(0, 99)
+    val patch = parts.getOrElse(2) { 0 }.coerceIn(0, 99)
+    val build = parts.getOrElse(3) { 0 }.coerceIn(0, 99)
+    return major * 1_000_000 + minor * 10_000 + patch * 100 + build
+}
+
+fun githubTagVersionName(): String? {
+    val refType = System.getenv("GITHUB_REF_TYPE").orEmpty()
+    val refName = System.getenv("GITHUB_REF_NAME").orEmpty()
+    val ref = System.getenv("GITHUB_REF").orEmpty()
+    return when {
+        refType == "tag" && refName.isNotBlank() -> refName
+        ref.startsWith("refs/tags/") -> ref.substringAfterLast("/")
+        else -> null
+    }
+}
+
+val levyraVersionName = normalizedVersionName(
+    (findProperty("levyraVersionName") as? String)
+        ?: System.getenv("LEVYRA_VERSION_NAME")
+        ?: githubTagVersionName()
+        ?: "2.6.5"
+)
+
+val levyraVersionCode = ((findProperty("levyraVersionCode") as? String)
+    ?: System.getenv("LEVYRA_VERSION_CODE"))
+    ?.toIntOrNull()
+    ?.takeIf { it > 0 }
+    ?: generatedVersionCode(levyraVersionName)
+
+android {
+    namespace = "com.luc4n3x.levyra"
+    compileSdk = 37
+
+    defaultConfig {
+        applicationId = "com.luc4n3x.levyra"
+        minSdk = 26
+        targetSdk = 37
+        versionCode = levyraVersionCode
+        versionName = levyraVersionName
+        vectorDrawables.useSupportLibrary = true
+        manifestPlaceholders["upstreamUpdatesEnabled"] = (!isFdroidBuild).toString()
+        buildConfigField("String", "UPDATE_REPOSITORY", "\"LUC4N3X/Levyra-deepsound\"")
+        buildConfigField("String", "UPDATE_LATEST_URL", "\"https://api.github.com/repos/LUC4N3X/Levyra-deepsound/releases/latest\"")
+        buildConfigField("boolean", "UPSTREAM_UPDATES_ENABLED", (!isFdroidBuild).toString())
+        buildConfigField("boolean", "REMOTE_ANNOUNCEMENTS_ENABLED", (!isFdroidBuild).toString())
+        buildConfigField("String", "YOUTUBE_INNERTUBE_API_KEY", buildConfigString(youtubeInnertubeApiKey))
+        buildConfigField("String", "CANVAS_RESOLVER_URL", buildConfigString(canvasResolverUrl))
+        buildConfigField("String", "CANVAS_CLIENT_KEY", buildConfigString(canvasClientKey))
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    sourceSets.getByName("androidTest").assets.directories.add("$projectDir/schemas")
+
+    sourceSets.getByName("main").kotlin.directories.add(
+        if (isFdroidBuild) "src/fdroid/java" else "src/upstream/java"
+    )
+    if (!isFdroidBuild) {
+        sourceSets.getByName("main").jniLibs.directories.add("src/upstream/jniLibs")
+    }
+    sourceSets.getByName("debug").kotlin.directories.add("src/noDiagnostics/java")
+    sourceSets.getByName("release").kotlin.directories.add("src/noDiagnostics/java")
+    sourceSets.configureEach {
+        if (name == "benchmark" || name == "nonMinifiedRelease") {
+            kotlin.directories.add("src/noDiagnostics/java")
+        }
+    }
+    if (isFdroidBuild) {
+        sourceSets.getByName("debug").manifest.srcFile("src/fdroid/AndroidManifest.xml")
+        sourceSets.getByName("release").manifest.srcFile("src/fdroid/AndroidManifest.xml")
+    }
+
+    signingConfigs {
+        getByName("debug")
+        create("release") {
+            if (releaseSigningAvailable) {
+                storeFile = releaseStoreFile
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            } else {
+                initWith(getByName("debug"))
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            isDebuggable = false
+            if (releaseSigningAvailable) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+        create("prDiagnostics") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".prdiagnostics"
+            versionNameSuffix = "-pr-diagnostics"
+            isDebuggable = false
+            matchingFallbacks += listOf("release")
+            buildConfigField("boolean", "INTERNAL_DIAGNOSTICS", "true")
+            buildConfigField("String", "INTERNAL_DIAGNOSTICS_MARKER", "\"LEVYRA_PR_DIAGNOSTICS_V1\"")
+            buildConfigField(
+                "String",
+                "INTERNAL_DIAGNOSTICS_COMMIT",
+                buildConfigString(System.getenv("GITHUB_SHA").orEmpty().take(40))
+            )
+            if (releaseSigningAvailable) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true
+    }
+
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+
+    dependenciesInfo {
+        includeInApk = !isFdroidBuild
+        includeInBundle = !isFdroidBuild
+    }
+
+    lint {
+        // The whole player layer is built on media3, whose APIs are annotated
+        // @UnstableApi. UnsafeOptInUsageError targets library authors who expose
+        // unstable APIs to consumers and is redundant for an app that
+        // deliberately depends on media3, so disable just this check while
+        // keeping every other lint rule enforced.
+        disable += "UnsafeOptInUsageError"
+    }
+
+    packaging {
+        jniLibs {
+            if (isFdroidBuild) {
+                // F-Droid's build server has no NDK strip tool, while GitHub's
+                // runner does. Preserve this prebuilt library in both builds so
+                // the upstream-signed and F-Droid-rebuilt APKs are identical.
+                keepDebugSymbols += "**/libdatastore_shared_counter.so"
+            }
+        }
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/versions/**"
+            excludes += "/META-INF/DEPENDENCIES"
+            excludes += "/META-INF/LICENSE*"
+            excludes += "/META-INF/NOTICE*"
+        }
+    }
+}
+
+
+kotlin {
+    jvmToolchain(if (isFdroidBuild) 21 else 17)
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
+configurations.configureEach {
+    exclude(group = "com.google.protobuf", module = "protobuf-javalite")
+}
+
+dependencies {
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.activity.compose)
+    if (!isFdroidBuild) implementation(libs.androidx.fragment.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.androidx.compose.ui.text.googlefonts)
+    implementation(libs.androidx.media3.exoplayer)
+    if (!isFdroidBuild) implementation(project(":levyra-native-audio"))
+    implementation(libs.androidx.media3.exoplayer.hls)
+    implementation(libs.androidx.media3.exoplayer.dash)
+    implementation(libs.androidx.media3.session)
+    if (!isFdroidBuild) implementation(libs.androidx.media3.cast)
+    implementation(libs.androidx.media3.ui)
+    implementation(libs.androidx.car.app)
+    implementation(libs.androidx.car.app.projected)
+    implementation(libs.androidx.media.compat)
+    implementation(libs.androidx.media3.datasource.okhttp)
+    if (!isFdroidBuild) {
+        implementation(libs.androidx.media3.datasource.cronet) {
+            exclude(group = "org.chromium.net", module = "cronet-api")
+            exclude(group = "com.google.android.gms", module = "play-services-cronet")
+        }
+        implementation(libs.chromium.cronet.embedded)
+    }
+    implementation(libs.androidx.media3.datasource)
+    implementation(libs.androidx.media3.database)
+    implementation(libs.androidx.media3.transformer)
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.brotli)
+    implementation(libs.okhttp.dnsoverhttps)
+    implementation(libs.newpipe.extractor)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.profileinstaller)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.material.kolor.utilities)
+    implementation(libs.timber)
+    debugImplementation(libs.chucker)
+    releaseImplementation(libs.chucker.no.op)
+    add("prDiagnosticsImplementation", libs.chucker.no.op)
+    ksp(libs.androidx.room.compiler)
+    coreLibraryDesugaring(libs.desugar.jdk.libs.nio)
+    testImplementation(libs.junit)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.json)
+    testImplementation(libs.okhttp.tls)
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.room.testing)
+    baselineProfile(project(":baselineprofile"))
+}

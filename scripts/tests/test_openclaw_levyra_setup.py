@@ -1,0 +1,157 @@
+from __future__ import annotations
+
+import subprocess
+import unittest
+from pathlib import Path
+
+from scripts.ai_quality_gate import find_bash
+
+ROOT = Path(__file__).resolve().parents[2]
+SETUP = ROOT / "scripts" / "setup-openclaw-levyra.sh"
+SKILL = ROOT / ".agents" / "skills" / "levyra-openclaw-orchestrator" / "SKILL.md"
+
+
+class OpenClawLevyraSetupTest(unittest.TestCase):
+    def test_shell_syntax(self) -> None:
+        bash = find_bash()
+        if not bash:
+            raise unittest.SkipTest("Bash is required for shell syntax test")
+        subprocess.run([bash, "-n", str(SETUP)], check=True, cwd=ROOT)
+
+    def test_specialized_agents_and_boundaries(self) -> None:
+        setup = SETUP.read_text(encoding="utf-8")
+
+        for term in (
+            "levyra-reviewer",
+            "levyra-ci",
+            "tools.exec.mode",
+            "strictInlineEval",
+            "tools.elevated.enabled",
+            "merge_primary_subagents",
+            "subagents.requireAgentId",
+            "subagents.delegationMode",
+            "--light-context",
+            "--no-deliver",
+            "memory-core.config.dreaming.enabled",
+        ):
+            self.assertIn(term, setup)
+
+        for command in ("git push", "gh pr merge", "gh release create"):
+            self.assertNotIn(command, setup)
+
+    def test_primary_agent_can_delegate_without_overwriting_existing_tool_policy(self) -> None:
+        setup = SETUP.read_text(encoding="utf-8")
+
+        for term in (
+            "merge_primary_delegation_tools",
+            'agents.list[$index].tools.alsoAllow',
+            'agents.list[$index].tools.deny',
+            '"sessions_spawn", "sessions_yield", "subagents"',
+            'tool != "subagents"',
+        ):
+            self.assertIn(term, setup)
+
+        self.assertIn('current_allow="$(openclaw config get', setup)
+        self.assertIn('current_deny="$(openclaw config get', setup)
+
+    def test_openclaw_2026_7_uses_supported_agents_and_memory_schema(self) -> None:
+        setup = SETUP.read_text(encoding="utf-8")
+
+        for term in (
+            "openclaw config get agents.list --json",
+            'agents.list[$index].$suffix',
+            'agents.list[$index].subagents.allowAgents',
+            'agents.list[$index].memorySearch.sources',
+            'agents.list[$index].memorySearch.experimental.sessionMemory',
+            "plugins.entries.active-memory.config.agents",
+            "plugins.entries.active-memory.config.allowedChatTypes",
+        ):
+            self.assertIn(term, setup)
+
+        for unsupported in (
+            "agents.entries.$",
+            "memory.search.rememberAcrossConversations",
+            "memorySearch.rememberAcrossConversations",
+            "active-memory.config.mode",
+            "escalate",
+        ):
+            self.assertNotIn(unsupported, setup)
+
+    def test_invalid_config_recovers_only_from_valid_backup(self) -> None:
+        setup = SETUP.read_text(encoding="utf-8")
+
+        for term in (
+            "recover_invalid_config",
+            "OPENCLAW_CONFIG_PATH=\"$CONFIG_BACKUP_PATH\" openclaw config validate",
+            "openclaw.json",
+            ".invalid-$(date +%Y%m%d-%H%M%S)",
+            "Restored the last valid OpenClaw config backup",
+            "OpenClaw backup config is also invalid",
+        ):
+            self.assertIn(term, setup)
+
+        self.assertLess(
+            setup.index("recover_invalid_config\n"),
+            setup.index('PRIMARY_AGENT="$(choose_primary_agent)"'),
+        )
+
+    def test_primary_agent_is_preserved_and_receives_skill_bridges(self) -> None:
+        setup = SETUP.read_text(encoding="utf-8")
+
+        self.assertIn("has_agent levyra-worker", setup)
+        self.assertIn("has_agent levyra", setup)
+        self.assertIn("LEVYRA_OPENCLAW_AGENT", setup)
+        self.assertIn('"$PRIMARY_REPO"/.agents/skills/*/SKILL.md', setup)
+        self.assertIn('"$PRIMARY_WORKSPACE/MEMORY.md"', setup)
+        self.assertIn("## Levyra multi-agent profile", setup)
+        self.assertIn("levyra-openclaw-orchestrator", setup)
+
+    def test_active_memory_targets_primary_with_bounded_session_recall(self) -> None:
+        setup = SETUP.read_text(encoding="utf-8")
+
+        for term in (
+            "memorySearch.enabled",
+            "memorySearch.sources",
+            "memorySearch.experimental.sessionMemory",
+            "plugins.entries.active-memory.enabled",
+            "plugins.entries.active-memory.config.enabled",
+            "plugins.entries.active-memory.config.agents",
+            "plugins.entries.active-memory.config.allowedChatTypes",
+            "plugins.entries.active-memory.config.queryMode",
+            "plugins.entries.active-memory.config.promptStyle",
+            "plugins.entries.active-memory.config.timeoutMs",
+            "plugins.entries.active-memory.config.persistTranscripts false",
+            "recent",
+            "precision-heavy",
+        ):
+            self.assertIn(term, setup)
+
+    def test_cron_scope_failure_is_non_fatal(self) -> None:
+        setup = SETUP.read_text(encoding="utf-8")
+
+        self.assertIn("Cron inspection unavailable", setup)
+        self.assertIn("may lack operator.admin scope", setup)
+        self.assertIn("openclaw cron list --agent levyra-ci || true", setup)
+
+    def test_evidence_workspaces_reference_canonical_repo_paths(self) -> None:
+        setup = SETUP.read_text(encoding="utf-8")
+
+        self.assertIn("repo/docs/ai/AI_ENGINEERING_GUARDRAILS.md", setup)
+        self.assertIn("repo/.github/AGENTS.md", setup)
+
+    def test_orchestrator_uses_compact_independent_handoffs(self) -> None:
+        skill = SKILL.read_text(encoding="utf-8")
+
+        for term in (
+            "levyra-context-efficiency",
+            "levyra-reviewer",
+            "levyra-ci",
+            "fresh,\n   bounded handoff",
+            "code-review",
+            "Memory is evidence, not a second source of truth",
+        ):
+            self.assertIn(term, skill)
+
+
+if __name__ == "__main__":
+    unittest.main()

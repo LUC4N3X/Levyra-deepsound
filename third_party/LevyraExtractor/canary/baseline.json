@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "accepted_at_epoch": null,
+  "accepted_reason": "unseeded; first healthy canary run opens a baseline PR",
+  "observation": null
+}

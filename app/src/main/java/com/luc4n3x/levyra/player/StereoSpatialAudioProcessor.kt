@@ -1,0 +1,138 @@
+package com.luc4n3x.levyra.player
+
+import androidx.media3.common.C
+import androidx.media3.common.audio.AudioProcessor
+import androidx.media3.common.audio.AudioProcessor.AudioFormat
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import kotlin.math.roundToInt
+
+class StereoSpatialAudioProcessor : AudioProcessor {
+    @Volatile
+    var strength: Int = 0
+        set(value) {
+            field = value.coerceIn(0, 100)
+        }
+
+    private var isActive = false
+    private var inputAudioFormat = AudioFormat.NOT_SET
+    private var outputAudioFormat = AudioFormat.NOT_SET
+    private var buffer: ByteBuffer = AudioProcessor.EMPTY_BUFFER
+    private var outputBuffer: ByteBuffer = AudioProcessor.EMPTY_BUFFER
+    private var inputEnded = false
+
+    override fun configure(inputAudioFormat: AudioFormat): AudioFormat {
+        if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT && inputAudioFormat.encoding != C.ENCODING_PCM_FLOAT) {
+            throw AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
+        }
+        this.inputAudioFormat = inputAudioFormat
+        outputAudioFormat = inputAudioFormat
+        isActive = true
+        return outputAudioFormat
+    }
+
+    override fun isActive(): Boolean = isActive
+
+    override fun queueInput(inputBuffer: ByteBuffer) {
+        val limit = inputBuffer.limit()
+        val size = limit - inputBuffer.position()
+        if (size <= 0) {
+            outputBuffer = AudioProcessor.EMPTY_BUFFER
+            return
+        }
+        val output = replaceOutputBuffer(size)
+        if (strength > 0 && inputAudioFormat.channelCount == 2) {
+            if (inputAudioFormat.encoding == C.ENCODING_PCM_FLOAT) {
+                processStereoFloat(inputBuffer.asReadOnlyBuffer(), output)
+            } else {
+                processStereo(inputBuffer.asReadOnlyBuffer(), output)
+            }
+        } else {
+            output.put(inputBuffer)
+        }
+        output.flip()
+        inputBuffer.position(limit)
+    }
+
+    override fun queueEndOfStream() {
+        inputEnded = true
+    }
+
+    override fun getOutput(): ByteBuffer {
+        val output = outputBuffer
+        outputBuffer = AudioProcessor.EMPTY_BUFFER
+        return output
+    }
+
+    override fun isEnded(): Boolean = inputEnded && !outputBuffer.hasRemaining()
+
+    override fun flush(streamMetadata: AudioProcessor.StreamMetadata) {
+        clearBufferedState()
+    }
+
+    override fun reset() {
+        clearBufferedState()
+        isActive = false
+        inputAudioFormat = AudioFormat.NOT_SET
+        outputAudioFormat = AudioFormat.NOT_SET
+        buffer = AudioProcessor.EMPTY_BUFFER
+    }
+
+    private fun replaceOutputBuffer(size: Int): ByteBuffer {
+        if (buffer.capacity() < size) {
+            buffer = ByteBuffer.allocateDirect(size)
+        } else {
+            buffer.clear()
+        }
+        buffer.order(ByteOrder.LITTLE_ENDIAN)
+        outputBuffer = buffer
+        return buffer
+    }
+
+    private fun processStereo(input: ByteBuffer, output: ByteBuffer) {
+        input.order(ByteOrder.LITTLE_ENDIAN)
+        output.order(ByteOrder.LITTLE_ENDIAN)
+        val amount = strength / 100f
+        val midGain = 1f - amount * 0.08f
+        val sideGain = 1f + amount * 0.75f
+        val outputGain = 1f / sideGain
+        while (input.remaining() >= 4) {
+            val left = input.short.toInt()
+            val right = input.short.toInt()
+            val mid = (left + right) * 0.5f * midGain
+            val side = (left - right) * 0.5f * sideGain
+            output.putShort(clampSample((mid + side) * outputGain))
+            output.putShort(clampSample((mid - side) * outputGain))
+        }
+        while (input.hasRemaining()) output.put(input.get())
+    }
+
+    private fun processStereoFloat(input: ByteBuffer, output: ByteBuffer) {
+        input.order(ByteOrder.LITTLE_ENDIAN)
+        output.order(ByteOrder.LITTLE_ENDIAN)
+        val amount = strength / 100f
+        val midGain = 1f - amount * 0.08f
+        val sideGain = 1f + amount * 0.75f
+        val outputGain = 1f / sideGain
+        while (input.remaining() >= 8) {
+            val left = input.float
+            val right = input.float
+            val mid = (left + right) * 0.5f * midGain
+            val side = (left - right) * 0.5f * sideGain
+            output.putFloat((mid + side) * outputGain)
+            output.putFloat((mid - side) * outputGain)
+        }
+        while (input.hasRemaining()) output.put(input.get())
+    }
+
+    private fun clampSample(value: Float): Short {
+        return value.roundToInt()
+            .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+            .toShort()
+    }
+
+    private fun clearBufferedState() {
+        outputBuffer = AudioProcessor.EMPTY_BUFFER
+        inputEnded = false
+    }
+}

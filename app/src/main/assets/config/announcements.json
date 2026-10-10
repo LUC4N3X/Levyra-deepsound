@@ -1,0 +1,349 @@
+{
+  "schemaVersion": 2,
+  "announcements": [
+    {
+      "id": "github-star-2026-08",
+      "enabled": true,
+      "priority": 100,
+      "style": "open_source",
+      "minimumVersionCode": 2031800,
+      "startAt": "2026-08-03T00:00:00Z",
+      "actionUrl": "https://github.com/LUC4N3X/Levyra-deepsound",
+      "translations": {
+        "en": {
+          "badge": "100% OPEN SOURCE",
+          "title": "Like Levyra?",
+          "body": "Levyra is free and open source. A star on GitHub takes only a few seconds and genuinely helps the project grow.",
+          "action": "⭐ Star Levyra",
+          "dismiss": "Maybe later",
+          "settingsTitle": "Support Levyra on GitHub",
+          "settingsSubtitle": "Leave a star to help more people discover the project."
+        },
+        "it": {
+          "badge": "100% OPEN SOURCE",
+          "title": "Ti piace Levyra?",
+          "body": "Levyra è gratuita e open source. Una stella su GitHub richiede pochi secondi e aiuta davvero il progetto a crescere.",
+          "action": "⭐ Metti una stella",
+          "dismiss": "Più tardi",
+          "settingsTitle": "Supporta Levyra su GitHub",
+          "settingsSubtitle": "Lascia una stella e aiuta più persone a scoprire il progetto."
+        },
+        "es": {
+          "badge": "100% CÓDIGO ABIERTO",
+          "title": "¿Te gusta Levyra?",
+          "body": "Levyra es gratis y de código abierto. Darle una estrella en GitHub solo lleva unos segundos y ayuda de verdad a que el proyecto crezca.",
+          "action": "⭐ Dar una estrella",
+          "dismiss": "Quizá más tarde",
+          "settingsTitle": "Apoya Levyra en GitHub",
+          "settingsSubtitle": "Deja una estrella y ayuda a más personas a descubrir el proyecto."
+        },
+        "fr": {
+          "badge": "100% OPEN SOURCE",
+          "title": "Vous aimez Levyra ?",
+          "body": "Levyra est gratuite et open source. Ajouter une étoile sur GitHub ne prend que quelques secondes et aide vraiment le projet à grandir.",
+          "action": "⭐ Ajouter une étoile",
+          "dismiss": "Peut-être plus tard",
+          "settingsTitle": "Soutenir Levyra sur GitHub",
+          "settingsSubtitle": "Ajoutez une étoile pour aider davantage de personnes à découvrir le projet."
+        },
+        "de": {
+          "badge": "100% OPEN SOURCE",
+          "title": "Gefällt dir Levyra?",
+          "body": "Levyra ist kostenlos und Open Source. Ein Stern auf GitHub dauert nur wenige Sekunden und hilft dem Projekt wirklich zu wachsen.",
+          "action": "⭐ Levyra markieren",
+          "dismiss": "Vielleicht später",
+          "settingsTitle": "Levyra auf GitHub unterstützen",
+          "settingsSubtitle": "Gib einen Stern, damit mehr Menschen das Projekt entdecken."
+        },
+        "pt": {
+          "badge": "100% CÓDIGO ABERTO",
+          "title": "Gostou do Levyra?",
+          "body": "O Levyra é gratuito e de código aberto. Dar uma estrela no GitHub leva apenas alguns segundos e ajuda de verdade o projeto a crescer.",
+          "action": "⭐ Dar uma estrela",
+          "dismiss": "Talvez mais tarde",
+          "settingsTitle": "Apoie o Levyra no GitHub",
+          "settingsSubtitle": "Deixe uma estrela e ajude mais pessoas a descobrir o projeto."
+        },
+        "nl": {
+          "badge": "100% OPEN SOURCE",
+          "title": "Vind je Levyra fijn?",
+          "body": "Levyra is gratis en open source. Een ster op GitHub kost maar een paar seconden en helpt het project echt te groeien.",
+          "action": "⭐ Geef een ster",
+          "dismiss": "Misschien later",
+          "settingsTitle": "Steun Levyra op GitHub",
+          "settingsSubtitle": "Geef een ster en help meer mensen het project te ontdekken."
+        },
+        "pl": {
+          "badge": "100% OPEN SOURCE",
+          "title": "Podoba Ci się Levyra?",
+          "body": "Levyra jest bezpłatna i ma otwarty kod źródłowy. Gwiazdka na GitHubie zajmuje tylko kilka sekund i naprawdę pomaga projektowi się rozwijać.",
+          "action": "⭐ Dodaj gwiazdkę",
+          "dismiss": "Może później",
+          "settingsTitle": "Wesprzyj Levyra na GitHubie",
+          "settingsSubtitle": "Zostaw gwiazdkę i pomóż większej liczbie osób odkryć projekt."
+        },
+        "ro": {
+          "badge": "100% SURSĂ DESCHISĂ",
+          "title": "Îți place Levyra?",
+          "body": "Levyra este gratuită și open-source. O stea pe GitHub durează doar câteva secunde și ajută cu adevărat proiectul să crească.",
+          "action": "⭐ Oferă o stea",
+          "dismiss": "Poate mai târziu",
+          "settingsTitle": "Susține Levyra pe GitHub",
+          "settingsSubtitle": "Lasă o stea și ajută mai multe persoane să descopere proiectul."
+        },
+        "el": {
+          "badge": "100% ΑΝΟΙΧΤΟΣ ΚΩΔΙΚΑΣ",
+          "title": "Σου αρέσει το Levyra;",
+          "body": "Το Levyra είναι δωρεάν και ανοικτού κώδικα. Ένα αστέρι στο GitHub χρειάζεται μόνο λίγα δευτερόλεπτα και βοηθά πραγματικά το έργο να αναπτυχθεί.",
+          "action": "⭐ Βάλε ένα αστέρι",
+          "dismiss": "Ίσως αργότερα",
+          "settingsTitle": "Στήριξε το Levyra στο GitHub",
+          "settingsSubtitle": "Άφησε ένα αστέρι και βοήθησε περισσότερους ανθρώπους να ανακαλύψουν το έργο."
+        },
+        "sv": {
+          "badge": "100% ÖPPEN KÄLLKOD",
+          "title": "Gillar du Levyra?",
+          "body": "Levyra är gratis och har öppen källkod. En stjärna på GitHub tar bara några sekunder och hjälper verkligen projektet att växa.",
+          "action": "⭐ Ge en stjärna",
+          "dismiss": "Kanske senare",
+          "settingsTitle": "Stöd Levyra på GitHub",
+          "settingsSubtitle": "Lämna en stjärna och hjälp fler att upptäcka projektet."
+        },
+        "da": {
+          "badge": "100% OPEN SOURCE",
+          "title": "Kan du lide Levyra?",
+          "body": "Levyra er gratis og open source. En stjerne på GitHub tager kun få sekunder og hjælper virkelig projektet med at vokse.",
+          "action": "⭐ Giv en stjerne",
+          "dismiss": "Måske senere",
+          "settingsTitle": "Støt Levyra på GitHub",
+          "settingsSubtitle": "Giv en stjerne, og hjælp flere med at opdage projektet."
+        },
+        "cs": {
+          "badge": "100% OTEVŘENÝ KÓD",
+          "title": "Líbí se vám Levyra?",
+          "body": "Levyra je zdarma a má otevřený zdrojový kód. Hvězdička na GitHubu zabere jen pár sekund a projektu skutečně pomáhá růst.",
+          "action": "⭐ Přidat hvězdičku",
+          "dismiss": "Možná později",
+          "settingsTitle": "Podpořit Levyra na GitHubu",
+          "settingsSubtitle": "Přidejte hvězdičku a pomozte dalším lidem objevit projekt."
+        },
+        "uk": {
+          "badge": "100% ВІДКРИТИЙ КОД",
+          "title": "Подобається Levyra?",
+          "body": "Levyra безкоштовна й має відкритий код. Зірка на GitHub займає лише кілька секунд і справді допомагає проєкту розвиватися.",
+          "action": "⭐ Поставити зірку",
+          "dismiss": "Можливо, пізніше",
+          "settingsTitle": "Підтримати Levyra на GitHub",
+          "settingsSubtitle": "Поставте зірку й допоможіть більшій кількості людей відкрити проєкт."
+        },
+        "ru": {
+          "badge": "100% ОТКРЫТЫЙ КОД",
+          "title": "Нравится Levyra?",
+          "body": "Levyra бесплатна и имеет открытый исходный код. Звезда на GitHub занимает всего несколько секунд и действительно помогает проекту развиваться.",
+          "action": "⭐ Поставить звезду",
+          "dismiss": "Возможно, позже",
+          "settingsTitle": "Поддержать Levyra на GitHub",
+          "settingsSubtitle": "Поставьте звезду и помогите большему числу людей узнать о проекте."
+        },
+        "tr": {
+          "badge": "%100 AÇIK KAYNAK",
+          "title": "Levyra’yı beğendiniz mi?",
+          "body": "Levyra ücretsiz ve açık kaynaklıdır. GitHub’da yıldız vermek yalnızca birkaç saniye sürer ve projenin büyümesine gerçekten yardımcı olur.",
+          "action": "⭐ Yıldız ver",
+          "dismiss": "Belki sonra",
+          "settingsTitle": "Levyra’yı GitHub’da destekle",
+          "settingsSubtitle": "Bir yıldız bırakarak daha fazla kişinin projeyi keşfetmesine yardımcı olun."
+        },
+        "ar": {
+          "badge": "مفتوح المصدر 100٪",
+          "title": "هل أعجبك ⁨Levyra⁩؟",
+          "body": "⁨Levyra⁩ مجاني ومفتوح المصدر. منح المشروع نجمة على ⁨GitHub⁩ لا يستغرق سوى بضع ثوانٍ ويساعده فعلًا على النمو.",
+          "action": "⭐ امنح نجمة",
+          "dismiss": "ربما لاحقًا",
+          "settingsTitle": "ادعم ⁨Levyra⁩ على ⁨GitHub⁩",
+          "settingsSubtitle": "امنح المشروع نجمة وساعد مزيدًا من الأشخاص على اكتشافه."
+        },
+        "zh": {
+          "badge": "100% 开源",
+          "title": "喜欢 Levyra 吗？",
+          "body": "Levyra 免费且开源。在 GitHub 上点一颗星只需几秒钟，却能真正帮助项目成长。",
+          "action": "⭐ 点星支持",
+          "dismiss": "稍后再说",
+          "settingsTitle": "在 GitHub 上支持 Levyra",
+          "settingsSubtitle": "点一颗星，帮助更多人发现这个项目。"
+        },
+        "ja": {
+          "badge": "100% オープンソース",
+          "title": "Levyra は気に入りましたか？",
+          "body": "Levyra は無料のオープンソースアプリです。GitHub でスターを付けるのは数秒で、プロジェクトの成長を本当に後押しできます。",
+          "action": "⭐ スターを付ける",
+          "dismiss": "あとで",
+          "settingsTitle": "GitHub で Levyra を応援",
+          "settingsSubtitle": "スターを付けて、より多くの人がプロジェクトを見つけられるようにしましょう。"
+        },
+        "ko": {
+          "badge": "100% 오픈 소스",
+          "title": "Levyra가 마음에 드시나요?",
+          "body": "Levyra는 무료 오픈 소스 앱입니다. GitHub에서 별을 남기는 데는 몇 초밖에 걸리지 않으며 프로젝트 성장에 큰 도움이 됩니다.",
+          "action": "⭐ 별 남기기",
+          "dismiss": "나중에",
+          "settingsTitle": "GitHub에서 Levyra 응원하기",
+          "settingsSubtitle": "별을 남겨 더 많은 사람이 프로젝트를 발견하도록 도와주세요."
+        },
+        "hi": {
+          "badge": "100% ओपन सोर्स",
+          "title": "क्या आपको Levyra पसंद है?",
+          "body": "Levyra मुफ़्त और ओपन सोर्स है। GitHub पर एक स्टार देने में केवल कुछ सेकंड लगते हैं और इससे परियोजना को सचमुच आगे बढ़ने में मदद मिलती है।",
+          "action": "⭐ स्टार दें",
+          "dismiss": "शायद बाद में",
+          "settingsTitle": "GitHub पर Levyra का समर्थन करें",
+          "settingsSubtitle": "एक स्टार देकर अधिक लोगों को परियोजना खोजने में मदद करें।"
+        },
+        "id": {
+          "badge": "100% SUMBER TERBUKA",
+          "title": "Suka Levyra?",
+          "body": "Levyra gratis dan bersumber terbuka. Memberi bintang di GitHub hanya membutuhkan beberapa detik dan benar-benar membantu proyek berkembang.",
+          "action": "⭐ Beri bintang",
+          "dismiss": "Mungkin nanti",
+          "settingsTitle": "Dukung Levyra di GitHub",
+          "settingsSubtitle": "Beri bintang agar lebih banyak orang dapat menemukan proyek ini."
+        },
+        "vi": {
+          "badge": "100% MÃ NGUỒN MỞ",
+          "title": "Bạn thích Levyra chứ?",
+          "body": "Levyra miễn phí và có mã nguồn mở. Tặng một ngôi sao trên GitHub chỉ mất vài giây nhưng thực sự giúp dự án phát triển.",
+          "action": "⭐ Tặng một ngôi sao",
+          "dismiss": "Để sau",
+          "settingsTitle": "Ủng hộ Levyra trên GitHub",
+          "settingsSubtitle": "Tặng một ngôi sao để giúp nhiều người hơn khám phá dự án."
+        },
+        "th": {
+          "badge": "โอเพนซอร์ส 100%",
+          "title": "ชอบ Levyra ไหม?",
+          "body": "Levyra ใช้งานฟรีและเป็นโอเพนซอร์ส การกดดาวบน GitHub ใช้เวลาเพียงไม่กี่วินาทีและช่วยให้โครงการเติบโตได้จริง",
+          "action": "⭐ กดดาวให้",
+          "dismiss": "ไว้ทีหลัง",
+          "settingsTitle": "สนับสนุน Levyra บน GitHub",
+          "settingsSubtitle": "กดดาวเพื่อช่วยให้ผู้คนค้นพบโครงการนี้มากขึ้น"
+        },
+        "fil": {
+          "badge": "100% OPEN SOURCE",
+          "title": "Nagustuhan mo ang Levyra?",
+          "body": "Libre at open source ang Levyra. Ilang segundo lang ang pagbigay ng star sa GitHub at malaking tulong talaga ito sa paglago ng proyekto.",
+          "action": "⭐ Bigyan ng star",
+          "dismiss": "Mamaya na lang",
+          "settingsTitle": "Suportahan ang Levyra sa GitHub",
+          "settingsSubtitle": "Mag-iwan ng star para mas maraming tao ang makatuklas sa proyekto."
+        },
+        "he": {
+          "badge": "100% קוד פתוח",
+          "title": "אהבת את ⁨Levyra⁩?",
+          "body": "⁨Levyra⁩ חינמית ובקוד פתוח. מתן כוכב ב־⁨GitHub⁩ לוקח רק כמה שניות ובאמת עוזר לפרויקט לצמוח.",
+          "action": "⭐ לתת כוכב",
+          "dismiss": "אולי אחר כך",
+          "settingsTitle": "לתמוך ב־⁨Levyra⁩ ב־⁨GitHub⁩",
+          "settingsSubtitle": "תנו כוכב ועזרו ליותר אנשים לגלות את הפרויקט."
+        },
+        "sk": {
+          "badge": "100% OTVORENÝ ZDROJ",
+          "title": "Páči sa vám Levyra?",
+          "body": "Levyra je bezplatná a má otvorený zdrojový kód. Hviezdička na GitHube zaberie len pár sekúnd a projektu skutočne pomáha rásť.",
+          "action": "⭐ Pridať hviezdičku",
+          "dismiss": "Možno neskôr",
+          "settingsTitle": "Podporte Levyra na GitHube",
+          "settingsSubtitle": "Pridajte hviezdičku a pomôžte ďalším ľuďom objaviť projekt."
+        },
+        "hr": {
+          "badge": "100% OTVORENI KÔD",
+          "title": "Sviđa vam se Levyra?",
+          "body": "Levyra je besplatna i otvorenog koda. Zvjezdica na GitHubu oduzima samo nekoliko sekundi i stvarno pomaže projektu da raste.",
+          "action": "⭐ Dodaj zvjezdicu",
+          "dismiss": "Možda kasnije",
+          "settingsTitle": "Podržite Levyra na GitHubu",
+          "settingsSubtitle": "Ostavite zvjezdicu i pomozite da više ljudi otkrije projekt."
+        },
+        "bg": {
+          "badge": "100% ОТВОРЕН КОД",
+          "title": "Харесва ли ви Levyra?",
+          "body": "Levyra е безплатна и с отворен код. Една звезда в GitHub отнема само няколко секунди и наистина помага на проекта да се развива.",
+          "action": "⭐ Добавяне на звезда",
+          "dismiss": "Може би по-късно",
+          "settingsTitle": "Подкрепете Levyra в GitHub",
+          "settingsSubtitle": "Оставете звезда и помогнете на повече хора да открият проекта."
+        },
+        "hu": {
+          "badge": "100% NYÍLT FORRÁSKÓD",
+          "title": "Tetszik a Levyra?",
+          "body": "A Levyra ingyenes és nyílt forráskódú. Egy csillag a GitHubon csak néhány másodperc, és valóban segíti a projekt fejlődését.",
+          "action": "⭐ Adj egy csillagot",
+          "dismiss": "Talán később",
+          "settingsTitle": "Támogasd a Levyrát a GitHubon",
+          "settingsSubtitle": "Adj egy csillagot, és segíts, hogy még többen felfedezzék a projektet."
+        },
+        "fi": {
+          "badge": "100% AVOIN LÄHDEKOODI",
+          "title": "Pidätkö Levyrasta?",
+          "body": "Levyra on ilmainen ja avoimen lähdekoodin sovellus. Tähden antaminen GitHubissa vie vain muutaman sekunnin ja auttaa projektia oikeasti kasvamaan.",
+          "action": "⭐ Anna tähti",
+          "dismiss": "Ehkä myöhemmin",
+          "settingsTitle": "Tue Levyraa GitHubissa",
+          "settingsSubtitle": "Anna tähti ja auta useampia löytämään projekti."
+        },
+        "et": {
+          "badge": "100% AVATUD LÄHTEKOOD",
+          "title": "Kas sulle meeldib Levyra?",
+          "body": "Levyra on tasuta ja avatud lähtekoodiga. GitHubis tähe lisamine võtab vaid paar sekundit ning aitab projektil päriselt areneda.",
+          "action": "⭐ Lisa täht",
+          "dismiss": "Võib-olla hiljem",
+          "settingsTitle": "Toeta Levyrat GitHubis",
+          "settingsSubtitle": "Lisa täht ja aita rohkematel inimestel projekt avastada."
+        },
+        "nb": {
+          "badge": "100% ÅPEN KILDEKODE",
+          "title": "Liker du Levyra?",
+          "body": "Levyra er gratis og har åpen kildekode. En stjerne på GitHub tar bare noen sekunder og hjelper virkelig prosjektet med å vokse.",
+          "action": "⭐ Gi en stjerne",
+          "dismiss": "Kanskje senere",
+          "settingsTitle": "Støtt Levyra på GitHub",
+          "settingsSubtitle": "Gi en stjerne og hjelp flere med å oppdage prosjektet."
+        },
+        "ca": {
+          "badge": "100% CODI OBERT",
+          "title": "T'agrada Levyra?",
+          "body": "Levyra és gratuïta i de codi obert. Posar una estrella a GitHub només triga uns segons i ajuda de debò el projecte a créixer.",
+          "action": "⭐ Afegeix una estrella",
+          "dismiss": "Potser més tard",
+          "settingsTitle": "Dona suport a Levyra a GitHub",
+          "settingsSubtitle": "Deixa una estrella i ajuda més gent a descobrir el projecte."
+        },
+        "fa": {
+          "badge": "۱۰۰٪ متن‌باز",
+          "title": "⁨Levyra⁩ را دوست دارید؟",
+          "body": "⁨Levyra⁩ رایگان و متن‌باز است. ستاره‌دادن به پروژه در ⁨GitHub⁩ فقط چند ثانیه زمان می‌برد و واقعاً به رشد آن کمک می‌کند.",
+          "action": "⭐ ستاره بدهید",
+          "dismiss": "شاید بعداً",
+          "settingsTitle": "از ⁨Levyra⁩ در ⁨GitHub⁩ حمایت کنید",
+          "settingsSubtitle": "یک ستاره بدهید تا افراد بیشتری این پروژه را پیدا کنند."
+        },
+        "zh-Hant": {
+          "badge": "100% 開放原始碼",
+          "title": "喜歡 Levyra 嗎？",
+          "body": "Levyra 免費且開放原始碼。在 GitHub 上點一顆星只需幾秒鐘，卻能實際幫助專案成長。",
+          "action": "⭐ 點星支持",
+          "dismiss": "稍後再說",
+          "settingsTitle": "在 GitHub 上支持 Levyra",
+          "settingsSubtitle": "點一顆星，幫助更多人發現這個專案。"
+        },
+        "ms": {
+          "badge": "100% SUMBER TERBUKA",
+          "title": "Suka Levyra?",
+          "body": "Levyra percuma dan sumber terbuka. Memberi bintang di GitHub hanya mengambil masa beberapa saat dan benar-benar membantu projek ini berkembang.",
+          "action": "⭐ Beri bintang",
+          "dismiss": "Mungkin nanti",
+          "settingsTitle": "Sokong Levyra di GitHub",
+          "settingsSubtitle": "Beri bintang dan bantu lebih ramai orang menemui projek ini."
+        }
+      }
+    }
+  ]
+}

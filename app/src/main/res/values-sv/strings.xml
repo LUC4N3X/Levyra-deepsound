@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Minispelare, snabba favoriter, dagligt flow, offline och låttexter</string>
+    <string name="widget_idle_subtitle">Tryck för att lyssna</string>
+    <string name="widget_toggle">Spela/Pausa</string>
+    <string name="widget_next">Nästa</string>
+    <string name="widget_previous">Föregående</string>
+    <string name="widget_favorites">Favoriter</string>
+    <string name="widget_flow">Dagligt flow</string>
+    <string name="widget_offline">Offlinemix</string>
+    <string name="widget_lyrics">Låttexter</string>
+    <string name="radar_channel_name">Släppradar</string>
+    <string name="radar_channel_description">Nya släpp från artister du följer</string>
+    <string name="radar_new_release_title">Nytt släpp från %1$s</string>
+    <string name="automatic_backups">Automatiska säkerhetskopior</string>
+    <string name="car_home">Hem</string>
+    <string name="car_downloads">Nedladdningar</string>
+    <string name="car_favorites">Favoriter</string>
+    <string name="car_playlists">Spellistor</string>
+    <string name="car_no_content">Inget innehåll</string>
+    <string name="car_content_unavailable">Innehållet är inte tillgängligt</string>
+    <string name="car_search_tracks">Sök efter låtar</string>
+    <string name="car_no_results">Inga resultat</string>
+    <string name="car_connecting_player">Ansluter till spelaren</string>
+    <string name="car_now_playing">Spelas nu</string>
+    <string name="car_queue">Kö</string>
+    <string name="notification_favorite_add">Lägg till i favoriter</string>
+    <string name="notification_favorite_remove">Ta bort från favoriter</string>
+    <string name="notification_shuffle_enable">Aktivera blandning</string>
+    <string name="notification_shuffle_disable">Inaktivera blandning</string>
+    <string name="notification_repeat_off">Upprepning av</string>
+    <string name="notification_repeat_all">Upprepa alla</string>
+    <string name="notification_repeat_one">Upprepa en</string>
+    <string name="tile_recognize_music">Känn igen musik</string>
+    <string name="tile_playback">Uppspelning</string>
+    <string name="shortcut_search">Sök</string>
+    <string name="shortcut_library">Bibliotek</string>
+    <string name="shortcut_recognition">Känn igen musik</string>
+    <string name="shortcut_resume">Återuppta uppspelning</string>
+</resources>

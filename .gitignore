@@ -1,0 +1,29 @@
+.gradle/
+build/
+local.properties
+*.keystore
+*.jks
+app/*.jks
+app/*.keystore
+app/build/
+.idea/
+*.iml
+.DS_Store
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.pyc
+*.egg-info/
+skills-lock.json
+
+# Generated native runtime projections. Canonical tracked sources live under .agents/.
+/.claude/
+/.codex/
+
+# Project-local AI usage tooling binaries and caches
+/.levyra-tools/
+
+# Local build diagnostics
+/[Bb]uild log.txt
+/.report/

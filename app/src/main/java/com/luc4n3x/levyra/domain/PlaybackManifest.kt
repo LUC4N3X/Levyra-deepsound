@@ -1,0 +1,166 @@
+package com.luc4n3x.levyra.domain
+
+enum class PlaybackStreamKind {
+    AUDIO,
+    VIDEO,
+    MUXED,
+    HLS
+}
+
+enum class PlaybackDeliveryMethod {
+    PROGRESSIVE,
+    HLS,
+    DASH,
+    SABR,
+    UNKNOWN
+}
+
+data class PlaybackStreamProvenance(
+    val clientName: String = "",
+    val clientHeaderName: String = "",
+    val clientVersion: String = "",
+    val userAgent: String = "",
+    val origin: String = "",
+    val referer: String = "",
+    val requiresPoToken: Boolean = false,
+    val resolverGeneration: Long = -1L,
+    val preferredAudioLanguage: String? = null,
+    val playerHash: String = "",
+    val playerConfigIdentity: String = "",
+    val playerConfigEpoch: Long = -1L,
+    val playerConfigOrigin: String = "",
+    val securitySessionGeneration: Long = -1L,
+    val poTokenGeneration: Long = -1L,
+    val networkGeneration: Long = -1L,
+    val networkRoute: String = "",
+    val resolvedAtMs: Long = 0L,
+    val expiresAtMs: Long = 0L
+)
+
+data class PlaybackStreamDescriptor(
+    val url: String,
+    val kind: PlaybackStreamKind,
+    val deliveryMethod: PlaybackDeliveryMethod,
+    val container: String = "",
+    val mimeType: String = "",
+    val codec: String = "",
+    val bitrate: Int = 0,
+    val averageBitrate: Int = 0,
+    val sampleRate: Int = 0,
+    val bitDepth: Int = 0,
+    val width: Int = 0,
+    val height: Int = 0,
+    val fps: Int = 0,
+    val itag: Int = -1,
+    val qualityLabel: String = "",
+    val expiresAtMs: Long = 0L,
+    val selected: Boolean = false
+) {
+    fun isFresh(nowMs: Long = System.currentTimeMillis(), refreshAheadMs: Long = 90_000L): Boolean {
+        if (url.isBlank()) return false
+        if (expiresAtMs <= 0L) return true
+        return nowMs + refreshAheadMs < expiresAtMs
+    }
+
+    fun isMp4Audio(): Boolean {
+        if (kind != PlaybackStreamKind.AUDIO) return false
+        if (deliveryMethod == PlaybackDeliveryMethod.HLS || deliveryMethod == PlaybackDeliveryMethod.SABR) {
+            return false
+        }
+        val normalizedContainer = container.trim().lowercase()
+        val normalizedMimeType = mimeType.substringBefore(';').trim().lowercase()
+        val normalizedUrl = url.lowercase()
+        val path = normalizedUrl.substringBefore('?').substringBefore('#')
+        return normalizedContainer == "m4a" ||
+            normalizedContainer == "mp4" ||
+            normalizedMimeType == "audio/mp4" ||
+            normalizedUrl.contains("mime=audio%2fmp4") ||
+            normalizedUrl.contains("mime=audio/mp4") ||
+            path.endsWith(".m4a") ||
+            path.endsWith(".mp4")
+    }
+}
+
+data class ResolvedPlaybackManifest(
+    val sourceVideoId: String,
+    val provider: String,
+    val resolvedAtMs: Long,
+    val expiresAtMs: Long,
+    val durationMs: Long,
+    val selectedAudioUrl: String,
+    val selectedVideoUrl: String,
+    val streams: List<PlaybackStreamDescriptor>,
+    val loudnessDb: Float? = null,
+    val perceptualLoudnessDb: Float? = null,
+    val provenance: PlaybackStreamProvenance? = null,
+    val alternativeSource: AlternativeAudioSource? = null
+) {
+    val isAlternativeSource: Boolean
+        get() = alternativeSource != null
+
+    val isMuxed: Boolean
+        get() = selectedAudioUrl.isNotBlank() && selectedVideoUrl.isBlank() &&
+            streams.any { it.selected && it.kind == PlaybackStreamKind.MUXED }
+
+    fun isFresh(nowMs: Long = System.currentTimeMillis(), refreshAheadMs: Long = 90_000L): Boolean {
+        if (selectedAudioUrl.isBlank()) return false
+        if (expiresAtMs > 0L && nowMs + refreshAheadMs >= expiresAtMs) return false
+        val selectedStreams = streams.filter { it.selected }
+        return selectedStreams.isNotEmpty() && selectedStreams.all { it.isFresh(nowMs, refreshAheadMs) }
+    }
+
+    fun supportsMp4AudioExport(): Boolean {
+        if (selectedAudioUrl.isBlank() || selectedVideoUrl.isNotBlank()) return false
+        return streams.firstOrNull { descriptor ->
+            descriptor.selected && descriptor.url == selectedAudioUrl
+        }?.isMp4Audio() == true
+    }
+
+    fun compact(maxStreams: Int = 10, preferVideoRungs: Boolean = false): ResolvedPlaybackManifest {
+        val selected = streams.filter { it.selected }
+        val remaining = (maxStreams - selected.size).coerceAtLeast(0)
+        val alternatives = if (preferVideoRungs) {
+            val videoRungs = streams
+                .filterNot { it.selected }
+                .filter { it.kind == PlaybackStreamKind.VIDEO || it.kind == PlaybackStreamKind.MUXED }
+                .groupBy { it.height.coerceAtLeast(0) }
+                .toSortedMap(compareByDescending { it })
+                .values
+                .asSequence()
+                .mapNotNull { group ->
+                    group.minWithOrNull(
+                        compareByDescending<PlaybackStreamDescriptor> { it.kind == PlaybackStreamKind.MUXED }
+                            .thenBy { VideoQualityLadder.codecRank(it.codec, it.mimeType) }
+                            .thenByDescending { it.bitrate.coerceAtLeast(it.averageBitrate) }
+                    )
+                }
+                .toList()
+            val audioFallbacks = streams
+                .asSequence()
+                .filterNot { it.selected }
+                .filter { it.kind == PlaybackStreamKind.AUDIO }
+                .sortedWith(
+                    compareByDescending<PlaybackStreamDescriptor> { it.averageBitrate.coerceAtLeast(it.bitrate) }
+                )
+                .toList()
+            val extra = streams
+                .filterNot { it.selected }
+                .filter { it.kind != PlaybackStreamKind.VIDEO && it.kind != PlaybackStreamKind.MUXED && it.kind != PlaybackStreamKind.AUDIO }
+            (videoRungs + audioFallbacks + extra).take(remaining)
+        } else {
+            streams
+                .asSequence()
+                .filterNot { it.selected }
+                .sortedWith(
+                    compareByDescending<PlaybackStreamDescriptor> { it.kind == PlaybackStreamKind.AUDIO }
+                        .thenByDescending { it.averageBitrate.coerceAtLeast(it.bitrate) }
+                        .thenByDescending { it.height }
+                )
+                .take(remaining)
+                .toList()
+        }
+        return copy(streams = (selected + alternatives).distinctBy { descriptor ->
+            listOf(descriptor.kind.name, descriptor.itag.toString(), descriptor.url).joinToString("|")
+        })
+    }
+}

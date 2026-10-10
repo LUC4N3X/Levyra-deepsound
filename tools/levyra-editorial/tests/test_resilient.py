@@ -1,0 +1,246 @@
+from __future__ import annotations
+
+from types import SimpleNamespace
+from typing import Any
+
+import pytest
+
+import levyra_editorial.resilient as resilient_module
+from levyra_editorial.resilient import build_resilient_catalog
+from levyra_editorial.spotify import SourceApiError
+
+
+class PartialClient:
+    def __init__(self, unavailable_playlist_ids: set[str]) -> None:
+        self.unavailable_playlist_ids = unavailable_playlist_ids
+
+    def get_playlist_metadata(self, playlist_id: str) -> dict[str, Any]:
+        if playlist_id in self.unavailable_playlist_ids:
+            raise SourceApiError("playlist content is unavailable")
+        return {
+            "id": playlist_id,
+            "name": "Top 50",
+            "description": "Daily chart",
+            "external_urls": {},
+            "images": [],
+            "tracks": {"total": 1},
+        }
+
+    def iter_playlist_items(self, playlist_id: str, limit: int | None = None) -> list[dict[str, Any]]:
+        if playlist_id in self.unavailable_playlist_ids:
+            raise SourceApiError("playlist content is unavailable")
+        return [
+            {
+                "track": {
+                    "id": f"track{playlist_id[-2:]}",
+                    "uri": f"spotify:track:track{playlist_id[-2:]}",
+                    "type": "track",
+                    "name": "Chart song",
+                    "duration_ms": 180_000,
+                    "explicit": False,
+                    "external_ids": {},
+                    "external_urls": {},
+                    "artists": [{"id": "artist1", "name": "Chart Artist"}],
+                    "album": {"id": "album1", "name": "Chart Album", "images": [], "external_urls": {}},
+                }
+            }
+        ]
+
+
+def config(*, optional_ru: bool = True) -> dict[str, Any]:
+    return {
+        "collections": [
+            {
+                "id": "top-50-it",
+                "kind": "chart",
+                "market": "IT",
+                "playlistId": "playlistitaly123",
+                "title": "Top 50 Italia",
+            },
+            {
+                "id": "top-50-ru",
+                "kind": "chart",
+                "market": "RU",
+                "playlistId": "playlistrussia12",
+                "title": "Top 50 Russia",
+                "optional": optional_ru,
+            },
+        ],
+    }
+
+
+def test_optional_market_can_be_skipped_without_mutilating_required_catalog() -> None:
+    catalog = build_resilient_catalog(
+        config(optional_ru=True),
+        PartialClient({"playlistrussia12"}),
+        generated_at="2026-07-29T18:00:00Z",
+        pause_seconds=0,
+    )
+    assert [collection.id for collection in catalog.collections] == ["top-50-it"]
+
+
+def test_required_market_failure_blocks_publication() -> None:
+    with pytest.raises(SourceApiError, match="unavailable"):
+        build_resilient_catalog(
+            config(optional_ru=True),
+            PartialClient({"playlistitaly123"}),
+            generated_at="2026-07-29T18:00:00Z",
+            pause_seconds=0,
+        )
+
+
+def test_optional_flag_does_not_make_other_markets_optional() -> None:
+    with pytest.raises(SourceApiError, match="unavailable"):
+        build_resilient_catalog(
+            config(optional_ru=False),
+            PartialClient({"playlistrussia12"}),
+            generated_at="2026-07-29T18:00:00Z",
+            pause_seconds=0,
+        )
+
+
+
+def test_optional_youtube_music_client_value_error_is_caught(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: object,
+) -> None:
+    monkeypatch.setenv("LEVYRA_EDITORIAL_YTM_COOKIE", "SAPISID=abcdefghijklmnopqrstuvwxyz123456")
+    monkeypatch.setenv("LEVYRA_EDITORIAL_YTM_MAX_QUERIES", "not-a-number")
+
+    spotify = object()
+    monkeypatch.setattr(resilient_module, "SpotifyWebClient", lambda _secret: spotify)
+    monkeypatch.setattr(resilient_module, "load_config", lambda _path: {"collections": []})
+
+    captured: dict[str, object] = {}
+
+    class FakeClient:
+        def __init__(self, spotify_client: object, youtube_client: object | None) -> None:
+            captured["spotify"] = spotify_client
+            captured["youtube"] = youtube_client
+
+        def close(self) -> None:
+            return None
+
+    monkeypatch.setattr(resilient_module, "CentralEditorialClient", FakeClient)
+    monkeypatch.setattr(
+        resilient_module,
+        "build_resilient_catalog",
+        lambda _config, _client: (_ for _ in ()).throw(ValueError("stop after initialization")),
+    )
+
+    with pytest.raises(ValueError, match="stop after initialization"):
+        resilient_module.run_collection(tmp_path, tmp_path)
+
+    assert captured == {"spotify": spotify, "youtube": None}
+
+
+def test_canvas_failure_preserves_last_valid_output(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Any,
+) -> None:
+    class Spotify:
+        def close(self) -> None:
+            return None
+
+    spotify = Spotify()
+    canvas_path = tmp_path / "spotify-canvas.json"
+    canvas_path.write_text("last-valid", encoding="utf-8")
+    monkeypatch.delenv("LEVYRA_EDITORIAL_YTM_COOKIE", raising=False)
+    monkeypatch.setattr(resilient_module, "SpotifyWebClient", lambda _secret: spotify)
+    monkeypatch.setattr(resilient_module, "load_config", lambda _path: {"collections": []})
+    monkeypatch.setattr(
+        resilient_module,
+        "build_resilient_catalog",
+        lambda _config, _client: SimpleNamespace(collections=[]),
+    )
+    monkeypatch.setattr(resilient_module, "write_catalog", lambda _catalog, _path: None)
+    monkeypatch.setattr(
+        resilient_module,
+        "build_spotify_canvas_catalog",
+        lambda _catalog, _spotify: (_ for _ in ()).throw(SourceApiError("unavailable")),
+    )
+
+    resilient_module.run_collection(tmp_path / "config.json", tmp_path / "catalog.json", canvas_path)
+
+    assert canvas_path.read_text(encoding="utf-8") == "last-valid"
+
+
+def test_live_canvas_verification_surfaces_resolver_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Any,
+) -> None:
+    class Spotify:
+        def close(self) -> None:
+            return None
+
+    spotify = Spotify()
+    monkeypatch.delenv("LEVYRA_EDITORIAL_YTM_COOKIE", raising=False)
+    monkeypatch.setattr(resilient_module, "SpotifyWebClient", lambda _secret: spotify)
+    monkeypatch.setattr(resilient_module, "load_config", lambda _path: {"collections": []})
+    monkeypatch.setattr(
+        resilient_module,
+        "build_resilient_catalog",
+        lambda _config, _client: SimpleNamespace(collections=[]),
+    )
+    monkeypatch.setattr(resilient_module, "write_catalog", lambda _catalog, _path: None)
+    monkeypatch.setattr(
+        resilient_module,
+        "build_spotify_canvas_catalog",
+        lambda _catalog, _spotify: (_ for _ in ()).throw(SourceApiError("unavailable")),
+    )
+
+    with pytest.raises(SourceApiError, match="unavailable"):
+        resilient_module.run_collection(
+            tmp_path / "config.json",
+            tmp_path / "catalog.json",
+            tmp_path / "spotify-canvas.json",
+            require_canvas=True,
+        )
+
+
+def test_paxsenix_canvas_only_uses_diagnostic_resolver(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Any,
+) -> None:
+    class Spotify:
+        def get_paxsenix_canvas_urls(self, track_ids: list[str]) -> dict[str, str]:
+            return {track_id: "https://canvaz.scdn.co/upload/canvas.cnvs.mp4" for track_id in track_ids}
+
+        def close(self) -> None:
+            return None
+
+    spotify = Spotify()
+    captured: dict[str, object] = {}
+    monkeypatch.delenv("LEVYRA_EDITORIAL_YTM_COOKIE", raising=False)
+    monkeypatch.setattr(resilient_module, "SpotifyWebClient", lambda _secret: spotify)
+    monkeypatch.setattr(resilient_module, "load_config", lambda _path: {"collections": []})
+    monkeypatch.setattr(
+        resilient_module,
+        "build_resilient_catalog",
+        lambda _config, _client: SimpleNamespace(collections=[]),
+    )
+    monkeypatch.setattr(resilient_module, "write_catalog", lambda _catalog, _path: None)
+
+    def build_canvas(_catalog: object, resolver: object) -> dict[str, object]:
+        captured["resolver"] = resolver
+        return {"items": []}
+
+    monkeypatch.setattr(resilient_module, "build_spotify_canvas_catalog", build_canvas)
+    monkeypatch.setattr(resilient_module, "write_spotify_canvas_catalog", lambda _data, _path: None)
+
+    resilient_module.run_collection(
+        tmp_path / "config.json",
+        tmp_path / "catalog.json",
+        tmp_path / "spotify-canvas.json",
+        paxsenix_canvas_only=True,
+    )
+
+    resolver = captured["resolver"]
+    assert isinstance(resolver, resilient_module.PaxSenixCanvasClient)
+    assert resolver.get_canvas_urls(["track-id"]) == {
+        "track-id": "https://canvaz.scdn.co/upload/canvas.cnvs.mp4"
+    }
+
+
+def test_paxsenix_canvas_only_requires_canvas_output() -> None:
+    assert resilient_module.main(["--paxsenix-canvas-only"]) == 1

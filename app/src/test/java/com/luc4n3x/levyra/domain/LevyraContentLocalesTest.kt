@@ -1,0 +1,104 @@
+package com.luc4n3x.levyra.domain
+
+import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class LevyraContentLocalesTest {
+    @Test
+    fun everySupportedLanguageHasDistinctArtistSuggestions() {
+        LevyraLanguageCatalog.languages.forEach { language ->
+            val suggestions = LevyraContentLocales.artistSuggestions(language.code)
+            assertTrue(suggestions.size >= 10)
+            assertEquals(suggestions.size, suggestions.map(::artistIdentityKey).distinct().size)
+            assertTrue(suggestions.all { it.isNotBlank() })
+        }
+    }
+
+    @Test
+    fun nonItalianLanguagesDoNotReuseItalianSuggestions() {
+        val italian = LevyraContentLocales.artistSuggestions("it").map(::artistIdentityKey).toSet()
+        LevyraLanguageCatalog.languages
+            .filterNot { it.code == "it" }
+            .forEach { language ->
+                val localized = LevyraContentLocales.artistSuggestions(language.code).map(::artistIdentityKey).toSet()
+                assertTrue(italian.intersect(localized).isEmpty())
+            }
+    }
+
+    @Test
+    fun everySupportedLanguageResolvesToAnExplicitChartRegion() {
+        val regionIds = ChartsCatalog.regions.map { it.id }.toSet()
+        LevyraLanguageCatalog.languages.forEach { language ->
+            val locale = LevyraContentLocales.forLanguage(language.code)
+            assertTrue("Missing chart region for ${language.code}: ${locale.chartRegionId}", locale.chartRegionId in regionIds)
+            assertEquals(locale.chartRegionId, ChartsCatalog.defaultRegionForLanguage(language.code).id)
+        }
+    }
+
+    @Test
+    fun initialChartRegionFollowsUiLanguage() {
+        assertEquals("it", ChartsCatalog.defaultRegionForLanguage("it").id)
+        assertEquals("it", ChartsCatalog.defaultRegionForLanguage("it-IT").id)
+        assertEquals("pt", ChartsCatalog.defaultRegionForLanguage("pt").id)
+        assertEquals(LevyraContentLocales.forLanguage("ja").chartRegionId, ChartsCatalog.defaultRegionForLanguage("ja").id)
+    }
+
+    @Test
+    fun animeJpopExploreZoneDoesNotReusePartyQuery() {
+        listOf("en", "ja", "zh", "ko").forEach { code ->
+            val strings = LevyraStrings.forCode(code)
+            val locale = LevyraContentLocales.forLanguage(code)
+            val zone = ExploreCatalog.getZones(strings).first { it.id == "anime-jpop" }
+            assertFalse("Anime/J-pop should not reuse party query for $code", zone.query == locale.queryForTaste("party"))
+            assertTrue("Anime/J-pop query should remain explicit for $code", zone.query.contains("J-POP", ignoreCase = true))
+        }
+    }
+
+    @Test
+    fun exploreMoodCatalogHasCompletePairsForEverySupportedLanguage() {
+        LevyraLanguageCatalog.languages.forEach { language ->
+            val strings = LevyraStrings.forCode(language.code)
+            val moods = ExploreCatalog.getZones(strings)
+                .filterNot { it.id == ExploreCatalog.NEW_RELEASES_ZONE_ID }
+
+            assertEquals("Uneven mood grid for ${language.code}", 0, moods.size % 2)
+            assertEquals("Duplicate mood for ${language.code}", moods.size, moods.map { it.id }.distinct().size)
+            assertEquals(
+                "Afrobeats label for ${language.code}",
+                strings.exploreAfrobeats,
+                moods.single { it.id == "afrobeats" }.label
+            )
+            assertTrue("Empty Afrobeats label for ${language.code}", strings.exploreAfrobeats.isNotBlank())
+        }
+    }
+
+    @Test
+    fun majorAsianLanguagesUseLocalizedDiscoveryData() {
+        assertEquals("jp", LevyraContentLocales.forLanguage("ja-JP").chartRegionId)
+        assertEquals("kr", LevyraContentLocales.forLanguage("ko-KR").chartRegionId)
+        assertEquals("in", LevyraContentLocales.forLanguage("hi-IN").chartRegionId)
+        assertEquals("id", LevyraContentLocales.forLanguage("in-ID").chartRegionId)
+        assertEquals("vn", LevyraContentLocales.forLanguage("vi-VN").chartRegionId)
+        assertEquals("th", LevyraContentLocales.forLanguage("th-TH").chartRegionId)
+        assertEquals("ph", LevyraContentLocales.forLanguage("fil-PH").chartRegionId)
+        assertEquals("ph", LevyraContentLocales.forLanguage("tl-PH").chartRegionId)
+        assertEquals("il", LevyraContentLocales.forLanguage("he-IL").chartRegionId)
+        assertEquals("il", LevyraContentLocales.forLanguage("iw-IL").chartRegionId)
+        assertTrue(LevyraContentLocales.artistSuggestions("ja").contains("YOASOBI"))
+        assertTrue(LevyraContentLocales.artistSuggestions("ko").contains("BTS"))
+        assertTrue(LevyraContentLocales.artistSuggestions("vi").contains("Sơn Tùng M-TP"))
+        assertTrue(LevyraContentLocales.artistSuggestions("fil").contains("Cup of Joe"))
+        assertTrue(LevyraContentLocales.artistSuggestions("he").contains("נועה קירל"))
+    }
+
+    @Test
+    fun artistSuggestionMatchingUsesNormalizedLanguageAndPrimaryArtist() {
+        assertTrue(LevyraContentLocales.isArtistSuggestionForLanguage("Bad Bunny feat. Feid", "es-MX"))
+        assertTrue(LevyraContentLocales.isArtistSuggestionForLanguage("周杰伦", "zh-CN"))
+        assertTrue(LevyraContentLocales.isArtistSuggestionForLanguage("MiyaGi & Andy Panda", "ru-RU"))
+        assertFalse(LevyraContentLocales.isArtistSuggestionForLanguage("Sfera Ebbasta", "fr-FR"))
+    }
+}

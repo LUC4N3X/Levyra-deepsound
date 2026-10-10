@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "jcodemunch": {
+      "command": "bash",
+      "args": [
+        "-lc",
+        "exec \"$(git rev-parse --show-toplevel)/scripts/claude-jcodemunch-mcp.sh\""
+      ]
+    }
+  }
+}

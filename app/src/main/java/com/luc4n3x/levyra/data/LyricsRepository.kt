@@ -1,0 +1,1557 @@
+package com.luc4n3x.levyra.data
+
+import android.content.Context
+import com.luc4n3x.levyra.data.local.LevyraDatabase
+import com.luc4n3x.levyra.data.local.LyricsCacheDao
+import com.luc4n3x.levyra.data.local.LyricsCacheEntity
+import com.luc4n3x.levyra.data.local.LyricsSelectionDao
+import com.luc4n3x.levyra.data.local.LyricsSelectionEntity
+import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import com.luc4n3x.levyra.domain.LyricLine
+import com.luc4n3x.levyra.domain.LyricSection
+import com.luc4n3x.levyra.domain.LyricSectionType
+import com.luc4n3x.levyra.domain.LyricVocalRole
+import com.luc4n3x.levyra.domain.LyricWord
+import com.luc4n3x.levyra.domain.LyricsFetchPlan
+import com.luc4n3x.levyra.domain.LyricsProviderId
+import com.luc4n3x.levyra.domain.LyricsProviderOrdering
+import com.luc4n3x.levyra.domain.LyricsTranslationState
+import com.luc4n3x.levyra.domain.isOptimalLyricsResult
+import java.io.File
+import java.io.IOException
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
+import java.util.LinkedHashMap
+import java.util.Locale
+import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.lastOrNull
+import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.coroutines.resume
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.Request
+import okhttp3.Response
+import org.json.JSONArray
+import org.json.JSONObject
+import timber.log.Timber
+
+class LyricsRepository(context: Context? = null) {
+    private val appContext = context?.applicationContext
+    private val preferences = appContext?.let(::LevyraPreferences)
+    private val lyricsCacheDao: LyricsCacheDao? = appContext?.let { LevyraDatabase.get(it).lyricsCacheDao() }
+    private val lyricsSelectionDao: LyricsSelectionDao? = appContext?.let { LevyraDatabase.get(it).lyricsSelectionDao() }
+    private val legacyCacheDir = appContext?.cacheDir?.let { File(it, "lyrics_pro") }
+    private val youtubeTranscript = appContext?.let(::YoutubeTranscriptLyricsProvider)
+    private val youtubeMusic = YoutubeMusicWatchRepository(appContext)
+    private val translationCoordinator = LyricsTranslationCoordinator(appContext?.let(::AndroidLyricsTranslationBackend))
+    private val lyricsPlusClient = LevyraHttpClientFactory.media(appContext).newBuilder()
+        .connectTimeout(3, TimeUnit.SECONDS)
+        .readTimeout(4, TimeUnit.SECONDS)
+        .callTimeout(5, TimeUnit.SECONDS)
+        .build()
+    private val lyricsPlus = LyricsPlusProvider(lyricsPlusClient)
+    private val memoryLock = Any()
+    private val negativeLock = Any()
+    private val memory = object : LinkedHashMap<String, MemoryEntry>(MEMORY_CACHE_SIZE + 1, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, MemoryEntry>?): Boolean = size > MEMORY_CACHE_SIZE
+    }
+    private val negativeCache = object : LinkedHashMap<String, Long>(NEGATIVE_CACHE_SIZE + 1, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>?): Boolean = size > NEGATIVE_CACHE_SIZE
+    }
+    private val httpClient = LevyraHttpClientFactory.media(appContext).newBuilder()
+        .connectTimeout(4, TimeUnit.SECONDS)
+        .readTimeout(7, TimeUnit.SECONDS)
+        .callTimeout(9, TimeUnit.SECONDS)
+        .build()
+
+    data class LyricsResult(
+        val synced: Boolean,
+        val lines: List<LyricLine>,
+        val provider: String,
+        val confidence: Int,
+        val cached: Boolean,
+        val sections: List<LyricSection> = emptyList(),
+        val manualSelection: Boolean = false,
+        val translationState: LyricsTranslationState = LyricsTranslationState.DISABLED
+    )
+
+    data class LyricsVersion(
+        val id: String,
+        val title: String,
+        val artist: String,
+        val album: String,
+        val durationSec: Long,
+        val result: LyricsResult,
+        val selected: Boolean = false
+    )
+
+    private data class QuerySpec(
+        val requestedTitle: String,
+        val requestedArtist: String,
+        val album: String,
+        val queryTitle: String,
+        val queryArtist: String,
+        val durationSec: Long,
+        val videoId: String,
+        val languageCode: String,
+        val translate: Boolean,
+        val key: String
+    )
+
+    private data class MemoryEntry(
+        val result: LyricsResult,
+        val updatedAt: Long,
+        val expiresAt: Long
+    )
+
+    private data class CacheLookup(
+        val result: LyricsResult? = null,
+        val negative: Boolean = false,
+        val refreshRequired: Boolean = true
+    )
+
+    private data class ProviderAttempt(
+        val candidates: List<LyricsCandidate> = emptyList(),
+        val attempted: Boolean = false,
+        val hadTransientFailure: Boolean = false
+    )
+
+    private data class NetworkOutcome(
+        val best: LyricsResult?,
+        val attempted: Boolean,
+        val hadTransientFailure: Boolean,
+        val candidates: List<LyricsCandidate> = emptyList()
+    )
+
+    private sealed interface HttpGetResult {
+        data class Success(val body: String) : HttpGetResult
+        data object NotFound : HttpGetResult
+        data object Failure : HttpGetResult
+    }
+
+    fun observe(
+        title: String,
+        artist: String,
+        durationSec: Long,
+        album: String = "",
+        videoId: String = "",
+        languageCode: String = "",
+        translate: Boolean = false
+    ): Flow<LyricsResult> = channelFlow {
+        val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate) ?: return@channelFlow
+        if (emitSelectedResult(query) { send(it) }) return@channelFlow
+        val (cached, restored) = restoreCachedResult(query) { send(it) }
+        var current = restored
+        if (cached.negative) return@channelFlow
+        if (!cached.refreshRequired) return@channelFlow
+
+        val outcome = fetchNetworkProgressive(query) { candidate ->
+            val previous = current
+            if (shouldUpgrade(previous, candidate)) {
+                val stable = candidate.copy(cached = false)
+                current = stable
+                memoryPut(query.key, stable, System.currentTimeMillis())
+                persistPositive(query, stable)
+                send(stable)
+            }
+        }
+
+        val final = outcome.best
+        if (final != null && shouldUpgrade(current, final)) {
+            val stable = final.copy(cached = false)
+            current = stable
+            memoryPut(query.key, stable, System.currentTimeMillis())
+            persistPositive(query, stable)
+            send(stable)
+        } else if (final != null) {
+            current?.let { persistPositive(query, it.copy(cached = false)) }
+        }
+
+        if (current == null && outcome.attempted && !outcome.hadTransientFailure) {
+            persistNegative(query)
+        }
+    }.flowOn(Dispatchers.IO)
+
+    private suspend fun emitSelectedResult(
+        query: QuerySpec,
+        emit: suspend (LyricsResult) -> Unit
+    ): Boolean {
+        val selected = readSelection(query) ?: return false
+        val restored = selected.result.copy(cached = true)
+        emit(restored)
+        if (!needsLyricsTranslationRetry(restored.translationState, query.translate)) return true
+        val refreshed = applyTranslation(restored.copy(cached = false), query)
+            .copy(cached = false, manualSelection = true)
+        if (!shouldUpgrade(restored, refreshed)) return true
+        persistSelection(
+            query,
+            selected.id,
+            selected.title,
+            selected.artist,
+            selected.durationSec,
+            refreshed
+        )
+        emit(refreshed)
+        return true
+    }
+
+    private suspend fun restoreCachedResult(
+        query: QuerySpec,
+        emit: suspend (LyricsResult) -> Unit
+    ): Pair<CacheLookup, LyricsResult?> {
+        val cached = readCached(query)
+        val stable = cached.result?.copy(cached = true) ?: return cached to null
+        emit(stable)
+        if (!needsLyricsTranslationRetry(stable.translationState, query.translate)) return cached to stable
+        val refreshed = applyTranslation(stable.copy(cached = false), query)
+        if (!shouldUpgrade(stable, refreshed)) return cached to stable
+        memoryPut(query.key, refreshed, System.currentTimeMillis())
+        persistPositive(query, refreshed)
+        emit(refreshed)
+        return cached to refreshed
+    }
+
+    suspend fun fetch(
+        title: String,
+        artist: String,
+        durationSec: Long,
+        album: String = "",
+        videoId: String = "",
+        languageCode: String = "",
+        translate: Boolean = false
+    ): LyricsResult? = observe(title, artist, durationSec, album, videoId, languageCode, translate).lastOrNull()
+
+    suspend fun versions(
+        title: String,
+        artist: String,
+        durationSec: Long,
+        album: String = "",
+        videoId: String = "",
+        languageCode: String = "",
+        translate: Boolean = false
+    ): List<LyricsVersion> = withContext(Dispatchers.IO) {
+        val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate)
+            ?: return@withContext emptyList()
+        val selected = readSelection(query)
+        val candidates = ArrayList<LyricsCandidate>()
+        selected?.let { choice ->
+            candidates += LyricsCandidate(
+                choice.result,
+                choice.title,
+                choice.artist,
+                choice.durationSec,
+                album = query.album,
+                recordingId = query.videoId
+            )
+        }
+        readCached(query).result?.let { cached ->
+            candidates += LyricsCandidate(
+                cached,
+                query.requestedTitle,
+                query.requestedArtist,
+                query.durationSec,
+                album = query.album,
+                recordingId = query.videoId
+            )
+        }
+        val network = fetchNetworkProgressive(query, applyFinalTranslation = false) { }
+        candidates += network.candidates
+        val selectedId = selected?.id
+        candidates
+            .map { candidate -> candidate.toVersion(query, selectedId) }
+            .distinctBy { it.id }
+            .sortedWith(
+                compareByDescending<LyricsVersion> { it.selected }
+                    .thenByDescending { it.result.synced }
+                    .thenByDescending { it.result.lines.any { line -> line.words.isNotEmpty() } }
+                    .thenByDescending { it.result.confidence }
+            )
+    }
+
+    suspend fun selectVersion(
+        title: String,
+        artist: String,
+        durationSec: Long,
+        album: String,
+        videoId: String,
+        languageCode: String,
+        translate: Boolean,
+        version: LyricsVersion
+    ): LyricsResult? = withContext(Dispatchers.IO) {
+        val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate)
+            ?: return@withContext null
+        val translated = applyTranslation(version.result, query)
+        val stable = translated.copy(cached = false, manualSelection = true)
+        persistSelection(query, version.id, version.title, version.artist, version.durationSec, stable)
+        stable
+    }
+
+    suspend fun useAutomatic(
+        title: String,
+        artist: String,
+        durationSec: Long,
+        album: String,
+        videoId: String,
+        languageCode: String,
+        translate: Boolean
+    ): Unit = withContext(Dispatchers.IO) {
+        val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate)
+            ?: return@withContext
+        lyricsSelectionDao?.delete(selectionKey(query))
+        memoryRemove(query.key)
+        lyricsCacheDao?.delete(query.key)
+    }
+
+    suspend fun prefetch(
+        title: String,
+        artist: String,
+        durationSec: Long,
+        album: String = "",
+        videoId: String = "",
+        languageCode: String = "",
+        translate: Boolean = false
+    ) {
+        observe(title, artist, durationSec, album, videoId, languageCode, translate).collect { }
+    }
+
+    private inner class ProgressiveLyricsCollector(
+        private val query: QuerySpec,
+        private val request: LyricsRequest,
+        private val ordering: LyricsProviderOrdering?,
+        private val onCandidate: suspend (LyricsResult) -> Unit
+    ) {
+        val candidates = ArrayList<LyricsCandidate>()
+        var attempted = false
+        var hadTransientFailure = false
+        var emitted: LyricsResult? = null
+
+        suspend fun consume(attempt: ProviderAttempt) {
+            attempted = attempted || attempt.attempted
+            hadTransientFailure = hadTransientFailure || attempt.hadTransientFailure
+            attempt.candidates.mapNotNullTo(candidates) { prepareCandidate(it, query.durationSec) }
+            val best = currentBest()?.let { result ->
+                markTranslationPending(result, query)
+            }
+            if (best != null && best.confidence >= INSTANT_MIN_CONFIDENCE && shouldUpgrade(emitted, best)) {
+                emitted = best
+                onCandidate(best)
+            }
+        }
+
+        fun currentBest(): LyricsResult? = LyricsResultRanker.best(candidates, request, ordering)
+
+        suspend fun drain(tasks: List<Deferred<ProviderAttempt>>) {
+            val pending = tasks.toMutableList()
+            while (pending.isNotEmpty()) {
+                val completed = select<Pair<Deferred<ProviderAttempt>, ProviderAttempt>> {
+                    pending.forEach { task ->
+                        task.onAwait { result -> task to result }
+                    }
+                }
+                pending.remove(completed.first)
+                consume(completed.second)
+            }
+        }
+
+        fun toOutcome(finalBest: LyricsResult?): NetworkOutcome = NetworkOutcome(
+            best = finalBest,
+            attempted = attempted,
+            hadTransientFailure = hadTransientFailure,
+            candidates = LyricsResultRanker.rankedCandidates(candidates, request, ordering)
+        )
+
+        suspend fun notifyBestIfUpgraded(best: LyricsResult?) {
+            if (best != null && shouldUpgrade(emitted, best)) {
+                emitted = best
+                onCandidate(best)
+            }
+        }
+    }
+
+    private data class PrimaryOutcome(
+        val consumed: Boolean,
+        val earlyResult: NetworkOutcome?
+    )
+
+    private suspend fun runPrimaryAttempt(
+        primaryTask: Deferred<ProviderAttempt>?,
+        collector: ProgressiveLyricsCollector,
+        query: QuerySpec,
+        applyFinalTranslation: Boolean
+    ): PrimaryOutcome {
+        if (primaryTask == null) return PrimaryOutcome(consumed = false, earlyResult = null)
+        val primaryAttempt = withTimeoutOrNull(PRIMARY_RAPID_TIMEOUT_MS) { primaryTask.await() }
+            ?: return PrimaryOutcome(consumed = false, earlyResult = null)
+        collector.consume(primaryAttempt)
+        val best = collector.currentBest()
+        if (best != null && isOptimalLyricsResult(best.synced, best.confidence)) {
+            val final = if (applyFinalTranslation) applyTranslation(best, query) else best
+            return PrimaryOutcome(consumed = true, earlyResult = collector.toOutcome(final))
+        }
+        return PrimaryOutcome(consumed = true, earlyResult = null)
+    }
+
+    private suspend fun CoroutineScope.collectTrustedBatch(
+        collector: ProgressiveLyricsCollector,
+        trustedIds: List<LyricsProviderId>,
+        primaryTask: Deferred<ProviderAttempt>?,
+        primaryConsumed: Boolean,
+        query: QuerySpec
+    ) {
+        val tasks = buildList {
+            trustedIds.mapNotNullTo(this) { createLyricsProviderTask(it, query) }
+            if (!primaryConsumed && primaryTask != null) add(primaryTask)
+        }
+        collector.drain(tasks)
+    }
+
+    private suspend fun CoroutineScope.collectLastResortIfNeeded(
+        collector: ProgressiveLyricsCollector,
+        lastResortIds: List<LyricsProviderId>,
+        query: QuerySpec
+    ) {
+        val best = collector.currentBest()
+        if (best != null && best.confidence >= INSTANT_MIN_CONFIDENCE) return
+        val tasks = lastResortIds.mapNotNull { createLyricsProviderTask(it, query) }
+        collector.drain(tasks)
+    }
+
+    private suspend fun finalizeBestResult(
+        collector: ProgressiveLyricsCollector,
+        query: QuerySpec,
+        applyFinalTranslation: Boolean
+    ): LyricsResult? {
+        val rankedBest = collector.currentBest() ?: return null
+        val best = if (applyFinalTranslation) applyTranslation(rankedBest, query) else rankedBest
+        collector.notifyBestIfUpgraded(best)
+        return best
+    }
+
+    private fun CoroutineScope.createLyricsProviderTask(
+        id: LyricsProviderId,
+        query: QuerySpec
+    ): Deferred<ProviderAttempt>? {
+        if (id == LyricsProviderId.YOUTUBE_MUSIC) {
+            return if (query.videoId.isBlank()) null else async {
+                providerWithin(YOUTUBE_MUSIC_TIMEOUT_MS) {
+                    youtubeMusicAttempt(
+                        query.videoId,
+                        query.languageCode,
+                        query.requestedTitle,
+                        query.requestedArtist,
+                        query.durationSec,
+                        query.album
+                    )
+                }
+            }
+        }
+        if (id == LyricsProviderId.YOUTUBE_TRANSCRIPT) {
+            return if (query.videoId.isBlank()) null else async {
+                providerWithin(TRANSCRIPT_TIMEOUT_MS) {
+                    transcriptAttempt(
+                        query.videoId,
+                        query.requestedTitle,
+                        query.requestedArtist,
+                        query.durationSec,
+                        query.album,
+                        query.languageCode,
+                        query.translate
+                    )
+                }
+            }
+        }
+        if (query.queryArtist.length < 2) return null
+        return createArtistBasedProviderTask(id, query)
+    }
+
+    private fun CoroutineScope.createArtistBasedProviderTask(
+        id: LyricsProviderId,
+        query: QuerySpec
+    ): Deferred<ProviderAttempt>? = when (id) {
+        LyricsProviderId.LRCLIB_EXACT -> async {
+            providerWithin(FAST_PROVIDER_TIMEOUT_MS) { getLrcLibExact(query.queryTitle, query.queryArtist, query.durationSec) }
+        }
+        LyricsProviderId.LRCLIB_SEARCH -> async {
+            providerWithin(FAST_PROVIDER_TIMEOUT_MS) { searchLrcLib(query.queryTitle, query.queryArtist) }
+        }
+        LyricsProviderId.LYRICS_PLUS -> async {
+            providerWithin(LYRICS_PLUS_TIMEOUT_MS) { lyricsPlusMirrorAttempt(query) }
+        }
+        LyricsProviderId.BINIMUM -> async {
+            providerWithin(LYRICS_PLUS_TIMEOUT_MS) { binimumAttempt(query) }
+        }
+        LyricsProviderId.LYRICS_OVH -> async {
+            providerWithin(FAST_PROVIDER_TIMEOUT_MS) { lyricsOvh(query.queryTitle, query.queryArtist) }
+        }
+        else -> null
+    }
+
+    private suspend fun fetchNetworkProgressive(
+        query: QuerySpec,
+        applyFinalTranslation: Boolean = true,
+        onCandidate: suspend (LyricsResult) -> Unit
+    ): NetworkOutcome = supervisorScope {
+        val request = LyricsRequest(
+            title = query.requestedTitle,
+            artist = query.requestedArtist,
+            durationSec = query.durationSec,
+            album = query.album,
+            recordingId = query.videoId
+        )
+        val providerOrdering = preferences?.lyricsProviderOrdering() ?: LyricsProviderOrdering()
+        val plan = LyricsFetchPlan.build(providerOrdering)
+        val ordering = providerOrdering.takeUnless { it.isDefault }
+        val collector = ProgressiveLyricsCollector(query, request, ordering, onCandidate)
+
+        val primaryTask = plan.primary?.let { createLyricsProviderTask(it, query) }
+        val primaryOutcome = runPrimaryAttempt(primaryTask, collector, query, applyFinalTranslation)
+        if (primaryOutcome.earlyResult != null) return@supervisorScope primaryOutcome.earlyResult
+
+        collectTrustedBatch(collector, plan.trusted, primaryTask, primaryOutcome.consumed, query)
+        collectLastResortIfNeeded(collector, plan.lastResort, query)
+
+        val best = finalizeBestResult(collector, query, applyFinalTranslation)
+        collector.toOutcome(best)
+    }
+
+    private data class SelectedVersion(
+        val id: String,
+        val title: String,
+        val artist: String,
+        val durationSec: Long,
+        val result: LyricsResult
+    )
+
+    private suspend fun readSelection(query: QuerySpec): SelectedVersion? {
+        val dao = lyricsSelectionDao ?: return null
+        val entity = runCatching { dao.get(selectionKey(query)) }
+            .onFailure { error ->
+                if (error is CancellationException) throw error
+                Timber.w(error, "Lyrics selection restore failed")
+            }
+            .getOrNull() ?: return null
+        val result = deserializeResult(entity.payload)?.copy(
+            provider = entity.provider,
+            cached = true,
+            manualSelection = true
+        )
+        if (result == null || result.lines.isEmpty()) {
+            runCatching { dao.delete(entity.trackKey) }
+            return null
+        }
+        return SelectedVersion(
+            id = entity.candidateId,
+            title = entity.title,
+            artist = entity.artist,
+            durationSec = entity.durationSec,
+            result = result
+        )
+    }
+
+    private fun LyricsCandidate.toVersion(query: QuerySpec, selectedId: String?): LyricsVersion {
+        val resolvedTitle = title.ifBlank { query.requestedTitle }
+        val resolvedArtist = artist.ifBlank { query.requestedArtist }
+        val resolvedDurationSec = durationSec.takeIf { it > 0L } ?: query.durationSec
+        val id = candidateId(result, resolvedTitle, resolvedArtist, resolvedDurationSec)
+        return LyricsVersion(
+            id = id,
+            title = resolvedTitle,
+            artist = resolvedArtist,
+            album = query.album,
+            durationSec = resolvedDurationSec,
+            result = result,
+            selected = id == selectedId
+        )
+    }
+
+    private fun candidateId(result: LyricsResult, title: String, artist: String, durationSec: Long): String {
+        val lines = result.lines.joinToString("\n") { line -> "${line.startMs}:${line.text.trim().lowercase(Locale.ROOT)}" }
+        val seed = "${LyricsMatcher.normalize(title)}|${LyricsMatcher.normalize(artist)}|$durationSec|${result.synced}|$lines"
+        return sha256(seed)
+    }
+
+
+    private suspend fun providerWithin(
+        timeoutMs: Long,
+        block: suspend () -> ProviderAttempt
+    ): ProviderAttempt = isolatedLyricsProviderCall(
+        timeoutMs = timeoutMs,
+        fallback = { ProviderAttempt(attempted = true, hadTransientFailure = true) },
+        block = block
+    )
+
+    private suspend fun lyricsPlusMirrorAttempt(query: QuerySpec): ProviderAttempt {
+        val outcome = lyricsPlus.fetchMirrors(
+            title = query.queryTitle,
+            artist = query.queryArtist,
+            album = query.album,
+            durationSec = query.durationSec
+        )
+        return outcome.toProviderAttempt()
+    }
+
+    private suspend fun binimumAttempt(query: QuerySpec): ProviderAttempt {
+        val outcome = lyricsPlus.fetchBinimum(
+            title = query.queryTitle,
+            artist = query.queryArtist,
+            album = query.album,
+            durationSec = query.durationSec
+        )
+        return outcome.toProviderAttempt()
+    }
+
+    private fun LyricsPlusProviderOutcome.toProviderAttempt(): ProviderAttempt {
+        val candidates = results.map { result ->
+            LyricsCandidate(
+                result = LyricsResult(
+                    synced = result.synced,
+                    lines = result.lines,
+                    provider = result.provider,
+                    confidence = result.confidence,
+                    cached = false
+                ),
+                title = result.title,
+                artist = result.artist,
+                durationSec = result.durationSec
+            )
+        }
+        return ProviderAttempt(
+            candidates = candidates,
+            attempted = attempted,
+            hadTransientFailure = hadTransientFailure
+        )
+    }
+
+    private fun prepareCandidate(candidate: LyricsCandidate, durationSec: Long): LyricsCandidate? {
+        val normalized = normalizeTiming(candidate.result, durationSec)
+        val enriched = cleanAndEnrich(normalized)
+        if (enriched.lines.isEmpty()) return null
+        return candidate.copy(result = enriched)
+    }
+
+    private suspend fun applyTranslation(result: LyricsResult, query: QuerySpec): LyricsResult {
+        if (!query.translate) return result
+        val outcome = translationCoordinator.translate(result.lines, query.languageCode)
+        return result.copy(lines = outcome.lines, translationState = outcome.state)
+    }
+
+    private fun markTranslationPending(result: LyricsResult, query: QuerySpec): LyricsResult {
+        if (!query.translate) return result
+        val eligible = result.lines.filterNot { line ->
+            line.isMetadata || line.isInstrumental || line.text.isBlank()
+        }
+        val state = if (eligible.isNotEmpty() && eligible.all { it.translated.isNotBlank() }) {
+            LyricsTranslationState.PROVIDER
+        } else {
+            LyricsTranslationState.PENDING
+        }
+        return result.copy(translationState = state)
+    }
+
+    internal fun shouldUpgrade(previous: LyricsResult?, current: LyricsResult): Boolean {
+        if (current.lines.isEmpty()) return false
+        if (previous == null) return true
+        if (sameResult(previous, current)) return improvesEquivalentResult(previous, current)
+        return improvesLyricsDetail(previous, current) ||
+            current.confidence >= previous.confidence + MIN_QUALITY_UPGRADE
+    }
+
+    private fun improvesEquivalentResult(previous: LyricsResult, current: LyricsResult): Boolean {
+        return current.confidence > previous.confidence ||
+            (current.confidence == previous.confidence && previous.cached && !current.cached) ||
+            (current.confidence >= previous.confidence && current.translationState != previous.translationState)
+    }
+
+    private fun improvesLyricsDetail(previous: LyricsResult, current: LyricsResult): Boolean {
+        val previousWordTimed = previous.lines.any { it.words.isNotEmpty() }
+        val currentWordTimed = current.lines.any { it.words.isNotEmpty() }
+        if (currentWordTimed && !previousWordTimed && current.confidence >= previous.confidence) return true
+        if (current.synced && !previous.synced && current.confidence >= previous.confidence) return true
+        if (current.sections.size > previous.sections.size && current.confidence >= previous.confidence) return true
+        if (
+            translatedEligibleCount(current) > translatedEligibleCount(previous) &&
+            current.confidence >= previous.confidence
+        ) return true
+        return false
+    }
+
+    private fun translatedEligibleCount(result: LyricsResult): Int = result.lines.count { line ->
+        !line.isMetadata && !line.isInstrumental && line.text.isNotBlank() && line.translated.isNotBlank()
+    }
+
+    private fun sameResult(left: LyricsResult, right: LyricsResult): Boolean {
+        if (
+            left.synced != right.synced ||
+            left.lines.size != right.lines.size ||
+            left.sections != right.sections
+        ) return false
+        return left.lines.zip(right.lines).all { (first, second) ->
+            first.startMs == second.startMs &&
+                first.endMs == second.endMs &&
+                first.text.equals(second.text, ignoreCase = true) &&
+                first.translated == second.translated &&
+                first.romanized == second.romanized &&
+                first.role == second.role &&
+                first.isInstrumental == second.isInstrumental &&
+                first.isMetadata == second.isMetadata &&
+                first.words == second.words
+        }
+    }
+
+    private suspend fun youtubeMusicAttempt(
+        videoId: String,
+        languageCode: String,
+        title: String,
+        artist: String,
+        durationSec: Long,
+        album: String
+    ): ProviderAttempt {
+        return try {
+            val candidate = youtubeMusic.getLyricsForVideo(videoId, languageCode)
+                ?.toCandidate(title, artist, durationSec, album, videoId)
+            if (candidate == null) {
+                ProviderAttempt(attempted = true, hadTransientFailure = true)
+            } else {
+                ProviderAttempt(candidates = listOf(candidate), attempted = true)
+            }
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Throwable) {
+            Timber.w(exception, "YouTube Music lyrics request failed")
+            ProviderAttempt(attempted = true, hadTransientFailure = true)
+        }
+    }
+
+    private suspend fun transcriptAttempt(
+        videoId: String,
+        title: String,
+        artist: String,
+        durationSec: Long,
+        album: String,
+        languageCode: String,
+        translate: Boolean
+    ): ProviderAttempt {
+        return try {
+            val candidate = fetchTranscriptCandidate(videoId, title, artist, durationSec, album, languageCode, translate)
+            if (candidate == null) {
+                ProviderAttempt(attempted = true, hadTransientFailure = true)
+            } else {
+                ProviderAttempt(candidates = listOf(candidate), attempted = true)
+            }
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Throwable) {
+            Timber.w(exception, "YouTube transcript lyrics request failed")
+            ProviderAttempt(attempted = true, hadTransientFailure = true)
+        }
+    }
+
+    private suspend fun fetchTranscriptCandidate(
+        videoId: String,
+        title: String,
+        artist: String,
+        durationSec: Long,
+        album: String,
+        languageCode: String,
+        translate: Boolean
+    ): LyricsCandidate? {
+        if (videoId.isBlank()) return null
+        val transcript = youtubeTranscript?.fetch(videoId, languageCode, translate)
+            ?.takeIf { it.lines.isNotEmpty() }
+            ?: return null
+        val provider = buildString {
+            append("YouTube Transcript")
+            if (transcript.automatic) append(" Auto")
+            append(" · ").append(transcript.sourceLanguage)
+            if (transcript.translated) append(" → ").append(languageCode)
+        }
+        return LyricsCandidate(
+            result = LyricsResult(true, transcript.lines, provider, if (transcript.automatic) 72 else 82, false),
+            title = title,
+            artist = artist,
+            durationSec = durationSec,
+            album = album,
+            recordingId = videoId
+        )
+    }
+
+    private fun YoutubeMusicNativeLyrics.toCandidate(
+        title: String,
+        artist: String,
+        durationSec: Long,
+        album: String,
+        videoId: String
+    ): LyricsCandidate {
+        val provider = buildString {
+            append("YouTube Music")
+            if (source.isNotBlank()) append(" · ").append(source)
+        }
+        return LyricsCandidate(
+            result = LyricsResult(
+                synced = synced,
+                lines = lines,
+                provider = provider,
+                confidence = if (synced) 100 else 90,
+                cached = false
+            ),
+            title = title,
+            artist = artist,
+            durationSec = durationSec,
+            album = album,
+            recordingId = videoId
+        )
+    }
+
+    private suspend fun getLrcLibExact(title: String, artist: String, durationSec: Long): ProviderAttempt {
+        val url = buildString {
+            append("https://lrclib.net/api/get?track_name=")
+            append(enc(title))
+            append("&artist_name=")
+            append(enc(artist))
+            if (durationSec > 0) append("&duration=").append(durationSec)
+        }
+        return when (val response = httpGet(url, "application/json")) {
+            is HttpGetResult.Success -> runCatching {
+                val json = JSONObject(response.body)
+                val result = parseLrcLibEntry(json, "LRCLIB Exact")
+                val candidates = result?.let {
+                    listOf(
+                        LyricsCandidate(
+                            result = it,
+                            title = json.optString("trackName", title),
+                            artist = json.optString("artistName", artist),
+                            durationSec = json.optLong("duration", durationSec),
+                            album = json.optString("albumName")
+                        )
+                    )
+                }.orEmpty()
+                ProviderAttempt(candidates = candidates, attempted = true)
+            }.getOrElse {
+                Timber.w(it, "LRCLIB exact response parsing failed")
+                ProviderAttempt(attempted = true, hadTransientFailure = true)
+            }
+            HttpGetResult.NotFound -> ProviderAttempt(attempted = true)
+            HttpGetResult.Failure -> ProviderAttempt(attempted = true, hadTransientFailure = true)
+        }
+    }
+
+    private suspend fun searchLrcLib(title: String, artist: String): ProviderAttempt {
+        val url = "https://lrclib.net/api/search?track_name=${enc(title)}&artist_name=${enc(artist)}"
+        return when (val response = httpGet(url, "application/json")) {
+            is HttpGetResult.Success -> runCatching {
+                val array = JSONArray(response.body)
+                val out = ArrayList<LyricsCandidate>()
+                for (index in 0 until array.length()) {
+                    val json = array.optJSONObject(index) ?: continue
+                    val result = parseLrcLibEntry(json, "LRCLIB Search") ?: continue
+                    out += LyricsCandidate(
+                        result = result,
+                        title = json.optString("trackName", title),
+                        artist = json.optString("artistName", artist),
+                        durationSec = json.optLong("duration", 0L),
+                        album = json.optString("albumName")
+                    )
+                }
+                ProviderAttempt(candidates = out.take(16), attempted = true)
+            }.getOrElse {
+                Timber.w(it, "LRCLIB search response parsing failed")
+                ProviderAttempt(attempted = true, hadTransientFailure = true)
+            }
+            HttpGetResult.NotFound -> ProviderAttempt(attempted = true)
+            HttpGetResult.Failure -> ProviderAttempt(attempted = true, hadTransientFailure = true)
+        }
+    }
+
+    private suspend fun lyricsOvh(title: String, artist: String): ProviderAttempt {
+        val url = "https://api.lyrics.ovh/v1/${encPath(artist)}/${encPath(title)}"
+        return when (val response = httpGet(url, "application/json")) {
+            is HttpGetResult.Success -> runCatching {
+                val lyrics = JSONObject(response.body).optString("lyrics").trim()
+                val lines = UnifiedLyricsParser.parsePlain(lyrics)
+                val candidate = if (lines.isEmpty()) {
+                    null
+                } else {
+                    LyricsCandidate(LyricsResult(false, lines, "Lyrics.ovh", 54, false), title, artist, 0L)
+                }
+                ProviderAttempt(candidates = listOfNotNull(candidate), attempted = true)
+            }.getOrElse {
+                Timber.w(it, "Lyrics.ovh response parsing failed")
+                ProviderAttempt(attempted = true, hadTransientFailure = true)
+            }
+            HttpGetResult.NotFound -> ProviderAttempt(attempted = true)
+            HttpGetResult.Failure -> ProviderAttempt(attempted = true, hadTransientFailure = true)
+        }
+    }
+
+    private fun parseLrcLibEntry(json: JSONObject, provider: String): LyricsResult? {
+        val syncedText = json.optString("syncedLyrics").takeIf { it.isMeaningfulLyrics() }
+        if (syncedText != null) {
+            val lines = UnifiedLyricsParser.parse(syncedText)
+            if (lines.isNotEmpty()) {
+                val wordSynced = lines.any { it.words.isNotEmpty() }
+                return LyricsResult(true, lines, provider, if (wordSynced) 94 else 88, false)
+            }
+        }
+        val plain = json.optString("plainLyrics").takeIf { it.isMeaningfulLyrics() } ?: return null
+        val lines = UnifiedLyricsParser.parsePlain(plain)
+        if (lines.isEmpty()) return null
+        return LyricsResult(false, lines, provider, 68, false)
+    }
+
+    private suspend fun httpGet(url: String, accept: String): HttpGetResult {
+        val request = Request.Builder()
+            .url(url)
+            .header("Accept", accept)
+            .header("User-Agent", "LEVYRA Lyrics Engine/3.4 Android")
+            .get()
+            .build()
+        return suspendCancellableCoroutine { continuation ->
+            val call = httpClient.newCall(request)
+            continuation.invokeOnCancellation { call.cancel() }
+            call.enqueue(
+                object : Callback {
+                    override fun onFailure(call: Call, e: IOException) {
+                        if (continuation.isActive) {
+                            Timber.w(e, "Lyrics request failed for %s", request.url.host)
+                            continuation.resume(HttpGetResult.Failure)
+                        }
+                    }
+
+                    override fun onResponse(call: Call, response: Response) {
+                        val result = runCatching {
+                            response.use {
+                                when {
+                                    it.code == 404 -> HttpGetResult.NotFound
+                                    !it.isSuccessful -> HttpGetResult.Failure
+                                    else -> it.body.string().takeIf(String::isNotBlank)
+                                        ?.let(HttpGetResult::Success)
+                                        ?: HttpGetResult.Failure
+                                }
+                            }
+                        }.onFailure { Timber.w(it, "Lyrics response failed for %s", request.url.host) }
+                            .getOrDefault(HttpGetResult.Failure)
+                        if (continuation.isActive) continuation.resume(result)
+                    }
+                }
+            )
+        }
+    }
+
+    private suspend fun readCached(query: QuerySpec): CacheLookup {
+        val now = System.currentTimeMillis()
+        memoryGet(query.key)?.let { entry ->
+            if (entry.expiresAt >= now - STALE_CACHE_TTL_MS) {
+                return CacheLookup(
+                    result = entry.result.copy(cached = true),
+                    refreshRequired = shouldRefresh(
+                        entry.result,
+                        entry.updatedAt,
+                        entry.expiresAt,
+                        now,
+                        query.translate
+                    )
+                )
+            }
+            memoryRemove(query.key)
+        }
+        if (isNegativeCached(query.key)) return CacheLookup(negative = true, refreshRequired = false)
+
+        val dao = lyricsCacheDao
+        if (dao != null) {
+            suspend fun restore(entity: LyricsCacheEntity): CacheLookup? {
+                if (entity.expiresAt < now - STALE_CACHE_TTL_MS) {
+                    runCatching { dao.delete(entity.cacheKey) }
+                    return null
+                }
+                if (!matchesParserRevision(entity.payload)) {
+                    runCatching { dao.delete(entity.cacheKey) }
+                    return null
+                }
+                val result = deserializeResult(entity.payload)?.copy(
+                    synced = entity.synced,
+                    provider = entity.provider,
+                    confidence = entity.confidence,
+                    cached = true
+                )
+                if (result == null || result.lines.isEmpty()) {
+                    runCatching { dao.delete(entity.cacheKey) }
+                    return null
+                }
+                memoryPut(query.key, result, entity.updatedAt, entity.expiresAt)
+                if (now - entity.lastAccessedAt >= ACCESS_TOUCH_INTERVAL_MS) {
+                    runCatching { dao.touch(entity.cacheKey, now) }
+                }
+                return CacheLookup(
+                    result = result,
+                    refreshRequired = shouldRefresh(
+                        result,
+                        entity.updatedAt,
+                        entity.expiresAt,
+                        now,
+                        query.translate
+                    )
+                )
+            }
+
+            val exact = runCatching { dao.get(query.key) }.getOrNull()
+            if (exact?.negative == true) {
+                if (exact.expiresAt > now) {
+                    negativePut(query.key, exact.expiresAt)
+                    return CacheLookup(negative = true, refreshRequired = false)
+                }
+                runCatching { dao.delete(exact.cacheKey) }
+            } else if (exact != null) {
+                restore(exact)?.let { return it }
+            }
+
+            val titleKey = LyricsMatcher.normalize(query.requestedTitle)
+            val artistKey = LyricsMatcher.normalize(query.requestedArtist)
+            val durationBucket = query.durationSec.coerceAtLeast(0L) / 5L
+            val allowAliasFallback = preferences?.lyricsProviderOrdering()?.isDefault != false
+            if (allowAliasFallback && titleKey.isNotBlank() && artistKey.isNotBlank()) {
+                val alias = runCatching {
+                    dao.findBestPositive(
+                        titleKey = titleKey,
+                        artistKey = artistKey,
+                        durationBucket = durationBucket,
+                        minimumDurationBucket = (durationBucket - 1L).coerceAtLeast(0L),
+                        maximumDurationBucket = durationBucket + 1L,
+                        languageCode = query.languageCode.lowercase(Locale.ROOT),
+                        translate = query.translate
+                    )
+                }.getOrNull()
+                if (alias != null && alias.cacheKey != query.key) {
+                    restore(alias)?.let { return it }
+                }
+            }
+        }
+
+        val legacy = readLegacyCache(query.key)
+        if (legacy != null) {
+            val enriched = cleanAndEnrich(legacy)
+            if (enriched.lines.isNotEmpty()) {
+                persistPositive(query, enriched)
+                memoryPut(query.key, enriched, now)
+                File(legacyCacheDir, "${query.key}.json").delete()
+                return CacheLookup(result = enriched.copy(cached = true), refreshRequired = true)
+            }
+        }
+        return CacheLookup()
+    }
+
+    private fun shouldRefresh(
+        result: LyricsResult,
+        updatedAt: Long,
+        expiresAt: Long,
+        now: Long,
+        translate: Boolean
+    ): Boolean {
+        if (expiresAt <= now) return true
+        if (now - updatedAt >= CACHE_REFRESH_INTERVAL_MS) return true
+        if (needsLyricsTranslationRetry(result.translationState, translate)) return true
+        if (!result.synced || result.confidence < QUALITY_REFRESH_THRESHOLD) return true
+        return result.lines.none { it.words.isNotEmpty() } && now - updatedAt >= WORD_TIMING_REFRESH_INTERVAL_MS
+    }
+
+    private suspend fun persistPositive(query: QuerySpec, result: LyricsResult) {
+        val dao = lyricsCacheDao ?: return
+        val now = System.currentTimeMillis()
+        val existingCreatedAt = runCatching { dao.get(query.key)?.createdAt }.getOrNull() ?: now
+        val entity = LyricsCacheEntity(
+            cacheKey = query.key,
+            titleKey = LyricsMatcher.normalize(query.requestedTitle),
+            artistKey = LyricsMatcher.normalize(query.requestedArtist),
+            durationBucket = query.durationSec.coerceAtLeast(0L) / 5L,
+            videoId = query.videoId,
+            languageCode = query.languageCode.lowercase(Locale.ROOT),
+            translate = query.translate,
+            synced = result.synced,
+            provider = result.provider,
+            confidence = result.confidence,
+            payload = serializeResult(result),
+            negative = false,
+            createdAt = existingCreatedAt,
+            updatedAt = now,
+            lastAccessedAt = now,
+            expiresAt = now + POSITIVE_CACHE_TTL_MS
+        )
+        runCatching {
+            dao.upsert(entity)
+            pruneRoomCache(dao, now)
+        }.onFailure { Timber.w(it, "Lyrics Room cache save failed") }
+    }
+
+    private suspend fun persistSelection(
+        query: QuerySpec,
+        candidateId: String,
+        title: String,
+        artist: String,
+        durationSec: Long,
+        result: LyricsResult
+    ) {
+        val dao = lyricsSelectionDao ?: return
+        val now = System.currentTimeMillis()
+        dao.upsert(
+            LyricsSelectionEntity(
+                trackKey = selectionKey(query),
+                candidateId = candidateId,
+                provider = result.provider,
+                title = title,
+                artist = artist,
+                durationSec = durationSec,
+                payload = serializeResult(result),
+                updatedAt = now
+            )
+        )
+        val count = dao.count()
+        if (count > MAX_LYRICS_SELECTIONS) dao.deleteOldest(count - MAX_LYRICS_SELECTIONS)
+        memoryPut(query.key, result, now)
+        persistPositive(query, result)
+    }
+
+    private suspend fun persistNegative(query: QuerySpec) {
+        val now = System.currentTimeMillis()
+        val expiresAt = now + NEGATIVE_CACHE_TTL_MS
+        negativePut(query.key, expiresAt)
+        val dao = lyricsCacheDao ?: return
+        val entity = LyricsCacheEntity(
+            cacheKey = query.key,
+            titleKey = LyricsMatcher.normalize(query.requestedTitle),
+            artistKey = LyricsMatcher.normalize(query.requestedArtist),
+            durationBucket = query.durationSec.coerceAtLeast(0L) / 5L,
+            videoId = query.videoId,
+            languageCode = query.languageCode.lowercase(Locale.ROOT),
+            translate = query.translate,
+            synced = false,
+            provider = "",
+            confidence = 0,
+            payload = "",
+            negative = true,
+            createdAt = now,
+            updatedAt = now,
+            lastAccessedAt = now,
+            expiresAt = expiresAt
+        )
+        runCatching {
+            dao.upsert(entity)
+            pruneRoomCache(dao, now)
+        }.onFailure { Timber.w(it, "Lyrics negative cache save failed") }
+    }
+
+    private suspend fun pruneRoomCache(dao: LyricsCacheDao, now: Long) {
+        dao.deleteExpired(now, now - STALE_CACHE_TTL_MS)
+        val count = dao.count()
+        if (count > MAX_ROOM_CACHE_ENTRIES) dao.deleteOldest(count - MAX_ROOM_CACHE_ENTRIES)
+    }
+
+    internal fun serializeResult(result: LyricsResult): String {
+        val serializedLines = result.lines.take(MAX_CACHE_LINES)
+        val linesJson = JSONArray()
+        serializedLines.forEach { line ->
+            val wordsJson = JSONArray()
+            line.words.take(MAX_CACHE_WORDS_PER_LINE).forEach { word ->
+                wordsJson.put(
+                    JSONObject()
+                        .put("startMs", word.startMs)
+                        .put("endMs", word.endMs)
+                        .put("text", word.text)
+                        .put("romanized", word.romanized)
+                )
+            }
+            linesJson.put(
+                JSONObject()
+                    .put("startMs", line.startMs)
+                    .put("endMs", line.endMs)
+                    .put("text", line.text)
+                    .put("translated", line.translated)
+                    .put("romanized", line.romanized)
+                    .put("role", line.role.name)
+                    .put("instrumental", line.isInstrumental)
+                    .put("metadata", line.isMetadata)
+                    .put("words", wordsJson)
+            )
+        }
+        val sectionsJson = JSONArray()
+        val serializedIndices = serializedLines.indices
+        result.sections
+            .asSequence()
+            .filter { section ->
+                section.startLineIndex in serializedIndices &&
+                    section.endLineIndex in serializedIndices &&
+                    section.endLineIndex >= section.startLineIndex
+            }
+            .forEach { section ->
+                sectionsJson.put(
+                    JSONObject()
+                        .put("type", section.type.name)
+                        .put("ordinal", section.ordinal)
+                        .put("startLineIndex", section.startLineIndex)
+                        .put("endLineIndex", section.endLineIndex)
+                        .put("startMs", section.startMs)
+                        .put("endMs", section.endMs)
+                        .put("confidence", section.confidence)
+                )
+            }
+        return JSONObject()
+            .put("version", CACHE_VERSION)
+            .put("parserRevision", PARSER_REVISION)
+            .put("synced", result.synced)
+            .put("provider", result.provider)
+            .put("confidence", result.confidence)
+            .put("translationState", result.translationState.name)
+            .put("lines", linesJson)
+            .put("sections", sectionsJson)
+            .toString()
+    }
+
+    internal fun matchesParserRevision(payload: String): Boolean =
+        runCatching { JSONObject(payload).optInt("parserRevision", -1) == PARSER_REVISION }.getOrDefault(false)
+
+    internal fun deserializeResult(payload: String): LyricsResult? {
+        if (payload.isBlank()) return null
+        return runCatching {
+            val json = JSONObject(payload)
+            if (json.optInt("version", -1) != CACHE_VERSION) return@runCatching null
+            val linesJson = json.optJSONArray("lines") ?: JSONArray()
+            val lines = ArrayList<LyricLine>()
+            for (index in 0 until linesJson.length()) {
+                val item = linesJson.optJSONObject(index) ?: continue
+                val wordsJson = item.optJSONArray("words") ?: JSONArray()
+                val words = ArrayList<LyricWord>()
+                for (wordIndex in 0 until wordsJson.length()) {
+                    val word = wordsJson.optJSONObject(wordIndex) ?: continue
+                    words += LyricWord(
+                        startMs = word.optLong("startMs"),
+                        endMs = word.optLong("endMs"),
+                        text = word.optString("text"),
+                        romanized = word.optString("romanized")
+                    )
+                }
+                val role = runCatching {
+                    LyricVocalRole.valueOf(item.optString("role", LyricVocalRole.MAIN.name))
+                }.getOrDefault(LyricVocalRole.MAIN)
+                lines += LyricLine(
+                    startMs = item.optLong("startMs"),
+                    endMs = item.optLong("endMs"),
+                    text = item.optString("text"),
+                    translated = item.optString("translated"),
+                    words = words,
+                    romanized = item.optString("romanized"),
+                    role = role,
+                    isInstrumental = item.optBoolean("instrumental"),
+                    isMetadata = item.optBoolean("metadata")
+                )
+            }
+            val sectionsJson = json.optJSONArray("sections") ?: JSONArray()
+            val sections = ArrayList<LyricSection>()
+            for (index in 0 until sectionsJson.length()) {
+                val item = sectionsJson.optJSONObject(index) ?: continue
+                val type = runCatching {
+                    LyricSectionType.valueOf(item.optString("type"))
+                }.getOrNull() ?: continue
+                val startLineIndex = item.optInt("startLineIndex", -1)
+                val endLineIndex = item.optInt("endLineIndex", -1)
+                if (startLineIndex !in lines.indices || endLineIndex !in lines.indices || endLineIndex < startLineIndex) continue
+                val startMs = item.optLong("startMs", lines[startLineIndex].startMs)
+                val endMs = item.optLong("endMs", lines[endLineIndex].endMs).coerceAtLeast(startMs)
+                sections += LyricSection(
+                    type = type,
+                    ordinal = item.optInt("ordinal", 1).coerceAtLeast(1),
+                    startLineIndex = startLineIndex,
+                    endLineIndex = endLineIndex,
+                    startMs = startMs,
+                    endMs = endMs,
+                    confidence = item.optInt("confidence", 50).coerceIn(0, 100)
+                )
+            }
+            if (lines.isEmpty()) null else LyricsResult(
+                synced = json.optBoolean("synced"),
+                lines = lines,
+                provider = json.optString("provider"),
+                confidence = json.optInt("confidence", 70),
+                cached = true,
+                sections = sections,
+                translationState = runCatching {
+                    LyricsTranslationState.valueOf(
+                        json.optString(
+                            "translationState",
+                            if (lines.any { it.translated.isNotBlank() }) {
+                                LyricsTranslationState.PROVIDER.name
+                            } else {
+                                LyricsTranslationState.DISABLED.name
+                            }
+                        )
+                    )
+                }.getOrDefault(LyricsTranslationState.DISABLED)
+            )
+        }.onFailure { Timber.w(it, "Lyrics cache decode failed") }.getOrNull()
+    }
+
+    private fun readLegacyCache(key: String): LyricsResult? {
+        val dir = legacyCacheDir ?: return null
+        val file = File(dir, "$key.json")
+        if (!file.isFile || System.currentTimeMillis() - file.lastModified() > LEGACY_CACHE_TTL_MS) return null
+        return runCatching { deserializeResult(file.readText()) }
+            .onFailure { Timber.w(it, "Legacy lyrics cache restore failed") }
+            .getOrNull()
+    }
+
+    private fun cleanAndEnrich(result: LyricsResult): LyricsResult {
+        val cleaned = LyricsCleaner.clean(result.lines)
+        val enriched = cleaned.map { line ->
+            val lineRomanized = line.romanized.ifBlank { LyricsRomanizer.romanize(line.text) }
+            val enrichedWords = if (line.words.isEmpty()) {
+                emptyList()
+            } else {
+                line.words.map { word ->
+                    word.copy(romanized = word.romanized.ifBlank { LyricsRomanizer.romanize(word.text) })
+                }
+            }
+            line.copy(romanized = lineRomanized, words = enrichedWords)
+        }
+        val detection = LyricsSectionDetector.detect(enriched)
+        val translationState = if (
+            result.translationState == LyricsTranslationState.DISABLED &&
+            detection.lines.any { it.translated.isNotBlank() }
+        ) {
+            LyricsTranslationState.PROVIDER
+        } else {
+            result.translationState
+        }
+        return result.copy(
+            lines = detection.lines,
+            sections = detection.sections,
+            translationState = translationState
+        )
+    }
+
+    private fun cleanTitle(title: String): String = title
+        .replace(Regex("(?i)\\s*[(\\[].*?(remaster|radio edit|video|official|lyrics|prod\\.|feat\\.|ft\\.).*?[)\\]]"), "")
+        .replace(Regex("(?i)\\s*-\\s*(official|video|audio|lyrics).*$"), "")
+        .trim()
+
+    private fun cleanArtist(artist: String): String = artist
+        .replace(Regex("(?i)\\s*VEVO$"), "")
+        .trim()
+
+    private fun String.isMeaningfulLyrics(): Boolean {
+        val clean = trim()
+        return clean.length >= 16 && !clean.equals("null", ignoreCase = true)
+    }
+
+    private fun querySpec(
+        title: String,
+        artist: String,
+        durationSec: Long,
+        album: String,
+        videoId: String,
+        languageCode: String,
+        translate: Boolean
+    ): QuerySpec? {
+        val queryTitle = cleanTitle(title)
+        val queryArtist = cleanArtist(artist)
+        val requestedTitle = title.trim().ifBlank { queryTitle }
+        val requestedArtist = artist.trim().ifBlank { queryArtist }
+        if (queryTitle.length < 2) return null
+        val providerOrdering = preferences?.lyricsProviderOrdering()
+            ?.takeUnless { it.isDefault }
+            ?.encode()
+            .orEmpty()
+        val key = cacheKey(
+            requestedTitle,
+            requestedArtist,
+            durationSec,
+            videoId,
+            languageCode,
+            translate,
+            providerOrdering
+        )
+        return QuerySpec(
+            requestedTitle = requestedTitle,
+            requestedArtist = requestedArtist,
+            album = album.trim(),
+            queryTitle = queryTitle,
+            queryArtist = queryArtist,
+            durationSec = durationSec,
+            videoId = videoId.trim(),
+            languageCode = languageCode.trim(),
+            translate = translate,
+            key = key
+        )
+    }
+
+    private fun cacheKey(
+        title: String,
+        artist: String,
+        durationSec: Long,
+        videoId: String,
+        languageCode: String,
+        translate: Boolean,
+        providerOrdering: String
+    ): String {
+        val seed = "${LyricsMatcher.normalize(title)}|${LyricsMatcher.normalize(artist)}|${durationSec.coerceAtLeast(0L) / 5L}|${videoId.trim()}|${languageCode.lowercase(Locale.ROOT)}|$translate|$providerOrdering|$CACHE_VERSION|$PARSER_REVISION"
+        return sha256(seed)
+    }
+
+    private fun selectionKey(query: QuerySpec): String {
+        return lyricsSelectionKey(
+            title = query.requestedTitle,
+            artist = query.requestedArtist,
+            durationSec = query.durationSec,
+            videoId = query.videoId,
+            languageCode = query.languageCode,
+            translate = query.translate
+        )
+    }
+
+    private fun sha256(seed: String): String = MessageDigest.getInstance("SHA-256")
+            .digest(seed.toByteArray(StandardCharsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+
+    private fun normalizeTiming(result: LyricsResult, durationSec: Long): LyricsResult {
+        val durationMs = durationSec.coerceAtLeast(0L) * 1_000L
+        if (result.lines.isEmpty()) return result
+        val normalizedLines = result.lines.sortedWith(compareBy<LyricLine> { it.startMs }.thenBy { it.role.ordinal })
+        val nextStartByIndex = arrayOfNulls<Long>(normalizedLines.size)
+        var nextMainStart: Long? = null
+        var nextBackgroundStart: Long? = null
+        for (index in normalizedLines.indices.reversed()) {
+            val line = normalizedLines[index]
+            if (line.role == LyricVocalRole.BACKGROUND) {
+                nextStartByIndex[index] = nextBackgroundStart
+                nextBackgroundStart = line.startMs
+            } else {
+                nextStartByIndex[index] = nextMainStart
+                nextMainStart = line.startMs
+            }
+        }
+        val corrected = normalizedLines.mapIndexed { index, line ->
+            val lineStart = if (durationMs > 0L) line.startMs.coerceIn(0L, durationMs) else line.startMs.coerceAtLeast(0L)
+            val nextStart = nextStartByIndex[index]
+            val naturalEnd = line.endMs.coerceAtLeast(lineStart + 120L)
+            val limitedEnd = nextStart?.minus(45L)?.coerceAtLeast(lineStart + 120L)?.let { minOf(naturalEnd, it) } ?: naturalEnd
+            val finalEnd = if (durationMs > 0L) limitedEnd.coerceIn(lineStart, durationMs) else limitedEnd
+            val sortedWords = line.words.sortedBy { it.startMs }
+            val correctedWords = sortedWords.mapIndexed { wordIndex, word ->
+                val wordStart = word.startMs.coerceIn(lineStart, finalEnd)
+                val nextWordStart = sortedWords.getOrNull(wordIndex + 1)?.startMs?.coerceIn(wordStart, finalEnd)
+                val naturalWordEnd = word.endMs.coerceAtLeast(wordStart + MIN_WORD_DURATION_MS)
+                val wordEnd = nextWordStart
+                    ?.minus(WORD_GAP_MS)
+                    ?.coerceAtLeast(wordStart + MIN_WORD_DURATION_MS)
+                    ?.let { minOf(naturalWordEnd, it) }
+                    ?: naturalWordEnd
+                word.copy(startMs = wordStart, endMs = wordEnd.coerceIn(wordStart, finalEnd))
+            }
+            line.copy(startMs = lineStart, endMs = finalEnd, words = correctedWords)
+        }
+        return result.copy(lines = corrected)
+    }
+
+    private fun memoryGet(key: String): MemoryEntry? = synchronized(memoryLock) { memory[key] }
+
+    private fun memoryPut(key: String, value: LyricsResult, updatedAt: Long, expiresAt: Long = updatedAt + POSITIVE_CACHE_TTL_MS) {
+        synchronized(memoryLock) { memory[key] = MemoryEntry(value, updatedAt, expiresAt) }
+    }
+
+    private fun memoryRemove(key: String) {
+        synchronized(memoryLock) { memory.remove(key) }
+    }
+
+    private fun isNegativeCached(key: String): Boolean {
+        val now = System.currentTimeMillis()
+        return synchronized(negativeLock) {
+            val expiresAt = negativeCache[key] ?: return@synchronized false
+            if (now >= expiresAt) {
+                negativeCache.remove(key)
+                false
+            } else {
+                true
+            }
+        }
+    }
+
+    private fun negativePut(key: String, expiresAt: Long) {
+        synchronized(negativeLock) { negativeCache[key] = expiresAt }
+    }
+
+    private fun enc(value: String): String = URLEncoder.encode(value, "UTF-8")
+
+    private fun encPath(value: String): String = value.split("/").joinToString("%2F") { enc(it) }
+
+    companion object {
+        internal const val CACHE_VERSION = 8
+        private const val PARSER_REVISION = 2
+        private const val POSITIVE_CACHE_TTL_MS = 90L * 24L * 60L * 60L * 1_000L
+        private const val STALE_CACHE_TTL_MS = 90L * 24L * 60L * 60L * 1_000L
+        private const val LEGACY_CACHE_TTL_MS = 30L * 24L * 60L * 60L * 1_000L
+        private const val CACHE_REFRESH_INTERVAL_MS = 7L * 24L * 60L * 60L * 1_000L
+        private const val WORD_TIMING_REFRESH_INTERVAL_MS = 24L * 60L * 60L * 1_000L
+        private const val ACCESS_TOUCH_INTERVAL_MS = 24L * 60L * 60L * 1_000L
+        private const val NEGATIVE_CACHE_TTL_MS = 15L * 60L * 1_000L
+        private const val MEMORY_CACHE_SIZE = 64
+        private const val NEGATIVE_CACHE_SIZE = 96
+        private const val MAX_ROOM_CACHE_ENTRIES = 420
+        private const val MAX_LYRICS_SELECTIONS = 256
+        internal const val MAX_CACHE_LINES = 700
+        private const val MAX_CACHE_WORDS_PER_LINE = 120
+        private const val INSTANT_MIN_CONFIDENCE = 48
+        private const val FAST_PROVIDER_TIMEOUT_MS = 4_500L
+        private const val LYRICS_PLUS_TIMEOUT_MS = 5_500L
+        private const val YOUTUBE_MUSIC_TIMEOUT_MS = 5_500L
+        private const val TRANSCRIPT_TIMEOUT_MS = 6_000L
+        private const val PRIMARY_RAPID_TIMEOUT_MS = 2_500L
+        private const val QUALITY_REFRESH_THRESHOLD = 84
+        private const val MIN_QUALITY_UPGRADE = 4
+        private const val MIN_WORD_DURATION_MS = 45L
+        private const val WORD_GAP_MS = 12L
+    }
+}
+
+internal suspend fun <T> isolatedLyricsProviderCall(
+    timeoutMs: Long,
+    fallback: () -> T,
+    block: suspend () -> T
+): T {
+    return try {
+        withTimeoutOrNull(timeoutMs) { block() } ?: fallback()
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Throwable) {
+        fallback()
+    }
+}
+
+internal fun lyricsSelectionKey(
+    title: String,
+    artist: String,
+    durationSec: Long,
+    videoId: String,
+    languageCode: String,
+    translate: Boolean
+): String {
+    val stableVideoId = videoId.trim()
+    val trackSeed = if (stableVideoId.isNotBlank()) {
+        "video:$stableVideoId"
+    } else {
+        "track:${LyricsMatcher.normalize(artist)}|${LyricsMatcher.normalize(title)}|${durationSec.coerceAtLeast(0L) / 5L}"
+    }
+    val variantSeed = "${languageCode.trim().lowercase(Locale.ROOT)}|$translate"
+    return MessageDigest.getInstance("SHA-256")
+        .digest("$trackSeed|$variantSeed".toByteArray(StandardCharsets.UTF_8))
+        .joinToString("") { "%02x".format(it) }
+}

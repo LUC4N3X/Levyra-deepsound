@@ -1,0 +1,615 @@
+package com.luc4n3x.levyra.data.hqaudio
+
+import com.luc4n3x.levyra.domain.AlternativeMatchVerdict
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class AlternativeTrackMatcherTest {
+    private val matcher = AlternativeTrackMatcher()
+
+    private fun verdict(query: AlternativeTrackQuery, candidate: AlternativeTrackCandidate) =
+        matcher.evaluate(query, candidate)
+
+    private fun assertRejected(reason: MatchRejection, query: AlternativeTrackQuery, candidate: AlternativeTrackCandidate) {
+        val evaluation = verdict(query, candidate)
+        assertEquals(AlternativeMatchVerdict.REJECTED, evaluation.verdict)
+        assertEquals(reason, evaluation.rejection)
+    }
+
+    @Test
+    fun exactSongIsExact() {
+        val evaluation = verdict(query(), candidate())
+        assertEquals(AlternativeMatchVerdict.EXACT, evaluation.verdict)
+        assertEquals(100, evaluation.confidence)
+    }
+
+    @Test
+    fun titleCaseDifferenceIsHarmless() {
+        assertEquals(AlternativeMatchVerdict.EXACT, verdict(query(), candidate(title = "BLINDING LIGHTS")).verdict)
+    }
+
+    @Test
+    fun punctuationAndQuoteDifferencesAreHarmless() {
+        val query = query(title = "Don’t Start Now", artist = "Dua Lipa", album = "Future Nostalgia")
+        val evaluation = verdict(query, candidate(title = "Dont Start Now!", primary = listOf("Dua Lipa"), album = "Future Nostalgia"))
+        assertEquals(AlternativeMatchVerdict.EXACT, evaluation.verdict)
+    }
+
+    @Test
+    fun unicodeNormalizationIsHarmless() {
+        val query = query(title = "Café", artist = "Beyoncé", album = "Renaissance")
+        val evaluation = verdict(query, candidate(title = "Café", primary = listOf("Beyonce"), album = "RENAISSANCE"))
+        assertEquals(AlternativeMatchVerdict.EXACT, evaluation.verdict)
+    }
+
+    @Test
+    fun htmlEntityDifferenceIsHarmless() {
+        val query = query(title = "Rock & Roll", artist = "Led Zeppelin", album = "Led Zeppelin IV")
+        val evaluation = verdict(query, candidate(title = "Rock &amp; Roll", primary = listOf("Led Zeppelin"), album = "Led Zeppelin IV"))
+        assertEquals(AlternativeMatchVerdict.EXACT, evaluation.verdict)
+    }
+
+    @Test
+    fun durationWithinOneSecondIsExact() {
+        assertEquals(AlternativeMatchVerdict.EXACT, verdict(query(), candidate(duration = 201)).verdict)
+    }
+
+    @Test
+    fun durationPlusThreeIsAcceptedOnlyWithOtherwiseExactIdentity() {
+        val exactAlbum = verdict(query(), candidate(duration = 203))
+        assertEquals(AlternativeMatchVerdict.HIGH, exactAlbum.verdict)
+        assertRejected(MatchRejection.DURATION_OUT_OF_RANGE, query(), candidate(duration = 203, album = "Blinding Lights"))
+    }
+
+    @Test
+    fun durationPlusFiveIsTheMaximumTolerance() {
+        val evaluation = verdict(query(), candidate(duration = 205))
+        assertEquals(AlternativeMatchVerdict.HIGH, evaluation.verdict)
+        assertEquals(5, evaluation.durationDeltaSeconds)
+    }
+
+    @Test
+    fun durationPlusEightIsRejected() {
+        assertRejected(MatchRejection.DURATION_OUT_OF_RANGE, query(), candidate(duration = 208))
+    }
+
+    @Test
+    fun durationPlusFifteenIsRejected() {
+        assertRejected(MatchRejection.DURATION_OUT_OF_RANGE, query(), candidate(duration = 215))
+    }
+
+    @Test
+    fun missingDurationCannotBeVerified() {
+        assertRejected(MatchRejection.DURATION_UNKNOWN, query(durationMs = 0L), candidate())
+        assertRejected(MatchRejection.DURATION_UNKNOWN, query(), candidate(duration = 0))
+    }
+
+    @Test
+    fun wrongPrimaryArtistIsRejected() {
+        assertRejected(MatchRejection.PRIMARY_ARTIST_MISMATCH, query(), candidate(primary = listOf("The Coverbeats")))
+    }
+
+    @Test
+    fun onlyFeaturedArtistOverlapIsRejected() {
+        val query = query(title = "One Kiss", artist = "Dua Lipa", album = "One Kiss", durationMs = 214_000L)
+        val evaluation = verdict(
+            query,
+            candidate(title = "One Kiss", primary = listOf("Calvin Harris"), featured = listOf("Dua Lipa"), album = "One Kiss", duration = 214)
+        )
+        assertEquals(MatchRejection.FEATURED_ARTIST_ONLY, evaluation.rejection)
+    }
+
+    @Test
+    fun candidateLedByAnotherArtistIsRejectedEvenWhenPrimaryOverlaps() {
+        val query = query(title = "One Kiss", artist = "Dua Lipa", album = "One Kiss", durationMs = 214_000L)
+        assertRejected(
+            MatchRejection.PRIMARY_ARTIST_MISMATCH,
+            query,
+            candidate(title = "One Kiss", primary = listOf("Calvin Harris", "Dua Lipa"), album = "One Kiss", duration = 214)
+        )
+    }
+
+    @Test
+    fun sameTitleDifferentArtistIsRejected() {
+        assertRejected(
+            MatchRejection.PRIMARY_ARTIST_MISMATCH,
+            query(title = "Albachiara", artist = "Vasco Rossi", album = "Non siamo mica gli americani!", durationMs = 243_000L),
+            candidate(title = "Albachiara", primary = listOf("Studio Sound Group"), album = "Vasco Rossi Backing Tracks", duration = 250)
+        )
+    }
+
+    @Test
+    fun remixIsNotTheOriginal() {
+        assertRejected(MatchRejection.VERSION_MISMATCH, query(), candidate(title = "Blinding Lights (Chromatics Remix)"))
+    }
+
+    @Test
+    fun liveIsNotTheStudioVersion() {
+        assertRejected(MatchRejection.VERSION_MISMATCH, query(), candidate(title = "Blinding Lights (Live)"))
+        assertRejected(MatchRejection.VERSION_MISMATCH, query(), candidate(title = "Blinding Lights - Live at the Kia Forum"))
+    }
+
+    @Test
+    fun acousticIsNotTheOriginal() {
+        assertRejected(MatchRejection.VERSION_MISMATCH, query(), candidate(title = "Blinding Lights (Acoustic)"))
+    }
+
+    @Test
+    fun instrumentalIsNotTheOriginal() {
+        assertRejected(MatchRejection.VERSION_MISMATCH, query(), candidate(title = "Blinding Lights (Instrumental)"))
+    }
+
+    @Test
+    fun karaokeIsNotTheOriginal() {
+        assertRejected(MatchRejection.VERSION_MISMATCH, query(), candidate(title = "Blinding Lights (Karaoke Version)"))
+    }
+
+    @Test
+    fun coverIsNotTheOriginal() {
+        assertRejected(MatchRejection.VERSION_MISMATCH, query(), candidate(title = "Blinding Lights (Cover)"))
+    }
+
+    @Test
+    fun spedUpIsNotTheOriginal() {
+        assertRejected(MatchRejection.VERSION_MISMATCH, query(), candidate(title = "blinding lights (sped up)"))
+        assertRejected(MatchRejection.VERSION_MISMATCH, query(), candidate(title = "Blinding Lights (Nightcore)"))
+    }
+
+    @Test
+    fun slowedIsNotTheOriginal() {
+        assertRejected(MatchRejection.VERSION_MISMATCH, query(), candidate(title = "Blinding Lights (Slowed)"))
+    }
+
+    @Test
+    fun reverbIsNotTheOriginal() {
+        assertRejected(MatchRejection.VERSION_MISMATCH, query(), candidate(title = "Blinding Lights (slowed + reverb)"))
+    }
+
+    @Test
+    fun radioEditIsNotTheAlbumVersion() {
+        assertRejected(MatchRejection.VERSION_MISMATCH, query(), candidate(title = "Blinding Lights (Radio Edit)"))
+    }
+
+    @Test
+    fun matchingVersionMarkersAreAccepted() {
+        val liveQuery = query(title = "Blinding Lights (Live)")
+        assertEquals(AlternativeMatchVerdict.EXACT, verdict(liveQuery, candidate(title = "Blinding Lights (Live)")).verdict)
+    }
+
+    @Test
+    fun explicitAndCleanVersionsAreNotInterchanged() {
+        assertRejected(MatchRejection.EXPLICIT_MISMATCH, query(explicit = true), candidate(explicit = false))
+        assertRejected(MatchRejection.EXPLICIT_MISMATCH, query(title = "Blinding Lights (Clean)"), candidate(explicit = true))
+    }
+
+    @Test
+    fun unknownExplicitStateDoesNotReject() {
+        assertEquals(AlternativeMatchVerdict.EXACT, verdict(query(explicit = null), candidate(explicit = true)).verdict)
+    }
+
+    @Test
+    fun strongAlbumMismatchIsRejected() {
+        assertRejected(MatchRejection.ALBUM_MISMATCH, query(), candidate(album = "Ultra Gaming Mode Vol.10"))
+    }
+
+    @Test
+    fun remasteredAlbumConflictIsRejected() {
+        val query = query(title = "Bohemian Rhapsody", artist = "Queen", album = "A Night at the Opera", durationMs = 355_000L)
+        val evaluation = verdict(
+            query,
+            candidate(title = "Bohemian Rhapsody", primary = listOf("Queen"), album = "A Night at the Opera (2011 Remaster)", duration = 355)
+        )
+        assertEquals(MatchRejection.ALBUM_MISMATCH, evaluation.rejection)
+        assertEquals(AlbumRelation.REMASTER_CONFLICT, evaluation.albumRelation)
+    }
+
+    @Test
+    fun remasteredTrackIsNotTheOriginalRecording() {
+        val query = query(title = "Bohemian Rhapsody", artist = "Queen", album = "A Night at the Opera", durationMs = 355_000L)
+        assertRejected(
+            MatchRejection.VERSION_MISMATCH,
+            query,
+            candidate(title = "Bohemian Rhapsody - Remastered 2011", primary = listOf("Queen"), album = "A Night at the Opera", duration = 355)
+        )
+    }
+
+    @Test
+    fun singleReleaseOfTheSameRecordingIsHighConfidence() {
+        val evaluation = verdict(query(), candidate(album = "Blinding Lights"))
+        assertEquals(AlternativeMatchVerdict.HIGH, evaluation.verdict)
+        assertEquals(AlbumRelation.SINGLE_RELEASE, evaluation.albumRelation)
+    }
+
+    @Test
+    fun deluxeEditionIsAnEditionVariant() {
+        val evaluation = verdict(query(), candidate(album = "After Hours (Deluxe)"))
+        assertEquals(AlternativeMatchVerdict.HIGH, evaluation.verdict)
+        assertEquals(AlbumRelation.EDITION_VARIANT, evaluation.albumRelation)
+    }
+
+    @Test
+    fun featuredArtistCreditsAreUnderstood() {
+        val exact = verdict(
+            query(title = "Levitating (feat. DaBaby)", artist = "Dua Lipa", album = "Future Nostalgia", durationMs = 203_000L),
+            candidate(title = "Levitating (feat. DaBaby)", primary = listOf("Dua Lipa"), featured = listOf("DaBaby"), album = "Future Nostalgia", duration = 203)
+        )
+        assertEquals(AlternativeMatchVerdict.EXACT, exact.verdict)
+        val creditedDifferently = verdict(
+            query(title = "Levitating", artist = "Dua Lipa, DaBaby", album = "Future Nostalgia", durationMs = 203_000L),
+            candidate(title = "Levitating (feat. DaBaby)", primary = listOf("Dua Lipa"), featured = listOf("DaBaby"), album = "Future Nostalgia", duration = 203)
+        )
+        assertEquals(AlternativeMatchVerdict.HIGH, creditedDifferently.verdict)
+    }
+
+    @Test
+    fun isrcDisagreementIsRejectedAndAgreementConfirms() {
+        assertRejected(MatchRejection.ISRC_MISMATCH, query(isrc = "USUG11904206"), candidate(isrc = "GBAYE0601690"))
+        assertEquals(100, verdict(query(isrc = "USUG11904206"), candidate(isrc = "us-ug1-19-04206", album = "Blinding Lights")).confidence)
+    }
+
+    @Test
+    fun italianTrackOnCompilationAlbumIsRejected() {
+        val query = query(title = "Albachiara", artist = "Vasco Rossi", album = "Non siamo mica gli americani!", durationMs = 243_000L)
+        assertRejected(
+            MatchRejection.ALBUM_MISMATCH,
+            query,
+            candidate(title = "Albachiara", primary = listOf("Vasco Rossi"), album = "Vasco Rossi", duration = 243)
+        )
+    }
+
+    @Test
+    fun italianAccentedTitleMatches() {
+        val query = query(title = "Perché", artist = "Mahmood", album = "Ghettolimpo", durationMs = 180_000L)
+        val evaluation = verdict(query, candidate(title = "Perche", primary = listOf("Mahmood"), album = "Ghettolimpo", duration = 180))
+        assertEquals(AlternativeMatchVerdict.EXACT, evaluation.verdict)
+    }
+
+    @Test
+    fun duplicateCandidatesCollapseAndPrefer320() {
+        val selection = matcher.select(
+            query(),
+            listOf(candidate(id = "first", offers320 = false), candidate(id = "second", offers320 = true))
+        )
+        assertTrue(selection is AlternativeMatchSelection.Accepted)
+        assertEquals("second", (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
+    }
+
+    @Test
+    fun ambiguousCandidatesAreRejected() {
+        val selection = matcher.select(
+            query(durationMs = 200_000L),
+            listOf(candidate(id = "a", duration = 197), candidate(id = "b", duration = 203))
+        )
+        assertEquals(MatchRejection.AMBIGUOUS, (selection as AlternativeMatchSelection.Rejected).reason)
+    }
+
+    @Test
+    fun releasesOfOneRecordingWithSlightlyDifferentLengthsAreNotAmbiguous() {
+        val selection = matcher.select(
+            query(album = "YouTube Music", durationMs = 202_000L),
+            listOf(candidate(id = "album", duration = 200), candidate(id = "single", duration = 204), candidate(id = "deluxe", duration = 204))
+        )
+        assertTrue(selection is AlternativeMatchSelection.Accepted)
+    }
+
+    @Test
+    fun soundtrackReissuesTitledFromTheFilmAreTheSameRecording() {
+        val query = query(title = "Naattu Koothu", artist = "Rahul Sipligunj", album = "YouTube Music", durationMs = 215_000L)
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(id = "original", title = "Naattu Koothu", primary = listOf("Rahul Sipligunj"), album = "RRR - Tamil", duration = 214),
+                candidate(id = "reissue", title = "Naattu Koothu (From \"Rrr\")", primary = listOf("Rahul Sipligunj"), album = "Top Hits", duration = 214)
+            )
+        )
+        assertEquals("original", (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
+    }
+
+    @Test
+    fun compilationsCreditingExtraPrimaryArtistsAreTheSameRecording() {
+        val query = query(title = "Meri Aashiqui", artist = "Palak Muchhal", album = "YouTube Music", durationMs = 266_000L)
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(id = "KVi55vCq", title = "Meri Aashiqui", primary = listOf("Palak Muchhal", "Arijit Singh"), album = "Rising Star - Palak Muchhal", duration = 266),
+                candidate(id = "GTxcx4AR", title = "Meri Aashiqui (From \"Aashiqui 2\")", primary = listOf("Palak Muchhal", "Arijit Singh"), album = "Best Of Palak Muchhal", duration = 266),
+                candidate(
+                    id = "LQ4Ie1Fm",
+                    title = "Meri Aashiqui (From \"Aashiqui 2\")",
+                    primary = listOf("Palak Muchhal", "Arijit Singh", "Mithoon", "Irshad Kamil"),
+                    album = "Love Forever - Valentine's Day Special",
+                    duration = 266
+                ).copy(creatorArtists = setOf("Mithoon", "Irshad Kamil"))
+            ).map { it.copy(language = "hindi") }
+        )
+        assertEquals("KVi55vCq", (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
+    }
+
+    @Test
+    fun soloAndDuetReleasesStayAmbiguous() {
+        val query = query(title = "Song", artist = "Singer", album = "YouTube Music", durationMs = 200_000L)
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(id = "solo", title = "Song", primary = listOf("Singer"), album = "One", duration = 200),
+                candidate(id = "duet", title = "Song", primary = listOf("Singer", "Partner A"), album = "Two", duration = 200)
+            )
+        )
+        assertEquals(MatchRejection.AMBIGUOUS, (selection as AlternativeMatchSelection.Rejected).reason)
+    }
+
+    @Test
+    fun everyNearTopPairMustBeTheSameRecording() {
+        val query = query(title = "Song", artist = "Singer", album = "YouTube Music", durationMs = 200_000L)
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(id = "solo", title = "Song", primary = listOf("Singer"), album = "One", duration = 200),
+                candidate(id = "with-a", title = "Song", primary = listOf("Singer", "Writer A"), album = "Two", duration = 200)
+                    .copy(creatorArtists = setOf("Writer A")),
+                candidate(id = "with-b", title = "Song", primary = listOf("Singer", "Writer B"), album = "Three", duration = 200)
+                    .copy(creatorArtists = setOf("Writer B"))
+            )
+        )
+        assertEquals(MatchRejection.AMBIGUOUS, (selection as AlternativeMatchSelection.Rejected).reason)
+    }
+
+    @Test
+    fun composerListedFirstDoesNotHideThePerformingArtist() {
+        val query = query(title = "Meri Aashiqui", artist = "Palak Muchhal", album = "YouTube Music", durationMs = 266_000L)
+        val composerFirst = candidate(
+            id = "OFkbNs2Q",
+            title = "Meri Aashiqui",
+            primary = listOf("Mithoon", "Palak Muchhal", "Arijit Singh"),
+            album = "Sound Of Bollywood - Vol. 2",
+            duration = 266
+        )
+        assertRejected(MatchRejection.PRIMARY_ARTIST_MISMATCH, query, composerFirst)
+        val withRoles = verdict(query, composerFirst.copy(nonPerformingArtists = setOf("Mithoon", "Irshad Kamil")))
+        assertEquals(AlternativeMatchVerdict.HIGH, withRoles.verdict)
+    }
+
+    @Test
+    fun composerCreditedAsSourceArtistStillMatches() {
+        val query = query(title = "Meri Aashiqui", artist = "Mithoon", album = "YouTube Music", durationMs = 266_000L)
+        val candidate = candidate(
+            title = "Meri Aashiqui",
+            primary = listOf("Mithoon", "Palak Muchhal", "Arijit Singh"),
+            album = "Aashiqui 2",
+            duration = 266
+        ).copy(nonPerformingArtists = setOf("Mithoon"))
+        assertTrue(verdict(query, candidate).accepted)
+    }
+
+    @Test
+    fun sameRecordingPrefersTheEarliestKnownRelease() {
+        val query = query(title = "Song", artist = "Singer", album = "YouTube Music", durationMs = 200_000L)
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(id = "reissue", title = "Song", primary = listOf("Singer"), album = "Hits 2021", duration = 200).copy(releaseYear = 2021),
+                candidate(id = "unknown", title = "Song", primary = listOf("Singer"), album = "Hits", duration = 200),
+                candidate(id = "original", title = "Song", primary = listOf("Singer"), album = "Debut", duration = 200).copy(releaseYear = 2013)
+            )
+        )
+        assertEquals("original", (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
+    }
+
+    @Test
+    fun differentPrimaryCreditsThatDoNotContainEachOtherStayAmbiguous() {
+        val query = query(title = "Song", artist = "Singer", album = "YouTube Music", durationMs = 200_000L)
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(id = "duet-a", title = "Song", primary = listOf("Singer", "Partner A"), album = "One", duration = 200),
+                candidate(id = "duet-b", title = "Song", primary = listOf("Singer", "Partner B"), album = "Two", duration = 200)
+            )
+        )
+        assertEquals(MatchRejection.AMBIGUOUS, (selection as AlternativeMatchSelection.Rejected).reason)
+    }
+
+    @Test
+    fun dubbedReleasesInDifferentLanguagesStayAmbiguous() {
+        val query = query(title = "Srivalli", artist = "Singer", album = "YouTube Music", durationMs = 225_000L)
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(id = "telugu", title = "Srivalli", primary = listOf("Singer"), album = "Pushpa", duration = 225).copy(language = "telugu"),
+                candidate(id = "hindi", title = "Srivalli", primary = listOf("Singer"), album = "Pushpa", duration = 225).copy(language = "hindi")
+            )
+        )
+        assertEquals(MatchRejection.AMBIGUOUS, (selection as AlternativeMatchSelection.Rejected).reason)
+    }
+
+    @Test
+    fun metadataOnlyFeaturedArtistsKeepDifferentRecordingsApart() {
+        val selection = matcher.select(
+            query(album = "YouTube Music"),
+            listOf(
+                candidate(id = "with-x", featured = listOf("Artist X")),
+                candidate(id = "with-y", featured = listOf("Artist Y"))
+            )
+        )
+        assertEquals(MatchRejection.AMBIGUOUS, (selection as AlternativeMatchSelection.Rejected).reason)
+    }
+
+    @Test
+    fun featuringInTitleAndInMetadataIsTheSameCredit() {
+        val query = query(title = "Levitating (feat. DaBaby)", artist = "Dua Lipa", album = "YouTube Music", durationMs = 203_000L)
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(id = "title-credit", title = "Levitating (feat. DaBaby)", primary = listOf("Dua Lipa"), album = "Future Nostalgia", duration = 203),
+                candidate(id = "both-credits", title = "Levitating (feat. DaBaby)", primary = listOf("Dua Lipa"), featured = listOf("DaBaby"), album = "Levitating", duration = 203)
+            )
+        )
+        assertTrue(selection is AlternativeMatchSelection.Accepted)
+    }
+
+    @Test
+    fun providerLanguageContradictingTheAlbumLanguageIsRejected() {
+        val query = query(title = "Srivalli", artist = "Javed Ali", album = "Pushpa - The Rise (Hindi)", durationMs = 225_000L)
+        assertRejected(
+            MatchRejection.ALBUM_MISMATCH,
+            query,
+            candidate(title = "Srivalli", primary = listOf("Javed Ali"), album = "Pushpa - The Rise", duration = 225).copy(language = "telugu")
+        )
+        val sameLanguage = verdict(
+            query,
+            candidate(title = "Srivalli", primary = listOf("Javed Ali"), album = "Pushpa - The Rise", duration = 225).copy(language = "hindi")
+        )
+        assertTrue(sameLanguage.accepted)
+        assertEquals(AlbumRelation.SAME, sameLanguage.albumRelation)
+        val unknownLanguage = verdict(query, candidate(title = "Srivalli", primary = listOf("Javed Ali"), album = "Pushpa - The Rise", duration = 225))
+        assertTrue(unknownLanguage.accepted)
+    }
+
+    @Test
+    fun differentVersionsAreNeverMergedIntoOneRecording() {
+        val selection = matcher.select(
+            query(album = "YouTube Music"),
+            listOf(candidate(id = "original"), candidate(id = "remix", title = "Blinding Lights (Remix)"))
+        )
+        assertEquals("original", (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
+    }
+
+    @Test
+    fun unknownAlbumToleratesSmallMasteringDriftOnlyWithExactTitleAndArtists() {
+        val query = query(title = "Bohemian Rhapsody", artist = "Queen", album = "YouTube Music", durationMs = 355_000L)
+        val exact = verdict(query, candidate(title = "Bohemian Rhapsody", primary = listOf("Queen"), album = "A Night At The Opera", duration = 358))
+        assertEquals(AlternativeMatchVerdict.HIGH, exact.verdict)
+        assertTrue(exact.confidence < AlternativeTrackMatcher.PERSISTABLE_CONFIDENCE)
+        assertRejected(
+            MatchRejection.DURATION_OUT_OF_RANGE,
+            query,
+            candidate(title = "Bohemian Rhapsody (From \"Wayne's World\")", primary = listOf("Queen"), album = "Soundtrack", duration = 358)
+        )
+        assertRejected(
+            MatchRejection.DURATION_OUT_OF_RANGE,
+            query,
+            candidate(title = "Bohemian Rhapsody", primary = listOf("Queen"), album = "A Night At The Opera", duration = 362)
+        )
+    }
+
+    @Test
+    fun dubbedAlbumInAnotherLanguageIsNeverTheSameAlbum() {
+        val query = query(title = "Srivalli", artist = "Javed Ali", album = "Pushpa - The Rise (Hindi)", durationMs = 225_000L)
+        assertRejected(
+            MatchRejection.ALBUM_MISMATCH,
+            query,
+            candidate(title = "Srivalli", primary = listOf("Javed Ali"), album = "Pushpa - The Rise (Telugu)", duration = 225)
+        )
+        val sameLanguage = verdict(query, candidate(title = "Srivalli", primary = listOf("Javed Ali"), album = "Pushpa - The Rise (Hindi)", duration = 225))
+        assertEquals(AlbumRelation.SAME, sameLanguage.albumRelation)
+    }
+
+    @Test
+    fun releaseLanguageSuffixDoesNotMakeTheAlbumDifferent() {
+        val query = query(title = "Naatu Naatu", artist = "Rahul Sipligunj", album = "RRR (Original Motion Picture Soundtrack)", durationMs = 214_000L)
+        val evaluation = verdict(query, candidate(title = "Naatu Naatu", primary = listOf("Rahul Sipligunj"), album = "RRR - Telugu", duration = 214))
+        assertTrue(evaluation.accepted)
+        assertEquals(AlbumRelation.EDITION_VARIANT, evaluation.albumRelation)
+    }
+
+    @Test
+    fun cleanAndExplicitEditionsOfOneRecordingAreNotAmbiguousWhenExplicitIsUnknown() {
+        val query = query(title = "hate that i made you love me", artist = "Ariana Grande", album = "YouTube Music", durationMs = 198_000L)
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(id = "single-clean", title = "hate that i made you love me", primary = listOf("Ariana Grande"), album = "hate that i made you love me", duration = 198, explicit = false),
+                candidate(id = "single-explicit", title = "hate that i made you love me", primary = listOf("Ariana Grande"), album = "hate that i made you love me", duration = 198, explicit = true),
+                candidate(id = "album-clean", title = "hate that i made you love me", primary = listOf("Ariana Grande"), album = "petal", duration = 197, explicit = false),
+                candidate(id = "album-explicit", title = "hate that i made you love me", primary = listOf("Ariana Grande"), album = "petal", duration = 197, explicit = true)
+            )
+        )
+        assertTrue(selection is AlternativeMatchSelection.Accepted)
+        assertEquals(false, (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.explicit)
+    }
+
+    @Test
+    fun explicitQueryKeepsTheExplicitEdition() {
+        val query = query(title = "hate that i made you love me", artist = "Ariana Grande", album = "petal", durationMs = 197_000L, explicit = true)
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(id = "clean", title = "hate that i made you love me", primary = listOf("Ariana Grande"), album = "petal", duration = 197, explicit = false),
+                candidate(id = "explicit", title = "hate that i made you love me", primary = listOf("Ariana Grande"), album = "petal", duration = 197, explicit = true)
+            )
+        )
+        assertEquals("explicit", (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
+    }
+
+    @Test
+    fun exactAlbumMatchOutranksSingleReleaseOfDifferentCut() {
+        val query = query(title = "Levitating (feat. DaBaby)", artist = "Dua Lipa", album = "Future Nostalgia", durationMs = 203_000L)
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(id = "single", title = "Levitating (feat. DaBaby)", primary = listOf("Dua Lipa"), featured = listOf("DaBaby"), album = "Levitating (feat. DaBaby)", duration = 203, explicit = false),
+                candidate(id = "album", title = "Levitating (feat. DaBaby)", primary = listOf("Dua Lipa"), featured = listOf("DaBaby"), album = "Future Nostalgia", duration = 203, explicit = true)
+            )
+        )
+        assertEquals("album", (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
+    }
+
+    @Test
+    fun providerRankingIsNeverTrustedAlone() {
+        val selection = matcher.select(
+            query(),
+            listOf(
+                candidate(id = "nightcore", title = "Blinding Lights (Nightcore)", primary = listOf("Nøvacore"), album = "Ultra Gaming Mode Vol.10"),
+                candidate(id = "real")
+            )
+        )
+        assertEquals("real", (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
+    }
+
+    @Test
+    fun emptySearchIsRejected() {
+        assertEquals(MatchRejection.NO_CANDIDATES, (matcher.select(query(), emptyList()) as AlternativeMatchSelection.Rejected).reason)
+    }
+
+    @Test
+    fun onlyWrongVersionsAreRejectedWithTheDominantReason() {
+        val selection = matcher.select(
+            query(),
+            listOf(candidate(id = "a", title = "Blinding Lights (Remix)"), candidate(id = "b", title = "Blinding Lights (Live)"))
+        )
+        assertEquals(MatchRejection.VERSION_MISMATCH, (selection as AlternativeMatchSelection.Rejected).reason)
+    }
+    @Test
+    fun missingCreditedCollaboratorIsRejected() {
+        assertRejected(
+            MatchRejection.PRIMARY_ARTIST_MISMATCH,
+            query(title = "One Kiss", artist = "Calvin Harris, Dua Lipa", album = "One Kiss", durationMs = 215_000L),
+            candidate(title = "One Kiss", primary = listOf("Calvin Harris"), featured = emptyList(), album = "One Kiss", duration = 215)
+        )
+    }
+
+    @Test
+    fun russianBandDesignatorDoesNotHideTheSameArtist() {
+        val evaluation = verdict(
+            query(title = "Группа крови", artist = "Группа Кино", album = "Игла Remix", durationMs = 274_000L),
+            candidate(id = "Bt-8zakD", title = "Группа крови", primary = listOf("Кино"), album = "Игла Remix", duration = 274)
+        )
+        assertEquals(AlternativeMatchVerdict.EXACT, evaluation.verdict)
+    }
+
+    @Test
+    fun cyrillicTrackWithVerifiedDurationMatchesItsJioSaavnRelease() {
+        val album = "Виктор Цой и Группа Кино. Полная Дискография"
+        val selection = matcher.select(
+            query(title = "Группа крови", artist = "Виктор Цой & Группа Кино", album = album, durationMs = 236_000L),
+            listOf(
+                candidate(id = "20zL7tZU", title = "Группа крови", primary = listOf("Артём Scoop"), album = "Другое кино", duration = 176),
+                candidate(id = "wbTqLnmA", title = "Группа крови", primary = listOf("Виктор Цой", "группа Кино"), album = album, duration = 235),
+                candidate(id = "pSUfLBwi", title = "Группа крови (Remix)", primary = listOf("Паша Кореец", "DJ Vini"), album = "Последний герой Remix", duration = 394),
+                candidate(id = "5Wb0ZbD7", title = "Группа крови (Английская версия)", primary = listOf("Виктор Цой", "группа Кино"), album = album, duration = 285)
+            )
+        )
+        assertEquals("wbTqLnmA", (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
+    }
+
+}

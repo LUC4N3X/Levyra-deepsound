@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Trình phát mini, truy cập nhanh mục yêu thích, Flow hằng ngày, bản mix ngoại tuyến và lời bài hát</string>
+    <string name="widget_idle_subtitle">Chạm để nghe</string>
+    <string name="widget_toggle">Phát/Tạm dừng</string>
+    <string name="widget_next">Tiếp</string>
+    <string name="widget_previous">Trước</string>
+    <string name="widget_favorites">Yêu thích</string>
+    <string name="widget_flow">Flow hằng ngày</string>
+    <string name="widget_offline">Bản mix ngoại tuyến</string>
+    <string name="widget_lyrics">Lời bài hát</string>
+    <string name="radar_channel_name">Radar phát hành</string>
+    <string name="radar_channel_description">Bản phát hành mới từ nghệ sĩ bạn theo dõi</string>
+    <string name="radar_new_release_title">Bản phát hành mới từ %1$s</string>
+    <string name="automatic_backups">Sao lưu tự động</string>
+    <string name="car_home">Trang chủ</string>
+    <string name="car_downloads">Tải xuống</string>
+    <string name="car_favorites">Yêu thích</string>
+    <string name="car_playlists">Danh sách phát</string>
+    <string name="car_no_content">Không có nội dung</string>
+    <string name="car_content_unavailable">Nội dung không khả dụng</string>
+    <string name="car_search_tracks">Tìm bài hát</string>
+    <string name="car_no_results">Không có kết quả</string>
+    <string name="car_connecting_player">Đang kết nối với trình phát</string>
+    <string name="car_now_playing">Đang phát</string>
+    <string name="car_queue">Hàng đợi</string>
+    <string name="notification_favorite_add">Thêm vào mục yêu thích</string>
+    <string name="notification_favorite_remove">Xóa khỏi mục yêu thích</string>
+    <string name="notification_shuffle_enable">Bật phát ngẫu nhiên</string>
+    <string name="notification_shuffle_disable">Tắt phát ngẫu nhiên</string>
+    <string name="notification_repeat_off">Tắt lặp lại</string>
+    <string name="notification_repeat_all">Lặp lại tất cả</string>
+    <string name="notification_repeat_one">Lặp lại một bài</string>
+    <string name="tile_recognize_music">Nhận diện nhạc</string>
+    <string name="tile_playback">Phát</string>
+    <string name="shortcut_search">Tìm kiếm</string>
+    <string name="shortcut_library">Thư viện</string>
+    <string name="shortcut_recognition">Nhận diện nhạc</string>
+    <string name="shortcut_resume">Tiếp tục phát</string>
+</resources>

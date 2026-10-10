@@ -1,0 +1,328 @@
+package com.luc4n3x.levyra.data.network
+
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import com.luc4n3x.levyra.data.network.byedpi.ByeDpiRouteTrace
+import com.luc4n3x.levyra.nexus.network.LevyraAddressFamily
+import com.luc4n3x.levyra.nexus.network.LevyraRoute
+import com.luc4n3x.levyra.nexus.network.LevyraRouteEngine
+import com.luc4n3x.levyra.nexus.network.LevyraRouteFailure
+import com.luc4n3x.levyra.nexus.network.LevyraTransport
+import com.luc4n3x.levyra.runtime.RuntimeHooks
+import com.luc4n3x.levyra.runtime.RuntimeSignal
+import java.io.IOException
+import java.net.Inet4Address
+import java.net.Inet6Address
+import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.net.Proxy
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
+import timber.log.Timber
+import javax.net.ssl.SSLException
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import okhttp3.Call
+import okhttp3.Dns
+import okhttp3.EventListener
+import okhttp3.Protocol
+import okhttp3.Response
+
+internal object LevyraNetworkIntelligence {
+    private val routeEngine = LevyraRouteEngine()
+    private val initialized = AtomicBoolean(false)
+    private val networkSignature = AtomicReference("")
+    private val internetReachable = MutableStateFlow(true)
+    @Volatile private var connectivityManager: ConnectivityManager? = null
+    @Volatile private var defaultNetwork: Network? = null
+
+    val internetAvailable: StateFlow<Boolean> = internetReachable.asStateFlow()
+
+    val dns: Dns = Dns { hostname ->
+        val addresses = Dns.SYSTEM.lookup(hostname)
+        if (addresses.size <= 1) return@Dns addresses
+        val routes = addresses.mapIndexed { index, address -> route(hostname, address, index) }
+        val preferred = routeEngine.race(routes, maxRoutes = 2)
+        val remaining = routeEngine.order(routes).filterNot(preferred::contains)
+        val ordered = (preferred + remaining).mapNotNull { selected ->
+            addresses.firstOrNull { address -> address.hostAddress == selected.id }
+        }
+        if (ordered.size == addresses.size) ordered else addresses
+    }
+
+    val eventListenerFactory: EventListener.Factory = EventListener.Factory { AdaptiveEventListener() }
+
+    fun initialize(context: Context) {
+        if (!initialized.compareAndSet(false, true)) return
+        val connectivity = context.applicationContext.getSystemService(ConnectivityManager::class.java) ?: run {
+            initialized.set(false)
+            return
+        }
+        connectivityManager = connectivity
+        runCatching {
+            connectivity.registerDefaultNetworkCallback(
+                object : ConnectivityManager.NetworkCallback() {
+                    override fun onAvailable(network: Network) {
+                        refreshNetworkSignature(connectivity, network)
+                        defaultNetwork = network
+                        val capabilities = runCatching { connectivity.getNetworkCapabilities(network) }.getOrNull()
+                        internetReachable.value = capabilities?.hasInternet() ?: true
+                    }
+
+                    override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
+                        refreshNetworkSignature(network, capabilities)
+                        defaultNetwork = network
+                        internetReachable.value = capabilities.hasInternet()
+                    }
+
+                    override fun onLost(network: Network) {
+                        val previous = networkSignature.get()
+                        if (previous.startsWith("${network.hashCode()}|") && networkSignature.compareAndSet(previous, "")) {
+                            routeEngine.resetVolatileState()
+                        }
+                        if (defaultNetwork == null || defaultNetwork == network) {
+                            defaultNetwork = null
+                            internetReachable.value = false
+                        }
+                    }
+                }
+            )
+        }.onFailure {
+            connectivityManager = null
+            initialized.set(false)
+        }
+        refreshInternetAvailability()
+    }
+
+    fun refreshInternetAvailability() {
+        val connectivity = connectivityManager ?: return
+        val active = runCatching { connectivity.activeNetwork }.getOrNull()
+        defaultNetwork = active
+        internetReachable.value = runCatching {
+            val network = active ?: return@runCatching false
+            connectivity.getNetworkCapabilities(network)?.hasInternet() == true
+        }.getOrDefault(true)
+    }
+
+    fun activeNetworkHasIpv6Route(): Boolean? {
+        val connectivity = connectivityManager ?: return null
+        return runCatching {
+            val network = connectivity.activeNetwork ?: return@runCatching false
+            val link = connectivity.getLinkProperties(network) ?: return@runCatching null
+            val hasGlobalAddress = link.linkAddresses.any { linkAddress -> isGlobalIpv6(linkAddress.address) }
+            hasGlobalAddress && link.routes.any { route -> route.isDefaultRoute && route.destination.address is Inet6Address }
+        }.getOrNull()
+    }
+
+    private fun isGlobalIpv6(address: InetAddress): Boolean {
+        if (address !is Inet6Address) return false
+        if (address.isLinkLocalAddress || address.isSiteLocalAddress || address.isLoopbackAddress) return false
+        return address.address[0].toInt() and 0xfe != 0xfc
+    }
+
+    private fun NetworkCapabilities.hasInternet(): Boolean =
+        hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+
+    internal fun diagnostics() = routeEngine.snapshot()
+
+    private fun refreshNetworkSignature(connectivity: ConnectivityManager, network: Network) {
+        val capabilities = connectivity.getNetworkCapabilities(network) ?: return
+        refreshNetworkSignature(network, capabilities)
+    }
+
+    private fun refreshNetworkSignature(network: Network, capabilities: NetworkCapabilities) {
+        val transports = buildList {
+            if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) add("wifi")
+            if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) add("cellular")
+            if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) add("ethernet")
+            if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) add("vpn")
+        }.joinToString(",")
+        val signature = buildString {
+            append(network.hashCode())
+            append('|').append(transports)
+            append('|').append(capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED))
+            append('|').append(capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED))
+        }
+        val previous = networkSignature.getAndSet(signature)
+        if (previous.isNotBlank() && previous != signature) routeEngine.resetVolatileState()
+    }
+
+    private fun route(host: String, address: InetAddress, priority: Int = 0): LevyraRoute = LevyraRoute(
+        id = address.hostAddress.orEmpty(),
+        host = host,
+        transport = LevyraTransport.OKHTTP,
+        addressFamily = when (address) {
+            is Inet4Address -> LevyraAddressFamily.IPV4
+            is Inet6Address -> LevyraAddressFamily.IPV6
+            else -> LevyraAddressFamily.SYSTEM
+        },
+        priority = priority
+    )
+
+    private class AdaptiveEventListener : EventListener() {
+        private val connectStartedAt = ConcurrentHashMap<String, Long>()
+        private val connectAttempts = AtomicInteger(0)
+        private val responseCount = AtomicInteger(0)
+        @Volatile private var callStartedAtNanos = 0L
+
+        override fun callStart(call: Call) {
+            callStartedAtNanos = System.nanoTime()
+        }
+
+        override fun connectStart(call: Call, inetSocketAddress: InetSocketAddress, proxy: Proxy) {
+            connectAttempts.incrementAndGet()
+            connectStartedAt[key(inetSocketAddress)] = System.nanoTime()
+        }
+
+        override fun connectEnd(
+            call: Call,
+            inetSocketAddress: InetSocketAddress,
+            proxy: Proxy,
+            protocol: Protocol?
+        ) {
+            val latencyMs = elapsedMs(inetSocketAddress)
+            auditConnected(call, inetSocketAddress, proxy, latencyMs)
+            val address = inetSocketAddress.address ?: return
+            routeEngine.recordSuccess(
+                route = route(call.request().url.host, address),
+                latencyMs = latencyMs
+            )
+            RuntimeHooks.network(
+                host = call.request().url.host,
+                category = RuntimeSignal.NETWORK_CONNECT,
+                latencyMs = latencyMs,
+                outcome = RuntimeSignal.OUTCOME_SUCCESS,
+                retry = (connectAttempts.get() - 1).coerceAtLeast(0)
+            )
+        }
+
+        override fun connectFailed(
+            call: Call,
+            inetSocketAddress: InetSocketAddress,
+            proxy: Proxy,
+            protocol: Protocol?,
+            ioe: IOException
+        ) {
+            val latencyMs = elapsedMs(inetSocketAddress)
+            auditConnectFailed(call, inetSocketAddress, proxy, ioe)
+            val address = inetSocketAddress.address ?: return
+            routeEngine.recordFailure(
+                route = route(call.request().url.host, address),
+                failure = when (ioe) {
+                    is SocketTimeoutException -> LevyraRouteFailure.TIMEOUT
+                    is SSLException -> LevyraRouteFailure.TLS
+                    is UnknownHostException -> LevyraRouteFailure.CONNECTION
+                    else -> LevyraRouteFailure.CONNECTION
+                },
+                latencyMs = latencyMs
+            )
+            RuntimeHooks.network(
+                host = call.request().url.host,
+                category = RuntimeSignal.NETWORK_CONNECT,
+                latencyMs = latencyMs,
+                outcome = if (ioe is SocketTimeoutException) RuntimeSignal.OUTCOME_TIMEOUT else RuntimeSignal.OUTCOME_FAILURE,
+                retry = (connectAttempts.get() - 1).coerceAtLeast(0),
+                failure = if (ioe is SocketTimeoutException) RuntimeSignal.FAILURE_TIMEOUT else RuntimeSignal.FAILURE_NETWORK
+            )
+        }
+
+        override fun responseHeadersEnd(call: Call, response: Response) {
+            val count = responseCount.incrementAndGet()
+            val totalLatency = callElapsedMs()
+            RuntimeHooks.network(
+                host = call.request().url.host,
+                category = RuntimeSignal.NETWORK_HTTP,
+                latencyMs = totalLatency,
+                outcome = if (response.isSuccessful || response.isRedirect) {
+                    RuntimeSignal.OUTCOME_SUCCESS
+                } else {
+                    RuntimeSignal.OUTCOME_FAILURE
+                },
+                statusCode = response.code,
+                retry = (connectAttempts.get() - 1).coerceAtLeast(0),
+                redirects = (count - 1).coerceAtLeast(0)
+            )
+            if (YoutubeNetworkPolicy.isYoutubeHost(call.request().url.host)) {
+                Timber.i(
+                    "[RouteAudit] response: host=%s port=%d code=%d latency=%dms",
+                    call.request().url.host,
+                    call.request().url.port,
+                    response.code,
+                    totalLatency
+                )
+            }
+        }
+
+        override fun callEnd(call: Call) {
+            connectStartedAt.clear()
+        }
+
+        override fun callFailed(call: Call, ioe: IOException) {
+            RuntimeHooks.network(
+                host = call.request().url.host,
+                category = RuntimeSignal.NETWORK_HTTP,
+                latencyMs = callElapsedMs(),
+                outcome = if (ioe is SocketTimeoutException) RuntimeSignal.OUTCOME_TIMEOUT else RuntimeSignal.OUTCOME_FAILURE,
+                retry = (connectAttempts.get() - 1).coerceAtLeast(0),
+                redirects = (responseCount.get() - 1).coerceAtLeast(0),
+                failure = if (ioe is SocketTimeoutException) RuntimeSignal.FAILURE_TIMEOUT else RuntimeSignal.FAILURE_NETWORK
+            )
+            connectStartedAt.clear()
+        }
+
+        private fun auditConnected(call: Call, destination: InetSocketAddress, proxy: Proxy, latencyMs: Long) {
+            val tunnelPort = ByeDpiRouteTrace.consume(destination)
+            val url = call.request().url
+            if (YoutubeNetworkPolicy.isYoutubeHost(url.host)) {
+                Timber.i(
+                    "[RouteAudit] connected: host=%s port=%d proxy=%s latency=%dms",
+                    url.host,
+                    url.port,
+                    describeRoute(proxy, tunnelPort),
+                    latencyMs
+                )
+            }
+        }
+
+        private fun auditConnectFailed(call: Call, destination: InetSocketAddress, proxy: Proxy, ioe: IOException) {
+            val tunnelPort = ByeDpiRouteTrace.consume(destination)
+            val url = call.request().url
+            if (YoutubeNetworkPolicy.isYoutubeHost(url.host)) {
+                Timber.w(
+                    "[RouteAudit] connectFailed: host=%s port=%d proxy=%s error=%s",
+                    url.host,
+                    url.port,
+                    describeRoute(proxy, tunnelPort),
+                    ioe.javaClass.simpleName
+                )
+            }
+        }
+
+        private fun describeRoute(proxy: Proxy, byeDpiTunnelPort: Int?): String = when (proxy.type()) {
+            Proxy.Type.DIRECT -> byeDpiTunnelPort?.let { "SOCKS(ByeDPI 127.0.0.1:$it numeric)" } ?: "Direct"
+            Proxy.Type.SOCKS -> "SOCKS(external)"
+            Proxy.Type.HTTP -> "HTTP(external)"
+        }
+
+        private fun elapsedMs(address: InetSocketAddress): Long {
+            val startedAt = connectStartedAt.remove(key(address)) ?: return 1L
+            return ((System.nanoTime() - startedAt) / 1_000_000L).coerceAtLeast(1L)
+        }
+
+        private fun callElapsedMs(): Long {
+            val startedAt = callStartedAtNanos
+            if (startedAt <= 0L) return 1L
+            return ((System.nanoTime() - startedAt) / 1_000_000L).coerceAtLeast(1L)
+        }
+
+        private fun key(address: InetSocketAddress): String =
+            "${address.address?.hostAddress.orEmpty()}:${address.port}"
+    }
+}

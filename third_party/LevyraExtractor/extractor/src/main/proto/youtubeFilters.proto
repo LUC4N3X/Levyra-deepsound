@@ -1,0 +1,54 @@
+syntax = "proto2";
+
+package youtubesearchfilter;
+
+option java_multiple_files = true;
+option java_package = "org.schabi.newpipe.extractor.services.youtube.search.filter.protobuf";
+
+enum ExtraFeatures {
+    verbatim = 0;
+}
+
+message Extras {
+    optional bool verbatim = 1;
+}
+
+enum Features {
+    is_hd = 0;
+    subtitles = 1;
+    ccommons = 2;
+    is_3d = 3;
+    live = 4;
+    purchased = 5;
+    is_4k = 6;
+    is_360 = 7;
+    location = 8;
+    is_hdr = 9;
+}
+
+message Filters {
+    optional int64 date = 1;
+    optional int64 type = 2;
+    optional int64 length = 3;
+    optional bool is_hd = 4;
+    optional bool subtitles = 5;
+    optional bool ccommons = 6;
+    optional bool is_3d = 7;
+    optional bool live = 8;
+    optional bool purchased = 9;
+    optional bool is_4k = 14;
+    optional bool is_360 = 15;
+    optional bool location = 23;
+    optional bool is_hdr = 25;
+}
+
+message SearchRequest {
+    optional int64 sorted = 1;
+    optional Filters filter = 2;
+    optional Extras extras = 8;
+}
+
+enum SortOrder { relevance=0; rating=1; date=2; views=3; }
+enum DateFilter { hour=1; day=2; week=3; month=4; year=5; }
+enum TypeFilter { video=1; channel=2; playlist=3; movie=4; show=5; }
+enum LenFilter { duration_short=1; duration_long=2; }

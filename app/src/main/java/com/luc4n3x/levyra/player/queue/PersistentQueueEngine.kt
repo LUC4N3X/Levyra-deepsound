@@ -1,0 +1,1344 @@
+package com.luc4n3x.levyra.player.queue
+
+import android.content.Context
+import com.luc4n3x.levyra.data.local.DEFAULT_QUEUE_SPACE_ID
+import com.luc4n3x.levyra.data.runCatchingPreservingCancellation
+import com.luc4n3x.levyra.domain.RepeatMode
+import com.luc4n3x.levyra.domain.Track
+import java.util.Locale
+import kotlin.random.Random
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import timber.log.Timber
+
+private val YOUTUBE_VIDEO_ID_PATTERN =
+    Regex("(?:v=|youtu\\.be/|shorts/|embed/)([A-Za-z0-9_-]{6,})")
+
+internal fun queueTracksAfterAddLast(current: List<Track>, additions: List<Track>): List<Track> {
+    val identities = current.mapTo(hashSetOf(), ::playbackQueueIdentity)
+    val pending = additions.distinctBy(::playbackQueueIdentity).filter { identities.add(playbackQueueIdentity(it)) }
+    return if (pending.isEmpty()) current else current + pending.map(Track::queueStoredCopy)
+}
+
+internal fun queueTracksAfterPlayNext(
+    current: List<Track>,
+    currentIndex: Int,
+    additions: List<Track>
+): List<Track> = queueAfterPlayNextIntent(
+    current = current,
+    currentIndex = currentIndex,
+    pendingIdentities = emptyList(),
+    additions = additions
+).tracks
+
+internal data class PlayNextQueueMutation(
+    val tracks: List<Track>,
+    val currentIndex: Int,
+    val pendingIdentities: List<String>
+)
+
+internal fun queueAfterPlayNextIntent(
+    current: List<Track>,
+    currentIndex: Int,
+    pendingIdentities: List<String>,
+    additions: List<Track>
+): PlayNextQueueMutation {
+    val currentTrack = current.getOrNull(currentIndex)
+    val currentIdentity = currentTrack?.let(::playbackQueueIdentity)
+    val currentByIdentity = current.associateBy(::playbackQueueIdentity)
+    val retainedPending = pendingIdentities
+        .distinct()
+        .mapNotNull(currentByIdentity::get)
+        .filterNot { playbackQueueIdentity(it) == currentIdentity }
+    val retainedIdentities = retainedPending.mapTo(hashSetOf(), ::playbackQueueIdentity)
+    val appended = additions
+        .distinctBy(::playbackQueueIdentity)
+        .filterNot { playbackQueueIdentity(it) == currentIdentity }
+        .filterNot { playbackQueueIdentity(it) in retainedIdentities }
+        .map(Track::queueStoredCopy)
+    val ordered = retainedPending + appended
+    if (ordered.isEmpty()) {
+        return PlayNextQueueMutation(current, currentIndex, emptyList())
+    }
+    val nextPendingIdentities = ordered.map(::playbackQueueIdentity)
+    val pendingIdentitySet = nextPendingIdentities.toHashSet()
+    val withoutPending = current.filterNot { track ->
+        playbackQueueIdentity(track) in pendingIdentitySet && playbackQueueIdentity(track) != currentIdentity
+    }
+    val baseIndex = currentIdentity
+        ?.let { identity -> withoutPending.indexOfFirst { playbackQueueIdentity(it) == identity } }
+        ?.takeIf { it >= 0 }
+        ?: currentIndex.coerceIn(-1, withoutPending.lastIndex)
+    val tracks = withoutPending.toMutableList().apply {
+        addAll((baseIndex + 1).coerceIn(0, size), ordered)
+    }
+    return PlayNextQueueMutation(tracks, baseIndex, nextPendingIdentities)
+}
+
+internal fun queuePersistenceAllowed(transientPlaybackActive: Boolean): Boolean =
+    !transientPlaybackActive
+
+internal fun queueRemovalCurrentIndex(removedIndex: Int, currentIndex: Int, newLastIndex: Int): Int = when {
+    newLastIndex < 0 -> -1
+    removedIndex < currentIndex -> currentIndex - 1
+    removedIndex == currentIndex -> removedIndex.coerceAtMost(newLastIndex)
+    else -> currentIndex.coerceAtMost(newLastIndex)
+}
+
+internal fun queueMultiRemovalCurrentIndex(
+    removedIndices: Set<Int>,
+    currentIndex: Int,
+    newLastIndex: Int
+): Int = when {
+    newLastIndex < 0 -> -1
+    currentIndex < 0 -> -1
+    else -> (currentIndex - removedIndices.count { it < currentIndex }).coerceIn(0, newLastIndex)
+}
+
+internal fun queueUndoInsertionIndex(originalIndex: Int, size: Int): Int = originalIndex.coerceIn(0, size)
+
+internal fun queueUndoCurrentIndex(insertionIndex: Int, currentIndex: Int): Int = when {
+    currentIndex < 0 -> insertionIndex
+    insertionIndex <= currentIndex -> currentIndex + 1
+    else -> currentIndex
+}
+
+internal fun queueSpaceAfterAppend(
+    existing: PersistentQueueSnapshot,
+    nextTracks: List<Track>,
+    now: Long
+): PersistentQueueSnapshot {
+    val wasEmpty = existing.tracks.isEmpty()
+    return existing.copy(
+        tracks = nextTracks,
+        currentIndex = if (wasEmpty) 0 else existing.currentIndex.coerceIn(0, nextTracks.lastIndex),
+        positionMs = if (wasEmpty) 0L else existing.positionMs,
+        shuffleOrder = if (existing.shuffleEnabled) {
+            existing.shuffleOrder + (existing.tracks.size until nextTracks.size)
+        } else {
+            emptyList()
+        },
+        history = if (wasEmpty) emptyList() else existing.history,
+        generation = existing.generation + 1L,
+        updatedAt = now
+    )
+}
+
+internal fun replacementQueuePositionMs(
+    previousIdentity: String?,
+    nextIdentity: String?,
+    currentPositionMs: Long,
+    requestedPositionMs: Long
+): Long {
+    val requested = requestedPositionMs.coerceAtLeast(0L)
+    if (requested > 0L) return requested
+    return if (previousIdentity != null && previousIdentity == nextIdentity) {
+        currentPositionMs.coerceAtLeast(0L)
+    } else {
+        0L
+    }
+}
+
+internal fun radioHistoryTrimIndices(
+    history: List<Int>,
+    currentIndex: Int,
+    slotsNeeded: Int,
+    historyReserve: Int = 8
+): Set<Int> {
+    if (slotsNeeded <= 0 || history.isEmpty()) return emptySet()
+    val protected = history.takeLast(historyReserve.coerceAtLeast(0)).toSet() + currentIndex
+    return history.asSequence()
+        .filter { it >= 0 && it !in protected }
+        .distinct()
+        .take(slotsNeeded)
+        .toCollection(LinkedHashSet())
+}
+
+internal fun radioCandidateTracks(
+    existingTracks: List<Track>,
+    candidates: List<Track>,
+    limit: Int = 5
+): List<Track> {
+    if (limit <= 0 || candidates.isEmpty()) return emptyList()
+    val existingIds = existingTracks.mapTo(LinkedHashSet(), ::playbackQueueIdentity)
+    val existingTitles = existingTracks.mapTo(LinkedHashSet(), ::radioTitleKey)
+    return candidates
+        .asSequence()
+        .filter { it.title.isNotBlank() }
+        .distinctBy(::playbackQueueIdentity)
+        .distinctBy(::radioTitleKey)
+        .filter { playbackQueueIdentity(it) !in existingIds }
+        .filter { radioTitleKey(it) !in existingTitles }
+        .take(limit)
+        .toList()
+}
+
+internal fun radioInsertionIndex(currentIndex: Int, queueSize: Int, afterCurrent: Boolean): Int =
+    if (afterCurrent) (currentIndex + 1).coerceIn(0, queueSize) else queueSize
+
+internal fun radioTitleKey(track: Track): String {
+    val artist = radioPrimaryArtist(track.artist)
+    return "$artist|${radioSongTitle(track.title, artist)}"
+}
+
+private const val RADIO_ARTIST_TITLE_SEPARATOR = " - "
+
+private fun radioPrimaryArtist(artist: String): String =
+    artist.lowercase(Locale.ROOT)
+        .split(RADIO_ARTIST_SEPARATOR, limit = 2)
+        .first()
+        .replace(RADIO_ARTIST_CHANNEL_SUFFIX, "")
+        .trim()
+
+private fun radioSongTitle(title: String, primaryArtist: String): String {
+    val lowered = title.lowercase(Locale.ROOT)
+    val prefix = primaryArtist + RADIO_ARTIST_TITLE_SEPARATOR
+    val withoutArtistPrefix = if (primaryArtist.isNotEmpty() && lowered.startsWith(prefix)) {
+        lowered.substring(prefix.length)
+    } else {
+        lowered
+    }
+    return withoutArtistPrefix
+        .replace(RADIO_TITLE_NOISE_GROUP, "")
+        .replace(RADIO_TITLE_NOISE_SUFFIX, "")
+        .replace(RADIO_TITLE_SPACES, " ")
+        .trim()
+        .ifEmpty { lowered.trim() }
+}
+
+private val RADIO_ARTIST_SEPARATOR = Regex("\\s*(?:,|&|\\b(?:feat|ft)\\.?(?=\\s|$))\\s*")
+private val RADIO_ARTIST_CHANNEL_SUFFIX = Regex("\\s*(?:-\\s*topic|vevo)$")
+private const val RADIO_TITLE_NOISE_WORDS =
+    "official|music|video|audio|lyrics?|visuali[sz]er|hd|hq|4k|mv|m/v|" +
+        "remaster(?:ed)?(?:\\s+\\d{4})?|\\d{4}\\s+remaster(?:ed)?"
+private val RADIO_TITLE_NOISE_GROUP = Regex(
+    "\\s*[(\\[](?:\\s*(?:$RADIO_TITLE_NOISE_WORDS)[\\s./-]*)+[)\\]]"
+)
+private val RADIO_TITLE_NOISE_SUFFIX = Regex(
+    "\\s+-\\s+(?:(?:$RADIO_TITLE_NOISE_WORDS)[\\s./-]*)+$"
+)
+private val RADIO_TITLE_SPACES = Regex("\\s+")
+
+class PersistentQueueEngine internal constructor(
+    private val store: QueueSpaceStorage,
+    dispatcher: CoroutineDispatcher = Dispatchers.IO
+) {
+    private val scope = CoroutineScope(SupervisorJob() + dispatcher)
+    private val lock = Any()
+    private val switchMutex = Mutex()
+    private val persistMutex = Mutex()
+    private val _state = MutableStateFlow(PlaybackQueueSnapshot())
+    private var persistJob: Job? = null
+    private var positionPersistJob: Job? = null
+    private var undoRemoval: QueueRemoval? = null
+    private var playNextIntent: PlayNextIntent? = null
+    private val tombstones = AutoQueueTombstones()
+    @Volatile private var transientPlaybackActive: Boolean = false
+
+    val state: StateFlow<PlaybackQueueSnapshot> = _state.asStateFlow()
+
+    val spaces: Flow<List<QueueSpaceSummary>> = store.spaces
+
+    suspend fun restore(
+        fallbackTracks: List<Track>,
+        fallbackIndex: Int,
+        fallbackPositionMs: Long,
+        fallbackRepeatMode: RepeatMode = RepeatMode.Off,
+        fallbackShuffleEnabled: Boolean = false,
+        fallbackRadioEnabled: Boolean = false
+    ): PlaybackQueueSnapshot = switchMutex.withLock {
+        transientPlaybackActive = false
+        val restored = runCatching { store.load(store.activeSpaceId()) }
+            .onFailure { Timber.w(it, "Persistent queue restore failed") }
+            .getOrNull()
+        val spaceId = restored?.spaceId ?: _state.value.spaceId
+        val snapshot = restored?.toRuntimeSnapshot() ?: buildSnapshot(
+            tracks = fallbackTracks,
+            currentIndex = fallbackIndex,
+            positionMs = fallbackPositionMs,
+            repeatMode = fallbackRepeatMode,
+            shuffleEnabled = fallbackShuffleEnabled,
+            radioEnabled = fallbackRadioEnabled,
+            generation = 1L
+        ).copy(spaceId = spaceId)
+        val restoredState = synchronized(lock) {
+            undoRemoval = null
+            playNextIntent = null
+            snapshot.copy(generation = maxOf(snapshot.generation, _state.value.generation + 1L), undoAvailable = false)
+                .also { _state.value = it }
+        }
+        schedulePersist(immediate = true)
+        restoredState
+    }
+
+    suspend fun switchSpace(targetSpaceId: String, outgoingPositionMs: Long? = null): PlaybackQueueSnapshot? =
+        switchMutex.withLock {
+            withContext(NonCancellable) {
+                if (transientPlaybackActive) return@withContext null
+                val current = _state.value
+                if (current.spaceId == targetSpaceId) return@withContext current
+                val outgoing = synchronized(lock) {
+                    val latest = _state.value
+                    val positioned = outgoingPositionMs
+                        ?.takeIf { latest.currentTrack != null }
+                        ?.let { latest.copy(positionMs = it.coerceAtLeast(0L), updatedAt = System.currentTimeMillis()) }
+                        ?: latest
+                    _state.value = positioned
+                    positioned
+                }
+                persistJob?.cancel()
+                positionPersistJob?.cancel()
+                val target = runCatching { store.load(targetSpaceId) }
+                    .onFailure { Timber.w(it, "Queue space load failed") }
+                    .getOrNull()
+                    ?: return@withContext null
+                if (!saveDurable(outgoing)) return@withContext null
+                if (!runCatching { store.activate(targetSpaceId) }.getOrDefault(false)) return@withContext null
+                var lateOutgoing: PlaybackQueueSnapshot? = null
+                val switched = synchronized(lock) {
+                    val latest = _state.value
+                    if (latest !== outgoing && latest.spaceId == outgoing.spaceId) lateOutgoing = latest
+                    undoRemoval = null
+                    playNextIntent = null
+                    target.toRuntimeSnapshot()
+                        .copy(generation = maxOf(latest.generation, target.generation) + 1L)
+                        .also { _state.value = it }
+                }
+                lateOutgoing?.let { saveDurable(it) }
+                switched
+            }
+        }
+
+    suspend fun createSpace(name: String, tracks: List<Track> = emptyList()): QueueSpaceSummary? =
+        switchMutex.withLock {
+            val created = runCatching { store.create(name) }
+                .onFailure { Timber.w(it, "Queue space create failed") }
+                .getOrNull()
+                ?: return@withLock null
+            queueSpaceSeed(created.id, tracks)?.let { saveDurable(it) }
+            created
+        }
+
+    suspend fun renameSpace(spaceId: String, name: String): Boolean =
+        switchMutex.withLock { runCatching { store.rename(spaceId, name) }.getOrDefault(false) }
+
+    suspend fun duplicateSpace(spaceId: String, name: String): QueueSpaceSummary? = switchMutex.withLock {
+        val current = _state.value
+        if (current.spaceId == spaceId && !transientPlaybackActive) saveDurable(current)
+        runCatching { store.duplicate(spaceId, name) }
+            .onFailure { Timber.w(it, "Queue space duplicate failed") }
+            .getOrNull()
+    }
+
+    suspend fun clearSpace(spaceId: String): Boolean = switchMutex.withLock {
+        if (_state.value.spaceId == spaceId) {
+            if (transientPlaybackActive) return@withLock false
+            clear()
+            persistJob?.cancel()
+            saveDurable(_state.value)
+        } else {
+            synchronized(lock) { tombstones.clear(spaceId) }
+            runCatching { store.clear(spaceId) }
+                .onFailure { Timber.w(it, "Queue space clear failed") }
+                .isSuccess
+        }
+    }
+
+    suspend fun deleteSpace(spaceId: String): Boolean = switchMutex.withLock {
+        if (_state.value.spaceId == spaceId) return@withLock false
+        runCatching { store.delete(spaceId) }.getOrDefault(false)
+            .also { deleted -> if (deleted) synchronized(lock) { tombstones.clear(spaceId) } }
+    }
+
+    suspend fun appendToSpace(spaceId: String, tracks: List<Track>): Boolean = switchMutex.withLock {
+        if (tracks.isEmpty()) return@withLock false
+        if (_state.value.spaceId == spaceId) {
+            if (transientPlaybackActive) return@withLock false
+            addLast(tracks)
+            return@withLock true
+        }
+        val existing = runCatching { store.load(spaceId) }.getOrNull() ?: return@withLock false
+        synchronized(lock) { tombstones.markManual(spaceId, tracks) }
+        val nextTracks = queueTracksAfterAddLast(existing.tracks, tracks)
+        if (nextTracks.size == existing.tracks.size) return@withLock true
+        val updated = queueSpaceAfterAppend(existing, nextTracks, System.currentTimeMillis())
+        persistMutex.withLock {
+            runCatching { store.save(updated) }
+                .onFailure { Timber.w(it, "Queue space append failed") }
+                .getOrDefault(false)
+        }
+    }
+
+    suspend fun tracksForSpace(spaceId: String): List<Track>? = switchMutex.withLock {
+        if (spaceId.isBlank()) return@withLock null
+        val current = _state.value
+        if (current.spaceId == spaceId) return@withLock current.tracks.toList()
+        runCatchingPreservingCancellation { store.load(spaceId)?.tracks }
+            .onFailure { Timber.w(it, "Queue space playlist load failed") }
+            .getOrNull()
+    }
+
+    private fun queueSpaceSeed(spaceId: String, tracks: List<Track>): PlaybackQueueSnapshot? {
+        val normalized = tracks.filter { it.title.isNotBlank() }.distinctBy(::playbackQueueIdentity)
+        if (normalized.isEmpty()) return null
+        return buildSnapshot(
+            tracks = normalized,
+            currentIndex = 0,
+            positionMs = 0L,
+            repeatMode = RepeatMode.Off,
+            shuffleEnabled = false,
+            radioEnabled = false,
+            generation = 1L
+        ).copy(spaceId = spaceId, undoAvailable = false)
+    }
+
+    private suspend fun saveDurable(snapshot: PlaybackQueueSnapshot): Boolean = persistMutex.withLock {
+        runCatching { store.save(snapshot.toPersistent()) }
+            .onFailure { Timber.w(it, "Queue space save failed") }
+            .getOrDefault(false)
+    }
+
+    fun clear(): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+        tombstones.clear(current.spaceId)
+        undoRemoval = null
+        playNextIntent = null
+        PlaybackQueueSnapshot(
+            spaceId = current.spaceId,
+            tracks = emptyList(),
+            currentIndex = -1,
+            positionMs = 0L,
+            shuffleEnabled = false,
+            shuffleOrder = emptyList(),
+            shuffleCursor = -1,
+            history = emptyList(),
+            repeatMode = RepeatMode.Off,
+            radioEnabled = false,
+            generation = current.generation + 1L,
+            updatedAt = System.currentTimeMillis(),
+            undoAvailable = false
+        )
+    }
+
+    fun replace(
+        tracks: List<Track>,
+        currentIndex: Int,
+        positionMs: Long = 0L,
+        keepPlaybackModes: Boolean = true,
+        radioEnabled: Boolean? = null
+    ): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+        tombstones.resetAutomatic(current.spaceId)
+        playNextIntent = null
+        val normalized = tracks.filter { it.title.isNotBlank() }.distinctBy(::playbackQueueIdentity)
+        val safeIndex = if (normalized.isEmpty()) -1 else currentIndex.coerceIn(0, normalized.lastIndex)
+        val previousIdentity = current.currentTrack?.let(::playbackQueueIdentity)
+        val nextIdentity = normalized.getOrNull(safeIndex)?.let(::playbackQueueIdentity)
+        val nextPositionMs = replacementQueuePositionMs(
+            previousIdentity = previousIdentity,
+            nextIdentity = nextIdentity,
+            currentPositionMs = current.positionMs,
+            requestedPositionMs = positionMs
+        )
+        buildSnapshot(
+            tracks = normalized,
+            currentIndex = safeIndex,
+            positionMs = nextPositionMs,
+            repeatMode = if (keepPlaybackModes) current.repeatMode else RepeatMode.Off,
+            shuffleEnabled = keepPlaybackModes && current.shuffleEnabled,
+            radioEnabled = radioEnabled ?: if (keepPlaybackModes) current.radioEnabled else false,
+            generation = current.generation + 1L,
+            history = emptyList()
+        )
+    }
+
+    fun beginTransientPlayback(
+        preservedSnapshot: PlaybackQueueSnapshot,
+        tracks: List<Track>,
+        currentIndex: Int,
+        positionMs: Long = 0L
+    ): PlaybackQueueSnapshot {
+        persistJob?.cancel()
+        positionPersistJob?.cancel()
+        val durableSnapshot = preservedSnapshot.toPersistent()
+        transientPlaybackActive = true
+        synchronized(lock) { playNextIntent = null }
+        scope.launch {
+            persistMutex.withLock {
+                runCatching { store.save(durableSnapshot) }
+                    .onFailure { Timber.w(it, "Unable to preserve durable queue before transient playback") }
+            }
+        }
+        return replaceTransient(tracks, currentIndex, positionMs)
+    }
+
+    fun replaceTransient(
+        tracks: List<Track>,
+        currentIndex: Int,
+        positionMs: Long = 0L
+    ): PlaybackQueueSnapshot {
+        check(transientPlaybackActive) { "Transient playback must be started before replacement" }
+        return mutate(structural = true, immediatePersist = false) { current ->
+            playNextIntent = null
+            val normalized = tracks.filter { it.title.isNotBlank() }.distinctBy(::playbackQueueIdentity)
+            val safeIndex = if (normalized.isEmpty()) -1 else currentIndex.coerceIn(0, normalized.lastIndex)
+            buildSnapshot(
+                tracks = normalized,
+                currentIndex = safeIndex,
+                positionMs = positionMs,
+                repeatMode = RepeatMode.Off,
+                shuffleEnabled = false,
+                radioEnabled = false,
+                generation = current.generation + 1L
+            )
+        }
+    }
+
+    fun endTransientPlayback(snapshot: PlaybackQueueSnapshot): PlaybackQueueSnapshot {
+        transientPlaybackActive = false
+        return restoreSnapshot(snapshot)
+    }
+
+    fun restoreSnapshot(snapshot: PlaybackQueueSnapshot): PlaybackQueueSnapshot =
+        mutate(structural = true, immediatePersist = true) { current ->
+            undoRemoval = null
+            playNextIntent = null
+            val tracks = snapshot.tracks.map { it.queueStoredCopy() }
+            val currentIndex = if (tracks.isEmpty()) -1 else snapshot.currentIndex.coerceIn(0, tracks.lastIndex)
+            val validShuffleOrder = snapshot.shuffleOrder
+                .filter { it in tracks.indices }
+                .distinct()
+            val shuffleOrder = when {
+                !snapshot.shuffleEnabled -> emptyList()
+                validShuffleOrder.size == tracks.size -> validShuffleOrder
+                else -> stableShuffleOrder(tracks, currentIndex, current.generation + 1L)
+            }
+            PlaybackQueueSnapshot(
+                spaceId = current.spaceId,
+                tracks = tracks,
+                currentIndex = currentIndex,
+                positionMs = snapshot.positionMs.coerceAtLeast(0L),
+                shuffleEnabled = snapshot.shuffleEnabled,
+                shuffleOrder = shuffleOrder,
+                shuffleCursor = if (snapshot.shuffleEnabled) {
+                    shuffleOrder.indexOf(currentIndex).coerceAtLeast(0)
+                } else {
+                    -1
+                },
+                history = snapshot.history.filter { it in tracks.indices }.takeLast(200),
+                repeatMode = snapshot.repeatMode,
+                radioEnabled = snapshot.radioEnabled,
+                generation = current.generation + 1L,
+                updatedAt = System.currentTimeMillis(),
+                undoAvailable = false
+            )
+        }
+
+    fun select(index: Int, positionMs: Long = 0L, rememberCurrent: Boolean = true): Track? {
+        var selected: Track? = null
+        mutate(immediatePersist = true) { current ->
+            if (index !in current.tracks.indices) return@mutate current
+            playNextIntent = null
+            selected = current.tracks[index]
+            selectSnapshot(current, index, positionMs, rememberCurrent)
+        }
+        return selected
+    }
+
+    fun addLast(track: Track): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+        tombstones.markManual(current.spaceId, listOf(track))
+        val identity = playbackQueueIdentity(track)
+        if (current.tracks.any { playbackQueueIdentity(it) == identity }) return@mutate current
+        val nextTracks = current.tracks + track.queueStoredCopy()
+        rebuildAfterStructureChange(current, nextTracks, current.currentIndex)
+    }
+
+    fun addLast(tracks: List<Track>): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+        tombstones.markManual(current.spaceId, tracks)
+        val nextTracks = queueTracksAfterAddLast(current.tracks, tracks)
+        if (nextTracks == current.tracks) return@mutate current
+        rebuildAfterStructureChange(current, nextTracks, current.currentIndex)
+    }
+
+    fun playNext(track: Track): PlaybackQueueSnapshot = playNext(listOf(track))
+
+    fun playNext(tracks: List<Track>): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+        if (tracks.isEmpty()) return@mutate current
+        tombstones.markManual(current.spaceId, tracks)
+        val activeIntent = reconciledPlayNextIntent(current)
+        val mutation = queueAfterPlayNextIntent(
+            current = current.tracks,
+            currentIndex = current.currentIndex,
+            pendingIdentities = activeIntent?.pendingIdentities.orEmpty(),
+            additions = tracks
+        )
+        if (mutation.pendingIdentities.isEmpty()) return@mutate current
+        val currentIdentity = current.currentTrack?.let(::playbackQueueIdentity)
+        val anchorIdentity = currentIdentity ?: mutation.tracks.firstOrNull()?.let(::playbackQueueIdentity)
+        val pendingIdentities = if (currentIdentity == null) {
+            mutation.pendingIdentities.drop(1)
+        } else {
+            mutation.pendingIdentities
+        }
+        playNextIntent = anchorIdentity
+            ?.takeIf { pendingIdentities.isNotEmpty() }
+            ?.let { PlayNextIntent(current.spaceId, it, pendingIdentities) }
+        if (mutation.tracks == current.tracks) return@mutate current
+        rebuildAfterStructureChange(current, mutation.tracks, mutation.currentIndex)
+    }
+
+    fun remove(index: Int): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+        if (index !in current.tracks.indices) return@mutate current
+        removeAt(current, index)
+    }
+
+    fun remove(
+        expectedSpaceId: String,
+        expectedTrack: Track
+    ): PlaybackQueueSnapshot? = synchronized(lock) {
+        val current = _state.value
+        if (current.spaceId != expectedSpaceId) {
+            return@synchronized null
+        }
+        val expectedIdentity = playbackQueueIdentity(expectedTrack)
+        val matchingIndices = current.tracks.indices.filter { index ->
+            playbackQueueIdentity(current.tracks[index]) == expectedIdentity
+        }
+        matchingIndices.singleOrNull()
+            ?.takeIf { it != current.currentIndex }
+            ?.let { index -> remove(index) }
+    }
+
+    fun removeIndices(indices: Collection<Int>): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+        val targets = indices.filterTo(sortedSetOf<Int>()) { it in current.tracks.indices }
+        if (targets.isEmpty()) return@mutate current
+        undoRemoval = targets.singleOrNull()?.let {
+            QueueRemoval(current.tracks[it], it, tombstones.isAutomatic(current.spaceId, current.tracks[it]))
+        }
+        tombstones.recordRemoval(current.spaceId, targets.map(current.tracks::get))
+        val currentIdentity = current.currentTrack?.let(::playbackQueueIdentity)
+        val nextTracks = current.tracks.filterIndexed { index, _ -> index !in targets }
+        val nextCurrentIndex = currentIdentity
+            ?.let { key -> nextTracks.indexOfFirst { playbackQueueIdentity(it) == key } }
+            ?.takeIf { it >= 0 }
+            ?: queueMultiRemovalCurrentIndex(targets, current.currentIndex, nextTracks.lastIndex)
+        rebuildAfterStructureChange(current, nextTracks, nextCurrentIndex)
+    }
+
+    fun undoRemove(): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+        val removal = undoRemoval ?: return@mutate current
+        val identity = playbackQueueIdentity(removal.track)
+        if (current.tracks.any { playbackQueueIdentity(it) == identity }) {
+            undoRemoval = null
+            return@mutate current.copy(undoAvailable = false)
+        }
+        tombstones.undoRemoval(current.spaceId, removal.track, removal.automatic)
+        val insertionIndex = queueUndoInsertionIndex(removal.index, current.tracks.size)
+        val nextTracks = current.tracks.toMutableList().apply { add(insertionIndex, removal.track) }
+        val nextCurrentIndex = queueUndoCurrentIndex(insertionIndex, current.currentIndex)
+        undoRemoval = null
+        rebuildAfterStructureChange(current, nextTracks, nextCurrentIndex).copy(undoAvailable = false)
+    }
+
+    fun move(from: Int, to: Int): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+        if (from !in current.tracks.indices || to !in current.tracks.indices || from == to) return@mutate current
+        playNextIntent = null
+        val currentIdentity = current.currentTrack?.let(::playbackQueueIdentity)
+        val nextTracks = current.tracks.toMutableList()
+        val moved = nextTracks.removeAt(from)
+        nextTracks.add(to, moved)
+        val nextCurrentIndex = currentIdentity?.let { key -> nextTracks.indexOfFirst { playbackQueueIdentity(it) == key } } ?: -1
+        rebuildAfterStructureChange(current, nextTracks, nextCurrentIndex)
+    }
+
+    private fun removeAt(current: PlaybackQueueSnapshot, index: Int): PlaybackQueueSnapshot {
+        val removed = current.tracks[index]
+        undoRemoval = QueueRemoval(removed, index, tombstones.isAutomatic(current.spaceId, removed))
+        tombstones.recordRemoval(current.spaceId, listOf(removed))
+        val nextTracks = current.tracks.toMutableList().apply { removeAt(index) }
+        val nextCurrentIndex = queueRemovalCurrentIndex(index, current.currentIndex, nextTracks.lastIndex)
+        return rebuildAfterStructureChange(current, nextTracks, nextCurrentIndex).copy(undoAvailable = true)
+    }
+
+    fun updateTrackAt(index: Int, track: Track): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+        if (index !in current.tracks.indices) return@mutate current
+        val nextTracks = current.tracks.toMutableList().apply { set(index, track.queueStoredCopy()) }
+        current.copy(tracks = nextTracks, generation = current.generation + 1L)
+    }
+
+    fun updateActiveTrackAt(index: Int, track: Track): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+        if (index !in current.tracks.indices) return@mutate current
+        val nextTracks = current.tracks.toMutableList().apply { set(index, track) }
+        current.copy(tracks = nextTracks, generation = current.generation + 1L)
+    }
+
+    fun updateTrackMetadata(track: Track): PlaybackQueueSnapshot = mutate(immediatePersist = true) { current ->
+        val identity = playbackQueueIdentity(track)
+        var changed = false
+        val updatedTracks = current.tracks.map { existing ->
+            if (playbackQueueIdentity(existing) != identity) {
+                existing
+            } else {
+                changed = true
+                existing.copy(
+                    title = track.title.ifBlank { existing.title },
+                    artist = track.artist.ifBlank { existing.artist },
+                    album = track.album.ifBlank { existing.album },
+                    durationMs = track.durationMs.takeIf { it > 0L } ?: existing.durationMs,
+                    videoUrl = track.videoUrl.ifBlank { existing.videoUrl },
+                    thumbnailUrl = track.thumbnailUrl.ifBlank { existing.thumbnailUrl },
+                    largeThumbnailUrl = track.largeThumbnailUrl.ifBlank { existing.largeThumbnailUrl },
+                    source = track.source.ifBlank { existing.source },
+                    moodTags = (existing.moodTags + track.moodTags).filter { it.isNotBlank() }.toSet(),
+                    isrc = track.isrc.ifBlank { existing.isrc },
+                    upc = track.upc.ifBlank { existing.upc },
+                    releaseDate = track.releaseDate.ifBlank { existing.releaseDate },
+                    year = track.year.ifBlank { existing.year },
+                    trackNumber = track.trackNumber.takeIf { it > 0 } ?: existing.trackNumber,
+                    discNumber = track.discNumber.takeIf { it > 0 } ?: existing.discNumber,
+                    trackTotal = track.trackTotal.takeIf { it > 0 } ?: existing.trackTotal,
+                    discTotal = track.discTotal.takeIf { it > 0 } ?: existing.discTotal,
+                    composer = track.composer.ifBlank { existing.composer },
+                    albumArtist = track.albumArtist.ifBlank { existing.albumArtist },
+                    copyright = track.copyright.ifBlank { existing.copyright },
+                    appleSongId = track.appleSongId.ifBlank { existing.appleSongId },
+                    appleAlbumId = track.appleAlbumId.ifBlank { existing.appleAlbumId },
+                    explicit = track.explicit || existing.explicit,
+                    metadataProvider = track.metadataProvider.ifBlank { existing.metadataProvider },
+                    metadataConfidence = maxOf(existing.metadataConfidence, track.metadataConfidence),
+                    canonicalAlbumUrl = track.canonicalAlbumUrl.ifBlank { existing.canonicalAlbumUrl },
+                    streamUrl = track.queueStoredCopy().streamUrl,
+                    videoStreamUrl = ""
+                )
+            }
+        }
+        if (!changed) current else current.copy(tracks = updatedTracks)
+    }
+
+    fun setShuffle(enabled: Boolean): PlaybackQueueSnapshot = mutate(immediatePersist = true) { current ->
+        if (current.shuffleEnabled == enabled) return@mutate current
+        playNextIntent = null
+        if (!enabled) {
+            current.copy(shuffleEnabled = false, shuffleOrder = emptyList(), shuffleCursor = -1, generation = current.generation + 1L)
+        } else {
+            val order = stableShuffleOrder(current.tracks, current.currentIndex, current.generation + 1L)
+            current.copy(
+                shuffleEnabled = true,
+                shuffleOrder = order,
+                shuffleCursor = order.indexOf(current.currentIndex).coerceAtLeast(0),
+                generation = current.generation + 1L
+            )
+        }
+    }
+
+    fun setRepeatMode(mode: RepeatMode): PlaybackQueueSnapshot = mutate(immediatePersist = true) { current ->
+        current.copy(repeatMode = mode)
+    }
+
+    fun setRadioEnabled(enabled: Boolean): PlaybackQueueSnapshot = mutate(immediatePersist = true) { current ->
+        current.copy(radioEnabled = enabled)
+    }
+
+    fun next(respectRepeatOne: Boolean = true): Track? = advanceNext(respectRepeatOne, expectedIdentity = null)
+
+    fun nextMatching(expectedIdentity: String, respectRepeatOne: Boolean = true): Track? =
+        advanceNext(respectRepeatOne, expectedIdentity)
+
+    fun handoffNext(
+        expectedGeneration: Long,
+        expectedCurrentIdentity: String,
+        expectedNextIdentity: String,
+        resolved: Track
+    ): Track? {
+        var result: Track? = null
+        mutate(structural = true, immediatePersist = true) { current ->
+            if (current.generation != expectedGeneration) return@mutate current
+            if (current.repeatMode == RepeatMode.One) return@mutate current
+            if (current.currentTrack?.let(::playbackQueueIdentity) != expectedCurrentIdentity) return@mutate current
+
+            val target = nextTargetIndex(current) ?: return@mutate current
+            val selected = current.tracks[target]
+            val replacement = resolvedQueueTrackForHandoff(selected, expectedNextIdentity, resolved)
+                ?: return@mutate current
+
+            advancePlayNextIntent(current, target)
+            val advanced = selectSnapshot(current, target, 0L, rememberCurrent = true)
+            val updatedTracks = advanced.tracks.toMutableList().apply {
+                set(target, replacement.queueStoredCopy())
+            }
+            result = resolved
+            advanced.copy(tracks = updatedTracks, generation = advanced.generation + 1L)
+        }
+        return result
+    }
+
+    private fun advanceNext(respectRepeatOne: Boolean, expectedIdentity: String?): Track? {
+        var result: Track? = null
+        mutate(immediatePersist = true) { current ->
+            if (current.tracks.isEmpty() || current.currentIndex !in current.tracks.indices) return@mutate current
+            if (respectRepeatOne && current.repeatMode == RepeatMode.One) {
+                val repeated = current.currentTrack
+                if (expectedIdentity != null && repeated?.let(::playbackQueueIdentity) != expectedIdentity) return@mutate current
+                result = repeated
+                return@mutate current.copy(positionMs = 0L)
+            }
+            val target = nextTargetIndex(current) ?: return@mutate current
+            val selected = current.tracks[target]
+            if (expectedIdentity != null && playbackQueueIdentity(selected) != expectedIdentity) return@mutate current
+            advancePlayNextIntent(current, target)
+            result = selected
+            selectSnapshot(current, target, 0L, rememberCurrent = true)
+        }
+        return result
+    }
+
+    private fun nextTargetIndex(current: PlaybackQueueSnapshot): Int? {
+        if (current.tracks.isEmpty() || current.currentIndex !in current.tracks.indices) return null
+        return if (current.shuffleEnabled) {
+            val order = normalizedShuffleOrder(current)
+            val cursor = order.indexOf(current.currentIndex).takeIf { it >= 0 } ?: current.shuffleCursor.coerceAtLeast(0)
+            val nextCursor = cursor + 1
+            when {
+                nextCursor < order.size -> order[nextCursor]
+                current.repeatMode == RepeatMode.All -> order.firstOrNull()
+                else -> null
+            }
+        } else {
+            when {
+                current.currentIndex < current.tracks.lastIndex -> current.currentIndex + 1
+                current.repeatMode == RepeatMode.All -> 0
+                else -> null
+            }
+        }
+    }
+
+    fun previous(): Track? {
+        var result: Track? = null
+        mutate(immediatePersist = true) { current ->
+            if (current.tracks.isEmpty()) return@mutate current
+            val history = current.history.toMutableList()
+            var target: Int? = null
+            while (history.isNotEmpty() && target == null) {
+                val candidate = history.removeAt(history.lastIndex)
+                if (candidate in current.tracks.indices && candidate != current.currentIndex) target = candidate
+            }
+            if (target == null && !current.shuffleEnabled) {
+                target = when {
+                    current.currentIndex > 0 -> current.currentIndex - 1
+                    current.repeatMode == RepeatMode.All -> current.tracks.lastIndex
+                    else -> current.currentIndex.takeIf { it in current.tracks.indices }
+                }
+            }
+            val index = target ?: return@mutate current.copy(history = history)
+            playNextIntent = null
+            result = current.tracks[index]
+            selectSnapshot(current.copy(history = history), index, 0L, rememberCurrent = false)
+        }
+        return result
+    }
+
+    fun updatePosition(positionMs: Long) {
+        val safe = positionMs.coerceAtLeast(0L)
+        val updated = synchronized(lock) {
+            val current = _state.value
+            if (kotlin.math.abs(current.positionMs - safe) < 1_000L) return
+            current.copy(positionMs = safe, updatedAt = System.currentTimeMillis()).also { _state.value = it }
+        }
+        schedulePositionPersist(updated)
+    }
+
+    fun upcoming(limit: Int): List<Track> {
+        val current = _state.value
+        if (limit <= 0 || current.tracks.isEmpty() || current.currentIndex !in current.tracks.indices) return emptyList()
+        val indices = if (current.shuffleEnabled) {
+            val order = normalizedShuffleOrder(current)
+            val cursor = order.indexOf(current.currentIndex).coerceAtLeast(0)
+            buildList {
+                for (offset in 1..limit) {
+                    val candidateCursor = cursor + offset
+                    val index = when {
+                        candidateCursor < order.size -> order[candidateCursor]
+                        current.repeatMode == RepeatMode.All && order.isNotEmpty() -> order[candidateCursor % order.size]
+                        else -> -1
+                    }
+                    if (index >= 0 && index !in this) add(index)
+                }
+            }
+        } else {
+            buildList {
+                for (offset in 1..limit) {
+                    val raw = current.currentIndex + offset
+                    val index = when {
+                        raw < current.tracks.size -> raw
+                        current.repeatMode == RepeatMode.All && current.tracks.isNotEmpty() -> raw % current.tracks.size
+                        else -> -1
+                    }
+                    if (index >= 0 && index !in this) add(index)
+                }
+            }
+        }
+        return indices.mapNotNull(current.tracks::getOrNull)
+    }
+
+    fun appendRadioTracks(tracks: List<Track>): PlaybackQueueSnapshot = addRadioTracks(tracks, afterCurrent = false)
+
+    fun insertRadioTracksAfterCurrent(tracks: List<Track>): PlaybackQueueSnapshot =
+        addRadioTracks(tracks, afterCurrent = true)
+
+    private fun addRadioTracks(
+        tracks: List<Track>,
+        afterCurrent: Boolean
+    ): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+        val candidates = radioCandidateTracks(
+            existingTracks = current.tracks,
+            candidates = tracks.filterNot { tombstones.isRejected(current.spaceId, it) },
+            limit = RADIO_BATCH_SIZE
+        )
+        if (candidates.isEmpty()) return@mutate current
+
+        val prepared = trimPlayedRadioHistory(current, candidates.size)
+        val available = (MAX_RADIO_QUEUE_SIZE - prepared.tracks.size).coerceAtLeast(0)
+        val additions = candidates
+            .take(minOf(RADIO_BATCH_SIZE, available))
+            .map { it.queueStoredCopy() }
+        if (additions.isEmpty()) return@mutate current
+        val insertionIndex = if (afterCurrent) {
+            playNextTailInsertionIndex(prepared)
+        } else {
+            radioInsertionIndex(prepared.currentIndex, prepared.tracks.size, afterCurrent = false)
+        }
+        val nextTracks = prepared.tracks.toMutableList().apply { addAll(insertionIndex, additions) }
+        tombstones.markAutomatic(prepared.spaceId, additions)
+        rebuildAfterStructureChange(prepared, nextTracks, prepared.currentIndex)
+    }
+
+    fun rejectedAutomaticKeys(): Set<String> = synchronized(lock) {
+        tombstones.rejectedKeys(_state.value.spaceId)
+    }
+
+    private fun trimPlayedRadioHistory(current: PlaybackQueueSnapshot, desiredSlots: Int): PlaybackQueueSnapshot {
+        if (!current.radioEnabled || desiredSlots <= 0) return current
+        val slotsNeeded = (current.tracks.size + desiredSlots - MAX_RADIO_QUEUE_SIZE).coerceAtLeast(0)
+        if (slotsNeeded == 0) return current
+        val remove = radioHistoryTrimIndices(
+            history = current.history,
+            currentIndex = current.currentIndex,
+            slotsNeeded = slotsNeeded,
+            historyReserve = RADIO_HISTORY_RESERVE
+        ).filterTo(LinkedHashSet()) { it in current.tracks.indices && it != current.currentIndex }
+        if (remove.isEmpty()) return current
+
+        val indexMap = IntArray(current.tracks.size) { -1 }
+        val nextTracks = ArrayList<Track>(current.tracks.size - remove.size)
+        current.tracks.forEachIndexed { oldIndex, track ->
+            if (oldIndex !in remove) {
+                indexMap[oldIndex] = nextTracks.size
+                nextTracks += track
+            }
+        }
+        val nextCurrentIndex = current.currentIndex.takeIf { it in indexMap.indices }
+            ?.let { indexMap[it] }
+            ?.takeIf { it >= 0 }
+            ?: return current
+        val sourceOrder = if (current.shuffleEnabled) normalizedShuffleOrder(current) else emptyList()
+        val nextOrder = sourceOrder.mapNotNull { oldIndex -> indexMap.getOrNull(oldIndex)?.takeIf { it >= 0 } }
+        val nextHistory = current.history.mapNotNull { oldIndex -> indexMap.getOrNull(oldIndex)?.takeIf { it >= 0 } }.takeLast(200)
+        return current.copy(
+            tracks = nextTracks,
+            currentIndex = nextCurrentIndex,
+            shuffleOrder = nextOrder,
+            shuffleCursor = if (current.shuffleEnabled) nextOrder.indexOf(nextCurrentIndex).coerceAtLeast(0) else -1,
+            history = nextHistory,
+            generation = current.generation + 1L
+        )
+    }
+
+    suspend fun flush() {
+        if (!queuePersistenceAllowed(transientPlaybackActive)) return
+        persistJob?.cancel()
+        positionPersistJob?.cancel()
+        persistLatest()
+    }
+
+    private suspend fun persistLatest() = persistMutex.withLock {
+        if (!queuePersistenceAllowed(transientPlaybackActive)) return@withLock
+        val snapshot = _state.value.toPersistent()
+        runCatchingPreservingCancellation { store.save(snapshot) }
+            .onFailure { Timber.w(it, "Persistent queue save failed") }
+    }
+
+    fun flushBlocking() {
+        runCatching { runBlocking(Dispatchers.IO) { flush() } }
+            .onFailure { Timber.w(it, "Persistent queue blocking flush failed") }
+    }
+
+    private fun mutate(
+        structural: Boolean = false,
+        immediatePersist: Boolean = false,
+        persistDelayMs: Long = 350L,
+        transform: (PlaybackQueueSnapshot) -> PlaybackQueueSnapshot
+    ): PlaybackQueueSnapshot {
+        val updated = synchronized(lock) {
+            val before = _state.value
+            val transformed = transform(before)
+            val normalized = transformed.copy(
+                currentIndex = if (transformed.tracks.isEmpty()) -1 else transformed.currentIndex.coerceIn(0, transformed.tracks.lastIndex),
+                positionMs = transformed.positionMs.coerceAtLeast(0L),
+                history = transformed.history.filter { it in transformed.tracks.indices }.takeLast(200),
+                updatedAt = System.currentTimeMillis(),
+                generation = if (structural && transformed.generation <= before.generation) before.generation + 1L else transformed.generation.coerceAtLeast(1L),
+                undoAvailable = undoRemoval != null
+            )
+            reconcilePlayNextIntent(normalized)
+            _state.value = normalized
+            normalized
+        }
+        schedulePersist(immediatePersist, persistDelayMs)
+        return updated
+    }
+
+    private fun schedulePersist(immediate: Boolean, delayMs: Long = 350L) {
+        if (!queuePersistenceAllowed(transientPlaybackActive)) return
+        positionPersistJob?.cancel()
+        persistJob?.cancel()
+        persistJob = scope.launch {
+            if (!immediate) delay(delayMs.coerceAtLeast(100L))
+            persistLatest()
+        }
+    }
+
+    private fun schedulePositionPersist(snapshot: PlaybackQueueSnapshot) {
+        if (!queuePersistenceAllowed(transientPlaybackActive)) return
+        positionPersistJob?.cancel()
+        positionPersistJob = scope.launch {
+            delay(1_500L)
+            persistMutex.withLock {
+                val current = _state.value
+                if (
+                    current.spaceId != snapshot.spaceId ||
+                    current.generation != snapshot.generation ||
+                    current.currentIndex != snapshot.currentIndex
+                ) {
+                    return@withLock
+                }
+                runCatchingPreservingCancellation {
+                    store.updatePosition(current.spaceId, current.positionMs, current.updatedAt)
+                }
+                    .onFailure { Timber.w(it, "Persistent queue position save failed") }
+            }
+        }
+    }
+
+    private fun buildSnapshot(
+        tracks: List<Track>,
+        currentIndex: Int,
+        positionMs: Long,
+        repeatMode: RepeatMode,
+        shuffleEnabled: Boolean,
+        radioEnabled: Boolean,
+        generation: Long,
+        history: List<Int> = emptyList()
+    ): PlaybackQueueSnapshot {
+        val safeIndex = if (tracks.isEmpty()) -1 else currentIndex.coerceIn(0, tracks.lastIndex)
+        val order = if (shuffleEnabled) stableShuffleOrder(tracks, safeIndex, generation) else emptyList()
+        return PlaybackQueueSnapshot(
+            spaceId = _state.value.spaceId,
+            tracks = tracks.map { it.queueStoredCopy() },
+            currentIndex = safeIndex,
+            positionMs = positionMs.coerceAtLeast(0L),
+            shuffleEnabled = shuffleEnabled,
+            shuffleOrder = order,
+            shuffleCursor = order.indexOf(safeIndex).coerceAtLeast(if (order.isEmpty()) -1 else 0),
+            history = history,
+            repeatMode = repeatMode,
+            radioEnabled = radioEnabled,
+            generation = generation.coerceAtLeast(1L),
+            updatedAt = System.currentTimeMillis(),
+            undoAvailable = undoRemoval != null
+        )
+    }
+
+    private fun rebuildAfterStructureChange(
+        current: PlaybackQueueSnapshot,
+        tracks: List<Track>,
+        currentIndex: Int
+    ): PlaybackQueueSnapshot {
+        val previousIdentity = current.currentTrack?.let(::playbackQueueIdentity)
+        val nextIdentity = tracks.getOrNull(currentIndex)?.let(::playbackQueueIdentity)
+        val rebuilt = buildSnapshot(
+            tracks = tracks,
+            currentIndex = currentIndex,
+            positionMs = replacementQueuePositionMs(
+                previousIdentity = previousIdentity,
+                nextIdentity = nextIdentity,
+                currentPositionMs = current.positionMs,
+                requestedPositionMs = 0L
+            ),
+            repeatMode = current.repeatMode,
+            shuffleEnabled = current.shuffleEnabled,
+            radioEnabled = current.radioEnabled,
+            generation = current.generation + 1L,
+            history = remapHistory(current, tracks)
+        )
+        return applyPlayNextShuffleOrder(current, rebuilt)
+    }
+
+    private fun reconciledPlayNextIntent(current: PlaybackQueueSnapshot): PlayNextIntent? {
+        val intent = playNextIntent ?: return null
+        if (intent.spaceId != current.spaceId || current.currentTrack?.let(::playbackQueueIdentity) != intent.anchorIdentity) {
+            playNextIntent = null
+            return null
+        }
+        val identities = current.tracks.map(::playbackQueueIdentity)
+        val retained = intent.pendingIdentities.filter(identities::contains)
+        if (retained.isEmpty()) {
+            playNextIntent = null
+            return null
+        }
+        val traversal = if (current.shuffleEnabled) {
+            val order = normalizedShuffleOrder(current)
+            val cursor = order.indexOf(current.currentIndex)
+            if (cursor < 0) emptyList() else order.drop(cursor + 1).mapNotNull(identities::getOrNull)
+        } else {
+            identities.drop((current.currentIndex + 1).coerceAtLeast(0))
+        }
+        if (traversal.take(retained.size) != retained) {
+            playNextIntent = null
+            return null
+        }
+        return intent.copy(pendingIdentities = retained).also { playNextIntent = it }
+    }
+
+    private fun reconcilePlayNextIntent(current: PlaybackQueueSnapshot) {
+        reconciledPlayNextIntent(current)
+    }
+
+    private fun advancePlayNextIntent(current: PlaybackQueueSnapshot, targetIndex: Int) {
+        val intent = reconciledPlayNextIntent(current) ?: return
+        val targetIdentity = current.tracks.getOrNull(targetIndex)?.let(::playbackQueueIdentity)
+            ?: run {
+                playNextIntent = null
+                return
+            }
+        if (targetIdentity != intent.pendingIdentities.firstOrNull()) {
+            playNextIntent = null
+            return
+        }
+        val remaining = intent.pendingIdentities.drop(1)
+        playNextIntent = if (remaining.isEmpty()) {
+            null
+        } else {
+            intent.copy(anchorIdentity = targetIdentity, pendingIdentities = remaining)
+        }
+    }
+
+    private fun playNextTailInsertionIndex(current: PlaybackQueueSnapshot): Int {
+        val pendingCount = reconciledPlayNextIntent(current)?.pendingIdentities?.size ?: 0
+        return (current.currentIndex + 1 + pendingCount).coerceIn(0, current.tracks.size)
+    }
+
+    private fun applyPlayNextShuffleOrder(
+        previous: PlaybackQueueSnapshot,
+        rebuilt: PlaybackQueueSnapshot
+    ): PlaybackQueueSnapshot {
+        if (!rebuilt.shuffleEnabled) return rebuilt
+        val intent = playNextIntent ?: return rebuilt
+        val nextIndexByIdentity = rebuilt.tracks
+            .mapIndexed { index, track -> playbackQueueIdentity(track) to index }
+            .toMap()
+        val pendingIndices = intent.pendingIdentities.mapNotNull(nextIndexByIdentity::get)
+        if (pendingIndices.isEmpty() || rebuilt.currentIndex !in rebuilt.tracks.indices) return rebuilt
+        val previousOrder = if (previous.shuffleEnabled) {
+            normalizedShuffleOrder(previous)
+        } else {
+            previous.tracks.indices.toList()
+        }
+        val previousCursor = previousOrder.indexOf(previous.currentIndex)
+        val traversalOrder = if (previousCursor >= 0) {
+            previousOrder.drop(previousCursor + 1) + previousOrder.take(previousCursor)
+        } else {
+            previousOrder
+        }
+        val previousTraversal = traversalOrder.mapNotNull { index ->
+            previous.tracks.getOrNull(index)?.let(::playbackQueueIdentity)?.let(nextIndexByIdentity::get)
+        }
+        val seen = BooleanArray(rebuilt.tracks.size)
+        val order = ArrayList<Int>(rebuilt.tracks.size)
+        fun append(index: Int) {
+            if (index in seen.indices && !seen[index]) {
+                seen[index] = true
+                order += index
+            }
+        }
+        append(rebuilt.currentIndex)
+        pendingIndices.forEach(::append)
+        previousTraversal.forEach(::append)
+        rebuilt.tracks.indices.forEach(::append)
+        return rebuilt.copy(
+            shuffleOrder = order,
+            shuffleCursor = order.indexOf(rebuilt.currentIndex).coerceAtLeast(0)
+        )
+    }
+
+    private fun remapHistory(current: PlaybackQueueSnapshot, tracks: List<Track>): List<Int> {
+        val identities = tracks.map(::playbackQueueIdentity)
+        return current.history.mapNotNull { oldIndex ->
+            current.tracks.getOrNull(oldIndex)?.let(::playbackQueueIdentity)?.let(identities::indexOf)?.takeIf { it >= 0 }
+        }.takeLast(200)
+    }
+
+    private fun selectSnapshot(
+        current: PlaybackQueueSnapshot,
+        index: Int,
+        positionMs: Long,
+        rememberCurrent: Boolean
+    ): PlaybackQueueSnapshot {
+        val history = if (rememberCurrent && current.currentIndex in current.tracks.indices && current.currentIndex != index) {
+            (current.history + current.currentIndex).takeLast(200)
+        } else {
+            current.history
+        }
+        val order = if (current.shuffleEnabled) normalizedShuffleOrder(current) else emptyList()
+        return current.copy(
+            currentIndex = index,
+            positionMs = positionMs.coerceAtLeast(0L),
+            history = history,
+            shuffleOrder = order,
+            shuffleCursor = if (current.shuffleEnabled) order.indexOf(index).coerceAtLeast(0) else -1,
+            generation = current.generation + 1L
+        )
+    }
+
+    private fun normalizedShuffleOrder(current: PlaybackQueueSnapshot): List<Int> {
+        val valid = current.shuffleOrder.filter { it in current.tracks.indices }.distinct()
+        return if (valid.size == current.tracks.size) valid else stableShuffleOrder(current.tracks, current.currentIndex, current.generation)
+    }
+
+    private fun PersistentQueueSnapshot.toRuntimeSnapshot(): PlaybackQueueSnapshot {
+        val safeOrder = shuffleOrder.filter { it in tracks.indices }.distinct()
+        val order = if (shuffleEnabled && safeOrder.size != tracks.size) stableShuffleOrder(tracks, currentIndex, generation) else safeOrder
+        return PlaybackQueueSnapshot(
+            spaceId = spaceId,
+            tracks = tracks.map { it.queueStoredCopy() },
+            currentIndex = currentIndex,
+            positionMs = positionMs,
+            shuffleEnabled = shuffleEnabled,
+            shuffleOrder = order,
+            shuffleCursor = if (shuffleEnabled) order.indexOf(currentIndex).coerceAtLeast(0) else -1,
+            history = history,
+            repeatMode = repeatMode,
+            radioEnabled = radioEnabled,
+            generation = generation,
+            updatedAt = updatedAt,
+            undoAvailable = false
+        )
+    }
+
+    private fun PlaybackQueueSnapshot.toPersistent(): PersistentQueueSnapshot = PersistentQueueSnapshot(
+        spaceId = spaceId,
+        tracks = tracks,
+        currentIndex = currentIndex,
+        positionMs = positionMs,
+        shuffleEnabled = shuffleEnabled,
+        shuffleOrder = shuffleOrder,
+        shuffleCursor = shuffleCursor,
+        history = history,
+        repeatMode = repeatMode,
+        radioEnabled = radioEnabled,
+        generation = generation,
+        updatedAt = updatedAt
+    )
+
+    private data class QueueRemoval(val track: Track, val index: Int, val automatic: Boolean)
+
+    private data class PlayNextIntent(
+        val spaceId: String,
+        val anchorIdentity: String,
+        val pendingIdentities: List<String>
+    )
+
+    companion object {
+        private const val RADIO_BATCH_SIZE = 5
+        private const val RADIO_HISTORY_RESERVE = 8
+        private const val MAX_RADIO_QUEUE_SIZE = 100
+        @Volatile
+        private var instance: PersistentQueueEngine? = null
+
+        fun get(context: Context): PersistentQueueEngine = instance ?: synchronized(this) {
+            instance ?: PersistentQueueEngine(PlaybackQueueStore(context.applicationContext)).also { instance = it }
+        }
+    }
+}
+
+data class PlaybackQueueSnapshot(
+    val spaceId: String = DEFAULT_QUEUE_SPACE_ID,
+    val tracks: List<Track> = emptyList(),
+    val currentIndex: Int = -1,
+    val positionMs: Long = 0L,
+    val shuffleEnabled: Boolean = false,
+    val shuffleOrder: List<Int> = emptyList(),
+    val shuffleCursor: Int = -1,
+    val history: List<Int> = emptyList(),
+    val repeatMode: RepeatMode = RepeatMode.Off,
+    val radioEnabled: Boolean = false,
+    val generation: Long = 1L,
+    val updatedAt: Long = 0L,
+    val undoAvailable: Boolean = false
+) {
+    val currentTrack: Track?
+        get() = tracks.getOrNull(currentIndex)
+}
+
+internal fun resolvedQueueTrackForHandoff(
+    selected: Track,
+    expectedNextIdentity: String,
+    resolved: Track
+): Track? {
+    if (playbackQueueIdentity(selected) != expectedNextIdentity) return null
+    return resolved.copy(
+        id = selected.id,
+        title = selected.title,
+        artist = selected.artist,
+        videoUrl = selected.videoUrl
+    )
+}
+
+internal fun Track.queueStoredCopy(): Track {
+    val localStream = streamUrl.takeIf { value ->
+        value.startsWith("content://", ignoreCase = true) || value.startsWith("file://", ignoreCase = true)
+    }.orEmpty()
+    return copy(streamUrl = localStream, videoStreamUrl = "")
+}
+
+internal fun stableShuffleOrder(tracks: List<Track>, currentIndex: Int, generation: Long): List<Int> {
+    if (tracks.isEmpty()) return emptyList()
+    val current = currentIndex.coerceIn(0, tracks.lastIndex)
+    val seed = tracks.fold(generation) { acc, track -> acc * 31L + playbackQueueIdentity(track).hashCode().toLong() }
+    val rest = tracks.indices.filter { it != current }.shuffled(Random(seed))
+    return listOf(current) + rest
+}
+
+internal fun playbackQueueIdentity(track: Track): String {
+    val videoId = YOUTUBE_VIDEO_ID_PATTERN
+        .find(track.videoUrl)
+        ?.groupValues
+        ?.getOrNull(1)
+        .orEmpty()
+    return when {
+        videoId.isNotBlank() -> "yt:$videoId"
+        track.id.isNotBlank() -> "id:${track.id.trim().lowercase(Locale.ROOT)}"
+        else -> "meta:${track.artist.trim().lowercase(Locale.ROOT)}|${track.title.trim().lowercase(Locale.ROOT)}"
+    }
+}

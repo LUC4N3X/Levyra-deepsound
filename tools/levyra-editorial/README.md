@@ -1,0 +1,58 @@
+# Levyra editorial collector
+
+This repository-owned Python tool reads configured public country rankings with a dedicated source account and publishes a compact, account-free ranking catalog for Levyra.
+
+## Security and data boundaries
+
+- `LEVYRA_EDITORIAL_SP_DC` exists only as a GitHub Actions repository secret.
+- The cookie, TOTP material and short-lived token are never written to source, artifacts, logs, JSON or the APK.
+- The TOTP dictionary URL is HTTPS-allowlisted and pinned to an immutable commit.
+- The public catalog contains ranking position, title, artist, album, release date, duration and explicit flag only.
+- Source artwork, source URLs, source IDs and unsupported ISRC values are deliberately omitted.
+- Android obtains artwork independently and keeps the exact same artwork when the selected row opens in the player.
+- Required country failures block publication. Only collections explicitly marked `optional` may be skipped.
+- A failed or incomplete run never replaces the last valid catalog.
+- Canvas lookup is read-only and best-effort. Its private endpoint is used only inside GitHub
+  Actions; the public Canvas output contains no Spotify IDs, URIs, tokens or account data.
+- The existing web-player Canvas resolver remains primary. Missing results fall back to a
+  PaxSenix-compatible request profile using the same short-lived access token derived inside the
+  collector; Levyra does not call a third-party PaxSenix service or forward the `sp_dc` cookie.
+
+The implementation is original Levyra code. SimpMusic was used only as a behavioral reference for
+the current `sp_dc` plus TOTP session exchange and Canvas protocol shape; no SimpMusic source code
+was copied. [PaxSenix Spotify Canvas API](https://github.com/Paxsenix0/Spotify-Canvas-API) was used
+as the behavioral reference for the fallback request profile.
+
+## Repository secret
+
+Create `LEVYRA_EDITORIAL_SP_DC` in:
+
+```text
+Repository Settings → Secrets and variables → Actions → New repository secret
+```
+
+Paste only the `sp_dc` value. Pull requests, including same-repository branches, run only the
+secretless collector verification and cannot publish data branches. Fork and Dependabot pull
+requests receive the same read-only boundary and never receive repository secrets.
+
+## Collections
+
+`config.json` maps Levyra's existing country chips to stable public playlist IDs. All configured markets are required unless a collection has `"optional": true`. Russia is currently optional because that public playlist can be unavailable; Levyra transparently keeps its existing YouTube/Apple fallback for any absent market. The unused global collection is not downloaded.
+
+## Publication
+
+The workflow verifies collector code on relevant pull requests without secrets or write permission.
+Live integration runs only through a manual dispatch on `main`; collection and publication run every
+six hours or through a manual dispatch on `main`. Trusted publication validates the complete
+editorial catalog and optional sanitized Spotify Canvas catalog, compares both without `generatedAt`,
+and updates the data-only `editorial-data` branch only when substantive content changed. A missing
+or expired Spotify session preserves the last published files.
+
+Public URL:
+
+```text
+https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/editorial-data/catalog/editorial.json
+https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/editorial-data/catalog/spotify-canvas.json
+```
+
+Android uses a process-wide repository, a separate bounded HTTP cache, an `AtomicFile` disk snapshot, a 30-minute refresh target and a 48-hour maximum catalog age. Network refresh runs independently and never consumes the existing YouTube chart latency budget.

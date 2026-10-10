@@ -1,0 +1,344 @@
+package com.luc4n3x.levyra.data
+
+import android.app.ActivityManager
+import android.content.Context
+import android.media.MediaCodecInfo
+import android.media.MediaCodecList
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.os.Build
+import android.os.PowerManager
+import com.luc4n3x.levyra.domain.PlaybackStreamDescriptor
+import com.luc4n3x.levyra.domain.PlaybackStreamKind
+import com.luc4n3x.levyra.domain.VideoQualityLadder
+import com.luc4n3x.levyra.domain.VideoQualityTarget
+import kotlin.math.abs
+import java.util.concurrent.ConcurrentHashMap
+
+internal data class LevyraVideoCandidate(
+    val url: String,
+    val mimeType: String,
+    val codec: String,
+    val width: Int,
+    val height: Int,
+    val fps: Int,
+    val bitrate: Int,
+    val itag: Int,
+    val muxed: Boolean,
+    val label: String
+)
+
+internal data class LevyraVideoSelection(
+    val candidate: LevyraVideoCandidate,
+    val targetHeight: Int,
+    val hardwareDecoded: Boolean,
+    val reason: String
+)
+
+internal fun conservativeVideoFallbackCandidates(
+    candidates: List<LevyraVideoCandidate>
+): List<LevyraVideoCandidate> {
+    if (candidates.isEmpty()) return emptyList()
+    val broadlySupported = candidates.filter { candidate ->
+        val format = "${candidate.mimeType} ${candidate.codec}".lowercase()
+        format.contains("video/mp4") || format.contains("avc1") || format.contains("h264")
+    }
+    return broadlySupported.ifEmpty { candidates }
+}
+
+internal fun stableAndroidVideoCandidates(
+    candidates: List<LevyraVideoCandidate>,
+    targetHeight: Int
+): List<LevyraVideoCandidate> {
+    if (candidates.isEmpty()) return emptyList()
+    val minimumHeight = minOf(targetHeight.coerceAtLeast(360), 720)
+    val avc = candidates.filter { candidate ->
+        val format = "${candidate.mimeType} ${candidate.codec}".lowercase()
+        val h264 = format.contains("avc1") || format.contains("h264") || format.contains("video/avc")
+        val mp4 = format.contains("video/mp4") || candidate.mimeType.isBlank()
+        val adequateHeight = candidate.height <= 0 || candidate.height >= minimumHeight
+        h264 && mp4 && adequateHeight
+    }
+    return avc.ifEmpty { candidates }
+}
+
+internal fun reliableVideoCandidate(
+    muxed: LevyraVideoCandidate?,
+    videoOnly: LevyraVideoCandidate?
+): LevyraVideoCandidate? = muxed ?: videoOnly
+
+internal fun targetedVideoCandidate(
+    muxed: LevyraVideoCandidate?,
+    videoOnly: LevyraVideoCandidate?,
+    targetHeight: Int
+): LevyraVideoCandidate? = listOfNotNull(muxed, videoOnly)
+    .minWithOrNull(
+        compareBy<LevyraVideoCandidate> { candidate ->
+            candidate.height.takeIf { it > 0 }?.let { abs(targetHeight - it) } ?: Int.MAX_VALUE
+        }.thenBy { candidate -> if (candidate.muxed) 0 else 1 }
+    )
+
+internal class LevyraVideoStreamSelector(context: Context) {
+    private companion object {
+        const val MAX_REJECTED_URLS = 128
+    }
+
+    private val appContext = context.applicationContext
+    private val activityManager = appContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+    private val connectivityManager = appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    private val powerManager = appContext.getSystemService(Context.POWER_SERVICE) as PowerManager
+    private val preferences = LevyraPreferences(appContext)
+    private val decoderCapabilities by lazy { readDecoderCapabilities() }
+    private val rejectedUrls = ConcurrentHashMap<String, Long>()
+    private val rejectedUrlsMutationLock = Any()
+
+    fun reportPlaybackFailure(url: String, reason: String) {
+        if (url.isBlank()) return
+        val lower = reason.lowercase()
+        val ttl = if (lower.contains("decoder") || lower.contains("codec") || lower.contains("format")) 30L * 60L * 1000L else 2L * 60L * 1000L
+        val now = System.currentTimeMillis()
+        synchronized(rejectedUrlsMutationLock) {
+            expiringCacheKeysToRemove(
+                entries = rejectedUrls,
+                nowMs = now,
+                maxEntries = MAX_REJECTED_URLS,
+                incomingKey = url
+            ).forEach(rejectedUrls::remove)
+            rejectedUrls[url] = now + ttl
+        }
+    }
+
+    fun select(
+        muxedCandidates: List<LevyraVideoCandidate>,
+        videoOnlyCandidates: List<LevyraVideoCandidate>,
+        hasSeparateAudio: Boolean,
+        blocked: (String) -> Boolean
+    ): LevyraVideoSelection? {
+        val qualityTarget = preferences.videoQualityTarget()
+        val targetHeight = VideoQualityTarget.resolveHeight(qualityTarget, autoTargetHeight())
+        val rawMuxed = muxedCandidates.filter { it.url.isNotBlank() && !blocked(it.url) && !isRejected(it.url) }
+        val rawVideoOnly = if (hasSeparateAudio) {
+            videoOnlyCandidates.filter { it.url.isNotBlank() && !blocked(it.url) && !isRejected(it.url) }
+        } else {
+            emptyList()
+        }
+        val compatibleMuxed = compatibleCandidates(rawMuxed).ifEmpty { conservativeVideoFallbackCandidates(rawMuxed) }
+        val compatibleVideoOnly = compatibleCandidates(rawVideoOnly).ifEmpty { conservativeVideoFallbackCandidates(rawVideoOnly) }
+        val usableMuxed = stableAndroidVideoCandidates(compatibleMuxed, targetHeight)
+        val usableVideoOnly = stableAndroidVideoCandidates(compatibleVideoOnly, targetHeight)
+        val bestMuxed = usableMuxed.maxByOrNull { score(it, targetHeight) }
+        val bestVideoOnly = usableVideoOnly.maxByOrNull { score(it, targetHeight) }
+        val chosen = if (qualityTarget == VideoQualityTarget.AUTO) {
+            reliableVideoCandidate(bestMuxed, bestVideoOnly)
+        } else {
+            targetedVideoCandidate(bestMuxed, bestVideoOnly, targetHeight)
+        } ?: return null
+        val hardware = decoderSupport(chosen).hardware
+        val reason = buildString {
+            append(chosen.height.takeIf { it > 0 }?.let { "${it}p" } ?: "auto")
+            append(" · ")
+            append(codecFamily(chosen))
+            append(if (hardware) " HW" else " compat")
+            append(if (chosen.muxed) " · muxed stabile" else " · audio/video separati fallback")
+        }
+        return LevyraVideoSelection(chosen, targetHeight, hardware, reason)
+    }
+
+    private fun isRejected(url: String): Boolean {
+        val until = rejectedUrls[url] ?: return false
+        if (until > System.currentTimeMillis()) return true
+        rejectedUrls.remove(url, until)
+        return false
+    }
+
+    fun targetHeight(): Int {
+        return VideoQualityTarget.resolveHeight(preferences.videoQualityTarget(), autoTargetHeight())
+    }
+
+    fun autoTargetHeight(): Int {
+        val lowRam = activityManager.isLowRamDevice
+        val powerSave = powerManager.isPowerSaveMode
+        val network = connectivityManager.activeNetwork
+        val capabilities = network?.let(connectivityManager::getNetworkCapabilities)
+        val unmetered = !connectivityManager.isActiveNetworkMetered
+        val fastTransport = capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true ||
+            capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true
+        val metrics = appContext.resources.displayMetrics
+        val displayShortSide = minOf(metrics.widthPixels, metrics.heightPixels)
+        return VideoQualityLadder.autoTargetHeight(
+            lowRam = lowRam,
+            powerSave = powerSave,
+            unmetered = unmetered,
+            fastTransport = fastTransport,
+            displayShortSidePx = displayShortSide,
+            hasHardwareAv1 = decoderCapabilities.any { it.hardware && it.family == CodecFamily.AV1 }
+        )
+    }
+
+    fun supportsDescriptor(descriptor: PlaybackStreamDescriptor): Boolean {
+        if (descriptor.url.isBlank()) return false
+        val candidate = LevyraVideoCandidate(
+            url = descriptor.url,
+            mimeType = descriptor.mimeType,
+            codec = descriptor.codec,
+            width = descriptor.width,
+            height = descriptor.height,
+            fps = descriptor.fps,
+            bitrate = descriptor.bitrate,
+            itag = descriptor.itag,
+            muxed = descriptor.kind == PlaybackStreamKind.MUXED,
+            label = descriptor.qualityLabel
+        )
+        return decoderSupport(candidate).supported
+    }
+
+    private fun compatibleCandidates(candidates: List<LevyraVideoCandidate>): List<LevyraVideoCandidate> {
+        return candidates.filter { candidate ->
+            decoderSupport(candidate).supported
+        }
+    }
+
+    private fun score(candidate: LevyraVideoCandidate, targetHeight: Int): Int {
+        val height = candidate.height.takeIf { it > 0 } ?: 360
+        val distance = abs(targetHeight - height)
+        val withinTarget = height <= targetHeight
+        val qualityScore = if (withinTarget) {
+            height * 18
+        } else {
+            targetHeight * 18 - distance * 22
+        }
+        val support = decoderSupport(candidate)
+        val codecScore = when (support.family) {
+            CodecFamily.AV1 -> if (support.hardware) 2_300 else -6_000
+            CodecFamily.VP9 -> if (support.hardware) 1_850 else -3_000
+            CodecFamily.AVC -> if (support.hardware) 1_700 else 900
+            CodecFamily.HEVC -> if (support.hardware) 1_500 else -2_500
+            CodecFamily.OTHER -> if (support.supported) 300 else -4_000
+        }
+        val containerScore = when {
+            candidate.mimeType.contains("mp4", true) -> 900
+            candidate.mimeType.contains("webm", true) -> 350
+            else -> 0
+        }
+        val startScore = if (candidate.muxed) 2_600 else 1_300
+        val fpsScore = when {
+            candidate.fps <= 0 -> 0
+            candidate.fps <= 30 -> 250
+            support.hardware && !activityManager.isLowRamDevice -> 500
+            else -> -800
+        }
+        val bitrateScore = (candidate.bitrate / 250_000).coerceIn(0, 900)
+        return qualityScore + codecScore + containerScore + startScore + fpsScore + bitrateScore
+    }
+
+    private fun decoderSupport(candidate: LevyraVideoCandidate): DecoderSupport {
+        val family = codecFamilyValue(candidate)
+        val candidateMime = candidate.mimeType.substringBefore(';').trim()
+        val compatible = decoderCapabilities.filter { capability ->
+            val familyMatches = capability.family == family
+            val mimeMatches = family != CodecFamily.OTHER ||
+                candidateMime.isNotBlank() && capability.mimeType.equals(candidateMime, true)
+            familyMatches && mimeMatches && capability.supports(candidate)
+        }
+        return DecoderSupport(
+            family = family,
+            supported = compatible.isNotEmpty(),
+            hardware = compatible.any { it.hardware }
+        )
+    }
+
+    private fun codecFamily(candidate: LevyraVideoCandidate): String {
+        return when (codecFamilyValue(candidate)) {
+            CodecFamily.AV1 -> "AV1"
+            CodecFamily.VP9 -> "VP9"
+            CodecFamily.AVC -> "H.264"
+            CodecFamily.HEVC -> "HEVC"
+            CodecFamily.OTHER -> candidate.codec.ifBlank { candidate.mimeType.substringAfter('/') }.ifBlank { "video" }
+        }
+    }
+
+    private fun codecFamilyValue(candidate: LevyraVideoCandidate): CodecFamily {
+        val raw = "${candidate.codec} ${candidate.mimeType}".lowercase()
+        return when {
+            raw.contains("av01") || raw.contains("av1") -> CodecFamily.AV1
+            raw.contains("vp09") || raw.contains("vp9") -> CodecFamily.VP9
+            raw.contains("avc1") || raw.contains("avc") || raw.contains("h264") -> CodecFamily.AVC
+            raw.contains("hev1") || raw.contains("hvc1") || raw.contains("hevc") || raw.contains("h265") -> CodecFamily.HEVC
+            else -> CodecFamily.OTHER
+        }
+    }
+
+    private fun readDecoderCapabilities(): List<CodecCapability> {
+        return runCatching {
+            MediaCodecList(MediaCodecList.ALL_CODECS).codecInfos
+                .asSequence()
+                .filterNot { info -> info.isEncoder }
+                .flatMap { info ->
+                    val hardware = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        info.isHardwareAccelerated
+                    } else {
+                        !info.name.contains("google", true) && !info.name.contains("software", true)
+                    }
+                    info.supportedTypes.asSequence()
+                        .filter { mime -> mime.startsWith("video/", true) }
+                        .mapNotNull { mime ->
+                            runCatching {
+                                val capabilities = info.getCapabilitiesForType(mime)
+                                CodecCapability(
+                                    family = when {
+                                        mime.equals("video/av01", true) -> CodecFamily.AV1
+                                        mime.equals("video/x-vnd.on2.vp9", true) -> CodecFamily.VP9
+                                        mime.equals("video/avc", true) -> CodecFamily.AVC
+                                        mime.equals("video/hevc", true) -> CodecFamily.HEVC
+                                        else -> CodecFamily.OTHER
+                                    },
+                                    mimeType = mime,
+                                    hardware = hardware,
+                                    videoCapabilities = capabilities.videoCapabilities
+                                )
+                            }.getOrNull()
+                        }
+                }
+                .toList()
+        }.getOrDefault(emptyList())
+    }
+
+    private data class DecoderSupport(
+        val family: CodecFamily,
+        val supported: Boolean,
+        val hardware: Boolean
+    )
+
+    private data class CodecCapability(
+        val family: CodecFamily,
+        val mimeType: String,
+        val hardware: Boolean,
+        val videoCapabilities: MediaCodecInfo.VideoCapabilities?
+    ) {
+        fun supports(candidate: LevyraVideoCandidate): Boolean {
+            val width = candidate.width
+            val height = candidate.height
+            if (width <= 0 || height <= 0) return true
+            val capabilities = videoCapabilities ?: return false
+            val frameRate = candidate.fps.takeIf { it > 0 }?.toDouble()
+            fun supportsSize(testWidth: Int, testHeight: Int): Boolean {
+                return runCatching {
+                    if (frameRate != null) {
+                        capabilities.areSizeAndRateSupported(testWidth, testHeight, frameRate)
+                    } else {
+                        capabilities.isSizeSupported(testWidth, testHeight)
+                    }
+                }.getOrDefault(false)
+            }
+            return supportsSize(width, height) || supportsSize(height, width)
+        }
+    }
+
+    private enum class CodecFamily {
+        AV1,
+        VP9,
+        AVC,
+        HEVC,
+        OTHER
+    }
+}
