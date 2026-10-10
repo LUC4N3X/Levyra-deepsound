@@ -7,6 +7,7 @@ import android.os.SystemClock
 import android.widget.Toast
 import android.app.Application
 import android.net.ConnectivityManager
+import android.net.Network
 import java.util.Locale
 import android.net.NetworkCapabilities
 import android.net.Uri
@@ -294,7 +295,14 @@ import com.luc4n3x.levyra.ui.theme.LevyraTypographyController
 import com.luc4n3x.levyra.widget.LevyraWidgetBridge
 import com.luc4n3x.levyra.widget.LevyraWidgetCenter
 import com.luc4n3x.levyra.player.AdaptivePlaybackPolicy
+import com.luc4n3x.levyra.player.ADVANCED_PREFETCH_START_DELAY_MS
+import com.luc4n3x.levyra.player.ADVANCED_PREFETCH_TRACK_GAP_MS
+import com.luc4n3x.levyra.player.AdvancedPrefetchConditions
+import com.luc4n3x.levyra.player.LevyraMediaCache
 import com.luc4n3x.levyra.player.LevyraPlayer
+import com.luc4n3x.levyra.player.advancedPrefetchAllowed
+import com.luc4n3x.levyra.player.advancedPrefetchBudgetBytes
+import com.luc4n3x.levyra.player.advancedPrefetchTrackLimit
 import com.luc4n3x.levyra.player.PlaybackService
 import com.luc4n3x.levyra.player.PlaybackSleepTimerState
 import com.luc4n3x.levyra.player.PlaybackWarmup
@@ -331,13 +339,17 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
@@ -1033,6 +1045,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var lastLiveChatPageAtMs = 0L
     private val youtubeEngagementGeneration = AtomicLong(0L)
     private var prefetchJob: Job? = null
+    private var advancedPrefetchJob: Job? = null
+    private var advancedPrefetchKey: AdvancedPrefetchKey? = null
     private var chartEnrichJob: Job? = null
     private var orbitArtworkJob: Job? = null
     private var motionArtworkJob: Job? = null
@@ -4434,6 +4448,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             prefetchJob?.cancel()
             PlaybackService.clearPreparedQueueNext()
         }
+    }
+
+    fun setAdvancedQueuePrefetchTracks(value: Int) {
+        updateAudioSettings(_state.value.audioSettings.copy(advancedQueuePrefetchTracks = value))
+        if (_state.value.isPlaying) syncAdvancedQueuePrefetch() else cancelAdvancedQueuePrefetch()
     }
 
     fun setAaudioOutputEnabled(value: Boolean) {
@@ -11059,7 +11078,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             current != null &&
             current.streamUrl.isNotBlank() &&
             !isLocalPlaybackTrack(current)
-        ) prefetchAround(current)
+        ) {
+            prefetchAround(current)
+        } else {
+            cancelAdvancedQueuePrefetch()
+        }
     }
 
     private fun canRefreshCurrentMotionArtwork(
@@ -11442,6 +11465,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     )
 
     private fun prefetchAround(playable: Track) {
+        prefetchNextTracks(playable)
+        syncAdvancedQueuePrefetch()
+    }
+
+    private fun prefetchNextTracks(playable: Track) {
         prefetchJob?.cancel()
         PlaybackService.clearPreparedQueueNextIfStale()
         if (isLocalPlaybackTrack(playable) || !lyricsNetworkProfile().connected) return
@@ -11469,15 +11497,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         if (index > 0) delay(index * plan.staggerMs)
                         semaphore.withPermit {
                             if (!isActive || queueEngine.state.value.generation != generation) return@withPermit
-                            val youtube = youtubePlayableTrack(track)
-                            val resolved = if (youtube != null) {
-                                resolver.prefetch(youtube, _state.value.isVideoMode)
-                            } else {
-                                val match = runCatchingPreservingCancellation {
-                                    repository.searchSongMatch(track.title, track.artist, _state.value.languageCode)
-                                }.getOrNull()
-                                match?.let { resolver.prefetch(it, _state.value.isVideoMode) }
-                            }
+                            val resolved = resolveQueuePrefetchTrack(track, _state.value.isVideoMode)
                             if (resolved != null && index < plan.primeCount && queueEngine.state.value.generation == generation) {
                                 if (_state.value.isVideoMode) {
                                     runCatchingPreservingCancellation { playbackWarmup.primeVideo(resolved) }
@@ -11500,6 +11520,180 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             ensureRadioTail(force = false)
         }
     }
+
+    private suspend fun resolveQueuePrefetchTrack(track: Track, videoMode: Boolean): Track? {
+        val youtube = youtubePlayableTrack(track)
+        return if (youtube != null) {
+            resolver.prefetch(youtube, videoMode)
+        } else {
+            val match = runCatchingPreservingCancellation {
+                repository.searchSongMatch(track.title, track.artist, _state.value.languageCode)
+            }.getOrNull()
+            match?.let { resolver.prefetch(it, videoMode) }
+        }
+    }
+
+    private data class AdvancedPrefetchKey(
+        val generation: Long,
+        val identity: String,
+        val windowSize: Int,
+        val shuffleEnabled: Boolean
+    )
+
+    private fun syncAdvancedQueuePrefetch() {
+        val snapshot = _state.value
+        val windowSize = snapshot.audioSettings.advancedQueuePrefetchTracks
+        if (windowSize <= 0) {
+            cancelAdvancedQueuePrefetch()
+            return
+        }
+        val current = snapshot.currentTrack
+        val queueSnapshot = queueEngine.state.value
+        if (
+            current == null ||
+            snapshot.isVideoMode ||
+            current.streamUrl.isBlank() ||
+            current.isLiveRadio() ||
+            isLocalPlaybackTrack(current) ||
+            queueSnapshot.repeatMode == RepeatMode.One
+        ) {
+            cancelAdvancedQueuePrefetch()
+            return
+        }
+        val key = AdvancedPrefetchKey(
+            generation = queueSnapshot.generation,
+            identity = playbackIdentity(current),
+            windowSize = windowSize,
+            shuffleEnabled = queueSnapshot.shuffleEnabled
+        )
+        if (advancedPrefetchJob?.isActive == true && advancedPrefetchKey == key) return
+        advancedPrefetchJob?.cancel()
+        advancedPrefetchKey = key
+        val lightPrefetch = prefetchJob
+        advancedPrefetchJob = viewModelScope.launch(Dispatchers.IO) {
+            lightPrefetch?.join()
+            delay(ADVANCED_PREFETCH_START_DELAY_MS)
+            val windowFinished = CompletableDeferred<Unit>()
+            coroutineScope {
+                val networkWatch = launch {
+                    advancedPrefetchNetworkSuitable().collectLatest { suitable ->
+                        if (suitable) {
+                            prefetchAdvancedWindow(current, key)
+                            windowFinished.complete(Unit)
+                        }
+                    }
+                }
+                windowFinished.await()
+                networkWatch.cancel()
+            }
+        }
+    }
+
+    private fun cancelAdvancedQueuePrefetch() {
+        advancedPrefetchJob?.cancel()
+        advancedPrefetchJob = null
+        advancedPrefetchKey = null
+    }
+
+    private fun isAdvancedPrefetchCurrent(key: AdvancedPrefetchKey): Boolean {
+        val snapshot = _state.value
+        val current = snapshot.currentTrack ?: return false
+        val queueSnapshot = queueEngine.state.value
+        return queueSnapshot.generation == key.generation &&
+            queueSnapshot.shuffleEnabled == key.shuffleEnabled &&
+            playbackIdentity(current) == key.identity &&
+            snapshot.audioSettings.advancedQueuePrefetchTracks == key.windowSize
+    }
+
+    private fun advancedPrefetchConditionsMet(windowSize: Int): Boolean {
+        val plan = adaptivePlaybackPolicy.current(false)
+        val network = lyricsNetworkProfile()
+        return advancedPrefetchAllowed(
+            AdvancedPrefetchConditions(
+                windowSize = windowSize,
+                videoMode = _state.value.isVideoMode,
+                connected = network.connected,
+                unmetered = network.unmetered,
+                lowRam = plan.lowRam,
+                powerConstrained = plan.powerConstrained,
+                freeDiskBytes = getApplication<Application>().cacheDir.usableSpace
+            )
+        )
+    }
+
+    private suspend fun prefetchAdvancedWindow(current: Track, key: AdvancedPrefetchKey) {
+        LevyraMediaCache.get(getApplication())
+        val budgetBytes = advancedPrefetchBudgetBytes(LevyraMediaCache.configuredMaxBytes())
+        var usedBytes = 0L
+        var completeTracks = 0
+        var stopReason = "window"
+        val candidates = queueEngine.upcoming(key.windowSize)
+            .filterNot { samePlayableTrack(it, current) }
+            .distinctBy { playbackIdentity(it) }
+        for (track in candidates) {
+            currentCoroutineContext().ensureActive()
+            if (!isAdvancedPrefetchCurrent(key)) {
+                stopReason = "stale"
+                break
+            }
+            if (!advancedPrefetchConditionsMet(key.windowSize)) {
+                stopReason = "conditions"
+                break
+            }
+            val trackLimit = advancedPrefetchTrackLimit(usedBytes, budgetBytes)
+            if (trackLimit <= 0L) {
+                stopReason = "budget"
+                break
+            }
+            if (isLocalPlaybackTrack(track) || track.isLiveRadio()) continue
+            val resolved = resolveQueuePrefetchTrack(track, videoMode = false)
+            if (resolved == null) {
+                Timber.d("advanced prefetch unresolved id=%s", track.id)
+                continue
+            }
+            if (!isAdvancedPrefetchCurrent(key)) {
+                stopReason = "stale"
+                break
+            }
+            val outcome = playbackWarmup.cacheCompletely(resolved, trackLimit) ?: continue
+            usedBytes += outcome.cachedBytes.coerceAtLeast(0L)
+            if (outcome.complete) completeTracks++
+            delay(ADVANCED_PREFETCH_TRACK_GAP_MS)
+        }
+        Timber.d(
+            "advanced prefetch window stop=%s complete=%d/%d used=%d budget=%d",
+            stopReason,
+            completeTracks,
+            candidates.size,
+            usedBytes,
+            budgetBytes
+        )
+    }
+
+    private fun advancedPrefetchNetworkSuitable(): Flow<Boolean> = callbackFlow {
+        val connectivity = getApplication<Application>().getSystemService(ConnectivityManager::class.java)
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
+                trySend(isAdvancedPrefetchNetwork(capabilities))
+            }
+
+            override fun onLost(network: Network) {
+                trySend(false)
+            }
+        }
+        val registered = connectivity != null && runCatching {
+            connectivity.registerDefaultNetworkCallback(callback)
+        }.isSuccess
+        if (!registered) trySend(false)
+        awaitClose {
+            if (registered) runCatching { connectivity.unregisterNetworkCallback(callback) }
+        }
+    }.distinctUntilChanged()
+
+    private fun isAdvancedPrefetchNetwork(capabilities: NetworkCapabilities): Boolean =
+        capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED) &&
+            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
 
     private data class RadioTailRequest(
         val seed: Track,
@@ -11734,6 +11928,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun cancelBackgroundWarmups(cancelList: Boolean = true) {
         prefetchJob?.cancel()
         prefetchJob = null
+        cancelAdvancedQueuePrefetch()
         lyricsPrefetchJob?.cancel()
         lyricsPrefetchJob = null
         PlaybackService.clearPreparedQueueNext()
