@@ -53,9 +53,9 @@ class OnboardingFlowTest {
     @Test
     fun `taste labels follow the selected onboarding language`() {
         val source = sequenceOf(
-            Path.of("app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt"),
-            Path.of("src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt")
-        ).firstOrNull(Files::exists) ?: error("LevyraApp.kt not found")
+            Path.of("app/src/main/java/com/luc4n3x/levyra/ui/OnboardingSetup.kt"),
+            Path.of("src/main/java/com/luc4n3x/levyra/ui/OnboardingSetup.kt")
+        ).firstOrNull(Files::exists) ?: error("OnboardingSetup.kt not found")
         val content = Files.readString(source)
 
         assertTrue(content.contains("val tastes = remember(languageCode)"))
