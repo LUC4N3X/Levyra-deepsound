@@ -14,7 +14,9 @@ docs/assets/showcase/cards/03_now_playing.webp
 docs/assets/showcase/cards/04_player_deck.webp
 docs/assets/showcase/cards/05_explore.webp
 docs/assets/showcase/cards/05_explore_mix.webp
+docs/assets/showcase/cards/05_explore_stage.webp
 docs/assets/showcase/cards/06_levyra_mix.webp
+docs/assets/showcase/cards/06_levyra_mix_stage.webp
 docs/assets/showcase/cards/06_artist_profile.webp
 docs/assets/showcase/cards/07_genres.webp
 docs/assets/showcase/cards/08_audio_tuning.webp
