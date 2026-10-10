@@ -731,6 +731,7 @@ import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.ui.player.PlayerDragEvent
 import com.luc4n3x.levyra.ui.player.PlayerGestureZone
 import com.luc4n3x.levyra.ui.player.PlayerMorphAnchors
+import com.luc4n3x.levyra.ui.player.PlayerExpansionExpanded
 import com.luc4n3x.levyra.ui.player.PlayerPrewarmExpansion
 import com.luc4n3x.levyra.ui.player.PlayerMorphSlot
 import com.luc4n3x.levyra.ui.player.PlayerSwipeResult
@@ -747,8 +748,6 @@ import com.luc4n3x.levyra.ui.player.playerMorphContainer
 import com.luc4n3x.levyra.ui.player.playerMorphFraction
 import com.luc4n3x.levyra.ui.player.playerSeekDeltaMs
 import com.luc4n3x.levyra.ui.player.playerSurfaceAlpha
-import com.luc4n3x.levyra.ui.player.playerSurfaceLiftFraction
-import com.luc4n3x.levyra.ui.player.playerSurfaceScale
 import com.luc4n3x.levyra.ui.player.playerSwipeContentAlpha
 import com.luc4n3x.levyra.ui.player.playerTapSide
 import com.luc4n3x.levyra.ui.player.rememberPlayerMorphAnchors
@@ -757,7 +756,9 @@ import com.luc4n3x.levyra.ui.player.rememberPlayerSwipeMotion
 import com.luc4n3x.levyra.ui.player.rememberTrackStepDirection
 import com.luc4n3x.levyra.ui.player.resolveMiniPlayerDismiss
 import com.luc4n3x.levyra.ui.player.resolvePlayerExpansionTarget
-import com.luc4n3x.levyra.ui.player.playerSurfaceCornerFraction
+import com.luc4n3x.levyra.ui.player.playerContainerBounds
+import com.luc4n3x.levyra.ui.player.playerContainerCornerPx
+import com.luc4n3x.levyra.ui.player.PlayerContainerShape
 import java.io.File
 import java.time.format.TextStyle as DayTextStyle
 import java.util.Locale
@@ -2138,7 +2139,11 @@ fun LevyraApp(
                 expansionScope.launch {
                     if (generation == expansionDragGeneration) {
                         playerExpansion.snapTo(
-                            playerExpansionFromDrag(expansionDragStart, expansionDragAccum, expansionTravelPx)
+                            playerExpansionFromDrag(
+                                expansionDragStart,
+                                expansionDragAccum,
+                                morphAnchors.miniCardBounds?.top?.takeIf { it > 1f } ?: expansionTravelPx
+                            )
                         )
                     }
                 }
@@ -2401,7 +2406,6 @@ fun LevyraApp(
                 DisposableEffect(morphAnchors) {
                     onDispose { morphAnchors.playerContainer = null }
                 }
-                val playerSurfaceCornerPx = with(rootDensity) { LevyraPlayerDesign.DockTrayCorner.toPx() }
                 val playerViewModel: PlayerViewModel = composeViewModel(key = "levyra-player", factory = screenViewModelFactory)
                 val playerScreenState by playerViewModel.state.collectAsStateWithLifecycle()
                 val playerAboveDetail = detailUnderPlayer && (state.showAlbum || state.showArtist || state.openPlaylist != null || state.playlistHitPreview != null)
@@ -2412,14 +2416,23 @@ fun LevyraApp(
                         .graphicsLayer {
                             val expansion = expansionProvider()
                             alpha = playerSurfaceAlpha(expansion)
-                            val surfaceScale = playerSurfaceScale(expansion)
-                            scaleX = surfaceScale
-                            scaleY = surfaceScale
-                            translationY = playerSurfaceLiftFraction(expansion) * expansionTravelPx
-                            transformOrigin = TransformOrigin(0.5f, 1f)
-                            val cornerRadius = playerSurfaceCornerFraction(expansion) * playerSurfaceCornerPx
-                            clip = cornerRadius > 0.5f
-                            shape = if (clip) RoundedCornerShape(cornerRadius) else RectangleShape
+                            val origin = morphAnchors.miniCardBounds
+                            val container = playerContainerBounds(expansion, origin, size.width, size.height)
+                            val scale = if (size.width > 0f) container.width / size.width else 1f
+                            transformOrigin = TransformOrigin(0f, 0f)
+                            scaleX = scale
+                            scaleY = scale
+                            translationX = container.left
+                            translationY = container.top
+                            clip = expansion < PlayerExpansionExpanded && scale > 0f
+                            shape = if (clip) {
+                                PlayerContainerShape(
+                                    heightPx = container.height / scale,
+                                    cornerPx = playerContainerCornerPx(expansion, origin) / scale
+                                )
+                            } else {
+                                RectangleShape
+                            }
                         }
                         .playerMorphContainer(morphAnchors)
                 ) {
@@ -2428,7 +2441,7 @@ fun LevyraApp(
                         viewModel = playerViewModel,
                         state = playerScreenState,
                         morphAnchors = morphAnchors,
-                        morphActive = artworkMorphActive,
+                        morphActive = { artworkMorphActive },
                         collapseActions = PlayerCollapseActions(
                             collapse = collapsePlayer,
                             dragStart = onExpansionDragStart,
@@ -2456,10 +2469,11 @@ fun LevyraApp(
             }
 
             val morphTrack = state.currentTrack
-            if (artworkMorphActive && morphTrack != null) {
+            if (morphAllowed && morphTrack != null) {
                 PlayerArtworkMorphLayer(
                     track = morphTrack,
                     anchors = morphAnchors,
+                    active = { artworkMorphActive },
                     expansion = expansionProvider
                 )
             }
@@ -16752,7 +16766,7 @@ private fun PlayerScreen(
     viewModel: PlayerViewModel,
     state: LevyraUiState,
     morphAnchors: PlayerMorphAnchors,
-    morphActive: Boolean,
+    morphActive: () -> Boolean,
     collapseActions: PlayerCollapseActions,
     motionSuspended: Boolean
 ) {
@@ -23225,6 +23239,7 @@ private fun downloadStateTransform(
 private fun PlayerArtworkMorphLayer(
     track: Track,
     anchors: PlayerMorphAnchors,
+    active: () -> Boolean,
     expansion: () -> Float
 ) {
     val density = LocalDensity.current
@@ -23235,8 +23250,12 @@ private fun PlayerArtworkMorphLayer(
     val artworkUrl = remember(track) { preferredPlayerArtworkUrl(track) }
     Box(
         modifier = Modifier
-            .layout { measurable, _ ->
-                val rect = anchors.resolve(playerMorphFraction(expansion()))
+            .layout { measurable, constraints ->
+                val rect = if (active()) {
+                    anchors.resolve(playerMorphFraction(expansion()))
+                } else {
+                    anchors.idleBounds(constraints.maxWidth.toFloat())
+                }
                 if (rect == null) {
                     val placeable = measurable.measure(Constraints.fixed(0, 0))
                     layout(0, 0) { placeable.place(0, 0) }
@@ -23250,6 +23269,11 @@ private fun PlayerArtworkMorphLayer(
                 }
             }
             .graphicsLayer {
+                if (!active()) {
+                    alpha = 0f
+                    shadowElevation = 0f
+                    return@graphicsLayer
+                }
                 val fraction = playerMorphFraction(expansion())
                 val flightAlpha = anchors.flightAlpha()
                 val endCornerPx = if (anchors.targetsStage) 0f else cardCornerPx
@@ -23337,7 +23361,6 @@ private fun settleMiniPlayerVerticalDrag(
     if (!event.peeked && result == PlayerVerticalResult.Collapse) playbackActions.close()
 }
 
-private val PlayerMorphFlightShadow = 18.dp
 private const val MiniPlayerCarryFraction = 0.5f
 private val MiniPlayerCardBase = PlayerDarkSurface
 private val MiniPlayerToggleRing = 54.dp
@@ -23445,6 +23468,7 @@ private fun MiniPlayer(
                 modifier = Modifier
                     .fillMaxWidth()
                     .dockLerpHeight(compaction, LevyraPlayerDesign.MiniHeight, LevyraPlayerDesign.MiniHeightCompact)
+                    .playerMorphAnchor(morphAnchors, PlayerMorphSlot.MiniCard)
                     .shadow(
                         elevation = MiniPlayerGlowElevation,
                         shape = cardShape,

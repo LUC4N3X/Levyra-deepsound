@@ -14,6 +14,7 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.unit.dp
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -21,8 +22,11 @@ private const val StageRevealStart = 0.70f
 private const val StageRevealEnd = 0.86f
 private const val StageHandOffEnd = 0.98f
 
+internal val PlayerMorphFlightShadow = 18.dp
+
 enum class PlayerMorphSlot {
     Mini,
+    MiniCard,
     Full,
     Stage
 }
@@ -30,6 +34,8 @@ enum class PlayerMorphSlot {
 @Stable
 class PlayerMorphAnchors(private val expansion: () -> Float = { PlayerExpansionExpanded }) {
     var miniBounds by mutableStateOf<Rect?>(null)
+        private set
+    var miniCardBounds by mutableStateOf<Rect?>(null)
         private set
     var fullBounds by mutableStateOf<Rect?>(null)
         private set
@@ -56,6 +62,7 @@ class PlayerMorphAnchors(private val expansion: () -> Float = { PlayerExpansionE
         if (!bounds.isUsableMorphRect()) return
         when (slot) {
             PlayerMorphSlot.Mini -> if (miniBounds != bounds) miniBounds = bounds
+            PlayerMorphSlot.MiniCard -> if (miniCardBounds != bounds) miniCardBounds = bounds
             PlayerMorphSlot.Full -> if (fullBounds != bounds) fullBounds = bounds
             PlayerMorphSlot.Stage -> if (stageBounds != bounds) stageBounds = bounds
         }
@@ -66,6 +73,8 @@ class PlayerMorphAnchors(private val expansion: () -> Float = { PlayerExpansionE
         if (scale.isFinite() && scale > 0f) fullRestScale = scale
         if (offsetY.isFinite()) fullRestOffsetY = offsetY
     }
+
+    internal fun currentExpansion(): Float = expansion()
 
     fun updateStageActive(active: Boolean) {
         if (stageActive != active) stageActive = active
@@ -79,6 +88,9 @@ class PlayerMorphAnchors(private val expansion: () -> Float = { PlayerExpansionE
     fun flightAlpha(): Float =
         if (targetsStage) 1f - playerMotionProgress(normalizeFraction(expansion(), StageRevealEnd, StageHandOffEnd)) else 1f
 
+    fun idleBounds(fallbackSidePx: Float): Rect? =
+        targetBounds ?: fallbackSidePx.takeIf { it.isFinite() && it > 0f }?.let { Rect(0f, 0f, it, it) }
+
     /**
      * Resolves a reversible flight path between the mini artwork and the player's resting artwork.
      *
@@ -87,7 +99,7 @@ class PlayerMorphAnchors(private val expansion: () -> Float = { PlayerExpansionE
      */
     fun resolve(fraction: Float): Rect? {
         val start = miniBounds ?: return null
-        val end = targetBounds ?: return null
+        val end = targetBounds?.let { placedInLiveContainer(it) } ?: return null
         val t = fraction.finiteOr(0f).coerceIn(0f, 1f)
         val base = lerpRect(start, end, t)
         val pulse = sin(PI.toFloat() * t).coerceAtLeast(0f)
@@ -95,6 +107,13 @@ class PlayerMorphAnchors(private val expansion: () -> Float = { PlayerExpansionE
         val liftPx = -end.height.coerceAtMost(720f) * 0.035f * pulse
         return base.scaledAroundCenter(bloom, liftPx)
     }
+}
+
+private fun PlayerMorphAnchors.placedInLiveContainer(bounds: Rect): Rect {
+    val size = playerContainer?.takeIf { it.isAttached }?.size ?: return bounds
+    val width = size.width.toFloat()
+    val container = playerContainerBounds(currentExpansion(), miniCardBounds, width, size.height.toFloat())
+    return bounds.placedInContainer(container, width)
 }
 
 @Composable
@@ -112,7 +131,8 @@ fun Modifier.playerMorphAnchor(
     slot: PlayerMorphSlot
 ): Modifier = this.onGloballyPositioned { coordinates ->
     if (!coordinates.isAttached) return@onGloballyPositioned
-    val container = anchors.playerContainer?.takeIf { slot != PlayerMorphSlot.Mini && it.isAttached }
+    val inPlayer = slot == PlayerMorphSlot.Full || slot == PlayerMorphSlot.Stage
+    val container = anchors.playerContainer?.takeIf { inPlayer && it.isAttached }
     val bounds = container?.localBoundingBoxOf(coordinates, clipBounds = false) ?: coordinates.boundsInRoot()
     anchors.update(slot, bounds)
 }
