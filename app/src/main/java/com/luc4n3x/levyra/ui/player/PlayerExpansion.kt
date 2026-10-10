@@ -1,5 +1,13 @@
 package com.luc4n3x.levyra.ui.player
 
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import kotlin.math.abs
 
 const val PlayerExpansionCollapsed: Float = 0f
@@ -15,12 +23,11 @@ private const val MorphStart = 0.01f
 private const val MorphEnd = 0.96f
 private const val ChromeFadeStart = 0.02f
 private const val ChromeFadeEnd = 0.52f
-private const val SurfaceFadeStart = 0.08f
-private const val SurfaceFadeEnd = 0.64f
+private const val SurfaceFadeStart = 0f
+private const val SurfaceFadeEnd = 0.2f
 private const val BackgroundDepth = 0.028f
-private const val SurfaceScaleStart = 0.94f
-private const val SurfaceLiftStart = 0.055f
-private const val PredictiveBackCollapseDepth = 0.34f
+private const val PredictiveBackCollapseDepth = 0.14f
+private const val ContainerFallbackHeightFraction = 0.12f
 
 fun playerExpansionFromDrag(start: Float, dragPx: Float, travelPx: Float): Float {
     if (!start.isFinite()) return PlayerExpansionCollapsed
@@ -62,17 +69,27 @@ fun playerChromeAlpha(expansion: Float): Float =
 fun playerSurfaceAlpha(expansion: Float): Float =
     playerMotionProgress(normalize(expansion, SurfaceFadeStart, SurfaceFadeEnd))
 
-/** Makes the full player grow out of the mini player rather than simply fading over it. */
-fun playerSurfaceScale(expansion: Float): Float =
-    SurfaceScaleStart + (1f - SurfaceScaleStart) * playerMotionProgress(expansion)
-
-/** Downward offset, expressed as a fraction of the available travel, removed as the player opens. */
-fun playerSurfaceLiftFraction(expansion: Float): Float {
-    val remaining = 1f - playerMotionProgress(expansion)
-    return remaining * remaining * SurfaceLiftStart
+fun playerContainerBounds(expansion: Float, origin: Rect?, width: Float, height: Float): Rect {
+    val full = Rect(0f, 0f, width.coerceAtLeast(0f), height.coerceAtLeast(0f))
+    val start = origin ?: Rect(0f, full.bottom * (1f - ContainerFallbackHeightFraction), full.right, full.bottom)
+    return lerpRect(start, full, expansion.finiteOr(PlayerExpansionCollapsed))
 }
 
-fun playerSurfaceCornerFraction(expansion: Float): Float = 1f - playerMotionProgress(expansion)
+fun playerContainerCornerPx(expansion: Float, origin: Rect?): Float {
+    val startRadius = (origin?.height ?: 0f) / 2f
+    return startRadius * (1f - expansion.finiteOr(PlayerExpansionCollapsed).coerceIn(0f, 1f))
+}
+
+fun Rect.placedInContainer(container: Rect, frameWidth: Float): Rect {
+    if (!frameWidth.isFinite() || frameWidth <= 0f) return this
+    val scale = container.width / frameWidth
+    return Rect(
+        left = container.left + left * scale,
+        top = container.top + top * scale,
+        right = container.left + right * scale,
+        bottom = container.top + bottom * scale
+    )
+}
 
 fun playerMorphActive(expansion: Float): Boolean {
     val safeExpansion = expansion.finiteOr(PlayerExpansionCollapsed)
@@ -106,3 +123,11 @@ data class PlayerCollapseActions(
     val drag: (Float) -> Unit,
     val dragEnd: (Float) -> Unit
 )
+
+data class PlayerContainerShape(val heightPx: Float, val cornerPx: Float) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val height = heightPx.finiteOr(size.height).coerceIn(0f, size.height)
+        val radius = cornerPx.finiteOr(0f).coerceIn(0f, minOf(size.width, height) / 2f)
+        return Outline.Rounded(RoundRect(0f, 0f, size.width, height, CornerRadius(radius)))
+    }
+}

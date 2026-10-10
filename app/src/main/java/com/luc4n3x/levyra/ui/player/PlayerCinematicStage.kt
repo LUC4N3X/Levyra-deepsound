@@ -164,7 +164,7 @@ internal fun PlayerCinematicStage(
     isPlaying: Boolean,
     canvasQuality: LevyraCanvasQuality,
     morphAnchors: PlayerMorphAnchors,
-    morphActive: Boolean,
+    morphActive: () -> Boolean,
     swipeOffset: () -> Float,
     modifier: Modifier = Modifier,
     dynamicBackdropEnabled: Boolean = false,
@@ -232,7 +232,7 @@ internal fun PlayerCinematicStage(
                 .size(width = geometry.heroWidth, height = geometry.heroHeight)
                 .playerMorphAnchor(morphAnchors, PlayerMorphSlot.Stage)
                 .graphicsLayer {
-                    alpha = if (morphActive) morphAnchors.stageRevealAlpha() else 1f
+                    alpha = if (morphActive()) morphAnchors.stageRevealAlpha() else 1f
                     translationX = swipeOffset() * 0.32f
                 }
                 .then(dissolveModifier)
@@ -269,7 +269,7 @@ internal fun PlayerCinematicStage(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        alpha = if (morphActive) morphAnchors.stageRevealAlpha() else 1f
+                        alpha = if (morphActive()) morphAnchors.stageRevealAlpha() else 1f
                         translationX = swipeOffset() * 0.32f
                     }
             ) { }

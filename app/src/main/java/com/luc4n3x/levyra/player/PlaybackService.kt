@@ -21,6 +21,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.PowerManager
 import android.os.SystemClock
+import androidx.core.app.NotificationManagerCompat
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.DeviceInfo
@@ -55,7 +56,6 @@ import androidx.media3.extractor.metadata.icy.IcyInfo
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
-import androidx.media3.session.MediaNotification
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
@@ -99,9 +99,6 @@ import com.luc4n3x.levyra.feature.audio.LevyraAudioOutputRepository
 import com.luc4n3x.levyra.feature.audio.LevyraAudioRouteSelectionState
 import com.luc4n3x.levyra.feature.audio.findLevyraAudioOutputDevice
 import com.luc4n3x.levyra.feature.audio.queryLevyraAudioOutputState
-import com.luc4n3x.levyra.player.liveupdate.LiveUpdateMediaNotificationProvider
-import com.luc4n3x.levyra.player.liveupdate.LiveUpdatePolicy
-import com.luc4n3x.levyra.player.liveupdate.PlaybackLiveUpdateNotifier
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
 import com.luc4n3x.levyra.player.queue.PlaybackQueueSnapshot
 import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
@@ -135,7 +132,6 @@ import java.util.ArrayList
 @UnstableApi
 class PlaybackService : MediaLibraryService() {
     private var mediaSession: MediaLibrarySession? = null
-    private var playbackLiveUpdate: PlaybackLiveUpdateNotifier? = null
     private lateinit var autoLibrary: AndroidAutoLibrary
     private lateinit var queueEngine: PersistentQueueEngine
     private lateinit var favoritesStore: FavoritesStore
@@ -1381,19 +1377,12 @@ class PlaybackService : MediaLibraryService() {
             .build()
             .also(systemActions::attach)
 
-        val notificationProvider = DefaultMediaNotificationProvider(this)
-        setMediaNotificationProvider(withPlaybackLiveUpdate(notificationProvider, forwardingPlayer))
+        setMediaNotificationProvider(DefaultMediaNotificationProvider(this))
+        NotificationManagerCompat.from(this).deleteNotificationChannel(RETIRED_PLAYBACK_LIVE_UPDATE_CHANNEL_ID)
         activateServiceAndApplyPendingAudioSettings()
         refreshAudioRouteCenterState()
         startQueueTransitionMonitor(player)
         startMemoryGuard(player)
-    }
-
-    private fun withPlaybackLiveUpdate(provider: MediaNotification.Provider, sessionPlayer: Player): MediaNotification.Provider {
-        if (!LiveUpdatePolicy.isSupported()) return provider
-        val notifier = PlaybackLiveUpdateNotifier(this).also { it.attach(sessionPlayer) }
-        playbackLiveUpdate = notifier
-        return LiveUpdateMediaNotificationProvider(provider, notifier)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -2477,8 +2466,6 @@ class PlaybackService : MediaLibraryService() {
         automationSettingsJob?.cancel()
         systemMediaActions?.detach()
         systemMediaActions = null
-        playbackLiveUpdate?.release()
-        playbackLiveUpdate = null
         updateDeviceVolumeReceiver(false)
         sleepTimer.cancel()
         _sleepTimerStateFlow.value = PlaybackSleepTimerState.Disabled
@@ -3298,6 +3285,7 @@ internal const val TRANSIENT_NETWORK_LOAD_RETRIES = 8
 
 internal const val WATCHDOG_RECOVERIES_WITHOUT_PROGRESS = 1
 private const val WATCHDOG_PROGRESS_THRESHOLD_MS = 250L
+private const val RETIRED_PLAYBACK_LIVE_UPDATE_CHANNEL_ID = "levyra_playback_live_update"
 
 internal class WatchdogRecoveryAllowance(private val limit: Int = WATCHDOG_RECOVERIES_WITHOUT_PROGRESS) {
     private var used = 0

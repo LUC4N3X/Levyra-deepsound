@@ -43,7 +43,7 @@ internal fun PlayerVisualHost(
     isPlaying: Boolean,
     canvasQuality: LevyraCanvasQuality,
     morphAnchors: PlayerMorphAnchors,
-    morphActive: Boolean,
+    morphActive: () -> Boolean,
     swipeOffset: () -> Float,
     cinematicGeometry: PlayerCinematicGeometry,
     modifier: Modifier = Modifier,
