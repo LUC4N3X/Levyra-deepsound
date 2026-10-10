@@ -24,6 +24,7 @@ import com.luc4n3x.levyra.data.local.toPlaylistTrackEntity
 import com.luc4n3x.levyra.data.local.toTrack
 import com.luc4n3x.levyra.data.local.PlaylistTagEntity
 import com.luc4n3x.levyra.data.local.PlaylistTagLinkEntity
+import com.luc4n3x.levyra.domain.ADVANCED_QUEUE_PREFETCH_OFF
 import com.luc4n3x.levyra.domain.ExcludedArtist
 import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
@@ -1667,6 +1668,7 @@ internal fun backupAudioSettingsToJson(value: LevyraAudioSettings): JSONObject =
     .put("pitch", value.pitch.toDouble())
     .put("gaplessEnabled", value.gaplessEnabled)
     .put("preloadNextTrack", value.preloadNextTrack)
+    .put("advancedQueuePrefetchTracks", value.advancedQueuePrefetchTracks)
     .put("aaudioOutputEnabled", value.aaudioOutputEnabled)
     .put("customPresets", JSONArray().apply { value.customPresets.forEach { put(customPresetToJson(it)) } })
     .put("parametricEqualizerEnabled", value.parametricEqualizerEnabled)
@@ -1742,6 +1744,7 @@ internal fun backupAudioSettingsFromJson(json: JSONObject?): LevyraAudioSettings
         pitch = json.optDouble("pitch", 1.0).toFloat(),
         gaplessEnabled = json.optBoolean("gaplessEnabled", true),
         preloadNextTrack = json.optBoolean("preloadNextTrack", true),
+        advancedQueuePrefetchTracks = json.optInt("advancedQueuePrefetchTracks", ADVANCED_QUEUE_PREFETCH_OFF),
         aaudioOutputEnabled = json.optBoolean("aaudioOutputEnabled", false),
         customPresets = customPresets,
         parametricEqualizerEnabled = json.optBoolean("parametricEqualizerEnabled", false),
