@@ -151,6 +151,7 @@ internal fun LevyraTrackActionSheet(
     onToggleFavorite: () -> Unit,
     onDownload: () -> Unit,
     onDeleteDownload: () -> Unit,
+    onKeepOffline: (() -> Unit)? = null,
     onOpenAlbum: () -> Unit,
     onOpenArtist: () -> Unit,
     onRemoveFromHistory: () -> Unit,
@@ -416,6 +417,13 @@ internal fun LevyraTrackActionSheet(
                                     tint = if (isPinnedToHome) LevyraCyan else LevyraText,
                                     enabled = isPinnedToHome || !homePinsFull,
                                     onClick = { perform(onTogglePinToHome) }
+                                )
+                            }
+                            if (isDownloaded && !isDownloading && onKeepOffline != null) {
+                                TrackActionRow(
+                                    icon = Icons.Rounded.DownloadDone,
+                                    label = strings.saveOffline,
+                                    onClick = { perform(onKeepOffline) }
                                 )
                             }
                             when {
