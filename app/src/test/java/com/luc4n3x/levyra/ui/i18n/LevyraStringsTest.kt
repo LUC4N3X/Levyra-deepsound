@@ -435,11 +435,18 @@ class LevyraStringsTest {
 
     @Test
     fun appAndOnboardingUseTheSharedRtlResolver() {
-        val source = sequenceOf(
+        val appSource = sequenceOf(
             Path.of("app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt"),
             Path.of("src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt")
         ).firstOrNull(Files::exists) ?: error("LevyraApp.kt not found")
-        val content = Files.readString(source)
+        val onboardingSource = sequenceOf(
+            Path.of("app/src/main/java/com/luc4n3x/levyra/ui/OnboardingSetup.kt"),
+            Path.of("src/main/java/com/luc4n3x/levyra/ui/OnboardingSetup.kt")
+        ).firstOrNull(Files::exists) ?: error("OnboardingSetup.kt not found")
+        val appContent = Files.readString(appSource)
+        val onboardingContent = Files.readString(onboardingSource)
+        val content = appContent + "\n" + onboardingContent
+        assertTrue(onboardingContent.contains("LevyraLanguageCatalog.isRtl"))
         assertTrue(Regex("LevyraLanguageCatalog\\.isRtl").findAll(content).count() >= 2)
         assertFalse(content.contains("== \"ar\") LayoutDirection.Rtl"))
     }
