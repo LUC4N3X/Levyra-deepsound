@@ -27,6 +27,7 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
@@ -101,6 +102,7 @@ internal fun LibraryTrackRow(
     onQueue: (() -> Unit)? = null,
     onAddToPlaylist: (() -> Unit)? = null,
     onEditTags: (() -> Unit)? = null,
+    onKeepOffline: (() -> Unit)? = null,
     onDeleteDownload: (() -> Unit)? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
     onChangeMatch: (() -> Unit)? = null,
@@ -230,6 +232,16 @@ internal fun LibraryTrackRow(
                             onClick = {
                                 menuExpanded = false
                                 onEditTags()
+                            }
+                        )
+                    }
+                    if (onKeepOffline != null) {
+                        DropdownMenuItem(
+                            text = { Text(strings.saveOffline) },
+                            leadingIcon = { Icon(Icons.Rounded.DownloadDone, contentDescription = null) },
+                            onClick = {
+                                menuExpanded = false
+                                onKeepOffline()
                             }
                         )
                     }

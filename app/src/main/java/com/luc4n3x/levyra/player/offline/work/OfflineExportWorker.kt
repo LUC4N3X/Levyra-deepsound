@@ -29,9 +29,12 @@ import com.luc4n3x.levyra.MainActivity
 import com.luc4n3x.levyra.R
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.TrackPayloadCodec
+import com.luc4n3x.levyra.data.SmartOfflineOwnershipGate
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.data.local.OfflineDownloadTaskEntity
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.DownloadOwnership
+import com.luc4n3x.levyra.domain.canSmartOfflineEnqueue
 import com.luc4n3x.levyra.domain.retainsExistingBatchMembership
 import com.luc4n3x.levyra.player.liveupdate.DownloadBatchProgress
 import com.luc4n3x.levyra.player.liveupdate.DownloadLiveUpdateContent
@@ -91,6 +94,7 @@ class OfflineExportWorker(
     override suspend fun doWork(): Result {
         val payload = inputData.getString(KEY_TRACK_PAYLOAD).orEmpty()
         val taskKey = inputData.getString(KEY_TASK_KEY).orEmpty().ifBlank { id.toString() }
+        val ownership = DownloadOwnership.fromStorage(inputData.getString(KEY_OWNERSHIP).orEmpty())
         val track = TrackPayloadCodec.decode(payload) ?: return Result.failure(errorData("invalid_track_payload"))
         val taskDao = LevyraDatabase.get(applicationContext).offlineDownloadTasksDao()
         val preferences = LevyraPreferences(applicationContext)
@@ -105,6 +109,11 @@ class OfflineExportWorker(
                 downloadQuality = downloadQualityKey
             )
             if (existing != null && isStoredDownloadReadable(existing.uri)) {
+                if (ownership == DownloadOwnership.MANUAL) {
+                    SmartOfflineOwnershipGate.withLock {
+                        LevyraDatabase.get(applicationContext).downloadedTracksDao().promoteToManual(existing.id)
+                    }
+                }
                 if (taskDao.updateStateForWork(taskKey, workId, "SUCCEEDED", 100, "", System.currentTimeMillis()) == 0) {
                     return Result.failure(errorData(ERROR_SUPERSEDED))
                 }
@@ -172,7 +181,8 @@ class OfflineExportWorker(
                 progress = publishProgress,
                 taskKey = taskKey,
                 settings = settings,
-                downloadQualityKey = downloadQualityKey
+                downloadQualityKey = downloadQualityKey,
+                ownership = ownership
             )
             val result = OfflineDownloadConcurrencyGate.withLimit(settings.maxConcurrentDownloads) {
                 pipeline.export(track)
@@ -367,6 +377,7 @@ class OfflineExportWorker(
         const val KEY_DESTINATION_LABEL = "destination_label"
         const val KEY_ERROR = "error"
         const val KEY_PROGRESS = "progress"
+        const val KEY_OWNERSHIP = "ownership"
         const val ERROR_SUPERSEDED = "task_superseded"
         private const val CHANNEL_ID = "levyra_offline_downloads"
         private const val PROGRESS_PERSIST_STEP = 3
@@ -381,27 +392,52 @@ class OfflineExportWorker(
             context: Context,
             trackId: String,
             trackPayload: String,
-            batch: OfflineDownloadBatchRef? = null
+            batch: OfflineDownloadBatchRef? = null,
+            ownership: DownloadOwnership = DownloadOwnership.MANUAL
         ): UUID {
             val appContext = context.applicationContext
             val workManager = WorkManager.getInstance(appContext)
             val uniqueName = uniqueNameFor(trackId)
-            val settings = LevyraPreferences(appContext).downloadSettings()
+            val preferences = LevyraPreferences(appContext)
+            val settings = preferences.downloadSettings()
+            val smartSettings = preferences.smartOfflineSettings()
+            val requiresUnmeteredNetwork = settings.wifiOnly ||
+                (ownership == DownloadOwnership.SMART_OFFLINE && smartSettings.wifiOnly)
+            val requiresCharging = settings.chargingOnly ||
+                (ownership == DownloadOwnership.SMART_OFFLINE && smartSettings.chargingOnly)
+            val dao = LevyraDatabase.get(appContext).offlineDownloadTasksDao()
+            val previous = dao.byKey(trackId)
+            if (
+                ownership == DownloadOwnership.SMART_OFFLINE &&
+                previous != null &&
+                !canSmartOfflineEnqueue(
+                    ownership = DownloadOwnership.fromStorage(previous.ownership),
+                    state = previous.state,
+                    workId = previous.workId
+                )
+            ) {
+                return runCatching { UUID.fromString(previous.workId) }.getOrElse { idFallback(previous.taskKey) }
+            }
             val request = OneTimeWorkRequestBuilder<OfflineExportWorker>()
-                .setInputData(workDataOf(KEY_TRACK_PAYLOAD to trackPayload, KEY_TASK_KEY to trackId))
+                .setInputData(
+                    workDataOf(
+                        KEY_TRACK_PAYLOAD to trackPayload,
+                        KEY_TASK_KEY to trackId,
+                        KEY_OWNERSHIP to ownership.name
+                    )
+                )
                 .setConstraints(
                     Constraints.Builder()
-                        .setRequiredNetworkType(if (settings.wifiOnly) NetworkType.UNMETERED else NetworkType.CONNECTED)
-                        .setRequiresCharging(settings.chargingOnly)
+                        .setRequiredNetworkType(if (requiresUnmeteredNetwork) NetworkType.UNMETERED else NetworkType.CONNECTED)
+                        .setRequiresCharging(requiresCharging)
                         .build()
                 )
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)
                 .addTag("levyra_offline_export")
+                .addTag("levyra_offline_${ownership.name.lowercase()}")
                 .addTag(uniqueName)
                 .build()
-            val dao = LevyraDatabase.get(appContext).offlineDownloadTasksDao()
             val track = TrackPayloadCodec.decode(trackPayload)
-            val previous = dao.byKey(trackId)
             val retainedBatch = previous
                 ?.takeIf {
                     retainsExistingBatchMembership(
@@ -430,7 +466,8 @@ class OfflineExportWorker(
                     batchTitle = retainedBatch?.title ?: batch?.title.orEmpty(),
                     batchKind = retainedBatch?.kind ?: batch?.kind.orEmpty(),
                     batchArtworkUrl = retainedBatch?.artworkUrl ?: batch?.artworkUrl.orEmpty(),
-                    batchPosition = retainedBatch?.position ?: batch?.position ?: 0
+                    batchPosition = retainedBatch?.position ?: batch?.position ?: 0,
+                    ownership = ownership.name
                 )
             )
             workManager.enqueueUniqueWork(uniqueName, ExistingWorkPolicy.REPLACE, request)
@@ -449,7 +486,12 @@ class OfflineExportWorker(
             val appContext = context.applicationContext
             val task = LevyraDatabase.get(appContext).offlineDownloadTasksDao().byKey(taskKey) ?: return null
             if (task.state !in setOf("PAUSED", "FAILED", "RETRYING")) return null
-            return enqueue(appContext, taskKey, task.payload)
+            return enqueue(
+                context = appContext,
+                trackId = taskKey,
+                trackPayload = task.payload,
+                ownership = DownloadOwnership.fromStorage(task.ownership)
+            )
         }
 
         suspend fun cancel(context: Context, taskKey: String) {
@@ -465,5 +507,7 @@ class OfflineExportWorker(
             val safe = trackId.trim().ifBlank { "unknown" }.replace(Regex("[^A-Za-z0-9_.-]+"), "_").take(120)
             return "levyra_offline_export_$safe"
         }
+
+        private fun idFallback(taskKey: String): UUID = UUID.nameUUIDFromBytes(taskKey.toByteArray())
     }
 }
