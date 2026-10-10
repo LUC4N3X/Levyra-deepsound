@@ -227,8 +227,8 @@ internal fun OnboardingOverlay(
                     transitionSpec = {
                         val direction = if (targetState.ordinal >= initialState.ordinal) 1 else -1
                         val slide = spring<androidx.compose.ui.unit.IntOffset>(dampingRatio = 0.9f, stiffness = 380f)
-                        (slideInHorizontally(slide) { it * direction / 4 } + fadeIn(tween(260, delayMillis = 60))) togetherWith
-                            (slideOutHorizontally(slide) { -it * direction / 4 } + fadeOut(tween(140)))
+                        slideInHorizontally(slide) { it * direction / 4 } + fadeIn(tween(260, delayMillis = 60)) togetherWith
+                            slideOutHorizontally(slide) { -it * direction / 4 } + fadeOut(tween(140))
                     },
                     modifier = Modifier.weight(1f),
                     label = "setup-step"
@@ -393,8 +393,8 @@ private fun SetupHero(
             AnimatedContent(
                 targetState = step,
                 transitionSpec = {
-                    (fadeIn(tween(220, delayMillis = 80)) + scaleIn(spring(dampingRatio = 0.6f, stiffness = 420f), initialScale = 0.6f)) togetherWith
-                        (fadeOut(tween(120)) + scaleOut(targetScale = 0.6f))
+                    fadeIn(tween(220, delayMillis = 80)) + scaleIn(spring(dampingRatio = 0.6f, stiffness = 420f), initialScale = 0.6f) togetherWith
+                        fadeOut(tween(120)) + scaleOut(targetScale = 0.6f)
                 },
                 modifier = Modifier.graphicsLayer { rotationZ = -turn },
                 label = "setup-hero-glyph"
@@ -864,8 +864,51 @@ private fun SetupTasteTile(
     accent: Color,
     onClick: () -> Unit
 ) {
-    val animated = LocalAnimationsEnabled.current
     val tint = remember(taste.id) { setupTastePalette(taste.id).first }
+    val style = rememberSetupTasteStyle(selected, accent)
+    val shape = RoundedCornerShape(style.corner)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(112.dp)
+            .clip(shape)
+            .background(style.fill)
+            .drawBehind {
+                drawRect(
+                    Brush.radialGradient(
+                        colors = listOf(tint.copy(alpha = if (selected) 0.18f else 0.34f), Color.Transparent),
+                        center = Offset(size.width, 0f),
+                        radius = size.width * 0.9f
+                    )
+                )
+            }
+            .border(BorderStroke(1.5.dp, style.outline), shape)
+            .semantics(mergeDescendants = true) { this.selected = selected }
+            .levyraPressable(onClick = onClick)
+    ) {
+        SetupTasteArtwork(portraits = portraits, selected = selected, accent = accent)
+        Box(modifier = Modifier.fillMaxSize().padding(14.dp)) {
+            SetupTasteIconBadge(id = taste.id, polygon = badgePolygon, selected = selected, accent = accent)
+            SetupTasteBadge(visible = selected, accent = accent, modifier = Modifier.align(Alignment.TopEnd))
+            Text(
+                text = taste.label,
+                color = SetupInk,
+                fontSize = 16.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(16.sp),
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+            )
+        }
+    }
+}
+
+private class SetupTasteStyle(val corner: Dp, val fill: Color, val outline: Color)
+
+@Composable
+private fun rememberSetupTasteStyle(selected: Boolean, accent: Color): SetupTasteStyle {
+    val animated = LocalAnimationsEnabled.current
     val corner by animateDpAsState(
         targetValue = if (selected) 14.dp else 26.dp,
         animationSpec = if (animated) spring(dampingRatio = 0.6f, stiffness = 380f) else snap(),
@@ -881,54 +924,24 @@ private fun SetupTasteTile(
         animationSpec = if (animated) tween(200) else snap(),
         label = "setup-taste-outline"
     )
-    val shape = RoundedCornerShape(corner)
-    val badgeShape = badgePolygon.toShape()
+    return SetupTasteStyle(corner, fill, outline)
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SetupTasteIconBadge(id: String, polygon: RoundedPolygon, selected: Boolean, accent: Color) {
     Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .height(112.dp)
-            .clip(shape)
-            .background(fill)
-            .drawBehind {
-                drawRect(
-                    Brush.radialGradient(
-                        colors = listOf(tint.copy(alpha = if (selected) 0.18f else 0.34f), Color.Transparent),
-                        center = Offset(size.width, 0f),
-                        radius = size.width * 0.9f
-                    )
-                )
-            }
-            .border(BorderStroke(1.5.dp, outline), shape)
-            .semantics(mergeDescendants = true) { this.selected = selected }
-            .levyraPressable(onClick = onClick)
+            .size(34.dp)
+            .background(if (selected) accent else Color.White.copy(alpha = 0.08f), polygon.toShape()),
+        contentAlignment = Alignment.Center
     ) {
-        SetupTasteArtwork(portraits = portraits, selected = selected, accent = accent)
-        Box(modifier = Modifier.fillMaxSize().padding(14.dp)) {
-        Box(
-            modifier = Modifier
-                .size(34.dp)
-                .background(if (selected) accent else Color.White.copy(alpha = 0.08f), badgeShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                setupTasteIcon(taste.id),
-                contentDescription = null,
-                tint = if (selected) SetupOnAccent else SetupInk,
-                modifier = Modifier.size(18.dp)
-            )
-        }
-        SetupTasteBadge(visible = selected, accent = accent, modifier = Modifier.align(Alignment.TopEnd))
-        Text(
-            text = taste.label,
-            color = SetupInk,
-            fontSize = 16.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(16.sp),
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .fillMaxWidth()
+        Icon(
+            setupTasteIcon(id),
+            contentDescription = null,
+            tint = if (selected) SetupOnAccent else SetupInk,
+            modifier = Modifier.size(18.dp)
         )
-        }
     }
 }
 

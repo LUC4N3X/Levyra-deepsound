@@ -4590,6 +4590,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun completeOnboarding(name: String, tasteIds: Set<String>, languageCode: String) {
         onboardingArtworkJob?.cancel()
         onboardingArtworkJob = null
+        onboardingArtworkLanguage = null
         _onboardingArtwork.value = emptyMap()
         val normalizedLanguage = LevyraLanguageCatalog.normalize(languageCode)
         preferences.setLanguageCode(normalizedLanguage)
