@@ -28,6 +28,7 @@ import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
+import com.luc4n3x.levyra.domain.LevyraSmartOfflineSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
@@ -294,6 +295,7 @@ data class LevyraUiState(
     val showThemeStudio: Boolean = false,
     val interfaceSettings: LevyraInterfaceSettings = LevyraInterfaceSettings(),
     val downloadSettings: LevyraDownloadSettings = LevyraDownloadSettings(),
+    val smartOfflineSettings: LevyraSmartOfflineSettings = LevyraSmartOfflineSettings(),
     val backupSettings: LevyraBackupSettings = LevyraBackupSettings(),
     val automationSettings: LevyraAutomationSettings = LevyraAutomationSettings(),
     val vaultStatus: LevyraVaultStatus = LevyraVaultStatus.Idle,

@@ -29,6 +29,7 @@ import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.LevyraDownloadFolderMode
 import com.luc4n3x.levyra.domain.LevyraDownloadPreset
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
+import com.luc4n3x.levyra.domain.LevyraSmartOfflineSettings
 import com.luc4n3x.levyra.domain.LevyraAmbientMode
 import com.luc4n3x.levyra.domain.LevyraAmbientSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
@@ -96,6 +97,7 @@ data class LevyraPreferencesSnapshot(
     val audioSettings: LevyraAudioSettings,
     val interfaceSettings: LevyraInterfaceSettings,
     val downloadSettings: LevyraDownloadSettings,
+    val smartOfflineSettings: LevyraSmartOfflineSettings = LevyraSmartOfflineSettings(),
     val backupSettings: LevyraBackupSettings,
     val automationSettings: LevyraAutomationSettings = LevyraAutomationSettings(),
     val jamDisplayName: String = "",
@@ -131,6 +133,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val normalizedInterface = snapshot.interfaceSettings.normalized()
         val normalizedAmbient = snapshot.ambientSettings.normalized()
         val normalizedDownloads = snapshot.downloadSettings.normalized()
+        val normalizedSmartOffline = snapshot.smartOfflineSettings.normalized()
         val normalizedBackup = snapshot.backupSettings.normalized()
         val recentSearchesJson = JSONArray().apply { snapshot.recentSearches.forEach { put(TrackJson.toJson(it)) } }.toString()
         val personalOrbitJson = JSONArray().apply {
@@ -238,6 +241,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_DOWNLOAD_EMBED_ARTWORK] = normalizedDownloads.embedArtwork
             mutable[KEY_DOWNLOAD_VERIFY_FILE] = normalizedDownloads.verifyFile
             mutable[KEY_DOWNLOAD_SKIP_EXISTING] = normalizedDownloads.skipExisting
+            writeSmartOfflineSettings(mutable, normalizedSmartOffline)
             mutable[KEY_BACKUP_ENABLED] = normalizedBackup.enabled
             mutable[KEY_BACKUP_FREQUENCY] = normalizedBackup.frequency.name
             mutable[KEY_BACKUP_RETENTION] = normalizedBackup.retentionCount
@@ -417,6 +421,25 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_DOWNLOAD_EMBED_ARTWORK] = normalized.embedArtwork
             it[KEY_DOWNLOAD_VERIFY_FILE] = normalized.verifyFile
             it[KEY_DOWNLOAD_SKIP_EXISTING] = normalized.skipExisting
+        }
+    }
+
+    fun smartOfflineSettings(): LevyraSmartOfflineSettings = read { smartOfflineSettingsFrom(it) }
+
+    val smartOfflineSettingsFlow: kotlinx.coroutines.flow.Flow<LevyraSmartOfflineSettings> = store.preferences
+        .map(::smartOfflineSettingsFrom)
+        .distinctUntilChanged()
+
+    suspend fun setSmartOfflineSettings(value: LevyraSmartOfflineSettings): Boolean {
+        val normalized = value.normalized()
+        return try {
+            store.commit { writeSmartOfflineSettings(it, normalized) }
+            true
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.w(error, "DataStore Smart Offline write failed")
+            false
         }
     }
 
@@ -724,6 +747,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             audioSettings = audioSettingsFrom(preferences),
             interfaceSettings = interfaceSettingsFrom(preferences),
             downloadSettings = downloadSettingsFrom(preferences),
+            smartOfflineSettings = smartOfflineSettingsFrom(preferences),
             backupSettings = backupSettingsFrom(preferences),
             automationSettings = automationSettingsFrom(preferences),
             jamDisplayName = preferences[KEY_JAM_DISPLAY_NAME].orEmpty(),
@@ -819,6 +843,33 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         verifyFile = preferences[KEY_DOWNLOAD_VERIFY_FILE] ?: true,
         skipExisting = preferences[KEY_DOWNLOAD_SKIP_EXISTING] ?: true
     ).normalized()
+
+    private fun smartOfflineSettingsFrom(preferences: Preferences): LevyraSmartOfflineSettings =
+        LevyraSmartOfflineSettings(
+            enabled = preferences[KEY_SMART_OFFLINE_ENABLED] ?: false,
+            storageLimitBytes = preferences[KEY_SMART_OFFLINE_STORAGE_LIMIT]
+                ?: LevyraSmartOfflineSettings.ONE_GIB,
+            wifiOnly = preferences[KEY_SMART_OFFLINE_WIFI_ONLY] ?: true,
+            chargingOnly = preferences[KEY_SMART_OFFLINE_CHARGING_ONLY] ?: false,
+            preferFavorites = preferences[KEY_SMART_OFFLINE_PREFER_FAVORITES] ?: true,
+            excludedArtists = preferences[KEY_SMART_OFFLINE_EXCLUDED_ARTISTS].orEmpty(),
+            excludedPlaylists = preferences[KEY_SMART_OFFLINE_EXCLUDED_PLAYLISTS].orEmpty(),
+            lastRefreshAt = preferences[KEY_SMART_OFFLINE_LAST_REFRESH_AT] ?: 0L
+        ).normalized()
+
+    private fun writeSmartOfflineSettings(
+        mutable: androidx.datastore.preferences.core.MutablePreferences,
+        value: LevyraSmartOfflineSettings
+    ) {
+        mutable[KEY_SMART_OFFLINE_ENABLED] = value.enabled
+        mutable[KEY_SMART_OFFLINE_STORAGE_LIMIT] = value.storageLimitBytes
+        mutable[KEY_SMART_OFFLINE_WIFI_ONLY] = value.wifiOnly
+        mutable[KEY_SMART_OFFLINE_CHARGING_ONLY] = value.chargingOnly
+        mutable[KEY_SMART_OFFLINE_PREFER_FAVORITES] = value.preferFavorites
+        mutable[KEY_SMART_OFFLINE_EXCLUDED_ARTISTS] = value.excludedArtists
+        mutable[KEY_SMART_OFFLINE_EXCLUDED_PLAYLISTS] = value.excludedPlaylists
+        mutable[KEY_SMART_OFFLINE_LAST_REFRESH_AT] = value.lastRefreshAt
+    }
 
     private fun backupSettingsFrom(preferences: Preferences): LevyraBackupSettings = LevyraBackupSettings(
         enabled = preferences[KEY_BACKUP_ENABLED] ?: false,
@@ -1179,6 +1230,14 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_DOWNLOAD_EMBED_ARTWORK = booleanPreferencesKey("download_embed_artwork")
         val KEY_DOWNLOAD_VERIFY_FILE = booleanPreferencesKey("download_verify_file")
         val KEY_DOWNLOAD_SKIP_EXISTING = booleanPreferencesKey("download_skip_existing")
+        val KEY_SMART_OFFLINE_ENABLED = booleanPreferencesKey("smart_offline_enabled")
+        val KEY_SMART_OFFLINE_STORAGE_LIMIT = longPreferencesKey("smart_offline_storage_limit_bytes")
+        val KEY_SMART_OFFLINE_WIFI_ONLY = booleanPreferencesKey("smart_offline_wifi_only")
+        val KEY_SMART_OFFLINE_CHARGING_ONLY = booleanPreferencesKey("smart_offline_charging_only")
+        val KEY_SMART_OFFLINE_PREFER_FAVORITES = booleanPreferencesKey("smart_offline_prefer_favorites")
+        val KEY_SMART_OFFLINE_EXCLUDED_ARTISTS = stringSetPreferencesKey("smart_offline_excluded_artists")
+        val KEY_SMART_OFFLINE_EXCLUDED_PLAYLISTS = stringSetPreferencesKey("smart_offline_excluded_playlists")
+        val KEY_SMART_OFFLINE_LAST_REFRESH_AT = longPreferencesKey("smart_offline_last_refresh_at")
         val KEY_BACKUP_ENABLED = booleanPreferencesKey("automatic_backup_enabled")
         val KEY_BACKUP_FREQUENCY = stringPreferencesKey("automatic_backup_frequency")
         val KEY_BACKUP_RETENTION = intPreferencesKey("automatic_backup_retention")

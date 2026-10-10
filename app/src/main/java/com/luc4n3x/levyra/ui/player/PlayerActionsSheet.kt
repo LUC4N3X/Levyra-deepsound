@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui.player
 
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.foundation.layout.RowScope
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
@@ -39,6 +41,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
+import com.luc4n3x.levyra.ui.components.levyraGroupedGridShape
+import androidx.compose.material3.toShape
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -105,7 +111,18 @@ private val SheetShape = RoundedCornerShape(
 )
 private val SheetDismissDistance = 104.dp
 private val SheetTileHeight = 88.dp
-private val SheetArtwork = 52.dp
+private val SheetArtwork = 56.dp
+private val SheetTileGap = 3.dp
+private val SheetIconContainer = 42.dp
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private val SheetIconShapes = listOf(
+    MaterialShapes.Cookie4Sided,
+    MaterialShapes.Sunny,
+    MaterialShapes.Clover4Leaf,
+    MaterialShapes.Cookie6Sided,
+    MaterialShapes.Pill,
+    MaterialShapes.SoftBurst
+)
 
 @Composable
 internal fun PlayerActionsSheet(
@@ -372,13 +389,14 @@ private fun PlayerSheetScrollBody(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun PlayerSheetHeader(
     track: Track,
     artworkUrl: String,
     surfaces: PlayerSurfaceTokens
 ) {
-    val artworkShape = RoundedCornerShape(LevyraPlayerDesign.CornerXs)
+    val artworkShape = MaterialShapes.Cookie9Sided.toShape()
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -418,6 +436,94 @@ private fun PlayerSheetHeader(
 }
 
 @Composable
+private fun RowScope.PlayerSheetTile(
+    action: PlayerSheetAction,
+    shape: Shape,
+    iconShape: Shape,
+    surfaces: PlayerSurfaceTokens,
+    outline: Color,
+    animated: Boolean,
+    onPerform: (PlayerSheetAction) -> Unit
+) {
+    val tint by animateColorAsState(
+        targetValue = if (action.active) surfaces.activeContent else surfaces.content,
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(200)),
+        label = "player-sheet-tint"
+    )
+    PlayerSegmentButton(
+        position = LevyraSegment.Middle,
+        weight = 1f,
+        container = if (action.active) surfaces.active else surfaces.controlQuiet,
+        innerCorner = LevyraPlayerDesign.CornerMd,
+        contentDescription = listOfNotNull(action.label, action.value).joinToString(", "),
+        animated = animated,
+        enabled = action.enabled,
+        toggleState = if (action.toggle) ToggleableState(action.active) else null,
+        outline = outline,
+        shapeOverride = shape,
+        modifier = Modifier.heightIn(min = SheetTileHeight),
+        onClick = { if (!action.busy) onPerform(action) }
+    ) {
+        Column(
+            modifier = Modifier.padding(
+                horizontal = LevyraPlayerDesign.SpaceSm,
+                vertical = LevyraPlayerDesign.SpaceMd
+            ),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            PlayerSheetTileIcon(action = action, shape = iconShape, surfaces = surfaces)
+            Spacer(modifier = Modifier.height(LevyraPlayerDesign.SpaceSm))
+            Text(
+                text = action.label,
+                color = tint,
+                fontSize = 12.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(12.sp),
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            action.value?.let { value ->
+                Text(
+                    text = value,
+                    color = if (action.active) tint else surfaces.contentFaint,
+                    fontSize = 11.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(11.sp),
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlayerSheetTileIcon(action: PlayerSheetAction, shape: Shape, surfaces: PlayerSurfaceTokens) {
+    val iconTint = if (action.active) surfaces.heroContent else surfaces.content
+    Box(
+        modifier = Modifier
+            .size(SheetIconContainer)
+            .clip(shape)
+            .background(if (action.active) surfaces.hero else surfaces.tonal),
+        contentAlignment = Alignment.Center
+    ) {
+        if (action.busy) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                strokeWidth = 2.dp,
+                color = iconTint
+            )
+        } else {
+            PlayerIcon(action.icon, iconTint, Modifier.size(LevyraPlayerDesign.DockGlyph))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
 private fun PlayerSheetGrid(
     actions: List<PlayerSheetAction>,
     surfaces: PlayerSurfaceTokens,
@@ -425,76 +531,26 @@ private fun PlayerSheetGrid(
     onPerform: (PlayerSheetAction) -> Unit
 ) {
     val outline = if (surfaces.amoled) surfaces.outline else Color.Transparent
-    Column(verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)) {
-        actions.chunked(SheetColumns).forEach { rowActions ->
+    val rows = remember(actions) { actions.chunked(SheetColumns) }
+    Column(verticalArrangement = Arrangement.spacedBy(SheetTileGap)) {
+        rows.forEachIndexed { rowIndex, rowActions ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(IntrinsicSize.Min),
-                horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
+                horizontalArrangement = Arrangement.spacedBy(SheetTileGap)
             ) {
-                rowActions.forEach { action ->
+                rowActions.forEachIndexed { columnIndex, action ->
                     key(action.key) {
-                        val tint by animateColorAsState(
-                            targetValue = if (action.active) surfaces.activeContent else surfaces.content,
-                            animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(200)),
-                            label = "player-sheet-tint"
-                        )
-                        PlayerSegmentButton(
-                            position = LevyraSegment.Middle,
-                            weight = 1f,
-                            container = if (action.active) surfaces.active else surfaces.controlQuiet,
-                            innerCorner = LevyraPlayerDesign.CornerMd,
-                            contentDescription = listOfNotNull(action.label, action.value).joinToString(", "),
-                            animated = animated,
-                            enabled = action.enabled,
-                            toggleState = if (action.toggle) ToggleableState(action.active) else null,
+                        PlayerSheetTile(
+                            action = action,
+                            shape = levyraGroupedGridShape(rowIndex, columnIndex, rows.size, rowActions.size),
+                            iconShape = SheetIconShapes[(rowIndex * SheetColumns + columnIndex) % SheetIconShapes.size].toShape(),
+                            surfaces = surfaces,
                             outline = outline,
-                            modifier = Modifier.heightIn(min = SheetTileHeight),
-                            onClick = { if (!action.busy) onPerform(action) }
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(
-                                    horizontal = LevyraPlayerDesign.SpaceSm,
-                                    vertical = LevyraPlayerDesign.SpaceMd
-                                ),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                if (action.busy) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(20.dp),
-                                        strokeWidth = 2.dp,
-                                        color = tint
-                                    )
-                                } else {
-                                    PlayerIcon(action.icon, tint, Modifier.size(LevyraPlayerDesign.DockGlyph))
-                                }
-                                Spacer(modifier = Modifier.height(LevyraPlayerDesign.SpaceSm))
-                                Text(
-                                    text = action.label,
-                                    color = tint,
-                                    fontSize = 12.sp,
-                                    lineHeight = LevyraTypeRhythm.lineHeight(12.sp),
-                                    fontWeight = FontWeight.Medium,
-                                    textAlign = TextAlign.Center,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                action.value?.let { value ->
-                                    Text(
-                                        text = value,
-                                        color = if (action.active) tint else surfaces.contentFaint,
-                                        fontSize = 11.sp,
-                                        lineHeight = LevyraTypeRhythm.lineHeight(11.sp),
-                                        fontWeight = FontWeight.SemiBold,
-                                        textAlign = TextAlign.Center,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            }
-                        }
+                            animated = animated,
+                            onPerform = onPerform
+                        )
                     }
                 }
                 repeat(SheetColumns - rowActions.size) {
