@@ -4554,7 +4554,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun loadOnboardingArtwork(languageCode: String) {
         val code = LevyraLanguageCatalog.normalize(languageCode)
-        if (onboardingArtworkLanguage == code) return
+        if (onboardingArtworkLanguage == code && onboardingArtworkJob?.isActive == true) return
+        if (onboardingArtworkLanguage == code && _onboardingArtwork.value.isNotEmpty()) return
         onboardingArtworkLanguage = code
         onboardingArtworkJob?.cancel()
         _onboardingArtwork.value = emptyMap()
