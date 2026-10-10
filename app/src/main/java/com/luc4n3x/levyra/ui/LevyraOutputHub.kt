@@ -195,7 +195,7 @@ internal fun LevyraOutputHub(
 private fun OutputMetric(label: String, value: String, shape: Shape, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
-        color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.07f),
+        color = LevyraAdaptiveChip,
         shape = shape
     ) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
