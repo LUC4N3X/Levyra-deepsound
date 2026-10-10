@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -83,16 +84,7 @@ internal fun PlayerArtworkHero(
         animationSpec = LevyraPlayerDesign.motion(animationsEnabled, LevyraPlayerDesign.emphasizedTween(520)),
         label = "player-artwork-hero-glow"
     )
-    val morphing = morphActive()
-    val landing by animateFloatAsState(
-        targetValue = if (morphing) 0f else 1f,
-        animationSpec = if (animationsEnabled && !morphing) {
-            LevyraPlayerDesign.emphasizedTween(ArtworkLandingMs)
-        } else {
-            snap()
-        },
-        label = "player-artwork-hero-landing"
-    )
+    val landing by rememberArtworkLanding(morphActive(), animationsEnabled)
     val landedShadow = lerp(PlayerMorphFlightShadow, artworkShadow, landing)
     val trackChangeScale = remember { Animatable(1f) }
     var settledTrackId by remember { mutableStateOf(track.id) }
@@ -199,6 +191,18 @@ internal fun PlayerArtworkHero(
         }
     }
 }
+
+@Composable
+private fun rememberArtworkLanding(morphing: Boolean, animationsEnabled: Boolean): State<Float> =
+    animateFloatAsState(
+        targetValue = if (morphing) 0f else 1f,
+        animationSpec = if (animationsEnabled && !morphing) {
+            LevyraPlayerDesign.emphasizedTween(ArtworkLandingMs)
+        } else {
+            snap()
+        },
+        label = "player-artwork-hero-landing"
+    )
 
 @Composable
 private fun LiveRadioLogoArtwork(track: Track, artworkUrl: String) {
