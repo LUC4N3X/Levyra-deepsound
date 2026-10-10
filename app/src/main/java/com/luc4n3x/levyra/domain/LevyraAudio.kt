@@ -146,6 +146,7 @@ data class LevyraAudioSettings(
     val pitch: Float = 1f,
     val gaplessEnabled: Boolean = true,
     val preloadNextTrack: Boolean = true,
+    val advancedQueuePrefetchTracks: Int = ADVANCED_QUEUE_PREFETCH_OFF,
     val aaudioOutputEnabled: Boolean = false,
     val customPresets: List<LevyraAudioPreset> = emptyList(),
     val parametricEqualizerEnabled: Boolean = false,
@@ -231,6 +232,7 @@ data class LevyraAudioSettings(
             parametricEqualizerEnabled = parametricEnabled,
             activeParametricProfile = activeParametric,
             customParametricProfiles = parametricProfiles,
+            advancedQueuePrefetchTracks = normalizeAdvancedQueuePrefetchTracks(advancedQueuePrefetchTracks),
             playbackBuffer = playbackBuffer.normalized()
         )
     }
@@ -296,3 +298,10 @@ object LevyraAudioPresets {
 }
 
 fun queuePrefetchAllowed(settings: LevyraAudioSettings): Boolean = settings.preloadNextTrack
+
+const val ADVANCED_QUEUE_PREFETCH_OFF = 0
+
+val ADVANCED_QUEUE_PREFETCH_OPTIONS: List<Int> = listOf(ADVANCED_QUEUE_PREFETCH_OFF, 5, 10, 15)
+
+fun normalizeAdvancedQueuePrefetchTracks(value: Int): Int =
+    if (value in ADVANCED_QUEUE_PREFETCH_OPTIONS) value else ADVANCED_QUEUE_PREFETCH_OFF
