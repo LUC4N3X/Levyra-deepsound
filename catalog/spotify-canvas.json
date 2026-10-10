@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-10T07:46:34Z",
+  "generatedAt": "2026-10-10T12:37:43Z",
   "items": [
     {
       "song": "WINNER",
@@ -292,7 +292,7 @@
     {
       "song": "Man I Need",
       "artist": "Olivia Dean",
-      "album": "The Art of Loving",
+      "album": "Man I Need",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
@@ -504,13 +504,6 @@
       "artist": "Gigi Perez",
       "album": "At The Beach, In Every Life",
       "url": "https://canvaz.scdn.co/upload/artist/1iCnM8foFssWlPRLfAbIwo/video/8cc216885a234230adc817d76adb5149.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "Man I Need",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4752,7 +4745,7 @@
       "song": "Reach For The Stars",
       "artist": "Pitbull, KISS",
       "album": "PITCOIN",
-      "url": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/7df99e42b2b641ec8f6809b8501a15b0.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/b9074a6393f44b78b262e239b4949d89.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -5186,7 +5179,7 @@
       "song": "Blackjack",
       "artist": "Cizzo",
       "album": "Blackjack",
-      "url": "https://canvaz.scdn.co/upload/artist/4mDyp9yRHugUnXvIBrt9xP/video/e82f303dbfc1401eafe3b8e051279534.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/artist/4mDyp9yRHugUnXvIBrt9xP/video/04909b11c72740f6907cbbbddb8d9341.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -5295,24 +5288,38 @@
       "scope": "track"
     },
     {
-      "song": "ALET HTDOOM",
-      "artist": "Mohammed Saeed",
-      "album": "ALET HTDOOM",
-      "url": "https://canvaz.scdn.co/upload/artist/1ZpCdBZ3rL0mXxMhzhOBvi/video/a53aa8664aeb48b6ae978839a4717a3e.cnvs.mp4",
+      "song": "لاموني/ Lamooni",
+      "artist": "Daffy, Abdu B",
+      "album": "لاموني/ Lamooni",
+      "url": "https://canvaz.scdn.co/upload/artist/0ZOnIEMRVWqPDuqzJTkGbE/video/9b98a2a937064426827e2554010f6057.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Tbanli",
-      "artist": "Mocci, Moscow",
-      "album": "Tbanli",
-      "url": "https://canvaz.scdn.co/upload/artist/14u942JWc8Zz1O9M4z2WO1/video/6f713047342e43f78ab1b47cb2416318.cnvs.mp4",
+      "song": "TGS",
+      "artist": "Msh3al",
+      "album": "TGS",
+      "url": "https://canvaz.scdn.co/upload/artist/5N1HW5q5erxdf8XbjC3Szz/video/7056044d2e19467ea95a9034f17e4e84.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "ML7 W MRAR",
-      "artist": "Slime Mohamed, Ma-Beyn",
-      "album": "T5YAL TMOOT FEL SEF",
-      "url": "https://canvaz.scdn.co/upload/artist/6XRakFzRFAkKvKlvgG1s7Z/video/09ddb8afa2e1478497d12c472e3f4620.cnvs.mp4",
+      "song": "XO",
+      "artist": "HVMZA, Juany Bravo",
+      "album": "XO",
+      "url": "https://canvaz.scdn.co/upload/artist/7FWTTxJZ35ZNqhFCLOE3zm/video/fa28a2eedccf4d1ca18dedf73ccd0747.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "El MUNDO",
+      "artist": "Shahad",
+      "album": "El MUNDO",
+      "url": "https://canvaz.scdn.co/upload/artist/3H0hugcqmaijVg33E404Dz/video/82d4ab878bbe41a5b58a244a093ec424.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "close to you",
+      "artist": "grentperez, UMI",
+      "album": "close to you",
+      "url": "https://canvaz.scdn.co/upload/artist/73BLwSX6gsNeVzS7DgI4xe/video/a338bea935eb4ac0b4e4787d1bcc4a53.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -5481,6 +5488,13 @@
       "artist": "Twopee Southside, Jaii TaitosmitH, 4Moze Taitosmith",
       "album": "ฝันไร้ราคา",
       "url": "https://canvaz.scdn.co/upload/artist/4ElNwSJyLhUjurznOPLmRn/video/22e725f45fbe4dddb447f42a7a1520e8.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Waiting For You",
+      "artist": "Le John, ApMontyy",
+      "album": "Waiting For You",
+      "url": "https://canvaz.scdn.co/upload/artist/2SKZZzdGrOcdb8q3IguugV/video/d0d1abf1312541c3b14eff751b6ab51a.cnvs.mp4",
       "scope": "track"
     },
     {
