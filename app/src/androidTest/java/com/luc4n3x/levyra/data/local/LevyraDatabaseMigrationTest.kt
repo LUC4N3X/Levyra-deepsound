@@ -371,6 +371,37 @@ class LevyraDatabaseMigrationTest {
         migrated.close()
     }
 
+    @Test
+    fun migrate24To25ProtectsExistingDownloadsAsManual() {
+        helper.createDatabase(TEST_DB, 24).use { db ->
+            db.execSQL(
+                "INSERT INTO downloaded_tracks (trackId, title, artist, album, durationMs, fileName, uri, " +
+                    "mimeType, embeddedMetadata, downloadPreset, downloadQuality, savedAt) VALUES " +
+                    "('legacy-track', 'Kept download', 'Artist', 'Album', 180000, 'kept.m4a', " +
+                    "'content://downloads/kept', 'audio/mp4', 1, 'BALANCED', 'HIGH', 100)"
+            )
+            db.execSQL(
+                "INSERT INTO offline_download_tasks (taskKey, trackId, payload, title, artist, state, progress, " +
+                    "workId, error, createdAt, updatedAt, batchKey, batchTitle, batchKind, batchArtworkUrl, " +
+                    "batchPosition) VALUES ('legacy-task', 'legacy-track', '{}', 'Kept download', 'Artist', " +
+                    "'FAILED', 20, '', '', 100, 200, '', '', '', '', -1)"
+            )
+        }
+
+        val migrated = helper.runMigrationsAndValidate(TEST_DB, 25, true, *LevyraDatabase.MIGRATIONS)
+
+        migrated.query("SELECT title, ownership FROM downloaded_tracks WHERE trackId = 'legacy-track'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("Kept download", cursor.getString(0))
+            assertEquals("MANUAL", cursor.getString(1))
+        }
+        migrated.query("SELECT ownership FROM offline_download_tasks WHERE taskKey = 'legacy-task'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("MANUAL", cursor.getString(0))
+        }
+        migrated.close()
+    }
+
     private companion object {
         const val TEST_DB = "levyra-migration-test.db"
     }

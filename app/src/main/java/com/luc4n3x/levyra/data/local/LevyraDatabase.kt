@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-const val LEVYRA_DATABASE_VERSION = 24
+const val LEVYRA_DATABASE_VERSION = 25
 
 @Database(
     entities = [
@@ -759,6 +759,14 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_24_25 = object : Migration(24, 25) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE downloaded_tracks ADD COLUMN ownership TEXT NOT NULL DEFAULT 'MANUAL'")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_downloaded_tracks_ownership ON downloaded_tracks(ownership)")
+                db.execSQL("ALTER TABLE offline_download_tasks ADD COLUMN ownership TEXT NOT NULL DEFAULT 'MANUAL'")
+            }
+        }
+
         internal val MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -782,7 +790,8 @@ abstract class LevyraDatabase : RoomDatabase() {
             MIGRATION_20_21,
             MIGRATION_21_22,
             MIGRATION_22_23,
-            MIGRATION_23_24
+            MIGRATION_23_24,
+            MIGRATION_24_25
         )
 
         fun get(context: Context): LevyraDatabase {

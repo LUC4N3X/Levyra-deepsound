@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data
 
 import com.luc4n3x.levyra.data.local.DownloadEntity
+import com.luc4n3x.levyra.domain.DownloadOwnership
 import org.json.JSONArray
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -26,12 +27,23 @@ class BackupDownloadedTracksTest {
             embeddedMetadata = true,
             downloadPreset = "high",
             downloadQuality = "256k",
-            savedAt = 123_456L
+            savedAt = 123_456L,
+            ownership = DownloadOwnership.SMART_OFFLINE.name
         )
 
         val restored = parseDownloads(JSONArray().put(downloadToJson(download)))
 
         assertEquals(listOf(download), restored)
+    }
+
+    @Test
+    fun legacyBackupWithoutOwnershipRestoresAsProtectedManualDownload() {
+        val legacy = downloadToJson(download("track-1", "content://downloads/1", "Track.m4a"))
+        legacy.remove("ownership")
+
+        val restored = parseDownloads(JSONArray().put(legacy)).single()
+
+        assertEquals(DownloadOwnership.MANUAL.name, restored.ownership)
     }
 
     @Test
@@ -69,6 +81,26 @@ class BackupDownloadedTracksTest {
         assertEquals(backup.downloadPreset, restored.downloadPreset)
         assertEquals(backup.downloadQuality, restored.downloadQuality)
         assertTrue(restored.embeddedMetadata)
+    }
+
+    @Test
+    fun reconciliationKeepsSmartOwnershipOnlyForTheSameFile() {
+        val smartBackup = download(
+            trackId = "track-1",
+            uri = "content://media/external/audio/media/7",
+            fileName = "Artist - Track.m4a"
+        ).copy(ownership = DownloadOwnership.SMART_OFFLINE.name)
+        val sameFile = smartBackup.copy(trackId = "")
+        val metadataMatch = smartBackup.copy(trackId = "", uri = "content://media/external/audio/media/42", ownership = DownloadOwnership.MANUAL.name)
+
+        val exact = reconcileDownloadedTracks(listOf(smartBackup), listOf(sameFile)) { true }.single()
+        val remapped = reconcileDownloadedTracks(listOf(smartBackup), listOf(metadataMatch)) {
+            it == metadataMatch.uri
+        }.single()
+
+        assertEquals(DownloadOwnership.SMART_OFFLINE.name, exact.ownership)
+        assertEquals(metadataMatch.uri, remapped.uri)
+        assertEquals(DownloadOwnership.MANUAL.name, remapped.ownership)
     }
 
     @Test

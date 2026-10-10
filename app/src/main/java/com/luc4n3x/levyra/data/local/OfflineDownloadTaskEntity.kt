@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data.local
 
 import androidx.room.Dao
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.Insert
@@ -8,6 +9,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
+import com.luc4n3x.levyra.domain.DownloadOwnership
 
 @Entity(
     tableName = "offline_download_tasks",
@@ -29,7 +31,8 @@ data class OfflineDownloadTaskEntity(
     val batchTitle: String = "",
     val batchKind: String = "",
     val batchArtworkUrl: String = "",
-    val batchPosition: Int = 0
+    val batchPosition: Int = 0,
+    @ColumnInfo(defaultValue = "'MANUAL'") val ownership: String = DownloadOwnership.MANUAL.name
 )
 
 data class OfflineDownloadTaskSummaryRow(
@@ -77,6 +80,9 @@ interface OfflineDownloadTasksDao {
 
     @Query("SELECT * FROM offline_download_tasks WHERE taskKey = :taskKey LIMIT 1")
     suspend fun byKey(taskKey: String): OfflineDownloadTaskEntity?
+
+    @Query("SELECT * FROM offline_download_tasks WHERE state IN ('QUEUED','RUNNING','PAUSED','RETRYING')")
+    suspend fun active(): List<OfflineDownloadTaskEntity>
 
     @Query("UPDATE offline_download_tasks SET state = :state, progress = :progress, error = :error, updatedAt = :updatedAt WHERE taskKey = :taskKey")
     suspend fun updateState(taskKey: String, state: String, progress: Int, error: String, updatedAt: Long)

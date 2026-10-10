@@ -1,6 +1,11 @@
 package com.luc4n3x.levyra.ui.i18n
 
 import androidx.compose.runtime.compositionLocalOf
+import android.icu.text.PluralRules
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LyricsProviderId
 import java.text.NumberFormat
@@ -14,6 +19,62 @@ class LevyraStrings private constructor(
     private fun directionalValue(value: String): String {
         val clean = value.trim()
         return if (LevyraLanguageCatalog.isRtl(code) && clean.isNotBlank()) "\u2068$clean\u2069" else clean
+    }
+
+    val smartOffline: LevyraSmartOfflineCopy
+        get() = LevyraSmartOfflineCopy(
+            title = value("smartOfflineTitle"),
+            subtitle = value("smartOfflineSubtitle"),
+            enabled = value("smartOfflineEnabled"),
+            enabledSubtitle = value("smartOfflineEnabledSubtitle"),
+            storageLimit = value("smartOfflineStorageLimit"),
+            storageLimitSubtitle = value("smartOfflineStorageLimitSubtitle"),
+            custom = value("smartOfflineCustom"),
+            customStorage = value("smartOfflineCustomStorage"),
+            customStorageSubtitle = value("smartOfflineCustomStorageSubtitle"),
+            megabytes = value("smartOfflineMegabytes"),
+            wifiOnly = value("smartOfflineWifiOnly"),
+            wifiOnlySubtitle = value("smartOfflineWifiOnlySubtitle"),
+            chargingOnly = value("smartOfflineChargingOnly"),
+            chargingOnlySubtitle = value("smartOfflineChargingOnlySubtitle"),
+            preferFavorites = value("smartOfflinePreferFavorites"),
+            preferFavoritesSubtitle = value("smartOfflinePreferFavoritesSubtitle"),
+            excludedArtists = value("smartOfflineExcludedArtists"),
+            excludedArtistsSubtitle = value("smartOfflineExcludedArtistsSubtitle"),
+            excludedPlaylists = value("smartOfflineExcludedPlaylists"),
+            excludedPlaylistsSubtitle = value("smartOfflineExcludedPlaylistsSubtitle"),
+            commaSeparatedHint = value("smartOfflineCommaSeparatedHint"),
+            save = value("smartOfflineSave"),
+            refresh = value("smartOfflineRefresh"),
+            refreshSubtitle = value("smartOfflineRefreshSubtitle"),
+            updatedToday = value("smartOfflineUpdatedToday"),
+            neverUpdated = value("smartOfflineNeverUpdated"),
+            protectedManual = value("smartOfflineProtectedManual")
+        )
+
+    fun formatSmartOfflineSongCount(count: Int): String {
+        val safeCount = count.coerceAtLeast(0)
+        val locale = Locale.forLanguageTag(code)
+        val category = PluralRules.forLocale(locale).select(safeCount.toDouble())
+        val nounKey = "smartOfflineSong" + category.replaceFirstChar { it.uppercaseChar() }
+        val formattedCount = NumberFormat.getIntegerInstance(locale).format(safeCount)
+        val safeNumber = if (LevyraLanguageCatalog.isRtl(code)) "\u2068$formattedCount\u2069" else formattedCount
+        return value("smartOfflineSongCountPattern")
+            .replace("{count}", safeNumber)
+            .replace("{songs}", value(nounKey))
+    }
+
+    fun formatSmartOfflineUpdatedAt(timestamp: Long, now: Long = System.currentTimeMillis()): String {
+        if (timestamp <= 0L) return smartOffline.neverUpdated
+        val zone = ZoneId.systemDefault()
+        val updatedDay = Instant.ofEpochMilli(timestamp).atZone(zone).toLocalDate()
+        val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+        if (updatedDay == today) return smartOffline.updatedToday
+        val date = updatedDay.format(
+            DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(Locale.forLanguageTag(code))
+        )
+        val safeDate = if (LevyraLanguageCatalog.isRtl(code)) "\u2068$date\u2069" else date
+        return value("smartOfflineUpdatedDatePattern").replace("{date}", safeDate)
     }
 
     val librarySortBy: String get() = value("librarySortBy")
@@ -2079,8 +2140,9 @@ class LevyraStrings private constructor(
         }
 
         private fun bundle(code: String, entries: Map<String, String>): LevyraStrings {
-            val resolvedEntries = entries + profileLocalizationEntries(code) + freshCurrentsLocalizationEntries(code) + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + lyricsShareLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + audioOutputLocalizationEntries(code) + alternativeAudioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + jamModerationLocalizationEntries(code) + ambientModeLocalizationEntries(code) + themeStudioLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + downloadLocationLocalizationEntries(code) + similarSongsLocalizationEntries(code) + playerVisualLocalizationEntries(code) + playerDeckLocalizationEntries(code) + playerGestureLocalizationEntries(code) + playlistStudioLocalizationEntries(code) + queueSelectionLocalizationEntries(code) + librarySortLocalizationEntries(code) + offlineHomeLocalizationEntries(code) + recapLocalizationEntries(code) + listeningInsightsLocalizationEntries(code) + queueSpaceLocalizationEntries(code) + localLibraryLocalizationEntries(code) + localTagLocalizationEntries(code) + playbackTileLocalizationEntries(code) + visualPerformanceLocalizationEntries(code) + liquidGlassLocalizationEntries(code) + videoQualityLocalizationEntries(code) + lyricsProviderPriorityLocalizationEntries(code) + mixLabLocalizationEntries(code) + chartMarketLocalizationEntries(code) + homeSoundtrackLocalizationEntries(code) + settingsSearchLocalizationEntries(code) + liveUpdateLocalizationEntries(code)
-            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + profileKeys + motionArtworkKeys + exploreSectionKeys + freshCurrentsKeys + canvasKeys + audioKeys + audioOutputKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + jamModerationKeys + ambientModeKeys + themeStudioKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playerGestureKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys + localTagKeys + lyricsOffsetKeys + playbackTileKeys + visualPerformanceKeys + liquidGlassKeys + videoQualityKeys + lyricsProviderPriorityKeys + mixLabKeys + chartMarketKeys + homeSoundtrackKeys + lyricsShareKeys + settingsSearchKeys + liveUpdateKeys
+            val localizedEntries = entries + profileLocalizationEntries(code) + freshCurrentsLocalizationEntries(code) + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + lyricsShareLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + audioOutputLocalizationEntries(code) + alternativeAudioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + jamModerationLocalizationEntries(code) + ambientModeLocalizationEntries(code) + themeStudioLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + downloadLocationLocalizationEntries(code) + similarSongsLocalizationEntries(code) + playerVisualLocalizationEntries(code) + playerDeckLocalizationEntries(code) + playerGestureLocalizationEntries(code) + playlistStudioLocalizationEntries(code) + queueSelectionLocalizationEntries(code) + librarySortLocalizationEntries(code) + offlineHomeLocalizationEntries(code) + recapLocalizationEntries(code) + listeningInsightsLocalizationEntries(code) + queueSpaceLocalizationEntries(code) + localLibraryLocalizationEntries(code) + localTagLocalizationEntries(code) + playbackTileLocalizationEntries(code) + visualPerformanceLocalizationEntries(code) + liquidGlassLocalizationEntries(code) + videoQualityLocalizationEntries(code) + lyricsProviderPriorityLocalizationEntries(code) + mixLabLocalizationEntries(code) + chartMarketLocalizationEntries(code) + homeSoundtrackLocalizationEntries(code) + settingsSearchLocalizationEntries(code) + liveUpdateLocalizationEntries(code)
+            val resolvedEntries = localizedEntries + smartOfflineLocalizationEntries(code, localizedEntries)
+            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + profileKeys + motionArtworkKeys + exploreSectionKeys + freshCurrentsKeys + canvasKeys + audioKeys + audioOutputKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + jamModerationKeys + ambientModeKeys + themeStudioKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playerGestureKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys + localTagKeys + lyricsOffsetKeys + playbackTileKeys + visualPerformanceKeys + liquidGlassKeys + videoQualityKeys + lyricsProviderPriorityKeys + mixLabKeys + chartMarketKeys + homeSoundtrackKeys + lyricsShareKeys + settingsSearchKeys + liveUpdateKeys + smartOfflineLocalizationKeys
             require(resolvedEntries.keys == allRequiredKeys) {
                 "Invalid localization bundle $code: missing=${allRequiredKeys - resolvedEntries.keys}, extra=${resolvedEntries.keys - allRequiredKeys}"
             }
