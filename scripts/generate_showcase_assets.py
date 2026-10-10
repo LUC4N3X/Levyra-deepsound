@@ -463,20 +463,23 @@ def generate_explore_mix_card(card_w, card_h):
     )
 
     with Image.open(s1_path) as src1:
-        p1 = create_clean_phone(src1, target_height=1090)
+        p1 = create_clean_phone(src1, target_height=1060)
     with Image.open(s2_path) as src2:
-        p2 = create_clean_phone(src2, target_height=1140)
+        p2 = create_clean_phone(src2, target_height=1100)
 
-    p1_rot = p1.rotate(-3.5, resample=Image.Resampling.BICUBIC, expand=True)
-    p2_rot = p2.rotate(2.5, resample=Image.Resampling.BICUBIC, expand=True)
+    rot_angle = -7.0
+    p1_rot = p1.rotate(rot_angle, resample=Image.Resampling.BICUBIC, expand=True)
+    p2_rot = p2.rotate(rot_angle, resample=Image.Resampling.BICUBIC, expand=True)
 
-    glow1, gpad1 = create_colored_glow(p1_rot, (0, 190, 220), blur=55, opacity=85, offset_y=16)
-    bg.paste(glow1, (30 - gpad1, 325 - gpad1), glow1)
-    paste_phone_with_studio_depth(bg, p1_rot, 30, 325)
+    p1_x, p1_y = 25, 290
+    glow1, gpad1 = create_colored_glow(p1_rot, (0, 205, 230), blur=55, opacity=80, offset_y=16)
+    bg.paste(glow1, (p1_x - gpad1, p1_y - gpad1), glow1)
+    paste_phone_with_studio_depth(bg, p1_rot, p1_x, p1_y)
 
-    glow2, gpad2 = create_colored_glow(p2_rot, (20, 130, 245), blur=50, opacity=80, offset_y=22)
-    bg.paste(glow2, (308 - gpad2, 420 - gpad2), glow2)
-    paste_phone_with_studio_depth(bg, p2_rot, 308, 420)
+    p2_x, p2_y = 310, 430
+    glow2, gpad2 = create_colored_glow(p2_rot, (25, 125, 245), blur=60, opacity=85, offset_y=20)
+    bg.paste(glow2, (p2_x - gpad2, p2_y - gpad2), glow2)
+    paste_phone_with_studio_depth(bg, p2_rot, p2_x, p2_y)
 
     border_col = tuple(max(0, int(accent_tone[i] - 18)) for i in range(3))
     ImageDraw.Draw(bg).rectangle((0, 0, card_w - 1, card_h - 1), outline=(*border_col, 90), width=2)
