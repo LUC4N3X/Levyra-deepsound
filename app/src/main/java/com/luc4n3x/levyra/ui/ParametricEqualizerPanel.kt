@@ -116,35 +116,22 @@ internal fun EqualizerModeSelector(
     copy: ParametricEqCopy,
     onSelect: (EqualizerEditorMode) -> Unit
 ) {
+    val modes = listOf(
+        EqualizerEditorMode.GRAPHIC to copy.graphicEq,
+        EqualizerEditorMode.PARAMETRIC to copy.parametricEq
+    )
     Row(
         modifier = Modifier.fillMaxWidth().selectableGroup(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(3.dp)
     ) {
-        listOf(
-            EqualizerEditorMode.GRAPHIC to copy.graphicEq,
-            EqualizerEditorMode.PARAMETRIC to copy.parametricEq
-        ).forEach { (mode, label) ->
-            val active = selected == mode
-            Surface(
-                color = if (active) LevyraCyan.copy(alpha = 0.16f) else LevyraAdaptiveChip,
-                shape = RoundedCornerShape(14.dp),
-                border = BorderStroke(1.dp, if (active) LevyraCyan.copy(alpha = 0.6f) else LevyraAdaptiveHairline),
-                modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = 48.dp)
-                    .selectable(selected = active, role = Role.RadioButton, onClick = { onSelect(mode) })
-            ) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 10.dp, vertical = 12.dp)) {
-                    Text(
-                        text = label,
-                        color = if (active) LevyraCyan else LevyraText,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
+        modes.forEachIndexed { index, (mode, label) ->
+            AudioSegment(
+                label = label,
+                selected = selected == mode,
+                first = index == 0,
+                last = index == modes.lastIndex,
+                onClick = { onSelect(mode) }
+            )
         }
     }
 }
@@ -191,7 +178,7 @@ internal fun ParametricEqualizerCard(
     }
 
     Surface(
-        color = LevyraAdaptiveCard,
+        color = AudioCardSurface,
         shape = RoundedCornerShape(20.dp),
         border = BorderStroke(1.dp, LevyraAdaptiveHairline),
         modifier = Modifier.fillMaxWidth()

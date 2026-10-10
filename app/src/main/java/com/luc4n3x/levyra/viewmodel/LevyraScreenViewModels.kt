@@ -345,6 +345,7 @@ class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::ex
 }
 
 class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::libraryProjection) {
+    fun refreshSmartOffline() = root.refreshSmartOffline()
     fun openYourSound() = root.openYourSound()
     fun openMixLab(initialParams: com.luc4n3x.levyra.domain.MixLabParams = com.luc4n3x.levyra.domain.MixLabParams()) = root.openMixLab(initialParams)
     fun openListeningRecap() = root.openListeningRecap()
@@ -1288,6 +1289,7 @@ internal data class LibraryProjection(
     val downloadBatches: List<BatchDownload>,
     val downloadStorageBytes: Long,
     val downloads: List<DownloadedTrack>,
+    val smartOfflineSettings: com.luc4n3x.levyra.domain.LevyraSmartOfflineSettings,
     val favoriteIds: Set<String>,
     val favorites: List<Track>,
     val followedArtists: List<FollowedArtist>,
@@ -1313,6 +1315,7 @@ internal fun libraryProjection(state: LevyraUiState): LibraryProjection = Librar
     downloadBatches = state.downloadBatches,
     downloadStorageBytes = state.downloadStorageBytes,
     downloads = state.downloads,
+    smartOfflineSettings = state.smartOfflineSettings,
     favoriteIds = state.favoriteIds,
     favorites = state.favorites,
     followedArtists = state.followedArtists,

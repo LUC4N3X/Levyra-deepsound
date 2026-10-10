@@ -4,6 +4,7 @@ import com.luc4n3x.levyra.feature.settings.SettingsSearchEntry
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.automationCopy
 import com.luc4n3x.levyra.ui.i18n.parametricEqCopy
+import com.luc4n3x.levyra.ui.i18n.smartOfflineCopy
 import com.luc4n3x.levyra.ui.preloadNextTrack
 import com.luc4n3x.levyra.ui.preloadNextTrackSubtitle
 import java.util.Locale
@@ -145,6 +146,10 @@ private fun MutableList<SettingsSearchEntry>.audioEntries(
 }
 
 private fun MutableList<SettingsSearchEntry>.libraryEntries(strings: LevyraStrings, categories: SettingsSearchCategories) {
+    val smartOffline = strings.smartOfflineCopy()
+    entry("downloads.smart_offline", smartOffline.title, smartOffline.subtitle, "automatic offline history favorites", categories.downloads)
+    entry("downloads.smart_offline_storage", smartOffline.storageLimit, smartOffline.storageLimitSubtitle, "limit 500 mb 1 gb 2 gb 5 gb", categories.downloads)
+    entry("downloads.smart_offline_constraints", smartOffline.wifiOnly, smartOffline.chargingOnlySubtitle, "wifi charging battery", categories.downloads)
     entry("downloads.quality", strings.downloadQualityPreset, strings.downloadQualityPresetSubtitle, "quality bitrate format", categories.downloads)
     entry("downloads.location", strings.downloadLocation, strings.downloadLocationSubtitle, "folder storage sd card", categories.downloads)
     entry("downloads.folder_organization", strings.downloadFolderOrganization, strings.downloadFolderOrganizationSubtitle, "folder organize", categories.downloads)
