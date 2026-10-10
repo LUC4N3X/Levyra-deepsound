@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.ui.player
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,6 +28,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.LevyraCanvasQuality
 import com.luc4n3x.levyra.domain.PlayerVisualMode
@@ -47,6 +49,7 @@ private const val ArtworkGlowPlaying = 0.42f
 private const val ArtworkGlowPaused = 0.18f
 private const val ArtworkGlowReach = 0.86f
 private const val ArtworkGlowDrop = 0.10f
+private const val ArtworkLandingMs = 260
 
 @Composable
 internal fun PlayerArtworkHero(
@@ -61,7 +64,7 @@ internal fun PlayerArtworkHero(
     cornerRadius: Dp,
     canvasQuality: LevyraCanvasQuality,
     morphAnchors: PlayerMorphAnchors,
-    morphActive: Boolean,
+    morphActive: () -> Boolean,
     swipeOffset: () -> Float,
     artScale: Float,
     artOffset: Dp,
@@ -80,6 +83,17 @@ internal fun PlayerArtworkHero(
         animationSpec = LevyraPlayerDesign.motion(animationsEnabled, LevyraPlayerDesign.emphasizedTween(520)),
         label = "player-artwork-hero-glow"
     )
+    val morphing = morphActive()
+    val landing by animateFloatAsState(
+        targetValue = if (morphing) 0f else 1f,
+        animationSpec = if (animationsEnabled && !morphing) {
+            LevyraPlayerDesign.emphasizedTween(ArtworkLandingMs)
+        } else {
+            snap()
+        },
+        label = "player-artwork-hero-landing"
+    )
+    val landedShadow = lerp(PlayerMorphFlightShadow, artworkShadow, landing)
     val trackChangeScale = remember { Animatable(1f) }
     var settledTrackId by remember { mutableStateOf(track.id) }
     LaunchedEffect(track.id, animationsEnabled) {
@@ -107,7 +121,7 @@ internal fun PlayerArtworkHero(
                 scaleY = scale
                 translationX = swipeOffset()
                 translationY = artOffset.toPx()
-                alpha = if (morphActive || isImmersive) 0f else 1f
+                alpha = if (morphActive() || isImmersive) 0f else 1f
             }
             .drawBehind {
                 if (glowColor.alpha <= 0f) return@drawBehind
@@ -115,8 +129,8 @@ internal fun PlayerArtworkHero(
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            glowColor.copy(alpha = glowAlpha),
-                            glowColor.copy(alpha = glowAlpha * 0.32f),
+                            glowColor.copy(alpha = glowAlpha * landing),
+                            glowColor.copy(alpha = glowAlpha * landing * 0.32f),
                             Color.Transparent
                         ),
                         center = center.copy(y = center.y + size.height * ArtworkGlowDrop),
@@ -132,7 +146,7 @@ internal fun PlayerArtworkHero(
             modifier = Modifier
                 .fillMaxSize()
                 .shadow(
-                    elevation = artworkShadow,
+                    elevation = landedShadow,
                     shape = artworkShape,
                     clip = false,
                     ambientColor = glowColor.copy(alpha = 0.42f),

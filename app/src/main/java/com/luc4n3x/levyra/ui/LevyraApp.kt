@@ -2428,7 +2428,7 @@ fun LevyraApp(
                         viewModel = playerViewModel,
                         state = playerScreenState,
                         morphAnchors = morphAnchors,
-                        morphActive = artworkMorphActive,
+                        morphActive = { artworkMorphActive },
                         collapseActions = PlayerCollapseActions(
                             collapse = collapsePlayer,
                             dragStart = onExpansionDragStart,
@@ -2456,10 +2456,11 @@ fun LevyraApp(
             }
 
             val morphTrack = state.currentTrack
-            if (artworkMorphActive && morphTrack != null) {
+            if (morphAllowed && morphTrack != null) {
                 PlayerArtworkMorphLayer(
                     track = morphTrack,
                     anchors = morphAnchors,
+                    active = { artworkMorphActive },
                     expansion = expansionProvider
                 )
             }
@@ -16752,7 +16753,7 @@ private fun PlayerScreen(
     viewModel: PlayerViewModel,
     state: LevyraUiState,
     morphAnchors: PlayerMorphAnchors,
-    morphActive: Boolean,
+    morphActive: () -> Boolean,
     collapseActions: PlayerCollapseActions,
     motionSuspended: Boolean
 ) {
@@ -23225,6 +23226,7 @@ private fun downloadStateTransform(
 private fun PlayerArtworkMorphLayer(
     track: Track,
     anchors: PlayerMorphAnchors,
+    active: () -> Boolean,
     expansion: () -> Float
 ) {
     val density = LocalDensity.current
@@ -23235,8 +23237,12 @@ private fun PlayerArtworkMorphLayer(
     val artworkUrl = remember(track) { preferredPlayerArtworkUrl(track) }
     Box(
         modifier = Modifier
-            .layout { measurable, _ ->
-                val rect = anchors.resolve(playerMorphFraction(expansion()))
+            .layout { measurable, constraints ->
+                val rect = if (active()) {
+                    anchors.resolve(playerMorphFraction(expansion()))
+                } else {
+                    anchors.idleBounds(constraints.maxWidth.toFloat())
+                }
                 if (rect == null) {
                     val placeable = measurable.measure(Constraints.fixed(0, 0))
                     layout(0, 0) { placeable.place(0, 0) }
@@ -23250,6 +23256,11 @@ private fun PlayerArtworkMorphLayer(
                 }
             }
             .graphicsLayer {
+                if (!active()) {
+                    alpha = 0f
+                    shadowElevation = 0f
+                    return@graphicsLayer
+                }
                 val fraction = playerMorphFraction(expansion())
                 val flightAlpha = anchors.flightAlpha()
                 val endCornerPx = if (anchors.targetsStage) 0f else cardCornerPx
@@ -23337,7 +23348,6 @@ private fun settleMiniPlayerVerticalDrag(
     if (!event.peeked && result == PlayerVerticalResult.Collapse) playbackActions.close()
 }
 
-private val PlayerMorphFlightShadow = 18.dp
 private const val MiniPlayerCarryFraction = 0.5f
 private val MiniPlayerCardBase = PlayerDarkSurface
 private val MiniPlayerToggleRing = 54.dp

@@ -14,12 +14,15 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.unit.dp
 import kotlin.math.PI
 import kotlin.math.sin
 
 private const val StageRevealStart = 0.70f
 private const val StageRevealEnd = 0.86f
 private const val StageHandOffEnd = 0.98f
+
+internal val PlayerMorphFlightShadow = 18.dp
 
 enum class PlayerMorphSlot {
     Mini,
@@ -78,6 +81,9 @@ class PlayerMorphAnchors(private val expansion: () -> Float = { PlayerExpansionE
     /** Alpha of the flying cover itself; it only dissolves when it lands on the full-bleed stage. */
     fun flightAlpha(): Float =
         if (targetsStage) 1f - playerMotionProgress(normalizeFraction(expansion(), StageRevealEnd, StageHandOffEnd)) else 1f
+
+    fun idleBounds(fallbackSidePx: Float): Rect? =
+        targetBounds ?: fallbackSidePx.takeIf { it.isFinite() && it > 0f }?.let { Rect(0f, 0f, it, it) }
 
     /**
      * Resolves a reversible flight path between the mini artwork and the player's resting artwork.

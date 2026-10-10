@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.player
 
+import androidx.compose.ui.geometry.Rect
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -132,5 +133,22 @@ class PlayerExpansionTest {
         assertEquals(1f, playerBackgroundScale(0f), 0.0001f)
         assertEquals(0.972f, playerBackgroundScale(1f), 0.0001f)
         assertTrue(playerBackgroundScale(0.5f) > 0.98f)
+    }
+
+    @Test
+    fun `the idle flight cover stays decoded at the landing size`() {
+        val anchors = PlayerMorphAnchors()
+        assertEquals(Rect(0f, 0f, 1080f, 1080f), anchors.idleBounds(1080f))
+        assertEquals(null, anchors.idleBounds(0f))
+        assertEquals(null, anchors.idleBounds(Float.NaN))
+
+        val full = Rect(60f, 300f, 1020f, 1260f)
+        anchors.update(PlayerMorphSlot.Full, full)
+        assertEquals(full, anchors.idleBounds(1080f))
+
+        val stage = Rect(0f, 0f, 1080f, 1350f)
+        anchors.update(PlayerMorphSlot.Stage, stage)
+        anchors.updateStageActive(true)
+        assertEquals(stage, anchors.idleBounds(1080f))
     }
 }
