@@ -89,31 +89,43 @@ class PlayerExpansionTest {
     }
 
     @Test
-    fun `the full player reveals progressively instead of finishing early`() {
+    fun `the full player becomes opaque early so the growing container reads as one surface`() {
         assertEquals(0f, playerSurfaceAlpha(0f), 0.0001f)
-        assertEquals(0f, playerSurfaceAlpha(0.08f), 0.0001f)
-        assertTrue(playerSurfaceAlpha(0.32f) in 0.36f..0.43f)
-        assertTrue(playerSurfaceAlpha(0.44f) in 0.67f..0.75f)
-        assertEquals(1f, playerSurfaceAlpha(0.64f), 0.0001f)
+        assertEquals(0.5f, playerSurfaceAlpha(0.1f), 0.0001f)
+        assertEquals(1f, playerSurfaceAlpha(0.2f), 0.0001f)
         assertEquals(1f, playerSurfaceAlpha(1f), 0.0001f)
     }
 
     @Test
-    fun `the full player rises and scales into its final surface`() {
-        assertEquals(0.94f, playerSurfaceScale(0f), 0.0001f)
-        assertEquals(0.97f, playerSurfaceScale(0.5f), 0.0001f)
-        assertEquals(1f, playerSurfaceScale(1f), 0.0001f)
-        assertEquals(0.055f, playerSurfaceLiftFraction(0f), 0.0001f)
-        assertTrue(playerSurfaceLiftFraction(0.5f) in 0.013f..0.014f)
-        assertEquals(0f, playerSurfaceLiftFraction(1f), 0.0001f)
+    fun `the player container grows out of the mini player card`() {
+        val card = Rect(24f, 2400f, 1056f, 2560f)
+        assertEquals(card, playerContainerBounds(0f, card, 1080f, 2400f + 600f))
+        assertEquals(Rect(0f, 0f, 1080f, 3000f), playerContainerBounds(1f, card, 1080f, 3000f))
+        assertEquals(Rect(12f, 1200f, 1068f, 2780f), playerContainerBounds(0.5f, card, 1080f, 3000f))
+        assertEquals(Rect(0f, 0f, 1080f, 3000f), playerContainerBounds(2f, card, 1080f, 3000f))
+        assertEquals(Rect(0f, 2640f, 1080f, 3000f), playerContainerBounds(0f, null, 1080f, 3000f))
     }
 
     @Test
-    fun `the player surface sheds its tray corners as it opens`() {
-        assertEquals(1f, playerSurfaceCornerFraction(0f), 0.0001f)
-        assertEquals(0.5f, playerSurfaceCornerFraction(0.5f), 0.0001f)
-        assertEquals(0f, playerSurfaceCornerFraction(1f), 0.0001f)
-        assertEquals(1f, playerSurfaceCornerFraction(Float.NaN), 0.0001f)
+    fun `the container sheds the pill corners as it opens`() {
+        val card = Rect(24f, 2400f, 1056f, 2560f)
+        assertEquals(80f, playerContainerCornerPx(0f, card), 0.0001f)
+        assertEquals(40f, playerContainerCornerPx(0.5f, card), 0.0001f)
+        assertEquals(0f, playerContainerCornerPx(1f, card), 0.0001f)
+        assertEquals(0f, playerContainerCornerPx(0.3f, null), 0.0001f)
+    }
+
+    @Test
+    fun `player anchors follow the container while it travels`() {
+        val container = Rect(12f, 1200f, 1068f, 2780f)
+        val artwork = Rect(108f, 300f, 972f, 1164f)
+        val placed = artwork.placedInContainer(container, 1080f)
+        val scale = 1056f / 1080f
+        assertEquals(12f + 108f * scale, placed.left, 0.01f)
+        assertEquals(1200f + 300f * scale, placed.top, 0.01f)
+        assertEquals(artwork.width * scale, placed.width, 0.01f)
+        assertEquals(artwork, artwork.placedInContainer(Rect(0f, 0f, 1080f, 3000f), 1080f))
+        assertEquals(artwork, artwork.placedInContainer(container, 0f))
     }
 
     @Test
