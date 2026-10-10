@@ -84,7 +84,7 @@ class BrandingAndHomeContrastContractTest {
 
     @Test
     fun `compact Levyra emblem is optically enlarged inside its header tile`() {
-        val logoMark = functionBlock("private fun LevyraLogoMark(")
+        val logoMark = functionBlock("internal fun LevyraLogoMark(")
 
         assertTrue(logoMark.contains(".fillMaxSize()"))
         assertTrue(logoMark.contains("scaleX = 1.45f"))
