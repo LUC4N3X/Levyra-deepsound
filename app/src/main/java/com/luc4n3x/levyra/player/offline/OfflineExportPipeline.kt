@@ -10,6 +10,7 @@ import androidx.media3.datasource.cache.CacheWriter
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.YoutubeStreamCapability
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
+import com.luc4n3x.levyra.domain.DownloadOwnership
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.player.LevyraMediaCache
 import com.luc4n3x.levyra.player.LevyraPlaybackCacheKey
@@ -169,7 +170,8 @@ internal class OfflineExportPipeline(
     private val progress: suspend (Int) -> Unit,
     private val taskKey: String,
     private val settings: LevyraDownloadSettings,
-    private val downloadQualityKey: String
+    private val downloadQualityKey: String,
+    private val ownership: DownloadOwnership = DownloadOwnership.MANUAL
 ) {
     private val appContext = context.applicationContext
     private val resolver = PlaybackResolver.getInstance(appContext)
@@ -205,7 +207,8 @@ internal class OfflineExportPipeline(
             progress = progress,
             taskKey = taskKey,
             settings = settings,
-            downloadQualityKey = downloadQualityKey
+            downloadQualityKey = downloadQualityKey,
+            ownership = ownership
         ).export(resolved)
     }
 

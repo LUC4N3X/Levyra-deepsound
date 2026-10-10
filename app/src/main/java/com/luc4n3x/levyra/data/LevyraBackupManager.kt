@@ -48,6 +48,8 @@ import com.luc4n3x.levyra.domain.LevyraCanvasQuality
 import com.luc4n3x.levyra.domain.LevyraVisualPerformance
 import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
+import com.luc4n3x.levyra.domain.LevyraSmartOfflineSettings
+import com.luc4n3x.levyra.domain.DownloadOwnership
 import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.LyricsProviderOrdering
@@ -637,6 +639,7 @@ class LevyraBackupManager(private val context: Context) {
         }
         playlistCoverStore.prune(restoredCoverReferences)
         AutomaticBackupScheduler.schedule(appContext, restoredSettings.backupSettings)
+        SmartOfflineScheduler.schedule(appContext, restoredSettings.smartOfflineSettings)
     }
 
     private fun scanLevyraDownloads(): List<DownloadEntity> {
@@ -1024,6 +1027,7 @@ class LevyraBackupManager(private val context: Context) {
             .put("audioSettings", audioSettingsToJson(snapshot.audioSettings))
             .put("interfaceSettings", interfaceSettingsToJson(snapshot.interfaceSettings))
             .put("downloadSettings", downloadSettingsToJson(snapshot.downloadSettings))
+            .put("smartOfflineSettings", smartOfflineSettingsToJson(snapshot.smartOfflineSettings))
             .put("backupSettings", backupSettingsToJson(snapshot.backupSettings))
             .put("automationSettings", automationSettingsToJson(snapshot.automationSettings))
             .put("jamDisplayName", snapshot.jamDisplayName)
@@ -1074,6 +1078,7 @@ class LevyraBackupManager(private val context: Context) {
             audioSettings = parseAudioSettings(json.optJSONObject("audioSettings")),
             interfaceSettings = parseInterfaceSettings(json.optJSONObject("interfaceSettings"), legacyVisualMode),
             downloadSettings = parseDownloadSettings(json.optJSONObject("downloadSettings")),
+            smartOfflineSettings = parseSmartOfflineSettings(json.optJSONObject("smartOfflineSettings")),
             backupSettings = parseBackupSettings(json.optJSONObject("backupSettings")),
             automationSettings = parseAutomationSettings(json.optJSONObject("automationSettings")),
             jamDisplayName = json.optString("jamDisplayName"),
@@ -1159,6 +1164,31 @@ class LevyraBackupManager(private val context: Context) {
             resumable = json.optBoolean("resumable", true),
             maxConcurrentDownloads = json.optInt("maxConcurrentDownloads", 2),
             destinationTreeUri = json.optString("destinationTreeUri")
+        ).normalized()
+    }
+
+    private fun smartOfflineSettingsToJson(value: LevyraSmartOfflineSettings): JSONObject = JSONObject()
+        .put("enabled", value.enabled)
+        .put("storageLimitBytes", value.storageLimitBytes)
+        .put("wifiOnly", value.wifiOnly)
+        .put("chargingOnly", value.chargingOnly)
+        .put("preferFavorites", value.preferFavorites)
+        .put("excludedArtists", JSONArray(value.excludedArtists.toList()))
+        .put("excludedPlaylists", JSONArray(value.excludedPlaylists.toList()))
+        .put("lastRefreshAt", value.lastRefreshAt)
+
+    private fun parseSmartOfflineSettings(json: JSONObject?): LevyraSmartOfflineSettings {
+        if (json == null) return LevyraSmartOfflineSettings()
+        val defaults = LevyraSmartOfflineSettings()
+        return LevyraSmartOfflineSettings(
+            enabled = json.optBoolean("enabled", defaults.enabled),
+            storageLimitBytes = json.optLong("storageLimitBytes", defaults.storageLimitBytes),
+            wifiOnly = json.optBoolean("wifiOnly", defaults.wifiOnly),
+            chargingOnly = json.optBoolean("chargingOnly", defaults.chargingOnly),
+            preferFavorites = json.optBoolean("preferFavorites", defaults.preferFavorites),
+            excludedArtists = json.optJSONArray("excludedArtists").toStringSet(),
+            excludedPlaylists = json.optJSONArray("excludedPlaylists").toStringSet(),
+            lastRefreshAt = json.optLong("lastRefreshAt", defaults.lastRefreshAt)
         ).normalized()
     }
 
@@ -1501,6 +1531,7 @@ internal fun downloadToJson(value: DownloadEntity): JSONObject = JSONObject()
     .put("downloadPreset", value.downloadPreset)
     .put("downloadQuality", value.downloadQuality)
     .put("savedAt", value.savedAt)
+    .put("ownership", value.ownership)
 
 internal fun parseDownloads(array: JSONArray?): List<DownloadEntity> {
     if (array == null) return emptyList()
@@ -1522,7 +1553,8 @@ internal fun parseDownloads(array: JSONArray?): List<DownloadEntity> {
                     embeddedMetadata = json.optBoolean("embeddedMetadata"),
                     downloadPreset = json.optString("downloadPreset"),
                     downloadQuality = json.optString("downloadQuality"),
-                    savedAt = json.optLong("savedAt").coerceAtLeast(0L)
+                    savedAt = json.optLong("savedAt").coerceAtLeast(0L),
+                    ownership = DownloadOwnership.fromStorage(json.optString("ownership")).name
                 )
             )
         }
@@ -1561,7 +1593,8 @@ internal fun reconcileDownloadedTracks(
                 fileName = available.fileName.ifBlank { backup.fileName },
                 uri = available.uri,
                 mimeType = backup.mimeType.ifBlank { available.mimeType },
-                savedAt = backup.savedAt.takeIf { it > 0L } ?: available.savedAt
+                savedAt = backup.savedAt.takeIf { it > 0L } ?: available.savedAt,
+                ownership = if (exactIndex >= 0) backup.ownership else DownloadOwnership.MANUAL.name
             ) ?: available.copy(id = 0L)
             if (isReadable(candidate.uri)) add(candidate)
         }
