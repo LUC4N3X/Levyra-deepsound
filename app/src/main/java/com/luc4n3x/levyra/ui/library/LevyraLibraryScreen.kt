@@ -87,6 +87,7 @@ import com.luc4n3x.levyra.ui.LevyraHorizontalSafeInsets
 import com.luc4n3x.levyra.ui.components.LevyraConnectedPosition
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.DownloadOwnership
+import com.luc4n3x.levyra.ui.components.levyraGroupedListShape
 import com.luc4n3x.levyra.domain.LibrarySort
 import com.luc4n3x.levyra.domain.LibrarySortDirection
 import com.luc4n3x.levyra.domain.Playlist
@@ -935,21 +936,25 @@ internal fun LevyraLibraryScreen(
 
                 LibraryCategory.Offline -> {
                     item(key = "offline-storage") {
-                        LibraryOfflineSummary(
-                            bytes = state.downloadStorageBytes,
-                            activeCount = state.downloadQueue.count {
-                                offlineDownloadStageOf(it.state).isActive
-                            }
-                        )
-                    }
-                    if (state.smartOfflineSettings.enabled || smartOfflineSummary.first > 0) {
-                        item(key = "smart-offline-summary") {
-                            LibrarySmartOfflineSummary(
-                                songCount = smartOfflineSummary.first,
-                                bytes = smartOfflineSummary.second,
-                                lastUpdatedAt = state.smartOfflineSettings.lastRefreshAt,
-                                onRefresh = viewModel::refreshSmartOffline
+                        val showSmartOffline = state.smartOfflineSettings.enabled || smartOfflineSummary.first > 0
+                        val groupCount = if (showSmartOffline) 2 else 1
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            LibraryOfflineSummary(
+                                bytes = state.downloadStorageBytes,
+                                activeCount = state.downloadQueue.count {
+                                    offlineDownloadStageOf(it.state).isActive
+                                },
+                                shape = levyraGroupedListShape(0, groupCount)
                             )
+                            if (showSmartOffline) {
+                                LibrarySmartOfflineSummary(
+                                    songCount = smartOfflineSummary.first,
+                                    bytes = smartOfflineSummary.second,
+                                    lastUpdatedAt = state.smartOfflineSettings.lastRefreshAt,
+                                    onRefresh = viewModel::refreshSmartOffline,
+                                    shape = levyraGroupedListShape(1, groupCount)
+                                )
+                            }
                         }
                     }
                     val activeBatches = visibleDownloadBatches(state.downloadBatches)
@@ -1023,6 +1028,9 @@ internal fun LevyraLibraryScreen(
                                 onDownload = {},
                                 onQueue = { viewModel.addToQueue(track) },
                                 onAddToPlaylist = { addToPlaylistTracks = listOf(track) },
+                                onKeepOffline = item.download.takeIf { it.ownership == DownloadOwnership.SMART_OFFLINE }?.let {
+                                    { viewModel.exportTrack(track) }
+                                },
                                 onDeleteDownload = { pendingDownloadDelete = item.download },
                                 modifier = Modifier.animateItem()
                             )

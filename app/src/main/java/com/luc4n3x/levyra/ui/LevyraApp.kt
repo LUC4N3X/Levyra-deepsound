@@ -336,6 +336,10 @@ import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Storage
+import androidx.compose.material.icons.rounded.PersonOff
+import androidx.compose.material.icons.rounded.PlaylistRemove
+import androidx.compose.material3.IconButtonDefaults
+import com.luc4n3x.levyra.ui.components.LevyraExpressiveIconButton
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.Bluetooth
@@ -558,6 +562,7 @@ import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistRelease
+import com.luc4n3x.levyra.domain.DownloadOwnership
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.PlaylistHit
@@ -3097,6 +3102,9 @@ fun LevyraApp(
                     onToggleFavorite = { viewModel.toggleFavorite(target) },
                     onDownload = { viewModel.exportTrack(target) },
                     onDeleteDownload = { download?.let(viewModel::deleteDownload) },
+                    onKeepOffline = download?.takeIf { it.ownership == DownloadOwnership.SMART_OFFLINE }?.let {
+                        { viewModel.exportTrack(target) }
+                    },
                     onOpenAlbum = { viewModel.openAlbum(trackAlbumHit(target)) },
                     onOpenArtist = { viewModel.openArtist(target) },
                     onRemoveFromHistory = { viewModel.removeRecentSearch(target) },
@@ -18752,9 +18760,9 @@ private fun SettingsOverlay(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .semantics { contentDescription = strings.settingsSearchPlaceholder }
-                                .background(LevyraAdaptiveCardDeep, RoundedCornerShape(16.dp))
-                                .border(1.dp, LevyraAdaptiveHairline, RoundedCornerShape(16.dp))
-                                .padding(horizontal = 14.dp, vertical = 13.dp),
+                                .padding(bottom = 16.dp)
+                                .background(LevyraAdaptiveCard, CircleShape)
+                                .padding(horizontal = 18.dp, vertical = 16.dp),
                             decorationBox = { innerTextField ->
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     Icon(Icons.Rounded.Search, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
@@ -18800,7 +18808,8 @@ private fun SettingsOverlay(
                     itemsIndexed(categories, key = { _, item -> item.id }) { index, category ->
                         SettingsCategoryCard(
                             meta = category,
-                            showDivider = index < categories.lastIndex
+                            index = index,
+                            count = categories.size
                         ) {
                             if (category.id == "audio") onOpenAudioSettings() else activeCategory = category.id
                         }
@@ -20122,94 +20131,150 @@ private data class SettingsCategoryMeta(
     val accent: Color
 )
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SettingsCategoryCard(meta: SettingsCategoryMeta, showDivider: Boolean, onClick: () -> Unit) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+private fun SettingsCategoryCard(meta: SettingsCategoryMeta, index: Int, count: Int, onClick: () -> Unit) {
+    SettingsTile(
+        onClick = onClick,
+        groupIndex = index,
+        groupCount = count,
+        modifier = Modifier.padding(bottom = if (index < count - 1) 2.dp else 0.dp)
+    ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .pressable(pressedScale = 0.99f, onClick = onClick)
-                .padding(vertical = 15.dp),
+            modifier = Modifier.padding(start = 14.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(15.dp)
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .background(meta.accent.copy(alpha = 0.14f), RoundedCornerShape(11.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(meta.icon, null, tint = meta.accent, modifier = Modifier.size(19.dp))
-            }
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    meta.title,
-                    color = LevyraText,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 0.6.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    meta.summary,
-                    color = LevyraMuted,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+            SettingsTileIcon(icon = meta.icon, accent = meta.accent, shape = MaterialShapes.Cookie4Sided.toShape())
+            SettingsTileText(title = meta.title, subtitle = meta.summary, modifier = Modifier.weight(1f), singleLine = true)
             Icon(
                 Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                 null,
-                tint = LevyraMuted.copy(alpha = 0.55f),
-                modifier = Modifier.size(20.dp)
-            )
-        }
-        if (showDivider) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 49.dp)
-                    .height(Dp.Hairline)
-                    .background(LevyraAdaptiveHairline)
+                tint = LevyraMuted.copy(alpha = 0.7f),
+                modifier = Modifier.size(22.dp)
             )
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SettingsDetailHeader(title: String, icon: ImageVector, accent: Color, onBack: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        CircleIconButton(
-            icon = Icons.AutoMirrored.Rounded.ArrowBack,
-            tint = LevyraText,
-            background = Color.White.copy(alpha = 0.08f),
-            onClick = onBack,
-            contentDescription = LocalLevyraStrings.current.back
+private fun SettingsTile(
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    checked: Boolean? = null,
+    onCheckedChange: ((Boolean) -> Unit)? = null,
+    enabled: Boolean = true,
+    groupIndex: Int = 0,
+    groupCount: Int = 1,
+    color: Color = LevyraAdaptiveCard,
+    content: @Composable () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val first = groupIndex == 0
+    val last = groupIndex == groupCount - 1
+    val outer = levyraExpressiveCorner(interactionSource, rest = 24.dp, pressed = 14.dp, label = "settingsTileOuter")
+    val inner = levyraExpressiveCorner(interactionSource, rest = 6.dp, pressed = 14.dp, label = "settingsTileInner")
+    val shape = RoundedCornerShape(
+        topStart = if (first) outer else inner,
+        topEnd = if (first) outer else inner,
+        bottomEnd = if (last) outer else inner,
+        bottomStart = if (last) outer else inner
+    )
+    val tileModifier = modifier.fillMaxWidth()
+    when {
+        checked != null && onCheckedChange != null -> Surface(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            enabled = enabled,
+            shape = shape,
+            color = color,
+            interactionSource = interactionSource,
+            modifier = tileModifier,
+            content = content
         )
-        Box(
-            modifier = Modifier
-                .size(38.dp)
-                .background(accent.copy(alpha = 0.18f), RoundedCornerShape(13.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, null, tint = accent, modifier = Modifier.size(20.dp))
-        }
+        onClick != null -> Surface(
+            onClick = onClick,
+            enabled = enabled,
+            shape = shape,
+            color = color,
+            interactionSource = interactionSource,
+            modifier = tileModifier,
+            content = content
+        )
+        else -> Surface(shape = shape, color = color, modifier = tileModifier, content = content)
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SettingsTileIcon(icon: ImageVector, accent: Color, shape: Shape = MaterialShapes.Square.toShape()) {
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .clip(shape)
+            .background(accent.copy(alpha = 0.18f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, null, tint = accent, modifier = Modifier.size(22.dp))
+    }
+}
+
+@Composable
+private fun SettingsTileText(title: String, subtitle: String, modifier: Modifier = Modifier, singleLine: Boolean = false) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Text(
             title,
             color = LevyraText,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Black,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = if (singleLine) 1 else 2,
+            overflow = TextOverflow.Ellipsis
         )
+        if (subtitle.isNotBlank()) {
+            Text(
+                subtitle,
+                color = LevyraMuted,
+                fontSize = 13.sp,
+                lineHeight = 18.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = if (singleLine) 1 else 3,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SettingsDetailHeader(title: String, icon: ImageVector, accent: Color, onBack: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(18.dp), modifier = Modifier.fillMaxWidth()) {
+        LevyraExpressiveIconButton(
+            onClick = onBack,
+            modifier = Modifier.size(48.dp),
+            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = LevyraAdaptiveCard,
+                contentColor = LevyraText
+            )
+        ) {
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = LocalLevyraStrings.current.back)
+        }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            SettingsTileIcon(icon = icon, accent = accent, shape = MaterialShapes.Cookie4Sided.toShape())
+            Text(
+                title,
+                color = LevyraText,
+                fontSize = 30.sp,
+                lineHeight = 34.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+        }
     }
 }
 
@@ -20343,6 +20408,7 @@ private fun SmartOfflineSettingsCard(
             )
             if (customSelected) {
                 SmartOfflineTextSetting(
+                    icon = Icons.Rounded.Storage,
                     title = copy.customStorage,
                     subtitle = copy.customStorageSubtitle,
                     value = customMb,
@@ -20380,6 +20446,7 @@ private fun SmartOfflineSettingsCard(
                 onCheckedChange = { onSettings(settings.copy(preferFavorites = it)) }
             )
             SmartOfflineTextSetting(
+                icon = Icons.Rounded.PersonOff,
                 title = copy.excludedArtists,
                 subtitle = copy.excludedArtistsSubtitle,
                 value = excludedArtistsDraft,
@@ -20391,6 +20458,7 @@ private fun SmartOfflineSettingsCard(
                 }
             )
             SmartOfflineTextSetting(
+                icon = Icons.Rounded.PlaylistRemove,
                 title = copy.excludedPlaylists,
                 subtitle = copy.excludedPlaylistsSubtitle,
                 value = excludedPlaylistsDraft,
@@ -20413,6 +20481,7 @@ private fun SmartOfflineSettingsCard(
 
 @Composable
 private fun SmartOfflineTextSetting(
+    icon: ImageVector,
     title: String,
     subtitle: String,
     value: String,
@@ -20423,37 +20492,43 @@ private fun SmartOfflineTextSetting(
     suffix: String = "",
     numeric: Boolean = false
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        shape = RoundedCornerShape(20.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Text(title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleSmall)
-            Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            val suffixComposable: (@Composable () -> Unit)? = if (suffix.isNotBlank()) {
-                { Text(suffix) }
-            } else {
-                null
+    SettingsTile {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                SettingsTileIcon(icon = icon, accent = LevyraViolet)
+                SettingsTileText(title = title, subtitle = subtitle, modifier = Modifier.weight(1f))
             }
-            OutlinedTextField(
-                value = value,
-                onValueChange = onValueChange,
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                label = { Text(title) },
-                placeholder = { Text(hint) },
-                suffix = suffixComposable,
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                    keyboardType = if (numeric) androidx.compose.ui.text.input.KeyboardType.Number
-                    else androidx.compose.ui.text.input.KeyboardType.Text
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                val suffixComposable: (@Composable () -> Unit)? = if (suffix.isNotBlank()) {
+                    { Text(suffix) }
+                } else {
+                    null
+                }
+                OutlinedTextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    placeholder = { Text(hint, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    suffix = suffixComposable,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = if (numeric) androidx.compose.ui.text.input.KeyboardType.Number
+                        else androidx.compose.ui.text.input.KeyboardType.Text,
+                        imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                    ),
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { onSave() })
                 )
-            )
-            TextButton(onClick = onSave, modifier = Modifier.align(Alignment.End)) {
-                Text(saveLabel)
+                LevyraExpressiveIconButton(
+                    onClick = onSave,
+                    modifier = Modifier.size(52.dp),
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = LevyraCyan.copy(alpha = 0.18f),
+                        contentColor = LevyraCyan
+                    )
+                ) {
+                    Icon(Icons.Rounded.Check, contentDescription = saveLabel)
+                }
             }
         }
     }
@@ -20464,6 +20539,7 @@ private fun String.smartOfflineEntries(): Set<String> = split(',')
     .filter(String::isNotBlank)
     .toSet()
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SettingsChoiceRow(
     icon: ImageVector,
@@ -20473,45 +20549,22 @@ private fun SettingsChoiceRow(
     selected: String,
     onSelect: (String) -> Unit
 ) {
-    Surface(
-        color = LevyraAdaptiveCard,
-        border = BorderStroke(1.dp, LevyraAdaptiveHairline),
-        shape = RoundedCornerShape(18.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(
-                    modifier = Modifier.size(40.dp).background(LevyraViolet.copy(alpha = 0.16f), RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(icon, null, tint = LevyraViolet, modifier = Modifier.size(20.dp))
-                }
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
-                    Text(subtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                }
+    SettingsTile {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                SettingsTileIcon(icon = icon, accent = LevyraViolet)
+                SettingsTileText(title = title, subtitle = subtitle, modifier = Modifier.weight(1f))
             }
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 options.forEach { option ->
-                    val active = option.first == selected
-                    Surface(
-                        color = if (active) LevyraCyan.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.055f),
-                        border = BorderStroke(1.dp, if (active) LevyraCyan.copy(alpha = 0.42f) else LevyraAdaptiveHairline),
-                        shape = CircleShape,
-                        modifier = Modifier.pressable { onSelect(option.first) }
-                    ) {
-                        Text(
-                            option.second,
-                            color = if (active) LevyraCyan else LevyraText,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Black,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                        )
-                    }
+                    SettingsChoiceChip(
+                        label = option.second,
+                        active = option.first == selected,
+                        onClick = { onSelect(option.first) }
+                    )
                 }
             }
         }
@@ -20519,21 +20572,35 @@ private fun SettingsChoiceRow(
 }
 
 @Composable
-private fun SettingsInfoCard(icon: ImageVector, title: String, subtitle: String) {
+private fun SettingsChoiceChip(label: String, active: Boolean, onClick: () -> Unit) {
+    val corner = levyraExpressiveToggleCorner(active, unchecked = 12.dp, checkedCorner = 22.dp, label = "settingsChoiceCorner")
     Surface(
-        color = LevyraViolet.copy(alpha = 0.1f),
-        border = BorderStroke(1.dp, LevyraViolet.copy(alpha = 0.22f)),
-        shape = RoundedCornerShape(18.dp),
-        modifier = Modifier.fillMaxWidth()
+        selected = active,
+        onClick = onClick,
+        shape = RoundedCornerShape(corner),
+        color = if (active) LevyraCyan else Color.White.copy(alpha = 0.06f),
+        contentColor = if (active) LevyraBlack else LevyraText
     ) {
-        Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(modifier = Modifier.size(40.dp).background(LevyraViolet.copy(alpha = 0.16f), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = LevyraViolet, modifier = Modifier.size(20.dp))
+        Row(
+            modifier = Modifier.heightIn(min = 40.dp).padding(horizontal = 16.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            AnimatedVisibility(visible = active) {
+                Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(16.dp))
             }
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
-                Text(subtitle, color = LevyraMuted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold)
-            }
+            Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SettingsInfoCard(icon: ImageVector, title: String, subtitle: String) {
+    SettingsTile(color = LevyraViolet.copy(alpha = 0.14f)) {
+        Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            SettingsTileIcon(icon = icon, accent = LevyraViolet, shape = MaterialShapes.Cookie4Sided.toShape())
+            SettingsTileText(title = title, subtitle = subtitle, modifier = Modifier.weight(1f))
         }
     }
 }
@@ -20587,43 +20654,41 @@ private fun SettingsSectionLabel(text: String) {
             if (character.isLowerCase()) character.titlecase(locale) else character.toString()
         }
     }
-    Text(title, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.4.sp, modifier = Modifier.padding(top = 8.dp))
+    Text(
+        title,
+        color = LevyraCyan,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 0.2.sp,
+        modifier = Modifier.padding(start = 6.dp, top = 14.dp, bottom = 2.dp)
+    )
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SettingsToggle(icon: ImageVector, title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Surface(
-        color = LevyraAdaptiveCard,
-        border = BorderStroke(1.dp, LevyraAdaptiveHairline),
-        shape = RoundedCornerShape(18.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    SettingsTile(checked = checked, onCheckedChange = onCheckedChange) {
         Row(
-            modifier = Modifier.padding(14.dp),
+            modifier = Modifier.padding(start = 14.dp, end = 16.dp, top = 14.dp, bottom = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(LevyraCyan.copy(alpha = 0.16f), RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(icon, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
-            }
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
-                Text(subtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-            }
+            SettingsTileIcon(icon = icon, accent = LevyraCyan)
+            SettingsTileText(title = title, subtitle = subtitle, modifier = Modifier.weight(1f))
             Switch(
                 checked = checked,
-                onCheckedChange = onCheckedChange,
+                onCheckedChange = null,
+                thumbContent = if (checked) {
+                    { Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+                } else {
+                    null
+                },
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = LevyraBlack,
+                    checkedIconColor = LevyraCyan,
                     checkedTrackColor = LevyraCyan,
                     uncheckedThumbColor = LevyraMuted,
-                    uncheckedTrackColor = LevyraAdaptiveTrack
+                    uncheckedTrackColor = LevyraAdaptiveTrack,
+                    uncheckedBorderColor = LevyraMuted.copy(alpha = 0.6f)
                 )
             )
         }
@@ -20632,33 +20697,22 @@ private fun SettingsToggle(icon: ImageVector, title: String, subtitle: String, c
 
 @Composable
 private fun SettingsButton(icon: ImageVector, title: String, subtitle: String, enabled: Boolean = true, onClick: () -> Unit) {
-    Surface(
-        color = LevyraAdaptiveCard,
-        border = BorderStroke(1.dp, LevyraAdaptiveHairline),
-        shape = RoundedCornerShape(18.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .pressable(enabled = enabled, onClick = onClick)
-    ) {
+    SettingsTile(onClick = onClick, enabled = enabled) {
         Row(
             modifier = Modifier
-                .padding(14.dp)
+                .padding(start = 14.dp, end = 12.dp, top = 14.dp, bottom = 14.dp)
                 .alpha(if (enabled) 1f else 0.45f),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(LevyraPink.copy(alpha = 0.16f), RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(icon, null, tint = LevyraPink, modifier = Modifier.size(20.dp))
-            }
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
-                Text(subtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-            }
+            SettingsTileIcon(icon = icon, accent = LevyraPink)
+            SettingsTileText(title = title, subtitle = subtitle, modifier = Modifier.weight(1f))
+            Icon(
+                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                null,
+                tint = LevyraMuted.copy(alpha = 0.7f),
+                modifier = Modifier.size(22.dp)
+            )
         }
     }
 }
