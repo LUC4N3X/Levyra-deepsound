@@ -52,8 +52,8 @@ object LevyraPlayerDesign {
     val TransportModeGlyph: Dp = 22.dp
     val TransportPlayGlyph: Dp = 38.dp
     val TransportPlayGlyphCompact: Dp = 32.dp
-    val DockHeight: Dp = 48.dp
-    val DockHeightCompact: Dp = 48.dp
+    val DockHeight: Dp = 54.dp
+    val DockHeightCompact: Dp = 50.dp
     val DockMaxWidth: Dp = 340.dp
     val DockGap: Dp = 3.dp
     val DockInnerCorner: Dp = 6.dp
@@ -76,10 +76,10 @@ object LevyraPlayerDesign {
     val DockTrayCorner: Dp = 28.dp
 
     val Hairline: Dp = 1.dp
-    val TrackHeight: Dp = 4.dp
-    val TrackHeightActive: Dp = 6.dp
-    val ThumbRadius: Dp = 6.dp
-    val ThumbRadiusActive: Dp = 8.5.dp
+    val TrackHeight: Dp = 5.dp
+    val TrackHeightActive: Dp = 8.dp
+    val ThumbRadius: Dp = 7.dp
+    val ThumbRadiusActive: Dp = 10.dp
     val HandleWidth: Dp = 12.dp
     val HandleWidthActive: Dp = 17.dp
     val HandleHeight: Dp = 12.dp

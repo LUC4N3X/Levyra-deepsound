@@ -39,6 +39,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
+import com.luc4n3x.levyra.ui.components.levyraGroupedGridShape
+import androidx.compose.material3.toShape
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -105,7 +109,18 @@ private val SheetShape = RoundedCornerShape(
 )
 private val SheetDismissDistance = 104.dp
 private val SheetTileHeight = 88.dp
-private val SheetArtwork = 52.dp
+private val SheetArtwork = 56.dp
+private val SheetTileGap = 3.dp
+private val SheetIconContainer = 42.dp
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private val SheetIconShapes = listOf(
+    MaterialShapes.Cookie4Sided,
+    MaterialShapes.Sunny,
+    MaterialShapes.Clover4Leaf,
+    MaterialShapes.Cookie6Sided,
+    MaterialShapes.Pill,
+    MaterialShapes.SoftBurst
+)
 
 @Composable
 internal fun PlayerActionsSheet(
@@ -372,13 +387,14 @@ private fun PlayerSheetScrollBody(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun PlayerSheetHeader(
     track: Track,
     artworkUrl: String,
     surfaces: PlayerSurfaceTokens
 ) {
-    val artworkShape = RoundedCornerShape(LevyraPlayerDesign.CornerXs)
+    val artworkShape = MaterialShapes.Cookie9Sided.toShape()
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -417,6 +433,7 @@ private fun PlayerSheetHeader(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun PlayerSheetGrid(
     actions: List<PlayerSheetAction>,
@@ -425,15 +442,16 @@ private fun PlayerSheetGrid(
     onPerform: (PlayerSheetAction) -> Unit
 ) {
     val outline = if (surfaces.amoled) surfaces.outline else Color.Transparent
-    Column(verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)) {
-        actions.chunked(SheetColumns).forEach { rowActions ->
+    val rows = remember(actions) { actions.chunked(SheetColumns) }
+    Column(verticalArrangement = Arrangement.spacedBy(SheetTileGap)) {
+        rows.forEachIndexed { rowIndex, rowActions ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(IntrinsicSize.Min),
-                horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
+                horizontalArrangement = Arrangement.spacedBy(SheetTileGap)
             ) {
-                rowActions.forEach { action ->
+                rowActions.forEachIndexed { columnIndex, action ->
                     key(action.key) {
                         val tint by animateColorAsState(
                             targetValue = if (action.active) surfaces.activeContent else surfaces.content,
@@ -450,6 +468,7 @@ private fun PlayerSheetGrid(
                             enabled = action.enabled,
                             toggleState = if (action.toggle) ToggleableState(action.active) else null,
                             outline = outline,
+                            shapeOverride = levyraGroupedGridShape(rowIndex, columnIndex, rows.size, rowActions.size),
                             modifier = Modifier.heightIn(min = SheetTileHeight),
                             onClick = { if (!action.busy) onPerform(action) }
                         ) {
@@ -461,14 +480,23 @@ private fun PlayerSheetGrid(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                             ) {
-                                if (action.busy) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(20.dp),
-                                        strokeWidth = 2.dp,
-                                        color = tint
-                                    )
-                                } else {
-                                    PlayerIcon(action.icon, tint, Modifier.size(LevyraPlayerDesign.DockGlyph))
+                                Box(
+                                    modifier = Modifier
+                                        .size(SheetIconContainer)
+                                        .clip(SheetIconShapes[(rowIndex * SheetColumns + columnIndex) % SheetIconShapes.size].toShape())
+                                        .background(if (action.active) surfaces.hero else surfaces.tonal),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    val iconTint = if (action.active) surfaces.heroContent else surfaces.content
+                                    if (action.busy) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(20.dp),
+                                            strokeWidth = 2.dp,
+                                            color = iconTint
+                                        )
+                                    } else {
+                                        PlayerIcon(action.icon, iconTint, Modifier.size(LevyraPlayerDesign.DockGlyph))
+                                    }
                                 }
                                 Spacer(modifier = Modifier.height(LevyraPlayerDesign.SpaceSm))
                                 Text(

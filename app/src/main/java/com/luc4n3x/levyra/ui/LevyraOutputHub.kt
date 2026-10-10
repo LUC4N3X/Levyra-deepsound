@@ -1,9 +1,12 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.toShape
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.graphics.Shape
 import android.media.AudioDeviceInfo
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,7 +31,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -44,14 +46,13 @@ import com.luc4n3x.levyra.feature.audio.openLevyraSystemOutputSwitcher
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.systemPlayerCopy
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
-import com.luc4n3x.levyra.ui.theme.LevyraGlassBorder
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraText
-import com.luc4n3x.levyra.ui.theme.LevyraViolet
 import java.util.Locale
 
-private val OutputHeroShape = RoundedCornerShape(24.dp)
+private val OutputHeroShape = RoundedCornerShape(28.dp)
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun LevyraOutputHub(
     output: LevyraAudioOutputState,
@@ -80,35 +81,25 @@ internal fun LevyraOutputHub(
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
-            text = copy.outputTitle.uppercase(Locale.ROOT),
-            color = LevyraMuted,
-            fontSize = 11.sp,
+            text = copy.outputTitle,
+            color = LevyraCyan,
+            fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
-            letterSpacing = 1.2.sp
+            letterSpacing = 0.2.sp,
+            modifier = Modifier.padding(start = 6.dp, top = 6.dp)
         )
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(
-                    brush = Brush.linearGradient(
-                        listOf(
-                            LevyraCyan.copy(alpha = 0.14f),
-                            LevyraViolet.copy(alpha = 0.08f),
-                            LevyraCyan.copy(alpha = 0.025f)
-                        )
-                    ),
-                    shape = OutputHeroShape
-                )
-                .border(BorderStroke(1.dp, LevyraGlassBorder), OutputHeroShape)
+                .background(AudioTonalSurface, OutputHeroShape)
                 .padding(18.dp)
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(
-                        modifier = Modifier.size(50.dp),
-                        shape = CircleShape,
-                        color = LevyraCyan.copy(alpha = 0.12f),
-                        border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.24f))
+                        modifier = Modifier.size(54.dp),
+                        shape = MaterialShapes.Cookie9Sided.toShape(),
+                        color = LevyraCyan.copy(alpha = 0.2f)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
@@ -148,16 +139,18 @@ internal fun LevyraOutputHub(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
                     OutputMetric(
                         label = copy.streamQuality,
                         value = streamDetails.ifBlank { track?.source?.ifBlank { "Auto" } ?: "Auto" },
+                        shape = RoundedCornerShape(topStart = 18.dp, bottomStart = 18.dp, topEnd = 6.dp, bottomEnd = 6.dp),
                         modifier = Modifier.weight(1f)
                     )
                     OutputMetric(
                         label = "DSP",
                         value = if (dspActive) copy.dspActive else copy.dspOff,
+                        shape = RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp, topEnd = 18.dp, bottomEnd = 18.dp),
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -171,6 +164,8 @@ internal fun LevyraOutputHub(
                     )
                     TextButton(
                         onClick = { openLevyraSystemOutputSwitcher(context) },
+                        shape = CircleShape,
+                        colors = ButtonDefaults.textButtonColors(containerColor = LevyraCyan.copy(alpha = 0.16f)),
                         modifier = Modifier.sizeIn(minHeight = 48.dp)
                     ) {
                         Text(copy.chooseOutput, color = LevyraCyan, fontWeight = FontWeight.Bold)
@@ -197,12 +192,11 @@ internal fun LevyraOutputHub(
 }
 
 @Composable
-private fun OutputMetric(label: String, value: String, modifier: Modifier = Modifier) {
+private fun OutputMetric(label: String, value: String, shape: Shape, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
-        color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.035f),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, LevyraGlassBorder.copy(alpha = 0.72f))
+        color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.07f),
+        shape = shape
     ) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
             Text(label, color = LevyraMuted, fontSize = 10.sp, fontWeight = FontWeight.Medium)

@@ -1,6 +1,9 @@
 package com.luc4n3x.levyra.ui.player
 
 import androidx.compose.animation.animateColorAsState
+import com.luc4n3x.levyra.ui.components.levyraExpressiveCorner
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,7 +22,6 @@ import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
@@ -61,13 +63,15 @@ internal fun PlayerActionDock(
             .widthIn(max = LevyraPlayerDesign.DockMaxWidth)
             .fillMaxWidth()
             .height(dockHeight(compact)),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(DockSegmentGap),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        actions.forEach { action ->
+        actions.forEachIndexed { index, action ->
             key(action.key) {
-                PlayerDockControl(
+                PlayerDockSegment(
                     action = action,
+                    first = index == 0,
+                    last = index == actions.lastIndex,
                     surfaces = surfaces,
                     animated = animated
                 )
@@ -77,30 +81,59 @@ internal fun PlayerActionDock(
 }
 
 @Composable
-private fun RowScope.PlayerDockControl(
+private fun RowScope.PlayerDockSegment(
     action: PlayerDockAction,
+    first: Boolean,
+    last: Boolean,
     surfaces: PlayerSurfaceTokens,
     animated: Boolean
 ) {
+    val interaction = remember { MutableInteractionSource() }
+    val outer = dockHeight(false) / 2
+    val inner = levyraExpressiveCorner(
+        interactionSource = interaction,
+        rest = if (action.active) outer else DockInnerCorner,
+        pressed = outer,
+        label = "player-dock-inner"
+    )
+    val fill by animateColorAsState(
+        targetValue = if (action.active) surfaces.hero else surfaces.tonal,
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(220)),
+        label = "player-dock-fill"
+    )
+    val tint by animateColorAsState(
+        targetValue = if (action.active) surfaces.heroContent else surfaces.content,
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(220)),
+        label = "player-dock-tint"
+    )
+    val shape = RoundedCornerShape(
+        topStart = if (first) outer else inner,
+        bottomStart = if (first) outer else inner,
+        topEnd = if (last) outer else inner,
+        bottomEnd = if (last) outer else inner
+    )
     Box(
         modifier = Modifier
             .weight(1f)
-            .fillMaxHeight(),
+            .fillMaxHeight()
+            .graphicsLayer { alpha = if (action.enabled) 1f else DisabledDockAlpha }
+            .clip(shape)
+            .background(fill)
+            .levyraPressable(
+                onClick = { if (!action.busy) action.onClick() },
+                enabled = action.enabled,
+                interactionSource = interaction,
+                pressedScale = LevyraPressScale.Control,
+                role = Role.Button
+            )
+            .semantics {
+                contentDescription = action.label
+                segmentToggleState(action.toggle, action.active)?.let { toggleableState = it }
+                action.stateDescription?.let { this.stateDescription = it }
+            },
         contentAlignment = Alignment.Center
     ) {
-        PlayerToggleControl(
-            icon = action.icon,
-            label = action.label,
-            active = action.active,
-            toggle = action.toggle,
-            surfaces = surfaces,
-            animated = animated,
-            glyph = LevyraPlayerDesign.DockGlyph,
-            enabled = action.enabled,
-            busy = action.busy,
-            stateDescription = action.stateDescription,
-            onClick = action.onClick
-        )
+        PlayerSegmentGlyph(action.icon, tint, action.busy, LevyraPlayerDesign.DockGlyph)
     }
 }
 
@@ -124,7 +157,7 @@ internal fun PlayerToggleControl(
         label = "player-toggle-tint"
     )
     val fill by animateColorAsState(
-        targetValue = if (active) surfaces.active else Color.Transparent,
+        targetValue = if (active) surfaces.active else surfaces.controlQuiet,
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(200)),
         label = "player-toggle-fill"
     )
@@ -159,6 +192,8 @@ internal fun PlayerToggleControl(
 }
 
 private val ToggleCheckedCorner: Dp = 14.dp
+private val DockSegmentGap: Dp = 3.dp
+private val DockInnerCorner: Dp = 8.dp
 private const val DisabledDockAlpha = 0.42f
 
 private fun dockHeight(compact: Boolean) =

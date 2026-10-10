@@ -1,38 +1,38 @@
 package com.luc4n3x.levyra.ui.player
 
-import com.luc4n3x.levyra.ui.components.carouselDepthEnabled
-import com.luc4n3x.levyra.ui.components.levyraCarouselDepth
-import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.togetherWith
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.runtime.getValue
+import com.luc4n3x.levyra.ui.components.levyraGroupedListShape
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.border
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
+import com.luc4n3x.levyra.ui.playerMix
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.toShape
+import com.luc4n3x.levyra.ui.components.levyraExpressiveToggleCorner
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import kotlin.math.PI
+import kotlin.math.sin
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
@@ -42,8 +42,6 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,7 +49,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
@@ -72,12 +69,15 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.playerDeckShortLabels
-import com.luc4n3x.levyra.ui.theme.LevyraMotion
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 
-private val DeckCardWidth = 148.dp
-private val DeckPreviewCorner = 24.dp
+private val DeckThumbWidth = 64.dp
+private val DeckPreviewRenderWidth = 148.dp
+private val DeckRowGap = 3.dp
+private val DeckIdleSurface = Color(0xFF1A1B1F)
+private val DeckPreviewSelectedCorner = 48.dp
+private val DeckPreviewCorner = 28.dp
 private const val DeckPreviewAspect = 0.78f
 
 @Composable
@@ -92,12 +92,6 @@ internal fun PlayerDeckSheet(
     onDismiss: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val listState = rememberLazyListState()
-    val depthEnabled = carouselDepthEnabled()
-    LaunchedEffect(Unit) {
-        val index = PlayerDeckOrder.indexOf(selected)
-        if (index > 0) listState.scrollToItem(index)
-    }
     PlayerSheetFrame(
         surfaces = surfaces,
         animated = animated,
@@ -129,47 +123,26 @@ internal fun PlayerDeckSheet(
                     modifier = Modifier.padding(top = 3.dp)
                 )
             }
-            LazyRow(
-                state = listState,
-                flingBehavior = rememberSnapFlingBehavior(listState),
-                contentPadding = PaddingValues(horizontal = LevyraPlayerDesign.Gutter),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .selectableGroup()
+                    .padding(horizontal = LevyraPlayerDesign.Gutter)
+                    .selectableGroup(),
+                verticalArrangement = Arrangement.spacedBy(DeckRowGap)
             ) {
-                items(PlayerDeckOrder, key = { it.name }) { mode ->
-                    PlayerDeckCard(
-                        spec = PlayerDeckCardSpec(
-                            mode = mode,
-                            selected = mode == selected,
-                            label = playerDeckLabel(mode, strings),
-                            accent = accent,
-                            animated = animated
-                        ),
+                PlayerDeckOrder.forEachIndexed { index, mode ->
+                    PlayerDeckRow(
+                        mode = mode,
+                        selected = mode == selected,
+                        shape = levyraGroupedListShape(index, PlayerDeckOrder.size),
                         track = track,
                         artworkUrl = artworkUrl,
+                        accent = accent,
                         surfaces = surfaces,
-                        onClick = { onSelect(mode) },
-                        modifier = Modifier.levyraCarouselDepth(listState, mode.name, depthEnabled)
+                        animated = animated,
+                        onClick = { onSelect(mode) }
                     )
                 }
-            }
-            AnimatedContent(
-                targetState = selected,
-                transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) },
-                label = "player-deck-hint",
-                modifier = Modifier.padding(horizontal = LevyraPlayerDesign.Gutter)
-            ) { mode ->
-                Text(
-                    text = playerDeckHint(mode, strings),
-                    color = surfaces.contentMuted,
-                    fontSize = 14.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(14.sp),
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 2,
-                    modifier = Modifier.fillMaxWidth()
-                )
             }
             Text(
                 text = strings.playerDeckLandscapeNote,
@@ -183,129 +156,99 @@ internal fun PlayerDeckSheet(
     }
 }
 
-private data class PlayerDeckCardSpec(
-    val mode: PlayerVisualMode,
-    val selected: Boolean,
-    val label: String,
-    val accent: Color,
-    val animated: Boolean
-)
-
 @Composable
-private fun PlayerDeckCard(
-    spec: PlayerDeckCardSpec,
+private fun PlayerDeckRow(
+    mode: PlayerVisualMode,
+    selected: Boolean,
+    shape: Shape,
     track: Track,
     artworkUrl: String,
-    surfaces: PlayerSurfaceTokens,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val lift by animateFloatAsState(
-        targetValue = if (spec.selected) 1f else 0f,
-        animationSpec = LevyraMotion.physics(spec.animated, LevyraMotion.settle),
-        label = "player-deck-lift"
-    )
-    Column(
-        modifier = modifier
-            .width(DeckCardWidth)
-            .clip(RoundedCornerShape(DeckPreviewCorner))
-            .selectable(
-                selected = spec.selected,
-                role = Role.RadioButton,
-                onClick = onClick
-            )
-            .padding(bottom = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        PlayerDeckCardPreview(
-            spec = spec,
-            track = track,
-            artworkUrl = artworkUrl,
-            surfaces = surfaces,
-            modifier = Modifier.graphicsLayer {
-                val scale = 1f + lift * 0.02f
-                scaleX = scale
-                scaleY = scale
-            }
-        )
-        Text(
-            text = spec.label,
-            color = if (spec.selected) surfaces.content else surfaces.contentMuted,
-            fontSize = 14.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(14.sp),
-            fontWeight = if (spec.selected) FontWeight.Bold else FontWeight.Medium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-}
-
-@Composable
-private fun PlayerDeckCardPreview(
-    spec: PlayerDeckCardSpec,
-    track: Track,
-    artworkUrl: String,
-    surfaces: PlayerSurfaceTokens,
-    modifier: Modifier = Modifier
-) {
-    val shape = RoundedCornerShape(DeckPreviewCorner)
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .aspectRatio(DeckPreviewAspect)
-            .then(
-                if (spec.selected) {
-                    Modifier.border(2.dp, spec.accent, shape).padding(4.dp)
-                } else {
-                    Modifier.padding(4.dp)
-                }
-            )
-            .clip(RoundedCornerShape(DeckPreviewCorner - 4.dp))
-            .background(Color.Black)
-    ) {
-        PlayerDeckPreview(
-            mode = spec.mode,
-            track = track,
-            artworkUrl = artworkUrl,
-            accent = spec.accent
-        )
-        if (spec.selected) {
-            PlayerDeckSelectionBadge(
-                accent = spec.accent,
-                contentColor = surfaces.heroContent,
-                modifier = Modifier.align(Alignment.TopEnd)
-            )
-        }
-    }
-}
-
-@Composable
-private fun PlayerDeckSelectionBadge(
     accent: Color,
-    contentColor: Color,
-    modifier: Modifier = Modifier
+    surfaces: PlayerSurfaceTokens,
+    animated: Boolean,
+    onClick: () -> Unit
 ) {
-    Box(
-        modifier = modifier
-            .padding(10.dp)
-            .size(26.dp)
-            .background(Color.Black.copy(alpha = 0.30f), CircleShape)
-            .border(LevyraPlayerDesign.Hairline, Color.White.copy(alpha = 0.20f), CircleShape),
-        contentAlignment = Alignment.Center
+    val strings = LocalLevyraStrings.current
+    val fill by animateColorAsState(
+        targetValue = if (selected) accent.copy(alpha = 0.22f) else DeckIdleSurface,
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(220)),
+        label = "player-deck-row-fill"
+    )
+    val thumbCorner = levyraExpressiveToggleCorner(
+        checked = selected,
+        unchecked = 10.dp,
+        checkedCorner = 20.dp,
+        label = "player-deck-thumb-corner"
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(fill)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(20.dp)
-                .background(accent.copy(alpha = 0.96f), CircleShape),
+                .size(width = DeckThumbWidth, height = DeckThumbWidth / DeckPreviewAspect)
+                .clip(RoundedCornerShape(thumbCorner))
+                .background(Color.Black),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Rounded.Check,
-                contentDescription = null,
-                tint = contentColor,
-                modifier = Modifier.size(14.dp)
+            Box(
+                modifier = Modifier
+                    .requiredSize(width = DeckPreviewRenderWidth, height = DeckPreviewRenderWidth / DeckPreviewAspect)
+                    .graphicsLayer {
+                        val scale = DeckThumbWidth / DeckPreviewRenderWidth
+                        scaleX = scale
+                        scaleY = scale
+                    }
+            ) {
+                PlayerDeckPreview(
+                    mode = mode,
+                    track = track,
+                    artworkUrl = artworkUrl,
+                    accent = accent
+                )
+            }
+        }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = playerDeckLabel(mode, strings),
+                color = if (selected) accent.playerMix(Color.White, 0.55f) else surfaces.content,
+                fontSize = 17.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(17.sp),
+                fontWeight = FontWeight.Bold
             )
+            Text(
+                text = playerDeckHint(mode, strings),
+                color = surfaces.contentMuted,
+                fontSize = 13.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(13.sp),
+                fontWeight = FontWeight.Medium
+            )
+        }
+        Box(
+            modifier = Modifier
+                .size(26.dp)
+                .clip(CircleShape)
+                .background(if (selected) accent else Color.Transparent)
+                .border(2.dp, if (selected) accent else surfaces.contentFaint, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            if (selected) {
+                Icon(
+                    imageVector = Icons.Rounded.Check,
+                    contentDescription = null,
+                    tint = surfaces.heroContent,
+                    modifier = Modifier.size(17.dp)
+                )
+            }
         }
     }
 }
@@ -522,11 +465,12 @@ private fun PreviewControls(accent: Color, modifier: Modifier = Modifier) {
         PreviewBar(width = 78.dp, height = 7.dp, color = Color.White)
         PreviewBar(width = 48.dp, height = 4.dp, color = Color.White.copy(alpha = 0.55f))
         Spacer(modifier = Modifier.height(2.dp))
-        PreviewBar(width = 110.dp, height = 2.dp, color = Color.White.copy(alpha = 0.3f))
+        PreviewWave(accent = accent)
         PreviewTransport(accent = accent)
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun PreviewTransport(accent: Color) {
     Box(
@@ -537,8 +481,9 @@ private fun PreviewTransport(accent: Color) {
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
-                .size(width = 34.dp, height = 14.dp)
-                .background(accent, RoundedCornerShape(5.dp))
+                .size(width = 30.dp, height = 18.dp)
+                .clip(MaterialShapes.Cookie9Sided.toShape())
+                .background(accent)
         )
         Box(
             modifier = Modifier
@@ -553,6 +498,37 @@ private fun PreviewTransport(accent: Color) {
                 .offset(x = 30.dp)
                 .size(width = 22.dp, height = 14.dp)
                 .background(Color.White.copy(alpha = 0.16f), RoundedCornerShape(5.dp))
+        )
+    }
+}
+
+@Composable
+private fun PreviewWave(accent: Color) {
+    Canvas(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(8.dp)
+    ) {
+        val centerY = size.height / 2f
+        val split = size.width * 0.58f
+        val stroke = 2.dp.toPx()
+        val amplitude = 2.dp.toPx()
+        val waveLength = 12.dp.toPx()
+        val path = Path().apply {
+            moveTo(0f, centerY)
+            var x = 0f
+            while (x < split) {
+                x = (x + 1.dp.toPx()).coerceAtMost(split)
+                lineTo(x, centerY - amplitude * sin(x / waveLength * 2f * PI.toFloat()))
+            }
+        }
+        drawPath(path, accent, style = Stroke(width = stroke, cap = StrokeCap.Round))
+        drawLine(
+            color = Color.White.copy(alpha = 0.25f),
+            start = Offset(split + 3.dp.toPx(), centerY),
+            end = Offset(size.width, centerY),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round
         )
     }
 }

@@ -1,6 +1,9 @@
 package com.luc4n3x.levyra.ui.player
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.toShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -293,9 +296,8 @@ private fun QueueSpaceCard(
 ) {
     val strings = LocalLevyraStrings.current
     Surface(
-        color = if (active) accent.copy(alpha = 0.12f) else LevyraGlass,
-        shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, if (active) accent.copy(alpha = 0.55f) else Color.White.copy(alpha = 0.08f)),
+        color = if (active) accent.copy(alpha = 0.22f) else QueueSpaceSurface,
+        shape = RoundedCornerShape(if (active) 28.dp else 20.dp),
         modifier = Modifier.width(152.dp)
     ) {
         Column(
@@ -390,12 +392,12 @@ private fun QueueSpaceCollage(artworkUrls: List<String>, accent: Color, active: 
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun QueueSpaceCreateCard(label: String, onClick: () -> Unit) {
     Surface(
-        color = Color.Transparent,
-        shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
+        color = QueueSpaceSurface,
+        shape = RoundedCornerShape(20.dp),
         modifier = Modifier.width(120.dp)
     ) {
         Column(
@@ -415,10 +417,11 @@ private fun QueueSpaceCreateCard(label: String, onClick: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1f)
-                    .background(LevyraPanelSoft, RoundedCornerShape(14.dp)),
+                    .clip(MaterialShapes.Cookie9Sided.toShape())
+                    .background(LevyraCyan.copy(alpha = 0.18f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Rounded.Add, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(24.dp))
+                Icon(Icons.Rounded.Add, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(28.dp))
             }
             Text(
                 text = label,
@@ -491,9 +494,8 @@ private fun QueueSpaceActions(
 ) {
     val strings = LocalLevyraStrings.current
     Surface(
-        color = LevyraGlass,
-        shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+        color = QueueSpaceSurface,
+        shape = RoundedCornerShape(24.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -605,3 +607,5 @@ internal fun formatQueueSpaceDuration(durationMs: Long): String {
     val minutes = totalMinutes % 60
     return if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
 }
+
+private val QueueSpaceSurface: Color = Color(0xFF1C1D21)

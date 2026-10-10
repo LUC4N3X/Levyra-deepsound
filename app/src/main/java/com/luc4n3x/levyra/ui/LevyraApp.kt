@@ -20,6 +20,9 @@ import com.luc4n3x.levyra.ui.components.LevyraSectionShowAll
 import androidx.compose.material3.MaterialTheme
 import com.luc4n3x.levyra.ui.components.levyraExpressiveToggleCorner
 import com.luc4n3x.levyra.ui.components.levyraExpressiveCorner
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.CircularWavyProgressIndicator
 import com.luc4n3x.levyra.domain.ChartMarketDirectory
 import com.luc4n3x.levyra.domain.SpeedDial
 import com.luc4n3x.levyra.domain.RecommendationFeedbackKind
@@ -195,8 +198,6 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.draw.drawWithCache
@@ -471,7 +472,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
@@ -4503,7 +4503,10 @@ private fun AlbumNowPlayingDock(
             MiniPlayerToggleButton(
                 isPlaying = isPlaying,
                 isResolving = isResolving,
-                buttonColor = LevyraText,
+                liveRadio = track.isLiveRadio(),
+                progress = { progress },
+                accent = LevyraCyan,
+                animated = animated,
                 onToggle = onToggle
             )
         }
@@ -6560,14 +6563,14 @@ private fun QueueOverlay(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .clip(connectedStyle.shapes.forPosition(queuePosition))
-                                        .background(LevyraCyan.copy(alpha = 0.16f))
+                                        .background(LevyraPink.copy(alpha = 0.22f))
                                         .padding(horizontal = 18.dp),
                                     contentAlignment = Alignment.CenterEnd
                                 ) {
                                     Icon(
                                         Icons.Rounded.Delete,
                                         strings.remove,
-                                        tint = LevyraCyan,
+                                        tint = LevyraPink,
                                         modifier = Modifier.size(22.dp)
                                     )
                                 }
@@ -6596,10 +6599,13 @@ private fun QueueOverlay(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .levyraConnectedSurface(
-                                    queuePosition,
-                                    connectedStyle,
-                                    selected = isCurrent || rowSelected
+                                .clip(connectedStyle.shapes.forPosition(queuePosition))
+                                .background(
+                                    when {
+                                        isCurrent -> queueAccent.copy(alpha = 0.24f).compositeOver(QueueRowSurface)
+                                        rowSelected -> queueAccent.copy(alpha = 0.14f).compositeOver(QueueRowSurface)
+                                        else -> QueueRowSurface
+                                    }
                                 )
                         ) {
                             Row(
@@ -6627,9 +6633,14 @@ private fun QueueOverlay(
                                         onLongClickLabel = strings.selectTrack,
                                         onLongClick = { selectedQueueKeys = selectedQueueKeys + rowKey }
                                     )
-                                    .padding(horizontal = 10.dp, vertical = 9.dp),
+                                    .padding(
+                                        start = 10.dp,
+                                        end = 4.dp,
+                                        top = if (isCurrent) 12.dp else 8.dp,
+                                        bottom = if (isCurrent) 12.dp else 8.dp
+                                    ),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 val reorderModifier = if (selectionActive) {
                                     Modifier
@@ -6668,29 +6679,12 @@ private fun QueueOverlay(
                                         )
                                     }
                                 }
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .background(
-                                            LevyraMuted.copy(alpha = if (selectionActive) 0.04f else 0.09f),
-                                            RoundedCornerShape(10.dp)
-                                        )
-                                        .then(reorderModifier),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        Icons.Rounded.DragHandle,
-                                        if (selectionActive) null else strings.dragToReorder,
-                                        tint = if (selectionActive) LevyraMuted.copy(alpha = 0.3f) else LevyraMuted,
-                                        modifier = Modifier.size(19.dp)
-                                    )
-                                }
                                 CoverImage(
                                     track,
                                     Modifier
-                                        .size(48.dp)
-                                        .clip(LevyraPlayerDesign.ShapeXs)
-                                        .alpha(if (wasPlayed && !isCurrent) 0.58f else 1f)
+                                        .size(if (isCurrent) 60.dp else 50.dp)
+                                        .clip(if (isCurrent) QueueCurrentArtworkShape else RoundedCornerShape(12.dp))
+                                        .alpha(if (wasPlayed && !isCurrent) 0.5f else 1f)
                                 )
                                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                     Text(
@@ -6700,15 +6694,15 @@ private fun QueueOverlay(
                                             wasPlayed -> LevyraMuted
                                             else -> LevyraText
                                         },
-                                        fontSize = 14.sp,
-                                        fontWeight = if (isCurrent) FontWeight.Black else FontWeight.Bold,
+                                        fontSize = if (isCurrent) 16.sp else 15.sp,
+                                        fontWeight = if (isCurrent) FontWeight.Black else FontWeight.SemiBold,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
                                     Text(
                                         track.artist,
                                         color = LevyraMuted.copy(alpha = if (wasPlayed) 0.62f else 1f),
-                                        fontSize = 12.sp,
+                                        fontSize = 13.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
@@ -6734,16 +6728,6 @@ private fun QueueOverlay(
                                         modifier = Modifier.padding(horizontal = 6.dp)
                                     )
                                 } else {
-                                    if (!isCurrent) {
-                                        IconButton(onClick = { onPlayNext(track) }, modifier = Modifier.size(34.dp)) {
-                                            Icon(
-                                                Icons.Rounded.SkipNext,
-                                                strings.playNext,
-                                                tint = LevyraText,
-                                                modifier = Modifier.size(19.dp)
-                                            )
-                                        }
-                                    }
                                     IconButton(
                                         onClick = {
                                             onTrackActions(
@@ -6754,16 +6738,30 @@ private fun QueueOverlay(
                                                 )
                                             )
                                         },
-                                        modifier = Modifier.size(34.dp)
+                                        modifier = Modifier.size(40.dp)
                                     ) {
                                         Icon(
                                             Icons.Rounded.MoreVert,
                                             strings.options,
                                             tint = LevyraMuted,
-                                            modifier = Modifier.size(19.dp)
+                                            modifier = Modifier.size(20.dp)
                                         )
                                     }
                                 }
+                                Box(
+                                    modifier = Modifier
+                                        .size(width = 40.dp, height = 44.dp)
+                                        .then(reorderModifier),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.DragHandle,
+                                        if (selectionActive) null else strings.dragToReorder,
+                                        tint = if (selectionActive) LevyraMuted.copy(alpha = 0.3f) else LevyraMuted,
+                                        modifier = Modifier.size(19.dp)
+                                    )
+                                }
+
                             }
                         }
                     }
@@ -6832,29 +6830,54 @@ private fun QueueOverlay(
                 }
             }
             item(contentType = "queue-radio") {
-                Box(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 10.dp)
-                        .levyraConnectedSurface(LevyraConnectedPosition.Single, connectedStyle)
+                        .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 6.dp, bottomEnd = 6.dp))
+                        .background(QueueRowSurface)
+                        .toggleable(
+                            value = state.radioEnabled,
+                            role = Role.Switch,
+                            onValueChange = { onToggleRadio() }
+                        )
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Icon(Icons.Rounded.Bolt, null, tint = if (state.radioEnabled) LevyraCyan else LevyraMuted, modifier = Modifier.size(20.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(strings.continuousRadio, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black)
-                            Text(strings.continuousRadioSubtitle, color = LevyraMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                        Switch(checked = state.radioEnabled, onCheckedChange = { onToggleRadio() })
-                        if (state.queueUndoAvailable) {
-                            IconButton(onClick = onUndo) {
-                                Icon(Icons.AutoMirrored.Rounded.Undo, strings.undoRemoval, tint = LevyraCyan)
-                            }
+                    QueueActionIcon(Icons.Rounded.Bolt, if (state.radioEnabled) queueAccent else LevyraMuted)
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(strings.continuousRadio, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            strings.continuousRadioSubtitle,
+                            color = LevyraMuted,
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    if (state.queueUndoAvailable) {
+                        IconButton(onClick = onUndo) {
+                            Icon(Icons.AutoMirrored.Rounded.Undo, strings.undoRemoval, tint = queueAccent)
                         }
                     }
+                    Switch(
+                        checked = state.radioEnabled,
+                        onCheckedChange = null,
+                        thumbContent = if (state.radioEnabled) {
+                            { Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+                        } else {
+                            null
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = LevyraBlack,
+                            checkedIconColor = queueAccent,
+                            checkedTrackColor = queueAccent,
+                            uncheckedThumbColor = LevyraMuted,
+                            uncheckedTrackColor = LevyraAdaptiveTrack,
+                            uncheckedBorderColor = LevyraMuted.copy(alpha = 0.6f)
+                        )
+                    )
                 }
             }
             item(contentType = "queue-save") {
@@ -6862,9 +6885,10 @@ private fun QueueOverlay(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 10.dp)
-                        .levyraConnectedSurface(LevyraConnectedPosition.Single, connectedStyle)
-                        .heightIn(min = 48.dp)
+                        .padding(bottom = 6.dp)
+                        .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp, bottomStart = 24.dp, bottomEnd = 24.dp))
+                        .background(QueueRowSurface)
+                        .heightIn(min = 56.dp)
                         .levyraPressable(
                             onClick = { onPrepareQueuePlaylist(state.activeQueueSpaceId) },
                             enabled = state.queue.isNotEmpty() && !loading,
@@ -6873,30 +6897,31 @@ private fun QueueOverlay(
                             onClickLabel = strings.mixLabSaveAsPlaylist,
                             haptic = LevyraHapticAction.Confirm
                         )
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                        .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     if (loading) {
-                        LevyraLoadingIndicator(
-                            color = queueAccent,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                            LevyraLoadingIndicator(color = queueAccent, modifier = Modifier.size(24.dp))
+                        }
                     } else {
-                        Icon(
-                            Icons.Rounded.BookmarkAdd,
-                            contentDescription = null,
-                            tint = if (state.queue.isEmpty()) LevyraMuted else queueAccent,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        QueueActionIcon(Icons.Rounded.BookmarkAdd, if (state.queue.isEmpty()) LevyraMuted else queueAccent)
                     }
                     Text(
                         text = strings.mixLabSaveAsPlaylist,
                         color = if (state.queue.isEmpty()) LevyraMuted else LevyraText,
-                        fontSize = 13.5.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Icon(
+                        Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = LevyraMuted.copy(alpha = 0.7f),
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
@@ -7024,18 +7049,51 @@ private fun QueueSectionHeader(label: String, count: Int?, accent: Color) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier.padding(top = 13.dp, bottom = 8.dp),
+            modifier = Modifier.padding(start = 6.dp, top = 16.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(label, color = LevyraText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(
+                label.lowercase().replaceFirstChar { it.titlecase() },
+                color = accent,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
             if (count != null) {
-                Text(count.toString(), color = accent, fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    count.toString(),
+                    color = accent,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(accent.copy(alpha = 0.16f))
+                        .padding(horizontal = 9.dp, vertical = 2.dp)
+                )
             }
         }
     }
 }
 
+private val QueueRowSurface: Color get() = if (LevyraIsLight) LevyraAdaptiveCard else Color(0xFF1C1D21)
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun QueueActionIcon(icon: ImageVector, tint: Color) {
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(MaterialShapes.Cookie4Sided.toShape())
+            .background(tint.copy(alpha = 0.18f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+    }
+}
+
+private val QueueCurrentArtworkShape: Shape
+    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+    @Composable get() = MaterialShapes.Cookie9Sided.toShape()
 
 @Composable
 private fun QueueSelectionBar(
@@ -11586,8 +11644,7 @@ private fun HomeOrbitHeader(
                 fontSize = LevyraHomeDesign.OrbitHeaderTitleSize,
                 lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitHeaderTitleSize),
                 fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                softWrap = true,
                 modifier = Modifier.semantics { heading() }
             )
         }
@@ -23282,14 +23339,16 @@ private fun settleMiniPlayerVerticalDrag(
 private val PlayerMorphFlightShadow = 18.dp
 private const val MiniPlayerCarryFraction = 0.5f
 private val MiniPlayerCardBase = PlayerDarkSurface
-private val MiniPlayerTrackColor = Color.White.copy(alpha = 0.12f)
-private val MiniPlayerBufferedColor = Color.White.copy(alpha = 0.20f)
-private val MiniPlayerEdgeStroke = 2.5.dp
+private val MiniPlayerToggleRing = 54.dp
+private val MiniPlayerToggleCore = 36.dp
+private val MiniPlayerRingStroke = 3.dp
+private const val MiniPlayerSpinMillis = 14_000
 private val MiniPlayerTrayTop = 4.dp
 private val MiniPlayerTrayBottom = 10.dp
 private val MiniPlayerCardGutter = 12.dp
 private val MiniPlayerGlowElevation = 18.dp
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun MiniPlayer(
     model: MiniPlayerModel,
@@ -23361,14 +23420,9 @@ private fun MiniPlayer(
         animationSpec = if (animated) tween(420, easing = LinearOutSlowInEasing) else snap(),
         label = "mini-progress"
     )
-    val animatedBuffered = animateFloatAsState(
-        targetValue = model.bufferedProgress.coerceIn(0f, 1f),
-        animationSpec = if (animated) tween(520, easing = LinearOutSlowInEasing) else snap(),
-        label = "mini-buffered"
-    )
     val swipe = rememberPlayerSwipeMotion(animated)
     val cardShape = CircleShape
-    val artworkShape = RoundedCornerShape(LevyraPlayerDesign.MiniArtworkCorner)
+    val artworkShape = MaterialShapes.Cookie9Sided.toShape()
     val horizontalGesturesEnabled = miniPlayerHorizontalGesturesEnabled(
         gesturesEnabled = gesturesEnabled,
         swipeTrackChangeEnabled = model.swipeTrackChangeEnabled,
@@ -23398,49 +23452,20 @@ private fun MiniPlayer(
                     )
                     .clip(cardShape)
                     .drawWithCache {
-                        val stroke = MiniPlayerEdgeStroke.toPx()
-                        val inset = stroke / 2f
-                        val edge = Path().apply {
-                            addRoundRect(
-                                RoundRect(
-                                    left = inset,
-                                    top = inset,
-                                    right = size.width - inset,
-                                    bottom = size.height - inset,
-                                    cornerRadius = CornerRadius((size.height - stroke) / 2f)
-                                ),
-                                Path.Direction.Clockwise
-                            )
-                        }
-                        val measure = PathMeasure().apply { setPath(edge, false) }
-                        val edgeLength = measure.length
-                        val segment = Path()
                         val fill = Brush.horizontalGradient(
                             colorStops = arrayOf(
-                                0f to MiniPlayerCardBase.playerAmbienceMix(accentStart, 0.50f),
-                                0.5f to MiniPlayerCardBase.playerAmbienceMix(accentStart, 0.28f),
-                                1f to MiniPlayerCardBase.playerAmbienceMix(accentEnd, 0.18f)
+                                0f to MiniPlayerCardBase.playerAmbienceMix(accentStart, 0.56f),
+                                0.55f to MiniPlayerCardBase.playerAmbienceMix(accentStart, 0.32f),
+                                1f to MiniPlayerCardBase.playerAmbienceMix(accentEnd, 0.22f)
                             )
                         )
-                        val edgeStyle = Stroke(width = stroke, cap = StrokeCap.Round)
+                        val sheen = Brush.verticalGradient(
+                            listOf(Color.White.copy(alpha = 0.07f), Color.Transparent)
+                        )
                         onDrawWithContent {
                             drawRect(fill)
+                            drawRect(sheen)
                             drawContent()
-                            drawPath(edge, MiniPlayerTrackColor, style = Stroke(width = stroke))
-                            if (liveRadio) {
-                                drawPath(
-                                    edge,
-                                    miniProgressColor.copy(alpha = if (isResolving) 0.4f else 0.9f),
-                                    style = Stroke(width = stroke)
-                                )
-                            } else {
-                                segment.reset()
-                                measure.getSegment(0f, edgeLength * animatedBuffered.value, segment, true)
-                                drawPath(segment, MiniPlayerBufferedColor, style = edgeStyle)
-                                segment.reset()
-                                measure.getSegment(0f, edgeLength * animatedProgress.value, segment, true)
-                                drawPath(segment, miniProgressColor, style = edgeStyle)
-                            }
                         }
                     }
                     .playerAxisDragGestures(
@@ -23461,9 +23486,9 @@ private fun MiniPlayer(
                     }
                     .semantics { onClick(label = strings.expandPlayer, action = null) }
                     .pressable(pressedScale = LevyraPressScale.Row, onClick = playbackActions.open)
-                    .padding(start = 9.dp, end = 10.dp),
+                    .padding(start = 8.dp, end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 AnimatedContent(
                     targetState = track,
@@ -23494,9 +23519,12 @@ private fun MiniPlayer(
                                     exit = ExitTransition.None
                                 )
                                 .graphicsLayer { alpha = if (current && artworkHidden()) 0f else 1f }
-                                .clip(artworkShape)
                         ) {
-                            CoverImage(shownTrack, Modifier.fillMaxSize())
+                            MiniPlayerSpinningArtwork(
+                                track = shownTrack,
+                                spinning = current && isPlaying && animated && microMotion,
+                                shape = artworkShape
+                            )
                         }
                         Column(
                             modifier = Modifier
@@ -23533,11 +23561,17 @@ private fun MiniPlayer(
                         }
                     }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
                     MiniPlayerToggleButton(
                         isPlaying = isPlaying,
                         isResolving = isResolving,
-                        buttonColor = miniPrimaryContent,
+                        liveRadio = liveRadio,
+                        progress = { animatedProgress.value },
+                        accent = miniProgressColor,
+                        animated = animated,
                         onToggle = playbackActions.toggle
                     )
                     Row(
@@ -23548,10 +23582,10 @@ private fun MiniPlayer(
                         PlayerRoundIconButton(
                             icon = Icons.Rounded.SkipNext,
                             contentDescription = strings.next,
-                            size = 40.dp,
-                            iconSize = 26.dp,
+                            size = 42.dp,
+                            iconSize = 24.dp,
                             tint = miniPrimaryContent,
-                            background = Color.Transparent,
+                            background = Color.White.copy(alpha = 0.10f),
                             borderColor = Color.Transparent,
                             onClick = playbackActions.next
                         )
@@ -23576,36 +23610,93 @@ private fun MiniPlayer(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun MiniPlayerToggleButton(
     isPlaying: Boolean,
     isResolving: Boolean,
-    buttonColor: Color,
+    liveRadio: Boolean,
+    progress: () -> Float,
+    accent: Color,
+    animated: Boolean,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalLevyraStrings.current
+    val morphShape = rememberLevyraPlayMorphShape(playing = isPlaying, animated = animated)
+    val ringTrack = Color.White.copy(alpha = 0.14f)
+    val ringStroke = with(LocalDensity.current) { Stroke(width = MiniPlayerRingStroke.toPx(), cap = StrokeCap.Round) }
     Box(
         modifier = modifier
-            .sizeIn(
-                minWidth = LevyraPlayerDesign.MinimumTouchTarget,
-                minHeight = LevyraPlayerDesign.MinimumTouchTarget
-            )
+            .size(MiniPlayerToggleRing)
+            .semantics(mergeDescendants = true) {}
             .pressable(onClick = onToggle),
         contentAlignment = Alignment.Center
     ) {
-        if (isResolving) {
-            LevyraLoadingIndicator(
-                modifier = Modifier.size(22.dp),
-                color = buttonColor
+        when {
+            isResolving -> CircularWavyProgressIndicator(
+                modifier = Modifier.fillMaxSize(),
+                color = accent,
+                trackColor = ringTrack,
+                stroke = ringStroke,
+                trackStroke = ringStroke
             )
-        } else {
-            LevyraPlayPauseGlyph(
-                playing = isPlaying,
-                color = buttonColor,
-                contentDescription = if (isPlaying) LocalLevyraStrings.current.pause else LocalLevyraStrings.current.play,
-                modifier = Modifier.size(28.dp)
+            liveRadio -> CircularWavyProgressIndicator(
+                progress = { 1f },
+                modifier = Modifier.fillMaxSize(),
+                color = accent,
+                trackColor = ringTrack,
+                stroke = ringStroke,
+                trackStroke = ringStroke
+            )
+            else -> CircularWavyProgressIndicator(
+                progress = progress,
+                modifier = Modifier.fillMaxSize(),
+                color = accent,
+                trackColor = ringTrack,
+                stroke = ringStroke,
+                trackStroke = ringStroke,
+                amplitude = { if (isPlaying && animated) 1f else 0f }
             )
         }
+        Box(
+            modifier = Modifier
+                .size(MiniPlayerToggleCore)
+                .clip(morphShape)
+                .background(accent),
+            contentAlignment = Alignment.Center
+        ) {
+            LevyraPlayPauseGlyph(
+                playing = isPlaying,
+                color = PlayerDarkSurface,
+                contentDescription = if (isPlaying) strings.pause else strings.play,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun MiniPlayerSpinningArtwork(track: Track, spinning: Boolean, shape: Shape) {
+    val rotation = remember { Animatable(0f) }
+    LaunchedEffect(spinning) {
+        if (!spinning) return@LaunchedEffect
+        while (true) {
+            val start = rotation.value % 360f
+            rotation.snapTo(start)
+            rotation.animateTo(
+                targetValue = start + 360f,
+                animationSpec = tween(durationMillis = MiniPlayerSpinMillis, easing = LinearEasing)
+            )
+        }
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer { rotationZ = rotation.value }
+            .clip(shape)
+    ) {
+        CoverImage(track, Modifier.fillMaxSize())
     }
 }
 

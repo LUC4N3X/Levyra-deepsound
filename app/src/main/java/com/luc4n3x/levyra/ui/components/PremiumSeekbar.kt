@@ -62,9 +62,10 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 
 private const val WaveCrestLift = 0.18f
-private val WaveCrestHeight = 9.5.dp
-private const val ThumbHaloAlpha = 0.42f
-private val ThumbHaloWidth = 1.5.dp
+private val WaveCrestHeight = 12.dp
+private const val ThumbHaloAlpha = 0.5f
+private val ThumbHaloWidth = 3.dp
+private val TrackStopRadius = 2.dp
 
 @Suppress("CognitiveComplexMethod")
 @Composable
@@ -197,7 +198,7 @@ fun PremiumSeekbar(
             wavePhase.animateTo(
                 targetValue = fullPhase,
                 animationSpec = tween(
-                    durationMillis = (4_200f * remainingFraction).roundToInt().coerceAtLeast(1),
+                    durationMillis = (3_000f * remainingFraction).roundToInt().coerceAtLeast(1),
                     easing = LinearEasing
                 )
             )
@@ -322,6 +323,11 @@ fun PremiumSeekbar(
                 topLeft = Offset(trackStart, trackTop),
                 size = Size(trackSpan, trackHeight),
                 cornerRadius = radius
+            )
+            drawCircle(
+                color = activeColor.copy(alpha = activeColor.alpha * 0.7f),
+                radius = TrackStopRadius.toPx(),
+                center = Offset(trackEnd - TrackStopRadius.toPx(), centerY)
             )
 
             val bufferedEnd = (trackStart + bufferedProgress * trackSpan).coerceIn(trackStart, trackEnd)
@@ -510,10 +516,10 @@ private fun DrawScope.drawAnimatedWaveform(
         val waveAlpha = (1f - scrub).coerceIn(0f, 1f)
         if (waveAlpha <= 0.001f) return@clipRect
 
-        val waveLength = 92.dp.toPx()
-        val minimumWaveSpan = 56.dp.toPx()
+        val waveLength = 78.dp.toPx()
+        val minimumWaveSpan = 28.dp.toPx()
         val amplitudeScale = (activeSpan / minimumWaveSpan).coerceIn(0f, 1f)
-        val waveHeight = 9.5.dp.toPx() * waveReveal * amplitudeScale * waveIntensity.coerceIn(0f, 1f)
+        val waveHeight = WaveCrestHeight.toPx() * waveReveal * amplitudeScale * waveIntensity.coerceIn(0f, 1f)
         val baselineY = centerY + trackHeight / 2f
         val topBaseY = centerY - trackHeight / 2f
         val step = 2.dp.toPx().coerceAtLeast(1f)
@@ -552,7 +558,7 @@ private fun DrawScope.drawAnimatedWaveform(
 
         drawPath(
             path = waveFill,
-            color = trailingColor.copy(alpha = trailingColor.alpha * waveAlpha * 0.14f)
+            color = trailingColor.copy(alpha = trailingColor.alpha * waveAlpha * 0.24f)
         )
         drawPath(
             path = waveFill,
