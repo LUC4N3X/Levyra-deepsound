@@ -11633,44 +11633,61 @@ private fun HomeOrbitHeader(
     val displayName = userName.trim()
     val initial = remember(displayName) { homePersonalOrbitInitial(displayName) }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (initial != null) {
-            HomeOrbitAvatar(
-                initial = initial,
-                photoPath = profilePhotoPath,
-                photoVersion = profilePhotoVersion
-            )
-            Spacer(modifier = Modifier.width(LevyraHomeDesign.OrbitAvatarGap))
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            if (initial != null) {
-                Text(
-                    text = displayName.uppercase(),
-                    color = LevyraMuted,
-                    fontSize = LevyraHomeDesign.OrbitHeaderNameSize,
-                    lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitHeaderNameSize),
-                    fontWeight = FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val stackPlayAll = maxWidth < 420.dp
+
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (initial != null) {
+                    HomeOrbitAvatar(
+                        initial = initial,
+                        photoPath = profilePhotoPath,
+                        photoVersion = profilePhotoVersion
+                    )
+                    Spacer(modifier = Modifier.width(LevyraHomeDesign.OrbitAvatarGap))
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    if (initial != null) {
+                        Text(
+                            text = displayName.uppercase(),
+                            color = LevyraMuted,
+                            fontSize = LevyraHomeDesign.OrbitHeaderNameSize,
+                            lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitHeaderNameSize),
+                            fontWeight = FontWeight.Normal,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Text(
+                        text = strings.personalOrbitTitle,
+                        color = LevyraText,
+                        fontSize = LevyraHomeDesign.OrbitHeaderTitleSize,
+                        lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitHeaderTitleSize),
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.semantics { heading() }
+                    )
+                }
+                if (!stackPlayAll) {
+                    Spacer(modifier = Modifier.width(12.dp))
+                    LevyraSectionPlayAll(onClick = onPlayAll)
+                }
             }
-            Text(
-                text = strings.personalOrbitTitle,
-                color = LevyraText,
-                fontSize = LevyraHomeDesign.OrbitHeaderTitleSize,
-                lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitHeaderTitleSize),
-                fontWeight = FontWeight.Bold,
-                softWrap = true,
-                modifier = Modifier.semantics { heading() }
-            )
+            if (stackPlayAll) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    LevyraSectionPlayAll(onClick = onPlayAll)
+                }
+            }
         }
-        Spacer(modifier = Modifier.width(12.dp))
-        LevyraSectionPlayAll(onClick = onPlayAll)
     }
 }
 
