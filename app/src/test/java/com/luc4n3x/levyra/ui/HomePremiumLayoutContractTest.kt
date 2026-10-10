@@ -58,6 +58,20 @@ class HomePremiumLayoutContractTest {
     }
 
     @Test
+    fun `orbit header keeps title on one line without squeezing it beside play all`() {
+        val header = functionBlock("private fun HomeOrbitHeader(")
+        val title = header.substring(header.indexOf("text = strings.personalOrbitTitle"))
+
+        assertTrue(header.contains("BoxWithConstraints(modifier = Modifier.fillMaxWidth())"))
+        assertTrue(header.contains("val stackPlayAll = maxWidth < 420.dp"))
+        assertTrue(title.contains("maxLines = 1"))
+        assertTrue(title.contains("overflow = TextOverflow.Ellipsis"))
+        assertTrue(header.contains("if (!stackPlayAll)"))
+        assertTrue(header.contains("if (stackPlayAll)"))
+        assertTrue(header.contains("horizontalArrangement = Arrangement.End"))
+    }
+
+    @Test
     fun `orbit avatar prefers the profile photo over the initial`() {
         val avatar = functionBlock("private fun HomeOrbitAvatar(")
 
