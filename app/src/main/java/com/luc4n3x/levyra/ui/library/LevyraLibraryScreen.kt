@@ -86,6 +86,8 @@ import com.luc4n3x.levyra.domain.offlineDownloadStageOf
 import com.luc4n3x.levyra.ui.LevyraHorizontalSafeInsets
 import com.luc4n3x.levyra.ui.components.LevyraConnectedPosition
 import com.luc4n3x.levyra.domain.DownloadedTrack
+import com.luc4n3x.levyra.domain.DownloadOwnership
+import com.luc4n3x.levyra.ui.components.levyraGroupedListShape
 import com.luc4n3x.levyra.domain.LibrarySort
 import com.luc4n3x.levyra.domain.LibrarySortDirection
 import com.luc4n3x.levyra.domain.Playlist
@@ -125,6 +127,7 @@ import com.luc4n3x.levyra.ui.artwork.ArtworkBackdropWash
 import com.luc4n3x.levyra.ui.artwork.rememberArtworkPalette
 import com.luc4n3x.levyra.ui.i18n.formatLibraryDuration
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
+import com.luc4n3x.levyra.ui.i18n.smartOfflineCopy
 import com.luc4n3x.levyra.ui.media.ImmersiveMediaActionRow
 import com.luc4n3x.levyra.ui.media.ImmersiveMediaHero
 import com.luc4n3x.levyra.ui.media.ImmersiveMediaPrimaryAction
@@ -528,6 +531,10 @@ internal fun LevyraLibraryScreen(
     val selectedPlaylists = remember(selectedKeys, state.playlists) {
         state.playlists.filter { "playlist:${it.id}" in selectedKeys }
     }
+    val smartOfflineSummary = remember(state.downloads) {
+        val smart = state.downloads.filter { it.ownership == DownloadOwnership.SMART_OFFLINE }
+        smart.size to smart.sumOf(DownloadedTrack::sizeBytes)
+    }
     val selectedDownloads = remember(category, selectedKeys, selectedTracks, state.downloads, catalog.offlineItems) {
         if (category == LibraryCategory.Offline) {
             catalog.offlineItems.filter { it.key in selectedKeys }.map { it.download }
@@ -929,12 +936,27 @@ internal fun LevyraLibraryScreen(
 
                 LibraryCategory.Offline -> {
                     item(key = "offline-storage") {
-                        LibraryOfflineSummary(
-                            bytes = state.downloadStorageBytes,
-                            activeCount = state.downloadQueue.count {
-                                offlineDownloadStageOf(it.state).isActive
+                        val showSmartOffline = state.smartOfflineSettings.enabled || smartOfflineSummary.first > 0
+                        val groupCount = if (showSmartOffline) 2 else 1
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            LibraryOfflineSummary(
+                                bytes = state.downloadStorageBytes,
+                                activeCount = state.downloadQueue.count {
+                                    offlineDownloadStageOf(it.state).isActive
+                                },
+                                shape = levyraGroupedListShape(0, groupCount)
+                            )
+                            if (showSmartOffline) {
+                                LibrarySmartOfflineSummary(
+                                    songCount = smartOfflineSummary.first,
+                                    bytes = smartOfflineSummary.second,
+                                    lastUpdatedAt = state.smartOfflineSettings.lastRefreshAt,
+                                    refreshEnabled = state.smartOfflineSettings.enabled,
+                                    onRefresh = viewModel::refreshSmartOffline,
+                                    shape = levyraGroupedListShape(1, groupCount)
+                                )
                             }
-                        )
+                        }
                     }
                     val activeBatches = visibleDownloadBatches(state.downloadBatches)
                     val hasTransfers = activeBatches.isNotEmpty() || state.downloadQueue.isNotEmpty()
@@ -990,6 +1012,11 @@ internal fun LevyraLibraryScreen(
                                 isDownloaded = true,
                                 downloadProgress = null,
                                 metadata = listOf(
+                                    if (item.download.ownership == DownloadOwnership.SMART_OFFLINE) {
+                                        strings.smartOfflineCopy().title
+                                    } else {
+                                        ""
+                                    },
                                     item.download.mimeType.substringAfter('/').uppercase(Locale.ROOT),
                                     strings.formatLibraryBytes(item.download.sizeBytes)
                                 ).filter(String::isNotBlank).joinToString(" · "),
@@ -1002,6 +1029,9 @@ internal fun LevyraLibraryScreen(
                                 onDownload = {},
                                 onQueue = { viewModel.addToQueue(track) },
                                 onAddToPlaylist = { addToPlaylistTracks = listOf(track) },
+                                onKeepOffline = item.download.takeIf { it.ownership == DownloadOwnership.SMART_OFFLINE }?.let {
+                                    { viewModel.exportTrack(track) }
+                                },
                                 onDeleteDownload = { pendingDownloadDelete = item.download },
                                 modifier = Modifier.animateItem()
                             )

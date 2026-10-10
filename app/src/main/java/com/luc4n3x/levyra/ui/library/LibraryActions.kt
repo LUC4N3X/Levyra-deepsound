@@ -1,6 +1,14 @@
 package com.luc4n3x.levyra.ui.library
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.toShape
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.luc4n3x.levyra.ui.components.LevyraExpressiveIconButton
+import com.luc4n3x.levyra.ui.components.levyraGroupedListShape
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -128,12 +136,12 @@ import com.luc4n3x.levyra.ui.components.levyraDockSurface
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.i18n.playlistProCopy
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
+import com.luc4n3x.levyra.ui.i18n.smartOfflineCopy
 import com.luc4n3x.levyra.ui.i18n.formatLibraryBytes
 import com.luc4n3x.levyra.ui.i18n.formatLibraryDuration
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraOnAccent
 import com.luc4n3x.levyra.ui.theme.LevyraGlass
-import com.luc4n3x.levyra.ui.theme.LevyraGlassBorder
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
@@ -142,50 +150,123 @@ import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraViolet
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun LibraryOfflineSummary(
     bytes: Long,
-    activeCount: Int
+    activeCount: Int,
+    shape: Shape = levyraGroupedListShape(0, 1)
 ) {
     val strings = LocalLevyraStrings.current
-    Surface(
-        color = LevyraGlass,
-        shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.dp, LevyraGlassBorder),
-        modifier = Modifier.fillMaxWidth()
+    LibraryOfflineSummaryRow(
+        icon = Icons.Rounded.Storage,
+        iconShape = MaterialShapes.Square.toShape(),
+        accent = LevyraCyan,
+        title = strings.offlineDownloadsPlain,
+        lines = listOf(
+            listOf(
+                strings.formatLibraryBytes(bytes),
+                activeCount.takeIf { it > 0 }?.let { "$it ${strings.activeIndicator}" }.orEmpty()
+            ).filter(String::isNotBlank).joinToString(" · ")
+        ),
+        shape = shape
+    )
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+internal fun LibrarySmartOfflineSummary(
+    songCount: Int,
+    bytes: Long,
+    lastUpdatedAt: Long,
+    refreshEnabled: Boolean,
+    onRefresh: () -> Unit,
+    shape: Shape = levyraGroupedListShape(0, 1)
+) {
+    val strings = LocalLevyraStrings.current
+    val copy = strings.smartOfflineCopy()
+    LibraryOfflineSummaryRow(
+        icon = Icons.Rounded.AutoAwesome,
+        iconShape = MaterialShapes.Cookie4Sided.toShape(),
+        accent = LevyraViolet,
+        title = copy.title,
+        lines = listOf(
+            "${strings.formatSmartOfflineSongCount(songCount)} · ${strings.formatLibraryBytes(bytes)}",
+            strings.formatSmartOfflineUpdatedAt(lastUpdatedAt)
+        ),
+        shape = shape,
+        trailing = if (refreshEnabled) {
+            { SmartOfflineRefreshButton(contentDescription = copy.refresh, onRefresh = onRefresh) }
+        } else {
+            null
+        }
+    )
+}
+
+@Composable
+private fun SmartOfflineRefreshButton(contentDescription: String, onRefresh: () -> Unit) {
+    LevyraExpressiveIconButton(
+        onClick = onRefresh,
+        colors = IconButtonDefaults.filledTonalIconButtonColors(
+            containerColor = LevyraCyan.copy(alpha = 0.16f),
+            contentColor = LevyraCyan
+        )
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Icon(Icons.Rounded.Refresh, contentDescription = contentDescription)
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun LibraryOfflineSummaryRow(
+    icon: ImageVector,
+    iconShape: Shape,
+    accent: Color,
+    title: String,
+    lines: List<String>,
+    shape: Shape,
+    trailing: (@Composable () -> Unit)? = null
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.62f))
+            .padding(start = 12.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(iconShape)
+                .background(accent.copy(alpha = 0.18f)),
+            contentAlignment = Alignment.Center
         ) {
-            Icon(
-                Icons.Rounded.Storage,
-                contentDescription = null,
-                tint = LevyraCyan,
-                modifier = Modifier.size(20.dp)
+            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(22.dp))
+        }
+        Column(
+            modifier = Modifier.weight(1f).padding(horizontal = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                title,
+                color = LevyraText,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            lines.filter(String::isNotBlank).forEach { line ->
                 Text(
-                    strings.offlineDownloadsPlain,
-                    color = LevyraText,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    listOf(
-                        strings.formatLibraryBytes(bytes),
-                        activeCount.takeIf { it > 0 }?.let { "$it ${strings.activeIndicator}" }.orEmpty()
-                    ).filter(String::isNotBlank).joinToString(" · "),
+                    line,
                     color = LevyraMuted,
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
         }
+        trailing?.invoke()
     }
 }
 
