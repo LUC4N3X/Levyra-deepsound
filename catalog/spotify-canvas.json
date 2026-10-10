@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-10T05:57:44Z",
+  "generatedAt": "2026-10-10T07:46:34Z",
   "items": [
     {
       "song": "WINNER",
@@ -3241,6 +3241,13 @@
       "artist": "Vaundy",
       "album": "replica",
       "url": "https://canvaz.scdn.co/upload/artist/2IUl3m1H1EQ7QfNbNWvgru/video/53f4522a95b04c0fa698de6471dad3b6.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "水平線",
+      "artist": "back number",
+      "album": "ユーモア",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/0e7ac77c531e49e58018e79571d4d698.cnvs.mp4",
       "scope": "track"
     },
     {
