@@ -2706,6 +2706,7 @@ fun LevyraApp(
                     onPitch = viewModel::setPitch,
                     onGapless = viewModel::setGaplessEnabled,
                     onPreloadNextTrack = viewModel::setPreloadNextTrack,
+                    onAdvancedQueuePrefetch = viewModel::setAdvancedQueuePrefetchTracks,
                     aaudioOutputAvailable = remember { NativeAudioIntegration.isAaudioOutputSupported() },
                     onAaudioOutput = viewModel::setAaudioOutputEnabled,
                     onAudioOffloadPreference = viewModel::setAudioOffloadPreference,

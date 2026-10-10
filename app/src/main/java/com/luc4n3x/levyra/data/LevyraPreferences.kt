@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.luc4n3x.levyra.domain.ADVANCED_QUEUE_PREFETCH_OFF
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.LevyraAudioQuality
@@ -190,6 +191,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_AUDIO_PITCH] = normalizedAudio.pitch
             mutable[KEY_AUDIO_GAPLESS] = normalizedAudio.gaplessEnabled
             mutable[KEY_AUDIO_PRELOAD_NEXT] = normalizedAudio.preloadNextTrack
+            mutable[KEY_AUDIO_ADVANCED_QUEUE_PREFETCH] = normalizedAudio.advancedQueuePrefetchTracks
             mutable[KEY_AUDIO_AAUDIO_OUTPUT] = normalizedAudio.aaudioOutputEnabled
             mutable[KEY_AUDIO_PARAMETRIC_ENABLED] = normalizedAudio.parametricEqualizerEnabled
             mutable[KEY_AUDIO_PARAMETRIC_ACTIVE] = normalizedAudio.activeParametricProfile?.let(::parametricProfileToJson)?.toString().orEmpty()
@@ -513,6 +515,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_AUDIO_PITCH] = normalized.pitch
             it[KEY_AUDIO_GAPLESS] = normalized.gaplessEnabled
             it[KEY_AUDIO_PRELOAD_NEXT] = normalized.preloadNextTrack
+            it[KEY_AUDIO_ADVANCED_QUEUE_PREFETCH] = normalized.advancedQueuePrefetchTracks
             it[KEY_AUDIO_AAUDIO_OUTPUT] = normalized.aaudioOutputEnabled
             it[KEY_AUDIO_PARAMETRIC_ENABLED] = normalized.parametricEqualizerEnabled
             it[KEY_AUDIO_PARAMETRIC_ACTIVE] = normalized.activeParametricProfile?.let(::parametricProfileToJson)?.toString().orEmpty()
@@ -982,6 +985,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             pitch = preferences[KEY_AUDIO_PITCH] ?: 1f,
             gaplessEnabled = preferences[KEY_AUDIO_GAPLESS] ?: true,
             preloadNextTrack = preferences[KEY_AUDIO_PRELOAD_NEXT] ?: true,
+            advancedQueuePrefetchTracks = preferences[KEY_AUDIO_ADVANCED_QUEUE_PREFETCH] ?: ADVANCED_QUEUE_PREFETCH_OFF,
             aaudioOutputEnabled = preferences[KEY_AUDIO_AAUDIO_OUTPUT] ?: false,
             customPresets = customPresets,
             parametricEqualizerEnabled = preferences[KEY_AUDIO_PARAMETRIC_ENABLED] ?: false,
@@ -1165,6 +1169,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_AUDIO_PITCH = floatPreferencesKey("audio_pitch")
         val KEY_AUDIO_GAPLESS = booleanPreferencesKey("audio_gapless")
         val KEY_AUDIO_PRELOAD_NEXT = booleanPreferencesKey("audio_preload_next_track")
+        val KEY_AUDIO_ADVANCED_QUEUE_PREFETCH = intPreferencesKey("audio_advanced_queue_prefetch_tracks")
         val KEY_AUDIO_AAUDIO_OUTPUT = booleanPreferencesKey("audio_aaudio_output")
         val KEY_AUDIO_PARAMETRIC_ENABLED = booleanPreferencesKey("audio_parametric_equalizer_enabled")
         val KEY_AUDIO_PARAMETRIC_ACTIVE = stringPreferencesKey("audio_parametric_active_profile")

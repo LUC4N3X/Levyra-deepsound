@@ -17,6 +17,9 @@ object LevyraMediaCache {
     @Volatile
     private var cache: SimpleCache? = null
 
+    @Volatile
+    private var configuredMaxBytes: Long = 0L
+
     fun get(context: Context): SimpleCache {
         val appContext = context.applicationContext
         PlaybackCacheHintStore.initialize(appContext)
@@ -29,9 +32,12 @@ object LevyraMediaCache {
 
     fun currentCacheSpace(): Long = cache?.cacheSpace ?: 0L
 
+    internal fun configuredMaxBytes(): Long = configuredMaxBytes
+
     private fun create(context: Context): SimpleCache {
         val directory = File(context.cacheDir, "levyra_media_cache")
         val maxBytes = maxCacheBytes(context, directory)
+        configuredMaxBytes = maxBytes
         return runCatching {
             createInstance(context, directory, maxBytes)
         }.getOrElse {

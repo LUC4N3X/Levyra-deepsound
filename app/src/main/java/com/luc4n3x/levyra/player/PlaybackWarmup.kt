@@ -2,18 +2,24 @@ package com.luc4n3x.levyra.player
 
 import android.content.Context
 import android.net.Uri
+import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.cache.CacheDataSink
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.CacheWriter
+import androidx.media3.datasource.cache.ContentMetadata
 import com.luc4n3x.levyra.data.runCatchingPreservingCancellation
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.player.offline.audioContentLengthFromUrl
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -22,6 +28,11 @@ import timber.log.Timber
 internal data class VideoWarmupPlan(
     val cachePrimaryAsAudio: Boolean,
     val probeUrl: String
+)
+
+internal data class FullCacheOutcome(
+    val complete: Boolean,
+    val cachedBytes: Long
 )
 
 internal fun isWarmableMediaUrl(url: String): Boolean = url.startsWith("https://", ignoreCase = true)
@@ -63,6 +74,83 @@ class PlaybackWarmup(context: Context) {
             }
         }
         if (jobs.isEmpty()) false else jobs.awaitAll().any { it }
+    }
+
+    internal suspend fun cacheCompletely(track: Track, maxBytes: Long): FullCacheOutcome? = withContext(Dispatchers.IO) {
+        val url = track.streamUrl.trim()
+        val mimeType = LevyraMediaItemFactory.mimeTypeFor(url, false)
+        if (!isWarmableMediaUrl(url) || !isProgressiveMediaMimeType(mimeType)) {
+            Timber.d("advanced prefetch ineligible mime=%s scheme=%s", mimeType, url.substringBefore(':'))
+            return@withContext null
+        }
+        val cacheKey = LevyraPlaybackCacheKey.stream(track)
+        val lock = primeLocks.computeIfAbsent(cacheKey) { Mutex() }
+        try {
+            lock.withLock {
+                runCatchingPreservingCancellation {
+                    val cache = LevyraMediaCache.get(appContext)
+                    val metadataLength = ContentMetadata.getContentLength(cache.getContentMetadata(cacheKey))
+                    if (isPlaybackResourceFullyCached(cache, cacheKey)) {
+                        return@runCatchingPreservingCancellation FullCacheOutcome(true, metadataLength)
+                    }
+                    val declaredLength = metadataLength.takeIf { it > 0L } ?: audioContentLengthFromUrl(url)
+                    if (declaredLength > maxBytes) {
+                        Timber.d("advanced prefetch over limit bytes=%d limit=%d", declaredLength, maxBytes)
+                        return@runCatchingPreservingCancellation null
+                    }
+                    val upstream = LevyraYoutubeDataSource.Factory(
+                        PlaybackNetworkStack.warmupFactory(appContext)
+                            .setDefaultRequestProperties(
+                                mapOf(
+                                    "Accept" to "*/*",
+                                    "Accept-Encoding" to "identity"
+                                )
+                            )
+                    )
+                    val sink = CacheDataSink.Factory()
+                        .setCache(cache)
+                        .setFragmentSize(PRIME_FRAGMENT_BYTES)
+                    val source = CacheDataSource.Factory()
+                        .setCache(cache)
+                        .setUpstreamDataSourceFactory(upstream)
+                        .setCacheWriteDataSinkFactory(sink)
+                        .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+                        .createDataSource()
+                    val dataSpec = DataSpec.Builder()
+                        .setUri(Uri.parse(url))
+                        .setKey(cacheKey)
+                        .setPosition(0L)
+                        .setLength(C.LENGTH_UNSET.toLong())
+                        .build()
+                    var writer: CacheWriter? = null
+                    writer = CacheWriter(source, dataSpec, ByteArray(PRIME_BUFFER_BYTES)) { requestLength, bytesCached, _ ->
+                        if (requestLength > maxBytes || bytesCached > maxBytes) writer?.cancel()
+                    }
+                    cacheUntilCancelled(writer)
+                    val complete = isPlaybackResourceFullyCached(cache, cacheKey)
+                    val length = ContentMetadata.getContentLength(cache.getContentMetadata(cacheKey))
+                    Timber.d("advanced prefetch complete=%s bytes=%d key=%s", complete, length, cacheKey)
+                    FullCacheOutcome(complete, if (complete) length else cache.getCachedBytes(cacheKey, 0L, C.LENGTH_UNSET.toLong()))
+                }.onFailure { Timber.d(it, "advanced prefetch skipped key=%s", cacheKey) }.getOrNull()
+            }
+        } finally {
+            primeLocks.remove(cacheKey, lock)
+        }
+    }
+
+    private suspend fun cacheUntilCancelled(writer: CacheWriter) = coroutineScope {
+        val cancellationWatcher = launch(start = CoroutineStart.UNDISPATCHED) {
+            try {
+                awaitCancellation()
+            } finally {
+                writer.cancel()
+            }
+        }
+        try {
+            writer.cache()
+        } finally {
+            cancellationWatcher.cancel()
+        }
     }
 
     private suspend fun probeVideoUrl(url: String): Boolean = withContext(Dispatchers.IO) {
