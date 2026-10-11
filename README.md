@@ -150,7 +150,7 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
   <a href="docs/assets/showcase/cards/17_new_releases.webp"><img src="docs/assets/showcase/cards/17_new_releases.webp?v=apple-keynote-strada-b-20261011" width="200" alt="Levyra new releases" /></a>
   <a href="docs/assets/showcase/cards/18_artist_profile.webp"><img src="docs/assets/showcase/cards/18_artist_profile.webp?v=apple-keynote-strada-b-20261011" width="200" alt="Levyra artist profile and discography" /></a>
   <a href="docs/assets/showcase/cards/19_top_50.webp"><img src="docs/assets/showcase/cards/19_top_50.webp?v=apple-keynote-strada-b-20261011" width="200" alt="Levyra Top 50 charts" /></a>
-  <a href="docs/assets/showcase/cards/20_soundstage.webp"><img src="docs/assets/showcase/cards/20_soundstage.webp?v=apple-keynote-strada-b-20261011" width="200" alt="Levyra lossless soundstage" /></a>
+  <a href="docs/assets/showcase/cards/20_levyra_jam.webp"><img src="docs/assets/showcase/cards/20_levyra_jam.webp?v=apple-keynote-jam-20261011" width="200" alt="Levyra Jam collaborative listening on local Wi-Fi" /></a>
 </p>
 
 </div>

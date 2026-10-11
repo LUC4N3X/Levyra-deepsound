@@ -34,6 +34,7 @@ docs/assets/showcase/cards/18_artist_profile.webp
 docs/assets/showcase/cards/19_featured_artists.webp
 docs/assets/showcase/cards/19_top_50.webp
 docs/assets/showcase/cards/20_soundstage.webp
+docs/assets/showcase/cards/20_levyra_jam.webp
 docs/assets/showcase/cards/03_lyrics.webp
 docs/assets/showcase/cards/04_charts.webp
 docs/assets/showcase/cards/05_search_artist.webp
