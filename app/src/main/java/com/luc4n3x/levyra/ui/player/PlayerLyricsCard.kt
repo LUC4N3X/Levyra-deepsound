@@ -104,7 +104,7 @@ internal fun PlayerLyricsCard(
     val shape = RoundedCornerShape(nonNegativeCornerRadius(cornerRadius))
     val cardLines = remember(lines) { playerLyricsCardLines(lines) }
     val route = rememberLyricsAudioOutputRoute()
-    val offsetMs = latencyProfiles.resolve(route?.stableKey, route?.bluetooth == true)
+    val offsetMs = latencyProfiles.effectiveOffsetMs(trackId, route?.stableKey, route?.bluetooth == true)
     val currentOffsetMs by rememberUpdatedState(offsetMs)
     val clock = rememberLyricsPlaybackClock(
         trackKey = trackId,
