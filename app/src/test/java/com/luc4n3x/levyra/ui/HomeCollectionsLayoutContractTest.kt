@@ -46,6 +46,18 @@ class HomeCollectionsLayoutContractTest {
     }
 
     @Test
+    fun `editorial collection cards keep a neutral expressive surface`() {
+        val card = functionBlock(source("HomeExploreEditorial.kt"), "internal fun DiscoveryEditorialCard(")
+        assertTrue(card.contains("colors.surfaceContainerHigh"))
+        assertTrue(card.contains("colors.surfaceContainerHighest"))
+        assertTrue(card.contains("editorialContrastPalette("))
+        assertTrue(card.contains(".levyraPressable(onClick = onOpen"))
+        assertFalse(card.contains("lerp(surface, accentStart"))
+        assertFalse(card.contains("accentEnd.copy(alpha"))
+        assertFalse(card.contains("Brush.radialGradient("))
+    }
+
+    @Test
     fun `collection text wraps and stays separate from artwork on narrow screens`() {
         val editorial = source("HomeExploreEditorial.kt")
         val card = functionBlock(editorial, "internal fun DiscoveryEditorialCard(")
