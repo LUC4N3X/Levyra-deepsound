@@ -32,8 +32,8 @@ object LevyraHomeDesign {
     val EditorialThumb: Dp = 104.dp
     val EditorialPeek: Dp = 40.dp
     val EditorialMaxWidth: Dp = 520.dp
-    val EditorialHeight: Dp = 176.dp
-    val EditorialLargeTextHeight: Dp = 272.dp
+    val EditorialHeight: Dp = 144.dp
+    val EditorialLargeTextHeight: Dp = 240.dp
     val DiscoveryArtworkWidth: Dp = 176.dp
     const val EditorialArtworkRatio: Float = 1.5f
     val HeroHeight: Dp = 340.dp
