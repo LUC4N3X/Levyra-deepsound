@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-11T05:52:56Z",
+  "generatedAt": "2026-10-11T12:56:42Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -521,6 +521,13 @@
       "scope": "track"
     },
     {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "Man I Need",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Babydoll",
       "artist": "Jamie Miller",
       "album": "Babydoll",
@@ -614,7 +621,7 @@
     {
       "song": "Nice To Each Other",
       "artist": "Olivia Dean",
-      "album": "The Art of Loving",
+      "album": "Nice To Each Other",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/aca2daddec534de8a3bcc1de7200d256.cnvs.mp4",
       "scope": "track"
     },
@@ -1855,13 +1862,6 @@
       "artist": "Robert van Hemert, Donnie",
       "album": "Moët Dat Nou",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/444c6f8ca4ff4f549b39e2a76a5a3916.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "Man I Need",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4889,6 +4889,13 @@
       "scope": "track"
     },
     {
+      "song": "Wenn Für Immer Heute Wär",
+      "artist": "Mathea",
+      "album": "Wenn Für Immer Heute Wär",
+      "url": "https://canvaz.scdn.co/upload/artist/3r5Kc95Oz8lDc8BL9ChO7n/video/d0ea506407cb45f89f01551b67265a15.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Weltzeituhr",
       "artist": "Philipp Poisel",
       "album": "Weltzeituhr",
@@ -5204,34 +5211,6 @@
       "scope": "track"
     },
     {
-      "song": "Oblohy půl",
-      "artist": "Kryštof",
-      "album": "Půlnoční hřích",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/69f1b1a08a0f4cc5a486ffbd780a3616.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "CSAPLÁROVA PAST (feat. Victor Kal.)",
-      "artist": "Rohony, Victor Kal.",
-      "album": "CSAPLÁROVA PAST (feat. Victor Kal.)",
-      "url": "https://canvaz.scdn.co/upload/artist/3FgZ0agsmQ50Y9VflHdcio/video/36f2e16280fb4c69ad20af5efe650124.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Papierové lietadlá",
-      "artist": "Yael, Tian Moon",
-      "album": "Papierové lietadlá",
-      "url": "https://canvaz.scdn.co/upload/artist/5TSjeYa1XO0i6b4FVKZYYz/video/1adb73ff9378420d99b0f57355c98b2d.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Než bude pozdě",
-      "artist": "Earth",
-      "album": "Než bude pozdě",
-      "url": "https://canvaz.scdn.co/upload/artist/145RezaSLWGxp3SLnAcHPr/video/fec894dcf9724c1cad0fffaeea1fba7c.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Misafir",
       "artist": "Sena Gül",
       "album": "Misafir",
@@ -5509,13 +5488,6 @@
       "artist": "BAMBOO",
       "album": "Alon",
       "url": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/e61f00d70e5a4a91b3e9d503c9c375e6.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Hawa",
-      "artist": "Amjad Jomaa",
-      "album": "Hawa",
-      "url": "https://canvaz.scdn.co/upload/licensor/2ihNpZNPbbQ6eQ6usuTcMm/video/b8b8409928aa42c9b03f165022a86ffc.cnvs.mp4",
       "scope": "track"
     }
   ]
