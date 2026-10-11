@@ -1,92 +1,66 @@
-# Levyra 2.6.5
+# Levyra 2.6.6
 
 ## Highlights
 
-Levyra looks and feels quite different in this update. Home is fuller without feeling crowded, Explore is easier to browse, and Library puts the music you've saved back at the centre of the screen. The new Material 3 Expressive styling runs through the app, with more consistent shapes, spacing, typography and controls.
+Levyra 2.6.6 gives you more ways to make the player your own, and more control over the music you keep ready to play. The player has new looks and backgrounds, Home and Explore have been refined again, and the transition between the mini-player and full player is smoother.
 
-There's more than a visual refresh here. You can choose how much audio Levyra buffers, import more headphone EQ presets, and do more with the tracks in your queue. Motion Artwork has also gained new sources and smoother fallbacks. Several fixes address problems that showed up in real use, including an Explore crash caused by unnecessary repeated catalog loading.
+This update also adds optional advanced preloading, Smart Offline collections, personal M3U and JSON music libraries, and a better way to fix lyrics timing for individual songs. These features build on the existing music library and playback experience rather than replacing it.
 
-This release covers the Android changes merged after 2.6.3. The Windows version follows its own release schedule.
+## ✦ More ways to make the player yours
 
-## ✦ A more comfortable Home and Explore
+The player now offers six visual styles: Studio, Velvet, Liner Notes, Bloom, Gallery and Late Night. Studio is the default if you have never selected a style; your saved choice is preserved. Velvet brings artwork closer to the controls, Liner Notes puts the music details first, and Late Night has a vinyl presentation that stops spinning when playback is paused.
 
-Home has been reorganised so you can reach your music sooner. The main feature area takes up less of the first screen, sections have a clearer rhythm, and album artwork carries more of the visual weight.
+You can also choose Aurora or Gradient player backgrounds, and the new wavy progress control moves only while music is playing. The mini-player opens into the full player more naturally, while playback controls remain in the regular Media3 music notification instead of an additional live-update notification.
 
-- A more compact greeting and header, cleaner shortcuts, and less wasted space between section titles and their content.
-- Richer editorial collections and Quick Picks, with clearer artwork and more useful browsing layouts.
-- Genre shortcuts that open the matching Explore destination, rather than stopping at a decorative label.
-- A new presentation for the Top 50, with a podium-style top ten and compact entries for the rest.
-- A subtle Home background influenced by the artwork currently playing, with motion governed by the existing visual settings.
+The Material 3 Expressive treatment reaches the queue, Audio panel, artist and album pages, search, listening insights and collections. The first-run setup is more visual too, with artist artwork in genre selection. Home, Explore and Levyra Mix have clearer controls and more consistent spacing.
 
-Explore follows the same calmer design. Moods and genres use artwork-led cards and more coherent destination screens; fresh music, radio, mixes and category shortcuts are easier to tell apart. Some long labels, contrast issues and crowded controls have been refined too. These changes keep the existing discovery and playback actions rather than replacing them.
+## ✦ Advanced preloading, only if you want it
 
-## ✦ Your Library, with the music first
+In Audio settings, **Advanced preloading** can prepare the next 5, 10 or 15 songs in your actual queue using Levyra's existing playback disk cache. It is **off by default**, so nothing changes for listeners who leave it disabled.
 
-The Library has a more useful starting point: favourites come first, other saved collections are easier to scan, and playlists have a clearer, artwork-focused shelf.
+When enabled, preloading runs on unmetered connections, follows cache and storage limits, and works with supported streams that can be fully cached. This is intended to reduce interruptions when a connection becomes unstable. It is not a guarantee of complete offline playback: some tracks still need their source resolved before they can play.
 
-The weekly listening chart has also been redrawn with slimmer bars, a quieter grid and more readable labels. Search, sorting, playlist import and empty states use the same visual language as the rest of Levyra. Existing playlist actions, saved tracks and navigation are retained.
+The existing buffering controls and manual downloads keep their own behaviour. The new setting is saved with your preferences and backups.
 
-## ✦ A cleaner Player and better queue tools
+## ✦ Smart Offline and personal collections
 
-The Player, mini-player, album and playlist surfaces have received a shared visual polish. Typography, control spacing, selection states and accents feel more consistent, while the Player Deck offers clearer style previews and selection feedback. Artist credits and recent-search metadata have also had small usability fixes.
+**Smart Offline** can keep frequently played and favourite tracks ready within a storage limit you choose. Its background management distinguishes automatically cached tracks from your own manual downloads, so automatic cleanup does not prune songs you downloaded yourself. Settings and the Downloads library provide controls and a status view.
 
-Queue tools are more capable now, including actions to manage tracks and save queue content as a playlist. The changes build on the existing queue engine rather than replacing playback or saved library data.
+You can now also import personal music collections from M3U or Levyra JSON, using a local file or an HTTP(S) source. Imported collections support refresh, artwork, queue playback and offline downloads. Remote credentials remain in encrypted app storage; plain HTTP and local-network access have explicit consent checks. Removing a collection does not silently remove tracks you downloaded from it.
 
-Material 3 Expressive now reaches more of the controls you actually touch, including contextual actions, playlist playback and multi-selection. The aim is simple: clearer controls and a more consistent feel from one screen to the next.
+## ✦ Fix lyrics without shifting every song
 
-## ✦ Playback buffering, now your choice
+Lyrics timing now has a correction for each song, from -30 to +30 seconds, available directly in the lyrics screen and in a dedicated timing sheet. This is separate from global or Bluetooth output latency.
 
-Levyra's original buffering behaviour is still the default. If you never open the new setting, nothing changes.
+A correction to one track no longer changes the timing of every other track. Existing latency settings remain compatible, and saved per-song corrections follow the established backup flow.
 
-For anyone who wants finer control, Audio Settings now offers an **Automatic** mode and a **Custom** mode with Reduced, Balanced and High presets, plus manual adjustments within safe limits.
+## ✦ Smoother screens and everyday fixes
 
-Your choice is saved with your other preferences and included in backups. New values take effect when the player is created again, so adjusting a setting does not restart the track you're listening to. The controls and explanations are available across Levyra's 37 supported Android languages.
+An artist-page rendering issue that could freeze the interface has been addressed by removing an expensive decorative shadow. Home's decorative backdrop no longer redraws continuously while idle, reducing unnecessary rendering work.
 
-## ✦ More headphone presets work with AutoEQ
-
-AutoEQ importing is more flexible and more careful about files it cannot represent accurately. Alongside GraphicEQ, Wavelet and Equalizer APO / Peace formats, the importer handles supported ParametricEQ and FixedBandEQ configurations, AutoEq correction CSV files, and compatible SoundSource and Rockbox exports.
-
-File detection now looks at the content rather than trusting the extension alone. It also handles more real-world encoding, separator and formatting differences.
-
-Importing shouldn't silently throw away filters, overwrite duplicate points or clip an out-of-range correction. When a preset needs conversion, Levyra identifies the detected format and explains any approximation. Unsupported or incomplete configurations produce an explicit error instead of an apparently successful but inaccurate import.
-
-Levyra's graphic equaliser still has ten bands: converting a high-resolution correction curve is an approximation, not a promise of identical output to a convolution filter or a different EQ engine. Saved presets and the existing preset-selection workflow remain in place.
-
-## ✦ Motion Artwork with fewer rough edges
-
-Motion Artwork has gained Apple Music artwork support on album and artist pages, alongside improvements to the existing Canvas lookup, caching and refresh paths. Static artwork remains available while a suitable animation is being resolved, helping avoid distracting gaps when moving between tracks.
-
-The Player's artwork colours are also handled more consistently, including improved tonal mapping and better fallback accents when a cover has very little colour.
-
-## ✦ Stability and smaller fixes
-
-One important fix is in Explore: the editorial catalog could be read and parsed repeatedly by concurrent requests during a cold start, causing excessive memory use and, in some cases, an out-of-memory crash. The catalog is now shared across those requests instead of being loaded over and over.
-
-Other refinements include more readable text and contrast, tidier recent-search cards, cleaner navigation and updated extractor player-configuration data. Where upstream configurations disagree, the existing conservative validation and fallback rules remain part of the configuration pipeline.
+The comments sheet has a clearer layout and improved author-avatar handling. Like and dislike controls no longer accidentally trigger the player's surrounding gestures. Home's personal-orbit heading now has a more compact Play All button so the title can stay on one line. The update banner, navigation and several other controls have been polished as part of the same visual work.
 
 ## Validation
 
-The changes in this release come from merged work on `main` after tag `v2.6.3`, including focused unit and UI contract tests added alongside buffering, AutoEQ, the queue, Motion Artwork, Explore and the Material 3 refresh.
+The changes described above are grounded in Android pull requests merged into `main` after the publication of `v2.6.5`, including #880, #889, #892, #895, #896, #897, #900, #904, #906 and #913. Individual changes reported focused automated tests and emulator checks. In particular, the player visual updates and comments sheet were exercised on an API 37 emulator, and the artist-page and idle-Home rendering fixes have targeted emulator evidence.
 
-There is direct manual evidence from individual changes: the buffering modes and preset controls were checked on a Samsung device using Wi-Fi debugging; the Explore cold-start memory fix and several Home/Player Deck interactions were checked on an API 37 emulator. These are tests of the relevant changes, not an end-to-end test of the final 2.6.5 APK.
+These are checks reported for the individual changes, **not** proof that the final signed 2.6.6 APK has passed end-to-end testing. The release workflow must still run its Android release lint and signed APK build, verify the package version and signing certificate, generate a SHA-256 checksum, publish the release, and check the resulting assets. No outcome of those 2.6.6 release checks is claimed in advance.
 
-The Android release workflow is the publication gate. It must validate the version and these notes, run Android release lint, assemble a signed APK, check the package version and signing certificate, generate a SHA-256 checksum, publish the GitHub release and verify the downloaded release assets. None of those final 2.6.5 checks is claimed as passed in advance.
-
-A full manual regression pass of the final signed 2.6.5 APK on physical devices, Android Auto, background playback, downloads and every supported Android version has not been completed specifically for this release.
+A full manual regression pass of the final 2.6.6 APK, including physical-device playback, Android Auto, downloads, background operation and every supported Android version, is not yet verified by this version update.
 
 ## Versioning
 
-- Version name: `2.6.5`
-- Version code: `2060500`
+- Version name: `2.6.6`
+- Version code: `2060600`
 
-This is an Android release. Levyra Desktop has a separate version and release line.
+This release is for Android. Levyra Desktop retains its independent version and publication schedule.
 
 ## Upgrade notes
 
-No manual migration is required. This update does not introduce a new Room database schema or require you to rebuild your Library. Existing favourites, playlists, downloads, listening history, settings and backups remain on their established data paths. The new buffering preference defaults to Automatic for existing users.
+No manual migration is expected. The app includes database migrations for Smart Offline ownership and personal music collections. Existing manual downloads retain their ownership, while old installations keep Advanced preloading disabled until it is explicitly selected.
 
-Once the signed APK and checksum have passed the GitHub release workflow, they will appear on this release page. F-Droid and other distribution channels follow their own build and publication schedules.
+Your saved music, favourites, playlists, listening history, existing playback preferences and backups continue through the established application data paths. GitHub's signed APK and checksum appear only after the release workflow completes successfully. F-Droid and other distribution channels follow separate publication schedules.
 
 ## Final note
 
-2.6.5 is about making Levyra more pleasant to use every day. Your music is easier to find, the screens feel more connected, and there are useful new controls when you want them. Just as importantly, the default listening experience stays familiar.
+2.6.6 is about choice without extra friction. You can change the look of the player, keep more music close at hand, and correct the details that matter to you, while the familiar listening experience stays in place.
