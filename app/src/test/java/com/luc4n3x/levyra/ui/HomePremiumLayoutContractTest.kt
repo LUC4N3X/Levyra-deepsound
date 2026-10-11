@@ -58,6 +58,20 @@ class HomePremiumLayoutContractTest {
     }
 
     @Test
+    fun `orbit header keeps title and compact play all on the same row`() {
+        val header = functionBlock("private fun HomeOrbitHeader(")
+        val title = header.substring(header.indexOf("text = strings.personalOrbitTitle"))
+
+        assertTrue(header.contains("Row("))
+        assertTrue(title.contains("maxLines = 1"))
+        assertTrue(title.contains("overflow = TextOverflow.Ellipsis"))
+        assertTrue(header.contains("Spacer(modifier = Modifier.width(6.dp))"))
+        assertTrue(header.contains("LevyraSectionPlayAll(onClick = onPlayAll, compact = true)"))
+        assertFalse(header.contains("stackPlayAll"))
+        assertFalse(header.contains("BoxWithConstraints("))
+    }
+
+    @Test
     fun `orbit avatar prefers the profile photo over the initial`() {
         val avatar = functionBlock("private fun HomeOrbitAvatar(")
 
