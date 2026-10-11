@@ -189,6 +189,7 @@ class HighQualityPlaybackCoordinator(
     private fun isLocalTrack(track: Track): Boolean {
         val stream = track.streamUrl.trim()
         return track.source.equals(OFFLINE_SOURCE, ignoreCase = true) ||
+            track.id.startsWith(com.luc4n3x.levyra.data.collections.PERSONAL_COLLECTION_TRACK_PREFIX) ||
             stream.startsWith("content://", ignoreCase = true) ||
             stream.startsWith("file://", ignoreCase = true)
     }

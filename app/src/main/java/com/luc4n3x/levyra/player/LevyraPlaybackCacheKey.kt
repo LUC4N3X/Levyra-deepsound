@@ -18,6 +18,9 @@ object LevyraPlaybackCacheKey {
         return "levyra:$id:stream-v2:${streamVariant(track)}"
     }
 
+    fun personalCollection(track: Track): String =
+        "levyra:pc:${sha256(track.id + "\u0000" + track.streamUrl.substringBefore('#')).take(32)}:collection-v1"
+
     fun offlineStream(track: Track): String {
         val id = PlaybackSourceIdentity.sourceVideoId(track)
             .ifBlank { stableId(track) }

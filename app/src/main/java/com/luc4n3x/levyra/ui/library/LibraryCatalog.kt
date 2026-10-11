@@ -16,7 +16,8 @@ internal enum class LibraryCategory {
     Artists,
     Songs,
     Offline,
-    Device
+    Device,
+    Collections
 }
 
 internal enum class LibraryLayout {

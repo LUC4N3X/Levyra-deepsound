@@ -17,6 +17,7 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.AppUpdateRepository
+import com.luc4n3x.levyra.data.collections.isPersonalCollectionTrack
 import com.luc4n3x.levyra.data.ArtistRepository
 import com.luc4n3x.levyra.data.ChartsRepository
 import com.luc4n3x.levyra.data.EditorialChartsRepository
@@ -908,6 +909,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val recommendationFeedbackStore =
         com.luc4n3x.levyra.data.RecommendationFeedbackStore(application.applicationContext)
     private val playlistStore = com.luc4n3x.levyra.data.PlaylistStore(application.applicationContext)
+    val personalCollections = PersonalCollectionsController(application.applicationContext, viewModelScope)
     val playlistStudio = PlaylistStudioController(
         scope = viewModelScope,
         gateway = PlaylistStudioStoreGateway(application.applicationContext, playlistStore) { playlistId ->
@@ -1198,6 +1200,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var queuePlaylistExportJob: Job? = null
     private var queuePlaylistExportGeneration: Long = 0L
     private var consecutiveUnavailableLocalSkips: Int = 0
+    private val collectionSkipTimestamps = ArrayDeque<Long>()
     private val localLibrarySortFlow = MutableStateFlow(
         startupSettings.interfaceSettings.librarySort to startupSettings.interfaceSettings.librarySortDirection
     )
@@ -1679,14 +1682,27 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         player.onVideoStall = { onVideoMidPlayStall() }
+        player.onUnavailableRemoteTrack = { track -> skipUnavailableCollectionTrack(track) }
+        player.onPersonalCollectionError = { denial ->
+            if (denial != null) {
+                val message = com.luc4n3x.levyra.ui.i18n.LevyraPersonalCollectionCatalog.forCode(_state.value.languageCode)
+                    .error(com.luc4n3x.levyra.data.collections.CollectionSyncError.from(denial))
+                _state.update { it.copy(playerError = message) }
+            }
+        }
         player.onError = { errorMsg ->
             val current = _state.value.currentTrack
             if (current?.isLiveRadio() != true) {
                 current?.takeUnless(::isLocalPlaybackTrack)?.let { resolver.invalidate(it, _state.value.isVideoMode) }
             }
+            val message = if (current?.isPersonalCollectionTrack() == true) {
+                personalCollectionPlaybackError()
+            } else {
+                cleanPlaybackError(errorMsg)
+            }
             _state.update {
                 it.copy(
-                    playerError = cleanPlaybackError(errorMsg),
+                    playerError = message,
                     isPlaying = false,
                     isResolving = false,
                     liveRadioReconnectAttempt = if (current?.isLiveRadio() == true) liveRadioRecoveryAttempt else 0
@@ -6267,6 +6283,28 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         track.streamUrl.startsWith("content://", ignoreCase = true) &&
             track.streamUrl in _state.value.queueUnavailableUris
 
+    private fun personalCollectionPlaybackError(): String {
+        val code = _state.value.languageCode
+        return if (hasInternetCapableNetwork()) {
+            LevyraStrings.forCode(code).localFileUnavailable
+        } else {
+            com.luc4n3x.levyra.ui.i18n.LevyraPersonalCollectionCatalog.forCode(code)
+                .error(com.luc4n3x.levyra.data.collections.CollectionSyncError.Offline)
+        }
+    }
+
+    private fun skipUnavailableCollectionTrack(track: Track) {
+        if (_state.value.currentTrack?.id != track.id) return
+        val now = android.os.SystemClock.elapsedRealtime()
+        while (collectionSkipTimestamps.isNotEmpty() && now - collectionSkipTimestamps.first() > COLLECTION_SKIP_WINDOW_MS) {
+            collectionSkipTimestamps.removeFirst()
+        }
+        val queueSize = queueEngine.state.value.tracks.size
+        if (queueSize <= 1 || collectionSkipTimestamps.size >= (queueSize - 1).coerceAtMost(MAX_UNAVAILABLE_LOCAL_SKIPS)) return
+        collectionSkipTimestamps.addLast(now)
+        nextLocal()
+    }
+
     private fun handleUnavailableLocalTrack(track: Track) {
         val strings = LevyraStrings.forCode(_state.value.languageCode)
         localLibrary.requestScan(LocalScanMode.Quick, force = true)
@@ -8178,6 +8216,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
 
     private fun cleanPlaybackError(error: Throwable): String {
+        if (error is com.luc4n3x.levyra.data.collections.PersonalCollectionUnavailableException) {
+            return com.luc4n3x.levyra.ui.i18n.LevyraPersonalCollectionCatalog.forCode(_state.value.languageCode)
+                .error(com.luc4n3x.levyra.data.collections.CollectionSyncError.NotFound)
+        }
         if (error is TimeoutCancellationException) {
             return LevyraStrings.forCode(_state.value.languageCode)
                 .localizeUserError("timeout", youtubePlayback = true)
@@ -8198,7 +8240,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun cleanUserError(message: String?): String {
+        personalCollectionErrorMessage(message)?.let { return it }
         return LevyraStrings.forCode(_state.value.languageCode).localizeUserError(message)
+    }
+
+    private fun personalCollectionErrorMessage(message: String?): String? {
+        val collectionStrings = com.luc4n3x.levyra.ui.i18n.LevyraPersonalCollectionCatalog.forCode(_state.value.languageCode)
+        return when (message) {
+            com.luc4n3x.levyra.player.offline.PERSONAL_COLLECTION_STREAM_ONLY -> collectionStrings.streamOnly
+            com.luc4n3x.levyra.player.offline.PERSONAL_COLLECTION_NOT_AUDIO -> collectionStrings.notAudio
+            com.luc4n3x.levyra.player.offline.PERSONAL_COLLECTION_TOO_LARGE ->
+                collectionStrings.error(com.luc4n3x.levyra.data.collections.CollectionSyncError.TooLarge)
+            else -> null
+        }
     }
 
     private fun updateDownloadProgress(trackId: String, progress: Int) {
@@ -9440,18 +9494,48 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         request: PlaybackResolveRequest,
         autoRetryWhenOffline: Boolean
     ) {
+        if (track.isPersonalCollectionTrack()) {
+            resolvePersonalCollectionPlayback(track, request)
+            return
+        }
+        resolveStandardPlayback(track, request, autoRetryWhenOffline)
+    }
+
+    private suspend fun CoroutineScope.resolvePersonalCollectionPlayback(
+        track: Track,
+        request: PlaybackResolveRequest
+    ) {
+        val playable = try {
+            localDownloadedTrack(track) ?: resolver.resolve(track)
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            if (isCurrentPlaybackRequest(request.id)) {
+                publishResolveFailure(track, error, request.id, autoRetryWhenOffline = false)
+            }
+            return
+        }
+        if (!isCurrentPlaybackRequest(request.id)) return
+        startPlayback(playable, request)
+        prefetchAround(playable)
+    }
+
+    private suspend fun CoroutineScope.resolveStandardPlayback(
+        track: Track,
+        request: PlaybackResolveRequest,
+        autoRetryWhenOffline: Boolean
+    ) {
         val requestId = request.id
         val requestedVideoMode = _state.value.isVideoMode
         val playableTrack = if (requestedVideoMode) preferredVideoPlaybackTrack(track) else youtubePlayableTrack(track)
         val selectedTrack = playableTrack ?: track
         if (isUnavailableLocalTrack(track)) {
-            if (!isActive || requestId != playRequestId) return
+            if (!isCurrentPlaybackRequest(requestId)) return
             handleUnavailableLocalTrack(track)
             return
         }
         val instant = localDownloadedTrack(track) ?: resolver.cached(selectedTrack, requestedVideoMode)
         if (instant != null) {
-            if (!isActive || requestId != playRequestId) return
+            if (!isCurrentPlaybackRequest(requestId)) return
             startPlayback(preserveEditorialArtwork(track, instant), request)
             prefetchAround(instant)
             return
@@ -9459,15 +9543,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         player.stop()
         try {
             val playable = resolveForPlayback(selectedTrack)
-            if (!isActive || requestId != playRequestId) return
+            if (!isCurrentPlaybackRequest(requestId)) return
             startPlayback(playable, request)
             prefetchAround(playable)
         } catch (error: Throwable) {
             if (error is CancellationException) throw error
-            if (!isActive || requestId != playRequestId) return
+            if (!isCurrentPlaybackRequest(requestId)) return
             publishResolveFailure(track, error, requestId, autoRetryWhenOffline)
         }
     }
+
+    private fun CoroutineScope.isCurrentPlaybackRequest(requestId: Long): Boolean =
+        isActive && requestId == playRequestId
 
     private fun publishResolveFailure(
         track: Track,
@@ -11212,7 +11299,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun refreshMotionArtworkAround(current: Track) {
-        if (!_state.value.animationsEnabled || !_state.value.motionArtworkEnabled || _state.value.isVideoMode) {
+        if (
+            !_state.value.animationsEnabled ||
+            !_state.value.motionArtworkEnabled ||
+            _state.value.isVideoMode ||
+            current.isPersonalCollectionTrack()
+        ) {
             motionArtworkJob?.cancel()
             motionArtworkPrefetchJob?.cancel()
             motionArtworkRequestToken.incrementAndGet()
@@ -11304,7 +11396,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val generation = queueEngine.state.value.generation
         val currentKey = MotionArtworkIdentityKey.create(current)
         val next = queueEngine.upcoming(2)
-            .firstOrNull { !samePlayableTrack(it, current) }
+            .firstOrNull { !samePlayableTrack(it, current) && !it.isPersonalCollectionTrack() }
             ?: return
         val nextKey = MotionArtworkIdentityKey.create(next)
         val prefetchToken = ++motionArtworkPrefetchToken
@@ -12394,6 +12486,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
 
     private suspend fun resolveForPlayback(track: Track): Track {
+        if (track.isPersonalCollectionTrack()) return resolver.resolve(track)
         val errors = mutableListOf<String>()
         try {
             return preserveEditorialArtwork(track, resolvePlayableTrack(track))
@@ -12550,6 +12643,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun isLocalPlaybackTrack(track: Track): Boolean {
         val stream = track.streamUrl.trim()
         return track.source.equals("Offline", ignoreCase = true) ||
+            track.isPersonalCollectionTrack() ||
             stream.startsWith("content://", ignoreCase = true) ||
             stream.startsWith("file://", ignoreCase = true)
     }
@@ -13386,6 +13480,7 @@ private val YOUTUBE_PLAYABLE_VIDEO_ID = Regex("^[A-Za-z0-9_-]{11}$")
 
 private const val LOCAL_LIBRARY_SEARCH_CANDIDATE_LIMIT = 4_000
 private const val MAX_UNAVAILABLE_LOCAL_SKIPS = 8
+private const val COLLECTION_SKIP_WINDOW_MS = 60_000L
 
 internal fun queueSpaceDisplayName(space: QueueSpaceSummary?, strings: LevyraStrings): String =
     space?.name?.trim()?.takeIf { it.isNotEmpty() } ?: strings.queueSpaceDefaultName

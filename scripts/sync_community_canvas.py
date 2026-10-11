@@ -51,13 +51,43 @@ class SourceSpec:
     local_path: Path | None = None
 
 
+def require_https_source_url(url: str) -> str:
+    try:
+        parts = urlsplit(url)
+        port = parts.port
+    except ValueError as error:
+        raise CatalogError(f"Malformed catalog URL: {url}") from error
+    if parts.scheme != "https" or not parts.hostname:
+        raise CatalogError(f"Catalog URL must use HTTPS: {url}")
+    if parts.username or parts.password:
+        raise CatalogError(f"Catalog URL must not contain credentials: {url}")
+    if port not in (None, 443):
+        raise CatalogError(f"Catalog URL must use the standard HTTPS port: {url}")
+    return url
+
+
+class HttpsOnlyRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, request, file_pointer, code, message, headers, new_url):
+        require_https_source_url(new_url)
+        return super().redirect_request(
+            request,
+            file_pointer,
+            code,
+            message,
+            headers,
+            new_url,
+        )
+
+
 def fetch_payload(url: str, timeout: float) -> str:
+    require_https_source_url(url)
     request = urllib.request.Request(
         url,
         headers={"Accept": "application/json", "User-Agent": USER_AGENT},
     )
+    opener = urllib.request.build_opener(HttpsOnlyRedirectHandler())
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with opener.open(request, timeout=timeout) as response:
             raw = response.read(MAX_PAYLOAD_BYTES + 1)
     except (urllib.error.URLError, TimeoutError, OSError) as error:
         raise CatalogError(f"Unable to download {url}: {error}") from error
@@ -336,9 +366,10 @@ def load_sources_file(path: Path) -> list[SourceSpec]:
         if not isinstance(required, bool):
             raise CatalogError(f"Source {name} required must be boolean")
         if url:
-            parts = urlsplit(url)
-            if parts.scheme != "https" or not parts.hostname:
-                raise CatalogError(f"Source {name} URL must be HTTPS")
+            try:
+                require_https_source_url(url)
+            except CatalogError as error:
+                raise CatalogError(f"Source {name} has an invalid URL: {error}") from error
             sources.append(SourceSpec(name=name, location=url, required=required))
             continue
         relative_path = Path(local)

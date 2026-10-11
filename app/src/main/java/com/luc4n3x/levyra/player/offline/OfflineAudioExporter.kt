@@ -16,6 +16,10 @@ import com.luc4n3x.levyra.data.LyricsMatcher
 import com.luc4n3x.levyra.data.LyricsRepository
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
+import com.luc4n3x.levyra.data.collections.PersonalCollectionNetworkPolicy
+import com.luc4n3x.levyra.data.collections.PersonalCollectionRepository
+import com.luc4n3x.levyra.data.collections.personalCollectionIdOf
+import com.luc4n3x.levyra.data.collections.stableHash
 import com.luc4n3x.levyra.data.YoutubeStreamCapability
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
@@ -285,6 +289,62 @@ internal fun resumableBytesForStreamIdentity(
     if (storedIdentity == null) return 0L
     return if (storedIdentity == currentIdentity) existingBytes else 0L
 }
+
+internal const val PERSONAL_COLLECTION_STREAM_ONLY = "personal_collection_stream_only"
+internal const val PERSONAL_COLLECTION_NOT_AUDIO = "personal_collection_not_audio"
+internal const val PERSONAL_COLLECTION_TOO_LARGE = "personal_collection_too_large"
+
+internal fun isPersonalCollectionStreamingOnly(url: String): Boolean {
+    val path = url.substringBefore('#').substringBefore('?').lowercase(Locale.US)
+    return path.endsWith(".m3u8") || path.endsWith(".mpd")
+}
+
+private val personalCollectionContainers = mapOf(
+    "mp3" to AudioContainer("mp3", "audio/mpeg", false),
+    "m4a" to AudioContainer("m4a", "audio/mp4", false),
+    "aac" to AudioContainer("aac", "audio/aac", false),
+    "flac" to AudioContainer("flac", "audio/flac", false),
+    "ogg" to AudioContainer("ogg", "audio/ogg", false),
+    "opus" to AudioContainer("opus", "audio/ogg", false),
+    "wav" to AudioContainer("wav", "audio/wav", false),
+    "webm" to AudioContainer("webm", "audio/webm", false)
+)
+
+private val personalCollectionMimeExtensions = mapOf(
+    "audio/mpeg" to "mp3",
+    "audio/mp3" to "mp3",
+    "audio/mp4" to "m4a",
+    "audio/x-m4a" to "m4a",
+    "audio/m4a" to "m4a",
+    "audio/aac" to "aac",
+    "audio/aacp" to "aac",
+    "audio/flac" to "flac",
+    "audio/x-flac" to "flac",
+    "audio/ogg" to "ogg",
+    "application/ogg" to "ogg",
+    "audio/opus" to "opus",
+    "audio/wav" to "wav",
+    "audio/x-wav" to "wav",
+    "audio/wave" to "wav",
+    "audio/webm" to "webm"
+)
+
+private val personalCollectionPathExtensions = mapOf(
+    "mp3" to "mp3", "m4a" to "m4a", "m4b" to "m4a", "mp4" to "m4a", "aac" to "aac", "flac" to "flac",
+    "ogg" to "ogg", "oga" to "ogg", "opus" to "opus", "wav" to "wav", "webm" to "webm", "weba" to "webm"
+)
+
+private fun personalCollectionContainer(contentType: String, path: String): AudioContainer? {
+    val fromPath = personalCollectionPathExtensions[path.substringAfterLast('/').substringAfterLast('.', "").lowercase(Locale.US)]
+    val extension = personalCollectionMimeExtensions[contentType]
+        ?: fromPath?.takeIf { contentType.isBlank() || contentType == "application/octet-stream" || contentType == "binary/octet-stream" }
+        ?: return null
+    if (extension == "ogg" && fromPath == "opus") return personalCollectionContainers["opus"]
+    return personalCollectionContainers[extension]
+}
+
+internal fun personalCollectionDownloadExtension(contentType: String, path: String): String? =
+    personalCollectionContainer(contentType.substringBefore(';').trim().lowercase(Locale.US), path)?.extension
 
 internal fun isMp4AudioExportUrl(url: String): Boolean {
     val clean = url.trim().lowercase(Locale.US)
@@ -559,6 +619,152 @@ class OfflineAudioExporter(
             artworkDeferred?.cancel()
             lyricsDeferred?.cancel()
         }
+    }
+
+    suspend fun exportPersonalCollectionTrack(track: Track): OfflineExportResult = withContext(Dispatchers.IO) {
+        reportProgress(1)
+        val playable = PersonalCollectionRepository.get(context).resolveForDownload(track)
+        val sourceUrl = playable.streamUrl
+        if (isPersonalCollectionStreamingOnly(sourceUrl)) throw IOException(PERSONAL_COLLECTION_STREAM_ONLY)
+        reportProgress(8)
+        val workspace = File(context.cacheDir, "levyra_offline_export").apply { mkdirs() }
+        cleanupWorkspace(workspace)
+        val partial = resumablePartialFile(workspace, AudioContainer("audio", "application/octet-stream", false))
+        val identityFile = resumeIdentitySidecar(partial)
+        val downloaded = downloadPersonalCollectionAudio(playable, sourceUrl, partial, identityFile, workspace)
+        try {
+            if (settings.verifyFile) verifyAudioFile(downloaded.file, downloaded.container)
+            reportProgress(90)
+            val exported = saveToMusicCollection(downloaded.file, playable, downloaded.container)
+            reportProgress(98)
+            val fileName = buildFileName(playable, downloaded.container.extension)
+            persistDownload(track, playable, fileName, exported.uri, downloaded.container, embeddedMetadata = false)
+            reportProgress(100)
+            OfflineExportResult(
+                uri = exported.uri,
+                fileName = fileName,
+                fileMetadataEmbedded = false,
+                mimeType = downloaded.container.mimeType,
+                destinationLabel = exported.destinationLabel
+            )
+        } finally {
+            runCatching { downloaded.file.delete() }
+            runCatching { identityFile.delete() }
+        }
+    }
+
+    private suspend fun downloadPersonalCollectionAudio(
+        track: Track,
+        sourceUrl: String,
+        partial: File,
+        identityFile: File,
+        workspace: File
+    ): DownloadedAudio {
+        val identityKey = "${track.id}|${stableHash(sourceUrl, 32)}"
+        val resumeFrom = personalCollectionResumeOffset(partial, identityFile, identityKey)
+        val request = personalCollectionDownloadRequest(track, sourceUrl, resumeFrom)
+        return executeCancellable(request) { response ->
+            consumePersonalCollectionResponse(response, partial, identityFile, workspace, identityKey, resumeFrom)
+        }
+    }
+
+    private fun personalCollectionResumeOffset(partial: File, identityFile: File, identityKey: String): Long {
+        val storedBytes = partial.takeIf { settings.resumable && it.isFile }?.length() ?: 0L
+        val storedIdentity = readResumeIdentity(identityFile)
+        val reusable = storedBytes > 0L && storedIdentity?.videoId == identityKey && storedIdentity.contentLength > storedBytes
+        if (reusable) return storedBytes
+        discardPartial(partial, identityFile)
+        return 0L
+    }
+
+    private fun personalCollectionDownloadRequest(track: Track, sourceUrl: String, resumeFrom: Long): Request =
+        Request.Builder()
+            .url(sourceUrl)
+            .header("Accept", "audio/*,*/*;q=0.8")
+            .header("Accept-Encoding", "identity")
+            .header(PersonalCollectionNetworkPolicy.COLLECTION_HEADER, personalCollectionIdOf(track.id).orEmpty())
+            .apply { if (resumeFrom > 0L) header("Range", "bytes=$resumeFrom-") }
+            .build()
+
+    private suspend fun consumePersonalCollectionResponse(
+        response: Response,
+        partial: File,
+        identityFile: File,
+        workspace: File,
+        identityKey: String,
+        resumeFrom: Long
+    ): DownloadedAudio {
+        if (!response.isSuccessful) throw IOException("Download audio fallito: HTTP ${response.code}")
+        val contentType = response.header("Content-Type").orEmpty().substringBefore(';').trim().lowercase(Locale.US)
+        val container = personalCollectionContainer(contentType, response.request.url.encodedPath)
+            ?: throw IOException(PERSONAL_COLLECTION_NOT_AUDIO)
+        val body = response.body
+        val contentRange = response.header("Content-Range").orEmpty()
+        val append = resumeFrom > 0L && response.code == 206 &&
+            contentRange.substringAfter("bytes", "").trim().startsWith("$resumeFrom-")
+        if (!append) discardPartial(partial, identityFile)
+        val baseBytes = if (append) resumeFrom else 0L
+        val totalLength = contentRange.substringAfterLast('/').toLongOrNull()
+            ?: body.contentLength().takeIf { it > 0L }?.plus(baseBytes)
+            ?: -1L
+        preparePersonalCollectionDownload(workspace, identityFile, identityKey, container, totalLength, baseBytes)
+        copyPersonalCollectionAudio(body.byteStream(), partial, append, baseBytes, totalLength)
+        validatePersonalCollectionAudio(partial, identityFile)
+        reportProgress(84)
+        return DownloadedAudio(partial, container, requiresAudioExtraction = false)
+    }
+
+    private fun preparePersonalCollectionDownload(
+        workspace: File,
+        identityFile: File,
+        identityKey: String,
+        container: AudioContainer,
+        totalLength: Long,
+        baseBytes: Long
+    ) {
+        if (totalLength > MAX_AUDIO_BYTES) throw IOException(PERSONAL_COLLECTION_TOO_LARGE)
+        ensureStorageAvailable(workspace, totalLength, baseBytes, requiresAudioExtraction = false)
+        if (totalLength > 0L) {
+            writeResumeIdentity(identityFile, OfflineStreamIdentity(identityKey, "", totalLength, container.mimeType))
+        }
+    }
+
+    private suspend fun copyPersonalCollectionAudio(
+        input: java.io.InputStream,
+        partial: File,
+        append: Boolean,
+        baseBytes: Long,
+        totalLength: Long
+    ) = input.use { source ->
+        FileOutputStream(partial, append).use { output ->
+            val buffer = ByteArray(DOWNLOAD_BUFFER_BYTES)
+            var total = baseBytes
+            var lastProgress = downloadProgress(total, totalLength)
+            while (true) {
+                currentCoroutineContext().ensureActive()
+                val read = source.read(buffer)
+                if (read < 0) break
+                rateLimiter.consume(read)
+                total += read.toLong()
+                if (total > MAX_AUDIO_BYTES) throw IOException(PERSONAL_COLLECTION_TOO_LARGE)
+                output.write(buffer, 0, read)
+                val nextProgress = downloadProgress(total, totalLength)
+                if (nextProgress > lastProgress) {
+                    lastProgress = nextProgress
+                    reportProgress(nextProgress)
+                }
+            }
+            output.flush()
+            if (totalLength > 0L && total != totalLength) {
+                throw IOException("Download non valido: $total/$totalLength byte")
+            }
+        }
+    }
+
+    private fun validatePersonalCollectionAudio(partial: File, identityFile: File) {
+        if (partial.length() >= MIN_VALID_AUDIO_BYTES) return
+        discardPartial(partial, identityFile)
+        throw IOException(PERSONAL_COLLECTION_NOT_AUDIO)
     }
 
     private suspend fun downloadAudio(track: Track, workspace: File): DownloadedAudio {
@@ -1631,6 +1837,9 @@ class OfflineAudioExporter(
             "m4a" -> header.copyOf(read).toString(Charsets.ISO_8859_1).contains("ftyp")
             "webm" -> header[0] == 0x1A.toByte() && header[1] == 0x45.toByte() && header[2] == 0xDF.toByte() && header[3] == 0xA3.toByte()
             "mp3" -> header.copyOf(read).toString(Charsets.ISO_8859_1).startsWith("ID3") || (header[0].toInt() and 0xFF) == 0xFF
+            "flac" -> header.copyOf(read).toString(Charsets.ISO_8859_1).startsWith("fLaC")
+            "ogg", "opus" -> header.copyOf(read).toString(Charsets.ISO_8859_1).startsWith("OggS")
+            "wav" -> header.copyOf(read).toString(Charsets.ISO_8859_1).startsWith("RIFF")
             else -> true
         }
         if (!valid) throw IOException("Contenitore audio danneggiato o non riconosciuto")

@@ -14,6 +14,8 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import com.luc4n3x.levyra.data.classifyPlaybackFailureReason
+import com.luc4n3x.levyra.data.collections.CollectionAccessDeniedException
+import com.luc4n3x.levyra.data.collections.isPersonalCollectionTrack
 import com.luc4n3x.levyra.data.isTerminalPlaybackFailure
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.Track
@@ -104,6 +106,8 @@ class LevyraPlayer(context: Context) {
     var onCompletion: (() -> Unit)? = null
     var onError: ((String) -> Unit)? = null
     var onRecoverableStreamError: ((Track, Long, Boolean, Boolean, String) -> Unit)? = null
+    var onUnavailableRemoteTrack: ((Track) -> Unit)? = null
+    var onPersonalCollectionError: ((Throwable?) -> Unit)? = null
     var onVideoStall: (() -> Unit)? = null
 
     var controller: MediaController? = null
@@ -242,7 +246,7 @@ class LevyraPlayer(context: Context) {
                     if (ignoreEndedFromManualStop || connected.mediaItemCount == 0) return
                     val track = loadedTrack ?: return
                     val message = cleanError(error)
-                    if (isLocalPlayback(track)) {
+                    if (isLocalPlayback(track) || track.isPersonalCollectionTrack()) {
                         recoveryInFlight = false
                         recoveryAttempts = 0
                         sponsorJob?.cancel()
@@ -250,6 +254,10 @@ class LevyraPlayer(context: Context) {
                         clearLoadedState()
                         connected.pause()
                         onError?.invoke(message)
+                        if (track.isPersonalCollectionTrack()) {
+                            onPersonalCollectionError?.invoke(collectionDenial(error))
+                            if (isUnavailableRemoteResource(error)) onUnavailableRemoteTrack?.invoke(track)
+                        }
                         return
                     }
                     val terminalFailure = isTerminalPlaybackFailure(classifyPlaybackFailureReason(message))
@@ -740,6 +748,12 @@ class LevyraPlayer(context: Context) {
             stream.startsWith("file://", ignoreCase = true)
     }
 
+    private fun isUnavailableRemoteResource(error: PlaybackException): Boolean =
+        error.findCause<HttpDataSource.InvalidResponseCodeException> { it.responseCode in UNAVAILABLE_REMOTE_CODES } != null
+
+    private fun collectionDenial(error: PlaybackException): Throwable? =
+        error.findCause<CollectionAccessDeniedException>()
+
     private fun isRecoverable(error: PlaybackException): Boolean {
         var current: Throwable? = error
         while (current != null) {
@@ -771,4 +785,20 @@ class LevyraPlayer(context: Context) {
         val videoMode: Boolean,
         val playWhenReady: Boolean
     )
+}
+
+private const val MAX_ERROR_CAUSE_DEPTH = 8
+private val UNAVAILABLE_REMOTE_CODES = setOf(401, 403, 404, 410)
+
+private inline fun <reified T : Throwable> Throwable.findCause(predicate: (T) -> Boolean = { true }): T? {
+    var current: Throwable? = this
+    var depth = 0
+    while (current != null && depth < MAX_ERROR_CAUSE_DEPTH) {
+        if (current is T && predicate(current)) return current
+        val next = current.cause
+        if (next === current) break
+        current = next
+        depth++
+    }
+    return null
 }

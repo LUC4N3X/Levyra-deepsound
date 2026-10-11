@@ -31,6 +31,7 @@ import com.luc4n3x.levyra.domain.normalizedSmartOfflineName
 import com.luc4n3x.levyra.domain.rankSmartOfflineCandidates
 import com.luc4n3x.levyra.domain.smartOfflineConstraintSpec
 import com.luc4n3x.levyra.domain.shouldRunSmartOffline
+import com.luc4n3x.levyra.data.collections.isPersonalCollectionTrack
 import com.luc4n3x.levyra.player.PlaybackService
 import com.luc4n3x.levyra.player.offline.work.OfflineExportWorker
 import java.io.File
@@ -57,6 +58,7 @@ class SmartOfflineWorker(
 
         val now = System.currentTimeMillis()
         val ranked = loadRankedCandidates(database, settings, now)
+            .filterNot { it.candidate.track.isPersonalCollectionTrack() }
         if (!shouldRunSmartOffline(settings, ranked.size, manualDownloadActive)) {
             return@withLock Result.success()
         }
