@@ -5180,8 +5180,6 @@ private fun ArtistOverlay(
 }
 
 private const val ARTIST_FAVORITES_COLLAPSED_COUNT = 4
-private const val ARTIST_POPULAR_COLLAPSED_COUNT = 5
-private const val ARTIST_POPULAR_MAX_COUNT = 50
 private const val ARTIST_POPULAR_REVEAL_STEP = 10
 
 @Composable
