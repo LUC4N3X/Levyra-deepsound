@@ -162,10 +162,10 @@ def draw_vector_sparkle(draw, center_x, center_y, radius, fill_color):
         points.append((x, y))
     draw.polygon(points, fill=fill_color)
 
-def draw_clean_m3_kicker(draw, x, y, text, color, font_size=23):
+def draw_clean_m3_kicker(draw, x, y, text, color, font_size=27):
     font = get_font(font_size, bold=True)
-    sparkle_size = int(font_size * 0.9)
-    sparkle_gap = 10
+    sparkle_size = int(font_size * 0.95)
+    sparkle_gap = 12
 
     bbox = font.getbbox(text)
     th = bbox[3] - bbox[1]
@@ -233,7 +233,7 @@ def render_m3_duo_cut_cards():
         bg.paste(rot1, (p1_x, p1_y), rot1)
 
     # 2. Phone 2 (The Weeknd - Now Playing)
-    # Floating in Card 02 alongside the cut edge of Phone 1
+    # Floating in Card 02 alongside the cut edge of Phone 1, with comfortable top breathing room
     if s_player and os.path.exists(s_player):
         with Image.open(s_player) as src2:
             p2 = create_s26_ultra_phone(src2, target_height=1070)
@@ -241,7 +241,7 @@ def render_m3_duo_cut_cards():
         s2_shadow, pad2 = create_m3_shadow(rot2, blur1=20, blur2=46, offset_y=24)
 
         p2_x = c2_left + 225
-        p2_y = 315
+        p2_y = 350
         bg.paste(s2_shadow, (p2_x - pad2, p2_y - pad2), s2_shadow)
         bg.paste(rot2, (p2_x, p2_y), rot2)
 
@@ -250,24 +250,24 @@ def render_m3_duo_cut_cards():
 
     # --- CARD 01 (Bottom Left Typography) ---
     tx1, ty1 = 76, 1260
-    draw_clean_m3_kicker(draw, tx1, ty1, "ZERO ADS • NATIVE PLAY", color=(85, 55, 155, 255), font_size=23)
-    draw.text((tx1, ty1 + 44), "Pure listening.", font=get_font(62, bold=True), fill=(29, 27, 32, 255))
+    draw_clean_m3_kicker(draw, tx1, ty1, "ZERO ADS • NATIVE PLAY", color=(85, 55, 155, 255), font_size=27)
+    draw.text((tx1, ty1 + 46), "Pure listening.", font=get_font(66, bold=True), fill=(29, 27, 32, 255))
     draw.multiline_text(
-        (tx1, ty1 + 124),
+        (tx1, ty1 + 130),
         "Zero ads, zero accounts.\nStream and store locally on your device.",
-        font=get_font(29),
+        font=get_font(31),
         fill=(70, 65, 80, 255),
         spacing=8
     )
 
     # --- CARD 02 (Top Left Typography) ---
     tx2, ty2 = c2_left + 82, 75
-    draw_clean_m3_kicker(draw, tx2, ty2, "OFFLINE STORAGE", color=(145, 85, 0, 255), font_size=23)
-    draw.text((tx2, ty2 + 44), "Download & keep.", font=get_font(62, bold=True), fill=(29, 27, 32, 255))
+    draw_clean_m3_kicker(draw, tx2, ty2, "OFFLINE STORAGE", color=(145, 85, 0, 255), font_size=27)
+    draw.text((tx2, ty2 + 46), "Download & keep.", font=get_font(66, bold=True), fill=(29, 27, 32, 255))
     draw.multiline_text(
-        (tx2, ty2 + 124),
+        (tx2, ty2 + 130),
         "Clean M4A files in device storage.\nFull metadata, artwork, and lyrics.",
-        font=get_font(29),
+        font=get_font(31),
         fill=(75, 65, 60, 255),
         spacing=8
     )
@@ -307,13 +307,13 @@ def render_m3_single_card(screenshot_name, kicker, title, subtitle, top_tint, bo
     # 3. Clean M3 Typography - directly on surface, NO boxes or bulky badges!
     draw = ImageDraw.Draw(card)
     tx, ty = 76, 75
-    draw_clean_m3_kicker(draw, tx, ty, kicker, kicker_color, font_size=23)
+    draw_clean_m3_kicker(draw, tx, ty, kicker, kicker_color, font_size=27)
 
-    draw.text((tx, ty + 44), title, font=get_font(62, bold=True), fill=(29, 27, 32, 255))
+    draw.text((tx, ty + 46), title, font=get_font(66, bold=True), fill=(29, 27, 32, 255))
     draw.multiline_text(
-        (tx, ty + 124),
+        (tx, ty + 130),
         subtitle,
-        font=get_font(29),
+        font=get_font(31),
         fill=(75, 65, 75, 255),
         spacing=8
     )
@@ -334,77 +334,77 @@ def render_m3_single_card(screenshot_name, kicker, title, subtitle, top_tint, bo
     bdraw.rounded_rectangle((0, 0, card_w - 1, card_h - 1), radius=36, outline=border_color, width=2)
     return card
 
-# Complete suite of Material 3 Expressive specifications for Cards 03 to 20
+# Complete suite of Material 3 Expressive specifications with 100% ACCURATE SCREENSHOT MAPPINGS:
 M3_REMAINING_SPECS = [
     # Card 03: Lyrics
     ("screen-lyrics.jpg", "SYNCED LYRICS", "Sing along.", "Real-time synchronized lyrics, Romanized lines,\nand effortless translation.",
      (255, 222, 238), (255, 198, 224), (194, 24, 91), (233, 30, 99), (235, 185, 215, 200), ["03_now_playing.webp"]),
 
-    # Card 04: Player Decks
-    ("Screenshot_20261010_132210_LEVYRA.jpg", "PLAYER DECKS", "Your listening deck.", "Fluid bottom sheets, gesture controls,\nand adaptive cover-art styling.",
+    # Card 04: Player Decks (Choose your player style - Immersive, Canvas Card, etc.)
+    ("Screenshot_20261010_190538_LEVYRA.jpg", "PLAYER DECKS", "Your listening deck.", "Fluid bottom sheets, gesture controls,\nand adaptive cover-art styling.",
      (216, 240, 255), (195, 228, 252), (0, 115, 195), (0, 170, 255), (170, 215, 248, 200), ["04_player_deck.webp"]),
 
-    # Card 05: Explore
-    ("Screenshot_20261010_132249_LEVYRA.jpg", "DYNAMIC DISCOVERY", "Fresh currents.", "Handpicked artist spotlights, community mixes,\nand global trending charts.",
+    # Card 05: Explore & Fresh Currents (Discover new music, trends and videos)
+    ("Screenshot_20261010_132210_LEVYRA.jpg", "DYNAMIC DISCOVERY", "Fresh currents.", "Handpicked artist spotlights, community mixes,\nand global trending charts.",
      (220, 248, 230), (198, 240, 214), (20, 135, 75), (35, 195, 105), (175, 228, 195, 200), ["05_explore_stage.webp", "05_explore.webp"]),
 
-    # Card 06: Levyra Mix
+    # Card 06: Levyra Mix (Algorithmic discovery stations)
     ("Screenshot_20261010_132217_LEVYRA.jpg", "LEVYRA MIX", "Built for your taste.", "Algorithmic discovery stations powered by\nyour local listening history.",
      (234, 218, 255), (214, 192, 252), (115, 45, 195), (155, 75, 245), (205, 175, 245, 200), ["06_levyra_mix_stage.webp", "06_levyra_mix.webp"]),
 
-    # Card 07: Genres & Moods
-    ("Screenshot_20261010_190726_LEVYRA.jpg", "EXPLORE MOODS", "Every genre.", "Dive into curated categories, moods,\nand regional musical traditions.",
+    # Card 07: Genres & Moods (Romance, Sad, Sleep, Workout, Genres)
+    ("Screenshot_20261010_132249_LEVYRA.jpg", "EXPLORE MOODS", "Every genre.", "Dive into curated categories, moods,\nand regional musical traditions.",
      (255, 226, 212), (255, 204, 185), (215, 75, 25), (255, 110, 45), (245, 185, 160, 200), ["07_genres.webp"]),
 
-    # Card 08: Audio Tuning & Parametric Equalizer
-    ("Screenshot_20261010_190538_LEVYRA.jpg", "AUDIO ARCHITECTURE", "Acoustic precision.", "10-band parametric equalizer, bass boost,\nand bit-perfect output.",
+    # Card 08: Audio Architecture & Tuning (Sleep timer, tempo, audio quality, ambient)
+    ("Screenshot_20261010_190726_LEVYRA.jpg", "AUDIO ARCHITECTURE", "Acoustic precision.", "10-band parametric equalizer, bass boost,\nand bit-perfect output.",
      (224, 245, 228), (200, 235, 208), (25, 130, 65), (45, 190, 95), (180, 225, 190, 200), ["08_audio_tuning.webp"]),
 
-    # Card 09: Album Details
+    # Card 09: Album Details (Hurry Up Tomorrow - The Weeknd)
     ("Screenshot_20260926_194706_LEVYRA.jpg", "DISCOGRAPHY", "Open the album.", "High-resolution artwork, release info,\nand complete tracklists.",
      (255, 232, 214), (255, 212, 188), (185, 85, 15), (240, 125, 35), (240, 195, 165, 200), ["09_album.webp"]),
 
-    # Card 10: Instant Search
+    # Card 10: Instant Search (Recent searches, suggestions, artists)
     ("Screenshot_20261010_145010_LEVYRA.jpg", "INSTANT MATCH", "Find it instantly.", "Recent searches, suggestions, and\ninstant matching across your music.",
      (218, 238, 255), (196, 224, 252), (0, 115, 195), (25, 155, 235), (175, 215, 248, 200), ["10_search.webp"]),
 
-    # Card 11: Collections
+    # Card 11: Collections (Levyra Collections, Quick picks)
     ("Screenshot_20261010_132136_LEVYRA.jpg", "CURATED PLAYLISTS", "Curated for you.", "Handpicked collections and gems\nrevolving around what you love.",
      (255, 220, 242), (255, 195, 230), (175, 35, 125), (225, 60, 155), (240, 180, 220, 200), ["11_collections.webp"]),
 
-    # Card 12: Listening Rhythm & Heatmaps
+    # Card 12: Listening Rhythm & Heatmaps (Attività di ascolto, Il tuo ritmo)
     ("Screenshot_20260927_131943_LEVYRA.jpg", "LISTENING CADENCE", "Your rhythm.", "Activity heatmaps, peak hours, and\nyour personal listening cadence.",
      (255, 238, 204), (255, 220, 172), (165, 105, 0), (240, 165, 30), (240, 205, 155, 200), ["12_listening_rhythm.webp"]),
 
-    # Card 13: Your Orbit
+    # Card 13: Your Orbit (Top rotation, Songs that return)
     ("Screenshot_20261010_132103_LEVYRA.jpg", "TOP ROTATION", "In your orbit.", "The songs and artists that always return\nto your daily rotation.",
      (230, 220, 255), (208, 194, 252), (105, 45, 195), (140, 75, 240), (205, 178, 245, 200), ["13_your_orbit.webp"]),
 
-    # Card 14: Private Listening Stats
+    # Card 14: Private Listening Stats (Library, Listening Pulse, 0 min)
     ("Screenshot_20261010_132050_LEVYRA.jpg", "ON-DEVICE STATS", "Keep it personal.", "Private listening stats and charts,\ncomputed strictly on your device.",
      (216, 248, 248), (192, 238, 238), (0, 135, 145), (0, 195, 205), (170, 225, 225, 200), ["14_listening_pulse.webp"]),
 
-    # Card 15: Artist Playlists
+    # Card 15: Artist Playlists (Essential sets, The Weeknd)
     ("Screenshot_20261010_144048_LEVYRA.jpg", "ESSENTIAL SETS", "Artist playlists.", "Curated sets, tours, and the\nessential catalog of every artist.",
      (222, 232, 255), (198, 215, 252), (35, 85, 205), (50, 115, 245), (180, 205, 248, 200), ["15_artist_playlists.webp"]),
 
-    # Card 16: Vault & Settings
+    # Card 16: Vault & Settings (Customize LEVYRA, single-file backup)
     ("Screenshot_20261010_140700_LEVYRA.jpg", "PRIVACY & BACKUP", "Tailor every detail.", "Audio, design, gestures, and local\nsingle-file Vault backups.",
      (225, 246, 232), (202, 236, 212), (35, 130, 70), (60, 185, 105), (180, 225, 195, 200), ["16_settings_vault.webp"]),
 
-    # Card 17: New Releases
+    # Card 17: New Releases (Don't Chart, Wish Upon You)
     ("Screenshot_20261010_144144_LEVYRA.jpg", "NEW MUSIC", "Fresh off the stage.", "New singles and albums updated\nevery week directly from artists.",
      (255, 222, 248), (255, 198, 240), (175, 35, 145), (225, 55, 190), (240, 180, 230, 200), ["17_new_releases.webp"]),
 
-    # Card 18: Artist Profile & Fresh Currents
+    # Card 18: Artist Profile & Discography (Billie Eilish, biography, top tracks)
     ("Screenshot_20261010_143646_LEVYRA.jpg", "ARTIST PROFILE", "Meet the artist.", "Full discography, singles, biographies,\nand top tracks in one tap.",
      (224, 235, 255), (200, 220, 252), (25, 95, 210), (40, 130, 245), (180, 210, 248, 200), ["18_artist_profile.webp", "18_fresh_currents.webp"]),
 
-    # Card 19: Top 50 Global Charts
+    # Card 19: Top 50 Global Charts (Top 50 United States, daily charts)
     ("Screenshot_20261010_132028_LEVYRA.jpg", "GLOBAL CHARTS", "Top 50 charts.", "Explore daily country charts,\nviral hits, and top tracks worldwide.",
      (255, 224, 220), (255, 200, 194), (205, 45, 35), (250, 65, 50), (245, 180, 175, 200), ["19_top_50.webp"]),
 
-    # Card 20: Levyra Jam Collaborative Session
+    # Card 20: Levyra Jam (Collaborative listening on Wi-Fi)
     ("Screenshot_20261011_133434_LEVYRA.jpg", "LEVYRA JAM", "Listen together.", "Real-time collaborative sessions on local Wi-Fi.\nShare queues, add tracks, and host together.",
      (222, 236, 255), (198, 222, 255), (0, 105, 225), (0, 150, 255), (175, 215, 250, 200), ["20_soundstage.webp", "20_levyra_jam.webp"]),
 ]
@@ -421,7 +421,7 @@ def generate_hero_panoramic_showcase():
         print(f"Generated Panoramic Hero Showcase at ({orig_w}, {orig_h}): {out_path}")
 
 def generate_feature_cards():
-    print("Generating Clean Material 3 Expressive Showcase Cards (no boxes, no clunky badges)...")
+    print("Generating Clean Material 3 Expressive Showcase Cards with accurate screen mappings...")
     c1, c2 = render_m3_duo_cut_cards()
     c1.convert("RGB").save(os.path.join(OUT_CARDS_DIR, "01_home.webp"), "WEBP", quality=95, method=6)
     c2.convert("RGB").save(os.path.join(OUT_CARDS_DIR, "02_stay_with_the_song.webp"), "WEBP", quality=95, method=6)
