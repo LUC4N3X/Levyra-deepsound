@@ -62,5 +62,5 @@ object PersonalCollectionUrlPolicy {
         return first == 100 && second in 64..127
     }
 
-    private fun isUniqueLocal(address: Inet6Address): Boolean = (address.address[0].toInt() and 0xFE) == 0xFC
+    private fun isUniqueLocal(address: Inet6Address): Boolean = address.address[0].toInt() and 0xFE == 0xFC
 }
