@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
@@ -58,6 +59,7 @@ import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.theme.LevyraType
+import com.luc4n3x.levyra.ui.theme.levyraTonalRole
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
@@ -214,8 +216,14 @@ internal fun DiscoveryEditorialCard(
     artworkShape: Shape? = null
 ) {
     val colors = MaterialTheme.colorScheme
-    val contrastPalette = remember(colors.surfaceContainerHigh, colors.surfaceContainerHighest) {
-        editorialContrastPalette(colors.surfaceContainerHigh, colors.surfaceContainerHighest)
+    val isLight = LevyraIsLight
+    val tonal = remember(accentStart, isLight) {
+        levyraTonalRole(accentStart, isLight, maxChroma = 28.0)
+    }
+    val tonalStart = lerp(colors.surfaceContainerHigh, tonal.container, 0.82f)
+    val tonalEnd = lerp(colors.surfaceContainerHigh, tonal.container, 0.54f)
+    val contrastPalette = remember(tonalStart, tonalEnd) {
+        editorialContrastPalette(tonalStart, tonalEnd)
     }
     BoxWithConstraints(
         modifier = modifier

@@ -46,13 +46,14 @@ class HomeCollectionsLayoutContractTest {
     }
 
     @Test
-    fun `editorial collection cards keep a neutral expressive surface`() {
+    fun `editorial collection cards use restrained color instead of grey or opposing gradients`() {
         val card = functionBlock(source("HomeExploreEditorial.kt"), "internal fun DiscoveryEditorialCard(")
-        assertTrue(card.contains("colors.surfaceContainerHigh"))
-        assertTrue(card.contains("colors.surfaceContainerHighest"))
-        assertTrue(card.contains("editorialContrastPalette("))
+        assertTrue(card.contains("levyraTonalRole(accentStart, isLight, maxChroma = 28.0)"))
+        assertTrue(card.contains("lerp(colors.surfaceContainerHigh, tonal.container, 0.82f)"))
+        assertTrue(card.contains("lerp(colors.surfaceContainerHigh, tonal.container, 0.54f)"))
+        assertTrue(card.contains("editorialContrastPalette(tonalStart, tonalEnd)"))
         assertTrue(card.contains(".levyraPressable(onClick = onOpen"))
-        assertFalse(card.contains("lerp(surface, accentStart"))
+        assertFalse(card.contains("colors.surfaceContainerHighest"))
         assertFalse(card.contains("accentEnd.copy(alpha"))
         assertFalse(card.contains("Brush.radialGradient("))
     }
