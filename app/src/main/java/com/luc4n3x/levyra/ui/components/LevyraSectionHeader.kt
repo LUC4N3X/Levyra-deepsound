@@ -5,6 +5,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -124,10 +125,7 @@ internal fun LevyraSectionAction(
     compact: Boolean = false,
     tonal: Boolean = false
 ) {
-    val colors = MaterialTheme.colorScheme
-    val container = if (tonal) colors.secondaryContainer else LevyraAdaptiveChip
-    val content = if (tonal) colors.onSecondaryContainer else LevyraText
-    val trailingTint = if (tonal) colors.onSecondaryContainer else LevyraMuted
+    val palette = sectionActionPalette(tonal)
     val interaction = remember { MutableInteractionSource() }
     val corner = levyraExpressiveCorner(
         interactionSource = interaction,
@@ -151,29 +149,43 @@ internal fun LevyraSectionAction(
             modifier = Modifier
                 .heightIn(min = if (compact) 30.dp else SectionActionVisualHeight)
                 .clip(shape)
-                .background(container)
-                .padding(
-                    start = if (compact) 7.dp else if (leadingIcon != null) 10.dp else 14.dp,
-                    end = if (compact) 8.dp else if (trailingIcon != null) 8.dp else 14.dp
-                ),
+                .background(palette.container)
+                .padding(sectionActionPadding(compact, leadingIcon != null, trailingIcon != null)),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 5.dp)
         ) {
             leadingIcon?.let {
-                Icon(it, contentDescription = null, tint = content, modifier = Modifier.size(if (compact) 14.dp else 18.dp))
+                Icon(it, contentDescription = null, tint = palette.content, modifier = Modifier.size(if (compact) 14.dp else 18.dp))
             }
             Text(
                 text = label,
-                color = content,
+                color = palette.content,
                 style = if (compact) LevyraType.cardTitle.copy(fontSize = 12.sp, lineHeight = 16.sp) else LevyraType.cardTitle,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             trailingIcon?.let {
-                Icon(it, contentDescription = null, tint = trailingTint, modifier = Modifier.size(18.dp))
+                Icon(it, contentDescription = null, tint = palette.trailing, modifier = Modifier.size(18.dp))
             }
         }
     }
+}
+
+private class SectionActionPalette(val container: Color, val content: Color, val trailing: Color)
+
+@Composable
+private fun sectionActionPalette(tonal: Boolean): SectionActionPalette {
+    val colors = MaterialTheme.colorScheme
+    return if (tonal) {
+        SectionActionPalette(colors.secondaryContainer, colors.onSecondaryContainer, colors.onSecondaryContainer)
+    } else {
+        SectionActionPalette(LevyraAdaptiveChip, LevyraText, LevyraMuted)
+    }
+}
+
+private fun sectionActionPadding(compact: Boolean, leading: Boolean, trailing: Boolean): PaddingValues = when {
+    compact -> PaddingValues(start = 7.dp, end = 8.dp)
+    else -> PaddingValues(start = if (leading) 10.dp else 14.dp, end = if (trailing) 8.dp else 14.dp)
 }
 
 @Composable

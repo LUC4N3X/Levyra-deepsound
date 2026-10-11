@@ -20549,18 +20549,6 @@ private fun GreetingBar(
     val dayPart = remember(strings, greetingHour) { strings.greetingDayPart(greetingHour) }
     val name = remember(strings, userName) { strings.greetingName(userName) }
     val greeting = remember(userName, strings, greetingHour) { strings.formatGreeting(userName, greetingHour) }
-    var greetingRevealed by rememberSaveable { mutableStateOf(!animationsEnabled) }
-    val dayPartReveal = remember { Animatable(if (greetingRevealed) 1f else 0f) }
-    val nameReveal = remember { Animatable(if (greetingRevealed) 1f else 0f) }
-    LaunchedEffect(Unit) {
-        if (greetingRevealed) return@LaunchedEffect
-        launch { dayPartReveal.animateTo(1f, spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessLow)) }
-        delay(GREETING_NAME_STAGGER_MS)
-        nameReveal.animateTo(1f, spring(dampingRatio = 0.68f, stiffness = Spring.StiffnessLow))
-        greetingRevealed = true
-    }
-    val ink = if (LevyraIsLight) LevyraText else Color.White
-    val softInk = if (LevyraIsLight) LevyraMuted else Color.White.copy(alpha = 0.72f)
 
     Row(
         modifier = Modifier
@@ -20576,58 +20564,13 @@ private fun GreetingBar(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             HomeLogoBadge()
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clearAndSetSemantics {
-                        contentDescription = greeting
-                        heading()
-                    }
-            ) {
-                Crossfade(
-                    targetState = dayPart,
-                    animationSpec = if (animationsEnabled) tween(240, easing = FastOutSlowInEasing) else snap(),
-                    label = "homeGreetingDayPart"
-                ) { visibleDayPart ->
-                    Text(
-                        text = visibleDayPart,
-                        color = if (name.isBlank()) ink else softInk,
-                        style = if (name.isBlank()) {
-                            LevyraType.screenTitle.copy(fontSize = 24.sp, lineHeight = 28.sp, letterSpacing = (-0.6).sp)
-                        } else {
-                            LevyraType.metadata.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.1.sp)
-                        },
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.graphicsLayer {
-                            alpha = dayPartReveal.value
-                            translationY = (1f - dayPartReveal.value) * GREETING_RISE.toPx()
-                        }
-                    )
-                }
-                if (name.isNotBlank()) {
-                    Text(
-                        text = name,
-                        color = ink,
-                        style = LevyraType.screenTitle.copy(
-                            fontSize = 26.sp,
-                            lineHeight = 29.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = (-0.9).sp
-                        ),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.graphicsLayer {
-                            alpha = nameReveal.value
-                            translationY = (1f - nameReveal.value) * GREETING_RISE.toPx() * 1.6f
-                            val scale = 0.94f + 0.06f * nameReveal.value
-                            scaleX = scale
-                            scaleY = scale
-                            transformOrigin = TransformOrigin(0f, 1f)
-                        }
-                    )
-                }
-            }
+            HomeGreeting(
+                dayPart = dayPart,
+                name = name,
+                greeting = greeting,
+                animationsEnabled = animationsEnabled,
+                modifier = Modifier.weight(1f)
+            )
         }
         HomeHeaderIconButton(
             icon = Icons.Rounded.Search,
@@ -20642,6 +20585,78 @@ private fun GreetingBar(
             loading = isResolving,
             onClick = onSettings
         )
+    }
+}
+
+@Composable
+private fun HomeGreeting(
+    dayPart: String,
+    name: String,
+    greeting: String,
+    animationsEnabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    var greetingRevealed by rememberSaveable { mutableStateOf(!animationsEnabled) }
+    val dayPartReveal = remember { Animatable(if (greetingRevealed) 1f else 0f) }
+    val nameReveal = remember { Animatable(if (greetingRevealed) 1f else 0f) }
+    LaunchedEffect(Unit) {
+        if (greetingRevealed) return@LaunchedEffect
+        launch { dayPartReveal.animateTo(1f, spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessLow)) }
+        delay(GREETING_NAME_STAGGER_MS)
+        nameReveal.animateTo(1f, spring(dampingRatio = 0.68f, stiffness = Spring.StiffnessLow))
+        greetingRevealed = true
+    }
+    val ink = if (LevyraIsLight) LevyraText else Color.White
+    val softInk = if (LevyraIsLight) LevyraMuted else Color.White.copy(alpha = 0.72f)
+    Column(
+        modifier = modifier.clearAndSetSemantics {
+            contentDescription = greeting
+            heading()
+        }
+    ) {
+        Crossfade(
+            targetState = dayPart,
+            animationSpec = if (animationsEnabled) tween(240, easing = FastOutSlowInEasing) else snap(),
+            label = "homeGreetingDayPart"
+        ) { visibleDayPart ->
+            Text(
+                text = visibleDayPart,
+                color = if (name.isBlank()) ink else softInk,
+                style = if (name.isBlank()) {
+                    LevyraType.screenTitle.copy(fontSize = 24.sp, lineHeight = 28.sp, letterSpacing = (-0.6).sp)
+                } else {
+                    LevyraType.metadata.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.1.sp)
+                },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.graphicsLayer {
+                    alpha = dayPartReveal.value
+                    translationY = (1f - dayPartReveal.value) * GREETING_RISE.toPx()
+                }
+            )
+        }
+        if (name.isNotBlank()) {
+            Text(
+                text = name,
+                color = ink,
+                style = LevyraType.screenTitle.copy(
+                    fontSize = 26.sp,
+                    lineHeight = 29.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-0.9).sp
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.graphicsLayer {
+                    alpha = nameReveal.value
+                    translationY = (1f - nameReveal.value) * GREETING_RISE.toPx() * 1.6f
+                    val scale = 0.94f + 0.06f * nameReveal.value
+                    scaleX = scale
+                    scaleY = scale
+                    transformOrigin = TransformOrigin(0f, 1f)
+                }
+            )
+        }
     }
 }
 

@@ -139,72 +139,122 @@ internal fun PlayerExpressiveDeck(
         Spacer(modifier = Modifier.height(if (compact) LevyraPlayerDesign.SpaceXs else LevyraPlayerDesign.SpaceSm))
         slots.progress()
         Spacer(modifier = Modifier.height(if (compact) LevyraPlayerDesign.SpaceXs else LevyraPlayerDesign.SpaceMd))
-        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(transportHeight),
-                horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                ExpressiveRoundButton(
-                    icon = Icons.Rounded.SkipPrevious,
-                    label = labels.previous,
-                    size = transportHeight,
-                    surfaces = surfaces,
-                    animated = animated,
-                    onClick = onPrevious
-                )
-                ExpressivePlayPill(
-                    isPlaying = isPlaying,
-                    isResolving = isResolving,
-                    labels = labels,
-                    height = transportHeight,
-                    surfaces = surfaces,
-                    animated = animated,
-                    onClick = onTogglePlay
-                )
-                ExpressiveRoundButton(
-                    icon = Icons.Rounded.SkipNext,
-                    label = labels.next,
-                    size = transportHeight,
-                    surfaces = surfaces,
-                    animated = animated,
-                    onClick = onNext
-                )
-            }
-        }
+        ExpressiveTransportRow(
+            isPlaying = isPlaying,
+            isResolving = isResolving,
+            labels = labels,
+            height = transportHeight,
+            surfaces = surfaces,
+            animated = animated,
+            onPrevious = onPrevious,
+            onTogglePlay = onTogglePlay,
+            onNext = onNext
+        )
         Spacer(modifier = Modifier.height(if (compact) LevyraPlayerDesign.SpaceMd else LevyraPlayerDesign.SpaceLg))
-        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                PlayerToggleControl(
-                    icon = Icons.Rounded.Shuffle,
-                    label = labels.shuffle,
-                    active = shuffleOn,
-                    toggle = true,
-                    surfaces = surfaces,
-                    animated = animated,
-                    glyph = LevyraPlayerDesign.TransportModeGlyph,
-                    onClick = onShuffle
-                )
-                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    slots.dock(track)
-                }
-                PlayerToggleControl(
-                    icon = if (repeatMode == RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
-                    label = labels.repeat,
-                    active = repeatMode != RepeatMode.Off,
-                    toggle = true,
-                    surfaces = surfaces,
-                    animated = animated,
-                    glyph = LevyraPlayerDesign.TransportModeGlyph,
-                    onClick = onRepeat
-                )
+        ExpressiveModeRow(
+            track = track,
+            slots = slots,
+            shuffleOn = shuffleOn,
+            repeatMode = repeatMode,
+            labels = labels,
+            surfaces = surfaces,
+            animated = animated,
+            onShuffle = onShuffle,
+            onRepeat = onRepeat
+        )
+    }
+}
+
+@Composable
+private fun ExpressiveTransportRow(
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    labels: PlayerControlLabels,
+    height: Dp,
+    surfaces: PlayerSurfaceTokens,
+    animated: Boolean,
+    onPrevious: () -> Unit,
+    onTogglePlay: () -> Unit,
+    onNext: () -> Unit
+) {
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(height),
+            horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ExpressiveRoundButton(
+                icon = Icons.Rounded.SkipPrevious,
+                label = labels.previous,
+                size = height,
+                surfaces = surfaces,
+                animated = animated,
+                onClick = onPrevious
+            )
+            ExpressivePlayPill(
+                isPlaying = isPlaying,
+                isResolving = isResolving,
+                labels = labels,
+                height = height,
+                surfaces = surfaces,
+                animated = animated,
+                onClick = onTogglePlay
+            )
+            ExpressiveRoundButton(
+                icon = Icons.Rounded.SkipNext,
+                label = labels.next,
+                size = height,
+                surfaces = surfaces,
+                animated = animated,
+                onClick = onNext
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExpressiveModeRow(
+    track: Track,
+    slots: PlayerDeckSlots,
+    shuffleOn: Boolean,
+    repeatMode: RepeatMode,
+    labels: PlayerControlLabels,
+    surfaces: PlayerSurfaceTokens,
+    animated: Boolean,
+    onShuffle: () -> Unit,
+    onRepeat: () -> Unit
+) {
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            PlayerToggleControl(
+                icon = Icons.Rounded.Shuffle,
+                label = labels.shuffle,
+                active = shuffleOn,
+                toggle = true,
+                surfaces = surfaces,
+                animated = animated,
+                glyph = LevyraPlayerDesign.TransportModeGlyph,
+                onClick = onShuffle
+            )
+            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                slots.dock(track)
             }
+            PlayerToggleControl(
+                icon = if (repeatMode == RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
+                label = labels.repeat,
+                active = repeatMode != RepeatMode.Off,
+                toggle = true,
+                surfaces = surfaces,
+                animated = animated,
+                glyph = LevyraPlayerDesign.TransportModeGlyph,
+                onClick = onRepeat
+            )
         }
     }
 }
