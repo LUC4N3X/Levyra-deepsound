@@ -798,7 +798,10 @@ class YoutubeMusicWebClient:
 
     def _authorization(self) -> str:
         timestamp = int(time.time())
-        digest = hashlib.sha1(f"{timestamp} {self._sapisid} {ORIGIN}".encode()).hexdigest()
+        digest = hashlib.sha1(
+            f"{timestamp} {self._sapisid} {ORIGIN}".encode(),
+            usedforsecurity=False,
+        ).hexdigest()
         return f"SAPISIDHASH {timestamp}_{digest}"
 
     def _bootstrap(self) -> None:

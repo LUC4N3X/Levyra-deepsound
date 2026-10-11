@@ -68,6 +68,10 @@ import com.luc4n3x.levyra.MainActivity
 import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.PlaybackResolver
+import com.luc4n3x.levyra.data.collections.PersonalCollectionHttp
+import com.luc4n3x.levyra.data.collections.PersonalCollectionNetworkPolicy
+import com.luc4n3x.levyra.data.collections.personalCollectionIdOf
+import com.luc4n3x.levyra.data.collections.isPersonalCollectionTrack
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.data.classifyPlaybackFailureReason
 import com.luc4n3x.levyra.data.isTerminalPlaybackFailure
@@ -256,6 +260,7 @@ class PlaybackService : MediaLibraryService() {
         const val EXTRA_VIDEO_MIME_TYPE = "levyra.videoMimeType"
         const val EXTRA_VIDEO_MODE = "levyra.videoMode"
         const val EXTRA_LIVE_RADIO = "levyra.liveRadio"
+        const val EXTRA_PERSONAL_COLLECTION = "levyra.personalCollection"
         const val EXTRA_YOUTUBE_LOUDNESS_DB = "levyra.youtubeLoudnessDb"
         const val EXTRA_YOUTUBE_PERCEPTUAL_LOUDNESS_DB = "levyra.youtubePerceptualLoudnessDb"
         const val EXTRA_REPLAY_GAIN_TRACK_DB = "levyra.replayGain.trackDb"
@@ -812,13 +817,30 @@ class PlaybackService : MediaLibraryService() {
         val defaultFactory = DefaultMediaSourceFactory(cacheDataSourceFactory)
 
         val localDataSourceFactory = DefaultDataSource.Factory(this)
+        val personalCollectionDataSourceFactory: (String) -> DataSource.Factory = { collectionId ->
+            CacheDataSource.Factory()
+                .setCache(cache)
+                .setUpstreamDataSourceFactory(
+                    OkHttpDataSource.Factory(PersonalCollectionHttp.mediaClient)
+                        .setDefaultRequestProperties(
+                            mapOf(
+                                "Accept" to "*/*",
+                                "Accept-Encoding" to "identity",
+                                PersonalCollectionNetworkPolicy.COLLECTION_HEADER to collectionId
+                            )
+                        )
+                )
+                .setCacheWriteDataSinkFactory(cacheSinkFactory)
+                .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+        }
 
         val mergingFactory = LevyraMediaSourceFactory(
             defaultFactory,
             cacheDataSourceFactory,
             localDataSourceFactory,
             SabrDataSource.Factory(baseHttpFactory),
-            liveRadioDataSourceFactory
+            liveRadioDataSourceFactory,
+            personalCollectionDataSourceFactory
         ).apply {
             setLoadErrorHandlingPolicy(LevyraPlaybackLoadErrorHandlingPolicy)
         }
@@ -1777,6 +1799,7 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private suspend fun resolveQueueTrack(track: com.luc4n3x.levyra.domain.Track): com.luc4n3x.levyra.domain.Track {
+        if (track.isPersonalCollectionTrack()) return resolver.resolve(track)
         if (isLocalPlaybackTrack(track)) {
             if (!isLocalPlaybackUri(track.streamUrl)) {
                 throw IOException("File offline non disponibile per ${track.title}")
@@ -3321,6 +3344,14 @@ internal fun truePeakLimiterRequired(
     (settings.equalizerEnabled || parametricActive || settings.virtualizer > 0 ||
         settings.replayGainActive || audioNormalization)
 
+internal fun isPersonalCollectionMediaItem(mediaItem: MediaItem?): Boolean {
+    if (mediaItem == null) return false
+    val extras = mediaItem.mediaMetadata.extras ?: mediaItem.requestMetadata.extras
+    if (extras?.getBoolean(PlaybackService.EXTRA_PERSONAL_COLLECTION, false) != true) return false
+    val scheme = mediaItem.localConfiguration?.uri?.scheme.orEmpty().lowercase()
+    return scheme == "https" || scheme == "http"
+}
+
 internal fun isLiveRadioMediaItem(mediaItem: MediaItem?): Boolean {
     if (mediaItem == null) return false
     if (mediaItem.mediaId.startsWith("live-radio:")) return true
@@ -3336,7 +3367,8 @@ private class LevyraMediaSourceFactory(
     private val dataSourceFactory: DataSource.Factory,
     private val localDataSourceFactory: DataSource.Factory,
     private val sabrDataSourceFactory: DataSource.Factory,
-    private val liveRadioDataSourceFactory: DataSource.Factory
+    private val liveRadioDataSourceFactory: DataSource.Factory,
+    private val personalCollectionDataSourceFactory: (String) -> DataSource.Factory
 ) : MediaSource.Factory {
     private var loadErrorHandlingPolicy: LoadErrorHandlingPolicy = LevyraPlaybackLoadErrorHandlingPolicy
     private var drmSessionManagerProvider: androidx.media3.exoplayer.drm.DrmSessionManagerProvider? = null
@@ -3393,6 +3425,13 @@ private class LevyraMediaSourceFactory(
         val subtitleUris = mediaItem.localConfiguration?.subtitleConfigurations
             .orEmpty()
             .mapTo(hashSetOf()) { it.uri }
+        val personalCollectionId = personalCollectionIdOf(mediaItem.mediaId)
+        if (personalCollectionId != null && isPersonalCollectionMediaItem(mediaItem)) {
+            val factory = DefaultMediaSourceFactory(personalCollectionDataSourceFactory(personalCollectionId))
+                .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
+            drmSessionManagerProvider?.let { factory.setDrmSessionManagerProvider(it) }
+            return factory.createMediaSource(mediaItem)
+        }
         val routedFactory = if (isLiveRadioMediaItem(mediaItem)) {
             liveRadioDataSourceFactory
         } else {

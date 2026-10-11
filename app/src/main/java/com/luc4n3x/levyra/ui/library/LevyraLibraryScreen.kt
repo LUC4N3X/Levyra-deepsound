@@ -110,6 +110,12 @@ import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 import com.luc4n3x.levyra.viewmodel.LibraryViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
+import com.luc4n3x.levyra.viewmodel.PersonalCollectionEvent
+import com.luc4n3x.levyra.ui.i18n.LevyraPersonalCollectionCatalog
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -294,6 +300,29 @@ internal fun LevyraLibraryScreen(
     var pendingDownloadDelete by remember { mutableStateOf<DownloadedTrack?>(null) }
     var showImportPlaylistCard by rememberSaveable { mutableStateOf(true) }
     var openSmartCollectionName by rememberSaveable { mutableStateOf<String?>(null) }
+    val collectionStrings = remember(strings.code) { LevyraPersonalCollectionCatalog.forCode(strings.code) }
+    val personalCollections by viewModel.personalCollections.summaries.collectAsStateWithLifecycle()
+    val personalCollectionSyncing by viewModel.personalCollections.syncingIds.collectAsStateWithLifecycle()
+    val collectionImportState by viewModel.personalCollections.importState.collectAsStateWithLifecycle()
+    var openCollectionId by rememberSaveable { mutableStateOf<String?>(null) }
+    var showCollectionImport by rememberSaveable { mutableStateOf(false) }
+    val openCollection = openCollectionId?.let { id -> personalCollections.firstOrNull { it.id == id } }
+    val collectionScope = rememberCoroutineScope()
+    fun playPersonalCollection(collectionId: String) {
+        collectionScope.launch {
+            val tracks = viewModel.personalCollections.tracks(collectionId).first()
+            tracks.firstOrNull()?.let { viewModel.playLocalTracks(tracks, it) }
+        }
+    }
+    LaunchedEffect(Unit) {
+        viewModel.personalCollections.events.collect { event ->
+            if (event is PersonalCollectionEvent.Imported) {
+                showCollectionImport = false
+                categoryName = LibraryCategory.Collections.name
+                openCollectionId = event.collectionId
+            }
+        }
+    }
     var selectedTagIds by rememberSaveable { mutableStateOf(emptySet<String>()) }
     var showHiddenPlaylists by rememberSaveable { mutableStateOf(false) }
     val listState = rememberLazyListState()
@@ -524,7 +553,7 @@ internal fun LevyraLibraryScreen(
             LibraryCategory.Offline -> catalog.offlineItems
                 .filter { it.key in selectedKeys }
                 .map { it.track }
-            LibraryCategory.Device -> emptyList()
+            LibraryCategory.Device, LibraryCategory.Collections -> emptyList()
             LibraryCategory.Overview, LibraryCategory.Songs -> catalog.tracks.filter { libraryTrackKey(it) in selectedKeys }
         }.distinctBy(::libraryTrackKey)
     }
@@ -544,7 +573,10 @@ internal fun LevyraLibraryScreen(
     }
     val selectionActive = selectedKeys.isNotEmpty()
 
-    BackHandler(enabled = !selectionActive && openSmartCollectionName == null && category != LibraryCategory.Overview) {
+    BackHandler(
+        enabled = !selectionActive && openSmartCollectionName == null && openCollection == null &&
+            category != LibraryCategory.Overview
+    ) {
         switchCategory(LibraryCategory.Overview)
     }
     BackHandler(enabled = !selectionActive && openSmartCollectionName != null) { openSmartCollectionName = null }
@@ -575,6 +607,7 @@ internal fun LevyraLibraryScreen(
                             strings.formatDownloadedTrackCount(state.downloads.size)
                         LibraryCategory.Device ->
                             strings.formatTrackCount(state.localLibrary.catalog.totalCount)
+                        LibraryCategory.Collections -> collectionStrings.title
                     }
                 )
             }
@@ -639,7 +672,11 @@ internal fun LevyraLibraryScreen(
                 }
             }
 
-            if (category != LibraryCategory.Overview && (category != LibraryCategory.Playlists || state.playlists.isNotEmpty())) {
+            if (
+                category != LibraryCategory.Overview &&
+                category != LibraryCategory.Collections &&
+                (category != LibraryCategory.Playlists || state.playlists.isNotEmpty())
+            ) {
                 item(key = "library-toolbar") {
                     LibraryToolbar(
                         category = category,
@@ -659,7 +696,7 @@ internal fun LevyraLibraryScreen(
                                 LibraryCategory.Albums -> visibleAlbums.mapTo(linkedSetOf()) { "album:${it.key}" }
                                 LibraryCategory.Artists -> visibleArtists.mapTo(linkedSetOf()) { "artist:${it.key}" }
                                 LibraryCategory.Offline -> visibleOffline.mapTo(linkedSetOf()) { it.key }
-                                LibraryCategory.Device -> linkedSetOf()
+                                LibraryCategory.Device, LibraryCategory.Collections -> linkedSetOf()
                                 LibraryCategory.Overview, LibraryCategory.Songs ->
                                     visibleTracks.mapTo(linkedSetOf(), ::libraryTrackKey)
                             }
@@ -917,6 +954,17 @@ internal fun LevyraLibraryScreen(
                     }
                 }
 
+                LibraryCategory.Collections -> personalCollectionsSection(
+                    collections = personalCollections,
+                    syncingIds = personalCollectionSyncing,
+                    query = query,
+                    strings = strings,
+                    collectionStrings = collectionStrings,
+                    onAdd = { showCollectionImport = true },
+                    onOpen = { openCollectionId = it },
+                    onPlay = { collectionId -> playPersonalCollection(collectionId) }
+                )
+
                 LibraryCategory.Device -> localLibrarySection(
                     library = state.localLibrary,
                     tab = localTab,
@@ -1107,6 +1155,17 @@ internal fun LevyraLibraryScreen(
             }
         }
 
+        openCollection?.let { collection ->
+            PersonalCollectionScreen(
+                collection = collection,
+                syncing = collection.id in personalCollectionSyncing,
+                state = state,
+                viewModel = viewModel,
+                collectionStrings = collectionStrings,
+                onClose = { openCollectionId = null }
+            )
+        }
+
         openSmartCollectionName?.let { collectionId ->
             SmartCollectionDetail(
                 collectionId = collectionId,
@@ -1120,6 +1179,23 @@ internal fun LevyraLibraryScreen(
                 onClose = { openSmartCollectionName = null }
             )
         }
+    }
+
+    if (showCollectionImport) {
+        PersonalCollectionImportSheet(
+            state = collectionImportState,
+            strings = strings,
+            collectionStrings = collectionStrings,
+            onPreview = { source, allowCleartext -> viewModel.personalCollections.preview(source, allowCleartext) },
+            onConfirm = { name, autoRefresh, allowCleartext ->
+                viewModel.personalCollections.confirmImport(name, autoRefresh, allowCleartext)
+            },
+            onReset = viewModel.personalCollections::resetImport,
+            onDismiss = {
+                viewModel.personalCollections.resetImport()
+                showCollectionImport = false
+            }
+        )
     }
 
     localTagEditorTarget?.let { target ->
