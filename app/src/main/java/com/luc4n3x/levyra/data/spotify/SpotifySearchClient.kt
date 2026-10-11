@@ -47,8 +47,7 @@ internal class SpotifySearchClient(
         val responseJson = try {
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return@withContext SearchResults()
-                val body = response.body.string()
-                if (body.isEmpty()) return@withContext SearchResults()
+                val body = response.body.readSpotifyJsonBody() ?: return@withContext SearchResults()
                 JSONObject(body)
             }
         } catch (error: CancellationException) {

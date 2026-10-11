@@ -189,6 +189,14 @@ internal fun preserveEditorialArtwork(presented: Track, resolved: Track): Track 
     )
 }
 
+internal suspend fun <T> withinPlaybackResolveBudget(timeoutMs: Long, block: suspend () -> T): T {
+    return try {
+        withTimeout(timeoutMs) { block() }
+    } catch (error: TimeoutCancellationException) {
+        throw PlaybackBlockedException("YouTube lento: sto aspettando lo stream più del previsto, riprova tra qualche secondo")
+    }
+}
+
 private const val YOUTUBE_NONCE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 private const val MAX_YOUTUBE_JSON_RESPONSE_BYTES = 8L * 1024L * 1024L
 private val youtubeNonceRandom = SecureRandom()
@@ -1075,23 +1083,25 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     suspend fun resolve(track: Track, isVideoMode: Boolean = false): Track {
         if (track.isPersonalCollectionTrack()) return personalCollections.resolveForPlayback(track)
-        val targetTrack = resolveSpotifyTrackIfUnmatched(track)
-        val resolved = resolveWithLanguageRevisionRetry(
-            originalTrack = targetTrack,
-            acceptAcrossLanguageChange = { it.playbackManifest?.alternativeSource != null }
-        ) { requestTrack, _ ->
-            val alternativeQuery = highQualityPlayback
-                .queryFor(requestTrack, isVideoMode, selectedAudioQuality)
-                ?.takeIf { hasInternetCapableNetwork() }
-            if (alternativeQuery == null) {
-                resolveForPlayback(requestTrack, isVideoMode)
-            } else {
-                highQualityPlayback.resolve(requestTrack, alternativeQuery, ::basePlaybackProvenance) {
+        return withinPlaybackResolveBudget(playbackResolveTimeoutMs) {
+            val targetTrack = resolveSpotifyTrackIfUnmatched(track)
+            val resolved = resolveWithLanguageRevisionRetry(
+                originalTrack = targetTrack,
+                acceptAcrossLanguageChange = { it.playbackManifest?.alternativeSource != null }
+            ) { requestTrack, _ ->
+                val alternativeQuery = highQualityPlayback
+                    .queryFor(requestTrack, isVideoMode, selectedAudioQuality)
+                    ?.takeIf { hasInternetCapableNetwork() }
+                if (alternativeQuery == null) {
                     resolveForPlayback(requestTrack, isVideoMode)
+                } else {
+                    highQualityPlayback.resolve(requestTrack, alternativeQuery, ::basePlaybackProvenance) {
+                        resolveForPlayback(requestTrack, isVideoMode)
+                    }
                 }
             }
+            preserveEditorialArtwork(track, resolved)
         }
-        return preserveEditorialArtwork(track, resolved)
     }
 
     private suspend fun resolveForPlayback(track: Track, isVideoMode: Boolean): Track = resolveInternal(

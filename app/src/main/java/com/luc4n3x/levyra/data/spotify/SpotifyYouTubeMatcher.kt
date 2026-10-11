@@ -136,15 +136,23 @@ internal object SpotifyYouTubeMatcher {
         if (sPrimary.isNotEmpty() && (sPrimary == yPrimary || sPrimary in yNames)) return 1.0
 
         val normalizedYtTitle = MusicIdentityText.normalize(ytTitle)
-        if (sPrimary.isNotEmpty() && normalizedYtTitle.contains(sPrimary)) return 0.95
+        if (containsArtistCredit(normalizedYtTitle, sPrimary)) return 0.95
 
         for (name in sNames) {
-            if (name in yNames || normalizedYtTitle.contains(name)) return 0.90
+            if (name in yNames || containsArtistCredit(normalizedYtTitle, name)) return 0.90
         }
 
         val sJoined = sNames.joinToString(" ")
         val yJoined = yNames.joinToString(" ")
         return diceCoefficient(sJoined, yJoined)
+    }
+
+    private fun containsArtistCredit(text: String, artist: String): Boolean {
+        if (text.isBlank() || artist.isBlank()) return false
+        val textTokens = text.split(' ').filter(String::isNotBlank)
+        val artistTokens = artist.split(' ').filter(String::isNotBlank)
+        if (artistTokens.isEmpty() || artistTokens.size > textTokens.size) return false
+        return textTokens.windowed(artistTokens.size).any { it == artistTokens }
     }
 
     private fun computeDurationScore(sDurationMs: Long, yDurationMs: Long): Double {

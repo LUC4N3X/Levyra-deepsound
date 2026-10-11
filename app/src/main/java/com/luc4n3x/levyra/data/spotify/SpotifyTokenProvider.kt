@@ -133,8 +133,7 @@ internal class SpotifyTokenProvider private constructor(
     private fun executeJson(client: OkHttpClient, request: Request): JSONObject {
         return client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) error("Spotify request failed with HTTP ${response.code}")
-            val body = response.body.string()
-            if (body.length !in 1..MAX_RESPONSE_CHARS) error("Spotify response is invalid")
+            val body = response.body.readSpotifyJsonBody() ?: error("Spotify response is invalid")
             JSONObject(body)
         }
     }
@@ -160,7 +159,6 @@ internal class SpotifyTokenProvider private constructor(
         private const val TOKEN_URL = "https://open.spotify.com/api/token"
         const val WEB_USER_AGENT =
             "Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 Chrome/140.0.0.0 Mobile Safari/537.36"
-        private const val MAX_RESPONSE_CHARS = 1_000_000
         private const val TOKEN_EXPIRY_SKEW_MS = 60_000L
         private const val DEFAULT_TOKEN_TTL_MS = 15L * 60L * 1000L
     }

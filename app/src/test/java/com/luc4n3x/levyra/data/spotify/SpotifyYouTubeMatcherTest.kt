@@ -127,6 +127,26 @@ class SpotifyYouTubeMatcherTest {
     }
 
     @Test
+    fun singleLetterArtistDoesNotMatchInsideUnrelatedTitle() {
+        val spotifyTrack = sampleTrack("sp:short", "Home", "M")
+        val unrelatedTrack = sampleTrack("yt:short", "Homecoming", "Another Artist")
+
+        val confidence = SpotifyYouTubeMatcher.scoreMatch(spotifyTrack, unrelatedTrack)
+
+        assertTrue("A single-letter artist must require a full credit boundary, was $confidence", confidence < 0.50)
+    }
+
+    @Test
+    fun shortArtistMatchesWholeTitleCredit() {
+        val spotifyTrack = sampleTrack("sp:short-valid", "Pop Muzik", "M")
+        val creditedTrack = sampleTrack("yt:short-valid", "M - Pop Muzik", "Official Channel")
+
+        val confidence = SpotifyYouTubeMatcher.scoreMatch(spotifyTrack, creditedTrack)
+
+        assertTrue("A whole-token title credit should remain matchable, was $confidence", confidence >= 0.58)
+    }
+
+    @Test
     fun mergeSpotifyAndYoutubePreservesViewCountAndMetadata() {
         val spotifyTracks = listOf(
             sampleTrack("sp:drake", "Chicago Freestyle", "Drake, Giveon", album = "Dark Lane Demo Tapes", durationMs = 220_000L),
