@@ -542,11 +542,11 @@ private fun BoxScope.PersonalCollectionSelectionBar(
         state = selection,
         allVisibleIds = selectableIds,
         actions = TrackSelectionActions(
-            onPlayNext = if (hasSelection) ({ complete(onPlayNext) }) else null,
-            onAddToQueue = if (hasSelection) ({ complete(onAddToQueue) }) else null,
-            onAddToPlaylist = if (hasSelection) ({ onAddToPlaylist(selectedTracks) }) else null,
-            onFavorite = if (hasSelection) ({ complete(onFavorite) }) else null,
-            onDownload = if (hasSelection) ({ complete(onDownload) }) else null
+            onPlayNext = if (hasSelection) { { complete(onPlayNext) } } else null,
+            onAddToQueue = if (hasSelection) { { complete(onAddToQueue) } } else null,
+            onAddToPlaylist = if (hasSelection) { { onAddToPlaylist(selectedTracks) } } else null,
+            onFavorite = if (hasSelection) { { complete(onFavorite) } } else null,
+            onDownload = if (hasSelection) { { complete(onDownload) } } else null
         ),
         modifier = Modifier
             .align(Alignment.BottomCenter)
