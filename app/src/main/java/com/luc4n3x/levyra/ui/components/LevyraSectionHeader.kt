@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.ui.LevyraAdaptiveChip
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
@@ -118,7 +119,8 @@ internal fun LevyraSectionAction(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     leadingIcon: ImageVector? = null,
-    trailingIcon: ImageVector? = null
+    trailingIcon: ImageVector? = null,
+    compact: Boolean = false
 ) {
     val interaction = remember { MutableInteractionSource() }
     val corner = levyraExpressiveCorner(
@@ -141,23 +143,23 @@ internal fun LevyraSectionAction(
     ) {
         Row(
             modifier = Modifier
-                .heightIn(min = SectionActionVisualHeight)
+                .heightIn(min = if (compact) 30.dp else SectionActionVisualHeight)
                 .clip(shape)
                 .background(LevyraAdaptiveChip)
                 .padding(
-                    start = if (leadingIcon != null) 10.dp else 14.dp,
-                    end = if (trailingIcon != null) 8.dp else 14.dp
+                    start = if (compact) 7.dp else if (leadingIcon != null) 10.dp else 14.dp,
+                    end = if (compact) 8.dp else if (trailingIcon != null) 8.dp else 14.dp
                 ),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(5.dp)
+            horizontalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 5.dp)
         ) {
             leadingIcon?.let {
-                Icon(it, contentDescription = null, tint = LevyraText, modifier = Modifier.size(18.dp))
+                Icon(it, contentDescription = null, tint = LevyraText, modifier = Modifier.size(if (compact) 14.dp else 18.dp))
             }
             Text(
                 text = label,
                 color = LevyraText,
-                style = LevyraType.cardTitle,
+                style = if (compact) LevyraType.cardTitle.copy(fontSize = 12.sp, lineHeight = 16.sp) else LevyraType.cardTitle,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -169,12 +171,13 @@ internal fun LevyraSectionAction(
 }
 
 @Composable
-internal fun LevyraSectionPlayAll(onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun LevyraSectionPlayAll(onClick: () -> Unit, modifier: Modifier = Modifier, compact: Boolean = false) {
     LevyraSectionAction(
         label = LocalLevyraStrings.current.playAll,
         onClick = onClick,
         modifier = modifier,
-        leadingIcon = Icons.Rounded.PlayArrow
+        leadingIcon = Icons.Rounded.PlayArrow,
+        compact = compact
     )
 }
 
