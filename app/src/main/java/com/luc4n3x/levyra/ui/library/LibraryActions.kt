@@ -128,6 +128,7 @@ import com.luc4n3x.levyra.domain.PlaylistCoverMode
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.formatSmartOfflineSongCount
 import com.luc4n3x.levyra.ui.components.LevyraRowText
 import com.luc4n3x.levyra.ui.components.PlayerGlassIconButton
 import com.luc4n3x.levyra.ui.media.ImmersiveTopBarButtonFill

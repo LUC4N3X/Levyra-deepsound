@@ -58,6 +58,8 @@ kotlin {
             include("com/luc4n3x/levyra/domain/LyricsProviderPriority.kt")
             include("com/luc4n3x/levyra/feature/radio/RadioCategory.kt")
             exclude("com/luc4n3x/levyra/ui/i18n/LevyraPersonalizedSearchStrings.kt")
+            exclude("com/luc4n3x/levyra/ui/i18n/LevyraPersonalCollectionStrings.kt")
+            exclude("com/luc4n3x/levyra/ui/i18n/LevyraSmartOfflineCount.kt")
         }
         kotlin.source(sharedAndroidSources)
     }
