@@ -68,6 +68,30 @@ class LevyraSearchEngineTest {
     }
 
     @Test
+    fun `slow spotify enrichment does not keep youtube results pending`() = runBlocking {
+        backend.spotifyOverview = { CompletableDeferred<SearchResults?>().await() }
+        backend.overview("adele").complete(
+            SearchResults(songs = listOf(searchTestTrack("a1", "Hello", "Adele")))
+        )
+        val engine = engine(
+            SearchTiming(
+                typingDebounceMs = 0L,
+                suggestionWaitCapMs = 5_000L,
+                prefetchDelayMs = 0L,
+                spotifyOverviewTimeoutMs = 50L
+            )
+        )
+
+        engine.submit("adele", "it")
+        val settled = withTimeout(1_000L) {
+            engine.state.first { it.queryKey == "adele" && it.settled }
+        }
+
+        assertEquals(listOf("a1"), settled.results.songs.map { it.id })
+        assertEquals(SearchFailure.None, settled.failure)
+    }
+
+    @Test
     fun `late artist verification of an old query is ignored`() = runBlocking {
         val adeleExact = CompletableDeferred<ArtistHit?>()
         backend.exactArtist = { query -> if (query == "adele") adeleExact.await() else null }
@@ -484,6 +508,9 @@ private class FakeSearchBackend : SearchBackend {
     var suggestions: suspend (String) -> SearchSuggestionBundle = { SearchSuggestionBundle() }
 
     @Volatile
+    var spotifyOverview: suspend (String) -> SearchResults? = { null }
+
+    @Volatile
     var section: suspend (SearchFilter, String, String) -> SearchSectionPage = { _, _, _ -> SearchSectionPage() }
 
     @Volatile
@@ -515,6 +542,8 @@ private class FakeSearchBackend : SearchBackend {
         blockingOverviews[query]?.await()
         return overview(query).await()
     }
+
+    override suspend fun spotifyOverview(query: String): SearchResults? = spotifyOverview.invoke(query)
 
     override suspend fun section(
         filter: SearchFilter,

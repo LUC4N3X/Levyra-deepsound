@@ -40,7 +40,9 @@ class LevyraApplication : Application() {
         runCatching { LevyraNetworkController.applyStoredConfiguration(this) }
             .onFailure { Timber.w(it, "Network configuration bootstrap failed") }
         LevyraArtworkCache.configure(this)
-        SpotifyYouTubeMatchCache.init(this)
+        startupScope.launch(Dispatchers.IO) {
+            SpotifyYouTubeMatchCache.init(this@LevyraApplication)
+        }
         YoutubeLocalDecoder.install(this)
         PlaybackNetworkStack.initialize(this)
         WaveSeekRuntime.start(this)

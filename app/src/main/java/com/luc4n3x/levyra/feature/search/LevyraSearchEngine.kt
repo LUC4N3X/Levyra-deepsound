@@ -34,6 +34,7 @@ import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
@@ -100,7 +101,8 @@ internal data class SearchTiming(
     val prefetchDelayMs: Long = 350L,
     val suggestionTtlMs: Long = 5 * 60_000L,
     val resultTtlMs: Long = 5 * 60_000L,
-    val sectionConcurrency: Int = 2
+    val sectionConcurrency: Int = 2,
+    val spotifyOverviewTimeoutMs: Long = 3_500L
 )
 
 private data class SearchRequest(
@@ -337,7 +339,9 @@ internal class LevyraSearchEngine(
         coroutineScope {
             val exactArtist = async { searchCatching { remote.exactArtist(request.query, request.key) }.getOrNull() }
             val spotifyOverview = async {
-                searchCatching { remote.spotifyOverview(request.query, request.cacheKey) }
+                withTimeoutOrNull(timing.spotifyOverviewTimeoutMs.coerceAtLeast(1L)) {
+                    searchCatching { remote.spotifyOverview(request.query, request.cacheKey) }
+                } ?: Result.success(null)
             }
             val youtubeOverview = async {
                 searchCatching { remote.overview(request.query, request.languageCode, request.cacheKey) }
