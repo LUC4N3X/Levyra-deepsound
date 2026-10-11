@@ -137,6 +137,7 @@ internal fun PlayerExpressiveDeck(
             modifier = headlineModifier
         )
         Spacer(modifier = Modifier.height(metrics.headlineGap))
+        slots.engagement(track)
         slots.progress()
         Spacer(modifier = Modifier.height(metrics.progressGap))
         ExpressiveTransportRow(

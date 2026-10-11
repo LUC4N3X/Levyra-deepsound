@@ -442,7 +442,7 @@ private fun RadioHero(
                 Row(
                     modifier = Modifier
                         .clip(CircleShape)
-                        .background(Color.Black.copy(alpha = 0.32f))
+                        .background(colors.inverseSurface)
                         .padding(horizontal = 10.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -453,7 +453,7 @@ private fun RadioHero(
                             .graphicsLayer { alpha = pulseAlpha }
                             .background(RadioLiveRed, CircleShape)
                     )
-                    Text(live, color = Color.White, fontSize = 11.sp, letterSpacing = 1.2.sp, fontWeight = FontWeight.Black)
+                    Text(live, color = colors.inverseOnSurface, fontSize = 11.sp, letterSpacing = 1.2.sp, fontWeight = FontWeight.Black)
                 }
                 Text(
                     text = subtitle,

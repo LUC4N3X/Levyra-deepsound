@@ -152,6 +152,7 @@ internal class PlayerDeckSlots(
     val stage: @Composable (Track, Modifier, Dp?) -> Unit,
     val controls: @Composable ColumnScope.(Track) -> Unit,
     val controlsWithoutMetadata: @Composable ColumnScope.(Track) -> Unit,
+    val engagement: @Composable (Track) -> Unit,
     val progress: @Composable () -> Unit,
     val dock: @Composable (Track) -> Unit
 )

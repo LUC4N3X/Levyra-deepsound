@@ -37,14 +37,12 @@ class BrandingAndHomeContrastContractTest {
 
     @Test
     fun `home header keeps greeting readable over bright artwork in dark theme`() {
-        val greetingBar = functionBlock("private fun GreetingBar(")
+        val dayPart = functionBlock("private fun HomeGreetingDayPart(")
+        val name = functionBlock("private fun HomeGreetingName(")
         val headerScrim = functionBlock("private fun Modifier.homeHeroHeaderScrim(")
 
-        assertTrue(
-            greetingBar.contains(
-                "color = if (LevyraIsLight) LevyraMuted else Color.White.copy(alpha = 0.92f)"
-            )
-        )
+        assertTrue(dayPart.contains("else -> Color.White.copy(alpha = 0.72f)"))
+        assertTrue(name.contains("color = if (LevyraIsLight) LevyraText else Color.White"))
         assertTrue(headerScrim.contains("if (isLight) 0.94f else 0.78f"))
         assertTrue(headerScrim.contains("if (isLight) 0.78f else 0.52f"))
     }
@@ -52,10 +50,12 @@ class BrandingAndHomeContrastContractTest {
     @Test
     fun `home identity header stays transparent and compact`() {
         val greetingBar = functionBlock("private fun GreetingBar(")
+        val logoBadge = functionBlock("private fun HomeLogoBadge()")
+        val greetingName = functionBlock("private fun HomeGreetingName(")
 
         assertTrue(greetingBar.contains(".heightIn(min = LevyraHomeDesign.SettingsControlHeight)"))
-        assertTrue(greetingBar.contains("LevyraLogoMark(size = 38.dp"))
-        assertTrue(greetingBar.contains("fontSize = 22.sp"))
+        assertTrue(logoBadge.contains(".size(LevyraHomeDesign.SettingsControlHeight)"))
+        assertTrue(greetingName.contains("fontSize = 26.sp"))
         assertFalse(greetingBar.contains("cardBackground"))
         assertFalse(greetingBar.contains("LevyraHomeDesign.HeaderShape"))
         assertFalse(greetingBar.contains("text = \"LEVYRA\""))
@@ -63,21 +63,25 @@ class BrandingAndHomeContrastContractTest {
 
     @Test
     fun `home greeting wraps instead of truncating long names or translations`() {
-        val greetingBar = functionBlock("private fun GreetingBar(")
+        val greetingName = functionBlock("private fun HomeGreetingName(")
 
-        assertTrue(greetingBar.contains("softWrap = true"))
-        assertTrue(greetingBar.contains("modifier = Modifier.fillMaxWidth()"))
-        assertFalse(greetingBar.contains("overflow = TextOverflow.Ellipsis"))
+        assertTrue(greetingName.contains("softWrap = true"))
+        assertTrue(greetingName.contains(".fillMaxWidth()"))
+        assertFalse(greetingName.contains("overflow = TextOverflow.Ellipsis"))
     }
 
     @Test
     fun `home greeting respects reduced motion and refreshes across day parts`() {
-        val greetingBar = functionBlock("private fun GreetingBar(")
+        val greeting = functionBlock("private fun HomeGreeting(")
+        val dayPart = functionBlock("private fun HomeGreetingDayPart(")
         val greetingClock = functionBlock("private fun rememberCurrentGreetingHour()")
 
-        assertTrue(greetingBar.contains("targetState = greeting"))
-        assertTrue(greetingBar.contains("if (animationsEnabled)"))
-        assertTrue(greetingBar.contains("snap()"))
+        assertTrue(greeting.contains("LaunchedEffect(animationsEnabled)"))
+        assertTrue(greeting.contains("dayPartReveal.snapTo(1f)"))
+        assertTrue(greeting.contains("nameReveal.snapTo(1f)"))
+        assertTrue(dayPart.contains("targetState = dayPart"))
+        assertTrue(dayPart.contains("if (animationsEnabled)"))
+        assertTrue(dayPart.contains("snap()"))
         assertTrue(greetingClock.contains("java.util.Calendar.HOUR_OF_DAY"))
         assertTrue(greetingClock.contains("delay("))
     }

@@ -1089,6 +1089,12 @@ fun LevyraNowPlaying(
             stage = stageBlock,
             controls = controlsBlock,
             controlsWithoutMetadata = controlsTailBlock,
+            engagement = { activeTrack ->
+                if (!activeTrack.isLiveRadio() && engagementContent != null) {
+                    engagementContent(activeTrack)
+                    Spacer(modifier = Modifier.height(if (compactPlayer) LevyraPlayerDesign.SpaceXs else LevyraPlayerDesign.SpaceSm))
+                }
+            },
             progress = {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                     progressBlock()

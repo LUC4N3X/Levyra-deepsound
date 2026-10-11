@@ -20599,7 +20599,13 @@ private fun HomeGreeting(
     var greetingRevealed by rememberSaveable { mutableStateOf(!animationsEnabled) }
     val dayPartReveal = remember { Animatable(if (greetingRevealed) 1f else 0f) }
     val nameReveal = remember { Animatable(if (greetingRevealed) 1f else 0f) }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(animationsEnabled) {
+        if (!animationsEnabled) {
+            dayPartReveal.snapTo(1f)
+            nameReveal.snapTo(1f)
+            greetingRevealed = true
+            return@LaunchedEffect
+        }
         if (greetingRevealed) return@LaunchedEffect
         launch { dayPartReveal.animateTo(1f, spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessLow)) }
         delay(GREETING_NAME_STAGGER_MS)
@@ -20673,17 +20679,18 @@ private fun HomeGreetingName(name: String, reveal: () -> Float) {
             fontWeight = FontWeight.Black,
             letterSpacing = (-0.9).sp
         ),
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.graphicsLayer {
-            val value = reveal()
-            alpha = value
-            translationY = (1f - value) * GREETING_RISE.toPx() * 1.6f
-            val scale = 0.94f + 0.06f * value
-            scaleX = scale
-            scaleY = scale
-            transformOrigin = TransformOrigin(0f, 1f)
-        }
+        softWrap = true,
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                val value = reveal()
+                alpha = value
+                translationY = (1f - value) * GREETING_RISE.toPx() * 1.6f
+                val scale = 0.94f + 0.06f * value
+                scaleX = scale
+                scaleY = scale
+                transformOrigin = TransformOrigin(0f, 1f)
+            }
     )
 }
 
