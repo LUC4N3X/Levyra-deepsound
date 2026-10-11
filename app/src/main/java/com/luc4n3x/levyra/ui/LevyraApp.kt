@@ -11665,12 +11665,13 @@ private fun HomeOrbitHeader(
                 fontSize = LevyraHomeDesign.OrbitHeaderTitleSize,
                 lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitHeaderTitleSize),
                 fontWeight = FontWeight.Bold,
-                softWrap = true,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() }
             )
         }
-        Spacer(modifier = Modifier.width(12.dp))
-        LevyraSectionPlayAll(onClick = onPlayAll)
+        Spacer(modifier = Modifier.width(6.dp))
+        LevyraSectionPlayAll(onClick = onPlayAll, compact = true)
     }
 }
 
