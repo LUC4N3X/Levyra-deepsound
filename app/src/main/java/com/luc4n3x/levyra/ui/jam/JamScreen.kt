@@ -4,6 +4,7 @@ package com.luc4n3x.levyra.ui.jam
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectableGroup
@@ -28,6 +30,7 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.IosShare
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
@@ -53,6 +56,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -111,7 +115,20 @@ internal fun LevyraJamOverlay(
         jamContributions(session?.queue.orEmpty(), participants)
     }
 
-    Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        MaterialTheme.colorScheme.surfaceContainerLow,
+                        MaterialTheme.colorScheme.background,
+                        MaterialTheme.colorScheme.background
+                    )
+                )
+            )
+    ) {
+        JamAmbientBackdrop()
         LazyColumn(
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
             contentPadding = PaddingValues(
@@ -296,30 +313,83 @@ internal fun LevyraJamOverlay(
 }
 
 @Composable
+private fun JamAmbientBackdrop() {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .offset(x = 64.dp, y = 72.dp)
+                .size(210.dp)
+                .background(
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                    MaterialShapes.Cookie9Sided.toShape()
+                )
+                .clearAndSetSemantics { }
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .offset(x = (-72).dp)
+                .size(160.dp)
+                .background(
+                    MaterialTheme.colorScheme.tertiary.copy(alpha = 0.06f),
+                    MaterialShapes.Clover4Leaf.toShape()
+                )
+                .clearAndSetSemantics { }
+        )
+    }
+}
+
+@Composable
 private fun JamHeader(title: String, subtitle: String, onClose: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(
-            onClick = onClose,
-            shapes = IconButtonDefaults.shapes(),
-            modifier = Modifier.size(48.dp)
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Icon(
-                Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = LocalLevyraStrings.current.back,
-                tint = MaterialTheme.colorScheme.onBackground
-            )
+            IconButton(
+                onClick = onClose,
+                colors = IconButtonDefaults.filledTonalIconButtonColors(),
+                shapes = IconButtonDefaults.shapes(),
+                modifier = Modifier.size(52.dp)
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Rounded.ArrowBack,
+                    contentDescription = LocalLevyraStrings.current.back
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .background(
+                        MaterialTheme.colorScheme.primaryContainer,
+                        MaterialShapes.Cookie9Sided.toShape()
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Rounded.MusicNote,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
         }
-        Column(modifier = Modifier.padding(start = 8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
                 title,
                 color = MaterialTheme.colorScheme.onBackground,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Black
             )
             Text(
                 subtitle,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyLarge
             )
         }
     }
@@ -333,13 +403,23 @@ private fun JamSessionHero(jam: JamUiState, strings: LevyraStrings, onShare: () 
         label = "jam-status"
     )
     ElevatedCard(
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
         shape = MaterialTheme.shapes.extraLarge,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier.padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.primaryContainer,
+                            MaterialTheme.colorScheme.tertiaryContainer
+                        )
+                    )
+                )
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -368,21 +448,45 @@ private fun JamSessionHero(jam: JamUiState, strings: LevyraStrings, onShare: () 
                 style = MaterialTheme.typography.labelLarge
             )
 
+            Surface(
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.34f),
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                shape = RoundedCornerShape(24.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(strings.jamParticipants, style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        (jam.session?.participants?.size ?: 0).toString(),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+            }
+
             if (jam.isHost && jam.code.isNotBlank()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    strings.jamSessionCode,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
-                    style = MaterialTheme.typography.labelMedium
-                )
-                Text(
-                    jam.code,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    style = MaterialTheme.typography.headlineMedium,
-                    letterSpacing = 1.2.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
+                Surface(
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.46f),
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    shape = MaterialShapes.Cookie4Sided.toShape()
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(strings.jamSessionCode, style = MaterialTheme.typography.labelMedium)
+                        Text(
+                            jam.code,
+                            style = MaterialTheme.typography.headlineLarge,
+                            letterSpacing = 2.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                }
                 JamPrimaryButton(
                     label = strings.jamShareInvite,
                     icon = Icons.Rounded.IosShare,
@@ -584,12 +688,25 @@ private fun JamCard(content: @Composable () -> Unit) {
 
 @Composable
 private fun JamCardTitle(text: String) {
-    Text(
-        text,
-        color = MaterialTheme.colorScheme.onSurface,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold
-    )
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(14.dp)
+                .background(
+                    MaterialTheme.colorScheme.primary,
+                    MaterialShapes.Cookie6Sided.toShape()
+                )
+        )
+        Text(
+            text,
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+    }
 }
 
 @Composable
@@ -634,7 +751,7 @@ private fun JamPermissionPicker(
             Surface(
                 color = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
                 contentColor = if (active) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-                shape = MaterialTheme.shapes.large,
+                shape = if (active) MaterialShapes.Cookie4Sided.toShape() else MaterialTheme.shapes.large,
                 onClick = { onSelect(permission) },
                 modifier = Modifier
                     .fillMaxWidth()
