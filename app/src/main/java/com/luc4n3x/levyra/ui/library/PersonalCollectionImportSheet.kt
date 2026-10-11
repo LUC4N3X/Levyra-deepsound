@@ -426,6 +426,7 @@ private fun ImportPreviewStep(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ImportPreviewHeader(
     preview: PersonalCollectionPreview,
