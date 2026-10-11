@@ -693,18 +693,18 @@ def create_apple_studio_shadow(phone):
     shadow = Image.alpha_composite(amb_shadow, con_shadow)
     return shadow, pad
 
-def render_apple_single_card(screenshot_name, kicker, title, subtitle, top_tint, bot_tint, ambilight, border_col, target_height=1260):
+def render_apple_single_card(screenshot_name, kicker, title, subtitle, top_tint, bot_tint, ambilight, border_col, target_height=1210):
     bg = create_apple_colored_gradient(card_w, card_h, top_tint, bot_tint, ambilight)
     draw = ImageDraw.Draw(bg)
 
     tx = 82
     kicker_y = 74
     title_y = 108
-    subtitle_y = 178
-    kicker_fill = tuple(max(0, int(border_col[i] * 0.62)) for i in range(3)) + (255,)
+    subtitle_y = 176
+    kicker_fill = tuple(max(0, int(border_col[i] * 0.58)) for i in range(3)) + (255,)
     draw.text((tx, kicker_y), kicker.upper(), font=get_font(23, bold=True), fill=kicker_fill)
     draw.text((tx, title_y), title, font=get_font(58, bold=True), fill=(29, 29, 31, 255))
-    draw.multiline_text((tx, subtitle_y), subtitle, font=get_font(29), fill=(74, 88, 104, 255), spacing=9)
+    draw.multiline_text((tx, subtitle_y), subtitle, font=get_font(29), fill=(60, 74, 90, 255), spacing=9)
 
     s_path = resolve_screenshot_path(screenshot_name)
     if s_path and os.path.exists(s_path):
@@ -712,7 +712,7 @@ def render_apple_single_card(screenshot_name, kicker, title, subtitle, top_tint,
             phone = create_clean_phone(src, target_height=target_height)
         shadow, pad = create_apple_studio_shadow(phone)
         px = (card_w - phone.width) // 2
-        py = 280
+        py = 295
         bg.paste(shadow, (px - pad, py - pad), shadow)
         bg.paste(phone, (px, py), phone)
 
@@ -735,40 +735,38 @@ def render_duo_cut_cards():
         s_player = resolve_screenshot_path("20_soundstage.webp")
 
     c2_left = card_w + gutter
+    angle = 15.0
 
-    # 1. Phone 2 (Player) in Card 2
-    rot2 = None
-    p2_x, p2_y = c2_left + 235, 390
-    if s_player and os.path.exists(s_player):
-        with Image.open(s_player) as src2:
-            p2 = create_clean_phone(src2, target_height=1220)
-        rot2 = p2.rotate(21, resample=Image.Resampling.BICUBIC, expand=True)
-        s2_shadow, pad2 = create_apple_studio_shadow(rot2)
-        bg.paste(s2_shadow, (p2_x - pad2, p2_y - pad2), s2_shadow)
-        bg.paste(rot2, (p2_x, p2_y), rot2)
-
-    # 2. Phone 1 (Home) cutting from Card 1 into Card 2 behind/alongside Phone 2
+    # 1. Phone 1 (Home) in Card 01 cutting into Card 02
+    rot1 = None
+    p1_x, p1_y = 220, 70
     if s_home and os.path.exists(s_home):
         with Image.open(s_home) as src1:
-            p1 = create_clean_phone(src1, target_height=1340)
-        rot1 = p1.rotate(21, resample=Image.Resampling.BICUBIC, expand=True)
-        p1_x = 240
-        p1_y = 15
+            p1 = create_clean_phone(src1, target_height=1220)
+        rot1 = p1.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
         s1_shadow, pad1 = create_apple_studio_shadow(rot1)
         bg.paste(s1_shadow, (p1_x - pad1, p1_y - pad1), s1_shadow)
         bg.paste(rot1, (p1_x, p1_y), rot1)
 
-    # 3. Re-paste Phone 2 on top so it acts as crisp foreground in Card 2
-    if rot2:
+    # 2. Phone 2 (Player) in Card 02 floating completely inside
+    rot2 = None
+    if s_player and os.path.exists(s_player):
+        with Image.open(s_player) as src2:
+            p2 = create_clean_phone(src2, target_height=1070)
+        rot2 = p2.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
+        p2_x = c2_left + (card_w - rot2.width) // 2 + 10
+        p2_y = 320
+        s2_shadow, pad2 = create_apple_studio_shadow(rot2)
+        bg.paste(s2_shadow, (p2_x - pad2, p2_y - pad2), s2_shadow)
         bg.paste(rot2, (p2_x, p2_y), rot2)
 
     draw = ImageDraw.Draw(bg)
 
     # Card 01 typography at bottom-left
-    tx1, ty1 = 76, 1240
-    kicker_col = (80, 110, 145, 255)
+    tx1, ty1 = 76, 1260
+    kicker_col = (75, 105, 140, 255)
     title_col = (29, 29, 31, 255)
-    sub_col = (70, 85, 102, 255)
+    sub_col = (62, 76, 92, 255)
 
     draw.text((tx1, ty1), "ZERO ADS. NATIVE PLAY.", font=get_font(23, bold=True), fill=kicker_col)
     draw.text((tx1, ty1 + 38), "Pure listening.", font=get_font(60, bold=True), fill=title_col)
@@ -781,7 +779,7 @@ def render_duo_cut_cards():
     )
 
     # Card 02 typography at top-left
-    tx2, ty2 = c2_left + 82, 80
+    tx2, ty2 = c2_left + 82, 74
     draw.text((tx2, ty2), "OFFLINE STORAGE", font=get_font(23, bold=True), fill=kicker_col)
     draw.text((tx2, ty2 + 38), "Download & keep.", font=get_font(60, bold=True), fill=title_col)
     draw.multiline_text(
@@ -832,7 +830,7 @@ REMAINING_SPECS = [
     ("Screenshot_20261010_144144_LEVYRA.jpg", "NEW MUSIC", "Fresh off the stage.", "New singles and albums updated\nevery week directly from artists.", (250, 238, 250), (240, 214, 240), (195, 80, 195), (230, 185, 230, 200), ["17_new_releases.webp"]),
     ("Screenshot_20261010_143646_LEVYRA.jpg", "ARTIST PROFILE", "Meet the artist.", "Full discography, singles, biographies,\nand top tracks in one tap.", (238, 244, 252), (216, 230, 248), (40, 125, 230), (180, 205, 245, 200), ["18_artist_profile.webp", "18_fresh_currents.webp"]),
     ("Screenshot_20261010_132028_LEVYRA.jpg", "GLOBAL CHARTS", "Top 50 charts.", "Explore daily country charts,\nviral hits, and top tracks worldwide.", (252, 238, 236), (248, 212, 208), (235, 75, 65), (245, 180, 175, 200), ["19_top_50.webp"]),
-    ("Screenshot_20260926_193948_LEVYRA.jpg", "LOSSLESS FIDELITY", "Pure soundstage.", "Lossless audio decoding and\nuncompromised audio fidelity.", (252, 246, 234), (246, 232, 202), (220, 175, 55), (235, 210, 160, 200), ["20_soundstage.webp"]),
+    ("Screenshot_20261011_123125_LEVYRA.jpg", "LEVYRA JAM", "Listen together.", "Real-time collaborative sessions on local Wi-Fi.\nShare queues, add tracks, and host together.", (236, 246, 255), (214, 232, 252), (0, 140, 255), (175, 212, 250, 200), ["20_soundstage.webp", "20_levyra_jam.webp"]),
 ]
 
 def generate_feature_cards():
@@ -843,7 +841,7 @@ def generate_feature_cards():
     print("Saved duo cut cards: 01_home.webp, 02_stay_with_the_song.webp")
 
     for s_name, kicker, title, sub, top_t, bot_t, amb, border_c, fnames in REMAINING_SPECS:
-        card = render_apple_single_card(s_name, kicker, title, sub, top_t, bot_t, amb, border_c, target_height=1260)
+        card = render_apple_single_card(s_name, kicker, title, sub, top_t, bot_t, amb, border_c, target_height=1210)
         for fn in fnames:
             out_p = os.path.join(OUT_CARDS_DIR, fn)
             card.convert("RGB").save(out_p, "WEBP", quality=94, method=4)
