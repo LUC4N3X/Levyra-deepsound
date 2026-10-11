@@ -5,6 +5,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -87,7 +89,7 @@ internal fun LevyraSectionHeader(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
-                        .weight(1f, fill = false)
+                        .weight(1f, fill = onTitleClick == null)
                         .semantics { heading() }
                 )
                 if (onTitleClick != null) {
@@ -120,8 +122,10 @@ internal fun LevyraSectionAction(
     modifier: Modifier = Modifier,
     leadingIcon: ImageVector? = null,
     trailingIcon: ImageVector? = null,
-    compact: Boolean = false
+    compact: Boolean = false,
+    tonal: Boolean = false
 ) {
+    val palette = sectionActionPalette(tonal)
     val interaction = remember { MutableInteractionSource() }
     val corner = levyraExpressiveCorner(
         interactionSource = interaction,
@@ -145,29 +149,43 @@ internal fun LevyraSectionAction(
             modifier = Modifier
                 .heightIn(min = if (compact) 30.dp else SectionActionVisualHeight)
                 .clip(shape)
-                .background(LevyraAdaptiveChip)
-                .padding(
-                    start = if (compact) 7.dp else if (leadingIcon != null) 10.dp else 14.dp,
-                    end = if (compact) 8.dp else if (trailingIcon != null) 8.dp else 14.dp
-                ),
+                .background(palette.container)
+                .padding(sectionActionPadding(compact, leadingIcon != null, trailingIcon != null)),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 5.dp)
         ) {
             leadingIcon?.let {
-                Icon(it, contentDescription = null, tint = LevyraText, modifier = Modifier.size(if (compact) 14.dp else 18.dp))
+                Icon(it, contentDescription = null, tint = palette.content, modifier = Modifier.size(if (compact) 14.dp else 18.dp))
             }
             Text(
                 text = label,
-                color = LevyraText,
+                color = palette.content,
                 style = if (compact) LevyraType.cardTitle.copy(fontSize = 12.sp, lineHeight = 16.sp) else LevyraType.cardTitle,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             trailingIcon?.let {
-                Icon(it, contentDescription = null, tint = LevyraMuted, modifier = Modifier.size(18.dp))
+                Icon(it, contentDescription = null, tint = palette.trailing, modifier = Modifier.size(18.dp))
             }
         }
     }
+}
+
+private class SectionActionPalette(val container: Color, val content: Color, val trailing: Color)
+
+@Composable
+private fun sectionActionPalette(tonal: Boolean): SectionActionPalette {
+    val colors = MaterialTheme.colorScheme
+    return if (tonal) {
+        SectionActionPalette(colors.secondaryContainer, colors.onSecondaryContainer, colors.onSecondaryContainer)
+    } else {
+        SectionActionPalette(LevyraAdaptiveChip, LevyraText, LevyraMuted)
+    }
+}
+
+private fun sectionActionPadding(compact: Boolean, leading: Boolean, trailing: Boolean): PaddingValues = when {
+    compact -> PaddingValues(start = 7.dp, end = 8.dp)
+    else -> PaddingValues(start = if (leading) 10.dp else 14.dp, end = if (trailing) 8.dp else 14.dp)
 }
 
 @Composable
@@ -177,7 +195,8 @@ internal fun LevyraSectionPlayAll(onClick: () -> Unit, modifier: Modifier = Modi
         onClick = onClick,
         modifier = modifier,
         leadingIcon = Icons.Rounded.PlayArrow,
-        compact = compact
+        compact = compact,
+        tonal = true
     )
 }
 

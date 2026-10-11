@@ -48,7 +48,7 @@ import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.automirrored.rounded.Subject
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.AutoStories
+import androidx.compose.material.icons.rounded.Interests
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CloseFullscreen
@@ -331,8 +331,10 @@ fun LevyraNowPlaying(
         }
     }
 
-    val artRestScale = if (state.isPlaying) 1f else LevyraPlayerDesign.ArtworkPausedScale
-    val artRestOffset = if (state.isPlaying) 0.dp else 4.dp
+    val artworkRestsFullBleed = state.isPlaying ||
+        state.interfaceSettings.playerVisualMode == PlayerVisualMode.Artwork
+    val artRestScale = if (artworkRestsFullBleed) 1f else LevyraPlayerDesign.ArtworkPausedScale
+    val artRestOffset = if (artworkRestsFullBleed) 0.dp else 4.dp
     SideEffect {
         morphAnchors.updateFullRest(artRestScale, with(density) { artRestOffset.toPx() })
     }
@@ -740,7 +742,7 @@ fun LevyraNowPlaying(
                         swipeOffset = swipeOffset,
                         artScale = artScale,
                         artOffset = artOffset,
-                        glowColor = if (deckLayout == PlayerDeckLayout.Editorial) Color.Transparent else primary,
+                        glowColor = if (deckLayout == PlayerDeckLayout.Expressive || deckLayout == PlayerDeckLayout.Poster) Color.Transparent else primary,
                         modifier = Modifier
                             .fillMaxSize()
                             .playerLyricsFlipFace(
@@ -1086,20 +1088,59 @@ fun LevyraNowPlaying(
             header = headerBlock,
             stage = stageBlock,
             controls = controlsBlock,
-            controlsWithoutMetadata = controlsTailBlock
+            controlsWithoutMetadata = controlsTailBlock,
+            engagement = { activeTrack ->
+                if (!activeTrack.isLiveRadio() && engagementContent != null) {
+                    engagementContent(activeTrack)
+                    Spacer(modifier = Modifier.height(if (compactPlayer) LevyraPlayerDesign.SpaceXs else LevyraPlayerDesign.SpaceSm))
+                }
+            },
+            progress = {
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                    progressBlock()
+                }
+                errorContent?.invoke()
+            },
+            dock = dockBlock
         )
         val deckModifier = rootModifier
             .widthIn(max = detailMaxWidth)
             .align(Alignment.TopCenter)
 
-        if (deckLayout == PlayerDeckLayout.Editorial && track != null) {
-            PlayerEditorialDeck(
+        if (deckLayout == PlayerDeckLayout.Expressive && track != null) {
+            PlayerExpressiveDeck(
                 track = track,
                 slots = deckSlots,
                 surfaces = surfaces,
-                accent = heroTone,
                 isFavorite = track.id in state.favoriteIds,
-                queuePosition = playerDeckQueuePosition(state.queue, track.id),
+                isPlaying = state.isPlaying,
+                isResolving = state.isResolving,
+                shuffleOn = state.shuffleEnabled,
+                repeatMode = state.repeatMode,
+                labels = playerControlLabels,
+                animated = animated,
+                compact = compactPlayer,
+                scrollable = !fitsViewport,
+                gutter = gutter,
+                onArtistClick = { artistIndex ->
+                    playerArtistHits.getOrNull(artistIndex)?.let(viewModel::openArtist)
+                        ?: viewModel.openArtist(track, artistIndex)
+                },
+                onToggleFavorite = { viewModel.toggleFavorite(track) },
+                onShuffle = viewModel::toggleShuffle,
+                onPrevious = viewModel::previous,
+                onTogglePlay = viewModel::togglePlay,
+                onNext = viewModel::next,
+                onRepeat = viewModel::toggleRepeat,
+                headlineModifier = lyricsFlipSwipeModifier,
+                modifier = deckModifier
+            )
+        } else if (deckLayout == PlayerDeckLayout.Poster && track != null) {
+            PlayerPosterDeck(
+                track = track,
+                slots = deckSlots,
+                surfaces = surfaces,
+                isFavorite = track.id in state.favoriteIds,
                 animated = animated,
                 compact = compactPlayer,
                 scrollable = !fitsViewport,
@@ -1852,7 +1893,7 @@ internal fun visualModeStateDescription(
     PlayerVisualMode.Artwork -> strings.playerVisualModeArtwork
     PlayerVisualMode.CanvasCard -> strings.playerVisualModeCanvasCard
     PlayerVisualMode.CanvasImmersive -> strings.playerVisualModeCanvasImmersive
-    PlayerVisualMode.Editorial -> strings.playerDeckEditorial
+    PlayerVisualMode.Expressive -> strings.playerDeckExpressive
     PlayerVisualMode.Pulse -> strings.playerDeckPulse
 }
 
@@ -1860,6 +1901,6 @@ internal fun visualModeIcon(mode: PlayerVisualMode): ImageVector = when (mode) {
     PlayerVisualMode.Artwork -> Icons.Rounded.Image
     PlayerVisualMode.CanvasCard -> Icons.Rounded.AutoAwesome
     PlayerVisualMode.CanvasImmersive -> Icons.Rounded.Fullscreen
-    PlayerVisualMode.Editorial -> Icons.Rounded.AutoStories
+    PlayerVisualMode.Expressive -> Icons.Rounded.Interests
     PlayerVisualMode.Pulse -> Icons.Rounded.GraphicEq
 }

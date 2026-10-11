@@ -25,10 +25,10 @@ class PlayerDeckTest {
 
     @Test
     fun `existing modes keep the levyra layout and new styles get their own`() {
-        assertEquals(PlayerDeckLayout.Levyra, PlayerVisualMode.Artwork.deckLayout())
+        assertEquals(PlayerDeckLayout.Poster, PlayerVisualMode.Artwork.deckLayout())
         assertEquals(PlayerDeckLayout.Levyra, PlayerVisualMode.CanvasCard.deckLayout())
         assertEquals(PlayerDeckLayout.Levyra, PlayerVisualMode.CanvasImmersive.deckLayout())
-        assertEquals(PlayerDeckLayout.Editorial, PlayerVisualMode.Editorial.deckLayout())
+        assertEquals(PlayerDeckLayout.Expressive, PlayerVisualMode.Expressive.deckLayout())
         assertEquals(PlayerDeckLayout.Pulse, PlayerVisualMode.Pulse.deckLayout())
         assertTrue(PlayerVisualMode.CanvasImmersive.showsCinematicStage())
         PlayerVisualMode.entries.filter { it != PlayerVisualMode.CanvasImmersive }.forEach {
@@ -38,7 +38,7 @@ class PlayerDeckTest {
 
     @Test
     fun `new styles fall back to the levyra layout where they are not designed to run`() {
-        listOf(PlayerVisualMode.Editorial, PlayerVisualMode.Pulse).forEach { mode ->
+        listOf(PlayerVisualMode.Expressive, PlayerVisualMode.Artwork, PlayerVisualMode.Pulse).forEach { mode ->
             val supported = resolvePlayerDeckLayout(mode, false, false, LevyraPlayerPane.Stacked, true)
             assertEquals(mode.deckLayout(), supported)
             assertEquals(PlayerDeckLayout.Levyra, resolvePlayerDeckLayout(mode, true, false, LevyraPlayerPane.Stacked, true))
@@ -52,11 +52,15 @@ class PlayerDeckTest {
     fun `fallback presentation never lands on the immersive exit affordance`() {
         assertEquals(
             PlayerVisualMode.CanvasCard,
-            resolvePlayerDeckVisualMode(PlayerVisualMode.Editorial, PlayerDeckLayout.Levyra)
+            resolvePlayerDeckVisualMode(PlayerVisualMode.Expressive, PlayerDeckLayout.Levyra)
         )
         assertEquals(
             PlayerVisualMode.CanvasCard,
             resolvePlayerDeckVisualMode(PlayerVisualMode.Pulse, PlayerDeckLayout.Levyra)
+        )
+        assertEquals(
+            PlayerVisualMode.Artwork,
+            resolvePlayerDeckVisualMode(PlayerVisualMode.Artwork, PlayerDeckLayout.Levyra)
         )
         PlayerDeckOrder.forEach { mode ->
             assertEquals(mode, resolvePlayerDeckVisualMode(mode, mode.deckLayout()))
@@ -65,7 +69,7 @@ class PlayerDeckTest {
 
     @Test
     fun `levyra layouts resolve identically regardless of playback context`() {
-        listOf(PlayerVisualMode.Artwork, PlayerVisualMode.CanvasCard, PlayerVisualMode.CanvasImmersive).forEach { mode ->
+        listOf(PlayerVisualMode.CanvasCard, PlayerVisualMode.CanvasImmersive).forEach { mode ->
             listOf(true, false).forEach { video ->
                 listOf(LevyraPlayerPane.Stacked, LevyraPlayerPane.SideBySide).forEach { pane ->
                     assertEquals(PlayerDeckLayout.Levyra, resolvePlayerDeckLayout(mode, video, !video, pane, true))
@@ -115,20 +119,19 @@ class PlayerDeckTest {
     }
 
     @Test
-    fun `editorial type scales down for long titles and compact screens`() {
-        val short = editorialTitleSize("Halo", compact = false).value
-        val medium = editorialTitleSize("Midnight City Lights", compact = false).value
-        val long = editorialTitleSize("A Very Long Title That Keeps Going Forever And Ever", compact = false).value
+    fun `expressive type scales down for long titles and compact screens`() {
+        val short = expressiveTitleSize("Halo", compact = false).value
+        val medium = expressiveTitleSize("Midnight City Lights", compact = false).value
+        val long = expressiveTitleSize("A Very Long Title That Keeps Going Forever And Ever", compact = false).value
         assertTrue(short > medium)
         assertTrue(medium > long)
-        assertTrue(editorialTitleSize("Halo", compact = true).value < short)
+        assertTrue(expressiveTitleSize("Halo", compact = true).value < short)
     }
 
     @Test
-    fun `editorial deckline joins album and year without blanks`() {
-        assertEquals("Album  ·  2024", editorialDeckline(track("a", album = "Album", year = "2024")))
-        assertEquals("Album  ·  1999", editorialDeckline(track("a", album = "Album", releaseDate = "1999-02-01")))
-        assertEquals("", editorialDeckline(track("a")))
+    fun `stored editorial choice migrates to the expressive deck`() {
+        assertEquals(PlayerVisualMode.Expressive, PlayerVisualMode.from("Editorial"))
+        assertEquals(PlayerVisualMode.Expressive, PlayerVisualMode.from("Expressive"))
     }
 
     @Test
@@ -163,7 +166,7 @@ class PlayerDeckTest {
             assertTrue(strings.playerDeckLandscapeNote.isNotBlank())
         }
         val italian = LevyraStrings.forCode("it")
-        assertEquals("Editoriale", visualModeStateDescription(PlayerVisualMode.Editorial, italian))
+        assertEquals("Espressivo", visualModeStateDescription(PlayerVisualMode.Expressive, italian))
         assertEquals("Pulse", visualModeStateDescription(PlayerVisualMode.Pulse, italian))
         assertEquals("Immersivo", playerDeckLabel(PlayerVisualMode.CanvasImmersive, italian))
         assertEquals("Scheda Canvas", playerDeckLabel(PlayerVisualMode.CanvasCard, italian))
