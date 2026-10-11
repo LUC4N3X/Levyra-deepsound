@@ -10570,8 +10570,11 @@ private fun HomeEditorialCollectionsShelf(
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val cardWidth = (maxWidth - LevyraHomeDesign.EditorialPeek)
                 .coerceAtMost(LevyraHomeDesign.EditorialMaxWidth)
-            val collectionsState = rememberLazyListState()
-            val collectionsDepth = carouselDepthEnabled()
+            val cardHeight = if (LocalDensity.current.fontScale > 1.4f) {
+                LevyraHomeDesign.EditorialLargeTextHeight
+            } else {
+                LevyraHomeDesign.EditorialHeight
+            }
             val collectionArtworks = remember(collections) {
                 val usedTrackIds = mutableSetOf<String>()
                 collections.associate { collection ->
@@ -10595,7 +10598,6 @@ private fun HomeEditorialCollectionsShelf(
                 }
             }
             LazyRow(
-                state = collectionsState,
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap),
                 contentPadding = PaddingValues(horizontal = HomeHorizontalInset)
@@ -10630,8 +10632,8 @@ private fun HomeEditorialCollectionsShelf(
                         artworkShape = homeCollectionArtworkShape(collections.indexOf(collection)),
                         onOpen = { onOpen(collection) },
                         modifier = Modifier
-                            .levyraCarouselDepth(collectionsState, "home-collection-${collection.id}", collectionsDepth)
                             .width(cardWidth)
+                            .height(cardHeight)
                     )
                 }
             }

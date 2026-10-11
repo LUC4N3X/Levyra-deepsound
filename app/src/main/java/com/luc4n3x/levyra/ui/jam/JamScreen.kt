@@ -1,7 +1,8 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.luc4n3x.levyra.ui.jam
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,13 +28,22 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.IosShare
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,24 +73,12 @@ import com.luc4n3x.levyra.feature.jam.JamTrack
 import com.luc4n3x.levyra.feature.jam.JamUiState
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
-import com.luc4n3x.levyra.ui.theme.LevyraBlack
-import com.luc4n3x.levyra.ui.theme.LevyraCyan
-import com.luc4n3x.levyra.ui.theme.LevyraInk
-import com.luc4n3x.levyra.ui.theme.LevyraMuted
-import com.luc4n3x.levyra.ui.theme.LevyraOnAccent
-import com.luc4n3x.levyra.ui.theme.LevyraPanel
-import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
-import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
-import com.luc4n3x.levyra.ui.theme.LevyraText
-import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 
 private val JamPermissionOptions = listOf(
     JamGuestPermission.HostOnly,
     JamGuestPermission.AddSongs,
     JamGuestPermission.Collaborative
 )
-
-private val JamHairline: Color get() = LevyraMuted.copy(alpha = 0.16f)
 
 @Composable
 internal fun LevyraJamOverlay(
@@ -114,16 +111,16 @@ internal fun LevyraJamOverlay(
         jamContributions(session?.queue.orEmpty(), participants)
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(LevyraInk)) {
+    Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
             contentPadding = PaddingValues(
-                start = LevyraPlayerDesign.GutterCompact,
-                end = LevyraPlayerDesign.GutterCompact,
-                top = LevyraPlayerDesign.SpaceMd,
+                start = 20.dp,
+                end = 20.dp,
+                top = 12.dp,
                 bottom = 140.dp
             ),
-            verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item(contentType = "jam-header") {
                 JamHeader(title = strings.jamTitle, subtitle = strings.jamSubtitle, onClose = onClose)
@@ -189,10 +186,8 @@ internal fun LevyraJamOverlay(
                         )
                         Text(
                             strings.jamLocalNetworkOnly,
-                            color = LevyraMuted,
-                            fontSize = 12.sp,
-                            lineHeight = LevyraTypeRhythm.lineHeight(12f),
-                            fontWeight = FontWeight.Medium
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall
                         )
                     }
                 }
@@ -289,7 +284,7 @@ internal fun LevyraJamOverlay(
                 }
 
                 item(contentType = "jam-exit") {
-                    Spacer(modifier = Modifier.height(LevyraPlayerDesign.SpaceXs))
+                    Spacer(modifier = Modifier.height(4.dp))
                     JamSecondaryButton(
                         label = if (jam.isHost) strings.jamEnd else strings.jamLeave,
                         onClick = { if (jam.isHost) onEnd() else onLeave() }
@@ -305,28 +300,26 @@ private fun JamHeader(title: String, subtitle: String, onClose: () -> Unit) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         IconButton(
             onClick = onClose,
-            modifier = Modifier.size(LevyraPlayerDesign.MinimumTouchTarget)
+            shapes = IconButtonDefaults.shapes(),
+            modifier = Modifier.size(48.dp)
         ) {
             Icon(
                 Icons.AutoMirrored.Rounded.ArrowBack,
                 contentDescription = LocalLevyraStrings.current.back,
-                tint = LevyraText
+                tint = MaterialTheme.colorScheme.onBackground
             )
         }
-        Column(modifier = Modifier.padding(start = LevyraPlayerDesign.SpaceXs)) {
+        Column(modifier = Modifier.padding(start = 8.dp)) {
             Text(
                 title,
-                color = LevyraText,
-                fontSize = 26.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(26f),
-                fontWeight = FontWeight.Black
+                color = MaterialTheme.colorScheme.onBackground,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
             )
             Text(
                 subtitle,
-                color = LevyraMuted,
-                fontSize = 13.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(13f),
-                fontWeight = FontWeight.Medium
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium
             )
         }
     }
@@ -336,36 +329,33 @@ private fun JamHeader(title: String, subtitle: String, onClose: () -> Unit) {
 private fun JamSessionHero(jam: JamUiState, strings: LevyraStrings, onShare: () -> Unit) {
     val connected = jam.connection == JamConnectionState.Connected
     val statusColor by animateColorAsState(
-        targetValue = if (connected) LevyraCyan else LevyraMuted,
-        animationSpec = LevyraPlayerDesign.standardTween(),
+        targetValue = if (connected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
         label = "jam-status"
     )
-    Surface(
-        color = LevyraPanel,
-        border = BorderStroke(LevyraPlayerDesign.Hairline, JamHairline),
-        shape = LevyraPlayerDesign.ShapeMd,
+    ElevatedCard(
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        shape = MaterialTheme.shapes.extraLarge,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier.padding(LevyraPlayerDesign.SpaceLg),
-            verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
+            modifier = Modifier.padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(LevyraPlayerDesign.SpaceSm)
+                        .size(12.dp)
                         .background(statusColor, CircleShape)
                         .clearAndSetSemantics { }
                 )
                 Text(
                     if (jam.isHost) strings.jamRoleHost else strings.jamRoleGuest,
-                    color = LevyraText,
-                    fontSize = 20.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(20f),
-                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
                 if (jam.isHost && jam.locked) {
@@ -375,29 +365,24 @@ private fun JamSessionHero(jam: JamUiState, strings: LevyraStrings, onShare: () 
             Text(
                 jamConnectionText(jam.connection, strings),
                 color = statusColor,
-                fontSize = 13.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(13f),
-                fontWeight = FontWeight.SemiBold
+                style = MaterialTheme.typography.labelLarge
             )
 
             if (jam.isHost && jam.code.isNotBlank()) {
-                Spacer(modifier = Modifier.height(LevyraPlayerDesign.SpaceXxs))
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     strings.jamSessionCode,
-                    color = LevyraMuted,
-                    fontSize = 11.sp,
-                    letterSpacing = 0.6.sp,
-                    fontWeight = FontWeight.Black
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
+                    style = MaterialTheme.typography.labelMedium
                 )
                 Text(
                     jam.code,
-                    color = LevyraText,
-                    fontSize = 24.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(24f),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    style = MaterialTheme.typography.headlineMedium,
                     letterSpacing = 1.2.sp,
-                    fontWeight = FontWeight.Black
+                    fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.height(LevyraPlayerDesign.SpaceXxs))
+                Spacer(modifier = Modifier.height(4.dp))
                 JamPrimaryButton(
                     label = strings.jamShareInvite,
                     icon = Icons.Rounded.IosShare,
@@ -416,49 +401,50 @@ private fun JamPendingRow(
     onReject: () -> Unit
 ) {
     Surface(
-        color = LevyraPanelSoft,
-        border = BorderStroke(LevyraPlayerDesign.Hairline, LevyraCyan.copy(alpha = 0.32f)),
-        shape = LevyraPlayerDesign.ShapeSm,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        shape = MaterialTheme.shapes.large,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier.padding(
-                horizontal = LevyraPlayerDesign.SpaceMd,
-                vertical = LevyraPlayerDesign.SpaceSm
+                horizontal = 16.dp,
+                vertical = 12.dp
             ),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            JamAvatar(name = request.name.ifBlank { strings.jamRoleGuest }, accent = LevyraCyan)
+            JamAvatar(name = request.name.ifBlank { strings.jamRoleGuest }, accent = MaterialTheme.colorScheme.secondary)
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     request.name.ifBlank { strings.jamRoleGuest },
-                    color = LevyraText,
-                    fontSize = 15.sp,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     strings.jamPendingRequests,
-                    color = LevyraMuted,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.72f),
+                    style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
             IconButton(
                 onClick = onReject,
-                modifier = Modifier.size(LevyraPlayerDesign.MinimumTouchTarget)
+                shapes = IconButtonDefaults.shapes(),
+                modifier = Modifier.size(48.dp)
             ) {
-                Icon(Icons.Rounded.Close, contentDescription = strings.jamReject, tint = LevyraMuted)
+                Icon(Icons.Rounded.Close, contentDescription = strings.jamReject)
             }
             IconButton(
                 onClick = onApprove,
-                modifier = Modifier.size(LevyraPlayerDesign.MinimumTouchTarget)
+                colors = IconButtonDefaults.filledTonalIconButtonColors(),
+                shapes = IconButtonDefaults.shapes(),
+                modifier = Modifier.size(48.dp)
             ) {
-                Icon(Icons.Rounded.Check, contentDescription = strings.jamApprove, tint = LevyraCyan)
+                Icon(Icons.Rounded.Check, contentDescription = strings.jamApprove)
             }
         }
     }
@@ -484,32 +470,31 @@ private fun JamParticipantRow(
         role
     }
     Surface(
-        color = LevyraPanel,
-        border = BorderStroke(LevyraPlayerDesign.Hairline, JamHairline),
-        shape = LevyraPlayerDesign.ShapeSm,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.large,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier.padding(
-                horizontal = LevyraPlayerDesign.SpaceMd,
-                vertical = LevyraPlayerDesign.SpaceSm
+                horizontal = 16.dp,
+                vertical = 12.dp
             ),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             JamAvatar(
                 name = participant.name.ifBlank { role },
-                accent = if (participant.isHost) LevyraCyan else LevyraMuted
+                accent = if (participant.isHost) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
             )
             Column(modifier = Modifier.weight(1f)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
                         participant.name.ifBlank { role },
-                        color = LevyraText,
-                        fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -519,9 +504,8 @@ private fun JamParticipantRow(
                 }
                 Text(
                     detail,
-                    color = LevyraMuted,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -529,15 +513,17 @@ private fun JamParticipantRow(
             if (canModerate) {
                 IconButton(
                     onClick = onKick,
-                    modifier = Modifier.size(LevyraPlayerDesign.MinimumTouchTarget)
+                    shapes = IconButtonDefaults.shapes(),
+                    modifier = Modifier.size(48.dp)
                 ) {
-                    Icon(Icons.Rounded.Close, contentDescription = strings.jamKick, tint = LevyraMuted)
+                    Icon(Icons.Rounded.Close, contentDescription = strings.jamKick)
                 }
                 IconButton(
                     onClick = onBan,
-                    modifier = Modifier.size(LevyraPlayerDesign.MinimumTouchTarget)
+                    shapes = IconButtonDefaults.shapes(),
+                    modifier = Modifier.size(48.dp)
                 ) {
-                    Icon(Icons.Rounded.Block, contentDescription = strings.jamBan, tint = LevyraMuted)
+                    Icon(Icons.Rounded.Block, contentDescription = strings.jamBan)
                 }
             }
         }
@@ -551,45 +537,45 @@ private fun JamAvatar(name: String, accent: Color) {
     }
     Box(
         modifier = Modifier
-            .size(36.dp)
-            .background(accent.copy(alpha = 0.18f), CircleShape)
+            .size(40.dp)
+            .background(accent.copy(alpha = 0.16f), MaterialShapes.Cookie9Sided.toShape())
             .clearAndSetSemantics { },
         contentAlignment = Alignment.Center
     ) {
-        Text(initial, color = accent, fontSize = 14.sp, fontWeight = FontWeight.Black)
+        Text(initial, color = accent, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
     }
 }
 
 @Composable
 private fun JamBadge(label: String, icon: ImageVector? = null) {
     Surface(
-        color = LevyraCyan.copy(alpha = 0.16f),
-        shape = LevyraPlayerDesign.ShapePill
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        shape = MaterialTheme.shapes.extraLarge
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = LevyraPlayerDesign.SpaceSm, vertical = 3.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(3.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             if (icon != null) {
-                Icon(icon, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(12.dp))
+                Icon(icon, contentDescription = null, modifier = Modifier.size(14.dp))
             }
-            Text(label, color = LevyraCyan, fontSize = 11.sp, fontWeight = FontWeight.Black)
+            Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
         }
     }
 }
 
 @Composable
 private fun JamCard(content: @Composable () -> Unit) {
-    Surface(
-        color = LevyraPanel,
-        border = BorderStroke(LevyraPlayerDesign.Hairline, JamHairline),
-        shape = LevyraPlayerDesign.ShapeMd,
+    ElevatedCard(
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        shape = MaterialTheme.shapes.extraLarge,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier.padding(LevyraPlayerDesign.SpaceLg),
-            verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             content()
         }
@@ -600,10 +586,9 @@ private fun JamCard(content: @Composable () -> Unit) {
 private fun JamCardTitle(text: String) {
     Text(
         text,
-        color = LevyraText,
-        fontSize = 15.sp,
-        lineHeight = LevyraTypeRhythm.lineHeight(15f),
-        fontWeight = FontWeight.Black
+        color = MaterialTheme.colorScheme.onSurface,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold
     )
 }
 
@@ -611,28 +596,25 @@ private fun JamCardTitle(text: String) {
 private fun JamSectionLabel(text: String) {
     Text(
         text,
-        color = LevyraMuted,
-        fontSize = 12.sp,
-        letterSpacing = 0.4.sp,
-        fontWeight = FontWeight.Black,
-        modifier = Modifier.padding(top = LevyraPlayerDesign.SpaceSm, start = LevyraPlayerDesign.SpaceXs)
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(top = 8.dp, start = 4.dp)
     )
 }
 
 @Composable
 private fun JamEmptyRow(text: String) {
     Surface(
-        color = LevyraPanel,
-        border = BorderStroke(LevyraPlayerDesign.Hairline, JamHairline),
-        shape = LevyraPlayerDesign.ShapeSm,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = MaterialTheme.shapes.large,
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(
             text,
-            color = LevyraMuted,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(LevyraPlayerDesign.SpaceLg)
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(20.dp)
         )
     }
 }
@@ -644,22 +626,19 @@ private fun JamPermissionPicker(
     onSelect: (JamGuestPermission) -> Unit
 ) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.selectableGroup()
     ) {
         JamPermissionOptions.forEach { permission ->
             val active = permission == selected
             Surface(
-                color = if (active) LevyraCyan.copy(alpha = 0.16f) else Color.Transparent,
-                border = BorderStroke(
-                    LevyraPlayerDesign.Hairline,
-                    if (active) LevyraCyan.copy(alpha = 0.42f) else JamHairline
-                ),
-                shape = LevyraPlayerDesign.ShapeSm,
+                color = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+                contentColor = if (active) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                shape = MaterialTheme.shapes.large,
                 onClick = { onSelect(permission) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
+                    .heightIn(min = 56.dp)
                     .semantics {
                         this.role = Role.RadioButton
                         this.selected = active
@@ -667,25 +646,22 @@ private fun JamPermissionPicker(
             ) {
                 Row(
                     modifier = Modifier.padding(
-                        horizontal = LevyraPlayerDesign.SpaceMd,
-                        vertical = LevyraPlayerDesign.SpaceMd
+                        horizontal = 16.dp,
+                        vertical = 14.dp
                     ),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
                         jamPermissionLabel(permission, strings),
-                        color = if (active) LevyraCyan else LevyraText,
-                        fontSize = 14.sp,
-                        lineHeight = LevyraTypeRhythm.lineHeight(14f),
-                        fontWeight = if (active) FontWeight.Black else FontWeight.SemiBold,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
                         modifier = Modifier.weight(1f)
                     )
                     if (active) {
                         Icon(
                             Icons.Rounded.Check,
                             contentDescription = null,
-                            tint = LevyraCyan,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -705,35 +681,26 @@ private fun JamSwitchRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget),
+            .heightIn(min = 56.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 title,
-                color = LevyraText,
-                fontSize = 14.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(14f),
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 subtitle,
-                color = LevyraMuted,
-                fontSize = 12.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(12f),
-                fontWeight = FontWeight.Medium
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall
             )
         }
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = LevyraBlack,
-                checkedTrackColor = LevyraCyan,
-                uncheckedThumbColor = LevyraMuted,
-                uncheckedTrackColor = LevyraPanelSoft
-            )
+            onCheckedChange = onCheckedChange
         )
     }
 }
@@ -748,36 +715,19 @@ private fun JamInlineAction(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget),
+            .heightIn(min = 56.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Icon(icon, contentDescription = null, tint = LevyraMuted, modifier = Modifier.size(18.dp))
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
         Text(
             label,
-            color = LevyraText,
-            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.weight(1f)
         )
-        Surface(
-            color = Color.Transparent,
-            border = BorderStroke(LevyraPlayerDesign.Hairline, JamHairline),
-            shape = LevyraPlayerDesign.ShapePill,
-            onClick = onClick,
-            modifier = Modifier.sizeIn(minHeight = LevyraPlayerDesign.MinimumTouchTarget)
-        ) {
-            Text(
-                actionLabel,
-                color = LevyraText,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Black,
-                modifier = Modifier.padding(
-                    horizontal = LevyraPlayerDesign.SpaceMd,
-                    vertical = LevyraPlayerDesign.SpaceSm
-                )
-            )
-        }
+        TextButton(onClick = onClick, shapes = ButtonDefaults.shapes()) { Text(actionLabel) }
     }
 }
 
@@ -788,33 +738,30 @@ private fun JamPrimaryButton(
     icon: ImageVector? = null,
     onClick: () -> Unit
 ) {
-    Surface(
-        color = if (enabled) LevyraCyan else LevyraPanelSoft,
-        shape = LevyraPlayerDesign.ShapePill,
+    Button(
         enabled = enabled,
         onClick = onClick,
+        shapes = ButtonDefaults.shapes(),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
+            .heightIn(min = 56.dp)
     ) {
         Row(
-            modifier = Modifier.padding(vertical = LevyraPlayerDesign.SpaceMd),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm, Alignment.CenterHorizontally)
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
         ) {
             if (icon != null) {
                 Icon(
                     icon,
                     contentDescription = null,
-                    tint = if (enabled) LevyraOnAccent else LevyraMuted,
                     modifier = Modifier.size(18.dp)
                 )
             }
             Text(
                 label,
-                color = if (enabled) LevyraOnAccent else LevyraMuted,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Black
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold
             )
         }
     }
@@ -822,54 +769,46 @@ private fun JamPrimaryButton(
 
 @Composable
 private fun JamSecondaryButton(label: String, onClick: () -> Unit) {
-    Surface(
-        color = Color.Transparent,
-        border = BorderStroke(LevyraPlayerDesign.Hairline, JamHairline),
-        shape = LevyraPlayerDesign.ShapePill,
+    OutlinedButton(
         onClick = onClick,
+        shapes = ButtonDefaults.shapes(),
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
+            .heightIn(min = 56.dp)
     ) {
-        Box(
-            modifier = Modifier.padding(vertical = LevyraPlayerDesign.SpaceMd),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(label, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black)
-        }
+        Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
     }
 }
 
 @Composable
 private fun JamFailureBanner(message: String, dismissLabel: String, onDismiss: () -> Unit) {
     Surface(
-        color = LevyraPanelSoft,
-        border = BorderStroke(LevyraPlayerDesign.Hairline, LevyraCyan.copy(alpha = 0.28f)),
-        shape = LevyraPlayerDesign.ShapeSm,
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        shape = MaterialTheme.shapes.large,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier.padding(
-                start = LevyraPlayerDesign.SpaceLg,
-                end = LevyraPlayerDesign.SpaceSm,
-                top = LevyraPlayerDesign.SpaceSm,
-                bottom = LevyraPlayerDesign.SpaceSm
+                start = 20.dp,
+                end = 8.dp,
+                top = 12.dp,
+                bottom = 12.dp
             ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 message,
-                color = LevyraText,
-                fontSize = 13.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(13f),
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f)
             )
             IconButton(
                 onClick = onDismiss,
-                modifier = Modifier.size(LevyraPlayerDesign.MinimumTouchTarget)
+                shapes = IconButtonDefaults.shapes(),
+                modifier = Modifier.size(48.dp)
             ) {
-                Icon(Icons.Rounded.Close, contentDescription = dismissLabel, tint = LevyraMuted)
+                Icon(Icons.Rounded.Close, contentDescription = dismissLabel)
             }
         }
     }
