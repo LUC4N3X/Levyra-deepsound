@@ -62,7 +62,7 @@ def enhance_screenshot(img):
     img = enhancer.enhance(1.12)
     return img
 
-def create_s26_ultra_phone(screen_img, target_height=1210):
+def create_s26_ultra_phone(screen_img, target_height=1300):
     screen_img = enhance_screenshot(screen_img)
     ss = 2
     orig_w, orig_h = screen_img.size
@@ -71,8 +71,9 @@ def create_s26_ultra_phone(screen_img, target_height=1210):
     screen_w = int(screen_h * aspect)
     screen_res = screen_img.resize((screen_w, screen_h), Image.Resampling.LANCZOS)
 
-    bezel = max(10, int(screen_w * 0.014))
-    corner_r = int(screen_w * 0.046)
+    # Samsung Galaxy S26 Ultra: Titanium chassis, ultra-slim symmetrical bezels, subtle ergonomic rounded corners
+    bezel = max(10, int(screen_w * 0.013))
+    corner_r = int(screen_w * 0.040)
     inner_r = max(6, corner_r - bezel)
 
     body_w = screen_w + bezel * 2
@@ -81,29 +82,29 @@ def create_s26_ultra_phone(screen_img, target_height=1210):
     phone = Image.new("RGBA", (body_w, body_h), (0, 0, 0, 0))
     pdraw = ImageDraw.Draw(phone)
 
-    # Titanium chassis rim
-    pdraw.rounded_rectangle((0, 0, body_w - 1, body_h - 1), radius=corner_r, fill=(28, 29, 33, 255))
-    pdraw.rounded_rectangle((2, 2, body_w - 3, body_h - 3), radius=corner_r - 2, fill=(16, 17, 20, 255))
+    # S26 Ultra Titanium frame rim
+    pdraw.rounded_rectangle((0, 0, body_w - 1, body_h - 1), radius=corner_r, fill=(28, 29, 34, 255))
+    pdraw.rounded_rectangle((2, 2, body_w - 3, body_h - 3), radius=corner_r - 2, fill=(14, 15, 18, 255))
 
-    # Mask screen
+    # Flat Dynamic AMOLED 2X screen mask
     screen_mask = Image.new("L", (screen_w, screen_h), 0)
     smdraw = ImageDraw.Draw(screen_mask)
     smdraw.rounded_rectangle((0, 0, screen_w - 1, screen_h - 1), radius=inner_r, fill=255)
     phone.paste(screen_res, (bezel, bezel), screen_mask)
 
-    # Inner bezel border
+    # Ultra-thin inner bezel border
     pdraw.rounded_rectangle(
         (bezel, bezel, bezel + screen_w - 1, bezel + screen_h - 1),
         radius=inner_r,
-        outline=(10, 10, 12, 220),
+        outline=(8, 8, 10, 230),
         width=2
     )
 
-    # Center punch-hole camera
-    cam_diam = max(14, int(screen_w * 0.032))
+    # S26 Ultra Infinity-O Centered Punch-Hole Camera
+    cam_diam = max(14, int(screen_w * 0.029))
     cam_x = body_w // 2 - cam_diam // 2
-    cam_y = bezel + int(screen_h * 0.012)
-    pdraw.ellipse((cam_x - 1, cam_y - 1, cam_x + cam_diam + 1, cam_y + cam_diam + 1), fill=(10, 10, 12, 240))
+    cam_y = bezel + int(screen_h * 0.011)
+    pdraw.ellipse((cam_x - 1, cam_y - 1, cam_x + cam_diam + 1, cam_y + cam_diam + 1), fill=(12, 12, 15, 240))
     pdraw.ellipse((cam_x, cam_y, cam_x + cam_diam, cam_y + cam_diam), fill=(6, 6, 8, 255))
     lens_r = cam_diam // 3
     pdraw.ellipse(
@@ -117,13 +118,13 @@ def create_s26_ultra_phone(screen_img, target_height=1210):
     )
 
     # Micro speaker slit
-    spk_w = max(28, int(screen_w * 0.08))
+    spk_w = max(28, int(screen_w * 0.075))
     spk_h = 3
     spk_x = body_w // 2 - spk_w // 2
-    pdraw.rounded_rectangle((spk_x, 3, spk_x + spk_w, 3 + spk_h), radius=1, fill=(40, 42, 46, 255))
+    pdraw.rounded_rectangle((spk_x, 3, spk_x + spk_w, 3 + spk_h), radius=1, fill=(40, 42, 48, 255))
 
-    # Outer chamfer highlight
-    pdraw.rounded_rectangle((0, 0, body_w - 1, body_h - 1), radius=corner_r, outline=(140, 145, 155, 130), width=2)
+    # Titanium frame diamond-cut chamfer specular highlight
+    pdraw.rounded_rectangle((0, 0, body_w - 1, body_h - 1), radius=corner_r, outline=(145, 150, 162, 140), width=2)
 
     return phone.resize((body_w // ss, body_h // ss), Image.Resampling.LANCZOS)
 
@@ -223,12 +224,12 @@ def render_m3_duo_cut_cards():
     # Tilted 15°, placed so its right edge cuts across into Card 02!
     if s_home and os.path.exists(s_home):
         with Image.open(s_home) as src1:
-            p1 = create_s26_ultra_phone(src1, target_height=1210)
+            p1 = create_s26_ultra_phone(src1, target_height=1300)
         rot1 = p1.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
         s1_shadow, pad1 = create_m3_shadow(rot1, blur1=24, blur2=52, offset_y=28)
 
-        p1_x = 250
-        p1_y = 50
+        p1_x = 275
+        p1_y = 20
         bg.paste(s1_shadow, (p1_x - pad1, p1_y - pad1), s1_shadow)
         bg.paste(rot1, (p1_x, p1_y), rot1)
 
@@ -236,12 +237,12 @@ def render_m3_duo_cut_cards():
     # Floating in Card 02 alongside the cut edge of Phone 1, with comfortable top breathing room
     if s_player and os.path.exists(s_player):
         with Image.open(s_player) as src2:
-            p2 = create_s26_ultra_phone(src2, target_height=1070)
+            p2 = create_s26_ultra_phone(src2, target_height=1180)
         rot2 = p2.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
         s2_shadow, pad2 = create_m3_shadow(rot2, blur1=20, blur2=46, offset_y=24)
 
-        p2_x = c2_left + 225
-        p2_y = 350
+        p2_x = c2_left + 185
+        p2_y = 330
         bg.paste(s2_shadow, (p2_x - pad2, p2_y - pad2), s2_shadow)
         bg.paste(rot2, (p2_x, p2_y), rot2)
 
@@ -249,27 +250,27 @@ def render_m3_duo_cut_cards():
     draw = ImageDraw.Draw(bg)
 
     # --- CARD 01 (Bottom Left Typography) ---
-    tx1, ty1 = 76, 1260
+    tx1, ty1 = 72, 1260
     draw_clean_m3_kicker(draw, tx1, ty1, "ZERO ADS • NATIVE PLAY", color=(85, 55, 155, 255), font_size=27)
-    draw.text((tx1, ty1 + 46), "Pure listening.", font=get_font(66, bold=True), fill=(29, 27, 32, 255))
+    draw.text((tx1, ty1 + 44), "Pure listening.", font=get_font(64, bold=True), fill=(29, 27, 32, 255))
     draw.multiline_text(
-        (tx1, ty1 + 130),
+        (tx1, ty1 + 124),
         "Zero ads, zero accounts.\nStream and store locally on your device.",
-        font=get_font(31),
+        font=get_font(30),
         fill=(70, 65, 80, 255),
-        spacing=8
+        spacing=6
     )
 
     # --- CARD 02 (Top Left Typography) ---
-    tx2, ty2 = c2_left + 82, 75
+    tx2, ty2 = c2_left + 76, 54
     draw_clean_m3_kicker(draw, tx2, ty2, "OFFLINE STORAGE", color=(145, 85, 0, 255), font_size=27)
-    draw.text((tx2, ty2 + 46), "Download & keep.", font=get_font(66, bold=True), fill=(29, 27, 32, 255))
+    draw.text((tx2, ty2 + 44), "Download & keep.", font=get_font(64, bold=True), fill=(29, 27, 32, 255))
     draw.multiline_text(
-        (tx2, ty2 + 130),
+        (tx2, ty2 + 124),
         "Clean M4A files in device storage.\nFull metadata, artwork, and lyrics.",
-        font=get_font(31),
+        font=get_font(30),
         fill=(75, 65, 60, 255),
-        spacing=8
+        spacing=6
     )
 
     # Slice into Card 01 (0..900) and Card 02 (948..1848)
@@ -285,7 +286,7 @@ def render_m3_duo_cut_cards():
 
     return c1, c2
 
-def render_m3_single_card(screenshot_name, kicker, title, subtitle, top_tint, bot_tint, kicker_color, ambilight, border_color, target_height=1210):
+def render_m3_single_card(screenshot_name, kicker, title, subtitle, top_tint, bot_tint, kicker_color, ambilight, border_color, target_height=1300):
     card_w, card_h = 900, 1600
 
     # 1. Tonal Surface Gradient
@@ -300,22 +301,22 @@ def render_m3_single_card(screenshot_name, kicker, title, subtitle, top_tint, bo
     # 2. Volumetric ambilight glow behind phone
     glow = Image.new("RGBA", (card_w, card_h), (0, 0, 0, 0))
     gdraw = ImageDraw.Draw(glow)
-    gdraw.ellipse((100, 380, 800, 1300), fill=(*ambilight, 150))
+    gdraw.ellipse((80, 300, 820, 1360), fill=(*ambilight, 150))
     glow = glow.filter(ImageFilter.GaussianBlur(95))
     card = Image.alpha_composite(card, glow)
 
     # 3. Clean M3 Typography - directly on surface, NO boxes or bulky badges!
     draw = ImageDraw.Draw(card)
-    tx, ty = 76, 75
+    tx, ty = 72, 54
     draw_clean_m3_kicker(draw, tx, ty, kicker, kicker_color, font_size=27)
 
-    draw.text((tx, ty + 46), title, font=get_font(66, bold=True), fill=(29, 27, 32, 255))
+    draw.text((tx, ty + 44), title, font=get_font(64, bold=True), fill=(29, 27, 32, 255))
     draw.multiline_text(
-        (tx, ty + 130),
+        (tx, ty + 124),
         subtitle,
-        font=get_font(31),
+        font=get_font(30),
         fill=(75, 65, 75, 255),
-        spacing=8
+        spacing=6
     )
 
     # 4. Samsung Galaxy S26 Ultra mockup
@@ -325,7 +326,7 @@ def render_m3_single_card(screenshot_name, kicker, title, subtitle, top_tint, bo
             phone = create_s26_ultra_phone(src, target_height=target_height)
         shadow, pad = create_m3_shadow(phone, blur1=22, blur2=48, offset_y=26)
         px = (card_w - phone.width) // 2
-        py = 390
+        py = 265
         card.paste(shadow, (px - pad, py - pad), shadow)
         card.paste(phone, (px, py), phone)
 
@@ -401,7 +402,7 @@ M3_REMAINING_SPECS = [
      (224, 235, 255), (200, 220, 252), (25, 95, 210), (40, 130, 245), (180, 210, 248, 200), ["18_artist_profile.webp", "18_fresh_currents.webp"]),
 
     # Card 19: Top 50 Global Charts (Top 50 United States, daily charts)
-    ("Screenshot_20261010_132028_LEVYRA.jpg", "GLOBAL CHARTS", "Top 50 charts.", "Explore daily country charts,\nviral hits, and top tracks worldwide.",
+    ("Screenshot_20261011_202032_LEVYRA.jpg", "GLOBAL CHARTS", "Top 50 charts.", "Explore daily country charts,\nviral hits, and top tracks worldwide.",
      (255, 224, 220), (255, 200, 194), (205, 45, 35), (250, 65, 50), (245, 180, 175, 200), ["19_top_50.webp"]),
 
     # Card 20: Levyra Jam (Collaborative listening on Wi-Fi)
