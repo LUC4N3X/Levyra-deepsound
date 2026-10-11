@@ -13326,28 +13326,27 @@ private fun SearchHeader(
     val animationsEnabled = LocalAnimationsEnabled.current
     val fieldInteraction = remember { MutableInteractionSource() }
     val fieldFocused by fieldInteraction.collectIsFocusedAsState()
+    val scheme = MaterialTheme.colorScheme
     val fieldContainer by animateColorAsState(
-        targetValue = when {
-            LevyraIsLight -> Color.White.copy(alpha = if (fieldFocused) 1f else 0.94f)
-            fieldFocused -> Color(0xFF171A23)
-            else -> Color(0xFF11131A)
-        },
+        targetValue = if (fieldFocused) scheme.surfaceContainerHighest else scheme.surfaceContainerHigh,
         animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
         label = "search-field-container"
     )
     val fieldOutline by animateColorAsState(
-        targetValue = when {
-            fieldFocused -> LevyraCyan.copy(alpha = 0.55f)
-            LevyraIsLight -> Color(0x1411131F)
-            else -> Color.White.copy(alpha = 0.075f)
-        },
+        targetValue = if (fieldFocused) scheme.primary.copy(alpha = 0.72f) else Color.Transparent,
         animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
         label = "search-field-outline"
     )
     val searchIconTint by animateColorAsState(
-        targetValue = if (fieldFocused) LevyraCyan else LevyraMuted,
+        targetValue = if (fieldFocused) scheme.primary else scheme.onSurfaceVariant,
         animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
         label = "search-field-icon"
+    )
+    val fieldCorner = levyraExpressiveToggleCorner(
+        checked = fieldFocused,
+        unchecked = 28.dp,
+        checkedCorner = 20.dp,
+        label = "search-field-corner"
     )
 
     Row(
@@ -13373,9 +13372,8 @@ private fun SearchHeader(
 
         Surface(
             color = fieldContainer,
-            border = BorderStroke(if (fieldFocused) 1.5.dp else Dp.Hairline, fieldOutline),
-            shape = CircleShape,
-            shadowElevation = if (LevyraIsLight) 2.dp else 0.dp,
+            border = BorderStroke(1.5.dp, fieldOutline),
+            shape = RoundedCornerShape(fieldCorner),
             modifier = Modifier
                 .weight(1f)
                 .heightIn(min = 56.dp)
@@ -13769,12 +13767,7 @@ private fun SearchTasteHints(
             items = suggestions,
             key = { suggestion -> suggestion }
         ) { suggestion ->
-            HomeChip(
-                label = suggestion,
-                selected = false,
-                exposeSelectionState = false,
-                onClick = { onClick(suggestion) }
-            )
+            QuickSearchChip(label = suggestion, onClick = { onClick(suggestion) })
         }
     }
 }
@@ -21851,13 +21844,12 @@ private fun TopResultCard(
 ) {
     val hero = tracks.firstOrNull() ?: return
 
-    val cardBg = if (LevyraIsLight) LevyraPanel else if (LevyraIsPureBlack) Color(0xFF101114) else LevyraPanel
-    val cardBorder = if (LevyraIsLight) LevyraAdaptiveHairline else Color.White.copy(alpha = 0.06f)
+    val cardBg = MaterialTheme.colorScheme.surfaceContainer
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
+            .clip(RoundedCornerShape(32.dp))
             .background(cardBg)
             .padding(top = 16.dp, bottom = 8.dp)
     ) {
@@ -24636,18 +24628,44 @@ private fun QuickChips(languageCode: String, onClick: (String) -> Unit) {
     val chips = LevyraContentLocales.quickSearches(languageCode)
     Row(
         modifier = Modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         chips.forEach { chip ->
-            Surface(
-                color = CinematicGlass.copy(alpha = 0.72f),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-                shape = CircleShape,
-                modifier = Modifier.pressable(onClick = { onClick(chip) })
-            ) {
-                Text(chip, color = LevyraText, fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 13.dp, vertical = 9.dp))
-            }
+            QuickSearchChip(label = chip, onClick = { onClick(chip) })
         }
+    }
+}
+
+@Composable
+private fun QuickSearchChip(label: String, onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val interaction = remember { MutableInteractionSource() }
+    val corner = levyraExpressiveCorner(
+        interactionSource = interaction,
+        rest = 22.dp,
+        pressed = 12.dp,
+        label = "search-quick-chip-corner"
+    )
+    Box(
+        modifier = Modifier
+            .heightIn(min = 48.dp)
+            .levyraPressable(
+                onClick = onClick,
+                interactionSource = interaction,
+                role = Role.Button,
+                pressedScale = LevyraPressScale.Control
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            color = scheme.onSecondaryContainer,
+            style = LevyraType.cardTitle.copy(fontWeight = FontWeight.Bold),
+            modifier = Modifier
+                .clip(RoundedCornerShape(corner))
+                .background(scheme.secondaryContainer)
+                .padding(horizontal = 16.dp, vertical = 10.dp)
+        )
     }
 }
 

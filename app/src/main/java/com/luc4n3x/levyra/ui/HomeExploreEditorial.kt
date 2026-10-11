@@ -58,6 +58,10 @@ import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.theme.LevyraType
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 
 @Composable
 internal fun DiscoveryTrackCard(
@@ -211,34 +215,30 @@ internal fun DiscoveryEditorialCard(
     accentEnd: Color = Color(0xFF4C1D95),
     artworkShape: Shape? = null
 ) {
-    val contrastPalette = remember(accentStart, accentEnd) {
-        editorialContrastPalette(accentStart, accentEnd)
+    val surface = MaterialTheme.colorScheme.surfaceContainerHigh
+    val tonalStart = remember(accentStart, surface) { lerp(surface, accentStart, 0.42f) }
+    val tonalEnd = remember(accentEnd, surface) { lerp(surface, accentEnd, 0.22f) }
+    val contrastPalette = remember(tonalStart, tonalEnd) {
+        editorialContrastPalette(tonalStart, tonalEnd)
     }
     BoxWithConstraints(
         modifier = modifier
-            .clip(LevyraCardDesign.SurfaceShape)
+            .clip(EditorialCardShape)
             .background(
                 Brush.linearGradient(
-                    listOf(
-                        contrastPalette.start,
-                        contrastPalette.end,
-                        contrastPalette.end
-                    )
+                    listOf(contrastPalette.start, contrastPalette.end)
                 )
             )
-            .border(1.dp, Color.White.copy(alpha = 0.12f), LevyraCardDesign.SurfaceShape)
             .levyraPressable(onClick = onOpen, role = Role.Button, pressedScale = LevyraPressScale.Tile)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            Color.Black.copy(alpha = 0.20f),
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.12f)
-                        )
+                    Brush.radialGradient(
+                        colors = listOf(accentEnd.copy(alpha = 0.34f), Color.Transparent),
+                        center = Offset(Float.POSITIVE_INFINITY, 0f),
+                        radius = 900f
                     )
                 )
         )
@@ -280,8 +280,8 @@ internal fun DiscoveryEditorialCard(
                             CoverImage(
                                 track = artwork,
                                 modifier = Modifier
-                                    .size(LevyraHomeDesign.EditorialThumb)
-                                    .rotate(-8f)
+                                    .size(LevyraHomeDesign.EditorialThumb + 18.dp)
+                                    .rotate(-6f)
                                     .clip(artworkShape)
                             )
                         } else {
@@ -309,12 +309,19 @@ private fun DiscoveryEditorialText(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)) {
-        Text(title, style = LevyraType.sectionTitle, color = textColor, softWrap = true)
+        Text(
+            title,
+            style = LevyraType.sectionTitle.copy(fontSize = 24.sp, lineHeight = 27.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.7).sp),
+            color = textColor,
+            softWrap = true
+        )
         if (subtitle.isNotBlank()) {
-            Text(subtitle, style = LevyraType.metadata, color = textColor, softWrap = true)
+            Text(subtitle, style = LevyraType.metadata, color = textColor.copy(alpha = 0.78f), softWrap = true, maxLines = 2)
         }
     }
 }
+
+private val EditorialCardShape = RoundedCornerShape(32.dp)
 
 private data class EditorialContrastPalette(
     val start: Color,

@@ -11,14 +11,13 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Icon
@@ -44,14 +43,14 @@ private val FilterPillTouchHeight = 48.dp
 private val FilterPillVisualHeight = 40.dp
 
 @Immutable
-private data class FilterPillColors(val container: Color, val content: Color, val outline: Color)
+private data class FilterPillColors(val container: Color, val content: Color)
 
 @Composable
 private fun animatedFilterPillColors(selected: Boolean, animationsEnabled: Boolean): FilterPillColors {
     val colors = MaterialTheme.colorScheme
     val spec: AnimationSpec<Color> = if (animationsEnabled) LevyraMotion.standard() else snap()
     val container by animateColorAsState(
-        targetValue = if (selected) colors.primaryContainer else colors.surfaceContainerHigh.copy(alpha = 0.45f),
+        targetValue = if (selected) colors.primaryContainer else colors.surfaceContainerHigh,
         animationSpec = spec,
         label = "filter-pill-container"
     )
@@ -60,12 +59,7 @@ private fun animatedFilterPillColors(selected: Boolean, animationsEnabled: Boole
         animationSpec = spec,
         label = "filter-pill-content"
     )
-    val outline by animateColorAsState(
-        targetValue = if (selected) colors.primary.copy(alpha = 0.55f) else colors.outlineVariant.copy(alpha = 0.35f),
-        animationSpec = spec,
-        label = "filter-pill-outline"
-    )
-    return FilterPillColors(container, content, outline)
+    return FilterPillColors(container, content)
 }
 
 @Composable
@@ -109,6 +103,13 @@ internal fun LevyraFilterPill(
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
     val pillColors = animatedFilterPillColors(selected, animationsEnabled)
+    val corner = levyraExpressiveToggleCorner(
+        checked = selected,
+        unchecked = FilterPillVisualHeight / 2,
+        checkedCorner = 12.dp,
+        label = "filter-pill-corner"
+    )
+    val shape = RoundedCornerShape(corner)
     Box(
         modifier = modifier
             .heightIn(min = FilterPillTouchHeight)
@@ -124,9 +125,8 @@ internal fun LevyraFilterPill(
         Row(
             modifier = Modifier
                 .height(FilterPillVisualHeight)
-                .clip(CircleShape)
+                .clip(shape)
                 .background(pillColors.container)
-                .border(1.dp, pillColors.outline, CircleShape)
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {

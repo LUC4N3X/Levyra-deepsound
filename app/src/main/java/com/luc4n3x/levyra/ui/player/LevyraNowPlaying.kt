@@ -961,7 +961,7 @@ fun LevyraNowPlaying(
             }
         }
 
-        val progressBlock: @Composable () -> Unit = {
+        val progressBlock: @Composable (Boolean) -> Unit = { wavy ->
             if (liveRadio) {
                 Box(
                     modifier = Modifier
@@ -986,7 +986,8 @@ fun LevyraNowPlaying(
                     animationsEnabled = animated,
                     motionActive = !motionSuspended,
                     compact = compactPlayer,
-                    onSeek = viewModel::seekTo
+                    onSeek = viewModel::seekTo,
+                    wavy = wavy
                 )
             }
         }
@@ -1062,7 +1063,7 @@ fun LevyraNowPlaying(
             }
             Spacer(modifier = Modifier.height(if (compactPlayer) LevyraPlayerDesign.SpaceXs else LevyraPlayerDesign.SpaceSm))
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                progressBlock()
+                progressBlock(false)
             }
             errorContent?.invoke()
             Spacer(modifier = Modifier.height(if (compactPlayer) LevyraPlayerDesign.SpaceXs else LevyraPlayerDesign.SpaceMd))
@@ -1095,9 +1096,9 @@ fun LevyraNowPlaying(
                     Spacer(modifier = Modifier.height(if (compactPlayer) LevyraPlayerDesign.SpaceXs else LevyraPlayerDesign.SpaceSm))
                 }
             },
-            progress = {
+            progress = { wavy ->
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                    progressBlock()
+                    progressBlock(wavy)
                 }
                 errorContent?.invoke()
             },
