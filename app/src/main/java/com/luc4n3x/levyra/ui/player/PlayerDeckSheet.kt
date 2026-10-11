@@ -71,6 +71,7 @@ import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.playerDeckShortLabels
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
+import androidx.compose.ui.graphics.lerp
 
 private val DeckThumbWidth = 64.dp
 private val DeckPreviewRenderWidth = 148.dp
@@ -259,7 +260,7 @@ internal fun playerDeckLabel(mode: PlayerVisualMode, strings: LevyraStrings): St
         PlayerVisualMode.CanvasImmersive -> labels.immersive
         PlayerVisualMode.CanvasCard -> labels.canvasCard
         PlayerVisualMode.Artwork -> labels.artwork
-        PlayerVisualMode.Editorial -> labels.editorial
+        PlayerVisualMode.Expressive -> labels.expressive
         PlayerVisualMode.Pulse -> labels.pulse
     }
 }
@@ -268,7 +269,7 @@ internal fun playerDeckHint(mode: PlayerVisualMode, strings: LevyraStrings): Str
     PlayerVisualMode.CanvasImmersive -> strings.playerDeckImmersiveHint
     PlayerVisualMode.CanvasCard -> strings.playerDeckCardHint
     PlayerVisualMode.Artwork -> strings.playerDeckArtworkHint
-    PlayerVisualMode.Editorial -> strings.playerDeckEditorialHint
+    PlayerVisualMode.Expressive -> strings.playerDeckExpressiveHint
     PlayerVisualMode.Pulse -> strings.playerDeckPulseHint
 }
 
@@ -283,7 +284,7 @@ private fun PlayerDeckPreview(
         PlayerVisualMode.CanvasImmersive -> ImmersivePreview(track, artworkUrl, accent)
         PlayerVisualMode.CanvasCard -> CardPreview(track, artworkUrl, accent, glow = true)
         PlayerVisualMode.Artwork -> CardPreview(track, artworkUrl, accent, glow = false)
-        PlayerVisualMode.Editorial -> EditorialPreview(track, artworkUrl, accent)
+        PlayerVisualMode.Expressive -> ExpressivePreview(track, artworkUrl, accent)
         PlayerVisualMode.Pulse -> PulsePreview(track, artworkUrl, accent)
     }
 }
@@ -381,45 +382,57 @@ private fun CardPreview(track: Track, artworkUrl: String, accent: Color, glow: B
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun EditorialPreview(track: Track, artworkUrl: String, accent: Color) {
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0B0B0D))) {
-        Canvas(
-            modifier = Modifier
-                .padding(start = 8.dp, top = 22.dp)
-                .width(10.dp)
-                .height(84.dp)
-        ) {
-            drawRoundRect(accent, size = Size(size.width, 5.dp.toPx()), cornerRadius = CornerRadius(2f))
-            drawRect(
-                Color.White.copy(alpha = 0.28f),
-                topLeft = Offset(1.dp.toPx(), 12.dp.toPx()),
-                size = Size(1f, size.height - 12.dp.toPx())
-            )
-        }
+private fun ExpressivePreview(track: Track, artworkUrl: String, accent: Color) {
+    val ink = lerp(accent, Color.White, 0.72f)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(lerp(accent, Color.Black, 0.62f))
+    ) {
         DeckArtwork(
             track = track,
             artworkUrl = artworkUrl,
             modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 20.dp, end = 8.dp)
-                .fillMaxWidth(0.78f)
+                .align(Alignment.TopCenter)
+                .padding(top = 20.dp)
+                .fillMaxWidth(0.7f)
                 .aspectRatio(1f)
-                .clip(RoundedCornerShape(2.dp))
+                .clip(MaterialShapes.Puffy.toShape())
         )
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
+                .fillMaxWidth()
                 .padding(start = 10.dp, end = 10.dp, bottom = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(5.dp)
         ) {
-            PreviewBar(width = 26.dp, height = 3.dp, color = accent)
-            PreviewBar(width = 86.dp, height = 9.dp, color = Color.White)
-            PreviewBar(width = 60.dp, height = 9.dp, color = Color.White)
-            PreviewBar(width = 44.dp, height = 4.dp, color = Color.White.copy(alpha = 0.5f))
+            PreviewBar(width = 92.dp, height = 12.dp, color = ink)
+            PreviewBar(width = 48.dp, height = 4.dp, color = Color.White.copy(alpha = 0.55f))
             Spacer(modifier = Modifier.height(2.dp))
-            PreviewBar(width = 100.dp, height = 1.dp, color = Color.White.copy(alpha = 0.3f))
-            PreviewTransport(accent = accent)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(16.dp)
+                        .background(ink.copy(alpha = 0.32f), CircleShape)
+                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(16.dp)
+                        .background(ink, CircleShape)
+                )
+                Box(
+                    modifier = Modifier
+                        .size(16.dp)
+                        .background(ink.copy(alpha = 0.32f), CircleShape)
+                )
+            }
         }
     }
 }

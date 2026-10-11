@@ -128,12 +128,12 @@ class LevyraStrings private constructor(
     val playerVisualModeSubtitle: String get() = value("playerVisualModeSubtitle")
     val playerDeck: String get() = value("playerDeck")
     val playerDeckSubtitle: String get() = value("playerDeckSubtitle")
-    val playerDeckEditorial: String get() = value("playerDeckEditorial")
+    val playerDeckExpressive: String get() = value("playerDeckExpressive")
     val playerDeckPulse: String get() = value("playerDeckPulse")
     val playerDeckImmersiveHint: String get() = value("playerDeckImmersiveHint")
     val playerDeckCardHint: String get() = value("playerDeckCardHint")
     val playerDeckArtworkHint: String get() = value("playerDeckArtworkHint")
-    val playerDeckEditorialHint: String get() = value("playerDeckEditorialHint")
+    val playerDeckExpressiveHint: String get() = value("playerDeckExpressiveHint")
     val playerDeckPulseHint: String get() = value("playerDeckPulseHint")
     val playerDeckLandscapeNote: String get() = value("playerDeckLandscapeNote")
     val playlistStudio: String get() = value("playlistStudio")
@@ -1796,8 +1796,30 @@ class LevyraStrings private constructor(
     }
 
     fun formatGreeting(userName: String, hour: Int): String {
+        val dayPart = greetingDayPart(hour)
+        val name = userName.trim()
+        if (name.isBlank()) return dayPart
+        val directionalName = directionalValue(name)
+        return when (code) {
+            "ar" -> "$dayPart، $directionalName"
+            "he" -> "$dayPart, $directionalName"
+            "zh" -> "$dayPart，$directionalName"
+            "ja" -> "$directionalName、$dayPart"
+            "ko" -> "${directionalName}님, $dayPart"
+            else -> "$dayPart, $directionalName"
+        }
+    }
+
+    fun greetingName(userName: String): String {
+        val name = userName.trim()
+        if (name.isBlank()) return ""
+        val directionalName = directionalValue(name)
+        return if (code == "ko") "${directionalName}님" else directionalName
+    }
+
+    fun greetingDayPart(hour: Int): String {
         val normalizedHour = hour.coerceIn(0, 23)
-        val dayPart = when (code) {
+        return when (code) {
             "it" -> when (normalizedHour) { in 5..11 -> "Buongiorno"; in 12..17 -> "Buon pomeriggio"; in 18..22 -> "Buonasera"; else -> "Buonanotte" }
             "es" -> when (normalizedHour) { in 5..11 -> "Buenos días"; in 12..17 -> "Buenas tardes"; in 18..22 -> "Buenas noches"; else -> "Buenas noches" }
             "fr" -> when (normalizedHour) { in 5..11 -> "Bonjour"; in 12..17 -> "Bon après-midi"; in 18..22 -> "Bonsoir"; else -> "Bonne nuit" }
@@ -1826,17 +1848,6 @@ class LevyraStrings private constructor(
             "fi" -> when (normalizedHour) { in 5..11 -> "Hyvää huomenta"; in 12..17 -> "Hyvää iltapäivää"; in 18..22 -> "Hyvää iltaa"; else -> "Hyvää yötä" }
             "et" -> when (normalizedHour) { in 5..11 -> "Tere hommikust"; in 12..17 -> "Tere päevast"; in 18..22 -> "Tere õhtust"; else -> "Head ööd" }
             else -> when (normalizedHour) { in 5..11 -> "Good morning"; in 12..17 -> "Good afternoon"; in 18..22 -> "Good evening"; else -> "Good night" }
-        }
-        val name = userName.trim()
-        if (name.isBlank()) return dayPart
-        val directionalName = directionalValue(name)
-        return when (code) {
-            "ar" -> "$dayPart، $directionalName"
-            "he" -> "$dayPart, $directionalName"
-            "zh" -> "$dayPart，$directionalName"
-            "ja" -> "$directionalName、$dayPart"
-            "ko" -> "${directionalName}님, $dayPart"
-            else -> "$dayPart, $directionalName"
         }
     }
 

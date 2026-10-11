@@ -72,7 +72,7 @@ enum class PlayerVisualMode {
     Artwork,
     CanvasCard,
     CanvasImmersive,
-    Editorial,
+    Expressive,
     Pulse;
 
     companion object {
@@ -81,6 +81,7 @@ enum class PlayerVisualMode {
                 ?: when (value.trim().lowercase()) {
                     "canvas_card", "card" -> CanvasCard
                     "canvas_immersive", "immersive" -> CanvasImmersive
+                    "editorial" -> Expressive
                     else -> Artwork
                 }
     }

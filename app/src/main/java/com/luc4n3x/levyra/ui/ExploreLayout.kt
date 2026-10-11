@@ -52,13 +52,12 @@ internal data class ExploreCategorySection(
 
 internal enum class ExploreAnchor {
     Fresh,
-    Samples,
     Moods
 }
 
-internal enum class ExploreShortcut(val anchor: ExploreAnchor, val zoneId: String?) {
+internal enum class ExploreShortcut(val anchor: ExploreAnchor?, val zoneId: String?) {
     NewReleases(ExploreAnchor.Fresh, ExploreCatalog.NEW_RELEASES_ZONE_ID),
-    Samples(ExploreAnchor.Samples, null),
+    Samples(null, null),
     Moods(ExploreAnchor.Moods, null)
 }
 
@@ -93,10 +92,6 @@ internal sealed interface ExploreRow {
         override val key: String = "explore-fresh-moment"
     }
 
-    data object Samples : ExploreRow {
-        override val key: String = "explore-samples-carousel"
-    }
-
     data object MixTools : ExploreRow {
         override val key: String = "explore-mix-tools"
     }
@@ -110,7 +105,6 @@ internal fun buildExploreRows(
     zones: List<ExploreZone>,
     isFreshLoading: Boolean,
     hasFreshTracks: Boolean,
-    hasSamples: Boolean,
     hasFreshScopes: Boolean = false,
     hasFreshMoment: Boolean = false
 ): List<ExploreRow> {
@@ -133,10 +127,6 @@ internal fun buildExploreRows(
         rows += ExploreRow.MoodRail(distinctZones)
     }
 
-    if (hasSamples) {
-        rows += ExploreRow.Header(ExploreAnchor.Samples)
-        rows += ExploreRow.Samples
-    }
     rows += ExploreRow.MixTools
     return rows
 }
