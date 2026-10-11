@@ -1,5 +1,6 @@
 package org.schabi.newpipe.extractor.services.youtube.extractors;
 
+import com.grack.nanojson.JsonArray;
 import com.grack.nanojson.JsonObject;
 import org.schabi.newpipe.extractor.Image;
 import org.schabi.newpipe.extractor.Page;
@@ -160,15 +161,18 @@ class YoutubeCommentsEUVMInfoItemExtractor implements CommentsInfoItemExtractor 
     @Nonnull
     @Override
     public String getUploaderAvatarUrl() throws ParsingException {
-        final List<Image> avatars = getImagesFromThumbnailsArray(commentEntityPayload
-                .getObject("avatar")
-                .getObject("image")
-                .getArray("sources"));
-        if (!avatars.isEmpty()) {
-            return avatars.get(avatars.size() - 1).getUrl();
+        final JsonObject avatar = commentEntityPayload.getObject("avatar");
+        final JsonObject image = avatar == null ? null : avatar.getObject("image");
+        final JsonArray sources = image == null ? null : image.getArray("sources");
+        if (sources != null) {
+            final List<Image> avatars = getImagesFromThumbnailsArray(sources);
+            if (!avatars.isEmpty()) {
+                return avatars.get(avatars.size() - 1).getUrl();
+            }
         }
-        final String thumbnailUrl = commentEntityPayload.getObject(AUTHOR)
-                .getString("avatarThumbnailUrl");
+        final JsonObject author = commentEntityPayload.getObject(AUTHOR);
+        final String thumbnailUrl = author == null
+                ? null : author.getString("avatarThumbnailUrl");
         if (isNullOrEmpty(thumbnailUrl)) {
             throw new ParsingException("Could not get uploader avatar");
         }

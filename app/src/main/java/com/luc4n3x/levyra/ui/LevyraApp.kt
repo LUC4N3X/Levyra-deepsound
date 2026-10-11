@@ -15199,7 +15199,7 @@ private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiSta
                     val current = track.id == state.currentTrack?.id
                     Box(
                         modifier = Modifier
-                            .padding(horizontal = 16.dp, vertical = 1.dp)
+                            .padding(vertical = 1.dp)
                             .clip(levyraGroupedListShape(index, playlist.tracks.size))
                             .background(if (current) LevyraCyan.copy(alpha = 0.14f) else LevyraText.copy(alpha = 0.05f))
                     ) {

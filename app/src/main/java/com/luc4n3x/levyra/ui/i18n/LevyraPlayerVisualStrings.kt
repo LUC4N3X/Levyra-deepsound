@@ -85,7 +85,29 @@ private val playerBackgroundExtraLabels: Map<String, Pair<String, String>> = map
     "es" to ("Aurora" to "Degradado"),
     "fr" to ("Aurore" to "Dégradé"),
     "de" to ("Polarlicht" to "Verlauf"),
-    "pt" to ("Aurora" to "Gradiente")
+    "pt" to ("Aurora" to "Gradiente"),
+    "nl" to ("Poollicht" to "Kleurverloop"),
+    "pl" to ("Zorza polarna" to "Gradient"),
+    "ro" to ("Auroră" to "Degradeu"),
+    "el" to ("Σέλας" to "Διαβάθμιση"),
+    "sv" to ("Norrsken" to "Färgtoning"),
+    "da" to ("Nordlys" to "Farveforløb"),
+    "cs" to ("Polární záře" to "Přechod"),
+    "uk" to ("Полярне сяйво" to "Градієнт"),
+    "ru" to ("Северное сияние" to "Градиент"),
+    "tr" to ("Kutup ışıkları" to "Gradyan"),
+    "ar" to ("الشفق القطبي" to "تدرج لوني"),
+    "zh" to ("极光" to "渐变"),
+    "ja" to ("オーロラ" to "グラデーション"),
+    "ko" to ("오로라" to "그라데이션"),
+    "hi" to ("ध्रुवीय ज्योति" to "ग्रेडिएंट"),
+    "id" to ("Aurora" to "Gradasi"),
+    "vi" to ("Cực quang" to "Chuyển sắc"),
+    "th" to ("แสงออโรรา" to "ไล่ระดับสี"),
+    "fil" to ("Liwanag ng aurora" to "Paglipat ng kulay"),
+    "he" to ("זוהר הקוטב" to "מעבר צבעים"),
+    "fi" to ("Revontulet" to "Liukuväri"),
+    "et" to ("Virmalised" to "Värviüleminek")
 )
 
 internal fun playerVisualLocalizationEntries(code: String): Map<String, String> {
