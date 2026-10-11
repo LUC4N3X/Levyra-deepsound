@@ -184,4 +184,16 @@ class LyricsLatencyProfilesTest {
         assertFalse(bounded.trackOffsetsMs.containsKey("t0"))
         assertEquals(500L, bounded.trackOffsetMs("t${MAX_LYRICS_TRACK_PROFILES + 19}"))
     }
+
+    @Test
+    fun `resetting a bluetooth delay lands on zero even when the global offset is set`() {
+        val profiles = LyricsLatencyProfiles(globalOffsetMs = 2_000L).withDeviceOffset("buds", 400L)
+        val current = profiles.resolve("buds", bluetooth = true)
+
+        val reset = profiles.withLatencyOffset("buds", bluetooth = true, offsetMs = current - current)
+
+        assertEquals(0L, reset.resolve("buds", bluetooth = true))
+        assertEquals(2_000L, reset.resolve(null, bluetooth = false))
+        assertEquals(2_000L, profiles.withoutDevice("buds").resolve("buds", bluetooth = true))
+    }
 }

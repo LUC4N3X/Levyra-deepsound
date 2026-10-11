@@ -8108,14 +8108,14 @@ private fun LyricsOverlay(
             trackOffsetMs = trackLyricsOffsetMs,
             latencyOffsetMs = latencyOffsetMs,
             latencyDeviceName = bluetoothRoute?.displayName?.ifBlank { strings.connected },
-            latencyResettable = deviceProfileKey != null || latencyOffsetMs != 0L,
+            latencyResettable = latencyOffsetMs != 0L,
             onAdjustTrack = { delta -> onAdjustTrackOffset(track.id, delta) },
             onSetTrack = { value -> onSetTrackOffset(track.id, value) },
             onAdjustLatency = { delta ->
                 onAdjustLatencyOffset(audioOutputRoute?.stableKey, audioOutputRoute?.bluetooth == true, delta)
             },
             onResetLatency = {
-                if (deviceProfileKey != null) {
+                if (deviceProfileKey != null && latencyProfiles.globalOffsetMs == 0L) {
                     onClearLatencyOffset(deviceProfileKey)
                 } else {
                     onAdjustLatencyOffset(audioOutputRoute?.stableKey, audioOutputRoute?.bluetooth == true, -latencyOffsetMs)
