@@ -124,7 +124,7 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
 
 <p align="center">
   <a href="docs/assets/showcase/cards/01_home.webp"><img src="docs/assets/showcase/cards/01_home.webp?v=apple-keynote-heroic-20261011" width="200" alt="Levyra home and personalized radio" /></a>
-  <a href="docs/assets/showcase/cards/02_stay_with_the_song.webp"><img src="docs/assets/showcase/cards/02_stay_with_the_song.webp?v=apple-keynote-heroic-20261011" width="200" alt="Levyra song and video player" /></a>
+  <a href="docs/assets/showcase/cards/02_stay_with_the_song.webp"><img src="docs/assets/showcase/cards/02_stay_with_the_song.webp?v=apple-keynote-heroic-20261011" width="200" alt="Levyra offline downloads with local audio files, artwork, and metadata" /></a>
   <a href="docs/assets/showcase/cards/03_now_playing.webp"><img src="docs/assets/showcase/cards/03_now_playing.webp?v=apple-keynote-heroic-20261011" width="200" alt="Levyra synchronized lyrics" /></a>
   <a href="docs/assets/showcase/cards/04_player_deck.webp"><img src="docs/assets/showcase/cards/04_player_deck.webp?v=apple-keynote-heroic-20261011" width="200" alt="Levyra customizable player decks" /></a>
 </p>
