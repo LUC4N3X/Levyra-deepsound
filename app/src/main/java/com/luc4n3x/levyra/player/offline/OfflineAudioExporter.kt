@@ -653,6 +653,7 @@ class OfflineAudioExporter(
         }
     }
 
+    @Suppress("ComplexMethod")
     private suspend fun downloadPersonalCollectionAudio(
         track: Track,
         sourceUrl: String,

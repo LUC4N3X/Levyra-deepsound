@@ -9489,6 +9489,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         youtubeEngagementGeneration.incrementAndGet()
     }
 
+    @Suppress("ComplexMethod")
     private suspend fun CoroutineScope.resolveAndStartPlayback(
         track: Track,
         request: PlaybackResolveRequest,

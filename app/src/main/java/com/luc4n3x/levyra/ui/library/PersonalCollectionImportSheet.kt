@@ -380,6 +380,7 @@ private fun ImportProgress(label: String, cancelLabel: String?, onCancel: () -> 
     }
 }
 
+@Suppress("ComplexMethod")
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ImportPreviewStep(

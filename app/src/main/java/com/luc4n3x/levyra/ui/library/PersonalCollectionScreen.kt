@@ -91,6 +91,7 @@ import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LibraryViewModel
 import com.luc4n3x.levyra.viewmodel.PersonalCollectionEvent
 
+@Suppress("ComplexMethod")
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun PersonalCollectionScreen(

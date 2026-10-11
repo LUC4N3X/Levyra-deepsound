@@ -18,6 +18,7 @@ object LevyraMediaItemFactory {
             .build()
     }
 
+    @Suppress("ComplexMethod")
     fun build(track: Track, videoMode: Boolean = false): MediaItem {
         val streamUrl = track.streamUrl
         val liveRadio = track.isLiveRadio()
