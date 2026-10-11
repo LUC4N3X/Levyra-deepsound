@@ -57,27 +57,43 @@ def get_font(size, bold=False):
 
 def enhance_screenshot(img):
     img = img.convert("RGB")
-    enhancer = ImageEnhance.Contrast(img)
-    img = enhancer.enhance(1.06)
-    enhancer = ImageEnhance.Color(img)
+    # 1. Subtle gamma/brightness lift for dark UI readability
+    enhancer = ImageEnhance.Brightness(img)
     img = enhancer.enhance(1.08)
-    enhancer = ImageEnhance.Sharpness(img)
+    # 2. Rich contrast
+    enhancer = ImageEnhance.Contrast(img)
+    img = enhancer.enhance(1.10)
+    # 3. Vibrant colors
+    enhancer = ImageEnhance.Color(img)
     img = enhancer.enhance(1.12)
+    # 4. Crisp sharpness for micro-text and icons
+    enhancer = ImageEnhance.Sharpness(img)
+    img = enhancer.enhance(1.35)
     return img
 
-def create_clean_phone(screen_img, target_height=1260):
+def create_s26_ultra_phone(screen_img, target_height=1300):
+    """
+    Creates an authentic Samsung Galaxy S26 Ultra flagship device:
+    - Iconic monolithic architectural chassis with subtly rounded sharp corners (Note/Ultra DNA)
+    - Ultra-thin symmetrical razor bezels (narrower, allowing larger screen area)
+    - Flat titanium armor frame with titanium specular sheen
+    - Tiny centered Infinity-O punch-hole
+    - Ultra-clear display with subtle premium glass sheen
+    """
     screen_img = enhance_screenshot(screen_img)
-    ss = 2
+    ss = 2  # Supersample 2x
     orig_w, orig_h = screen_img.size
     aspect = orig_w / float(orig_h)
     screen_h = int(target_height * ss)
     screen_w = int(screen_h * aspect)
     screen_res = screen_img.resize((screen_w, screen_h), Image.Resampling.LANCZOS)
 
-    bezel = max(12, int(screen_w * 0.019))
-    corner_radius = int(screen_w * 0.044)
-    inner_radius = max(8, corner_radius - bezel)
-    btn_protrusion = max(4, int(screen_w * 0.0055))
+    # S26 Ultra razor-thin symmetrical bezels
+    bezel = max(8, int(screen_w * 0.013))
+    # S26 Ultra iconic squarish corners (Note DNA - NOT round like iPhone!)
+    corner_radius = int(screen_w * 0.019)
+    inner_radius = max(4, int(screen_w * 0.010))
+    btn_protrusion = max(3, int(screen_w * 0.0045))
 
     body_w = screen_w + bezel * 2
     body_h = screen_h + bezel * 2
@@ -87,62 +103,70 @@ def create_clean_phone(screen_img, target_height=1260):
     phone = Image.new("RGBA", (phone_w, phone_h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(phone)
 
-    vol_top = int(body_h * 0.19)
-    vol_bot = int(body_h * 0.305)
-    pwr_top = int(body_h * 0.36)
-    pwr_bot = int(body_h * 0.425)
+    # Right side buttons (Galaxy S Ultra layout: volume + power on right)
+    vol_top = int(body_h * 0.20)
+    vol_bot = int(body_h * 0.295)
+    pwr_top = int(body_h * 0.35)
+    pwr_bot = int(body_h * 0.41)
     btn_x0 = body_w - bezel // 2
     btn_x1 = phone_w - 1
-    btn_r = max(3, btn_protrusion // 2)
+    btn_r = max(2, btn_protrusion // 2)
 
+    # Titanium volume rocker
     draw.rounded_rectangle(
         (btn_x0, vol_top, btn_x1, vol_bot),
         radius=btn_r,
-        fill=(78, 86, 102, 255),
-        outline=(172, 184, 204, 235),
+        fill=(82, 90, 106, 255),
+        outline=(178, 190, 210, 240),
         width=max(1, ss // 2),
     )
+    # Titanium power key
     draw.rounded_rectangle(
         (btn_x0, pwr_top, btn_x1, pwr_bot),
         radius=btn_r,
-        fill=(88, 96, 112, 255),
-        outline=(186, 198, 218, 245),
+        fill=(92, 100, 116, 255),
+        outline=(192, 204, 224, 250),
         width=max(1, ss // 2),
     )
 
+    # Outer Titanium Armor Frame (S26 Ultra squarish chassis)
     draw.rounded_rectangle(
         (0, 0, body_w - 1, body_h - 1),
         radius=corner_radius,
-        fill=(38, 42, 52, 255),
-        outline=(130, 142, 160, 255),
-        width=max(2, int(1.8 * ss)),
+        fill=(32, 36, 44, 255),
+        outline=(118, 130, 148, 255),
+        width=max(2, int(1.6 * ss)),
     )
-    rim_w = max(1, int(1.5 * ss))
+    # Titanium chamfer specular rim
+    rim_w = max(1, int(1.2 * ss))
     draw.rounded_rectangle(
         (ss, ss, body_w - 1 - ss, body_h - 1 - ss),
-        radius=max(6, corner_radius - ss),
-        outline=(232, 242, 254, 165),
+        radius=max(4, corner_radius - ss),
+        outline=(228, 238, 252, 160),
         width=rim_w,
     )
 
-    inner_pad = max(3, int(bezel * 0.34))
+    # Inner bezel gasket
+    inner_pad = max(2, int(bezel * 0.30))
     draw.rounded_rectangle(
         (inner_pad, inner_pad, body_w - 1 - inner_pad, body_h - 1 - inner_pad),
-        radius=max(6, corner_radius - inner_pad),
-        fill=(8, 10, 14, 255),
-        outline=(30, 36, 46, 255),
+        radius=max(3, corner_radius - inner_pad),
+        fill=(6, 8, 12, 255),
+        outline=(26, 30, 40, 255),
         width=max(1, ss // 2),
     )
 
+    # Screen display layer with squarish inner fillet
     screen_mask = Image.new("L", (screen_w, screen_h), 0)
     sdraw = ImageDraw.Draw(screen_mask)
     sdraw.rounded_rectangle((0, 0, screen_w - 1, screen_h - 1), radius=inner_radius, fill=255)
 
     screen_layer = screen_res.convert("RGBA")
+    # Ultra-subtle diagonal glass reflection (doesn't obscure UI content!)
     xs = np.linspace(0.0, 1.0, screen_w, dtype=np.float32)[None, :]
     ys = np.linspace(0.0, 1.0, screen_h, dtype=np.float32)[:, None]
-    proj = xs * 0.70 + (1.0 - ys) * 0.45
-    sheen_alpha = np.clip((proj - 0.48) * 55.0, 0.0, 26.0).astype(np.uint8)
+    proj = xs * 0.72 + (1.0 - ys) * 0.40
+    sheen_alpha = np.clip((proj - 0.52) * 42.0, 0.0, 20.0).astype(np.uint8)
     sheen_arr = np.zeros((screen_h, screen_w, 4), dtype=np.uint8)
     sheen_arr[:, :, :3] = 255
     sheen_arr[:, :, 3] = sheen_alpha
@@ -151,39 +175,44 @@ def create_clean_phone(screen_img, target_height=1260):
 
     phone.paste(screen_layer, (bezel, bezel), screen_mask)
 
+    # Screen border outline
     draw.rounded_rectangle(
         (bezel - 1, bezel - 1, bezel + screen_w, bezel + screen_h),
         radius=inner_radius + 1,
-        outline=(18, 22, 28, 240),
+        outline=(14, 18, 24, 240),
         width=max(1, ss // 2),
     )
 
-    cam_r = max(4, int(screen_w * 0.0135))
+    # Tiny S26 Ultra Infinity-O punch hole (smaller, perfectly centered)
+    cam_r = max(3, int(screen_w * 0.0105))
     cam_x = body_w // 2
-    cam_y = bezel + int(screen_h * 0.0135)
+    cam_y = bezel + int(screen_h * 0.011)
     draw.ellipse(
         (cam_x - cam_r, cam_y - cam_r, cam_x + cam_r, cam_y + cam_r),
-        fill=(6, 8, 12, 255),
-        outline=(32, 38, 50, 210),
+        fill=(5, 6, 9, 255),
+        outline=(28, 34, 46, 220),
         width=max(1, ss // 2),
     )
     reflex_r = max(1, cam_r // 3)
     draw.ellipse(
         (cam_x - reflex_r - 1, cam_y - reflex_r - 1, cam_x + reflex_r - 1, cam_y + reflex_r - 1),
-        fill=(75, 125, 205, 185),
+        fill=(65, 120, 215, 200),
     )
 
-    spk_w = int(screen_w * 0.11)
-    spk_h = max(2, int(bezel * 0.22))
+    # Micro speaker slit at the top bezel edge
+    spk_w = int(screen_w * 0.09)
+    spk_h = max(2, int(bezel * 0.25))
     spk_x = (body_w - spk_w) // 2
-    spk_y = max(2, (bezel - spk_h) // 2)
+    spk_y = max(1, (bezel - spk_h) // 2)
     draw.rounded_rectangle(
         (spk_x, spk_y, spk_x + spk_w, spk_y + spk_h),
         radius=max(1, spk_h // 2),
-        fill=(52, 58, 70, 255),
+        fill=(48, 54, 66, 255),
     )
 
     return phone.resize((phone_w // ss, phone_h // ss), Image.Resampling.LANCZOS)
+
+create_clean_phone = create_s26_ultra_phone
 
 
 def create_studio_shadow(phone, blur=48, opacity=115, offset_y=28):
@@ -693,14 +722,14 @@ def create_apple_studio_shadow(phone):
     shadow = Image.alpha_composite(amb_shadow, con_shadow)
     return shadow, pad
 
-def render_apple_single_card(screenshot_name, kicker, title, subtitle, top_tint, bot_tint, ambilight, border_col, target_height=1210):
+def render_apple_single_card(screenshot_name, kicker, title, subtitle, top_tint, bot_tint, ambilight, border_col, target_height=1300):
     bg = create_apple_colored_gradient(card_w, card_h, top_tint, bot_tint, ambilight)
     draw = ImageDraw.Draw(bg)
 
     tx = 82
-    kicker_y = 74
-    title_y = 108
-    subtitle_y = 176
+    kicker_y = 54
+    title_y = 88
+    subtitle_y = 154
     kicker_fill = tuple(max(0, int(border_col[i] * 0.58)) for i in range(3)) + (255,)
     draw.text((tx, kicker_y), kicker.upper(), font=get_font(23, bold=True), fill=kicker_fill)
     draw.text((tx, title_y), title, font=get_font(58, bold=True), fill=(29, 29, 31, 255))
@@ -709,10 +738,10 @@ def render_apple_single_card(screenshot_name, kicker, title, subtitle, top_tint,
     s_path = resolve_screenshot_path(screenshot_name)
     if s_path and os.path.exists(s_path):
         with Image.open(s_path) as src:
-            phone = create_clean_phone(src, target_height=target_height)
+            phone = create_s26_ultra_phone(src, target_height=target_height)
         shadow, pad = create_apple_studio_shadow(phone)
         px = (card_w - phone.width) // 2
-        py = 295
+        py = 245
         bg.paste(shadow, (px - pad, py - pad), shadow)
         bg.paste(phone, (px, py), phone)
 
@@ -720,88 +749,71 @@ def render_apple_single_card(screenshot_name, kicker, title, subtitle, top_tint,
     bdraw.rectangle((0, 0, card_w - 1, card_h - 1), outline=border_col, width=2)
     return bg
 
-def render_duo_cut_cards():
-    duo_w = card_w * 2 + gutter
-    top_tint = (234, 244, 255)
-    bot_tint = (204, 226, 252)
-    bg = create_apple_colored_gradient(duo_w, card_h, top_tint, bot_tint, ambilight=(0, 160, 240))
+def render_apple_hero_duo_cards():
+    """
+    Renders Card 01 (Home) and Card 02 (Offline Storage / Player) as towering S26 Ultra
+    flagship monoliths in Apple Keynote studio style with customized ambient lighting:
+    - Card 01: Cosmic Sapphire / Ice Blue studio palette matching Taylor Swift's midnight vibe.
+    - Card 02: Warm Sunset / Amber studio palette matching The Weeknd's gold/amber player deck.
+    """
+    tx = 82
+    k_y, t_y, s_y = 54, 88, 154
+
+    # Card 01: Sapphire / Ice Blue
+    c1 = create_apple_colored_gradient(
+        card_w, card_h,
+        top_tint=(235, 244, 255),
+        bot_tint=(206, 226, 252),
+        ambilight=(0, 150, 245)
+    )
+    d1 = ImageDraw.Draw(c1)
+    d1.text((tx, k_y), "ZERO ADS. NATIVE PLAY.", font=get_font(23, bold=True), fill=(0, 105, 215, 255))
+    d1.text((tx, t_y), "Pure listening.", font=get_font(58, bold=True), fill=(29, 29, 31, 255))
+    d1.multiline_text((tx, s_y), "Zero ads, zero accounts.\nStream and store locally on your device.", font=get_font(29), fill=(60, 74, 90, 255), spacing=9)
 
     s_home = resolve_screenshot_path("Screenshot_20260926_171253_LEVYRA.jpg")
     if not s_home or not os.path.exists(s_home):
         s_home = resolve_screenshot_path("01_home.png")
 
+    if s_home and os.path.exists(s_home):
+        with Image.open(s_home) as src1:
+            p1 = create_s26_ultra_phone(src1, target_height=1300)
+        s1, pad1 = create_apple_studio_shadow(p1)
+        p1_x = (card_w - p1.width) // 2
+        p1_y = 245
+        c1.paste(s1, (p1_x - pad1, p1_y - pad1), s1)
+        c1.paste(p1, (p1_x, p1_y), p1)
+    ImageDraw.Draw(c1).rectangle((0, 0, card_w - 1, card_h - 1), outline=(175, 212, 250, 200), width=2)
+
+    # Card 02: Warm Amber / Champagne Studio matching The Weeknd
+    c2 = create_apple_colored_gradient(
+        card_w, card_h,
+        top_tint=(254, 246, 238),
+        bot_tint=(246, 228, 210),
+        ambilight=(235, 125, 45)
+    )
+    d2 = ImageDraw.Draw(c2)
+    d2.text((tx, k_y), "OFFLINE STORAGE", font=get_font(23, bold=True), fill=(195, 95, 25, 255))
+    d2.text((tx, t_y), "Download & keep.", font=get_font(58, bold=True), fill=(29, 29, 31, 255))
+    d2.multiline_text((tx, s_y), "Clean M4A files in device storage.\nFull metadata, artwork, and lyrics.", font=get_font(29), fill=(85, 70, 60, 255), spacing=9)
+
     s_player = resolve_screenshot_path("Screenshot_20260926_193948_LEVYRA.jpg")
     if not s_player or not os.path.exists(s_player):
         s_player = resolve_screenshot_path("20_soundstage.webp")
 
-    c2_left = card_w + gutter
-    angle = 15.0
-
-    # 1. Phone 1 (Home) in Card 01 cutting into Card 02
-    rot1 = None
-    p1_x, p1_y = 220, 70
-    if s_home and os.path.exists(s_home):
-        with Image.open(s_home) as src1:
-            p1 = create_clean_phone(src1, target_height=1220)
-        rot1 = p1.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
-        s1_shadow, pad1 = create_apple_studio_shadow(rot1)
-        bg.paste(s1_shadow, (p1_x - pad1, p1_y - pad1), s1_shadow)
-        bg.paste(rot1, (p1_x, p1_y), rot1)
-
-    # 2. Phone 2 (Player) in Card 02 floating completely inside
-    rot2 = None
     if s_player and os.path.exists(s_player):
         with Image.open(s_player) as src2:
-            p2 = create_clean_phone(src2, target_height=1070)
-        rot2 = p2.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
-        p2_x = c2_left + (card_w - rot2.width) // 2 + 10
-        p2_y = 320
-        s2_shadow, pad2 = create_apple_studio_shadow(rot2)
-        bg.paste(s2_shadow, (p2_x - pad2, p2_y - pad2), s2_shadow)
-        bg.paste(rot2, (p2_x, p2_y), rot2)
-
-    draw = ImageDraw.Draw(bg)
-
-    # Card 01 typography at bottom-left
-    tx1, ty1 = 76, 1260
-    kicker_col = (75, 105, 140, 255)
-    title_col = (29, 29, 31, 255)
-    sub_col = (62, 76, 92, 255)
-
-    draw.text((tx1, ty1), "ZERO ADS. NATIVE PLAY.", font=get_font(23, bold=True), fill=kicker_col)
-    draw.text((tx1, ty1 + 38), "Pure listening.", font=get_font(60, bold=True), fill=title_col)
-    draw.multiline_text(
-        (tx1, ty1 + 115),
-        "Zero ads, zero accounts.\nStream and store locally on your device.",
-        font=get_font(30),
-        fill=sub_col,
-        spacing=10,
-    )
-
-    # Card 02 typography at top-left
-    tx2, ty2 = c2_left + 82, 74
-    draw.text((tx2, ty2), "OFFLINE STORAGE", font=get_font(23, bold=True), fill=kicker_col)
-    draw.text((tx2, ty2 + 38), "Download & keep.", font=get_font(60, bold=True), fill=title_col)
-    draw.multiline_text(
-        (tx2, ty2 + 115),
-        "Clean M4A files in device storage.\nFull metadata, artwork, and lyrics.",
-        font=get_font(30),
-        fill=sub_col,
-        spacing=10,
-    )
-
-    border_col = (165, 198, 235, 200)
-
-    # Slice into Card 01 (0..900) and Card 02 (920..1820)
-    c1 = bg.crop((0, 0, card_w, card_h))
-    bdraw1 = ImageDraw.Draw(c1)
-    bdraw1.rectangle((0, 0, card_w - 1, card_h - 1), outline=border_col, width=2)
-
-    c2 = bg.crop((c2_left, 0, c2_left + card_w, card_h))
-    bdraw2 = ImageDraw.Draw(c2)
-    bdraw2.rectangle((0, 0, card_w - 1, card_h - 1), outline=border_col, width=2)
+            p2 = create_s26_ultra_phone(src2, target_height=1300)
+        s2, pad2 = create_apple_studio_shadow(p2)
+        p2_x = (card_w - p2.width) // 2
+        p2_y = 245
+        c2.paste(s2, (p2_x - pad2, p2_y - pad2), s2)
+        c2.paste(p2, (p2_x, p2_y), p2)
+    ImageDraw.Draw(c2).rectangle((0, 0, card_w - 1, card_h - 1), outline=(238, 205, 175, 200), width=2)
 
     return c1, c2
+
+render_duo_cut_cards = render_apple_hero_duo_cards
 
 REMAINING_SPECS = [
     # Row 1 cards 3 & 4
@@ -834,14 +846,14 @@ REMAINING_SPECS = [
 ]
 
 def generate_feature_cards():
-    print("Generating Apple Showcase Cards with duo cut on cards 1 & 2 and colored palettes...")
-    c1, c2 = render_duo_cut_cards()
+    print("Generating Apple S26 Ultra Showcase Cards with Proposta A (Keynote Monoliths) and maximum clarity...")
+    c1, c2 = render_apple_hero_duo_cards()
     c1.convert("RGB").save(os.path.join(OUT_CARDS_DIR, "01_home.webp"), "WEBP", quality=94, method=4)
     c2.convert("RGB").save(os.path.join(OUT_CARDS_DIR, "02_stay_with_the_song.webp"), "WEBP", quality=94, method=4)
-    print("Saved duo cut cards: 01_home.webp, 02_stay_with_the_song.webp")
+    print("Saved hero cards: 01_home.webp, 02_stay_with_the_song.webp")
 
     for s_name, kicker, title, sub, top_t, bot_t, amb, border_c, fnames in REMAINING_SPECS:
-        card = render_apple_single_card(s_name, kicker, title, sub, top_t, bot_t, amb, border_c, target_height=1210)
+        card = render_apple_single_card(s_name, kicker, title, sub, top_t, bot_t, amb, border_c, target_height=1300)
         for fn in fnames:
             out_p = os.path.join(OUT_CARDS_DIR, fn)
             card.convert("RGB").save(out_p, "WEBP", quality=94, method=4)
