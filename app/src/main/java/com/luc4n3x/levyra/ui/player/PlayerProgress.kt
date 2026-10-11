@@ -22,6 +22,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.luc4n3x.levyra.player.PlaybackService
 import com.luc4n3x.levyra.player.waveseek.WaveSeekStore
 import com.luc4n3x.levyra.ui.components.PremiumSeekbar
+import com.luc4n3x.levyra.ui.components.LevyraWavySeekbar
 import com.luc4n3x.levyra.ui.components.formatSeekbarMillis
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 
@@ -39,7 +40,8 @@ internal fun PlayerProgress(
     motionActive: Boolean,
     compact: Boolean,
     onSeek: (Float) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    wavy: Boolean = false
 ) {
     val context = LocalContext.current.applicationContext
     val activePlayer by PlaybackService.activePlayerFlow.collectAsStateWithLifecycle()
@@ -51,25 +53,37 @@ internal fun PlayerProgress(
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        PremiumSeekbar(
-            positionMs = positionMs,
-            durationMs = durationMs,
-            bufferedPositionMs = bufferedPositionMs,
-            isPlaying = isPlaying,
-            playbackSpeed = playbackSpeed,
-            onSeekTo = { seekMs ->
-                if (durationMs > 0L) {
-                    onSeek((seekMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f))
-                }
-            },
-            activeColor = activeColor,
-            trailingColor = secondaryColor,
-            inactiveColor = LevyraPlayerDesign.TrackInactive,
-            animated = animationsEnabled,
-            motionActive = motionActive,
-            waveform = waveform,
-            interactionKey = mediaId
-        )
+        if (wavy) {
+            LevyraWavySeekbar(
+                positionMs = positionMs,
+                durationMs = durationMs,
+                isPlaying = isPlaying,
+                animated = animationsEnabled && motionActive,
+                activeColor = activeColor,
+                inactiveColor = LevyraPlayerDesign.TrackInactive,
+                onSeek = onSeek
+            )
+        } else {
+            PremiumSeekbar(
+                positionMs = positionMs,
+                durationMs = durationMs,
+                bufferedPositionMs = bufferedPositionMs,
+                isPlaying = isPlaying,
+                playbackSpeed = playbackSpeed,
+                onSeekTo = { seekMs ->
+                    if (durationMs > 0L) {
+                        onSeek((seekMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f))
+                    }
+                },
+                activeColor = activeColor,
+                trailingColor = secondaryColor,
+                inactiveColor = LevyraPlayerDesign.TrackInactive,
+                animated = animationsEnabled,
+                motionActive = motionActive,
+                waveform = waveform,
+                interactionKey = mediaId
+            )
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()

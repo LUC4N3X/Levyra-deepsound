@@ -39,6 +39,17 @@ import com.luc4n3x.levyra.domain.PlayerBackgroundMode
 import com.luc4n3x.levyra.ui.PlayerAmbience
 import com.luc4n3x.levyra.ui.createPlayerAmbientColorMatrix
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.toArgb
+import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 private const val MistDecodePx = 96
 private const val LegacyMistDecodePx = 512
@@ -50,6 +61,7 @@ private const val MistScale = 1.32f
 private const val MistAlphaPlaying = 0.64f
 private const val MistAlphaPaused = 0.48f
 private const val BackdropColorMillis = 900
+private const val AuroraDriftMillis = 24_000
 private const val MistFadeInMillis = 480
 private const val MistFadeOutMillis = 320
 private val DarkBackdropTop = Color(0xFF15161C)
@@ -113,6 +125,50 @@ internal fun PlayerBackdrop(
                         .drawBehind { drawLegibilityScrim(Color.Black, 0.62f) }
                 )
             }
+        }
+        PlayerBackgroundMode.Aurora -> {
+            val base = animateColorAsState(ambience.base, colorSpec, label = "player-backdrop-aurora-base")
+            val drifting = isPlaying && animationsEnabled && LocalLevyraVisualCapabilities.current.decorativeMotion
+            val drift = if (drifting) {
+                rememberInfiniteTransition(label = "player-backdrop-aurora").animateFloat(
+                    initialValue = 0f,
+                    targetValue = 1f,
+                    animationSpec = infiniteRepeatable(tween(AuroraDriftMillis, easing = LinearEasing), RepeatMode.Restart),
+                    label = "player-backdrop-aurora-phase"
+                )
+            } else {
+                null
+            }
+            val auroraColors = remember(primary.value, secondary.value) {
+                listOf(
+                    vividBackdropColor(primary.value),
+                    vividBackdropColor(primary.value, 48f),
+                    vividBackdropColor(secondary.value, -56f)
+                )
+            }
+            Box(
+                modifier = modifier.drawBehind {
+                    drawAuroraBackdrop(
+                        base = base.value,
+                        colors = auroraColors,
+                        phase = drift?.value ?: 0f
+                    )
+                }
+            )
+        }
+        PlayerBackgroundMode.Gradient -> {
+            val base = animateColorAsState(ambience.base, colorSpec, label = "player-backdrop-gradient-base")
+            val first = remember(primary.value) { vividBackdropColor(primary.value) }
+            val second = remember(secondary.value) { vividBackdropColor(secondary.value) }
+            Box(
+                modifier = modifier.drawBehind {
+                    drawDuotoneBackdrop(
+                        base = base.value,
+                        first = first,
+                        second = second
+                    )
+                }
+            )
         }
         PlayerBackgroundMode.Dynamic -> {
             val base = animateColorAsState(ambience.base, colorSpec, label = "player-backdrop-base")
@@ -248,4 +304,71 @@ private fun DrawScope.drawAura(
             )
         )
     )
+}
+
+private fun DrawScope.drawAuroraBackdrop(base: Color, colors: List<Color>, phase: Float) {
+    drawRect(lerp(base, Color.Black, 0.35f))
+    val angle = phase * 2f * PI.toFloat()
+    val anchors = listOf(
+        Offset(0.15f + 0.22f * cos(angle), 0.12f + 0.12f * sin(angle)),
+        Offset(0.88f + 0.12f * cos(angle + 2.1f), 0.30f + 0.16f * sin(angle + 2.1f)),
+        Offset(0.30f + 0.24f * cos(angle + 4.2f), 0.62f + 0.10f * sin(angle + 4.2f)),
+        Offset(0.80f + 0.14f * sin(angle + 1.3f), 0.86f + 0.08f * cos(angle + 1.3f))
+    )
+    val palette = colors + colors.first()
+    val radius = size.maxDimension * 0.52f
+    palette.zip(anchors).forEach { (color, anchor) ->
+        val center = Offset(size.width * anchor.x, size.height * anchor.y)
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(color.copy(alpha = 0.9f), color.copy(alpha = 0.35f), Color.Transparent),
+                center = center,
+                radius = radius
+            ),
+            radius = radius,
+            center = center
+        )
+    }
+    drawRect(
+        Brush.verticalGradient(
+            0f to Color.Black.copy(alpha = 0.10f),
+            0.55f to Color.Black.copy(alpha = 0.22f),
+            1f to Color.Black.copy(alpha = 0.62f)
+        )
+    )
+}
+
+private fun DrawScope.drawDuotoneBackdrop(base: Color, first: Color, second: Color) {
+    drawRect(
+        Brush.linearGradient(
+            colors = listOf(first, lerp(first, second, 0.5f), second),
+            start = Offset.Zero,
+            end = Offset(size.width, size.height)
+        )
+    )
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(Color.White.copy(alpha = 0.16f), Color.Transparent),
+            center = Offset(size.width * 0.2f, size.height * 0.08f),
+            radius = size.maxDimension * 0.5f
+        ),
+        radius = size.maxDimension * 0.5f,
+        center = Offset(size.width * 0.2f, size.height * 0.08f)
+    )
+    drawRect(
+        Brush.verticalGradient(
+            0f to Color.Transparent,
+            0.5f to lerp(base, Color.Black, 0.2f).copy(alpha = 0.35f),
+            1f to lerp(base, Color.Black, 0.5f).copy(alpha = 0.92f)
+        )
+    )
+}
+
+private fun vividBackdropColor(color: Color, hueShift: Float = 0f): Color {
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(color.toArgb(), hsv)
+    hsv[0] = (hsv[0] + hueShift + 360f) % 360f
+    hsv[1] = (hsv[1] * 1.8f).coerceIn(0.45f, 0.9f)
+    hsv[2] = hsv[2].coerceIn(0.42f, 0.72f)
+    return Color(android.graphics.Color.HSVToColor(hsv))
 }

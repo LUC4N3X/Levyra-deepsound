@@ -72,6 +72,12 @@ import com.luc4n3x.levyra.ui.i18n.playerDeckShortLabels
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import com.luc4n3x.levyra.domain.PlayerBackgroundMode
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 
 private val DeckThumbWidth = 64.dp
 private val DeckPreviewRenderWidth = 148.dp
@@ -89,7 +95,9 @@ internal fun PlayerDeckSheet(
     surfaces: PlayerSurfaceTokens,
     accent: Color,
     animated: Boolean,
+    background: PlayerBackgroundMode,
     onSelect: (PlayerVisualMode) -> Unit,
+    onSelectBackground: (PlayerBackgroundMode) -> Unit,
     onDismiss: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -101,6 +109,7 @@ internal fun PlayerDeckSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(bottom = LevyraPlayerDesign.SpaceXl),
             verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
         ) {
@@ -145,6 +154,12 @@ internal fun PlayerDeckSheet(
                     )
                 }
             }
+            PlayerBackgroundPicker(
+                selected = background,
+                accent = accent,
+                surfaces = surfaces,
+                onSelect = onSelectBackground
+            )
             Text(
                 text = strings.playerDeckLandscapeNote,
                 color = surfaces.contentFaint,
@@ -219,13 +234,32 @@ private fun PlayerDeckRow(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text(
-                text = playerDeckLabel(mode, strings),
-                color = if (selected) accent.playerMix(Color.White, 0.55f) else surfaces.content,
-                fontSize = 17.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(17.sp),
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = playerDeckLabel(mode, strings),
+                    color = if (selected) accent.playerMix(Color.White, 0.55f) else surfaces.content,
+                    fontSize = 17.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(17.sp),
+                    fontWeight = FontWeight.Bold
+                )
+                if (mode == DefaultPlayerVisualMode) {
+                    Text(
+                        text = strings.playerDeckDefaultBadge,
+                        color = surfaces.content,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.4.sp,
+                        maxLines = 1,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(accent.copy(alpha = 0.32f))
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    )
+                }
+            }
             Text(
                 text = playerDeckHint(mode, strings),
                 color = surfaces.contentMuted,
@@ -262,6 +296,7 @@ internal fun playerDeckLabel(mode: PlayerVisualMode, strings: LevyraStrings): St
         PlayerVisualMode.Artwork -> labels.artwork
         PlayerVisualMode.Expressive -> labels.expressive
         PlayerVisualMode.Pulse -> labels.pulse
+        PlayerVisualMode.Halo -> labels.halo
     }
 }
 
@@ -271,6 +306,7 @@ internal fun playerDeckHint(mode: PlayerVisualMode, strings: LevyraStrings): Str
     PlayerVisualMode.Artwork -> strings.playerDeckArtworkHint
     PlayerVisualMode.Expressive -> strings.playerDeckExpressiveHint
     PlayerVisualMode.Pulse -> strings.playerDeckPulseHint
+    PlayerVisualMode.Halo -> strings.playerDeckHaloHint
 }
 
 @Composable
@@ -286,6 +322,7 @@ private fun PlayerDeckPreview(
         PlayerVisualMode.Artwork -> CardPreview(track, artworkUrl, accent, glow = false)
         PlayerVisualMode.Expressive -> ExpressivePreview(track, artworkUrl, accent)
         PlayerVisualMode.Pulse -> PulsePreview(track, artworkUrl, accent)
+        PlayerVisualMode.Halo -> ExpressivePreview(track, artworkUrl, accent)
     }
 }
 
@@ -578,3 +615,148 @@ private fun DrawScope.drawPreviewSignal(accent: Color) {
 
 private fun Color.compositeOnBlack(): Color =
     Color(red = red * alpha, green = green * alpha, blue = blue * alpha, alpha = 1f)
+
+@Composable
+private fun PlayerBackgroundPicker(
+    selected: PlayerBackgroundMode,
+    accent: Color,
+    surfaces: PlayerSurfaceTokens,
+    onSelect: (PlayerBackgroundMode) -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val options = listOf(
+        PlayerBackgroundMode.Dynamic to strings.playerBackgroundDynamic,
+        PlayerBackgroundMode.Aurora to strings.playerBackgroundAurora,
+        PlayerBackgroundMode.Gradient to strings.playerBackgroundGradient,
+        PlayerBackgroundMode.Blur to strings.playerBackgroundBlur,
+        PlayerBackgroundMode.Dark to strings.playerBackgroundDark,
+        PlayerBackgroundMode.PureBlack to strings.playerBackgroundPureBlack
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)) {
+        Text(
+            text = strings.playerBackground,
+            color = surfaces.content,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .padding(horizontal = LevyraPlayerDesign.Gutter)
+                .semantics { heading() }
+        )
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = LevyraPlayerDesign.Gutter),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.selectableGroup()
+        ) {
+            items(options, key = { it.first.name }) { (mode, label) ->
+                PlayerBackgroundTile(
+                    mode = mode,
+                    label = label,
+                    selected = mode == selected,
+                    accent = accent,
+                    surfaces = surfaces,
+                    onClick = { onSelect(mode) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlayerBackgroundTile(
+    mode: PlayerBackgroundMode,
+    label: String,
+    selected: Boolean,
+    accent: Color,
+    surfaces: PlayerSurfaceTokens,
+    onClick: () -> Unit
+) {
+    val corner = levyraExpressiveToggleCorner(
+        checked = selected,
+        unchecked = 18.dp,
+        checkedCorner = 30.dp,
+        label = "player-background-tile-corner"
+    )
+    val shape = RoundedCornerShape(corner)
+    Column(
+        modifier = Modifier
+            .width(76.dp)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Canvas(
+            modifier = Modifier
+                .size(width = 76.dp, height = 100.dp)
+                .clip(shape)
+                .border(if (selected) 2.5.dp else 1.dp, if (selected) surfaces.content else surfaces.contentFaint.copy(alpha = 0.4f), shape)
+        ) {
+            drawBackgroundPreview(mode, accent)
+        }
+        Text(
+            text = label,
+            color = if (selected) surfaces.content else surfaces.contentMuted,
+            fontSize = 11.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            maxLines = 1
+        )
+        if (mode == DefaultPlayerBackgroundMode) {
+            Text(
+                text = LocalLevyraStrings.current.playerDeckDefaultBadge,
+                color = surfaces.content,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(accent.copy(alpha = 0.32f))
+                    .padding(horizontal = 6.dp, vertical = 1.dp)
+            )
+        }
+    }
+}
+
+private fun DrawScope.drawBackgroundPreview(mode: PlayerBackgroundMode, accent: Color) {
+    val deep = lerp(accent, Color.Black, 0.78f)
+    when (mode) {
+        PlayerBackgroundMode.PureBlack -> drawRect(Color.Black)
+        PlayerBackgroundMode.Dark -> drawRect(Brush.verticalGradient(listOf(Color(0xFF1C1D24), Color(0xFF0B0B0F))))
+        PlayerBackgroundMode.Blur -> {
+            drawRect(deep)
+            drawCircle(accent.copy(alpha = 0.55f), radius = size.width * 0.7f, center = Offset(size.width * 0.5f, size.height * 0.3f))
+            drawRect(Color.Black.copy(alpha = 0.35f))
+        }
+        PlayerBackgroundMode.Gradient -> {
+            drawRect(
+                Brush.linearGradient(
+                    listOf(accent, lerp(accent, Color(0xFF7C4DFF), 0.55f)),
+                    start = Offset.Zero,
+                    end = Offset(size.width, size.height)
+                )
+            )
+            drawRect(Brush.verticalGradient(listOf(Color.Transparent, deep.copy(alpha = 0.9f))))
+        }
+        PlayerBackgroundMode.Aurora -> {
+            drawRect(deep)
+            listOf(
+                accent to Offset(0.2f, 0.25f),
+                lerp(accent, Color(0xFF7C4DFF), 0.6f) to Offset(0.85f, 0.5f),
+                lerp(accent, Color(0xFF00BFA5), 0.6f) to Offset(0.35f, 0.85f)
+            ).forEach { (color, anchor) ->
+                val center = Offset(size.width * anchor.x, size.height * anchor.y)
+                drawCircle(
+                    Brush.radialGradient(listOf(color.copy(alpha = 0.75f), Color.Transparent), center, size.width * 0.75f),
+                    radius = size.width * 0.75f,
+                    center = center
+                )
+            }
+        }
+        PlayerBackgroundMode.Dynamic -> {
+            drawRect(deep)
+            drawCircle(
+                Brush.radialGradient(listOf(accent.copy(alpha = 0.6f), Color.Transparent), Offset(size.width / 2f, size.height * 0.35f), size.width),
+                radius = size.width,
+                center = Offset(size.width / 2f, size.height * 0.35f)
+            )
+        }
+    }
+}
