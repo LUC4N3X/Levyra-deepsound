@@ -102,7 +102,6 @@ internal fun PlayerArtworkHero(
         trackChangeScale.animateTo(1f, LevyraMotion.spatial.spec())
     }
     val artworkShape = RoundedCornerShape(nonNegativeCornerRadius(cornerRadius))
-    val isImmersive = visualMode.showsCinematicStage()
 
     Box(
         modifier = modifier
@@ -113,7 +112,7 @@ internal fun PlayerArtworkHero(
                 scaleY = scale
                 translationX = swipeOffset()
                 translationY = artOffset.toPx()
-                alpha = if (morphActive() || isImmersive) 0f else 1f
+                alpha = if (morphActive()) 0f else 1f
             }
             .drawBehind {
                 if (glowColor.alpha <= 0f) return@drawBehind
@@ -156,7 +155,9 @@ internal fun PlayerArtworkHero(
                     }
                 }
                 PlayerVisualMode.CanvasCard,
+                PlayerVisualMode.CanvasImmersive,
                 PlayerVisualMode.Expressive,
+                PlayerVisualMode.Halo,
                 PlayerVisualMode.Pulse -> {
                     MotionArtworkLayer(
                         artwork = motionArtwork,
@@ -174,9 +175,6 @@ internal fun PlayerArtworkHero(
                             InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
                         }
                     }
-                }
-                PlayerVisualMode.CanvasImmersive -> {
-                    Box(modifier = Modifier.fillMaxSize())
                 }
             }
             Box(

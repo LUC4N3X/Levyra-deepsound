@@ -7,7 +7,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,9 +28,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.SystemUpdateAlt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -60,6 +57,14 @@ import com.luc4n3x.levyra.ui.theme.LevyraViolet
 import com.luc4n3x.levyra.update.formatUpdateDuration
 import com.luc4n3x.levyra.update.formatUpdateTransferLine
 import com.luc4n3x.levyra.update.updateProgressPercent
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.toShape
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 
 sealed interface LevyraUpdatePhase {
     data object Idle : LevyraUpdatePhase
@@ -105,21 +110,14 @@ fun LevyraUpdateBanner(
             .background(
                 Brush.linearGradient(
                     listOf(
-                        LevyraCyan.copy(alpha = if (phase is LevyraUpdatePhase.Available) 0.09f else 0.04f),
-                        LevyraViolet.copy(alpha = 0.045f),
+                        LevyraCyan.copy(alpha = if (phase is LevyraUpdatePhase.Available) 0.16f else 0.08f),
+                        LevyraViolet.copy(alpha = 0.10f),
                         LevyraPanel
                     )
                 )
             )
-            .border(width = 1.dp, color = LevyraGlassBorder, shape = BannerShape)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(2.dp)
-                .background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet)))
-        )
-        Column(modifier = Modifier.padding(start = 18.dp, end = 8.dp, top = 12.dp, bottom = 8.dp)) {
+        Column(modifier = Modifier.padding(start = 18.dp, end = 10.dp, top = 16.dp, bottom = 12.dp)) {
             BannerHeader(
                 phase = phase,
                 title = phaseTitle(phase, strings),
@@ -150,38 +148,44 @@ private fun BannerHeader(
     onDismiss: (() -> Unit)?
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Surface(
-            modifier = Modifier.size(40.dp),
-            shape = CircleShape,
-            color = LevyraCyan.copy(alpha = 0.1f),
-            border = androidx.compose.foundation.BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.18f))
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(updateBadgeShape())
+                .background(if (phase is LevyraUpdatePhase.Failed) LevyraGlassBorder else LevyraCyan),
+            contentAlignment = Alignment.Center
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = Icons.Rounded.SystemUpdateAlt,
-                    contentDescription = null,
-                    tint = if (phase is LevyraUpdatePhase.Failed) LevyraMuted else LevyraCyan,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+            Icon(
+                imageVector = Icons.Rounded.SystemUpdateAlt,
+                contentDescription = null,
+                tint = if (phase is LevyraUpdatePhase.Failed) LevyraMuted else UpdateOnAccent,
+                modifier = Modifier.size(22.dp)
+            )
         }
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
                 color = LevyraText,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.3).sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             if (!version.isNullOrBlank()) {
                 Text(
                     text = version,
-                    color = LevyraMuted,
-                    fontSize = 12.sp,
+                    color = LevyraCyan,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .padding(top = 4.dp)
+                        .clip(CircleShape)
+                        .background(LevyraCyan.copy(alpha = 0.14f))
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
                 )
             }
         }
@@ -328,7 +332,7 @@ private fun BannerActions(
         modifier = Modifier
             .fillMaxWidth()
             .padding(end = 6.dp),
-        horizontalArrangement = Arrangement.End,
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
         verticalAlignment = Alignment.CenterVertically
     ) {
         when (phase) {
@@ -354,17 +358,30 @@ private fun BannerActions(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun QuietAction(label: String, onClick: () -> Unit) {
-    TextButton(onClick = onClick) {
-        Text(text = label, color = LevyraMuted, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+    FilledTonalButton(
+        onClick = onClick,
+        colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = LevyraText.copy(alpha = 0.08f),
+            contentColor = LevyraText
+        ),
+        shapes = ButtonDefaults.shapes()
+    ) {
+        Text(text = label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun PrimaryAction(label: String, onClick: () -> Unit) {
-    TextButton(onClick = onClick) {
-        Text(text = label, color = LevyraCyan, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(containerColor = LevyraCyan, contentColor = UpdateOnAccent),
+        shapes = ButtonDefaults.shapes()
+    ) {
+        Text(text = label, fontSize = 14.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -461,7 +478,12 @@ internal fun levyraUpdateNoteLines(notes: String, version: String): List<String>
         .toList()
 }
 
-private val BannerShape = RoundedCornerShape(20.dp)
+private val BannerShape = RoundedCornerShape(28.dp)
+private val UpdateOnAccent = Color(0xFF00201F)
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun updateBadgeShape(): Shape = MaterialShapes.Cookie9Sided.toShape()
 private val TrackShape = RoundedCornerShape(2.dp)
 
 private fun phaseIdentity(phase: LevyraUpdatePhase): String = when (phase) {

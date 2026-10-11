@@ -158,8 +158,8 @@ class LevyraPreferencesDefaultsTest {
     }
 
     @Test
-    fun defaultPlayerVisualModeIsCanvasImmersive() {
-        assertEquals(PlayerVisualMode.CanvasImmersive, LevyraInterfaceSettings().playerVisualMode)
+    fun defaultPlayerVisualModeIsCanvasCard() {
+        assertEquals(PlayerVisualMode.CanvasCard, LevyraInterfaceSettings().playerVisualMode)
         assertFalse(LevyraInterfaceSettings().motionArtworkWifiOnly)
     }
 
