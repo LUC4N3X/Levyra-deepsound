@@ -58,8 +58,6 @@ import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.theme.LevyraType
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
@@ -215,11 +213,9 @@ internal fun DiscoveryEditorialCard(
     accentEnd: Color = Color(0xFF4C1D95),
     artworkShape: Shape? = null
 ) {
-    val surface = MaterialTheme.colorScheme.surfaceContainerHigh
-    val tonalStart = remember(accentStart, surface) { lerp(surface, accentStart, 0.42f) }
-    val tonalEnd = remember(accentEnd, surface) { lerp(surface, accentEnd, 0.22f) }
-    val contrastPalette = remember(tonalStart, tonalEnd) {
-        editorialContrastPalette(tonalStart, tonalEnd)
+    val colors = MaterialTheme.colorScheme
+    val contrastPalette = remember(colors.surfaceContainerHigh, colors.surfaceContainerHighest) {
+        editorialContrastPalette(colors.surfaceContainerHigh, colors.surfaceContainerHighest)
     }
     BoxWithConstraints(
         modifier = modifier
@@ -231,17 +227,6 @@ internal fun DiscoveryEditorialCard(
             )
             .levyraPressable(onClick = onOpen, role = Role.Button, pressedScale = LevyraPressScale.Tile)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(accentEnd.copy(alpha = 0.34f), Color.Transparent),
-                        center = Offset(Float.POSITIVE_INFINITY, 0f),
-                        radius = 900f
-                    )
-                )
-        )
         val stacked = maxWidth < 300.dp || LocalDensity.current.fontScale > 1.4f
         if (stacked) {
             Column(
