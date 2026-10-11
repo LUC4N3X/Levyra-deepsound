@@ -38,7 +38,7 @@ A correction to one track no longer changes the timing of every other track. Exi
 
 An artist-page rendering issue that could freeze the interface has been addressed by removing an expensive decorative shadow. Home's decorative backdrop no longer redraws continuously while idle, reducing unnecessary rendering work.
 
-Home's quick discovery chips now use the same neutral Material 3 tonal surface instead of individual genre-coloured gradients, while keeping their expressive pressed shape and existing tap targets.
+Home's quick discovery chips now use the same neutral Material 3 tonal surface instead of individual genre-coloured gradients, while keeping their expressive pressed shape and existing tap targets. Levyra Collections cards also trade saturated backgrounds for quieter tonal surfaces, letting the artwork stand out.
 
 The comments sheet has a clearer layout and improved author-avatar handling. Like and dislike controls no longer accidentally trigger the player's surrounding gestures. Home's personal-orbit heading now has a more compact Play All button so the title can stay on one line. The update banner, navigation and several other controls have been polished as part of the same visual work.
 
