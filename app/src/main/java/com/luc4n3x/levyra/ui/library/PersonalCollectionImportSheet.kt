@@ -380,7 +380,6 @@ private fun ImportProgress(label: String, cancelLabel: String?, onCancel: () -> 
     }
 }
 
-@Suppress("ComplexMethod")
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ImportPreviewStep(
@@ -392,41 +391,15 @@ private fun ImportPreviewStep(
     onBack: () -> Unit,
     onConfirm: (String, Boolean, Boolean) -> Unit
 ) {
-    val colors = MaterialTheme.colorScheme
     var name by rememberSaveable(preview.sourceLabel) { mutableStateOf(preview.parsed.name) }
     var autoRefresh by rememberSaveable(preview.sourceLabel) { mutableStateOf(false) }
     val sourceCleartext = preview.sourceKind == PersonalCollectionSourceKind.URL &&
         preview.sourceUrl.startsWith("http://", ignoreCase = true)
     var allowCleartext by rememberSaveable(preview.sourceLabel) { mutableStateOf(initialCleartext || sourceCleartext) }
-    val sample = remember(preview) { preview.parsed.entries.take(PREVIEW_SAMPLE) }
-    val duplicates = preview.parsed.issueCount(CollectionIssueKind.Duplicate)
-    val skipped = preview.parsed.skippedCount - duplicates
     LaunchedEffect(preview) { if (name.isBlank()) name = preview.parsed.name }
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Box(
-                modifier = Modifier.size(56.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(colors.tertiaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.MusicNote, contentDescription = null, tint = colors.onTertiaryContainer)
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    strings.formatTrackCount(preview.parsed.entries.size),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colors.onSurface
-                )
-                Text(
-                    if (preview.sourceKind == PersonalCollectionSourceKind.URL) preview.sourceLabel else preview.sourceLabel.ifBlank { collectionStrings.sourceFile },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
+        ImportPreviewHeader(preview, strings, collectionStrings)
         OutlinedTextField(
             value = name,
             onValueChange = { name = it },
@@ -435,69 +408,149 @@ private fun ImportPreviewStep(
             shape = MaterialTheme.shapes.large,
             modifier = Modifier.fillMaxWidth()
         )
-        Surface(color = colors.surfaceContainerHigh, shape = MaterialTheme.shapes.large, modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(vertical = 6.dp)) {
-                sample.forEachIndexed { index, entry ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(
-                            "${index + 1}",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = colors.onSurfaceVariant,
-                            modifier = Modifier.width(24.dp),
-                            textAlign = TextAlign.End
-                        )
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(entry.title, style = MaterialTheme.typography.bodyLarge, color = colors.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            if (entry.artist.isNotBlank()) {
-                                Text(entry.artist, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
+        ImportPreviewSample(preview)
+        ImportPreviewNotes(preview, collectionStrings)
+        ImportPreviewOptions(
+            preview = preview,
+            collectionStrings = collectionStrings,
+            sourceCleartext = sourceCleartext,
+            localNetworkGranted = localNetworkGranted,
+            allowCleartext = allowCleartext,
+            autoRefresh = autoRefresh,
+            onAllowCleartext = { allowCleartext = it },
+            onAutoRefresh = { autoRefresh = it }
+        )
+        ImportPreviewActions(strings, collectionStrings, name.isNotBlank(), onBack) {
+            onConfirm(name, autoRefresh, allowCleartext)
+        }
+    }
+}
+
+@Composable
+private fun ImportPreviewHeader(
+    preview: PersonalCollectionPreview,
+    strings: LevyraStrings,
+    collectionStrings: LevyraPersonalCollectionStrings
+) {
+    val colors = MaterialTheme.colorScheme
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        Box(
+            modifier = Modifier.size(56.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(colors.tertiaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Rounded.MusicNote, contentDescription = null, tint = colors.onTertiaryContainer)
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                strings.formatTrackCount(preview.parsed.entries.size),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.onSurface
+            )
+            Text(
+                preview.sourceLabel.ifBlank { collectionStrings.sourceFile },
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun ImportPreviewSample(preview: PersonalCollectionPreview) {
+    val colors = MaterialTheme.colorScheme
+    val sample = remember(preview) { preview.parsed.entries.take(PREVIEW_SAMPLE) }
+    Surface(color = colors.surfaceContainerHigh, shape = MaterialTheme.shapes.large, modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(vertical = 6.dp)) {
+            sample.forEachIndexed { index, entry ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        "${index + 1}",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = colors.onSurfaceVariant,
+                        modifier = Modifier.width(24.dp),
+                        textAlign = TextAlign.End
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(entry.title, style = MaterialTheme.typography.bodyLarge, color = colors.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        if (entry.artist.isNotBlank()) {
+                            Text(entry.artist, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
                 }
-                if (preview.parsed.entries.size > sample.size) {
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp), color = colors.outlineVariant)
-                    Text(
-                        "+${preview.parsed.entries.size - sample.size}",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = colors.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
-                    )
-                }
+            }
+            if (preview.parsed.entries.size > sample.size) {
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp), color = colors.outlineVariant)
+                Text(
+                    "+${preview.parsed.entries.size - sample.size}",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = colors.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                )
             }
         }
-        val notes = buildList {
-            if (skipped > 0) add(collectionStrings.skipped(skipped))
-            if (duplicates > 0) add(collectionStrings.duplicates(duplicates))
-            if (preview.cleartextEntries > 0) add(collectionStrings.httpTracks(preview.cleartextEntries))
+    }
+}
+
+@Composable
+private fun ImportPreviewNotes(preview: PersonalCollectionPreview, strings: LevyraPersonalCollectionStrings) {
+    val duplicates = preview.parsed.issueCount(CollectionIssueKind.Duplicate)
+    val skipped = preview.parsed.skippedCount - duplicates
+    val notes = buildList {
+        if (skipped > 0) add(strings.skipped(skipped))
+        if (duplicates > 0) add(strings.duplicates(duplicates))
+        if (preview.cleartextEntries > 0) add(strings.httpTracks(preview.cleartextEntries))
+    }
+    if (notes.isNotEmpty()) {
+        Text(notes.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun ImportPreviewOptions(
+    preview: PersonalCollectionPreview,
+    collectionStrings: LevyraPersonalCollectionStrings,
+    sourceCleartext: Boolean,
+    localNetworkGranted: Boolean,
+    allowCleartext: Boolean,
+    autoRefresh: Boolean,
+    onAllowCleartext: (Boolean) -> Unit,
+    onAutoRefresh: (Boolean) -> Unit
+) {
+    if (preview.usesLocalNetwork && !localNetworkGranted) PrivacyNote(collectionStrings.localNetworkDetail)
+    if (preview.requiresCleartextConsent && !sourceCleartext) {
+        CleartextConsentRow(collectionStrings, allowCleartext, onAllowCleartext)
+    }
+    if (preview.sourceKind == PersonalCollectionSourceKind.URL) {
+        SettingSwitchRow(collectionStrings.autoRefresh, collectionStrings.autoRefreshDetail, autoRefresh, onAutoRefresh)
+    }
+}
+
+@Composable
+private fun ImportPreviewActions(
+    strings: LevyraStrings,
+    collectionStrings: LevyraPersonalCollectionStrings,
+    enabled: Boolean,
+    onBack: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+        OutlinedButton(onClick = onBack, shapes = ButtonDefaults.shapes(), modifier = Modifier.weight(1f).heightIn(min = 52.dp)) {
+            Text(strings.back)
         }
-        if (notes.isNotEmpty()) {
-            Text(notes.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
-        }
-        if (preview.usesLocalNetwork && !localNetworkGranted) {
-            PrivacyNote(collectionStrings.localNetworkDetail)
-        }
-        if (preview.requiresCleartextConsent && !sourceCleartext) {
-            CleartextConsentRow(collectionStrings, allowCleartext) { allowCleartext = it }
-        }
-        if (preview.sourceKind == PersonalCollectionSourceKind.URL) {
-            SettingSwitchRow(collectionStrings.autoRefresh, collectionStrings.autoRefreshDetail, autoRefresh) { autoRefresh = it }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            OutlinedButton(onClick = onBack, shapes = ButtonDefaults.shapes(), modifier = Modifier.weight(1f).heightIn(min = 52.dp)) {
-                Text(strings.back)
-            }
-            Button(
-                onClick = { onConfirm(name, autoRefresh, allowCleartext) },
-                enabled = name.isNotBlank(),
-                shapes = ButtonDefaults.shapes(),
-                modifier = Modifier.weight(1f).heightIn(min = 52.dp)
-            ) {
-                Text(collectionStrings.importAction)
-            }
+        Button(
+            onClick = onConfirm,
+            enabled = enabled,
+            shapes = ButtonDefaults.shapes(),
+            modifier = Modifier.weight(1f).heightIn(min = 52.dp)
+        ) {
+            Text(collectionStrings.importAction)
         }
     }
 }

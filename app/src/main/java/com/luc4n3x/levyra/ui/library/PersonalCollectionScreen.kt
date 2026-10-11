@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -74,6 +76,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.luc4n3x.levyra.data.collections.PersonalCollectionSourceKind
 import com.luc4n3x.levyra.data.collections.PersonalCollectionSummary
+import com.luc4n3x.levyra.data.collections.CollectionSyncError
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.components.LevyraExpressiveIconButton
@@ -83,6 +86,7 @@ import com.luc4n3x.levyra.ui.i18n.LevyraPersonalCollectionStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.selection.TrackSelectionActions
 import com.luc4n3x.levyra.ui.selection.TrackSelectionBar
+import com.luc4n3x.levyra.ui.selection.TrackSelectionState
 import com.luc4n3x.levyra.ui.selection.rememberTrackSelectionState
 import com.luc4n3x.levyra.ui.selection.resolveSelected
 import com.luc4n3x.levyra.ui.selection.trackSelectionKey
@@ -90,8 +94,8 @@ import com.luc4n3x.levyra.ui.theme.LevyraInk
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LibraryViewModel
 import com.luc4n3x.levyra.viewmodel.PersonalCollectionEvent
+import kotlinx.coroutines.flow.Flow
 
-@Suppress("ComplexMethod")
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun PersonalCollectionScreen(
@@ -103,14 +107,12 @@ internal fun PersonalCollectionScreen(
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val colors = MaterialTheme.colorScheme
     val controller = viewModel.personalCollections
     val tracksFlow = remember(collection.id) { controller.tracks(collection.id) }
     val tracks by tracksFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     val selection = rememberTrackSelectionState()
     val snackbar = remember { SnackbarHostState() }
     val haptics = LocalHapticFeedback.current
-    var menuExpanded by remember { mutableStateOf(false) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var confirmRemove by rememberSaveable { mutableStateOf(false) }
     var confirmDeleteDownloads by rememberSaveable { mutableStateOf(false) }
@@ -131,27 +133,8 @@ internal fun PersonalCollectionScreen(
     val selectableIds = remember(tracks) { tracks.map(::trackSelectionKey) }
     val selectedTracks = remember(tracks, selection.selectedIds) { selection.resolveSelected(tracks, ::trackSelectionKey) }
     LaunchedEffect(selectableIds) { selection.retainAvailable(selectableIds) }
-    LaunchedEffect(collection.id) {
-        controller.events.collect { event ->
-            when (event) {
-                is PersonalCollectionEvent.Synced -> if (event.collectionId == collection.id) {
-                    haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                    val report = event.report
-                    snackbar.showSnackbar(
-                        if (report.notModified || report.added + report.removed + report.updated == 0) {
-                            collectionStrings.upToDate
-                        } else {
-                            collectionStrings.syncSummary(report.added, report.removed)
-                        }
-                    )
-                }
-                is PersonalCollectionEvent.SyncFailed -> if (event.collectionId == collection.id) {
-                    haptics.performHapticFeedback(HapticFeedbackType.Reject)
-                    snackbar.showSnackbar(collectionStrings.error(event.error))
-                }
-                is PersonalCollectionEvent.Imported -> Unit
-            }
-        }
+    PersonalCollectionEventEffect(collection, controller.events, collectionStrings, snackbar) {
+        haptics.performHapticFeedback(it)
     }
     BackHandler(enabled = selection.isActive) { selection.exit() }
     BackHandler(enabled = !selection.isActive) { onClose() }
@@ -171,225 +154,72 @@ internal fun PersonalCollectionScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item(key = "pc-top-bar") {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        LevyraExpressiveIconButton(onClick = onClose) {
-                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = strings.back)
-                        }
-                        Spacer(Modifier.weight(1f))
-                        if (collection.refreshable) {
-                            LevyraExpressiveIconButton(onClick = { controller.refresh(collection.id) }, enabled = !syncing) {
-                                if (syncing) {
-                                    LevyraLoadingIndicator(modifier = Modifier.size(24.dp))
-                                } else {
-                                    Icon(Icons.Rounded.Refresh, contentDescription = collectionStrings.refresh)
-                                }
-                            }
-                        }
-                        Box {
-                            LevyraExpressiveIconButton(onClick = { menuExpanded = true }) {
-                                Icon(Icons.Rounded.MoreVert, contentDescription = collectionStrings.settingsTitle)
-                            }
-                            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                                DropdownMenuItem(
-                                    text = { Text(collectionStrings.settingsTitle) },
-                                    leadingIcon = { Icon(Icons.Rounded.Settings, contentDescription = null) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        showSettings = true
-                                    }
-                                )
-                                if (collectionDownloads.isNotEmpty()) {
-                                    DropdownMenuItem(
-                                        text = { Text(collectionStrings.removeDownloads) },
-                                        leadingIcon = { Icon(Icons.Rounded.DeleteOutline, contentDescription = null) },
-                                        onClick = {
-                                            menuExpanded = false
-                                            confirmDeleteDownloads = true
-                                        }
-                                    )
-                                }
-                                DropdownMenuItem(
-                                    text = { Text(collectionStrings.removeCollection, color = colors.error) },
-                                    leadingIcon = { Icon(Icons.Rounded.Delete, contentDescription = null, tint = colors.error) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        confirmRemove = true
-                                    }
-                                )
-                            }
-                        }
-                    }
+                    PersonalCollectionTopBar(
+                        collection = collection,
+                        syncing = syncing,
+                        hasDownloads = collectionDownloads.isNotEmpty(),
+                        backLabel = strings.back,
+                        strings = collectionStrings,
+                        onClose = onClose,
+                        onRefresh = { controller.refresh(collection.id) },
+                        onSettings = { showSettings = true },
+                        onDeleteDownloads = { confirmDeleteDownloads = true },
+                        onRemove = { confirmRemove = true }
+                    )
                 }
                 item(key = "pc-hero") {
                     PersonalCollectionHero(collection, syncing, strings.formatTrackCount(tracks.size.takeIf { it > 0 } ?: collection.trackCount), collectionStrings)
                 }
-                if (collection.usesLocalNetwork && !localNetwork.granted) {
-                    item(key = "pc-local-network") {
-                        Surface(color = colors.tertiaryContainer, shape = MaterialTheme.shapes.large, modifier = Modifier.fillMaxWidth()) {
-                            Row(
-                                modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Icon(Icons.Rounded.Lan, contentDescription = null, tint = colors.onTertiaryContainer)
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(collectionStrings.localNetworkTitle, style = MaterialTheme.typography.titleSmall, color = colors.onTertiaryContainer)
-                                    Text(collectionStrings.localNetworkDetail, style = MaterialTheme.typography.bodySmall, color = colors.onTertiaryContainer)
-                                }
-                                TextButton(onClick = { localNetwork.ensure { } }) { Text(collectionStrings.allow) }
-                            }
-                        }
-                    }
-                }
-                if (collection.lastSyncError != null && !syncing) {
-                    item(key = "pc-sync-error") {
-                        Surface(color = colors.errorContainer, shape = MaterialTheme.shapes.large, modifier = Modifier.fillMaxWidth()) {
-                            Row(
-                                modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Icon(Icons.Rounded.CloudOff, contentDescription = null, tint = colors.onErrorContainer)
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(collectionStrings.savedCopy, style = MaterialTheme.typography.titleSmall, color = colors.onErrorContainer)
-                                    Text(
-                                        collectionStrings.error(collection.lastSyncError),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = colors.onErrorContainer
-                                    )
-                                }
-                                if (collection.refreshable) {
-                                    TextButton(
-                                        onClick = { controller.refresh(collection.id) },
-                                        colors = ButtonDefaults.textButtonColors(contentColor = colors.onErrorContainer)
-                                    ) { Text(collectionStrings.refresh, fontWeight = FontWeight.SemiBold) }
-                                }
-                            }
-                        }
-                    }
-                }
+                personalCollectionLocalNetworkItem(
+                    visible = collection.usesLocalNetwork && !localNetwork.granted,
+                    strings = collectionStrings,
+                    onAllow = { localNetwork.ensure { } }
+                )
+                personalCollectionSyncErrorItem(
+                    error = collection.lastSyncError?.takeUnless { syncing },
+                    refreshable = collection.refreshable,
+                    strings = collectionStrings,
+                    onRefresh = { controller.refresh(collection.id) }
+                )
                 item(key = "pc-actions") {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        Button(
-                            onClick = { tracks.firstOrNull()?.let { play(tracks, it) } },
-                            enabled = tracks.isNotEmpty() && !selection.isActive,
-                            shapes = ButtonDefaults.shapes(),
-                            modifier = Modifier.weight(1f).heightIn(min = 56.dp)
-                        ) {
-                            Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
-                            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                            ActionLabel(strings.play)
-                        }
-                        FilledTonalButton(
-                            onClick = {
-                                val shuffled = tracks.shuffled()
-                                shuffled.firstOrNull()?.let { play(shuffled, it) }
-                            },
-                            enabled = tracks.isNotEmpty() && !selection.isActive,
-                            shapes = ButtonDefaults.shapes(),
-                            modifier = Modifier.weight(1f).heightIn(min = 56.dp)
-                        ) {
-                            Icon(Icons.Rounded.Shuffle, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
-                            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                            ActionLabel(strings.shuffle)
-                        }
-                        val allOffline = tracks.isNotEmpty() && downloadedIds.size >= tracks.size
-                        FilledTonalIconButton(
-                            onClick = {
-                                val pending = tracks.filterNot { it.id in downloadedIds }
-                                if (pending.isNotEmpty()) viewModel.exportTracks(pending, collection.name)
-                            },
-                            enabled = tracks.isNotEmpty() && !allOffline && !selection.isActive,
-                            shapes = IconButtonDefaults.shapes(),
-                            modifier = Modifier.size(56.dp)
-                        ) {
-                            Icon(
-                                if (allOffline) Icons.Rounded.DownloadDone else Icons.Rounded.Download,
-                                contentDescription = collectionStrings.downloadAll
-                            )
-                        }
-                    }
+                    PersonalCollectionActions(
+                        tracks = tracks,
+                        downloadedIds = downloadedIds,
+                        selectionActive = selection.isActive,
+                        playLabel = strings.play,
+                        shuffleLabel = strings.shuffle,
+                        downloadLabel = collectionStrings.downloadAll,
+                        onPlay = ::play,
+                        onDownload = { viewModel.exportTracks(it, collection.name) }
+                    )
                 }
-                if (downloadedIds.isNotEmpty() || activeDownloads > 0) {
-                    item(key = "pc-offline") {
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(
-                                "${collectionStrings.offlineCount(downloadedIds.size)} / ${tracks.size}",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = colors.onSurfaceVariant
-                            )
-                            if (activeDownloads > 0 && tracks.isNotEmpty()) {
-                                LevyraWavyProgress(
-                                    progress = downloadedIds.size.toFloat() / tracks.size.toFloat(),
-                                    color = colors.primary,
-                                    trackColor = colors.surfaceContainerHighest,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-                        }
-                    }
-                }
-                if (tracks.isEmpty()) {
-                    item(key = "pc-empty") { LibraryEmpty(Icons.Rounded.LibraryMusic, collectionStrings.emptyCollection) }
-                } else {
-                    items(tracks, key = { "pc-track-${it.id}" }) { track ->
-                        val key = trackSelectionKey(track)
-                        val download = if (track.id in downloadedIds) collectionDownloads.firstOrNull { it.trackId == track.id } else null
-                        LibraryTrackRow(
-                            track = track,
-                            selected = selection.isSelected(key),
-                            selectionActive = selection.isActive,
-                            isCurrent = track.id == state.currentTrack?.id,
-                            isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
-                            isFavorite = track.id in state.favoriteIds,
-                            isDownloaded = download != null,
-                            downloadProgress = downloadProgressFor(track, state),
-                            onClick = { if (selection.isActive) selection.toggle(key) else play(tracks, track) },
-                            onLongClick = { selection.start(key) },
-                            onFavorite = { viewModel.toggleFavorite(track) },
-                            onDownload = { viewModel.exportTrack(track) },
-                            onQueue = { viewModel.addToQueue(track) },
-                            onAddToPlaylist = { playlistTargets = listOf(track) },
-                            onDeleteDownload = download?.let { stored -> { viewModel.deleteDownload(stored) } },
-                            modifier = Modifier.animateItem()
-                        )
-                    }
-                }
+                personalCollectionOfflineItem(downloadedIds.size, tracks.size, activeDownloads, collectionStrings)
+                personalCollectionTrackItems(
+                    tracks = tracks,
+                    downloads = collectionDownloads,
+                    downloadedIds = downloadedIds,
+                    state = state,
+                    selection = selection,
+                    emptyLabel = collectionStrings.emptyCollection,
+                    onPlay = ::play,
+                    onFavorite = viewModel::toggleFavorite,
+                    onDownload = viewModel::exportTrack,
+                    onQueue = viewModel::addToQueue,
+                    onAddToPlaylist = { playlistTargets = listOf(it) },
+                    onDeleteDownload = viewModel::deleteDownload
+                )
             }
 
-            TrackSelectionBar(
-                state = selection,
-                allVisibleIds = selectableIds,
-                actions = TrackSelectionActions(
-                    onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                        {
-                            viewModel.playTracksNext(selectedTracks)
-                            selection.exit()
-                        }
-                    },
-                    onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                        {
-                            viewModel.addTracksToQueue(selectedTracks)
-                            selection.exit()
-                        }
-                    },
-                    onAddToPlaylist = selectedTracks.takeIf { it.isNotEmpty() }?.let { { playlistTargets = selectedTracks } },
-                    onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                        {
-                            viewModel.toggleFavorites(selectedTracks)
-                            selection.exit()
-                        }
-                    },
-                    onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                        {
-                            viewModel.exportTracks(selectedTracks, collection.name)
-                            selection.exit()
-                        }
-                    }
-                ),
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(start = 12.dp, end = 12.dp, bottom = if (state.currentTrack != null) 84.dp else 12.dp)
+            PersonalCollectionSelectionBar(
+                selection = selection,
+                selectableIds = selectableIds,
+                selectedTracks = selectedTracks,
+                hasCurrentTrack = state.currentTrack != null,
+                onPlayNext = viewModel::playTracksNext,
+                onAddToQueue = viewModel::addTracksToQueue,
+                onAddToPlaylist = { playlistTargets = it },
+                onFavorite = viewModel::toggleFavorites,
+                onDownload = { viewModel.exportTracks(it, collection.name) }
             )
 
             SnackbarHost(
@@ -402,70 +232,399 @@ internal fun PersonalCollectionScreen(
         }
     }
 
-    if (playlistTargets.isNotEmpty()) {
-        AddTracksToPlaylistDialog(
-            tracks = playlistTargets,
-            playlists = state.playlists,
-            onDismiss = { playlistTargets = emptyList() },
-            onAdd = { playlistId ->
-                viewModel.addTracksToPlaylist(playlistId, playlistTargets)
-                playlistTargets = emptyList()
-                selection.exit()
-            },
-            onCreate = { name ->
-                viewModel.createPlaylistWithTracks(name, playlistTargets)
-                playlistTargets = emptyList()
-                selection.exit()
+    PersonalCollectionPlaylistDialog(
+        tracks = playlistTargets,
+        state = state,
+        onDismiss = { playlistTargets = emptyList() },
+        onAdd = { viewModel.addTracksToPlaylist(it, playlistTargets) },
+        onCreate = { viewModel.createPlaylistWithTracks(it, playlistTargets) },
+        onComplete = {
+            playlistTargets = emptyList()
+            selection.exit()
+        }
+    )
+    PersonalCollectionSettingsDialog(showSettings, collection, strings.save, collectionStrings, {
+        showSettings = false
+    }) { name, autoRefresh, allowCleartext ->
+        controller.updateSettings(collection.id, name, autoRefresh, allowCleartext)
+        showSettings = false
+    }
+    PersonalCollectionRemoveDialog(confirmRemove, collection, strings.cancel, collectionStrings, {
+        confirmRemove = false
+    }) {
+        confirmRemove = false
+        controller.delete(collection.id)
+        onClose()
+    }
+    PersonalCollectionDeleteDownloadsDialog(
+        visible = confirmDeleteDownloads,
+        downloads = collectionDownloads,
+        cancelLabel = strings.cancel,
+        deleteLabel = strings.delete,
+        strings = collectionStrings,
+        onDismiss = { confirmDeleteDownloads = false },
+        onConfirm = {
+            confirmDeleteDownloads = false
+            viewModel.deleteDownloads(collectionDownloads)
+        }
+    )
+}
+
+@Composable
+private fun PersonalCollectionEventEffect(
+    collection: PersonalCollectionSummary,
+    events: Flow<PersonalCollectionEvent>,
+    strings: LevyraPersonalCollectionStrings,
+    snackbar: SnackbarHostState,
+    onHaptic: (HapticFeedbackType) -> Unit
+) {
+    LaunchedEffect(collection.id) {
+        events.collect { event ->
+            when (event) {
+                is PersonalCollectionEvent.Synced -> if (event.collectionId == collection.id) {
+                    onHaptic(HapticFeedbackType.Confirm)
+                    val report = event.report
+                    val unchanged = report.notModified || report.added + report.removed + report.updated == 0
+                    snackbar.showSnackbar(
+                        if (unchanged) strings.upToDate else strings.syncSummary(report.added, report.removed)
+                    )
+                }
+                is PersonalCollectionEvent.SyncFailed -> if (event.collectionId == collection.id) {
+                    onHaptic(HapticFeedbackType.Reject)
+                    snackbar.showSnackbar(strings.error(event.error))
+                }
+                is PersonalCollectionEvent.Imported -> Unit
             }
-        )
+        }
     }
+}
 
-    if (showSettings) {
-        PersonalCollectionSettingsSheet(
-            collection = collection,
-            collectionStrings = collectionStrings,
-            saveLabel = strings.save,
-            onDismiss = { showSettings = false },
-            onSave = { name, autoRefresh, allowCleartext ->
-                controller.updateSettings(collection.id, name, autoRefresh, allowCleartext)
-                showSettings = false
+@Composable
+private fun PersonalCollectionTopBar(
+    collection: PersonalCollectionSummary,
+    syncing: Boolean,
+    hasDownloads: Boolean,
+    backLabel: String,
+    strings: LevyraPersonalCollectionStrings,
+    onClose: () -> Unit,
+    onRefresh: () -> Unit,
+    onSettings: () -> Unit,
+    onDeleteDownloads: () -> Unit,
+    onRemove: () -> Unit
+) {
+    val colors = MaterialTheme.colorScheme
+    var menuExpanded by remember { mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        LevyraExpressiveIconButton(onClick = onClose) {
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = backLabel)
+        }
+        Spacer(Modifier.weight(1f))
+        if (collection.refreshable) {
+            LevyraExpressiveIconButton(onClick = onRefresh, enabled = !syncing) {
+                if (syncing) LevyraLoadingIndicator(modifier = Modifier.size(24.dp))
+                else Icon(Icons.Rounded.Refresh, contentDescription = strings.refresh)
             }
-        )
+        }
+        Box {
+            LevyraExpressiveIconButton(onClick = { menuExpanded = true }) {
+                Icon(Icons.Rounded.MoreVert, contentDescription = strings.settingsTitle)
+            }
+            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                DropdownMenuItem(
+                    text = { Text(strings.settingsTitle) },
+                    leadingIcon = { Icon(Icons.Rounded.Settings, contentDescription = null) },
+                    onClick = { menuExpanded = false; onSettings() }
+                )
+                if (hasDownloads) {
+                    DropdownMenuItem(
+                        text = { Text(strings.removeDownloads) },
+                        leadingIcon = { Icon(Icons.Rounded.DeleteOutline, contentDescription = null) },
+                        onClick = { menuExpanded = false; onDeleteDownloads() }
+                    )
+                }
+                DropdownMenuItem(
+                    text = { Text(strings.removeCollection, color = colors.error) },
+                    leadingIcon = { Icon(Icons.Rounded.Delete, contentDescription = null, tint = colors.error) },
+                    onClick = { menuExpanded = false; onRemove() }
+                )
+            }
+        }
     }
+}
 
-    if (confirmRemove) {
-        AlertDialog(
-            onDismissRequest = { confirmRemove = false },
-            icon = { Icon(Icons.Rounded.Delete, contentDescription = null) },
-            title = { Text(collectionStrings.removeTitle(collection.name), textAlign = TextAlign.Center) },
-            text = { Text(collectionStrings.removeBody) },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmRemove = false
-                    controller.delete(collection.id)
-                    onClose()
-                }) { Text(collectionStrings.removeCollection, color = colors.error) }
-            },
-            dismissButton = { TextButton(onClick = { confirmRemove = false }) { Text(strings.cancel) } }
-        )
+private fun LazyListScope.personalCollectionLocalNetworkItem(
+    visible: Boolean,
+    strings: LevyraPersonalCollectionStrings,
+    onAllow: () -> Unit
+) {
+    if (!visible) return
+    item(key = "pc-local-network") {
+        val colors = MaterialTheme.colorScheme
+        Surface(color = colors.tertiaryContainer, shape = MaterialTheme.shapes.large, modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(Icons.Rounded.Lan, contentDescription = null, tint = colors.onTertiaryContainer)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(strings.localNetworkTitle, style = MaterialTheme.typography.titleSmall, color = colors.onTertiaryContainer)
+                    Text(strings.localNetworkDetail, style = MaterialTheme.typography.bodySmall, color = colors.onTertiaryContainer)
+                }
+                TextButton(onClick = onAllow) { Text(strings.allow) }
+            }
+        }
     }
+}
 
-    if (confirmDeleteDownloads) {
-        AlertDialog(
-            onDismissRequest = { confirmDeleteDownloads = false },
-            icon = { Icon(Icons.Rounded.DeleteOutline, contentDescription = null) },
-            title = { Text(collectionStrings.removeDownloads) },
-            text = { Text(collectionStrings.removeDownloadsBody(collectionDownloads.size)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmDeleteDownloads = false
-                    val targets: List<DownloadedTrack> = collectionDownloads
-                    viewModel.deleteDownloads(targets)
-                }) { Text(strings.delete, color = colors.error) }
-            },
-            dismissButton = { TextButton(onClick = { confirmDeleteDownloads = false }) { Text(strings.cancel) } }
+private fun LazyListScope.personalCollectionSyncErrorItem(
+    error: CollectionSyncError?,
+    refreshable: Boolean,
+    strings: LevyraPersonalCollectionStrings,
+    onRefresh: () -> Unit
+) {
+    if (error == null) return
+    item(key = "pc-sync-error") {
+        val colors = MaterialTheme.colorScheme
+        Surface(color = colors.errorContainer, shape = MaterialTheme.shapes.large, modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(Icons.Rounded.CloudOff, contentDescription = null, tint = colors.onErrorContainer)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(strings.savedCopy, style = MaterialTheme.typography.titleSmall, color = colors.onErrorContainer)
+                    Text(strings.error(error), style = MaterialTheme.typography.bodySmall, color = colors.onErrorContainer)
+                }
+                if (refreshable) {
+                    TextButton(
+                        onClick = onRefresh,
+                        colors = ButtonDefaults.textButtonColors(contentColor = colors.onErrorContainer)
+                    ) { Text(strings.refresh, fontWeight = FontWeight.SemiBold) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PersonalCollectionActions(
+    tracks: List<Track>,
+    downloadedIds: Set<String>,
+    selectionActive: Boolean,
+    playLabel: String,
+    shuffleLabel: String,
+    downloadLabel: String,
+    onPlay: (List<Track>, Track) -> Unit,
+    onDownload: (List<Track>) -> Unit
+) {
+    val allOffline = tracks.isNotEmpty() && downloadedIds.size >= tracks.size
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        Button(
+            onClick = { tracks.firstOrNull()?.let { onPlay(tracks, it) } },
+            enabled = tracks.isNotEmpty() && !selectionActive,
+            shapes = ButtonDefaults.shapes(),
+            modifier = Modifier.weight(1f).heightIn(min = 56.dp)
+        ) {
+            Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+            ActionLabel(playLabel)
+        }
+        FilledTonalButton(
+            onClick = { tracks.shuffled().let { shuffled -> shuffled.firstOrNull()?.let { onPlay(shuffled, it) } } },
+            enabled = tracks.isNotEmpty() && !selectionActive,
+            shapes = ButtonDefaults.shapes(),
+            modifier = Modifier.weight(1f).heightIn(min = 56.dp)
+        ) {
+            Icon(Icons.Rounded.Shuffle, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+            ActionLabel(shuffleLabel)
+        }
+        FilledTonalIconButton(
+            onClick = { tracks.filterNot { it.id in downloadedIds }.takeIf { it.isNotEmpty() }?.let(onDownload) },
+            enabled = tracks.isNotEmpty() && !allOffline && !selectionActive,
+            shapes = IconButtonDefaults.shapes(),
+            modifier = Modifier.size(56.dp)
+        ) {
+            Icon(if (allOffline) Icons.Rounded.DownloadDone else Icons.Rounded.Download, contentDescription = downloadLabel)
+        }
+    }
+}
+
+private fun LazyListScope.personalCollectionOfflineItem(
+    downloadedCount: Int,
+    trackCount: Int,
+    activeDownloads: Int,
+    strings: LevyraPersonalCollectionStrings
+) {
+    if (downloadedCount == 0 && activeDownloads == 0) return
+    item(key = "pc-offline") {
+        val colors = MaterialTheme.colorScheme
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                "${strings.offlineCount(downloadedCount)} / $trackCount",
+                style = MaterialTheme.typography.labelLarge,
+                color = colors.onSurfaceVariant
+            )
+            if (activeDownloads > 0 && trackCount > 0) {
+                LevyraWavyProgress(
+                    progress = downloadedCount.toFloat() / trackCount.toFloat(),
+                    color = colors.primary,
+                    trackColor = colors.surfaceContainerHighest,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+}
+
+private fun LazyListScope.personalCollectionTrackItems(
+    tracks: List<Track>,
+    downloads: List<DownloadedTrack>,
+    downloadedIds: Set<String>,
+    state: LevyraUiState,
+    selection: TrackSelectionState,
+    emptyLabel: String,
+    onPlay: (List<Track>, Track) -> Unit,
+    onFavorite: (Track) -> Unit,
+    onDownload: (Track) -> Unit,
+    onQueue: (Track) -> Unit,
+    onAddToPlaylist: (Track) -> Unit,
+    onDeleteDownload: (DownloadedTrack) -> Unit
+) {
+    if (tracks.isEmpty()) {
+        item(key = "pc-empty") { LibraryEmpty(Icons.Rounded.LibraryMusic, emptyLabel) }
+        return
+    }
+    items(tracks, key = { "pc-track-${it.id}" }) { track ->
+        val key = trackSelectionKey(track)
+        val download = downloads.firstOrNull { it.trackId == track.id }
+        LibraryTrackRow(
+            track = track,
+            selected = selection.isSelected(key),
+            selectionActive = selection.isActive,
+            isCurrent = track.id == state.currentTrack?.id,
+            isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+            isFavorite = track.id in state.favoriteIds,
+            isDownloaded = track.id in downloadedIds,
+            downloadProgress = downloadProgressFor(track, state),
+            onClick = { if (selection.isActive) selection.toggle(key) else onPlay(tracks, track) },
+            onLongClick = { selection.start(key) },
+            onFavorite = { onFavorite(track) },
+            onDownload = { onDownload(track) },
+            onQueue = { onQueue(track) },
+            onAddToPlaylist = { onAddToPlaylist(track) },
+            onDeleteDownload = download?.let { stored -> { onDeleteDownload(stored) } },
+            modifier = Modifier.animateItem()
         )
     }
+}
+
+@Composable
+private fun BoxScope.PersonalCollectionSelectionBar(
+    selection: TrackSelectionState,
+    selectableIds: List<String>,
+    selectedTracks: List<Track>,
+    hasCurrentTrack: Boolean,
+    onPlayNext: (List<Track>) -> Unit,
+    onAddToQueue: (List<Track>) -> Unit,
+    onAddToPlaylist: (List<Track>) -> Unit,
+    onFavorite: (List<Track>) -> Unit,
+    onDownload: (List<Track>) -> Unit
+) {
+    fun complete(action: (List<Track>) -> Unit) {
+        action(selectedTracks)
+        selection.exit()
+    }
+    val hasSelection = selectedTracks.isNotEmpty()
+    TrackSelectionBar(
+        state = selection,
+        allVisibleIds = selectableIds,
+        actions = TrackSelectionActions(
+            onPlayNext = if (hasSelection) ({ complete(onPlayNext) }) else null,
+            onAddToQueue = if (hasSelection) ({ complete(onAddToQueue) }) else null,
+            onAddToPlaylist = if (hasSelection) ({ onAddToPlaylist(selectedTracks) }) else null,
+            onFavorite = if (hasSelection) ({ complete(onFavorite) }) else null,
+            onDownload = if (hasSelection) ({ complete(onDownload) }) else null
+        ),
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .padding(start = 12.dp, end = 12.dp, bottom = if (hasCurrentTrack) 84.dp else 12.dp)
+    )
+}
+
+@Composable
+private fun PersonalCollectionPlaylistDialog(
+    tracks: List<Track>,
+    state: LevyraUiState,
+    onDismiss: () -> Unit,
+    onAdd: (String) -> Unit,
+    onCreate: (String) -> Unit,
+    onComplete: () -> Unit
+) {
+    if (tracks.isEmpty()) return
+    AddTracksToPlaylistDialog(
+        tracks = tracks,
+        playlists = state.playlists,
+        onDismiss = onDismiss,
+        onAdd = { onAdd(it); onComplete() },
+        onCreate = { onCreate(it); onComplete() }
+    )
+}
+
+@Composable
+private fun PersonalCollectionSettingsDialog(
+    visible: Boolean,
+    collection: PersonalCollectionSummary,
+    saveLabel: String,
+    strings: LevyraPersonalCollectionStrings,
+    onDismiss: () -> Unit,
+    onSave: (String, Boolean, Boolean) -> Unit
+) {
+    if (!visible) return
+    PersonalCollectionSettingsSheet(collection, strings, saveLabel, onDismiss, onSave)
+}
+
+@Composable
+private fun PersonalCollectionRemoveDialog(
+    visible: Boolean,
+    collection: PersonalCollectionSummary,
+    cancelLabel: String,
+    strings: LevyraPersonalCollectionStrings,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    if (!visible) return
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Rounded.Delete, contentDescription = null) },
+        title = { Text(strings.removeTitle(collection.name), textAlign = TextAlign.Center) },
+        text = { Text(strings.removeBody) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(strings.removeCollection, color = MaterialTheme.colorScheme.error) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(cancelLabel) } }
+    )
+}
+
+@Composable
+private fun PersonalCollectionDeleteDownloadsDialog(
+    visible: Boolean,
+    downloads: List<DownloadedTrack>,
+    cancelLabel: String,
+    deleteLabel: String,
+    strings: LevyraPersonalCollectionStrings,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    if (!visible) return
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Rounded.DeleteOutline, contentDescription = null) },
+        title = { Text(strings.removeDownloads) },
+        text = { Text(strings.removeDownloadsBody(downloads.size)) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(deleteLabel, color = MaterialTheme.colorScheme.error) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(cancelLabel) } }
+    )
 }
 
 @Composable

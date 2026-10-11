@@ -9489,38 +9489,53 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         youtubeEngagementGeneration.incrementAndGet()
     }
 
-    @Suppress("ComplexMethod")
     private suspend fun CoroutineScope.resolveAndStartPlayback(
         track: Track,
         request: PlaybackResolveRequest,
         autoRetryWhenOffline: Boolean
     ) {
-        val requestId = request.id
         if (track.isPersonalCollectionTrack()) {
-            val playable = try {
-                localDownloadedTrack(track) ?: resolver.resolve(track)
-            } catch (error: Throwable) {
-                if (error is CancellationException) throw error
-                if (!isActive || requestId != playRequestId) return
-                publishResolveFailure(track, error, requestId, autoRetryWhenOffline = false)
-                return
-            }
-            if (!isActive || requestId != playRequestId) return
-            startPlayback(playable, request)
-            prefetchAround(playable)
+            resolvePersonalCollectionPlayback(track, request)
             return
         }
+        resolveStandardPlayback(track, request, autoRetryWhenOffline)
+    }
+
+    private suspend fun CoroutineScope.resolvePersonalCollectionPlayback(
+        track: Track,
+        request: PlaybackResolveRequest
+    ) {
+        val playable = try {
+            localDownloadedTrack(track) ?: resolver.resolve(track)
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            if (isCurrentPlaybackRequest(request.id)) {
+                publishResolveFailure(track, error, request.id, autoRetryWhenOffline = false)
+            }
+            return
+        }
+        if (!isCurrentPlaybackRequest(request.id)) return
+        startPlayback(playable, request)
+        prefetchAround(playable)
+    }
+
+    private suspend fun CoroutineScope.resolveStandardPlayback(
+        track: Track,
+        request: PlaybackResolveRequest,
+        autoRetryWhenOffline: Boolean
+    ) {
+        val requestId = request.id
         val requestedVideoMode = _state.value.isVideoMode
         val playableTrack = if (requestedVideoMode) preferredVideoPlaybackTrack(track) else youtubePlayableTrack(track)
         val selectedTrack = playableTrack ?: track
         if (isUnavailableLocalTrack(track)) {
-            if (!isActive || requestId != playRequestId) return
+            if (!isCurrentPlaybackRequest(requestId)) return
             handleUnavailableLocalTrack(track)
             return
         }
         val instant = localDownloadedTrack(track) ?: resolver.cached(selectedTrack, requestedVideoMode)
         if (instant != null) {
-            if (!isActive || requestId != playRequestId) return
+            if (!isCurrentPlaybackRequest(requestId)) return
             startPlayback(preserveEditorialArtwork(track, instant), request)
             prefetchAround(instant)
             return
@@ -9528,15 +9543,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         player.stop()
         try {
             val playable = resolveForPlayback(selectedTrack)
-            if (!isActive || requestId != playRequestId) return
+            if (!isCurrentPlaybackRequest(requestId)) return
             startPlayback(playable, request)
             prefetchAround(playable)
         } catch (error: Throwable) {
             if (error is CancellationException) throw error
-            if (!isActive || requestId != playRequestId) return
+            if (!isCurrentPlaybackRequest(requestId)) return
             publishResolveFailure(track, error, requestId, autoRetryWhenOffline)
         }
     }
+
+    private fun CoroutineScope.isCurrentPlaybackRequest(requestId: Long): Boolean =
+        isActive && requestId == playRequestId
 
     private fun publishResolveFailure(
         track: Track,

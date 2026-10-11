@@ -18,26 +18,13 @@ object LevyraMediaItemFactory {
             .build()
     }
 
-    @Suppress("ComplexMethod")
     fun build(track: Track, videoMode: Boolean = false): MediaItem {
         val streamUrl = track.streamUrl
         val liveRadio = track.isLiveRadio()
         val personalCollection = isPersonalCollectionStream(track)
         val cacheReadSpec = if (personalCollection) null else playbackCacheReadSpec(streamUrl)
-        val customCacheKey = if (liveRadio) null else if (personalCollection) LevyraPlaybackCacheKey.personalCollection(track) else cacheReadSpec?.cacheKey ?: if (videoMode && track.videoStreamUrl.isBlank()) {
-            LevyraPlaybackCacheKey.video(track)
-        } else {
-            LevyraPlaybackCacheKey.stream(track)
-        }
-        val streamMimeType = if (liveRadio) {
-            liveRadioMimeTypeFor(streamUrl)
-        } else if (personalCollection) {
-            personalCollectionMimeTypeFor(streamUrl)
-        } else if (cacheReadSpec != null) {
-            cacheReadSpec.mimeType.takeIf { it.isNotBlank() }
-        } else {
-            mimeTypeFor(streamUrl, videoMode)
-        }
+        val customCacheKey = cacheKey(track, videoMode, liveRadio, personalCollection, cacheReadSpec)
+        val streamMimeType = streamMimeType(streamUrl, videoMode, liveRadio, personalCollection, cacheReadSpec)
         val builder = MediaItem.Builder()
             .setUri(streamUrl)
             .setMediaId(mediaId(track))
@@ -47,32 +34,63 @@ object LevyraMediaItemFactory {
         }
         customCacheKey?.let(builder::setCustomCacheKey)
         streamMimeType?.let { builder.setMimeType(it) }
-        if (videoMode && track.videoSubtitleTracks.isNotEmpty()) {
-            builder.setSubtitleConfigurations(
-                track.videoSubtitleTracks.map { subtitle ->
-                    MediaItem.SubtitleConfiguration.Builder(Uri.parse(subtitle.vttUrl))
-                        .setId(subtitle.id)
-                        .setMimeType(MimeTypes.TEXT_VTT)
-                        .setLanguage(subtitle.languageCode)
-                        .setLabel(subtitle.label)
-                        .build()
-                }
-            )
-        }
+        subtitleConfigurations(track, videoMode).takeIf { it.isNotEmpty() }?.let(builder::setSubtitleConfigurations)
         val mediaItem = builder.build()
-        if (
-            cacheReadSpec == null &&
-            !liveRadio && !personalCollection && shouldRememberPlaybackCacheHint(streamUrl, streamMimeType, videoMode)
-        ) {
-            customCacheKey?.let { nonNullKey ->
-                PlaybackCacheHintStore.record(
-                    track = track,
-                    cacheKey = nonNullKey,
-                    mimeType = streamMimeType.orEmpty()
-                )
-            }
-        }
+        rememberCacheHint(track, videoMode, liveRadio, personalCollection, cacheReadSpec, customCacheKey, streamMimeType)
         return mediaItem
+    }
+
+    private fun cacheKey(
+        track: Track,
+        videoMode: Boolean,
+        liveRadio: Boolean,
+        personalCollection: Boolean,
+        cacheReadSpec: PlaybackCacheReadSpec?
+    ): String? = when {
+        liveRadio -> null
+        personalCollection -> LevyraPlaybackCacheKey.personalCollection(track)
+        cacheReadSpec != null -> cacheReadSpec.cacheKey
+        videoMode && track.videoStreamUrl.isBlank() -> LevyraPlaybackCacheKey.video(track)
+        else -> LevyraPlaybackCacheKey.stream(track)
+    }
+
+    private fun streamMimeType(
+        streamUrl: String,
+        videoMode: Boolean,
+        liveRadio: Boolean,
+        personalCollection: Boolean,
+        cacheReadSpec: PlaybackCacheReadSpec?
+    ): String? = when {
+        liveRadio -> liveRadioMimeTypeFor(streamUrl)
+        personalCollection -> personalCollectionMimeTypeFor(streamUrl)
+        cacheReadSpec != null -> cacheReadSpec.mimeType.takeIf(String::isNotBlank)
+        else -> mimeTypeFor(streamUrl, videoMode)
+    }
+
+    private fun subtitleConfigurations(track: Track, videoMode: Boolean): List<MediaItem.SubtitleConfiguration> {
+        if (!videoMode) return emptyList()
+        return track.videoSubtitleTracks.map { subtitle ->
+            MediaItem.SubtitleConfiguration.Builder(Uri.parse(subtitle.vttUrl))
+                .setId(subtitle.id)
+                .setMimeType(MimeTypes.TEXT_VTT)
+                .setLanguage(subtitle.languageCode)
+                .setLabel(subtitle.label)
+                .build()
+        }
+    }
+
+    private fun rememberCacheHint(
+        track: Track,
+        videoMode: Boolean,
+        liveRadio: Boolean,
+        personalCollection: Boolean,
+        cacheReadSpec: PlaybackCacheReadSpec?,
+        cacheKey: String?,
+        mimeType: String?
+    ) {
+        if (cacheReadSpec != null || liveRadio || personalCollection) return
+        if (!shouldRememberPlaybackCacheHint(track.streamUrl, mimeType, videoMode)) return
+        cacheKey?.let { PlaybackCacheHintStore.record(track, it, mimeType.orEmpty()) }
     }
 
     internal fun mimeTypeFor(url: String, videoMode: Boolean): String? {

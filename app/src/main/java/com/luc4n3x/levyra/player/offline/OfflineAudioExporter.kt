@@ -653,7 +653,6 @@ class OfflineAudioExporter(
         }
     }
 
-    @Suppress("ComplexMethod")
     private suspend fun downloadPersonalCollectionAudio(
         track: Track,
         sourceUrl: String,
@@ -661,77 +660,111 @@ class OfflineAudioExporter(
         identityFile: File,
         workspace: File
     ): DownloadedAudio {
+        val identityKey = "${track.id}|${stableHash(sourceUrl, 32)}"
+        val resumeFrom = personalCollectionResumeOffset(partial, identityFile, identityKey)
+        val request = personalCollectionDownloadRequest(track, sourceUrl, resumeFrom)
+        return executeCancellable(request) { response ->
+            consumePersonalCollectionResponse(response, partial, identityFile, workspace, identityKey, resumeFrom)
+        }
+    }
+
+    private fun personalCollectionResumeOffset(partial: File, identityFile: File, identityKey: String): Long {
         val storedBytes = partial.takeIf { settings.resumable && it.isFile }?.length() ?: 0L
         val storedIdentity = readResumeIdentity(identityFile)
-        val identityKey = "${track.id}|${stableHash(sourceUrl, 32)}"
-        val resumeFrom = if (
-            storedBytes > 0L &&
-            storedIdentity != null &&
-            storedIdentity.videoId == identityKey &&
-            storedIdentity.contentLength > storedBytes
-        ) {
-            storedBytes
-        } else {
-            discardPartial(partial, identityFile)
-            0L
-        }
-        val request = Request.Builder()
+        val reusable = storedBytes > 0L && storedIdentity?.videoId == identityKey && storedIdentity.contentLength > storedBytes
+        if (reusable) return storedBytes
+        discardPartial(partial, identityFile)
+        return 0L
+    }
+
+    private fun personalCollectionDownloadRequest(track: Track, sourceUrl: String, resumeFrom: Long): Request =
+        Request.Builder()
             .url(sourceUrl)
             .header("Accept", "audio/*,*/*;q=0.8")
             .header("Accept-Encoding", "identity")
             .header(PersonalCollectionNetworkPolicy.COLLECTION_HEADER, personalCollectionIdOf(track.id).orEmpty())
             .apply { if (resumeFrom > 0L) header("Range", "bytes=$resumeFrom-") }
             .build()
-        return executeCancellable(request) { response ->
-            if (!response.isSuccessful) throw IOException("Download audio fallito: HTTP ${response.code}")
-            val contentType = response.header("Content-Type").orEmpty().substringBefore(';').trim().lowercase(Locale.US)
-            val container = personalCollectionContainer(contentType, response.request.url.encodedPath)
-                ?: throw IOException(PERSONAL_COLLECTION_NOT_AUDIO)
-            val body = response.body
-            val declaredLength = body.contentLength()
-            val contentRange = response.header("Content-Range").orEmpty()
-            val append = resumeFrom > 0L && response.code == 206 &&
-                contentRange.substringAfter("bytes", "").trim().startsWith("$resumeFrom-")
-            if (!append) discardPartial(partial, identityFile)
-            val baseBytes = if (append) resumeFrom else 0L
-            val totalLength = contentRange.substringAfterLast('/').toLongOrNull()
-                ?: declaredLength.takeIf { it > 0L }?.plus(baseBytes)
-                ?: -1L
-            if (totalLength > MAX_AUDIO_BYTES) throw IOException(PERSONAL_COLLECTION_TOO_LARGE)
-            ensureStorageAvailable(workspace, totalLength, baseBytes, requiresAudioExtraction = false)
-            if (totalLength > 0L) {
-                writeResumeIdentity(identityFile, OfflineStreamIdentity(identityKey, "", totalLength, container.mimeType))
-            }
-            body.byteStream().use { input ->
-                FileOutputStream(partial, append).use { output ->
-                    val buffer = ByteArray(DOWNLOAD_BUFFER_BYTES)
-                    var total = baseBytes
-                    var lastProgress = downloadProgress(total, totalLength)
-                    while (true) {
-                        currentCoroutineContext().ensureActive()
-                        val read = input.read(buffer)
-                        if (read < 0) break
-                        rateLimiter.consume(read)
-                        total += read.toLong()
-                        if (total > MAX_AUDIO_BYTES) throw IOException(PERSONAL_COLLECTION_TOO_LARGE)
-                        output.write(buffer, 0, read)
-                        val nextProgress = downloadProgress(total, totalLength)
-                        if (nextProgress > lastProgress) {
-                            lastProgress = nextProgress
-                            reportProgress(nextProgress)
-                        }
-                    }
-                    output.flush()
-                    if (totalLength > 0L && total != totalLength) throw IOException("Download non valido: $total/$totalLength byte")
+
+    private suspend fun consumePersonalCollectionResponse(
+        response: Response,
+        partial: File,
+        identityFile: File,
+        workspace: File,
+        identityKey: String,
+        resumeFrom: Long
+    ): DownloadedAudio {
+        if (!response.isSuccessful) throw IOException("Download audio fallito: HTTP ${response.code}")
+        val contentType = response.header("Content-Type").orEmpty().substringBefore(';').trim().lowercase(Locale.US)
+        val container = personalCollectionContainer(contentType, response.request.url.encodedPath)
+            ?: throw IOException(PERSONAL_COLLECTION_NOT_AUDIO)
+        val body = response.body
+        val contentRange = response.header("Content-Range").orEmpty()
+        val append = resumeFrom > 0L && response.code == 206 &&
+            contentRange.substringAfter("bytes", "").trim().startsWith("$resumeFrom-")
+        if (!append) discardPartial(partial, identityFile)
+        val baseBytes = if (append) resumeFrom else 0L
+        val totalLength = contentRange.substringAfterLast('/').toLongOrNull()
+            ?: body.contentLength().takeIf { it > 0L }?.plus(baseBytes)
+            ?: -1L
+        preparePersonalCollectionDownload(workspace, identityFile, identityKey, container, totalLength, baseBytes)
+        copyPersonalCollectionAudio(body.byteStream(), partial, append, baseBytes, totalLength)
+        validatePersonalCollectionAudio(partial, identityFile)
+        reportProgress(84)
+        return DownloadedAudio(partial, container, requiresAudioExtraction = false)
+    }
+
+    private fun preparePersonalCollectionDownload(
+        workspace: File,
+        identityFile: File,
+        identityKey: String,
+        container: AudioContainer,
+        totalLength: Long,
+        baseBytes: Long
+    ) {
+        if (totalLength > MAX_AUDIO_BYTES) throw IOException(PERSONAL_COLLECTION_TOO_LARGE)
+        ensureStorageAvailable(workspace, totalLength, baseBytes, requiresAudioExtraction = false)
+        if (totalLength > 0L) {
+            writeResumeIdentity(identityFile, OfflineStreamIdentity(identityKey, "", totalLength, container.mimeType))
+        }
+    }
+
+    private suspend fun copyPersonalCollectionAudio(
+        input: java.io.InputStream,
+        partial: File,
+        append: Boolean,
+        baseBytes: Long,
+        totalLength: Long
+    ) = input.use { source ->
+        FileOutputStream(partial, append).use { output ->
+            val buffer = ByteArray(DOWNLOAD_BUFFER_BYTES)
+            var total = baseBytes
+            var lastProgress = downloadProgress(total, totalLength)
+            while (true) {
+                currentCoroutineContext().ensureActive()
+                val read = source.read(buffer)
+                if (read < 0) break
+                rateLimiter.consume(read)
+                total += read.toLong()
+                if (total > MAX_AUDIO_BYTES) throw IOException(PERSONAL_COLLECTION_TOO_LARGE)
+                output.write(buffer, 0, read)
+                val nextProgress = downloadProgress(total, totalLength)
+                if (nextProgress > lastProgress) {
+                    lastProgress = nextProgress
+                    reportProgress(nextProgress)
                 }
             }
-            if (partial.length() < MIN_VALID_AUDIO_BYTES) {
-                discardPartial(partial, identityFile)
-                throw IOException(PERSONAL_COLLECTION_NOT_AUDIO)
+            output.flush()
+            if (totalLength > 0L && total != totalLength) {
+                throw IOException("Download non valido: $total/$totalLength byte")
             }
-            reportProgress(84)
-            DownloadedAudio(partial, container, requiresAudioExtraction = false)
         }
+    }
+
+    private fun validatePersonalCollectionAudio(partial: File, identityFile: File) {
+        if (partial.length() >= MIN_VALID_AUDIO_BYTES) return
+        discardPartial(partial, identityFile)
+        throw IOException(PERSONAL_COLLECTION_NOT_AUDIO)
     }
 
     private suspend fun downloadAudio(track: Track, workspace: File): DownloadedAudio {
