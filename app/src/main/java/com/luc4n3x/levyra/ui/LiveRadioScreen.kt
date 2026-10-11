@@ -42,8 +42,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -87,6 +85,28 @@ import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 import java.util.Locale
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.semantics.selected
+import com.luc4n3x.levyra.ui.components.LevyraPressScale
+import com.luc4n3x.levyra.ui.components.levyraExpressiveCorner
+import com.luc4n3x.levyra.ui.components.levyraExpressiveToggleCorner
+import com.luc4n3x.levyra.ui.components.levyraGroupedListShape
+import com.luc4n3x.levyra.ui.components.levyraPressable
+import com.luc4n3x.levyra.ui.components.rememberLevyraPlayMorphShape
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.toShape
+import androidx.compose.ui.graphics.graphicsLayer
 
 @Composable
 internal fun LiveRadioScreen(
@@ -121,60 +141,13 @@ internal fun LiveRadioScreen(
             )
         ) {
             item(key = "live-radio-intro") {
-                Column(
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 18.dp),
-                    verticalArrangement = Arrangement.spacedBy(15.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .background(LevyraCyan.copy(alpha = 0.14f), CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Rounded.Podcasts, null, tint = LevyraCyan, modifier = Modifier.size(19.dp))
-                        }
-                        Text(
-                            text = radioStrings.live,
-                            color = LevyraCyan,
-                            fontSize = 12.sp,
-                            letterSpacing = 1.4.sp,
-                            fontWeight = FontWeight.Black
-                        )
-                    }
-                    Text(
-                        text = radioStrings.subtitle,
-                        color = LevyraMuted,
-                        fontSize = 15.sp,
-                        lineHeight = LevyraTypeRhythm.lineHeight(15.sp),
-                        fontWeight = FontWeight.Medium
-                    )
-                    OutlinedTextField(
-                        value = state.query,
-                        onValueChange = viewModel::setQuery,
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(16.dp),
-                        leadingIcon = { Icon(Icons.Rounded.Search, null, tint = LevyraMuted) },
-                        placeholder = {
-                            Text(
-                                radioStrings.searchHint,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                color = LevyraMuted
-                            )
-                        },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = LevyraText,
-                            unfocusedTextColor = LevyraText,
-                            focusedBorderColor = LevyraCyan.copy(alpha = 0.72f),
-                            unfocusedBorderColor = LevyraAdaptiveHairline,
-                            focusedContainerColor = LevyraPanelSoft.copy(alpha = 0.68f),
-                            unfocusedContainerColor = LevyraPanelSoft.copy(alpha = 0.48f),
-                            cursorColor = LevyraCyan
-                        )
-                    )
-                }
+                RadioHero(
+                    live = radioStrings.live,
+                    subtitle = radioStrings.subtitle,
+                    query = state.query,
+                    searchHint = radioStrings.searchHint,
+                    onQueryChange = viewModel::setQuery
+                )
             }
 
             item(key = "live-radio-categories-label") {
@@ -287,12 +260,15 @@ internal fun LiveRadioScreen(
                 }
             }
 
-            items(
-                items = state.stations.drop(1),
-                key = { station -> "live-radio-station-${station.uuid}" },
-                contentType = { "live-radio-station" }
-            ) { station ->
+            val listedStations = state.stations.drop(1)
+            itemsIndexed(
+                items = listedStations,
+                key = { _, station -> "live-radio-station-${station.uuid}" },
+                contentType = { _, _ -> "live-radio-station" }
+            ) { index, station ->
                 RadioStationRow(
+                    index = index,
+                    count = listedStations.size,
                     station = station,
                     favorite = station.uuid.lowercase(Locale.ROOT) in favoriteIds,
                     playing = currentStationId == station.uuid && isPlaying,
@@ -406,31 +382,150 @@ private fun RadioSectionTitle(title: String) {
     Text(
         text = title,
         color = LevyraText,
-        fontSize = 19.sp,
-        lineHeight = LevyraTypeRhythm.lineHeight(19.sp),
+        fontSize = 22.sp,
+        lineHeight = LevyraTypeRhythm.lineHeight(22.sp),
         fontWeight = FontWeight.Black,
-        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp).semantics { heading() }
+        letterSpacing = (-0.5).sp,
+        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 18.dp, bottom = 10.dp).semantics { heading() }
     )
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun RadioHero(
+    live: String,
+    subtitle: String,
+    query: String,
+    searchHint: String,
+    onQueryChange: (String) -> Unit
+) {
+    val colors = MaterialTheme.colorScheme
+    val animated = LocalAnimationsEnabled.current
+    val pulse = rememberInfiniteTransition(label = "radio-live-pulse")
+    val pulseAlpha by pulse.animateFloat(
+        initialValue = 1f,
+        targetValue = if (animated) 0.25f else 1f,
+        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
+        label = "radio-live-pulse-alpha"
+    )
+    val heroShape = RoundedCornerShape(32.dp)
+    Column(
+        modifier = Modifier
+            .padding(horizontal = 20.dp, vertical = 10.dp)
+            .fillMaxWidth()
+            .clip(heroShape)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        lerp(colors.surfaceContainerHigh, RadioLiveRed, 0.20f),
+                        lerp(colors.surfaceContainerHigh, colors.tertiary, 0.16f)
+                    )
+                )
+            )
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(MaterialShapes.SoftBurst.toShape())
+                    .background(RadioLiveRed),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.Podcasts, null, tint = Color.White, modifier = Modifier.size(28.dp))
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(colors.inverseSurface)
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(7.dp)
+                            .graphicsLayer { alpha = pulseAlpha }
+                            .background(RadioLiveRed, CircleShape)
+                    )
+                    Text(live, color = colors.inverseOnSurface, fontSize = 11.sp, letterSpacing = 1.2.sp, fontWeight = FontWeight.Black)
+                }
+                Text(
+                    text = subtitle,
+                    color = colors.onSurface,
+                    fontSize = 19.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(19.sp),
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-0.4).sp
+                )
+            }
+        }
+        TextField(
+            value = query,
+            onValueChange = onQueryChange,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            shape = CircleShape,
+            leadingIcon = { Icon(Icons.Rounded.Search, null, tint = colors.onSurfaceVariant) },
+            placeholder = {
+                Text(searchHint, maxLines = 1, overflow = TextOverflow.Ellipsis, color = colors.onSurfaceVariant)
+            },
+            colors = TextFieldDefaults.colors(
+                focusedTextColor = colors.onSurface,
+                unfocusedTextColor = colors.onSurface,
+                focusedContainerColor = colors.surfaceContainerHighest,
+                unfocusedContainerColor = colors.surfaceContainerHighest,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                cursorColor = LevyraCyan
+            )
+        )
+    }
+}
+
+private val RadioLiveRed = Color(0xFFE53935)
+
 @Composable
 private fun RadioChoiceChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(50)
+    val colors = MaterialTheme.colorScheme
+    val interaction = remember { MutableInteractionSource() }
+    val rest = levyraExpressiveToggleCorner(
+        checked = selected,
+        unchecked = 22.dp,
+        checkedCorner = 14.dp,
+        label = "radio-chip-selected-corner"
+    )
+    val corner = levyraExpressiveCorner(
+        interactionSource = interaction,
+        rest = rest,
+        pressed = 10.dp,
+        label = "radio-chip-press-corner"
+    )
+    val shape = RoundedCornerShape(corner)
     Box(
         modifier = Modifier
             .heightIn(min = 44.dp)
             .clip(shape)
-            .background(if (selected) LevyraCyan else LevyraPanelSoft)
-            .border(BorderStroke(1.dp, if (selected) LevyraCyan else LevyraAdaptiveHairline), shape)
-            .semantics { role = Role.Button }
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 11.dp),
+            .background(if (selected) colors.primary else colors.surfaceContainerHigh)
+            .levyraPressable(
+                onClick = onClick,
+                interactionSource = interaction,
+                role = Role.Button,
+                pressedScale = LevyraPressScale.Control
+            )
+            .semantics { this.selected = selected }
+            .padding(horizontal = 18.dp, vertical = 11.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             label,
-            color = if (selected) Color.Black else LevyraText,
-            fontSize = 13.sp,
+            color = if (selected) colors.onPrimary else colors.onSurface,
+            fontSize = 13.5.sp,
             fontWeight = FontWeight.Bold
         )
     }
@@ -443,20 +538,33 @@ private fun RadioDirectoryButton(
     icon: (@Composable () -> Unit)?,
     onClick: () -> Unit
 ) {
+    val colors = MaterialTheme.colorScheme
+    val interaction = remember { MutableInteractionSource() }
+    val corner = levyraExpressiveCorner(
+        interactionSource = interaction,
+        rest = 25.dp,
+        pressed = 14.dp,
+        label = "radio-directory-corner"
+    )
+    val shape = RoundedCornerShape(corner)
     Row(
         modifier = modifier
             .heightIn(min = 50.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(LevyraPanelSoft)
-            .border(1.dp, LevyraAdaptiveHairline, RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 13.dp),
+            .clip(shape)
+            .background(colors.surfaceContainerHigh)
+            .levyraPressable(
+                onClick = onClick,
+                interactionSource = interaction,
+                role = Role.Button,
+                pressedScale = LevyraPressScale.Control
+            )
+            .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         icon?.invoke()
-        Text(label, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-        Icon(Icons.Rounded.KeyboardArrowDown, null, tint = LevyraMuted, modifier = Modifier.size(18.dp))
+        Text(label, color = colors.onSurface, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Icon(Icons.Rounded.KeyboardArrowDown, null, tint = colors.onSurfaceVariant, modifier = Modifier.size(18.dp))
     }
 }
 
@@ -472,8 +580,9 @@ private fun FeaturedRadioStation(
     onPlay: () -> Unit,
     onFavorite: () -> Unit
 ) {
-    val shape = RoundedCornerShape(22.dp)
-    val accent = if (playing) LevyraCyan else Color(0xFF2A8C83)
+    val colors = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(30.dp)
+    val accent = if (playing) LevyraCyan else colors.tertiary
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -481,16 +590,18 @@ private fun FeaturedRadioStation(
             .clip(shape)
             .background(
                 Brush.horizontalGradient(
-                    listOf(accent.copy(alpha = if (LevyraIsLight) 0.16f else 0.24f), LevyraPanel.copy(alpha = 0.94f))
+                    listOf(
+                        lerp(colors.surfaceContainerHigh, accent, if (LevyraIsLight) 0.14f else 0.22f),
+                        colors.surfaceContainerHigh
+                    )
                 )
             )
-            .border(1.dp, if (playing) LevyraCyan.copy(alpha = 0.58f) else LevyraAdaptiveHairline, shape)
             .clickable(onClick = onPlay)
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        RadioArtwork(station, 82.dp, RoundedCornerShape(17.dp))
+        RadioArtwork(station, 82.dp, RoundedCornerShape(22.dp))
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 if (playing) Icon(Icons.Rounded.GraphicEq, null, tint = LevyraCyan, modifier = Modifier.size(17.dp))
@@ -508,10 +619,18 @@ private fun FeaturedRadioStation(
                 )
             }
             Box(
-                modifier = Modifier.size(42.dp).background(if (playing) LevyraCyan else LevyraText, CircleShape),
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(rememberLevyraPlayMorphShape(playing = playing, animated = LocalAnimationsEnabled.current, spinWhilePlaying = true))
+                    .background(if (playing) LevyraCyan else colors.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(if (playing) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow, playLabel, tint = LevyraBlack, modifier = Modifier.size(22.dp))
+                Icon(
+                    if (playing) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow,
+                    playLabel,
+                    tint = if (playing) LevyraBlack else colors.onPrimaryContainer,
+                    modifier = Modifier.size(24.dp)
+                )
             }
         }
     }
@@ -519,6 +638,8 @@ private fun FeaturedRadioStation(
 
 @Composable
 private fun RadioStationRow(
+    index: Int,
+    count: Int,
     station: RadioStation,
     favorite: Boolean,
     playing: Boolean,
@@ -529,9 +650,17 @@ private fun RadioStationRow(
     onPlay: () -> Unit,
     onFavorite: () -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth().clickable(onClick = onPlay)) {
+    val colors = MaterialTheme.colorScheme
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 1.dp)
+            .clip(levyraGroupedListShape(index, count))
+            .background(if (playing) lerp(colors.surfaceContainer, LevyraCyan, 0.16f) else colors.surfaceContainer)
+            .clickable(onClick = onPlay)
+    ) {
         Row(
-            modifier = Modifier.fillMaxWidth().background(if (playing) LevyraCyan.copy(alpha = 0.08f) else Color.Transparent).padding(horizontal = 24.dp, vertical = 11.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(13.dp)
         ) {
@@ -553,7 +682,6 @@ private fun RadioStationRow(
             }
             Icon(if (playing) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow, playLabel, tint = if (playing) LevyraCyan else LevyraText, modifier = Modifier.size(22.dp))
         }
-        HorizontalDivider(modifier = Modifier.padding(start = 95.dp, end = 24.dp), color = LevyraAdaptiveHairline)
     }
 }
 
@@ -591,7 +719,7 @@ private fun RadioStationRail(
                 verticalArrangement = Arrangement.spacedBy(7.dp)
             ) {
                 Box {
-                    RadioArtwork(station, 132.dp, RoundedCornerShape(19.dp))
+                    RadioArtwork(station, 132.dp, RoundedCornerShape(28.dp))
                     Box(
                         modifier = Modifier.align(Alignment.TopEnd).padding(7.dp).size(34.dp).background(LevyraBlack.copy(alpha = 0.76f), CircleShape).clickable { onFavorite(station) },
                         contentAlignment = Alignment.Center

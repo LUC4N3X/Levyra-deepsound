@@ -14,16 +14,15 @@ import org.junit.Test
 class ExploreLayoutTest {
     @Test
     fun discoveryContentPrecedesAdvancedMixControls() {
-        val rows = buildExploreRows(zones(4), false, true, true)
+        val rows = buildExploreRows(zones(4), false, true)
 
         assertTrue(rows.indexOf(ExploreRow.FreshSpotlight) < rows.indexOf(ExploreRow.MixTools))
-        assertTrue(rows.indexOf(ExploreRow.Samples) < rows.indexOf(ExploreRow.MixTools))
         assertEquals(ExploreRow.MixTools, rows.last())
     }
 
     @Test
     fun mixControlsRemainAvailableWhenDiscoveryIsEmpty() {
-        val rows = buildExploreRows(emptyList(), false, false, false)
+        val rows = buildExploreRows(emptyList(), false, false)
 
         assertTrue(rows.contains(ExploreRow.FreshEmpty))
         assertEquals(1, rows.count { it == ExploreRow.MixTools })
@@ -34,33 +33,25 @@ class ExploreLayoutTest {
         val rows = buildExploreRows(
             zones = zones(3),
             isFreshLoading = false,
-            hasFreshTracks = true,
-            hasSamples = true
+            hasFreshTracks = true
         )
 
-        assertEquals(ExploreShortcut.entries.map { it.anchor }.toSet(), exploreAvailableAnchors(rows))
-        ExploreShortcut.entries.forEach { shortcut ->
-            val index = exploreAnchorIndex(rows, shortcut.anchor)
+        val anchored = ExploreShortcut.entries.filter { it.anchor != null }
+        assertEquals(anchored.mapNotNull { it.anchor }.toSet(), exploreAvailableAnchors(rows))
+        anchored.forEach { shortcut ->
+            val anchor = requireNotNull(shortcut.anchor)
+            val index = exploreAnchorIndex(rows, anchor)
             assertTrue("Missing header for ${shortcut.name}", index >= 0)
-            assertEquals(ExploreRow.Header(shortcut.anchor), rows[index])
+            assertEquals(ExploreRow.Header(anchor), rows[index])
         }
     }
 
     @Test
-    fun genresStayAheadOfSamplesInTheMainDiscoveryFlow() {
-        val rows = buildExploreRows(
-            zones = zones(4),
-            isFreshLoading = false,
-            hasFreshTracks = true,
-            hasSamples = true
-        )
+    fun samplesLiveOnlyBehindTheirShortcut() {
+        val rows = buildExploreRows(zones = zones(4), isFreshLoading = false, hasFreshTracks = true)
 
-        val moodsIndex = exploreAnchorIndex(rows, ExploreAnchor.Moods)
-        val samplesIndex = exploreAnchorIndex(rows, ExploreAnchor.Samples)
-
-        assertTrue(moodsIndex >= 0)
-        assertTrue(samplesIndex > moodsIndex)
-        assertTrue(rows.subList(moodsIndex + 1, samplesIndex).any { row -> row is ExploreRow.MoodRail })
+        assertNull(ExploreShortcut.Samples.anchor)
+        assertTrue(rows.none { row -> row.key.contains("samples") })
     }
 
     @Test
@@ -75,8 +66,7 @@ class ExploreLayoutTest {
         val rows = buildExploreRows(
             zones = zones(2),
             isFreshLoading = true,
-            hasFreshTracks = true,
-            hasSamples = false
+            hasFreshTracks = true
         )
 
         assertTrue(rows.contains(ExploreRow.FreshSpotlight))
@@ -85,8 +75,8 @@ class ExploreLayoutTest {
 
     @Test
     fun emptyZoneFallsBackToTheEmptyStateInsteadOfTheSpinner() {
-        val loading = buildExploreRows(zones(2), isFreshLoading = true, hasFreshTracks = false, hasSamples = false)
-        val settled = buildExploreRows(zones(2), isFreshLoading = false, hasFreshTracks = false, hasSamples = false)
+        val loading = buildExploreRows(zones(2), isFreshLoading = true, hasFreshTracks = false)
+        val settled = buildExploreRows(zones(2), isFreshLoading = false, hasFreshTracks = false)
 
         assertTrue(loading.contains(ExploreRow.FreshLoading))
         assertFalse(loading.contains(ExploreRow.FreshEmpty))
@@ -95,20 +85,11 @@ class ExploreLayoutTest {
     }
 
     @Test
-    fun samplesSectionDisappearsWhenThereIsNothingToShow() {
-        val rows = buildExploreRows(zones(2), isFreshLoading = false, hasFreshTracks = true, hasSamples = false)
-
-        assertFalse(rows.contains(ExploreRow.Samples))
-        assertEquals(-1, exploreAnchorIndex(rows, ExploreAnchor.Samples))
-    }
-
-    @Test
     fun availableAnchorsMatchOnlyRenderedSections() {
         val rows = buildExploreRows(
             zones = emptyList(),
             isFreshLoading = false,
-            hasFreshTracks = true,
-            hasSamples = false
+            hasFreshTracks = true
         )
 
         assertEquals(setOf(ExploreAnchor.Fresh), exploreAvailableAnchors(rows))
@@ -116,7 +97,7 @@ class ExploreLayoutTest {
 
     @Test
     fun moodRailKeepsTheCompleteCatalogInSourceOrder() {
-        val rows = buildExploreRows(zones(5), isFreshLoading = false, hasFreshTracks = true, hasSamples = true)
+        val rows = buildExploreRows(zones(5), isFreshLoading = false, hasFreshTracks = true)
         val rail = rows.filterIsInstance<ExploreRow.MoodRail>().single()
 
         assertEquals(listOf("zone-0", "zone-1", "zone-2", "zone-3", "zone-4"), rail.zones.map { it.id })
@@ -127,7 +108,7 @@ class ExploreLayoutTest {
     fun duplicatedZonesNeverProduceDuplicatedLazyKeys() {
         val duplicated = zones(3) + zones(3)
 
-        val rows = buildExploreRows(duplicated, isFreshLoading = false, hasFreshTracks = true, hasSamples = true)
+        val rows = buildExploreRows(duplicated, isFreshLoading = false, hasFreshTracks = true)
         val keys = rows.map { it.key }
 
         assertEquals(keys.size, keys.toSet().size)
@@ -136,7 +117,7 @@ class ExploreLayoutTest {
 
     @Test
     fun missingMoodCatalogStillRendersTheRestOfTheScreen() {
-        val rows = buildExploreRows(emptyList(), isFreshLoading = false, hasFreshTracks = true, hasSamples = true)
+        val rows = buildExploreRows(emptyList(), isFreshLoading = false, hasFreshTracks = true)
 
         assertEquals(-1, exploreAnchorIndex(rows, ExploreAnchor.Moods))
         assertTrue(rows.contains(ExploreRow.Shortcuts))
@@ -279,7 +260,6 @@ class ExploreLayoutTest {
             zones = zones(2),
             isFreshLoading = false,
             hasFreshTracks = true,
-            hasSamples = false,
             hasFreshScopes = true,
             hasFreshMoment = true
         )
