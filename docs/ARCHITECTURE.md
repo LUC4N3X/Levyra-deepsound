@@ -693,7 +693,34 @@ Preferences store lightweight settings such as theme, content locale, playback o
  
 Home snapshots and important artwork use dedicated local files where atomic replacement is required.
 
-### 15.1 Local intelligence and automatic backups
+### 15.1 Personal collections
+
+Personal HTTP/HTTPS collections have a dedicated data path under
+`data/collections`. `PersonalCollectionRepository` owns import, refresh,
+collection settings, credential storage, local artwork, and playback/download
+resolution. The pure parser accepts M3U/M3U8 and JSON documents; the collection
+HTTP client applies per-collection cleartext and LAN policy before any source,
+artwork, playback, or download request.
+
+```text
+Import or refresh
+→ bounded parser and URL policy
+→ Room collection and track rows
+→ immutable Library projection
+
+Personal track tap
+→ PlaybackResolver collection branch
+→ downloaded MediaStore copy when available
+→ otherwise policy-bound OkHttp Media3 source
+```
+
+Collection identities use the `pc:` namespace and never enter provider search
+or fallback resolution. Periodic refresh is opt-in and runs through WorkManager
+with connected-network and battery constraints. Offline export is a direct,
+resumable network copy into MediaStore; removing a collection or a track does
+not delete an already completed offline copy.
+
+### 15.2 Local intelligence and automatic backups
 
 Listening events are also projected into local smart playlists. Recent listens
 remain recency ordered; the 30-day most-played list ranks total listening time,

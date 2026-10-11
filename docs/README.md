@@ -42,6 +42,8 @@ docs/
 
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) describes the current implementation,
   ownership boundaries, and major data flows.
+- [`personal-collections.md`](personal-collections.md) documents the supported
+  M3U/M3U8 and JSON formats for personal HTTP/HTTPS audio collections.
 - [`../desktop/README.md`](../desktop/README.md) documents the independent
   Windows Desktop client, packaging, and runtime behavior.
 

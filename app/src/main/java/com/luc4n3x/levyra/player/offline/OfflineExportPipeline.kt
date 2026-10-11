@@ -9,6 +9,8 @@ import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.CacheWriter
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.YoutubeStreamCapability
+import com.luc4n3x.levyra.data.collections.PersonalCollectionHttp
+import com.luc4n3x.levyra.data.collections.isPersonalCollectionTrack
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.DownloadOwnership
 import com.luc4n3x.levyra.domain.Track
@@ -178,6 +180,18 @@ internal class OfflineExportPipeline(
     private val prefetcher = OfflineStreamPrefetcher(appContext)
 
     suspend fun export(track: Track): OfflineExportResult {
+        if (track.isPersonalCollectionTrack()) {
+            return OfflineAudioExporter(
+                context = appContext,
+                resolver = resolver,
+                client = PersonalCollectionHttp.mediaClient,
+                progress = progress,
+                taskKey = taskKey,
+                settings = settings,
+                downloadQualityKey = downloadQualityKey,
+                ownership = ownership
+            ).exportPersonalCollectionTrack(track)
+        }
         var resolved = resolve(track)
         val continuousPrefetchEnabled = settings.resumable && settings.effectiveRateKbps == 0
         if (continuousPrefetchEnabled && supportsContinuousPrefetch(resolved.streamUrl)) {
