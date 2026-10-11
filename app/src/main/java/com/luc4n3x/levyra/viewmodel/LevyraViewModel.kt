@@ -6698,27 +6698,31 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun saveLyricsLatencyOffset(routeKey: String?, bluetooth: Boolean, offsetMs: Long) {
-        var updatedProfile: LyricsLatencyProfiles? = null
-        _state.update { current ->
-            val updated = if (bluetooth && !routeKey.isNullOrBlank()) {
-                current.lyricsLatencyProfiles.withDeviceOffset(routeKey, offsetMs)
-            } else {
-                current.lyricsLatencyProfiles.withGlobalOffset(offsetMs)
-            }
-            updatedProfile = updated
-            current.copy(lyricsLatencyProfiles = updated)
-        }
-        updatedProfile?.let { profile ->
-            viewModelScope.launch { preferences.setLyricsLatencyProfiles(profile) }
+    fun adjustLyricsLatencyOffset(routeKey: String?, bluetooth: Boolean, deltaMs: Long) {
+        updateLyricsLatencyProfiles { profiles ->
+            profiles.withLatencyOffset(routeKey, bluetooth, profiles.resolve(routeKey, bluetooth) + deltaMs)
         }
     }
 
     fun clearLyricsLatencyOffset(routeKey: String) {
+        updateLyricsLatencyProfiles { profiles -> profiles.withoutDevice(routeKey) }
+    }
+
+    fun adjustLyricsTrackOffset(trackId: String, deltaMs: Long) {
+        updateLyricsLatencyProfiles { profiles ->
+            profiles.withTrackOffset(trackId, profiles.trackOffsetMs(trackId) + deltaMs)
+        }
+    }
+
+    fun setLyricsTrackOffset(trackId: String, offsetMs: Long) {
+        updateLyricsLatencyProfiles { profiles -> profiles.withTrackOffset(trackId, offsetMs) }
+    }
+
+    private fun updateLyricsLatencyProfiles(transform: (LyricsLatencyProfiles) -> LyricsLatencyProfiles) {
         var updatedProfile: LyricsLatencyProfiles? = null
         _state.update { current ->
-            val updated = current.lyricsLatencyProfiles.withoutDevice(routeKey)
-            updatedProfile = updated
+            val updated = transform(current.lyricsLatencyProfiles)
+            updatedProfile = updated.takeIf { it != current.lyricsLatencyProfiles }
             current.copy(lyricsLatencyProfiles = updated)
         }
         updatedProfile?.let { profile ->
