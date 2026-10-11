@@ -244,4 +244,38 @@ class SearchProgressiveMergeTest {
         assertTrue(updated.results.artists.isEmpty())
         assertEquals(listOf("v1"), updated.results.songs.map { it.id })
     }
+
+    @Test
+    fun `spotify overview can replace an earlier youtube top regardless of arrival order`() {
+        val youtubeFirst = searchTestTrack(
+            "ytfirst00001",
+            "Rare Live Cut",
+            "Adele",
+            durationMs = 310_000L
+        )
+        val spotifyCanonical = searchTestTrack(
+            "spotify:canonical",
+            "Hello",
+            "Adele",
+            durationMs = 295_000L
+        ).copy(
+            videoUrl = "",
+            source = "spotify",
+            metadataProvider = "spotify"
+        )
+
+        val afterYoutube = session("adele").withOverview(
+            SearchResults(topTrack = youtubeFirst, songs = listOf(youtubeFirst)),
+            "adele"
+        )
+        assertFalse(afterYoutube.topLocked)
+
+        val afterSpotify = afterYoutube.withOverview(
+            SearchResults(topTrack = spotifyCanonical, songs = listOf(spotifyCanonical)),
+            "adele"
+        )
+
+        assertEquals("spotify:canonical", afterSpotify.results.topTrack?.id)
+        assertFalse(afterSpotify.topLocked)
+    }
 }

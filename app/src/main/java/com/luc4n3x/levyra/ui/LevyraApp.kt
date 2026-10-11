@@ -4824,9 +4824,7 @@ private fun ArtistOverlay(
         mutableStateOf(false)
     }
     val rankedPopularTracks = remember(profile?.topSongs) {
-        profile?.topSongs.orEmpty()
-            .distinctBy { track -> track.id.ifBlank { track.artist + "|" + track.title } }
-            .take(ARTIST_POPULAR_MAX_COUNT)
+        artistPopularTracksForDisplay(profile?.topSongs.orEmpty())
     }
     var popularVisibleCount by rememberSaveable(artistSelectionScopeKey, "popular", rankedPopularTracks.size) {
         mutableIntStateOf(ARTIST_POPULAR_COLLAPSED_COUNT)

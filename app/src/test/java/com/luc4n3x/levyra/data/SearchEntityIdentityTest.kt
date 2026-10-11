@@ -157,6 +157,95 @@ class SearchEntityIdentityTest {
         assertEquals(3_600_000_000L, merged.single().youtubeViewCount)
     }
 
+
+
+    @Test
+    fun `local recording keeps local identity when merged with remote duplicate`() {
+        val local = track(
+            id = "local:yellow",
+            title = "Yellow",
+            artist = "Coldplay",
+            durationMs = 240_000L
+        ).copy(
+            streamUrl = "content://media/external/audio/42",
+            source = "Offline"
+        )
+        val remote = track(
+            id = "AbCdEf12345",
+            title = "Yellow",
+            artist = "Coldplay",
+            durationMs = 240_000L
+        ).copy(
+            videoUrl = "https://www.youtube.com/watch?v=AbCdEf12345",
+            source = "YouTube Music"
+        )
+
+        val localFirst = mergeSearchSongs(listOf(local), listOf(remote)).single()
+        val localSecond = mergeSearchSongs(listOf(remote), listOf(local)).single()
+
+        listOf(localFirst, localSecond).forEach { merged ->
+            assertEquals("local:yellow", merged.id)
+            assertEquals("Offline", merged.source)
+            assertEquals("content://media/external/audio/42", merged.streamUrl)
+        }
+    }
+
+
+
+    @Test
+    fun `local recording keeps offline source when merged with spotify metadata`() {
+        val local = track(
+            id = "local:spotify-yellow",
+            title = "Yellow",
+            artist = "Coldplay",
+            durationMs = 240_000L
+        ).copy(
+            streamUrl = "content://media/external/audio/99",
+            source = "Offline"
+        )
+        val spotify = track(
+            id = "spotify:yellow",
+            title = "Yellow",
+            artist = "Coldplay",
+            durationMs = 240_000L
+        ).copy(
+            videoUrl = "",
+            source = "spotify",
+            metadataProvider = "spotify"
+        )
+
+        val spotifyFirst = mergeSearchSongs(listOf(spotify), listOf(local)).single()
+        val localFirst = mergeSearchSongs(listOf(local), listOf(spotify)).single()
+
+        listOf(spotifyFirst, localFirst).forEach { merged ->
+            assertEquals("local:spotify-yellow", merged.id)
+            assertEquals("Offline", merged.source)
+            assertEquals("content://media/external/audio/99", merged.streamUrl)
+            assertEquals("spotify", merged.metadataProvider)
+        }
+    }
+
+
+    @Test
+    fun `spotify records stay spotify until a youtube match exists`() {
+        val first = track(
+            id = "spotify:yellow",
+            title = "Yellow",
+            artist = "Coldplay",
+            durationMs = 240_000L
+        ).copy(
+            source = "spotify",
+            metadataProvider = "spotify"
+        )
+        val second = first.copy(thumbnailUrl = "https://img/spotify-yellow")
+
+        val merged = mergeSearchSongs(listOf(first), listOf(second)).single()
+
+        assertEquals("spotify", merged.source)
+        assertTrue(merged.counterpartVideoId.isBlank())
+        assertTrue(merged.audioVideoId.isBlank())
+    }
+
     @Test
     fun `different song variants remain separate`() {
         val merged = deduplicateSearchSongs(
@@ -184,6 +273,90 @@ class SearchEntityIdentityTest {
         )
 
         assertEquals(listOf("hero", "one", "two"), selected.map { it.id })
+    }
+
+
+
+    @Test
+    fun `top result collapses the same visible recording across providers even when durations disagree`() {
+        val spotify = track(
+            id = "spotify:da-dio",
+            title = "Da Dio",
+            artist = "Bresh",
+            durationMs = 173_000L
+        ).copy(
+            source = "spotify",
+            metadataProvider = "spotify",
+            counterpartVideoId = "AbCdEf12345"
+        )
+        val youtube = track(
+            id = "AbCdEf12345",
+            title = "Da Dio",
+            artist = "Bresh",
+            durationMs = 250_000L,
+            youtubeViewCount = 934_000L
+        )
+        val alternate = track(
+            id = "LiveAlt1234",
+            title = "Da Dio",
+            artist = "Bresh",
+            durationMs = 310_000L,
+            youtubeViewCount = 120_000L
+        )
+        val other = track(
+            id = "ZyXwVu98765",
+            title = "Introvabile",
+            artist = "Bresh",
+            durationMs = 190_000L,
+            youtubeViewCount = 4_300_000L
+        )
+
+        val selected = selectSearchTopResultTracks(
+            topTrack = spotify,
+            songs = listOf(spotify, youtube, alternate, other)
+        )
+
+        assertEquals(listOf("AbCdEf12345", "LiveAlt1234", "ZyXwVu98765"), selected.map { it.id })
+        assertEquals(934_000L, selected.first().youtubeViewCount)
+    }
+
+    @Test
+    fun `songs shelf excludes same visible recording already used by top result despite duration drift`() {
+        val hero = track(
+            id = "spotify:da-dio",
+            title = "Da Dio",
+            artist = "Bresh",
+            durationMs = 173_000L
+        ).copy(
+            source = "spotify",
+            metadataProvider = "spotify",
+            counterpartVideoId = "DupDaDio123"
+        )
+        val duplicate = track(
+            id = "DupDaDio123",
+            title = "Da Dio",
+            artist = "Bresh",
+            durationMs = 250_000L
+        )
+        val alternate = track(
+            id = "AltDaDio123",
+            title = "Da Dio",
+            artist = "Bresh",
+            durationMs = 310_000L
+        )
+        val other = track(
+            id = "other-song",
+            title = "Introvabile",
+            artist = "Bresh",
+            durationMs = 190_000L
+        )
+
+        val filtered = filterSearchSongsExcludingTopResult(
+            songs = listOf(duplicate, alternate, other),
+            topResultTracks = listOf(hero)
+        )
+
+        assertEquals(listOf("AltDaDio123", "other-song"), filtered.map { it.id })
     }
 
     @Test
