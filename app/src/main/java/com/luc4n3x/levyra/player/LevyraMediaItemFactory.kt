@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
+import com.luc4n3x.levyra.data.collections.isPersonalCollectionTrack
 import com.luc4n3x.levyra.data.locallibrary.mediaSessionArtworkUri
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
@@ -20,14 +21,17 @@ object LevyraMediaItemFactory {
     fun build(track: Track, videoMode: Boolean = false): MediaItem {
         val streamUrl = track.streamUrl
         val liveRadio = track.isLiveRadio()
-        val cacheReadSpec = playbackCacheReadSpec(streamUrl)
-        val customCacheKey = if (liveRadio) null else cacheReadSpec?.cacheKey ?: if (videoMode && track.videoStreamUrl.isBlank()) {
+        val personalCollection = isPersonalCollectionStream(track)
+        val cacheReadSpec = if (personalCollection) null else playbackCacheReadSpec(streamUrl)
+        val customCacheKey = if (liveRadio) null else if (personalCollection) LevyraPlaybackCacheKey.personalCollection(track) else cacheReadSpec?.cacheKey ?: if (videoMode && track.videoStreamUrl.isBlank()) {
             LevyraPlaybackCacheKey.video(track)
         } else {
             LevyraPlaybackCacheKey.stream(track)
         }
         val streamMimeType = if (liveRadio) {
             liveRadioMimeTypeFor(streamUrl)
+        } else if (personalCollection) {
+            personalCollectionMimeTypeFor(streamUrl)
         } else if (cacheReadSpec != null) {
             cacheReadSpec.mimeType.takeIf { it.isNotBlank() }
         } else {
@@ -57,7 +61,7 @@ object LevyraMediaItemFactory {
         val mediaItem = builder.build()
         if (
             cacheReadSpec == null &&
-            !liveRadio && shouldRememberPlaybackCacheHint(streamUrl, streamMimeType, videoMode)
+            !liveRadio && !personalCollection && shouldRememberPlaybackCacheHint(streamUrl, streamMimeType, videoMode)
         ) {
             customCacheKey?.let { nonNullKey ->
                 PlaybackCacheHintStore.record(
@@ -93,6 +97,27 @@ object LevyraMediaItemFactory {
         }
     }
 
+    internal fun isPersonalCollectionStream(track: Track): Boolean {
+        if (!track.isPersonalCollectionTrack()) return false
+        val scheme = track.streamUrl.substringBefore(':').lowercase()
+        return scheme == "https" || scheme == "http"
+    }
+
+    internal fun personalCollectionMimeTypeFor(url: String): String? {
+        val path = url.substringBefore('#').substringBefore('?').lowercase()
+        return when (path.substringAfterLast('/').substringAfterLast('.', "")) {
+            "m3u8" -> MimeTypes.APPLICATION_M3U8
+            "mpd" -> MimeTypes.APPLICATION_MPD
+            "mp3" -> MimeTypes.AUDIO_MPEG
+            "m4a", "m4b", "mp4" -> MimeTypes.AUDIO_MP4
+            "flac" -> MimeTypes.AUDIO_FLAC
+            "ogg", "oga", "opus" -> MimeTypes.AUDIO_OGG
+            "wav" -> MimeTypes.AUDIO_WAV
+            "webm", "weba" -> MimeTypes.AUDIO_WEBM
+            else -> null
+        }
+    }
+
     internal fun liveRadioMimeTypeFor(url: String): String? = mimeTypeFor(url, false)
         ?.takeIf { it == MimeTypes.APPLICATION_M3U8 || it == MimeTypes.APPLICATION_MPD }
 
@@ -106,6 +131,7 @@ object LevyraMediaItemFactory {
             putString("levyra.source", track.source)
             putBoolean(PlaybackService.EXTRA_VIDEO_MODE, videoMode)
             putBoolean(PlaybackService.EXTRA_LIVE_RADIO, track.isLiveRadio())
+            putBoolean(PlaybackService.EXTRA_PERSONAL_COLLECTION, isPersonalCollectionStream(track))
             track.youtubeLoudnessDb?.let { putFloat(PlaybackService.EXTRA_YOUTUBE_LOUDNESS_DB, it) }
             track.youtubePerceptualLoudnessDb?.let { putFloat(PlaybackService.EXTRA_YOUTUBE_PERCEPTUAL_LOUDNESS_DB, it) }
             track.replayGainTrackDb?.let { putFloat(PlaybackService.EXTRA_REPLAY_GAIN_TRACK_DB, it) }

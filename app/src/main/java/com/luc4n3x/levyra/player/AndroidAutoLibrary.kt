@@ -11,6 +11,7 @@ import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.LevyraSmartMusicProfileStore
 import com.luc4n3x.levyra.data.PlaybackResolver
+import com.luc4n3x.levyra.data.collections.isPersonalCollectionTrack
 import com.luc4n3x.levyra.data.PlaylistStore
 import com.luc4n3x.levyra.data.TrackPayloadCodec
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
@@ -268,6 +269,7 @@ class AndroidAutoLibrary(context: Context) {
         if (queueIndex >= 0) queueEngine.select(queueIndex, positionMs = 0L, rememberCurrent = true)
         val ready = when {
             track.streamUrl.isLocalUri() -> track
+            track.isPersonalCollectionTrack() -> resolver.resolve(track)
             else -> resolver.resolve(track.ensureYoutubeIdentity())
         }
         if (queueIndex >= 0) {

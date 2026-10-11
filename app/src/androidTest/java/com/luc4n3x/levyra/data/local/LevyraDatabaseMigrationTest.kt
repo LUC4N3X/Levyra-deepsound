@@ -402,6 +402,56 @@ class LevyraDatabaseMigrationTest {
         migrated.close()
     }
 
+    @Test
+    fun migrate25To26KeepsDownloadsAndAddsPersonalCollectionTables() {
+        helper.createDatabase(TEST_DB, 25).use { db ->
+            db.execSQL(
+                "INSERT INTO downloaded_tracks (trackId, title, artist, album, durationMs, fileName, uri, " +
+                    "mimeType, embeddedMetadata, downloadPreset, downloadQuality, savedAt, ownership) VALUES " +
+                    "('kept-track', 'Kept download', 'Artist', 'Album', 180000, 'kept.m4a', " +
+                    "'content://downloads/kept', 'audio/mp4', 1, 'BALANCED', 'HIGH', 100, 'MANUAL')"
+            )
+        }
+
+        val migrated = helper.runMigrationsAndValidate(TEST_DB, 26, true, *LevyraDatabase.MIGRATIONS)
+
+        migrated.query("SELECT title, ownership FROM downloaded_tracks WHERE trackId = 'kept-track'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("Kept download", cursor.getString(0))
+            assertEquals("MANUAL", cursor.getString(1))
+        }
+        migrated.execSQL(
+            "INSERT INTO personal_collections (id, name, sourceKind, sourceUrl, sourceLabel, format, artworkUrl, " +
+                "artworkFile, allowCleartext, allowLocalNetwork, autoRefresh, hosts, etag, lastModified, lastSyncedAt, " +
+                "lastSyncAttemptAt, lastSyncError, createdAt, updatedAt) VALUES ('c1', 'Home', 'URL', " +
+                "'https://nas.example.com/list.m3u', 'nas.example.com/list.m3u', 'M3U', '', '', 0, 1, 0, " +
+                "'nas.example.com:443', '', '', 1, 1, '', 1, 1)"
+        )
+        migrated.execSQL(
+            "INSERT INTO personal_collection_tracks (collectionId, entryKey, trackId, position, title, artist, album, " +
+                "albumArtist, durationMs, audioUrl, videoUrl, artworkUrl, artworkFile, trackNumber, discNumber, year, " +
+                "addedAt) VALUES ('c1', 'u1', 'pc:c1:u1', 0, 'Song', 'Artist', '', '', 1000, " +
+                "'https://nas.example.com/a.mp3', '', '', '', 0, 0, 0, 1)"
+        )
+        migrated.execSQL("PRAGMA foreign_keys = ON")
+        migrated.execSQL("DELETE FROM personal_collections WHERE id = 'c1'")
+        migrated.query("SELECT COUNT(*) FROM personal_collection_tracks").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+        migrated.query("SELECT COUNT(*) FROM downloaded_tracks WHERE trackId = 'kept-track'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(1, cursor.getInt(0))
+        }
+        migrated.close()
+    }
+
+    @Test
+    fun migrateFrom23To26KeepsTheWholeUpgradePathValid() {
+        helper.createDatabase(TEST_DB, 23).close()
+        helper.runMigrationsAndValidate(TEST_DB, 26, true, *LevyraDatabase.MIGRATIONS).close()
+    }
+
     private companion object {
         const val TEST_DB = "levyra-migration-test.db"
     }

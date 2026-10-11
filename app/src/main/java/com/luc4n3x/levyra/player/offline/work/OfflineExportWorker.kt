@@ -25,6 +25,11 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import com.luc4n3x.levyra.data.collections.CollectionAccessDeniedException
+import com.luc4n3x.levyra.data.collections.PersonalCollectionUnavailableException
+import com.luc4n3x.levyra.player.offline.PERSONAL_COLLECTION_NOT_AUDIO
+import com.luc4n3x.levyra.player.offline.PERSONAL_COLLECTION_STREAM_ONLY
+import com.luc4n3x.levyra.player.offline.PERSONAL_COLLECTION_TOO_LARGE
 import com.luc4n3x.levyra.MainActivity
 import com.luc4n3x.levyra.R
 import com.luc4n3x.levyra.data.LevyraPreferences
@@ -214,7 +219,12 @@ class OfflineExportWorker(
             val current = taskDao.byKey(taskKey)
             val unsupportedSource = error.message.orEmpty().let { message ->
                 message.contains("Offline export requires an M4A audio source", ignoreCase = true) ||
-                    message.contains("Offline export received a non-audio MP4 source", ignoreCase = true)
+                    message.contains("Offline export received a non-audio MP4 source", ignoreCase = true) ||
+                    message == PERSONAL_COLLECTION_STREAM_ONLY ||
+                    message == PERSONAL_COLLECTION_NOT_AUDIO ||
+                    message == PERSONAL_COLLECTION_TOO_LARGE ||
+                    error is PersonalCollectionUnavailableException ||
+                    error is CollectionAccessDeniedException
             }
             if (current == null || current.workId != workId) {
                 Result.failure(errorData(ERROR_SUPERSEDED))
