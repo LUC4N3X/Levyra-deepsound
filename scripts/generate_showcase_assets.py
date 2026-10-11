@@ -830,7 +830,7 @@ REMAINING_SPECS = [
     ("Screenshot_20261010_144144_LEVYRA.jpg", "NEW MUSIC", "Fresh off the stage.", "New singles and albums updated\nevery week directly from artists.", (250, 238, 250), (240, 214, 240), (195, 80, 195), (230, 185, 230, 200), ["17_new_releases.webp"]),
     ("Screenshot_20261010_143646_LEVYRA.jpg", "ARTIST PROFILE", "Meet the artist.", "Full discography, singles, biographies,\nand top tracks in one tap.", (238, 244, 252), (216, 230, 248), (40, 125, 230), (180, 205, 245, 200), ["18_artist_profile.webp", "18_fresh_currents.webp"]),
     ("Screenshot_20261010_132028_LEVYRA.jpg", "GLOBAL CHARTS", "Top 50 charts.", "Explore daily country charts,\nviral hits, and top tracks worldwide.", (252, 238, 236), (248, 212, 208), (235, 75, 65), (245, 180, 175, 200), ["19_top_50.webp"]),
-    ("Screenshot_20261011_123125_LEVYRA.jpg", "LEVYRA JAM", "Listen together.", "Real-time collaborative sessions on local Wi-Fi.\nShare queues, add tracks, and host together.", (236, 246, 255), (214, 232, 252), (0, 140, 255), (175, 212, 250, 200), ["20_soundstage.webp", "20_levyra_jam.webp"]),
+    ("Screenshot_20261011_133434_LEVYRA.jpg", "LEVYRA JAM", "Listen together.", "Real-time collaborative sessions on local Wi-Fi.\nShare queues, add tracks, and host together.", (236, 246, 255), (214, 232, 252), (0, 140, 255), (175, 212, 250, 200), ["20_soundstage.webp", "20_levyra_jam.webp"]),
 ]
 
 def generate_feature_cards():
