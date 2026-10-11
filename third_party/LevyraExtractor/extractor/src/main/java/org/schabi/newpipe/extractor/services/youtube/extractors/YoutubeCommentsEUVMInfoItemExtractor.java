@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Objects;
 
 import static org.schabi.newpipe.extractor.services.youtube.YoutubeDescriptionHelper.attributedDescriptionToHtml;
+import static org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper.fixThumbnailUrl;
 import static org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper.getImagesFromThumbnailsArray;
 import static org.schabi.newpipe.extractor.utils.Utils.isNullOrEmpty;
 
@@ -159,9 +160,19 @@ class YoutubeCommentsEUVMInfoItemExtractor implements CommentsInfoItemExtractor 
     @Nonnull
     @Override
     public String getUploaderAvatarUrl() throws ParsingException {
-        return getImagesFromThumbnailsArray(commentEntityPayload.getObject("avatar")
+        final List<Image> avatars = getImagesFromThumbnailsArray(commentEntityPayload
+                .getObject("avatar")
                 .getObject("image")
-                .getArray("sources")).get(0).getUrl();
+                .getArray("sources"));
+        if (!avatars.isEmpty()) {
+            return avatars.get(avatars.size() - 1).getUrl();
+        }
+        final String thumbnailUrl = commentEntityPayload.getObject(AUTHOR)
+                .getString("avatarThumbnailUrl");
+        if (isNullOrEmpty(thumbnailUrl)) {
+            throw new ParsingException("Could not get uploader avatar");
+        }
+        return fixThumbnailUrl(thumbnailUrl);
     }
 
     @Override

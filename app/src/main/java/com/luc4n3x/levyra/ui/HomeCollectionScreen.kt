@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.MoreVert
@@ -60,8 +59,15 @@ import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraType
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.toShape
+import androidx.compose.ui.graphics.Shape
+import com.luc4n3x.levyra.ui.components.levyraGroupedListShape
 
-private val CollectionMosaicShape = RoundedCornerShape(28.dp)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun collectionMosaicShape(): Shape = MaterialShapes.Cookie4Sided.toShape()
 private val CollectionActionHeight = 56.dp
 
 @Composable
@@ -224,6 +230,7 @@ internal fun HomeCollectionScreen(
                     val active = track.id == currentId
                     CollectionTrackRow(
                         rank = index + 1,
+                        count = tracks.size,
                         track = track,
                         active = active,
                         isPlaying = isPlaying && active,
@@ -246,7 +253,7 @@ private fun CollectionMosaic(
 ) {
     Box(
         modifier = modifier
-            .clip(CollectionMosaicShape)
+            .clip(collectionMosaicShape())
             .background(accentStart.copy(alpha = 0.35f))
     ) {
         if (tracks.size >= 4) {
@@ -310,6 +317,7 @@ private fun CollectionAction(
 @Composable
 private fun CollectionTrackRow(
     rank: Int,
+    count: Int,
     track: Track,
     active: Boolean,
     isPlaying: Boolean,
@@ -322,10 +330,10 @@ private fun CollectionTrackRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp)
+            .padding(horizontal = 16.dp, vertical = 1.dp)
             .heightIn(min = LevyraCardDesign.RowHeight)
-            .clip(LevyraCardDesign.ArtworkShape)
-            .then(if (active) Modifier.background(LevyraText.copy(alpha = 0.06f)) else Modifier)
+            .clip(levyraGroupedListShape(rank - 1, count))
+            .background(if (active) accent.copy(alpha = 0.18f) else LevyraText.copy(alpha = 0.05f))
             .levyraPressable(onClick = onPlay, pressedScale = LevyraPressScale.Row, role = Role.Button)
             .padding(start = 8.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -333,11 +341,11 @@ private fun CollectionTrackRow(
     ) {
         Text(
             text = rank.toString(),
-            color = if (active) accent else LevyraMuted,
-            style = LevyraType.contentTitle.copy(fontWeight = FontWeight.Bold),
+            color = if (active) accent else LevyraText.copy(alpha = 0.72f),
+            style = LevyraType.contentTitle.copy(fontWeight = FontWeight.Black, fontFeatureSettings = "tnum"),
             textAlign = TextAlign.Center,
             maxLines = 1,
-            modifier = Modifier.width(24.dp)
+            modifier = Modifier.width(28.dp)
         )
         Box(
             modifier = Modifier

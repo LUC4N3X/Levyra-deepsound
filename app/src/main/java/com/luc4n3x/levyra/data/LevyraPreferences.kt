@@ -773,7 +773,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
                     PlayerVisualMode.Artwork
                 }
             }
-            else -> PlayerVisualMode.CanvasImmersive
+            else -> PlayerVisualMode.CanvasCard
         }
         val storedBackground = preferences[KEY_UI_PLAYER_BACKGROUND]
         val background = when {

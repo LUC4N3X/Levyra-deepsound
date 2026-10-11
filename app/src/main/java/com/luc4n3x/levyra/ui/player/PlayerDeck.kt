@@ -7,6 +7,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
+import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.PlayerBackgroundMode
 import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.LevyraPlayerPane
@@ -14,31 +16,34 @@ import java.util.Locale
 
 internal enum class PlayerDeckLayout {
     Levyra,
+    Aura,
     Expressive,
     Poster,
-    Pulse
+    Pulse,
+    Halo
 }
 
 internal val PlayerDeckOrder: List<PlayerVisualMode> = listOf(
-    PlayerVisualMode.CanvasImmersive,
     PlayerVisualMode.CanvasCard,
+    PlayerVisualMode.CanvasImmersive,
+    PlayerVisualMode.Halo,
     PlayerVisualMode.Expressive,
     PlayerVisualMode.Artwork,
     PlayerVisualMode.Pulse
 )
 
 internal fun PlayerVisualMode.deckLayout(): PlayerDeckLayout = when (this) {
-    PlayerVisualMode.CanvasCard,
-    PlayerVisualMode.CanvasImmersive -> PlayerDeckLayout.Levyra
+    PlayerVisualMode.CanvasCard -> PlayerDeckLayout.Levyra
+    PlayerVisualMode.CanvasImmersive -> PlayerDeckLayout.Aura
     PlayerVisualMode.Artwork -> PlayerDeckLayout.Poster
     PlayerVisualMode.Expressive -> PlayerDeckLayout.Expressive
     PlayerVisualMode.Pulse -> PlayerDeckLayout.Pulse
+    PlayerVisualMode.Halo -> PlayerDeckLayout.Halo
 }
 
-internal fun PlayerVisualMode.showsCinematicStage(): Boolean = this == PlayerVisualMode.CanvasImmersive
-
 internal fun PlayerVisualMode.usesMotionCard(): Boolean =
-    this == PlayerVisualMode.CanvasCard || this == PlayerVisualMode.Expressive || this == PlayerVisualMode.Pulse
+    this == PlayerVisualMode.CanvasCard || this == PlayerVisualMode.CanvasImmersive ||
+        this == PlayerVisualMode.Expressive || this == PlayerVisualMode.Pulse || this == PlayerVisualMode.Halo
 
 internal fun resolvePlayerDeckLayout(
     mode: PlayerVisualMode,
@@ -154,5 +159,10 @@ internal class PlayerDeckSlots(
     val controlsWithoutMetadata: @Composable ColumnScope.(Track) -> Unit,
     val engagement: @Composable (Track) -> Unit,
     val progress: @Composable (wavy: Boolean) -> Unit,
-    val dock: @Composable (Track) -> Unit
+    val dock: @Composable (Track) -> Unit,
+    val dockActions: @Composable (Track) -> List<PlayerDockAction>
 )
+
+internal val DefaultPlayerVisualMode: PlayerVisualMode = LevyraInterfaceSettings().playerVisualMode
+
+internal val DefaultPlayerBackgroundMode: PlayerBackgroundMode = LevyraInterfaceSettings().playerBackground

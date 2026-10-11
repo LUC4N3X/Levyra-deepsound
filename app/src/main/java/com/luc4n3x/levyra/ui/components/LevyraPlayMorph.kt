@@ -22,7 +22,10 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.graphics.shapes.CornerRounding
 import androidx.graphics.shapes.Morph
+import androidx.graphics.shapes.RoundedPolygon
+import androidx.graphics.shapes.rectangle
 import androidx.graphics.shapes.toPath
 import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
 
@@ -40,9 +43,14 @@ private val AvatarPressMorph: Morph by lazy {
     Morph(MaterialShapes.Circle.normalized(), MaterialShapes.Cookie12Sided.normalized())
 }
 
+private const val ArtworkRestRounding = 0.42f
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private val ArtworkMorph: Morph by lazy {
-    Morph(MaterialShapes.Circle.normalized(), MaterialShapes.Puffy.normalized())
+    Morph(
+        RoundedPolygon.rectangle(rounding = CornerRounding(ArtworkRestRounding, smoothing = 1f)).normalized(),
+        MaterialShapes.Puffy.normalized()
+    )
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)

@@ -316,7 +316,7 @@ private fun DiscoveryEditorialText(
             softWrap = true
         )
         if (subtitle.isNotBlank()) {
-            Text(subtitle, style = LevyraType.metadata, color = textColor.copy(alpha = 0.78f), softWrap = true, maxLines = 2)
+            Text(subtitle, style = LevyraType.metadata, color = textColor.copy(alpha = 0.78f), softWrap = true)
         }
     }
 }
