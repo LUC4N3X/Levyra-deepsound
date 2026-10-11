@@ -65,7 +65,7 @@ def enhance_screenshot(img):
     img = enhancer.enhance(1.12)
     return img
 
-def create_clean_phone(screen_img, target_height=1140):
+def create_clean_phone(screen_img, target_height=1260):
     screen_img = enhance_screenshot(screen_img)
     ss = 2
     orig_w, orig_h = screen_img.size
@@ -693,18 +693,18 @@ def create_apple_studio_shadow(phone):
     shadow = Image.alpha_composite(amb_shadow, con_shadow)
     return shadow, pad
 
-def render_apple_single_card(screenshot_name, kicker, title, subtitle, top_tint, bot_tint, ambilight, border_col, target_height=1140):
+def render_apple_single_card(screenshot_name, kicker, title, subtitle, top_tint, bot_tint, ambilight, border_col, target_height=1260):
     bg = create_apple_colored_gradient(card_w, card_h, top_tint, bot_tint, ambilight)
     draw = ImageDraw.Draw(bg)
 
     tx = 82
-    kicker_y = 88
-    title_y = 124
-    subtitle_y = 194
+    kicker_y = 74
+    title_y = 108
+    subtitle_y = 178
     kicker_fill = tuple(max(0, int(border_col[i] * 0.62)) for i in range(3)) + (255,)
     draw.text((tx, kicker_y), kicker.upper(), font=get_font(23, bold=True), fill=kicker_fill)
     draw.text((tx, title_y), title, font=get_font(58, bold=True), fill=(29, 29, 31, 255))
-    draw.multiline_text((tx, subtitle_y), subtitle, font=get_font(31), fill=(74, 88, 104, 255), spacing=10)
+    draw.multiline_text((tx, subtitle_y), subtitle, font=get_font(29), fill=(74, 88, 104, 255), spacing=9)
 
     s_path = resolve_screenshot_path(screenshot_name)
     if s_path and os.path.exists(s_path):
@@ -712,7 +712,7 @@ def render_apple_single_card(screenshot_name, kicker, title, subtitle, top_tint,
             phone = create_clean_phone(src, target_height=target_height)
         shadow, pad = create_apple_studio_shadow(phone)
         px = (card_w - phone.width) // 2
-        py = 345
+        py = 280
         bg.paste(shadow, (px - pad, py - pad), shadow)
         bg.paste(phone, (px, py), phone)
 
@@ -730,44 +730,64 @@ def render_duo_cut_cards():
     if not s_home or not os.path.exists(s_home):
         s_home = resolve_screenshot_path("01_home.png")
 
-    if s_home and os.path.exists(s_home):
-        with Image.open(s_home) as src:
-            phone = create_clean_phone(src, target_height=1280)
-        rot = phone.rotate(21, resample=Image.Resampling.BICUBIC, expand=True)
-        shadow, pad = create_apple_studio_shadow(rot)
+    s_player = resolve_screenshot_path("Screenshot_20260926_193948_LEVYRA.jpg")
+    if not s_player or not os.path.exists(s_player):
+        s_player = resolve_screenshot_path("20_soundstage.webp")
 
-        px = 370
-        py = 230
-        bg.paste(shadow, (px - pad, py - pad), shadow)
-        bg.paste(rot, (px, py), rot)
+    c2_left = card_w + gutter
+
+    # 1. Phone 2 (Player) in Card 2
+    rot2 = None
+    p2_x, p2_y = c2_left + 235, 390
+    if s_player and os.path.exists(s_player):
+        with Image.open(s_player) as src2:
+            p2 = create_clean_phone(src2, target_height=1220)
+        rot2 = p2.rotate(21, resample=Image.Resampling.BICUBIC, expand=True)
+        s2_shadow, pad2 = create_apple_studio_shadow(rot2)
+        bg.paste(s2_shadow, (p2_x - pad2, p2_y - pad2), s2_shadow)
+        bg.paste(rot2, (p2_x, p2_y), rot2)
+
+    # 2. Phone 1 (Home) cutting from Card 1 into Card 2 behind/alongside Phone 2
+    if s_home and os.path.exists(s_home):
+        with Image.open(s_home) as src1:
+            p1 = create_clean_phone(src1, target_height=1340)
+        rot1 = p1.rotate(21, resample=Image.Resampling.BICUBIC, expand=True)
+        p1_x = 240
+        p1_y = 15
+        s1_shadow, pad1 = create_apple_studio_shadow(rot1)
+        bg.paste(s1_shadow, (p1_x - pad1, p1_y - pad1), s1_shadow)
+        bg.paste(rot1, (p1_x, p1_y), rot1)
+
+    # 3. Re-paste Phone 2 on top so it acts as crisp foreground in Card 2
+    if rot2:
+        bg.paste(rot2, (p2_x, p2_y), rot2)
 
     draw = ImageDraw.Draw(bg)
 
     # Card 01 typography at bottom-left
-    tx1, ty1 = 82, 1240
-    kicker_col = (95, 122, 153, 255)
+    tx1, ty1 = 76, 1240
+    kicker_col = (80, 110, 145, 255)
     title_col = (29, 29, 31, 255)
-    sub_col = (74, 88, 104, 255)
+    sub_col = (70, 85, 102, 255)
 
     draw.text((tx1, ty1), "ZERO ADS. NATIVE PLAY.", font=get_font(23, bold=True), fill=kicker_col)
-    draw.text((tx1, ty1 + 38), "Pure listening.", font=get_font(62, bold=True), fill=title_col)
+    draw.text((tx1, ty1 + 38), "Pure listening.", font=get_font(60, bold=True), fill=title_col)
     draw.multiline_text(
-        (tx1, ty1 + 120),
+        (tx1, ty1 + 115),
         "Zero ads, zero accounts.\nStream and store locally on your device.",
-        font=get_font(31),
+        font=get_font(30),
         fill=sub_col,
         spacing=10,
     )
 
     # Card 02 typography at top-left
-    c2_left = card_w + gutter
-    tx2, ty2 = c2_left + 82, 88
+    tx2, ty2 = c2_left + 82, 80
     draw.text((tx2, ty2), "OFFLINE STORAGE", font=get_font(23, bold=True), fill=kicker_col)
-    draw.text((tx2, ty2 + 38), "Download & keep.", font=get_font(62, bold=True), fill=title_col)
+    draw.text((tx2, ty2 + 38), "Download & keep.", font=get_font(60, bold=True), fill=title_col)
     draw.multiline_text(
-        (tx2, ty2 + 120),
+        (tx2, ty2 + 115),
         "Clean M4A files in device storage.\nFull metadata, artwork, and lyrics.",
-        font=get_font(31),
+        font=get_font(30),
         fill=sub_col,
         spacing=10,
     )
@@ -823,7 +843,7 @@ def generate_feature_cards():
     print("Saved duo cut cards: 01_home.webp, 02_stay_with_the_song.webp")
 
     for s_name, kicker, title, sub, top_t, bot_t, amb, border_c, fnames in REMAINING_SPECS:
-        card = render_apple_single_card(s_name, kicker, title, sub, top_t, bot_t, amb, border_c, target_height=1140)
+        card = render_apple_single_card(s_name, kicker, title, sub, top_t, bot_t, amb, border_c, target_height=1260)
         for fn in fnames:
             out_p = os.path.join(OUT_CARDS_DIR, fn)
             card.convert("RGB").save(out_p, "WEBP", quality=94, method=4)
