@@ -65,7 +65,7 @@ def enhance_screenshot(img):
     img = enhancer.enhance(1.12)
     return img
 
-def create_clean_phone(screen_img, target_height=1235):
+def create_clean_phone(screen_img, target_height=1260):
     screen_img = enhance_screenshot(screen_img)
     ss = 2
     orig_w, orig_h = screen_img.size
@@ -113,15 +113,16 @@ def create_clean_phone(screen_img, target_height=1235):
     draw.rounded_rectangle(
         (0, 0, body_w - 1, body_h - 1),
         radius=corner_radius,
-        fill=(42, 47, 58, 255),
-        outline=(142, 154, 174, 255),
+        fill=(38, 42, 52, 255),
+        outline=(130, 142, 160, 255),
         width=max(2, int(1.8 * ss)),
     )
+    rim_w = max(1, int(1.5 * ss))
     draw.rounded_rectangle(
         (ss, ss, body_w - 1 - ss, body_h - 1 - ss),
         radius=max(6, corner_radius - ss),
-        outline=(214, 224, 240, 140),
-        width=max(1, ss),
+        outline=(232, 242, 254, 165),
+        width=rim_w,
     )
 
     inner_pad = max(3, int(bezel * 0.34))
@@ -129,7 +130,7 @@ def create_clean_phone(screen_img, target_height=1235):
         (inner_pad, inner_pad, body_w - 1 - inner_pad, body_h - 1 - inner_pad),
         radius=max(6, corner_radius - inner_pad),
         fill=(8, 10, 14, 255),
-        outline=(36, 42, 52, 255),
+        outline=(30, 36, 46, 255),
         width=max(1, ss // 2),
     )
 
@@ -137,14 +138,23 @@ def create_clean_phone(screen_img, target_height=1235):
     sdraw = ImageDraw.Draw(screen_mask)
     sdraw.rounded_rectangle((0, 0, screen_w - 1, screen_h - 1), radius=inner_radius, fill=255)
 
-    screen_layer = Image.new("RGBA", (screen_w, screen_h), (0, 0, 0, 0))
-    screen_layer.paste(screen_res.convert("RGBA"), (0, 0), screen_mask)
+    screen_layer = screen_res.convert("RGBA")
+    xs = np.linspace(0.0, 1.0, screen_w, dtype=np.float32)[None, :]
+    ys = np.linspace(0.0, 1.0, screen_h, dtype=np.float32)[:, None]
+    proj = xs * 0.70 + (1.0 - ys) * 0.45
+    sheen_alpha = np.clip((proj - 0.48) * 55.0, 0.0, 26.0).astype(np.uint8)
+    sheen_arr = np.zeros((screen_h, screen_w, 4), dtype=np.uint8)
+    sheen_arr[:, :, :3] = 255
+    sheen_arr[:, :, 3] = sheen_alpha
+    glass_sheen = Image.fromarray(sheen_arr, mode="RGBA")
+    screen_layer = Image.alpha_composite(screen_layer, glass_sheen)
+
     phone.paste(screen_layer, (bezel, bezel), screen_mask)
 
     draw.rounded_rectangle(
         (bezel - 1, bezel - 1, bezel + screen_w, bezel + screen_h),
         radius=inner_radius + 1,
-        outline=(20, 24, 32, 240),
+        outline=(18, 22, 28, 240),
         width=max(1, ss // 2),
     )
 
@@ -160,7 +170,7 @@ def create_clean_phone(screen_img, target_height=1235):
     reflex_r = max(1, cam_r // 3)
     draw.ellipse(
         (cam_x - reflex_r - 1, cam_y - reflex_r - 1, cam_x + reflex_r - 1, cam_y + reflex_r - 1),
-        fill=(78, 128, 198, 185),
+        fill=(75, 125, 205, 185),
     )
 
     spk_w = int(screen_w * 0.11)
@@ -170,10 +180,11 @@ def create_clean_phone(screen_img, target_height=1235):
     draw.rounded_rectangle(
         (spk_x, spk_y, spk_x + spk_w, spk_y + spk_h),
         radius=max(1, spk_h // 2),
-        fill=(54, 60, 74, 255),
+        fill=(52, 58, 70, 255),
     )
 
     return phone.resize((phone_w // ss, phone_h // ss), Image.Resampling.LANCZOS)
+
 
 def create_studio_shadow(phone, blur=48, opacity=115, offset_y=28):
     pad = blur * 2 + abs(offset_y)
@@ -682,23 +693,26 @@ def create_apple_studio_shadow(phone):
     shadow = Image.alpha_composite(amb_shadow, con_shadow)
     return shadow, pad
 
-def render_apple_single_card(screenshot_name, kicker, title, subtitle, top_tint, bot_tint, ambilight, border_col, phone_h=1190):
+def render_apple_single_card(screenshot_name, kicker, title, subtitle, top_tint, bot_tint, ambilight, border_col, target_height=1260):
     bg = create_apple_colored_gradient(card_w, card_h, top_tint, bot_tint, ambilight)
     draw = ImageDraw.Draw(bg)
 
-    tx, ty = 82, 88
+    tx = 82
+    kicker_y = 74
+    title_y = 108
+    subtitle_y = 178
     kicker_fill = tuple(max(0, int(border_col[i] * 0.62)) for i in range(3)) + (255,)
-    draw.text((tx, ty), kicker.upper(), font=get_font(23, bold=True), fill=kicker_fill)
-    draw.text((tx, ty + 38), title, font=get_font(62, bold=True), fill=(29, 29, 31, 255))
-    draw.multiline_text((tx, ty + 120), subtitle, font=get_font(31), fill=(74, 88, 104, 255), spacing=10)
+    draw.text((tx, kicker_y), kicker.upper(), font=get_font(23, bold=True), fill=kicker_fill)
+    draw.text((tx, title_y), title, font=get_font(58, bold=True), fill=(29, 29, 31, 255))
+    draw.multiline_text((tx, subtitle_y), subtitle, font=get_font(29), fill=(74, 88, 104, 255), spacing=9)
 
     s_path = resolve_screenshot_path(screenshot_name)
     if s_path and os.path.exists(s_path):
         with Image.open(s_path) as src:
-            phone = create_clean_phone(src, target_height=phone_h)
+            phone = create_clean_phone(src, target_height=target_height)
         shadow, pad = create_apple_studio_shadow(phone)
         px = (card_w - phone.width) // 2
-        py = 385 + (1190 - phone_h) // 2
+        py = 280
         bg.paste(shadow, (px - pad, py - pad), shadow)
         bg.paste(phone, (px, py), phone)
 
@@ -712,52 +726,80 @@ def render_duo_cut_cards():
     bot_tint = (204, 226, 252)
     bg = create_apple_colored_gradient(duo_w, card_h, top_tint, bot_tint, ambilight=(0, 160, 240))
 
-    s1 = resolve_screenshot_path("Screenshot_20260926_171253_LEVYRA.jpg")  # Home
-    s2 = resolve_screenshot_path("Screenshot_20260926_193948_LEVYRA.jpg")  # Player
+    s_home = resolve_screenshot_path("Screenshot_20260926_171253_LEVYRA.jpg")
+    if not s_home or not os.path.exists(s_home):
+        s_home = resolve_screenshot_path("01_home.png")
 
-    with Image.open(s1) as src1:
-        p1 = create_clean_phone(src1, target_height=1310)
-    rot1 = p1.rotate(21, resample=Image.Resampling.BICUBIC, expand=True)
+    s_player = resolve_screenshot_path("Screenshot_20260926_193948_LEVYRA.jpg")
+    if not s_player or not os.path.exists(s_player):
+        s_player = resolve_screenshot_path("20_soundstage.webp")
 
-    with Image.open(s2) as src2:
-        p2 = create_clean_phone(src2, target_height=1150)
-    rot2 = p2.rotate(21, resample=Image.Resampling.BICUBIC, expand=True)
+    c2_left = card_w + gutter
 
-    c1_left = card_w + gutter
+    # 1. Phone 2 (Player) in Card 2
+    rot2 = None
+    p2_x, p2_y = c2_left + 235, 390
+    if s_player and os.path.exists(s_player):
+        with Image.open(s_player) as src2:
+            p2 = create_clean_phone(src2, target_height=1220)
+        rot2 = p2.rotate(21, resample=Image.Resampling.BICUBIC, expand=True)
+        s2_shadow, pad2 = create_apple_studio_shadow(rot2)
+        bg.paste(s2_shadow, (p2_x - pad2, p2_y - pad2), s2_shadow)
+        bg.paste(rot2, (p2_x, p2_y), rot2)
 
-    # Phone 2 (Player) in Card 2
-    p2_x = c1_left + 255
-    p2_y = 435
-    s2_shadow, pad2 = create_apple_studio_shadow(rot2)
-    bg.paste(s2_shadow, (p2_x - pad2, p2_y - pad2), s2_shadow)
-    bg.paste(rot2, (p2_x, p2_y), rot2)
+    # 2. Phone 1 (Home) cutting from Card 1 into Card 2 behind/alongside Phone 2
+    if s_home and os.path.exists(s_home):
+        with Image.open(s_home) as src1:
+            p1 = create_clean_phone(src1, target_height=1340)
+        rot1 = p1.rotate(21, resample=Image.Resampling.BICUBIC, expand=True)
+        p1_x = 240
+        p1_y = 15
+        s1_shadow, pad1 = create_apple_studio_shadow(rot1)
+        bg.paste(s1_shadow, (p1_x - pad1, p1_y - pad1), s1_shadow)
+        bg.paste(rot1, (p1_x, p1_y), rot1)
 
-    # Phone 1 (Home) cutting from Card 1 into Card 2
-    p1_x = 240
-    p1_y = 25
-    s1_shadow, pad1 = create_apple_studio_shadow(rot1)
-    bg.paste(s1_shadow, (p1_x - pad1, p1_y - pad1), s1_shadow)
-    bg.paste(rot1, (p1_x, p1_y), rot1)
+    # 3. Re-paste Phone 2 on top so it acts as crisp foreground in Card 2
+    if rot2:
+        bg.paste(rot2, (p2_x, p2_y), rot2)
 
-    # Card 1 text (bottom-left)
     draw = ImageDraw.Draw(bg)
-    tx1, ty1 = 76, 1240
-    draw.text((tx1, ty1), "STREAMING & LOCAL", font=get_font(23, bold=True), fill=(95, 122, 153, 255))
-    draw.text((tx1, ty1 + 38), "Pure listening.", font=get_font(62, bold=True), fill=(29, 29, 31, 255))
-    draw.multiline_text((tx1, ty1 + 120), "Zero ads, zero accounts.\nPlayed natively on your device.", font=get_font(31), fill=(74, 88, 104, 255), spacing=10)
 
-    # Card 2 text (top-left)
-    tx2, ty2 = c1_left + 82, 88
-    draw.text((tx2, ty2), "OFFLINE STORAGE", font=get_font(23, bold=True), fill=(95, 122, 153, 255))
-    draw.text((tx2, ty2 + 38), "Download & keep.", font=get_font(62, bold=True), fill=(29, 29, 31, 255))
-    draw.multiline_text((tx2, ty2 + 120), "Clean M4A files in device storage.\nFull metadata, artwork, and lyrics.", font=get_font(31), fill=(74, 88, 104, 255), spacing=10)
+    # Card 01 typography at bottom-left
+    tx1, ty1 = 76, 1240
+    kicker_col = (80, 110, 145, 255)
+    title_col = (29, 29, 31, 255)
+    sub_col = (70, 85, 102, 255)
+
+    draw.text((tx1, ty1), "ZERO ADS. NATIVE PLAY.", font=get_font(23, bold=True), fill=kicker_col)
+    draw.text((tx1, ty1 + 38), "Pure listening.", font=get_font(60, bold=True), fill=title_col)
+    draw.multiline_text(
+        (tx1, ty1 + 115),
+        "Zero ads, zero accounts.\nStream and store locally on your device.",
+        font=get_font(30),
+        fill=sub_col,
+        spacing=10,
+    )
+
+    # Card 02 typography at top-left
+    tx2, ty2 = c2_left + 82, 80
+    draw.text((tx2, ty2), "OFFLINE STORAGE", font=get_font(23, bold=True), fill=kicker_col)
+    draw.text((tx2, ty2 + 38), "Download & keep.", font=get_font(60, bold=True), fill=title_col)
+    draw.multiline_text(
+        (tx2, ty2 + 115),
+        "Clean M4A files in device storage.\nFull metadata, artwork, and lyrics.",
+        font=get_font(30),
+        fill=sub_col,
+        spacing=10,
+    )
 
     border_col = (165, 198, 235, 200)
+
+    # Slice into Card 01 (0..900) and Card 02 (920..1820)
     c1 = bg.crop((0, 0, card_w, card_h))
     bdraw1 = ImageDraw.Draw(c1)
     bdraw1.rectangle((0, 0, card_w - 1, card_h - 1), outline=border_col, width=2)
 
-    c2 = bg.crop((c1_left, 0, c1_left + card_w, card_h))
+    c2 = bg.crop((c2_left, 0, c2_left + card_w, card_h))
     bdraw2 = ImageDraw.Draw(c2)
     bdraw2.rectangle((0, 0, card_w - 1, card_h - 1), outline=border_col, width=2)
 
@@ -765,32 +807,32 @@ def render_duo_cut_cards():
 
 REMAINING_SPECS = [
     # Row 1 cards 3 & 4
-    ("screen-lyrics.jpg", "SYNCHRONIZED LYRICS", "Follow every line.", "Synced lyrics move with the music.\nAccurate timing and translations.", (248, 238, 252), (230, 212, 244), (185, 120, 230), (215, 180, 235, 200), 1200, ["03_now_playing.webp"]),
-    ("Screenshot_20261010_190538_LEVYRA.jpg", "PLAYER DECKS", "Style your stage.", "Canvas, card deck, or classic vinyl.\nSwitch your aesthetic seamlessly.", (238, 242, 252), (218, 226, 245), (140, 160, 230), (185, 200, 230, 200), 1200, ["04_player_deck.webp"]),
+    ("screen-lyrics.jpg", "SYNCHRONIZED LYRICS", "Follow every line.", "Synced lyrics move with the music.\nAccurate timing and translations.", (248, 238, 252), (230, 212, 244), (185, 120, 230), (215, 180, 235, 200), ["03_now_playing.webp"]),
+    ("Screenshot_20261010_190538_LEVYRA.jpg", "PLAYER DECKS", "Style your stage.", "Canvas, card deck, or classic vinyl.\nSwitch your aesthetic seamlessly.", (238, 242, 252), (218, 226, 245), (140, 160, 230), (185, 200, 230, 200), ["04_player_deck.webp"]),
 
     # Row 2: Discovery & Audio Engine
-    ("Screenshot_20261010_132210_LEVYRA.jpg", "DISCOVERY", "Explore & discover.", "Fresh currents, live radio, and\nsounds crafted for every moment.", (236, 250, 244), (210, 242, 228), (0, 190, 150), (170, 225, 200, 200), 1200, ["05_explore_stage.webp", "05_explore.webp"]),
-    ("Screenshot_20261010_132217_LEVYRA.jpg", "PERSONAL RADIO", "Levyra Mix.", "Interactive slider between familiar and new.\nTuned for right now in one tap.", (236, 244, 255), (212, 230, 252), (30, 125, 240), (175, 210, 250, 200), 1200, ["06_levyra_mix_stage.webp", "06_levyra_mix.webp"]),
-    ("Screenshot_20261010_132249_LEVYRA.jpg", "MOODS & GENRES", "Pick a direction.", "Move effortlessly through vibes and\nglobal genres curated for you.", (252, 238, 244), (246, 212, 226), (235, 80, 125), (240, 180, 205, 200), 1200, ["07_genres.webp"]),
-    ("Screenshot_20261010_190726_LEVYRA.jpg", "AUDIO ENGINE", "Shape the sound.", "Sleep timer, tempo tuning, loudness norm,\nand advanced audio processing.", (238, 244, 250), (218, 230, 242), (70, 135, 205), (180, 205, 230, 200), 1200, ["08_audio_tuning.webp"]),
+    ("Screenshot_20261010_132210_LEVYRA.jpg", "DISCOVERY", "Explore & discover.", "Fresh currents, live radio, and\nsounds crafted for every moment.", (236, 250, 244), (210, 242, 228), (0, 190, 150), (170, 225, 200, 200), ["05_explore_stage.webp", "05_explore.webp"]),
+    ("Screenshot_20261010_132217_LEVYRA.jpg", "PERSONAL RADIO", "Levyra Mix.", "Interactive slider between familiar and new.\nTuned for right now in one tap.", (236, 244, 255), (212, 230, 252), (30, 125, 240), (175, 210, 250, 200), ["06_levyra_mix_stage.webp", "06_levyra_mix.webp"]),
+    ("Screenshot_20261010_132249_LEVYRA.jpg", "MOODS & GENRES", "Pick a direction.", "Move effortlessly through vibes and\nglobal genres curated for you.", (252, 238, 244), (246, 212, 226), (235, 80, 125), (240, 180, 205, 200), ["07_genres.webp"]),
+    ("Screenshot_20261010_190726_LEVYRA.jpg", "AUDIO ENGINE", "Shape the sound.", "Sleep timer, tempo tuning, loudness norm,\nand advanced audio processing.", (238, 244, 250), (218, 230, 242), (70, 135, 205), (180, 205, 230, 200), ["08_audio_tuning.webp"]),
 
     # Row 3: Discography & Rhythm
-    ("Screenshot_20260926_194706_LEVYRA.jpg", "DISCOGRAPHY", "Open the album.", "High-resolution artwork, release info,\nand complete tracklists.", (252, 246, 236), (246, 228, 206), (215, 140, 50), (235, 205, 170, 200), 1200, ["09_album.webp"]),
-    ("Screenshot_20261010_145010_LEVYRA.jpg", "INSTANT MATCH", "Find it instantly.", "Recent searches, suggestions, and\ninstant matching across your music.", (236, 246, 252), (212, 234, 248), (40, 150, 225), (175, 215, 245, 200), 1200, ["10_search.webp"]),
-    ("Screenshot_20261010_132136_LEVYRA.jpg", "CURATED PLAYLISTS", "Curated for you.", "Handpicked collections and gems\nrevolving around what you love.", (252, 238, 246), (246, 212, 230), (215, 75, 140), (240, 180, 215, 200), 1200, ["11_collections.webp"]),
-    ("Screenshot_20260927_131943_LEVYRA.jpg", "LISTENING CADENCE", "Your rhythm.", "Activity heatmaps, peak hours, and\nyour personal listening cadence.", (252, 248, 235), (246, 234, 204), (220, 165, 45), (235, 215, 165, 200), 1200, ["12_listening_rhythm.webp"]),
+    ("Screenshot_20260926_194706_LEVYRA.jpg", "DISCOGRAPHY", "Open the album.", "High-resolution artwork, release info,\nand complete tracklists.", (252, 246, 236), (246, 228, 206), (215, 140, 50), (235, 205, 170, 200), ["09_album.webp"]),
+    ("Screenshot_20261010_145010_LEVYRA.jpg", "INSTANT MATCH", "Find it instantly.", "Recent searches, suggestions, and\ninstant matching across your music.", (236, 246, 252), (212, 234, 248), (40, 150, 225), (175, 215, 245, 200), ["10_search.webp"]),
+    ("Screenshot_20261010_132136_LEVYRA.jpg", "CURATED PLAYLISTS", "Curated for you.", "Handpicked collections and gems\nrevolving around what you love.", (252, 238, 246), (246, 212, 230), (215, 75, 140), (240, 180, 215, 200), ["11_collections.webp"]),
+    ("Screenshot_20260927_131943_LEVYRA.jpg", "LISTENING CADENCE", "Your rhythm.", "Activity heatmaps, peak hours, and\nyour personal listening cadence.", (252, 248, 235), (246, 234, 204), (220, 165, 45), (235, 215, 165, 200), ["12_listening_rhythm.webp"]),
 
     # Row 4: Orbit & Private Vault
-    ("Screenshot_20261010_132103_LEVYRA.jpg", "TOP ROTATION", "In your orbit.", "The songs and artists that always return\nto your daily rotation.", (244, 238, 252), (226, 216, 246), (140, 95, 230), (205, 190, 240, 200), 1200, ["13_your_orbit.webp"]),
-    ("Screenshot_20261010_132050_LEVYRA.jpg", "ON-DEVICE STATS", "Keep it personal.", "Private listening stats and charts,\ncomputed strictly on your device.", (235, 250, 250), (210, 242, 242), (0, 180, 185), (170, 225, 225, 200), 1200, ["14_listening_pulse.webp"]),
-    ("Screenshot_20261010_144048_LEVYRA.jpg", "ESSENTIAL SETS", "Artist playlists.", "Curated sets, tours, and the\nessential catalog of every artist.", (238, 242, 252), (216, 226, 248), (55, 115, 235), (180, 200, 245, 200), 1200, ["15_artist_playlists.webp"]),
-    ("Screenshot_20261010_140700_LEVYRA.jpg", "PRIVACY & BACKUP", "Tailor every detail.", "Audio, design, gestures, and local\nsingle-file Vault backups.", (240, 246, 242), (220, 234, 225), (85, 155, 120), (185, 215, 195, 200), 1200, ["16_settings_vault.webp"]),
+    ("Screenshot_20261010_132103_LEVYRA.jpg", "TOP ROTATION", "In your orbit.", "The songs and artists that always return\nto your daily rotation.", (244, 238, 252), (226, 216, 246), (140, 95, 230), (205, 190, 240, 200), ["13_your_orbit.webp"]),
+    ("Screenshot_20261010_132050_LEVYRA.jpg", "ON-DEVICE STATS", "Keep it personal.", "Private listening stats and charts,\ncomputed strictly on your device.", (235, 250, 250), (210, 242, 242), (0, 180, 185), (170, 225, 225, 200), ["14_listening_pulse.webp"]),
+    ("Screenshot_20261010_144048_LEVYRA.jpg", "ESSENTIAL SETS", "Artist playlists.", "Curated sets, tours, and the\nessential catalog of every artist.", (238, 242, 252), (216, 226, 248), (55, 115, 235), (180, 200, 245, 200), ["15_artist_playlists.webp"]),
+    ("Screenshot_20261010_140700_LEVYRA.jpg", "PRIVACY & BACKUP", "Tailor every detail.", "Audio, design, gestures, and local\nsingle-file Vault backups.", (240, 246, 242), (220, 234, 225), (85, 155, 120), (185, 215, 195, 200), ["16_settings_vault.webp"]),
 
     # Row 5: Global Charts & Lossless Soundstage
-    ("Screenshot_20261010_144144_LEVYRA.jpg", "NEW MUSIC", "Fresh off the stage.", "New singles and albums updated\nevery week directly from artists.", (250, 238, 250), (240, 214, 240), (195, 80, 195), (230, 185, 230, 200), 1200, ["17_new_releases.webp"]),
-    ("Screenshot_20261010_143646_LEVYRA.jpg", "ARTIST PROFILE", "Meet the artist.", "Full discography, singles, biographies,\nand top tracks in one tap.", (238, 244, 252), (216, 230, 248), (40, 125, 230), (180, 205, 245, 200), 1200, ["18_artist_profile.webp", "18_fresh_currents.webp"]),
-    ("Screenshot_20261010_132028_LEVYRA.jpg", "GLOBAL CHARTS", "Top 50 charts.", "Explore daily country charts,\nviral hits, and top tracks worldwide.", (252, 238, 236), (248, 212, 208), (235, 75, 65), (245, 180, 175, 200), 1200, ["19_top_50.webp"]),
-    ("Screenshot_20260926_193948_LEVYRA.jpg", "LOSSLESS FIDELITY", "Pure soundstage.", "Lossless audio decoding and\nuncompromised audio fidelity.", (252, 246, 234), (246, 232, 202), (220, 175, 55), (235, 210, 160, 200), 1200, ["20_soundstage.webp"]),
+    ("Screenshot_20261010_144144_LEVYRA.jpg", "NEW MUSIC", "Fresh off the stage.", "New singles and albums updated\nevery week directly from artists.", (250, 238, 250), (240, 214, 240), (195, 80, 195), (230, 185, 230, 200), ["17_new_releases.webp"]),
+    ("Screenshot_20261010_143646_LEVYRA.jpg", "ARTIST PROFILE", "Meet the artist.", "Full discography, singles, biographies,\nand top tracks in one tap.", (238, 244, 252), (216, 230, 248), (40, 125, 230), (180, 205, 245, 200), ["18_artist_profile.webp", "18_fresh_currents.webp"]),
+    ("Screenshot_20261010_132028_LEVYRA.jpg", "GLOBAL CHARTS", "Top 50 charts.", "Explore daily country charts,\nviral hits, and top tracks worldwide.", (252, 238, 236), (248, 212, 208), (235, 75, 65), (245, 180, 175, 200), ["19_top_50.webp"]),
+    ("Screenshot_20260926_193948_LEVYRA.jpg", "LOSSLESS FIDELITY", "Pure soundstage.", "Lossless audio decoding and\nuncompromised audio fidelity.", (252, 246, 234), (246, 232, 202), (220, 175, 55), (235, 210, 160, 200), ["20_soundstage.webp"]),
 ]
 
 def generate_feature_cards():
@@ -800,12 +842,13 @@ def generate_feature_cards():
     c2.convert("RGB").save(os.path.join(OUT_CARDS_DIR, "02_stay_with_the_song.webp"), "WEBP", quality=94, method=4)
     print("Saved duo cut cards: 01_home.webp, 02_stay_with_the_song.webp")
 
-    for s_name, kicker, title, sub, top_t, bot_t, amb, border_c, ph, fnames in REMAINING_SPECS:
-        card = render_apple_single_card(s_name, kicker, title, sub, top_t, bot_t, amb, border_c, ph)
+    for s_name, kicker, title, sub, top_t, bot_t, amb, border_c, fnames in REMAINING_SPECS:
+        card = render_apple_single_card(s_name, kicker, title, sub, top_t, bot_t, amb, border_c, target_height=1260)
         for fn in fnames:
             out_p = os.path.join(OUT_CARDS_DIR, fn)
             card.convert("RGB").save(out_p, "WEBP", quality=94, method=4)
             print(f"Saved: {out_p}")
+
 
 def main():
     print("Generating Apple Levyra showcase assets...")
