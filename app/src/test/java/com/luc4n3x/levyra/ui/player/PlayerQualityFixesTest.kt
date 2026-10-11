@@ -155,13 +155,13 @@ class PlayerQualityFixesTest {
         val strings = LevyraStrings.forCode("en")
 
         assertEquals("Visual mode", visualModeLabel(strings))
-        assertEquals("Artwork", visualModeStateDescription(PlayerVisualMode.Artwork, strings))
+        assertEquals("Poster", visualModeStateDescription(PlayerVisualMode.Artwork, strings))
         assertEquals("Canvas card", visualModeStateDescription(PlayerVisualMode.CanvasCard, strings))
         assertEquals("Canvas immersive", visualModeStateDescription(PlayerVisualMode.CanvasImmersive, strings))
 
         val italianStrings = LevyraStrings.forCode("it")
         assertEquals("Modalità visiva", visualModeLabel(italianStrings))
-        assertEquals("Copertina", visualModeStateDescription(PlayerVisualMode.Artwork, italianStrings))
+        assertEquals("Poster", visualModeStateDescription(PlayerVisualMode.Artwork, italianStrings))
         assertEquals("Scheda Canvas", visualModeStateDescription(PlayerVisualMode.CanvasCard, italianStrings))
         assertEquals("Canvas immersivo", visualModeStateDescription(PlayerVisualMode.CanvasImmersive, italianStrings))
     }

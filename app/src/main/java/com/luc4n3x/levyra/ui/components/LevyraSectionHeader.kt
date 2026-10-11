@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -87,7 +88,7 @@ internal fun LevyraSectionHeader(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
-                        .weight(1f, fill = false)
+                        .weight(1f, fill = onTitleClick == null)
                         .semantics { heading() }
                 )
                 if (onTitleClick != null) {
@@ -120,8 +121,13 @@ internal fun LevyraSectionAction(
     modifier: Modifier = Modifier,
     leadingIcon: ImageVector? = null,
     trailingIcon: ImageVector? = null,
-    compact: Boolean = false
+    compact: Boolean = false,
+    tonal: Boolean = false
 ) {
+    val colors = MaterialTheme.colorScheme
+    val container = if (tonal) colors.secondaryContainer else LevyraAdaptiveChip
+    val content = if (tonal) colors.onSecondaryContainer else LevyraText
+    val trailingTint = if (tonal) colors.onSecondaryContainer else LevyraMuted
     val interaction = remember { MutableInteractionSource() }
     val corner = levyraExpressiveCorner(
         interactionSource = interaction,
@@ -145,7 +151,7 @@ internal fun LevyraSectionAction(
             modifier = Modifier
                 .heightIn(min = if (compact) 30.dp else SectionActionVisualHeight)
                 .clip(shape)
-                .background(LevyraAdaptiveChip)
+                .background(container)
                 .padding(
                     start = if (compact) 7.dp else if (leadingIcon != null) 10.dp else 14.dp,
                     end = if (compact) 8.dp else if (trailingIcon != null) 8.dp else 14.dp
@@ -154,17 +160,17 @@ internal fun LevyraSectionAction(
             horizontalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 5.dp)
         ) {
             leadingIcon?.let {
-                Icon(it, contentDescription = null, tint = LevyraText, modifier = Modifier.size(if (compact) 14.dp else 18.dp))
+                Icon(it, contentDescription = null, tint = content, modifier = Modifier.size(if (compact) 14.dp else 18.dp))
             }
             Text(
                 text = label,
-                color = LevyraText,
+                color = content,
                 style = if (compact) LevyraType.cardTitle.copy(fontSize = 12.sp, lineHeight = 16.sp) else LevyraType.cardTitle,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             trailingIcon?.let {
-                Icon(it, contentDescription = null, tint = LevyraMuted, modifier = Modifier.size(18.dp))
+                Icon(it, contentDescription = null, tint = trailingTint, modifier = Modifier.size(18.dp))
             }
         }
     }
@@ -177,7 +183,8 @@ internal fun LevyraSectionPlayAll(onClick: () -> Unit, modifier: Modifier = Modi
         onClick = onClick,
         modifier = modifier,
         leadingIcon = Icons.Rounded.PlayArrow,
-        compact = compact
+        compact = compact,
+        tonal = true
     )
 }
 

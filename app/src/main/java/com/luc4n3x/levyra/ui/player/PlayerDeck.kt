@@ -14,30 +14,31 @@ import java.util.Locale
 
 internal enum class PlayerDeckLayout {
     Levyra,
-    Editorial,
+    Expressive,
+    Poster,
     Pulse
 }
 
 internal val PlayerDeckOrder: List<PlayerVisualMode> = listOf(
     PlayerVisualMode.CanvasImmersive,
     PlayerVisualMode.CanvasCard,
+    PlayerVisualMode.Expressive,
     PlayerVisualMode.Artwork,
-    PlayerVisualMode.Editorial,
     PlayerVisualMode.Pulse
 )
 
 internal fun PlayerVisualMode.deckLayout(): PlayerDeckLayout = when (this) {
-    PlayerVisualMode.Artwork,
     PlayerVisualMode.CanvasCard,
     PlayerVisualMode.CanvasImmersive -> PlayerDeckLayout.Levyra
-    PlayerVisualMode.Editorial -> PlayerDeckLayout.Editorial
+    PlayerVisualMode.Artwork -> PlayerDeckLayout.Poster
+    PlayerVisualMode.Expressive -> PlayerDeckLayout.Expressive
     PlayerVisualMode.Pulse -> PlayerDeckLayout.Pulse
 }
 
 internal fun PlayerVisualMode.showsCinematicStage(): Boolean = this == PlayerVisualMode.CanvasImmersive
 
 internal fun PlayerVisualMode.usesMotionCard(): Boolean =
-    this == PlayerVisualMode.CanvasCard || this == PlayerVisualMode.Editorial || this == PlayerVisualMode.Pulse
+    this == PlayerVisualMode.CanvasCard || this == PlayerVisualMode.Expressive || this == PlayerVisualMode.Pulse
 
 internal fun resolvePlayerDeckLayout(
     mode: PlayerVisualMode,
@@ -55,7 +56,7 @@ internal fun resolvePlayerDeckLayout(
 internal fun resolvePlayerDeckVisualMode(
     mode: PlayerVisualMode,
     layout: PlayerDeckLayout
-): PlayerVisualMode = if (layout == mode.deckLayout()) {
+): PlayerVisualMode = if (layout == mode.deckLayout() || mode == PlayerVisualMode.Artwork) {
     mode
 } else {
     PlayerVisualMode.CanvasCard
@@ -76,7 +77,7 @@ internal fun playerDeckQueuePosition(queue: List<Track>, trackId: String): Playe
     return if (index < 0) null else PlayerDeckQueuePosition(index, queue.size)
 }
 
-internal fun editorialTitleSize(title: String, compact: Boolean): TextUnit {
+internal fun expressiveTitleSize(title: String, compact: Boolean): TextUnit {
     val length = title.trim().length
     val base = when {
         length <= 12 -> 46f
@@ -86,13 +87,6 @@ internal fun editorialTitleSize(title: String, compact: Boolean): TextUnit {
     }
     return (if (compact) base - 6f else base).sp
 }
-
-internal fun editorialDeckline(track: Track): String =
-    listOf(track.album, track.year.ifBlank { track.releaseDate.take(4) })
-        .map(String::trim)
-        .filter(String::isNotEmpty)
-        .distinct()
-        .joinToString("  ·  ")
 
 @Immutable
 internal data class PlayerAudioSpec(
@@ -157,5 +151,7 @@ internal class PlayerDeckSlots(
     val header: @Composable () -> Unit,
     val stage: @Composable (Track, Modifier, Dp?) -> Unit,
     val controls: @Composable ColumnScope.(Track) -> Unit,
-    val controlsWithoutMetadata: @Composable ColumnScope.(Track) -> Unit
+    val controlsWithoutMetadata: @Composable ColumnScope.(Track) -> Unit,
+    val progress: @Composable () -> Unit,
+    val dock: @Composable (Track) -> Unit
 )
