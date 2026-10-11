@@ -57,41 +57,18 @@ def enhance_screenshot(img):
     img = enhancer.enhance(1.10)
     return img
 
-def create_m3_expressive_bg(w=607, h=1080):
-    # Pure Google Material 3 Expressive Tonal Surface
-    # Base: Surface Container Lowest (#FCFAFF)
-    # Tonal Accents: Google Celestial Blue (#DAE8FD) and Expressive Iris (#EDE7FA)
-    c_surface = np.array([252, 250, 255], dtype=np.float32)
-    c_blue = np.array([218, 232, 253], dtype=np.float32)
-    c_iris = np.array([237, 231, 250], dtype=np.float32)
-
-    y_idx, x_idx = np.mgrid[0:h, 0:w]
-    x_norm = x_idx / float(w)
-    y_norm = y_idx / float(h)
-
-    # Subtle diagonal baseline transition
-    diag = (x_norm * 0.6 + y_norm * 0.4)
-    base_col = c_surface * (1 - diag[:, :, None]) + c_blue * diag[:, :, None]
-
-    # Soft ambient radiance bloom centered behind the device
-    dist_sq = ((x_norm - 0.5) ** 2) / (0.45 ** 2) + ((y_norm - 0.58) ** 2) / (0.48 ** 2)
-    radial_glow = np.clip(1.0 - np.sqrt(dist_sq), 0.0, 1.0)[:, :, None] ** 1.8
-    final_col = base_col * (1 - radial_glow * 0.5) + c_iris * (radial_glow * 0.5)
-
-    return Image.fromarray(np.clip(final_col, 0, 255).astype(np.uint8), mode="RGB").convert("RGBA")
-
-def create_s26_ultra_mockup(screen_img, screen_w=430):
+def create_s26_ultra_mockup(screen_img, target_w=670):
     screen_img = enhance_screenshot(screen_img)
     orig_w, orig_h = screen_img.size
     aspect = orig_h / float(orig_w)
-    screen_h = int(screen_w * aspect)
-    screen_res = screen_img.resize((screen_w, screen_h), Image.Resampling.LANCZOS)
+    target_h = int(target_w * aspect)
+    screen_res = screen_img.resize((target_w, target_h), Image.Resampling.LANCZOS)
 
-    bezel = 6
-    corner_r = 18
-    inner_r = max(4, corner_r - bezel)
-    body_w = screen_w + bezel * 2
-    body_h = screen_h + bezel * 2
+    bezel = 9
+    corner_r = 26
+    inner_r = max(6, corner_r - bezel)
+    body_w = target_w + bezel * 2
+    body_h = target_h + bezel * 2
 
     phone = Image.new("RGBA", (body_w, body_h), (0, 0, 0, 0))
     pdraw = ImageDraw.Draw(phone)
@@ -101,231 +78,285 @@ def create_s26_ultra_mockup(screen_img, screen_w=430):
     pdraw.rounded_rectangle((1, 1, body_w - 2, body_h - 2), radius=corner_r - 1, fill=(14, 15, 18, 255))
 
     # Mask screen
-    screen_mask = Image.new("L", (screen_w, screen_h), 0)
+    screen_mask = Image.new("L", (target_w, target_h), 0)
     smdraw = ImageDraw.Draw(screen_mask)
-    smdraw.rounded_rectangle((0, 0, screen_w - 1, screen_h - 1), radius=inner_r, fill=255)
+    smdraw.rounded_rectangle((0, 0, target_w - 1, target_h - 1), radius=inner_r, fill=255)
     phone.paste(screen_res, (bezel, bezel), screen_mask)
 
     # Inner bezel border
-    pdraw.rounded_rectangle((bezel, bezel, bezel + screen_w - 1, bezel + screen_h - 1), radius=inner_r, outline=(8, 8, 10, 230), width=1)
+    pdraw.rounded_rectangle((bezel, bezel, bezel + target_w - 1, bezel + target_h - 1), radius=inner_r, outline=(8, 8, 10, 230), width=1)
 
     # Infinity-O Punch-hole Camera
-    cam_diam = 11
+    cam_diam = 16
     cam_x = body_w // 2 - cam_diam // 2
-    cam_y = bezel + 9
+    cam_y = bezel + 12
     pdraw.ellipse((cam_x, cam_y, cam_x + cam_diam, cam_y + cam_diam), fill=(6, 6, 8, 255))
-    pdraw.ellipse((cam_x + 2, cam_y + 2, cam_x + cam_diam - 2, cam_y + cam_diam - 2), fill=(14, 24, 46, 255))
-    pdraw.ellipse((cam_x + 4, cam_y + 3, cam_x + 6, cam_y + 5), fill=(130, 175, 235, 180))
+    pdraw.ellipse((cam_x + 3, cam_y + 3, cam_x + cam_diam - 3, cam_y + cam_diam - 3), fill=(14, 24, 46, 255))
+    pdraw.ellipse((cam_x + 6, cam_y + 5, cam_x + 9, cam_y + 8), fill=(130, 175, 235, 180))
 
     # Micro speaker slit
-    pdraw.rounded_rectangle((body_w // 2 - 16, 1, body_w // 2 + 16, 3), radius=1, fill=(40, 42, 48, 255))
+    pdraw.rounded_rectangle((body_w // 2 - 22, 2, body_w // 2 + 22, 5), radius=1, fill=(40, 42, 48, 255))
 
     # Diamond-cut outer chamfer
-    pdraw.rounded_rectangle((0, 0, body_w - 1, body_h - 1), radius=corner_r, outline=(145, 150, 162, 130), width=1)
+    pdraw.rounded_rectangle((0, 0, body_w - 1, body_h - 1), radius=corner_r, outline=(145, 150, 162, 120), width=1)
 
     # Side buttons: power & volume on right side
     btn_x = body_w - 1
     btn_col = (45, 47, 52, 255)
-    pdraw.line([(btn_x, 180), (btn_x, 230)], fill=btn_col, width=2)
-    pdraw.line([(btn_x, 260), (btn_x, 340)], fill=btn_col, width=2)
+    pdraw.line([(btn_x, 260), (btn_x, 340)], fill=btn_col, width=3)
+    pdraw.line([(btn_x, 380), (btn_x, 500)], fill=btn_col, width=3)
 
     return phone
 
-def create_phone_shadow(phone, blur=34, offset_y=18):
+def create_m3_shadow(phone, blur=48, offset_y=28):
     w, h = phone.size
-    pad = 70
+    pad = 90
     cw, ch = w + pad * 2, h + pad * 2 + offset_y
     alpha = phone.split()[-1]
     s = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
     s_alpha = Image.new("L", (cw, ch), 0)
     s_alpha.paste(alpha, (pad, pad + offset_y))
     s_alpha = s_alpha.filter(ImageFilter.GaussianBlur(blur))
-    s_alpha = ImageEnhance.Brightness(s_alpha).enhance(0.35)
-    s.paste((15, 30, 45, 255), (0, 0), s_alpha)
+    s_alpha = ImageEnhance.Brightness(s_alpha).enhance(0.32)
+    s.paste((20, 22, 30, 255), (0, 0), s_alpha)
     return s, pad
 
+def draw_vector_sparkle(draw, center_x, center_y, radius, fill_color):
+    points = []
+    inner_radius = radius * 0.28
+    for i in range(8):
+        angle = i * (math.pi / 4.0)
+        r = radius if (i % 2 == 0) else inner_radius
+        x = center_x + r * math.cos(angle - math.pi / 2.0)
+        y = center_y + r * math.sin(angle - math.pi / 2.0)
+        points.append((x, y))
+    draw.polygon(points, fill=fill_color)
+
+def draw_clean_m3_kicker(draw, x, y, text, color, font_size=27):
+    font = get_font(font_size, bold=True)
+    sparkle_size = int(font_size * 0.95)
+    sparkle_gap = 12
+
+    bbox = font.getbbox(text)
+    th = bbox[3] - bbox[1]
+
+    sparkle_cx = x + sparkle_size // 2
+    sparkle_cy = y + th // 2
+    draw_vector_sparkle(draw, sparkle_cx, sparkle_cy, sparkle_size // 2, color)
+
+    tx = x + sparkle_size + sparkle_gap
+    ty = y - bbox[1]
+    draw.text((tx, ty), text, font=font, fill=color)
+
 def render_m3_duo_cut_cards():
-    w, h = 607, 1080
-    canvas_w = w * 2
+    card_w, card_h = 900, 1600
+    gutter = 48
+    duo_w = card_w * 2 + gutter
 
-    # Pure Google M3 Expressive Tonal Surface across 1214px
-    c_surf_left = np.array([252, 250, 255], dtype=np.float32)
-    c_iris = np.array([238, 232, 250], dtype=np.float32)
-    c_blue = np.array([220, 233, 253], dtype=np.float32)
-    c_surf_right = np.array([248, 250, 254], dtype=np.float32)
+    # 1. Continuous Vibrant Material 3 Expressive Tonal Canvas
+    bg_arr = np.zeros((card_h, duo_w, 4), dtype=np.uint8)
 
-    y_idx, x_idx = np.mgrid[0:h, 0:canvas_w]
-    x_norm = x_idx / float(canvas_w)
-    y_norm = y_idx / float(h)
+    tl = np.array([238, 230, 255], dtype=np.float32)  # M3 Primary Lavender Container
+    bl = np.array([215, 230, 255], dtype=np.float32)  # M3 Soft Iris
+    tr = np.array([255, 236, 224], dtype=np.float32)  # M3 Sunset Peach Container
+    br = np.array([255, 222, 202], dtype=np.float32)  # M3 Warm Amber Container
 
-    # Base subtle tonal transition
-    base = c_surf_left * (1 - x_norm[:, :, None]) + c_surf_right * x_norm[:, :, None]
+    y_ratio = np.linspace(0, 1, card_h).reshape(card_h, 1, 1)
+    x_ratio = np.linspace(0, 1, duo_w).reshape(1, duo_w, 1)
 
-    # Soft M3 Expressive ambient light pools for phone 1 and phone 2
-    d1 = ((x_norm - 0.35)**2)/(0.35**2) + ((y_norm - 0.38)**2)/(0.45**2)
-    g1 = (np.clip(1.0 - np.sqrt(d1), 0.0, 1.0)[:, :, None] ** 1.6)
+    left_col = tl * (1 - y_ratio) + bl * y_ratio
+    right_col = tr * (1 - y_ratio) + br * y_ratio
+    full_col = left_col * (1 - x_ratio) + right_col * x_ratio
 
-    d2 = ((x_norm - 0.72)**2)/(0.32**2) + ((y_norm - 0.60)**2)/(0.45**2)
-    g2 = (np.clip(1.0 - np.sqrt(d2), 0.0, 1.0)[:, :, None] ** 1.6)
+    bg_arr[:, :, :3] = np.clip(full_col, 0, 255).astype(np.uint8)
+    bg_arr[:, :, 3] = 255
+    bg = Image.fromarray(bg_arr, mode="RGBA")
 
-    final_canvas = base * (1 - g1 * 0.45 - g2 * 0.4) + c_blue * (g1 * 0.45) + c_iris * (g2 * 0.4)
-    canvas = Image.fromarray(np.clip(final_canvas, 0, 255).astype(np.uint8), mode="RGB").convert("RGBA")
+    # Volumetric ambilight blooms
+    glow_layer = Image.new("RGBA", (duo_w, card_h), (0, 0, 0, 0))
+    gdraw = ImageDraw.Draw(glow_layer)
+    gdraw.ellipse((140, 80, 880, 940), fill=(175, 130, 255, 140))
+    gdraw.ellipse((duo_w - 860, 380, duo_w - 90, 1220), fill=(255, 160, 60, 140))
+    glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(110))
+    bg = Image.alpha_composite(bg, glow_layer)
 
     s_home = resolve_screenshot_path("Screenshot_20260926_171253_LEVYRA.jpg")
     s_player = resolve_screenshot_path("Screenshot_20260926_193948_LEVYRA.jpg")
 
-    angle = 18.0
-    # Phone 1 (Taylor Swift - Home), tilted 18 degrees, cuts from card 01 into card 02
+    angle = 15.0
+    c2_left = card_w + gutter
+
+    # 1. Phone 1 (Taylor Swift - Home) cutting across into Card 02
     if s_home and os.path.exists(s_home):
         with Image.open(s_home) as src1:
-            p1 = create_s26_ultra_mockup(src1, screen_w=430)
+            p1 = create_s26_ultra_mockup(src1, target_w=640)
         rot1 = p1.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
-        s1_shadow, pad1 = create_phone_shadow(rot1, blur=36, offset_y=22)
-        p1_x = 180
-        p1_y = -100
-        canvas.paste(s1_shadow, (p1_x - pad1, p1_y - pad1), s1_shadow)
-        canvas.paste(rot1, (p1_x, p1_y), rot1)
+        s1_shadow, pad1 = create_m3_shadow(rot1, blur=50, offset_y=30)
+        p1_x = 280
+        p1_y = 40
+        bg.paste(s1_shadow, (p1_x - pad1, p1_y - pad1), s1_shadow)
+        bg.paste(rot1, (p1_x, p1_y), rot1)
 
-    # Phone 2 (The Weeknd - Player) in Card 02, tilted 18 degrees
+    # 2. Phone 2 (The Weeknd - Now Playing)
     if s_player and os.path.exists(s_player):
         with Image.open(s_player) as src2:
-            p2 = create_s26_ultra_mockup(src2, screen_w=400)
+            p2 = create_s26_ultra_mockup(src2, target_w=610)
         rot2 = p2.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
-        s2_shadow, pad2 = create_phone_shadow(rot2, blur=32, offset_y=18)
-        p2_x = w + 110
-        p2_y = 170
-        canvas.paste(s2_shadow, (p2_x - pad2, p2_y - pad2), s2_shadow)
-        canvas.paste(rot2, (p2_x, p2_y), rot2)
+        s2_shadow, pad2 = create_m3_shadow(rot2, blur=46, offset_y=28)
+        p2_x = c2_left + 175
+        p2_y = 310
+        bg.paste(s2_shadow, (p2_x - pad2, p2_y - pad2), s2_shadow)
+        bg.paste(rot2, (p2_x, p2_y), rot2)
 
-    c1 = canvas.crop((0, 0, w, h))
-    c2 = canvas.crop((w, 0, canvas_w, h))
+    # Slice into Card 01 and Card 02
+    c1 = bg.crop((0, 0, card_w, card_h))
+    c2 = bg.crop((c2_left, 0, c2_left + card_w, card_h))
 
-    t_font = get_font(38, bold=True)
-    s_font = get_font(20, bold=False)
-
-    # Card 01 typography at bottom (Google M3 on-surface & on-surface-variant)
+    # Clean M3 typography directly on the surface - no heavy boxes, no tacky badges
     d1 = ImageDraw.Draw(c1)
-    t1 = "Pure listening."
-    s1 = "Zero ads, zero accounts. Stream and store locally"
-    tw1 = t_font.getbbox(t1)[2] - t_font.getbbox(t1)[0]
-    sw1 = s_font.getbbox(s1)[2] - s_font.getbbox(s1)[0]
-    d1.text(((w - tw1) // 2, 875), t1, font=t_font, fill=(25, 28, 32, 255))
-    d1.text(((w - sw1) // 2, 925), s1, font=s_font, fill=(67, 71, 78, 255))
+    tx1, ty1 = 72, 1260
+    draw_clean_m3_kicker(d1, tx1, ty1, "ZERO ADS • NATIVE PLAY", color=(95, 60, 165, 255), font_size=27)
+    d1.text((tx1, ty1 + 44), "Pure listening.", font=get_font(64, bold=True), fill=(29, 27, 32, 255))
+    d1.multiline_text(
+        (tx1, ty1 + 124),
+        "Zero ads, zero accounts.\nStream and store locally on your device.",
+        font=get_font(30),
+        fill=(70, 65, 80, 255),
+        spacing=6
+    )
 
-    # Card 02 typography at top (Google M3 on-surface & on-surface-variant)
     d2 = ImageDraw.Draw(c2)
-    t2 = "Download & keep."
-    s2 = "Clean M4A files in device storage with lyrics"
-    tw2 = t_font.getbbox(t2)[2] - t_font.getbbox(t2)[0]
-    sw2 = s_font.getbbox(s2)[2] - s_font.getbbox(s2)[0]
-    d2.text(((w - tw2) // 2, 56), t2, font=t_font, fill=(25, 28, 32, 255))
-    d2.text(((w - sw2) // 2, 108), s2, font=s_font, fill=(67, 71, 78, 255))
+    tx2, ty2 = 72, 54
+    draw_clean_m3_kicker(d2, tx2, ty2, "OFFLINE STORAGE", color=(155, 90, 0, 255), font_size=27)
+    d2.text((tx2, ty2 + 44), "Download & keep.", font=get_font(64, bold=True), fill=(29, 27, 32, 255))
+    d2.multiline_text(
+        (tx2, ty2 + 124),
+        "Clean M4A files in device storage.\nFull metadata, artwork, and lyrics.",
+        font=get_font(30),
+        fill=(75, 65, 60, 255),
+        spacing=6
+    )
 
     return c1, c2
 
-def render_m3_single_card(screenshot_name, title, subtitle):
-    w, h = 607, 1080
-    card = create_m3_expressive_bg(w, h)
+def render_m3_single_card(screenshot_name, kicker, title, subtitle, top_tint, bot_tint, kicker_color, ambilight, target_w=670):
+    card_w, card_h = 900, 1600
+
+    # 1. Tonal Surface Gradient
+    arr = np.zeros((card_h, card_w, 4), dtype=np.uint8)
+    for y in range(card_h):
+        r = y / float(card_h)
+        col = [int(top_tint[i] * (1 - r) + bot_tint[i] * r) for i in range(3)]
+        arr[y, :, :3] = col
+    arr[:, :, 3] = 255
+    card = Image.fromarray(arr, mode="RGBA")
+
+    # 2. Volumetric ambilight glow behind phone
+    glow = Image.new("RGBA", (card_w, card_h), (0, 0, 0, 0))
+    gdraw = ImageDraw.Draw(glow)
+    gdraw.ellipse((80, 280, 820, 1380), fill=(*ambilight, 140))
+    glow = glow.filter(ImageFilter.GaussianBlur(100))
+    card = Image.alpha_composite(card, glow)
+
+    # 3. Clean M3 Typography - left aligned, directly on surface
     draw = ImageDraw.Draw(card)
+    tx, ty = 72, 54
+    draw_clean_m3_kicker(draw, tx, ty, kicker, color=(*kicker_color, 255), font_size=27)
+    draw.text((tx, ty + 44), title, font=get_font(64, bold=True), fill=(29, 27, 32, 255))
+    draw.multiline_text(
+        (tx, ty + 124),
+        subtitle,
+        font=get_font(30),
+        fill=(75, 65, 75, 255),
+        spacing=6
+    )
 
-    # Google M3 On-Surface Title
-    t_font = get_font(38, bold=True)
-    t_bbox = t_font.getbbox(title)
-    tw = t_bbox[2] - t_bbox[0]
-    draw.text(((w - tw) // 2, 56), title, font=t_font, fill=(25, 28, 32, 255))
-
-    # Google M3 On-Surface-Variant Subtitle
-    s_font = get_font(20, bold=False)
-    s_bbox = s_font.getbbox(subtitle)
-    sw = s_bbox[2] - s_bbox[0]
-    draw.text(((w - sw) // 2, 108), subtitle, font=s_font, fill=(67, 71, 78, 255))
-
-    # Samsung Galaxy S26 Ultra Phone Mockup
+    # 4. Samsung Galaxy S26 Ultra mockup
     s_path = resolve_screenshot_path(screenshot_name)
     if s_path and os.path.exists(s_path):
         with Image.open(s_path) as src:
-            phone = create_s26_ultra_mockup(src, screen_w=430)
-        shadow, pad = create_phone_shadow(phone)
-        px = (w - phone.width) // 2
-        py = 154
+            phone = create_s26_ultra_mockup(src, target_w=target_w)
+        shadow, pad = create_m3_shadow(phone, blur=48, offset_y=28)
+        px = (card_w - phone.width) // 2
+        py = 270
         card.paste(shadow, (px - pad, py - pad), shadow)
         card.paste(phone, (px, py), phone)
 
-    return card.crop((0, 0, w, h))
+    return card
 
-# Pure Material 3 Expressive Showcase Specifications
-SHOWCASE_SPECS = [
-    # Card 03: Synced lyrics
-    ("screen-lyrics.jpg", "Synced lyrics", "Real-time synchronized lyrics and romanization",
-     ["03_now_playing.webp"]),
+# Refined Material 3 Expressive specifications (Clean, harmonious, and borderless)
+M3_SHOWCASE_SPECS = [
+    # Card 03: Synced Lyrics
+    ("screen-lyrics.jpg", "SYNCED LYRICS", "Sing along.", "Real-time synchronized lyrics, Romanized lines,\nand effortless translation.",
+     (255, 230, 242), (255, 206, 230), (194, 24, 91), (240, 50, 120), ["03_now_playing.webp"]),
 
-    # Card 04: Player decks
-    ("Screenshot_20261010_190538_LEVYRA.jpg", "Player decks", "Immersive, Canvas Card, Artwork and Editorial",
-     ["04_player_deck.webp"]),
+    # Card 04: Player Decks
+    ("Screenshot_20261010_190538_LEVYRA.jpg", "PLAYER DECKS", "Your listening deck.", "Fluid bottom sheets, gesture controls,\nand adaptive cover-art styling.",
+     (225, 242, 255), (205, 232, 255), (0, 115, 195), (0, 170, 255), ["04_player_deck.webp"]),
 
-    # Card 05: Explore
-    ("Screenshot_20261010_132210_LEVYRA.jpg", "Fresh currents", "Discover trending music, new releases and videos",
-     ["05_explore_stage.webp", "05_explore.webp"]),
+    # Card 05: Explore & Fresh Currents
+    ("Screenshot_20261010_132210_LEVYRA.jpg", "DYNAMIC DISCOVERY", "Fresh currents.", "Handpicked artist spotlights, community mixes,\nand global trending charts.",
+     (228, 250, 236), (208, 244, 222), (20, 135, 75), (40, 200, 110), ["05_explore_stage.webp", "05_explore.webp"]),
 
     # Card 06: Levyra Mix
-    ("Screenshot_20261010_132217_LEVYRA.jpg", "Levyra Mix", "Algorithmic discovery stations built for your taste",
-     ["06_levyra_mix_stage.webp", "06_levyra_mix.webp"]),
+    ("Screenshot_20261010_132217_LEVYRA.jpg", "LEVYRA MIX", "Built for your taste.", "Algorithmic discovery stations powered by\nyour local listening history.",
+     (240, 226, 255), (222, 202, 255), (115, 45, 195), (160, 80, 250), ["06_levyra_mix_stage.webp", "06_levyra_mix.webp"]),
 
-    # Card 07: Moods & Genres
-    ("Screenshot_20261010_132249_LEVYRA.jpg", "Moods & genres", "Curated categories, moods and musical traditions",
-     ["07_genres.webp"]),
+    # Card 07: Genres & Moods
+    ("Screenshot_20261010_132249_LEVYRA.jpg", "EXPLORE MOODS", "Every genre.", "Dive into curated categories, moods,\nand regional musical traditions.",
+     (255, 232, 220), (255, 212, 195), (215, 75, 25), (255, 115, 50), ["07_genres.webp"]),
 
     # Card 08: Audio Architecture & Equalizer
-    ("Screenshot_20261010_190726_LEVYRA.jpg", "Audio architecture", "10-band equalizer, tempo and bit-perfect output",
-     ["08_audio_tuning.webp"]),
+    ("Screenshot_20261010_190726_LEVYRA.jpg", "AUDIO ARCHITECTURE", "Acoustic precision.", "10-band parametric equalizer, bass boost,\nand bit-perfect output.",
+     (230, 248, 234), (210, 238, 218), (25, 130, 65), (50, 195, 100), ["08_audio_tuning.webp"]),
 
     # Card 09: Album Details
-    ("Screenshot_20260926_194706_LEVYRA.jpg", "Open the album", "High-resolution artwork, release info and tracklist",
-     ["09_album.webp"]),
+    ("Screenshot_20260926_194706_LEVYRA.jpg", "DISCOGRAPHY", "Open the album.", "High-resolution artwork, release info,\nand complete tracklists.",
+     (255, 236, 222), (255, 218, 198), (185, 85, 15), (245, 130, 40), ["09_album.webp"]),
 
     # Card 10: Instant Search
-    ("Screenshot_20261010_145010_LEVYRA.jpg", "Instant search", "Recent searches, suggestions and instant match",
-     ["10_search.webp"]),
+    ("Screenshot_20261010_145010_LEVYRA.jpg", "INSTANT MATCH", "Find it instantly.", "Recent searches, suggestions, and\ninstant matching across your music.",
+     (226, 242, 255), (206, 230, 255), (0, 115, 195), (30, 160, 240), ["10_search.webp"]),
 
     # Card 11: Collections
-    ("Screenshot_20261010_132136_LEVYRA.jpg", "Collections", "Handpicked playlists revolving around what you love",
-     ["11_collections.webp"]),
+    ("Screenshot_20261010_132136_LEVYRA.jpg", "CURATED PLAYLISTS", "Curated for you.", "Handpicked collections and gems\nrevolving around what you love.",
+     (255, 228, 246), (255, 204, 236), (175, 35, 125), (230, 65, 160), ["11_collections.webp"]),
 
-    # Card 12: Listening Rhythm & Cadence
-    ("Screenshot_20260927_131943_LEVYRA.jpg", "Listening rhythm", "Activity heatmaps, peak hours and listening cadence",
-     ["12_listening_rhythm.webp"]),
+    # Card 12: Listening Rhythm & Heatmaps
+    ("Screenshot_20260927_131943_LEVYRA.jpg", "LISTENING CADENCE", "Your rhythm.", "Activity heatmaps, peak hours, and\nyour personal listening cadence.",
+     (255, 242, 214), (255, 226, 185), (165, 105, 0), (245, 170, 35), ["12_listening_rhythm.webp"]),
 
     # Card 13: Your Orbit
-    ("Screenshot_20261010_132103_LEVYRA.jpg", "In your orbit", "Top rotation tracks returning to your daily listening",
-     ["13_your_orbit.webp"]),
+    ("Screenshot_20261010_132103_LEVYRA.jpg", "TOP ROTATION", "In your orbit.", "The songs and artists that always return\nto your daily rotation.",
+     (238, 228, 255), (218, 204, 255), (105, 45, 195), (145, 80, 245), ["13_your_orbit.webp"]),
 
-    # Card 14: Private Listening Pulse
-    ("Screenshot_20261010_132050_LEVYRA.jpg", "Listening pulse", "Private listening stats computed strictly on device",
-     ["14_listening_pulse.webp"]),
+    # Card 14: Private Listening Stats
+    ("Screenshot_20261010_132050_LEVYRA.jpg", "ON-DEVICE STATS", "Keep it personal.", "Private listening stats and charts,\ncomputed strictly on your device.",
+     (225, 250, 250), (202, 242, 242), (0, 135, 145), (0, 200, 210), ["14_listening_pulse.webp"]),
 
     # Card 15: Artist Playlists
-    ("Screenshot_20261010_144048_LEVYRA.jpg", "Artist playlists", "Curated essential sets, tours and discography",
-     ["15_artist_playlists.webp"]),
+    ("Screenshot_20261010_144048_LEVYRA.jpg", "ESSENTIAL SETS", "Artist playlists.", "Curated sets, tours, and the\nessential catalog of every artist.",
+     (230, 238, 255), (208, 222, 255), (35, 85, 205), (55, 120, 250), ["15_artist_playlists.webp"]),
 
-    # Card 16: Settings & Vault
-    ("Screenshot_20261010_140700_LEVYRA.jpg", "Vault & backup", "Customize Levyra with single-file local vault backups",
-     ["16_settings_vault.webp"]),
+    # Card 16: Vault & Settings
+    ("Screenshot_20261010_140700_LEVYRA.jpg", "PRIVACY & BACKUP", "Tailor every detail.", "Audio, design, gestures, and local\nsingle-file Vault backups.",
+     (232, 250, 238), (212, 242, 222), (35, 130, 70), (65, 190, 110), ["16_settings_vault.webp"]),
 
     # Card 17: New Releases
-    ("Screenshot_20261010_144144_LEVYRA.jpg", "New releases", "Fresh singles and albums updated weekly from artists",
-     ["17_new_releases.webp"]),
+    ("Screenshot_20261010_144144_LEVYRA.jpg", "NEW MUSIC", "Fresh off the stage.", "New singles and albums updated\nevery week directly from artists.",
+     (255, 228, 250), (255, 208, 244), (175, 35, 145), (230, 60, 195), ["17_new_releases.webp"]),
 
-    # Card 18: Artist Profile
-    ("Screenshot_20261010_143646_LEVYRA.jpg", "Artist profile", "Full discography, singles, biography and top tracks",
-     ["18_artist_profile.webp", "18_fresh_currents.webp"]),
+    # Card 18: Artist Profile & Discography
+    ("Screenshot_20261010_143646_LEVYRA.jpg", "ARTIST PROFILE", "Meet the artist.", "Full discography, singles, biographies,\nand top tracks in one tap.",
+     (232, 240, 255), (210, 228, 255), (25, 95, 210), (45, 135, 250), ["18_artist_profile.webp", "18_fresh_currents.webp"]),
 
     # Card 19: Top 50 Global Charts
-    ("Screenshot_20261011_202032_LEVYRA.jpg", "Top 50 charts", "Explore daily country charts and viral hits worldwide",
-     ["19_top_50.webp"]),
+    ("Screenshot_20261011_202032_LEVYRA.jpg", "GLOBAL CHARTS", "Top 50 charts.", "Explore daily country charts,\nviral hits, and top tracks worldwide.",
+     (255, 234, 230), (255, 214, 206), (195, 45, 35), (255, 100, 80), ["19_top_50.webp"]),
 
-    # Card 20: Levyra Jam
-    ("Screenshot_20261011_133434_LEVYRA.jpg", "Levyra Jam", "Real-time collaborative sessions on local Wi-Fi",
-     ["20_soundstage.webp", "20_levyra_jam.webp"]),
+    # Card 20: Levyra Jam Collaborative Session
+    ("Screenshot_20261011_133434_LEVYRA.jpg", "LEVYRA JAM", "Listen together.", "Real-time collaborative sessions on local Wi-Fi.\nShare queues, add tracks, and host together.",
+     (230, 242, 255), (208, 228, 255), (0, 105, 225), (0, 155, 255), ["20_soundstage.webp", "20_levyra_jam.webp"]),
 ]
 
 def generate_hero_panoramic_showcase():
@@ -340,21 +371,21 @@ def generate_hero_panoramic_showcase():
         print(f"Generated Panoramic Hero Showcase at ({orig_w}, {orig_h}): {out_path}")
 
 def generate_feature_cards():
-    print("Generating Pure Google Material 3 Expressive Showcase Cards...")
+    print("Generating Refined Material 3 Expressive Showcase Cards...")
     c1, c2 = render_m3_duo_cut_cards()
     c1.convert("RGB").save(os.path.join(OUT_CARDS_DIR, "01_home.webp"), "WEBP", quality=95, method=6)
     c2.convert("RGB").save(os.path.join(OUT_CARDS_DIR, "02_stay_with_the_song.webp"), "WEBP", quality=95, method=6)
-    print("Saved Pure Material 3 Expressive Keynote Diptych: 01_home.webp, 02_stay_with_the_song.webp")
+    print("Saved Material 3 Expressive Keynote Diptych: 01_home.webp, 02_stay_with_the_song.webp")
 
-    for s_name, title, sub, fnames in SHOWCASE_SPECS:
-        card = render_m3_single_card(s_name, title, sub)
+    for s_name, kicker, title, sub, top_t, bot_t, kicker_c, amb, fnames in M3_SHOWCASE_SPECS:
+        card = render_m3_single_card(s_name, kicker, title, sub, top_t, bot_t, kicker_c, amb, target_w=670)
         card_rgb = card.convert("RGB")
         for fname in fnames:
             out_file = os.path.join(OUT_CARDS_DIR, fname)
             card_rgb.save(out_file, "WEBP", quality=95, method=6)
-            print(f"Saved Pure Material 3 Expressive Card: {out_file}")
+            print(f"Saved Refined Material 3 Expressive Card: {out_file}")
 
 if __name__ == "__main__":
     generate_hero_panoramic_showcase()
     generate_feature_cards()
-    print("All Pure Google Material 3 Expressive assets generated successfully!")
+    print("All Refined Material 3 Expressive assets generated successfully!")
