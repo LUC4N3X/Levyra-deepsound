@@ -111,11 +111,14 @@ import com.luc4n3x.levyra.ui.lyrics.LyricsPlaybackClock
 import com.luc4n3x.levyra.ui.lyrics.TimedLyricText
 import com.luc4n3x.levyra.ui.lyrics.activeLyricsInstrumentalGap
 import com.luc4n3x.levyra.ui.lyrics.activeLyricIndex
-import com.luc4n3x.levyra.ui.lyrics.adjustLyricsOffset
+import com.luc4n3x.levyra.ui.lyrics.LyricsSyncQuickBar
+import com.luc4n3x.levyra.ui.lyrics.LyricsSyncSheet
+import com.luc4n3x.levyra.ui.lyrics.calibratedLyricsTrackOffset
+import com.luc4n3x.levyra.ui.lyrics.lyricsOffsetIsolated
+import com.luc4n3x.levyra.ui.i18n.lyricsSyncCopy
 import com.luc4n3x.levyra.ui.lyrics.adaptiveLyricFontSizeSp
 import com.luc4n3x.levyra.ui.lyrics.buildTimedLyricText
 import com.luc4n3x.levyra.ui.lyrics.karaokeCharacterProgress
-import com.luc4n3x.levyra.ui.lyrics.LYRICS_OFFSET_STEP_MS
 import com.luc4n3x.levyra.ui.lyrics.lyricsOffsetPosition
 import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalDotIntensity
 import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalGaps
@@ -382,6 +385,7 @@ import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.material.icons.rounded.ThumbUp
 import androidx.compose.material.icons.rounded.ThumbDown
@@ -411,7 +415,6 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.SwipeToDismissBoxDefaults
 import androidx.compose.material3.SwipeToDismissBoxState
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material3.Slider
@@ -2690,7 +2693,9 @@ fun LevyraApp(
                     onLoadVersions = viewModel::loadLyricsVersions,
                     onSelectVersion = viewModel::selectLyricsVersion,
                     onAutomatic = viewModel::useAutomaticLyrics,
-                    onSaveLatencyOffset = viewModel::saveLyricsLatencyOffset,
+                    onAdjustTrackOffset = viewModel::adjustLyricsTrackOffset,
+                    onSetTrackOffset = viewModel::setLyricsTrackOffset,
+                    onAdjustLatencyOffset = viewModel::adjustLyricsLatencyOffset,
                     onClearLatencyOffset = viewModel::clearLyricsLatencyOffset,
                     onSeekToMs = { positionMs ->
                         viewModel.seekTo(progressOf(positionMs, state.durationMs))
@@ -7271,7 +7276,9 @@ private fun LyricsOverlay(
     onLoadVersions: () -> Unit,
     onSelectVersion: (com.luc4n3x.levyra.data.LyricsRepository.LyricsVersion) -> Unit,
     onAutomatic: () -> Unit,
-    onSaveLatencyOffset: (String?, Boolean, Long) -> Unit,
+    onAdjustTrackOffset: (String, Long) -> Unit,
+    onSetTrackOffset: (String, Long) -> Unit,
+    onAdjustLatencyOffset: (String?, Boolean, Long) -> Unit,
     onClearLatencyOffset: (String) -> Unit,
     onSeekToMs: (Long) -> Unit,
     onPrevious: () -> Unit,
@@ -7300,15 +7307,16 @@ private fun LyricsOverlay(
     val clipboardScope = rememberCoroutineScope()
     val latencyProfiles = state.lyricsLatencyProfiles
     val audioOutputRoute = rememberLyricsAudioOutputRoute()
-    val storedLyricsOffsetMs = latencyProfiles.resolve(
+    val latencyOffsetMs = latencyProfiles.resolve(
         routeKey = audioOutputRoute?.stableKey,
         bluetooth = audioOutputRoute?.bluetooth == true
     )
+    val trackLyricsOffsetMs = latencyProfiles.trackOffsetMs(track?.id)
+    val lyricsOffsetMs = latencyOffsetMs + trackLyricsOffsetMs
     var viewMode by remember(track?.id) { mutableStateOf(LyricsViewMode.CINEMA) }
     var showRomanization by rememberSaveable { mutableStateOf(true) }
     val showTranslation = state.lyricsTranslationEnabled
     var showSecondaryVoices by remember(track?.id) { mutableStateOf(true) }
-    var lyricsOffsetMs by remember(track?.id) { mutableLongStateOf(storedLyricsOffsetMs) }
     var autoScrollEnabled by remember(track?.id) { mutableStateOf(true) }
     val lyricsAnimationsEnabled = LocalAnimationsEnabled.current
     var lyricsFocusMode by remember(track?.id) { mutableStateOf(lyricsAnimationsEnabled) }
@@ -7320,9 +7328,8 @@ private fun LyricsOverlay(
     var shareSnapshot by remember(track?.id) { mutableStateOf<LyricsShareSnapshot?>(null) }
     var showVersions by remember(track?.id) { mutableStateOf(false) }
     var calibrateMode by remember(track?.id) { mutableStateOf(false) }
-    LaunchedEffect(track?.id, audioOutputRoute?.stableKey, storedLyricsOffsetMs) {
-        lyricsOffsetMs = storedLyricsOffsetMs
-    }
+    var showSyncBar by rememberSaveable { mutableStateOf(false) }
+    var showSyncSheet by remember(track?.id) { mutableStateOf(false) }
     val visibleLyrics = remember(state.lyrics, showSecondaryVoices) {
         if (showSecondaryVoices) {
             state.lyrics
@@ -7538,6 +7545,16 @@ private fun LyricsOverlay(
                     background = if (selectionMode) LevyraCyan.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.10f),
                     onClick = { toggleShareMode() },
                     contentDescription = strings.shareLyrics
+                )
+            }
+            if (state.lyricsSynced && track != null) {
+                val syncActive = showSyncBar || trackLyricsOffsetMs != 0L
+                CircleIconButton(
+                    icon = Icons.Rounded.Timer,
+                    tint = if (syncActive) LevyraCyan else Color.White,
+                    background = if (syncActive) LevyraCyan.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.10f),
+                    onClick = { showSyncBar = !showSyncBar },
+                    contentDescription = lyricsSyncCopy(strings.code).title
                 )
             }
             CircleIconButton(
@@ -7833,10 +7850,12 @@ private fun LyricsOverlay(
                                 selectedRange = toggleLyricsShareSelection(selectedRange, index, visibleLyrics)
                                 haptics.perform(LevyraHapticAction.TrackSwipe)
                             } else if (calibrateMode && state.lyricsSynced) {
-                                lyricsOffsetMs = adjustLyricsOffset(
-                                    0L,
-                                    state.positionMs - line.startMs
-                                )
+                                track?.id?.let { trackId ->
+                                    onSetTrackOffset(
+                                        trackId,
+                                        calibratedLyricsTrackOffset(state.positionMs, line.startMs, latencyOffsetMs)
+                                    )
+                                }
                                 calibrateMode = false
                                 haptics.perform(LevyraHapticAction.TrackSwipe)
                                 autoScrollEnabled = true
@@ -7873,6 +7892,24 @@ private fun LyricsOverlay(
                     true
                 )
             }
+        }
+        AnimatedVisibility(
+            visible = showSyncBar && state.lyricsSynced && track != null && !selectionMode,
+            enter = fadeIn() + slideInVertically { it / 2 },
+            exit = fadeOut() + slideOutVertically { it / 2 },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(start = landscapeMetrics?.artworkPaneWidthDp?.dp ?: 0.dp)
+                .padding(horizontal = 16.dp, vertical = 14.dp)
+        ) {
+            LyricsSyncQuickBar(
+                offsetMs = trackLyricsOffsetMs,
+                accent = LevyraCyan,
+                onAdjust = { delta -> track?.id?.let { trackId -> onAdjustTrackOffset(trackId, delta) } },
+                onReset = { track?.id?.let { trackId -> onSetTrackOffset(trackId, 0L) } },
+                onOpenAdvanced = { showSyncSheet = true }
+            )
         }
         AnimatedVisibility(
             visible = selectionMode,
@@ -8050,51 +8087,42 @@ private fun LyricsOverlay(
                         }
                     )
                 }
-                if (state.lyricsSynced) {
-                    LyricsOffsetStepper(
-                        offsetMs = lyricsOffsetMs,
-                        onAdjust = { delta ->
-                            lyricsOffsetMs = adjustLyricsOffset(lyricsOffsetMs, delta)
-                        },
-                        onReset = { lyricsOffsetMs = 0L }
-                    )
-                }
-                if (lyricsOffsetMs != storedLyricsOffsetMs) {
-                    val profileLabel = audioOutputRoute
-                        ?.takeIf { route -> route.bluetooth && route.stableKey != null }
-                        ?.displayName
-                        ?.ifBlank { strings.connected }
+                if (state.lyricsSynced && track != null) {
                     LyricsControlChip(
-                        label = profileLabel?.let { "${strings.save} · $it" } ?: strings.save,
-                        selected = false,
-                        icon = Icons.Rounded.Check,
+                        label = "${lyricsSyncCopy(strings.code).title} · ${lyricsOffsetIsolated(trackLyricsOffsetMs)}",
+                        selected = trackLyricsOffsetMs != 0L,
+                        icon = Icons.Rounded.Timer,
                         onClick = {
-                            onSaveLatencyOffset(
-                                audioOutputRoute?.stableKey,
-                                audioOutputRoute?.bluetooth == true,
-                                lyricsOffsetMs
-                            )
+                            showLyricsOptions = false
+                            showSyncSheet = true
                         }
                     )
                 }
-                audioOutputRoute
-                    ?.takeIf { route ->
-                        route.bluetooth && route.stableKey?.let(latencyProfiles.deviceOffsetsMs::containsKey) == true
-                    }
-                    ?.let { route ->
-                        val stableKey = checkNotNull(route.stableKey)
-                        LyricsControlChip(
-                            label = "${strings.delete} · ${route.displayName.ifBlank { strings.connected }}",
-                            selected = false,
-                            icon = Icons.Rounded.Delete,
-                            onClick = {
-                                lyricsOffsetMs = latencyProfiles.globalOffsetMs
-                                onClearLatencyOffset(stableKey)
-                            }
-                        )
-                    }
             }
         }
+    }
+    if (showSyncSheet && track != null) {
+        val bluetoothRoute = audioOutputRoute?.takeIf { route -> route.bluetooth && route.stableKey != null }
+        val deviceProfileKey = bluetoothRoute?.stableKey?.takeIf(latencyProfiles.deviceOffsetsMs::containsKey)
+        LyricsSyncSheet(
+            trackOffsetMs = trackLyricsOffsetMs,
+            latencyOffsetMs = latencyOffsetMs,
+            latencyDeviceName = bluetoothRoute?.displayName?.ifBlank { strings.connected },
+            latencyResettable = latencyOffsetMs != 0L,
+            onAdjustTrack = { delta -> onAdjustTrackOffset(track.id, delta) },
+            onSetTrack = { value -> onSetTrackOffset(track.id, value) },
+            onAdjustLatency = { delta ->
+                onAdjustLatencyOffset(audioOutputRoute?.stableKey, audioOutputRoute?.bluetooth == true, delta)
+            },
+            onResetLatency = {
+                if (deviceProfileKey != null && latencyProfiles.globalOffsetMs == 0L) {
+                    onClearLatencyOffset(deviceProfileKey)
+                } else {
+                    onAdjustLatencyOffset(audioOutputRoute?.stableKey, audioOutputRoute?.bluetooth == true, -latencyOffsetMs)
+                }
+            },
+            onDismiss = { showSyncSheet = false }
+        )
     }
     shareSnapshot?.let { snapshot ->
         LyricsShareSheet(
@@ -8417,69 +8445,6 @@ private fun LyricsControlChip(
                 fontWeight = FontWeight.Black
             )
         }
-    }
-}
-
-@Composable
-private fun LyricsOffsetStepper(
-    offsetMs: Long,
-    onAdjust: (Long) -> Unit,
-    onReset: () -> Unit
-) {
-    val strings = LocalLevyraStrings.current
-    Surface(
-        color = if (offsetMs != 0L) LevyraCyan.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.06f),
-        border = BorderStroke(1.dp, if (offsetMs != 0L) LevyraCyan.copy(alpha = 0.26f) else Color.White.copy(alpha = 0.08f)),
-        shape = CircleShape
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            LyricsOffsetStepperButton(
-                icon = Icons.Rounded.Remove,
-                contentDescription = strings.lyricsOffsetEarlier,
-                onClick = { onAdjust(-LYRICS_OFFSET_STEP_MS) }
-            )
-            Text(
-                text = formatLyricsOffset(offsetMs),
-                color = Color.White,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Black,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.width(46.dp)
-            )
-            LyricsOffsetStepperButton(
-                icon = Icons.Rounded.Add,
-                contentDescription = strings.lyricsOffsetLater,
-                onClick = { onAdjust(LYRICS_OFFSET_STEP_MS) }
-            )
-            if (offsetMs != 0L) {
-                LyricsOffsetStepperButton(
-                    icon = Icons.Rounded.Refresh,
-                    contentDescription = strings.lyricsOffsetReset,
-                    onClick = onReset
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun LyricsOffsetStepperButton(
-    icon: ImageVector,
-    contentDescription: String,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-            .pressable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            tint = Color.White.copy(alpha = 0.70f),
-            modifier = Modifier.size(16.dp)
-        )
     }
 }
 
@@ -8945,12 +8910,6 @@ private fun Path.addRectangle(left: Float, top: Float, right: Float, bottom: Flo
     close()
 }
 
-
-private fun formatLyricsOffset(offsetMs: Long): String {
-    val sign = if (offsetMs >= 0L) "+" else "−"
-    val absolute = kotlin.math.abs(offsetMs)
-    return "$sign${absolute / 1_000}.${(absolute % 1_000) / 100}s"
-}
 
 @Composable
 private fun LyricsIntelligenceDialog(
