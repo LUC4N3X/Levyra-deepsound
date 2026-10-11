@@ -20,25 +20,21 @@ class PlayerDeckTest {
     fun `deck order lists every visual mode exactly once`() {
         assertEquals(PlayerVisualMode.entries.toSet(), PlayerDeckOrder.toSet())
         assertEquals(PlayerVisualMode.entries.size, PlayerDeckOrder.size)
-        assertEquals(PlayerVisualMode.CanvasImmersive, PlayerDeckOrder.first())
+        assertEquals(PlayerVisualMode.CanvasCard, PlayerDeckOrder.first())
     }
 
     @Test
     fun `existing modes keep the levyra layout and new styles get their own`() {
         assertEquals(PlayerDeckLayout.Poster, PlayerVisualMode.Artwork.deckLayout())
         assertEquals(PlayerDeckLayout.Levyra, PlayerVisualMode.CanvasCard.deckLayout())
-        assertEquals(PlayerDeckLayout.Levyra, PlayerVisualMode.CanvasImmersive.deckLayout())
+        assertEquals(PlayerDeckLayout.Aura, PlayerVisualMode.CanvasImmersive.deckLayout())
         assertEquals(PlayerDeckLayout.Expressive, PlayerVisualMode.Expressive.deckLayout())
         assertEquals(PlayerDeckLayout.Pulse, PlayerVisualMode.Pulse.deckLayout())
-        assertTrue(PlayerVisualMode.CanvasImmersive.showsCinematicStage())
-        PlayerVisualMode.entries.filter { it != PlayerVisualMode.CanvasImmersive }.forEach {
-            assertTrue("$it must not draw the cinematic stage", !it.showsCinematicStage())
-        }
     }
 
     @Test
     fun `new styles fall back to the levyra layout where they are not designed to run`() {
-        listOf(PlayerVisualMode.Expressive, PlayerVisualMode.Artwork, PlayerVisualMode.Pulse).forEach { mode ->
+        listOf(PlayerVisualMode.CanvasImmersive, PlayerVisualMode.Expressive, PlayerVisualMode.Artwork, PlayerVisualMode.Pulse).forEach { mode ->
             val supported = resolvePlayerDeckLayout(mode, false, false, LevyraPlayerPane.Stacked, true)
             assertEquals(mode.deckLayout(), supported)
             assertEquals(PlayerDeckLayout.Levyra, resolvePlayerDeckLayout(mode, true, false, LevyraPlayerPane.Stacked, true))
@@ -69,7 +65,7 @@ class PlayerDeckTest {
 
     @Test
     fun `levyra layouts resolve identically regardless of playback context`() {
-        listOf(PlayerVisualMode.CanvasCard, PlayerVisualMode.CanvasImmersive).forEach { mode ->
+        listOf(PlayerVisualMode.CanvasCard).forEach { mode ->
             listOf(true, false).forEach { video ->
                 listOf(LevyraPlayerPane.Stacked, LevyraPlayerPane.SideBySide).forEach { pane ->
                     assertEquals(PlayerDeckLayout.Levyra, resolvePlayerDeckLayout(mode, video, !video, pane, true))
@@ -166,10 +162,10 @@ class PlayerDeckTest {
             assertTrue(strings.playerDeckLandscapeNote.isNotBlank())
         }
         val italian = LevyraStrings.forCode("it")
-        assertEquals("Espressivo", visualModeStateDescription(PlayerVisualMode.Expressive, italian))
-        assertEquals("Pulse", visualModeStateDescription(PlayerVisualMode.Pulse, italian))
-        assertEquals("Immersivo", playerDeckLabel(PlayerVisualMode.CanvasImmersive, italian))
-        assertEquals("Scheda Canvas", playerDeckLabel(PlayerVisualMode.CanvasCard, italian))
+        assertEquals("Bloom", visualModeStateDescription(PlayerVisualMode.Expressive, italian))
+        assertEquals("Late Night", visualModeStateDescription(PlayerVisualMode.Pulse, italian))
+        assertEquals("Velvet", playerDeckLabel(PlayerVisualMode.CanvasImmersive, italian))
+        assertEquals("Studio", playerDeckLabel(PlayerVisualMode.CanvasCard, italian))
     }
 
     private fun track(

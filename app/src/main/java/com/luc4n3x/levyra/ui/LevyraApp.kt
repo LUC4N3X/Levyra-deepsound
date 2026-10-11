@@ -507,6 +507,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.ui.semantics.setProgress
@@ -5853,7 +5854,6 @@ private fun ArtistActionBar(
     var artistMenuExpanded by remember(profile.browseId, profile.name) { mutableStateOf(false) }
     val playContainer = remember(highlight) { lerp(highlight, Color.White, 0.58f) }
     val playContent = remember(highlight) { lerp(highlight, Color.Black, 0.82f) }
-    val playShadow = remember(highlight) { Color.Black.playerMix(highlight, 0.04f) }
     val playShape = artistPlayShape()
     val shuffleInteraction = remember { MutableInteractionSource() }
     val shuffleCorner = levyraExpressiveCorner(
@@ -5952,12 +5952,6 @@ private fun ArtistActionBar(
             Box(
                 modifier = Modifier
                     .size(62.dp)
-                    .shadow(
-                        elevation = 10.dp,
-                        shape = playShape,
-                        ambientColor = Color.Black.copy(alpha = 0.24f),
-                        spotColor = playShadow.copy(alpha = 0.18f)
-                    )
                     .background(playContainer, playShape)
                     .levyraPressable(
                         onClick = onPlay,
@@ -13326,28 +13320,27 @@ private fun SearchHeader(
     val animationsEnabled = LocalAnimationsEnabled.current
     val fieldInteraction = remember { MutableInteractionSource() }
     val fieldFocused by fieldInteraction.collectIsFocusedAsState()
+    val scheme = MaterialTheme.colorScheme
     val fieldContainer by animateColorAsState(
-        targetValue = when {
-            LevyraIsLight -> Color.White.copy(alpha = if (fieldFocused) 1f else 0.94f)
-            fieldFocused -> Color(0xFF171A23)
-            else -> Color(0xFF11131A)
-        },
+        targetValue = if (fieldFocused) scheme.surfaceContainerHighest else scheme.surfaceContainerHigh,
         animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
         label = "search-field-container"
     )
     val fieldOutline by animateColorAsState(
-        targetValue = when {
-            fieldFocused -> LevyraCyan.copy(alpha = 0.55f)
-            LevyraIsLight -> Color(0x1411131F)
-            else -> Color.White.copy(alpha = 0.075f)
-        },
+        targetValue = if (fieldFocused) scheme.primary.copy(alpha = 0.72f) else Color.Transparent,
         animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
         label = "search-field-outline"
     )
     val searchIconTint by animateColorAsState(
-        targetValue = if (fieldFocused) LevyraCyan else LevyraMuted,
+        targetValue = if (fieldFocused) scheme.primary else scheme.onSurfaceVariant,
         animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
         label = "search-field-icon"
+    )
+    val fieldCorner = levyraExpressiveToggleCorner(
+        checked = fieldFocused,
+        unchecked = 28.dp,
+        checkedCorner = 20.dp,
+        label = "search-field-corner"
     )
 
     Row(
@@ -13373,9 +13366,8 @@ private fun SearchHeader(
 
         Surface(
             color = fieldContainer,
-            border = BorderStroke(if (fieldFocused) 1.5.dp else Dp.Hairline, fieldOutline),
-            shape = CircleShape,
-            shadowElevation = if (LevyraIsLight) 2.dp else 0.dp,
+            border = BorderStroke(1.5.dp, fieldOutline),
+            shape = RoundedCornerShape(fieldCorner),
             modifier = Modifier
                 .weight(1f)
                 .heightIn(min = 56.dp)
@@ -13769,12 +13761,7 @@ private fun SearchTasteHints(
             items = suggestions,
             key = { suggestion -> suggestion }
         ) { suggestion ->
-            HomeChip(
-                label = suggestion,
-                selected = false,
-                exposeSelectionState = false,
-                onClick = { onClick(suggestion) }
-            )
+            QuickSearchChip(label = suggestion, onClick = { onClick(suggestion) })
         }
     }
 }
@@ -15208,22 +15195,30 @@ private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiSta
             if (playlist.tracks.isEmpty()) {
                 item { EmptyState(LocalLevyraStrings.current.playlistEmpty) }
             } else {
-                items(playlist.tracks, key = { "pldetail-${it.id}" }) { track ->
-                    TrackRow(
-                        track = track,
-                        isCurrent = track.id == state.currentTrack?.id,
-                        isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
-                        isResolving = state.isResolving && track.id == state.currentTrack?.id,
-                        isFavorite = track.id in state.favoriteIds,
-                        onClick = { viewModel.playPlaylist(playlist.id, track.id) },
-                        onFavorite = { viewModel.toggleFavorite(track) },
-                        isDownloading = track.id in state.downloadingTrackIds,
-                        isDownloaded = track.id in state.downloadedTrackIds,
-                        downloadProgress = state.downloadProgressByTrackId[track.id],
-                        onDownload = { viewModel.exportTrack(track) },
-                        onArtist = { viewModel.openArtist(track) },
-                        onRemove = { viewModel.removeFromPlaylist(playlist.id, track.id) }
-                    )
+                itemsIndexed(playlist.tracks, key = { _, track -> "pldetail-${track.id}" }) { index, track ->
+                    val current = track.id == state.currentTrack?.id
+                    Box(
+                        modifier = Modifier
+                            .padding(vertical = 1.dp)
+                            .clip(levyraGroupedListShape(index, playlist.tracks.size))
+                            .background(if (current) LevyraCyan.copy(alpha = 0.14f) else LevyraText.copy(alpha = 0.05f))
+                    ) {
+                        TrackRow(
+                            track = track,
+                            isCurrent = track.id == state.currentTrack?.id,
+                            isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                            isResolving = state.isResolving && track.id == state.currentTrack?.id,
+                            isFavorite = track.id in state.favoriteIds,
+                            onClick = { viewModel.playPlaylist(playlist.id, track.id) },
+                            onFavorite = { viewModel.toggleFavorite(track) },
+                            isDownloading = track.id in state.downloadingTrackIds,
+                            isDownloaded = track.id in state.downloadedTrackIds,
+                            downloadProgress = state.downloadProgressByTrackId[track.id],
+                            onDownload = { viewModel.exportTrack(track) },
+                            onArtist = { viewModel.openArtist(track) },
+                            onRemove = { viewModel.removeFromPlaylist(playlist.id, track.id) }
+                        )
+                    }
                 }
             }
         }
@@ -15514,139 +15509,94 @@ private fun PlayerCanvasFusionScrim(
 @Composable
 private fun PlayerModeSwitch(
     isVideoMode: Boolean,
-    activeColor: Color,
-    activeColorTarget: Color,
     onSong: () -> Unit,
     onVideo: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val animationsEnabled = LocalAnimationsEnabled.current
-    val accentTint = remember(activeColorTarget) {
-        activeColorTarget.playerMix(Color.White, 0.45f)
-    }
-
-    Row(
+    val springSpec = if (animationsEnabled) LevyraPlayerDesign.expressiveSpring<Dp>() else snap()
+    val indicatorOffset by animateDpAsState(
+        targetValue = if (isVideoMode) PlayerModeCollapsedWidth else 0.dp,
+        animationSpec = springSpec,
+        label = "player-mode-indicator"
+    )
+    Box(
         modifier = Modifier
             .selectableGroup()
-            .playerGlass(
-                shape = CircleShape,
-                fill = Color.Black.copy(alpha = 0.38f),
-                borderTop = Color.White.copy(alpha = 0.14f),
-                borderBottom = Color.White.copy(alpha = 0.06f)
-            )
-            .padding(3.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(2.dp)
+            .clip(CircleShape)
+            .background(Color.Black.copy(alpha = 0.26f))
+            .padding(PlayerModeInset)
     ) {
-        PlayerModeSwitchIconTab(
-            icon = LevyraIonicons.AudioMode,
-            contentDescription = strings.song,
-            selected = !isVideoMode,
-            accentColor = accentTint,
-            animationsEnabled = animationsEnabled,
-            onClick = onSong
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(indicatorOffset.roundToPx(), 0) }
+                .size(PlayerModeExpandedWidth, PlayerModeSegmentHeight)
+                .clip(CircleShape)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.White.copy(alpha = 0.26f), Color.White.copy(alpha = 0.16f))
+                    )
+                )
         )
-        PlayerModeSwitchIconTab(
-            icon = LevyraIonicons.VideoMode,
-            contentDescription = strings.video,
-            selected = isVideoMode,
-            accentColor = accentTint,
-            animationsEnabled = animationsEnabled,
-            onClick = onVideo
-        )
+        Row {
+            PlayerModeSwitchIconTab(
+                icon = LevyraIonicons.AudioMode,
+                label = strings.song,
+                selected = !isVideoMode,
+                animationsEnabled = animationsEnabled,
+                onClick = onSong
+            )
+            PlayerModeSwitchIconTab(
+                icon = LevyraIonicons.VideoMode,
+                label = strings.video,
+                selected = isVideoMode,
+                animationsEnabled = animationsEnabled,
+                onClick = onVideo
+            )
+        }
     }
 }
 
 @Composable
 private fun PlayerModeSwitchIconTab(
     icon: ImageVector,
-    contentDescription: String,
+    label: String,
     selected: Boolean,
-    accentColor: Color,
     animationsEnabled: Boolean,
     onClick: () -> Unit
 ) {
-    val tabSpec: AnimationSpec<Color> = if (animationsEnabled) {
-        LevyraPlayerDesign.standardTween(180)
-    } else {
-        snap()
-    }
-    val background by animateColorAsState(
-        targetValue = if (selected) Color.White.copy(alpha = 0.20f) else Color.Transparent,
-        animationSpec = tabSpec,
-        label = "player-mode-tab-background"
+    val tint by animateColorAsState(
+        targetValue = if (selected) Color.White else Color.White.copy(alpha = 0.5f),
+        animationSpec = if (animationsEnabled) LevyraPlayerDesign.standardTween(200) else snap(),
+        label = "player-mode-tab-tint"
     )
-    val borderTopTint by animateColorAsState(
-        targetValue = if (selected) Color.White.copy(alpha = 0.38f) else Color.Transparent,
-        animationSpec = tabSpec,
-        label = "player-mode-tab-border-top"
-    )
-    val borderBottomTint by animateColorAsState(
-        targetValue = if (selected) Color.White.copy(alpha = 0.12f) else Color.Transparent,
-        animationSpec = tabSpec,
-        label = "player-mode-tab-border-bottom"
-    )
-    val iconTint by animateColorAsState(
-        targetValue = if (selected) Color.White else Color.White.copy(alpha = 0.54f),
-        animationSpec = tabSpec,
-        label = "player-mode-tab-icon"
-    )
-    val iconScale by animateFloatAsState(
-        targetValue = if (selected) 1f else 0.92f,
+    val width by animateDpAsState(
+        targetValue = if (selected) PlayerModeExpandedWidth else PlayerModeCollapsedWidth,
         animationSpec = if (animationsEnabled) LevyraPlayerDesign.expressiveSpring() else snap(),
-        label = "player-mode-tab-scale"
+        label = "player-mode-tab-width"
     )
-
-    Box(
+    Row(
         modifier = Modifier
-            .sizeIn(
-                minWidth = 48.dp,
-                minHeight = 36.dp
-            )
-            .semantics {
-                this.selected = selected
-                role = Role.Tab
-                this.contentDescription = contentDescription
-            }
-            .then(
-                if (selected) {
-                    Modifier
-                        .shadow(
-                            elevation = 3.dp,
-                            shape = CircleShape,
-                            clip = false,
-                            ambientColor = accentColor.copy(alpha = 0.30f),
-                            spotColor = Color.Black.copy(alpha = 0.45f)
-                        )
-                        .background(background, CircleShape)
-                        .border(
-                            BorderStroke(
-                                1.dp,
-                                Brush.verticalGradient(listOf(borderTopTint, borderBottomTint))
-                            ),
-                            CircleShape
-                        )
-                } else {
-                    Modifier.background(background, CircleShape)
-                }
-            )
-            .pressable(enabled = !selected, pressedScale = 0.90f, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 7.dp),
-        contentAlignment = Alignment.Center
+            .size(width, PlayerModeSegmentHeight)
+            .clip(CircleShape)
+            .selectable(selected = selected, role = Role.Tab, onClick = onClick)
+            .semantics { contentDescription = label },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = iconTint,
-            modifier = Modifier
-                .size(17.dp)
-                .graphicsLayer {
-                    scaleX = iconScale
-                    scaleY = iconScale
-                }
+            tint = tint,
+            modifier = Modifier.size(18.dp)
         )
     }
 }
+
+private val PlayerModeExpandedWidth = 60.dp
+private val PlayerModeCollapsedWidth = 44.dp
+private val PlayerModeSegmentHeight = 34.dp
+private val PlayerModeInset = 3.dp
 
 @Composable
 private fun LevyraControlPulseHandle(
@@ -16054,16 +16004,9 @@ private fun PlayerYoutubeEngagementRow(
     val surface = if (LevyraIsLight) {
         LevyraAdaptiveChip
     } else {
-        Color.White.copy(alpha = 0.065f)
+        Color.White.copy(alpha = 0.10f)
     }
-    val outline = if (LevyraIsLight) {
-        LevyraAdaptiveHairline
-    } else {
-        accent.copy(alpha = 0.18f)
-    }
-    val divider = baseContent.copy(alpha = if (LevyraIsLight) 0.10f else 0.12f)
-    val pillShape = RoundedCornerShape(16.dp)
-    val rowHeight = if (compact) 30.dp else 32.dp
+    val rowHeight = if (compact) 36.dp else 40.dp
 
     AnimatedVisibility(
         visible = visible,
@@ -16071,149 +16014,138 @@ private fun PlayerYoutubeEngagementRow(
         exit = fadeOut(animationSpec = tween(140))
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
+                .pointerInput(Unit) { detectTapGestures { } },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(EngagementSegmentGap, Alignment.Start)
         ) {
-            Box(
-                modifier = Modifier
-                    .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
-                    .wrapContentWidth(),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                Surface(
-                    color = surface,
-                    border = BorderStroke(1.dp, outline),
-                    shape = pillShape
-                ) {
-                    Row(
-                        modifier = Modifier.heightIn(min = rowHeight),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(start = 11.dp, end = 9.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.ThumbUp,
-                                contentDescription = null,
-                                tint = if (hasLikes) accent else quietContent,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            if (hasLikes) {
-                                Text(
-                                    text = compactYoutubeCount(track.youtubeLikeCount),
-                                    color = strongContent,
-                                    fontSize = 11.5.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    maxLines = 1
-                                )
-                            }
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .width(1.dp)
-                                .height(15.dp)
-                                .background(divider)
-                        )
-
-                        Row(
-                            modifier = Modifier.padding(start = 9.dp, end = 9.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.ThumbDown,
-                                contentDescription = null,
-                                tint = if (hasDislikeEstimate) quietContent else quietContent.copy(alpha = 0.68f),
-                                modifier = Modifier.size(14.dp)
-                            )
-                            when {
-                                engagement.dislikeEstimateLoading -> CircularProgressIndicator(
-                                    modifier = Modifier.size(10.dp),
-                                    strokeWidth = 1.4.dp,
-                                    color = quietContent
-                                )
-                                hasDislikeEstimate -> Text(
-                                    text = "~${compactYoutubeCount(engagement.estimatedDislikeCount)}",
-                                    color = quietContent.copy(alpha = 0.92f),
-                                    fontSize = 11.5.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    maxLines = 1
-                                )
-                            }
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .width(1.dp)
-                                .height(15.dp)
-                                .background(divider)
-                        )
-
-                        Row(
-                            modifier = Modifier.padding(horizontal = 11.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.ChatBubbleOutline,
-                                contentDescription = null,
-                                tint = when {
-                                    comments.visible -> accent
-                                    canOpenComments -> strongContent.copy(alpha = 0.82f)
-                                    else -> quietContent.copy(alpha = 0.62f)
-                                },
-                                modifier = Modifier.size(14.dp)
-                            )
-                            when {
-                                comments.loading && !comments.loaded -> CircularProgressIndicator(
-                                    modifier = Modifier.size(10.dp),
-                                    strokeWidth = 1.4.dp,
-                                    color = quietContent
-                                )
-                                commentBadge.isNotBlank() -> Text(
-                                    text = commentBadge,
-                                    color = if (comments.visible) accent else strongContent,
-                                    fontSize = 11.5.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    maxLines = 1
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .height(LevyraPlayerDesign.MinimumTouchTarget)
-                        .pressable(enabled = canOpenComments, onClick = onComments)
-                        .padding(horizontal = 11.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(5.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.ChatBubbleOutline,
-                        contentDescription = strings.tapToOpenComments,
-                        tint = Color.Transparent,
-                        modifier = Modifier.size(14.dp)
+            EngagementSegment(index = 0, count = 3, height = rowHeight, fill = surface) {
+                Icon(
+                    imageVector = Icons.Rounded.ThumbUp,
+                    contentDescription = null,
+                    tint = if (hasLikes) accent else quietContent,
+                    modifier = Modifier.size(16.dp)
+                )
+                if (hasLikes) {
+                    Text(
+                        text = compactYoutubeCount(track.youtubeLikeCount),
+                        color = strongContent,
+                        fontSize = 12.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
                     )
-                    when {
-                        comments.loading && !comments.loaded -> Spacer(modifier = Modifier.size(10.dp))
-                        commentBadge.isNotBlank() -> Text(
-                            text = commentBadge,
-                            color = Color.Transparent,
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1
-                        )
-                    }
+                }
+            }
+            EngagementSegment(index = 1, count = 3, height = rowHeight, fill = surface) {
+                Icon(
+                    imageVector = Icons.Rounded.ThumbDown,
+                    contentDescription = null,
+                    tint = if (hasDislikeEstimate) quietContent else quietContent.copy(alpha = 0.68f),
+                    modifier = Modifier.size(16.dp)
+                )
+                when {
+                    engagement.dislikeEstimateLoading -> CircularProgressIndicator(
+                        modifier = Modifier.size(11.dp),
+                        strokeWidth = 1.4.dp,
+                        color = quietContent
+                    )
+                    hasDislikeEstimate -> Text(
+                        text = "~${compactYoutubeCount(engagement.estimatedDislikeCount)}",
+                        color = quietContent.copy(alpha = 0.92f),
+                        fontSize = 12.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
+                    )
+                }
+            }
+            EngagementSegment(
+                index = 2,
+                count = 3,
+                height = rowHeight,
+                fill = if (comments.visible) accent.copy(alpha = 0.26f) else surface,
+                onClick = onComments.takeIf { canOpenComments },
+                clickLabel = strings.tapToOpenComments
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.ChatBubbleOutline,
+                    contentDescription = null,
+                    tint = when {
+                        comments.visible -> accent
+                        canOpenComments -> strongContent.copy(alpha = 0.82f)
+                        else -> quietContent.copy(alpha = 0.62f)
+                    },
+                    modifier = Modifier.size(16.dp)
+                )
+                when {
+                    comments.loading && !comments.loaded -> CircularProgressIndicator(
+                        modifier = Modifier.size(11.dp),
+                        strokeWidth = 1.4.dp,
+                        color = quietContent
+                    )
+                    commentBadge.isNotBlank() -> Text(
+                        text = commentBadge,
+                        color = if (comments.visible) accent else strongContent,
+                        fontSize = 12.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
+                    )
                 }
             }
         }
     }
+}
+
+private val EngagementSegmentGap = 3.dp
+
+@Composable
+private fun EngagementSegment(
+    index: Int,
+    count: Int,
+    height: Dp,
+    fill: Color,
+    onClick: (() -> Unit)? = null,
+    clickLabel: String? = null,
+    content: @Composable RowScope.() -> Unit
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val inner by animateDpAsState(
+        targetValue = if (pressed) height / 2 else 6.dp,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "engagement-segment-corner"
+    )
+    val outer = height / 2
+    val shape = RoundedCornerShape(
+        topStart = if (index == 0) outer else inner,
+        bottomStart = if (index == 0) outer else inner,
+        topEnd = if (index == count - 1) outer else inner,
+        bottomEnd = if (index == count - 1) outer else inner
+    )
+    Row(
+        modifier = Modifier
+            .height(height)
+            .clip(shape)
+            .background(fill)
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(
+                        interactionSource = interaction,
+                        indication = LocalIndication.current,
+                        onClickLabel = clickLabel,
+                        role = Role.Button,
+                        onClick = onClick
+                    )
+                } else {
+                    Modifier.pointerInput(Unit) { detectTapGestures { } }
+                }
+            )
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        content = content
+    )
 }
 
 internal fun youtubeCommentCountBadge(value: String): String {
@@ -16840,8 +16772,6 @@ private fun PlayerScreen(
             if (track != null && (track.videoUrl.isNotBlank() || track.counterpartVideoId.isNotBlank())) {
                 PlayerModeSwitch(
                     isVideoMode = state.pendingVideoMode ?: state.isVideoMode,
-                    activeColor = Color(track.accentStart),
-                    activeColorTarget = Color(track.accentStart),
                     onSong = viewModel::toggleVideoMode,
                     onVideo = viewModel::toggleVideoMode
                 )
@@ -17274,8 +17204,7 @@ private fun PlayerYoutubeCommentsSheet(
                     onClick = {}
                 ),
             color = Color(0xFF101114),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-            shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
+            shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 Box(
@@ -17296,22 +17225,23 @@ private fun PlayerYoutubeCommentsSheet(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = strings.totalComments,
-                            color = Color.White,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Black
+                            text = strings.totalComments.uppercase(),
+                            color = primary.playerMix(Color.White, 0.55f),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.4.sp
                         )
                         val commentCount = youtubeCommentCountBadge(comments.countText)
-                        if (commentCount.isNotBlank()) {
-                            Text(
-                                text = commentCount,
-                                color = Color.White.copy(alpha = 0.52f),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
+                        Text(
+                            text = commentCount.ifBlank { "—" },
+                            color = Color.White,
+                            fontSize = 30.sp,
+                            lineHeight = 34.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.8).sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                     PlayerRoundIconButton(
                         icon = Icons.Rounded.Close,
@@ -17319,8 +17249,8 @@ private fun PlayerYoutubeCommentsSheet(
                         size = 38.dp,
                         iconSize = 20.dp,
                         tint = Color.White.copy(alpha = 0.82f),
-                        background = Color.White.copy(alpha = 0.07f),
-                        borderColor = Color.White.copy(alpha = 0.10f),
+                        background = Color.White.copy(alpha = 0.08f),
+                        borderColor = Color.Transparent,
                         onClick = onDismiss
                     )
                 }
@@ -17430,15 +17360,16 @@ private fun PlayerYoutubeCommentsSheet(
                             state = listState,
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 28.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                            verticalArrangement = Arrangement.spacedBy(3.dp)
                         ) {
-                            items(
+                            itemsIndexed(
                                 items = comments.items,
-                                key = YoutubeComment::id,
-                                contentType = { "youtube-comment" }
-                            ) { comment ->
+                                key = { _, comment -> comment.id },
+                                contentType = { _, _ -> "youtube-comment" }
+                            ) { index, comment ->
                                 YoutubeCommentCard(
                                     comment = comment,
+                                    shape = levyraGroupedListShape(index, comments.items.size),
                                     primary = primary,
                                     secondary = secondary,
                                     moreLabel = strings.more,
@@ -17539,6 +17470,7 @@ private fun YoutubeCommentsEmptyState(
 @Composable
 private fun YoutubeCommentCard(
     comment: YoutubeComment,
+    shape: Shape,
     primary: Color,
     secondary: Color,
     moreLabel: String,
@@ -17546,13 +17478,12 @@ private fun YoutubeCommentCard(
     onLoadMoreReplies: () -> Unit
 ) {
     Surface(
-        color = Color.White.copy(alpha = 0.055f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
-        shape = RoundedCornerShape(20.dp)
+        color = if (comment.pinned) primary.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.06f),
+        shape = shape
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 13.dp, vertical = 13.dp),
-            verticalArrangement = Arrangement.spacedBy(9.dp)
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.Top,
@@ -17561,7 +17492,8 @@ private fun YoutubeCommentCard(
                 YoutubeCommentAvatar(
                     url = comment.authorAvatarUrl,
                     author = comment.author,
-                    modifier = Modifier.size(36.dp)
+                    tint = primary,
+                    modifier = Modifier.size(38.dp)
                 )
                 Column(modifier = Modifier.weight(1f)) {
                     Row(
@@ -17570,9 +17502,9 @@ private fun YoutubeCommentCard(
                     ) {
                         Text(
                             text = comment.author,
-                            color = Color.White.copy(alpha = 0.92f),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White.copy(alpha = 0.94f),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)
@@ -17597,8 +17529,8 @@ private fun YoutubeCommentCard(
                     if (comment.publishedText.isNotBlank()) {
                         Text(
                             text = comment.publishedText,
-                            color = Color.White.copy(alpha = 0.40f),
-                            fontSize = 10.sp,
+                            color = Color.White.copy(alpha = 0.46f),
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -17615,56 +17547,72 @@ private fun YoutubeCommentCard(
 
             Text(
                 text = comment.text,
-                color = Color.White.copy(alpha = 0.86f),
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
+                color = Color.White.copy(alpha = 0.88f),
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
                 fontWeight = FontWeight.Normal
             )
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 if (comment.likeCountText.isNotBlank()) {
                     Row(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.07f))
+                            .padding(horizontal = 12.dp, vertical = 7.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.ThumbUp,
                             contentDescription = null,
-                            tint = Color.White.copy(alpha = 0.46f),
+                            tint = Color.White.copy(alpha = 0.62f),
                             modifier = Modifier.size(14.dp)
                         )
                         Text(
                             text = comment.likeCountText,
-                            color = Color.White.copy(alpha = 0.48f),
-                            fontSize = 10.5.sp,
+                            color = Color.White.copy(alpha = 0.72f),
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 }
 
                 if (comment.replyCount > 0 && comment.replyToken.isNotBlank()) {
+                    val replyPressSource = remember { MutableInteractionSource() }
+                    val replyPressed by replyPressSource.collectIsPressedAsState()
+                    val replyCorner by animateDpAsState(
+                        targetValue = if (replyPressed || comment.repliesExpanded) 10.dp else 18.dp,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+                        label = "comment-reply-corner"
+                    )
                     Row(
                         modifier = Modifier
-                            .clip(CircleShape)
-                            .clickable(onClick = onToggleReplies)
-                            .padding(horizontal = 7.dp, vertical = 4.dp),
+                            .clip(RoundedCornerShape(replyCorner))
+                            .background(secondary.copy(alpha = if (comment.repliesExpanded) 0.34f else 0.20f))
+                            .clickable(
+                                interactionSource = replyPressSource,
+                                indication = LocalIndication.current,
+                                onClick = onToggleReplies
+                            )
+                            .padding(horizontal = 12.dp, vertical = 7.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.Reply,
                             contentDescription = null,
-                            tint = secondary.playerMix(Color.White, 0.58f),
+                            tint = secondary.playerMix(Color.White, 0.66f),
                             modifier = Modifier.size(15.dp)
                         )
                         Text(
                             text = comment.replyCount.toString(),
-                            color = secondary.playerMix(Color.White, 0.58f),
-                            fontSize = 10.5.sp,
-                            fontWeight = FontWeight.ExtraBold
+                            color = secondary.playerMix(Color.White, 0.66f),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
@@ -17678,13 +17626,10 @@ private fun YoutubeCommentCard(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 30.dp, top = 2.dp)
-                        .border(
-                            width = 1.dp,
-                            color = primary.copy(alpha = 0.18f),
-                            shape = RoundedCornerShape(16.dp)
-                        )
-                        .padding(horizontal = 10.dp, vertical = 10.dp),
+                        .padding(start = 24.dp, top = 2.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color.Black.copy(alpha = 0.22f))
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     comment.replies.forEach { reply ->
@@ -17798,13 +17743,13 @@ private fun YoutubeCommentReply(
 private fun YoutubeCommentAvatar(
     url: String,
     author: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    tint: Color = Color.White
 ) {
     Surface(
         modifier = modifier,
         shape = CircleShape,
-        color = Color.White.copy(alpha = 0.08f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f))
+        color = tint.copy(alpha = 0.24f)
     ) {
         if (url.isNotBlank()) {
             AsyncImage(
@@ -17816,9 +17761,9 @@ private fun YoutubeCommentAvatar(
         } else {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
-                    text = author.trim().firstOrNull()?.uppercaseChar()?.toString().orEmpty(),
-                    color = Color.White.copy(alpha = 0.72f),
-                    fontSize = 11.sp,
+                    text = author.trim().firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()?.toString().orEmpty(),
+                    color = tint.playerMix(Color.White, 0.7f),
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Black
                 )
             }
@@ -18693,7 +18638,8 @@ private fun SettingsOverlay(
                                         PlayerVisualMode.CanvasCard.name to strings.playerVisualModeCanvasCard,
                                         PlayerVisualMode.CanvasImmersive.name to strings.playerVisualModeCanvasImmersive,
                                         PlayerVisualMode.Expressive.name to strings.playerDeckExpressive,
-                                        PlayerVisualMode.Pulse.name to strings.playerDeckPulse
+                                        PlayerVisualMode.Pulse.name to strings.playerDeckPulse,
+                                        PlayerVisualMode.Halo.name to strings.playerDeckHalo
                                     ),
                                     selected = interfaceSettings.playerVisualMode.name,
                                     onSelect = { value ->
@@ -18712,7 +18658,9 @@ private fun SettingsOverlay(
                                         PlayerBackgroundMode.Dynamic.name to strings.playerBackgroundDynamic,
                                         PlayerBackgroundMode.Blur.name to strings.playerBackgroundBlur,
                                         PlayerBackgroundMode.Dark.name to strings.playerBackgroundDark,
-                                        PlayerBackgroundMode.PureBlack.name to strings.playerBackgroundPureBlack
+                                        PlayerBackgroundMode.PureBlack.name to strings.playerBackgroundPureBlack,
+                                        PlayerBackgroundMode.Aurora.name to strings.playerBackgroundAurora,
+                                        PlayerBackgroundMode.Gradient.name to strings.playerBackgroundGradient
                                     ),
                                     selected = interfaceSettings.playerBackground.name,
                                     onSelect = { value ->
@@ -21851,13 +21799,12 @@ private fun TopResultCard(
 ) {
     val hero = tracks.firstOrNull() ?: return
 
-    val cardBg = if (LevyraIsLight) LevyraPanel else if (LevyraIsPureBlack) Color(0xFF101114) else LevyraPanel
-    val cardBorder = if (LevyraIsLight) LevyraAdaptiveHairline else Color.White.copy(alpha = 0.06f)
+    val cardBg = MaterialTheme.colorScheme.surfaceContainer
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
+            .clip(RoundedCornerShape(32.dp))
             .background(cardBg)
             .padding(top = 16.dp, bottom = 8.dp)
     ) {
@@ -24636,18 +24583,44 @@ private fun QuickChips(languageCode: String, onClick: (String) -> Unit) {
     val chips = LevyraContentLocales.quickSearches(languageCode)
     Row(
         modifier = Modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         chips.forEach { chip ->
-            Surface(
-                color = CinematicGlass.copy(alpha = 0.72f),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-                shape = CircleShape,
-                modifier = Modifier.pressable(onClick = { onClick(chip) })
-            ) {
-                Text(chip, color = LevyraText, fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 13.dp, vertical = 9.dp))
-            }
+            QuickSearchChip(label = chip, onClick = { onClick(chip) })
         }
+    }
+}
+
+@Composable
+private fun QuickSearchChip(label: String, onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val interaction = remember { MutableInteractionSource() }
+    val corner = levyraExpressiveCorner(
+        interactionSource = interaction,
+        rest = 22.dp,
+        pressed = 12.dp,
+        label = "search-quick-chip-corner"
+    )
+    Box(
+        modifier = Modifier
+            .heightIn(min = 48.dp)
+            .levyraPressable(
+                onClick = onClick,
+                interactionSource = interaction,
+                role = Role.Button,
+                pressedScale = LevyraPressScale.Control
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            color = scheme.onSecondaryContainer,
+            style = LevyraType.cardTitle.copy(fontWeight = FontWeight.Bold),
+            modifier = Modifier
+                .clip(RoundedCornerShape(corner))
+                .background(scheme.secondaryContainer)
+                .padding(horizontal = 16.dp, vertical = 10.dp)
+        )
     }
 }
 

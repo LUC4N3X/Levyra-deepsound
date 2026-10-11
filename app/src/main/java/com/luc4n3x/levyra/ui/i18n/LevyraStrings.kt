@@ -1,7 +1,6 @@
 package com.luc4n3x.levyra.ui.i18n
 
 import androidx.compose.runtime.compositionLocalOf
-import android.icu.text.PluralRules
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -15,7 +14,7 @@ class LevyraStrings private constructor(
     val code: String,
     private val entries: Map<String, String>
 ) {
-    private fun value(key: String): String = entries.getValue(key)
+    internal fun value(key: String): String = entries.getValue(key)
     private fun directionalValue(value: String): String {
         val clean = value.trim()
         return if (LevyraLanguageCatalog.isRtl(code) && clean.isNotBlank()) "\u2068$clean\u2069" else clean
@@ -51,18 +50,6 @@ class LevyraStrings private constructor(
             neverUpdated = value("smartOfflineNeverUpdated"),
             protectedManual = value("smartOfflineProtectedManual")
         )
-
-    fun formatSmartOfflineSongCount(count: Int): String {
-        val safeCount = count.coerceAtLeast(0)
-        val locale = Locale.forLanguageTag(code)
-        val category = PluralRules.forLocale(locale).select(safeCount.toDouble())
-        val nounKey = "smartOfflineSong" + category.replaceFirstChar { it.uppercaseChar() }
-        val formattedCount = NumberFormat.getIntegerInstance(locale).format(safeCount)
-        val safeNumber = if (LevyraLanguageCatalog.isRtl(code)) "\u2068$formattedCount\u2069" else formattedCount
-        return value("smartOfflineSongCountPattern")
-            .replace("{count}", safeNumber)
-            .replace("{songs}", value(nounKey))
-    }
 
     fun formatSmartOfflineUpdatedAt(timestamp: Long, now: Long = System.currentTimeMillis()): String {
         if (timestamp <= 0L) return smartOffline.neverUpdated
@@ -135,6 +122,9 @@ class LevyraStrings private constructor(
     val playerDeckArtworkHint: String get() = value("playerDeckArtworkHint")
     val playerDeckExpressiveHint: String get() = value("playerDeckExpressiveHint")
     val playerDeckPulseHint: String get() = value("playerDeckPulseHint")
+    val playerDeckHalo: String get() = value("playerDeckHalo")
+    val playerDeckHaloHint: String get() = value("playerDeckHaloHint")
+    val playerDeckDefaultBadge: String get() = value("playerDeckDefaultBadge")
     val playerDeckLandscapeNote: String get() = value("playerDeckLandscapeNote")
     val playlistStudio: String get() = value("playlistStudio")
     val playlistStudioNew: String get() = value("playlistStudioNew")
@@ -264,6 +254,8 @@ class LevyraStrings private constructor(
     val playerBackgroundBlur: String get() = value("playerBackgroundBlur")
     val playerBackgroundDark: String get() = value("playerBackgroundDark")
     val playerBackgroundPureBlack: String get() = value("playerBackgroundPureBlack")
+    val playerBackgroundAurora: String get() = value("playerBackgroundAurora")
+    val playerBackgroundGradient: String get() = value("playerBackgroundGradient")
     val playerGestureHorizontalSwipe: String get() = value("playerGestureHorizontalSwipe")
     val playerGestureHorizontalSwipeSubtitle: String get() = value("playerGestureHorizontalSwipeSubtitle")
     val playerGestureDoubleTapAction: String get() = value("playerGestureDoubleTapAction")
