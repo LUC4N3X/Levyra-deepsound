@@ -21,7 +21,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.offset
@@ -178,8 +177,6 @@ private val HomeBackdropHeight = 420.dp
 private val HomeChipVisualHeight = 40.dp
 private val HomeChipRestCorner = 20.dp
 private val HomeChipPressedCorner = 12.dp
-private const val HomeChipTintDark = 0.34f
-private const val HomeChipTintLight = 0.20f
 private val HomeBackdropBlue = Color(0xFF0A84FF)
 private val HomeBackdropIndigo = Color(0xFF5E5CE6)
 
@@ -197,16 +194,6 @@ internal fun HomeGenreChips(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(zones, key = { zone -> "home-chip-${zone.id}" }) { zone ->
-            val base = colors.surfaceContainerHigh
-            val tint = if (LevyraIsLight) HomeChipTintLight else HomeChipTintDark
-            val chipBrush = remember(zone.accentStart, zone.accentEnd, base, tint) {
-                Brush.linearGradient(
-                    listOf(
-                        lerp(base, Color(zone.accentStart), tint),
-                        lerp(base, Color(zone.accentEnd), tint * 0.55f)
-                    )
-                )
-            }
             val interaction = remember(zone.id) { MutableInteractionSource() }
             val corner = if (LocalAnimationsEnabled.current) {
                 levyraExpressiveCorner(
@@ -233,7 +220,7 @@ internal fun HomeGenreChips(
                     modifier = Modifier
                         .height(HomeChipVisualHeight)
                         .clip(RoundedCornerShape(corner))
-                        .background(chipBrush)
+                        .background(colors.surfaceContainerHigh)
                         .padding(horizontal = 18.dp),
                     contentAlignment = Alignment.Center
                 ) {
