@@ -125,7 +125,7 @@ def serve() -> int:
         # space is re-split by the child and parsed as a bogus subcommand.
         return subprocess.run([str(binary)], check=False).returncode
 
-    os.execv(str(binary), [str(binary)])
+    os.execv(str(binary), [str(binary)])  # nosec B606 -- pinned, hash-verified local executable
     return 0
 
 

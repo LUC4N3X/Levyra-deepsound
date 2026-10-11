@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-const val LEVYRA_DATABASE_VERSION = 25
+const val LEVYRA_DATABASE_VERSION = 26
 
 @Database(
     entities = [
@@ -33,7 +33,9 @@ const val LEVYRA_DATABASE_VERSION = 25
         ExcludedArtistEntity::class,
         RecommendationFeedbackEntity::class,
         QueueSpaceEntity::class,
-        LocalMediaEntity::class
+        LocalMediaEntity::class,
+        PersonalCollectionEntity::class,
+        PersonalCollectionTrackEntity::class
     ],
     version = LEVYRA_DATABASE_VERSION,
     exportSchema = true
@@ -57,6 +59,7 @@ abstract class LevyraDatabase : RoomDatabase() {
     abstract fun excludedArtistsDao(): ExcludedArtistsDao
     abstract fun recommendationFeedbackDao(): RecommendationFeedbackDao
     abstract fun localMediaDao(): LocalMediaDao
+    abstract fun personalCollectionDao(): PersonalCollectionDao
 
     companion object {
         @Volatile private var instance: LevyraDatabase? = null
@@ -767,6 +770,69 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_25_26 = object : Migration(25, 26) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS personal_collections (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        sourceKind TEXT NOT NULL,
+                        sourceUrl TEXT NOT NULL,
+                        sourceLabel TEXT NOT NULL,
+                        format TEXT NOT NULL,
+                        artworkUrl TEXT NOT NULL,
+                        artworkFile TEXT NOT NULL,
+                        allowCleartext INTEGER NOT NULL,
+                        allowLocalNetwork INTEGER NOT NULL,
+                        autoRefresh INTEGER NOT NULL,
+                        hosts TEXT NOT NULL,
+                        etag TEXT NOT NULL,
+                        lastModified TEXT NOT NULL,
+                        lastSyncedAt INTEGER NOT NULL,
+                        lastSyncAttemptAt INTEGER NOT NULL,
+                        lastSyncError TEXT NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS personal_collection_tracks (
+                        collectionId TEXT NOT NULL,
+                        entryKey TEXT NOT NULL,
+                        trackId TEXT NOT NULL,
+                        position INTEGER NOT NULL,
+                        title TEXT NOT NULL,
+                        artist TEXT NOT NULL,
+                        album TEXT NOT NULL,
+                        albumArtist TEXT NOT NULL,
+                        durationMs INTEGER NOT NULL,
+                        audioUrl TEXT NOT NULL,
+                        videoUrl TEXT NOT NULL,
+                        artworkUrl TEXT NOT NULL,
+                        artworkFile TEXT NOT NULL,
+                        trackNumber INTEGER NOT NULL,
+                        discNumber INTEGER NOT NULL,
+                        year INTEGER NOT NULL,
+                        addedAt INTEGER NOT NULL,
+                        PRIMARY KEY(collectionId, entryKey),
+                        FOREIGN KEY(collectionId) REFERENCES personal_collections(id) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS index_personal_collection_tracks_trackId " +
+                        "ON personal_collection_tracks(trackId)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_personal_collection_tracks_collectionId_position " +
+                        "ON personal_collection_tracks(collectionId, position)"
+                )
+            }
+        }
+
         internal val MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -791,7 +857,8 @@ abstract class LevyraDatabase : RoomDatabase() {
             MIGRATION_21_22,
             MIGRATION_22_23,
             MIGRATION_23_24,
-            MIGRATION_24_25
+            MIGRATION_24_25,
+            MIGRATION_25_26
         )
 
         fun get(context: Context): LevyraDatabase {
