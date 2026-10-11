@@ -75,7 +75,7 @@ internal class LevyraPersonalCollectionStrings(val code: String, private val val
     private fun number(value: Int): String = isolate(String.format(Locale.forLanguageTag(code), "%d", value))
 
     private fun isolate(value: String): String =
-        if (LevyraLanguageCatalog.isRtl(code) && value.isNotBlank()) "⁨$value⁩" else value
+        if (LevyraLanguageCatalog.isRtl(code) && value.isNotBlank()) "\u2068$value\u2069" else value
 
     companion object {
         const val KEY_COUNT = 63
