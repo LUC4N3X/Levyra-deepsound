@@ -47,14 +47,14 @@ fun formatLyricsOffsetSeconds(offsetMs: Long): String {
         else -> ""
     }
     val absolute = kotlin.math.abs(offsetMs)
-    val tenths = (absolute % 1_000L) / 100L
+    val tenths = absolute % 1_000L / 100L
     return "$sign${absolute / 1_000L}.$tenths s"
 }
 
 fun formatLyricsOffsetInput(offsetMs: Long): String {
     val absolute = kotlin.math.abs(offsetMs)
     val sign = if (offsetMs < 0L) "-" else ""
-    val hundredths = (absolute % 1_000L) / 10L
+    val hundredths = absolute % 1_000L / 10L
     val fraction = when {
         hundredths == 0L -> ""
         hundredths % 10L == 0L -> ".${hundredths / 10L}"

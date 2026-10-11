@@ -235,7 +235,7 @@ private fun LyricsSyncIconButton(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LyricsSyncSheet(
     trackOffsetMs: Long,
@@ -250,32 +250,6 @@ fun LyricsSyncSheet(
 ) {
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { lyricsSyncCopy(strings.code) }
-    val haptics = LocalLevyraHaptics.current
-    val focusManager = LocalFocusManager.current
-    val primary = MaterialTheme.colorScheme.primary
-    val sliderState = rememberSliderState(
-        value = trackOffsetMs / 1_000f,
-        steps = LYRICS_SYNC_SLIDER_STEPS,
-        trackRange = -(MAX_LYRICS_TRACK_OFFSET_MS / 1_000f)..(MAX_LYRICS_TRACK_OFFSET_MS / 1_000f)
-    )
-    LaunchedEffect(trackOffsetMs) {
-        val target = trackOffsetMs / 1_000f
-        if (sliderState.value != target) sliderState.value = target
-    }
-    var manualInput by rememberSaveable { mutableStateOf("") }
-    var manualInvalid by rememberSaveable { mutableStateOf(false) }
-    fun applyManualInput() {
-        val parsed = parseLyricsOffsetSeconds(manualInput)
-        if (parsed == null) {
-            manualInvalid = true
-            return
-        }
-        manualInvalid = false
-        manualInput = ""
-        focusManager.clearFocus()
-        haptics.perform(LevyraHapticAction.Confirm)
-        onSetTrack(parsed)
-    }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberBottomSheetState(
@@ -297,244 +271,351 @@ fun LyricsSyncSheet(
                 Text(copy.title, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Black)
                 Text(copy.hint, color = LevyraMuted, fontSize = 12.5.sp, fontWeight = FontWeight.Medium)
             }
-            LyricsSyncSectionCard {
-                Text(
-                    text = "${copy.trackScope} · ${copy.trackScopeHint}",
-                    color = LevyraMuted,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                val stateLabel = lyricsSyncStateLabel(copy, trackOffsetMs)
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clearAndSetSemantics {
-                            contentDescription = stateLabel
-                            liveRegion = LiveRegionMode.Polite
-                        },
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = formatLyricsOffsetSeconds(trackOffsetMs),
-                        style = LyricsSyncNumberStyle,
-                        color = if (trackOffsetMs != 0L) primary else LevyraText,
-                        fontSize = 40.sp,
-                        lineHeight = 44.sp,
-                        fontWeight = FontWeight.Black,
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        text = stateLabel,
-                        color = LevyraMuted,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        textAlign = TextAlign.Center
-                    )
-                }
-                Slider(
-                    state = sliderState,
-                    onValueChange = { seconds ->
-                        sliderState.value = seconds
-                        val snapped = snapLyricsTrackOffset((seconds * 1_000f).roundToLong())
-                        if (snapped != trackOffsetMs) {
-                            if (snapped == 0L || trackOffsetMs == 0L) haptics.perform(LevyraHapticAction.SeekSnap)
-                            onSetTrack(snapped)
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics { stateDescription = stateLabel }
-                )
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Text("−30 s", color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, style = LyricsSyncNumberStyle)
-                    Spacer(modifier = Modifier.weight(1f))
-                    Text("0", color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, style = LyricsSyncNumberStyle)
-                    Spacer(modifier = Modifier.weight(1f))
-                    Text("+30 s", color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, style = LyricsSyncNumberStyle)
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    LyricsSyncStepButton(
-                        label = copy.earlierAction,
-                        icon = Icons.Rounded.Remove,
-                        caption = "−0.5 s",
-                        enabled = trackOffsetMs > -MAX_LYRICS_TRACK_OFFSET_MS,
-                        onClick = {
-                            haptics.perform(LevyraHapticAction.SeekSnap)
-                            onAdjustTrack(-LYRICS_OFFSET_STEP_MS)
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-                    LyricsSyncStepButton(
-                        label = copy.laterAction,
-                        icon = Icons.Rounded.Add,
-                        caption = "+0.5 s",
-                        enabled = trackOffsetMs < MAX_LYRICS_TRACK_OFFSET_MS,
-                        onClick = {
-                            haptics.perform(LevyraHapticAction.SeekSnap)
-                            onAdjustTrack(LYRICS_OFFSET_STEP_MS)
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    LYRICS_SYNC_JUMPS_MS.forEach { jumpMs ->
-                        val label = formatLyricsOffsetSeconds(jumpMs).replace(".0 s", " s")
-                        val description = if (jumpMs < 0L) {
-                            "${copy.earlierAction} $label"
-                        } else {
-                            "${copy.laterAction} $label"
-                        }
-                        val jumpEnabled = if (jumpMs < 0L) {
-                            trackOffsetMs > -MAX_LYRICS_TRACK_OFFSET_MS
-                        } else {
-                            trackOffsetMs < MAX_LYRICS_TRACK_OFFSET_MS
-                        }
-                        Surface(
-                            onClick = {
-                                haptics.perform(LevyraHapticAction.SeekSnap)
-                                onAdjustTrack(jumpMs)
-                            },
-                            enabled = jumpEnabled,
-                            color = MaterialTheme.colorScheme.secondaryContainer
-                                .copy(alpha = if (jumpEnabled) 1f else 0.38f),
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                .copy(alpha = if (jumpEnabled) 1f else 0.38f),
-                            shape = CircleShape,
-                            modifier = Modifier
-                                .heightIn(min = 40.dp)
-                                .semantics { contentDescription = description }
-                        ) {
-                            Box(
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold, style = LyricsSyncNumberStyle)
-                            }
-                        }
-                    }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    OutlinedTextField(
-                        value = manualInput,
-                        onValueChange = { value ->
-                            manualInput = value.take(8)
-                            manualInvalid = false
-                        },
-                        label = { Text(copy.manualLabel) },
-                        placeholder = { Text(formatLyricsOffsetInput(trackOffsetMs)) },
-                        isError = manualInvalid,
-                        supportingText = if (manualInvalid) {
-                            { Text(copy.invalidInput) }
-                        } else {
-                            null
-                        },
-                        singleLine = true,
-                        textStyle = LyricsSyncNumberStyle,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Decimal,
-                            imeAction = ImeAction.Done
-                        ),
-                        keyboardActions = KeyboardActions(onDone = { applyManualInput() }),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.weight(1f)
-                    )
-                    FilledTonalButton(
-                        onClick = { applyManualInput() },
-                        enabled = manualInput.isNotBlank(),
-                        modifier = Modifier.heightIn(min = 48.dp)
-                    ) {
-                        Text(copy.apply, fontWeight = FontWeight.Bold)
-                    }
-                }
-                TextButton(
-                    onClick = {
-                        haptics.perform(LevyraHapticAction.Confirm)
-                        onSetTrack(0L)
-                    },
-                    enabled = trackOffsetMs != 0L,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                ) {
-                    Icon(Icons.Rounded.RestartAlt, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(strings.lyricsOffsetReset, fontWeight = FontWeight.Bold)
-                }
+            LyricsSyncTrackSection(
+                copy = copy,
+                resetLabel = strings.lyricsOffsetReset,
+                trackOffsetMs = trackOffsetMs,
+                onAdjustTrack = onAdjustTrack,
+                onSetTrack = onSetTrack
+            )
+            LyricsSyncLatencySection(
+                copy = copy,
+                resetLabel = strings.lyricsOffsetReset,
+                latencyOffsetMs = latencyOffsetMs,
+                latencyDeviceName = latencyDeviceName,
+                latencyResettable = latencyResettable,
+                onAdjustLatency = onAdjustLatency,
+                onResetLatency = onResetLatency
+            )
+        }
+    }
+}
+
+@Composable
+private fun LyricsSyncTrackSection(
+    copy: LyricsSyncCopy,
+    resetLabel: String,
+    trackOffsetMs: Long,
+    onAdjustTrack: (Long) -> Unit,
+    onSetTrack: (Long) -> Unit
+) {
+    val haptics = LocalLevyraHaptics.current
+    val stateLabel = lyricsSyncStateLabel(copy, trackOffsetMs)
+    LyricsSyncSectionCard {
+        Text(
+            text = "${copy.trackScope} · ${copy.trackScopeHint}",
+            color = LevyraMuted,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        LyricsSyncTrackReadout(trackOffsetMs = trackOffsetMs, stateLabel = stateLabel)
+        LyricsSyncTrackSlider(trackOffsetMs = trackOffsetMs, stateLabel = stateLabel, onSetTrack = onSetTrack)
+        LyricsSyncFineSteps(copy = copy, trackOffsetMs = trackOffsetMs, onAdjustTrack = onAdjustTrack)
+        LyricsSyncJumps(copy = copy, trackOffsetMs = trackOffsetMs, onAdjustTrack = onAdjustTrack)
+        LyricsSyncManualInput(copy = copy, trackOffsetMs = trackOffsetMs, onSetTrack = onSetTrack)
+        TextButton(
+            onClick = {
+                haptics.perform(LevyraHapticAction.Confirm)
+                onSetTrack(0L)
+            },
+            enabled = trackOffsetMs != 0L,
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        ) {
+            Icon(Icons.Rounded.RestartAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(resetLabel, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun LyricsSyncTrackReadout(trackOffsetMs: Long, stateLabel: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clearAndSetSemantics {
+                contentDescription = stateLabel
+                liveRegion = LiveRegionMode.Polite
+            },
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = formatLyricsOffsetSeconds(trackOffsetMs),
+            style = LyricsSyncNumberStyle,
+            color = if (trackOffsetMs != 0L) MaterialTheme.colorScheme.primary else LevyraText,
+            fontSize = 40.sp,
+            lineHeight = 44.sp,
+            fontWeight = FontWeight.Black,
+            textAlign = TextAlign.Center
+        )
+        Text(
+            text = stateLabel,
+            color = LevyraMuted,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LyricsSyncTrackSlider(trackOffsetMs: Long, stateLabel: String, onSetTrack: (Long) -> Unit) {
+    val haptics = LocalLevyraHaptics.current
+    val sliderState = rememberSliderState(
+        value = trackOffsetMs / 1_000f,
+        steps = LYRICS_SYNC_SLIDER_STEPS,
+        trackRange = -(MAX_LYRICS_TRACK_OFFSET_MS / 1_000f)..(MAX_LYRICS_TRACK_OFFSET_MS / 1_000f)
+    )
+    LaunchedEffect(trackOffsetMs) {
+        val target = trackOffsetMs / 1_000f
+        if (sliderState.value != target) sliderState.value = target
+    }
+    Slider(
+        state = sliderState,
+        onValueChange = { seconds ->
+            sliderState.value = seconds
+            val snapped = snapLyricsTrackOffset((seconds * 1_000f).roundToLong())
+            if (snapped != trackOffsetMs) {
+                if (snapped == 0L || trackOffsetMs == 0L) haptics.perform(LevyraHapticAction.SeekSnap)
+                onSetTrack(snapped)
             }
-            LyricsSyncSectionCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(copy.deviceScope, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
-                        Text(
-                            text = listOfNotNull(latencyDeviceName?.takeIf(String::isNotBlank), copy.deviceScopeHint)
-                                .joinToString(" · "),
-                            color = LevyraMuted,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { stateDescription = stateLabel }
+    )
+    Row(modifier = Modifier.fillMaxWidth()) {
+        LyricsSyncRangeLabel("−30 s")
+        Spacer(modifier = Modifier.weight(1f))
+        LyricsSyncRangeLabel("0")
+        Spacer(modifier = Modifier.weight(1f))
+        LyricsSyncRangeLabel("+30 s")
+    }
+}
+
+@Composable
+private fun LyricsSyncRangeLabel(text: String) {
+    Text(text, color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, style = LyricsSyncNumberStyle)
+}
+
+@Composable
+private fun LyricsSyncFineSteps(copy: LyricsSyncCopy, trackOffsetMs: Long, onAdjustTrack: (Long) -> Unit) {
+    val haptics = LocalLevyraHaptics.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        LyricsSyncStepButton(
+            label = copy.earlierAction,
+            icon = Icons.Rounded.Remove,
+            caption = "−0.5 s",
+            enabled = trackOffsetMs > -MAX_LYRICS_TRACK_OFFSET_MS,
+            onClick = {
+                haptics.perform(LevyraHapticAction.SeekSnap)
+                onAdjustTrack(-LYRICS_OFFSET_STEP_MS)
+            },
+            modifier = Modifier.weight(1f)
+        )
+        LyricsSyncStepButton(
+            label = copy.laterAction,
+            icon = Icons.Rounded.Add,
+            caption = "+0.5 s",
+            enabled = trackOffsetMs < MAX_LYRICS_TRACK_OFFSET_MS,
+            onClick = {
+                haptics.perform(LevyraHapticAction.SeekSnap)
+                onAdjustTrack(LYRICS_OFFSET_STEP_MS)
+            },
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun LyricsSyncJumps(copy: LyricsSyncCopy, trackOffsetMs: Long, onAdjustTrack: (Long) -> Unit) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        LYRICS_SYNC_JUMPS_MS.forEach { jumpMs ->
+            LyricsSyncJumpChip(
+                copy = copy,
+                jumpMs = jumpMs,
+                enabled = if (jumpMs < 0L) {
+                    trackOffsetMs > -MAX_LYRICS_TRACK_OFFSET_MS
+                } else {
+                    trackOffsetMs < MAX_LYRICS_TRACK_OFFSET_MS
+                },
+                onAdjustTrack = onAdjustTrack
+            )
+        }
+    }
+}
+
+@Composable
+private fun LyricsSyncJumpChip(
+    copy: LyricsSyncCopy,
+    jumpMs: Long,
+    enabled: Boolean,
+    onAdjustTrack: (Long) -> Unit
+) {
+    val haptics = LocalLevyraHaptics.current
+    val label = formatLyricsOffsetSeconds(jumpMs).replace(".0 s", " s")
+    val description = "${if (jumpMs < 0L) copy.earlierAction else copy.laterAction} $label"
+    val alpha = if (enabled) 1f else 0.38f
+    Surface(
+        onClick = {
+            haptics.perform(LevyraHapticAction.SeekSnap)
+            onAdjustTrack(jumpMs)
+        },
+        enabled = enabled,
+        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = alpha),
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = alpha),
+        shape = CircleShape,
+        modifier = Modifier
+            .heightIn(min = 40.dp)
+            .semantics { contentDescription = description }
+    ) {
+        Box(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold, style = LyricsSyncNumberStyle)
+        }
+    }
+}
+
+@Composable
+private fun LyricsSyncManualInput(copy: LyricsSyncCopy, trackOffsetMs: Long, onSetTrack: (Long) -> Unit) {
+    val haptics = LocalLevyraHaptics.current
+    val focusManager = LocalFocusManager.current
+    var manualInput by rememberSaveable { mutableStateOf("") }
+    var manualInvalid by rememberSaveable { mutableStateOf(false) }
+    fun applyManualInput() {
+        val parsed = parseLyricsOffsetSeconds(manualInput)
+        if (parsed == null) {
+            manualInvalid = true
+            return
+        }
+        manualInvalid = false
+        manualInput = ""
+        focusManager.clearFocus()
+        haptics.perform(LevyraHapticAction.Confirm)
+        onSetTrack(parsed)
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        OutlinedTextField(
+            value = manualInput,
+            onValueChange = { value ->
+                manualInput = value.take(8)
+                manualInvalid = false
+            },
+            label = { Text(copy.manualLabel) },
+            placeholder = { Text(formatLyricsOffsetInput(trackOffsetMs)) },
+            isError = manualInvalid,
+            supportingText = if (manualInvalid) {
+                { Text(copy.invalidInput) }
+            } else {
+                null
+            },
+            singleLine = true,
+            textStyle = LyricsSyncNumberStyle,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Decimal,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(onDone = { applyManualInput() }),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.weight(1f)
+        )
+        FilledTonalButton(
+            onClick = { applyManualInput() },
+            enabled = manualInput.isNotBlank(),
+            modifier = Modifier.heightIn(min = 48.dp)
+        ) {
+            Text(copy.apply, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun LyricsSyncLatencySection(
+    copy: LyricsSyncCopy,
+    resetLabel: String,
+    latencyOffsetMs: Long,
+    latencyDeviceName: String?,
+    latencyResettable: Boolean,
+    onAdjustLatency: (Long) -> Unit,
+    onResetLatency: () -> Unit
+) {
+    val haptics = LocalLevyraHaptics.current
+    LyricsSyncSectionCard {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(copy.deviceScope, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+            Text(
+                text = listOfNotNull(latencyDeviceName?.takeIf(String::isNotBlank), copy.deviceScopeHint)
+                    .joinToString(" · "),
+                color = LevyraMuted,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            LyricsSyncIconButton(
+                icon = Icons.Rounded.Remove,
+                contentDescription = copy.earlierAction,
+                enabled = latencyOffsetMs > -MAX_LYRICS_OFFSET_MS,
+                tint = LevyraText,
+                onClick = {
+                    haptics.perform(LevyraHapticAction.SeekSnap)
+                    onAdjustLatency(-LYRICS_LATENCY_STEP_MS)
                 }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    LyricsSyncIconButton(
-                        icon = Icons.Rounded.Remove,
-                        contentDescription = copy.earlierAction,
-                        enabled = latencyOffsetMs > -MAX_LYRICS_OFFSET_MS,
-                        tint = LevyraText,
-                        onClick = {
-                            haptics.perform(LevyraHapticAction.SeekSnap)
-                            onAdjustLatency(-LYRICS_LATENCY_STEP_MS)
-                        }
-                    )
-                    Text(
-                        text = formatLyricsOffsetSeconds(latencyOffsetMs),
-                        style = LyricsSyncNumberStyle,
-                        color = if (latencyOffsetMs != 0L) primary else LevyraText,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Black,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .widthIn(min = 88.dp)
-                            .semantics { liveRegion = LiveRegionMode.Polite }
-                    )
-                    LyricsSyncIconButton(
-                        icon = Icons.Rounded.Add,
-                        contentDescription = copy.laterAction,
-                        enabled = latencyOffsetMs < MAX_LYRICS_OFFSET_MS,
-                        tint = LevyraText,
-                        onClick = {
-                            haptics.perform(LevyraHapticAction.SeekSnap)
-                            onAdjustLatency(LYRICS_LATENCY_STEP_MS)
-                        }
-                    )
-                    LyricsSyncIconButton(
-                        icon = Icons.Rounded.RestartAlt,
-                        contentDescription = strings.lyricsOffsetReset,
-                        enabled = latencyResettable,
-                        tint = LevyraText,
-                        onClick = {
-                            haptics.perform(LevyraHapticAction.Confirm)
-                            onResetLatency()
-                        }
-                    )
+            )
+            Text(
+                text = formatLyricsOffsetSeconds(latencyOffsetMs),
+                style = LyricsSyncNumberStyle,
+                color = if (latencyOffsetMs != 0L) MaterialTheme.colorScheme.primary else LevyraText,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Black,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .widthIn(min = 88.dp)
+                    .semantics { liveRegion = LiveRegionMode.Polite }
+            )
+            LyricsSyncIconButton(
+                icon = Icons.Rounded.Add,
+                contentDescription = copy.laterAction,
+                enabled = latencyOffsetMs < MAX_LYRICS_OFFSET_MS,
+                tint = LevyraText,
+                onClick = {
+                    haptics.perform(LevyraHapticAction.SeekSnap)
+                    onAdjustLatency(LYRICS_LATENCY_STEP_MS)
                 }
-            }
+            )
+            LyricsSyncIconButton(
+                icon = Icons.Rounded.RestartAlt,
+                contentDescription = resetLabel,
+                enabled = latencyResettable,
+                tint = LevyraText,
+                onClick = {
+                    haptics.perform(LevyraHapticAction.Confirm)
+                    onResetLatency()
+                }
+            )
         }
     }
 }
