@@ -94,17 +94,17 @@ internal fun PlayerExpressiveDeck(
     modifier: Modifier = Modifier,
     headlineModifier: Modifier = Modifier
 ) {
-    val transportHeight = if (compact) ExpressiveTransportHeightCompact else ExpressiveTransportHeight
+    val metrics = expressiveDeckMetrics(compact)
     Column(
         modifier = modifier
             .statusBarsPadding()
             .navigationBarsPadding()
-            .then(if (scrollable) Modifier.verticalScroll(rememberScrollState()) else Modifier)
+            .expressiveDeckScroll(scrollable)
             .padding(
                 start = gutter,
                 end = gutter,
                 top = LevyraPlayerDesign.SpaceXs,
-                bottom = if (compact) LevyraPlayerDesign.SpaceMd else LevyraPlayerDesign.SpaceXl
+                bottom = metrics.bottom
             ),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -113,7 +113,7 @@ internal fun PlayerExpressiveDeck(
             modifier = Modifier
                 .fillMaxWidth()
                 .then(if (scrollable) Modifier.height(ExpressiveScrollingStage) else Modifier.weight(1f))
-                .padding(vertical = if (compact) LevyraPlayerDesign.SpaceSm else LevyraPlayerDesign.SpaceLg),
+                .padding(vertical = metrics.stagePadding),
             contentAlignment = Alignment.Center
         ) {
             val side = minOf(maxWidth, maxHeight)
@@ -136,21 +136,21 @@ internal fun PlayerExpressiveDeck(
             onToggleFavorite = onToggleFavorite,
             modifier = headlineModifier
         )
-        Spacer(modifier = Modifier.height(if (compact) LevyraPlayerDesign.SpaceXs else LevyraPlayerDesign.SpaceSm))
+        Spacer(modifier = Modifier.height(metrics.headlineGap))
         slots.progress()
-        Spacer(modifier = Modifier.height(if (compact) LevyraPlayerDesign.SpaceXs else LevyraPlayerDesign.SpaceMd))
+        Spacer(modifier = Modifier.height(metrics.progressGap))
         ExpressiveTransportRow(
             isPlaying = isPlaying,
             isResolving = isResolving,
             labels = labels,
-            height = transportHeight,
+            height = metrics.transportHeight,
             surfaces = surfaces,
             animated = animated,
             onPrevious = onPrevious,
             onTogglePlay = onTogglePlay,
             onNext = onNext
         )
-        Spacer(modifier = Modifier.height(if (compact) LevyraPlayerDesign.SpaceMd else LevyraPlayerDesign.SpaceLg))
+        Spacer(modifier = Modifier.height(metrics.modeGap))
         ExpressiveModeRow(
             track = track,
             slots = slots,
@@ -164,6 +164,40 @@ internal fun PlayerExpressiveDeck(
         )
     }
 }
+
+private class ExpressiveDeckMetrics(
+    val transportHeight: Dp,
+    val bottom: Dp,
+    val stagePadding: Dp,
+    val headlineGap: Dp,
+    val progressGap: Dp,
+    val modeGap: Dp
+)
+
+private val ExpressiveCompactMetrics = ExpressiveDeckMetrics(
+    transportHeight = ExpressiveTransportHeightCompact,
+    bottom = LevyraPlayerDesign.SpaceMd,
+    stagePadding = LevyraPlayerDesign.SpaceSm,
+    headlineGap = LevyraPlayerDesign.SpaceXs,
+    progressGap = LevyraPlayerDesign.SpaceXs,
+    modeGap = LevyraPlayerDesign.SpaceMd
+)
+
+private val ExpressiveRegularMetrics = ExpressiveDeckMetrics(
+    transportHeight = ExpressiveTransportHeight,
+    bottom = LevyraPlayerDesign.SpaceXl,
+    stagePadding = LevyraPlayerDesign.SpaceLg,
+    headlineGap = LevyraPlayerDesign.SpaceSm,
+    progressGap = LevyraPlayerDesign.SpaceMd,
+    modeGap = LevyraPlayerDesign.SpaceLg
+)
+
+private fun expressiveDeckMetrics(compact: Boolean): ExpressiveDeckMetrics =
+    if (compact) ExpressiveCompactMetrics else ExpressiveRegularMetrics
+
+@Composable
+private fun Modifier.expressiveDeckScroll(scrollable: Boolean): Modifier =
+    if (scrollable) verticalScroll(rememberScrollState()) else this
 
 @Composable
 private fun ExpressiveTransportRow(

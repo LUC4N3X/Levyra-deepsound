@@ -20606,58 +20606,85 @@ private fun HomeGreeting(
         nameReveal.animateTo(1f, spring(dampingRatio = 0.68f, stiffness = Spring.StiffnessLow))
         greetingRevealed = true
     }
-    val ink = if (LevyraIsLight) LevyraText else Color.White
-    val softInk = if (LevyraIsLight) LevyraMuted else Color.White.copy(alpha = 0.72f)
     Column(
         modifier = modifier.clearAndSetSemantics {
             contentDescription = greeting
             heading()
         }
     ) {
-        Crossfade(
-            targetState = dayPart,
-            animationSpec = if (animationsEnabled) tween(240, easing = FastOutSlowInEasing) else snap(),
-            label = "homeGreetingDayPart"
-        ) { visibleDayPart ->
-            Text(
-                text = visibleDayPart,
-                color = if (name.isBlank()) ink else softInk,
-                style = if (name.isBlank()) {
-                    LevyraType.screenTitle.copy(fontSize = 24.sp, lineHeight = 28.sp, letterSpacing = (-0.6).sp)
-                } else {
-                    LevyraType.metadata.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.1.sp)
-                },
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.graphicsLayer {
-                    alpha = dayPartReveal.value
-                    translationY = (1f - dayPartReveal.value) * GREETING_RISE.toPx()
-                }
-            )
-        }
+        HomeGreetingDayPart(
+            dayPart = dayPart,
+            prominent = name.isBlank(),
+            animationsEnabled = animationsEnabled,
+            reveal = { dayPartReveal.value }
+        )
         if (name.isNotBlank()) {
-            Text(
-                text = name,
-                color = ink,
-                style = LevyraType.screenTitle.copy(
-                    fontSize = 26.sp,
-                    lineHeight = 29.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = (-0.9).sp
-                ),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.graphicsLayer {
-                    alpha = nameReveal.value
-                    translationY = (1f - nameReveal.value) * GREETING_RISE.toPx() * 1.6f
-                    val scale = 0.94f + 0.06f * nameReveal.value
-                    scaleX = scale
-                    scaleY = scale
-                    transformOrigin = TransformOrigin(0f, 1f)
-                }
-            )
+            HomeGreetingName(name = name, reveal = { nameReveal.value })
         }
     }
+}
+
+@Composable
+private fun HomeGreetingDayPart(
+    dayPart: String,
+    prominent: Boolean,
+    animationsEnabled: Boolean,
+    reveal: () -> Float
+) {
+    val color = when {
+        prominent && LevyraIsLight -> LevyraText
+        prominent -> Color.White
+        LevyraIsLight -> LevyraMuted
+        else -> Color.White.copy(alpha = 0.72f)
+    }
+    val style = if (prominent) {
+        LevyraType.screenTitle.copy(fontSize = 24.sp, lineHeight = 28.sp, letterSpacing = (-0.6).sp)
+    } else {
+        LevyraType.metadata.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.1.sp)
+    }
+    Crossfade(
+        targetState = dayPart,
+        animationSpec = if (animationsEnabled) tween(240, easing = FastOutSlowInEasing) else snap(),
+        label = "homeGreetingDayPart"
+    ) { visibleDayPart ->
+        Text(
+            text = visibleDayPart,
+            color = color,
+            style = style,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.graphicsLayer {
+                val value = reveal()
+                alpha = value
+                translationY = (1f - value) * GREETING_RISE.toPx()
+            }
+        )
+    }
+}
+
+@Composable
+private fun HomeGreetingName(name: String, reveal: () -> Float) {
+    Text(
+        text = name,
+        color = if (LevyraIsLight) LevyraText else Color.White,
+        style = LevyraType.screenTitle.copy(
+            fontSize = 26.sp,
+            lineHeight = 29.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = (-0.9).sp
+        ),
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.graphicsLayer {
+            val value = reveal()
+            alpha = value
+            translationY = (1f - value) * GREETING_RISE.toPx() * 1.6f
+            val scale = 0.94f + 0.06f * value
+            scaleX = scale
+            scaleY = scale
+            transformOrigin = TransformOrigin(0f, 1f)
+        }
+    )
 }
 
 private const val GREETING_NAME_STAGGER_MS = 90L
