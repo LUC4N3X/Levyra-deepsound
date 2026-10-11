@@ -212,7 +212,11 @@ private fun RowScope.PlayerPlaySegment(
         checkedCorner = height / 2,
         label = "player-play-corner"
     )
-    val morphShape = rememberLevyraPlayMorphShape(playing = isPlaying, animated = animated)
+    val morphShape = rememberLevyraPlayMorphShape(
+        playing = isPlaying,
+        animated = animated,
+        spinWhilePlaying = !isResolving
+    )
     val content by animateColorAsState(
         targetValue = surfaces.heroContent,
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween()),

@@ -22,16 +22,16 @@ import com.luc4n3x.levyra.domain.Track
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.border
 import com.luc4n3x.levyra.ui.theme.LevyraType
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.domain.ExploreZone
@@ -40,7 +40,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.heightIn
@@ -68,6 +67,13 @@ import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
 import kotlin.math.min
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
+import androidx.compose.material3.carousel.rememberCarouselState
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.shape.CircleShape
 
 internal val LocalHomeCompactDensity = staticCompositionLocalOf { false }
 
@@ -197,6 +203,8 @@ private val HomeBackdropHeight = 420.dp
 private val HomeChipVisualHeight = 40.dp
 private val HomeChipRestCorner = 20.dp
 private val HomeChipPressedCorner = 12.dp
+private const val HomeChipTintDark = 0.34f
+private const val HomeChipTintLight = 0.20f
 private val HomeBackdropBlue = Color(0xFF0A84FF)
 private val HomeBackdropIndigo = Color(0xFF5E5CE6)
 
@@ -214,6 +222,16 @@ internal fun HomeGenreChips(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(zones, key = { zone -> "home-chip-${zone.id}" }) { zone ->
+            val base = colors.surfaceContainerHigh
+            val tint = if (LevyraIsLight) HomeChipTintLight else HomeChipTintDark
+            val chipBrush = remember(zone.accentStart, zone.accentEnd, base, tint) {
+                Brush.linearGradient(
+                    listOf(
+                        lerp(base, Color(zone.accentStart), tint),
+                        lerp(base, Color(zone.accentEnd), tint * 0.55f)
+                    )
+                )
+            }
             val interaction = remember(zone.id) { MutableInteractionSource() }
             val corner = if (LocalAnimationsEnabled.current) {
                 levyraExpressiveCorner(
@@ -240,15 +258,14 @@ internal fun HomeGenreChips(
                     modifier = Modifier
                         .height(HomeChipVisualHeight)
                         .clip(RoundedCornerShape(corner))
-                        .background(colors.surfaceContainerHigh.copy(alpha = 0.72f))
-                        .border(1.dp, colors.outlineVariant.copy(alpha = 0.35f), RoundedCornerShape(corner))
-                        .padding(horizontal = 16.dp),
+                        .background(chipBrush)
+                        .padding(horizontal = 18.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = zone.label,
                         color = colors.onSurface,
-                        style = LevyraType.cardTitle,
+                        style = LevyraType.cardTitle.copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.1).sp),
                         maxLines = 1
                     )
                 }
@@ -258,6 +275,7 @@ internal fun HomeGenreChips(
 }
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun HomeChartPodium(
     tracks: List<Track>,
@@ -267,111 +285,99 @@ internal fun HomeChartPodium(
     onPlay: (Track) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val listState = rememberLazyListState()
-    val depthEnabled = carouselDepthEnabled()
-    LazyRow(
-        state = listState,
-        modifier = modifier.fillMaxWidth(),
+    if (tracks.isEmpty()) return
+    val carouselState = rememberCarouselState { tracks.size }
+    HorizontalMultiBrowseCarousel(
+        state = carouselState,
+        preferredItemWidth = PodiumPreferredWidth,
+        itemSpacing = 8.dp,
         contentPadding = contentPadding,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        itemsIndexed(tracks, key = { index, track -> "chart-podium-$index-${track.id}" }) { index, track ->
-            HomeChartPodiumCard(
-                rank = index + 1,
-                track = track,
-                active = track.id == currentId,
-                isPlaying = isPlaying && track.id == currentId,
-                onPlay = { onPlay(track) },
-                modifier = Modifier.levyraCarouselDepth(listState, "chart-podium-$index-${track.id}", depthEnabled)
-            )
-        }
-    }
-}
-
-@Composable
-private fun HomeChartPodiumCard(
-    rank: Int,
-    track: Track,
-    active: Boolean,
-    isPlaying: Boolean,
-    onPlay: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val rankText = rank.toString()
-    val colors = MaterialTheme.colorScheme
-    val artworkSize = if (rank == 1) PodiumHeroArtwork else PodiumArtwork
-    val artworkShape = PodiumArtworkShape
-    val numeralColor = LevyraText.copy(alpha = if (rank == 1) 0.88f else 0.62f)
-    Box(
         modifier = modifier
-            .size(
-                width = (if (rankText.length > 1) 236.dp else 196.dp) + (artworkSize - PodiumArtwork),
-                height = 200.dp + (artworkSize - PodiumArtwork)
-            )
-            .clip(LevyraCardDesign.EditorialShape)
-            .levyraPressable(onClick = onPlay, role = Role.Button, pressedScale = LevyraPressScale.Tile)
-    ) {
-        Text(
-            text = rankText,
-            color = numeralColor,
-            style = TextStyle(
-                fontSize = 112.sp,
-                lineHeight = 112.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = (-7).sp,
-                drawStyle = Stroke(width = 3.5f)
-            ),
-            maxLines = 1,
+            .fillMaxWidth()
+            .height(PodiumCarouselHeight)
+    ) { index ->
+        val track = tracks[index]
+        val active = track.id == currentId
+        val shape = MaterialTheme.shapes.extraLarge
+        Box(
             modifier = Modifier
-                .align(Alignment.BottomStart)
-                .offset(x = 2.dp, y = 14.dp)
-        )
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .width(artworkSize),
-            verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.CaptionTopGap)
+                .fillMaxSize()
+                .maskClip(shape)
+                .levyraPressable(onClick = { onPlay(track) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
         ) {
-            Box(modifier = Modifier.size(artworkSize)) {
-                CoverImage(
-                    track = track,
-                    modifier = Modifier
-                        .matchParentSize()
-                        .clip(artworkShape),
-                    highRes = false
-                )
-                if (active) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(8.dp)
-                            .size(40.dp)
-                            .clip(podiumActiveBadgeShape())
-                            .background(MaterialTheme.colorScheme.primaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        LevyraPlayingIndicator(
-                            playing = isPlaying,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            size = 16.dp
-                        )
-                    }
-                }
-            }
-            LevyraCardCaption(
-                title = track.title,
-                subtitle = track.artist,
-                titleColor = if (active) LevyraCyan else LevyraText,
-                titleLines = 1
+            CoverImage(
+                track = track,
+                modifier = Modifier.fillMaxSize(),
+                highRes = true
             )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(PodiumScrim)
+            )
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .graphicsLayer {
+                        val info = carouselItemDrawInfo
+                        translationX = info.maskRect.left
+                        alpha = ((info.size - info.minSize) / (info.maxSize - info.minSize).coerceAtLeast(1f))
+                            .coerceIn(0f, 1f)
+                    }
+                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = track.title,
+                    color = if (active) PodiumActiveInk else Color.White,
+                    style = LevyraType.cardTitle.copy(fontSize = 17.sp, lineHeight = 21.sp, fontWeight = FontWeight.ExtraBold),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = track.artist,
+                    color = Color.White.copy(alpha = 0.76f),
+                    style = LevyraType.caption,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .graphicsLayer { translationX = carouselItemDrawInfo.maskRect.left }
+                    .padding(10.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.46f))
+                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                if (active) {
+                    LevyraPlayingIndicator(
+                        playing = isPlaying,
+                        color = PodiumActiveInk,
+                        size = 12.dp
+                    )
+                }
+                Text(
+                    text = "#${index + 1}",
+                    color = Color.White,
+                    style = LevyraType.overline.copy(fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.4.sp),
+                    maxLines = 1
+                )
+            }
         }
     }
 }
 
-private val PodiumArtworkShape = RoundedCornerShape(24.dp)
-private val PodiumArtwork = 132.dp
-private val PodiumHeroArtwork = 156.dp
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun podiumActiveBadgeShape(): Shape = MaterialShapes.Cookie9Sided.toShape()
+private val PodiumPreferredWidth = 236.dp
+private val PodiumCarouselHeight = 252.dp
+private val PodiumActiveInk = Color(0xFF8FE3FF)
+private val PodiumScrim = Brush.verticalGradient(
+    0.00f to Color.Black.copy(alpha = 0.30f),
+    0.24f to Color.Transparent,
+    0.55f to Color.Transparent,
+    1.00f to Color.Black.copy(alpha = 0.78f)
+)

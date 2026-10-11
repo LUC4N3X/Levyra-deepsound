@@ -156,7 +156,7 @@ internal fun PlayerArtworkHero(
                     }
                 }
                 PlayerVisualMode.CanvasCard,
-                PlayerVisualMode.Editorial,
+                PlayerVisualMode.Expressive,
                 PlayerVisualMode.Pulse -> {
                     MotionArtworkLayer(
                         artwork = motionArtwork,
