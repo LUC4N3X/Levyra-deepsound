@@ -152,44 +152,47 @@ def draw_rounded_layer(canvas, size, radius, color, angle, position):
 
 def create_m3_pair_canvas(card_w, card_h, gutter, scheme, pair_index):
     duo_w = card_w * 2 + gutter
-    arr = np.zeros((card_h, duo_w, 4), dtype=np.uint8)
-    top = np.array(scheme["surface"], dtype=np.float32)
-    bottom = np.array(scheme["surface_low"], dtype=np.float32)
-    for y in range(card_h):
-        progress = y / float(card_h)
-        color = top * (1 - progress) + bottom * progress
-        arr[y, :, :3] = color.astype(np.uint8)
-    arr[:, :, 3] = 255
-    canvas = Image.fromarray(arr, mode="RGBA")
-
+    canvas = Image.new("RGBA", (duo_w, card_h), (*scheme["surface_low"], 255))
     direction = 1 if pair_index % 2 == 0 else -1
+
+    left_stage_y = -210 if direction > 0 else 390
+    right_stage_y = 390 if direction > 0 else -210
     draw_rounded_layer(
-        canvas, (duo_w + 360, 610), 305, scheme["primary_container"],
-        direction * 8, (-180, 410 if direction > 0 else 570),
+        canvas,
+        (760, 1370),
+        300,
+        scheme["primary_container"],
+        -4 * direction,
+        (-30, left_stage_y),
     )
     draw_rounded_layer(
-        canvas, (760, 560), 220, scheme["secondary_container"],
-        -direction * 13, (-260, -150 if direction > 0 else 1090),
+        canvas,
+        (760, 1370),
+        300,
+        scheme["tertiary_container"],
+        4 * direction,
+        (card_w + gutter + 165, right_stage_y),
     )
-    draw_rounded_layer(
-        canvas, (720, 520), 210, scheme["tertiary_container"],
-        direction * 11, (duo_w - 500, 1110 if direction > 0 else -120),
-    )
+
+    draw = ImageDraw.Draw(canvas)
+    dot_color = (*scheme["primary"], 255)
+    dot_x = 82 if direction > 0 else duo_w - 138
+    dot_y = card_h - 118 if direction > 0 else 62
+    draw.ellipse((dot_x, dot_y, dot_x + 56, dot_y + 56), fill=dot_color)
     return canvas
 
 def draw_m3_label(draw, x, y, text, scheme):
-    font = get_font(27, bold=True)
+    font = get_font(29, bold=True)
     bbox = draw.textbbox((0, 0), text, font=font)
     width = bbox[2] - bbox[0]
-    height = 52
+    height = 56
     draw.rounded_rectangle(
-        (x, y, x + width + 80, y + height),
-        radius=26,
+        (x, y, x + width + 46, y + height),
+        radius=28,
         fill=(*scheme["primary"], 255),
     )
     on_primary = (*scheme["on_primary"], 255)
-    draw_vector_sparkle(draw, x + 27, y + height // 2, 12, on_primary)
-    draw.text((x + 50, y + 10 - bbox[1]), text, font=font, fill=on_primary)
+    draw.text((x + 23, y + 11 - bbox[1]), text, font=font, fill=on_primary)
 
 def fit_title_font(draw, title, max_width, initial_size=68, minimum_size=50):
     for size in range(initial_size, minimum_size - 1, -2):
@@ -201,49 +204,32 @@ def fit_title_font(draw, title, max_width, initial_size=68, minimum_size=50):
 def draw_m3_copy(card, spec, placement, scheme, card_index):
     _, kicker, title, subtitle, _, _ = spec
     draw = ImageDraw.Draw(card)
-    panel_x = 48
-    panel_y = 48 if placement == "top" else 1128
-    panel_w = 804
-    panel_h = 420
-    panel_fill = scheme["surface_lowest"] if card_index == 0 else scheme["secondary_container"]
-    panel_text = scheme["on_surface"] if card_index == 0 else scheme["on_secondary_container"]
-    panel_body = scheme["on_surface_variant"] if card_index == 0 else scheme["on_secondary_container"]
+    panel_x = -72
+    panel_y = -82 if placement == "top" else 1160
+    panel_w = 1044
+    panel_h = 522
+    panel_fill = scheme["surface_lowest"]
+    panel_text = scheme["on_surface"]
+    panel_body = scheme["on_surface_variant"]
     draw.rounded_rectangle(
         (panel_x, panel_y, panel_x + panel_w, panel_y + panel_h),
-        radius=76,
+        radius=128,
         fill=(*panel_fill, 255),
-        outline=(*scheme["outline_variant"], 255),
-        width=3,
     )
 
-    x = panel_x + 42
-    y = panel_y + 38
+    x = 64
+    y = 62 if placement == "top" else 1216
     draw_m3_label(draw, x, y, kicker, scheme)
 
-    fab_size = 78
-    fab_x = panel_x + panel_w - fab_size - 34
-    fab_y = panel_y + 28
-    draw.ellipse(
-        (fab_x, fab_y, fab_x + fab_size, fab_y + fab_size),
-        fill=(*scheme["tertiary_container"], 255),
-    )
-    draw_vector_sparkle(
-        draw,
-        fab_x + fab_size // 2,
-        fab_y + fab_size // 2,
-        20,
-        (*scheme["on_tertiary_container"], 255),
-    )
-
-    title_y = y + 78
-    title_font = fit_title_font(draw, title, 700, initial_size=70, minimum_size=48)
+    title_y = y + 82
+    title_font = fit_title_font(draw, title, 770, initial_size=76, minimum_size=54)
     draw.text((x, title_y), title, font=title_font, fill=(*panel_text, 255))
     draw.multiline_text(
-        (x, title_y + 86),
+        (x, title_y + 94),
         subtitle,
-        font=get_font(31),
+        font=get_font(32),
         fill=(*panel_body, 255),
-        spacing=7,
+        spacing=8,
     )
 
 def crop_to_fill(source, width, height):
@@ -257,15 +243,15 @@ def crop_to_fill(source, width, height):
     top = max(0, int((resized.height - height) * 0.42))
     return resized.crop((left, top, left + width, top + height))
 
-def create_s26_ultra_mockup(source, scheme, size=(780, 1320)):
-    frame = 14
+def create_s26_ultra_mockup(source, size=(680, 1420)):
+    frame = 13
     outer_w, outer_h = size
     inner_w, inner_h = outer_w - frame * 2, outer_h - frame * 2
     phone = Image.new("RGBA", size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(phone)
     draw.rounded_rectangle(
         (0, 0, outer_w - 1, outer_h - 1),
-        radius=58,
+        radius=54,
         fill=(28, 29, 34, 255),
         outline=(151, 154, 164, 230),
         width=3,
@@ -273,15 +259,15 @@ def create_s26_ultra_mockup(source, scheme, size=(780, 1320)):
     screenshot = crop_to_fill(source, inner_w, inner_h)
     mask = Image.new("L", (inner_w, inner_h), 0)
     mask_draw = ImageDraw.Draw(mask)
-    mask_draw.rounded_rectangle((0, 0, inner_w - 1, inner_h - 1), radius=45, fill=255)
+    mask_draw.rounded_rectangle((0, 0, inner_w - 1, inner_h - 1), radius=42, fill=255)
     phone.paste(screenshot, (frame, frame), mask)
     draw.rounded_rectangle(
         (frame, frame, outer_w - frame - 1, outer_h - frame - 1),
-        radius=45,
+        radius=42,
         outline=(8, 9, 12, 245),
         width=4,
     )
-    camera_radius = 10
+    camera_radius = 9
     camera_x = outer_w // 2
     camera_y = frame + 22
     draw.ellipse(
@@ -306,39 +292,39 @@ def create_s26_ultra_mockup(source, scheme, size=(780, 1320)):
     draw.line((outer_w - 2, 435, outer_w - 2, 545), fill=(75, 77, 85, 255), width=4)
     return phone
 
-def paste_screenshot_portal(canvas, spec, card_index, placement, gutter, scheme, pair_index):
+def paste_editorial_phone(canvas, spec, card_index, placement, gutter, pair_index):
     card_w = 900
     card_left = card_index * (card_w + gutter)
     screenshot_path = resolve_screenshot_path(spec[0])
     if not screenshot_path:
         raise FileNotFoundError(f"Missing showcase screenshot: {spec[0]}")
     with Image.open(screenshot_path) as source:
-        phone = create_s26_ultra_mockup(source, scheme)
+        phone = create_s26_ultra_mockup(source)
 
     direction = 1 if pair_index % 2 == 0 else -1
     if placement == "bottom":
-        angle = -5 * direction
-        x = card_left + (155 if card_index == 0 else -70)
-        y = -165
+        angle = -4 * direction
+        x = card_left + (170 if card_index == 0 else 42)
+        y = -125
     else:
-        angle = 5 * direction
-        x = card_left + (-40 if card_index == 0 else 90)
-        y = 350
+        angle = 4 * direction
+        x = card_left + (44 if card_index == 0 else 168)
+        y = 300
 
     rotated = phone.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
-    shadow, pad = create_m3_shadow(rotated, blur=30, offset_y=16)
+    shadow, pad = create_m3_shadow(rotated, blur=24, offset_y=12)
     canvas.paste(shadow, (x - pad, y - pad), shadow)
     canvas.paste(rotated, (x, y), rotated)
 
-def render_m3_cut_pair(left_spec, right_spec, pair_index):
+def render_m3_editorial_pair(left_spec, right_spec, pair_index):
     card_w, card_h, gutter = 900, 1600, 48
     scheme = M3_EXPRESSIVE_SCHEMES[pair_index % len(M3_EXPRESSIVE_SCHEMES)]
     canvas = create_m3_pair_canvas(card_w, card_h, gutter, scheme, pair_index)
 
     left_copy = "bottom" if pair_index % 2 == 0 else "top"
     right_copy = "top" if left_copy == "bottom" else "bottom"
-    paste_screenshot_portal(canvas, left_spec, 0, left_copy, gutter, scheme, pair_index)
-    paste_screenshot_portal(canvas, right_spec, 1, right_copy, gutter, scheme, pair_index)
+    paste_editorial_phone(canvas, left_spec, 0, left_copy, gutter, pair_index)
+    paste_editorial_phone(canvas, right_spec, 1, right_copy, gutter, pair_index)
 
     right_left = card_w + gutter
     left_card = canvas.crop((0, 0, card_w, card_h))
@@ -452,20 +438,20 @@ def generate_hero_panoramic_showcase():
         print(f"Generated Panoramic Hero Showcase at ({orig_w}, {orig_h}): {out_path}")
 
 def generate_feature_cards():
-    print("Generating Material 3 Expressive tonal-portal pairs...")
+    print("Generating Material 3 Expressive editorial-stage pairs...")
     specs = M3_HERO_SPECS + M3_SHOWCASE_SPECS
     for pair_index in range(0, len(specs), 2):
         left_spec = specs[pair_index]
         right_spec = specs[pair_index + 1]
-        left_card, right_card = render_m3_cut_pair(left_spec, right_spec, pair_index // 2)
+        left_card, right_card = render_m3_editorial_pair(left_spec, right_spec, pair_index // 2)
         for card, spec in ((left_card, left_spec), (right_card, right_spec)):
             card_rgb = card.convert("RGB")
             for filename in spec[5]:
                 out_file = os.path.join(OUT_CARDS_DIR, filename)
                 card_rgb.save(out_file, "WEBP", quality=95, method=6)
-                print(f"Saved Material 3 Expressive tonal portal: {out_file}")
+                print(f"Saved Material 3 Expressive editorial card: {out_file}")
 
 if __name__ == "__main__":
     generate_hero_panoramic_showcase()
     generate_feature_cards()
-    print("All Material 3 Expressive tonal-portal assets generated successfully!")
+    print("All Material 3 Expressive editorial-stage assets generated successfully!")
