@@ -175,7 +175,7 @@ jobs:
           ref: ${{ github.sha }}
 
       - name: Download Sanitized Editorial Catalog
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: editorial-pr-${{ github.run_number }}
           path: build/trusted-editorial
