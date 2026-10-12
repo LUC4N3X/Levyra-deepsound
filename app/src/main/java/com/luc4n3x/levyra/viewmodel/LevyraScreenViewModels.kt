@@ -451,6 +451,7 @@ class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::pla
     fun openSleepTimer() = root.openSleepTimer()
     fun openAmbient() = root.openAmbient()
     fun exportCurrentTrack() = root.exportCurrentTrack()
+    fun deleteTrackDownload(trackId: String) = root.deleteTrackDownload(trackId)
     fun next() = root.next()
     suspend fun playerArtistHits(track: Track, resolveArtwork: Boolean = true): List<ArtistHit> =
         root.playerArtistHits(track, resolveArtwork)
