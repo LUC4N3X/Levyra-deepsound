@@ -3,6 +3,8 @@ package com.luc4n3x.levyra.ui
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import com.luc4n3x.levyra.ui.i18n.LevyraOnboardingYoutubeMusicStrings
 import org.junit.Test
 import java.nio.file.Files
 import java.nio.file.Path
@@ -10,11 +12,12 @@ import java.nio.file.Path
 class OnboardingFlowTest {
 
     @Test
-    fun `flow advances through intro language profile and taste`() {
+    fun `flow advances through intro language profile taste and youtube music`() {
         assertEquals(OnboardingStep.Language, OnboardingStep.Intro.next())
         assertEquals(OnboardingStep.Profile, OnboardingStep.Language.next())
         assertEquals(OnboardingStep.Taste, OnboardingStep.Profile.next())
-        assertEquals(OnboardingStep.Taste, OnboardingStep.Taste.next())
+        assertEquals(OnboardingStep.YoutubeMusic, OnboardingStep.Taste.next())
+        assertEquals(OnboardingStep.YoutubeMusic, OnboardingStep.YoutubeMusic.next())
     }
 
     @Test
@@ -23,6 +26,7 @@ class OnboardingFlowTest {
         assertEquals(OnboardingStep.Intro, OnboardingStep.Language.previous())
         assertEquals(OnboardingStep.Language, OnboardingStep.Profile.previous())
         assertEquals(OnboardingStep.Profile, OnboardingStep.Taste.previous())
+        assertEquals(OnboardingStep.Taste, OnboardingStep.YoutubeMusic.previous())
     }
 
     @Test
@@ -31,13 +35,15 @@ class OnboardingFlowTest {
         assertTrue(onboardingShowsChrome(OnboardingStep.Language))
         assertTrue(onboardingShowsChrome(OnboardingStep.Profile))
         assertTrue(onboardingShowsChrome(OnboardingStep.Taste))
+        assertTrue(onboardingShowsChrome(OnboardingStep.YoutubeMusic))
         assertEquals(
-            listOf(OnboardingStep.Language, OnboardingStep.Profile, OnboardingStep.Taste),
+            listOf(OnboardingStep.Language, OnboardingStep.Profile, OnboardingStep.Taste, OnboardingStep.YoutubeMusic),
             onboardingProgressSteps()
         )
         assertEquals(0, onboardingProgressIndex(OnboardingStep.Intro))
         assertEquals(0, onboardingProgressIndex(OnboardingStep.Language))
         assertEquals(2, onboardingProgressIndex(OnboardingStep.Taste))
+        assertEquals(3, onboardingProgressIndex(OnboardingStep.YoutubeMusic))
     }
 
     @Test
@@ -48,6 +54,7 @@ class OnboardingFlowTest {
         assertFalse(onboardingPrimaryEnabled(OnboardingStep.Taste, selectedTasteCount = 0))
         assertFalse(onboardingPrimaryEnabled(OnboardingStep.Taste, selectedTasteCount = 2))
         assertTrue(onboardingPrimaryEnabled(OnboardingStep.Taste, selectedTasteCount = 3))
+        assertTrue(onboardingPrimaryEnabled(OnboardingStep.YoutubeMusic, selectedTasteCount = 0))
     }
 
     @Test
@@ -67,6 +74,17 @@ class OnboardingFlowTest {
     fun `profile name is preserved exactly as entered`() {
         listOf("e.e. cummings", " lowercase", "iPhone DJ", "Élodie", "").forEach { input ->
             assertEquals(input, preserveProfileNameInput(input))
+        }
+    }
+
+    @Test
+    fun `youtube music setup copy is translated for every supported language`() {
+        val english = LevyraOnboardingYoutubeMusicStrings.forCode("en")
+        LevyraLanguageCatalog.languages.map { it.code }.filter { it != "en" }.forEach { code ->
+            val copy = LevyraOnboardingYoutubeMusicStrings.forCode(code)
+            val fields = listOf(copy.title, copy.body, copy.optionalBody, copy.secureBody, copy.skip, copy.connectedBody, copy.signInError)
+            assertTrue(code, fields.all(String::isNotBlank))
+            assertTrue(code, copy.body != english.body && copy.skip != english.skip && copy.secureBody != english.secureBody)
         }
     }
 }
