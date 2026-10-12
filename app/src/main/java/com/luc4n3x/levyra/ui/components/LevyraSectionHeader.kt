@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -189,15 +188,8 @@ private fun sectionActionPadding(compact: Boolean, leading: Boolean, trailing: B
 }
 
 @Composable
-internal fun LevyraSectionPlayAll(onClick: () -> Unit, modifier: Modifier = Modifier, compact: Boolean = false) {
-    LevyraSectionAction(
-        label = LocalLevyraStrings.current.playAll,
-        onClick = onClick,
-        modifier = modifier,
-        leadingIcon = Icons.Rounded.PlayArrow,
-        compact = compact,
-        tonal = true
-    )
+internal fun LevyraSectionPlayAll(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    LevyraPlayAllButton(onClick = onClick, modifier = modifier)
 }
 
 @Composable

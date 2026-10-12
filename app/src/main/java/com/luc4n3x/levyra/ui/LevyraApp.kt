@@ -1,6 +1,9 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraPlayAllButton
+import com.luc4n3x.levyra.ui.components.LevyraPlayAllIconButton
+import com.luc4n3x.levyra.ui.components.LevyraNowPlayingBadge
 import com.luc4n3x.levyra.ui.components.rememberLevyraPlayMorphShape
 import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -117,6 +120,8 @@ import com.luc4n3x.levyra.ui.lyrics.calibratedLyricsTrackOffset
 import com.luc4n3x.levyra.ui.lyrics.lyricsOffsetIsolated
 import com.luc4n3x.levyra.ui.i18n.lyricsSyncCopy
 import com.luc4n3x.levyra.ui.lyrics.adaptiveLyricFontSizeSp
+import com.luc4n3x.levyra.ui.i18n.homeVideoShelfTitle
+import com.luc4n3x.levyra.ui.lyrics.lyricLineScaleSafeWidthPx
 import com.luc4n3x.levyra.ui.lyrics.buildTimedLyricText
 import com.luc4n3x.levyra.ui.lyrics.karaokeCharacterProgress
 import com.luc4n3x.levyra.ui.lyrics.lyricsOffsetPosition
@@ -518,6 +523,9 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.ResolvedTextDirection
@@ -5346,11 +5354,7 @@ private fun ArtistPopularTracksShelf(
                     .weight(1f)
                     .semantics { heading() }
             )
-            ArtistTonalPill(
-                text = strings.playAll,
-                icon = Icons.Rounded.PlayArrow,
-                onClick = { onPlayAll(distinctTracks) }
-            )
+            LevyraPlayAllButton(onClick = { onPlayAll(distinctTracks) })
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -8559,10 +8563,11 @@ private fun KaraokeLyricLine(
         LyricVocalRole.DUET_LEFT, LyricVocalRole.DUET_RIGHT -> 0.92f
         LyricVocalRole.MAIN -> 1f
     }
+    val maxActiveScale = if (compact) LYRICS_COMPACT_ACTIVE_LINE_SCALE else LYRICS_ACTIVE_LINE_SCALE
     val activeScale by animateFloatAsState(
         targetValue = when {
-            isPrimaryActive && compact -> 1.018f
-            isPrimaryActive -> 1.025f
+            isPrimaryActive && compact -> LYRICS_COMPACT_ACTIVE_LINE_SCALE
+            isPrimaryActive -> LYRICS_ACTIVE_LINE_SCALE
             else -> 1f
         },
         animationSpec = LevyraMotion.physics(animationsEnabled, LevyraMotion.spatial),
@@ -8661,17 +8666,40 @@ private fun KaraokeLyricLine(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(
-                when {
-                    selected -> accentEnd.copy(alpha = 0.22f)
-                    selectionMode -> Color.White.copy(alpha = 0.035f)
-                    else -> Color.Transparent
+            .then(
+                if (selected || selectionMode) {
+                    Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(if (selected) accentEnd.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.035f))
+                } else {
+                    Modifier
                 }
             )
             .padding(horizontal = horizontalPadding, vertical = if (compact) 2.dp else 0.dp)
             .padding(horizontal = if (selectionMode) 10.dp else 0.dp, vertical = if (selectionMode) 7.dp else 0.dp)
-            .then(if (lineBlur > 0.dp) Modifier.blur(lineBlur) else Modifier)
+            .then(if (lineBlur > 0.dp) Modifier.blur(lineBlur, BlurredEdgeTreatment.Unbounded) else Modifier)
+            .layout { measurable, constraints ->
+                if (!constraints.hasBoundedWidth) {
+                    val placeable = measurable.measure(constraints)
+                    return@layout layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+                }
+                val contentWidth = lyricLineScaleSafeWidthPx(constraints.maxWidth, maxActiveScale)
+                val placeable = measurable.measure(
+                    constraints.copy(
+                        minWidth = minOf(constraints.minWidth, contentWidth),
+                        maxWidth = contentWidth
+                    )
+                )
+                val width = maxOf(constraints.minWidth, placeable.width)
+                layout(width, placeable.height) {
+                    val x = when (line.role) {
+                        LyricVocalRole.DUET_RIGHT -> width - placeable.width
+                        LyricVocalRole.BACKGROUND -> (width - placeable.width) / 2
+                        else -> 0
+                    }
+                    placeable.place(x, 0)
+                }
+            }
             .graphicsLayer {
                 scaleX = activeScale
                 scaleY = activeScale
@@ -8904,6 +8932,8 @@ private fun KaraokeWordTimedText(
 
 private const val INLINE_LYRICS_AUTOSCROLL_RESUME_MS = 3_500L
 private const val LYRICS_HORIZONTAL_GUTTER_DP = 48
+private const val LYRICS_ACTIVE_LINE_SCALE = 1.025f
+private const val LYRICS_COMPACT_ACTIVE_LINE_SCALE = 1.018f
 
 private fun buildKaraokeGlyphPath(
     path: Path,
@@ -9751,7 +9781,7 @@ private fun HomeScreen(
                 item(key = "home-music-videos", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
                     HomeSectionLead(compactHome) {
                         HomeMusicVideoShelf(
-                            title = strings.video,
+                            title = strings.homeVideoShelfTitle,
                             tracks = homeVideoTracks,
                             playback = HomeVideoShelfPlayback(
                                 currentId = state.currentTrack?.id?.takeIf { state.isVideoMode },
@@ -9760,7 +9790,6 @@ private fun HomeScreen(
                             ),
                             actions = HomeVideoShelfActions(
                                 onPlay = { track -> viewModel.playVideoFrom(homeVideoTracks, track) },
-                                onPlayAll = { first -> viewModel.playVideoQueue(homeVideoTracks, first) },
                                 onToggleCurrent = viewModel::togglePlay
                             )
                         )
@@ -10333,10 +10362,11 @@ private fun HomeEditorialSpotlight(
             modifier = Modifier
                 .matchParentSize()
                 .homeHeroBleed(backdropBleed)
+                .homeHeroBottomDissolve()
                 .drawBehind {
                     drawRect(
                         Brush.radialGradient(
-                            colors = listOf(accentStart.copy(alpha = if (isLight) 0.26f else 0.46f), Color.Transparent),
+                            colors = listOf(accentStart.copy(alpha = if (isLight) 0.10f else 0.14f), Color.Transparent),
                             center = Offset(size.width * 0.86f, size.height * 0.42f),
                             radius = size.width
                         )
@@ -10443,13 +10473,6 @@ private fun HomeEditorialSpotlight(
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
-                        if (companionArtworkUrls.isNotEmpty()) {
-                            HomeSoundtrackCompanionStack(
-                                artworkUrls = companionArtworkUrls,
-                                ring = canvasColor,
-                                accent = heroTones.badge
-                            )
-                        }
                     }
                     Text(
                         text = soundtrackTitle,
@@ -10459,15 +10482,28 @@ private fun HomeEditorialSpotlight(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.semantics { heading() }
                     )
-                    Text(
-                        text = soundtrackLead,
-                        color = heroInkSoft,
-                        fontSize = 15.sp,
-                        lineHeight = 20.5.sp,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        if (companionArtworkUrls.isNotEmpty()) {
+                            HomeSoundtrackCompanionStack(
+                                artworkUrls = companionArtworkUrls,
+                                ring = canvasColor,
+                                accent = heroTones.badge
+                            )
+                        }
+                        Text(
+                            text = soundtrackLead,
+                            color = heroInkSoft,
+                            fontSize = 15.sp,
+                            lineHeight = 20.5.sp,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                    }
                 }
 
                 Surface(
@@ -10541,19 +10577,8 @@ private fun HomeEditorialSpotlight(
 
 private const val HOME_HERO_PORTRAIT_SHARE = 0.84f
 private const val HOME_HERO_COMPANION_LIMIT = 3
-private val HOME_HERO_COMPANION_SIZE = 40.dp
-private val HOME_HERO_COMPANION_OVERLAP = 12.dp
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun homeHeroCompanionShape(index: Int): Shape {
-    val polygons = listOf(
-        MaterialShapes.Cookie9Sided,
-        MaterialShapes.Clover4Leaf,
-        MaterialShapes.Cookie6Sided
-    )
-    return polygons[index.coerceAtLeast(0) % polygons.size].toShape()
-}
+private val HOME_HERO_COMPANION_SIZE = 30.dp
+private val HOME_HERO_COMPANION_OVERLAP = 10.dp
 
 @Composable
 private fun HomeSoundtrackCompanionStack(
@@ -10579,7 +10604,6 @@ private fun HomeSoundtrackCompanionStack(
                     )
                 )
             }
-            val shape = homeHeroCompanionShape(index)
             Box(
                 modifier = Modifier
                     .size(HOME_HERO_COMPANION_SIZE)
@@ -10590,10 +10614,11 @@ private fun HomeSoundtrackCompanionStack(
                         scaleY = 0.6f + 0.4f * progress
                         rotationZ = (1f - progress) * -24f
                     }
-                    .clip(shape)
+                    .zIndex((artworkUrls.size - index).toFloat())
+                    .clip(CircleShape)
                     .background(ring)
                     .padding(2.dp)
-                    .clip(shape)
+                    .clip(CircleShape)
                     .background(accent)
             ) {
                 StableRemoteArtwork(
@@ -10651,6 +10676,7 @@ private val HOME_HERO_STAGE_BODY_HEIGHT = LevyraHomeDesign.HeroHeight - 48.dp
 private const val HOME_HERO_LANDSCAPE_VIEWPORT_SHARE = 0.62f
 private val HOME_HERO_LANDSCAPE_MIN_HEIGHT = 236.dp
 private val HOME_HERO_FADE_LENGTH = 360.dp
+private val HOME_HERO_DISSOLVE_LENGTH = 140.dp
 private val HOME_HERO_TOP_FADE = 72.dp
 private val HOME_HERO_HEADER_SCRIM_TAIL = 72.dp
 private val HOME_STATUS_SCRIM_FADE_DISTANCE = 96.dp
@@ -10675,7 +10701,7 @@ private fun Modifier.homeHeroBlend(
 ): Modifier = drawWithCache {
     val fadeLength = minOf(size.height * 0.72f, HOME_HERO_FADE_LENGTH.toPx() * 1.15f)
     val fadeStart = size.height - fadeLength
-    val tint = lerp(canvas, accent(), if (isLight) 0.08f else 0.18f)
+    val tint = lerp(canvas, accent(), if (isLight) 0.03f else 0.06f)
     val bottomFade = Brush.verticalGradient(
         colorStops = arrayOf(
             0f to tint.copy(alpha = 0f),
@@ -10710,6 +10736,28 @@ private fun Modifier.homeHeroBlend(
         drawRect(brush = bottomFade, topLeft = Offset(0f, fadeStart), size = Size(size.width, fadeLength))
         drawRect(brush = textScrim)
         if (fadeTop) drawRect(brush = topFade, size = Size(size.width, topFadeHeight))
+    }
+}
+
+private fun Modifier.homeHeroBottomDissolve(): Modifier = graphicsLayer {
+    compositingStrategy = CompositingStrategy.Offscreen
+}.drawWithCache {
+    val dissolveLength = minOf(size.height * 0.42f, HOME_HERO_DISSOLVE_LENGTH.toPx())
+    val dissolveStart = size.height - dissolveLength
+    val mask = Brush.verticalGradient(
+        colorStops = arrayOf(
+            0f to Color.Black,
+            0.30f to Color.Black.copy(alpha = 0.86f),
+            0.58f to Color.Black.copy(alpha = 0.48f),
+            0.82f to Color.Black.copy(alpha = 0.14f),
+            1f to Color.Transparent
+        ),
+        startY = dissolveStart,
+        endY = size.height
+    )
+    onDrawWithContent {
+        drawContent()
+        drawRect(brush = mask, blendMode = BlendMode.DstIn)
     }
 }
 
@@ -11527,9 +11575,8 @@ private fun HomeMusicVideoShelf(
             .map(::homeMusicVideoCardItem)
     }
     if (videos.isEmpty()) return
-    val playAll = { actions.onPlayAll(videos.first().track) }
     Column(verticalArrangement = Arrangement.spacedBy(homeHeaderContentGap())) {
-        HomeSectionInset { HomeSectionHeader(title, onPlayAll = playAll) }
+        HomeSectionInset { HomeSectionHeader(title) }
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val videoCardWidth = remember(maxWidth) {
                 (maxWidth * HOME_VIDEO_CARD_WIDTH_FRACTION).coerceAtMost(HOME_VIDEO_CARD_MAX_WIDTH)
@@ -11576,7 +11623,6 @@ private data class HomeVideoShelfPlayback(
 
 private class HomeVideoShelfActions(
     val onPlay: (Track) -> Unit,
-    val onPlayAll: (Track) -> Unit,
     val onToggleCurrent: () -> Unit
 )
 
@@ -11789,7 +11835,6 @@ private fun HomeCompactPlayAllHeader(
     title: String,
     onPlayAll: () -> Unit
 ) {
-    val strings = LocalLevyraStrings.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -11806,40 +11851,7 @@ private fun HomeCompactPlayAllHeader(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)
         )
-        Box(
-            modifier = Modifier
-                .height(48.dp)
-                .pressable(onClick = onPlayAll),
-            contentAlignment = Alignment.Center
-        ) {
-            Surface(
-                color = LevyraPanelSoft.copy(alpha = if (LevyraIsLight) 0.72f else 0.48f),
-                border = BorderStroke(Dp.Hairline, LevyraAdaptiveSoftHairline),
-                shape = CircleShape,
-                modifier = Modifier.height(38.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.PlayArrow,
-                        contentDescription = null,
-                        tint = LevyraText.copy(alpha = 0.86f),
-                        modifier = Modifier.size(15.dp)
-                    )
-                    Text(
-                        text = strings.playAll,
-                        color = LevyraText,
-                        fontSize = 11.5.sp,
-                        lineHeight = LevyraTypeRhythm.lineHeight(11.5.sp),
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1
-                    )
-                }
-            }
-        }
+        LevyraPlayAllButton(onClick = onPlayAll)
     }
 }
 
@@ -11910,7 +11922,7 @@ private fun HomeOrbitHeader(
             )
         }
         Spacer(modifier = Modifier.width(6.dp))
-        LevyraSectionPlayAll(onClick = onPlayAll, compact = true)
+        LevyraSectionPlayAll(onClick = onPlayAll)
     }
 }
 
@@ -12154,28 +12166,13 @@ private fun PersonalOrbitTile(
                 )
         )
         if (isCurrent) {
-            Box(
+            LevyraNowPlayingBadge(
+                isPlaying = isPlaying,
+                isResolving = isResolving,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(6.dp)
-                    .size(24.dp)
-                    .background(Color.Black.copy(alpha = 0.65f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                if (isResolving) {
-                    LevyraLoadingIndicator(
-                        modifier = Modifier.size(12.dp),
-                        color = LevyraCyan
-                    )
-                } else {
-                    ActiveTrackEqualizer(
-                        color = LevyraCyan,
-                        isPlaying = isPlaying,
-                        width = 12.dp,
-                        height = 9.dp
-                    )
-                }
-            }
+            )
         }
     }
 }
@@ -12983,6 +12980,9 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
     var placeholderIndex by remember(personalizedPlaceholders) { mutableIntStateOf(0) }
     val activePlaceholder = personalizedPlaceholders[placeholderIndex % personalizedPlaceholders.size]
     val queryClean = state.query.trim()
+    val querySuggestions = remember(state.query, state.searchSuggestions) {
+        refineSearchQuerySuggestions(state.query, state.searchSuggestions)
+    }
     LaunchedEffect(queryClean.isEmpty(), state.animationsEnabled, personalizedPlaceholders) {
         placeholderIndex = placeholderIndex.coerceIn(personalizedPlaceholders.indices)
         if (queryClean.isNotEmpty() || !state.animationsEnabled || personalizedPlaceholders.size < 2) return@LaunchedEffect
@@ -13123,10 +13123,11 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                     )
                 }
             } else {
-                if (state.searchSuggestions.isNotEmpty()) {
+                if (querySuggestions.isNotEmpty()) {
                     item(key = "search-query-suggestions", contentType = "search-query-suggestions") {
                         SearchQueryChips(
-                            suggestions = state.searchSuggestions,
+                            query = state.query,
+                            suggestions = querySuggestions,
                             onClick = { suggestion ->
                                 focusManager.clearFocus()
                                 keyboardController?.hide()
@@ -13925,33 +13926,92 @@ private fun SearchTrackActionsMenu(
 
 @Composable
 private fun SearchQueryChips(
+    query: String,
     suggestions: List<String>,
     onClick: (String) -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        suggestions.forEach { suggestion ->
-            Surface(
-                color = LevyraMuted.copy(alpha = 0.08f),
-                border = BorderStroke(1.dp, LevyraMuted.copy(alpha = 0.15f)),
-                shape = RoundedCornerShape(11.dp),
-                modifier = Modifier.pressable(onClick = { onClick(suggestion) })
-            ) {
-                Text(
-                    text = suggestion,
-                    color = LevyraMuted,
-                    fontSize = 11.5.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp)
-                )
+        items(
+            items = suggestions,
+            key = { suggestion -> suggestion }
+        ) { suggestion ->
+            SearchQuerySuggestionChip(
+                query = query,
+                suggestion = suggestion,
+                onClick = { onClick(suggestion) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun SearchQuerySuggestionChip(
+    query: String,
+    suggestion: String,
+    onClick: () -> Unit
+) {
+    val scheme = MaterialTheme.colorScheme
+    val interaction = remember { MutableInteractionSource() }
+    val corner = levyraExpressiveCorner(
+        interactionSource = interaction,
+        rest = 20.dp,
+        pressed = 10.dp,
+        label = "search-query-suggestion-corner"
+    )
+    val knownColor = scheme.onSurfaceVariant
+    val novelColor = scheme.onSurface
+    val label = remember(query, suggestion, knownColor, novelColor) {
+        buildAnnotatedString {
+            searchSuggestionSegments(query, suggestion).forEach { segment ->
+                withStyle(
+                    if (segment.novel) {
+                        SpanStyle(color = novelColor, fontWeight = FontWeight.ExtraBold)
+                    } else {
+                        SpanStyle(color = knownColor, fontWeight = FontWeight.Medium)
+                    }
+                ) {
+                    append(segment.text)
+                }
             }
+        }
+    }
+    Box(
+        modifier = Modifier
+            .heightIn(min = 48.dp)
+            .levyraPressable(
+                onClick = onClick,
+                interactionSource = interaction,
+                role = Role.Button,
+                pressedScale = LevyraPressScale.Control
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            modifier = Modifier
+                .widthIn(max = 280.dp)
+                .clip(RoundedCornerShape(corner))
+                .background(scheme.surfaceContainerHigh)
+                .padding(start = 12.dp, end = 16.dp, top = 9.dp, bottom = 9.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Search,
+                contentDescription = null,
+                tint = scheme.primary,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = label,
+                fontSize = 13.sp,
+                lineHeight = 18.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -15395,9 +15455,7 @@ private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiSta
                         IconButton(onClick = { viewModel.exportOpenPlaylist() }) {
                             Icon(Icons.Rounded.DownloadDone, contentDescription = LocalLevyraStrings.current.downloadPlaylist, tint = LevyraViolet, modifier = Modifier.size(27.dp))
                         }
-                        IconButton(onClick = { viewModel.playPlaylist(playlist.id) }) {
-                            Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, contentDescription = LocalLevyraStrings.current.playAll, tint = LevyraCyan, modifier = Modifier.size(30.dp))
-                        }
+                        LevyraPlayAllIconButton(onClick = { viewModel.playPlaylist(playlist.id) })
                     }
                 }
             }

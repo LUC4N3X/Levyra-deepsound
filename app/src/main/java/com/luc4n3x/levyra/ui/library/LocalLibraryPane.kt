@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.library
 
+import com.luc4n3x.levyra.ui.components.LevyraPlayAllIconButton
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,7 +26,6 @@ import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
@@ -761,9 +761,7 @@ private fun LocalGroupBlock(
                         )
                     }
                 }
-                IconButton(onClick = onPlay, modifier = Modifier.size(34.dp)) {
-                    Icon(Icons.Rounded.PlayArrow, strings.playAll, tint = LevyraCyan, modifier = Modifier.size(20.dp))
-                }
+                LevyraPlayAllIconButton(onClick = onPlay, size = 30.dp)
             }
         }
         if (expanded) {
