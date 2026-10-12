@@ -17,9 +17,9 @@ def resolve_screenshot_path(filename):
     if os.path.isabs(filename) and os.path.exists(filename):
         return filename
     candidates = [
-        os.path.join(r"C:\Users\Luca Drogo\Downloads", filename),
-        os.path.join(r"C:\Users\Luca Drogo\Desktop\screenshots", filename),
         os.path.join(SCREENSHOT_DIR, filename),
+        os.path.join(r"C:\Users\Luca Drogo\Desktop\screenshots", filename),
+        os.path.join(r"C:\Users\Luca Drogo\Downloads", filename),
         os.path.join(r"C:\Users\Luca Drogo\Pictures\levyra\screenshots", filename),
         os.path.join(r"C:\Users\Luca Drogo\Downloads\Nuova cartella", filename),
         os.path.join("docs", "screenshots", filename),
@@ -132,154 +132,128 @@ def draw_vector_sparkle(draw, center_x, center_y, radius, fill_color):
         points.append((x, y))
     draw.polygon(points, fill=fill_color)
 
-def draw_clean_m3_kicker(draw, x, y, text, color, font_size=27):
-    font = get_font(font_size, bold=True)
-    sparkle_size = int(font_size * 0.95)
-    sparkle_gap = 12
+M3_PAIR_PALETTES = [
+    ((250, 247, 255), (234, 221, 255), (103, 80, 164), (232, 222, 248)),
+    ((255, 248, 250), (255, 216, 228), (152, 64, 83), (244, 192, 210)),
+    ((247, 249, 255), (216, 226, 255), (65, 95, 145), (196, 211, 255)),
+    ((247, 251, 244), (199, 239, 186), (56, 106, 32), (174, 222, 156)),
+    ((255, 248, 243), (255, 220, 194), (139, 80, 0), (246, 195, 145)),
+]
 
-    bbox = font.getbbox(text)
-    th = bbox[3] - bbox[1]
+M3_HERO_SPECS = [
+    ("Screenshot_20260926_171253_LEVYRA.jpg", "ZERO ADS • NATIVE PLAY", "Pure listening.",
+     "Zero ads, zero accounts.\nStream and store locally on your device.",
+     (95, 60, 165), ["01_home.webp"]),
+    ("Screenshot_20260926_193948_LEVYRA.jpg", "OFFLINE STORAGE", "Download & keep.",
+     "Clean M4A files in device storage.\nFull metadata, artwork, and lyrics.",
+     (130, 60, 180), ["02_stay_with_the_song.webp"]),
+]
 
-    sparkle_cx = x + sparkle_size // 2
-    sparkle_cy = y + th // 2
-    draw_vector_sparkle(draw, sparkle_cx, sparkle_cy, sparkle_size // 2, color)
-
-    tx = x + sparkle_size + sparkle_gap
-    ty = y - bbox[1]
-    draw.text((tx, ty), text, font=font, fill=color)
-
-# Unified Material 3 Expressive Tonal Background (Subtle, identical across all cards, not light-blue)
-TOP_TINT = np.array([248, 245, 253], dtype=np.float32)  # M3 Expressive Iris/Lavender surface
-BOT_TINT = np.array([238, 230, 248], dtype=np.float32)  # M3 Expressive Iris/Lavender tonal base
-AMBILIGHT_BLOOM = (195, 165, 245)                        # Soft Iris volumetric bloom
-
-def render_m3_duo_cut_cards():
-    card_w, card_h = 900, 1600
-    gutter = 48
+def create_m3_pair_canvas(card_w, card_h, gutter, palette, pair_index):
+    surface, container, primary, secondary = palette
     duo_w = card_w * 2 + gutter
-
-    # 1. Unified Material 3 Expressive Canvas across Cards 01 & 02
     arr = np.zeros((card_h, duo_w, 4), dtype=np.uint8)
+    top = np.array(surface, dtype=np.float32)
+    bottom = np.array(container, dtype=np.float32)
     for y in range(card_h):
-        r = y / float(card_h)
-        col = TOP_TINT * (1 - r) + BOT_TINT * r
-        arr[y, :, :3] = col.astype(np.uint8)
+        progress = y / float(card_h)
+        color = top * (1 - progress * 0.55) + bottom * (progress * 0.55)
+        arr[y, :, :3] = color.astype(np.uint8)
     arr[:, :, 3] = 255
-    bg = Image.fromarray(arr, mode="RGBA")
+    canvas = Image.fromarray(arr, mode="RGBA")
 
-    # Volumetric ambilight blooms
-    glow_layer = Image.new("RGBA", (duo_w, card_h), (0, 0, 0, 0))
-    gdraw = ImageDraw.Draw(glow_layer)
-    gdraw.ellipse((140, 80, 880, 940), fill=(*AMBILIGHT_BLOOM, 120))
-    gdraw.ellipse((duo_w - 860, 380, duo_w - 90, 1220), fill=(*AMBILIGHT_BLOOM, 120))
-    glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(110))
-    bg = Image.alpha_composite(bg, glow_layer)
-
-    s_home = resolve_screenshot_path("Screenshot_20260926_171253_LEVYRA.jpg")
-    s_player = resolve_screenshot_path("Screenshot_20260926_193948_LEVYRA.jpg")
-
-    angle = 15.0
-    c2_left = card_w + gutter
-
-    # 1. Phone 1 (Home) cutting 15° across into Card 02
-    if s_home and os.path.exists(s_home):
-        with Image.open(s_home) as src1:
-            p1 = create_s26_ultra_mockup(src1, target_w=640)
-        rot1 = p1.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
-        s1_shadow, pad1 = create_m3_shadow(rot1, blur=50, offset_y=30)
-        p1_x = 280
-        p1_y = 40
-        bg.paste(s1_shadow, (p1_x - pad1, p1_y - pad1), s1_shadow)
-        bg.paste(rot1, (p1_x, p1_y), rot1)
-
-    # 2. Phone 2 (Now Playing) in foreground
-    if s_player and os.path.exists(s_player):
-        with Image.open(s_player) as src2:
-            p2 = create_s26_ultra_mockup(src2, target_w=610)
-        rot2 = p2.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
-        s2_shadow, pad2 = create_m3_shadow(rot2, blur=46, offset_y=28)
-        p2_x = c2_left + 175
-        p2_y = 310
-        bg.paste(s2_shadow, (p2_x - pad2, p2_y - pad2), s2_shadow)
-        bg.paste(rot2, (p2_x, p2_y), rot2)
-
-    # Slice into Card 01 and Card 02
-    c1 = bg.crop((0, 0, card_w, card_h))
-    c2 = bg.crop((c2_left, 0, c2_left + card_w, card_h))
-
-    # Clean M3 typography - borderless surface
-    d1 = ImageDraw.Draw(c1)
-    tx1, ty1 = 72, 1260
-    draw_clean_m3_kicker(d1, tx1, ty1, "ZERO ADS • NATIVE PLAY", color=(95, 60, 165, 255), font_size=27)
-    d1.text((tx1, ty1 + 44), "Pure listening.", font=get_font(64, bold=True), fill=(29, 27, 32, 255))
-    d1.multiline_text(
-        (tx1, ty1 + 124),
-        "Zero ads, zero accounts.\nStream and store locally on your device.",
-        font=get_font(30),
-        fill=(70, 65, 80, 255),
-        spacing=6
+    shapes = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(shapes)
+    direction = -1 if pair_index % 2 else 1
+    draw.ellipse(
+        (duo_w // 2 - 520, -330 if direction > 0 else 1030, duo_w // 2 + 560, 720 if direction > 0 else 2050),
+        fill=(*secondary, 220),
     )
-
-    d2 = ImageDraw.Draw(c2)
-    tx2, ty2 = 72, 54
-    draw_clean_m3_kicker(d2, tx2, ty2, "OFFLINE STORAGE", color=(130, 60, 180, 255), font_size=27)
-    d2.text((tx2, ty2 + 44), "Download & keep.", font=get_font(64, bold=True), fill=(29, 27, 32, 255))
-    d2.multiline_text(
-        (tx2, ty2 + 124),
-        "Clean M4A files in device storage.\nFull metadata, artwork, and lyrics.",
-        font=get_font(30),
-        fill=(75, 65, 80, 255),
-        spacing=6
+    draw.rounded_rectangle(
+        (-260, 260, 650, 760),
+        radius=250,
+        fill=(*primary, 28),
     )
+    draw.rounded_rectangle(
+        (duo_w - 620, 920, duo_w + 260, 1460),
+        radius=270,
+        fill=(*primary, 24),
+    )
+    return Image.alpha_composite(canvas, shapes)
 
-    return c1, c2
+def draw_m3_label(draw, x, y, text, primary, on_primary=(255, 255, 255, 255)):
+    font = get_font(25, bold=True)
+    bbox = draw.textbbox((0, 0), text, font=font)
+    width = bbox[2] - bbox[0]
+    height = 48
+    draw.rounded_rectangle((x, y, x + width + 76, y + height), radius=24, fill=(*primary, 255))
+    draw_vector_sparkle(draw, x + 25, y + height // 2, 11, on_primary)
+    draw.text((x + 46, y + 9 - bbox[1]), text, font=font, fill=on_primary)
 
-def render_m3_single_card(screenshot_name, kicker, title, subtitle, kicker_color, target_w=670):
-    card_w, card_h = 900, 1600
+def fit_title_font(draw, title, max_width, initial_size=64, minimum_size=48):
+    for size in range(initial_size, minimum_size - 1, -2):
+        font = get_font(size, bold=True)
+        if draw.textbbox((0, 0), title, font=font)[2] <= max_width:
+            return font
+    return get_font(minimum_size, bold=True)
 
-    # 1. Unified Tonal Surface Gradient (Always the same across all cards)
-    arr = np.zeros((card_h, card_w, 4), dtype=np.uint8)
-    for y in range(card_h):
-        r = y / float(card_h)
-        col = TOP_TINT * (1 - r) + BOT_TINT * r
-        arr[y, :, :3] = col.astype(np.uint8)
-    arr[:, :, 3] = 255
-    card = Image.fromarray(arr, mode="RGBA")
-
-    # 2. Volumetric ambilight glow behind phone
-    glow = Image.new("RGBA", (card_w, card_h), (0, 0, 0, 0))
-    gdraw = ImageDraw.Draw(glow)
-    gdraw.ellipse((80, 280, 820, 1380), fill=(*AMBILIGHT_BLOOM, 110))
-    glow = glow.filter(ImageFilter.GaussianBlur(100))
-    card = Image.alpha_composite(card, glow)
-
-    # 3. Clean M3 Typography - left aligned, directly on surface
+def draw_m3_copy(card, spec, placement, primary, surface):
+    _, kicker, title, subtitle, _, _ = spec
     draw = ImageDraw.Draw(card)
-    tx, ty = 72, 54
-    draw_clean_m3_kicker(draw, tx, ty, kicker, color=(*kicker_color, 255), font_size=27)
-    draw.text((tx, ty + 44), title, font=get_font(64, bold=True), fill=(29, 27, 32, 255))
+    x = 66
+    if placement == "bottom":
+        draw.rounded_rectangle((-70, 1200, 970, 1660), radius=82, fill=(*surface, 255))
+    y = 48 if placement == "top" else 1240
+    draw_m3_label(draw, x, y, kicker, primary)
+    title_y = y + 68
+    title_font = fit_title_font(draw, title, 768)
+    draw.text((x, title_y), title, font=title_font, fill=(32, 29, 36, 255))
     draw.multiline_text(
-        (tx, ty + 124),
+        (x, title_y + 82),
         subtitle,
-        font=get_font(30),
-        fill=(75, 65, 75, 255),
-        spacing=6
+        font=get_font(29),
+        fill=(73, 69, 79, 255),
+        spacing=7,
     )
 
-    # 4. Samsung Galaxy S26 Ultra mockup (Prominent hero size: 670px width)
-    s_path = resolve_screenshot_path(screenshot_name)
-    if s_path and os.path.exists(s_path):
-        with Image.open(s_path) as src:
-            phone = create_s26_ultra_mockup(src, target_w=target_w)
-        shadow, pad = create_m3_shadow(phone, blur=48, offset_y=28)
-        px = (card_w - phone.width) // 2
-        py = 270
-        card.paste(shadow, (px - pad, py - pad), shadow)
-        card.paste(phone, (px, py), phone)
+def paste_cut_phone(canvas, spec, card_index, placement, gutter, angle):
+    card_w = 900
+    card_left = card_index * (card_w + gutter)
+    screenshot_path = resolve_screenshot_path(spec[0])
+    if not screenshot_path:
+        raise FileNotFoundError(f"Missing showcase screenshot: {spec[0]}")
+    with Image.open(screenshot_path) as source:
+        phone = create_s26_ultra_mockup(source, target_w=700)
+    rotated = phone.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
+    shadow, pad = create_m3_shadow(rotated, blur=42, offset_y=24)
 
-    return card
+    if placement == "bottom":
+        x = card_left + (230 if card_index == 0 else 120)
+        y = -110
+    else:
+        x = card_left + (-40 if card_index == 0 else 160)
+        y = 315
+    canvas.paste(shadow, (x - pad, y - pad), shadow)
+    canvas.paste(rotated, (x, y), rotated)
 
-# Unified Material 3 Expressive specifications (All cards share identical subtle Iris background)
+def render_m3_cut_pair(left_spec, right_spec, pair_index):
+    card_w, card_h, gutter = 900, 1600, 48
+    palette = M3_PAIR_PALETTES[pair_index % len(M3_PAIR_PALETTES)]
+    canvas = create_m3_pair_canvas(card_w, card_h, gutter, palette, pair_index)
+
+    left_copy = "bottom" if pair_index % 2 == 0 else "top"
+    right_copy = "top" if left_copy == "bottom" else "bottom"
+    paste_cut_phone(canvas, left_spec, 0, left_copy, gutter, 12 if pair_index % 2 == 0 else -10)
+    paste_cut_phone(canvas, right_spec, 1, right_copy, gutter, -9 if pair_index % 2 == 0 else 11)
+
+    right_left = card_w + gutter
+    left_card = canvas.crop((0, 0, card_w, card_h))
+    right_card = canvas.crop((right_left, 0, right_left + card_w, card_h))
+    draw_m3_copy(left_card, left_spec, left_copy, palette[2], palette[0])
+    draw_m3_copy(right_card, right_spec, right_copy, palette[2], palette[0])
+    return left_card, right_card
+
+# Material 3 Expressive content specifications
 M3_SHOWCASE_SPECS = [
     # Card 03: Synced Lyrics
     ("screen-lyrics.jpg", "SYNCED LYRICS", "Sing along.",
@@ -384,19 +358,18 @@ def generate_hero_panoramic_showcase():
         print(f"Generated Panoramic Hero Showcase at ({orig_w}, {orig_h}): {out_path}")
 
 def generate_feature_cards():
-    print("Generating Refined Material 3 Expressive Showcase Cards (Hero Scale, Continuous Diptych)...")
-    c1, c2 = render_m3_duo_cut_cards()
-    c1.convert("RGB").save(os.path.join(OUT_CARDS_DIR, "01_home.webp"), "WEBP", quality=95, method=6)
-    c2.convert("RGB").save(os.path.join(OUT_CARDS_DIR, "02_stay_with_the_song.webp"), "WEBP", quality=95, method=6)
-    print("Saved Material 3 Expressive Keynote Diptych: 01_home.webp, 02_stay_with_the_song.webp")
-
-    for s_name, kicker, title, sub, kicker_c, fnames in M3_SHOWCASE_SPECS:
-        card = render_m3_single_card(s_name, kicker, title, sub, kicker_c, target_w=670)
-        card_rgb = card.convert("RGB")
-        for fname in fnames:
-            out_file = os.path.join(OUT_CARDS_DIR, fname)
-            card_rgb.save(out_file, "WEBP", quality=95, method=6)
-            print(f"Saved Refined Material 3 Expressive Card: {out_file}")
+    print("Generating Material 3 Expressive cut-card pairs...")
+    specs = M3_HERO_SPECS + M3_SHOWCASE_SPECS
+    for pair_index in range(0, len(specs), 2):
+        left_spec = specs[pair_index]
+        right_spec = specs[pair_index + 1]
+        left_card, right_card = render_m3_cut_pair(left_spec, right_spec, pair_index // 2)
+        for card, spec in ((left_card, left_spec), (right_card, right_spec)):
+            card_rgb = card.convert("RGB")
+            for filename in spec[5]:
+                out_file = os.path.join(OUT_CARDS_DIR, filename)
+                card_rgb.save(out_file, "WEBP", quality=95, method=6)
+                print(f"Saved Material 3 Expressive cut card: {out_file}")
 
 if __name__ == "__main__":
     generate_hero_panoramic_showcase()
