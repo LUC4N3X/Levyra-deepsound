@@ -5,7 +5,8 @@ param(
     [switch] $Plugins,
     [switch] $ClaudeMem,
     [switch] $SkipHooks,
-    [switch] $SkipMattSkills
+    [switch] $SkipMattSkills,
+    [switch] $SkipExternalSkills
 )
 
 Set-StrictMode -Version Latest
@@ -164,6 +165,23 @@ if (-not $SkipMattSkills) {
     }
 }
 
+if (-not $SkipExternalSkills) {
+    if (-not (Test-Command 'codex')) {
+        Write-Output '[skip] Codex command not detected; upstream Kotlin/Material skills were not installed'
+    }
+    elseif (-not (Test-Command 'npx')) {
+        Write-Warning 'Codex is installed but npx is unavailable. Kotlin/Material upstream skills could not be installed.'
+    }
+    else {
+        Invoke-SetupCommand 'Install Kotlin footguns skills for Codex' {
+            & npx skills@latest add maxrave-dev/kotlin-footguns -g -a codex -y
+        }
+        Invoke-SetupCommand 'Install Material 3 skill for Codex' {
+            & npx skills@latest add hamen/material-3-skill -g -a codex -y -s material-3
+        }
+    }
+}
+
 if ($Plugins) {
     if (-not (Test-Path -LiteralPath $pluginManifest -PathType Leaf)) {
         throw "Plugin manifest not found: $pluginManifest"
@@ -214,6 +232,7 @@ foreach ($validationScript in @(
     'scripts/validate_agent_config.py',
     'scripts/validate_ai_efficiency.py',
     'scripts/validate_matt_skills.py',
+    'scripts/validate_upstream_android_skills.py',
     'scripts/validate_claude_mem.py'
 )) {
     Invoke-SetupCommand "Validate with $validationScript" {
