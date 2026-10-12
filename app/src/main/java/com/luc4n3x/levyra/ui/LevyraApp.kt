@@ -12975,7 +12975,9 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
     val tasteHintQueries = remember(personalized.prompts, state.languageCode) {
         buildSearchTasteHints(
             prompts = personalized.prompts,
-            fallbacks = LevyraContentLocales.quickSearches(state.languageCode)
+            fallbacks = LevyraContentLocales.quickSearches(state.languageCode) +
+                LevyraContentLocales.artistSuggestions(state.languageCode),
+            limit = SEARCH_TASTE_HINT_LIMIT
         )
     }
     var placeholderIndex by remember(personalizedPlaceholders) { mutableIntStateOf(0) }
@@ -13725,6 +13727,7 @@ private fun RecentSearchesRow(
 ) {
     val context = LocalContext.current
     val strings = LocalLevyraStrings.current
+    val haptics = LocalLevyraHaptics.current
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionTitle(title)
@@ -13732,7 +13735,7 @@ private fun RecentSearchesRow(
         val recentDepth = carouselDepthEnabled()
         LazyRow(
             state = recentState,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(end = 16.dp)
         ) {
             items(tracks, key = { "recent-${it.id}" }) { track ->
@@ -13740,32 +13743,44 @@ private fun RecentSearchesRow(
                 val isFavorite = track.id in favoriteIds
                 val isDownloaded = track.id in downloadedTrackIds
 
-                Column(
+                Box(
                     modifier = Modifier
                         .levyraCarouselDepth(recentState, "recent-${track.id}", recentDepth)
-                        .width(140.dp)
-                        .clickable { onTrackClick(track) },
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                        .width(RecentSearchCardWidth)
                 ) {
-                    CoverImage(
-                        track = track,
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .aspectRatio(1f)
-                            .clip(LevyraHomeDesign.ArtworkShape)
-                            .background(Color.White.copy(alpha = 0.04f))
-                    )
-                    Row(verticalAlignment = Alignment.Top) {
-                        Column(
+                            .clip(RecentSearchCardShape)
+                            .background(LevyraPanelSoft.copy(alpha = if (LevyraIsLight) 0.72f else 0.48f))
+                            .combinedClickable(
+                                onClick = { onTrackClick(track) },
+                                onLongClick = {
+                                    haptics.perform(LevyraHapticAction.Confirm)
+                                    menuExpanded = true
+                                },
+                                onLongClickLabel = strings.actions
+                            )
+                            .padding(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CoverImage(
+                            track = track,
                             modifier = Modifier
-                                .weight(1f)
-                                .padding(top = 2.dp),
+                                .fillMaxWidth()
+                                .aspectRatio(1f)
+                                .clip(RecentSearchArtworkShape)
+                                .background(Color.White.copy(alpha = 0.04f))
+                        )
+                        Column(
+                            modifier = Modifier.padding(start = 6.dp, end = 6.dp, bottom = 6.dp),
                             verticalArrangement = Arrangement.spacedBy(1.dp)
                         ) {
                             Text(
                                 text = track.title,
                                 color = LevyraText,
-                                fontSize = 13.sp,
+                                fontSize = 12.5.sp,
+                                lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -13774,49 +13789,38 @@ private fun RecentSearchesRow(
                                 text = track.artist,
                                 color = LevyraMuted,
                                 fontSize = 11.sp,
+                                lineHeight = LevyraTypeRhythm.lineHeight(11.sp),
                                 fontWeight = FontWeight.Medium,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
-                        Box {
-                            Box(
-                                modifier = Modifier
-                                    .size(width = 32.dp, height = 48.dp)
-                                    .offset(x = 8.dp, y = (-10).dp)
-                                    .clip(CircleShape)
-                                    .clickable(role = Role.Button) { menuExpanded = true },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.MoreVert,
-                                    contentDescription = strings.actions,
-                                    tint = LevyraMuted,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                            SearchTrackActionsMenu(
-                                track = track,
-                                expanded = menuExpanded,
-                                isFavorite = isFavorite,
-                                isDownloaded = isDownloaded,
-                                allowRemove = allowRemove,
-                                onDismiss = { menuExpanded = false },
-                                onRemove = onRemove,
-                                onFavorite = onFavorite,
-                                onAddToPlaylist = onAddToPlaylist,
-                                onPlayNext = onPlayNext,
-                                onAddToQueue = onAddToQueue,
-                                onDownload = onDownload,
-                                onArtist = onArtist
-                            )
-                        }
                     }
+                    SearchTrackActionsMenu(
+                        track = track,
+                        expanded = menuExpanded,
+                        isFavorite = isFavorite,
+                        isDownloaded = isDownloaded,
+                        allowRemove = allowRemove,
+                        onDismiss = { menuExpanded = false },
+                        onRemove = onRemove,
+                        onFavorite = onFavorite,
+                        onAddToPlaylist = onAddToPlaylist,
+                        onPlayNext = onPlayNext,
+                        onAddToQueue = onAddToQueue,
+                        onDownload = onDownload,
+                        onArtist = onArtist
+                    )
                 }
             }
         }
     }
 }
+
+private const val SEARCH_TASTE_HINT_LIMIT = 10
+private val RecentSearchCardWidth = 120.dp
+private val RecentSearchCardShape = RoundedCornerShape(24.dp)
+private val RecentSearchArtworkShape = RoundedCornerShape(18.dp)
 
 @Composable
 private fun SearchTrackActionsMenu(
