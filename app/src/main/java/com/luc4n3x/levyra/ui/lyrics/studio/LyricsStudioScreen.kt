@@ -82,6 +82,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -1117,22 +1118,20 @@ private fun StudioPreviewLyricsLine(
     glowShadow: Shadow?,
     animationsEnabled: Boolean
 ) {
-    val targetAlpha = if (isLineActive) 1f else settings.inactiveOpacity
     val lineAlpha by animateFloatAsState(
-        targetValue = targetAlpha,
+        targetValue = if (isLineActive) 1f else settings.inactiveOpacity,
         animationSpec = LevyraMotion.spec(animationsEnabled, tween(180)),
         label = "preview-alpha"
     )
-
-    val targetScale = if (isLineActive) 1.03f else settings.inactiveScale
     val lineScale by animateFloatAsState(
-        targetValue = targetScale,
+        targetValue = if (isLineActive) 1.03f else settings.inactiveScale,
         animationSpec = LevyraMotion.spec(animationsEnabled, tween(200)),
         label = "preview-scale"
     )
-
-    val lineBlur = if (!isLineActive && settings.blurEnabled && animationsEnabled) (distance * 1.5f).dp else 0.dp
+    val lineBlur = previewLineBlur(isLineActive, settings.blurEnabled, animationsEnabled, distance)
     val textColor = if (isLineActive) accentColor else Color.White.copy(alpha = settings.inactiveOpacity)
+    val resolvedWeight = if (isLineActive) settings.fontWeight.weight else FontWeight.Medium
+    val activeShadow = if (isLineActive) glowShadow else null
 
     Box(
         modifier = Modifier
@@ -1144,23 +1143,58 @@ private fun StudioPreviewLyricsLine(
                 alpha = lineAlpha
             }
             .then(if (lineBlur > 0.dp) Modifier.blur(lineBlur) else Modifier),
-        contentAlignment = when (settings.alignment) {
-            LyricsAlignment.START -> Alignment.CenterStart
-            LyricsAlignment.CENTER -> Alignment.Center
-            LyricsAlignment.END -> Alignment.CenterEnd
-        }
+        contentAlignment = previewAlignment(settings.alignment)
     ) {
-        Text(
+        StudioPreviewLineText(
             text = line.text,
-            color = textColor,
+            textColor = textColor,
             fontFamily = fontFamily,
-            fontSize = baseFontSize.sp,
+            baseFontSize = baseFontSize,
             lineHeight = lineHeight,
-            fontWeight = if (isLineActive) settings.fontWeight.weight else FontWeight.Medium,
+            fontWeight = resolvedWeight,
             textAlign = settings.alignment.textAlign,
-            style = TextStyle(shadow = if (isLineActive) glowShadow else null)
+            glowShadow = activeShadow
         )
     }
+}
+
+@Composable
+private fun StudioPreviewLineText(
+    text: String,
+    textColor: Color,
+    fontFamily: FontFamily,
+    baseFontSize: Float,
+    lineHeight: TextUnit,
+    fontWeight: FontWeight,
+    textAlign: TextAlign,
+    glowShadow: Shadow?
+) {
+    Text(
+        text = text,
+        color = textColor,
+        fontFamily = fontFamily,
+        fontSize = baseFontSize.sp,
+        lineHeight = lineHeight,
+        fontWeight = fontWeight,
+        textAlign = textAlign,
+        style = TextStyle(shadow = glowShadow)
+    )
+}
+
+private fun previewAlignment(alignment: LyricsAlignment): Alignment = when (alignment) {
+    LyricsAlignment.START -> Alignment.CenterStart
+    LyricsAlignment.CENTER -> Alignment.Center
+    LyricsAlignment.END -> Alignment.CenterEnd
+}
+
+private fun previewLineBlur(
+    isLineActive: Boolean,
+    blurEnabled: Boolean,
+    animationsEnabled: Boolean,
+    distance: Int
+): Dp {
+    if (isLineActive || !blurEnabled || !animationsEnabled) return 0.dp
+    return (distance * 1.5f).dp
 }
 
 @Composable
