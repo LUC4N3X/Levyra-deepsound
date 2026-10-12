@@ -35,7 +35,7 @@ ROUTES = (
     route("levyra-android-performance", "Android runtime profiling, memory stability, or measured performance", r"perfetto|system trace|trace processor|frame miss|frame drop|jank|latency|latenza|startup|avvio lento|cpu schedul|thread state|runnable|blocked thread|binder wait|binder spam|binder storm|lock contention|renderthread|frame timeline|gpu memory|texture upload|memory pressure|memory leak|memory growth|memory churn|native memory|native heap|\bram\b|\boom\b|out of memory|low memory|\bpss\b|\brss\b|dumpsys meminfo|heapprofd|bufferpool|bytebuffer|bitmap memory|allocat|i/o stall|io stall|d-state|lmkd|psi|wakelock|power rail|power trace|battery trace|runtime performance|performance runtime|profiling android"),
     route("levyra-r8-proguard", "R8, Proguard, minification, shrinking, or release-only behavior", r"\br8\b|proguard|minif|shrink resources|resource shrink|resource shrinking|keep rule|consumer rule|mapping\.txt|missing rules|missing class|missing classes|release.?only.*(?:crash|fail)|apk size|aab size|obfuscat|shrinker|dontwarn|keepattributes|javascriptinterface|jni.*(?:keep|shrink)|reflection.*(?:keep|shrink)|serialization.*(?:keep|shrink)|kotlin metadata"),
     route("levyra-android-intent-security", "Android Intent, PendingIntent, deep-link, or component security", r"pendingintent|pending intent|onnewintent|nested intent|intent redirection|intent redirect|intent sanitizer|intentsanitizer|android:exported|exported (?:activity|service|receiver|provider|component)|attivit[aà] esportat|servizio esportat|receiver esportat|provider esportat|mutable pendingintent|immutable pendingintent|flag_mutable|flag_immutable|uri grant|granturipermission|grant uri|fileprovider|contentprovider|signature permission|binder caller|callinguid|caller verification|deep.?link.*(?:intent|security|exported|permission)|intent.*(?:security|sicurezz|exported|permission|forward|redirect|nested)|component boundary|component-boundary"),
-    route("levyra-design-taste", "visual design, hierarchy, polish, or anti-template UI", r"visual design|ui design|design ui|grafica|interfaccia|ui polish|visual polish|gerarchia visual|visual hierarchy|spacing|spaziatur|typograph|tipograf|color palette|palette colori|corner radius|motion ui|ui motion|animazion|design reference|ui reference|riferiment.*(?:grafica|ui|schermat)|(?:ui|screen|schermat|layout|design|grafica|interfaccia).{0,30}screenshot|screenshot.{0,30}(?:ui|screen|schermat|layout|design|grafica|interfaccia|reference|riferimento)|pi[uù] bella|pi[uù] professionale|(?:\bscreen\b|schermat\w*|\bui\b|\bdesign\b|grafica|interfaccia|\blayout\b|\bplayer\b|\bhome\b|\bnow playing\b).{0,40}\b(?:premium|modern|clean|cinematic|less generic)\b|\b(?:premium|modern|clean|cinematic|less generic)\b.{0,40}(?:\bscreen\b|schermat\w*|\bui\b|\bdesign\b|grafica|interfaccia|\blayout\b|\bplayer\b|\bhome\b|\bnow playing\b)|^\s*(?:premium|modern|clean|cinematic|less generic)\s*[.!?]*\s*$|anti.?ai.?slop|glassmorphism|bento"),
+    route("levyra-design-taste", "visual design, hierarchy, polish, or anti-template UI", r"visual design|ui design|design ui|grafica|interfaccia|ui polish|visual polish|gerarchia visual|visual hierarchy|spacing|spaziatur|typograph|tipograf|color palette|palette colori|corner radius|motion ui|ui motion|animazion|design reference|ui reference|riferiment.*(?:grafica|ui|schermat)|(?:ui|screen|schermat|layout|design|grafica|interfaccia).{0,30}screenshot|screenshot.{0,30}(?:ui|screen|schermat|layout|design|grafica|interfaccia|reference|riferimento)|pi[uù] bella|pi[uù] professionale|(?:\bscreen\b|schermat\w*|\bui\b|\bdesign\b|grafica|interfaccia|\blayout\b|\bplayer\b|\bhome\b|\bnow playing\b).{0,40}\b(?:premium|modern|clean|cinematic|less generic)\b|\b(?:premium|modern|clean|cinematic|less generic)\b.{0,40}(?:\bscreen\b|schermat\w*|\bui\b|\bdesign\b|grafica|interfaccia|\blayout\b|\bplayer\b|\bhome\b|\bnow playing\b)|^\s*(?:premium|modern|clean|cinematic|less generic)\s*[.!?]*\s*$|material[ -]?3|m3 expressive|expressive (?:ui|design)|anti.?ai.?slop|glassmorphism|bento"),
     route("levyra-motion-artwork", "motion artwork", r"motion artwork|animated artwork|animated cover|canvas|copertin.*animat|cover art.*animat"),
     route("levyra-desktop", "Windows Desktop, Compose Multiplatform, libvlc, packaging, or desktop updates", r"\bdesktop\b|windows client|compose multiplatform|libvlc|mini player|mini-player|protocol registration|wix|msi|desktop update|desktop release"),
     route("levyra-ci-workflows", "CI, Gradle/Kotlin tooling, or build performance", r"github actions|\bworkflow\b|\bci\b|fdroid|f-droid|\bgradle\b|\bagp\b|\bksp\b|kotlin(?: compiler| plugin| toolchain| version)|(?:upgrade|update|bump|migrat).{0,24}\bkotlin\b|\bkotlin\b.{0,24}(?:gradle|compiler|ksp|toolchain)|build performance|slow build|build lento|configuration cache|build cache|compile time|compilation time|build logic|gradle\.properties|artifact"),
@@ -110,6 +110,27 @@ def context_for(prompt: str) -> str:
     for skill, topic in matched:
         lines.append(f"- {topic} -> .agents/skills/{skill}/SKILL.md")
     lines.append("Do not preload other skill bodies; route the next phase only when it starts.")
+
+    active = {skill for skill, _ in matched}
+    is_android_ui = bool(active & {"levyra-compose", "levyra-design-taste"}) and (
+        "levyra-desktop" not in active or bool(re.search(r"\bandroid\b", prompt, re.I))
+    )
+    kotlin_domains = {
+        "levyra-compose", "levyra-design-taste", "levyra-player",
+        "levyra-extractor", "levyra-database", "levyra-desktop",
+        "levyra-ci-workflows", "levyra-android-performance",
+    }
+    if is_android_ui:
+        lines.append(
+            "Later UI compliance phase: consult installed upstream material-3 SKILL.md "
+            "(hamen/material-3-skill), then only relevant references; verify Levyra APIs."
+        )
+    if active & kotlin_domains:
+        lines.append(
+            "Later Kotlin review phase: consult the matching installed "
+            "maxrave-dev/kotlin-footguns area SKILL.md and only relevant trap files; "
+            "run footgun-scan if useful. Never exceed two skill bodies per phase."
+        )
     return "\n".join(lines)
 
 

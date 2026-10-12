@@ -99,6 +99,10 @@ Use screenshot tests as visual-regression evidence, not as behavior tests.
 - Do not update golden/reference images blindly. Inspect diffs and make sure the visual change is intentional before accepting a new baseline.
 - Use Compose UI behavior tests for interactions, navigation, restoration, and semantics; a pixel match does not prove behavior.
 
+## Focused upstream reviews
+
+On Android UI work, the product direction is Material 3 Expressive. Use Levyra components and semantic tokens first. At the later visual compliance phase, load the official upstream `material-3` skill from `hamen/material-3-skill` and relevant reference files only. For implementation involving Kotlin/Compose or state, consult the matching `kotlin-footguns` index and only implicated trap files in a separate review phase (usually `compose-screens-footguns`, `compose-visuals-footguns`, or `state-and-background-footguns`). Keep no more than two skill bodies active at once. Use `docs/ai/UPSTREAM_ANDROID_SKILLS.md` for setup, paths, and fallbacks.
+
 ## Validation
 
 Test recomposition-sensitive paths, state restoration, rapid navigation, background/foreground transitions, long translations, RTL, large font scale, empty/error states, edge-to-edge/IME ownership, relevant larger widths, and accessibility semantics when applicable. Run focused UI or ViewModel tests before broader Android checks.
