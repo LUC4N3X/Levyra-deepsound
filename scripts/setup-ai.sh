@@ -205,6 +205,7 @@ for validation_script in \
   scripts/validate_agent_config.py \
   scripts/validate_ai_efficiency.py \
   scripts/validate_matt_skills.py \
+  scripts/validate_upstream_android_skills.py \
   scripts/validate_claude_mem.py
 do
   if [[ "$DRY_RUN" -eq 1 ]]; then
