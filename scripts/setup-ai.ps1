@@ -232,6 +232,7 @@ foreach ($validationScript in @(
     'scripts/validate_agent_config.py',
     'scripts/validate_ai_efficiency.py',
     'scripts/validate_matt_skills.py',
+    'scripts/validate_upstream_android_skills.py',
     'scripts/validate_claude_mem.py'
 )) {
     Invoke-SetupCommand "Validate with $validationScript" {
