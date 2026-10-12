@@ -38,6 +38,7 @@ import com.luc4n3x.levyra.data.VaultPreview
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.ProfilePhotoStore
 import com.luc4n3x.levyra.data.LyricsLatencyProfiles
+import com.luc4n3x.levyra.domain.LevyraLyricsStudioSettings
 import com.luc4n3x.levyra.data.LevyraHomeSnapshotCache
 import com.luc4n3x.levyra.data.EXPLORE_DISCOVERY_CACHE_TTL_MS
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
@@ -988,6 +989,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             audioNormalization = startupSettings.audioNormalization,
             audioSettings = startupSettings.audioSettings,
             lyricsTranslationEnabled = startupSettings.lyricsTranslationEnabled,
+            lyricsStudioSettings = startupSettings.lyricsStudioSettings,
             interfaceSettings = startupSettings.interfaceSettings,
             downloadSettings = startupSettings.downloadSettings,
             smartOfflineSettings = startupSettings.smartOfflineSettings,
@@ -1409,6 +1411,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             preferences.lyricsLatencyProfilesFlow.collect { profiles ->
                 _state.update { state -> state.copy(lyricsLatencyProfiles = profiles) }
+            }
+        }
+        viewModelScope.launch {
+            preferences.lyricsStudioSettingsFlow.collect { settings ->
+                _state.update { state -> state.copy(lyricsStudioSettings = settings) }
             }
         }
         viewModelScope.launch {
@@ -2662,6 +2669,30 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun closeThemeStudio() {
         _state.update { it.copy(showThemeStudio = false) }
+    }
+
+    fun openLyricsStudio() {
+        _state.update { it.copy(showLyricsStudio = true) }
+    }
+
+    fun closeLyricsStudio() {
+        _state.update { it.copy(showLyricsStudio = false) }
+    }
+
+    fun setLyricsStudioSettings(settings: LevyraLyricsStudioSettings) {
+        val normalized = settings.normalized()
+        _state.update { it.copy(lyricsStudioSettings = normalized) }
+        viewModelScope.launch {
+            preferences.setLyricsStudioSettings(normalized)
+        }
+    }
+
+    fun resetLyricsStudioSettings() {
+        val defaultSettings = LevyraLyricsStudioSettings()
+        _state.update { it.copy(lyricsStudioSettings = defaultSettings) }
+        viewModelScope.launch {
+            preferences.setLyricsStudioSettings(defaultSettings)
+        }
     }
 
     private fun widgetAccentColor(track: Track?): Int {

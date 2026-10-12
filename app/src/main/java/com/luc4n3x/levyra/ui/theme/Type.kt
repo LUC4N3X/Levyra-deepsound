@@ -90,3 +90,14 @@ val LevyraTypography: Typography = typographyByPreset.getValue(LevyraFontPreset.
 
 internal fun levyraTypographyFor(preset: LevyraFontPreset): Typography =
     typographyByPreset[preset] ?: LevyraTypography
+
+internal fun levyraFontFamilyFor(preset: LevyraFontPreset): FontFamily = when (preset) {
+    LevyraFontPreset.Outfit -> OutfitFont
+    LevyraFontPreset.Inter -> InterFont
+    LevyraFontPreset.Manrope -> ManropeFont
+    LevyraFontPreset.Poppins -> PoppinsFont
+    LevyraFontPreset.Montserrat -> MontserratFont
+    LevyraFontPreset.Nunito -> NunitoFont
+    LevyraFontPreset.Roboto -> RobotoFont
+    LevyraFontPreset.System -> FontFamily.Default
+}

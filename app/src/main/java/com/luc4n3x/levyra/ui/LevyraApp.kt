@@ -22,6 +22,8 @@ import com.luc4n3x.levyra.ui.components.LevyraSectionHeader
 import com.luc4n3x.levyra.ui.components.LevyraSectionPlayAll
 import com.luc4n3x.levyra.ui.components.LevyraSectionShowAll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.text.font.FontFamily
 import com.luc4n3x.levyra.ui.components.levyraExpressiveToggleCorner
 import com.luc4n3x.levyra.ui.components.levyraExpressiveCorner
 import androidx.compose.ui.graphics.compositeOver
@@ -683,6 +685,14 @@ import com.luc4n3x.levyra.ui.theme.LevyraThemeController
 import com.luc4n3x.levyra.ui.theme.LevyraHaptics
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LevyraThemeStudioOverlay
+import com.luc4n3x.levyra.ui.lyrics.studio.LyricsStudioOverlay
+import com.luc4n3x.levyra.ui.theme.levyraFontFamilyFor
+import com.luc4n3x.levyra.domain.LevyraLyricsStudioSettings
+import com.luc4n3x.levyra.domain.LyricsActiveColorMode
+import com.luc4n3x.levyra.domain.LyricsAlignment
+import com.luc4n3x.levyra.domain.LyricsBackgroundMode
+import com.luc4n3x.levyra.domain.LyricsFontWeightPreset
+import com.luc4n3x.levyra.domain.LyricsGlowEffect
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 import com.luc4n3x.levyra.ui.theme.rememberLevyraHaptics
@@ -2049,7 +2059,7 @@ fun LevyraApp(
             viewModel.clearBackupMessage()
         }
     }
-    val rootOverlayOpen = showYoutubeMusic || showLanguageRestartDialog || state.youtubeEngagement.comments.visible || state.showRecognition || state.showJam || state.showThemeStudio || state.showYourSound || state.showListeningInsights || state.showListeningRecap || state.sharedMediaPreview != null || showDownloadsFolder || state.playlistHitPreview != null || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel
+    val rootOverlayOpen = showYoutubeMusic || showLanguageRestartDialog || state.youtubeEngagement.comments.visible || state.showRecognition || state.showJam || state.showThemeStudio || state.showLyricsStudio || state.showYourSound || state.showListeningInsights || state.showListeningRecap || state.sharedMediaPreview != null || showDownloadsFolder || state.playlistHitPreview != null || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel
     BackHandler(enabled = rootOverlayOpen || state.selectedTab != LevyraTab.Home) {
         if (showYoutubeMusic) {
             if (youtubeMusicState.showLogin) youtubeMusicViewModel.cancelLogin()
@@ -2061,6 +2071,8 @@ fun LevyraApp(
             viewModel.closeRecognition()
         } else if (state.showThemeStudio) {
             viewModel.closeThemeStudio()
+        } else if (state.showLyricsStudio) {
+            viewModel.closeLyricsStudio()
         } else if (state.showJam) {
             viewModel.closeJam()
         } else if (state.showListeningInsights) {
@@ -2623,6 +2635,10 @@ fun LevyraApp(
                         viewModel.closeSettings()
                         viewModel.openThemeStudio()
                     },
+                    onOpenLyricsStudio = {
+                        viewModel.closeSettings()
+                        viewModel.openLyricsStudio()
+                    },
                     onOpenAudioSettings = viewModel::openAudioQualityPanel,
                     onInterfaceSettings = viewModel::setInterfaceSettings,
                     onAmbientSettings = viewModel::updateAmbientSettings,
@@ -2764,6 +2780,7 @@ fun LevyraApp(
                     onPrevious = viewModel::previous,
                     onTogglePlay = viewModel::togglePlay,
                     onNext = viewModel::next,
+                    onOpenLyricsStudio = viewModel::openLyricsStudio,
                     onClose = viewModel::closeLyrics
                 )
             }
@@ -3063,6 +3080,20 @@ fun LevyraApp(
                     onSelectPreset = viewModel::setThemePreset,
                     onSelectAccent = viewModel::setThemeAccent,
                     onClose = viewModel::closeThemeStudio
+                )
+            }
+
+            AnimatedVisibility(visible = state.showLyricsStudio, enter = overlayEnter, exit = overlayExit) {
+                LyricsStudioOverlay(
+                    settings = state.lyricsStudioSettings,
+                    currentTrack = state.currentTrack,
+                    liveLyrics = state.lyrics,
+                    lyricsSynced = state.lyricsSynced,
+                    positionMs = state.positionMs,
+                    isPlaying = state.isPlaying,
+                    onUpdateSettings = viewModel::setLyricsStudioSettings,
+                    onResetSettings = viewModel::resetLyricsStudioSettings,
+                    onClose = viewModel::closeLyricsStudio
                 )
             }
 
@@ -7350,6 +7381,7 @@ private fun LyricsOverlay(
     onPrevious: () -> Unit,
     onTogglePlay: () -> Unit,
     onNext: () -> Unit,
+    onOpenLyricsStudio: () -> Unit = {},
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -7647,12 +7679,39 @@ private fun LyricsOverlay(
             .fillMaxSize()
             .consumeOverlayTouches()
     ) {
+        val studioSettings = state.lyricsStudioSettings
         if (landscapeLayout) {
             LyricsLandscapeBackdrop(
                 track = track,
                 accentStart = accentStart,
                 accentEnd = accentEnd,
                 artworkAlpha = lyricsBackdropAlpha(lyricsFocusMode, cinema = true)
+            )
+        } else if (studioSettings.backgroundMode == LyricsBackgroundMode.AMOLED) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+            )
+        } else if (studioSettings.backgroundMode == LyricsBackgroundMode.SOLID) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFF16161A))
+            )
+        } else if (studioSettings.backgroundMode == LyricsBackgroundMode.GRADIENT) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                accentStart.copy(alpha = 0.35f),
+                                Color(0xFF0F0F14),
+                                Color(0xFF0A0A0E)
+                            )
+                        )
+                    )
             )
         } else {
             LevyraBackground()
@@ -7661,15 +7720,17 @@ private fun LyricsOverlay(
                     .fillMaxSize()
                     .background(
                         Color.Black.copy(
-                            alpha = when (viewMode) {
-                                LyricsViewMode.CINEMA -> 0.68f
-                                LyricsViewMode.PAGE -> 0.76f
-                                LyricsViewMode.COMPACT -> 0.86f
+                            alpha = when {
+                                studioSettings.backgroundMode == LyricsBackgroundMode.BLURRED_ARTWORK -> 0.55f
+                                studioSettings.backgroundMode == LyricsBackgroundMode.CINEMATIC -> 0.60f
+                                viewMode == LyricsViewMode.CINEMA -> 0.68f
+                                viewMode == LyricsViewMode.PAGE -> 0.76f
+                                else -> 0.86f
                             }
                         )
                     )
             )
-            if (viewMode == LyricsViewMode.CINEMA) {
+            if (viewMode == LyricsViewMode.CINEMA || studioSettings.backgroundMode == LyricsBackgroundMode.BLURRED_ARTWORK || studioSettings.backgroundMode == LyricsBackgroundMode.CINEMATIC) {
                 val backdropAlpha = lyricsBackdropAlpha(lyricsFocusMode, cinema = true)
                 if (track != null && backdropAlpha > 0f) {
                     val backdropContext = LocalContext.current
@@ -7911,6 +7972,7 @@ private fun LyricsOverlay(
                         selectionMode = selectionMode,
                         selected = selected,
                         selectable = isLyricsShareSelectable(line),
+                        studioSettings = studioSettings,
                         onClick = {
                             if (selectionMode) {
                                 selectedRange = toggleLyricsShareSelection(selectedRange, index, visibleLyrics)
@@ -8076,6 +8138,15 @@ private fun LyricsOverlay(
                             LyricsViewMode.COMPACT -> LyricsViewMode.CINEMA
                         }
                         initialLyricsPositioned = false
+                    }
+                )
+                LyricsControlChip(
+                    label = strings.lyricsStudio,
+                    selected = false,
+                    icon = Icons.Rounded.AutoAwesome,
+                    onClick = {
+                        showLyricsOptions = false
+                        onOpenLyricsStudio()
                     }
                 )
                 LyricsControlChip(
@@ -8535,6 +8606,7 @@ private fun KaraokeLyricLine(
     selectionMode: Boolean,
     selected: Boolean,
     selectable: Boolean,
+    studioSettings: LevyraLyricsStudioSettings = LevyraLyricsStudioSettings(),
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
@@ -8556,15 +8628,21 @@ private fun KaraokeLyricLine(
         }
     }
     val sectionLocale = remember(strings.code) { Locale.forLanguageTag(strings.code.replace('_', '-')) }
+    val defaultAlignment = when (studioSettings.alignment) {
+        LyricsAlignment.START -> Alignment.Start
+        LyricsAlignment.CENTER -> Alignment.CenterHorizontally
+        LyricsAlignment.END -> Alignment.End
+    }
+    val defaultTextAlign = studioSettings.alignment.textAlign
     val alignment = when (line.role) {
         LyricVocalRole.DUET_RIGHT -> Alignment.End
         LyricVocalRole.BACKGROUND -> Alignment.CenterHorizontally
-        else -> Alignment.Start
+        else -> defaultAlignment
     }
     val textAlign = when (line.role) {
         LyricVocalRole.DUET_RIGHT -> TextAlign.End
         LyricVocalRole.BACKGROUND -> TextAlign.Center
-        else -> TextAlign.Start
+        else -> defaultTextAlign
     }
     val roleScale = when (line.role) {
         LyricVocalRole.BACKGROUND -> if (compact) 0.86f else 0.80f
@@ -8576,7 +8654,7 @@ private fun KaraokeLyricLine(
         targetValue = when {
             isPrimaryActive && compact -> LYRICS_COMPACT_ACTIVE_LINE_SCALE
             isPrimaryActive -> LYRICS_ACTIVE_LINE_SCALE
-            else -> 1f
+            else -> studioSettings.inactiveScale
         },
         animationSpec = LevyraMotion.physics(animationsEnabled, LevyraMotion.spatial),
         label = "lyrics-line-scale"
@@ -8597,14 +8675,14 @@ private fun KaraokeLyricLine(
         animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short + 20, easing = LevyraMotion.Easings.Standard)),
         label = "lyrics-line-blur"
     )
-    val baseFontSizeSp = when {
+    val baseFontSizeSp = (when {
         compact && isPrimaryActive -> 22f
         compact -> 17f
         cinema && isPrimaryActive -> 29f
         cinema -> 24f
         isPrimaryActive -> 26f
         else -> 21f
-    } * roleScale
+    } * roleScale * studioSettings.textSize.scale)
     val configuration = LocalConfiguration.current
     val fontScale = LocalDensity.current.fontScale
     val lineWidthDp = layoutWidthDp ?: configuration.screenWidthDp
@@ -8627,15 +8705,21 @@ private fun KaraokeLyricLine(
     val lineHeight = LevyraTypeRhythm.lineHeight(resolvedFontSizeSp)
     val inactiveColor = when {
         isActive -> Color.White.copy(alpha = 0.76f)
-        synced -> Color.White.copy(alpha = when {
-            compact -> 0.62f
-            cinema -> 0.43f
-            else -> 0.52f
-        })
+        synced -> Color.White.copy(
+            alpha = when {
+                compact -> (studioSettings.inactiveOpacity + 0.10f).coerceAtMost(0.90f)
+                else -> studioSettings.inactiveOpacity
+            }
+        )
         else -> Color.White.copy(alpha = 0.88f)
     }
+    val activeTextColor = when (studioSettings.activeColorMode) {
+        LyricsActiveColorMode.WHITE -> Color.White
+        LyricsActiveColorMode.AUTOMATIC -> accentEnd
+        LyricsActiveColorMode.CUSTOM -> Color(studioSettings.customAccentColor)
+    }
     val animatedMainColor by animateColorAsState(
-        targetValue = if (isActive || isPrimaryActive) Color.White else inactiveColor,
+        targetValue = if (isActive || isPrimaryActive) activeTextColor else inactiveColor,
         animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
         label = "lyrics-main-text-color"
     )
@@ -8667,8 +8751,32 @@ private fun KaraokeLyricLine(
     val resolvedRomanization = line.romanized.ifBlank {
         line.words.joinToString("") { word -> word.romanized }.trim()
     }
-    val activeWordColor = Color.White
-    val completedWordColor = Color.White
+    val studioFontFamily = remember(studioSettings.fontPreset) {
+        levyraFontFamilyFor(studioSettings.fontPreset)
+    }
+    val activeFontWeight = studioSettings.fontWeight.weight
+    val inactiveFontWeight = when (studioSettings.fontWeight) {
+        LyricsFontWeightPreset.BLACK, LyricsFontWeightPreset.EXTRA_BOLD -> FontWeight.Bold
+        LyricsFontWeightPreset.BOLD -> FontWeight.SemiBold
+        else -> FontWeight.Medium
+    }
+    val resolvedFontWeight = if (isPrimaryActive) activeFontWeight else inactiveFontWeight
+
+    val glowShadow = when (studioSettings.glowEffect) {
+        LyricsGlowEffect.OFF -> null
+        LyricsGlowEffect.SUBTLE -> Shadow(
+            color = activeTextColor.copy(alpha = 0.55f),
+            blurRadius = 14f,
+            offset = Offset.Zero
+        )
+        LyricsGlowEffect.VIBRANT -> Shadow(
+            color = activeTextColor.copy(alpha = 0.85f),
+            blurRadius = 26f,
+            offset = Offset.Zero
+        )
+    }
+    val activeWordColor = activeTextColor
+    val completedWordColor = activeTextColor
     val pendingWordColor = Color.White.copy(alpha = if (compact) 0.50f else 0.58f)
 
     Column(
@@ -8744,7 +8852,7 @@ private fun KaraokeLyricLine(
                 customActions = lineAccessibilityActions
             },
         horizontalAlignment = alignment,
-        verticalArrangement = Arrangement.spacedBy(if (compact) 2.dp else 4.dp)
+        verticalArrangement = Arrangement.spacedBy((if (compact) 2.dp else 4.dp) + (studioSettings.lineSpacing.spacingDp / 2))
     ) {
         if (!sectionLabel.isNullOrBlank()) {
             Text(
@@ -8767,7 +8875,7 @@ private fun KaraokeLyricLine(
                 alignment = alignment
             )
         }
-        if (line.words.isNotEmpty() && synced) {
+        if (line.words.isNotEmpty() && synced && studioSettings.progressiveKaraokeEnabled) {
             KaraokeWordTimedText(
                 lineText = line.text,
                 words = line.words,
@@ -8780,16 +8888,20 @@ private fun KaraokeLyricLine(
                 completedColor = completedWordColor,
                 activeColor = activeWordColor,
                 pendingColor = pendingWordColor,
-                fontWeight = if (isPrimaryActive) FontWeight.ExtraBold else FontWeight.Bold
+                fontWeight = resolvedFontWeight,
+                fontFamily = studioFontFamily,
+                shadow = if (isPrimaryActive) glowShadow else null
             )
         } else {
             Text(
                 text = if (line.isInstrumental) "♪" else line.text,
                 color = animatedMainColor,
+                fontFamily = studioFontFamily,
                 fontSize = resolvedFontSize,
                 lineHeight = lineHeight,
-                fontWeight = if (isPrimaryActive) FontWeight.ExtraBold else FontWeight.Bold,
+                fontWeight = resolvedFontWeight,
                 textAlign = textAlign,
+                style = TextStyle(shadow = if (isPrimaryActive) glowShadow else null),
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -8875,7 +8987,9 @@ private fun KaraokeWordTimedText(
     completedColor: Color,
     activeColor: Color,
     pendingColor: Color,
-    fontWeight: FontWeight
+    fontWeight: FontWeight,
+    fontFamily: FontFamily? = null,
+    shadow: Shadow? = null
 ) {
     val timedText = remember(lineText, words) { buildTimedLyricText(lineText, words) }
     val karaokeEasing = remember { CubicBezierEasing(0.18f, 0f, 0.20f, 1f) }
@@ -8885,7 +8999,7 @@ private fun KaraokeWordTimedText(
         TextAlign.End, TextAlign.Right -> Alignment.CenterEnd
         else -> Alignment.CenterStart
     }
-    var textLayoutResult by remember(timedText.text, fontSize, lineHeight, textAlign, fontWeight) {
+    var textLayoutResult by remember(timedText.text, fontSize, lineHeight, textAlign, fontWeight, fontFamily) {
         mutableStateOf<TextLayoutResult?>(null)
     }
 
@@ -8897,6 +9011,7 @@ private fun KaraokeWordTimedText(
             Text(
                 text = timedText.text,
                 color = if (isActive) pendingColor else inactiveColor,
+                fontFamily = fontFamily,
                 fontSize = fontSize,
                 lineHeight = lineHeight,
                 fontWeight = fontWeight,
@@ -8908,10 +9023,12 @@ private fun KaraokeWordTimedText(
                 Text(
                     text = timedText.text,
                     color = if (activeColor == completedColor) completedColor else activeColor,
+                    fontFamily = fontFamily,
                     fontSize = fontSize,
                     lineHeight = lineHeight,
                     fontWeight = fontWeight,
                     textAlign = textAlign,
+                    style = TextStyle(shadow = shadow),
                     modifier = Modifier
                         .matchParentSize()
                         .drawWithContent {
@@ -18425,6 +18542,7 @@ private fun SettingsOverlay(
     onLyricsProviderOrdering: (LyricsProviderOrdering) -> Unit,
     onOpenJam: () -> Unit,
     onOpenThemeStudio: () -> Unit,
+    onOpenLyricsStudio: () -> Unit = {},
     onOpenAudioSettings: () -> Unit,
     onInterfaceSettings: (LevyraInterfaceSettings) -> Unit,
     onAmbientSettings: (LevyraAmbientSettings) -> Unit,
@@ -18721,6 +18839,14 @@ private fun SettingsOverlay(
                                     title = strings.themeStudio,
                                     subtitle = LevyraThemes.byId(themePreset).label,
                                     onClick = onOpenThemeStudio
+                                )
+                            }
+                            item {
+                                SettingsButton(
+                                    icon = Icons.Rounded.AutoAwesome,
+                                    title = strings.lyricsStudio,
+                                    subtitle = strings.lyricsStudioSubtitle,
+                                    onClick = onOpenLyricsStudio
                                 )
                             }
                             item {
@@ -19494,6 +19620,14 @@ private fun SettingsOverlay(
                             }
                         }
                         "lyrics" -> {
+                            item {
+                                SettingsButton(
+                                    icon = Icons.Rounded.AutoAwesome,
+                                    title = strings.lyricsStudio,
+                                    subtitle = strings.lyricsStudioSubtitle,
+                                    onClick = onOpenLyricsStudio
+                                )
+                            }
                             item {
                                 SettingsInfoCard(
                                     icon = Icons.Rounded.Insights,
