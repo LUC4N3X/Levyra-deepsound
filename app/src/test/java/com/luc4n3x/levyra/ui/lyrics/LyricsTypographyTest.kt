@@ -55,4 +55,20 @@ class LyricsTypographyTest {
     fun `unknown width falls back to the scaled base size`() {
         assertEquals(24f, adaptiveLyricFontSizeSp(24f, 200, 0f, 800f, 1f), 0.01f)
     }
+
+    @Test
+    fun `scaled active line never exceeds the available width`() {
+        listOf(320, 1080, 1768, 2520).forEach { available ->
+            listOf(1.018f, 1.025f).forEach { scale ->
+                val content = lyricLineScaleSafeWidthPx(available, scale)
+                assertTrue(content * scale <= available)
+                assertTrue(content >= available - available * (scale - 1f) - 1)
+            }
+        }
+    }
+
+    @Test
+    fun `unscaled line keeps the full width`() {
+        assertEquals(1080, lyricLineScaleSafeWidthPx(1080, 1f))
+    }
 }

@@ -117,6 +117,7 @@ import com.luc4n3x.levyra.ui.lyrics.calibratedLyricsTrackOffset
 import com.luc4n3x.levyra.ui.lyrics.lyricsOffsetIsolated
 import com.luc4n3x.levyra.ui.i18n.lyricsSyncCopy
 import com.luc4n3x.levyra.ui.lyrics.adaptiveLyricFontSizeSp
+import com.luc4n3x.levyra.ui.lyrics.lyricLineScaleSafeWidthPx
 import com.luc4n3x.levyra.ui.lyrics.buildTimedLyricText
 import com.luc4n3x.levyra.ui.lyrics.karaokeCharacterProgress
 import com.luc4n3x.levyra.ui.lyrics.lyricsOffsetPosition
@@ -8559,10 +8560,11 @@ private fun KaraokeLyricLine(
         LyricVocalRole.DUET_LEFT, LyricVocalRole.DUET_RIGHT -> 0.92f
         LyricVocalRole.MAIN -> 1f
     }
+    val maxActiveScale = if (compact) LYRICS_COMPACT_ACTIVE_LINE_SCALE else LYRICS_ACTIVE_LINE_SCALE
     val activeScale by animateFloatAsState(
         targetValue = when {
-            isPrimaryActive && compact -> 1.018f
-            isPrimaryActive -> 1.025f
+            isPrimaryActive && compact -> LYRICS_COMPACT_ACTIVE_LINE_SCALE
+            isPrimaryActive -> LYRICS_ACTIVE_LINE_SCALE
             else -> 1f
         },
         animationSpec = LevyraMotion.physics(animationsEnabled, LevyraMotion.spatial),
@@ -8661,17 +8663,40 @@ private fun KaraokeLyricLine(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(
-                when {
-                    selected -> accentEnd.copy(alpha = 0.22f)
-                    selectionMode -> Color.White.copy(alpha = 0.035f)
-                    else -> Color.Transparent
+            .then(
+                if (selected || selectionMode) {
+                    Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(if (selected) accentEnd.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.035f))
+                } else {
+                    Modifier
                 }
             )
             .padding(horizontal = horizontalPadding, vertical = if (compact) 2.dp else 0.dp)
             .padding(horizontal = if (selectionMode) 10.dp else 0.dp, vertical = if (selectionMode) 7.dp else 0.dp)
-            .then(if (lineBlur > 0.dp) Modifier.blur(lineBlur) else Modifier)
+            .then(if (lineBlur > 0.dp) Modifier.blur(lineBlur, BlurredEdgeTreatment.Unbounded) else Modifier)
+            .layout { measurable, constraints ->
+                if (!constraints.hasBoundedWidth) {
+                    val placeable = measurable.measure(constraints)
+                    return@layout layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+                }
+                val contentWidth = lyricLineScaleSafeWidthPx(constraints.maxWidth, maxActiveScale)
+                val placeable = measurable.measure(
+                    constraints.copy(
+                        minWidth = minOf(constraints.minWidth, contentWidth),
+                        maxWidth = contentWidth
+                    )
+                )
+                val width = maxOf(constraints.minWidth, placeable.width)
+                layout(width, placeable.height) {
+                    val x = when (line.role) {
+                        LyricVocalRole.DUET_RIGHT -> width - placeable.width
+                        LyricVocalRole.BACKGROUND -> (width - placeable.width) / 2
+                        else -> 0
+                    }
+                    placeable.place(x, 0)
+                }
+            }
             .graphicsLayer {
                 scaleX = activeScale
                 scaleY = activeScale
@@ -8904,6 +8929,8 @@ private fun KaraokeWordTimedText(
 
 private const val INLINE_LYRICS_AUTOSCROLL_RESUME_MS = 3_500L
 private const val LYRICS_HORIZONTAL_GUTTER_DP = 48
+private const val LYRICS_ACTIVE_LINE_SCALE = 1.025f
+private const val LYRICS_COMPACT_ACTIVE_LINE_SCALE = 1.018f
 
 private fun buildKaraokeGlyphPath(
     path: Path,
