@@ -253,7 +253,7 @@ M3_SHOWCASE_SPECS = [
      (160, 45, 140), ["03_now_playing.webp"]),
 
     # Card 04: Player Decks
-    ("Screenshot_20261010_190538_LEVYRA.jpg", "PLAYER DECKS", "Your listening deck.",
+    ("Screenshot_20261012_193118_LEVYRA.jpg", "PLAYER DECKS", "Your listening deck.",
      "Fluid bottom sheets, gesture controls,\nand adaptive cover-art styling.",
      (110, 50, 185), ["04_player_deck.webp"]),
 
@@ -298,7 +298,7 @@ M3_SHOWCASE_SPECS = [
      (130, 65, 170), ["12_listening_rhythm.webp"]),
 
     # Card 13: Your Orbit
-    ("Screenshot_20261010_132103_LEVYRA.jpg", "TOP ROTATION", "In your orbit.",
+    ("Screenshot_20261012_193022_LEVYRA.jpg", "TOP ROTATION", "In your orbit.",
      "The songs and artists that always return\nto your daily rotation.",
      (105, 45, 195), ["13_your_orbit.webp"]),
 
