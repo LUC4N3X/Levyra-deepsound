@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
@@ -63,6 +64,8 @@ import com.luc4n3x.levyra.ui.theme.LevyraType
 import com.luc4n3x.levyra.ui.theme.levyraTonalRole
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.materialkolor.hct.Hct
+import kotlin.math.abs
 
 @Composable
 internal fun DiscoveryTrackCard(
@@ -318,6 +321,31 @@ private fun DiscoveryEditorialText(
         }
     }
 }
+
+internal fun distinctEditorialAccents(seeds: List<Color>): List<Pair<Color, Color>> {
+    val usedHues = mutableListOf<Double>()
+    return seeds.map { seed ->
+        val sourceHue = Hct.fromInt(seed.toArgb()).hue
+        val unused = EditorialCollectionHues.filterNot { it in usedHues }
+        val candidates = unused.ifEmpty {
+            EditorialCollectionHues.filterNot { it == usedHues.lastOrNull() }
+        }
+        val hue = candidates.minBy { editorialHueDistance(it, sourceHue) }
+        usedHues += hue
+        Color(Hct.from(hue, EditorialAccentChroma, EditorialAccentTone).toInt()) to
+            Color(Hct.from(hue, EditorialAccentChroma, EditorialAccentDeepTone).toInt())
+    }
+}
+
+private fun editorialHueDistance(first: Double, second: Double): Double {
+    val delta = abs(first - second) % 360.0
+    return minOf(delta, 360.0 - delta)
+}
+
+private val EditorialCollectionHues = listOf(52.0, 290.0, 175.0, 345.0, 255.0, 140.0, 20.0, 215.0)
+private const val EditorialAccentChroma = 48.0
+private const val EditorialAccentTone = 50.0
+private const val EditorialAccentDeepTone = 30.0
 
 private val EditorialCardRestCorner = 32.dp
 private val EditorialCardPressedCorner = 24.dp

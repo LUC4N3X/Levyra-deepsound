@@ -459,7 +459,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.BlurredEdgeTreatment
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -9305,9 +9304,13 @@ private fun HomeScreen(
             }
             .filter { it.tracks.isNotEmpty() }
     }
+    val homeCollectionAccents = remember(visibleEditorialCollections) {
+        buildHomeCollectionAccents(visibleEditorialCollections)
+    }
     val chartChunks = homeDerivedState.chartChunks
     val spotlightHeroData = remember(
         spotlightCandidate?.track?.id,
+        spotlightTracks,
         soundtrackArtistPool,
         spotlightDayKey,
         state.languageCode
@@ -9343,7 +9346,12 @@ private fun HomeScreen(
             .orEmpty()
             .trim()
             .let(::highResolutionHomeArtistArtworkUrl)
-        Triple(candidate, heroArtistArtworkUrl, soundtrackArtists)
+        val companions = homeSoundtrackCompanions(
+            tracks = spotlightTracks,
+            artistPool = soundtrackArtistPool,
+            heroArtistName = heroArtistName.orEmpty()
+        )
+        HomeSpotlightHero(candidate, heroArtistArtworkUrl, soundtrackArtists, companions)
     }
     val offlineContent = homeDerivedState.offlineContent
     val offlineHomeVisible = HomeOfflinePolicy.showOfflineHome(state.isDeviceOffline)
@@ -9396,12 +9404,13 @@ private fun HomeScreen(
     val homeTopPadding = 8.dp
     val stagedSpotlight = spotlightHeroData?.takeIf { speedDialPins.isEmpty() && !offlineHomeVisible }
     val spotlightHero: @Composable ((@Composable () -> Unit)?, Dp) -> Unit = { header, bleed ->
-        spotlightHeroData?.let { (candidate, heroArtistArtworkUrl, soundtrackArtists) ->
+        spotlightHeroData?.let { (candidate, heroArtistArtworkUrl, soundtrackArtists, companions) ->
             val heroTrack = candidate.track
             HomeEditorialSpotlight(
                 candidate = candidate,
                 artistArtworkUrl = heroArtistArtworkUrl,
                 soundtrackArtists = soundtrackArtists,
+                companionArtworkUrls = companions,
                 isCurrent = heroTrack.id == state.currentTrack?.id,
                 isPlaying = state.isPlaying && heroTrack.id == state.currentTrack?.id,
                 isResolving = state.isResolving && heroTrack.id == state.currentTrack?.id,
@@ -9588,6 +9597,7 @@ private fun HomeScreen(
                     HomeSectionLead(compactHome) {
                         HomeEditorialCollectionsShelf(
                             collections = visibleEditorialCollections,
+                            accents = homeCollectionAccents,
                             onOpen = { collection -> selectedHomeCollectionId = collection.id }
                         )
                     }
@@ -10002,13 +10012,8 @@ private fun HomeScreen(
         }
     }
     selectedHomeCollection?.let { collection ->
-        val (collectionAccentStart, collectionAccentEnd) = remember(collection.id, collection.accentStart, collection.accentEnd) {
-            if (collection.accentStart != 0 && collection.accentEnd != 0) {
-                Color(collection.accentStart) to Color(collection.accentEnd)
-            } else {
-                exploreEditorialPalette(collection.id)
-            }
-        }
+        val (collectionAccentStart, collectionAccentEnd) = homeCollectionAccents[collection.id]
+            ?: exploreEditorialPalette(collection.id)
         HomeCollectionScreen(
             title = homeCollectionTitle(strings, collection),
             tracks = collection.tracks,
@@ -10039,6 +10044,29 @@ private fun homeSoundtrackPrimaryArtist(rawArtist: String): String {
         if (index > 0) value = value.substring(0, index).trim()
     }
     return value
+}
+
+private data class HomeSpotlightHero(
+    val candidate: HomeSpotlightCandidate,
+    val artistArtworkUrl: String,
+    val artists: List<String>,
+    val companionArtworkUrls: List<String>
+)
+
+private fun homeSoundtrackCompanions(
+    tracks: List<Track>,
+    artistPool: List<Triple<String, String, String>>,
+    heroArtistName: String
+): List<String> {
+    val heroKey = heroArtistName.trim().lowercase(Locale.ROOT)
+    return artistPool.asSequence()
+        .filter { artist -> homeArtistPortraitUrlEligible(artist.third) }
+        .filter { artist -> homeSoundtrackPrimaryArtist(artist.first).lowercase(Locale.ROOT) != heroKey }
+        .filter { artist -> tracks.any { track -> homeSoundtrackMatchesArtist(track, artist.first, artist.second) } }
+        .distinctBy { artist -> homeSoundtrackPrimaryArtist(artist.first).lowercase(Locale.ROOT) }
+        .map { artist -> artist.third.trim() }
+        .take(HOME_HERO_COMPANION_LIMIT)
+        .toList()
 }
 
 private fun homeSoundtrackArtists(tracks: List<Track>, heroTrack: Track): List<String> {
@@ -10092,6 +10120,7 @@ private fun HomeEditorialSpotlight(
     candidate: HomeSpotlightCandidate,
     artistArtworkUrl: String,
     soundtrackArtists: List<String>,
+    companionArtworkUrls: List<String>,
     isCurrent: Boolean,
     isPlaying: Boolean,
     isResolving: Boolean,
@@ -10211,6 +10240,29 @@ private fun HomeEditorialSpotlight(
     LaunchedEffect(accentStart, accentEnd) {
         onPaletteChanged(accentStart, accentEnd)
     }
+    val portraitPalette by rememberArtworkPalette(
+        paletteKey = remember(resolvedArtistArtworkUrl) {
+            if (resolvedArtistArtworkUrl.isBlank()) {
+                ""
+            } else {
+                ArtworkPaletteCache.key(
+                    trackId = "home-hero-portrait",
+                    thumbnailUrl = resolvedArtistArtworkUrl,
+                    largeThumbnailUrl = resolvedArtistArtworkUrl
+                )
+            }
+        },
+        artworkUrl = resolvedArtistArtworkUrl,
+        fallback = artworkPaletteState.value
+    )
+    val heroSeed by animateColorAsState(
+        targetValue = homeSoundtrackHeroSeed(
+            portrait = if (resolvedArtistArtworkUrl.isBlank()) accentStart else Color(portraitPalette.start),
+            fallback = MaterialTheme.colorScheme.primary
+        ),
+        animationSpec = if (LocalAnimationsEnabled.current) tween(durationMillis = 420, easing = FastOutSlowInEasing) else snap(),
+        label = "homeSpotlightHeroSeed"
+    )
     val soundtrackTitle = strings.homeSoundtrackTitle
     val soundtrackLead = remember(strings, soundtrackArtists) { strings.homeSoundtrackLead(soundtrackArtists) }
     val isLight = LevyraIsLight
@@ -10226,9 +10278,10 @@ private fun HomeEditorialSpotlight(
 
     val heroBlur = LocalLevyraVisualCapabilities.current.heavyBlur &&
         android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
-    val chipFill = if (isLight) Color.White.copy(alpha = 0.72f) else lerp(Color.Black, accentStart, 0.38f).copy(alpha = 0.72f)
-    val playFill = lerp(accentStart, Color.White, if (isLight) 0.10f else 0.62f)
-    val playInk = if (playFill.luminance() > 0.45f) Color(0xFF07080C) else Color.White
+    val heroTones = remember(heroSeed, isLight) { homeSoundtrackHeroTones(heroSeed, isLight) }
+    val chipFill = heroTones.chip
+    val playFill = heroTones.action
+    val playInk = heroTones.onAction
 
     Box(modifier = Modifier.fillMaxWidth()) {
         Box(
@@ -10270,8 +10323,8 @@ private fun HomeEditorialSpotlight(
                             drawRect(
                                 brush = Brush.horizontalGradient(
                                     0f to Color.Transparent,
-                                    0.38f to Color.Black.copy(alpha = 0.55f),
-                                    0.62f to Color.Black
+                                    0.30f to Color.Black.copy(alpha = 0.62f),
+                                    0.56f to Color.Black
                                 ),
                                 blendMode = BlendMode.DstIn
                             )
@@ -10320,26 +10373,38 @@ private fun HomeEditorialSpotlight(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Row(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(chipFill)
-                            .padding(start = 6.dp, end = 12.dp, top = 5.dp, bottom = 5.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(7.dp)
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Box(
+                        Row(
                             modifier = Modifier
-                                .size(14.dp)
-                                .clip(homeHeroChipBadgeShape())
-                                .background(accentStart)
-                        )
-                        Text(
-                            text = strings.homeSoundtrackRadio,
-                            color = heroInk,
-                            style = LevyraType.overline,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                                .clip(CircleShape)
+                                .background(chipFill)
+                                .padding(start = 6.dp, end = 12.dp, top = 5.dp, bottom = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(7.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(14.dp)
+                                    .clip(homeHeroChipBadgeShape())
+                                    .background(heroTones.badge)
+                            )
+                            Text(
+                                text = strings.homeSoundtrackRadio,
+                                color = heroTones.onChip,
+                                style = LevyraType.overline,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        if (companionArtworkUrls.isNotEmpty()) {
+                            HomeSoundtrackCompanionStack(
+                                artworkUrls = companionArtworkUrls,
+                                ring = canvasColor,
+                                accent = heroTones.badge
+                            )
+                        }
                     }
                     Text(
                         text = soundtrackTitle,
@@ -10429,7 +10494,75 @@ private fun HomeEditorialSpotlight(
     }
 }
 
-private const val HOME_HERO_PORTRAIT_SHARE = 0.78f
+private const val HOME_HERO_PORTRAIT_SHARE = 0.84f
+private const val HOME_HERO_COMPANION_LIMIT = 3
+private val HOME_HERO_COMPANION_SIZE = 40.dp
+private val HOME_HERO_COMPANION_OVERLAP = 12.dp
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun homeHeroCompanionShape(index: Int): Shape {
+    val polygons = listOf(
+        MaterialShapes.Cookie9Sided,
+        MaterialShapes.Clover4Leaf,
+        MaterialShapes.Cookie6Sided
+    )
+    return polygons[index.coerceAtLeast(0) % polygons.size].toShape()
+}
+
+@Composable
+private fun HomeSoundtrackCompanionStack(
+    artworkUrls: List<String>,
+    ring: Color,
+    accent: Color
+) {
+    val animate = LocalAnimationsEnabled.current
+    Row(horizontalArrangement = Arrangement.spacedBy(-HOME_HERO_COMPANION_OVERLAP)) {
+        artworkUrls.forEachIndexed { index, url ->
+            val reveal = remember(url) { Animatable(if (animate) 0f else 1f) }
+            LaunchedEffect(url, animate) {
+                if (!animate) {
+                    reveal.snapTo(1f)
+                    return@LaunchedEffect
+                }
+                delay(HOME_HERO_COMPANION_STAGGER_MS * index)
+                reveal.animateTo(
+                    targetValue = 1f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    )
+                )
+            }
+            val shape = homeHeroCompanionShape(index)
+            Box(
+                modifier = Modifier
+                    .size(HOME_HERO_COMPANION_SIZE)
+                    .graphicsLayer {
+                        val progress = reveal.value
+                        alpha = progress.coerceIn(0f, 1f)
+                        scaleX = 0.6f + 0.4f * progress
+                        scaleY = 0.6f + 0.4f * progress
+                        rotationZ = (1f - progress) * -24f
+                    }
+                    .clip(shape)
+                    .background(ring)
+                    .padding(2.dp)
+                    .clip(shape)
+                    .background(accent)
+            ) {
+                StableRemoteArtwork(
+                    url = url,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+        }
+    }
+}
+
+private const val HOME_HERO_COMPANION_STAGGER_MS = 70L
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -10469,7 +10602,7 @@ internal fun chartRowsPerColumn(trackCount: Int): Int = when {
     trackCount % 5 == 0 -> 5
     else -> 4
 }
-private val HOME_HERO_STAGE_BODY_HEIGHT = LevyraHomeDesign.HeroHeight - 88.dp
+private val HOME_HERO_STAGE_BODY_HEIGHT = LevyraHomeDesign.HeroHeight - 48.dp
 private const val HOME_HERO_LANDSCAPE_VIEWPORT_SHARE = 0.62f
 private val HOME_HERO_LANDSCAPE_MIN_HEIGHT = 236.dp
 private val HOME_HERO_FADE_LENGTH = 360.dp
@@ -10574,6 +10707,17 @@ private fun homeCollectionTitle(strings: LevyraStrings, collection: HomeEditoria
     return cleanHomeSectionTitle(title)
 }
 
+private fun buildHomeCollectionAccents(collections: List<HomeEditorialCollection>): Map<String, Pair<Color, Color>> {
+    val seeds = collections.map { collection ->
+        if (collection.accentStart != 0 && collection.accentEnd != 0) {
+            Color(collection.accentStart)
+        } else {
+            exploreEditorialPalette(collection.id).first
+        }
+    }
+    return collections.map { it.id }.zip(distinctEditorialAccents(seeds)).toMap()
+}
+
 private fun exploreEditorialPalette(identity: String): Pair<Color, Color> {
     val palette = listOf(
         Color(0xFF7C3AED) to Color(0xFF4C1D95),
@@ -10591,6 +10735,7 @@ private fun exploreEditorialPalette(identity: String): Pair<Color, Color> {
 @Composable
 private fun HomeEditorialCollectionsShelf(
     collections: List<HomeEditorialCollection>,
+    accents: Map<String, Pair<Color, Color>>,
     onOpen: (HomeEditorialCollection) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -10648,13 +10793,8 @@ private fun HomeEditorialCollectionsShelf(
                             .joinToString(" · ")
                     }
                     val artworkTrack = collectionArtworks[collection.id]
-                    val (accentStart, accentEnd) = remember(collection.id, collection.accentStart, collection.accentEnd) {
-                        if (collection.accentStart != 0 && collection.accentEnd != 0) {
-                            Color(collection.accentStart) to Color(collection.accentEnd)
-                        } else {
-                            exploreEditorialPalette(collection.id)
-                        }
-                    }
+                    val (accentStart, accentEnd) = accents[collection.id]
+                        ?: exploreEditorialPalette(collection.id)
                     DiscoveryEditorialCard(
                         title = homeCollectionTitle(strings, collection),
                         subtitle = artistLine,
