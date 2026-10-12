@@ -11,6 +11,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class HomeRenderSnapshotTest {
@@ -198,6 +199,38 @@ class HomeRenderSnapshotTest {
         assertEquals(20, quickPicks.size)
         assertEquals(20, quickPicks.map(LevyraPersonalOrbit::identityKey).distinct().size)
         assertEquals(2, quickPicks.count { LevyraPersonalOrbit.identityKey(it) in orbitKeys })
+    }
+
+    @Test
+    fun personalOrbitUsesTasteRankedAlternativesWithoutRepeatingQuickPicks() {
+        val orbit = (0 until 10).map { index ->
+            track("orbt" + index.toString().padStart(7, '0'))
+                .copy(artist = "Favorite Artist", moodTags = setOf("rock"))
+        }
+        val available = (0 until 45).map { index ->
+            track("cand" + index.toString().padStart(7, '0'))
+                .copy(
+                    artist = if (index < 30) "Favorite Artist" else "Other Artist",
+                    moodTags = if (index < 30) setOf("rock") else setOf("pop")
+                )
+        }
+        val state = LevyraUiState(
+            languageCode = "it",
+            personalOrbitTracks = orbit,
+            favorites = orbit.take(2),
+            recentListens = orbit.take(3),
+            tracks = available
+        )
+        val snapshot = buildHomeRenderSnapshot(state)
+        val quickPicks = snapshot.derived.quickPicks?.tracks.orEmpty()
+        val displayedOrbit = snapshot.derived.personalOrbitDisplayTracks
+        val quickTitles = quickPicks.map(LevyraPersonalOrbit::musicTitleKey).toSet()
+
+        assertEquals(20, quickPicks.size)
+        assertEquals(18, displayedOrbit.size)
+        assertEquals(18, displayedOrbit.map(LevyraPersonalOrbit::musicTitleKey).distinct().size)
+        assertTrue(displayedOrbit.none { LevyraPersonalOrbit.musicTitleKey(it) in quickTitles })
+        assertTrue(displayedOrbit.drop(orbit.size).any { it.artist == "Favorite Artist" })
     }
 
     @Test
