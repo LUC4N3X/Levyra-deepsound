@@ -43,6 +43,8 @@ class PlayerMorphAnchors(private val expansion: () -> Float = { PlayerExpansionE
         private set
     var stageActive by mutableStateOf(false)
         private set
+    var landsAsCookie by mutableStateOf(false)
+        private set
     private var fullRestScale by mutableFloatStateOf(1f)
     private var fullRestOffsetY by mutableFloatStateOf(0f)
     internal var playerContainer: LayoutCoordinates? = null
@@ -75,6 +77,10 @@ class PlayerMorphAnchors(private val expansion: () -> Float = { PlayerExpansionE
     }
 
     internal fun currentExpansion(): Float = expansion()
+
+    fun updateLandsAsCookie(cookie: Boolean) {
+        if (landsAsCookie != cookie) landsAsCookie = cookie
+    }
 
     fun updateStageActive(active: Boolean) {
         if (stageActive != active) stageActive = active

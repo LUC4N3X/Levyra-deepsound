@@ -297,6 +297,7 @@ internal fun playerDeckLabel(mode: PlayerVisualMode, strings: LevyraStrings): St
         PlayerVisualMode.Expressive -> labels.expressive
         PlayerVisualMode.Pulse -> labels.pulse
         PlayerVisualMode.Halo -> labels.halo
+        PlayerVisualMode.Folio -> labels.folio
     }
 }
 
@@ -307,6 +308,7 @@ internal fun playerDeckHint(mode: PlayerVisualMode, strings: LevyraStrings): Str
     PlayerVisualMode.Expressive -> strings.playerDeckExpressiveHint
     PlayerVisualMode.Pulse -> strings.playerDeckPulseHint
     PlayerVisualMode.Halo -> strings.playerDeckHaloHint
+    PlayerVisualMode.Folio -> strings.playerDeckFolioHint
 }
 
 @Composable
@@ -323,6 +325,7 @@ private fun PlayerDeckPreview(
         PlayerVisualMode.Expressive -> ExpressivePreview(track, artworkUrl, accent)
         PlayerVisualMode.Pulse -> PulsePreview(track, artworkUrl, accent)
         PlayerVisualMode.Halo -> ExpressivePreview(track, artworkUrl, accent)
+        PlayerVisualMode.Folio -> ExpressivePreview(track, artworkUrl, accent)
     }
 }
 

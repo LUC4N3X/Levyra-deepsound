@@ -158,6 +158,7 @@ internal fun PlayerArtworkHero(
                 PlayerVisualMode.CanvasImmersive,
                 PlayerVisualMode.Expressive,
                 PlayerVisualMode.Halo,
+                PlayerVisualMode.Folio,
                 PlayerVisualMode.Pulse -> {
                     MotionArtworkLayer(
                         artwork = motionArtwork,
