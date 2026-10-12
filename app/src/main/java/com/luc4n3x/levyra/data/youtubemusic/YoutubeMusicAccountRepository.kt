@@ -4,6 +4,8 @@ import android.content.Context
 import com.luc4n3x.levyra.data.PlaylistStore
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.data.YoutubeMusicPlaylistPageParser
+import com.luc4n3x.levyra.domain.AlbumHit
+import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -29,6 +31,14 @@ internal data class YoutubeMusicLibraryPage(
     val entries: List<YoutubeMusicLibraryEntry> = emptyList(),
     val tracks: List<Track> = emptyList(),
     val continuation: String = ""
+)
+
+internal data class YoutubeMusicHome(
+    val accountId: String,
+    val languageCode: String,
+    val orbit: List<Track>,
+    val sections: List<HomeSection>,
+    val albums: List<AlbumHit>
 )
 
 internal class YoutubeMusicAccountRepository(context: Context) {
@@ -67,6 +77,20 @@ internal class YoutubeMusicAccountRepository(context: Context) {
         val tracks = if (trackPage) parser.parsePlaylistTracks(root, browseId) else emptyList()
         val next = if (trackPage) YoutubeMusicPlaylistPageParser.continuation(root) else YoutubeMusicAccountParser.continuation(root)
         YoutubeMusicLibraryPage(entries, tracks, next)
+    }
+
+    suspend fun home(session: YoutubeMusicSession, language: String): YoutubeMusicHome = withContext(Dispatchers.IO) {
+        val root = client.browse(session, "FEmusic_home", language)
+        val sections = parser.parseHomeSections(root)
+        sections.forEach { parser.rememberTracks(it.tracks) }
+        val orbitIndex = sections.indexOfFirst { it.tracks.size >= 6 }
+        YoutubeMusicHome(
+            accountId = session.account.id,
+            languageCode = language,
+            orbit = sections.getOrNull(orbitIndex)?.tracks.orEmpty(),
+            sections = sections.filterIndexed { index, _ -> index != orbitIndex },
+            albums = parser.parseHomeAlbums(root)
+        )
     }
 
     suspend fun fullTracks(session: YoutubeMusicSession, collection: YoutubeMusicCollection, browseId: String, language: String): List<Track> {

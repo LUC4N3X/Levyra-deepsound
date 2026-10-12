@@ -709,6 +709,7 @@ import com.luc4n3x.levyra.ui.components.rememberLastNonNull
 import com.luc4n3x.levyra.viewmodel.completedScanSongs
 import com.luc4n3x.levyra.viewmodel.ExploreViewModel
 import com.luc4n3x.levyra.viewmodel.HomeRenderSnapshot
+import com.luc4n3x.levyra.viewmodel.buildHomeRenderSnapshot
 import com.luc4n3x.levyra.viewmodel.HomeViewModel
 import com.luc4n3x.levyra.viewmodel.LevyraScreenViewModelFactory
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
@@ -1816,6 +1817,12 @@ fun LevyraApp(
     var showYoutubeMusic by rememberSaveable { mutableStateOf(false) }
 
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LaunchedEffect(youtubeMusicState.active?.id, state.languageCode) {
+        youtubeMusicViewModel.loadHome(state.languageCode)
+    }
+    LaunchedEffect(state.isDeviceOffline) {
+        if (!state.isDeviceOffline) youtubeMusicViewModel.onNetworkRestored(state.languageCode)
+    }
     val currentStrings = LevyraStrings.forCode(state.languageCode)
     val layoutDirection = if (LevyraLanguageCatalog.isRtl(currentStrings.code)) LayoutDirection.Rtl else LayoutDirection.Ltr
     LaunchedEffect(state.isVideoMode, state.isPlaying) {
@@ -2263,7 +2270,11 @@ fun LevyraApp(
                     when (tab) {
                         LevyraTab.Home -> {
                             val homeViewModel: HomeViewModel = composeViewModel(key = "levyra-home", factory = screenViewModelFactory)
-                            val renderSnapshot by homeViewModel.renderState.collectAsStateWithLifecycle()
+                            val levyraRenderSnapshot by homeViewModel.renderState.collectAsStateWithLifecycle()
+                            val youtubeMusicHome = youtubeMusicState.home
+                            val renderSnapshot = remember(levyraRenderSnapshot, youtubeMusicHome) {
+                                youtubeMusicHome?.let { withYoutubeMusicHome(levyraRenderSnapshot, it) } ?: levyraRenderSnapshot
+                            }
                             CompositionLocalProvider(
                                 LocalHomeCompactDensity provides
                                     renderSnapshot.state.interfaceSettings.compactHome
@@ -2273,6 +2284,7 @@ fun LevyraApp(
                                     renderSnapshot = renderSnapshot,
                                     homeListState = homeListState,
                                     deferredSectionsRevealed = homeDeferredSectionsRevealed,
+                                    accountAvatarUrl = youtubeMusicState.active?.avatarUrl.orEmpty(),
                                     onTrackActions = { track ->
                                         queueRemovalTarget = null
                                         trackActionTarget = track
@@ -9184,6 +9196,7 @@ private fun HomeScreen(
     renderSnapshot: HomeRenderSnapshot,
     homeListState: LazyListState,
     deferredSectionsRevealed: MutableState<Boolean>,
+    accountAvatarUrl: String,
     onTrackActions: (Track) -> Unit
 ) {
     val state = renderSnapshot.state
@@ -9606,6 +9619,7 @@ private fun HomeScreen(
                             userName = state.userName,
                             profilePhotoPath = state.profilePhotoPath,
                             profilePhotoVersion = state.profilePhotoVersion,
+                            accountAvatarUrl = accountAvatarUrl,
                             currentId = state.currentTrack?.id,
                             isPlaying = state.isPlaying,
                             isResolving = state.isResolving,
@@ -11823,11 +11837,26 @@ private fun HomeCompactPlayAllHeader(
     }
 }
 
+private fun withYoutubeMusicHome(
+    snapshot: HomeRenderSnapshot,
+    home: com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicHome
+): HomeRenderSnapshot {
+    val state = snapshot.state
+    return buildHomeRenderSnapshot(
+        state.copy(
+            personalOrbitTracks = home.orbit.ifEmpty { state.personalOrbitTracks },
+            homeSections = home.sections.ifEmpty { state.homeSections },
+            homeAlbums = home.albums.ifEmpty { state.homeAlbums }
+        )
+    )
+}
+
 @Composable
 private fun HomeOrbitHeader(
     userName: String,
     profilePhotoPath: String,
     profilePhotoVersion: Long,
+    accountAvatarUrl: String,
     onPlayAll: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -11844,7 +11873,8 @@ private fun HomeOrbitHeader(
             HomeOrbitAvatar(
                 initial = initial,
                 photoPath = profilePhotoPath,
-                photoVersion = profilePhotoVersion
+                photoVersion = profilePhotoVersion,
+                accountAvatarUrl = accountAvatarUrl
             )
             Spacer(modifier = Modifier.width(LevyraHomeDesign.OrbitAvatarGap))
         }
@@ -11877,10 +11907,10 @@ private fun HomeOrbitHeader(
 }
 
 @Composable
-private fun HomeOrbitAvatar(initial: String, photoPath: String, photoVersion: Long) {
+private fun HomeOrbitAvatar(initial: String, photoPath: String, photoVersion: Long, accountAvatarUrl: String) {
     val context = LocalContext.current
-    val photoRequest = remember(context, photoPath, photoVersion) {
-        photoPath.takeIf(String::isNotBlank)?.let { path ->
+    val photoRequest = remember(context, photoPath, photoVersion, accountAvatarUrl) {
+        accountAvatarUrl.takeIf(String::isNotBlank) ?: photoPath.takeIf(String::isNotBlank)?.let { path ->
             ImageRequest.Builder(context)
                 .data(File(path))
                 .memoryCacheKey("levyra-profile-photo-$photoVersion")
@@ -11928,6 +11958,7 @@ private fun PersonalListeningShelf(
     userName: String,
     profilePhotoPath: String,
     profilePhotoVersion: Long,
+    accountAvatarUrl: String,
     currentId: String?,
     isPlaying: Boolean,
     isResolving: Boolean,
@@ -11995,6 +12026,7 @@ private fun PersonalListeningShelf(
                 userName = userName,
                 profilePhotoPath = profilePhotoPath,
                 profilePhotoVersion = profilePhotoVersion,
+                accountAvatarUrl = accountAvatarUrl,
                 onPlayAll = onPlayAll
             )
         }

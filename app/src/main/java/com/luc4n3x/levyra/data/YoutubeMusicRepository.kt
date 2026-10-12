@@ -1155,6 +1155,10 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         sections
     }
 
+    internal fun rememberTracks(tracks: List<Track>) {
+        tracks.forEach { memory[it.id] = it }
+    }
+
     suspend fun homeAlbums(
         languageCode: String = LevyraLanguageCatalog.deviceDefault(),
         limit: Int = 20,
@@ -2130,6 +2134,10 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
 
     private fun homeFeedInnerTube(languageCode: String): List<HomeSection> {
         val root = requestMusicHomeRoot(languageCode) ?: return emptyList()
+        return parseHomeSections(root)
+    }
+
+    internal fun parseHomeSections(root: JSONObject): List<HomeSection> {
         val shelves = mutableListOf<JSONObject>()
         collectObjectsByKey(root, "musicCarouselShelfRenderer", shelves)
         val sections = mutableListOf<HomeSection>()
@@ -2149,6 +2157,10 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
 
     private fun homeAlbumFeedInnerTube(languageCode: String): List<AlbumHit> {
         val root = requestMusicHomeRoot(languageCode) ?: return emptyList()
+        return parseHomeAlbums(root)
+    }
+
+    internal fun parseHomeAlbums(root: JSONObject): List<AlbumHit> {
         val shelves = mutableListOf<JSONObject>()
         collectObjectsByKey(root, "musicCarouselShelfRenderer", shelves)
         val albums = LinkedHashMap<String, AlbumHit>()

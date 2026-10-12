@@ -33,7 +33,8 @@ internal data class YoutubeMusicAccountUiState(
     val showLogin: Boolean = false,
     val checkingLogin: Boolean = false,
     val error: YoutubeMusicAccountError? = null,
-    val notice: YoutubeMusicAccountNotice? = null
+    val notice: YoutubeMusicAccountNotice? = null,
+    val home: YoutubeMusicHome? = null
 ) {
     val currentPage: YoutubeMusicLibraryPage? get() = if (detail != null) detailPage else pages[collection]
 }
@@ -48,6 +49,8 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
     private var generation = 0L
     private var language = "en"
     private val requestedPages = hashSetOf<String>()
+    private var homeJob: Job? = null
+    private var homeKey = ""
 
     init {
         viewModelScope.launch {
@@ -60,6 +63,31 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
                 _state.update { it.copy(restoring = false) }
             }
         }
+    }
+
+    fun loadHome(languageCode: String) {
+        val session = saved.active ?: return
+        val current = state.value.home
+        if (current != null && current.accountId == session.account.id && current.languageCode == languageCode) return
+        val key = "${session.account.id}|$languageCode"
+        if (homeJob?.isActive == true && homeKey == key) return
+        homeJob?.cancel()
+        homeKey = key
+        homeJob = viewModelScope.launch {
+            val home = try {
+                repository.home(session, languageCode)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                return@launch
+            }
+            if (saved.activeId == home.accountId) _state.update { it.copy(home = home) }
+        }
+    }
+
+    fun onNetworkRestored(languageCode: String) {
+        loadHome(languageCode)
+        if (state.value.error == YoutubeMusicAccountError.Network && !state.value.busy && !state.value.showLogin) retry()
     }
 
     fun open(languageCode: String) {
@@ -255,6 +283,7 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
         if (clearLibrary) requestedPages.clear()
         _state.update { it.copy(
             accounts = saved.sessions.map { it.account }, active = saved.active?.account,
+            home = it.home?.takeIf { home -> home.accountId == saved.activeId },
             pages = if (clearLibrary) emptyMap() else it.pages,
             detail = if (clearLibrary) null else it.detail, detailPage = if (clearLibrary) null else it.detailPage,
             error = null, notice = null
