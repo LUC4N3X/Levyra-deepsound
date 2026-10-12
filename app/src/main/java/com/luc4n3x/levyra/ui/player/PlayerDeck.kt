@@ -41,10 +41,6 @@ internal fun PlayerVisualMode.deckLayout(): PlayerDeckLayout = when (this) {
     PlayerVisualMode.Halo -> PlayerDeckLayout.Halo
 }
 
-internal fun PlayerVisualMode.usesMotionCard(): Boolean =
-    this == PlayerVisualMode.CanvasCard || this == PlayerVisualMode.CanvasImmersive ||
-        this == PlayerVisualMode.Expressive || this == PlayerVisualMode.Pulse || this == PlayerVisualMode.Halo
-
 internal fun resolvePlayerDeckLayout(
     mode: PlayerVisualMode,
     isVideoMode: Boolean,

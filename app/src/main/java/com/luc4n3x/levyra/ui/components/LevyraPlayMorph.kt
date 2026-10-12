@@ -32,6 +32,7 @@ import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
 private const val PlaySpinPeriodDegrees = 30f
 private const val PlaySpinPeriodMillis = 5_200
 private const val ArtworkSpinPeriodMillis = 48_000
+private const val NowPlayingSpinPeriodMillis = 3_600
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private val PlayMorph: Morph by lazy {
@@ -142,6 +143,18 @@ private fun rememberSpinningMorphShape(
     val rotation = angle * progress
     return remember(morph, progress, rotation) { LevyraMorphShape(morph, progress, rotation) }
 }
+
+@Composable
+internal fun rememberLevyraNowPlayingShape(playing: Boolean, animated: Boolean): Shape =
+    rememberSpinningMorphShape(
+        morph = AvatarPressMorph,
+        active = playing,
+        animated = animated,
+        spin = true,
+        spinDegrees = PlaySpinPeriodDegrees,
+        spinMillis = NowPlayingSpinPeriodMillis,
+        label = "levyra-now-playing-morph"
+    )
 
 @Composable
 internal fun rememberLevyraAvatarPressShape(pressed: Boolean, animated: Boolean): Shape {
