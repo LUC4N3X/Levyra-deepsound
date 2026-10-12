@@ -110,6 +110,27 @@ def context_for(prompt: str) -> str:
     for skill, topic in matched:
         lines.append(f"- {topic} -> .agents/skills/{skill}/SKILL.md")
     lines.append("Do not preload other skill bodies; route the next phase only when it starts.")
+
+    active = {skill for skill, _ in matched}
+    is_android_ui = bool(active & {"levyra-compose", "levyra-design-taste"}) and (
+        "levyra-desktop" not in active or bool(re.search(r"android|compose", prompt, re.I))
+    )
+    kotlin_domains = {
+        "levyra-compose", "levyra-design-taste", "levyra-player",
+        "levyra-extractor", "levyra-database", "levyra-desktop",
+        "levyra-ci-workflows", "levyra-android-performance",
+    }
+    if is_android_ui:
+        lines.append(
+            "Later UI compliance phase: consult installed upstream material-3 SKILL.md "
+            "(hamen/material-3-skill), then only relevant references; verify Levyra APIs."
+        )
+    if active & kotlin_domains:
+        lines.append(
+            "Later Kotlin review phase: consult the matching installed "
+            "maxrave-dev/kotlin-footguns area SKILL.md and only relevant trap files; "
+            "run footgun-scan if useful. Never exceed two skill bodies per phase."
+        )
     return "\n".join(lines)
 
 
