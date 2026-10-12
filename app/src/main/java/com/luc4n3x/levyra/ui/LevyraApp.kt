@@ -338,6 +338,7 @@ import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material.icons.rounded.PersonOff
@@ -1810,6 +1811,10 @@ fun LevyraApp(
     onContinueUpdateWithoutBackup: () -> Unit = {}
 ) {
     val screenViewModelFactory = remember(viewModel) { LevyraScreenViewModelFactory(viewModel) }
+    val youtubeMusicViewModel = androidx.lifecycle.viewmodel.compose.viewModel<com.luc4n3x.levyra.viewmodel.youtubemusic.YoutubeMusicAccountViewModel>()
+    val youtubeMusicState by youtubeMusicViewModel.state.collectAsStateWithLifecycle()
+    var showYoutubeMusic by rememberSaveable { mutableStateOf(false) }
+
     val state by viewModel.state.collectAsStateWithLifecycle()
     val currentStrings = LevyraStrings.forCode(state.languageCode)
     val layoutDirection = if (LevyraLanguageCatalog.isRtl(currentStrings.code)) LayoutDirection.Rtl else LayoutDirection.Ltr
@@ -2022,9 +2027,13 @@ fun LevyraApp(
             viewModel.clearBackupMessage()
         }
     }
-    val rootOverlayOpen = showLanguageRestartDialog || state.youtubeEngagement.comments.visible || state.showRecognition || state.showJam || state.showThemeStudio || state.showYourSound || state.showListeningInsights || state.showListeningRecap || state.sharedMediaPreview != null || showDownloadsFolder || state.playlistHitPreview != null || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel
+    val rootOverlayOpen = showYoutubeMusic || showLanguageRestartDialog || state.youtubeEngagement.comments.visible || state.showRecognition || state.showJam || state.showThemeStudio || state.showYourSound || state.showListeningInsights || state.showListeningRecap || state.sharedMediaPreview != null || showDownloadsFolder || state.playlistHitPreview != null || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel
     BackHandler(enabled = rootOverlayOpen || state.selectedTab != LevyraTab.Home) {
-        if (showLanguageRestartDialog) {
+        if (showYoutubeMusic) {
+            if (youtubeMusicState.showLogin) youtubeMusicViewModel.cancelLogin()
+            else if (youtubeMusicState.detail != null) youtubeMusicViewModel.closeDetail()
+            else showYoutubeMusic = false
+        } else if (showLanguageRestartDialog) {
             showLanguageRestartDialog = false
         } else if (state.showRecognition) {
             viewModel.closeRecognition()
@@ -2291,7 +2300,11 @@ fun LevyraApp(
                         LevyraTab.Library -> {
                             val libraryViewModel: LibraryViewModel = composeViewModel(key = "levyra-library", factory = screenViewModelFactory)
                             val screenState by libraryViewModel.state.collectAsStateWithLifecycle()
-                            LevyraLibraryScreen(libraryViewModel, screenState, onOpenDownloads = { showDownloadsFolder = true })
+                            LevyraLibraryScreen(
+                                libraryViewModel, screenState, onOpenDownloads = { showDownloadsFolder = true },
+                                youtubeMusicAccount = youtubeMusicState.active,
+                                onOpenYoutubeMusic = { showYoutubeMusic = true }
+                            )
                         }
                         LevyraTab.Player -> Unit
                     }
@@ -2656,7 +2669,19 @@ fun LevyraApp(
                         )
                     },
                     onRemoveProfilePhoto = viewModel::clearProfilePhoto,
+                    onOpenYoutubeMusic = { viewModel.closeSettings(); showYoutubeMusic = true },
                     onClose = viewModel::closeSettings
+                )
+            }
+
+            if (showYoutubeMusic) {
+                com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicAccountScreen(
+                    viewModel = youtubeMusicViewModel,
+                    languageCode = state.languageCode,
+                    onPlay = { tracks, track -> showYoutubeMusic = false; viewModel.playFrom(tracks, track) },
+                    onArtist = viewModel::openArtistFromHit,
+                    onImported = viewModel::refreshYoutubeMusicImports,
+                    onClose = { showYoutubeMusic = false }
                 )
             }
 
@@ -18292,6 +18317,7 @@ private fun SettingsOverlay(
     profilePhotoSet: Boolean,
     onPickProfilePhoto: () -> Unit,
     onRemoveProfilePhoto: () -> Unit,
+    onOpenYoutubeMusic: () -> Unit,
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -18337,6 +18363,7 @@ private fun SettingsOverlay(
             SettingsCategoryMeta("backup", strings.vaultTitle, "${strings.backupNow} · ${strings.restoreBackup}", Icons.Rounded.History, LevyraCyan),
             SettingsCategoryMeta("system", categoryTitle(strings.preferences), "${strings.batteryUnrestricted} · ${strings.language}", Icons.Rounded.Settings, LevyraViolet),
             SettingsCategoryMeta("app", categoryTitle(strings.app), "${strings.updates} · ${BuildConfig.VERSION_NAME}", Icons.Rounded.Info, LevyraPink)
+            , SettingsCategoryMeta("youtube_music", "YouTube Music", com.luc4n3x.levyra.ui.i18n.youtubeMusicCopy(strings.code).introduction, Icons.Rounded.AccountCircle, LevyraCyan)
             , SettingsCategoryMeta("integrations", categoryTitle(strings.integrations), "Last.fm · ListenBrainz · AudD", Icons.Rounded.Settings, LevyraCyan)
             , SettingsCategoryMeta("network", categoryTitle(strings.networkTitle), strings.networkSubtitle, Icons.Rounded.Settings, LevyraBlue)
             , SettingsCategoryMeta("jam", categoryTitle(strings.jamTitle), strings.jamSubtitle, Icons.Rounded.PlayArrow, LevyraViolet)
@@ -18454,6 +18481,8 @@ private fun SettingsOverlay(
                             SettingsSearchResultRow(result.title, result.description, result.categoryLabel) {
                                 if (result.categoryId == SETTINGS_CATEGORY_AUDIO) {
                                     onOpenAudioSettings()
+                                } else if (result.categoryId == "youtube_music") {
+                                    onOpenYoutubeMusic()
                                 } else {
                                     activeCategory = result.categoryId
                                 }
@@ -18466,7 +18495,11 @@ private fun SettingsOverlay(
                             index = index,
                             count = categories.size
                         ) {
-                            if (category.id == "audio") onOpenAudioSettings() else activeCategory = category.id
+                            when (category.id) {
+                                "audio" -> onOpenAudioSettings()
+                                "youtube_music" -> onOpenYoutubeMusic()
+                                else -> activeCategory = category.id
+                            }
                         }
                     }
                     item { SettingsHubFooter() }

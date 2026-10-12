@@ -132,3 +132,13 @@ Levyra is not intended to bypass DRM, paywalls, authentication walls, geographic
 The Levyra-specific JioSaavn integration (including its source-resolution flow, identity matching and validation, fallback orchestration, playback integration, and related UI/UX) is part of the Levyra project authored and maintained by **LUC4N3X** and distributed under this repository's **GNU GPL v3.0**. Reuse of Levyra source remains subject to the GPL and its applicable notice and source obligations.
 
 This notice applies only to Levyra's own implementation. **JioSaavn, its service, trademarks, catalogue, media, metadata, and other third-party property remain the property of their respective owners.** Levyra is independent and is not affiliated with, endorsed by, sponsored by, or officially connected with JioSaavn.
+
+## YouTube Music Account Integration
+
+The optional Android account integration in `data/youtubemusic`, `viewmodel/youtubemusic`, and `ui/youtubemusic` adapts SimpMusic's WebView login flow and the `maxrave-dev/core` account-switcher, cookie, `authuser`/`pageId`, WEB_REMIX account-menu, SAPISIDHASH, and authenticated playlist-browse protocols. Levyra's persistence, bounded pagination, local imports, and Material 3 UI are maintained here. The source repositories and adapted material are GPL-3.0, compatible with Levyra's GPL-3.0 license; their copyright and license remain applicable.
+
+- SimpMusic, Maxrave and contributors: https://github.com/maxrave-dev/SimpMusic, revision `0e08a12633a50f0758e820a35050ac4e9e066c8f`; `LogInScreen.kt`, `Cookies.android.kt`, `SettingsViewModel.kt`.
+- Core, Maxrave and contributors: https://github.com/maxrave-dev/core, revision `b9f4ceac52e7c25cb059ea78141784dc164e0161`; `AccountRepositoryImpl.kt`, `PlaylistRepositoryImpl.kt`, `Ytmusic.kt`, `YouTube.kt`, `AccountSwitcherEndpointResponse.kt`.
+- Upstream licenses: [SimpMusic GPL-3.0](https://github.com/maxrave-dev/SimpMusic/blob/0e08a12633a50f0758e820a35050ac4e9e066c8f/LICENSE), [Core GPL-3.0](https://github.com/maxrave-dev/core/blob/b9f4ceac52e7c25cb059ea78141784dc164e0161/LICENSE).
+
+No upstream auth logging or plaintext cookie-file export is included. Saved albums and artists use additional authenticated library browse collections; the inspected upstream repositories explicitly expose the personal playlist collection, rather than a complete albums/artists library implementation.
