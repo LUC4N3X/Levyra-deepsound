@@ -7,6 +7,7 @@ import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -78,6 +79,7 @@ private val FolioControlHeight = 80.dp
 private val FolioControlHeightCompact = 66.dp
 private const val FolioPaperDepth = 0.74f
 private const val FolioArtistAlpha = 0.78f
+private const val FolioFixedActionCount = 3
 private const val FolioCoverLobeDegrees = 30f
 private const val FolioCoverLobeMillis = 4_000
 
@@ -453,53 +455,59 @@ private fun FolioActionRow(
 ) {
     val strings = LocalLevyraStrings.current
     val dockActions = slots.dockActions(track)
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        PlayerFavoriteButton(
-            trackId = track.id,
-            isFavorite = isFavorite,
-            surfaces = surfaces,
-            label = strings.favoritesPlain,
-            animated = animated,
-            onToggle = onToggleFavorite
-        )
-        PlayerToggleControl(
-            icon = Icons.Rounded.Shuffle,
-            label = labels.shuffle,
-            active = shuffleOn,
-            toggle = true,
-            surfaces = surfaces,
-            animated = animated,
-            glyph = LevyraPlayerDesign.TransportModeGlyph,
-            onClick = onShuffle
-        )
-        PlayerToggleControl(
-            icon = if (repeatMode == RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
-            label = labels.repeat,
-            active = repeatMode != RepeatMode.Off,
-            toggle = true,
-            surfaces = surfaces,
-            animated = animated,
-            glyph = LevyraPlayerDesign.TransportModeGlyph,
-            onClick = onRepeat
-        )
-        dockActions.forEach { action ->
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val controlCount = FolioFixedActionCount + dockActions.size
+        val fits = maxWidth >= LevyraPlayerDesign.MinimumTouchTarget * controlCount
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(if (fits) Modifier else Modifier.horizontalScroll(rememberScrollState())),
+            horizontalArrangement = if (fits) Arrangement.SpaceEvenly else Arrangement.Start,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            PlayerFavoriteButton(
+                trackId = track.id,
+                isFavorite = isFavorite,
+                surfaces = surfaces,
+                label = strings.favoritesPlain,
+                animated = animated,
+                onToggle = onToggleFavorite
+            )
             PlayerToggleControl(
-                icon = action.icon,
-                label = action.label,
-                active = action.active,
-                toggle = action.toggle,
+                icon = Icons.Rounded.Shuffle,
+                label = labels.shuffle,
+                active = shuffleOn,
+                toggle = true,
                 surfaces = surfaces,
                 animated = animated,
                 glyph = LevyraPlayerDesign.TransportModeGlyph,
-                onClick = action.onClick,
-                enabled = action.enabled,
-                busy = action.busy,
-                stateDescription = action.stateDescription
+                onClick = onShuffle
             )
+            PlayerToggleControl(
+                icon = if (repeatMode == RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
+                label = labels.repeat,
+                active = repeatMode != RepeatMode.Off,
+                toggle = true,
+                surfaces = surfaces,
+                animated = animated,
+                glyph = LevyraPlayerDesign.TransportModeGlyph,
+                onClick = onRepeat
+            )
+            dockActions.forEach { action ->
+                PlayerToggleControl(
+                    icon = action.icon,
+                    label = action.label,
+                    active = action.active,
+                    toggle = action.toggle,
+                    surfaces = surfaces,
+                    animated = animated,
+                    glyph = LevyraPlayerDesign.TransportModeGlyph,
+                    onClick = action.onClick,
+                    enabled = action.enabled,
+                    busy = action.busy,
+                    stateDescription = action.stateDescription
+                )
+            }
         }
     }
 }

@@ -732,7 +732,7 @@ private fun MotionArtworkVideo(
     var surfaceSize by remember { mutableStateOf(IntSize.Zero) }
     val maxZoom = motionArtworkMaxZoom(presentation)
     val player = remember(artwork.identityKey, artwork.url, artwork.mimeType, presentation, profile) {
-        ExoPlayer.Builder(context, canvasRenderersFactory(context)).build().apply {
+        ExoPlayer.Builder(context, canvasRenderersFactory(context, artwork.url)).build().apply {
             repeatMode = Player.REPEAT_MODE_ONE
             volume = 0f
             trackSelectionParameters = trackSelectionParameters.buildUpon()
@@ -773,7 +773,7 @@ private fun MotionArtworkVideo(
                     error.errorCodeName,
                     motionArtworkHost(artwork.url)
                 )
-                CanvasDecoderBlocklist.recordFailure(error)
+                CanvasDecoderBlocklist.recordFailure(artwork.url, error)
                 failed = true
                 RuntimeHooks.canvas(RuntimeSignal.CANVAS_FALLBACK)
                 currentOnUnavailable()
@@ -893,23 +893,32 @@ private const val VIDEO_RETRY_DELAY_MS = 4_000L
 private const val MAX_VIDEO_RETRIES = 1
 
 internal object CanvasDecoderBlocklist {
-    private val failedDecoders = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
-
-    fun recordFailure(error: PlaybackException) {
-        val decoderName = ((error as? ExoPlaybackException)?.cause as? MediaCodecDecoderException)?.codecInfo?.name
-        if (!decoderName.isNullOrBlank()) failedDecoders += decoderName
+    private const val MAX_TRACKED_ARTWORKS = 32
+    private val failedDecoders = object : LinkedHashMap<String, Set<String>>(MAX_TRACKED_ARTWORKS, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Set<String>>?): Boolean =
+            size > MAX_TRACKED_ARTWORKS
     }
 
-    val selector = MediaCodecSelector { mimeType, requiresSecureDecoder, requiresTunnelingDecoder ->
+    fun recordFailure(artworkKey: String, error: PlaybackException) {
+        val decoderName = ((error as? ExoPlaybackException)?.cause as? MediaCodecDecoderException)?.codecInfo?.name
+        if (decoderName.isNullOrBlank()) return
+        synchronized(failedDecoders) {
+            failedDecoders[artworkKey] = failedDecoders[artworkKey].orEmpty() + decoderName
+        }
+    }
+
+    fun selectorFor(artworkKey: String) = MediaCodecSelector { mimeType, requiresSecureDecoder, requiresTunnelingDecoder ->
         val decoders = MediaCodecSelector.DEFAULT.getDecoderInfos(mimeType, requiresSecureDecoder, requiresTunnelingDecoder)
-        decoders.filterNot { it.name in failedDecoders }.ifEmpty { decoders }
+        val failed = synchronized(failedDecoders) { failedDecoders[artworkKey].orEmpty() }
+        decoders.filterNot { it.name in failed }.ifEmpty { decoders }
     }
 }
 
-private fun canvasRenderersFactory(context: Context): DefaultRenderersFactory =
+private fun canvasRenderersFactory(context: Context, artworkKey: String): DefaultRenderersFactory =
     DefaultRenderersFactory(context)
         .setEnableDecoderFallback(true)
-        .setMediaCodecSelector(CanvasDecoderBlocklist.selector)
+        .setMediaCodecSelector(CanvasDecoderBlocklist.selectorFor(artworkKey))
+
 private const val DYNAMIC_BACKDROP_SAMPLE_SIZE = 24
 private const val DYNAMIC_BACKDROP_INITIAL_DELAY_MS = 240L
 private const val DYNAMIC_BACKDROP_SAMPLE_INTERVAL_MS = 6_000L

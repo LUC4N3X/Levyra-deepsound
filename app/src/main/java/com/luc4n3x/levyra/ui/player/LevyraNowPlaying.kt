@@ -277,7 +277,7 @@ fun LevyraNowPlaying(
     var showTechnicalAudioInfo by remember(track?.id) { mutableStateOf(false) }
     var showAudioRouteCenter by rememberSaveable { mutableStateOf(false) }
     var showDeck by rememberSaveable { mutableStateOf(false) }
-    var confirmDownloadRemoval by rememberSaveable { mutableStateOf(false) }
+    var downloadRemovalTrackId by rememberSaveable { mutableStateOf<String?>(null) }
     var showArtistPicker by remember(track?.id) { mutableStateOf(false) }
     var openArtistPickerAfterActions by remember(track?.id) { mutableStateOf(false) }
     var playerArtistHits by remember(track?.id, track?.artist, track?.artistBrowseIds) {
@@ -1027,7 +1027,7 @@ fun LevyraNowPlaying(
                     onQueue = viewModel::openQueue,
                     onOpenDeck = { showDeck = true },
                     onDownload = if (isDownloaded) {
-                        { confirmDownloadRemoval = true }
+                        { downloadRemovalTrackId = activeTrack.id }
                     } else {
                         viewModel::exportCurrentTrack
                     }
@@ -1121,7 +1121,7 @@ fun LevyraNowPlaying(
                 },
                 onToggleFavorite = { viewModel.toggleFavorite(track) },
                 onDownload = {
-                    if (track.id in state.downloadedTrackIds) confirmDownloadRemoval = true else viewModel.exportCurrentTrack()
+                    if (track.id in state.downloadedTrackIds) downloadRemovalTrackId = track.id else viewModel.exportCurrentTrack()
                 },
                 onSeek = viewModel::seekTo,
                 onPrevious = viewModel::previous,
@@ -1580,15 +1580,19 @@ fun LevyraNowPlaying(
             )
         }
 
-        if (confirmDownloadRemoval && track != null && track.id in state.downloadedTrackIds) {
+        val removalTrackId = downloadRemovalTrackId
+        if (removalTrackId != null && (track?.id != removalTrackId || removalTrackId !in state.downloadedTrackIds)) {
+            SideEffect { downloadRemovalTrackId = null }
+        }
+        if (removalTrackId != null && track?.id == removalTrackId && removalTrackId in state.downloadedTrackIds) {
             PlayerRemoveDownloadDialog(
                 title = strings.removeDownloadPrompt,
                 cancelLabel = strings.cancel,
                 removeLabel = strings.remove,
-                onDismiss = { confirmDownloadRemoval = false },
+                onDismiss = { downloadRemovalTrackId = null },
                 onConfirm = {
-                    confirmDownloadRemoval = false
-                    viewModel.deleteCurrentTrackDownload()
+                    downloadRemovalTrackId = null
+                    viewModel.deleteTrackDownload(removalTrackId)
                 }
             )
         }
