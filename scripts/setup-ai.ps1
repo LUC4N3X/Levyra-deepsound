@@ -5,7 +5,8 @@ param(
     [switch] $Plugins,
     [switch] $ClaudeMem,
     [switch] $SkipHooks,
-    [switch] $SkipMattSkills
+    [switch] $SkipMattSkills,
+    [switch] $SkipExternalSkills
 )
 
 Set-StrictMode -Version Latest
@@ -160,6 +161,23 @@ if (-not $SkipMattSkills) {
                 $skillArgs += @('-s', $skill)
             }
             & npx @skillArgs
+        }
+    }
+}
+
+if (-not $SkipExternalSkills) {
+    if (-not (Test-Command 'codex')) {
+        Write-Output '[skip] Codex command not detected; upstream Kotlin/Material skills were not installed'
+    }
+    elseif (-not (Test-Command 'npx')) {
+        Write-Warning 'Codex is installed but npx is unavailable. Kotlin/Material upstream skills could not be installed.'
+    }
+    else {
+        Invoke-SetupCommand 'Install Kotlin footguns skills for Codex' {
+            & npx skills@latest add maxrave-dev/kotlin-footguns -g -a codex -y
+        }
+        Invoke-SetupCommand 'Install Material 3 skill for Codex' {
+            & npx skills@latest add hamen/material-3-skill -g -a codex -y -s material-3
         }
     }
 }
