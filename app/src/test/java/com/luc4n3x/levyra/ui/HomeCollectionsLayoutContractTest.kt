@@ -46,16 +46,20 @@ class HomeCollectionsLayoutContractTest {
     }
 
     @Test
-    fun `editorial collection cards use restrained color instead of grey or opposing gradients`() {
+    fun `editorial collection cards have bold tonal backgrounds and anchored artwork`() {
         val card = functionBlock(source("HomeExploreEditorial.kt"), "internal fun DiscoveryEditorialCard(")
-        assertTrue(card.contains("levyraTonalRole(accentStart, isLight, maxChroma = 28.0)"))
-        assertTrue(card.contains("lerp(colors.surfaceContainerHigh, tonal.container, 0.82f)"))
-        assertTrue(card.contains("lerp(colors.surfaceContainerHigh, tonal.container, 0.54f)"))
-        assertTrue(card.contains("editorialContrastPalette(tonalStart, tonalEnd)"))
+        assertTrue(card.contains("levyraTonalRole(accentStart, isLight, maxChroma = 46.0)"))
+        assertTrue(card.contains("editorialContrastPalette(backgroundColor, backgroundColor)"))
+        assertTrue(card.contains(".background(contrastPalette.start)"))
+        assertTrue(card.contains(".align(Alignment.TopStart)"))
+        assertTrue(card.contains(".align(Alignment.BottomEnd)"))
+        assertTrue(card.contains(".offset(x = 16.dp, y = 18.dp)"))
+        assertTrue(card.contains(".rotate(12f)"))
+        assertTrue(card.contains(".clip(artworkShape ?: LevyraCardDesign.ArtworkShape)"))
         assertTrue(card.contains(".levyraPressable(onClick = onOpen"))
-        assertFalse(card.contains("colors.surfaceContainerHighest"))
-        assertFalse(card.contains("accentEnd.copy(alpha"))
+        assertFalse(card.contains("Brush.linearGradient("))
         assertFalse(card.contains("Brush.radialGradient("))
+        assertFalse(card.contains("accentEnd.copy(alpha"))
     }
 
     @Test
@@ -66,7 +70,9 @@ class HomeCollectionsLayoutContractTest {
         assertTrue(card.contains("maxWidth < 300.dp"))
         assertTrue(card.contains("LocalDensity.current.fontScale > 1.4f"))
         assertTrue(card.contains("if (stacked)"))
-        assertTrue(card.contains("Modifier.weight(1f).heightIn(min = LevyraHomeDesign.EditorialThumb)"))
+        assertTrue(card.contains("val textWidth = (maxWidth - artworkSize"))
+        assertTrue(card.contains(".width(textWidth)"))
+        assertTrue(card.contains(".align(Alignment.TopStart)"))
         assertTrue(card.contains("Arrangement.spacedBy(LevyraHomeDesign.EditorialPadding)"))
         assertTrue(text.contains("softWrap = true"))
         assertFalse(text.contains("TextOverflow.Ellipsis"))

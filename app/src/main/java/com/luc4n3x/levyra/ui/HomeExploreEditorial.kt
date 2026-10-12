@@ -13,9 +13,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MoreHoriz
@@ -218,21 +219,16 @@ internal fun DiscoveryEditorialCard(
     val colors = MaterialTheme.colorScheme
     val isLight = LevyraIsLight
     val tonal = remember(accentStart, isLight) {
-        levyraTonalRole(accentStart, isLight, maxChroma = 28.0)
+        levyraTonalRole(accentStart, isLight, maxChroma = 46.0)
     }
-    val tonalStart = lerp(colors.surfaceContainerHigh, tonal.container, 0.82f)
-    val tonalEnd = lerp(colors.surfaceContainerHigh, tonal.container, 0.54f)
-    val contrastPalette = remember(tonalStart, tonalEnd) {
-        editorialContrastPalette(tonalStart, tonalEnd)
+    val backgroundColor = lerp(colors.surfaceContainerHigh, tonal.container, 0.94f)
+    val contrastPalette = remember(backgroundColor) {
+        editorialContrastPalette(backgroundColor, backgroundColor)
     }
     BoxWithConstraints(
         modifier = modifier
             .clip(EditorialCardShape)
-            .background(
-                Brush.linearGradient(
-                    listOf(contrastPalette.start, contrastPalette.end)
-                )
-            )
+            .background(contrastPalette.start)
             .levyraPressable(onClick = onOpen, role = Role.Button, pressedScale = LevyraPressScale.Tile)
     ) {
         val stacked = maxWidth < 300.dp || LocalDensity.current.fontScale > 1.4f
@@ -253,42 +249,31 @@ internal fun DiscoveryEditorialCard(
                 }
             }
         } else {
-            Row(
-                modifier = Modifier.padding(LevyraHomeDesign.EditorialPadding),
-                horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.EditorialPadding),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                DiscoveryEditorialText(
-                    title = title,
-                    subtitle = subtitle,
-                    textColor = contrastPalette.text,
-                    modifier = Modifier.weight(1f).heightIn(min = LevyraHomeDesign.EditorialThumb)
+            val artworkSize = LevyraHomeDesign.EditorialThumb + 22.dp
+            val textWidth = (maxWidth - artworkSize - LevyraHomeDesign.EditorialPadding - 16.dp)
+                .coerceAtLeast(112.dp)
+            DiscoveryEditorialText(
+                title = title,
+                subtitle = subtitle,
+                textColor = contrastPalette.text,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(
+                        start = LevyraHomeDesign.EditorialPadding,
+                        top = LevyraHomeDesign.EditorialPadding
+                    )
+                    .width(textWidth)
+            )
+            if (artwork != null) {
+                CoverImage(
+                    track = artwork,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .offset(x = 16.dp, y = 18.dp)
+                        .size(artworkSize)
+                        .rotate(12f)
+                        .clip(artworkShape ?: LevyraCardDesign.ArtworkShape)
                 )
-                if (artwork != null) {
-                    Box(
-                        modifier = Modifier.size(LevyraHomeDesign.EditorialThumb),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (artworkShape != null) {
-                            CoverImage(
-                                track = artwork,
-                                modifier = Modifier
-                                    .size(LevyraHomeDesign.EditorialThumb + 18.dp)
-                                    .rotate(-6f)
-                                    .clip(artworkShape)
-                            )
-                        } else {
-                            CoverImage(
-                                track = artwork,
-                                modifier = Modifier
-                                    .size(96.dp)
-                                    .rotate(11f)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(10.dp))
-                            )
-                        }
-                    }
-                }
             }
         }
     }
