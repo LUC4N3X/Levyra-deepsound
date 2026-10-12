@@ -100,6 +100,12 @@ Prefer targeted evolution in this order:
 
 Never silently change navigation structure, gestures, primary actions, playback controls, semantic meaning, or user-visible behavior just to obtain a cleaner screenshot.
 
+## Material 3 Expressive on Android
+
+Levyra's default Android UI direction is Material 3 Expressive, not a generic Material demo. During the **separate UI compliance phase**, consult the installed upstream `material-3` skill from `hamen/material-3-skill` and only the references relevant to the changed controls (color, typography/shape, navigation, layout, motion). Do not exceed the two-skill-per-phase context budget; defer this external read rather than adding a third simultaneous implementation skill.
+
+Reuse Levyra's actual token system, preserve light/dark/dynamic-color semantics, and use expressive shape, motion and emphasis selectively. Avoid arbitrary neon, large colored status badges, cheap glass, and card repetition. Verify current Compose Material3 API availability against project dependencies and official Android docs before coding: an upstream example is not permission to upgrade or enable experimental APIs. The review must cover real UI states, readability, 48dp touch targets, localization and behavior, not just visual similarity.
+
 ## 4. Anti-AI-slop rules
 
 Do not fall back to common generator defaults unless the current Levyra language and the task justify them.

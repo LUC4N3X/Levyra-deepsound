@@ -27,6 +27,18 @@
         "source": "github",
         "repo": "SimoneAvogadro/android-reverse-engineering-skill"
       }
+    },
+    "maxrave": {
+      "source": {
+        "source": "github",
+        "repo": "maxrave-dev/kotlin-footguns"
+      }
+    },
+    "material-3-skill": {
+      "source": {
+        "source": "github",
+        "repo": "hamen/material-3-skill"
+      }
     }
   },
   "enabledPlugins": {
@@ -34,7 +46,9 @@
     "kotlin-agent-skills@Kotlin": true,
     "andrej-karpathy-skills@karpathy-skills": true,
     "mattpocock-skills@claude-plugins-official": true,
-    "android-reverse-engineering@android-reverse-engineering-skill": true
+    "android-reverse-engineering@android-reverse-engineering-skill": true,
+    "kotlin-footguns@maxrave": true,
+    "material-3@material-3-skill": true
   },
   "permissions": {
     "allow": [
