@@ -834,7 +834,7 @@ class YoutubeCanaryTest(unittest.TestCase):
     def test_repository_canary_workflow_keeps_repair_draft_and_scoped(self):
         root = Path(__file__).resolve().parents[2]
         workflow = (root / ".github/workflows/nightly-extractor-check.yml").read_text(encoding="utf-8")
-        self.assertIn("openai/codex-action@86365089eb2b84e0a8fb0717b304f8bdcb13b20e", workflow)
+        self.assertIn("openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675", workflow)
         self.assertIn("LEVYRA_CANARY_OPENROUTER_API_KEY", workflow)
         self.assertNotIn("LEVYRA_CANARY_OPENAI_API_KEY", workflow)
         self.assertIn("responses-api-endpoint: https://openrouter.ai/api/v1/responses", workflow)
