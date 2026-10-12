@@ -21,6 +21,24 @@ internal fun homePersonalOrbitPages(
         .map { page -> page.chunked(HOME_PERSONAL_ORBIT_GRID_COLUMNS) }
 }
 
+internal fun homePersonalOrbitFilledTracks(
+    tracks: List<Track>,
+    tasteTracks: List<Track>,
+    recommendations: List<Track>
+): List<Track> {
+    val pageLimit = HOME_PERSONAL_ORBIT_PAGE_SIZE * 2
+    val originals = LevyraPersonalOrbit.distinctWorks(
+        LevyraPersonalOrbit.distinctRecordings(tracks)
+    ).take(pageLimit)
+    if (originals.isEmpty() || originals.size == pageLimit) return originals
+
+    val candidates = (tasteTracks + recommendations)
+        .filter(LevyraPersonalOrbit::isReliableMusicCandidate)
+    return LevyraPersonalOrbit.distinctWorks(
+        LevyraPersonalOrbit.distinctRecordings(originals + candidates)
+    ).take(pageLimit)
+}
+
 internal fun homePersonalOrbitInitial(userName: String): String? {
     val trimmed = userName.trim()
     if (trimmed.isEmpty()) return null
