@@ -113,7 +113,7 @@ def context_for(prompt: str) -> str:
 
     active = {skill for skill, _ in matched}
     is_android_ui = bool(active & {"levyra-compose", "levyra-design-taste"}) and (
-        "levyra-desktop" not in active or bool(re.search(r"android|compose", prompt, re.I))
+        "levyra-desktop" not in active or bool(re.search(r"\bandroid\b", prompt, re.I))
     )
     kotlin_domains = {
         "levyra-compose", "levyra-design-taste", "levyra-player",
