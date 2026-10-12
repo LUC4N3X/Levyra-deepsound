@@ -261,7 +261,9 @@ internal fun PlaylistDragFrameLoop(
 internal fun LevyraLibraryScreen(
     viewModel: LibraryViewModel,
     state: LevyraUiState,
-    onOpenDownloads: () -> Unit
+    onOpenDownloads: () -> Unit,
+    youtubeMusicAccount: com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicAccount? = null,
+    onOpenYoutubeMusic: () -> Unit = {}
 ) {
     val strings = LocalLevyraStrings.current
     val colors = MaterialTheme.colorScheme
@@ -610,6 +612,12 @@ internal fun LevyraLibraryScreen(
                         LibraryCategory.Collections -> collectionStrings.title
                     }
                 )
+            }
+
+            if (youtubeMusicAccount != null && category == LibraryCategory.Overview) {
+                item(key = "youtube-music-library") {
+                    com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicLibraryLink(youtubeMusicAccount, onOpenYoutubeMusic)
+                }
             }
 
             item(key = "library-search") {
