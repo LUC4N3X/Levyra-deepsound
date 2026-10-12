@@ -143,6 +143,42 @@ M3_HERO_SPECS = [
      (130, 60, 180), ["02_stay_with_the_song.webp"]),
 ]
 
+M3_MARKETING_COPY = {
+    "Screenshot_20260926_171253_LEVYRA.jpg": "Ad-free music, stored locally.",
+    "Screenshot_20260926_193948_LEVYRA.jpg": "Offline files with artwork and lyrics.",
+    "screen-lyrics.jpg": "Synced lyrics, Romanization, translation.",
+    "Screenshot_20261012_193118_LEVYRA.jpg": "Four player styles. One fluid experience.",
+    "Screenshot_20261010_132210_LEVYRA.jpg": "Fresh releases, mixes, and global charts.",
+    "Screenshot_20261010_132217_LEVYRA.jpg": "Stations shaped by your listening.",
+    "Screenshot_20261010_132249_LEVYRA.jpg": "Moods, genres, and music worldwide.",
+    "Screenshot_20261010_190726_LEVYRA.jpg": "Parametric EQ and bit-perfect output.",
+    "Screenshot_20260926_194706_LEVYRA.jpg": "Artwork, credits, and complete tracklists.",
+    "Screenshot_20261010_145010_LEVYRA.jpg": "Search, suggestions, and instant matches.",
+    "Screenshot_20261010_132136_LEVYRA.jpg": "Collections shaped around your taste.",
+    "Screenshot_20260927_131943_LEVYRA.jpg": "See when and how you listen.",
+    "Screenshot_20261012_193022_LEVYRA.jpg": "Your most-played music, always close.",
+    "Screenshot_20261010_132050_LEVYRA.jpg": "Listening insights that stay on-device.",
+    "Screenshot_20261010_144048_LEVYRA.jpg": "Essential sets for every artist.",
+    "Screenshot_20261010_140700_LEVYRA.jpg": "Design, audio, gestures, and local backups.",
+    "Screenshot_20261010_144144_LEVYRA.jpg": "New singles and albums, every week.",
+    "Screenshot_20261010_143646_LEVYRA.jpg": "Discography, biography, and top tracks.",
+    "Screenshot_20261011_202032_LEVYRA.jpg": "Daily charts from every country.",
+    "Screenshot_20261011_133434_LEVYRA.jpg": "Share the queue over local Wi-Fi.",
+}
+
+M3_PAIR_PLACEMENTS = [
+    ("bottom", "top"),
+    ("bottom", "top"),
+    ("top", "bottom"),
+    ("top", "bottom"),
+    ("bottom", "bottom"),
+    ("top", "top"),
+    ("top", "bottom"),
+    ("bottom", "top"),
+    ("bottom", "top"),
+    ("top", "bottom"),
+]
+
 def draw_rounded_layer(canvas, size, radius, color, angle, position):
     layer = Image.new("RGBA", size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
@@ -174,11 +210,6 @@ def create_m3_pair_canvas(card_w, card_h, gutter, scheme, pair_index):
         (card_w + gutter + 165, right_stage_y),
     )
 
-    draw = ImageDraw.Draw(canvas)
-    dot_color = (*scheme["primary"], 255)
-    dot_x = 82 if direction > 0 else duo_w - 138
-    dot_y = card_h - 118 if direction > 0 else 62
-    draw.ellipse((dot_x, dot_y, dot_x + 56, dot_y + 56), fill=dot_color)
     return canvas
 
 def draw_m3_label(draw, x, y, text, scheme):
@@ -201,36 +232,51 @@ def fit_title_font(draw, title, max_width, initial_size=68, minimum_size=50):
             return font
     return get_font(minimum_size, bold=True)
 
-def draw_m3_copy(card, spec, placement, scheme, card_index):
-    _, kicker, title, subtitle, _, _ = spec
+def fit_body_font(draw, text, max_width, initial_size=36, minimum_size=28):
+    for size in range(initial_size, minimum_size - 1, -1):
+        font = get_font(size)
+        if draw.textbbox((0, 0), text, font=font)[2] <= max_width:
+            return font
+    return get_font(minimum_size)
+
+def draw_m3_copy(card, spec, placement, scheme, card_index, pair_index):
+    screenshot_name, kicker, title, _, _, _ = spec
+    subtitle = M3_MARKETING_COPY[screenshot_name]
     draw = ImageDraw.Draw(card)
-    panel_x = -72
-    panel_y = -82 if placement == "top" else 1160
-    panel_w = 1044
-    panel_h = 522
-    panel_fill = scheme["surface_lowest"]
-    panel_text = scheme["on_surface"]
-    panel_body = scheme["on_surface_variant"]
+    panel_x = -70 if card_index == 0 else 40
+    panel_y = -70 if placement == "top" else 1190
+    panel_w = 930
+    panel_h = 480
+
+    panel_variant = (pair_index + card_index) % 3
+    if panel_variant == 0:
+        panel_fill = scheme["surface_high"]
+        panel_text = scheme["on_surface"]
+        panel_body = scheme["on_surface_variant"]
+    elif panel_variant == 1:
+        panel_fill = scheme["secondary_container"]
+        panel_text = scheme["on_secondary_container"]
+        panel_body = scheme["on_secondary_container"]
+    else:
+        panel_fill = scheme["primary_container"]
+        panel_text = scheme["on_primary_container"]
+        panel_body = scheme["on_primary_container"]
+
     draw.rounded_rectangle(
         (panel_x, panel_y, panel_x + panel_w, panel_y + panel_h),
-        radius=128,
+        radius=112,
         fill=(*panel_fill, 255),
     )
 
-    x = 64
-    y = 62 if placement == "top" else 1216
+    x = 54 if card_index == 0 else 88
+    y = 50 if placement == "top" else 1238
     draw_m3_label(draw, x, y, kicker, scheme)
 
-    title_y = y + 82
-    title_font = fit_title_font(draw, title, 770, initial_size=76, minimum_size=54)
+    title_y = y + 84
+    title_font = fit_title_font(draw, title, 760, initial_size=84, minimum_size=58)
     draw.text((x, title_y), title, font=title_font, fill=(*panel_text, 255))
-    draw.multiline_text(
-        (x, title_y + 94),
-        subtitle,
-        font=get_font(32),
-        fill=(*panel_body, 255),
-        spacing=8,
-    )
+    body_font = fit_body_font(draw, subtitle, 760)
+    draw.text((x, title_y + 102), subtitle, font=body_font, fill=(*panel_body, 255))
 
 def crop_to_fill(source, width, height):
     source = enhance_screenshot(source)
@@ -321,16 +367,15 @@ def render_m3_editorial_pair(left_spec, right_spec, pair_index):
     scheme = M3_EXPRESSIVE_SCHEMES[pair_index % len(M3_EXPRESSIVE_SCHEMES)]
     canvas = create_m3_pair_canvas(card_w, card_h, gutter, scheme, pair_index)
 
-    left_copy = "bottom" if pair_index % 2 == 0 else "top"
-    right_copy = "top" if left_copy == "bottom" else "bottom"
+    left_copy, right_copy = M3_PAIR_PLACEMENTS[pair_index]
     paste_editorial_phone(canvas, left_spec, 0, left_copy, gutter, pair_index)
     paste_editorial_phone(canvas, right_spec, 1, right_copy, gutter, pair_index)
 
     right_left = card_w + gutter
     left_card = canvas.crop((0, 0, card_w, card_h))
     right_card = canvas.crop((right_left, 0, right_left + card_w, card_h))
-    draw_m3_copy(left_card, left_spec, left_copy, scheme, 0)
-    draw_m3_copy(right_card, right_spec, right_copy, scheme, 1)
+    draw_m3_copy(left_card, left_spec, left_copy, scheme, 0, pair_index)
+    draw_m3_copy(right_card, right_spec, right_copy, scheme, 1, pair_index)
     return left_card, right_card
 
 # Material 3 Expressive content specifications
