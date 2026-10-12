@@ -9,7 +9,8 @@ internal data class YoutubeMusicCopy(
     val protocolError: String, val storageError: String, val limitError: String,
     val retry: String, val back: String, val login: String, val checking: String, val play: String,
     val importSong: String, val disconnectTitle: String, val disconnectMessage: String,
-    val cancel: String, val optional: String, val reconnect: String
+    val cancel: String, val optional: String, val reconnect: String,
+    val upToDate: String, val playlistOnly: String
 )
 
 internal fun youtubeMusicCopy(code: String): YoutubeMusicCopy = when (code.substringBefore('-')) {
@@ -23,7 +24,8 @@ internal fun youtubeMusicCopy(code: String): YoutubeMusicCopy = when (code.subst
         "Non è stato possibile salvare o leggere la sessione.", "La libreria supera il limite di 10.000 elementi. Importa una playlist alla volta.",
         "Riprova", "Indietro", "Accedi a YouTube Music", "Verifica dell’account…", "Riproduci", "Importa brano",
         "Scollegare l’account?", "La sessione verrà rimossa da Levyra. La musica già importata resterà nella tua libreria.",
-        "Annulla", "Collegamento facoltativo", "Accedi di nuovo"
+        "Annulla", "Collegamento facoltativo", "Accedi di nuovo",
+        "La playlist è già aggiornata", "Playlist salvata. Non è stato possibile aggiornare i preferiti: riprova l’importazione."
     )
     "ru" -> YoutubeMusicCopy(
         "Подключить YouTube Music", "Ваши плейлисты и сохранённая музыка.", "Библиотека YouTube Music", "Аккаунты",
@@ -35,7 +37,8 @@ internal fun youtubeMusicCopy(code: String): YoutubeMusicCopy = when (code.subst
         "Не удалось сохранить или прочитать сессию.", "Библиотека превышает лимит в 10 000 элементов. Импортируйте плейлисты отдельно.",
         "Повторить", "Назад", "Вход в YouTube Music", "Проверка аккаунта…", "Воспроизвести", "Импорт трека",
         "Отключить аккаунт?", "Сессия будет удалена из Levyra. Импортированная музыка останется в библиотеке.",
-        "Отмена", "Подключение необязательно", "Войти снова"
+        "Отмена", "Подключение необязательно", "Войти снова",
+        "Плейлист уже обновлён", "Плейлист сохранён. Не удалось обновить избранное: повторите импорт."
     )
     else -> YoutubeMusicCopy(
         "Connect YouTube Music", "Find your playlists and the music you saved.", "YouTube Music library", "Accounts",
@@ -47,6 +50,7 @@ internal fun youtubeMusicCopy(code: String): YoutubeMusicCopy = when (code.subst
         "Could not save or read your session.", "The library exceeds the 10,000 item limit. Import playlists separately.",
         "Retry", "Back", "Sign in to YouTube Music", "Checking your account…", "Play", "Import song",
         "Disconnect account?", "Your session will be removed from Levyra. Imported music will stay in your library.",
-        "Cancel", "Optional connection", "Sign in again"
+        "Cancel", "Optional connection", "Sign in again",
+        "The playlist is already up to date", "Playlist saved. Favorites could not be updated: retry the import."
     )
 }

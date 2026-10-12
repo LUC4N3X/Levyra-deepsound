@@ -113,6 +113,13 @@ private class YoutubeMusicScreenActions(
     val accounts: () -> Unit
 )
 
+private fun YoutubeMusicAccountNotice.message(copy: YoutubeMusicCopy): String = when (this) {
+    YoutubeMusicAccountNotice.Imported -> copy.imported
+    YoutubeMusicAccountNotice.Empty -> copy.empty
+    YoutubeMusicAccountNotice.UpToDate -> copy.upToDate
+    YoutubeMusicAccountNotice.PlaylistOnly -> copy.playlistOnly
+}
+
 private fun YoutubeMusicAccountError.message(copy: YoutubeMusicCopy): String = when (this) {
     YoutubeMusicAccountError.Network -> copy.networkError
     YoutubeMusicAccountError.SignIn -> copy.signInError
@@ -135,7 +142,7 @@ private fun YoutubeMusicFeedback(state: YoutubeMusicAccountUiState, copy: Youtub
         }
     }
     if (state.notice != null) Text(
-        if (state.notice == YoutubeMusicAccountNotice.Imported) copy.imported else copy.empty,
+        state.notice.message(copy),
         Modifier.padding(horizontal = 20.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.primary,
         style = MaterialTheme.typography.bodyMedium
     )

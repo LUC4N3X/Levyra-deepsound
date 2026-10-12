@@ -81,8 +81,16 @@ internal class YoutubeMusicAccountRepository(context: Context) {
         val id = "ytm-" + UUID.nameUUIDFromBytes("${session.account.id}:$browseId".toByteArray(Charsets.UTF_8))
         val existing = playlists.load(id)
         val clean = tracks.map { it.copy(streamUrl = "", videoStreamUrl = "") }
-        if (existing == null) playlists.createWithTracks(title, clean, playlistId = id) else playlists.addTracks(id, clean)
-        tracks.size
+        val valid = clean.filter { it.id.isNotBlank() && it.title.isNotBlank() }
+        if (valid.isEmpty()) return@withContext 0
+        if (existing == null) {
+            playlists.createWithTracks(title, clean, playlistId = id).tracks.size
+        } else {
+            val knownIds = existing.tracks.mapTo(hashSetOf()) { it.id }
+            val added = valid.distinctBy { it.id }.count { it.id !in knownIds }
+            playlists.addTracks(id, clean)
+            added
+        }
     }
 
 }

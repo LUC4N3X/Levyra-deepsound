@@ -19,7 +19,7 @@ import kotlinx.coroutines.withContext
 import kotlin.coroutines.coroutineContext
 
 internal enum class YoutubeMusicAccountError { Network, SignIn, Protocol, Storage, Limit }
-internal enum class YoutubeMusicAccountNotice { Imported, Empty }
+internal typealias YoutubeMusicAccountNotice = YoutubeMusicImportOutcome
 
 internal data class YoutubeMusicAccountUiState(
     val restoring: Boolean = true,
@@ -215,11 +215,12 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
             val tracks = repository.fullTracks(session, collection, browseId, language)
             coroutineContext.ensureActive()
             if (saved.activeId != session.account.id) return@runOperation
-            val count = repository.importTracks(session, browseId, title, tracks)
-            if (collection == YoutubeMusicCollection.Likes && snapshot.detail == null && tracks.isNotEmpty()) {
-                com.luc4n3x.levyra.data.FavoritesStore(getApplication<Application>()).addFavorites(tracks)
-            }
-            _state.update { it.copy(notice = if (count > 0) YoutubeMusicAccountNotice.Imported else YoutubeMusicAccountNotice.Empty) }
+            val favorites: (suspend (List<com.luc4n3x.levyra.domain.Track>) -> Unit)? =
+                if (collection == YoutubeMusicCollection.Likes && snapshot.detail == null) {
+                    { items -> com.luc4n3x.levyra.data.FavoritesStore(getApplication<Application>()).addFavorites(items); Unit }
+                } else null
+            val notice = importYoutubeMusicItems(tracks, { items -> repository.importTracks(session, browseId, title, items) }, favorites)
+            _state.update { it.copy(notice = notice) }
             onImported()
         }
     }
@@ -228,8 +229,8 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
         val session = saved.active ?: return
         if (state.value.busy) return
         runOperation {
-            repository.importTracks(session, "songs", "YouTube Music", listOf(track))
-            _state.update { it.copy(notice = YoutubeMusicAccountNotice.Imported) }
+            val notice = importYoutubeMusicItems(listOf(track), { repository.importTracks(session, "songs", "YouTube Music", it) })
+            _state.update { it.copy(notice = notice) }
             onImported()
         }
     }
