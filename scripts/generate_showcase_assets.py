@@ -191,24 +191,32 @@ def create_m3_pair_canvas(card_w, card_h, gutter, scheme, pair_index):
     canvas = Image.new("RGBA", (duo_w, card_h), (*scheme["surface_low"], 255))
     direction = 1 if pair_index % 2 == 0 else -1
 
-    left_stage_y = -210 if direction > 0 else 390
-    right_stage_y = 390 if direction > 0 else -210
+    left_stage_y = -330 if direction > 0 else 520
+    right_stage_y = 520 if direction > 0 else -330
     draw_rounded_layer(
         canvas,
-        (760, 1370),
-        300,
+        (790, 1280),
+        360,
         scheme["primary_container"],
-        -4 * direction,
-        (-30, left_stage_y),
+        -7 * direction,
+        (-190, left_stage_y),
     )
     draw_rounded_layer(
         canvas,
-        (760, 1370),
-        300,
+        (790, 1280),
+        360,
         scheme["tertiary_container"],
-        4 * direction,
-        (card_w + gutter + 165, right_stage_y),
+        7 * direction,
+        (card_w + gutter + 300, right_stage_y),
     )
+
+    draw = ImageDraw.Draw(canvas)
+    accent = scheme["secondary_container"]
+    for card_index in range(2):
+        card_left = card_index * (card_w + gutter)
+        cx = card_left + (120 if (pair_index + card_index) % 2 == 0 else 780)
+        cy = 765 if (pair_index + card_index) % 3 else 835
+        draw.ellipse((cx - 115, cy - 115, cx + 115, cy + 115), fill=(*accent, 255))
 
     return canvas
 
@@ -243,10 +251,11 @@ def draw_m3_copy(card, spec, placement, scheme, card_index, pair_index):
     screenshot_name, kicker, title, _, _, _ = spec
     subtitle = M3_MARKETING_COPY[screenshot_name]
     draw = ImageDraw.Draw(card)
-    panel_x = -70 if card_index == 0 else 40
-    panel_y = -70 if placement == "top" else 1190
-    panel_w = 930
-    panel_h = 480
+    align_left = (pair_index + card_index) % 2 == 0
+    panel_x = 34 if align_left else 166
+    panel_y = 34 if placement == "top" else 1236
+    panel_w = 700
+    panel_h = 330
 
     panel_variant = (pair_index + card_index) % 3
     if panel_variant == 0:
@@ -264,19 +273,19 @@ def draw_m3_copy(card, spec, placement, scheme, card_index, pair_index):
 
     draw.rounded_rectangle(
         (panel_x, panel_y, panel_x + panel_w, panel_y + panel_h),
-        radius=112,
+        radius=74,
         fill=(*panel_fill, 255),
     )
 
-    x = 54 if card_index == 0 else 88
-    y = 50 if placement == "top" else 1238
+    x = panel_x + 38
+    y = panel_y + 32
     draw_m3_label(draw, x, y, kicker, scheme)
 
-    title_y = y + 84
-    title_font = fit_title_font(draw, title, 760, initial_size=84, minimum_size=58)
+    title_y = y + 76
+    title_font = fit_title_font(draw, title, 625, initial_size=76, minimum_size=52)
     draw.text((x, title_y), title, font=title_font, fill=(*panel_text, 255))
-    body_font = fit_body_font(draw, subtitle, 760)
-    draw.text((x, title_y + 102), subtitle, font=body_font, fill=(*panel_body, 255))
+    body_font = fit_body_font(draw, subtitle, 625, initial_size=31, minimum_size=25)
+    draw.text((x, title_y + 92), subtitle, font=body_font, fill=(*panel_body, 255))
 
 def crop_to_fill(source, width, height):
     source = enhance_screenshot(source)
@@ -289,7 +298,7 @@ def crop_to_fill(source, width, height):
     top = max(0, int((resized.height - height) * 0.42))
     return resized.crop((left, top, left + width, top + height))
 
-def create_s26_ultra_mockup(source, size=(680, 1420)):
+def create_s26_ultra_mockup(source, size=(720, 1500)):
     frame = 13
     outer_w, outer_h = size
     inner_w, inner_h = outer_w - frame * 2, outer_h - frame * 2
@@ -349,13 +358,13 @@ def paste_editorial_phone(canvas, spec, card_index, placement, gutter, pair_inde
 
     direction = 1 if pair_index % 2 == 0 else -1
     if placement == "bottom":
-        angle = -4 * direction
-        x = card_left + (170 if card_index == 0 else 42)
-        y = -125
+        angle = -5 * direction
+        x = card_left + (145 if card_index == 0 else 20)
+        y = -180
     else:
-        angle = 4 * direction
-        x = card_left + (44 if card_index == 0 else 168)
-        y = 300
+        angle = 5 * direction
+        x = card_left + (20 if card_index == 0 else 145)
+        y = 265
 
     rotated = phone.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
     shadow, pad = create_m3_shadow(rotated, blur=24, offset_y=12)
