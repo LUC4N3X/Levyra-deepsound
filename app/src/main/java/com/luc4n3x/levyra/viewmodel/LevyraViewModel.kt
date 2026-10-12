@@ -8133,6 +8133,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         deleteDownloads(listOf(download))
     }
 
+    fun deleteCurrentTrackDownload() {
+        val trackId = _state.value.currentTrack?.id?.takeIf(String::isNotBlank) ?: return
+        deleteDownloads(_state.value.downloads.filter { it.trackId == trackId })
+    }
+
     fun deleteDownloads(downloads: List<DownloadedTrack>) {
         val uniqueDownloads = downloads.distinctBy { it.id }
         if (uniqueDownloads.isEmpty()) return

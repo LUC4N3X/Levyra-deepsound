@@ -52,6 +52,7 @@ import androidx.compose.material.icons.rounded.Interests
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CloseFullscreen
+import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Album
@@ -76,11 +77,14 @@ import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.HighQuality
 import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -106,6 +110,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
@@ -272,6 +277,7 @@ fun LevyraNowPlaying(
     var showTechnicalAudioInfo by remember(track?.id) { mutableStateOf(false) }
     var showAudioRouteCenter by rememberSaveable { mutableStateOf(false) }
     var showDeck by rememberSaveable { mutableStateOf(false) }
+    var confirmDownloadRemoval by rememberSaveable { mutableStateOf(false) }
     var showArtistPicker by remember(track?.id) { mutableStateOf(false) }
     var openArtistPickerAfterActions by remember(track?.id) { mutableStateOf(false) }
     var playerArtistHits by remember(track?.id, track?.artist, track?.artistBrowseIds) {
@@ -1020,7 +1026,11 @@ fun LevyraNowPlaying(
                     onLyrics = viewModel::openLyrics,
                     onQueue = viewModel::openQueue,
                     onOpenDeck = { showDeck = true },
-                    onDownload = viewModel::exportCurrentTrack
+                    onDownload = if (isDownloaded) {
+                        { confirmDownloadRemoval = true }
+                    } else {
+                        viewModel::exportCurrentTrack
+                    }
                 )
             }
         }
@@ -1110,7 +1120,9 @@ fun LevyraNowPlaying(
                         ?: viewModel.openArtist(track, artistIndex)
                 },
                 onToggleFavorite = { viewModel.toggleFavorite(track) },
-                onDownload = viewModel::exportCurrentTrack,
+                onDownload = {
+                    if (track.id in state.downloadedTrackIds) confirmDownloadRemoval = true else viewModel.exportCurrentTrack()
+                },
                 onSeek = viewModel::seekTo,
                 onPrevious = viewModel::previous,
                 onTogglePlay = viewModel::togglePlay,
@@ -1568,6 +1580,19 @@ fun LevyraNowPlaying(
             )
         }
 
+        if (confirmDownloadRemoval && track != null && track.id in state.downloadedTrackIds) {
+            PlayerRemoveDownloadDialog(
+                title = strings.removeDownloadPrompt,
+                cancelLabel = strings.cancel,
+                removeLabel = strings.remove,
+                onDismiss = { confirmDownloadRemoval = false },
+                onConfirm = {
+                    confirmDownloadRemoval = false
+                    viewModel.deleteCurrentTrackDownload()
+                }
+            )
+        }
+
         if (showDeck && track != null && !state.isVideoMode) {
             PlayerDeckSheet(
                 track = track,
@@ -1775,6 +1800,27 @@ private fun playerDockActions(
             )
         )
     }
+}
+
+@Composable
+private fun PlayerRemoveDownloadDialog(
+    title: String,
+    cancelLabel: String,
+    removeLabel: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Rounded.DeleteOutline, contentDescription = null) },
+        title = { Text(title, textAlign = TextAlign.Center) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(removeLabel, color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(cancelLabel) } }
+    )
 }
 
 private fun canvasBackdropPaletteMatches(

@@ -176,7 +176,16 @@ private val playerDeckFolioHints: Map<String, String> = mapOf(
     "fil" to "Editorial na layout na dalawang kulay.",
     "he" to "פריסה עיתונאית דו־גונית.",
     "fi" to "Kaksisävyinen lehtitaitto.",
-    "et" to "Kahetooniline ajakirjalik paigutus."
+    "et" to "Kahetooniline ajakirjalik paigutus.",
+    "sk" to "Dvojfarebné redakčné rozloženie.",
+    "hr" to "Dvobojni urednički raspored.",
+    "bg" to "Двуцветно редакционно оформление.",
+    "hu" to "Kéttónusú szerkesztőségi elrendezés.",
+    "nb" to "Tofarget redaksjonelt oppsett.",
+    "ca" to "Disseny editorial bicolor.",
+    "fa" to "چیدمان مجله‌ای دورنگ.",
+    "zh-Hant" to "雙色雜誌式排版。",
+    "ms" to "Susun atur editorial dua warna."
 )
 
 private val playerDeckDefaultBadges: Map<String, String> = mapOf(
