@@ -2550,7 +2550,14 @@ fun LevyraApp(
                     OnboardingOverlay(
                         selectedLanguageCode = state.languageCode,
                         artwork = onboardingArtwork,
+                        youtubeMusic = youtubeMusicState,
                         onTasteLanguage = viewModel::loadOnboardingArtwork,
+                        onConnectYoutubeMusic = { code ->
+                            youtubeMusicViewModel.open(code)
+                            youtubeMusicViewModel.beginLogin()
+                        },
+                        onYoutubeMusicCookie = youtubeMusicViewModel::acceptCookie,
+                        onCancelYoutubeMusicLogin = youtubeMusicViewModel::cancelLogin,
                         onDone = viewModel::completeOnboarding
                     )
                 }
@@ -2708,6 +2715,23 @@ fun LevyraApp(
                 )
             }
 
+            val updatePromptVisible = state.showUpdatePrompt && state.updateInfo?.isNewer == true
+            if (state.youtubeMusicIntroPending && !state.showOnboarding && !updatePromptVisible && !youtubeMusicState.restoring) {
+                if (youtubeMusicState.active != null) {
+                    LaunchedEffect(Unit) { viewModel.dismissYoutubeMusicIntro() }
+                } else {
+                    com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicIntroSheet(
+                        copy = com.luc4n3x.levyra.ui.i18n.LevyraOnboardingYoutubeMusicStrings.forCode(state.languageCode),
+                        onConnect = {
+                            viewModel.dismissYoutubeMusicIntro()
+                            showYoutubeMusic = true
+                            youtubeMusicViewModel.open(state.languageCode)
+                            youtubeMusicViewModel.beginLogin()
+                        },
+                        onSkip = viewModel::dismissYoutubeMusicIntro
+                    )
+                }
+            }
             if (showYoutubeMusic) {
                 com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicAccountScreen(
                     viewModel = youtubeMusicViewModel,
@@ -9374,10 +9398,7 @@ private fun HomeScreen(
         }
     }
     val spotlightTracks = remember(spotlightCandidates) { spotlightCandidates.map { it.track } }
-    val visiblePersonalTracks = remember(personalTracks) {
-        LevyraPersonalOrbit.distinctRecordings(personalTracks)
-            .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
-    }
+    val visiblePersonalTracks = homeDerivedState.personalOrbitDisplayTracks
     val visibleEditorialCollections = remember(editorialCollections, spotlightCandidate?.track?.id) {
         editorialCollections
             .map { collection ->

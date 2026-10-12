@@ -51,6 +51,8 @@ import com.luc4n3x.levyra.domain.prepareMixPlaybackTracks
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
 import com.luc4n3x.levyra.feature.recognition.RecognitionState
 import com.luc4n3x.levyra.feature.radio.RadioStation
+import com.luc4n3x.levyra.ui.HOME_PERSONAL_ORBIT_MAX_TRACKS
+import com.luc4n3x.levyra.ui.homePersonalOrbitFilledTracks
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -574,6 +576,7 @@ internal data class HomeRenderSnapshot(
 @Immutable
 internal data class HomeDerivedState(
     val resonanceTracks: List<Track>,
+    val personalOrbitDisplayTracks: List<Track>,
     val artistRefreshFingerprint: String,
     val quickPicks: HomeSection?,
     val newReleases: HomeSection?,
@@ -745,6 +748,34 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
     val quickPicks = buildQuickPicks(input)?.let { section ->
         section.copy(tracks = moodRank(section.tracks))
     }
+    val orbitBase = homePersonalOrbitFilledTracks(
+        tracks = input.personalOrbitTracks,
+        recommendations = emptyList(),
+        excludedTracks = quickPicks?.tracks.orEmpty()
+    )
+    val personalOrbitDisplayTracks = if (
+        input.showPersonalOrbit && input.personalOrbitTracks.isNotEmpty() && orbitBase.size < HOME_PERSONAL_ORBIT_MAX_TRACKS
+    ) {
+        val tasteRankedCandidates = LevyraPersonalOrbit.build(
+            currentTrack = input.currentTrack?.takeUnless(input.artistExclusions::excludesTrack),
+            recentSearches = input.artistExclusions.filterTracks(input.recentListens),
+            favorites = input.artistExclusions.filterTracks(input.favorites),
+            tracks = input.artistExclusions.filterTracks(input.tracks + input.quickPickSeeds),
+            homeSections = input.homeSections,
+            charts = input.charts,
+            cachedOrbit = input.personalOrbitTracks,
+            limit = LevyraPersonalOrbit.DISPLAY_LIMIT * 4,
+            languageCode = input.languageCode,
+            excluded = { input.artistExclusions.excludesTrack(it) }
+        )
+        homePersonalOrbitFilledTracks(
+            tracks = input.personalOrbitTracks,
+            recommendations = tasteRankedCandidates,
+            excludedTracks = quickPicks?.tracks.orEmpty()
+        )
+    } else {
+        orbitBase
+    }
     val newReleases = input.homeSections.firstOrNull {
         isVerifiedHomeReleaseSectionTitle(it.title, input.languageCode)
     }?.let { it.copy(tracks = moodRank(it.tracks)) }
@@ -793,6 +824,7 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
     )
     return HomeDerivedState(
         resonanceTracks = resonanceTracks,
+        personalOrbitDisplayTracks = personalOrbitDisplayTracks,
         artistRefreshFingerprint = buildHomeArtistRefreshFingerprint(input),
         quickPicks = quickPicks,
         newReleases = newReleases,
