@@ -107,7 +107,7 @@ internal fun PlayerFolioDeck(
     modifier: Modifier = Modifier,
     headlineModifier: Modifier = Modifier
 ) {
-    val controlHeight = if (compact) FolioControlHeightCompact else FolioControlHeight
+    val metrics = folioDeckMetrics(compact)
     val paper by animateColorAsState(
         targetValue = surfaces.glow.copy(alpha = 1f).playerMix(PlayerDarkSurface, FolioPaperDepth),
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween()),
@@ -133,7 +133,7 @@ internal fun PlayerFolioDeck(
                 start = gutter,
                 end = gutter,
                 top = LevyraPlayerDesign.SpaceXs,
-                bottom = if (compact) LevyraPlayerDesign.SpaceSm else LevyraPlayerDesign.SpaceMd
+                bottom = metrics.bottom
             )
     ) {
         slots.header()
@@ -141,7 +141,7 @@ internal fun PlayerFolioDeck(
             modifier = Modifier
                 .fillMaxWidth()
                 .then(if (scrollable) Modifier.height(FolioScrollingStage) else Modifier.weight(1f))
-                .padding(vertical = if (compact) LevyraPlayerDesign.SpaceSm else LevyraPlayerDesign.SpaceLg),
+                .padding(vertical = metrics.stagePadding),
             contentAlignment = Alignment.Center
         ) {
             val side = minOf(maxWidth, maxHeight, artworkCap)
@@ -165,35 +165,20 @@ internal fun PlayerFolioDeck(
             onArtistClick = onArtistClick,
             modifier = headlineModifier
         )
-        Spacer(Modifier.height(if (compact) LevyraPlayerDesign.SpaceMd else LevyraPlayerDesign.SpaceLg))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            FolioPlayPill(
-                isPlaying = isPlaying,
-                isResolving = isResolving,
-                labels = labels,
-                height = controlHeight,
-                ink = ink,
-                inkContent = inkContent,
-                onClick = onTogglePlay
-            )
-            FolioRoundButton(Icons.Rounded.SkipNext, labels.next, controlHeight, ink, inkContent, onNext)
-        }
-        Spacer(Modifier.height(if (compact) LevyraPlayerDesign.SpaceSm else LevyraPlayerDesign.SpaceMd))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceLg),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            FolioRoundButton(Icons.Rounded.SkipPrevious, labels.previous, controlHeight, ink, inkContent, onPrevious)
-            Box(modifier = Modifier.weight(1f)) {
-                slots.progress(true)
-            }
-        }
-        Spacer(Modifier.height(if (compact) LevyraPlayerDesign.SpaceXs else LevyraPlayerDesign.SpaceSm))
+        Spacer(Modifier.height(metrics.headlineGap))
+        FolioTransport(
+            slots = slots,
+            isPlaying = isPlaying,
+            isResolving = isResolving,
+            labels = labels,
+            metrics = metrics,
+            ink = ink,
+            inkContent = inkContent,
+            onPrevious = onPrevious,
+            onTogglePlay = onTogglePlay,
+            onNext = onNext
+        )
+        Spacer(Modifier.height(metrics.actionGap))
         FolioActionRow(
             track = track,
             slots = slots,
@@ -222,6 +207,78 @@ private fun rememberFolioCoverTurn(isPlaying: Boolean, animated: Boolean): Anima
     }
     return turn
 }
+
+@Composable
+private fun FolioTransport(
+    slots: PlayerDeckSlots,
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    labels: PlayerControlLabels,
+    metrics: FolioDeckMetrics,
+    ink: Color,
+    inkContent: Color,
+    onPrevious: () -> Unit,
+    onTogglePlay: () -> Unit,
+    onNext: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        FolioPlayPill(
+            isPlaying = isPlaying,
+            isResolving = isResolving,
+            labels = labels,
+            height = metrics.controlHeight,
+            ink = ink,
+            inkContent = inkContent,
+            onClick = onTogglePlay
+        )
+        FolioRoundButton(Icons.Rounded.SkipNext, labels.next, metrics.controlHeight, ink, inkContent, onNext)
+    }
+    Spacer(Modifier.height(metrics.transportGap))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceLg),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        FolioRoundButton(Icons.Rounded.SkipPrevious, labels.previous, metrics.controlHeight, ink, inkContent, onPrevious)
+        Box(modifier = Modifier.weight(1f)) {
+            slots.progress(true)
+        }
+    }
+}
+
+private class FolioDeckMetrics(
+    val controlHeight: Dp,
+    val bottom: Dp,
+    val stagePadding: Dp,
+    val headlineGap: Dp,
+    val transportGap: Dp,
+    val actionGap: Dp
+)
+
+private val FolioRegularMetrics = FolioDeckMetrics(
+    controlHeight = FolioControlHeight,
+    bottom = LevyraPlayerDesign.SpaceMd,
+    stagePadding = LevyraPlayerDesign.SpaceLg,
+    headlineGap = LevyraPlayerDesign.SpaceLg,
+    transportGap = LevyraPlayerDesign.SpaceMd,
+    actionGap = LevyraPlayerDesign.SpaceSm
+)
+
+private val FolioCompactMetrics = FolioDeckMetrics(
+    controlHeight = FolioControlHeightCompact,
+    bottom = LevyraPlayerDesign.SpaceSm,
+    stagePadding = LevyraPlayerDesign.SpaceSm,
+    headlineGap = LevyraPlayerDesign.SpaceMd,
+    transportGap = LevyraPlayerDesign.SpaceSm,
+    actionGap = LevyraPlayerDesign.SpaceXs
+)
+
+private fun folioDeckMetrics(compact: Boolean): FolioDeckMetrics =
+    if (compact) FolioCompactMetrics else FolioRegularMetrics
 
 @Composable
 private fun FolioHeadline(
