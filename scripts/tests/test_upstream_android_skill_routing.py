@@ -3,13 +3,9 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from agent_skill_router import MAX_ACTIVE_SKILLS, context_for, route_prompt
+from scripts.agent_skill_router import MAX_ACTIVE_SKILLS, context_for, route_prompt
 
 
 class UpstreamAndroidRoutingTests(unittest.TestCase):
