@@ -9305,6 +9305,9 @@ private fun HomeScreen(
             }
             .filter { it.tracks.isNotEmpty() }
     }
+    val homeCollectionAccents = remember(visibleEditorialCollections) {
+        buildHomeCollectionAccents(visibleEditorialCollections)
+    }
     val chartChunks = homeDerivedState.chartChunks
     val spotlightHeroData = remember(
         spotlightCandidate?.track?.id,
@@ -9588,6 +9591,7 @@ private fun HomeScreen(
                     HomeSectionLead(compactHome) {
                         HomeEditorialCollectionsShelf(
                             collections = visibleEditorialCollections,
+                            accents = homeCollectionAccents,
                             onOpen = { collection -> selectedHomeCollectionId = collection.id }
                         )
                     }
@@ -10002,13 +10006,8 @@ private fun HomeScreen(
         }
     }
     selectedHomeCollection?.let { collection ->
-        val (collectionAccentStart, collectionAccentEnd) = remember(collection.id, collection.accentStart, collection.accentEnd) {
-            if (collection.accentStart != 0 && collection.accentEnd != 0) {
-                Color(collection.accentStart) to Color(collection.accentEnd)
-            } else {
-                exploreEditorialPalette(collection.id)
-            }
-        }
+        val (collectionAccentStart, collectionAccentEnd) = homeCollectionAccents[collection.id]
+            ?: exploreEditorialPalette(collection.id)
         HomeCollectionScreen(
             title = homeCollectionTitle(strings, collection),
             tracks = collection.tracks,
@@ -10429,7 +10428,7 @@ private fun HomeEditorialSpotlight(
     }
 }
 
-private const val HOME_HERO_PORTRAIT_SHARE = 0.78f
+private const val HOME_HERO_PORTRAIT_SHARE = 0.84f
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -10469,7 +10468,7 @@ internal fun chartRowsPerColumn(trackCount: Int): Int = when {
     trackCount % 5 == 0 -> 5
     else -> 4
 }
-private val HOME_HERO_STAGE_BODY_HEIGHT = LevyraHomeDesign.HeroHeight - 88.dp
+private val HOME_HERO_STAGE_BODY_HEIGHT = LevyraHomeDesign.HeroHeight - 28.dp
 private const val HOME_HERO_LANDSCAPE_VIEWPORT_SHARE = 0.62f
 private val HOME_HERO_LANDSCAPE_MIN_HEIGHT = 236.dp
 private val HOME_HERO_FADE_LENGTH = 360.dp
@@ -10574,6 +10573,17 @@ private fun homeCollectionTitle(strings: LevyraStrings, collection: HomeEditoria
     return cleanHomeSectionTitle(title)
 }
 
+private fun buildHomeCollectionAccents(collections: List<HomeEditorialCollection>): Map<String, Pair<Color, Color>> {
+    val seeds = collections.map { collection ->
+        if (collection.accentStart != 0 && collection.accentEnd != 0) {
+            Color(collection.accentStart)
+        } else {
+            exploreEditorialPalette(collection.id).first
+        }
+    }
+    return collections.map { it.id }.zip(distinctEditorialAccents(seeds)).toMap()
+}
+
 private fun exploreEditorialPalette(identity: String): Pair<Color, Color> {
     val palette = listOf(
         Color(0xFF7C3AED) to Color(0xFF4C1D95),
@@ -10591,6 +10601,7 @@ private fun exploreEditorialPalette(identity: String): Pair<Color, Color> {
 @Composable
 private fun HomeEditorialCollectionsShelf(
     collections: List<HomeEditorialCollection>,
+    accents: Map<String, Pair<Color, Color>>,
     onOpen: (HomeEditorialCollection) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -10648,13 +10659,8 @@ private fun HomeEditorialCollectionsShelf(
                             .joinToString(" · ")
                     }
                     val artworkTrack = collectionArtworks[collection.id]
-                    val (accentStart, accentEnd) = remember(collection.id, collection.accentStart, collection.accentEnd) {
-                        if (collection.accentStart != 0 && collection.accentEnd != 0) {
-                            Color(collection.accentStart) to Color(collection.accentEnd)
-                        } else {
-                            exploreEditorialPalette(collection.id)
-                        }
-                    }
+                    val (accentStart, accentEnd) = accents[collection.id]
+                        ?: exploreEditorialPalette(collection.id)
                     DiscoveryEditorialCard(
                         title = homeCollectionTitle(strings, collection),
                         subtitle = artistLine,

@@ -69,15 +69,17 @@ class HomeCollectionsLayoutContractTest {
     }
 
     @Test
-    fun `single colour collection accents reach the Home shelf and detail`() {
+    fun `collection shelf and detail share distinct harmonized accents`() {
         val app = source("LevyraApp.kt")
-        val validAccentGuard = "collection.accentStart != 0 && collection.accentEnd != 0"
         val shelf = functionBlock(app, "private fun HomeEditorialCollectionsShelf(")
-        assertTrue(shelf.contains(validAccentGuard))
-        assertTrue(app.contains("val (collectionAccentStart, collectionAccentEnd) = remember("))
-        assertTrue(app.split(validAccentGuard).size == 3)
+        val builder = functionBlock(app, "private fun buildHomeCollectionAccents(")
+        assertTrue(builder.contains("collection.accentStart != 0 && collection.accentEnd != 0"))
+        assertTrue(builder.contains("distinctEditorialAccents(seeds)"))
+        assertTrue(app.contains("buildHomeCollectionAccents(visibleEditorialCollections)"))
+        assertTrue(app.contains("accents = homeCollectionAccents"))
+        assertTrue(app.contains("homeCollectionAccents[collection.id]"))
+        assertTrue(shelf.contains("accents[collection.id]"))
         assertFalse(app.contains("collection.accentStart != collection.accentEnd"))
-        assertTrue(shelf.contains("Color(collection.accentStart) to Color(collection.accentEnd)"))
     }
 
     @Test
