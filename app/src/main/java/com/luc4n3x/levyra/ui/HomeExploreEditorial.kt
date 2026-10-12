@@ -225,11 +225,27 @@ internal fun DiscoveryEditorialCard(
     val contrastPalette = remember(backgroundColor) {
         editorialContrastPalette(backgroundColor, backgroundColor)
     }
+    val interaction = remember { MutableInteractionSource() }
+    val corner = if (LocalAnimationsEnabled.current) {
+        levyraExpressiveCorner(
+            interactionSource = interaction,
+            rest = EditorialCardRestCorner,
+            pressed = EditorialCardPressedCorner,
+            label = "editorialCollectionCorner"
+        )
+    } else {
+        EditorialCardRestCorner
+    }
     BoxWithConstraints(
         modifier = modifier
-            .clip(EditorialCardShape)
+            .clip(RoundedCornerShape(corner))
             .background(contrastPalette.start)
-            .levyraPressable(onClick = onOpen, role = Role.Button, pressedScale = LevyraPressScale.Tile)
+            .levyraPressable(
+                onClick = onOpen,
+                interactionSource = interaction,
+                role = Role.Button,
+                pressedScale = LevyraPressScale.Tile
+            )
     ) {
         val stacked = maxWidth < 300.dp || LocalDensity.current.fontScale > 1.4f
         if (stacked) {
@@ -250,8 +266,12 @@ internal fun DiscoveryEditorialCard(
             }
         } else {
             val artworkSize = LevyraHomeDesign.EditorialThumb + 22.dp
-            val textWidth = (maxWidth - artworkSize - LevyraHomeDesign.EditorialPadding - 16.dp)
-                .coerceAtLeast(112.dp)
+            val textWidth = if (artwork == null) {
+                maxWidth - LevyraHomeDesign.EditorialPadding * 2
+            } else {
+                (maxWidth - artworkSize - LevyraHomeDesign.EditorialPadding - 16.dp)
+                    .coerceAtLeast(112.dp)
+            }
             DiscoveryEditorialText(
                 title = title,
                 subtitle = subtitle,
@@ -299,7 +319,8 @@ private fun DiscoveryEditorialText(
     }
 }
 
-private val EditorialCardShape = RoundedCornerShape(32.dp)
+private val EditorialCardRestCorner = 32.dp
+private val EditorialCardPressedCorner = 24.dp
 
 private data class EditorialContrastPalette(
     val start: Color,
