@@ -10003,7 +10003,7 @@ private fun HomeScreen(
     }
     selectedHomeCollection?.let { collection ->
         val (collectionAccentStart, collectionAccentEnd) = remember(collection.id, collection.accentStart, collection.accentEnd) {
-            if (collection.accentStart != 0 && collection.accentEnd != 0 && collection.accentStart != collection.accentEnd) {
+            if (collection.accentStart != 0 && collection.accentEnd != 0) {
                 Color(collection.accentStart) to Color(collection.accentEnd)
             } else {
                 exploreEditorialPalette(collection.id)
@@ -10649,7 +10649,7 @@ private fun HomeEditorialCollectionsShelf(
                     }
                     val artworkTrack = collectionArtworks[collection.id]
                     val (accentStart, accentEnd) = remember(collection.id, collection.accentStart, collection.accentEnd) {
-                        if (collection.accentStart != 0 && collection.accentEnd != 0 && collection.accentStart != collection.accentEnd) {
+                        if (collection.accentStart != 0 && collection.accentEnd != 0) {
                             Color(collection.accentStart) to Color(collection.accentEnd)
                         } else {
                             exploreEditorialPalette(collection.id)
