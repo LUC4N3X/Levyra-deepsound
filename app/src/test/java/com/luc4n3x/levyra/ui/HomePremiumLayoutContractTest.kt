@@ -41,7 +41,7 @@ class HomePremiumLayoutContractTest {
         assertTrue(tile.contains("onLongClick = onActions"))
         assertTrue(tile.contains("strings.songOptions"))
         assertTrue(tile.contains("maxLines = 1"))
-        assertTrue(tile.contains("ActiveTrackEqualizer"))
+        assertTrue(tile.contains("LevyraNowPlayingBadge("))
     }
 
     @Test
@@ -66,7 +66,7 @@ class HomePremiumLayoutContractTest {
         assertTrue(title.contains("maxLines = 1"))
         assertTrue(title.contains("overflow = TextOverflow.Ellipsis"))
         assertTrue(header.contains("Spacer(modifier = Modifier.width(6.dp))"))
-        assertTrue(header.contains("LevyraSectionPlayAll(onClick = onPlayAll, compact = true)"))
+        assertTrue(header.contains("LevyraSectionPlayAll(onClick = onPlayAll)"))
         assertFalse(header.contains("stackPlayAll"))
         assertFalse(header.contains("BoxWithConstraints("))
     }

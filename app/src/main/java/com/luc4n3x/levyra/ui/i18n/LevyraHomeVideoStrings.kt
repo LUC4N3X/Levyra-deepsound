@@ -1,0 +1,44 @@
+package com.luc4n3x.levyra.ui.i18n
+
+private val homeVideoShelfTitles: Map<String, String> = mapOf(
+    "en" to "Music videos",
+    "it" to "Videoclip musicali",
+    "es" to "Videoclips musicales",
+    "fr" to "Clips musicaux",
+    "de" to "Musikvideos",
+    "pt" to "Videoclipes musicais",
+    "nl" to "Muziekvideo's",
+    "pl" to "Teledyski",
+    "ro" to "Videoclipuri muzicale",
+    "el" to "Μουσικά βίντεο",
+    "sv" to "Musikvideor",
+    "da" to "Musikvideoer",
+    "cs" to "Hudební klipy",
+    "sk" to "Hudobné klipy",
+    "hr" to "Glazbeni spotovi",
+    "bg" to "Музикални видеоклипове",
+    "hu" to "Zenei videók",
+    "fi" to "Musiikkivideot",
+    "et" to "Muusikavideod",
+    "nb" to "Musikkvideoer",
+    "ca" to "Videoclips musicals",
+    "uk" to "Музичні кліпи",
+    "ru" to "Музыкальные клипы",
+    "tr" to "Müzik videoları",
+    "ar" to "فيديوهات موسيقية",
+    "fa" to "موزیک‌ویدیوها",
+    "zh" to "音乐视频",
+    "zh-Hant" to "音樂影片",
+    "ja" to "ミュージックビデオ",
+    "ko" to "뮤직비디오",
+    "hi" to "म्यूज़िक वीडियो",
+    "id" to "Video musik",
+    "ms" to "Video muzik",
+    "vi" to "Video âm nhạc",
+    "th" to "มิวสิกวิดีโอ",
+    "fil" to "Mga music video",
+    "he" to "קליפים מוזיקליים"
+)
+
+internal val LevyraStrings.homeVideoShelfTitle: String
+    get() = homeVideoShelfTitles[code] ?: homeVideoShelfTitles.getValue("en")
