@@ -59,6 +59,9 @@ private val FavoriteMorph: Morph by lazy {
     Morph(MaterialShapes.Circle.normalized(), MaterialShapes.Cookie9Sided.normalized())
 }
 
+internal fun levyraCookieLandingShape(progress: Float, rotationDegrees: Float = 0f): Shape =
+    LevyraMorphShape(PlayMorph, progress, rotationDegrees)
+
 internal class LevyraMorphShape(
     private val morph: Morph,
     private val progress: Float,

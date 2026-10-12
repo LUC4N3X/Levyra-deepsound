@@ -62,6 +62,7 @@ import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material.icons.rounded.Newspaper
 import androidx.compose.material.icons.rounded.Nightlight
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.Person
@@ -334,7 +335,8 @@ fun LevyraNowPlaying(
     }
 
     val artworkRestsFullBleed = state.isPlaying ||
-        state.interfaceSettings.playerVisualMode == PlayerVisualMode.Artwork
+        state.interfaceSettings.playerVisualMode == PlayerVisualMode.Artwork ||
+        state.interfaceSettings.playerVisualMode == PlayerVisualMode.Folio
     val artRestScale = if (artworkRestsFullBleed) 1f else LevyraPlayerDesign.ArtworkPausedScale
     val artRestOffset = if (artworkRestsFullBleed) 0.dp else 4.dp
     SideEffect {
@@ -371,6 +373,9 @@ fun LevyraNowPlaying(
             hasTrack = track != null
         )
         val deckMode = if (liveRadio) PlayerVisualMode.Artwork else resolvePlayerDeckVisualMode(visualMode, deckLayout)
+        SideEffect {
+            morphAnchors.updateLandsAsCookie(deckLayout == PlayerDeckLayout.Folio)
+        }
         val motionBackdropVisible = !liveRadio
         LaunchedEffect(
             motionEnabled,
@@ -1128,6 +1133,35 @@ fun LevyraNowPlaying(
                 animated = animated,
                 scrollable = !fitsViewport,
                 gutter = gutter,
+                onArtistClick = { artistIndex ->
+                    playerArtistHits.getOrNull(artistIndex)?.let(viewModel::openArtist)
+                        ?: viewModel.openArtist(track, artistIndex)
+                },
+                onToggleFavorite = { viewModel.toggleFavorite(track) },
+                onShuffle = viewModel::toggleShuffle,
+                onPrevious = viewModel::previous,
+                onTogglePlay = viewModel::togglePlay,
+                onNext = viewModel::next,
+                onRepeat = viewModel::toggleRepeat,
+                headlineModifier = lyricsFlipSwipeModifier,
+                modifier = deckModifier
+            )
+        } else if (deckLayout == PlayerDeckLayout.Folio && track != null) {
+            PlayerFolioDeck(
+                track = track,
+                slots = deckSlots,
+                surfaces = surfaces,
+                isFavorite = track.id in state.favoriteIds,
+                isPlaying = state.isPlaying,
+                isResolving = state.isResolving,
+                shuffleOn = state.shuffleEnabled,
+                repeatMode = state.repeatMode,
+                labels = playerControlLabels,
+                animated = animated,
+                compact = compactPlayer,
+                scrollable = !fitsViewport,
+                gutter = gutter,
+                artworkCap = artworkCap,
                 onArtistClick = { artistIndex ->
                     playerArtistHits.getOrNull(artistIndex)?.let(viewModel::openArtist)
                         ?: viewModel.openArtist(track, artistIndex)
@@ -1937,6 +1971,7 @@ internal fun visualModeStateDescription(
     PlayerVisualMode.Expressive -> strings.playerDeckExpressive
     PlayerVisualMode.Pulse -> strings.playerDeckPulse
     PlayerVisualMode.Halo -> strings.playerDeckHalo
+    PlayerVisualMode.Folio -> strings.playerDeckFolio
 }
 
 internal fun visualModeIcon(mode: PlayerVisualMode): ImageVector = when (mode) {
@@ -1946,4 +1981,5 @@ internal fun visualModeIcon(mode: PlayerVisualMode): ImageVector = when (mode) {
     PlayerVisualMode.Expressive -> Icons.Rounded.Interests
     PlayerVisualMode.Pulse -> Icons.Rounded.GraphicEq
     PlayerVisualMode.Halo -> Icons.Rounded.Album
+    PlayerVisualMode.Folio -> Icons.Rounded.Newspaper
 }

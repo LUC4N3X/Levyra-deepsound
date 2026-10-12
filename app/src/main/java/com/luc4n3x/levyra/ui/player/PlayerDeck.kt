@@ -20,13 +20,15 @@ internal enum class PlayerDeckLayout {
     Expressive,
     Poster,
     Pulse,
-    Halo
+    Halo,
+    Folio
 }
 
 internal val PlayerDeckOrder: List<PlayerVisualMode> = listOf(
     PlayerVisualMode.CanvasCard,
     PlayerVisualMode.CanvasImmersive,
     PlayerVisualMode.Halo,
+    PlayerVisualMode.Folio,
     PlayerVisualMode.Expressive,
     PlayerVisualMode.Artwork,
     PlayerVisualMode.Pulse
@@ -39,6 +41,7 @@ internal fun PlayerVisualMode.deckLayout(): PlayerDeckLayout = when (this) {
     PlayerVisualMode.Expressive -> PlayerDeckLayout.Expressive
     PlayerVisualMode.Pulse -> PlayerDeckLayout.Pulse
     PlayerVisualMode.Halo -> PlayerDeckLayout.Halo
+    PlayerVisualMode.Folio -> PlayerDeckLayout.Folio
 }
 
 internal fun resolvePlayerDeckLayout(

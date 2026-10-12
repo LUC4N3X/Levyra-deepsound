@@ -11,6 +11,7 @@ import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.toShape
 import androidx.compose.material.icons.rounded.FormatQuote
 import androidx.graphics.shapes.RoundedPolygon
+import com.luc4n3x.levyra.ui.components.levyraCookieLandingShape
 import com.luc4n3x.levyra.ui.components.levyraGroupedGridShape
 import com.luc4n3x.levyra.ui.components.levyraGroupedListShape
 import com.luc4n3x.levyra.ui.components.rememberLevyraAvatarPressShape
@@ -18961,7 +18962,8 @@ private fun SettingsOverlay(
                                         PlayerVisualMode.CanvasImmersive.name to strings.playerVisualModeCanvasImmersive,
                                         PlayerVisualMode.Expressive.name to strings.playerDeckExpressive,
                                         PlayerVisualMode.Pulse.name to strings.playerDeckPulse,
-                                        PlayerVisualMode.Halo.name to strings.playerDeckHalo
+                                        PlayerVisualMode.Halo.name to strings.playerDeckHalo,
+                                        PlayerVisualMode.Folio.name to strings.playerDeckFolio
                                     ),
                                     selected = interfaceSettings.playerVisualMode.name,
                                     onSelect = { value ->
@@ -23165,7 +23167,11 @@ private fun PlayerArtworkMorphLayer(
                 val endCornerPx = if (anchors.targetsStage) 0f else cardCornerPx
                 alpha = flightAlpha
                 shadowElevation = flightShadowPx * fraction * flightAlpha
-                shape = RoundedCornerShape(morphCornerRadius(startCornerPx, endCornerPx, fraction))
+                shape = if (anchors.landsAsCookie) {
+                    levyraCookieLandingShape(fraction)
+                } else {
+                    RoundedCornerShape(morphCornerRadius(startCornerPx, endCornerPx, fraction))
+                }
                 clip = true
             }
     ) {
