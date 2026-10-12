@@ -13,9 +13,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MoreHoriz
@@ -40,6 +41,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
@@ -58,6 +60,7 @@ import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.theme.LevyraType
+import com.luc4n3x.levyra.ui.theme.levyraTonalRole
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
@@ -214,18 +217,35 @@ internal fun DiscoveryEditorialCard(
     artworkShape: Shape? = null
 ) {
     val colors = MaterialTheme.colorScheme
-    val contrastPalette = remember(colors.surfaceContainerHigh, colors.surfaceContainerHighest) {
-        editorialContrastPalette(colors.surfaceContainerHigh, colors.surfaceContainerHighest)
+    val isLight = LevyraIsLight
+    val tonal = remember(accentStart, isLight) {
+        levyraTonalRole(accentStart, isLight, maxChroma = 46.0)
+    }
+    val backgroundColor = lerp(colors.surfaceContainerHigh, tonal.container, 0.94f)
+    val contrastPalette = remember(backgroundColor) {
+        editorialContrastPalette(backgroundColor, backgroundColor)
+    }
+    val interaction = remember { MutableInteractionSource() }
+    val corner = if (LocalAnimationsEnabled.current) {
+        levyraExpressiveCorner(
+            interactionSource = interaction,
+            rest = EditorialCardRestCorner,
+            pressed = EditorialCardPressedCorner,
+            label = "editorialCollectionCorner"
+        )
+    } else {
+        EditorialCardRestCorner
     }
     BoxWithConstraints(
         modifier = modifier
-            .clip(EditorialCardShape)
-            .background(
-                Brush.linearGradient(
-                    listOf(contrastPalette.start, contrastPalette.end)
-                )
+            .clip(RoundedCornerShape(corner))
+            .background(contrastPalette.start)
+            .levyraPressable(
+                onClick = onOpen,
+                interactionSource = interaction,
+                role = Role.Button,
+                pressedScale = LevyraPressScale.Tile
             )
-            .levyraPressable(onClick = onOpen, role = Role.Button, pressedScale = LevyraPressScale.Tile)
     ) {
         val stacked = maxWidth < 300.dp || LocalDensity.current.fontScale > 1.4f
         if (stacked) {
@@ -245,42 +265,35 @@ internal fun DiscoveryEditorialCard(
                 }
             }
         } else {
-            Row(
-                modifier = Modifier.padding(LevyraHomeDesign.EditorialPadding),
-                horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.EditorialPadding),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                DiscoveryEditorialText(
-                    title = title,
-                    subtitle = subtitle,
-                    textColor = contrastPalette.text,
-                    modifier = Modifier.weight(1f).heightIn(min = LevyraHomeDesign.EditorialThumb)
+            val artworkSize = LevyraHomeDesign.EditorialThumb + 22.dp
+            val textWidth = if (artwork == null) {
+                maxWidth - LevyraHomeDesign.EditorialPadding * 2
+            } else {
+                (maxWidth - artworkSize - LevyraHomeDesign.EditorialPadding - 16.dp)
+                    .coerceAtLeast(112.dp)
+            }
+            DiscoveryEditorialText(
+                title = title,
+                subtitle = subtitle,
+                textColor = contrastPalette.text,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(
+                        start = LevyraHomeDesign.EditorialPadding,
+                        top = LevyraHomeDesign.EditorialPadding
+                    )
+                    .width(textWidth)
+            )
+            if (artwork != null) {
+                CoverImage(
+                    track = artwork,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .offset(x = 16.dp, y = 18.dp)
+                        .size(artworkSize)
+                        .rotate(12f)
+                        .clip(artworkShape ?: LevyraCardDesign.ArtworkShape)
                 )
-                if (artwork != null) {
-                    Box(
-                        modifier = Modifier.size(LevyraHomeDesign.EditorialThumb),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (artworkShape != null) {
-                            CoverImage(
-                                track = artwork,
-                                modifier = Modifier
-                                    .size(LevyraHomeDesign.EditorialThumb + 18.dp)
-                                    .rotate(-6f)
-                                    .clip(artworkShape)
-                            )
-                        } else {
-                            CoverImage(
-                                track = artwork,
-                                modifier = Modifier
-                                    .size(96.dp)
-                                    .rotate(11f)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(10.dp))
-                            )
-                        }
-                    }
-                }
             }
         }
     }
@@ -306,7 +319,8 @@ private fun DiscoveryEditorialText(
     }
 }
 
-private val EditorialCardShape = RoundedCornerShape(32.dp)
+private val EditorialCardRestCorner = 32.dp
+private val EditorialCardPressedCorner = 24.dp
 
 private data class EditorialContrastPalette(
     val start: Color,

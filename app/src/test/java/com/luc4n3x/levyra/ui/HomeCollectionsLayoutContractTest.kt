@@ -46,15 +46,38 @@ class HomeCollectionsLayoutContractTest {
     }
 
     @Test
-    fun `editorial collection cards keep a neutral expressive surface`() {
+    fun `editorial collection cards have bold tonal backgrounds and anchored artwork`() {
         val card = functionBlock(source("HomeExploreEditorial.kt"), "internal fun DiscoveryEditorialCard(")
-        assertTrue(card.contains("colors.surfaceContainerHigh"))
-        assertTrue(card.contains("colors.surfaceContainerHighest"))
-        assertTrue(card.contains("editorialContrastPalette("))
-        assertTrue(card.contains(".levyraPressable(onClick = onOpen"))
-        assertFalse(card.contains("lerp(surface, accentStart"))
-        assertFalse(card.contains("accentEnd.copy(alpha"))
+        assertTrue(card.contains("levyraTonalRole(accentStart, isLight, maxChroma = 46.0)"))
+        assertTrue(card.contains("editorialContrastPalette(backgroundColor, backgroundColor)"))
+        assertTrue(card.contains(".background(contrastPalette.start)"))
+        assertTrue(card.contains("levyraExpressiveCorner("))
+        assertTrue(card.contains("rest = EditorialCardRestCorner"))
+        assertTrue(card.contains("pressed = EditorialCardPressedCorner"))
+        assertTrue(card.contains(".clip(RoundedCornerShape(corner))"))
+        assertTrue(card.contains("interactionSource = interaction"))
+        assertTrue(card.contains(".align(Alignment.TopStart)"))
+        assertTrue(card.contains(".align(Alignment.BottomEnd)"))
+        assertTrue(card.contains(".offset(x = 16.dp, y = 18.dp)"))
+        assertTrue(card.contains(".rotate(12f)"))
+        assertTrue(card.contains(".clip(artworkShape ?: LevyraCardDesign.ArtworkShape)"))
+        assertTrue(card.contains(".levyraPressable("))
+        assertTrue(card.contains("onClick = onOpen"))
+        assertFalse(card.contains("Brush.linearGradient("))
         assertFalse(card.contains("Brush.radialGradient("))
+        assertFalse(card.contains("accentEnd.copy(alpha"))
+    }
+
+    @Test
+    fun `single colour collection accents reach the Home shelf and detail`() {
+        val app = source("LevyraApp.kt")
+        val validAccentGuard = "collection.accentStart != 0 && collection.accentEnd != 0"
+        val shelf = functionBlock(app, "private fun HomeEditorialCollectionsShelf(")
+        assertTrue(shelf.contains(validAccentGuard))
+        assertTrue(app.contains("val (collectionAccentStart, collectionAccentEnd) = remember("))
+        assertTrue(app.split(validAccentGuard).size == 3)
+        assertFalse(app.contains("collection.accentStart != collection.accentEnd"))
+        assertTrue(shelf.contains("Color(collection.accentStart) to Color(collection.accentEnd)"))
     }
 
     @Test
@@ -65,7 +88,11 @@ class HomeCollectionsLayoutContractTest {
         assertTrue(card.contains("maxWidth < 300.dp"))
         assertTrue(card.contains("LocalDensity.current.fontScale > 1.4f"))
         assertTrue(card.contains("if (stacked)"))
-        assertTrue(card.contains("Modifier.weight(1f).heightIn(min = LevyraHomeDesign.EditorialThumb)"))
+        assertTrue(card.contains("if (artwork == null)"))
+        assertTrue(card.contains("maxWidth - LevyraHomeDesign.EditorialPadding * 2"))
+        assertTrue(card.contains("(maxWidth - artworkSize"))
+        assertTrue(card.contains(".width(textWidth)"))
+        assertTrue(card.contains(".align(Alignment.TopStart)"))
         assertTrue(card.contains("Arrangement.spacedBy(LevyraHomeDesign.EditorialPadding)"))
         assertTrue(text.contains("softWrap = true"))
         assertFalse(text.contains("TextOverflow.Ellipsis"))

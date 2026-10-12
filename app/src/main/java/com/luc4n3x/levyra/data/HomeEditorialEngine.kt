@@ -25,6 +25,7 @@ object HomeEditorialEngine {
     private const val minimumCollectionSize = 4
     private const val targetCollectionCount = 8
     private const val chartCollectionLimit = 50
+    private val chartCollectionOrange = 0xFFFF8A24.toInt()
     private const val throwbackMinimumAgeYears = 8
     private const val stableCollectionSlots = 3
 
@@ -261,10 +262,18 @@ object HomeEditorialEngine {
                 .toList()
             if (selected.size < minimumCollectionSize) return
             val accentSeed = selected.take(4)
-            val accentStart = accentSeed.firstOrNull()?.accentStart ?: 0xFF00E5FF.toInt()
-            val accentEnd = accentSeed.getOrNull(1)?.accentEnd
-                ?: accentSeed.firstOrNull()?.accentEnd
-                ?: 0xFF7B42FF.toInt()
+            val accentStart = if (kind == HomeCollectionKind.Charts) {
+                chartCollectionOrange
+            } else {
+                accentSeed.firstOrNull()?.accentStart ?: 0xFF00E5FF.toInt()
+            }
+            val accentEnd = if (kind == HomeCollectionKind.Charts) {
+                chartCollectionOrange
+            } else {
+                accentSeed.getOrNull(1)?.accentEnd
+                    ?: accentSeed.firstOrNull()?.accentEnd
+                    ?: 0xFF7B42FF.toInt()
+            }
             result += HomeEditorialCollection(
                 id = id,
                 kind = kind,
