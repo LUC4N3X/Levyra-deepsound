@@ -169,28 +169,20 @@ def create_m3_pair_canvas(card_w, card_h, gutter, palette, pair_index):
         (duo_w // 2 - 520, -330 if direction > 0 else 1030, duo_w // 2 + 560, 720 if direction > 0 else 2050),
         fill=(*secondary, 220),
     )
-    draw.rounded_rectangle(
-        (-260, 260, 650, 760),
-        radius=250,
-        fill=(*primary, 28),
-    )
-    draw.rounded_rectangle(
-        (duo_w - 620, 920, duo_w + 260, 1460),
-        radius=270,
-        fill=(*primary, 24),
-    )
+    draw.ellipse((-320, 180, 540, 1040), fill=(*primary, 34))
+    draw.ellipse((duo_w - 610, 760, duo_w + 250, 1620), fill=(*primary, 30))
     return Image.alpha_composite(canvas, shapes)
 
 def draw_m3_label(draw, x, y, text, primary, on_primary=(255, 255, 255, 255)):
-    font = get_font(25, bold=True)
+    font = get_font(27, bold=True)
     bbox = draw.textbbox((0, 0), text, font=font)
     width = bbox[2] - bbox[0]
-    height = 48
-    draw.rounded_rectangle((x, y, x + width + 76, y + height), radius=24, fill=(*primary, 255))
-    draw_vector_sparkle(draw, x + 25, y + height // 2, 11, on_primary)
-    draw.text((x + 46, y + 9 - bbox[1]), text, font=font, fill=on_primary)
+    height = 52
+    draw.rounded_rectangle((x, y, x + width + 80, y + height), radius=26, fill=(*primary, 255))
+    draw_vector_sparkle(draw, x + 27, y + height // 2, 12, on_primary)
+    draw.text((x + 50, y + 10 - bbox[1]), text, font=font, fill=on_primary)
 
-def fit_title_font(draw, title, max_width, initial_size=64, minimum_size=48):
+def fit_title_font(draw, title, max_width, initial_size=68, minimum_size=50):
     for size in range(initial_size, minimum_size - 1, -2):
         font = get_font(size, bold=True)
         if draw.textbbox((0, 0), title, font=font)[2] <= max_width:
@@ -205,13 +197,13 @@ def draw_m3_copy(card, spec, placement, primary, surface):
         draw.rounded_rectangle((-70, 1200, 970, 1660), radius=82, fill=(*surface, 255))
     y = 48 if placement == "top" else 1240
     draw_m3_label(draw, x, y, kicker, primary)
-    title_y = y + 68
+    title_y = y + 72
     title_font = fit_title_font(draw, title, 768)
     draw.text((x, title_y), title, font=title_font, fill=(32, 29, 36, 255))
     draw.multiline_text(
-        (x, title_y + 82),
+        (x, title_y + 86),
         subtitle,
-        font=get_font(29),
+        font=get_font(31),
         fill=(73, 69, 79, 255),
         spacing=7,
     )
