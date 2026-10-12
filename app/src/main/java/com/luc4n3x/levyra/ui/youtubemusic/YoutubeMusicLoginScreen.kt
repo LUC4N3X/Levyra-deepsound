@@ -19,7 +19,6 @@ import com.luc4n3x.levyra.ui.i18n.YoutubeMusicCopy
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
-@SuppressLint("SetJavaScriptEnabled")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun YoutubeMusicLoginScreen(copy: YoutubeMusicCopy, checking: Boolean, error: String?, onCookie: (String) -> Unit, onClose: () -> Unit) {
@@ -30,12 +29,7 @@ internal fun YoutubeMusicLoginScreen(copy: YoutubeMusicCopy, checking: Boolean, 
     var loading by remember { mutableStateOf(true) }
     var submittedCookie by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
-        suspendCancellableCoroutine { continuation ->
-            CookieManager.getInstance().removeAllCookies {
-                CookieManager.getInstance().flush()
-                if (continuation.isActive) continuation.resume(Unit)
-            }
-        }
+        clearLoginCookies()
         ready = true
     }
     DisposableEffect(Unit) {
@@ -46,8 +40,7 @@ internal fun YoutubeMusicLoginScreen(copy: YoutubeMusicCopy, checking: Boolean, 
         }
     }
     BackHandler {
-        val web = webView
-        if (!checking && web?.canGoBack() == true) web.goBack() else onClose()
+        navigateLoginBack(webView, checking, onClose)
     }
     Surface(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()) {
@@ -64,49 +57,79 @@ internal fun YoutubeMusicLoginScreen(copy: YoutubeMusicCopy, checking: Boolean, 
                 TextButton(enabled = !checking, onClick = {
                     submittedCookie = null
                     webError = false
-                    val web = webView
-                    val url = web?.url
-                    if (url != null && YoutubeMusicAuth.isMusicUrl(url)) {
-                        val cookie = CookieManager.getInstance().getCookie(YoutubeMusicAuth.ORIGIN).orEmpty()
-                        if (runCatching { YoutubeMusicAuth.authorization(cookie, 1) }.isSuccess) currentOnCookie(cookie) else web.reload()
-                    } else web?.reload()
+                    retryLogin(webView, currentOnCookie)
                 }) { Text(copy.retry) }
             }
             if (ready) AndroidView(
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 factory = { context ->
-                    WebView(context).apply {
-                        settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
-                        settings.allowFileAccess = false
-                        settings.allowContentAccess = false
-                        settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                        CookieManager.getInstance().setAcceptCookie(true)
-                        CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
-                        webViewClient = object : WebViewClient() {
-                            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
-                                request.isForMainFrame && !YoutubeMusicAuth.isLoginUrl(request.url.toString())
-                            override fun onPageStarted(view: WebView, url: String?, favicon: android.graphics.Bitmap?) {
-                                loading = true
-                                webError = false
-                            }
-                            override fun onReceivedError(view: WebView, request: WebResourceRequest, error: android.webkit.WebResourceError) {
-                                if (request.isForMainFrame) { webError = true; loading = false }
-                            }
-                            override fun onPageFinished(view: WebView, url: String?) {
-                                loading = false
-                                if (url == null || !YoutubeMusicAuth.isMusicUrl(url)) return
-                                val cookie = CookieManager.getInstance().getCookie(YoutubeMusicAuth.ORIGIN).orEmpty()
-                                if (cookie == submittedCookie || runCatching { YoutubeMusicAuth.authorization(cookie, 1) }.isFailure) return
-                                submittedCookie = cookie
-                                currentOnCookie(cookie)
-                            }
+                    createLoginWebView(context, { loading = it; if (it) webError = false }, { webError = true; loading = false }) { cookie ->
+                        if (cookie != submittedCookie) {
+                            submittedCookie = cookie
+                            currentOnCookie(cookie)
                         }
-                        webView = this
-                        loadUrl(YoutubeMusicAuth.LOGIN_URL)
-                    }
+                    }.also { webView = it }
                 }
             )
         }
+    }
+}
+
+private suspend fun clearLoginCookies() {
+    suspendCancellableCoroutine { continuation ->
+        CookieManager.getInstance().removeAllCookies {
+            CookieManager.getInstance().flush()
+            if (continuation.isActive) continuation.resume(Unit)
+        }
+    }
+}
+
+private fun navigateLoginBack(webView: WebView?, checking: Boolean, onClose: () -> Unit) {
+    if (!checking && webView?.canGoBack() == true) webView.goBack() else onClose()
+}
+
+private fun retryLogin(webView: WebView?, onCookie: (String) -> Unit) {
+    val web = webView ?: return
+    val url = web.url
+    if (url != null && YoutubeMusicAuth.isMusicUrl(url)) {
+        val cookie = CookieManager.getInstance().getCookie(YoutubeMusicAuth.ORIGIN).orEmpty()
+        if (runCatching { YoutubeMusicAuth.authorization(cookie, 1) }.isSuccess) onCookie(cookie) else web.reload()
+    } else web.reload()
+}
+
+@SuppressLint("SetJavaScriptEnabled")
+private fun createLoginWebView(context: android.content.Context, onLoading: (Boolean) -> Unit, onWebError: () -> Unit, onCookie: (String) -> Unit): WebView =
+    WebView(context).apply {
+        settings.javaScriptEnabled = true
+        settings.domStorageEnabled = true
+        settings.allowFileAccess = false
+        settings.allowContentAccess = false
+        settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
+        CookieManager.getInstance().setAcceptCookie(true)
+        CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
+        webViewClient = YoutubeMusicLoginClient(onLoading, onWebError, onCookie)
+
+        loadUrl(YoutubeMusicAuth.LOGIN_URL)
+    }
+
+private class YoutubeMusicLoginClient(
+    private val onLoading: (Boolean) -> Unit,
+    private val onWebError: () -> Unit,
+    private val onCookie: (String) -> Unit
+) : WebViewClient() {
+    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
+        request.isForMainFrame && !YoutubeMusicAuth.isLoginUrl(request.url.toString())
+    override fun onPageStarted(view: WebView, url: String?, favicon: android.graphics.Bitmap?) {
+        onLoading(true)
+    }
+    override fun onReceivedError(view: WebView, request: WebResourceRequest, error: android.webkit.WebResourceError) {
+        if (request.isForMainFrame) onWebError()
+    }
+    override fun onPageFinished(view: WebView, url: String?) {
+        onLoading(false)
+        if (url == null || !YoutubeMusicAuth.isMusicUrl(url)) return
+        val cookie = CookieManager.getInstance().getCookie(YoutubeMusicAuth.ORIGIN).orEmpty()
+        if (runCatching { YoutubeMusicAuth.authorization(cookie, 1) }.isFailure) return
+        onCookie(cookie)
     }
 }

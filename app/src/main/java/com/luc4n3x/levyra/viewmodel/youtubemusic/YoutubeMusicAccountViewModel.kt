@@ -175,14 +175,24 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
         if (verifySession) repository.client.verify(session, language)
         val snapshot = state.value
         val old = snapshot.currentPage
+        val continuation = preparePageToken(old, append)
+        val collection = snapshot.detail?.collection ?: snapshot.collection
+        val browseId = snapshot.detail?.browseId ?: collection.browseId
+        val page = repository.page(session, collection, language, browseId, continuation)
+        coroutineContext.ensureActive()
+        if (saved.activeId != session.account.id) return
+        val combined = mergePage(old, page, continuation, append)
+        _state.update { if (snapshot.detail != null) it.copy(detailPage = combined) else it.copy(pages = it.pages + (snapshot.collection to combined)) }
+    }
+
+    private fun preparePageToken(old: YoutubeMusicLibraryPage?, append: Boolean): String {
         val token = if (append) old?.continuation.orEmpty() else ""
         if (!append) requestedPages.clear()
         if (token.isNotBlank() && (token in requestedPages || requestedPages.size >= 200)) throw YoutubeMusicLibraryLimit()
-        val collection = snapshot.detail?.collection ?: snapshot.collection
-        val browseId = snapshot.detail?.browseId ?: collection.browseId
-        val page = repository.page(session, collection, language, browseId, token)
-        coroutineContext.ensureActive()
-        if (saved.activeId != session.account.id) return
+        return token
+    }
+
+    private fun mergePage(old: YoutubeMusicLibraryPage?, page: YoutubeMusicLibraryPage, token: String, append: Boolean): YoutubeMusicLibraryPage {
         if (token.isNotBlank()) requestedPages += token
         if (page.continuation.isNotBlank() && (page.continuation == token || page.continuation in requestedPages)) throw YoutubeMusicProtocolException()
         val combined = if (append) page.copy(
@@ -190,7 +200,7 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
             tracks = (old?.tracks.orEmpty() + page.tracks).distinctBy { it.id }
         ) else page
         if (combined.entries.size + combined.tracks.size > 10000) throw YoutubeMusicLibraryLimit()
-        _state.update { if (snapshot.detail != null) it.copy(detailPage = combined) else it.copy(pages = it.pages + (snapshot.collection to combined)) }
+        return combined
     }
 
     fun importCurrent(onImported: () -> Unit) {
