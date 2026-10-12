@@ -1,68 +1,64 @@
-# Levyra 2.6.6
+# Levyra 2.6.7
 
 ## Highlights
 
-Levyra 2.6.6 gives you more ways to make the player your own, and more control over the music you keep ready to play. The player has new looks and backgrounds, Home and Explore have been refined again, and the transition between the mini-player and full player is smoother.
+There's quite a lot in this update, even if the version number only moved a little. I've been working on the parts of Levyra you actually use every day, and a few things people kept asking for are finally here.
 
-This update also adds optional advanced preloading, Smart Offline collections, personal M3U and JSON music libraries, and a better way to fix lyrics timing for individual songs. These features build on the existing music library and playback experience rather than replacing it.
+The biggest addition is optional YouTube Music sign-in. You can connect your account and bring some of your own music into Levyra, or skip it and carry on as before. Home has had more attention too, there's another player style, and I've fixed some irritating details around lyrics, search and downloads.
 
-## ✦ More ways to make the player yours
+## ✦ YouTube Music, only if you want it
 
-The player now offers six visual styles: Studio, Velvet, Liner Notes, Bloom, Gallery and Late Night. Studio is the default if you have never selected a style; your saved choice is preserved. Velvet brings artwork closer to the controls, Liner Notes puts the music details first, and Late Night has a vinyl presentation that stops spinning when playback is paused.
+You can now sign in to YouTube Music to see your playlists, liked songs, saved albums and artists. When connected, Levyra can use your account's music feed to make Home feel more personal. Importing into your local library is an explicit action, not something it does behind your back.
 
-You can also choose Aurora or Gradient player backgrounds, and the new wavy progress control moves only while music is playing. The mini-player opens into the full player more naturally, while playback controls remain in the regular Media3 music notification instead of an additional live-update notification.
+There's an account screen for switching accounts and disconnecting. Saved sessions use local storage protected with Android Keystore-backed encryption. If you're not signed in, or the account feed isn't available, the usual Levyra music sources still work.
 
-The Material 3 Expressive treatment reaches the queue, Audio panel, artist and album pages, search, listening insights and collections. The first-run setup is more visual too, with artist artwork in genre selection. Home, Explore and Levyra Mix have clearer controls and more consistent spacing.
+The option is in first-time setup, with a clear way to continue without an account. Existing users get a one-time introduction instead. The new onboarding text is translated into the 37 supported languages. And no, you don't have to sign in to use Levyra.
 
-## ✦ Advanced preloading, only if you want it
+## ✦ More music in Your Orbit
 
-In Audio settings, **Advanced preloading** can prepare the next 5, 10 or 15 songs in your actual queue using Levyra's existing playback disk cache. It is **off by default**, so nothing changes for listeners who leave it disabled.
+Your Orbit can now show two pages of nine songs. If the list comes up short, Levyra fills the gaps with music based on your tastes, without repeating what's already in Quick Picks. If there really aren't enough different tracks, you can still see the incomplete page.
 
-When enabled, preloading runs on unmetered connections, follows cache and storage limits, and works with supported streams that can be fully cached. This is intended to reduce interruptions when a connection becomes unstable. It is not a guarantee of complete offline playback: some tracks still need their source resolved before they can play.
+Levyra Collections look different again, with bolder artwork, more consistent colours and a less cluttered Material 3 Expressive feel. The Charts collection keeps its orange. My Soundtrack blends into Home more naturally, and the play and shuffle buttons on collection pages are easier to use.
 
-The existing buffering controls and manual downloads keep their own behaviour. The new setting is saved with your preferences and backups.
+Search suggestions now make the new words easier to spot. Recent-search cards got a bit more room too.
 
-## ✦ Smart Offline and personal collections
+## ✦ Folio and the player fixes
 
-**Smart Offline** can keep frequently played and favourite tracks ready within a storage limit you choose. Its background management distinguishes automatically cached tracks from your own manual downloads, so automatic cleanup does not prune songs you downloaded yourself. Settings and the Downloads library provide controls and a status view.
+Folio is a new player style with a more editorial layout and its own artwork animation. You can select it along with the existing looks.
 
-You can now also import personal music collections from M3U or Levyra JSON, using a local file or an HTTP(S) source. Imported collections support refresh, artwork, queue playback and offline downloads. Remote credentials remain in encrypted app storage; plain HTTP and local-network access have explicit consent checks. Removing a collection does not silently remove tracks you downloaded from it.
+There was also a strange player bug: tapping an empty spot in the expanded player could actually trigger a button on the screen underneath it. That's been fixed.
 
-## ✦ Fix lyrics without shifting every song
+A small but useful change for downloads: if a song is already saved offline, the Download button can now ask if you want to remove it. You'll get a confirmation first. The prompt is available in all 37 languages, and removing a download doesn't remove the song from your favourites or playlists.
 
-Lyrics timing now has a correction for each song, from -30 to +30 seconds, available directly in the lyrics screen and in a dedicated timing sheet. This is separate from global or Bluetooth output latency.
+Motion artwork has a better fallback for video decoder errors as well.
 
-A correction to one track no longer changes the timing of every other track. Existing latency settings remain compatible, and saved per-song corrections follow the established backup flow.
+## ✦ The smaller things
 
-## ✦ Smoother screens and everyday fixes
+Some synced lyrics were getting their first or last letters cut off near the screen edges. That's fixed, including the way highlighted lines are laid out.
 
-An artist-page rendering issue that could freeze the interface has been addressed by removing an expensive decorative shadow. Home's decorative backdrop no longer redraws continuously while idle, reducing unnecessary rendering work.
-
-Home's quick discovery chips now use the same neutral Material 3 tonal surface instead of individual genre-coloured gradients, while keeping their expressive pressed shape and existing tap targets. Levyra Collections cards also trade saturated backgrounds for quieter tonal surfaces, letting the artwork stand out.
-
-The comments sheet has a clearer layout and improved author-avatar handling. Like and dislike controls no longer accidentally trigger the player's surrounding gestures. Home's personal-orbit heading now has a more compact Play All button so the title can stay on one line. The update banner, navigation and several other controls have been polished as part of the same visual work.
+I've also adjusted the Home play buttons, the little currently-playing indicators, the music-video section and the update screen. A lot of this is the sort of thing you might not notice immediately, but I think it makes the app nicer to use.
 
 ## Validation
 
-The changes described above are grounded in Android pull requests merged into `main` after the publication of `v2.6.5`, including #880, #889, #892, #895, #896, #897, #900, #904, #906 and #913. Individual changes reported focused automated tests and emulator checks. In particular, the player visual updates and comments sheet were exercised on an API 37 emulator, and the artist-page and idle-Home rendering fixes have targeted emulator evidence.
+This Android update covers changes merged after `v2.6.6`, including YouTube Music sign-in (#918), Home and lyrics work (#917 and #921), the Folio player and download confirmation (#927), and the two-page Orbit correction (#929).
 
-These are checks reported for the individual changes, **not** proof that the final signed 2.6.6 APK has passed end-to-end testing. The release workflow must still run its Android release lint and signed APK build, verify the package version and signing certificate, generate a SHA-256 checksum, publish the release, and check the resulting assets. No outcome of those 2.6.6 release checks is claimed in advance.
+Those pull requests contain their own test reports and emulator results. That is not the same as testing the final signed 2.6.7 APK. No end-to-end physical-device validation of this final release was performed in this session.
 
-A full manual regression pass of the final 2.6.6 APK, including physical-device playback, Android Auto, downloads, background operation and every supported Android version, is not yet verified by this version update.
+The existing release workflow must still run Android release lint, build the signed APK, verify the version and signing certificate, produce the SHA-256 file and confirm publication. Those results aren't being claimed before the workflow runs. Android Auto, hardware-specific playback and a full manual regression pass on the final APK remain unverified here.
 
 ## Versioning
 
-- Version name: `2.6.6`
-- Version code: `2060600`
+- Version name: `2.6.7`
+- Version code: `2060700`
 
-This release is for Android. Levyra Desktop retains its independent version and publication schedule.
+This is an Android release. Levyra Desktop follows its own version and release schedule.
 
 ## Upgrade notes
 
-No manual migration is expected. The app includes database migrations for Smart Offline ownership and personal music collections. Existing manual downloads retain their ownership, while old installations keep Advanced preloading disabled until it is explicitly selected.
+No sign-in or manual import is required. Just update normally. You can connect YouTube Music during setup or later, but you can also leave it alone.
 
-Your saved music, favourites, playlists, listening history, existing playback preferences and backups continue through the established application data paths. GitHub's signed APK and checksum appear only after the release workflow completes successfully. F-Droid and other distribution channels follow separate publication schedules.
+Existing music, downloads and settings continue using Levyra's normal data paths. The GitHub APK and its checksum become available after the signed release workflow succeeds. F-Droid and other stores have their own publishing schedules.
 
 ## Final note
 
-2.6.6 is about choice without extra friction. You can change the look of the player, keep more music close at hand, and correct the details that matter to you, while the familiar listening experience stays in place.
+Thanks for the suggestions and the bug reports. Plenty of the changes here came from things people noticed while using Levyra. I'm still working on it, and I'd rather keep improving those little details than pretend it's all perfect.
