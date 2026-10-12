@@ -10258,7 +10258,7 @@ private fun HomeEditorialSpotlight(
     val heroSeed by animateColorAsState(
         targetValue = homeSoundtrackHeroSeed(
             portrait = if (resolvedArtistArtworkUrl.isBlank()) accentStart else Color(portraitPalette.start),
-            artwork = accentStart
+            fallback = MaterialTheme.colorScheme.primary
         ),
         animationSpec = if (LocalAnimationsEnabled.current) tween(durationMillis = 420, easing = FastOutSlowInEasing) else snap(),
         label = "homeSpotlightHeroSeed"
@@ -10496,8 +10496,8 @@ private fun HomeEditorialSpotlight(
 
 private const val HOME_HERO_PORTRAIT_SHARE = 0.84f
 private const val HOME_HERO_COMPANION_LIMIT = 3
-private val HOME_HERO_COMPANION_SIZE = 34.dp
-private val HOME_HERO_COMPANION_OVERLAP = 10.dp
+private val HOME_HERO_COMPANION_SIZE = 40.dp
+private val HOME_HERO_COMPANION_OVERLAP = 12.dp
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable

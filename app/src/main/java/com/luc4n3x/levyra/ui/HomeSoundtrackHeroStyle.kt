@@ -12,9 +12,9 @@ internal data class HomeSoundtrackHeroTones(
     val badge: Color
 )
 
-internal fun homeSoundtrackHeroSeed(portrait: Color, artwork: Color): Color {
+internal fun homeSoundtrackHeroSeed(portrait: Color, fallback: Color): Color {
     val portraitChroma = Hct.fromInt(portrait.toArgb()).chroma
-    return if (portraitChroma >= HeroMinimumPortraitChroma) portrait else artwork
+    return if (portraitChroma >= HeroMinimumPortraitChroma) portrait else fallback
 }
 
 internal fun homeSoundtrackHeroTones(seed: Color, isLight: Boolean): HomeSoundtrackHeroTones {

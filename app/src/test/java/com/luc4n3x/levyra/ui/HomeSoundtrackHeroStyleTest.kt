@@ -30,9 +30,9 @@ class HomeSoundtrackHeroStyleTest {
     }
 
     @Test
-    fun `grey portrait falls back to the artwork accent`() {
-        val artwork = Color(0xFF246BCE)
-        assertEquals(artwork, homeSoundtrackHeroSeed(Color(0xFF3A3A3C), artwork))
+    fun `grey portrait falls back to the theme primary`() {
+        val primary = Color(0xFF246BCE)
+        assertEquals(primary, homeSoundtrackHeroSeed(Color(0xFF3A3A3C), primary))
     }
 
     @Test
