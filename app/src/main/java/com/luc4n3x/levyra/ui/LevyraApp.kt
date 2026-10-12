@@ -338,6 +338,7 @@ import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material.icons.rounded.PersonOff
@@ -708,6 +709,7 @@ import com.luc4n3x.levyra.ui.components.rememberLastNonNull
 import com.luc4n3x.levyra.viewmodel.completedScanSongs
 import com.luc4n3x.levyra.viewmodel.ExploreViewModel
 import com.luc4n3x.levyra.viewmodel.HomeRenderSnapshot
+import com.luc4n3x.levyra.viewmodel.buildHomeRenderSnapshot
 import com.luc4n3x.levyra.viewmodel.HomeViewModel
 import com.luc4n3x.levyra.viewmodel.LevyraScreenViewModelFactory
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
@@ -1810,7 +1812,17 @@ fun LevyraApp(
     onContinueUpdateWithoutBackup: () -> Unit = {}
 ) {
     val screenViewModelFactory = remember(viewModel) { LevyraScreenViewModelFactory(viewModel) }
+    val youtubeMusicViewModel = androidx.lifecycle.viewmodel.compose.viewModel<com.luc4n3x.levyra.viewmodel.youtubemusic.YoutubeMusicAccountViewModel>()
+    val youtubeMusicState by youtubeMusicViewModel.state.collectAsStateWithLifecycle()
+    var showYoutubeMusic by rememberSaveable { mutableStateOf(false) }
+
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LaunchedEffect(youtubeMusicState.active?.id, state.languageCode) {
+        youtubeMusicViewModel.loadHome(state.languageCode)
+    }
+    LaunchedEffect(state.isDeviceOffline) {
+        if (!state.isDeviceOffline) youtubeMusicViewModel.onNetworkRestored(state.languageCode)
+    }
     val currentStrings = LevyraStrings.forCode(state.languageCode)
     val layoutDirection = if (LevyraLanguageCatalog.isRtl(currentStrings.code)) LayoutDirection.Rtl else LayoutDirection.Ltr
     LaunchedEffect(state.isVideoMode, state.isPlaying) {
@@ -2022,9 +2034,13 @@ fun LevyraApp(
             viewModel.clearBackupMessage()
         }
     }
-    val rootOverlayOpen = showLanguageRestartDialog || state.youtubeEngagement.comments.visible || state.showRecognition || state.showJam || state.showThemeStudio || state.showYourSound || state.showListeningInsights || state.showListeningRecap || state.sharedMediaPreview != null || showDownloadsFolder || state.playlistHitPreview != null || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel
+    val rootOverlayOpen = showYoutubeMusic || showLanguageRestartDialog || state.youtubeEngagement.comments.visible || state.showRecognition || state.showJam || state.showThemeStudio || state.showYourSound || state.showListeningInsights || state.showListeningRecap || state.sharedMediaPreview != null || showDownloadsFolder || state.playlistHitPreview != null || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel
     BackHandler(enabled = rootOverlayOpen || state.selectedTab != LevyraTab.Home) {
-        if (showLanguageRestartDialog) {
+        if (showYoutubeMusic) {
+            if (youtubeMusicState.showLogin) youtubeMusicViewModel.cancelLogin()
+            else if (youtubeMusicState.detail != null) youtubeMusicViewModel.closeDetail()
+            else showYoutubeMusic = false
+        } else if (showLanguageRestartDialog) {
             showLanguageRestartDialog = false
         } else if (state.showRecognition) {
             viewModel.closeRecognition()
@@ -2254,7 +2270,17 @@ fun LevyraApp(
                     when (tab) {
                         LevyraTab.Home -> {
                             val homeViewModel: HomeViewModel = composeViewModel(key = "levyra-home", factory = screenViewModelFactory)
-                            val renderSnapshot by homeViewModel.renderState.collectAsStateWithLifecycle()
+                            val levyraRenderSnapshot by homeViewModel.renderState.collectAsStateWithLifecycle()
+                            val youtubeMusicHome = youtubeMusicState.home
+                            val renderSnapshot by produceState(levyraRenderSnapshot, levyraRenderSnapshot, youtubeMusicHome) {
+                                val home = youtubeMusicHome
+                                val previous = value
+                                value = if (home == null) {
+                                    levyraRenderSnapshot
+                                } else {
+                                    withContext(Dispatchers.Default) { withYoutubeMusicHome(levyraRenderSnapshot, home, previous) }
+                                }
+                            }
                             CompositionLocalProvider(
                                 LocalHomeCompactDensity provides
                                     renderSnapshot.state.interfaceSettings.compactHome
@@ -2264,6 +2290,7 @@ fun LevyraApp(
                                     renderSnapshot = renderSnapshot,
                                     homeListState = homeListState,
                                     deferredSectionsRevealed = homeDeferredSectionsRevealed,
+                                    accountAvatarUrl = youtubeMusicState.active?.avatarUrl.orEmpty(),
                                     onTrackActions = { track ->
                                         queueRemovalTarget = null
                                         trackActionTarget = track
@@ -2291,7 +2318,11 @@ fun LevyraApp(
                         LevyraTab.Library -> {
                             val libraryViewModel: LibraryViewModel = composeViewModel(key = "levyra-library", factory = screenViewModelFactory)
                             val screenState by libraryViewModel.state.collectAsStateWithLifecycle()
-                            LevyraLibraryScreen(libraryViewModel, screenState, onOpenDownloads = { showDownloadsFolder = true })
+                            LevyraLibraryScreen(
+                                libraryViewModel, screenState, onOpenDownloads = { showDownloadsFolder = true },
+                                youtubeMusicAccount = youtubeMusicState.active,
+                                onOpenYoutubeMusic = { showYoutubeMusic = true }
+                            )
                         }
                         LevyraTab.Player -> Unit
                     }
@@ -2656,7 +2687,19 @@ fun LevyraApp(
                         )
                     },
                     onRemoveProfilePhoto = viewModel::clearProfilePhoto,
+                    onOpenYoutubeMusic = { viewModel.closeSettings(); showYoutubeMusic = true },
                     onClose = viewModel::closeSettings
+                )
+            }
+
+            if (showYoutubeMusic) {
+                com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicAccountScreen(
+                    viewModel = youtubeMusicViewModel,
+                    languageCode = state.languageCode,
+                    onPlay = { tracks, track -> showYoutubeMusic = false; viewModel.playFrom(tracks, track) },
+                    onArtist = viewModel::openArtistFromHit,
+                    onImported = viewModel::refreshYoutubeMusicImports,
+                    onClose = { showYoutubeMusic = false }
                 )
             }
 
@@ -9159,6 +9202,7 @@ private fun HomeScreen(
     renderSnapshot: HomeRenderSnapshot,
     homeListState: LazyListState,
     deferredSectionsRevealed: MutableState<Boolean>,
+    accountAvatarUrl: String,
     onTrackActions: (Track) -> Unit
 ) {
     val state = renderSnapshot.state
@@ -9581,6 +9625,7 @@ private fun HomeScreen(
                             userName = state.userName,
                             profilePhotoPath = state.profilePhotoPath,
                             profilePhotoVersion = state.profilePhotoVersion,
+                            accountAvatarUrl = accountAvatarUrl,
                             currentId = state.currentTrack?.id,
                             isPlaying = state.isPlaying,
                             isResolving = state.isResolving,
@@ -11798,11 +11843,28 @@ private fun HomeCompactPlayAllHeader(
     }
 }
 
+private fun withYoutubeMusicHome(
+    snapshot: HomeRenderSnapshot,
+    home: com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicHome,
+    previous: HomeRenderSnapshot
+): HomeRenderSnapshot {
+    val state = snapshot.state
+    return buildHomeRenderSnapshot(
+        state.copy(
+            personalOrbitTracks = home.orbit.ifEmpty { state.personalOrbitTracks },
+            homeSections = home.sections.ifEmpty { state.homeSections },
+            homeAlbums = home.albums.ifEmpty { state.homeAlbums }
+        ),
+        previous
+    )
+}
+
 @Composable
 private fun HomeOrbitHeader(
     userName: String,
     profilePhotoPath: String,
     profilePhotoVersion: Long,
+    accountAvatarUrl: String,
     onPlayAll: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -11819,7 +11881,8 @@ private fun HomeOrbitHeader(
             HomeOrbitAvatar(
                 initial = initial,
                 photoPath = profilePhotoPath,
-                photoVersion = profilePhotoVersion
+                photoVersion = profilePhotoVersion,
+                accountAvatarUrl = accountAvatarUrl
             )
             Spacer(modifier = Modifier.width(LevyraHomeDesign.OrbitAvatarGap))
         }
@@ -11852,10 +11915,10 @@ private fun HomeOrbitHeader(
 }
 
 @Composable
-private fun HomeOrbitAvatar(initial: String, photoPath: String, photoVersion: Long) {
+private fun HomeOrbitAvatar(initial: String, photoPath: String, photoVersion: Long, accountAvatarUrl: String) {
     val context = LocalContext.current
-    val photoRequest = remember(context, photoPath, photoVersion) {
-        photoPath.takeIf(String::isNotBlank)?.let { path ->
+    val photoRequest = remember(context, photoPath, photoVersion, accountAvatarUrl) {
+        accountAvatarUrl.takeIf(String::isNotBlank) ?: photoPath.takeIf(String::isNotBlank)?.let { path ->
             ImageRequest.Builder(context)
                 .data(File(path))
                 .memoryCacheKey("levyra-profile-photo-$photoVersion")
@@ -11903,6 +11966,7 @@ private fun PersonalListeningShelf(
     userName: String,
     profilePhotoPath: String,
     profilePhotoVersion: Long,
+    accountAvatarUrl: String,
     currentId: String?,
     isPlaying: Boolean,
     isResolving: Boolean,
@@ -11970,6 +12034,7 @@ private fun PersonalListeningShelf(
                 userName = userName,
                 profilePhotoPath = profilePhotoPath,
                 profilePhotoVersion = profilePhotoVersion,
+                accountAvatarUrl = accountAvatarUrl,
                 onPlayAll = onPlayAll
             )
         }
@@ -12910,7 +12975,9 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
     val tasteHintQueries = remember(personalized.prompts, state.languageCode) {
         buildSearchTasteHints(
             prompts = personalized.prompts,
-            fallbacks = LevyraContentLocales.quickSearches(state.languageCode)
+            fallbacks = LevyraContentLocales.quickSearches(state.languageCode) +
+                LevyraContentLocales.artistSuggestions(state.languageCode),
+            limit = SEARCH_TASTE_HINT_LIMIT
         )
     }
     var placeholderIndex by remember(personalizedPlaceholders) { mutableIntStateOf(0) }
@@ -13660,6 +13727,7 @@ private fun RecentSearchesRow(
 ) {
     val context = LocalContext.current
     val strings = LocalLevyraStrings.current
+    val haptics = LocalLevyraHaptics.current
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionTitle(title)
@@ -13667,7 +13735,7 @@ private fun RecentSearchesRow(
         val recentDepth = carouselDepthEnabled()
         LazyRow(
             state = recentState,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(end = 16.dp)
         ) {
             items(tracks, key = { "recent-${it.id}" }) { track ->
@@ -13675,32 +13743,44 @@ private fun RecentSearchesRow(
                 val isFavorite = track.id in favoriteIds
                 val isDownloaded = track.id in downloadedTrackIds
 
-                Column(
+                Box(
                     modifier = Modifier
                         .levyraCarouselDepth(recentState, "recent-${track.id}", recentDepth)
-                        .width(140.dp)
-                        .clickable { onTrackClick(track) },
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                        .width(RecentSearchCardWidth)
                 ) {
-                    CoverImage(
-                        track = track,
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .aspectRatio(1f)
-                            .clip(LevyraHomeDesign.ArtworkShape)
-                            .background(Color.White.copy(alpha = 0.04f))
-                    )
-                    Row(verticalAlignment = Alignment.Top) {
-                        Column(
+                            .clip(RecentSearchCardShape)
+                            .background(LevyraPanelSoft.copy(alpha = if (LevyraIsLight) 0.72f else 0.48f))
+                            .combinedClickable(
+                                onClick = { onTrackClick(track) },
+                                onLongClick = {
+                                    haptics.perform(LevyraHapticAction.Confirm)
+                                    menuExpanded = true
+                                },
+                                onLongClickLabel = strings.actions
+                            )
+                            .padding(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CoverImage(
+                            track = track,
                             modifier = Modifier
-                                .weight(1f)
-                                .padding(top = 2.dp),
+                                .fillMaxWidth()
+                                .aspectRatio(1f)
+                                .clip(RecentSearchArtworkShape)
+                                .background(Color.White.copy(alpha = 0.04f))
+                        )
+                        Column(
+                            modifier = Modifier.padding(start = 6.dp, end = 6.dp, bottom = 6.dp),
                             verticalArrangement = Arrangement.spacedBy(1.dp)
                         ) {
                             Text(
                                 text = track.title,
                                 color = LevyraText,
-                                fontSize = 13.sp,
+                                fontSize = 12.5.sp,
+                                lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -13709,49 +13789,38 @@ private fun RecentSearchesRow(
                                 text = track.artist,
                                 color = LevyraMuted,
                                 fontSize = 11.sp,
+                                lineHeight = LevyraTypeRhythm.lineHeight(11.sp),
                                 fontWeight = FontWeight.Medium,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
-                        Box {
-                            Box(
-                                modifier = Modifier
-                                    .size(width = 32.dp, height = 48.dp)
-                                    .offset(x = 8.dp, y = (-10).dp)
-                                    .clip(CircleShape)
-                                    .clickable(role = Role.Button) { menuExpanded = true },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.MoreVert,
-                                    contentDescription = strings.actions,
-                                    tint = LevyraMuted,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                            SearchTrackActionsMenu(
-                                track = track,
-                                expanded = menuExpanded,
-                                isFavorite = isFavorite,
-                                isDownloaded = isDownloaded,
-                                allowRemove = allowRemove,
-                                onDismiss = { menuExpanded = false },
-                                onRemove = onRemove,
-                                onFavorite = onFavorite,
-                                onAddToPlaylist = onAddToPlaylist,
-                                onPlayNext = onPlayNext,
-                                onAddToQueue = onAddToQueue,
-                                onDownload = onDownload,
-                                onArtist = onArtist
-                            )
-                        }
                     }
+                    SearchTrackActionsMenu(
+                        track = track,
+                        expanded = menuExpanded,
+                        isFavorite = isFavorite,
+                        isDownloaded = isDownloaded,
+                        allowRemove = allowRemove,
+                        onDismiss = { menuExpanded = false },
+                        onRemove = onRemove,
+                        onFavorite = onFavorite,
+                        onAddToPlaylist = onAddToPlaylist,
+                        onPlayNext = onPlayNext,
+                        onAddToQueue = onAddToQueue,
+                        onDownload = onDownload,
+                        onArtist = onArtist
+                    )
                 }
             }
         }
     }
 }
+
+private const val SEARCH_TASTE_HINT_LIMIT = 10
+private val RecentSearchCardWidth = 120.dp
+private val RecentSearchCardShape = RoundedCornerShape(24.dp)
+private val RecentSearchArtworkShape = RoundedCornerShape(18.dp)
 
 @Composable
 private fun SearchTrackActionsMenu(
@@ -18292,6 +18361,7 @@ private fun SettingsOverlay(
     profilePhotoSet: Boolean,
     onPickProfilePhoto: () -> Unit,
     onRemoveProfilePhoto: () -> Unit,
+    onOpenYoutubeMusic: () -> Unit,
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -18337,6 +18407,7 @@ private fun SettingsOverlay(
             SettingsCategoryMeta("backup", strings.vaultTitle, "${strings.backupNow} · ${strings.restoreBackup}", Icons.Rounded.History, LevyraCyan),
             SettingsCategoryMeta("system", categoryTitle(strings.preferences), "${strings.batteryUnrestricted} · ${strings.language}", Icons.Rounded.Settings, LevyraViolet),
             SettingsCategoryMeta("app", categoryTitle(strings.app), "${strings.updates} · ${BuildConfig.VERSION_NAME}", Icons.Rounded.Info, LevyraPink)
+            , SettingsCategoryMeta("youtube_music", "YouTube Music", com.luc4n3x.levyra.ui.i18n.youtubeMusicCopy(strings.code).introduction, Icons.Rounded.AccountCircle, LevyraCyan)
             , SettingsCategoryMeta("integrations", categoryTitle(strings.integrations), "Last.fm · ListenBrainz · AudD", Icons.Rounded.Settings, LevyraCyan)
             , SettingsCategoryMeta("network", categoryTitle(strings.networkTitle), strings.networkSubtitle, Icons.Rounded.Settings, LevyraBlue)
             , SettingsCategoryMeta("jam", categoryTitle(strings.jamTitle), strings.jamSubtitle, Icons.Rounded.PlayArrow, LevyraViolet)
@@ -18454,6 +18525,8 @@ private fun SettingsOverlay(
                             SettingsSearchResultRow(result.title, result.description, result.categoryLabel) {
                                 if (result.categoryId == SETTINGS_CATEGORY_AUDIO) {
                                     onOpenAudioSettings()
+                                } else if (result.categoryId == "youtube_music") {
+                                    onOpenYoutubeMusic()
                                 } else {
                                     activeCategory = result.categoryId
                                 }
@@ -18466,7 +18539,11 @@ private fun SettingsOverlay(
                             index = index,
                             count = categories.size
                         ) {
-                            if (category.id == "audio") onOpenAudioSettings() else activeCategory = category.id
+                            when (category.id) {
+                                "audio" -> onOpenAudioSettings()
+                                "youtube_music" -> onOpenYoutubeMusic()
+                                else -> activeCategory = category.id
+                            }
                         }
                     }
                     item { SettingsHubFooter() }
