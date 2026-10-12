@@ -756,10 +756,10 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
         input.showPersonalOrbit && orbitBase.isNotEmpty() && orbitBase.size < 18
     ) {
         val tasteRankedCandidates = LevyraPersonalOrbit.build(
-            currentTrack = input.currentTrack,
-            recentSearches = input.recentListens,
-            favorites = input.favorites,
-            tracks = input.tracks + input.quickPickSeeds,
+            currentTrack = input.currentTrack?.takeUnless(input.artistExclusions::excludesTrack),
+            recentSearches = input.artistExclusions.filterTracks(input.recentListens),
+            favorites = input.artistExclusions.filterTracks(input.favorites),
+            tracks = input.artistExclusions.filterTracks(input.tracks + input.quickPickSeeds),
             homeSections = input.homeSections,
             charts = input.charts,
             cachedOrbit = input.personalOrbitTracks,
