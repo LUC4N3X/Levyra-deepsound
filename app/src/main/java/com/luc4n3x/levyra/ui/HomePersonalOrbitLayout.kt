@@ -14,11 +14,7 @@ internal fun homePersonalOrbitPages(
     val distinct = LevyraPersonalOrbit.distinctWorks(
         LevyraPersonalOrbit.distinctRecordings(tracks)
     ).take(limit.coerceAtLeast(0))
-    val visibleCount = if (distinct.size > HOME_PERSONAL_ORBIT_PAGE_SIZE) {
-        distinct.size / HOME_PERSONAL_ORBIT_PAGE_SIZE * HOME_PERSONAL_ORBIT_PAGE_SIZE
-    } else {
-        distinct.size
-    }
+    val visibleCount = distinct.size.coerceAtMost(HOME_PERSONAL_ORBIT_PAGE_SIZE * 2)
     return distinct
         .take(visibleCount)
         .chunked(HOME_PERSONAL_ORBIT_PAGE_SIZE)
