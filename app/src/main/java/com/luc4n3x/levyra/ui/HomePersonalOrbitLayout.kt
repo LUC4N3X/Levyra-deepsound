@@ -6,6 +6,7 @@ import java.util.Locale
 
 internal const val HOME_PERSONAL_ORBIT_GRID_COLUMNS = 3
 private const val HOME_PERSONAL_ORBIT_PAGE_SIZE = HOME_PERSONAL_ORBIT_GRID_COLUMNS * HOME_PERSONAL_ORBIT_GRID_COLUMNS
+internal const val HOME_PERSONAL_ORBIT_MAX_TRACKS = HOME_PERSONAL_ORBIT_PAGE_SIZE * 2
 
 internal fun homePersonalOrbitPages(
     tracks: List<Track>,
@@ -14,7 +15,7 @@ internal fun homePersonalOrbitPages(
     val distinct = LevyraPersonalOrbit.distinctWorks(
         LevyraPersonalOrbit.distinctRecordings(tracks)
     ).take(limit.coerceAtLeast(0))
-    val visibleCount = distinct.size.coerceAtMost(HOME_PERSONAL_ORBIT_PAGE_SIZE * 2)
+    val visibleCount = distinct.size.coerceAtMost(HOME_PERSONAL_ORBIT_MAX_TRACKS)
     return distinct
         .take(visibleCount)
         .chunked(HOME_PERSONAL_ORBIT_PAGE_SIZE)
@@ -33,7 +34,7 @@ internal fun homePersonalOrbitFilledTracks(
     val candidates = tracks + recommendations.filter(LevyraPersonalOrbit::isReliableMusicCandidate)
     return LevyraPersonalOrbit.distinctWorks(
         LevyraPersonalOrbit.distinctRecordings(blocked + candidates)
-    ).drop(blocked.size).take(HOME_PERSONAL_ORBIT_PAGE_SIZE * 2)
+    ).drop(blocked.size).take(HOME_PERSONAL_ORBIT_MAX_TRACKS)
 }
 
 internal fun homePersonalOrbitInitial(userName: String): String? {

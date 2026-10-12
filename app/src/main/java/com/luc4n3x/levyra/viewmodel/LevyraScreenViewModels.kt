@@ -51,6 +51,7 @@ import com.luc4n3x.levyra.domain.prepareMixPlaybackTracks
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
 import com.luc4n3x.levyra.feature.recognition.RecognitionState
 import com.luc4n3x.levyra.feature.radio.RadioStation
+import com.luc4n3x.levyra.ui.HOME_PERSONAL_ORBIT_MAX_TRACKS
 import com.luc4n3x.levyra.ui.homePersonalOrbitFilledTracks
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import kotlinx.coroutines.Dispatchers
@@ -753,7 +754,7 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
         excludedTracks = quickPicks?.tracks.orEmpty()
     )
     val personalOrbitDisplayTracks = if (
-        input.showPersonalOrbit && orbitBase.isNotEmpty() && orbitBase.size < 18
+        input.showPersonalOrbit && input.personalOrbitTracks.isNotEmpty() && orbitBase.size < HOME_PERSONAL_ORBIT_MAX_TRACKS
     ) {
         val tasteRankedCandidates = LevyraPersonalOrbit.build(
             currentTrack = input.currentTrack?.takeUnless(input.artistExclusions::excludesTrack),
