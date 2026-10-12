@@ -40,6 +40,28 @@ class HomePersonalOrbitLayoutTest {
     }
 
     @Test
+    fun `orbit keeps a partial second swipe page`() {
+        val pages = homePersonalOrbitPages(tracks(12))
+
+        assertEquals(2, pages.size)
+        assertEquals(
+            listOf(
+                listOf(listOf(0, 1, 2), listOf(3, 4, 5), listOf(6, 7, 8)),
+                listOf(listOf(9, 10, 11))
+            ),
+            pages.map { page -> page.map { row -> row.map(::indexOf) } }
+        )
+    }
+
+    @Test
+    fun `orbit exposes the tenth track on a second page`() {
+        val pages = homePersonalOrbitPages(tracks(10))
+
+        assertEquals(2, pages.size)
+        assertEquals(listOf(9), pages.last().flatten().map(::indexOf))
+    }
+
+    @Test
     fun `orbit accepts an empty source`() {
         assertTrue(homePersonalOrbitPages(emptyList()).isEmpty())
         assertTrue(homePersonalOrbitPages(tracks(9), limit = 0).isEmpty())
