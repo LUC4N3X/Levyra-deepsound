@@ -140,6 +140,15 @@ M3_PAIR_PALETTES = [
     ((255, 248, 243), (255, 220, 194), (139, 80, 0), (246, 195, 145)),
 ]
 
+M3_PHONE_OVERRIDES = {
+    "Screenshot_20261012_193022_LEVYRA.jpg": {
+        "target_w": 590,
+        "x": 70,
+        "y": -70,
+        "angle": 8,
+    },
+}
+
 M3_HERO_SPECS = [
     ("Screenshot_20260926_171253_LEVYRA.jpg", "ZERO ADS • NATIVE PLAY", "Pure listening.",
      "Zero ads, zero accounts.\nStream and store locally on your device.",
@@ -211,11 +220,13 @@ def draw_m3_copy(card, spec, placement, primary, surface):
 def paste_cut_phone(canvas, spec, card_index, placement, gutter, angle):
     card_w = 900
     card_left = card_index * (card_w + gutter)
+    phone_override = M3_PHONE_OVERRIDES.get(spec[0], {})
     screenshot_path = resolve_screenshot_path(spec[0])
     if not screenshot_path:
         raise FileNotFoundError(f"Missing showcase screenshot: {spec[0]}")
     with Image.open(screenshot_path) as source:
-        phone = create_s26_ultra_mockup(source, target_w=700)
+        phone = create_s26_ultra_mockup(source, target_w=phone_override.get("target_w", 700))
+    angle = phone_override.get("angle", angle)
     rotated = phone.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
     shadow, pad = create_m3_shadow(rotated, blur=42, offset_y=24)
 
@@ -225,6 +236,8 @@ def paste_cut_phone(canvas, spec, card_index, placement, gutter, angle):
     else:
         x = card_left + (-40 if card_index == 0 else 160)
         y = 315
+    x = card_left + phone_override.get("x", x - card_left)
+    y = phone_override.get("y", y)
     canvas.paste(shadow, (x - pad, y - pad), shadow)
     canvas.paste(rotated, (x, y), rotated)
 
