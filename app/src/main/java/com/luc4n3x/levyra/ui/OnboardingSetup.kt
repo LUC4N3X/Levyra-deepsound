@@ -302,42 +302,80 @@ internal fun OnboardingOverlay(
                     }
                 }
                 SetupFooter(
-                    label = when {
-                        step == OnboardingStep.Intro -> strings.introStart
-                        step != OnboardingStep.YoutubeMusic -> strings.next
-                        youtubeMusicAccount != null -> strings.startListening
-                        youtubeMusicError != null -> youtubeMusicCopy.retry
-                        else -> youtubeMusicCopy.connect
-                    },
+                    label = setupPrimaryLabel(step, strings, youtubeMusicCopy, youtubeMusicAccount != null, youtubeMusicError != null),
                     accent = accent,
-                    enabled = onboardingPrimaryEnabled(step, selected.size) &&
-                        (step != OnboardingStep.YoutubeMusic || youtubeMusicAccount != null || !youtubeMusic.restoring),
-                    skipLabel = when {
-                        step == OnboardingStep.Taste && selected.size < 3 -> strings.skipAndContinue
-                        step == OnboardingStep.YoutubeMusic && youtubeMusicAccount == null -> youtubeMusicCopy.skip
-                        else -> null
-                    },
+                    enabled = setupPrimaryEnabled(step, selected.size, youtubeMusic),
+                    skipLabel = setupSkipLabel(step, selected.size, strings, youtubeMusicCopy, youtubeMusicAccount != null),
                     onPrimary = advance,
                     onSkip = { if (step == OnboardingStep.Taste) step = step.next() else finish() }
                 )
             }
             if (youtubeMusic.showLogin) {
-                YoutubeMusicLoginScreen(
-                    copy = youtubeMusicCopy(languageCode).copy(
-                        login = youtubeMusicCopy.login,
-                        back = strings.back,
-                        checking = youtubeMusicCopy.checking,
-                        retry = youtubeMusicCopy.retry,
-                        networkError = youtubeMusicCopy.networkError
-                    ),
-                    checking = youtubeMusic.checkingLogin,
-                    error = youtubeMusic.error?.let { onboardingYoutubeMusicErrorText(youtubeMusicCopy, it) },
+                SetupYoutubeMusicLogin(
+                    languageCode = languageCode,
+                    backLabel = strings.back,
+                    copy = youtubeMusicCopy,
+                    state = youtubeMusic,
                     onCookie = onYoutubeMusicCookie,
                     onClose = onCancelYoutubeMusicLogin
                 )
             }
         }
     }
+}
+
+private fun setupPrimaryLabel(
+    step: OnboardingStep,
+    strings: LevyraStrings,
+    copy: OnboardingYoutubeMusicCopy,
+    connected: Boolean,
+    failed: Boolean
+): String = when {
+    step == OnboardingStep.Intro -> strings.introStart
+    step != OnboardingStep.YoutubeMusic -> strings.next
+    connected -> strings.startListening
+    failed -> copy.retry
+    else -> copy.connect
+}
+
+private fun setupPrimaryEnabled(step: OnboardingStep, selectedTasteCount: Int, youtubeMusic: YoutubeMusicAccountUiState): Boolean =
+    if (step == OnboardingStep.YoutubeMusic) youtubeMusic.active != null || !youtubeMusic.restoring
+    else onboardingPrimaryEnabled(step, selectedTasteCount)
+
+private fun setupSkipLabel(
+    step: OnboardingStep,
+    selectedTasteCount: Int,
+    strings: LevyraStrings,
+    copy: OnboardingYoutubeMusicCopy,
+    connected: Boolean
+): String? = when {
+    step == OnboardingStep.Taste && selectedTasteCount < 3 -> strings.skipAndContinue
+    step == OnboardingStep.YoutubeMusic && !connected -> copy.skip
+    else -> null
+}
+
+@Composable
+private fun SetupYoutubeMusicLogin(
+    languageCode: String,
+    backLabel: String,
+    copy: OnboardingYoutubeMusicCopy,
+    state: YoutubeMusicAccountUiState,
+    onCookie: (String) -> Unit,
+    onClose: () -> Unit
+) {
+    YoutubeMusicLoginScreen(
+        copy = youtubeMusicCopy(languageCode).copy(
+            login = copy.login,
+            back = backLabel,
+            checking = copy.checking,
+            retry = copy.retry,
+            networkError = copy.networkError
+        ),
+        checking = state.checkingLogin,
+        error = state.error?.let { onboardingYoutubeMusicErrorText(copy, it) },
+        onCookie = onCookie,
+        onClose = onClose
+    )
 }
 
 private fun onboardingYoutubeMusicErrorText(copy: OnboardingYoutubeMusicCopy, error: YoutubeMusicAccountError): String =
@@ -1203,31 +1241,7 @@ private fun SetupYoutubeMusicLink(accent: Color, connected: Boolean, animated: B
         ) {
             LevyraLogoMark(size = 42.dp, contentDescription = null)
         }
-        Canvas(
-            modifier = Modifier
-                .width(84.dp)
-                .height(20.dp)
-                .graphicsLayer { scaleX = if (rtl) -1f else 1f }
-        ) {
-            val y = size.height / 2f
-            val step = size.width / SetupLinkDots
-            val radius = 3.dp.toPx()
-            repeat(SetupLinkDots) { index ->
-                val glow = pulse?.let { (1f - kotlin.math.abs(it.value - index)).coerceIn(0f, 1f) } ?: 0.35f
-                drawCircle(
-                    color = accent.copy(alpha = (0.22f + 0.7f * glow) * (1f - link)),
-                    radius = radius,
-                    center = Offset(step * (index + 0.5f), y)
-                )
-            }
-            if (link > 0f) drawLine(
-                color = accent,
-                start = Offset(step * 0.5f, y),
-                end = Offset(step * 0.5f + (size.width - step) * link, y),
-                strokeWidth = 4.dp.toPx(),
-                cap = StrokeCap.Round
-            )
-        }
+        SetupLinkConnector(accent = accent, link = { link }, pulse = { pulse?.value }, mirrored = rtl)
         Box(
             modifier = Modifier
                 .size(76.dp)
@@ -1340,6 +1354,38 @@ private fun SetupYoutubeMusicAccountCard(copy: OnboardingYoutubeMusicCopy, accou
         Text(copy.connectedBody, color = SetupMuted, fontSize = 15.sp, lineHeight = 22.sp)
     }
 }
+
+@Composable
+private fun SetupLinkConnector(accent: Color, link: () -> Float, pulse: () -> Float?, mirrored: Boolean) {
+    Canvas(
+        modifier = Modifier
+            .width(84.dp)
+            .height(20.dp)
+            .graphicsLayer { scaleX = if (mirrored) -1f else 1f }
+    ) {
+        val progress = link()
+        val phase = pulse()
+        val y = size.height / 2f
+        val step = size.width / SetupLinkDots
+        repeat(SetupLinkDots) { index ->
+            drawCircle(
+                color = accent.copy(alpha = (0.22f + 0.7f * setupLinkGlow(phase, index)) * (1f - progress)),
+                radius = 3.dp.toPx(),
+                center = Offset(step * (index + 0.5f), y)
+            )
+        }
+        if (progress > 0f) drawLine(
+            color = accent,
+            start = Offset(step * 0.5f, y),
+            end = Offset(step * 0.5f + (size.width - step) * progress, y),
+            strokeWidth = 4.dp.toPx(),
+            cap = StrokeCap.Round
+        )
+    }
+}
+
+private fun setupLinkGlow(phase: Float?, index: Int): Float =
+    if (phase == null) 0.35f else (1f - kotlin.math.abs(phase - index)).coerceIn(0f, 1f)
 
 private const val SetupLinkDots = 5
 
