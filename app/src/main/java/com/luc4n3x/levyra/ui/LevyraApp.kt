@@ -1801,6 +1801,12 @@ private fun Modifier.pressable(
     haptic = haptic
 )
 
+private fun Modifier.blockTouchesBehind(): Modifier = pointerInput(Unit) {
+    awaitPointerEventScope {
+        while (true) awaitPointerEvent()
+    }
+}
+
 private fun Modifier.consumeOverlayTouches(): Modifier = pointerInput(Unit) {
     awaitPointerEventScope {
         while (true) {
@@ -2479,6 +2485,7 @@ fun LevyraApp(
                             }
                         }
                         .playerMorphContainer(morphAnchors)
+                        .blockTouchesBehind()
                 ) {
                     val lyricsLandscapeActive = lyricsLandscapeLayoutActive(LocalConfiguration.current)
                     PlayerScreen(
@@ -13726,9 +13733,9 @@ private fun RecentSearchesRow(
     onDownload: (Track) -> Unit,
     onArtist: (Track) -> Unit
 ) {
-    val context = LocalContext.current
     val strings = LocalLevyraStrings.current
-    val haptics = LocalLevyraHaptics.current
+    val scheme = MaterialTheme.colorScheme
+    val artworkShapes = recentSearchArtworkShapes()
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionTitle(title)
@@ -13736,10 +13743,11 @@ private fun RecentSearchesRow(
         val recentDepth = carouselDepthEnabled()
         LazyRow(
             state = recentState,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            contentPadding = PaddingValues(end = 16.dp)
+            modifier = Modifier.recentSearchesBleed(RecentSearchGutter),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(horizontal = RecentSearchGutter)
         ) {
-            items(tracks, key = { "recent-${it.id}" }) { track ->
+            itemsIndexed(tracks, key = { _, track -> "recent-${track.id}" }) { index, track ->
                 var menuExpanded by remember(track.id) { mutableStateOf(false) }
                 val isFavorite = track.id in favoriteIds
                 val isDownloaded = track.id in downloadedTrackIds
@@ -13753,45 +13761,61 @@ private fun RecentSearchesRow(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RecentSearchCardShape)
-                            .background(LevyraPanelSoft.copy(alpha = if (LevyraIsLight) 0.72f else 0.48f))
-                            .combinedClickable(
+                            .background(scheme.secondaryContainer.copy(alpha = if (LevyraIsLight) 0.62f else 0.34f))
+                            .levyraPressable(
                                 onClick = { onTrackClick(track) },
-                                onLongClick = {
-                                    haptics.perform(LevyraHapticAction.Confirm)
-                                    menuExpanded = true
-                                },
-                                onLongClickLabel = strings.actions
+                                onLongClick = { menuExpanded = true },
+                                onLongClickLabel = strings.actions,
+                                pressedScale = LevyraPressScale.Control,
+                                role = Role.Button
                             )
-                            .padding(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                            .padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        CoverImage(
-                            track = track,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(1f)
-                                .clip(RecentSearchArtworkShape)
-                                .background(Color.White.copy(alpha = 0.04f))
-                        )
+                        Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f)) {
+                            CoverImage(
+                                track = track,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(artworkShapes[index % artworkShapes.size])
+                                    .background(scheme.surfaceContainerHighest)
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .size(RecentSearchPlayBadge)
+                                    .clip(artworkShapes[(index + 1) % artworkShapes.size])
+                                    .background(scheme.primary),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.PlayArrow,
+                                    contentDescription = null,
+                                    tint = scheme.onPrimary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        }
                         Column(
-                            modifier = Modifier.padding(start = 6.dp, end = 6.dp, bottom = 6.dp),
-                            verticalArrangement = Arrangement.spacedBy(1.dp)
+                            modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 4.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             Text(
                                 text = track.title,
                                 color = LevyraText,
-                                fontSize = 12.5.sp,
-                                lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
-                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                lineHeight = LevyraTypeRhythm.lineHeight(14.sp),
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = (-0.2).sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
                                 text = track.artist,
                                 color = LevyraMuted,
-                                fontSize = 11.sp,
-                                lineHeight = LevyraTypeRhythm.lineHeight(11.sp),
-                                fontWeight = FontWeight.Medium,
+                                fontSize = 12.sp,
+                                lineHeight = LevyraTypeRhythm.lineHeight(12.sp),
+                                fontWeight = FontWeight.SemiBold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -13818,10 +13842,33 @@ private fun RecentSearchesRow(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun recentSearchArtworkShapes(): List<Shape> {
+    val cookie9 = MaterialShapes.Cookie9Sided.toShape()
+    val clover = MaterialShapes.Clover4Leaf.toShape()
+    val cookie6 = MaterialShapes.Cookie6Sided.toShape()
+    val softBurst = MaterialShapes.SoftBurst.toShape()
+    val cookie4 = MaterialShapes.Cookie4Sided.toShape()
+    return remember(cookie9, clover, cookie6, softBurst, cookie4) {
+        listOf(cookie9, clover, cookie6, softBurst, cookie4)
+    }
+}
+
+private fun Modifier.recentSearchesBleed(gutter: Dp): Modifier = layout { measurable, constraints ->
+    val gutterPx = gutter.roundToPx()
+    val width = constraints.maxWidth + gutterPx * 2
+    val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
+    layout(constraints.maxWidth, placeable.height) {
+        placeable.place(-gutterPx, 0)
+    }
+}
+
 private const val SEARCH_TASTE_HINT_LIMIT = 10
-private val RecentSearchCardWidth = 120.dp
-private val RecentSearchCardShape = RoundedCornerShape(24.dp)
-private val RecentSearchArtworkShape = RoundedCornerShape(18.dp)
+private val RecentSearchGutter = 18.dp
+private val RecentSearchCardWidth = 148.dp
+private val RecentSearchCardShape = RoundedCornerShape(32.dp)
+private val RecentSearchPlayBadge = 44.dp
 
 @Composable
 private fun SearchTrackActionsMenu(
