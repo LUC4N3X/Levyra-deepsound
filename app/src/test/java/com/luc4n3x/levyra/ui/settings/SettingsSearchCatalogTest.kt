@@ -78,6 +78,12 @@ class SettingsSearchCatalogTest {
         assertEquals("network.proxy", italian.search("proxy").first().id)
     }
 
+    @Test
+    fun `youtube music account search opens the dedicated category`() {
+        assertEquals("youtube_music.account", topId("YouTube Music"))
+        assertEquals("youtube_music", index.search("Google login").first().categoryId)
+    }
+
     private fun entries(strings: LevyraStrings) =
         settingsSearchEntries(strings, Locale.forLanguageTag(strings.code), updatesAvailable = true, aaudioOutputAvailable = true)
 
@@ -88,7 +94,7 @@ class SettingsSearchCatalogTest {
     private companion object {
         val CATEGORY_IDS = setOf(
             "design", "home", "player", SETTINGS_CATEGORY_AUDIO, "downloads", "lyrics",
-            "backup", "system", "app", "integrations", "network", "jam"
+            "backup", "system", "app", "integrations", "network", "jam", "youtube_music"
         )
     }
 }

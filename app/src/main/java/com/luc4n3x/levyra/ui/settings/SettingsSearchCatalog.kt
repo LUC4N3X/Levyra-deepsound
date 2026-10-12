@@ -23,6 +23,7 @@ private class SettingsSearchCategories(strings: LevyraStrings, locale: Locale) {
     val backup = SettingsSearchCategory("backup", strings.vaultTitle)
     val system = SettingsSearchCategory("system", settingsCategoryTitle(strings.preferences, locale))
     val app = SettingsSearchCategory("app", settingsCategoryTitle(strings.app, locale))
+    val youtubeMusic = SettingsSearchCategory("youtube_music", "YouTube Music")
     val integrations = SettingsSearchCategory("integrations", settingsCategoryTitle(strings.integrations, locale))
     val network = SettingsSearchCategory("network", settingsCategoryTitle(strings.networkTitle, locale))
     val jam = SettingsSearchCategory("jam", settingsCategoryTitle(strings.jamTitle, locale))
@@ -191,6 +192,7 @@ private fun MutableList<SettingsSearchEntry>.systemEntries(
     if (updatesAvailable) {
         entry("app.updates", strings.updates, strings.checkNewVersions, "version update", categories.app)
     }
+    entry("youtube_music.account", "YouTube Music", com.luc4n3x.levyra.ui.i18n.youtubeMusicCopy(strings.code).introduction, "youtube music google login account cookie library playlist likes", categories.youtubeMusic)
     entry("integrations.lastfm", "Last.fm", strings.integrations, "lastfm scrobble scrobbling", categories.integrations)
     entry("integrations.listenbrainz", "ListenBrainz", strings.integrations, "listenbrainz scrobble scrobbling", categories.integrations)
     entry("integrations.audd", "AudD", strings.integrations, "audd recognition identify", categories.integrations)

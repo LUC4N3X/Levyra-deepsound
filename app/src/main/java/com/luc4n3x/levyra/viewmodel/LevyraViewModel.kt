@@ -2889,6 +2889,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun refreshYoutubeMusicImports() {
+        loadPlaylists()
+    }
+
     fun createPlaylistWithTracks(name: String, tracks: List<Track>) {
         viewModelScope.launch {
             val cleanTracks = tracks.distinctBy { it.id }.filter { it.id.isNotBlank() }

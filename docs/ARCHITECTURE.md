@@ -906,3 +906,15 @@ New features should preserve these invariants:
 - new Home data should not replace usable content with loading placeholders;
 - low-RAM plans must remain bounded;
 - every resolver or navigation change should include a regression test.
+
+## Optional YouTube Music Account Library
+
+`YoutubeMusicAccountViewModel` owns an isolated state flow for the optional account overlay. It coordinates `YoutubeMusicAccountRepository` and the existing playlist/favorite stores; the root ViewModel refreshes its local playlist projection after an import. Settings launches the account screen, and a connected account exposes a Library shortcut.
+
+The login WebView uses SimpMusic's Google ServiceLogin URL. After reaching the exact HTTPS YouTube Music origin, it passes cookies directly to account verification. Account-switcher records preserve the channel's `pageId` and owning Google `authuser` index. Cookies are stored only in an AES-GCM encrypted, atomic file in Android's no-backup directory, using a dedicated Android Keystore key. Browser cookies are cleared when the login screen closes. Logout removes the selected saved session; removing the active account disconnects rather than silently switching identities.
+
+Authenticated WEB_REMIX requests use a bounded client derived from `LevyraHttpClientFactory.externalIntegrations()` and never enter the anonymous metadata cache or playback resolvers. Each request captures its own immutable session and carries cookie, SAPISIDHASH, `X-Goog-Authuser`, and optional `X-Goog-Pageid` headers. Network calls are cancellable, do not follow redirects, cap response sizes, and do not log private payloads.
+
+Personal playlists, liked songs, saved albums and library artists are browsed on demand. The existing YouTube Music parsers convert remote music renderers into Levyra models. Pagination rejects cycles and caps full imports at 200 pages / 10,000 unique tracks; failures do not turn partial pages into successful imports. Refresh keeps displayed content until a replacement page arrives.
+
+Imports use deterministic account-and-collection playlist IDs. Re-import adds missing songs through `PlaylistStore.addTracks`, preserving local names, tracks, order, tags and custom covers. Liked-song imports also add favorites using the existing favorite-store mutation lock. Remote refresh and local import are explicit user actions; there is no background or two-way sync, and no changes to playback providers, anonymous playback, downloads or local collections.
