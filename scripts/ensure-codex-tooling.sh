@@ -79,6 +79,19 @@ if [[ "$MISSING" -eq 1 ]]; then
   fi
 fi
 
+if [[ ! -f "$SKILL_ROOT/media-playback-footguns/SKILL.md" || ! -f "$SKILL_ROOT/material-3/SKILL.md" ]]; then
+  if ! command -v npx >/dev/null 2>&1; then
+    FAILURES+=("Ensure Kotlin/Material upstream skills: npx is unavailable")
+  else
+    if [[ ! -f "$SKILL_ROOT/media-playback-footguns/SKILL.md" ]]; then
+      fail_open "Install Kotlin footguns skills for Codex" npx skills@latest add maxrave-dev/kotlin-footguns -g -a codex -y || true
+    fi
+    if [[ ! -f "$SKILL_ROOT/material-3/SKILL.md" ]]; then
+      fail_open "Install Material 3 skill for Codex" npx skills@latest add hamen/material-3-skill -g -a codex -y -s material-3 || true
+    fi
+  fi
+fi
+
 if [[ ${#FAILURES[@]} -gt 0 ]]; then
   if [[ "$QUIET" -eq 0 ]]; then
     for failure in "${FAILURES[@]}"; do printf 'warning: %s\n' "$failure" >&2; done

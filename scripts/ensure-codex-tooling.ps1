@@ -119,6 +119,26 @@ if ($missingMattSkills.Count -gt 0) {
     }
 }
 
+$missingUpstreamKotlin = -not (Test-Path -LiteralPath (Join-Path $skillRoot 'media-playback-footguns/SKILL.md') -PathType Leaf)
+$missingUpstreamMaterial = -not (Test-Path -LiteralPath (Join-Path $skillRoot 'material-3/SKILL.md') -PathType Leaf)
+if ($missingUpstreamKotlin -or $missingUpstreamMaterial) {
+    if (-not (Test-Command 'npx')) {
+        $failures.Add('Ensure Kotlin/Material upstream skills: npx is unavailable')
+    }
+    else {
+        if ($missingUpstreamKotlin) {
+            Invoke-FailOpen 'Install Kotlin footguns skills for Codex' {
+                & npx skills@latest add maxrave-dev/kotlin-footguns -g -a codex -y *> $null
+            }
+        }
+        if ($missingUpstreamMaterial) {
+            Invoke-FailOpen 'Install Material 3 skill for Codex' {
+                & npx skills@latest add hamen/material-3-skill -g -a codex -y -s material-3 *> $null
+            }
+        }
+    }
+}
+
 if ($failures.Count -gt 0) {
     if (-not $Quiet) {
         foreach ($failure in $failures) {
