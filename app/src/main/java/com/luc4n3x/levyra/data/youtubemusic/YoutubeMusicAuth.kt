@@ -35,10 +35,14 @@ internal object YoutubeMusicAuth {
             uri.rawUserInfo == null && uri.port in listOf(-1, 443)
     }.getOrDefault(false)
 
+    private val loginHosts = setOf(
+        "accounts.google.com", "accounts.youtube.com", "youtube.com", "www.youtube.com",
+        "music.youtube.com", "consent.google.com", "consent.youtube.com", "myaccount.google.com"
+    )
+
     fun isLoginUrl(url: String): Boolean = runCatching {
         val uri = URI(url)
         uri.scheme == "https" && uri.rawUserInfo == null && uri.port in listOf(-1, 443) &&
-            (uri.host == "accounts.google.com" || uri.host == "music.youtube.com" ||
-                uri.host == "www.youtube.com" || uri.host == "consent.google.com" || uri.host == "myaccount.google.com")
+            uri.host in loginHosts
     }.getOrDefault(false)
 }

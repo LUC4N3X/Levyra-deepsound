@@ -38,6 +38,22 @@ class YoutubeMusicAccountProtocolTest {
         assertFalse(YoutubeMusicAuth.isMusicUrl("http://music.youtube.com/"))
         assertFalse(YoutubeMusicAuth.isMusicUrl("https://evil.test@music.youtube.com/"))
     }
+    @Test fun googleSessionBridgeCanFinishAfterTwoStepVerification() {
+        assertTrue(YoutubeMusicAuth.isLoginUrl("https://accounts.youtube.com/accounts/SetSID?continue=https%3A%2F%2Fmusic.youtube.com%2F"))
+        assertTrue(YoutubeMusicAuth.isLoginUrl("https://youtube.com/signin?action_handle_signin=true"))
+        assertTrue(YoutubeMusicAuth.isLoginUrl("https://consent.youtube.com/"))
+    }
+    @Test fun allowingGoogleSessionBridgeDoesNotAllowCookieCaptureThere() {
+        assertFalse(YoutubeMusicAuth.isMusicUrl("https://accounts.youtube.com/accounts/SetSID"))
+        assertFalse(YoutubeMusicAuth.isMusicUrl("https://youtube.com/signin"))
+    }
+    @Test fun loginRedirectPolicyRejectsLookalikesAndUnsafeSchemes() {
+        assertFalse(YoutubeMusicAuth.isLoginUrl("https://accounts.youtube.com.evil.test/accounts/SetSID"))
+        assertFalse(YoutubeMusicAuth.isLoginUrl("https://accounts.youtube.com@evil.test/"))
+        assertFalse(YoutubeMusicAuth.isLoginUrl("http://accounts.youtube.com/accounts/SetSID"))
+        assertFalse(YoutubeMusicAuth.isLoginUrl("https://accounts.youtube.com:8443/accounts/SetSID"))
+        assertFalse(YoutubeMusicAuth.isLoginUrl("intent://accounts.youtube.com/"))
+    }
     @Test fun continuationReadsGridAndActionShapes() {
         assertEquals("test-page", YoutubeMusicAccountParser.continuation(JSONObject("""{"continuationContents":{"gridContinuation":{"continuations":[{"nextContinuationData":{"continuation":"test-page"}}]}}}""")))
         assertEquals("test-action", YoutubeMusicAccountParser.continuation(JSONObject("""{"onResponseReceivedActions":[{"appendContinuationItemsAction":{"continuationItems":[{"continuationItemRenderer":{"continuationEndpoint":{"continuationCommand":{"token":"test-action"}}}}]}}]}""")))

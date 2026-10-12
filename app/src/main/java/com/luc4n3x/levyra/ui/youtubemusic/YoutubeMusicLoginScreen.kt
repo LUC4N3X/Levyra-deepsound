@@ -117,8 +117,11 @@ private class YoutubeMusicLoginClient(
     private val onWebError: () -> Unit,
     private val onCookie: (String) -> Unit
 ) : WebViewClient() {
-    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
-        request.isForMainFrame && !YoutubeMusicAuth.isLoginUrl(request.url.toString())
+    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+        val blocked = request.isForMainFrame && !YoutubeMusicAuth.isLoginUrl(request.url.toString())
+        if (blocked) onWebError()
+        return blocked
+    }
     override fun onPageStarted(view: WebView, url: String?, favicon: android.graphics.Bitmap?) {
         onLoading(true)
     }
