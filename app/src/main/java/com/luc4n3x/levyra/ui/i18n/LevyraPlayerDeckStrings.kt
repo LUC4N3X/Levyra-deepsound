@@ -12,6 +12,8 @@ internal val playerDeckKeys = setOf(
     "playerDeckPulseHint",
     "playerDeckHalo",
     "playerDeckHaloHint",
+    "playerDeckFolio",
+    "playerDeckFolioHint",
     "playerDeckDefaultBadge",
     "playerDeckLandscapeNote"
 )
@@ -46,7 +48,8 @@ internal data class PlayerDeckShortLabels(
     val artwork: String,
     val expressive: String,
     val pulse: String,
-    val halo: String = "Liner Notes"
+    val halo: String = "Liner Notes",
+    val folio: String = "Folio"
 )
 
 private val playerDeckShortLabelsByCode: Map<String, PlayerDeckShortLabels> = mapOf(
@@ -145,6 +148,46 @@ private val playerDeckHaloHints: Map<String, String> = mapOf(
     "et" to "Hõljuv kaanepilt ja tööriistariba."
 )
 
+private val playerDeckFolioHints: Map<String, String> = mapOf(
+    "en" to "Two-tone editorial layout.",
+    "it" to "Impaginazione editoriale bicolore.",
+    "es" to "Diseño editorial a dos tonos.",
+    "fr" to "Mise en page éditoriale bicolore.",
+    "de" to "Zweifarbiges Editorial-Layout.",
+    "pt" to "Paginação editorial em dois tons.",
+    "nl" to "Tweekleurige redactionele opmaak.",
+    "pl" to "Dwukolorowy układ redakcyjny.",
+    "ro" to "Machetă editorială în două tonuri.",
+    "el" to "Δίχρωμη editorial διάταξη.",
+    "sv" to "Tvåfärgad redaktionell layout.",
+    "da" to "Tofarvet redaktionelt layout.",
+    "cs" to "Dvoubarevné redakční rozvržení.",
+    "uk" to "Двоколірний журнальний макет.",
+    "ru" to "Двухцветный журнальный макет.",
+    "tr" to "İki tonlu editoryal düzen.",
+    "ar" to "تخطيط تحريري بلونين.",
+    "zh" to "双色杂志式排版。",
+    "ja" to "2色のエディトリアルレイアウト。",
+    "ko" to "투톤 에디토리얼 레이아웃.",
+    "hi" to "दो रंगों वाला संपादकीय लेआउट।",
+    "id" to "Tata letak editorial dua warna.",
+    "vi" to "Bố cục tạp chí hai tông màu.",
+    "th" to "เลย์เอาต์แบบนิตยสารสองโทนสี",
+    "fil" to "Editorial na layout na dalawang kulay.",
+    "he" to "פריסה עיתונאית דו־גונית.",
+    "fi" to "Kaksisävyinen lehtitaitto.",
+    "et" to "Kahetooniline ajakirjalik paigutus.",
+    "sk" to "Dvojfarebné redakčné rozloženie.",
+    "hr" to "Dvobojni urednički raspored.",
+    "bg" to "Двуцветно редакционно оформление.",
+    "hu" to "Kéttónusú szerkesztőségi elrendezés.",
+    "nb" to "Tofarget redaksjonelt oppsett.",
+    "ca" to "Disseny editorial bicolor.",
+    "fa" to "چیدمان مجله‌ای دورنگ.",
+    "zh-Hant" to "雙色雜誌式排版。",
+    "ms" to "Susun atur editorial dua warna."
+)
+
 private val playerDeckDefaultBadges: Map<String, String> = mapOf(
     "en" to "Default",
     "it" to "Predefinito",
@@ -180,6 +223,8 @@ internal fun playerDeckLocalizationEntries(code: String): Map<String, String> =
     localizedBundleOrEnglish(playerDeckBundles, code) + mapOf(
         "playerDeckHalo" to "Liner Notes",
         "playerDeckHaloHint" to (playerDeckHaloHints[code] ?: playerDeckHaloHints.getValue("en")),
+        "playerDeckFolio" to "Folio",
+        "playerDeckFolioHint" to (playerDeckFolioHints[code] ?: playerDeckFolioHints.getValue("en")),
         "playerDeckDefaultBadge" to (playerDeckDefaultBadges[code] ?: playerDeckDefaultBadges.getValue("en"))
     )
 
