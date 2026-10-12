@@ -69,15 +69,31 @@ class HomeCollectionsLayoutContractTest {
     }
 
     @Test
-    fun `single colour collection accents reach the Home shelf and detail`() {
+    fun `soundtrack hero uses expressive tonal colour and companion artists`() {
         val app = source("LevyraApp.kt")
-        val validAccentGuard = "collection.accentStart != 0 && collection.accentEnd != 0"
+        val hero = functionBlock(app, "private fun HomeEditorialSpotlight(")
+        assertTrue(hero.contains("homeSoundtrackHeroTones(heroSeed, isLight)"))
+        assertTrue(hero.contains("rememberArtworkPalette("))
+        assertTrue(hero.contains("HomeSoundtrackCompanionStack("))
+        assertFalse(hero.contains("lerp(accentStart, Color.White"))
+        val stack = functionBlock(app, "private fun HomeSoundtrackCompanionStack(")
+        assertTrue(stack.contains("Spring.DampingRatioMediumBouncy"))
+        assertTrue(stack.contains("if (!animate)"))
+        assertTrue(stack.contains("homeHeroCompanionShape(index)"))
+    }
+
+    @Test
+    fun `collection shelf and detail share distinct harmonized accents`() {
+        val app = source("LevyraApp.kt")
         val shelf = functionBlock(app, "private fun HomeEditorialCollectionsShelf(")
-        assertTrue(shelf.contains(validAccentGuard))
-        assertTrue(app.contains("val (collectionAccentStart, collectionAccentEnd) = remember("))
-        assertTrue(app.split(validAccentGuard).size == 3)
+        val builder = functionBlock(app, "private fun buildHomeCollectionAccents(")
+        assertTrue(builder.contains("collection.accentStart != 0 && collection.accentEnd != 0"))
+        assertTrue(builder.contains("distinctEditorialAccents(seeds)"))
+        assertTrue(app.contains("buildHomeCollectionAccents(visibleEditorialCollections)"))
+        assertTrue(app.contains("accents = homeCollectionAccents"))
+        assertTrue(app.contains("homeCollectionAccents[collection.id]"))
+        assertTrue(shelf.contains("accents[collection.id]"))
         assertFalse(app.contains("collection.accentStart != collection.accentEnd"))
-        assertTrue(shelf.contains("Color(collection.accentStart) to Color(collection.accentEnd)"))
     }
 
     @Test
