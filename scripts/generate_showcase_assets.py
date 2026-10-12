@@ -257,31 +257,54 @@ def crop_to_fill(source, width, height):
     top = max(0, int((resized.height - height) * 0.42))
     return resized.crop((left, top, left + width, top + height))
 
-def create_screenshot_portal(source, scheme, size=(650, 1100)):
-    frame = 20
+def create_s26_ultra_mockup(source, scheme, size=(780, 1320)):
+    frame = 14
     outer_w, outer_h = size
     inner_w, inner_h = outer_w - frame * 2, outer_h - frame * 2
-    portal = Image.new("RGBA", size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(portal)
+    phone = Image.new("RGBA", size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(phone)
     draw.rounded_rectangle(
         (0, 0, outer_w - 1, outer_h - 1),
-        radius=104,
-        fill=(*scheme["surface_high"], 255),
-        outline=(*scheme["outline_variant"], 255),
-        width=4,
+        radius=58,
+        fill=(28, 29, 34, 255),
+        outline=(151, 154, 164, 230),
+        width=3,
     )
     screenshot = crop_to_fill(source, inner_w, inner_h)
     mask = Image.new("L", (inner_w, inner_h), 0)
     mask_draw = ImageDraw.Draw(mask)
-    mask_draw.rounded_rectangle((0, 0, inner_w - 1, inner_h - 1), radius=84, fill=255)
-    portal.paste(screenshot, (frame, frame), mask)
+    mask_draw.rounded_rectangle((0, 0, inner_w - 1, inner_h - 1), radius=45, fill=255)
+    phone.paste(screenshot, (frame, frame), mask)
     draw.rounded_rectangle(
         (frame, frame, outer_w - frame - 1, outer_h - frame - 1),
-        radius=84,
-        outline=(*scheme["outline_variant"], 220),
-        width=3,
+        radius=45,
+        outline=(8, 9, 12, 245),
+        width=4,
     )
-    return portal
+    camera_radius = 10
+    camera_x = outer_w // 2
+    camera_y = frame + 22
+    draw.ellipse(
+        (
+            camera_x - camera_radius,
+            camera_y - camera_radius,
+            camera_x + camera_radius,
+            camera_y + camera_radius,
+        ),
+        fill=(4, 5, 8, 255),
+    )
+    draw.ellipse(
+        (camera_x - 4, camera_y - 4, camera_x + 3, camera_y + 3),
+        fill=(35, 58, 88, 230),
+    )
+    draw.rounded_rectangle(
+        (outer_w // 2 - 28, 3, outer_w // 2 + 28, 7),
+        radius=2,
+        fill=(54, 55, 61, 255),
+    )
+    draw.line((outer_w - 2, 285, outer_w - 2, 395), fill=(75, 77, 85, 255), width=4)
+    draw.line((outer_w - 2, 435, outer_w - 2, 545), fill=(75, 77, 85, 255), width=4)
+    return phone
 
 def paste_screenshot_portal(canvas, spec, card_index, placement, gutter, scheme, pair_index):
     card_w = 900
@@ -290,19 +313,19 @@ def paste_screenshot_portal(canvas, spec, card_index, placement, gutter, scheme,
     if not screenshot_path:
         raise FileNotFoundError(f"Missing showcase screenshot: {spec[0]}")
     with Image.open(screenshot_path) as source:
-        portal = create_screenshot_portal(source, scheme)
+        phone = create_s26_ultra_mockup(source, scheme)
 
     direction = 1 if pair_index % 2 == 0 else -1
     if placement == "bottom":
-        angle = -6 * direction
-        x = card_left + (260 if card_index == 0 else -120)
-        y = -70
+        angle = -5 * direction
+        x = card_left + (155 if card_index == 0 else -70)
+        y = -165
     else:
-        angle = 6 * direction
-        x = card_left + (-80 if card_index == 0 else 120)
-        y = 500
+        angle = 5 * direction
+        x = card_left + (-40 if card_index == 0 else 90)
+        y = 350
 
-    rotated = portal.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
+    rotated = phone.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
     shadow, pad = create_m3_shadow(rotated, blur=30, offset_y=16)
     canvas.paste(shadow, (x - pad, y - pad), shadow)
     canvas.paste(rotated, (x, y), rotated)
