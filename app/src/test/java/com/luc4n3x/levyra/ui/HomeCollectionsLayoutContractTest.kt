@@ -69,6 +69,20 @@ class HomeCollectionsLayoutContractTest {
     }
 
     @Test
+    fun `soundtrack hero uses expressive tonal colour and companion artists`() {
+        val app = source("LevyraApp.kt")
+        val hero = functionBlock(app, "private fun HomeEditorialSpotlight(")
+        assertTrue(hero.contains("homeSoundtrackHeroTones(heroSeed, isLight)"))
+        assertTrue(hero.contains("rememberArtworkPalette("))
+        assertTrue(hero.contains("HomeSoundtrackCompanionStack("))
+        assertFalse(hero.contains("lerp(accentStart, Color.White"))
+        val stack = functionBlock(app, "private fun HomeSoundtrackCompanionStack(")
+        assertTrue(stack.contains("Spring.DampingRatioMediumBouncy"))
+        assertTrue(stack.contains("if (!animate)"))
+        assertTrue(stack.contains("homeHeroCompanionShape(index)"))
+    }
+
+    @Test
     fun `collection shelf and detail share distinct harmonized accents`() {
         val app = source("LevyraApp.kt")
         val shelf = functionBlock(app, "private fun HomeEditorialCollectionsShelf(")
