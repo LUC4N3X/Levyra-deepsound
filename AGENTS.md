@@ -122,6 +122,9 @@ audible playback. Keep playback, MediaSession, notification, Android Auto,
 queue, and background service synchronized. Do not add account login, cookies,
 private tokens, telemetry, or tracking unless explicitly requested. Android and
 Desktop versions/releases remain independent.
+Android UI follows Levyra's Material 3 Expressive design direction, not generic templates.
+For Kotlin and Android UI work, consult the upstream `kotlin-footguns` and `material-3`
+skills in focused phases per `docs/ai/UPSTREAM_ANDROID_SKILLS.md`; keep the two-skill cap.
 
 ## Work method
 
