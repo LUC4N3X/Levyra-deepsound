@@ -3,7 +3,6 @@ Thanks for contributing to Levyra!
 
 Keep your pull request focused, explain why the change is needed, and include clear testing evidence.
 Please preserve the complete Levyra section layout. If a section does not apply to your PR, mark it as "N/A" instead of deleting it.
-When writing the PR description, pass it through levyra-humanizer so it reads naturally and clearly without changing facts or test results.
 -->
 
 ## Summary
