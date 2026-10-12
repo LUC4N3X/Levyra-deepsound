@@ -143,9 +143,9 @@ M3_PAIR_PALETTES = [
 M3_PHONE_OVERRIDES = {
     "Screenshot_20261012_193022_LEVYRA.jpg": {
         "target_w": 720,
-        "x": -35,
+        "x": 110,
         "y": -100,
-        "angle": 8,
+        "angle": 12,
     },
 }
 
