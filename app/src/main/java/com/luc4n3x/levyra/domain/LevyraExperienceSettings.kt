@@ -74,7 +74,8 @@ enum class PlayerVisualMode {
     CanvasImmersive,
     Expressive,
     Pulse,
-    Halo;
+    Halo,
+    Folio;
 
     companion object {
         fun from(value: String): PlayerVisualMode =
