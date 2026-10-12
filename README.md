@@ -76,6 +76,8 @@ Play streamed music and your own files in the same app, save tracks for offline 
 
 I started Levyra because I wanted one player for the music I stream and the files I already have. I wanted local tracks to feel like part of the same library, with playlists, history and downloads that do not depend on a Levyra account.
 
+On Android, you can also sign in to YouTube Music if you want your playlists, liked songs and saved albums in Levyra, along with a Home feed based on your account. It's completely optional. Levyra works as before without signing in, and anything you've imported stays in your library if you disconnect. Sign-in happens through Google's own pages, and Levyra stores the session encrypted on your device using Android Keystore, not your Google password.
+
 Downloaded tracks are saved as normal audio files in your device storage. Local and streamed music can share the same library, playlists and queues, while listening data stays on the device.
 
 As I kept using Levyra, I added the things I missed in other players: synced lyrics with timing controls, romanization, SponsorBlock, Queue Spaces, AutoEQ, Android Auto, music recognition, live radio, backups and a Windows version. They all use the same library and playback flow.
@@ -142,6 +144,7 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
 - **Audio & video modes**: one-tap switch between audio-only streaming and full video with subtitle tracks.
 - **Clean offline downloads**: saved directly in device storage as standard M4A files with metadata, artwork, and lyrics.
 - **Unified library**: local files and streamed tracks share the same playlists, favorites, and queues.
+- **Optional YouTube Music sign-in (Android)**: connect your account to browse your music and import playlists, liked songs and albums. No account needed if you'd rather keep using Levyra as it is.
 - **Queue Spaces**: keep multiple active listening sessions side by side without losing your current queue.
 - **Synced lyrics**: tap-to-seek, manual timing adjustments, dedicated Bluetooth latency offset, and non-Latin romanization.
 - **Visuals**: motion artwork on the Now Playing screen, falling back to animated album covers.
