@@ -57,62 +57,11 @@ def enhance_screenshot(img):
     img = enhancer.enhance(1.10)
     return img
 
-def create_s26_ultra_mockup(screen_img, target_w=670):
-    screen_img = enhance_screenshot(screen_img)
-    orig_w, orig_h = screen_img.size
-    aspect = orig_h / float(orig_w)
-    target_h = int(target_w * aspect)
-    screen_res = screen_img.resize((target_w, target_h), Image.Resampling.LANCZOS)
-
-    bezel = 9
-    corner_r = 26
-    inner_r = max(6, corner_r - bezel)
-    body_w = target_w + bezel * 2
-    body_h = target_h + bezel * 2
-
-    phone = Image.new("RGBA", (body_w, body_h), (0, 0, 0, 0))
-    pdraw = ImageDraw.Draw(phone)
-
-    # Samsung Galaxy S26 Ultra Titanium frame
-    pdraw.rounded_rectangle((0, 0, body_w - 1, body_h - 1), radius=corner_r, fill=(28, 29, 34, 255))
-    pdraw.rounded_rectangle((1, 1, body_w - 2, body_h - 2), radius=corner_r - 1, fill=(14, 15, 18, 255))
-
-    # Mask screen
-    screen_mask = Image.new("L", (target_w, target_h), 0)
-    smdraw = ImageDraw.Draw(screen_mask)
-    smdraw.rounded_rectangle((0, 0, target_w - 1, target_h - 1), radius=inner_r, fill=255)
-    phone.paste(screen_res, (bezel, bezel), screen_mask)
-
-    # Inner bezel border
-    pdraw.rounded_rectangle((bezel, bezel, bezel + target_w - 1, bezel + target_h - 1), radius=inner_r, outline=(8, 8, 10, 230), width=1)
-
-    # Infinity-O Punch-hole Camera
-    cam_diam = 16
-    cam_x = body_w // 2 - cam_diam // 2
-    cam_y = bezel + 12
-    pdraw.ellipse((cam_x, cam_y, cam_x + cam_diam, cam_y + cam_diam), fill=(6, 6, 8, 255))
-    pdraw.ellipse((cam_x + 3, cam_y + 3, cam_x + cam_diam - 3, cam_y + cam_diam - 3), fill=(14, 24, 46, 255))
-    pdraw.ellipse((cam_x + 6, cam_y + 5, cam_x + 9, cam_y + 8), fill=(130, 175, 235, 180))
-
-    # Micro speaker slit
-    pdraw.rounded_rectangle((body_w // 2 - 22, 2, body_w // 2 + 22, 5), radius=1, fill=(40, 42, 48, 255))
-
-    # Diamond-cut outer chamfer
-    pdraw.rounded_rectangle((0, 0, body_w - 1, body_h - 1), radius=corner_r, outline=(145, 150, 162, 120), width=1)
-
-    # Side buttons: power & volume on right side
-    btn_x = body_w - 1
-    btn_col = (45, 47, 52, 255)
-    pdraw.line([(btn_x, 260), (btn_x, 340)], fill=btn_col, width=3)
-    pdraw.line([(btn_x, 380), (btn_x, 500)], fill=btn_col, width=3)
-
-    return phone
-
-def create_m3_shadow(phone, blur=48, offset_y=28):
-    w, h = phone.size
+def create_m3_shadow(element, blur=48, offset_y=28):
+    w, h = element.size
     pad = 90
     cw, ch = w + pad * 2, h + pad * 2 + offset_y
-    alpha = phone.split()[-1]
+    alpha = element.split()[-1]
     s = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
     s_alpha = Image.new("L", (cw, ch), 0)
     s_alpha.paste(alpha, (pad, pad + offset_y))
@@ -132,22 +81,58 @@ def draw_vector_sparkle(draw, center_x, center_y, radius, fill_color):
         points.append((x, y))
     draw.polygon(points, fill=fill_color)
 
-M3_PAIR_PALETTES = [
-    ((250, 247, 255), (234, 221, 255), (103, 80, 164), (232, 222, 248)),
-    ((255, 248, 250), (255, 216, 228), (152, 64, 83), (244, 192, 210)),
-    ((247, 249, 255), (216, 226, 255), (65, 95, 145), (196, 211, 255)),
-    ((247, 251, 244), (199, 239, 186), (56, 106, 32), (174, 222, 156)),
-    ((255, 248, 243), (255, 220, 194), (139, 80, 0), (246, 195, 145)),
-]
-
-M3_PHONE_OVERRIDES = {
-    "Screenshot_20261012_193022_LEVYRA.jpg": {
-        "target_w": 720,
-        "x": 110,
-        "y": -100,
-        "angle": 12,
+M3_EXPRESSIVE_SCHEMES = [
+    {
+        "surface": (255, 247, 255), "surface_low": (247, 242, 250),
+        "surface_high": (236, 230, 240), "surface_lowest": (255, 255, 255),
+        "on_surface": (30, 27, 32), "on_surface_variant": (73, 69, 79),
+        "primary": (103, 80, 164), "on_primary": (255, 255, 255),
+        "primary_container": (234, 221, 255), "on_primary_container": (33, 0, 93),
+        "secondary_container": (232, 222, 248), "on_secondary_container": (29, 25, 43),
+        "tertiary_container": (255, 216, 228), "on_tertiary_container": (49, 17, 29),
+        "outline_variant": (202, 196, 208),
     },
-}
+    {
+        "surface": (255, 248, 250), "surface_low": (255, 241, 245),
+        "surface_high": (247, 226, 233), "surface_lowest": (255, 255, 255),
+        "on_surface": (35, 25, 29), "on_surface_variant": (82, 67, 73),
+        "primary": (152, 64, 83), "on_primary": (255, 255, 255),
+        "primary_container": (255, 216, 228), "on_primary_container": (62, 0, 20),
+        "secondary_container": (244, 221, 227), "on_secondary_container": (43, 25, 31),
+        "tertiary_container": (255, 221, 184), "on_tertiary_container": (45, 23, 0),
+        "outline_variant": (216, 193, 200),
+    },
+    {
+        "surface": (247, 249, 255), "surface_low": (239, 243, 252),
+        "surface_high": (222, 230, 244), "surface_lowest": (255, 255, 255),
+        "on_surface": (25, 28, 34), "on_surface_variant": (67, 71, 80),
+        "primary": (65, 95, 145), "on_primary": (255, 255, 255),
+        "primary_container": (216, 226, 255), "on_primary_container": (0, 27, 62),
+        "secondary_container": (220, 226, 244), "on_secondary_container": (24, 28, 42),
+        "tertiary_container": (246, 216, 255), "on_tertiary_container": (52, 19, 65),
+        "outline_variant": (195, 199, 210),
+    },
+    {
+        "surface": (247, 251, 244), "surface_low": (239, 247, 234),
+        "surface_high": (222, 237, 214), "surface_lowest": (255, 255, 255),
+        "on_surface": (26, 30, 24), "on_surface_variant": (67, 73, 63),
+        "primary": (56, 106, 32), "on_primary": (255, 255, 255),
+        "primary_container": (199, 239, 186), "on_primary_container": (10, 34, 0),
+        "secondary_container": (218, 232, 208), "on_secondary_container": (25, 32, 21),
+        "tertiary_container": (188, 235, 234), "on_tertiary_container": (0, 32, 32),
+        "outline_variant": (194, 202, 188),
+    },
+    {
+        "surface": (255, 248, 243), "surface_low": (252, 242, 234),
+        "surface_high": (243, 226, 213), "surface_lowest": (255, 255, 255),
+        "on_surface": (33, 27, 23), "on_surface_variant": (81, 68, 59),
+        "primary": (139, 80, 0), "on_primary": (255, 255, 255),
+        "primary_container": (255, 220, 194), "on_primary_container": (45, 23, 0),
+        "secondary_container": (241, 223, 208), "on_secondary_container": (42, 29, 21),
+        "tertiary_container": (218, 231, 190), "on_tertiary_container": (27, 33, 8),
+        "outline_variant": (214, 195, 182),
+    },
+]
 
 M3_HERO_SPECS = [
     ("Screenshot_20260926_171253_LEVYRA.jpg", "ZERO ADS • NATIVE PLAY", "Pure listening.",
@@ -158,36 +143,51 @@ M3_HERO_SPECS = [
      (130, 60, 180), ["02_stay_with_the_song.webp"]),
 ]
 
-def create_m3_pair_canvas(card_w, card_h, gutter, palette, pair_index):
-    surface, container, primary, secondary = palette
+def draw_rounded_layer(canvas, size, radius, color, angle, position):
+    layer = Image.new("RGBA", size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(layer)
+    draw.rounded_rectangle((0, 0, size[0] - 1, size[1] - 1), radius=radius, fill=(*color, 255))
+    rotated = layer.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
+    canvas.paste(rotated, position, rotated)
+
+def create_m3_pair_canvas(card_w, card_h, gutter, scheme, pair_index):
     duo_w = card_w * 2 + gutter
     arr = np.zeros((card_h, duo_w, 4), dtype=np.uint8)
-    top = np.array(surface, dtype=np.float32)
-    bottom = np.array(container, dtype=np.float32)
+    top = np.array(scheme["surface"], dtype=np.float32)
+    bottom = np.array(scheme["surface_low"], dtype=np.float32)
     for y in range(card_h):
         progress = y / float(card_h)
-        color = top * (1 - progress * 0.55) + bottom * (progress * 0.55)
+        color = top * (1 - progress) + bottom * progress
         arr[y, :, :3] = color.astype(np.uint8)
     arr[:, :, 3] = 255
     canvas = Image.fromarray(arr, mode="RGBA")
 
-    shapes = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(shapes)
-    direction = -1 if pair_index % 2 else 1
-    draw.ellipse(
-        (duo_w // 2 - 520, -330 if direction > 0 else 1030, duo_w // 2 + 560, 720 if direction > 0 else 2050),
-        fill=(*secondary, 220),
+    direction = 1 if pair_index % 2 == 0 else -1
+    draw_rounded_layer(
+        canvas, (duo_w + 360, 610), 305, scheme["primary_container"],
+        direction * 8, (-180, 410 if direction > 0 else 570),
     )
-    draw.ellipse((-320, 180, 540, 1040), fill=(*primary, 34))
-    draw.ellipse((duo_w - 610, 760, duo_w + 250, 1620), fill=(*primary, 30))
-    return Image.alpha_composite(canvas, shapes)
+    draw_rounded_layer(
+        canvas, (760, 560), 220, scheme["secondary_container"],
+        -direction * 13, (-260, -150 if direction > 0 else 1090),
+    )
+    draw_rounded_layer(
+        canvas, (720, 520), 210, scheme["tertiary_container"],
+        direction * 11, (duo_w - 500, 1110 if direction > 0 else -120),
+    )
+    return canvas
 
-def draw_m3_label(draw, x, y, text, primary, on_primary=(255, 255, 255, 255)):
+def draw_m3_label(draw, x, y, text, scheme):
     font = get_font(27, bold=True)
     bbox = draw.textbbox((0, 0), text, font=font)
     width = bbox[2] - bbox[0]
     height = 52
-    draw.rounded_rectangle((x, y, x + width + 80, y + height), radius=26, fill=(*primary, 255))
+    draw.rounded_rectangle(
+        (x, y, x + width + 80, y + height),
+        radius=26,
+        fill=(*scheme["primary"], 255),
+    )
+    on_primary = (*scheme["on_primary"], 255)
     draw_vector_sparkle(draw, x + 27, y + height // 2, 12, on_primary)
     draw.text((x + 50, y + 10 - bbox[1]), text, font=font, fill=on_primary)
 
@@ -198,64 +198,130 @@ def fit_title_font(draw, title, max_width, initial_size=68, minimum_size=50):
             return font
     return get_font(minimum_size, bold=True)
 
-def draw_m3_copy(card, spec, placement, primary, surface):
+def draw_m3_copy(card, spec, placement, scheme, card_index):
     _, kicker, title, subtitle, _, _ = spec
     draw = ImageDraw.Draw(card)
-    x = 66
-    if placement == "bottom":
-        draw.rounded_rectangle((-70, 1200, 970, 1660), radius=82, fill=(*surface, 255))
-    y = 48 if placement == "top" else 1240
-    draw_m3_label(draw, x, y, kicker, primary)
-    title_y = y + 72
-    title_font = fit_title_font(draw, title, 768)
-    draw.text((x, title_y), title, font=title_font, fill=(32, 29, 36, 255))
+    panel_x = 48
+    panel_y = 48 if placement == "top" else 1128
+    panel_w = 804
+    panel_h = 420
+    panel_fill = scheme["surface_lowest"] if card_index == 0 else scheme["secondary_container"]
+    panel_text = scheme["on_surface"] if card_index == 0 else scheme["on_secondary_container"]
+    panel_body = scheme["on_surface_variant"] if card_index == 0 else scheme["on_secondary_container"]
+    draw.rounded_rectangle(
+        (panel_x, panel_y, panel_x + panel_w, panel_y + panel_h),
+        radius=76,
+        fill=(*panel_fill, 255),
+        outline=(*scheme["outline_variant"], 255),
+        width=3,
+    )
+
+    x = panel_x + 42
+    y = panel_y + 38
+    draw_m3_label(draw, x, y, kicker, scheme)
+
+    fab_size = 78
+    fab_x = panel_x + panel_w - fab_size - 34
+    fab_y = panel_y + 28
+    draw.ellipse(
+        (fab_x, fab_y, fab_x + fab_size, fab_y + fab_size),
+        fill=(*scheme["tertiary_container"], 255),
+    )
+    draw_vector_sparkle(
+        draw,
+        fab_x + fab_size // 2,
+        fab_y + fab_size // 2,
+        20,
+        (*scheme["on_tertiary_container"], 255),
+    )
+
+    title_y = y + 78
+    title_font = fit_title_font(draw, title, 700, initial_size=70, minimum_size=48)
+    draw.text((x, title_y), title, font=title_font, fill=(*panel_text, 255))
     draw.multiline_text(
         (x, title_y + 86),
         subtitle,
         font=get_font(31),
-        fill=(73, 69, 79, 255),
+        fill=(*panel_body, 255),
         spacing=7,
     )
 
-def paste_cut_phone(canvas, spec, card_index, placement, gutter, angle):
+def crop_to_fill(source, width, height):
+    source = enhance_screenshot(source)
+    scale = max(width / source.width, height / source.height)
+    resized = source.resize(
+        (int(source.width * scale), int(source.height * scale)),
+        Image.Resampling.LANCZOS,
+    )
+    left = max(0, (resized.width - width) // 2)
+    top = max(0, int((resized.height - height) * 0.42))
+    return resized.crop((left, top, left + width, top + height))
+
+def create_screenshot_portal(source, scheme, size=(650, 1100)):
+    frame = 20
+    outer_w, outer_h = size
+    inner_w, inner_h = outer_w - frame * 2, outer_h - frame * 2
+    portal = Image.new("RGBA", size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(portal)
+    draw.rounded_rectangle(
+        (0, 0, outer_w - 1, outer_h - 1),
+        radius=104,
+        fill=(*scheme["surface_high"], 255),
+        outline=(*scheme["outline_variant"], 255),
+        width=4,
+    )
+    screenshot = crop_to_fill(source, inner_w, inner_h)
+    mask = Image.new("L", (inner_w, inner_h), 0)
+    mask_draw = ImageDraw.Draw(mask)
+    mask_draw.rounded_rectangle((0, 0, inner_w - 1, inner_h - 1), radius=84, fill=255)
+    portal.paste(screenshot, (frame, frame), mask)
+    draw.rounded_rectangle(
+        (frame, frame, outer_w - frame - 1, outer_h - frame - 1),
+        radius=84,
+        outline=(*scheme["outline_variant"], 220),
+        width=3,
+    )
+    return portal
+
+def paste_screenshot_portal(canvas, spec, card_index, placement, gutter, scheme, pair_index):
     card_w = 900
     card_left = card_index * (card_w + gutter)
-    phone_override = M3_PHONE_OVERRIDES.get(spec[0], {})
     screenshot_path = resolve_screenshot_path(spec[0])
     if not screenshot_path:
         raise FileNotFoundError(f"Missing showcase screenshot: {spec[0]}")
     with Image.open(screenshot_path) as source:
-        phone = create_s26_ultra_mockup(source, target_w=phone_override.get("target_w", 700))
-    angle = phone_override.get("angle", angle)
-    rotated = phone.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
-    shadow, pad = create_m3_shadow(rotated, blur=42, offset_y=24)
+        portal = create_screenshot_portal(source, scheme)
 
+    direction = 1 if pair_index % 2 == 0 else -1
     if placement == "bottom":
-        x = card_left + (230 if card_index == 0 else 120)
-        y = -110
+        angle = -6 * direction
+        x = card_left + (260 if card_index == 0 else -120)
+        y = -70
     else:
-        x = card_left + (-40 if card_index == 0 else 160)
-        y = 315
-    x = card_left + phone_override.get("x", x - card_left)
-    y = phone_override.get("y", y)
+        angle = 6 * direction
+        x = card_left + (-80 if card_index == 0 else 120)
+        y = 500
+
+    rotated = portal.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
+    shadow, pad = create_m3_shadow(rotated, blur=30, offset_y=16)
     canvas.paste(shadow, (x - pad, y - pad), shadow)
     canvas.paste(rotated, (x, y), rotated)
 
 def render_m3_cut_pair(left_spec, right_spec, pair_index):
     card_w, card_h, gutter = 900, 1600, 48
-    palette = M3_PAIR_PALETTES[pair_index % len(M3_PAIR_PALETTES)]
-    canvas = create_m3_pair_canvas(card_w, card_h, gutter, palette, pair_index)
+    scheme = M3_EXPRESSIVE_SCHEMES[pair_index % len(M3_EXPRESSIVE_SCHEMES)]
+    canvas = create_m3_pair_canvas(card_w, card_h, gutter, scheme, pair_index)
 
     left_copy = "bottom" if pair_index % 2 == 0 else "top"
     right_copy = "top" if left_copy == "bottom" else "bottom"
-    paste_cut_phone(canvas, left_spec, 0, left_copy, gutter, 12 if pair_index % 2 == 0 else -10)
-    paste_cut_phone(canvas, right_spec, 1, right_copy, gutter, -9 if pair_index % 2 == 0 else 11)
+    paste_screenshot_portal(canvas, left_spec, 0, left_copy, gutter, scheme, pair_index)
+    paste_screenshot_portal(canvas, right_spec, 1, right_copy, gutter, scheme, pair_index)
 
     right_left = card_w + gutter
     left_card = canvas.crop((0, 0, card_w, card_h))
     right_card = canvas.crop((right_left, 0, right_left + card_w, card_h))
-    draw_m3_copy(left_card, left_spec, left_copy, palette[2], palette[0])
-    draw_m3_copy(right_card, right_spec, right_copy, palette[2], palette[0])
+    draw_m3_copy(left_card, left_spec, left_copy, scheme, 0)
+    draw_m3_copy(right_card, right_spec, right_copy, scheme, 1)
     return left_card, right_card
 
 # Material 3 Expressive content specifications
@@ -363,7 +429,7 @@ def generate_hero_panoramic_showcase():
         print(f"Generated Panoramic Hero Showcase at ({orig_w}, {orig_h}): {out_path}")
 
 def generate_feature_cards():
-    print("Generating Material 3 Expressive cut-card pairs...")
+    print("Generating Material 3 Expressive tonal-portal pairs...")
     specs = M3_HERO_SPECS + M3_SHOWCASE_SPECS
     for pair_index in range(0, len(specs), 2):
         left_spec = specs[pair_index]
@@ -374,9 +440,9 @@ def generate_feature_cards():
             for filename in spec[5]:
                 out_file = os.path.join(OUT_CARDS_DIR, filename)
                 card_rgb.save(out_file, "WEBP", quality=95, method=6)
-                print(f"Saved Material 3 Expressive cut card: {out_file}")
+                print(f"Saved Material 3 Expressive tonal portal: {out_file}")
 
 if __name__ == "__main__":
     generate_hero_panoramic_showcase()
     generate_feature_cards()
-    print("All Refined Material 3 Expressive assets generated successfully!")
+    print("All Material 3 Expressive tonal-portal assets generated successfully!")
