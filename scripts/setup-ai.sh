@@ -7,6 +7,7 @@ INSTALL_PLUGINS=0
 INSTALL_CLAUDE_MEM=0
 SKIP_HOOKS=0
 SKIP_MATT_SKILLS=0
+SKIP_EXTERNAL_SKILLS=0
 
 usage() {
   cat <<'EOF'
@@ -19,6 +20,7 @@ Options:
   --claude-mem        Explicitly install pinned claude-mem for detected supported runtimes
   --skip-hooks        Do not initialize RTK instructions/hooks/integrations
   --skip-matt-skills  Do not install Matt Pocock engineering skills for Codex
+  --skip-external-skills  Do not install Kotlin footguns / Material 3 skills for Codex
   -h, --help          Show this help
 EOF
 }
@@ -31,6 +33,7 @@ while [[ $# -gt 0 ]]; do
     --claude-mem) INSTALL_CLAUDE_MEM=1 ;;
     --skip-hooks) SKIP_HOOKS=1 ;;
     --skip-matt-skills) SKIP_MATT_SKILLS=1 ;;
+    --skip-external-skills) SKIP_EXTERNAL_SKILLS=1 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -145,6 +148,17 @@ if [[ "$SKIP_MATT_SKILLS" -ne 1 ]]; then
       matt_args+=(-s "$skill")
     done
     run_step "Install focused Matt Pocock engineering skills for Codex" npx "${matt_args[@]}"
+  fi
+fi
+
+if [[ "$SKIP_EXTERNAL_SKILLS" -ne 1 ]]; then
+  if ! has_command codex; then
+    echo "[skip] Codex command not detected; upstream Kotlin/Material skills were not installed"
+  elif ! has_command npx; then
+    echo "[warn] Codex is installed but npx is unavailable; upstream Kotlin/Material skills were not installed." >&2
+  else
+    run_step "Install Kotlin footguns skills for Codex" npx skills@latest add maxrave-dev/kotlin-footguns -g -a codex -y
+    run_step "Install Material 3 skill for Codex" npx skills@latest add hamen/material-3-skill -g -a codex -y -s material-3
   fi
 fi
 
