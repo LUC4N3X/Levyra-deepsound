@@ -10373,26 +10373,38 @@ private fun HomeEditorialSpotlight(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Row(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(chipFill)
-                            .padding(start = 6.dp, end = 12.dp, top = 5.dp, bottom = 5.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(7.dp)
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Box(
+                        Row(
                             modifier = Modifier
-                                .size(14.dp)
-                                .clip(homeHeroChipBadgeShape())
-                                .background(heroTones.badge)
-                        )
-                        Text(
-                            text = strings.homeSoundtrackRadio,
-                            color = heroTones.onChip,
-                            style = LevyraType.overline,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                                .clip(CircleShape)
+                                .background(chipFill)
+                                .padding(start = 6.dp, end = 12.dp, top = 5.dp, bottom = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(7.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(14.dp)
+                                    .clip(homeHeroChipBadgeShape())
+                                    .background(heroTones.badge)
+                            )
+                            Text(
+                                text = strings.homeSoundtrackRadio,
+                                color = heroTones.onChip,
+                                style = LevyraType.overline,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        if (companionArtworkUrls.isNotEmpty()) {
+                            HomeSoundtrackCompanionStack(
+                                artworkUrls = companionArtworkUrls,
+                                ring = canvasColor,
+                                accent = heroTones.badge
+                            )
+                        }
                     }
                     Text(
                         text = soundtrackTitle,
@@ -10402,27 +10414,15 @@ private fun HomeEditorialSpotlight(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.semantics { heading() }
                     )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        if (companionArtworkUrls.isNotEmpty()) {
-                            HomeSoundtrackCompanionStack(
-                                artworkUrls = companionArtworkUrls,
-                                ring = canvasColor,
-                                accent = heroTones.badge
-                            )
-                        }
-                        Text(
-                            text = soundtrackLead,
-                            color = heroInkSoft,
-                            fontSize = 15.sp,
-                            lineHeight = 20.5.sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+                    Text(
+                        text = soundtrackLead,
+                        color = heroInkSoft,
+                        fontSize = 15.sp,
+                        lineHeight = 20.5.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
 
                 Surface(

@@ -32,16 +32,16 @@ internal fun homeSoundtrackHeroTones(seed: Color, isLight: Boolean): HomeSoundtr
         )
     } else {
         HomeSoundtrackHeroTones(
-            action = tone(82.0),
-            onAction = tone(18.0),
+            action = tone(70.0),
+            onAction = tone(10.0),
             chip = tone(16.0, HeroChipChroma).copy(alpha = 0.78f),
             onChip = tone(92.0, HeroChipChroma),
-            badge = tone(74.0)
+            badge = tone(70.0)
         )
     }
 }
 
 private const val HeroMinimumPortraitChroma = 16.0
-private const val HeroActionMinimumChroma = 36.0
-private const val HeroActionMaximumChroma = 64.0
+private const val HeroActionMinimumChroma = 48.0
+private const val HeroActionMaximumChroma = 72.0
 private const val HeroChipChroma = 20.0
