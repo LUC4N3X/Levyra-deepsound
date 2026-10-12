@@ -82,7 +82,6 @@ internal class YoutubeMusicAccountRepository(context: Context) {
     suspend fun home(session: YoutubeMusicSession, language: String): YoutubeMusicHome = withContext(Dispatchers.IO) {
         val root = client.browse(session, "FEmusic_home", language)
         val sections = parser.parseHomeSections(root)
-        sections.forEach { parser.rememberTracks(it.tracks) }
         val orbitIndex = sections.indexOfFirst { it.tracks.size >= 6 }
         YoutubeMusicHome(
             accountId = session.account.id,

@@ -1155,10 +1155,6 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         sections
     }
 
-    internal fun rememberTracks(tracks: List<Track>) {
-        tracks.forEach { memory[it.id] = it }
-    }
-
     suspend fun homeAlbums(
         languageCode: String = LevyraLanguageCatalog.deviceDefault(),
         limit: Int = 20,

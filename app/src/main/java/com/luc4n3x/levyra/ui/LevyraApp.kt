@@ -2272,8 +2272,14 @@ fun LevyraApp(
                             val homeViewModel: HomeViewModel = composeViewModel(key = "levyra-home", factory = screenViewModelFactory)
                             val levyraRenderSnapshot by homeViewModel.renderState.collectAsStateWithLifecycle()
                             val youtubeMusicHome = youtubeMusicState.home
-                            val renderSnapshot = remember(levyraRenderSnapshot, youtubeMusicHome) {
-                                youtubeMusicHome?.let { withYoutubeMusicHome(levyraRenderSnapshot, it) } ?: levyraRenderSnapshot
+                            val renderSnapshot by produceState(levyraRenderSnapshot, levyraRenderSnapshot, youtubeMusicHome) {
+                                val home = youtubeMusicHome
+                                val previous = value
+                                value = if (home == null) {
+                                    levyraRenderSnapshot
+                                } else {
+                                    withContext(Dispatchers.Default) { withYoutubeMusicHome(levyraRenderSnapshot, home, previous) }
+                                }
                             }
                             CompositionLocalProvider(
                                 LocalHomeCompactDensity provides
@@ -11839,7 +11845,8 @@ private fun HomeCompactPlayAllHeader(
 
 private fun withYoutubeMusicHome(
     snapshot: HomeRenderSnapshot,
-    home: com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicHome
+    home: com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicHome,
+    previous: HomeRenderSnapshot
 ): HomeRenderSnapshot {
     val state = snapshot.state
     return buildHomeRenderSnapshot(
@@ -11847,7 +11854,8 @@ private fun withYoutubeMusicHome(
             personalOrbitTracks = home.orbit.ifEmpty { state.personalOrbitTracks },
             homeSections = home.sections.ifEmpty { state.homeSections },
             homeAlbums = home.albums.ifEmpty { state.homeAlbums }
-        )
+        ),
+        previous
     )
 }
 
