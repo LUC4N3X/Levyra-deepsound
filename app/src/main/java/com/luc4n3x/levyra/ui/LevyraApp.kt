@@ -9374,10 +9374,7 @@ private fun HomeScreen(
         }
     }
     val spotlightTracks = remember(spotlightCandidates) { spotlightCandidates.map { it.track } }
-    val visiblePersonalTracks = remember(personalTracks) {
-        LevyraPersonalOrbit.distinctRecordings(personalTracks)
-            .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
-    }
+    val visiblePersonalTracks = homeDerivedState.personalOrbitDisplayTracks
     val visibleEditorialCollections = remember(editorialCollections, spotlightCandidate?.track?.id) {
         editorialCollections
             .map { collection ->
