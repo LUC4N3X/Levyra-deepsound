@@ -307,6 +307,26 @@ class HomeEditorialEngineTest {
     }
 
     @Test
+    fun chartsKeepAStableOrangeAccentWhenTrackArtworkChanges() {
+        val tracks = (1..8).map { track("chart$it") }
+        val collections = HomeEditorialEngine.buildCollections(
+            homeSections = emptyList(),
+            newReleaseTracks = emptyList(),
+            personalTracks = emptyList(),
+            resonanceTracks = emptyList(),
+            quickPickTracks = emptyList(),
+            chartTracks = tracks,
+            favorites = emptyList(),
+            libraryTracks = emptyList()
+        )
+
+        val charts = collections.first { it.kind == HomeCollectionKind.Charts }
+        assertEquals(0xFFFF8A24.toInt(), charts.accentStart)
+        assertEquals(0xFFFF8A24.toInt(), charts.accentEnd)
+        assertEquals(tracks.map { it.id }, charts.tracks.map { it.id })
+    }
+
+    @Test
     fun collectionsRequirePlayableVarietyAndBuildThemedGroups() {
         val tracks = listOf(
             track("gym1", tags = setOf("gym", "energy"), energy = 94),
