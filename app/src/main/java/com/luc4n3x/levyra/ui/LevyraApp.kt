@@ -8675,14 +8675,14 @@ private fun KaraokeLyricLine(
         animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short + 20, easing = LevyraMotion.Easings.Standard)),
         label = "lyrics-line-blur"
     )
-    val baseFontSizeSp = (when {
+    val baseFontSizeSp = when {
         compact && isPrimaryActive -> 22f
         compact -> 17f
         cinema && isPrimaryActive -> 29f
         cinema -> 24f
         isPrimaryActive -> 26f
         else -> 21f
-    } * roleScale * studioSettings.textSize.scale)
+    } * roleScale * studioSettings.textSize.scale
     val configuration = LocalConfiguration.current
     val fontScale = LocalDensity.current.fontScale
     val lineWidthDp = layoutWidthDp ?: configuration.screenWidthDp

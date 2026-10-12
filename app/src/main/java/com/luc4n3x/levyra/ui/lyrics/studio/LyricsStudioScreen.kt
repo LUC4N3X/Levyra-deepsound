@@ -78,9 +78,11 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -955,12 +957,80 @@ private fun LyricsStudioLivePreview(
     playbackPositionMs: Long,
     isPlaying: Boolean
 ) {
-    val strings = LocalLevyraStrings.current
     val animationsEnabled = LocalAnimationsEnabled.current
     val useLive = currentTrack != null && liveLyrics.isNotEmpty() && lyricsSynced
     val previewLines = if (useLive) liveLyrics else DemoLyrics
 
-    // Timeline position: track playback position if active, else simulated smoothly
+    val simPositionMs = rememberSimulatedPlaybackPosition(useLive = useLive, isPlaying = isPlaying)
+    val activePos = if (useLive && isPlaying) playbackPositionMs else simPositionMs
+
+    val activeIndex = remember(previewLines, activePos) {
+        val index = previewLines.indexOfLast { it.startMs <= activePos }
+        if (index >= 0) index else 0
+    }
+
+    val accentColor = resolveStudioAccentColor(settings, currentTrack)
+    val fontFamily = remember(settings.fontPreset) {
+        levyraFontFamilyFor(settings.fontPreset)
+    }
+    val baseFontSize = 21f * settings.textSize.scale
+    val lineHeight = LevyraTypeRhythm.lineHeight(baseFontSize)
+    val glowShadow = resolveStudioGlowShadow(settings, accentColor)
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        StudioPreviewHeader(useLive = useLive, currentTrack = currentTrack)
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(230.dp)
+                .clip(RoundedCornerShape(26.dp))
+                .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(26.dp))
+        ) {
+            StudioPreviewBackground(
+                mode = settings.backgroundMode,
+                track = currentTrack,
+                accent = accentColor
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = when (settings.alignment) {
+                    LyricsAlignment.START -> Alignment.Start
+                    LyricsAlignment.CENTER -> Alignment.CenterHorizontally
+                    LyricsAlignment.END -> Alignment.End
+                }
+            ) {
+                val displayIndices = (activeIndex - 1..activeIndex + 1)
+                    .map { it.coerceIn(0, previewLines.lastIndex) }
+                    .distinct()
+
+                displayIndices.forEach { idx ->
+                    StudioPreviewLyricsLine(
+                        line = previewLines[idx],
+                        isLineActive = idx == activeIndex,
+                        distance = kotlin.math.abs(idx - activeIndex),
+                        settings = settings,
+                        accentColor = accentColor,
+                        fontFamily = fontFamily,
+                        baseFontSize = baseFontSize,
+                        lineHeight = lineHeight,
+                        glowShadow = glowShadow,
+                        animationsEnabled = animationsEnabled
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun rememberSimulatedPlaybackPosition(useLive: Boolean, isPlaying: Boolean): Long {
     var simPositionMs by remember { mutableLongStateOf(0L) }
     LaunchedEffect(isPlaying, useLive) {
         if (!useLive) {
@@ -971,30 +1041,18 @@ private fun LyricsStudioLivePreview(
             }
         }
     }
+    return simPositionMs
+}
 
-    val activePos = if (useLive && isPlaying) playbackPositionMs else simPositionMs
-
-    val activeIndex = remember(previewLines, activePos) {
-        val index = previewLines.indexOfLast { it.startMs <= activePos }
-        if (index >= 0) index else 0
-    }
-
-    val accentColor = when (settings.activeColorMode) {
+private fun resolveStudioAccentColor(settings: LevyraLyricsStudioSettings, currentTrack: Track?): Color =
+    when (settings.activeColorMode) {
         LyricsActiveColorMode.WHITE -> Color.White
-        LyricsActiveColorMode.AUTOMATIC -> {
-            if (currentTrack != null) Color(currentTrack.accentEnd) else LevyraCyan
-        }
+        LyricsActiveColorMode.AUTOMATIC -> if (currentTrack != null) Color(currentTrack.accentEnd) else LevyraCyan
         LyricsActiveColorMode.CUSTOM -> Color(settings.customAccentColor)
     }
 
-    val fontFamily = remember(settings.fontPreset) {
-        levyraFontFamilyFor(settings.fontPreset)
-    }
-
-    val baseFontSize = 21f * settings.textSize.scale
-    val lineHeight = LevyraTypeRhythm.lineHeight(baseFontSize)
-
-    val glowShadow = when (settings.glowEffect) {
+private fun resolveStudioGlowShadow(settings: LevyraLyricsStudioSettings, accentColor: Color): Shadow? =
+    when (settings.glowEffect) {
         LyricsGlowEffect.OFF -> null
         LyricsGlowEffect.SUBTLE -> Shadow(
             color = accentColor.copy(alpha = 0.55f),
@@ -1008,121 +1066,100 @@ private fun LyricsStudioLivePreview(
         )
     }
 
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = strings.lyricsStudioPreview,
-                color = LevyraMuted,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.4.sp
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(if (useLive) LevyraCyan.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.08f))
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
-            ) {
-                Text(
-                    text = if (useLive) currentTrack.title.ifBlank { strings.nowPlaying } else "Demo Timeline",
-                    color = if (useLive) LevyraCyan else LevyraMuted,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(6.dp))
-
+@Composable
+private fun StudioPreviewHeader(
+    useLive: Boolean,
+    currentTrack: Track?
+) {
+    val strings = LocalLevyraStrings.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = strings.lyricsStudioPreview,
+            color = LevyraMuted,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.4.sp
+        )
+        Spacer(modifier = Modifier.weight(1f))
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(230.dp)
-                .clip(RoundedCornerShape(26.dp))
-                .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(26.dp))
+                .clip(RoundedCornerShape(8.dp))
+                .background(if (useLive) LevyraCyan.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.08f))
+                .padding(horizontal = 8.dp, vertical = 2.dp)
         ) {
-            // Background Layer
-            StudioPreviewBackground(
-                mode = settings.backgroundMode,
-                track = currentTrack,
-                accent = accentColor
+            Text(
+                text = if (useLive && currentTrack != null) currentTrack.title.ifBlank { strings.nowPlaying } else "Demo Timeline",
+                color = if (useLive) LevyraCyan else LevyraMuted,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-
-            // Content Layer: 3 lines visible around activeIndex
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = when (settings.alignment) {
-                    LyricsAlignment.START -> Alignment.Start
-                    LyricsAlignment.CENTER -> Alignment.CenterHorizontally
-                    LyricsAlignment.END -> Alignment.End
-                }
-            ) {
-                val displayIndices = (activeIndex - 1..activeIndex + 1).map { it.coerceIn(0, previewLines.lastIndex) }.distinct()
-
-                displayIndices.forEach { idx ->
-                    val line = previewLines[idx]
-                    val isLineActive = idx == activeIndex
-                    val distance = kotlin.math.abs(idx - activeIndex)
-
-                    val targetAlpha = if (isLineActive) 1f else settings.inactiveOpacity
-                    val lineAlpha by animateFloatAsState(
-                        targetValue = targetAlpha,
-                        animationSpec = LevyraMotion.spec(animationsEnabled, tween(180)),
-                        label = "preview-alpha-$idx"
-                    )
-
-                    val targetScale = if (isLineActive) 1.03f else settings.inactiveScale
-                    val lineScale by animateFloatAsState(
-                        targetValue = targetScale,
-                        animationSpec = LevyraMotion.spec(animationsEnabled, tween(200)),
-                        label = "preview-scale-$idx"
-                    )
-
-                    val lineBlur = if (!isLineActive && settings.blurEnabled && animationsEnabled) (distance * 1.5f).dp else 0.dp
-
-                    val textColor = if (isLineActive) accentColor else Color.White.copy(alpha = settings.inactiveOpacity)
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = (settings.lineSpacing.spacingDp / 2))
-                            .graphicsLayer {
-                                scaleX = lineScale
-                                scaleY = lineScale
-                                alpha = lineAlpha
-                            }
-                            .then(if (lineBlur > 0.dp) Modifier.blur(lineBlur) else Modifier),
-                        contentAlignment = when (settings.alignment) {
-                            LyricsAlignment.START -> Alignment.CenterStart
-                            LyricsAlignment.CENTER -> Alignment.Center
-                            LyricsAlignment.END -> Alignment.CenterEnd
-                        }
-                    ) {
-                        Text(
-                            text = line.text,
-                            color = textColor,
-                            fontFamily = fontFamily,
-                            fontSize = baseFontSize.sp,
-                            lineHeight = lineHeight,
-                            fontWeight = if (isLineActive) settings.fontWeight.weight else FontWeight.Medium,
-                            textAlign = settings.alignment.textAlign,
-                            style = TextStyle(shadow = if (isLineActive) glowShadow else null)
-                        )
-                    }
-                }
-            }
         }
+    }
+}
+
+@Composable
+private fun StudioPreviewLyricsLine(
+    line: LyricLine,
+    isLineActive: Boolean,
+    distance: Int,
+    settings: LevyraLyricsStudioSettings,
+    accentColor: Color,
+    fontFamily: FontFamily,
+    baseFontSize: Float,
+    lineHeight: TextUnit,
+    glowShadow: Shadow?,
+    animationsEnabled: Boolean
+) {
+    val targetAlpha = if (isLineActive) 1f else settings.inactiveOpacity
+    val lineAlpha by animateFloatAsState(
+        targetValue = targetAlpha,
+        animationSpec = LevyraMotion.spec(animationsEnabled, tween(180)),
+        label = "preview-alpha"
+    )
+
+    val targetScale = if (isLineActive) 1.03f else settings.inactiveScale
+    val lineScale by animateFloatAsState(
+        targetValue = targetScale,
+        animationSpec = LevyraMotion.spec(animationsEnabled, tween(200)),
+        label = "preview-scale"
+    )
+
+    val lineBlur = if (!isLineActive && settings.blurEnabled && animationsEnabled) (distance * 1.5f).dp else 0.dp
+    val textColor = if (isLineActive) accentColor else Color.White.copy(alpha = settings.inactiveOpacity)
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = settings.lineSpacing.spacingDp / 2)
+            .graphicsLayer {
+                scaleX = lineScale
+                scaleY = lineScale
+                alpha = lineAlpha
+            }
+            .then(if (lineBlur > 0.dp) Modifier.blur(lineBlur) else Modifier),
+        contentAlignment = when (settings.alignment) {
+            LyricsAlignment.START -> Alignment.CenterStart
+            LyricsAlignment.CENTER -> Alignment.Center
+            LyricsAlignment.END -> Alignment.CenterEnd
+        }
+    ) {
+        Text(
+            text = line.text,
+            color = textColor,
+            fontFamily = fontFamily,
+            fontSize = baseFontSize.sp,
+            lineHeight = lineHeight,
+            fontWeight = if (isLineActive) settings.fontWeight.weight else FontWeight.Medium,
+            textAlign = settings.alignment.textAlign,
+            style = TextStyle(shadow = if (isLineActive) glowShadow else null)
+        )
     }
 }
 
