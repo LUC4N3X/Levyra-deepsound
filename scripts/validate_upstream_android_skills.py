@@ -29,55 +29,72 @@ MARKETPLACES = {
 }
 
 
-def main() -> int:
-    errors: list[str] = []
-    for relative in REQUIRED:
-        if not (ROOT / relative).is_file():
-            errors.append(f"missing required integration file: {relative}")
-    if errors:
-        for error in errors:
-            print(error, file=sys.stderr)
-        return 1
+def missing_required_files() -> list[str]:
+    return [
+        f"missing required integration file: {relative}"
+        for relative in REQUIRED
+        if not (ROOT / relative).is_file()
+    ]
 
+
+def validate_claude_plugins(errors: list[str]) -> None:
     settings = json.loads((ROOT / ".agents/claude/settings.json").read_text(encoding="utf-8"))
+    sources = settings.get("extraKnownMarketplaces", {})
+    plugins = settings.get("enabledPlugins", {})
     for marketplace, (repository, plugin) in MARKETPLACES.items():
-        source = settings.get("extraKnownMarketplaces", {}).get(marketplace, {}).get("source", {})
+        source = sources.get(marketplace, {}).get("source", {})
         if source.get("source") != "github" or source.get("repo") != repository:
             errors.append(f"Claude marketplace missing or invalid: {marketplace}")
-        if settings.get("enabledPlugins", {}).get(plugin) is not True:
+        if plugins.get(plugin) is not True:
             errors.append(f"Claude plugin not enabled: {plugin}")
 
-    for relative in (
-        "AGENTS.md",
-        "app/AGENTS.md",
-        "docs/ai/UPSTREAM_ANDROID_SKILLS.md",
-    ):
-        content = (ROOT / relative).read_text(encoding="utf-8")
-        for term in ("kotlin-footguns", "material-3"):
-            if term not in content:
-                errors.append(f"{relative} missing {term}")
 
+def require_terms(errors: list[str], relative: str, terms: tuple[str, ...], label: str) -> None:
+    content = (ROOT / relative).read_text(encoding="utf-8")
+    errors.extend(f"{relative} missing {label}: {term}" for term in terms if term not in content)
+
+
+def validate_documentation(errors: list[str]) -> None:
+    terms = ("kotlin-footguns", "material-3")
+    for relative in ("AGENTS.md", "app/AGENTS.md", "docs/ai/UPSTREAM_ANDROID_SKILLS.md"):
+        require_terms(errors, relative, terms, "reference")
+
+
+def validate_codex_bootstrap(errors: list[str]) -> None:
+    terms = ("maxrave-dev/kotlin-footguns", "hamen/material-3-skill", "-a codex")
     for relative in (
         "scripts/setup-ai.ps1",
         "scripts/setup-ai.sh",
         "scripts/ensure-codex-tooling.ps1",
         "scripts/ensure-codex-tooling.sh",
     ):
-        content = (ROOT / relative).read_text(encoding="utf-8")
-        for term in ("maxrave-dev/kotlin-footguns", "hamen/material-3-skill", "-a codex"):
-            if term not in content:
-                errors.append(f"{relative} missing Codex bootstrap: {term}")
+        require_terms(errors, relative, terms, "Codex bootstrap")
 
-    router = (ROOT / "scripts/agent_skill_router.py").read_text(encoding="utf-8")
-    for term in ("MAX_ACTIVE_SKILLS = 2", "material-3 SKILL.md", "kotlin-footguns"):
-        if term not in router:
-            errors.append(f"skill router missing: {term}")
 
+def validate_skill_router(errors: list[str]) -> None:
+    terms = ("MAX_ACTIVE_SKILLS = 2", "material-3 SKILL.md", "kotlin-footguns")
+    require_terms(errors, "scripts/agent_skill_router.py", terms, "skill router")
+
+
+def report_errors(errors: list[str]) -> int:
+    print("Upstream Android skills integration validation failed:", file=sys.stderr)
+    for error in errors:
+        print(f"- {error}", file=sys.stderr)
+    return 1
+
+
+def main() -> int:
+    errors = missing_required_files()
     if errors:
-        print("Upstream Android skills integration validation failed:", file=sys.stderr)
-        for error in errors:
-            print(f"- {error}", file=sys.stderr)
-        return 1
+        return report_errors(errors)
+
+    validate_claude_plugins(errors)
+    validate_documentation(errors)
+    validate_codex_bootstrap(errors)
+    validate_skill_router(errors)
+    if errors:
+        return report_errors(errors)
+
     print("Upstream Kotlin footguns and Material 3 skills integration validated.")
     return 0
 
