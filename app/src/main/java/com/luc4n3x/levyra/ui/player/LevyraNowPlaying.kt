@@ -371,7 +371,7 @@ fun LevyraNowPlaying(
             hasTrack = track != null
         )
         val deckMode = if (liveRadio) PlayerVisualMode.Artwork else resolvePlayerDeckVisualMode(visualMode, deckLayout)
-        val motionBackdropVisible = deckMode.usesMotionCard()
+        val motionBackdropVisible = !liveRadio
         LaunchedEffect(
             motionEnabled,
             motionBackdropVisible,
@@ -721,7 +721,7 @@ fun LevyraNowPlaying(
                                 rightToLeft = rightToLeft
                             ),
                         dynamicBackdropEnabled = backgroundMode == PlayerBackgroundMode.Dynamic &&
-                            deckMode.usesMotionCard(),
+                            motionBackdropVisible,
                         onDynamicBackdropPalette = acceptDynamicBackdropPalette
                     )
                     if (lyricsFlipAvailable && lyricsFlip.lyricsComposed) {

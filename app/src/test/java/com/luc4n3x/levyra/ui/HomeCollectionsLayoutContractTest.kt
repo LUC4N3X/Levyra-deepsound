@@ -75,11 +75,13 @@ class HomeCollectionsLayoutContractTest {
         assertTrue(hero.contains("homeSoundtrackHeroTones(heroSeed, isLight)"))
         assertTrue(hero.contains("rememberArtworkPalette("))
         assertTrue(hero.contains("HomeSoundtrackCompanionStack("))
+        assertTrue(hero.indexOf("HomeSoundtrackCompanionStack(") > hero.indexOf("text = soundtrackTitle"))
+        assertTrue(hero.indexOf("HomeSoundtrackCompanionStack(") < hero.indexOf("text = soundtrackLead"))
         assertFalse(hero.contains("lerp(accentStart, Color.White"))
         val stack = functionBlock(app, "private fun HomeSoundtrackCompanionStack(")
         assertTrue(stack.contains("Spring.DampingRatioMediumBouncy"))
         assertTrue(stack.contains("if (!animate)"))
-        assertTrue(stack.contains("homeHeroCompanionShape(index)"))
+        assertTrue(stack.contains("clip(CircleShape)"))
     }
 
     @Test
