@@ -52,7 +52,8 @@ internal class YoutubeMusicAccountRepository(context: Context) {
         collection: YoutubeMusicCollection,
         language: String,
         browseId: String = collection.browseId,
-        continuation: String = ""
+        continuation: String = "",
+        album: YoutubeMusicLibraryEntry? = null
     ): YoutubeMusicLibraryPage = withContext(Dispatchers.IO) {
         val root = client.browse(session, browseId, language, continuation)
         val trackPage = collection == YoutubeMusicCollection.Likes || browseId != collection.browseId
@@ -74,7 +75,9 @@ internal class YoutubeMusicAccountRepository(context: Context) {
             }
             YoutubeMusicCollection.Likes -> emptyList()
         }.filter { it.browseId.isNotBlank() }.distinctBy { it.browseId }
-        val tracks = if (trackPage) parser.parsePlaylistTracks(root, browseId) else emptyList()
+        val tracks = if (trackPage) {
+            parser.parsePlaylistTracks(root, browseId).map { track -> if (album == null) track else withAlbum(track, album) }
+        } else emptyList()
         val next = if (trackPage) YoutubeMusicPlaylistPageParser.continuation(root) else YoutubeMusicAccountParser.continuation(root)
         YoutubeMusicLibraryPage(entries, tracks, next)
     }
@@ -92,9 +95,16 @@ internal class YoutubeMusicAccountRepository(context: Context) {
         )
     }
 
-    suspend fun fullTracks(session: YoutubeMusicSession, collection: YoutubeMusicCollection, browseId: String, language: String): List<Track> {
+    private fun withAlbum(track: Track, album: YoutubeMusicLibraryEntry): Track = track.copy(
+        artist = track.artist.ifBlank { album.subtitle },
+        album = track.album.ifBlank { album.title },
+        albumArtist = track.albumArtist.ifBlank { album.subtitle },
+        albumBrowseId = track.albumBrowseId.ifBlank { album.browseId }
+    )
+
+    suspend fun fullTracks(session: YoutubeMusicSession, collection: YoutubeMusicCollection, browseId: String, language: String, album: YoutubeMusicLibraryEntry? = null): List<Track> {
         return collectYoutubeMusicPages(key = Track::id) { continuation ->
-            val page = page(session, collection, language, browseId, continuation)
+            val page = page(session, collection, language, browseId, continuation, album)
             YoutubeMusicPage(page.tracks, page.continuation)
         }
     }

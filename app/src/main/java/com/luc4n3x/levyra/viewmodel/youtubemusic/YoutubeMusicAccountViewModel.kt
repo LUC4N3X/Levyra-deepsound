@@ -206,12 +206,15 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
         val continuation = preparePageToken(old, append)
         val collection = snapshot.detail?.collection ?: snapshot.collection
         val browseId = snapshot.detail?.browseId ?: collection.browseId
-        val page = repository.page(session, collection, language, browseId, continuation)
+        val page = repository.page(session, collection, language, browseId, continuation, albumOf(snapshot.detail))
         coroutineContext.ensureActive()
         if (saved.activeId != session.account.id) return
         val combined = mergePage(old, page, continuation, append)
         _state.update { if (snapshot.detail != null) it.copy(detailPage = combined) else it.copy(pages = it.pages + (snapshot.collection to combined)) }
     }
+
+    private fun albumOf(detail: YoutubeMusicLibraryEntry?): YoutubeMusicLibraryEntry? =
+        detail?.takeIf { it.collection == YoutubeMusicCollection.Albums }
 
     private fun preparePageToken(old: YoutubeMusicLibraryPage?, append: Boolean): String {
         val token = if (append) old?.continuation.orEmpty() else ""
@@ -240,7 +243,7 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
         val browseId = snapshot.detail?.browseId ?: collection.browseId
         val title = snapshot.detail?.title ?: com.luc4n3x.levyra.ui.i18n.youtubeMusicCopy(language).likes
         runOperation {
-            val tracks = repository.fullTracks(session, collection, browseId, language)
+            val tracks = repository.fullTracks(session, collection, browseId, language, albumOf(snapshot.detail))
             coroutineContext.ensureActive()
             if (saved.activeId != session.account.id) return@runOperation
             val favorites: (suspend (List<com.luc4n3x.levyra.domain.Track>) -> Unit)? =
