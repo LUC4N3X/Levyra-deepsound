@@ -110,6 +110,7 @@ data class LevyraUiState(
     val tastes: List<Taste> = emptyList(),
     val quickPickSeeds: List<Track> = emptyList(),
     val showOnboarding: Boolean = false,
+    val youtubeMusicIntroPending: Boolean = false,
     val isVideoMode: Boolean = false,
     val pendingVideoMode: Boolean? = null,
     val selectedVideoSubtitleId: String? = null,

@@ -1578,6 +1578,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 themePreset = settings.themePreset,
                 themeAccent = settings.themeAccent,
                 showOnboarding = !settings.onboarded,
+                youtubeMusicIntroPending = settings.onboarded && !preferences.youtubeMusicIntroSeen(),
                 currentTrack = restoredTrack,
                 positionMs = pendingSeekMs,
                 durationMs = restoredTrack?.durationMs ?: 0L,
@@ -4608,6 +4609,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }.distinct()
     }
 
+    fun dismissYoutubeMusicIntro() {
+        if (!_state.value.youtubeMusicIntroPending) return
+        preferences.setYoutubeMusicIntroSeen()
+        _state.update { it.copy(youtubeMusicIntroPending = false) }
+    }
+
     fun completeOnboarding(name: String, tasteIds: Set<String>, languageCode: String) {
         onboardingArtworkJob?.cancel()
         onboardingArtworkJob = null
@@ -4617,7 +4624,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         preferences.setLanguageCode(normalizedLanguage)
         preferences.setUserName(name.trim())
         preferences.setOnboarded(tasteIds)
-        _state.update { it.copy(showOnboarding = false, userName = name.trim()) }
+        preferences.setYoutubeMusicIntroSeen()
+        _state.update { it.copy(showOnboarding = false, youtubeMusicIntroPending = false, userName = name.trim()) }
         applyLanguageContent(normalizedLanguage, refreshRemote = true)
     }
 
