@@ -12239,6 +12239,9 @@ private fun HomeEditorialSpotlight(
     )
     val soundtrackTitle = strings.homeSoundtrackTitle
     val soundtrackLead = remember(strings, soundtrackArtists) { strings.homeSoundtrackLead(soundtrackArtists) }
+    val visibleCompanionArtworkUrls = companionArtworkUrls.ifEmpty {
+        resolvedArtistArtworkUrl.takeIf(String::isNotBlank)?.let(::listOf).orEmpty()
+    }
     val isLight = LevyraIsLight
     val canvasColor = homeCanvasColor(isLight)
     val heroInk = if (isLight) LevyraText else Color.White
@@ -12386,9 +12389,9 @@ private fun HomeEditorialSpotlight(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        if (companionArtworkUrls.isNotEmpty()) {
+                        if (visibleCompanionArtworkUrls.isNotEmpty()) {
                             HomeSoundtrackCompanionStack(
-                                artworkUrls = companionArtworkUrls,
+                                artworkUrls = visibleCompanionArtworkUrls,
                                 ring = canvasColor,
                                 accent = heroTones.badge
                             )
