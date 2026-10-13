@@ -20,6 +20,7 @@ import com.luc4n3x.levyra.data.AppUpdateRepository
 import com.luc4n3x.levyra.data.collections.isPersonalCollectionTrack
 import com.luc4n3x.levyra.data.ArtistRepository
 import com.luc4n3x.levyra.data.ChartsRepository
+import com.luc4n3x.levyra.data.isChartArtworkPlaceholder
 import com.luc4n3x.levyra.data.EditorialChartsRepository
 import com.luc4n3x.levyra.data.FavoriteMembership
 import com.luc4n3x.levyra.data.FavoritesStore
@@ -364,6 +365,7 @@ import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
@@ -383,6 +385,19 @@ private const val EXPLORE_SHORTS_FEED_LIMIT = 24
 private const val ONBOARDING_ARTWORK_PARALLELISM = 4
 private const val ONBOARDING_ARTWORK_SEARCH_LIMIT = 12
 private const val ONBOARDING_ARTWORK_ARTISTS = 3
+private const val ONBOARDING_ARTWORK_ATTEMPTS = 3
+private const val HOME_PULL_REFRESH_TIMEOUT_MS = 12_000L
+private val ONBOARDING_TASTE_ARTISTS = mapOf(
+    "gym" to listOf("Eminem", "Travis Scott", "Kendrick Lamar", "Kanye West"),
+    "chill" to listOf("Billie Eilish", "Tame Impala", "Lana Del Rey", "Rex Orange County"),
+    "focus" to listOf("Ludovico Einaudi", "Hans Zimmer", "Max Richter", "Ólafur Arnalds"),
+    "sad" to listOf("Lewis Capaldi", "Adele", "Billie Eilish", "Sam Smith"),
+    "party" to listOf("David Guetta", "Dua Lipa", "Calvin Harris", "Pitbull"),
+    "rock" to listOf("Måneskin", "Imagine Dragons", "Arctic Monkeys", "Foo Fighters"),
+    "electro" to listOf("Daft Punk", "Avicii", "Calvin Harris", "Martin Garrix"),
+    "rnb" to listOf("The Weeknd", "SZA", "Frank Ocean", "Beyoncé")
+)
+private const val ONBOARDING_ARTWORK_RETRY_MS = 1_500L
 private const val EXPLORE_DISCOVERY_DEEP_WARMUP_LIMIT = 6
 private const val EXPLORE_EDITORIAL_MIN_TRACKS = 10
 private const val SIMILAR_SONGS_DEBOUNCE_MS = 400L
@@ -1053,6 +1068,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var advancedPrefetchJob: Job? = null
     private var advancedPrefetchKey: AdvancedPrefetchKey? = null
     private var chartEnrichJob: Job? = null
+    private var chartArtworkJob: Job? = null
     private var orbitArtworkJob: Job? = null
     private var motionArtworkJob: Job? = null
     @Volatile private var motionArtworkRequestKey: String? = null
@@ -4585,28 +4601,44 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val gate = Semaphore(ONBOARDING_ARTWORK_PARALLELISM)
             tastes.forEach { taste ->
                 launch {
-                    val portraits = gate.withPermit { onboardingPortraitsFor(taste.query, code) }
-                    if (portraits.isNotEmpty()) _onboardingArtwork.update { it + (taste.id to portraits) }
+                    repeat(ONBOARDING_ARTWORK_ATTEMPTS) { attempt ->
+                        if (attempt > 0) delay(ONBOARDING_ARTWORK_RETRY_MS * attempt)
+                        val portraits = gate.withPermit { onboardingPortraitsFor(taste.id, taste.query, code) }
+                        if (portraits.isNotEmpty()) {
+                            _onboardingArtwork.update { it + (taste.id to portraits) }
+                            return@launch
+                        }
+                    }
                 }
             }
         }
     }
 
-    private suspend fun onboardingPortraitsFor(query: String, languageCode: String): List<String> {
-        val tracks = runCatchingPreservingCancellation {
-            repository.search(query, limit = ONBOARDING_ARTWORK_SEARCH_LIMIT, languageCode = languageCode)
-        }.getOrNull().orEmpty()
-        val artists = tracks
+    private suspend fun onboardingPortraitsFor(tasteId: String, query: String, languageCode: String): List<String> {
+        val curated = ONBOARDING_TASTE_ARTISTS[tasteId]
+        val tracks = if (curated == null) {
+            runCatchingPreservingCancellation {
+                repository.search(query, limit = ONBOARDING_ARTWORK_SEARCH_LIMIT, languageCode = languageCode)
+            }.getOrNull().orEmpty()
+        } else {
+            emptyList()
+        }
+        val artists = curated ?: tracks
             .map { primaryArtistSegment(it.artist) }
             .filter { it.isNotBlank() }
             .distinctBy { it.lowercase(Locale.ROOT) }
             .take(ONBOARDING_ARTWORK_ARTISTS)
-        return artists.mapNotNull { artist ->
+        val portraits = artists.mapNotNull { artist ->
             runCatchingPreservingCancellation { artistRepository.artistHitFor(artist) }
                 .getOrNull()
                 ?.thumbnailUrl
                 ?.takeIf { it.isNotBlank() }
         }.distinct()
+        if (portraits.isNotEmpty()) return portraits.take(ONBOARDING_ARTWORK_ARTISTS)
+        return tracks
+            .mapNotNull { track -> track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }.takeIf { it.isNotBlank() } }
+            .distinct()
+            .take(ONBOARDING_ARTWORK_ARTISTS)
     }
 
     fun dismissYoutubeMusicIntro() {
@@ -4684,6 +4716,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         loadHomeFeed()
         loadCharts(_state.value.selectedChartId)
         refreshHomeArtists()
+    }
+
+    suspend fun refreshHomeAndAwait() {
+        retryHomeContent()
+        withTimeoutOrNull(HOME_PULL_REFRESH_TIMEOUT_MS) {
+            listOfNotNull(homeFeedJob, chartsJob).joinAll()
+        }
     }
 
     fun retryHomeContent() {
@@ -6765,6 +6804,35 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         loadCharts(normalizedRegionId)
         prefetchChartRegions(normalizedRegionId)
+        if (cached.isNotEmpty()) upgradeSelectedChartArtwork(normalizedRegionId)
+    }
+
+    private fun upgradeSelectedChartArtwork(regionId: String) {
+        val languageCode = _state.value.languageCode
+        val charts = _state.value.charts.takeIf { _state.value.selectedChartId == regionId }.orEmpty()
+        if (charts.none(::isChartArtworkPlaceholder)) return
+        chartArtworkJob?.cancel()
+        chartArtworkJob = viewModelScope.launch(Dispatchers.IO) {
+            val country = ChartsCatalog.region(regionId).country
+            var latest: List<Track>? = null
+            for (batch in charts.filter(::isChartArtworkPlaceholder).chunked(CHART_ARTWORK_BATCH_SIZE)) {
+                val replacements = chartsRepository.officialChartArtwork(batch, country)
+                    .filterNot(::isChartArtworkPlaceholder)
+                    .associateBy { it.id }
+                if (!isActive) return@launch
+                if (replacements.isEmpty()) continue
+                _state.update { current ->
+                    if (current.selectedChartId != regionId || current.languageCode != languageCode) return@update current
+                    val next = current.charts.map { track ->
+                        if (isChartArtworkPlaceholder(track)) replacements[track.id] ?: track else track
+                    }
+                    if (next == current.charts) current else current.copy(charts = next).also { latest = next }
+                }
+            }
+            val updated = latest ?: return@launch
+            chartsByRegion[chartsCacheKey(languageCode, regionId)] = updated
+            preferences.saveChartTracks(updated, languageCode, regionId)
+        }
     }
 
     private fun warmChartRegionMemoryCache() {
@@ -6871,6 +6939,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             if (current.languageCode != languageCode || current.selectedChartId != regionId) current
             else current.copy(charts = charts, isLoadingCharts = false)
         }
+        if (_state.value.selectedChartId == regionId) upgradeSelectedChartArtwork(regionId)
     }
 
     private fun loadCharts(regionId: String = _state.value.selectedChartId, deferUntilHomeIdle: Boolean = false) {
@@ -6899,6 +6968,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     if (current.selectedChartId != regionId || cached.isEmpty()) current
                     else current.copy(charts = cached, isLoadingCharts = false)
                 }
+                upgradeSelectedChartArtwork(regionId)
                 return@launch
             }
 
@@ -6916,6 +6986,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                             if (current.selectedChartId != regionId) current
                             else current.copy(charts = stored, isLoadingCharts = false)
                         }
+                        upgradeSelectedChartArtwork(regionId)
                     }
                 }
             }
@@ -6968,6 +7039,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 else if (current.charts == result && !current.isLoadingCharts) current
                 else current.copy(charts = result, isLoadingCharts = false)
             }
+            upgradeSelectedChartArtwork(regionId)
             persistHomeSnapshot()
             refreshHomeResonanceIfStale()
             val startupPlan = homeStartupWorkPlan()
@@ -12988,6 +13060,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         private const val RESUME_SHORTCUT_RESTORE_TIMEOUT_MS = 3_000L
         private const val CHART_CACHE_FRESH_MS = 60L * 60L * 1000L
         private const val CHART_PRIME_REGION_COUNT = 28
+        private const val CHART_ARTWORK_BATCH_SIZE = 10
         private const val HOME_ARTIST_SHELF_SIZE = 20
         private const val HOME_ARTIST_HISTORY_LIMIT = 72
         private const val HOME_ARTIST_CANDIDATE_LIMIT = 72

@@ -10,7 +10,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -34,15 +39,22 @@ internal data class YoutubeMusicAccountUiState(
     val checkingLogin: Boolean = false,
     val error: YoutubeMusicAccountError? = null,
     val notice: YoutubeMusicAccountNotice? = null,
-    val home: YoutubeMusicHome? = null
+    val home: YoutubeMusicHome? = null,
+    val homeFailed: Boolean = false
 ) {
     val currentPage: YoutubeMusicLibraryPage? get() = if (detail != null) detailPage else pages[collection]
+    val homeSource: YoutubeMusicHomeSource get() = youtubeMusicHomeSource(restoring, active?.id, home, homeFailed)
 }
 
 internal class YoutubeMusicAccountViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = YoutubeMusicAccountRepository(application.applicationContext)
+    private val homeCache = YoutubeMusicHomeCache(application.applicationContext)
     private val _state = MutableStateFlow(YoutubeMusicAccountUiState())
     val state = _state.asStateFlow()
+    val homeSource: StateFlow<YoutubeMusicHomeSource> = _state
+        .map { it.homeSource }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, _state.value.homeSource)
     private var saved = YoutubeMusicSavedSessions()
     private val storageMutex = Mutex()
     private var operation: Job? = null
@@ -50,15 +62,18 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
     private var language = "en"
     private val requestedPages = hashSetOf<String>()
     private var homeJob: Job? = null
-    private var homeKey = ""
+    private var homeKey: String? = null
+    private var fetchedHomeKey: String? = null
 
     init {
         viewModelScope.launch {
             try {
+                val cachedHome = withContext(Dispatchers.IO) { runCatching { homeCache.load(null) }.getOrNull() }
+                if (cachedHome != null) _state.update { it.copy(home = cachedHome) }
                 saved = withContext(Dispatchers.IO) { repository.sessions.load() }
                 publishSession()
             } catch (_: Exception) {
-                _state.update { it.copy(error = YoutubeMusicAccountError.Storage) }
+                _state.update { it.copy(error = YoutubeMusicAccountError.Storage, home = null) }
             } finally {
                 _state.update { it.copy(restoring = false) }
             }
@@ -67,10 +82,9 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
 
     fun loadHome(languageCode: String) {
         val session = saved.active ?: return
-        val current = state.value.home
-        if (current != null && current.accountId == session.account.id && current.languageCode == languageCode) return
-        val key = "${session.account.id}|$languageCode"
-        if (homeJob?.isActive == true && homeKey == key) return
+        val inFlight = homeKey.takeIf { homeJob?.isActive == true }
+        if (!youtubeMusicHomeNeedsFetch(session.account.id, languageCode, fetchedHomeKey, inFlight)) return
+        val key = youtubeMusicHomeKey(session.account.id, languageCode)
         homeJob?.cancel()
         homeKey = key
         homeJob = viewModelScope.launch {
@@ -79,10 +93,25 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
+                if (saved.activeId == session.account.id) _state.update { it.copy(homeFailed = true) }
                 return@launch
             }
-            if (saved.activeId == home.accountId) _state.update { it.copy(home = home) }
+            if (saved.activeId != home.accountId) return@launch
+            fetchedHomeKey = key
+            _state.update { it.copy(home = home, homeFailed = false) }
+            withContext(NonCancellable + Dispatchers.IO) {
+                storageMutex.withLock {
+                    if (saved.activeId == home.accountId) runCatching { homeCache.save(home) }
+                }
+            }
         }
+    }
+
+    suspend fun refreshHomeAndAwait(languageCode: String) {
+        if (saved.active == null) return
+        fetchedHomeKey = null
+        loadHome(languageCode)
+        homeJob?.join()
     }
 
     fun onNetworkRestored(languageCode: String) {
@@ -277,7 +306,12 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
                     throw YoutubeMusicAccountStorageException()
                 }
                 saved = next
-                withContext(Dispatchers.Main.immediate) { publishSession(clearLibrary = previousId != next.activeId) }
+                val accountChanged = previousId != next.activeId
+                if (accountChanged) runCatching { homeCache.clear() }
+                withContext(Dispatchers.Main.immediate) {
+                    if (accountChanged) fetchedHomeKey = null
+                    publishSession(clearLibrary = accountChanged)
+                }
             }
         }
     }
@@ -287,6 +321,7 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
         _state.update { it.copy(
             accounts = saved.sessions.map { it.account }, active = saved.active?.account,
             home = it.home?.takeIf { home -> home.accountId == saved.activeId },
+            homeFailed = it.homeFailed && it.active?.id == saved.activeId,
             pages = if (clearLibrary) emptyMap() else it.pages,
             detail = if (clearLibrary) null else it.detail, detailPage = if (clearLibrary) null else it.detailPage,
             error = null, notice = null

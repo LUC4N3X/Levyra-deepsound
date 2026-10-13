@@ -82,7 +82,7 @@ class OfficialArtworkRepository(context: Context) {
             if (hasFreshMiss(key, System.currentTimeMillis())) return@withLock null
             val normalizedCountry = country.trim().uppercase(Locale.ROOT).takeIf { it.length == 2 } ?: "IT"
             val response = searchSlots.withPermit {
-                fetchProvider(APPLE_TIMEOUT_MS) { fetchApple(track, primaryQuery(track), normalizedCountry) }
+                fetchProvider(APPLE_TIMEOUT_MS) { fetchAppleWithStorefrontFallback(track, normalizedCountry) }
             }
             val outcome = SearchOutcome(bestAccepted(response.items), response.completed)
             writeOutcome(key, outcome)
@@ -94,7 +94,7 @@ class OfficialArtworkRepository(context: Context) {
         val normalizedCountry = country.trim().uppercase(Locale.ROOT).takeIf { it.length == 2 } ?: "IT"
         coroutineScope {
             val apple = async {
-                fetchProvider(APPLE_TIMEOUT_MS) { fetchApple(track, primaryQuery(track), normalizedCountry) }
+                fetchProvider(APPLE_TIMEOUT_MS) { fetchAppleWithStorefrontFallback(track, normalizedCountry) }
             }
             val deezer = async {
                 fetchProvider(DEEZER_TIMEOUT_MS) { fetchDeezer(track) }
@@ -126,6 +126,12 @@ class OfficialArtworkRepository(context: Context) {
                 completedRequest = directResponses.any { it.completed } || qobuzResponse.completed
             )
         }
+    }
+
+    private suspend fun fetchAppleWithStorefrontFallback(track: Track, country: String): ProviderResponse {
+        val local = fetchApple(track, primaryQuery(track), country)
+        if (!local.completed || local.items.isNotEmpty() || country == APPLE_FALLBACK_STOREFRONT) return local
+        return fetchApple(track, primaryQuery(track), APPLE_FALLBACK_STOREFRONT)
     }
 
     private suspend fun fetchApple(track: Track, query: String, country: String): ProviderResponse {
@@ -184,9 +190,8 @@ class OfficialArtworkRepository(context: Context) {
     }
 
     private suspend fun fetchDeezer(track: Track): ProviderResponse {
-        val preciseQuery = "track:\"${queryText(removeVersionText(track.title))}\" artist:\"${queryText(track.artist)}\""
         val url = DEEZER_SEARCH_URL.toHttpUrl().newBuilder()
-            .addQueryParameter("q", preciseQuery)
+            .addQueryParameter("q", primaryQuery(track))
             .addQueryParameter("limit", "25")
             .build()
         val root = requestJson(url.toString()) ?: return ProviderResponse(emptyList(), false)
@@ -679,6 +684,7 @@ class OfficialArtworkRepository(context: Context) {
 
     private companion object {
         const val APPLE_SEARCH_URL = "https://itunes.apple.com/search"
+        const val APPLE_FALLBACK_STOREFRONT = "US"
         const val DEEZER_SEARCH_URL = "https://api.deezer.com/search/track"
         const val DEEZER_ALBUM_URL = "https://api.deezer.com/album"
         const val USER_AGENT = "Levyra/2.3.20 Android"

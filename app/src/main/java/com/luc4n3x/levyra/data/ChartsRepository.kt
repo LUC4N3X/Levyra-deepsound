@@ -104,6 +104,28 @@ internal fun blendWorldFreshTracks(
     return blended
 }
 
+private const val CHART_PLACEHOLDER_ALBUM = "YouTube Music Charts"
+
+internal fun isChartArtworkPlaceholder(track: Track): Boolean {
+    val artwork = track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }
+    return artwork.isBlank() || artwork.contains("ytimg.com/vi")
+}
+
+internal fun chartArtworkIdentity(track: Track): String {
+    val primaryArtist = track.artist.split(',', '&', ';').first().split(" x ", " X ", " feat", " ft.").first()
+    return ChartFeedParser.normalizeMusicText(track.title) + "|" + ChartFeedParser.normalizeMusicText(primaryArtist)
+}
+
+internal fun withEditorialArtwork(track: Track, index: Map<String, Track>): Track? {
+    val editorial = index[chartArtworkIdentity(track)] ?: return null
+    if (editorial.thumbnailUrl == track.thumbnailUrl) return track
+    return track.copy(
+        thumbnailUrl = editorial.thumbnailUrl,
+        largeThumbnailUrl = editorial.largeThumbnailUrl.ifBlank { editorial.thumbnailUrl },
+        album = track.album.takeUnless { it.isBlank() || it.equals(CHART_PLACEHOLDER_ALBUM, ignoreCase = true) } ?: editorial.album.ifBlank { track.album }
+    )
+}
+
 class ChartsRepository(context: Context) {
 
     private val appContext = context.applicationContext
@@ -247,7 +269,21 @@ class ChartsRepository(context: Context) {
     private suspend fun fetchTopSongs(country: String, limit: Int): List<Track> {
         val ranked = selectTopSongs(country, limit)
         if (ranked.isEmpty()) return ranked
-        return chartArtworkResolver.enrich(ranked, country)
+        val index = runCatching { editorialCharts.cachedArtworkIndex() }.getOrDefault(emptyMap())
+        return ranked.map { withEditorialArtwork(it, index) ?: it }
+    }
+
+    suspend fun officialChartArtwork(tracks: List<Track>, country: String): List<Track> {
+        val pending = tracks.filter(::isChartArtworkPlaceholder)
+        if (pending.isEmpty()) return tracks
+        val index = runCatching { editorialCharts.cachedArtworkIndex() }.getOrDefault(emptyMap())
+        val local = pending.map { withEditorialArtwork(it, index) }
+        val remote = pending.filterIndexed { position, _ -> local[position] == null }
+        val resolved = if (remote.isEmpty()) emptyList() else chartArtworkResolver.enrich(remote, country)
+        val upgrades = HashMap<String, Track>(pending.size)
+        local.filterNotNull().forEach { upgrades[it.id] = it }
+        resolved.filterNot(::isChartArtworkPlaceholder).forEach { upgrades[it.id] = it }
+        return tracks.map { upgrades[it.id] ?: it }
     }
 
     private suspend fun selectTopSongs(country: String, limit: Int): List<Track> = coroutineScope {
