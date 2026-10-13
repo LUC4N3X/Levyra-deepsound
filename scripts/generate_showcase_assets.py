@@ -179,17 +179,17 @@ M3_PAIR_PLACEMENTS = [
     ("top", "bottom"),
 ]
 
-STUDIO_DARK_PALETTES = [
-    ((12, 9, 18), (183, 255, 73), (88, 48, 124)),
-    ((8, 13, 20), (91, 214, 255), (29, 91, 112)),
-    ((18, 8, 13), (255, 92, 138), (112, 30, 62)),
-    ((9, 15, 12), (92, 239, 170), (25, 100, 74)),
-    ((16, 11, 7), (255, 178, 74), (112, 61, 23)),
-    ((11, 8, 20), (196, 148, 255), (74, 43, 122)),
-    ((7, 15, 18), (67, 232, 220), (18, 92, 90)),
-    ((18, 9, 8), (255, 112, 80), (125, 43, 30)),
-    ((8, 11, 22), (132, 160, 255), (42, 63, 137)),
-    ((14, 15, 7), (225, 239, 80), (90, 97, 22)),
+SOFT_M3_PALETTES = [
+    ((250, 247, 252), (94, 68, 145), (232, 222, 248)),
+    ((247, 250, 255), (54, 88, 139), (219, 232, 251)),
+    ((255, 248, 249), (145, 66, 91), (248, 222, 231)),
+    ((248, 252, 247), (58, 105, 61), (222, 239, 218)),
+    ((255, 250, 245), (139, 86, 37), (249, 230, 207)),
+    ((250, 248, 255), (105, 75, 151), (232, 224, 250)),
+    ((247, 252, 252), (37, 105, 103), (215, 239, 236)),
+    ((255, 248, 246), (151, 73, 55), (250, 224, 215)),
+    ((248, 249, 255), (67, 84, 145), (222, 228, 249)),
+    ((252, 252, 246), (101, 105, 42), (237, 239, 211)),
 ]
 
 def draw_rounded_layer(canvas, size, radius, color, angle, position):
@@ -201,29 +201,31 @@ def draw_rounded_layer(canvas, size, radius, color, angle, position):
 
 def create_m3_pair_canvas(card_w, card_h, gutter, scheme, pair_index):
     duo_w = card_w * 2 + gutter
-    canvas = Image.new("RGBA", (duo_w, card_h), (7, 8, 11, 255))
+    canvas = Image.new("RGBA", (duo_w, card_h), (250, 249, 252, 255))
     for card_index in range(2):
         card_left = card_index * (card_w + gutter)
-        bg, accent, glow = STUDIO_DARK_PALETTES[(pair_index * 2 + card_index) % len(STUDIO_DARK_PALETTES)]
+        bg, accent, wash = SOFT_M3_PALETTES[(pair_index * 2 + card_index) % len(SOFT_M3_PALETTES)]
         card = Image.new("RGBA", (card_w, card_h), (*bg, 255))
         draw = ImageDraw.Draw(card)
         for y in range(card_h):
             mix = y / card_h
-            color = tuple(int(bg[i] * (1 - mix * 0.34) + glow[i] * mix * 0.34) for i in range(3))
+            color = tuple(int(bg[i] * (1 - mix * 0.16) + wash[i] * mix * 0.16) for i in range(3))
             draw.line((0, y, card_w, y), fill=(*color, 255))
         direction = 1 if (pair_index + card_index) % 2 == 0 else -1
         draw_rounded_layer(
             card,
-            (730, 760),
-            280,
-            glow,
-            12 * direction,
-            (-350 if direction > 0 else 520, 420 if pair_index % 2 else 770),
+            (790, 880),
+            360,
+            wash,
+            7 * direction,
+            (-430 if direction > 0 else 545, 380 if pair_index % 2 else 710),
         )
         draw.ellipse(
-            (650 if direction > 0 else -150, 70, 1030 if direction > 0 else 230, 450),
-            fill=(*accent, 255),
+            (680 if direction > 0 else -180, 90, 1060 if direction > 0 else 200, 470),
+            fill=(*wash, 255),
         )
+        dot_x = 824 if direction > 0 else 54
+        draw.ellipse((dot_x, 104, dot_x + 22, 126), fill=(*accent, 255))
         canvas.paste(card, (card_left, 0))
 
     return canvas
@@ -260,9 +262,9 @@ def draw_m3_copy(card, spec, placement, scheme, card_index, pair_index):
 
     title_y = y + 60
     title_font = fit_title_font(draw, title, 790, initial_size=86, minimum_size=58)
-    draw.text((x, title_y), title, font=title_font, fill=(247, 246, 250, 255))
+    draw.text((x, title_y), title, font=title_font, fill=(35, 33, 39, 255))
     body_font = fit_body_font(draw, subtitle, 760, initial_size=31, minimum_size=25)
-    draw.text((x, title_y + 102), subtitle, font=body_font, fill=(191, 188, 199, 255))
+    draw.text((x, title_y + 102), subtitle, font=body_font, fill=(91, 87, 98, 255))
 
 def crop_to_fill(source, width, height):
     source = enhance_screenshot(source)
@@ -285,8 +287,8 @@ def create_s26_ultra_mockup(source, size=(720, 1500)):
         (0, 0, outer_w - 1, outer_h - 1),
         radius=54,
         fill=(28, 29, 34, 255),
-        outline=(215, 216, 224, 235),
-        width=4,
+        outline=(120, 121, 128, 220),
+        width=3,
     )
     screenshot = crop_to_fill(source, inner_w, inner_h)
     mask = Image.new("L", (inner_w, inner_h), 0)
@@ -335,13 +337,13 @@ def paste_editorial_phone(canvas, spec, card_index, placement, gutter, pair_inde
 
     direction = 1 if pair_index % 2 == 0 else -1
     if placement == "bottom":
-        angle = -6 * direction
-        x = card_left + (155 if card_index == 0 else 5)
-        y = -150
+        angle = -3 * direction
+        x = card_left + (145 if card_index == 0 else 15)
+        y = -270
     else:
-        angle = 6 * direction
-        x = card_left + (5 if card_index == 0 else 155)
-        y = 250
+        angle = 3 * direction
+        x = card_left + (15 if card_index == 0 else 145)
+        y = 300
 
     rotated = phone.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
     shadow, pad = create_m3_shadow(rotated, blur=24, offset_y=12)
@@ -360,8 +362,8 @@ def render_m3_editorial_pair(left_spec, right_spec, pair_index):
     right_left = card_w + gutter
     left_card = canvas.crop((0, 0, card_w, card_h))
     right_card = canvas.crop((right_left, 0, right_left + card_w, card_h))
-    left_palette = STUDIO_DARK_PALETTES[(pair_index * 2) % len(STUDIO_DARK_PALETTES)]
-    right_palette = STUDIO_DARK_PALETTES[(pair_index * 2 + 1) % len(STUDIO_DARK_PALETTES)]
+    left_palette = SOFT_M3_PALETTES[(pair_index * 2) % len(SOFT_M3_PALETTES)]
+    right_palette = SOFT_M3_PALETTES[(pair_index * 2 + 1) % len(SOFT_M3_PALETTES)]
     draw_m3_copy(left_card, left_spec, left_copy, {"accent": left_palette[1]}, 0, pair_index)
     draw_m3_copy(right_card, right_spec, right_copy, {"accent": right_palette[1]}, 1, pair_index)
     return left_card, right_card
