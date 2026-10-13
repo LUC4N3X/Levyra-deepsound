@@ -18,7 +18,6 @@ internal class YoutubeMusicAccountHttpException(val status: Int) : IOException("
 
 internal class YoutubeMusicAccountClient {
     suspend fun accounts(cookie: String): List<YoutubeMusicAccount> {
-        kotlinx.coroutines.delay(1000)
         val seed = YoutubeMusicSession(YoutubeMusicAccount("", "", "", "", null, 0), cookie)
         return YoutubeMusicAccountParser.accounts(request(seed, "getAccountSwitcherEndpoint", null))
     }
