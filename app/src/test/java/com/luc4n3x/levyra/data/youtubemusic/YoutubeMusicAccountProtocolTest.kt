@@ -38,30 +38,23 @@ class YoutubeMusicAccountProtocolTest {
         assertFalse(YoutubeMusicAuth.isMusicUrl("http://music.youtube.com/"))
         assertFalse(YoutubeMusicAuth.isMusicUrl("https://evil.test@music.youtube.com/"))
     }
-    @Test fun googleSessionBridgeCanFinishAfterTwoStepVerification() {
-        assertTrue(YoutubeMusicAuth.isLoginUrl("https://accounts.youtube.com/accounts/SetSID?continue=https%3A%2F%2Fmusic.youtube.com%2F"))
-        assertTrue(YoutubeMusicAuth.isLoginUrl("https://youtube.com/signin?action_handle_signin=true"))
-        assertTrue(YoutubeMusicAuth.isLoginUrl("https://consent.youtube.com/"))
-        assertTrue(YoutubeMusicAuth.isLoginUrl("https://gds.google.com/web/landing?continue=https%3A%2F%2Fmusic.youtube.com%2F"))
-        assertTrue(YoutubeMusicAuth.isLoginUrl("https://accounts.google.it/accounts/SetSID"))
-        assertTrue(YoutubeMusicAuth.isLoginUrl("https://accounts.google.co.uk/accounts/SetSID"))
-        assertTrue(YoutubeMusicAuth.isLoginUrl("https://accounts.google.com.br/accounts/SetSID"))
+    @Test fun loginAllowsSecureWebRedirectChain() {
+        assertTrue(YoutubeMusicAuth.isSecureWebUrl("https://accounts.youtube.com/accounts/SetSID?continue=https%3A%2F%2Fmusic.youtube.com%2F"))
+        assertTrue(YoutubeMusicAuth.isSecureWebUrl("https://accounts.google.it/ServiceLogin"))
+        assertTrue(YoutubeMusicAuth.isSecureWebUrl("https://gds.google.com/web/landing?continue=https%3A%2F%2Fmusic.youtube.com%2F"))
+        assertTrue(YoutubeMusicAuth.isSecureWebUrl("https://new-login-host.google.com/redirect"))
+        assertTrue(YoutubeMusicAuth.isSecureWebUrl("https://temporary-login-redirect.example/continue"))
     }
     @Test fun allowingGoogleSessionBridgeDoesNotAllowCookieCaptureThere() {
         assertFalse(YoutubeMusicAuth.isMusicUrl("https://accounts.youtube.com/accounts/SetSID"))
         assertFalse(YoutubeMusicAuth.isMusicUrl("https://youtube.com/signin"))
     }
-    @Test fun loginRedirectPolicyRejectsLookalikesAndUnsafeSchemes() {
-        assertFalse(YoutubeMusicAuth.isLoginUrl("https://accounts.youtube.com.evil.test/accounts/SetSID"))
-        assertFalse(YoutubeMusicAuth.isLoginUrl("https://accounts.youtube.com@evil.test/"))
-        assertFalse(YoutubeMusicAuth.isLoginUrl("http://accounts.youtube.com/accounts/SetSID"))
-        assertFalse(YoutubeMusicAuth.isLoginUrl("https://accounts.youtube.com:8443/accounts/SetSID"))
-        assertFalse(YoutubeMusicAuth.isLoginUrl("https://gds.google.com.evil.test/web/landing"))
-        assertFalse(YoutubeMusicAuth.isLoginUrl("https://accounts.google.it/ServiceLogin"))
-        assertFalse(YoutubeMusicAuth.isLoginUrl("https://accounts.google.evil/accounts/SetSID"))
-        assertFalse(YoutubeMusicAuth.isLoginUrl("https://accounts.google.it.evil.test/accounts/SetSID"))
-        assertFalse(YoutubeMusicAuth.isLoginUrl("http://accounts.google.it/accounts/SetSID"))
-        assertFalse(YoutubeMusicAuth.isLoginUrl("intent://accounts.youtube.com/"))
+    @Test fun loginRedirectPolicyRejectsUnsafeSchemesAndAuthorities() {
+        assertFalse(YoutubeMusicAuth.isSecureWebUrl("https://accounts.youtube.com@evil.test/"))
+        assertFalse(YoutubeMusicAuth.isSecureWebUrl("http://accounts.youtube.com/accounts/SetSID"))
+        assertFalse(YoutubeMusicAuth.isSecureWebUrl("https://accounts.youtube.com:8443/accounts/SetSID"))
+        assertFalse(YoutubeMusicAuth.isSecureWebUrl("intent://accounts.youtube.com/"))
+        assertFalse(YoutubeMusicAuth.isSecureWebUrl("https:///missing-host"))
     }
     @Test fun continuationReadsGridAndActionShapes() {
         assertEquals("test-page", YoutubeMusicAccountParser.continuation(JSONObject("""{"continuationContents":{"gridContinuation":{"continuations":[{"nextContinuationData":{"continuation":"test-page"}}]}}}""")))

@@ -118,7 +118,7 @@ private class YoutubeMusicLoginClient(
     private val onCookie: (String) -> Unit
 ) : WebViewClient() {
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-        val blocked = request.isForMainFrame && !YoutubeMusicAuth.isLoginUrl(request.url.toString())
+        val blocked = request.isForMainFrame && !YoutubeMusicAuth.isSecureWebUrl(request.url.toString())
         if (blocked) onWebError()
         return blocked
     }
@@ -131,8 +131,23 @@ private class YoutubeMusicLoginClient(
     override fun onPageFinished(view: WebView, url: String?) {
         onLoading(false)
         if (url == null || !YoutubeMusicAuth.isMusicUrl(url)) return
-        val cookie = CookieManager.getInstance().getCookie(YoutubeMusicAuth.ORIGIN).orEmpty()
-        if (runCatching { YoutubeMusicAuth.authorization(cookie, 1) }.isFailure) return
-        onCookie(cookie)
+        captureCookie(view, 0)
+    }
+
+    private fun captureCookie(view: WebView, attempt: Int) {
+        if (!YoutubeMusicAuth.isMusicUrl(view.url.orEmpty())) return
+        val manager = CookieManager.getInstance()
+        manager.flush()
+        val cookie = manager.getCookie(YoutubeMusicAuth.ORIGIN).orEmpty()
+        if (runCatching { YoutubeMusicAuth.authorization(cookie, 1) }.isSuccess) {
+            onCookie(cookie)
+        } else if (attempt < MAX_COOKIE_RETRIES) {
+            view.postDelayed({ captureCookie(view, attempt + 1) }, COOKIE_RETRY_DELAY_MS * (attempt + 1))
+        }
+    }
+
+    private companion object {
+        const val MAX_COOKIE_RETRIES = 2
+        const val COOKIE_RETRY_DELAY_MS = 500L
     }
 }
