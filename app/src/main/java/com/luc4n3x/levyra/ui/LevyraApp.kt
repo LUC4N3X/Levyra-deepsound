@@ -10063,7 +10063,25 @@ private fun HomeScreen(
                             if (showDeferredHomeSections && visibleEditorialCollections.isNotEmpty()) {
                                 item(key = "home-editorial-collections", contentType = "home-collections") {
                                     HomeSectionLead(compactHome) {
-                                        HomeEditorialCollectionsShelf(
+                                        if (homeStyle == HomeStyle.MaterialExpressive) {
+                                            val fans = remember(visibleEditorialCollections, homeCollectionAccents, strings) {
+                                                visibleEditorialCollections.map { collection ->
+                                                    StudioCollection(
+                                                        id = collection.id,
+                                                        title = homeCollectionTitle(strings, collection),
+                                                        subtitle = collection.tracks.map { it.artist }.distinct().take(2).joinToString(" · "),
+                                                        tracks = collection.tracks.take(3),
+                                                        accent = homeCollectionAccents[collection.id]?.first
+                                                            ?: exploreEditorialPalette(collection.id).first
+                                                    )
+                                                }
+                                            }
+                                            MxCollectionFan(
+                                                title = strings.collectionsTitle,
+                                                collections = fans,
+                                                onOpen = { id -> selectedHomeCollectionId = id }
+                                            )
+                                        } else HomeEditorialCollectionsShelf(
                                             collections = visibleEditorialCollections,
                                             accents = homeCollectionAccents,
                                             onOpen = { collection -> selectedHomeCollectionId = collection.id }
