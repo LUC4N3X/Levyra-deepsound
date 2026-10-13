@@ -523,7 +523,7 @@ def generate_hero_panoramic_showcase():
     for line_index, line in enumerate(tagline_lines):
         line_width = draw.textlength(line, font=tagline_font)
         draw.text(
-            (lockup_center_x - line_width / 2, 500 + line_index * 56),
+            (lockup_center_x - line_width / 2, 500 + line_index * 42),
             line,
             font=tagline_font,
             fill=(240, 240, 242, 242),
