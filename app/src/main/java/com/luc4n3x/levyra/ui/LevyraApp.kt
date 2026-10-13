@@ -3588,7 +3588,7 @@ private fun DownloadProgressHud(
     AnimatedContent(
         targetState = minimized,
         transitionSpec = {
-            (fadeIn(tween(180)) + scaleIn(spring(dampingRatio = 0.7f, stiffness = 500f), initialScale = 0.85f)) togetherWith
+            fadeIn(tween(180)) + scaleIn(spring(dampingRatio = 0.7f, stiffness = 500f), initialScale = 0.85f) togetherWith
                 fadeOut(tween(120)) using SizeTransform(clip = false)
         },
         modifier = Modifier.fillMaxWidth(),

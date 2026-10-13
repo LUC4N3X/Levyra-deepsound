@@ -599,34 +599,41 @@ internal fun LevyraUiState.withYoutubeMusicHome(source: YoutubeMusicHomeSource):
 
 private fun LevyraUiState.withFrozenHomeContent(previous: LevyraUiState): LevyraUiState {
     if (languageCode != previous.languageCode) return this
-    val keepPreviousCharts = selectedChartId == previous.selectedChartId &&
+    val keepCharts = selectedChartId == previous.selectedChartId &&
         previous.charts.isNotEmpty() &&
         !onlyUpgradesPlaceholderArtwork(previous.charts, charts)
-    val keepPreviousSections = previous.homeSections.isNotEmpty()
-    val keepPreviousAlbums = previous.homeAlbums.isNotEmpty()
-    val keepPreviousArtists = previous.homeArtists.isNotEmpty()
+    val keepSections = previous.homeSections.isNotEmpty()
+    val keepAlbums = previous.homeAlbums.isNotEmpty()
+    val keepArtists = previous.homeArtists.isNotEmpty()
     return copy(
         tracks = previous.tracks.ifEmpty { tracks },
         recentSearches = previous.recentSearches,
         recentListens = previous.recentListens,
-        personalOrbitTracks = personalOrbitTracks,
         favorites = previous.favorites,
-        charts = if (keepPreviousCharts) previous.charts else charts,
-        homeSections = if (keepPreviousSections) previous.homeSections else homeSections,
-        homeAlbums = if (keepPreviousAlbums) previous.homeAlbums else homeAlbums,
-        homeArtists = if (keepPreviousArtists) previous.homeArtists else homeArtists,
+        charts = keepWhen(keepCharts, previous.charts, charts),
+        homeSections = keepWhen(keepSections, previous.homeSections, homeSections),
+        homeAlbums = keepWhen(keepAlbums, previous.homeAlbums, homeAlbums),
+        homeArtists = keepWhen(keepArtists, previous.homeArtists, homeArtists),
         homeResonanceTracks = previous.homeResonanceTracks.ifEmpty { homeResonanceTracks },
-        homeResonanceComments = homeResonanceComments + previous.homeResonanceComments.filterValues { !it.isLoading && !it.hasError && it.text.isNotBlank() },
-        homeArtistsLoading = if (keepPreviousArtists) previous.homeArtistsLoading else homeArtistsLoading,
-        homeAlbumsLoading = if (keepPreviousAlbums) previous.homeAlbumsLoading else homeAlbumsLoading,
-        isLoadingHome = if (keepPreviousSections) previous.isLoadingHome else isLoadingHome,
-        homeError = if (keepPreviousSections) previous.homeError else homeError,
+        homeResonanceComments = frozenResonanceComments(previous.homeResonanceComments, homeResonanceComments),
+        homeArtistsLoading = keepWhen(keepArtists, previous.homeArtistsLoading, homeArtistsLoading),
+        homeAlbumsLoading = keepWhen(keepAlbums, previous.homeAlbumsLoading, homeAlbumsLoading),
+        isLoadingHome = keepWhen(keepSections, previous.isLoadingHome, isLoadingHome),
+        homeError = keepWhen(keepSections, previous.homeError, homeError),
         isDeviceOffline = previous.isDeviceOffline,
         downloads = previous.downloads,
         releaseRadar = previous.releaseRadar.ifEmpty { releaseRadar },
         similarArtists = previous.similarArtists.ifEmpty { similarArtists }
     )
 }
+
+private fun <T> keepWhen(keep: Boolean, previous: T, current: T): T = if (keep) previous else current
+
+private fun frozenResonanceComments(
+    previous: Map<String, ResonanceCommentSnippet>,
+    current: Map<String, ResonanceCommentSnippet>
+): Map<String, ResonanceCommentSnippet> =
+    current + previous.filterValues { !it.isLoading && !it.hasError && it.text.isNotBlank() }
 
 internal fun sameHomeRenderSnapshot(previous: HomeRenderSnapshot, current: HomeRenderSnapshot): Boolean {
     return previous.orbitPending == current.orbitPending &&
