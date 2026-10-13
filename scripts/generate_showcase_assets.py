@@ -257,7 +257,7 @@ def draw_m3_copy(card, spec, placement, scheme, card_index, pair_index):
     subtitle = M3_MARKETING_COPY[screenshot_name]
     draw = ImageDraw.Draw(card)
     x = 58
-    y = 58 if placement == "top" else 1268
+    y = 58 if placement == "top" else 1238
     draw_m3_label(draw, x, y, kicker, scheme)
 
     title_y = y + 60
@@ -333,17 +333,20 @@ def paste_editorial_phone(canvas, spec, card_index, placement, gutter, pair_inde
     if not screenshot_path:
         raise FileNotFoundError(f"Missing showcase screenshot: {spec[0]}")
     with Image.open(screenshot_path) as source:
+        if spec[0] == "screen-lyrics.jpg":
+            source = ImageEnhance.Brightness(source).enhance(1.16)
+            source = ImageEnhance.Contrast(source).enhance(0.94)
         phone = create_s26_ultra_mockup(source)
 
     direction = 1 if pair_index % 2 == 0 else -1
     if placement == "bottom":
-        angle = -3 * direction
+        angle = -2.5 * direction
         x = card_left + (145 if card_index == 0 else 15)
-        y = -270
+        y = -285
     else:
-        angle = 3 * direction
+        angle = 2.5 * direction
         x = card_left + (15 if card_index == 0 else 145)
-        y = 300
+        y = 285
 
     rotated = phone.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
     shadow, pad = create_m3_shadow(rotated, blur=24, offset_y=12)
