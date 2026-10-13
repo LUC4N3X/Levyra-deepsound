@@ -179,6 +179,19 @@ M3_PAIR_PLACEMENTS = [
     ("top", "bottom"),
 ]
 
+STUDIO_DARK_PALETTES = [
+    ((12, 9, 18), (183, 255, 73), (88, 48, 124)),
+    ((8, 13, 20), (91, 214, 255), (29, 91, 112)),
+    ((18, 8, 13), (255, 92, 138), (112, 30, 62)),
+    ((9, 15, 12), (92, 239, 170), (25, 100, 74)),
+    ((16, 11, 7), (255, 178, 74), (112, 61, 23)),
+    ((11, 8, 20), (196, 148, 255), (74, 43, 122)),
+    ((7, 15, 18), (67, 232, 220), (18, 92, 90)),
+    ((18, 9, 8), (255, 112, 80), (125, 43, 30)),
+    ((8, 11, 22), (132, 160, 255), (42, 63, 137)),
+    ((14, 15, 7), (225, 239, 80), (90, 97, 22)),
+]
+
 def draw_rounded_layer(canvas, size, radius, color, angle, position):
     layer = Image.new("RGBA", size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
@@ -188,50 +201,40 @@ def draw_rounded_layer(canvas, size, radius, color, angle, position):
 
 def create_m3_pair_canvas(card_w, card_h, gutter, scheme, pair_index):
     duo_w = card_w * 2 + gutter
-    canvas = Image.new("RGBA", (duo_w, card_h), (*scheme["surface_low"], 255))
-    direction = 1 if pair_index % 2 == 0 else -1
-
-    left_stage_y = -330 if direction > 0 else 520
-    right_stage_y = 520 if direction > 0 else -330
-    draw_rounded_layer(
-        canvas,
-        (790, 1280),
-        360,
-        scheme["primary_container"],
-        -7 * direction,
-        (-190, left_stage_y),
-    )
-    draw_rounded_layer(
-        canvas,
-        (790, 1280),
-        360,
-        scheme["tertiary_container"],
-        7 * direction,
-        (card_w + gutter + 300, right_stage_y),
-    )
-
-    draw = ImageDraw.Draw(canvas)
-    accent = scheme["secondary_container"]
+    canvas = Image.new("RGBA", (duo_w, card_h), (7, 8, 11, 255))
     for card_index in range(2):
         card_left = card_index * (card_w + gutter)
-        cx = card_left + (120 if (pair_index + card_index) % 2 == 0 else 780)
-        cy = 765 if (pair_index + card_index) % 3 else 835
-        draw.ellipse((cx - 115, cy - 115, cx + 115, cy + 115), fill=(*accent, 255))
+        bg, accent, glow = STUDIO_DARK_PALETTES[(pair_index * 2 + card_index) % len(STUDIO_DARK_PALETTES)]
+        card = Image.new("RGBA", (card_w, card_h), (*bg, 255))
+        draw = ImageDraw.Draw(card)
+        for y in range(card_h):
+            mix = y / card_h
+            color = tuple(int(bg[i] * (1 - mix * 0.34) + glow[i] * mix * 0.34) for i in range(3))
+            draw.line((0, y, card_w, y), fill=(*color, 255))
+        direction = 1 if (pair_index + card_index) % 2 == 0 else -1
+        draw_rounded_layer(
+            card,
+            (730, 760),
+            280,
+            glow,
+            12 * direction,
+            (-350 if direction > 0 else 520, 420 if pair_index % 2 else 770),
+        )
+        draw.ellipse(
+            (650 if direction > 0 else -150, 70, 1030 if direction > 0 else 230, 450),
+            fill=(*accent, 255),
+        )
+        canvas.paste(card, (card_left, 0))
 
     return canvas
 
 def draw_m3_label(draw, x, y, text, scheme):
-    font = get_font(29, bold=True)
+    font = get_font(27, bold=True)
     bbox = draw.textbbox((0, 0), text, font=font)
     width = bbox[2] - bbox[0]
-    height = 56
-    draw.rounded_rectangle(
-        (x, y, x + width + 46, y + height),
-        radius=28,
-        fill=(*scheme["primary"], 255),
-    )
-    on_primary = (*scheme["on_primary"], 255)
-    draw.text((x + 23, y + 11 - bbox[1]), text, font=font, fill=on_primary)
+    accent = scheme["accent"]
+    draw.rounded_rectangle((x, y + 9, x + 38, y + 17), radius=4, fill=(*accent, 255))
+    draw.text((x + 55, y - bbox[1]), text, font=font, fill=(*accent, 255))
 
 def fit_title_font(draw, title, max_width, initial_size=68, minimum_size=50):
     for size in range(initial_size, minimum_size - 1, -2):
@@ -251,41 +254,15 @@ def draw_m3_copy(card, spec, placement, scheme, card_index, pair_index):
     screenshot_name, kicker, title, _, _, _ = spec
     subtitle = M3_MARKETING_COPY[screenshot_name]
     draw = ImageDraw.Draw(card)
-    align_left = (pair_index + card_index) % 2 == 0
-    panel_x = 34 if align_left else 166
-    panel_y = 34 if placement == "top" else 1236
-    panel_w = 700
-    panel_h = 330
-
-    panel_variant = (pair_index + card_index) % 3
-    if panel_variant == 0:
-        panel_fill = scheme["surface_high"]
-        panel_text = scheme["on_surface"]
-        panel_body = scheme["on_surface_variant"]
-    elif panel_variant == 1:
-        panel_fill = scheme["secondary_container"]
-        panel_text = scheme["on_secondary_container"]
-        panel_body = scheme["on_secondary_container"]
-    else:
-        panel_fill = scheme["primary_container"]
-        panel_text = scheme["on_primary_container"]
-        panel_body = scheme["on_primary_container"]
-
-    draw.rounded_rectangle(
-        (panel_x, panel_y, panel_x + panel_w, panel_y + panel_h),
-        radius=74,
-        fill=(*panel_fill, 255),
-    )
-
-    x = panel_x + 38
-    y = panel_y + 32
+    x = 58
+    y = 58 if placement == "top" else 1268
     draw_m3_label(draw, x, y, kicker, scheme)
 
-    title_y = y + 76
-    title_font = fit_title_font(draw, title, 625, initial_size=76, minimum_size=52)
-    draw.text((x, title_y), title, font=title_font, fill=(*panel_text, 255))
-    body_font = fit_body_font(draw, subtitle, 625, initial_size=31, minimum_size=25)
-    draw.text((x, title_y + 92), subtitle, font=body_font, fill=(*panel_body, 255))
+    title_y = y + 60
+    title_font = fit_title_font(draw, title, 790, initial_size=86, minimum_size=58)
+    draw.text((x, title_y), title, font=title_font, fill=(247, 246, 250, 255))
+    body_font = fit_body_font(draw, subtitle, 760, initial_size=31, minimum_size=25)
+    draw.text((x, title_y + 102), subtitle, font=body_font, fill=(191, 188, 199, 255))
 
 def crop_to_fill(source, width, height):
     source = enhance_screenshot(source)
@@ -308,8 +285,8 @@ def create_s26_ultra_mockup(source, size=(720, 1500)):
         (0, 0, outer_w - 1, outer_h - 1),
         radius=54,
         fill=(28, 29, 34, 255),
-        outline=(151, 154, 164, 230),
-        width=3,
+        outline=(215, 216, 224, 235),
+        width=4,
     )
     screenshot = crop_to_fill(source, inner_w, inner_h)
     mask = Image.new("L", (inner_w, inner_h), 0)
@@ -358,13 +335,13 @@ def paste_editorial_phone(canvas, spec, card_index, placement, gutter, pair_inde
 
     direction = 1 if pair_index % 2 == 0 else -1
     if placement == "bottom":
-        angle = -5 * direction
-        x = card_left + (145 if card_index == 0 else 20)
-        y = -180
+        angle = -6 * direction
+        x = card_left + (155 if card_index == 0 else 5)
+        y = -150
     else:
-        angle = 5 * direction
-        x = card_left + (20 if card_index == 0 else 145)
-        y = 265
+        angle = 6 * direction
+        x = card_left + (5 if card_index == 0 else 155)
+        y = 250
 
     rotated = phone.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
     shadow, pad = create_m3_shadow(rotated, blur=24, offset_y=12)
@@ -383,8 +360,10 @@ def render_m3_editorial_pair(left_spec, right_spec, pair_index):
     right_left = card_w + gutter
     left_card = canvas.crop((0, 0, card_w, card_h))
     right_card = canvas.crop((right_left, 0, right_left + card_w, card_h))
-    draw_m3_copy(left_card, left_spec, left_copy, scheme, 0, pair_index)
-    draw_m3_copy(right_card, right_spec, right_copy, scheme, 1, pair_index)
+    left_palette = STUDIO_DARK_PALETTES[(pair_index * 2) % len(STUDIO_DARK_PALETTES)]
+    right_palette = STUDIO_DARK_PALETTES[(pair_index * 2 + 1) % len(STUDIO_DARK_PALETTES)]
+    draw_m3_copy(left_card, left_spec, left_copy, {"accent": left_palette[1]}, 0, pair_index)
+    draw_m3_copy(right_card, right_spec, right_copy, {"accent": right_palette[1]}, 1, pair_index)
     return left_card, right_card
 
 # Material 3 Expressive content specifications
