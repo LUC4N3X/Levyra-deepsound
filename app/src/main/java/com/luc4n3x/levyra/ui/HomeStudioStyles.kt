@@ -80,6 +80,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -96,6 +97,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ExploreZone
@@ -139,11 +141,11 @@ internal data class HomeStyleSpec(
 internal fun homeStyleSpec(style: HomeStyle, density: HomeDensity): HomeStyleSpec {
     val base = when (style) {
         HomeStyle.Original -> HomeStyleSpec(16.dp, 8.dp, 156.dp, 260.dp, 1f, 12.dp, 52.dp, 5, 3, 6)
-        HomeStyle.ExpressiveMax -> HomeStyleSpec(16.dp, 14.dp, 164.dp, 300.dp, 1f, 28.dp, 56.dp, 5, 3, 6)
-        HomeStyle.Flow -> HomeStyleSpec(14.dp, 8.dp, 136.dp, 220.dp, 1f, 6.dp, 48.dp, 6, 3, 8)
-        HomeStyle.Editorial -> HomeStyleSpec(20.dp, 22.dp, 168.dp, 300.dp, 4f / 3f, 18.dp, 64.dp, 5, 2, 6)
-        HomeStyle.Minimal -> HomeStyleSpec(20.dp, 14.dp, 128.dp, 240.dp, 1f, 4.dp, 44.dp, 6, 3, 6)
-        HomeStyle.Immersive -> HomeStyleSpec(16.dp, 18.dp, 176.dp, 268.dp, 0.8f, 24.dp, 56.dp, 5, 2, 6)
+        HomeStyle.ExpressiveMax -> HomeStyleSpec(16.dp, 20.dp, 168.dp, 304.dp, 1f, 32.dp, 56.dp, 5, 3, 6)
+        HomeStyle.Flow -> HomeStyleSpec(16.dp, 12.dp, 140.dp, 228.dp, 1f, 12.dp, 48.dp, 6, 3, 8)
+        HomeStyle.Editorial -> HomeStyleSpec(20.dp, 24.dp, 172.dp, 304.dp, 4f / 3f, 16.dp, 64.dp, 5, 2, 6)
+        HomeStyle.Minimal -> HomeStyleSpec(20.dp, 16.dp, 132.dp, 244.dp, 1f, 8.dp, 44.dp, 6, 3, 6)
+        HomeStyle.Immersive -> HomeStyleSpec(16.dp, 24.dp, 180.dp, 276.dp, 0.8f, 28.dp, 56.dp, 5, 2, 6)
         HomeStyle.MaterialExpressive -> HomeStyleSpec(16.dp, 22.dp, 160.dp, 132.dp, 1f, 28.dp, 56.dp, 5, 2, 6)
     }
     val scale = when (density) {
@@ -286,6 +288,28 @@ private fun studioArtworkShape(style: HomeStyle, spec: HomeStyleSpec, index: Int
     else -> RoundedCornerShape(spec.artworkCorner)
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+internal fun studioOrbitShape(style: HomeStyle, index: Int, fallback: Shape): Shape = when (style) {
+    HomeStyle.ExpressiveMax -> when (index % 6) {
+        0 -> MaterialShapes.SoftBurst.toShape()
+        1 -> MaterialShapes.Cookie9Sided.toShape()
+        2 -> MaterialShapes.Clover8Leaf.toShape()
+        3 -> MaterialShapes.Arch.toShape()
+        4 -> MaterialShapes.Gem.toShape()
+        else -> MaterialShapes.Cookie12Sided.toShape()
+    }
+    HomeStyle.Flow -> RoundedCornerShape(topStart = 28.dp, topEnd = 8.dp, bottomEnd = 28.dp, bottomStart = 8.dp)
+    HomeStyle.Editorial -> if (index % 2 == 0) {
+        RoundedCornerShape(topStart = 4.dp, topEnd = 32.dp, bottomEnd = 4.dp, bottomStart = 4.dp)
+    } else {
+        RoundedCornerShape(topStart = 32.dp, topEnd = 4.dp, bottomEnd = 4.dp, bottomStart = 4.dp)
+    }
+    HomeStyle.Minimal -> RoundedCornerShape(8.dp)
+    HomeStyle.Immersive -> RoundedCornerShape(32.dp)
+    HomeStyle.Original, HomeStyle.MaterialExpressive -> fallback
+}
+
 @Composable
 private fun studioTitleColor(item: StudioShelfItem): Color =
     if (item.current) MaterialTheme.colorScheme.primary else LevyraText
@@ -341,6 +365,16 @@ internal fun StudioSectionHeader(
             modifier = headerModifier.heightIn(min = 48.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            if (style == HomeStyle.Flow) {
+                Box(
+                    modifier = Modifier
+                        .padding(end = 12.dp)
+                        .width(4.dp)
+                        .height(32.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary)
+                )
+            }
             Column(modifier = Modifier.weight(1f).semantics { heading() }) {
                 if (featured) {
                     Text(
@@ -354,6 +388,7 @@ internal fun StudioSectionHeader(
                     style = when (style) {
                         HomeStyle.ExpressiveMax -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold)
                         HomeStyle.Minimal -> MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium)
+                        HomeStyle.Immersive -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black)
                         else -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
                     },
                     color = LevyraText,
@@ -1136,8 +1171,74 @@ internal fun StudioSpotlight(
     val playIcon = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow
     when (style) {
         HomeStyle.ExpressiveMax -> ExpressiveSpotlight(style, spec, track, artistArtworkUrl, label, lead, playLabel, playing, resolving, playIcon, animationsEnabled, onOpen)
-        HomeStyle.Editorial, HomeStyle.Immersive -> CinematicSpotlight(style, spec, track, artistArtworkUrl, label, lead, playLabel, playing, resolving, playIcon, animationsEnabled, onOpen)
+        HomeStyle.Editorial -> EditorialSpotlight(spec, track, artistArtworkUrl, label, lead, playLabel, resolving, playIcon, onOpen)
+        HomeStyle.Immersive -> CinematicSpotlight(style, spec, track, artistArtworkUrl, label, lead, playLabel, playing, resolving, playIcon, animationsEnabled, onOpen)
+        HomeStyle.Flow -> FlowSpotlight(spec, track, label, lead, playLabel, resolving, playIcon, onOpen)
         else -> CompactSpotlight(style, spec, track, artistArtworkUrl, label, lead, playLabel, playing, resolving, playIcon, animationsEnabled, onOpen)
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun FlowSpotlight(
+    spec: HomeStyleSpec,
+    track: Track,
+    label: String,
+    lead: String,
+    playLabel: String,
+    resolving: Boolean,
+    playIcon: ImageVector,
+    onOpen: () -> Unit
+) {
+    val scheme = MaterialTheme.colorScheme
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = spec.inset)
+            .height(228.dp)
+            .clip(RoundedCornerShape(topStart = 58.dp, topEnd = 16.dp, bottomEnd = 58.dp, bottomStart = 16.dp))
+            .background(Brush.linearGradient(listOf(scheme.primaryContainer, scheme.tertiaryContainer.copy(alpha = 0.72f))))
+            .levyraPressable(onClick = onOpen, onClickLabel = track.title, role = Role.Button)
+    ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .offset(x = 28.dp)
+                .size(202.dp)
+                .graphicsLayer { rotationZ = 9f }
+                .clip(MaterialShapes.Arch.toShape())
+        ) {
+            CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true)
+            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(scheme.primaryContainer.copy(alpha = 0.72f), Color.Transparent))))
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .offset(x = (-154).dp, y = 16.dp)
+                .size(34.dp)
+                .clip(MaterialShapes.SoftBurst.toShape())
+                .background(scheme.primary)
+        )
+        Column(
+            modifier = Modifier.align(Alignment.CenterStart).fillMaxWidth(0.62f).padding(start = 22.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = scheme.primary, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
+            Text(track.title, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black), color = scheme.onPrimaryContainer, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(lead.ifBlank { track.artist }, style = MaterialTheme.typography.bodyMedium, color = scheme.onPrimaryContainer.copy(alpha = 0.74f), maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Surface(
+                onClick = onOpen,
+                shape = CircleShape,
+                color = scheme.primary,
+                contentColor = scheme.onPrimary,
+                modifier = Modifier.padding(top = 6.dp).size(48.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    if (resolving) LevyraLoadingIndicator(Modifier.size(22.dp), color = scheme.onPrimary)
+                    else Icon(playIcon, contentDescription = playLabel)
+                }
+            }
+        }
     }
 }
 
@@ -1158,26 +1259,39 @@ private fun ExpressiveSpotlight(
     onOpen: () -> Unit
 ) {
     val morph = rememberLevyraPlayMorphShape(playing = playing, animated = animationsEnabled)
-    Row(
+    val canvas = homeCanvasColor(LevyraIsLight)
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = spec.inset)
-            .clip(RoundedCornerShape(topStart = 48.dp, topEnd = 20.dp, bottomEnd = 48.dp, bottomStart = 20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .heightIn(min = 288.dp)
             .levyraPressable(onClick = onOpen, onClickLabel = track.title, role = Role.Button)
-            .padding(14.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.CenterVertically
     ) {
+        val artSize = maxWidth.coerceAtMost(252.dp)
         Box(
             modifier = Modifier
-                .weight(0.5f)
-                .aspectRatio(1f)
+                .align(Alignment.CenterEnd)
+                .size(artSize)
+                .clip(MaterialShapes.SoftBurst.toShape())
+                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.56f))
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 16.dp)
+                .size(artSize - 32.dp)
                 .clip(morph)
         ) {
             CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true)
+            Box(modifier = Modifier.fillMaxSize().background(studioExpressiveArtScrim(canvas)))
         }
-        Column(modifier = Modifier.weight(0.5f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .fillMaxWidth(0.58f)
+                .padding(start = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
@@ -1187,9 +1301,9 @@ private fun ExpressiveSpotlight(
             )
             Text(
                 text = track.title,
-                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
+                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black),
                 color = LevyraText,
-                maxLines = 3,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
@@ -1202,7 +1316,7 @@ private fun ExpressiveSpotlight(
             FilledIconButton(
                 onClick = onOpen,
                 shapes = IconButtonDefaults.shapes(),
-                modifier = Modifier.padding(top = 4.dp).size(56.dp)
+                modifier = Modifier.padding(top = 8.dp).size(56.dp)
             ) {
                 if (resolving) {
                     LevyraLoadingIndicator(modifier = Modifier.size(28.dp), color = MaterialTheme.colorScheme.onPrimary)
@@ -1213,6 +1327,108 @@ private fun ExpressiveSpotlight(
         }
     }
 
+}
+
+@Composable
+private fun EditorialSpotlight(
+    spec: HomeStyleSpec,
+    track: Track,
+    artistArtworkUrl: String,
+    label: String,
+    lead: String,
+    playLabel: String,
+    resolving: Boolean,
+    playIcon: ImageVector,
+    onOpen: () -> Unit
+) {
+    val canvas = homeCanvasColor(LevyraIsLight)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 360.dp)
+            .levyraPressable(
+                onClick = onOpen,
+                onClickLabel = track.title,
+                role = Role.Button,
+                pressedScale = LevyraPressScale.Surface
+            )
+    ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxWidth(0.88f)
+                .fillMaxHeight()
+        ) {
+            if (artistArtworkUrl.isNotBlank()) {
+                StudioRemoteArtwork(artistArtworkUrl, track.artist, Modifier.fillMaxSize(), true)
+            } else {
+                CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true)
+            }
+            Box(modifier = Modifier.fillMaxSize().background(studioEditorialPortraitHorizontalScrim(canvas)))
+            Box(modifier = Modifier.fillMaxSize().background(studioEditorialPortraitVerticalScrim(canvas)))
+        }
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth(0.76f)
+                .padding(start = spec.inset, end = 8.dp, bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(
+                    modifier = Modifier
+                        .width(28.dp)
+                        .height(1.dp)
+                        .background(MaterialTheme.colorScheme.primary)
+                )
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Text(
+                text = track.title,
+                style = MaterialTheme.typography.displaySmall.copy(fontFamily = FontFamily.Serif),
+                color = LevyraText,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = lead.ifBlank { track.artist },
+                style = MaterialTheme.typography.bodyLarge,
+                color = LevyraMuted,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Row(
+                modifier = Modifier
+                    .padding(top = 8.dp)
+                    .heightIn(min = 48.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary)
+                    .padding(horizontal = 20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (resolving) {
+                    LevyraLoadingIndicator(
+                        modifier = Modifier.size(22.dp),
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Icon(playIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
+                }
+                Text(
+                    text = playLabel,
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -1255,6 +1471,31 @@ private fun CinematicSpotlight(
                 .fillMaxSize()
                 .background(if (immersive) StudioImmersiveHeroScrim else StudioCaptionScrim)
         )
+        if (immersive) {
+            Row(
+                modifier = Modifier.align(Alignment.TopStart).padding(22.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(Modifier.width(38.dp).height(2.dp).background(Color.White.copy(alpha = 0.78f)))
+                Text("IMMERSIVE CUT", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.88f), fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp)
+            }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(20.dp)
+                    .size(86.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.36f))
+                    .padding(5.dp)
+                    .clip(CircleShape)
+            ) {
+                CoverImage(track = track, modifier = Modifier.fillMaxSize())
+                Box(
+                    Modifier.align(Alignment.Center).size(16.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.82f))
+                )
+            }
+        }
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -1330,16 +1571,29 @@ private fun CompactSpotlight(
     onOpen: () -> Unit
 ) {
     val minimal = style == HomeStyle.Minimal
+    val flow = style == HomeStyle.Flow
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = spec.inset)
-            .clip(RoundedCornerShape(if (minimal) 4.dp else 8.dp))
+            .clip(RoundedCornerShape(if (minimal) 4.dp else if (flow) 18.dp else 8.dp))
             .then(
-                if (minimal) {
-                    Modifier
-                } else {
-                    Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.72f))
+                when {
+                    minimal -> Modifier.drawBehind {
+                        drawLine(
+                            color = LevyraMuted.copy(alpha = 0.24f),
+                            start = Offset(0f, size.height - 1.dp.toPx()),
+                            end = Offset(size.width, size.height - 1.dp.toPx()),
+                            strokeWidth = 1.dp.toPx()
+                        )
+                    }
+                    flow -> Modifier.background(
+                        Brush.horizontalGradient(
+                            0f to MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.48f),
+                            1f to MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.22f)
+                        )
+                    )
+                    else -> Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.72f))
                 }
             )
             .levyraPressable(
@@ -1353,12 +1607,16 @@ private fun CompactSpotlight(
     ) {
         Box(
             modifier = Modifier
-                .size(if (minimal) 64.dp else 88.dp)
-                .clip(RoundedCornerShape(if (minimal) 4.dp else 0.dp))
+                .padding(if (flow) 8.dp else 0.dp)
+                .size(if (minimal) 64.dp else if (flow) 80.dp else 88.dp)
+                .clip(RoundedCornerShape(if (minimal) 4.dp else if (flow) 14.dp else 0.dp))
         ) {
             CoverImage(track = track, modifier = Modifier.fillMaxSize())
         }
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(if (minimal) 0.dp else 4.dp)
+        ) {
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelMedium,
@@ -1368,7 +1626,9 @@ private fun CompactSpotlight(
             )
             Text(
                 text = track.title,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = if (minimal) FontWeight.Medium else FontWeight.Bold
+                ),
                 color = LevyraText,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -1381,7 +1641,7 @@ private fun CompactSpotlight(
                 overflow = TextOverflow.Ellipsis
             )
         }
-        IconButton(onClick = onOpen, modifier = Modifier.padding(end = 4.dp)) {
+        IconButton(onClick = onOpen, modifier = Modifier.padding(end = if (flow) 8.dp else 4.dp)) {
             if (resolving) {
                 LevyraLoadingIndicator(modifier = Modifier.size(22.dp), color = MaterialTheme.colorScheme.primary)
             } else {
@@ -1399,6 +1659,29 @@ private val StudioImmersiveHeroScrim = Brush.verticalGradient(
     1.0f to Color.Black.copy(alpha = 0.86f)
 )
 
+private fun studioExpressiveArtScrim(canvas: Color): Brush = Brush.horizontalGradient(
+    0.0f to canvas.copy(alpha = 0.92f),
+    0.34f to canvas.copy(alpha = 0.26f),
+    0.72f to Color.Transparent,
+    1.0f to canvas.copy(alpha = 0.10f)
+)
+
+private fun studioEditorialPortraitHorizontalScrim(canvas: Color): Brush = Brush.horizontalGradient(
+    colorStops = arrayOf(
+        0.00f to canvas,
+        0.24f to canvas.copy(alpha = 0.94f),
+        0.52f to canvas.copy(alpha = 0.30f),
+        0.80f to canvas.copy(alpha = 0.06f),
+        1.00f to canvas
+    )
+)
+
+private fun studioEditorialPortraitVerticalScrim(canvas: Color): Brush = Brush.verticalGradient(
+    0.00f to canvas.copy(alpha = 0.08f),
+    0.62f to Color.Transparent,
+    1.00f to canvas
+)
+
 @Composable
 internal fun StudioHomeBackdrop(
     style: HomeStyle,
@@ -1409,8 +1692,39 @@ internal fun StudioHomeBackdrop(
 ) {
     val isLight = LevyraIsLight
     val canvas = homeCanvasColor(isLight)
+    val scheme = MaterialTheme.colorScheme
     when (style) {
-        HomeStyle.ExpressiveMax, HomeStyle.Original -> LevyraHomeAtmosphere(isLight = isLight, accent = accent, modifier = modifier)
+        HomeStyle.Original -> LevyraHomeAtmosphere(isLight = isLight, accent = accent, modifier = modifier)
+        HomeStyle.ExpressiveMax -> Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(canvas)
+                .drawBehind {
+                    val primaryCenter = Offset(size.width * 0.12f, size.height * 0.08f)
+                    val secondaryCenter = Offset(size.width * 0.92f, size.height * 0.26f)
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(accent.copy(alpha = 0.24f), Color.Transparent),
+                            center = primaryCenter,
+                            radius = size.width * 0.92f
+                        ),
+                        center = primaryCenter,
+                        radius = size.width * 0.92f
+                    )
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                scheme.tertiary.copy(alpha = 0.12f),
+                                Color.Transparent
+                            ),
+                            center = secondaryCenter,
+                            radius = size.width * 0.68f
+                        ),
+                        center = secondaryCenter,
+                        radius = size.width * 0.68f
+                    )
+                }
+        )
         HomeStyle.Minimal -> Box(modifier = modifier.fillMaxSize().background(canvas))
         HomeStyle.MaterialExpressive -> {
             val tint = if (accent == LevyraCyan) MaterialTheme.colorScheme.primaryContainer else accent
@@ -1430,19 +1744,37 @@ internal fun StudioHomeBackdrop(
             )
         }
         HomeStyle.Flow, HomeStyle.Editorial -> {
-            val strength = if (style == HomeStyle.Flow) 0.16f else 0.10f
+            val strength = if (style == HomeStyle.Flow) 0.18f else 0.12f
             Box(
                 modifier = modifier
                     .fillMaxSize()
                     .background(canvas)
                     .drawBehind {
                         drawRect(
-                            brush = Brush.verticalGradient(
-                                0f to accent.copy(alpha = strength),
-                                1f to Color.Transparent,
-                                endY = size.height * 0.45f
-                            )
+                            brush = if (style == HomeStyle.Flow) {
+                                Brush.linearGradient(
+                                    0f to accent.copy(alpha = strength),
+                                    0.45f to accent.copy(alpha = 0.035f),
+                                    1f to Color.Transparent,
+                                    start = Offset.Zero,
+                                    end = Offset(size.width, size.height * 0.38f)
+                                )
+                            } else {
+                                Brush.radialGradient(
+                                    colors = listOf(accent.copy(alpha = strength), Color.Transparent),
+                                    center = Offset(size.width * 0.82f, size.height * 0.08f),
+                                    radius = maxOf(size.width, size.height * 0.34f)
+                                )
+                            }
                         )
+                        if (style == HomeStyle.Editorial) {
+                            drawLine(
+                                color = accent.copy(alpha = 0.16f),
+                                start = Offset(size.width * 0.05f, size.height * 0.16f),
+                                end = Offset(size.width * 0.95f, size.height * 0.04f),
+                                strokeWidth = 1.dp.toPx()
+                            )
+                        }
                     }
             )
         }
@@ -1728,6 +2060,400 @@ private fun MxHeroDecor(modifier: Modifier) {
                 .clip(pill)
                 .background(scheme.tertiary.copy(alpha = 0.28f))
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+internal fun StudioChartSection(
+    style: HomeStyle,
+    spec: HomeStyleSpec,
+    title: String,
+    tracks: List<Track>,
+    currentId: String?,
+    isPlaying: Boolean,
+    playAllLabel: String,
+    changeMarketLabel: String,
+    onPlay: (Track) -> Unit,
+    onPlayAll: () -> Unit,
+    onChangeMarket: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (tracks.isEmpty()) return
+    if (style == HomeStyle.ExpressiveMax) {
+        StudioExpressiveMaxChart(
+            title = title,
+            tracks = tracks,
+            currentId = currentId,
+            isPlaying = isPlaying,
+            playAllLabel = playAllLabel,
+            changeMarketLabel = changeMarketLabel,
+            onPlay = onPlay,
+            onPlayAll = onPlayAll,
+            onChangeMarket = onChangeMarket,
+            modifier = modifier
+        )
+        return
+    }
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        StudioChartHeader(
+            style = style,
+            inset = spec.inset,
+            title = title,
+            playAllLabel = playAllLabel,
+            changeMarketLabel = changeMarketLabel,
+            onPlayAll = onPlayAll,
+            onChangeMarket = onChangeMarket
+        )
+        when (style) {
+            HomeStyle.Flow -> StudioFlowChart(tracks, currentId, isPlaying, spec, onPlay)
+            HomeStyle.Editorial -> StudioEditorialChart(tracks, currentId, isPlaying, spec, onPlay)
+            HomeStyle.Minimal -> StudioMinimalChart(tracks, currentId, isPlaying, spec, onPlay)
+            HomeStyle.Immersive -> StudioImmersiveChart(tracks, currentId, isPlaying, spec, onPlay)
+            HomeStyle.Original, HomeStyle.MaterialExpressive, HomeStyle.ExpressiveMax -> Unit
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun StudioExpressiveMaxChart(
+    title: String,
+    tracks: List<Track>,
+    currentId: String?,
+    isPlaying: Boolean,
+    playAllLabel: String,
+    changeMarketLabel: String,
+    onPlay: (Track) -> Unit,
+    onPlayAll: () -> Unit,
+    onChangeMarket: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val scheme = MaterialTheme.colorScheme
+    val shapes = remember {
+        listOf(
+            MaterialShapes.SoftBurst.toShape(),
+            MaterialShapes.Arch.toShape(),
+            MaterialShapes.Cookie9Sided.toShape(),
+            MaterialShapes.Clover8Leaf.toShape(),
+            MaterialShapes.Gem.toShape()
+        )
+    }
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(54.dp)
+                    .clip(MaterialShapes.SoftBurst.toShape())
+                    .background(scheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("50", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black), color = scheme.onPrimaryContainer)
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.headlineSmallEmphasized, color = LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() })
+                Text("THE SHAPE OF NOW", style = MaterialTheme.typography.labelSmall, color = scheme.primary, letterSpacing = 1.8.sp)
+            }
+            FilledTonalIconButton(onClick = onChangeMarket, shapes = IconButtonDefaults.shapes()) {
+                Icon(Icons.Rounded.Public, contentDescription = changeMarketLabel)
+            }
+            FilledIconButton(onClick = onPlayAll, shapes = IconButtonDefaults.shapes()) {
+                Icon(Icons.Rounded.PlayArrow, contentDescription = playAllLabel)
+            }
+        }
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            itemsIndexed(tracks.take(14), key = { index, track -> "max-chart-$index-${track.id}" }) { index, track ->
+                val leader = index == 0
+                val width = if (leader) 252.dp else 166.dp
+                val height = if (leader) 318.dp else if (index % 2 == 0) 238.dp else 274.dp
+                Box(
+                    modifier = Modifier
+                        .width(width)
+                        .height(height)
+                        .graphicsLayer { rotationZ = if (leader) -1.5f else if (index % 2 == 0) 2.5f else -2f }
+                        .clip(if (leader) MaterialShapes.SoftBurst.toShape() else shapes[index % shapes.size])
+                        .background(if (leader) scheme.primaryContainer else scheme.secondaryContainer)
+                        .levyraPressable(onClick = { onPlay(track) }, onClickLabel = track.title, role = Role.Button)
+                ) {
+                    CoverImage(track, Modifier.fillMaxSize(), highRes = leader)
+                    Box(
+                        Modifier.fillMaxSize().background(
+                            Brush.verticalGradient(
+                                0f to Color.Transparent,
+                                0.52f to Color.Transparent,
+                                1f to Color.Black.copy(alpha = 0.88f)
+                            )
+                        )
+                    )
+                    Text(
+                        text = (index + 1).toString().padStart(2, '0'),
+                        style = if (leader) MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Black) else MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Black),
+                        color = Color.White,
+                        modifier = Modifier.align(Alignment.TopStart).padding(if (leader) 24.dp else 16.dp)
+                    )
+                    Column(modifier = Modifier.align(Alignment.BottomStart).padding(if (leader) 26.dp else 16.dp)) {
+                        Text(track.title, style = if (leader) MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black) else MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(track.artist, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.78f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        if (track.id == currentId) {
+                            Spacer(Modifier.height(8.dp))
+                            LevyraPlayingIndicator(playing = isPlaying, color = Color.White, size = 14.dp)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StudioChartHeader(
+    style: HomeStyle,
+    inset: Dp,
+    title: String,
+    playAllLabel: String,
+    changeMarketLabel: String,
+    onPlayAll: () -> Unit,
+    onChangeMarket: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = inset),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = title,
+            style = when (style) {
+                HomeStyle.Editorial -> MaterialTheme.typography.headlineMedium.copy(fontFamily = FontFamily.Serif)
+                HomeStyle.Immersive -> MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black)
+                HomeStyle.Minimal -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium)
+                else -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
+            },
+            color = LevyraText,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f).semantics { heading() }
+        )
+        IconButton(onClick = onChangeMarket) {
+            Icon(Icons.Rounded.Public, contentDescription = changeMarketLabel, tint = LevyraText)
+        }
+        FilledIconButton(onClick = onPlayAll, modifier = Modifier.size(48.dp)) {
+            Icon(Icons.Rounded.PlayArrow, contentDescription = playAllLabel)
+        }
+    }
+}
+
+@Composable
+private fun StudioFlowChart(
+    tracks: List<Track>,
+    currentId: String?,
+    isPlaying: Boolean,
+    spec: HomeStyleSpec,
+    onPlay: (Track) -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                Brush.horizontalGradient(
+                    listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f), Color.Transparent, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.08f))
+                )
+            )
+            .padding(vertical = 18.dp)
+    ) {
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = spec.inset),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            itemsIndexed(tracks.take(12), key = { index, track -> "flow-chart-$index-${track.id}" }) { index, track ->
+                Column(
+                    modifier = Modifier
+                        .width(if (index == 0) 188.dp else 148.dp)
+                        .padding(top = if (index % 2 == 0) 0.dp else 30.dp, bottom = if (index % 2 == 0) 26.dp else 0.dp)
+                        .graphicsLayer { rotationZ = if (index % 2 == 0) -2f else 2f }
+                        .levyraPressable(onClick = { onPlay(track) }, onClickLabel = track.title, role = Role.Button),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .clip(if (index % 2 == 0) RoundedCornerShape(topStart = 46.dp, topEnd = 10.dp, bottomEnd = 46.dp, bottomStart = 10.dp) else RoundedCornerShape(topStart = 10.dp, topEnd = 46.dp, bottomEnd = 10.dp, bottomStart = 46.dp))
+                ) {
+                    CoverImage(track = track, modifier = Modifier.fillMaxSize())
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(8.dp)
+                            .clip(RoundedCornerShape(topStart = 16.dp, bottomEnd = 16.dp))
+                            .background(if (index == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer)
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Text("#${index + 1}", style = MaterialTheme.typography.labelLarge, color = if (index == 0) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer)
+                    }
+                    if (track.id == currentId) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(8.dp)
+                                .clip(CircleShape)
+                                .background(Color.Black.copy(alpha = 0.52f))
+                                .padding(6.dp)
+                        ) {
+                            LevyraPlayingIndicator(playing = isPlaying, color = Color.White, size = 12.dp)
+                        }
+                    }
+                }
+                LevyraCardCaption(track.title, track.artist, titleLines = 1, reserveTitleLines = false)
+            }
+        }
+        }
+    }
+}
+
+@Composable
+private fun StudioEditorialChart(
+    tracks: List<Track>,
+    currentId: String?,
+    isPlaying: Boolean,
+    spec: HomeStyleSpec,
+    onPlay: (Track) -> Unit
+) {
+    val visible = tracks.take(6)
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = spec.inset),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        visible.forEachIndexed { index, track ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = if (index == 0) 112.dp else 76.dp)
+                    .levyraPressable(onClick = { onPlay(track) }, onClickLabel = track.title, role = Role.Button),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = (index + 1).toString().padStart(2, '0'),
+                    style = if (index == 0) MaterialTheme.typography.displaySmall else MaterialTheme.typography.headlineSmall,
+                    color = if (track.id == currentId) MaterialTheme.colorScheme.primary else LevyraMuted,
+                    fontFamily = FontFamily.Serif,
+                    modifier = Modifier.width(52.dp)
+                )
+                Box(
+                    modifier = Modifier
+                        .size(if (index == 0) 96.dp else 60.dp)
+                        .clip(if (index == 0) RoundedCornerShape(topEnd = 32.dp) else RoundedCornerShape(8.dp))
+                ) {
+                    CoverImage(track = track, modifier = Modifier.fillMaxSize())
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(track.title, style = if (index == 0) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium, color = LevyraText, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(track.artist, style = MaterialTheme.typography.bodyMedium, color = LevyraMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                if (track.id == currentId) {
+                    LevyraPlayingIndicator(
+                        playing = isPlaying,
+                        color = MaterialTheme.colorScheme.primary,
+                        size = 14.dp
+                    )
+                }
+            }
+            if (index < visible.lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
+        }
+    }
+}
+
+@Composable
+private fun StudioMinimalChart(
+    tracks: List<Track>,
+    currentId: String?,
+    isPlaying: Boolean,
+    spec: HomeStyleSpec,
+    onPlay: (Track) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = spec.inset)) {
+        tracks.take(8).forEachIndexed { index, track ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 64.dp)
+                    .levyraPressable(onClick = { onPlay(track) }, onClickLabel = track.title, role = Role.Button),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text((index + 1).toString(), style = MaterialTheme.typography.labelLarge, color = LevyraMuted, modifier = Modifier.width(20.dp))
+                Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(6.dp))) { CoverImage(track, Modifier.fillMaxSize()) }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(track.title, style = MaterialTheme.typography.titleSmall, color = LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(track.artist, style = MaterialTheme.typography.bodySmall, color = LevyraMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                if (track.id == currentId) {
+                    LevyraPlayingIndicator(
+                        playing = isPlaying,
+                        color = MaterialTheme.colorScheme.primary,
+                        size = 12.dp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StudioImmersiveChart(
+    tracks: List<Track>,
+    currentId: String?,
+    isPlaying: Boolean,
+    spec: HomeStyleSpec,
+    onPlay: (Track) -> Unit
+) {
+    LazyRow(contentPadding = PaddingValues(horizontal = spec.inset), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        itemsIndexed(tracks.take(10), key = { index, track -> "immersive-chart-$index-${track.id}" }) { index, track ->
+            val leader = index == 0
+            Box(
+                modifier = Modifier
+                    .width(if (leader) 300.dp else 204.dp)
+                    .height(if (leader) 382.dp else 318.dp)
+                    .clip(if (leader) RoundedCornerShape(topStart = 72.dp, topEnd = 22.dp, bottomEnd = 72.dp, bottomStart = 22.dp) else RoundedCornerShape(34.dp))
+                    .levyraPressable(onClick = { onPlay(track) }, onClickLabel = track.title, role = Role.Button)
+            ) {
+                CoverImage(track, Modifier.fillMaxSize(), highRes = true)
+                Box(Modifier.fillMaxSize().background(StudioImmersiveHeroScrim))
+                Box(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(18.dp)
+                        .size(if (leader) 82.dp else 58.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.32f))
+                        .drawBehind {
+                            drawCircle(Color.White.copy(alpha = 0.20f), style = Stroke(width = 1.dp.toPx()))
+                            drawCircle(Color.White.copy(alpha = 0.10f), radius = size.minDimension * 0.28f, style = Stroke(width = 1.dp.toPx()))
+                        }
+                )
+                Text(
+                    text = if (leader) "NO. 01" else (index + 1).toString().padStart(2, '0'),
+                    style = if (leader) MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Black, letterSpacing = 2.sp) else MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Black),
+                    color = Color.White.copy(alpha = 0.90f),
+                    modifier = Modifier.align(Alignment.TopStart).padding(if (leader) 24.dp else 18.dp)
+                )
+                Column(modifier = Modifier.align(Alignment.BottomStart).padding(if (leader) 26.dp else 18.dp)) {
+                    if (leader) Text("CHART PREMIERE", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.64f), letterSpacing = 1.6.sp)
+                    Text(track.title, style = if (leader) MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black) else MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(track.artist, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.76f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (track.id == currentId) {
+                        LevyraPlayingIndicator(playing = isPlaying, color = Color.White, size = 14.dp)
+                    }
+                }
+            }
+        }
     }
 }
 

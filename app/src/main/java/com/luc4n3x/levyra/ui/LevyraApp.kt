@@ -10043,6 +10043,7 @@ private fun HomeScreen(
                                 item(key = "home-personal", contentType = "home-personal-orbit") {
                                     HomeSectionLead(compactHome) {
                                         PersonalListeningShelf(
+                                            style = homeStyle,
                                             tracks = visiblePersonalTracks,
                                             userName = state.userName,
                                             profilePhotoPath = state.profilePhotoPath,
@@ -10517,6 +10518,33 @@ private fun HomeScreen(
                             }
                         }
                         HomeSectionId.Charts -> {
+                        if (homeStyle != HomeStyle.Original && homeStyle != HomeStyle.MaterialExpressive &&
+                            showDeferredHomeSections && state.interfaceSettings.showCharts && state.charts.isNotEmpty()
+                        ) {
+                            item(key = "home-chart-studio", contentType = "home-studio-chart") {
+                                val marketName = remember(state.chartRegions, state.selectedChartId, state.languageCode) {
+                                    state.chartRegions
+                                        .firstOrNull { it.id == state.selectedChartId }
+                                        ?.let { ChartMarketDirectory.displayName(it, state.languageCode) }
+                                        .orEmpty()
+                                }
+                                StudioChartSection(
+                                    style = homeStyle,
+                                    spec = styleSpec,
+                                    title = strings.chartMarketTitle(state.charts.size.coerceAtMost(50), marketName),
+                                    tracks = state.charts,
+                                    currentId = state.currentTrack?.id,
+                                    isPlaying = state.isPlaying,
+                                    playAllLabel = strings.playAll,
+                                    changeMarketLabel = strings.chartMarketChange,
+                                    onPlay = { track -> viewModel.playFrom(state.charts, track) },
+                                    onPlayAll = { viewModel.playAll(state.charts) },
+                                    onChangeMarket = { chartMarketSheetOpen = true },
+                                    modifier = studioItemModifier()
+                                )
+                            }
+                            return@forEach
+                        }
                         if (homeStyle == HomeStyle.MaterialExpressive && showDeferredHomeSections && state.interfaceSettings.showCharts && state.charts.isNotEmpty()) {
                             item(key = "home-chart-mx", contentType = "home-studio-chart") {
                                 val marketName = remember(state.chartRegions, state.selectedChartId, state.languageCode) {
@@ -10816,6 +10844,7 @@ private fun homeSoundtrackMatchesArtist(track: Track, artistName: String, browse
     return primary.equals(artistName.trim(), ignoreCase = true)
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun HomeEditorialSpotlight(
     candidate: HomeSpotlightCandidate,
@@ -11047,6 +11076,67 @@ private fun HomeEditorialSpotlight(
                     )
             )
         }
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .offset(x = 22.dp, y = if (staged) 106.dp else 54.dp)
+                .size(174.dp)
+                .graphicsLayer { rotationZ = 8f },
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(160.dp)
+                    .clip(CircleShape)
+                    .background(
+                        Brush.radialGradient(
+                            0f to Color.Black,
+                            0.48f to Color(0xFF252329),
+                            0.51f to Color.Black,
+                            1f to Color(0xFF09090B)
+                        )
+                    )
+                    .drawBehind {
+                        repeat(5) { ring ->
+                            drawCircle(
+                                color = Color.White.copy(alpha = 0.055f),
+                                radius = size.minDimension * (0.22f + ring * 0.075f),
+                                style = Stroke(width = 1.dp.toPx())
+                            )
+                        }
+                    }
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .size(108.dp)
+                    .graphicsLayer { rotationZ = -15f }
+                    .clip(MaterialShapes.Cookie9Sided.toShape())
+                    .background(heroTones.badge)
+                    .padding(4.dp)
+                    .clip(MaterialShapes.Cookie9Sided.toShape())
+            ) {
+                CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true)
+            }
+            Box(
+                modifier = Modifier
+                    .size(26.dp)
+                    .clip(MaterialShapes.Sunny.toShape())
+                    .background(heroTones.badge)
+                    .padding(8.dp)
+                    .clip(CircleShape)
+                    .background(playFill)
+            )
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .offset(x = (-136).dp, y = if (staged) 84.dp else 34.dp)
+                .size(34.dp)
+                .graphicsLayer { rotationZ = -18f }
+                .clip(MaterialShapes.SoftBurst.toShape())
+                .background(heroTones.badge.copy(alpha = 0.92f))
+        )
         Column(modifier = Modifier.fillMaxWidth()) {
             if (header != null) {
                 Box(
@@ -11104,7 +11194,7 @@ private fun HomeEditorialSpotlight(
                     Text(
                         text = soundtrackTitle,
                         color = heroInk,
-                        style = LevyraType.heroTitle,
+                        style = MaterialTheme.typography.displaySmallEmphasized.copy(fontWeight = FontWeight.Black),
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.semantics { heading() }
@@ -12484,6 +12574,7 @@ private fun HomeCompactPlayAllHeader(
 
 @Composable
 private fun HomeOrbitHeader(
+    style: HomeStyle = HomeStyle.Original,
     userName: String,
     profilePhotoPath: String,
     profilePhotoVersion: Long,
@@ -12497,7 +12588,26 @@ private fun HomeOrbitHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget),
+            .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
+            .then(
+                when (style) {
+                    HomeStyle.ExpressiveMax -> Modifier
+                        .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 12.dp, bottomEnd = 32.dp, bottomStart = 12.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.62f))
+                        .padding(12.dp)
+                    HomeStyle.Flow -> Modifier
+                        .drawBehind {
+                            drawLine(
+                                color = LevyraCyan,
+                                start = Offset.Zero,
+                                end = Offset(size.width, 0f),
+                                strokeWidth = 3.dp.toPx()
+                            )
+                        }
+                        .padding(top = 8.dp)
+                    else -> Modifier
+                }
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (initial != null) {
@@ -12524,9 +12634,17 @@ private fun HomeOrbitHeader(
             Text(
                 text = strings.personalOrbitTitle,
                 color = LevyraText,
-                fontSize = LevyraHomeDesign.OrbitHeaderTitleSize,
-                lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitHeaderTitleSize),
-                fontWeight = FontWeight.Bold,
+                style = when (style) {
+                    HomeStyle.Editorial -> MaterialTheme.typography.headlineSmall.copy(fontFamily = FontFamily.Serif)
+                    HomeStyle.Minimal -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium)
+                    HomeStyle.Immersive -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black)
+                    HomeStyle.ExpressiveMax, HomeStyle.Flow -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
+                    HomeStyle.Original, HomeStyle.MaterialExpressive -> TextStyle(
+                        fontSize = LevyraHomeDesign.OrbitHeaderTitleSize,
+                        lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitHeaderTitleSize),
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() }
@@ -12640,6 +12758,7 @@ private fun HomeOrbitAvatar(initial: String, photoPath: String, photoVersion: Lo
 
 @Composable
 private fun PersonalListeningShelf(
+    style: HomeStyle,
     tracks: List<Track>,
     userName: String,
     profilePhotoPath: String,
@@ -12652,7 +12771,17 @@ private fun PersonalListeningShelf(
     onPlayAll: () -> Unit,
     onTrackActions: (Track) -> Unit
 ) {
-    val pages = remember(tracks) { homePersonalOrbitPages(tracks) }
+    val columns = when (style) {
+        HomeStyle.Editorial, HomeStyle.Immersive -> 2
+        else -> HOME_PERSONAL_ORBIT_GRID_COLUMNS
+    }
+    val pages = remember(tracks, columns) {
+        homePersonalOrbitPages(tracks)
+            .flatten()
+            .flatten()
+            .chunked(columns * columns)
+            .map { page -> page.chunked(columns) }
+    }
     if (pages.isEmpty()) return
     val pagerState = rememberPagerState(pageCount = { pages.size })
     LaunchedEffect(pages.size) {
@@ -12682,11 +12811,17 @@ private fun PersonalListeningShelf(
                     rowTracks.forEachIndexed { columnIndex, track ->
                         key(LevyraPersonalOrbit.identityKey(track)) {
                             PersonalOrbitTile(
-                                shape = levyraGroupedGridShape(
-                                    row = rowIndex,
-                                    column = columnIndex,
-                                    rows = pageRows.size,
-                                    columns = HOME_PERSONAL_ORBIT_GRID_COLUMNS
+                                style = style,
+                                index = rowIndex * columns + columnIndex,
+                                shape = studioOrbitShape(
+                                    style = style,
+                                    index = rowIndex * columns + columnIndex,
+                                    fallback = levyraGroupedGridShape(
+                                        row = rowIndex,
+                                        column = columnIndex,
+                                        rows = pageRows.size,
+                                        columns = columns
+                                    )
                                 ),
                                 track = track,
                                 isCurrent = track.id == currentId,
@@ -12698,7 +12833,7 @@ private fun PersonalListeningShelf(
                             )
                         }
                     }
-                    repeat(HOME_PERSONAL_ORBIT_GRID_COLUMNS - rowTracks.size) {
+                    repeat(columns - rowTracks.size) {
                         Spacer(modifier = Modifier.weight(1f))
                     }
                 }
@@ -12709,6 +12844,7 @@ private fun PersonalListeningShelf(
     Column(verticalArrangement = Arrangement.spacedBy(homeHeaderContentGap())) {
         HomeSectionInset {
             HomeOrbitHeader(
+                style = style,
                 userName = userName,
                 profilePhotoPath = profilePhotoPath,
                 profilePhotoVersion = profilePhotoVersion,
@@ -12772,6 +12908,8 @@ private fun PersonalListeningShelf(
 
 @Composable
 private fun PersonalOrbitTile(
+    style: HomeStyle,
+    index: Int,
     shape: Shape,
     track: Track,
     isCurrent: Boolean,
@@ -12785,7 +12923,12 @@ private fun PersonalOrbitTile(
 
     Box(
         modifier = modifier
-            .aspectRatio(1f)
+            .aspectRatio(if (style == HomeStyle.Editorial) 1.18f else if (style == HomeStyle.Immersive) 0.86f else 1f)
+            .graphicsLayer {
+                rotationZ = if (style == HomeStyle.ExpressiveMax) {
+                    when (index % 3) { 0 -> -2.5f; 1 -> 2f; else -> 0f }
+                } else 0f
+            }
             .clip(shape)
             .background(LevyraPanel)
             .levyraPressable(
