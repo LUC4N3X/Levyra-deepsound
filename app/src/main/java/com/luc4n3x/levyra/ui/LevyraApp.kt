@@ -1,6 +1,11 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.levyraShimmerSweep
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.pullToRefresh
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import com.luc4n3x.levyra.ui.components.rememberLevyraShimmerProgress
 import com.luc4n3x.levyra.ui.components.LevyraPlayAllButton
 import com.luc4n3x.levyra.ui.components.LevyraPlayAllIconButton
 import com.luc4n3x.levyra.ui.components.LevyraNowPlayingBadge
@@ -201,6 +206,7 @@ import com.luc4n3x.levyra.R
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.Crossfade
@@ -448,6 +454,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -1837,8 +1844,10 @@ fun LevyraApp(
     onRetryPreUpdateBackup: () -> Unit = {},
     onContinueUpdateWithoutBackup: () -> Unit = {}
 ) {
-    val screenViewModelFactory = remember(viewModel) { LevyraScreenViewModelFactory(viewModel) }
     val youtubeMusicViewModel = androidx.lifecycle.viewmodel.compose.viewModel<com.luc4n3x.levyra.viewmodel.youtubemusic.YoutubeMusicAccountViewModel>()
+    val screenViewModelFactory = remember(viewModel, youtubeMusicViewModel) {
+        LevyraScreenViewModelFactory(viewModel, youtubeMusicViewModel.homeSource)
+    }
     val youtubeMusicState by youtubeMusicViewModel.state.collectAsStateWithLifecycle()
     var showYoutubeMusic by rememberSaveable { mutableStateOf(false) }
 
@@ -2298,17 +2307,7 @@ fun LevyraApp(
                     when (tab) {
                         LevyraTab.Home -> {
                             val homeViewModel: HomeViewModel = composeViewModel(key = "levyra-home", factory = screenViewModelFactory)
-                            val levyraRenderSnapshot by homeViewModel.renderState.collectAsStateWithLifecycle()
-                            val youtubeMusicHome = youtubeMusicState.home
-                            val renderSnapshot by produceState(levyraRenderSnapshot, levyraRenderSnapshot, youtubeMusicHome) {
-                                val home = youtubeMusicHome
-                                val previous = value
-                                value = if (home == null) {
-                                    levyraRenderSnapshot
-                                } else {
-                                    withContext(Dispatchers.Default) { withYoutubeMusicHome(levyraRenderSnapshot, home, previous) }
-                                }
-                            }
+                            val renderSnapshot by homeViewModel.renderState.collectAsStateWithLifecycle()
                             CompositionLocalProvider(
                                 LocalHomeCompactDensity provides
                                     renderSnapshot.state.interfaceSettings.compactHome
@@ -2319,6 +2318,9 @@ fun LevyraApp(
                                     homeListState = homeListState,
                                     deferredSectionsRevealed = homeDeferredSectionsRevealed,
                                     accountAvatarUrl = youtubeMusicState.active?.avatarUrl.orEmpty(),
+                                    onPullRefresh = {
+                                        homeViewModel.refreshHome { youtubeMusicViewModel.refreshHomeAndAwait(state.languageCode) }
+                                    },
                                     onTrackActions = { track ->
                                         queueRemovalTarget = null
                                         trackActionTarget = track
@@ -2543,18 +2545,38 @@ fun LevyraApp(
                 )
             }
 
+            val downloadsActive = state.downloadingTrackIds.isNotEmpty()
+            var downloadHudMinimized by rememberSaveable { mutableStateOf(false) }
+            var downloadHudDismissed by rememberSaveable { mutableStateOf(false) }
+            LaunchedEffect(downloadsActive) {
+                if (!downloadsActive) {
+                    downloadHudMinimized = false
+                    downloadHudDismissed = false
+                }
+            }
+            val downloadHudOverPlayer = state.selectedTab == LevyraTab.Player
             AnimatedVisibility(
-                visible = state.downloadingTrackIds.isNotEmpty(),
+                visible = downloadsActive && !downloadHudDismissed,
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
+                    .align(if (downloadHudOverPlayer) Alignment.TopCenter else Alignment.BottomCenter)
                     .zIndex(18f)
-                    .padding(horizontal = 22.dp)
-                    .navigationBarsPadding()
-                    .padding(bottom = downloadHudBottomPadding(state, dockSideBySide)),
+                    .padding(horizontal = 16.dp)
+                    .then(
+                        if (downloadHudOverPlayer) {
+                            Modifier.statusBarsPadding().padding(top = LevyraPlayerDesign.MinimumTouchTarget + LevyraPlayerDesign.SpaceLg)
+                        } else {
+                            Modifier.navigationBarsPadding().padding(bottom = downloadHudBottomPadding(state, dockSideBySide))
+                        }
+                    ),
                 enter = miniEnter,
                 exit = miniExit
             ) {
-                DownloadProgressHud(state = state, onCancel = viewModel::cancelDownload)
+                DownloadProgressHud(
+                    state = state,
+                    minimized = downloadHudMinimized,
+                    onMinimizedChange = { downloadHudMinimized = it },
+                    onDismiss = { downloadHudDismissed = true }
+                )
             }
 
             AnimatedVisibility(visible = state.showOnboarding, enter = overlayEnter, exit = overlayExit) {
@@ -3537,7 +3559,6 @@ private fun LevyraUiState.activeDownloadHudItem(strings: LevyraStrings): Downloa
 
 private fun downloadHudBottomPadding(state: LevyraUiState, dockSideBySide: Boolean): Dp {
     return when {
-        state.selectedTab == LevyraTab.Player -> 24.dp
         state.currentTrack != null && !dockSideBySide -> 154.dp
         else -> 96.dp
     }
@@ -3580,101 +3601,110 @@ private fun animatedBottomContentInset(
     return inset
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun DownloadProgressHud(state: LevyraUiState, onCancel: (String) -> Unit) {
-    val item = state.activeDownloadHudItem(LocalLevyraStrings.current) ?: return
-    val progressFraction = item.progress / 100f
-    Surface(
-        color = Color.Transparent,
-        shape = RoundedCornerShape(999.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(24.dp, RoundedCornerShape(999.dp), clip = false)
-    ) {
-        Row(
-            modifier = Modifier
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            LevyraPanelSoft.copy(alpha = 0.98f),
-                            LevyraInk.copy(alpha = 0.96f),
-                            LevyraPanel.copy(alpha = 0.94f)
-                        )
-                    )
-                )
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Box(
+private fun DownloadProgressHud(
+    state: LevyraUiState,
+    minimized: Boolean,
+    onMinimizedChange: (Boolean) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val item = state.activeDownloadHudItem(strings) ?: return
+    val colors = MaterialTheme.colorScheme
+    val progress by animateFloatAsState(
+        targetValue = item.progress / 100f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow),
+        label = "downloadHudProgress"
+    )
+    AnimatedContent(
+        targetState = minimized,
+        transitionSpec = {
+            fadeIn(tween(180)) + scaleIn(spring(dampingRatio = 0.7f, stiffness = 500f), initialScale = 0.85f) togetherWith
+                fadeOut(tween(120)) using SizeTransform(clip = false)
+        },
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = Alignment.CenterEnd,
+        label = "downloadHudMode"
+    ) { compact ->
+        if (compact) {
+            Surface(
+                onClick = { onMinimizedChange(false) },
+                shape = CircleShape,
+                color = colors.primaryContainer,
+                contentColor = colors.onPrimaryContainer,
+                shadowElevation = 6.dp,
                 modifier = Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(
-                                LevyraCyan.copy(alpha = 0.24f),
-                                LevyraViolet.copy(alpha = 0.16f),
-                                Color.Transparent
-                            )
-                        )
+                    .wrapContentWidth(Alignment.End)
+                    .size(52.dp)
+                    .semantics { contentDescription = "${strings.downloadInProgress} ${item.progress}%" }
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    CircularWavyProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.size(44.dp),
+                        color = colors.primary,
+                        trackColor = colors.primary.copy(alpha = 0.18f)
                     )
-                    .drawBehind {
-                        val strokeWidth = 3.dp.toPx()
-                        val radius = (size.minDimension - strokeWidth) / 2f
-                        drawCircle(
-                            color = Color.White.copy(alpha = 0.16f),
-                            radius = radius,
-                            style = Stroke(width = strokeWidth)
-                        )
-                        drawArc(
-                            color = LevyraCyan,
-                            startAngle = -90f,
-                            sweepAngle = 360f * progressFraction.coerceIn(0f, 1f),
-                            useCenter = false,
-                            style = Stroke(width = strokeWidth)
-                        )
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "${item.progress}%",
-                    color = LevyraCyan,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Black,
-                    maxLines = 1
-                )
+                    Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(20.dp))
+                }
             }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = if (item.count > 1) LocalLevyraStrings.current.downloadsInProgress else LocalLevyraStrings.current.downloadInProgress,
-                    color = LevyraMuted,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = item.title,
-                    color = LevyraText,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Black,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            IconButton(
-                onClick = { onCancel(item.taskKey) },
-                modifier = Modifier.size(38.dp)
+        } else {
+            Surface(
+                shape = RoundedCornerShape(28.dp),
+                color = colors.surfaceContainerHigh,
+                contentColor = colors.onSurface,
+                shadowElevation = 6.dp,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(
-                    Icons.Rounded.Close,
-                    contentDescription = LocalLevyraStrings.current.cancelDownload,
-                    tint = LevyraMuted,
-                    modifier = Modifier.size(21.dp)
-                )
+                Row(
+                    modifier = Modifier.padding(start = 10.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(colors.primaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularWavyProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier.size(40.dp),
+                            color = colors.primary,
+                            trackColor = colors.primary.copy(alpha = 0.18f)
+                        )
+                        Icon(
+                            Icons.Rounded.Download,
+                            contentDescription = null,
+                            tint = colors.onPrimaryContainer,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = item.title,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = "${if (item.count > 1) strings.downloadsInProgress else strings.downloadInProgress} · ${item.progress}%",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = colors.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    IconButton(onClick = { onMinimizedChange(true) }) {
+                        Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = strings.showLess, tint = colors.onSurfaceVariant)
+                    }
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Rounded.Close, contentDescription = strings.close, tint = colors.onSurfaceVariant)
+                    }
+                }
             }
         }
     }
@@ -9387,6 +9417,7 @@ internal fun selectHomeSpotlightTracks(
     ).firstOrNull { it.isNotEmpty() }.orEmpty()
 }
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun HomeScreen(
     viewModel: HomeViewModel,
@@ -9394,10 +9425,13 @@ private fun HomeScreen(
     homeListState: LazyListState,
     deferredSectionsRevealed: MutableState<Boolean>,
     accountAvatarUrl: String,
+    onPullRefresh: () -> Unit,
     onTrackActions: (Track) -> Unit
 ) {
     val state = renderSnapshot.state
     val homeDerivedState = renderSnapshot.derived
+    val homeRefreshing by viewModel.homeRefreshing.collectAsStateWithLifecycle()
+    val homePullState = rememberPullToRefreshState()
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
     var addTarget by remember { mutableStateOf<Track?>(null) }
@@ -9453,7 +9487,7 @@ private fun HomeScreen(
         )
     }
     val rawOtherSections = homeDerivedState.otherSections
-    val homeVideoTracks = remember(state.exploreVideos, rawOtherSections, state.charts, strings.exploreNewVideos) {
+    val freshHomeVideoTracks = remember(state.exploreVideos, rawOtherSections, state.charts, strings.exploreNewVideos) {
         val sectionVideos = rawOtherSections
             .filter { section -> isMusicVideoSectionTitle(section.title, strings) }
             .flatMap { section -> section.tracks }
@@ -9467,6 +9501,15 @@ private fun HomeScreen(
                     track.videoUrl.isNotBlank()
             }
             .take(12)
+    }
+    val lastHomeVideoTracks = remember { mutableStateOf<List<Track>>(emptyList()) }
+    val homeVideoTracks = if (freshHomeVideoTracks.isEmpty() && state.isLoadingCharts) {
+        lastHomeVideoTracks.value
+    } else {
+        freshHomeVideoTracks
+    }
+    SideEffect {
+        if (freshHomeVideoTracks.isNotEmpty()) lastHomeVideoTracks.value = freshHomeVideoTracks
     }
     val otherSections = remember(rawOtherSections, homeVideoTracks, strings.exploreNewVideos) {
         rawOtherSections.withIndex().filterNot { (_, section) ->
@@ -9669,7 +9712,9 @@ private fun HomeScreen(
         )
         LazyColumn(
             state = homeListState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .pullToRefresh(isRefreshing = homeRefreshing, state = homePullState, onRefresh = onPullRefresh),
             contentPadding = PaddingValues(
                 top = statusBarTop + homeTopPadding,
                 bottom = homeBottomInset
@@ -9802,6 +9847,19 @@ private fun HomeScreen(
             if (spotlightHeroData != null && stagedSpotlight == null) {
                 item(key = "home-editorial-spotlight", contentType = "home-spotlight") {
                     spotlightHero(null, 0.dp)
+                }
+            }
+
+            if (state.interfaceSettings.showPersonalOrbit && visiblePersonalTracks.isEmpty() && renderSnapshot.orbitPending) {
+                item(key = "home-personal", contentType = "home-personal-orbit") {
+                    HomeSectionLead(compactHome) {
+                        PersonalListeningShelfPlaceholder(
+                            userName = state.userName,
+                            profilePhotoPath = state.profilePhotoPath,
+                            profilePhotoVersion = state.profilePhotoVersion,
+                            accountAvatarUrl = accountAvatarUrl
+                        )
+                    }
                 }
             }
 
@@ -10205,6 +10263,15 @@ private fun HomeScreen(
                 }
             }
         }
+        PullToRefreshDefaults.LoadingIndicator(
+            state = homePullState,
+            isRefreshing = homeRefreshing,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = statusBarTop + LevyraHomeDesign.HorizontalInset),
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            color = MaterialTheme.colorScheme.onPrimaryContainer
+        )
         HomeStatusBarScrim(
             listState = homeListState,
             height = statusBarTop,
@@ -12013,29 +12080,13 @@ private fun HomeCompactPlayAllHeader(
     }
 }
 
-private fun withYoutubeMusicHome(
-    snapshot: HomeRenderSnapshot,
-    home: com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicHome,
-    previous: HomeRenderSnapshot
-): HomeRenderSnapshot {
-    val state = snapshot.state
-    return buildHomeRenderSnapshot(
-        state.copy(
-            personalOrbitTracks = home.orbit.ifEmpty { state.personalOrbitTracks },
-            homeSections = home.sections.ifEmpty { state.homeSections },
-            homeAlbums = home.albums.ifEmpty { state.homeAlbums }
-        ),
-        previous
-    )
-}
-
 @Composable
 private fun HomeOrbitHeader(
     userName: String,
     profilePhotoPath: String,
     profilePhotoVersion: Long,
     accountAvatarUrl: String,
-    onPlayAll: () -> Unit
+    onPlayAll: (() -> Unit)?
 ) {
     val strings = LocalLevyraStrings.current
     val displayName = userName.trim()
@@ -12079,8 +12130,63 @@ private fun HomeOrbitHeader(
                 modifier = Modifier.semantics { heading() }
             )
         }
-        Spacer(modifier = Modifier.width(6.dp))
-        LevyraSectionPlayAll(onClick = onPlayAll)
+        if (onPlayAll != null) {
+            Spacer(modifier = Modifier.width(6.dp))
+            LevyraSectionPlayAll(onClick = onPlayAll)
+        }
+    }
+}
+
+@Composable
+private fun PersonalListeningShelfPlaceholder(
+    userName: String,
+    profilePhotoPath: String,
+    profilePhotoVersion: Long,
+    accountAvatarUrl: String
+) {
+    val progress = rememberLevyraShimmerProgress()
+    Column(verticalArrangement = Arrangement.spacedBy(homeHeaderContentGap())) {
+        HomeSectionInset {
+            HomeOrbitHeader(
+                userName = userName,
+                profilePhotoPath = profilePhotoPath,
+                profilePhotoVersion = profilePhotoVersion,
+                accountAvatarUrl = accountAvatarUrl,
+                onPlayAll = null
+            )
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = LevyraHomeDesign.HorizontalInset, end = LevyraHomeDesign.OrbitPageEndInset)
+                .clearAndSetSemantics { },
+            verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.OrbitTileGap)
+        ) {
+            repeat(HOME_PERSONAL_ORBIT_GRID_COLUMNS) { rowIndex ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.OrbitTileGap)
+                ) {
+                    repeat(HOME_PERSONAL_ORBIT_GRID_COLUMNS) { columnIndex ->
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .aspectRatio(1f)
+                                .clip(
+                                    levyraGroupedGridShape(
+                                        row = rowIndex,
+                                        column = columnIndex,
+                                        rows = HOME_PERSONAL_ORBIT_GRID_COLUMNS,
+                                        columns = HOME_PERSONAL_ORBIT_GRID_COLUMNS
+                                    )
+                                )
+                                .background(LevyraPanel)
+                                .levyraShimmerSweep(progress)
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
