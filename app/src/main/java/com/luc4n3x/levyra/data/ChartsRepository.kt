@@ -111,13 +111,19 @@ internal fun isChartArtworkPlaceholder(track: Track): Boolean {
     return artwork.isBlank() || artwork.contains("ytimg.com/vi")
 }
 
+private val CHART_RECORDING_VERSION_TERMS = listOf("live", "remix", "acoustic", "instrumental", "sped up", "slowed", "karaoke")
+    .map { term -> term to Regex("\\b$term\\b") }
+
 internal fun chartArtworkIdentity(track: Track): String {
     val primaryArtist = track.artist.split(',', '&', ';').first().split(" x ", " X ", " feat", " ft.").first()
-    return ChartFeedParser.normalizeMusicText(track.title) + "|" + ChartFeedParser.normalizeMusicText(primaryArtist)
+    val title = track.title.lowercase()
+    val version = CHART_RECORDING_VERSION_TERMS.filter { (_, pattern) -> pattern.containsMatchIn(title) }.joinToString("+") { it.first }
+    return ChartFeedParser.normalizeMusicText(track.title) + "|" + ChartFeedParser.normalizeMusicText(primaryArtist) + "|" + version
 }
 
 internal fun withEditorialArtwork(track: Track, index: Map<String, Track>): Track? {
     val editorial = index[chartArtworkIdentity(track)] ?: return null
+    if (track.isrc.isNotBlank() && editorial.isrc.isNotBlank() && !track.isrc.equals(editorial.isrc, ignoreCase = true)) return null
     if (editorial.thumbnailUrl == track.thumbnailUrl) return track
     return track.copy(
         thumbnailUrl = editorial.thumbnailUrl,

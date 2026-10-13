@@ -6830,6 +6830,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
             val updated = latest ?: return@launch
+            val current = _state.value
+            if (current.charts !== updated || current.selectedChartId != regionId || current.languageCode != languageCode) return@launch
             chartsByRegion[chartsCacheKey(languageCode, regionId)] = updated
             preferences.saveChartTracks(updated, languageCode, regionId)
         }
@@ -7021,6 +7023,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 return@launch
             }
 
+            chartArtworkJob?.cancel()
             chartsByRegion[cacheKey] = result
             chartsFreshAt[cacheKey] = System.currentTimeMillis()
             withContext(Dispatchers.IO) {

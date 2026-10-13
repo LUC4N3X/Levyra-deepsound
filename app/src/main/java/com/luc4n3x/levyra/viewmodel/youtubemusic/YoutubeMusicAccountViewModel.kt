@@ -68,9 +68,15 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
     init {
         viewModelScope.launch {
             try {
-                val cachedHome = withContext(Dispatchers.IO) { runCatching { homeCache.load(null) }.getOrNull() }
+                val (restored, cachedHome) = withContext(Dispatchers.IO) {
+                    val sessions = repository.sessions.load()
+                    val activeId = sessions.activeId
+                    val home = activeId?.let { id -> runCatching { homeCache.load(id) }.getOrNull() }
+                    if (activeId == null) runCatching { homeCache.clear() }
+                    sessions to home
+                }
+                saved = restored
                 if (cachedHome != null) _state.update { it.copy(home = cachedHome) }
-                saved = withContext(Dispatchers.IO) { repository.sessions.load() }
                 publishSession()
             } catch (_: Exception) {
                 _state.update { it.copy(error = YoutubeMusicAccountError.Storage, home = null) }

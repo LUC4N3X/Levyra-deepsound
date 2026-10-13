@@ -130,7 +130,7 @@ class OfficialArtworkRepository(context: Context) {
 
     private suspend fun fetchAppleWithStorefrontFallback(track: Track, country: String): ProviderResponse {
         val local = fetchApple(track, primaryQuery(track), country)
-        if (!local.completed || local.items.isNotEmpty() || country == APPLE_FALLBACK_STOREFRONT) return local
+        if (!local.completed || bestAccepted(local.items) != null || country == APPLE_FALLBACK_STOREFRONT) return local
         return fetchApple(track, primaryQuery(track), APPLE_FALLBACK_STOREFRONT)
     }
 

@@ -374,7 +374,8 @@ class AndroidAutoLibrary(context: Context) {
 
     private suspend fun topLocal(): List<Track> = withContext(Dispatchers.IO) {
         val locale = LevyraContentLocales.forLanguage(contentLanguage())
-        runCatching { chartsRepository.officialChartArtwork(chartsRepository.topSongs(locale.chartCountry, 40), locale.chartCountry) }.getOrDefault(emptyList()).distinctTracks().take(40)
+        val ranked = runCatching { chartsRepository.topSongs(locale.chartCountry, 40) }.getOrDefault(emptyList())
+        runCatching { chartsRepository.officialChartArtwork(ranked, locale.chartCountry) }.getOrDefault(ranked).distinctTracks().take(40)
     }
 
     private suspend fun drivingMix(): List<Track> = withContext(Dispatchers.IO) {

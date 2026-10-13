@@ -28,6 +28,18 @@ class ChartEditorialArtworkTest {
     }
 
     @Test
+    fun liveOrRemixVersionsKeepTheirOwnCover() {
+        assertNull(withEditorialArtwork(track("Dai Dai (Live)", "Shakira", "https://i.ytimg.com/a.jpg"), index))
+        assertNull(withEditorialArtwork(track("Dai Dai - Remix", "Shakira", "https://i.ytimg.com/a.jpg"), index))
+    }
+
+    @Test
+    fun conflictingIsrcIsRejected() {
+        val isrcIndex = mapOf(chartArtworkIdentity(editorial) to editorial.copy(isrc = "USAAA2600001"))
+        assertNull(withEditorialArtwork(track("Dai Dai", "Shakira", "https://i.ytimg.com/a.jpg").copy(isrc = "USBBB2600002"), isrcIndex))
+    }
+
+    @Test
     fun differentRecordingIsLeftForNetworkLookup() {
         assertNull(withEditorialArtwork(track("Dai Dai", "Another Artist", "https://i.ytimg.com/a.jpg"), index))
         assertNull(withEditorialArtwork(track("Other Song", "Shakira", "https://i.ytimg.com/a.jpg"), index))
