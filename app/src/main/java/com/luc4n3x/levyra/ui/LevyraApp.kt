@@ -9881,7 +9881,7 @@ private fun HomeScreen(
             if (state.interfaceSettings.showPersonalOrbit && visiblePersonalTracks.isEmpty() && renderSnapshot.orbitPending) {
                 item(key = "home-personal", contentType = "home-personal-orbit") {
                     HomeSectionLead(compactHome) {
-                        OriginalPersonalListeningShelfPlaceholder(
+                        PersonalListeningShelfPlaceholder(
                             userName = state.userName,
                             profilePhotoPath = state.profilePhotoPath,
                             profilePhotoVersion = state.profilePhotoVersion,
@@ -9894,7 +9894,7 @@ private fun HomeScreen(
             if (state.interfaceSettings.showPersonalOrbit && visiblePersonalTracks.isNotEmpty()) {
                 item(key = "home-personal", contentType = "home-personal-orbit") {
                     HomeSectionLead(compactHome) {
-                        OriginalPersonalListeningShelf(
+                        PersonalListeningShelf(
                             tracks = visiblePersonalTracks,
                             userName = state.userName,
                             profilePhotoPath = state.profilePhotoPath,
@@ -10946,7 +10946,7 @@ private fun StudioHomeScreen(
                             if (state.interfaceSettings.showPersonalOrbit && visiblePersonalTracks.isEmpty() && renderSnapshot.orbitPending) {
                                 item(key = "home-personal", contentType = "home-personal-orbit") {
                                     HomeSectionLead(compactHome) {
-                                        PersonalListeningShelfPlaceholder(
+                                        StudioPersonalListeningShelfPlaceholder(
                                             userName = state.userName,
                                             profilePhotoPath = state.profilePhotoPath,
                                             profilePhotoVersion = state.profilePhotoVersion,
@@ -10959,7 +10959,7 @@ private fun StudioHomeScreen(
                             if (state.interfaceSettings.showPersonalOrbit && visiblePersonalTracks.isNotEmpty()) {
                                 item(key = "home-personal", contentType = "home-personal-orbit") {
                                     HomeSectionLead(compactHome) {
-                                        PersonalListeningShelf(
+                                        StudioPersonalListeningShelf(
                                             style = homeStyle,
                                             tracks = visiblePersonalTracks,
                                             userName = state.userName,
@@ -11717,7 +11717,7 @@ private fun HomeStudioHost(
 }
 
 @Composable
-private fun OriginalPersonalListeningShelf(
+private fun PersonalListeningShelf(
     tracks: List<Track>,
     userName: String,
     profilePhotoPath: String,
@@ -11759,7 +11759,7 @@ private fun OriginalPersonalListeningShelf(
                 ) {
                     rowTracks.forEachIndexed { columnIndex, track ->
                         key(LevyraPersonalOrbit.identityKey(track)) {
-                            OriginalPersonalOrbitTile(
+                            PersonalOrbitTile(
                                 shape = levyraGroupedGridShape(
                                     row = rowIndex,
                                     column = columnIndex,
@@ -11786,7 +11786,7 @@ private fun OriginalPersonalListeningShelf(
 
     Column(verticalArrangement = Arrangement.spacedBy(homeHeaderContentGap())) {
         HomeSectionInset {
-            OriginalHomeOrbitHeader(
+            HomeOrbitHeader(
                 userName = userName,
                 profilePhotoPath = profilePhotoPath,
                 profilePhotoVersion = profilePhotoVersion,
@@ -11849,7 +11849,7 @@ private fun OriginalPersonalListeningShelf(
 }
 
 @Composable
-private fun OriginalPersonalListeningShelfPlaceholder(
+private fun PersonalListeningShelfPlaceholder(
     userName: String,
     profilePhotoPath: String,
     profilePhotoVersion: Long,
@@ -11858,7 +11858,7 @@ private fun OriginalPersonalListeningShelfPlaceholder(
     val progress = rememberLevyraShimmerProgress()
     Column(verticalArrangement = Arrangement.spacedBy(homeHeaderContentGap())) {
         HomeSectionInset {
-            OriginalHomeOrbitHeader(
+            HomeOrbitHeader(
                 userName = userName,
                 profilePhotoPath = profilePhotoPath,
                 profilePhotoVersion = profilePhotoVersion,
@@ -11902,7 +11902,7 @@ private fun OriginalPersonalListeningShelfPlaceholder(
 }
 
 @Composable
-private fun OriginalHomeOrbitHeader(
+private fun HomeOrbitHeader(
     userName: String,
     profilePhotoPath: String,
     profilePhotoVersion: Long,
@@ -11959,7 +11959,7 @@ private fun OriginalHomeOrbitHeader(
 }
 
 @Composable
-private fun OriginalPersonalOrbitTile(
+private fun PersonalOrbitTile(
     shape: Shape,
     track: Track,
     isCurrent: Boolean,
@@ -13782,7 +13782,7 @@ private fun HomeCompactPlayAllHeader(
 }
 
 @Composable
-private fun HomeOrbitHeader(
+private fun StudioHomeOrbitHeader(
     style: HomeStyle = HomeStyle.Original,
     userName: String,
     profilePhotoPath: String,
@@ -13867,7 +13867,7 @@ private fun HomeOrbitHeader(
 }
 
 @Composable
-private fun PersonalListeningShelfPlaceholder(
+private fun StudioPersonalListeningShelfPlaceholder(
     userName: String,
     profilePhotoPath: String,
     profilePhotoVersion: Long,
@@ -13876,7 +13876,7 @@ private fun PersonalListeningShelfPlaceholder(
     val progress = rememberLevyraShimmerProgress()
     Column(verticalArrangement = Arrangement.spacedBy(homeHeaderContentGap())) {
         HomeSectionInset {
-            HomeOrbitHeader(
+            StudioHomeOrbitHeader(
                 userName = userName,
                 profilePhotoPath = profilePhotoPath,
                 profilePhotoVersion = profilePhotoVersion,
@@ -13966,7 +13966,7 @@ private fun HomeOrbitAvatar(initial: String, photoPath: String, photoVersion: Lo
 }
 
 @Composable
-private fun PersonalListeningShelf(
+private fun StudioPersonalListeningShelf(
     style: HomeStyle,
     tracks: List<Track>,
     userName: String,
@@ -14019,7 +14019,7 @@ private fun PersonalListeningShelf(
                 ) {
                     rowTracks.forEachIndexed { columnIndex, track ->
                         key(LevyraPersonalOrbit.identityKey(track)) {
-                            PersonalOrbitTile(
+                            StudioPersonalOrbitTile(
                                 style = style,
                                 index = rowIndex * columns + columnIndex,
                                 shape = studioOrbitShape(
@@ -14052,7 +14052,7 @@ private fun PersonalListeningShelf(
 
     Column(verticalArrangement = Arrangement.spacedBy(homeHeaderContentGap())) {
         HomeSectionInset {
-            HomeOrbitHeader(
+            StudioHomeOrbitHeader(
                 style = style,
                 userName = userName,
                 profilePhotoPath = profilePhotoPath,
@@ -14116,7 +14116,7 @@ private fun PersonalListeningShelf(
 }
 
 @Composable
-private fun PersonalOrbitTile(
+private fun StudioPersonalOrbitTile(
     style: HomeStyle,
     index: Int,
     shape: Shape,
