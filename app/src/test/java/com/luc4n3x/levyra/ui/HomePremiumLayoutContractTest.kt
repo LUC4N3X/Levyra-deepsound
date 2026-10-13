@@ -36,7 +36,10 @@ class HomePremiumLayoutContractTest {
     fun `orbit tiles keep playback actions and a single line title`() {
         val tile = functionBlock("private fun PersonalOrbitTile(")
 
-        assertTrue(tile.contains("aspectRatio(1f)"))
+        assertTrue(tile.contains(".aspectRatio("))
+        assertTrue(tile.contains("style == HomeStyle.Editorial) 1.18f"))
+        assertTrue(tile.contains("style == HomeStyle.Immersive) 0.86f"))
+        assertTrue(tile.contains("else 1f)"))
         assertTrue(tile.contains("levyraPressable("))
         assertTrue(tile.contains("onLongClick = onActions"))
         assertTrue(tile.contains("strings.songOptions"))
