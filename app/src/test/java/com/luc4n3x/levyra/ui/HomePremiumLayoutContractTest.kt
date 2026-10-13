@@ -48,6 +48,16 @@ class HomePremiumLayoutContractTest {
     }
 
     @Test
+    fun `home soundtrack keeps an artist portrait fallback when companions are absent`() {
+        val hero = functionBlock("private fun HomeEditorialSpotlight(")
+
+        assertTrue(hero.contains("companionArtworkUrls.ifEmpty {"))
+        assertTrue(hero.contains("resolvedArtistArtworkUrl.takeIf(String::isNotBlank)"))
+        assertTrue(hero.contains("if (visibleCompanionArtworkUrls.isNotEmpty())"))
+        assertTrue(hero.contains("artworkUrls = visibleCompanionArtworkUrls"))
+    }
+
+    @Test
     fun `orbit header shows the listener only when a name is set`() {
         val header = functionBlock("private fun HomeOrbitHeader(")
 
