@@ -71,6 +71,9 @@ internal class EditorialChartsRepository private constructor(context: Context) {
     private var lastRefreshFailureAt: Long = 0L
 
     @Volatile
+    private var artworkIndex: Pair<CatalogSnapshot, Map<String, Track>>? = null
+
+    @Volatile
     private var unusableStoredStamp: Long = 0L
 
     fun warm() {
@@ -136,6 +139,18 @@ internal class EditorialChartsRepository private constructor(context: Context) {
         snapshot.releaseByMarket
             .mapValues { (_, tracks) -> tracks.take(safeLimit) }
             .filterValues { it.isNotEmpty() }
+    }
+
+    suspend fun cachedArtworkIndex(): Map<String, Track> = withContext(Dispatchers.IO) {
+        val snapshot = usableSnapshot(System.currentTimeMillis()) ?: return@withContext emptyMap()
+        artworkIndex?.takeIf { it.first === snapshot }?.let { return@withContext it.second }
+        val index = HashMap<String, Track>()
+        (snapshot.byMarket.values.asSequence() + snapshot.releaseByMarket.values.asSequence())
+            .flatten()
+            .filter { it.thumbnailUrl.isNotBlank() }
+            .forEach { track -> index.putIfAbsent(chartArtworkIdentity(track), track) }
+        artworkIndex = snapshot to index
+        index
     }
 
     suspend fun cachedAllMarkets(limit: Int): Map<String, List<Track>> = withContext(Dispatchers.IO) {
