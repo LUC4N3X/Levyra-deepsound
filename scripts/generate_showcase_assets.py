@@ -153,7 +153,7 @@ M3_MARKETING_COPY = {
     "Screenshot_20261010_132249_LEVYRA.jpg": "Moods, genres, and music worldwide.",
     "Screenshot_20261010_190726_LEVYRA.jpg": "Parametric EQ and bit-perfect output.",
     "Screenshot_20260926_194706_LEVYRA.jpg": "Artwork, credits, and complete tracklists.",
-    "Screenshot_20261010_145010_LEVYRA.jpg": "Search, suggestions, and instant matches.",
+    "Screenshot_20261013_111815_LEVYRA.jpg": "Search, suggestions, and instant matches.",
     "Screenshot_20261010_132136_LEVYRA.jpg": "Collections shaped around your taste.",
     "Screenshot_20260927_131943_LEVYRA.jpg": "See when and how you listen.",
     "Screenshot_20261012_193022_LEVYRA.jpg": "Your most-played music, always close.",
@@ -409,7 +409,7 @@ M3_SHOWCASE_SPECS = [
      (130, 60, 170), ["09_album.webp"]),
 
     # Card 10: Instant Search
-    ("Screenshot_20261010_145010_LEVYRA.jpg", "INSTANT MATCH", "Find it instantly.",
+    ("Screenshot_20261013_111815_LEVYRA.jpg", "INSTANT MATCH", "Find it instantly.",
      "Recent searches, suggestions, and\ninstant matching across your music.",
      (110, 50, 185), ["10_search.webp"]),
 
