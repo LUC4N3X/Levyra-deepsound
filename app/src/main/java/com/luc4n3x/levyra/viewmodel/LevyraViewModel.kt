@@ -39,6 +39,7 @@ import com.luc4n3x.levyra.data.VaultPreview
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.ProfilePhotoStore
 import com.luc4n3x.levyra.data.LyricsLatencyProfiles
+import com.luc4n3x.levyra.domain.LevyraLyricsStudioSettings
 import com.luc4n3x.levyra.data.LevyraHomeSnapshotCache
 import com.luc4n3x.levyra.data.EXPLORE_DISCOVERY_CACHE_TTL_MS
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
@@ -914,6 +915,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val favoritesStore = FavoritesStore(application.applicationContext)
     private val favoriteMutationMutex = Mutex()
     private val smartOfflineSettingsMutationMutex = Mutex()
+    private var pendingLyricsStudioWrites = 0
+    private var lyricsStudioMutationGeneration = 0L
     private val smartOfflineSettingsMutationId = AtomicLong()
     @Volatile private var pendingSmartOfflineSettings: LevyraSmartOfflineSettings? = null
     private val recommendationFeedbackMutationMutex = Mutex()
@@ -1003,6 +1006,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             audioNormalization = startupSettings.audioNormalization,
             audioSettings = startupSettings.audioSettings,
             lyricsTranslationEnabled = startupSettings.lyricsTranslationEnabled,
+            lyricsStudioSettings = startupSettings.lyricsStudioSettings,
             interfaceSettings = startupSettings.interfaceSettings,
             downloadSettings = startupSettings.downloadSettings,
             smartOfflineSettings = startupSettings.smartOfflineSettings,
@@ -1425,6 +1429,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             preferences.lyricsLatencyProfilesFlow.collect { profiles ->
                 _state.update { state -> state.copy(lyricsLatencyProfiles = profiles) }
+            }
+        }
+        viewModelScope.launch {
+            preferences.lyricsStudioSettingsFlow.collect { settings ->
+                if (pendingLyricsStudioWrites == 0 && settings == preferences.lyricsStudioSettings()) {
+                    _state.update { state -> state.copy(lyricsStudioSettings = settings) }
+                }
             }
         }
         viewModelScope.launch {
@@ -2679,6 +2690,36 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun closeThemeStudio() {
         _state.update { it.copy(showThemeStudio = false) }
+    }
+
+    fun openLyricsStudio() {
+        _state.update { it.copy(showLyricsStudio = true) }
+    }
+
+    fun closeLyricsStudio() {
+        _state.update { it.copy(showLyricsStudio = false) }
+    }
+
+    fun setLyricsStudioSettings(settings: LevyraLyricsStudioSettings) {
+        val normalized = settings.normalized()
+        val generation = ++lyricsStudioMutationGeneration
+        pendingLyricsStudioWrites += 1
+        _state.update { it.copy(lyricsStudioSettings = normalized) }
+        viewModelScope.launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
+            try {
+                val saved = preferences.setLyricsStudioSettings(normalized)
+                if (generation == lyricsStudioMutationGeneration) {
+                    val resolved = if (saved) normalized else preferences.lyricsStudioSettings()
+                    _state.update { it.copy(lyricsStudioSettings = resolved) }
+                }
+            } finally {
+                pendingLyricsStudioWrites -= 1
+            }
+        }
+    }
+
+    fun resetLyricsStudioSettings() {
+        setLyricsStudioSettings(LevyraLyricsStudioSettings())
     }
 
     private fun widgetAccentColor(track: Track?): Int {
