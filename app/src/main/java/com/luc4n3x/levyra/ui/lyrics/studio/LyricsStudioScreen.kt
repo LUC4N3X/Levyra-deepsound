@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.luc4n3x.levyra.ui.lyrics.studio
 
 import androidx.compose.animation.AnimatedVisibility
@@ -284,9 +286,10 @@ internal fun LyricsStudioOverlay(
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
-                    Row(
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         LyricsTextSize.entries.forEach { size ->
                             val label = when (size) {
@@ -298,8 +301,7 @@ internal fun LyricsStudioOverlay(
                             StudioChoiceChip(
                                 label = label,
                                 selected = settings.textSize == size,
-                                onClick = { onUpdateSettings(settings.copy(textSize = size)) },
-                                modifier = Modifier.weight(1f)
+                                onClick = { onUpdateSettings(settings.copy(textSize = size)) }
                             )
                         }
                     }
@@ -314,9 +316,10 @@ internal fun LyricsStudioOverlay(
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
-                    Row(
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         LyricsFontWeightPreset.entries.forEach { weight ->
                             val label = when (weight) {
@@ -329,8 +332,7 @@ internal fun LyricsStudioOverlay(
                             StudioChoiceChip(
                                 label = label,
                                 selected = settings.fontWeight == weight,
-                                onClick = { onUpdateSettings(settings.copy(fontWeight = weight)) },
-                                modifier = Modifier.weight(1f)
+                                onClick = { onUpdateSettings(settings.copy(fontWeight = weight)) }
                             )
                         }
                     }
@@ -375,9 +377,10 @@ internal fun LyricsStudioOverlay(
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
-                    Row(
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         LyricsLineSpacing.entries.forEach { spacing ->
                             val label = when (spacing) {
@@ -389,8 +392,7 @@ internal fun LyricsStudioOverlay(
                             StudioChoiceChip(
                                 label = label,
                                 selected = settings.lineSpacing == spacing,
-                                onClick = { onUpdateSettings(settings.copy(lineSpacing = spacing)) },
-                                modifier = Modifier.weight(1f)
+                                onClick = { onUpdateSettings(settings.copy(lineSpacing = spacing)) }
                             )
                         }
                     }
