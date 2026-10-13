@@ -9458,7 +9458,7 @@ private fun HomeScreen(
     onTrackActions: (Track) -> Unit
 ) {
     if (homeStudio.style == HomeStyle.Original) {
-        OriginalHomeScreen(
+        HomeScreen(
             viewModel = viewModel,
             renderSnapshot = renderSnapshot,
             homeListState = homeListState,
@@ -10778,7 +10778,7 @@ private fun HomeScreen(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun OriginalHomeScreen(
+private fun HomeScreen(
     viewModel: HomeViewModel,
     renderSnapshot: HomeRenderSnapshot,
     homeListState: LazyListState,
