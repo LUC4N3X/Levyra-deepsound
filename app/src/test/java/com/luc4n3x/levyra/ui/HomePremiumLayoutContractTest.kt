@@ -34,7 +34,7 @@ class HomePremiumLayoutContractTest {
 
     @Test
     fun `orbit tiles keep playback actions and a single line title`() {
-        val tile = functionBlock("private fun PersonalOrbitTile(")
+        val tile = functionBlock("private fun StudioPersonalOrbitTile(")
 
         assertTrue(tile.contains(".aspectRatio("))
         assertTrue(tile.contains("style == HomeStyle.Editorial) 1.18f"))
