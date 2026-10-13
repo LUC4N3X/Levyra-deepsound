@@ -84,6 +84,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -200,7 +201,7 @@ internal fun rememberTrackShelfItems(
                 round = false,
                 artwork = { modifier, highRes -> CoverImage(track = track, modifier = modifier, highRes = highRes) },
                 onClick = { play(track) },
-                onLongClick = if (hasActions) ({ actions?.invoke(track) }) else null
+                onLongClick = if (hasActions) { { actions?.invoke(track) } } else null
             )
         }
     }
@@ -1134,208 +1135,263 @@ internal fun StudioSpotlight(
     val resolving = isCurrent && isResolving
     val playIcon = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow
     when (style) {
-        HomeStyle.ExpressiveMax -> {
-            val morph = rememberLevyraPlayMorphShape(playing = playing, animated = animationsEnabled)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = spec.inset)
-                    .clip(RoundedCornerShape(topStart = 48.dp, topEnd = 20.dp, bottomEnd = 48.dp, bottomStart = 20.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                    .levyraPressable(onClick = onOpen, onClickLabel = track.title, role = Role.Button)
-                    .padding(14.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .weight(0.5f)
-                        .aspectRatio(1f)
-                        .clip(morph)
-                ) {
-                    CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true)
-                }
-                Column(modifier = Modifier.weight(0.5f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = track.title,
-                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
-                        color = LevyraText,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = track.artist,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = LevyraMuted,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    FilledIconButton(
-                        onClick = onOpen,
-                        shapes = IconButtonDefaults.shapes(),
-                        modifier = Modifier.padding(top = 4.dp).size(56.dp)
-                    ) {
-                        if (resolving) {
-                            LevyraLoadingIndicator(modifier = Modifier.size(28.dp), color = MaterialTheme.colorScheme.onPrimary)
-                        } else {
-                            Icon(playIcon, contentDescription = playLabel)
-                        }
-                    }
-                }
-            }
+        HomeStyle.ExpressiveMax -> ExpressiveSpotlight(style, spec, track, artistArtworkUrl, label, lead, playLabel, playing, resolving, playIcon, animationsEnabled, onOpen)
+        HomeStyle.Editorial, HomeStyle.Immersive -> CinematicSpotlight(style, spec, track, artistArtworkUrl, label, lead, playLabel, playing, resolving, playIcon, animationsEnabled, onOpen)
+        else -> CompactSpotlight(style, spec, track, artistArtworkUrl, label, lead, playLabel, playing, resolving, playIcon, animationsEnabled, onOpen)
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ExpressiveSpotlight(
+    style: HomeStyle,
+    spec: HomeStyleSpec,
+    track: Track,
+    artistArtworkUrl: String,
+    label: String,
+    lead: String,
+    playLabel: String,
+    playing: Boolean,
+    resolving: Boolean,
+    playIcon: ImageVector,
+    animationsEnabled: Boolean,
+    onOpen: () -> Unit
+) {
+    val morph = rememberLevyraPlayMorphShape(playing = playing, animated = animationsEnabled)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = spec.inset)
+            .clip(RoundedCornerShape(topStart = 48.dp, topEnd = 20.dp, bottomEnd = 48.dp, bottomStart = 20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .levyraPressable(onClick = onOpen, onClickLabel = track.title, role = Role.Button)
+            .padding(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .weight(0.5f)
+                .aspectRatio(1f)
+                .clip(morph)
+        ) {
+            CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true)
         }
-        HomeStyle.Editorial, HomeStyle.Immersive -> {
-            val immersive = style == HomeStyle.Immersive
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = spec.inset)
-                    .aspectRatio(if (immersive) 0.82f else 16f / 11f)
-                    .clip(RoundedCornerShape(if (immersive) 32.dp else 20.dp))
-                    .levyraPressable(
-                        onClick = onOpen,
-                        onClickLabel = track.title,
-                        role = Role.Button,
-                        pressedScale = LevyraPressScale.Surface
-                    )
+        Column(modifier = Modifier.weight(0.5f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = track.title,
+                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
+                color = LevyraText,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = track.artist,
+                style = MaterialTheme.typography.bodyMedium,
+                color = LevyraMuted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            FilledIconButton(
+                onClick = onOpen,
+                shapes = IconButtonDefaults.shapes(),
+                modifier = Modifier.padding(top = 4.dp).size(56.dp)
             ) {
-                if (artistArtworkUrl.isNotBlank()) {
-                    StudioRemoteArtwork(artistArtworkUrl, track.artist, Modifier.fillMaxSize(), true)
+                if (resolving) {
+                    LevyraLoadingIndicator(modifier = Modifier.size(28.dp), color = MaterialTheme.colorScheme.onPrimary)
                 } else {
-                    CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true)
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(if (immersive) StudioImmersiveHeroScrim else StudioCaptionScrim)
-                )
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = label.uppercase(),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color.White.copy(alpha = 0.82f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = track.title,
-                        style = if (immersive) {
-                            MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Black)
-                        } else {
-                            MaterialTheme.typography.headlineMedium.copy(fontFamily = FontFamily.Serif)
-                        },
-                        color = Color.White,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = lead.ifBlank { track.artist },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.8f),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Row(
-                        modifier = Modifier
-                            .padding(top = 10.dp)
-                            .height(48.dp)
-                            .clip(CircleShape)
-                            .background(Color.White)
-                            .padding(horizontal = 18.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        if (resolving) {
-                            LevyraLoadingIndicator(modifier = Modifier.size(22.dp), color = Color.Black)
-                        } else {
-                            Icon(playIcon, contentDescription = null, tint = Color.Black)
-                        }
-                        Text(
-                            text = playLabel,
-                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                            color = Color.Black
-                        )
-                    }
-                }
-            }
-        }
-        else -> {
-            val minimal = style == HomeStyle.Minimal
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = spec.inset)
-                    .clip(RoundedCornerShape(if (minimal) 4.dp else 8.dp))
-                    .then(
-                        if (minimal) {
-                            Modifier
-                        } else {
-                            Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.72f))
-                        }
-                    )
-                    .levyraPressable(
-                        onClick = onOpen,
-                        onClickLabel = track.title,
-                        role = Role.Button,
-                        pressedScale = LevyraPressScale.Row
-                    ),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(if (minimal) 64.dp else 88.dp)
-                        .clip(RoundedCornerShape(if (minimal) 4.dp else 0.dp))
-                ) {
-                    CoverImage(track = track, modifier = Modifier.fillMaxSize())
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (minimal) LevyraMuted else MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = track.title,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = LevyraText,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = track.artist,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = LevyraMuted,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                IconButton(onClick = onOpen, modifier = Modifier.padding(end = 4.dp)) {
-                    if (resolving) {
-                        LevyraLoadingIndicator(modifier = Modifier.size(22.dp), color = MaterialTheme.colorScheme.primary)
-                    } else {
-                        Icon(playIcon, contentDescription = playLabel, tint = LevyraText)
-                    }
+                    Icon(playIcon, contentDescription = playLabel)
                 }
             }
         }
     }
+
 }
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun CinematicSpotlight(
+    style: HomeStyle,
+    spec: HomeStyleSpec,
+    track: Track,
+    artistArtworkUrl: String,
+    label: String,
+    lead: String,
+    playLabel: String,
+    playing: Boolean,
+    resolving: Boolean,
+    playIcon: ImageVector,
+    animationsEnabled: Boolean,
+    onOpen: () -> Unit
+) {
+    val immersive = style == HomeStyle.Immersive
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = spec.inset)
+            .aspectRatio(if (immersive) 0.82f else 16f / 11f)
+            .clip(RoundedCornerShape(if (immersive) 32.dp else 20.dp))
+            .levyraPressable(
+                onClick = onOpen,
+                onClickLabel = track.title,
+                role = Role.Button,
+                pressedScale = LevyraPressScale.Surface
+            )
+    ) {
+        if (artistArtworkUrl.isNotBlank()) {
+            StudioRemoteArtwork(artistArtworkUrl, track.artist, Modifier.fillMaxSize(), true)
+        } else {
+            CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true)
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(if (immersive) StudioImmersiveHeroScrim else StudioCaptionScrim)
+        )
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = label.uppercase(),
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.White.copy(alpha = 0.82f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = track.title,
+                style = if (immersive) {
+                    MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Black)
+                } else {
+                    MaterialTheme.typography.headlineMedium.copy(fontFamily = FontFamily.Serif)
+                },
+                color = Color.White,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = lead.ifBlank { track.artist },
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.8f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Row(
+                modifier = Modifier
+                    .padding(top = 10.dp)
+                    .height(48.dp)
+                    .clip(CircleShape)
+                    .background(Color.White)
+                    .padding(horizontal = 18.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                if (resolving) {
+                    LevyraLoadingIndicator(modifier = Modifier.size(22.dp), color = Color.Black)
+                } else {
+                    Icon(playIcon, contentDescription = null, tint = Color.Black)
+                }
+                Text(
+                    text = playLabel,
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                    color = Color.Black
+                )
+            }
+        }
+    }
+
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun CompactSpotlight(
+    style: HomeStyle,
+    spec: HomeStyleSpec,
+    track: Track,
+    artistArtworkUrl: String,
+    label: String,
+    lead: String,
+    playLabel: String,
+    playing: Boolean,
+    resolving: Boolean,
+    playIcon: ImageVector,
+    animationsEnabled: Boolean,
+    onOpen: () -> Unit
+) {
+    val minimal = style == HomeStyle.Minimal
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = spec.inset)
+            .clip(RoundedCornerShape(if (minimal) 4.dp else 8.dp))
+            .then(
+                if (minimal) {
+                    Modifier
+                } else {
+                    Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.72f))
+                }
+            )
+            .levyraPressable(
+                onClick = onOpen,
+                onClickLabel = track.title,
+                role = Role.Button,
+                pressedScale = LevyraPressScale.Row
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(if (minimal) 64.dp else 88.dp)
+                .clip(RoundedCornerShape(if (minimal) 4.dp else 0.dp))
+        ) {
+            CoverImage(track = track, modifier = Modifier.fillMaxSize())
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = if (minimal) LevyraMuted else MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = track.title,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = LevyraText,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = track.artist,
+                style = MaterialTheme.typography.bodySmall,
+                color = LevyraMuted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        IconButton(onClick = onOpen, modifier = Modifier.padding(end = 4.dp)) {
+            if (resolving) {
+                LevyraLoadingIndicator(modifier = Modifier.size(22.dp), color = MaterialTheme.colorScheme.primary)
+            } else {
+                Icon(playIcon, contentDescription = playLabel, tint = LevyraText)
+            }
+        }
+    }
+
+}
+
 
 private val StudioImmersiveHeroScrim = Brush.verticalGradient(
     0.0f to Color.Black.copy(alpha = 0.10f),
@@ -1729,7 +1785,7 @@ internal fun MxChartSection(
             Canvas(modifier = Modifier.matchParentSize()) {
                 val path = Path()
                 val amplitude = size.width * 0.22f
-                val step = size.height / (wave.size.coerceAtLeast(1))
+                val step = size.height / wave.size.coerceAtLeast(1)
                 path.moveTo(size.width / 2f - amplitude, 0f)
                 for (index in wave.indices) {
                     val top = step * index
@@ -1811,80 +1867,7 @@ private fun MxWaveRow(
     isPlaying: Boolean,
     onPlay: () -> Unit
 ) {
-    val scheme = MaterialTheme.colorScheme
     val podium = rank <= 3
-    val artSize = when (rank) {
-        1 -> 112.dp
-        2, 3 -> 92.dp
-        else -> 72.dp
-    }
-    val badgeTone = when (rank) {
-        1 -> scheme.tertiary
-        2 -> scheme.primary
-        3 -> scheme.secondary
-        else -> scheme.surfaceContainerHighest
-    }
-    val badgeContent = when (rank) {
-        1 -> scheme.onTertiary
-        2 -> scheme.onPrimary
-        3 -> scheme.onSecondary
-        else -> LevyraText
-    }
-    val art: @Composable () -> Unit = {
-        Box(modifier = Modifier.size(artSize)) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(shape)
-                    .background(if (podium) badgeTone else scheme.surfaceContainerHigh)
-                    .padding(if (podium) 5.dp else 0.dp)
-                    .clip(shape)
-            ) {
-                CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = rank == 1)
-            }
-            Box(
-                modifier = Modifier
-                    .align(if (alignEnd) Alignment.TopEnd else Alignment.TopStart)
-                    .size(if (podium) 44.dp else 34.dp)
-                    .clip(MaterialShapes.Cookie6Sided.toShape())
-                    .background(badgeTone),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = rank.toString(),
-                    style = if (podium) MaterialTheme.typography.titleLargeEmphasized else MaterialTheme.typography.labelLargeEmphasized,
-                    color = badgeContent
-                )
-            }
-            if (current) {
-                Box(modifier = Modifier.align(Alignment.Center)) {
-                    LevyraPlayingIndicator(playing = isPlaying, color = Color.White, size = 16.dp)
-                }
-            }
-        }
-    }
-    val text: @Composable RowScope.() -> Unit = {
-        Column(
-            modifier = Modifier.weight(1f),
-            horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start
-        ) {
-            Text(
-                text = track.title,
-                style = if (podium) MaterialTheme.typography.titleLargeEmphasized else MaterialTheme.typography.titleMediumEmphasized,
-                color = if (current) scheme.primary else LevyraText,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = if (alignEnd) TextAlign.End else TextAlign.Start
-            )
-            Text(
-                text = track.artist,
-                style = MaterialTheme.typography.bodyMedium,
-                color = LevyraMuted,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1893,14 +1876,107 @@ private fun MxWaveRow(
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         if (alignEnd) {
-            text()
-            art()
+            MxWaveText(track, alignEnd, current, podium)
+            MxWaveArt(rank, track, shape, alignEnd, current, isPlaying, podium)
         } else {
-            art()
-            text()
+            MxWaveArt(rank, track, shape, alignEnd, current, isPlaying, podium)
+            MxWaveText(track, alignEnd, current, podium)
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun MxWaveArt(
+    rank: Int,
+    track: Track,
+    shape: Shape,
+    alignEnd: Boolean,
+    current: Boolean,
+    isPlaying: Boolean,
+    podium: Boolean
+) {
+    val scheme = MaterialTheme.colorScheme
+    val artSize = mxWaveArtSize(rank)
+    val (badgeTone, badgeContent) = mxWaveBadgeColors(rank)
+    Box(modifier = Modifier.size(artSize)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(shape)
+                .background(if (podium) badgeTone else scheme.surfaceContainerHigh)
+                .padding(if (podium) 5.dp else 0.dp)
+                .clip(shape)
+        ) {
+            CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = rank == 1)
+        }
+        Box(
+            modifier = Modifier
+                .align(if (alignEnd) Alignment.TopEnd else Alignment.TopStart)
+                .size(if (podium) 44.dp else 34.dp)
+                .clip(MaterialShapes.Cookie6Sided.toShape())
+                .background(badgeTone),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = rank.toString(),
+                style = if (podium) MaterialTheme.typography.titleLargeEmphasized else MaterialTheme.typography.labelLargeEmphasized,
+                color = badgeContent
+            )
+        }
+        if (current) {
+            Box(modifier = Modifier.align(Alignment.Center)) {
+                LevyraPlayingIndicator(playing = isPlaying, color = Color.White, size = 16.dp)
+            }
+        }
+    }
+
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun RowScope.MxWaveText(track: Track, alignEnd: Boolean, current: Boolean, podium: Boolean) {
+    val scheme = MaterialTheme.colorScheme
+    Column(
+        modifier = Modifier.weight(1f),
+        horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start
+    ) {
+        Text(
+            text = track.title,
+            style = if (podium) MaterialTheme.typography.titleLargeEmphasized else MaterialTheme.typography.titleMediumEmphasized,
+            color = if (current) scheme.primary else LevyraText,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = if (alignEnd) TextAlign.End else TextAlign.Start
+        )
+        Text(
+            text = track.artist,
+            style = MaterialTheme.typography.bodyMedium,
+            color = LevyraMuted,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+
+}
+
+private fun mxWaveArtSize(rank: Int): Dp = when (rank) {
+    1 -> 112.dp
+    2, 3 -> 92.dp
+    else -> 72.dp
+}
+
+@Composable
+private fun mxWaveBadgeColors(rank: Int): Pair<Color, Color> {
+    val scheme = MaterialTheme.colorScheme
+    return when (rank) {
+        1 -> scheme.tertiary to scheme.onTertiary
+        2 -> scheme.primary to scheme.onPrimary
+        3 -> scheme.secondary to scheme.onSecondary
+        else -> scheme.surfaceContainerHighest to LevyraText
+    }
+}
+
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -2370,145 +2446,191 @@ private fun MxBleedHero(
                 .clip(CircleShape)
                 .background(scheme.primary.copy(alpha = 0.7f))
         )
-        Row(
+        MxBleedGreeting(
+            modifier = Modifier.align(Alignment.TopStart),
+            dayPart = dayPart,
+            name = name,
+            greeting = greeting,
+            searchLabel = searchLabel,
+            settingsLabel = settingsLabel,
+            isResolving = isResolving,
+            onSearch = onSearch,
+            onSettings = onSettings
+        )
+        MxBleedTitle(
+            modifier = Modifier.align(Alignment.BottomStart),
+            hero = hero,
+            playLabel = playLabel,
+            playing = playing,
+            playShape = playShape,
+            companionShapes = companionShapes
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun MxBleedGreeting(
+    modifier: Modifier,
+    dayPart: String,
+    name: String,
+    greeting: String,
+    searchLabel: String,
+    settingsLabel: String,
+    isResolving: Boolean,
+    onSearch: () -> Unit,
+    onSettings: () -> Unit
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp, start = 20.dp, end = 12.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Column(
             modifier = Modifier
-                .align(Alignment.TopStart)
-                .fillMaxWidth()
-                .padding(top = 4.dp, start = 20.dp, end = 12.dp),
-            verticalAlignment = Alignment.Top
+                .weight(1f)
+                .clearAndSetSemantics {
+                    contentDescription = greeting
+                    heading()
+                }
         ) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clearAndSetSemantics {
-                        contentDescription = greeting
-                        heading()
-                    }
-            ) {
-                Text(
-                    text = dayPart,
-                    style = MaterialTheme.typography.titleMediumEmphasized,
-                    color = Color.White.copy(alpha = 0.86f)
-                )
-                Text(
-                    text = name.ifBlank { greeting },
-                    style = MaterialTheme.typography.displayMediumEmphasized.copy(
-                        shadow = Shadow(Color.Black.copy(alpha = 0.35f), blurRadius = 18f)
-                    ),
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilledTonalIconButton(
-                    onClick = onSearch,
-                    shapes = IconButtonDefaults.shapes(),
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = Color.Black.copy(alpha = 0.32f),
-                        contentColor = Color.White
-                    ),
-                    modifier = Modifier.size(52.dp)
-                ) {
-                    Icon(Icons.Rounded.Search, contentDescription = searchLabel)
-                }
-                FilledTonalIconButton(
-                    onClick = onSettings,
-                    shapes = IconButtonDefaults.shapes(),
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = Color.Black.copy(alpha = 0.32f),
-                        contentColor = Color.White
-                    ),
-                    modifier = Modifier.size(52.dp)
-                ) {
-                    if (isResolving) {
-                        LevyraLoadingIndicator(modifier = Modifier.size(24.dp), color = Color.White)
-                    } else {
-                        Icon(Icons.Rounded.Settings, contentDescription = settingsLabel)
-                    }
-                }
-            }
+            Text(
+                text = dayPart,
+                style = MaterialTheme.typography.titleMediumEmphasized,
+                color = Color.White.copy(alpha = 0.86f)
+            )
+            Text(
+                text = name.ifBlank { greeting },
+                style = MaterialTheme.typography.displayMediumEmphasized.copy(
+                    shadow = Shadow(Color.Black.copy(alpha = 0.35f), blurRadius = 18f)
+                ),
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .fillMaxWidth()
-                .padding(start = 20.dp, end = 16.dp, bottom = 4.dp),
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Surface(
-                    color = scheme.tertiary,
-                    contentColor = scheme.onTertiary,
-                    shape = CircleShape,
-                    modifier = Modifier.graphicsLayer { rotationZ = -4f }
-                ) {
-                    Text(
-                        text = hero.label,
-                        style = MaterialTheme.typography.labelLargeEmphasized,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                Text(
-                    text = hero.track.title,
-                    style = MaterialTheme.typography.displaySmallEmphasized,
-                    color = LevyraText,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (hero.companionArtworkUrls.isNotEmpty()) {
-                        Row(horizontalArrangement = Arrangement.spacedBy((-8).dp)) {
-                            hero.companionArtworkUrls.take(3).forEachIndexed { index, url ->
-                                val shape = companionShapes[index % companionShapes.size]
-                                Box(
-                                    modifier = Modifier
-                                        .size(30.dp)
-                                        .graphicsLayer { rotationZ = (index - 1) * 12f }
-                                        .clip(shape)
-                                        .background(scheme.tertiary)
-                                        .padding(2.dp)
-                                        .clip(shape)
-                                ) {
-                                    StudioRemoteArtwork(url, "", Modifier.fillMaxSize(), false)
-                                }
-                            }
-                        }
-                    }
-                    Text(
-                        text = hero.lead.ifBlank { hero.track.artist },
-                        style = MaterialTheme.typography.titleMediumEmphasized,
-                        color = LevyraMuted,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-            Box(
-                modifier = Modifier
-                    .size(84.dp)
-                    .clip(playShape)
-                    .background(scheme.tertiary)
-                    .levyraPressable(onClick = hero.onOpen, onClickLabel = playLabel, role = Role.Button),
-                contentAlignment = Alignment.Center
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilledTonalIconButton(
+                onClick = onSearch,
+                shapes = IconButtonDefaults.shapes(),
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = Color.Black.copy(alpha = 0.32f),
+                    contentColor = Color.White
+                ),
+                modifier = Modifier.size(52.dp)
             ) {
-                if (hero.isCurrent && hero.isResolving) {
-                    LevyraLoadingIndicator(modifier = Modifier.size(36.dp), color = scheme.onTertiary)
+                Icon(Icons.Rounded.Search, contentDescription = searchLabel)
+            }
+            FilledTonalIconButton(
+                onClick = onSettings,
+                shapes = IconButtonDefaults.shapes(),
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = Color.Black.copy(alpha = 0.32f),
+                    contentColor = Color.White
+                ),
+                modifier = Modifier.size(52.dp)
+            ) {
+                if (isResolving) {
+                    LevyraLoadingIndicator(modifier = Modifier.size(24.dp), color = Color.White)
                 } else {
-                    Icon(
-                        imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                        contentDescription = playLabel,
-                        tint = scheme.onTertiary,
-                        modifier = Modifier.size(40.dp)
-                    )
+                    Icon(Icons.Rounded.Settings, contentDescription = settingsLabel)
                 }
             }
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun MxBleedTitle(
+    modifier: Modifier,
+    hero: StudioHero,
+    playLabel: String,
+    playing: Boolean,
+    playShape: Shape,
+    companionShapes: List<Shape>
+) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(start = 20.dp, end = 16.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Surface(
+                color = scheme.tertiary,
+                contentColor = scheme.onTertiary,
+                shape = CircleShape,
+                modifier = Modifier.graphicsLayer { rotationZ = -4f }
+            ) {
+                Text(
+                    text = hero.label,
+                    style = MaterialTheme.typography.labelLargeEmphasized,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Text(
+                text = hero.track.title,
+                style = MaterialTheme.typography.displaySmallEmphasized,
+                color = LevyraText,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (hero.companionArtworkUrls.isNotEmpty()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy((-8).dp)) {
+                        hero.companionArtworkUrls.take(3).forEachIndexed { index, url ->
+                            val shape = companionShapes[index % companionShapes.size]
+                            Box(
+                                modifier = Modifier
+                                    .size(30.dp)
+                                    .graphicsLayer { rotationZ = (index - 1) * 12f }
+                                    .clip(shape)
+                                    .background(scheme.tertiary)
+                                    .padding(2.dp)
+                                    .clip(shape)
+                            ) {
+                                StudioRemoteArtwork(url, "", Modifier.fillMaxSize(), false)
+                            }
+                        }
+                    }
+                }
+                Text(
+                    text = hero.lead.ifBlank { hero.track.artist },
+                    style = MaterialTheme.typography.titleMediumEmphasized,
+                    color = LevyraMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        Box(
+            modifier = Modifier
+                .size(84.dp)
+                .clip(playShape)
+                .background(scheme.tertiary)
+                .levyraPressable(onClick = hero.onOpen, onClickLabel = playLabel, role = Role.Button),
+            contentAlignment = Alignment.Center
+        ) {
+            if (hero.isCurrent && hero.isResolving) {
+                LevyraLoadingIndicator(modifier = Modifier.size(36.dp), color = scheme.onTertiary)
+            } else {
+                Icon(
+                    imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    contentDescription = playLabel,
+                    tint = scheme.onTertiary,
+                    modifier = Modifier.size(40.dp)
+                )
+            }
+        }
+    }
+}
+
 
 @Immutable
 internal class StudioHero(

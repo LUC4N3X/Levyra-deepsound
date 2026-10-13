@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.domain
 
 import com.luc4n3x.levyra.ui.i18n.homeStudioLocalizationCodes
+import com.luc4n3x.levyra.ui.reorderStep
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -142,6 +143,22 @@ class LevyraHomeStudioSettingsTest {
             assertEquals(style.name, HomeSectionId.entries.size, order.size)
             assertEquals(style.name, HomeSectionId.entries.toSet(), order.toSet())
         }
+    }
+
+    @Test
+    fun dragReorderSwapsOnlyPastHalfOfTheNeighbour() {
+        val order = listOf(HomeSectionId.QuickPicks, HomeSectionId.Charts, HomeSectionId.Resonance)
+        val heights = order.associateWith { 100 }
+
+        assertEquals(null, reorderStep(order, HomeSectionId.Charts, 40f, heights))
+        assertEquals(
+            listOf(HomeSectionId.QuickPicks, HomeSectionId.Resonance, HomeSectionId.Charts) to -40f,
+            reorderStep(order, HomeSectionId.Charts, 60f, heights)
+        )
+        assertEquals(
+            listOf(HomeSectionId.Charts, HomeSectionId.QuickPicks, HomeSectionId.Resonance) to 40f,
+            reorderStep(order, HomeSectionId.Charts, -60f, heights)
+        )
     }
 
     @Test

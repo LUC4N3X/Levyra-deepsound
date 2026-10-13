@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -336,18 +337,9 @@ internal fun HomeStudioOverlay(
                             onDrag = { change, amount ->
                                 change.consume()
                                 dragOffset += amount.y
-                                val position = workingOrder.indexOf(id)
-                                val next = workingOrder.getOrNull(position + 1)
-                                val previous = workingOrder.getOrNull(position - 1)
-                                val nextHeight = next?.let { rowHeights[it] }?.toFloat()
-                                val previousHeight = previous?.let { rowHeights[it] }?.toFloat()
-                                if (nextHeight != null && dragOffset > nextHeight / 2f) {
-                                    workingOrder = workingOrder.toMutableList().apply { add(position + 1, removeAt(position)) }
-                                    dragOffset -= nextHeight
-                                    haptics.perform(LevyraHapticAction.Reorder)
-                                } else if (previousHeight != null && dragOffset < -previousHeight / 2f) {
-                                    workingOrder = workingOrder.toMutableList().apply { add(position - 1, removeAt(position)) }
-                                    dragOffset += previousHeight
+                                reorderStep(workingOrder, id, dragOffset, rowHeights)?.let { (order, offset) ->
+                                    workingOrder = order
+                                    dragOffset = offset
                                     haptics.perform(LevyraHapticAction.Reorder)
                                 }
                             }
@@ -370,66 +362,7 @@ internal fun HomeStudioOverlay(
                     }
                 )
             }
-            item(key = "studio-advanced-label", contentType = "studio-label") {
-                HomeStudioLabel(copy.advanced)
-            }
-            item(key = "studio-density", contentType = "studio-choice") {
-                HomeStudioChoice(
-                    title = copy.density,
-                    options = HomeDensity.entries,
-                    selected = layout.density,
-                    label = { density ->
-                        when (density) {
-                            HomeDensity.Compact -> copy.densityCompact
-                            HomeDensity.Balanced -> copy.densityBalanced
-                            HomeDensity.Spacious -> copy.densitySpacious
-                        }
-                    },
-                    onSelect = { density -> update(settings.updateLayout(style) { it.copy(density = density) }) }
-                )
-            }
-            item(key = "studio-motion", contentType = "studio-choice") {
-                val motionOptions = if (style == HomeStyle.Original) {
-                    listOf(HomeMotion.Reduced, HomeMotion.Normal)
-                } else {
-                    HomeMotion.entries
-                }
-                HomeStudioChoice(
-                    title = copy.motion,
-                    options = motionOptions,
-                    selected = layout.motion,
-                    label = { motion ->
-                        when (motion) {
-                            HomeMotion.Reduced -> copy.motionReduced
-                            HomeMotion.Normal -> copy.motionNormal
-                            HomeMotion.Expressive -> copy.motionExpressive
-                        }
-                    },
-                    onSelect = { motion -> update(settings.updateLayout(style) { it.copy(motion = motion) }) }
-                )
-            }
-            item(key = "studio-palette", contentType = "studio-switch") {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(copy.dynamicPalette, style = MaterialTheme.typography.titleSmall, color = LevyraText)
-                        Text(copy.dynamicPaletteSubtitle, style = MaterialTheme.typography.bodySmall, color = LevyraMuted)
-                    }
-                    Switch(
-                        checked = layout.dynamicPalette,
-                        onCheckedChange = { checked ->
-                            update(settings.updateLayout(style) { it.copy(dynamicPalette = checked) })
-                        },
-                        modifier = Modifier.semantics { contentDescription = copy.dynamicPalette }
-                    )
-                }
-            }
+            homeStudioAdvancedItems(settings, style, layout, copy, update)
             item(key = "studio-reset", contentType = "studio-actions") {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(
@@ -481,6 +414,94 @@ internal fun HomeStudioOverlay(
                 TextButton(onClick = { confirmResetAll = false }) { Text(strings.cancel) }
             }
         )
+    }
+}
+
+private fun LazyListScope.homeStudioAdvancedItems(
+    settings: LevyraHomeStudioSettings,
+    style: HomeStyle,
+    layout: HomeStyleLayout,
+    copy: HomeStudioCopy,
+    update: (LevyraHomeStudioSettings) -> Unit
+) {
+    item(key = "studio-advanced-label", contentType = "studio-label") {
+        HomeStudioLabel(copy.advanced)
+    }
+    item(key = "studio-density", contentType = "studio-choice") {
+        HomeStudioChoice(
+            title = copy.density,
+            options = HomeDensity.entries,
+            selected = layout.density,
+            label = { density ->
+                when (density) {
+                    HomeDensity.Compact -> copy.densityCompact
+                    HomeDensity.Balanced -> copy.densityBalanced
+                    HomeDensity.Spacious -> copy.densitySpacious
+                }
+            },
+            onSelect = { density -> update(settings.updateLayout(style) { it.copy(density = density) }) }
+        )
+    }
+    item(key = "studio-motion", contentType = "studio-choice") {
+        val motionOptions = if (style == HomeStyle.Original) {
+            listOf(HomeMotion.Reduced, HomeMotion.Normal)
+        } else {
+            HomeMotion.entries
+        }
+        HomeStudioChoice(
+            title = copy.motion,
+            options = motionOptions,
+            selected = layout.motion,
+            label = { motion ->
+                when (motion) {
+                    HomeMotion.Reduced -> copy.motionReduced
+                    HomeMotion.Normal -> copy.motionNormal
+                    HomeMotion.Expressive -> copy.motionExpressive
+                }
+            },
+            onSelect = { motion -> update(settings.updateLayout(style) { it.copy(motion = motion) }) }
+        )
+    }
+    item(key = "studio-palette", contentType = "studio-switch") {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(copy.dynamicPalette, style = MaterialTheme.typography.titleSmall, color = LevyraText)
+                Text(copy.dynamicPaletteSubtitle, style = MaterialTheme.typography.bodySmall, color = LevyraMuted)
+            }
+            Switch(
+                checked = layout.dynamicPalette,
+                onCheckedChange = { checked ->
+                    update(settings.updateLayout(style) { it.copy(dynamicPalette = checked) })
+                },
+                modifier = Modifier.semantics { contentDescription = copy.dynamicPalette }
+            )
+        }
+    }
+}
+
+internal fun reorderStep(
+    order: List<HomeSectionId>,
+    id: HomeSectionId,
+    offset: Float,
+    heights: Map<HomeSectionId, Int>
+): Pair<List<HomeSectionId>, Float>? {
+    val position = order.indexOf(id)
+    if (position < 0) return null
+    val nextHeight = order.getOrNull(position + 1)?.let(heights::get)?.toFloat()
+    val previousHeight = order.getOrNull(position - 1)?.let(heights::get)?.toFloat()
+    return when {
+        nextHeight != null && offset > nextHeight / 2f ->
+            order.toMutableList().apply { add(position + 1, removeAt(position)) } to offset - nextHeight
+        previousHeight != null && offset < -previousHeight / 2f ->
+            order.toMutableList().apply { add(position - 1, removeAt(position)) } to offset + previousHeight
+        else -> null
     }
 }
 
