@@ -8,6 +8,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -145,10 +146,8 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
         if (state.value.busy || state.value.checkingLogin || !state.value.showLogin) return
         runOperation {
             _state.update { it.copy(checkingLogin = true) }
-            val accounts = repository.client.accounts(cookie)
-            if (accounts.isEmpty()) throw YoutubeMusicSessionExpired()
+            val (accounts, verified) = verifyLogin(cookie)
             val selected = accounts.firstOrNull { it.selected } ?: accounts.first()
-            val verified = repository.client.verify(YoutubeMusicSession(selected, cookie), language)
             coroutineContext.ensureActive()
             mutateSessions { it.withLogin(accounts.map { account ->
                 YoutubeMusicSession(if (account.id == selected.id) verified else account, cookie)
@@ -157,6 +156,31 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
             _state.update { it.copy(showLogin = false, checkingLogin = false) }
             loadPage(false, verifySession = false)
         }
+    }
+
+    private suspend fun verifyLogin(cookie: String): Pair<List<YoutubeMusicAccount>, YoutubeMusicAccount> {
+        repeat(MAX_LOGIN_ATTEMPTS) { attempt ->
+            try {
+                val accounts = repository.client.accounts(cookie)
+                if (accounts.isEmpty()) throw YoutubeMusicSessionExpired()
+                val selected = accounts.firstOrNull { it.selected } ?: accounts.first()
+                return accounts to repository.client.verify(YoutubeMusicSession(selected, cookie), language)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                if (attempt == MAX_LOGIN_ATTEMPTS - 1 || !isRetryableLoginError(error)) throw error
+                delay(LOGIN_RETRY_DELAY_MS * (attempt + 1))
+            }
+        }
+        throw YoutubeMusicSessionExpired()
+    }
+
+    private fun isRetryableLoginError(error: Exception): Boolean = when (error) {
+        is YoutubeMusicAccountHttpException -> error.status == 408 || error.status == 425 ||
+            error.status == 429 || error.status in 500..599
+        is YoutubeMusicSessionExpired, is YoutubeMusicProtocolException -> true
+        is java.io.IOException -> true
+        else -> false
     }
 
     fun switchAccount(id: String) {
@@ -372,5 +396,10 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
                 if (generation == ownGeneration) _state.update { it.copy(busy = false, checkingLogin = false) }
             }
         }
+    }
+
+    private companion object {
+        const val MAX_LOGIN_ATTEMPTS = 3
+        const val LOGIN_RETRY_DELAY_MS = 500L
     }
 }
