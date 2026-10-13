@@ -690,6 +690,7 @@ import com.luc4n3x.levyra.ui.theme.levyraFontFamilyFor
 import com.luc4n3x.levyra.domain.LevyraLyricsStudioSettings
 import com.luc4n3x.levyra.domain.LyricsActiveColorMode
 import com.luc4n3x.levyra.domain.LyricsAlignment
+import com.luc4n3x.levyra.domain.LyricsLineSpacing
 import com.luc4n3x.levyra.domain.LyricsBackgroundMode
 import com.luc4n3x.levyra.domain.LyricsFontWeightPreset
 import com.luc4n3x.levyra.domain.LyricsGlowEffect
@@ -2562,7 +2563,14 @@ fun LevyraApp(
                     OnboardingOverlay(
                         selectedLanguageCode = state.languageCode,
                         artwork = onboardingArtwork,
+                        youtubeMusic = youtubeMusicState,
                         onTasteLanguage = viewModel::loadOnboardingArtwork,
+                        onConnectYoutubeMusic = { code ->
+                            youtubeMusicViewModel.open(code)
+                            youtubeMusicViewModel.beginLogin()
+                        },
+                        onYoutubeMusicCookie = youtubeMusicViewModel::acceptCookie,
+                        onCancelYoutubeMusicLogin = youtubeMusicViewModel::cancelLogin,
                         onDone = viewModel::completeOnboarding
                     )
                 }
@@ -2724,6 +2732,23 @@ fun LevyraApp(
                 )
             }
 
+            val updatePromptVisible = state.showUpdatePrompt && state.updateInfo?.isNewer == true
+            if (state.youtubeMusicIntroPending && !state.showOnboarding && !updatePromptVisible && !youtubeMusicState.restoring) {
+                if (youtubeMusicState.active != null) {
+                    LaunchedEffect(Unit) { viewModel.dismissYoutubeMusicIntro() }
+                } else {
+                    com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicIntroSheet(
+                        copy = com.luc4n3x.levyra.ui.i18n.LevyraOnboardingYoutubeMusicStrings.forCode(state.languageCode),
+                        onConnect = {
+                            viewModel.dismissYoutubeMusicIntro()
+                            showYoutubeMusic = true
+                            youtubeMusicViewModel.open(state.languageCode)
+                            youtubeMusicViewModel.beginLogin()
+                        },
+                        onSkip = viewModel::dismissYoutubeMusicIntro
+                    )
+                }
+            }
             if (showYoutubeMusic) {
                 com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicAccountScreen(
                     viewModel = youtubeMusicViewModel,
@@ -7680,7 +7705,9 @@ private fun LyricsOverlay(
             .consumeOverlayTouches()
     ) {
         val studioSettings = state.lyricsStudioSettings
-        if (landscapeLayout) {
+        if (landscapeLayout && studioSettings.backgroundMode !in setOf(
+                LyricsBackgroundMode.AMOLED, LyricsBackgroundMode.SOLID, LyricsBackgroundMode.GRADIENT
+            )) {
             LyricsLandscapeBackdrop(
                 track = track,
                 accentStart = accentStart,
@@ -7843,7 +7870,7 @@ private fun LyricsOverlay(
                     LyricsViewMode.CINEMA -> 14.dp
                     LyricsViewMode.PAGE -> 11.dp
                     LyricsViewMode.COMPACT -> 6.dp
-                }
+                } + studioSettings.lineSpacing.spacingDp - LyricsLineSpacing.STANDARD.spacingDp
             )
         ) {
             item {
@@ -8634,6 +8661,7 @@ private fun KaraokeLyricLine(
         LyricsAlignment.END -> Alignment.End
     }
     val defaultTextAlign = studioSettings.alignment.textAlign
+    val lyricLayoutDirection = LocalLayoutDirection.current
     val alignment = when (line.role) {
         LyricVocalRole.DUET_RIGHT -> Alignment.End
         LyricVocalRole.BACKGROUND -> Alignment.CenterHorizontally
@@ -8811,9 +8839,13 @@ private fun KaraokeLyricLine(
                     val x = when (line.role) {
                         LyricVocalRole.DUET_RIGHT -> width - placeable.width
                         LyricVocalRole.BACKGROUND -> (width - placeable.width) / 2
-                        else -> 0
+                        else -> when (studioSettings.alignment) {
+                            LyricsAlignment.START -> 0
+                            LyricsAlignment.CENTER -> (width - placeable.width) / 2
+                            LyricsAlignment.END -> width - placeable.width
+                        }
                     }
-                    placeable.place(x, 0)
+                    placeable.placeRelative(x, 0)
                 }
             }
             .graphicsLayer {
@@ -8821,9 +8853,13 @@ private fun KaraokeLyricLine(
                 scaleY = activeScale
                 alpha = lineAlpha
                 transformOrigin = when (line.role) {
-                    LyricVocalRole.DUET_RIGHT -> TransformOrigin(1f, 0.5f)
+                    LyricVocalRole.DUET_RIGHT -> TransformOrigin(if (lyricLayoutDirection == LayoutDirection.Rtl) 0f else 1f, 0.5f)
                     LyricVocalRole.BACKGROUND -> TransformOrigin.Center
-                    else -> TransformOrigin(0f, 0.5f)
+                    else -> when (studioSettings.alignment) {
+                        LyricsAlignment.START -> TransformOrigin(if (lyricLayoutDirection == LayoutDirection.Rtl) 1f else 0f, 0.5f)
+                        LyricsAlignment.CENTER -> TransformOrigin.Center
+                        LyricsAlignment.END -> TransformOrigin(if (lyricLayoutDirection == LayoutDirection.Rtl) 0f else 1f, 0.5f)
+                    }
                 }
             }
             .drawWithContent {
@@ -8852,7 +8888,7 @@ private fun KaraokeLyricLine(
                 customActions = lineAccessibilityActions
             },
         horizontalAlignment = alignment,
-        verticalArrangement = Arrangement.spacedBy((if (compact) 2.dp else 4.dp) + (studioSettings.lineSpacing.spacingDp / 2))
+        verticalArrangement = Arrangement.spacedBy(if (compact) 2.dp else 4.dp)
     ) {
         if (!sectionLabel.isNullOrBlank()) {
             Text(
@@ -8975,7 +9011,7 @@ private fun LyricsInstrumentalPulse(
 }
 
 @Composable
-private fun KaraokeWordTimedText(
+internal fun KaraokeWordTimedText(
     lineText: String,
     words: List<com.luc4n3x.levyra.domain.LyricWord>,
     positionProvider: () -> Long,
@@ -9491,10 +9527,7 @@ private fun HomeScreen(
         }
     }
     val spotlightTracks = remember(spotlightCandidates) { spotlightCandidates.map { it.track } }
-    val visiblePersonalTracks = remember(personalTracks) {
-        LevyraPersonalOrbit.distinctRecordings(personalTracks)
-            .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
-    }
+    val visiblePersonalTracks = homeDerivedState.personalOrbitDisplayTracks
     val visibleEditorialCollections = remember(editorialCollections, spotlightCandidate?.track?.id) {
         editorialCollections
             .map { collection ->
@@ -14096,9 +14129,10 @@ private fun SearchQueryChips(
     onClick: (String) -> Unit
 ) {
     LazyRow(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.recentSearchesBleed(RecentSearchGutter),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        contentPadding = PaddingValues(horizontal = RecentSearchGutter)
     ) {
         items(
             items = suggestions,
@@ -14187,9 +14221,10 @@ private fun SearchTasteHints(
     onClick: (String) -> Unit
 ) {
     LazyRow(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.recentSearchesBleed(RecentSearchGutter),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        contentPadding = PaddingValues(horizontal = RecentSearchGutter)
     ) {
         items(
             items = suggestions,

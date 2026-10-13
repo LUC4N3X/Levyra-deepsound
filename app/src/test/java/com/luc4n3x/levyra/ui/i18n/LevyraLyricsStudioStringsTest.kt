@@ -38,6 +38,21 @@ class LevyraLyricsStudioStringsTest {
     }
 
     @Test
+    fun everySupportedLanguageHasItsOwnCompleteBundle() {
+        val supportedCodes = LevyraStrings.all().map { it.code }.toSet()
+        assertEquals(supportedCodes, lyricsStudioLocalizationCodes())
+        supportedCodes.forEach { code ->
+            val entries = lyricsStudioLocalizationEntries(code)
+            assertEquals("Incomplete bundle for $code", lyricsStudioKeys, entries.keys)
+            assertTrue(entries.values.all { it.isNotBlank() })
+            if (code != "en") {
+                assertTrue("English fallback for $code", entries["lyricsStudioSubtitle"] !=
+                    lyricsStudioLocalizationEntries("en")["lyricsStudioSubtitle"])
+            }
+        }
+    }
+
+    @Test
     fun englishAndItalianSpecificTranslationsAreAccurate() {
         val en = LevyraStrings.forCode("en")
         assertEquals("Lyrics Studio", en.lyricsStudio)

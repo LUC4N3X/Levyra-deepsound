@@ -1076,7 +1076,7 @@ class LevyraBackupManager(private val context: Context) {
             lyricsStudioSettings = json.optJSONObject("lyricsStudioSettings")
                 ?.toString()
                 ?.let(LevyraLyricsStudioSettings::decode)
-                ?: LevyraLyricsStudioSettings(),
+                ?: preferences.lyricsStudioSettings(),
             themePreset = json.optString("themePreset"),
             themeAccent = backupThemeAccentFromJson(json),
             ambientSettings = json.optJSONObject("ambientSettings")

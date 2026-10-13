@@ -900,6 +900,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val favoritesStore = FavoritesStore(application.applicationContext)
     private val favoriteMutationMutex = Mutex()
     private val smartOfflineSettingsMutationMutex = Mutex()
+    private var pendingLyricsStudioWrites = 0
+    private var lyricsStudioMutationGeneration = 0L
     private val smartOfflineSettingsMutationId = AtomicLong()
     @Volatile private var pendingSmartOfflineSettings: LevyraSmartOfflineSettings? = null
     private val recommendationFeedbackMutationMutex = Mutex()
@@ -1415,7 +1417,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         viewModelScope.launch {
             preferences.lyricsStudioSettingsFlow.collect { settings ->
-                _state.update { state -> state.copy(lyricsStudioSettings = settings) }
+                if (pendingLyricsStudioWrites == 0 && settings == preferences.lyricsStudioSettings()) {
+                    _state.update { state -> state.copy(lyricsStudioSettings = settings) }
+                }
             }
         }
         viewModelScope.launch {
@@ -1585,6 +1589,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 themePreset = settings.themePreset,
                 themeAccent = settings.themeAccent,
                 showOnboarding = !settings.onboarded,
+                youtubeMusicIntroPending = settings.onboarded && !preferences.youtubeMusicIntroSeen(),
                 currentTrack = restoredTrack,
                 positionMs = pendingSeekMs,
                 durationMs = restoredTrack?.durationMs ?: 0L,
@@ -2681,18 +2686,24 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setLyricsStudioSettings(settings: LevyraLyricsStudioSettings) {
         val normalized = settings.normalized()
+        val generation = ++lyricsStudioMutationGeneration
+        pendingLyricsStudioWrites += 1
         _state.update { it.copy(lyricsStudioSettings = normalized) }
-        viewModelScope.launch {
-            preferences.setLyricsStudioSettings(normalized)
+        viewModelScope.launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
+            try {
+                val saved = preferences.setLyricsStudioSettings(normalized)
+                if (generation == lyricsStudioMutationGeneration) {
+                    val resolved = if (saved) normalized else preferences.lyricsStudioSettings()
+                    _state.update { it.copy(lyricsStudioSettings = resolved) }
+                }
+            } finally {
+                pendingLyricsStudioWrites -= 1
+            }
         }
     }
 
     fun resetLyricsStudioSettings() {
-        val defaultSettings = LevyraLyricsStudioSettings()
-        _state.update { it.copy(lyricsStudioSettings = defaultSettings) }
-        viewModelScope.launch {
-            preferences.setLyricsStudioSettings(defaultSettings)
-        }
+        setLyricsStudioSettings(LevyraLyricsStudioSettings())
     }
 
     private fun widgetAccentColor(track: Track?): Int {
@@ -4639,6 +4650,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }.distinct()
     }
 
+    fun dismissYoutubeMusicIntro() {
+        if (!_state.value.youtubeMusicIntroPending) return
+        preferences.setYoutubeMusicIntroSeen()
+        _state.update { it.copy(youtubeMusicIntroPending = false) }
+    }
+
     fun completeOnboarding(name: String, tasteIds: Set<String>, languageCode: String) {
         onboardingArtworkJob?.cancel()
         onboardingArtworkJob = null
@@ -4648,7 +4665,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         preferences.setLanguageCode(normalizedLanguage)
         preferences.setUserName(name.trim())
         preferences.setOnboarded(tasteIds)
-        _state.update { it.copy(showOnboarding = false, userName = name.trim()) }
+        preferences.setYoutubeMusicIntroSeen()
+        _state.update { it.copy(showOnboarding = false, youtubeMusicIntroPending = false, userName = name.trim()) }
         applyLanguageContent(normalizedLanguage, refreshRemote = true)
     }
 

@@ -9,6 +9,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -73,6 +74,7 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
@@ -102,6 +104,7 @@ import com.luc4n3x.levyra.domain.LyricsLineSpacing
 import com.luc4n3x.levyra.domain.LyricsStylePreset
 import com.luc4n3x.levyra.domain.LyricsTextSize
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.ui.KaraokeWordTimedText
 import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
@@ -469,14 +472,25 @@ internal fun LyricsStudioOverlay(
                                     .horizontalScroll(rememberScrollState()),
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                LevyraThemeAccents.forEach { accent ->
+                                val accentLabels = listOf(
+                                    strings.themeAccentBlue, strings.themeAccentGreen,
+                                    strings.themeAccentIndigo, strings.themeAccentOrange,
+                                    strings.themeAccentPink, strings.themeAccentCyan,
+                                    strings.themeAccentPurple, strings.themeAccentYellow
+                                )
+                                LevyraThemeAccents.forEachIndexed { index, accent ->
                                     val isSelected = settings.customAccentColor == accent
                                     Box(
                                         modifier = Modifier
-                                            .size(38.dp)
+                                            .size(48.dp)
                                             .clip(CircleShape)
                                             .background(Color(accent))
-                                            .clickable { onUpdateSettings(settings.copy(customAccentColor = accent)) },
+                                            .selectable(
+                                                selected = isSelected,
+                                                role = Role.RadioButton,
+                                                onClick = { onUpdateSettings(settings.copy(customAccentColor = accent)) }
+                                            )
+                                            .semantics { contentDescription = accentLabels[index] },
                                         contentAlignment = Alignment.Center
                                     ) {
                                         if (isSelected) {
@@ -963,7 +977,7 @@ private fun LyricsStudioLivePreview(
     val previewLines = if (useLive) liveLyrics else DemoLyrics
 
     val simPositionMs = rememberSimulatedPlaybackPosition(useLive = useLive, isPlaying = isPlaying)
-    val activePos = if (useLive && isPlaying) playbackPositionMs else simPositionMs
+    val activePos = if (useLive) playbackPositionMs else simPositionMs
 
     val activeIndex = remember(previewLines, activePos) {
         val index = previewLines.indexOfLast { it.startMs <= activePos }
@@ -1014,6 +1028,7 @@ private fun LyricsStudioLivePreview(
                 displayIndices.forEach { idx ->
                     StudioPreviewLyricsLine(
                         line = previewLines[idx],
+                        playbackPositionMs = activePos,
                         isLineActive = idx == activeIndex,
                         distance = kotlin.math.abs(idx - activeIndex),
                         settings = settings,
@@ -1108,6 +1123,7 @@ private fun StudioPreviewHeader(
 @Composable
 private fun StudioPreviewLyricsLine(
     line: LyricLine,
+    playbackPositionMs: Long,
     isLineActive: Boolean,
     distance: Int,
     settings: LevyraLyricsStudioSettings,
@@ -1129,7 +1145,7 @@ private fun StudioPreviewLyricsLine(
         label = "preview-scale"
     )
     val lineBlur = previewLineBlur(isLineActive, settings.blurEnabled, animationsEnabled, distance)
-    val textColor = if (isLineActive) accentColor else Color.White.copy(alpha = settings.inactiveOpacity)
+    val textColor = if (isLineActive) accentColor else Color.White
     val resolvedWeight = if (isLineActive) settings.fontWeight.weight else FontWeight.Medium
     val activeShadow = if (isLineActive) glowShadow else null
 
@@ -1146,7 +1162,10 @@ private fun StudioPreviewLyricsLine(
         contentAlignment = previewAlignment(settings.alignment)
     ) {
         StudioPreviewLineText(
-            text = line.text,
+            line = line,
+            playbackPositionMs = playbackPositionMs,
+            progressiveKaraokeEnabled = settings.progressiveKaraokeEnabled,
+            isLineActive = isLineActive,
             textColor = textColor,
             fontFamily = fontFamily,
             baseFontSize = baseFontSize,
@@ -1160,7 +1179,10 @@ private fun StudioPreviewLyricsLine(
 
 @Composable
 private fun StudioPreviewLineText(
-    text: String,
+    line: LyricLine,
+    playbackPositionMs: Long,
+    progressiveKaraokeEnabled: Boolean,
+    isLineActive: Boolean,
     textColor: Color,
     fontFamily: FontFamily,
     baseFontSize: Float,
@@ -1169,8 +1191,27 @@ private fun StudioPreviewLineText(
     textAlign: TextAlign,
     glowShadow: Shadow?
 ) {
+    if (progressiveKaraokeEnabled && line.words.isNotEmpty()) {
+        KaraokeWordTimedText(
+            lineText = line.text,
+            words = line.words,
+            positionProvider = { playbackPositionMs },
+            isActive = isLineActive,
+            fontSize = baseFontSize.sp,
+            lineHeight = lineHeight,
+            textAlign = textAlign,
+            inactiveColor = textColor,
+            completedColor = textColor,
+            activeColor = textColor,
+            pendingColor = textColor.copy(alpha = 0.35f),
+            fontWeight = fontWeight,
+            fontFamily = fontFamily,
+            shadow = glowShadow
+        )
+        return
+    }
     Text(
-        text = text,
+        text = line.text,
         color = textColor,
         fontFamily = fontFamily,
         fontSize = baseFontSize.sp,
