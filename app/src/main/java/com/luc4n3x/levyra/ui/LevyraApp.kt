@@ -12240,7 +12240,7 @@ private fun HomeEditorialSpotlight(
     val soundtrackTitle = strings.homeSoundtrackTitle
     val soundtrackLead = remember(strings, soundtrackArtists) { strings.homeSoundtrackLead(soundtrackArtists) }
     val visibleCompanionArtworkUrls = companionArtworkUrls.ifEmpty {
-        resolvedArtistArtworkUrl.takeIf(String::isNotBlank)?.let(::listOf).orEmpty()
+        resolvedArtistArtworkUrl.takeIf(String::isNotBlank)?.let { listOf(it) }.orEmpty()
     }
     val isLight = LevyraIsLight
     val canvasColor = homeCanvasColor(isLight)
