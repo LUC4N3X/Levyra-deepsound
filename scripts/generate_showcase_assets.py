@@ -465,20 +465,33 @@ M3_SHOWCASE_SPECS = [
 ]
 
 def generate_hero_panoramic_showcase():
-    hero_w, hero_h = 2139, 735
+    hero_w, hero_h = 2139, 850
     background_path = os.path.join(OUT_SHOWCASE_DIR, "levyra_dance_monochrome_bg.webp")
     if not os.path.exists(background_path):
         raise FileNotFoundError("Missing monochrome Levyra dance background")
     with Image.open(background_path) as background_source:
-        hero = background_source.convert("RGBA").resize((hero_w, hero_h), Image.Resampling.LANCZOS)
+        background = background_source.convert("RGBA")
+        scaled_h = round(background.height * hero_w / background.width)
+        background = background.resize((hero_w, scaled_h), Image.Resampling.LANCZOS)
+    hero = Image.new("RGBA", (hero_w, hero_h), (8, 8, 10, 255))
+    hero.paste(background, (0, 0))
+    if scaled_h < hero_h:
+        extension_h = hero_h - scaled_h
+        floor_source_h = min(scaled_h, max(180, extension_h * 2))
+        floor_extension = background.crop((0, scaled_h - floor_source_h, hero_w, scaled_h))
+        floor_extension = floor_extension.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+        floor_extension = floor_extension.resize((hero_w, extension_h), Image.Resampling.LANCZOS)
+        floor_extension = ImageEnhance.Brightness(floor_extension).enhance(0.82)
+        floor_extension = floor_extension.filter(ImageFilter.GaussianBlur(1.2))
+        hero.paste(floor_extension, (0, scaled_h))
     overlay = Image.new("RGBA", (hero_w, hero_h), (0, 0, 0, 28))
     hero.alpha_composite(overlay)
 
     tonal_glow = Image.new("RGBA", (hero_w, hero_h), (0, 0, 0, 0))
     tonal_draw = ImageDraw.Draw(tonal_glow)
     tonal_draw.ellipse((420, 35, 1090, 610), fill=(103, 80, 164, 42))
-    tonal_draw.ellipse((475, 455, 1060, 790), fill=(52, 183, 224, 28))
-    tonal_draw.ellipse((560, 470, 1160, 800), fill=(226, 42, 154, 24))
+    tonal_draw.ellipse((475, 455, 1060, 860), fill=(52, 183, 224, 28))
+    tonal_draw.ellipse((560, 470, 1160, 880), fill=(226, 42, 154, 24))
     tonal_glow = tonal_glow.filter(ImageFilter.GaussianBlur(105))
     hero.alpha_composite(tonal_glow)
     draw = ImageDraw.Draw(hero)
@@ -491,18 +504,18 @@ def generate_hero_panoramic_showcase():
         alpha_bbox = logo.getchannel("A").getbbox()
         if alpha_bbox:
             logo = logo.crop(alpha_bbox)
-        logo.thumbnail((430, 330), Image.Resampling.LANCZOS)
+        logo.thumbnail((445, 360), Image.Resampling.LANCZOS)
 
     lockup_center_x = 760
     logo_x = int(lockup_center_x - logo.width / 2)
-    hero.paste(logo, (logo_x, 120), logo)
+    hero.paste(logo, (logo_x, 110), logo)
 
-    tagline_font = get_font(42)
+    tagline_font = get_font(44)
     tagline_lines = ("All the ways you love music.", "All in one place.")
     for line_index, line in enumerate(tagline_lines):
         line_width = draw.textlength(line, font=tagline_font)
         draw.text(
-            (lockup_center_x - line_width / 2, 470 + line_index * 58),
+            (lockup_center_x - line_width / 2, 510 + line_index * 62),
             line,
             font=tagline_font,
             fill=(240, 240, 242, 242),
