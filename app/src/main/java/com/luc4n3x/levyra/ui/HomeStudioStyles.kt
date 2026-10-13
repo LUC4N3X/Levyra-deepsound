@@ -1555,6 +1555,7 @@ private fun CinematicSpotlight(
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 private fun CompactSpotlight(
     style: HomeStyle,
@@ -2116,6 +2117,7 @@ internal fun StudioChartSection(
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 private fun StudioExpressiveMaxChart(
     title: String,
@@ -2406,6 +2408,7 @@ private fun StudioMinimalChart(
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 private fun StudioImmersiveChart(
     tracks: List<Track>,
