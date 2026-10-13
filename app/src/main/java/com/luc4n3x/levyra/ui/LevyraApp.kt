@@ -14000,9 +14000,10 @@ private fun SearchQueryChips(
     onClick: (String) -> Unit
 ) {
     LazyRow(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.recentSearchesBleed(RecentSearchGutter),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        contentPadding = PaddingValues(horizontal = RecentSearchGutter)
     ) {
         items(
             items = suggestions,
@@ -14091,9 +14092,10 @@ private fun SearchTasteHints(
     onClick: (String) -> Unit
 ) {
     LazyRow(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.recentSearchesBleed(RecentSearchGutter),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        contentPadding = PaddingValues(horizontal = RecentSearchGutter)
     ) {
         items(
             items = suggestions,
