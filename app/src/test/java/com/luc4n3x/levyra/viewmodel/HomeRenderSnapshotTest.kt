@@ -27,7 +27,7 @@ class HomeRenderSnapshotTest {
     }
 
     @Test
-    fun keepsHomeStructureFrozenWhileIdleAwayFromTop() {
+    fun rootDefersStructuralChangesWhileAwayFromTop() {
         assertEquals(true, shouldFreezeHomeStructure(scrollInProgress = false, atTop = false))
         assertEquals(true, shouldFreezeHomeStructure(scrollInProgress = true, atTop = true))
         assertEquals(false, shouldFreezeHomeStructure(scrollInProgress = false, atTop = true))
