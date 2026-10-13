@@ -10859,12 +10859,7 @@ private fun StudioHomeScreen(
                         }
                     }
                 }
-                homeRenderOrder.forEach { sectionId ->
-                    if (!offlineEmitted && sectionId !in HomeSectionId.QuickAccess) {
-                        emitOffline()
-                        offlineEmitted = true
-                    }
-                    if (studioLayout.isHidden(sectionId)) return@forEach
+                                fun LazyListScope.emitStudioSectionGroupA(sectionId: HomeSectionId) {
                     when (sectionId) {
                         HomeSectionId.GenreChips -> {
                             item(key = "home-genre-chips", contentType = "home-genre-chips") {
@@ -10977,6 +10972,12 @@ private fun StudioHomeScreen(
                                 }
                             }
                         }
+                        else -> Unit
+                    }
+                }
+
+                fun LazyListScope.emitStudioSectionGroupB(sectionId: HomeSectionId) {
+                    when (sectionId) {
                         HomeSectionId.EditorialCollections -> {
                             if (showDeferredHomeSections && visibleEditorialCollections.isNotEmpty()) {
                                 item(key = "home-editorial-collections", contentType = "home-collections") {
@@ -11134,6 +11135,12 @@ private fun StudioHomeScreen(
                                 }
                             }
                         }
+                        else -> Unit
+                    }
+                }
+
+                fun LazyListScope.emitStudioSectionGroupC(sectionId: HomeSectionId) {
+                    when (sectionId) {
                         HomeSectionId.TrendingArtists -> {
                             if (usesStudioLayout(HomeSectionId.TrendingArtists) && state.homeArtists.isNotEmpty()) {
                                 if (showDeferredHomeSections && state.interfaceSettings.showTrendingArtists) {
@@ -11255,6 +11262,12 @@ private fun StudioHomeScreen(
                                 }
                             }
                         }
+                        else -> Unit
+                    }
+                }
+
+                fun LazyListScope.emitStudioSectionGroupD(sectionId: HomeSectionId) {
+                    when (sectionId) {
                         HomeSectionId.SimilarArtists -> {
                             if (usesStudioLayout(HomeSectionId.SimilarArtists)) {
                                 if (showDeferredHomeSections && state.interfaceSettings.showTrendingArtists && state.similarArtists.isNotEmpty()) {
@@ -11413,7 +11426,7 @@ private fun StudioHomeScreen(
                                     modifier = studioItemModifier()
                                 )
                             }
-                            return@forEach
+                            return
                         }
                             if (
                                 showDeferredHomeSections && state.interfaceSettings.showResonance &&
@@ -11460,7 +11473,7 @@ private fun StudioHomeScreen(
                                     modifier = studioItemModifier()
                                 )
                             }
-                            return@forEach
+                            return
                         }
                         if (homeStyle == HomeStyle.MaterialExpressive && showDeferredHomeSections && state.interfaceSettings.showCharts && state.charts.isNotEmpty()) {
                             item(key = "home-chart-mx", contentType = "home-studio-chart") {
@@ -11483,7 +11496,7 @@ private fun StudioHomeScreen(
                                     modifier = studioItemModifier()
                                 )
                             }
-                            return@forEach
+                            return
                         }
                             if (showDeferredHomeSections && state.interfaceSettings.showCharts) {
                                 item(key = "home-chart-title", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
@@ -11597,7 +11610,19 @@ private fun StudioHomeScreen(
                                 }
                             }
                         }
+                        else -> Unit
                     }
+                }
+                homeRenderOrder.forEach { sectionId ->
+                    if (!offlineEmitted && sectionId !in HomeSectionId.QuickAccess) {
+                        emitOffline()
+                        offlineEmitted = true
+                    }
+                    if (studioLayout.isHidden(sectionId)) return@forEach
+                    emitStudioSectionGroupA(sectionId)
+                    emitStudioSectionGroupB(sectionId)
+                    emitStudioSectionGroupC(sectionId)
+                    emitStudioSectionGroupD(sectionId)
                 }
                 if (!offlineEmitted) emitOffline()
 
