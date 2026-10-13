@@ -473,6 +473,8 @@ def generate_hero_panoramic_showcase():
         background = background_source.convert("RGBA")
         scaled_h = round(background.height * hero_w / background.width)
         background = background.resize((hero_w, scaled_h), Image.Resampling.LANCZOS)
+        background = ImageEnhance.Brightness(background.convert("RGB")).enhance(1.11)
+        background = ImageEnhance.Contrast(background).enhance(0.96).convert("RGBA")
     hero = Image.new("RGBA", (hero_w, hero_h), (8, 8, 10, 255))
     hero.paste(background, (0, 0))
     if scaled_h < hero_h:
@@ -484,14 +486,20 @@ def generate_hero_panoramic_showcase():
         floor_extension = ImageEnhance.Brightness(floor_extension).enhance(0.82)
         floor_extension = floor_extension.filter(ImageFilter.GaussianBlur(1.2))
         hero.paste(floor_extension, (0, scaled_h))
-    overlay = Image.new("RGBA", (hero_w, hero_h), (0, 0, 0, 28))
+    overlay = Image.new("RGBA", (hero_w, hero_h), (0, 0, 0, 8))
     hero.alpha_composite(overlay)
+
+    lockup_backdrop = Image.new("RGBA", (hero_w, hero_h), (0, 0, 0, 0))
+    backdrop_draw = ImageDraw.Draw(lockup_backdrop)
+    backdrop_draw.ellipse((350, 35, 1110, 680), fill=(0, 0, 0, 25))
+    lockup_backdrop = lockup_backdrop.filter(ImageFilter.GaussianBlur(115))
+    hero.alpha_composite(lockup_backdrop)
 
     tonal_glow = Image.new("RGBA", (hero_w, hero_h), (0, 0, 0, 0))
     tonal_draw = ImageDraw.Draw(tonal_glow)
-    tonal_draw.ellipse((420, 35, 1090, 610), fill=(103, 80, 164, 42))
-    tonal_draw.ellipse((475, 455, 1060, 860), fill=(52, 183, 224, 28))
-    tonal_draw.ellipse((560, 470, 1160, 880), fill=(226, 42, 154, 24))
+    tonal_draw.ellipse((390, 25, 1080, 625), fill=(103, 80, 164, 28))
+    tonal_draw.ellipse((445, 445, 1050, 860), fill=(52, 183, 224, 20))
+    tonal_draw.ellipse((530, 460, 1145, 880), fill=(226, 42, 154, 18))
     tonal_glow = tonal_glow.filter(ImageFilter.GaussianBlur(105))
     hero.alpha_composite(tonal_glow)
     draw = ImageDraw.Draw(hero)
@@ -504,18 +512,18 @@ def generate_hero_panoramic_showcase():
         alpha_bbox = logo.getchannel("A").getbbox()
         if alpha_bbox:
             logo = logo.crop(alpha_bbox)
-        logo.thumbnail((445, 360), Image.Resampling.LANCZOS)
+        logo.thumbnail((490, 400), Image.Resampling.LANCZOS)
 
-    lockup_center_x = 760
+    lockup_center_x = 735
     logo_x = int(lockup_center_x - logo.width / 2)
-    hero.paste(logo, (logo_x, 110), logo)
+    hero.paste(logo, (logo_x, 85), logo)
 
     tagline_font = get_font(44)
     tagline_lines = ("All the ways you love music.", "All in one place.")
     for line_index, line in enumerate(tagline_lines):
         line_width = draw.textlength(line, font=tagline_font)
         draw.text(
-            (lockup_center_x - line_width / 2, 510 + line_index * 62),
+            (lockup_center_x - line_width / 2, 500 + line_index * 56),
             line,
             font=tagline_font,
             fill=(240, 240, 242, 242),
