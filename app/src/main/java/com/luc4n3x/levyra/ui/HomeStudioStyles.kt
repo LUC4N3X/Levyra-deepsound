@@ -2132,15 +2132,13 @@ private fun StudioExpressiveMaxChart(
     modifier: Modifier = Modifier
 ) {
     val scheme = MaterialTheme.colorScheme
-    val shapes = remember {
-        listOf(
-            MaterialShapes.SoftBurst.toShape(),
-            MaterialShapes.Arch.toShape(),
-            MaterialShapes.Cookie9Sided.toShape(),
-            MaterialShapes.Clover8Leaf.toShape(),
-            MaterialShapes.Gem.toShape()
-        )
-    }
+    val shapes = listOf(
+        MaterialShapes.SoftBurst.toShape(),
+        MaterialShapes.Arch.toShape(),
+        MaterialShapes.Cookie9Sided.toShape(),
+        MaterialShapes.Clover8Leaf.toShape(),
+        MaterialShapes.Gem.toShape()
+    )
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
