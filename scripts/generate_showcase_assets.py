@@ -465,15 +465,52 @@ M3_SHOWCASE_SPECS = [
 ]
 
 def generate_hero_panoramic_showcase():
-    hero_path = resolve_screenshot_path("levyra-banner-notturno-samsung.webp")
-    if not hero_path or not os.path.exists(hero_path):
-        return
-    with Image.open(hero_path) as src:
-        orig_w, orig_h = src.size
-        hero = src.copy().convert("RGBA")
-        out_path = os.path.join(OUT_SHOWCASE_DIR, "00_levyra_hero_wall_player.webp")
-        hero.convert("RGB").save(out_path, "WEBP", quality=95, method=6)
-        print(f"Generated Panoramic Hero Showcase at ({orig_w}, {orig_h}): {out_path}")
+    hero_w, hero_h = 2139, 735
+    background_path = os.path.join(OUT_SHOWCASE_DIR, "levyra_dance_monochrome_bg.webp")
+    if not os.path.exists(background_path):
+        raise FileNotFoundError("Missing monochrome Levyra dance background")
+    with Image.open(background_path) as background_source:
+        hero = background_source.convert("RGBA").resize((hero_w, hero_h), Image.Resampling.LANCZOS)
+    overlay = Image.new("RGBA", (hero_w, hero_h), (0, 0, 0, 28))
+    hero.alpha_composite(overlay)
+
+    tonal_glow = Image.new("RGBA", (hero_w, hero_h), (0, 0, 0, 0))
+    tonal_draw = ImageDraw.Draw(tonal_glow)
+    tonal_draw.ellipse((420, 35, 1090, 610), fill=(103, 80, 164, 42))
+    tonal_draw.ellipse((475, 455, 1060, 790), fill=(52, 183, 224, 28))
+    tonal_draw.ellipse((560, 470, 1160, 800), fill=(226, 42, 154, 24))
+    tonal_glow = tonal_glow.filter(ImageFilter.GaussianBlur(105))
+    hero.alpha_composite(tonal_glow)
+    draw = ImageDraw.Draw(hero)
+
+    logo_path = resolve_screenshot_path("Logo LEVYRA DeepSound in Neon Ribbon.png")
+    if not logo_path:
+        raise FileNotFoundError("Missing Levyra logo asset")
+    with Image.open(logo_path) as logo_source:
+        logo = logo_source.convert("RGBA")
+        alpha_bbox = logo.getchannel("A").getbbox()
+        if alpha_bbox:
+            logo = logo.crop(alpha_bbox)
+        logo.thumbnail((430, 330), Image.Resampling.LANCZOS)
+
+    lockup_center_x = 760
+    logo_x = int(lockup_center_x - logo.width / 2)
+    hero.paste(logo, (logo_x, 120), logo)
+
+    tagline_font = get_font(42)
+    tagline_lines = ("All the ways you love music.", "All in one place.")
+    for line_index, line in enumerate(tagline_lines):
+        line_width = draw.textlength(line, font=tagline_font)
+        draw.text(
+            (lockup_center_x - line_width / 2, 470 + line_index * 58),
+            line,
+            font=tagline_font,
+            fill=(240, 240, 242, 242),
+        )
+
+    out_path = os.path.join(OUT_SHOWCASE_DIR, "00_levyra_hero_dance_studio.webp")
+    hero.convert("RGB").save(out_path, "WEBP", quality=95, method=6)
+    print(f"Generated Monochrome Editorial Hero at ({hero_w}, {hero_h}): {out_path}")
 
 def generate_feature_cards():
     print("Generating Material 3 Expressive editorial-stage pairs...")
