@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Mini luajtës, të preferuara të shpejta, miks ditor, miks offline dhe tekste</string>
+    <string name="widget_idle_subtitle">Prek për të dëgjuar</string>
+    <string name="widget_toggle">Luaj/Pauzo</string>
+    <string name="widget_next">Tjetra</string>
+    <string name="widget_previous">E mëparshmja</string>
+    <string name="widget_favorites">Të preferuarat</string>
+    <string name="widget_flow">Miks ditor</string>
+    <string name="widget_offline">Miks offline</string>
+    <string name="widget_lyrics">Tekstet e këngëve</string>
+    <string name="radar_channel_name">Radari i publikimeve</string>
+    <string name="radar_channel_description">Publikime të reja nga artistët që ndjek</string>
+    <string name="radar_new_release_title">Publikim i ri nga %1$s</string>
+    <string name="automatic_backups">Kopje rezervë automatike</string>
+    <string name="car_home">Kreu</string>
+    <string name="car_downloads">Shkarkimet</string>
+    <string name="car_favorites">Të preferuarat</string>
+    <string name="car_playlists">Listat e luajtjes</string>
+    <string name="car_no_content">Nuk ka përmbajtje</string>
+    <string name="car_content_unavailable">Përmbajtja nuk është e disponueshme</string>
+    <string name="car_search_tracks">Kërko këngë</string>
+    <string name="car_no_results">Nuk ka rezultate</string>
+    <string name="car_connecting_player">Po lidhet me luajtësin</string>
+    <string name="car_now_playing">Po luhet tani</string>
+    <string name="car_queue">Radha</string>
+    <string name="notification_favorite_add">Shto te të preferuarat</string>
+    <string name="notification_favorite_remove">Hiq nga të preferuarat</string>
+    <string name="notification_shuffle_enable">Aktivizo përzierjen</string>
+    <string name="notification_shuffle_disable">Çaktivizo përzierjen</string>
+    <string name="notification_repeat_off">Përsëritja joaktive</string>
+    <string name="notification_repeat_all">Përsërit të gjitha</string>
+    <string name="notification_repeat_one">Përsërit njërën</string>
+    <string name="tile_recognize_music">Njih muzikën</string>
+    <string name="tile_playback">Luajtja</string>
+    <string name="shortcut_search">Kërko</string>
+    <string name="shortcut_library">Biblioteka</string>
+    <string name="shortcut_recognition">Njih muzikën</string>
+    <string name="shortcut_resume">Vazhdo luajtjen</string>
+</resources>

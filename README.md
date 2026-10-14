@@ -55,7 +55,7 @@ Play streamed music and your own files in the same app, save tracks for offline 
 
 </details>
 
-<p align="center"><b>Levyra speaks 37 languages</b> &nbsp;·&nbsp; <b>100% Android translation coverage</b></p>
+<p align="center"><b>Levyra speaks 41 languages</b> &nbsp;·&nbsp; <b>100% Android translation coverage</b></p>
 
 <p align="center">
   <code>100% Kotlin</code> &nbsp;·&nbsp; <code>Jetpack Compose</code> &nbsp;·&nbsp; <code>Compose Multiplatform</code> &nbsp;·&nbsp; <code>AndroidX Media3</code> &nbsp;·&nbsp; <code>libvlc</code> &nbsp;·&nbsp; <code>Zero Tracking</code>
@@ -186,7 +186,7 @@ For independent verification, an Apptizo scan of the F-Droid build confirmed zer
 
 ## ✦ Translations
 
-Levyra is available in 37 languages.
+Levyra is available in 41 languages.
 
 <div align="center">
   <picture>

@@ -136,6 +136,26 @@ private val playbackTileBundles: Map<String, Map<String, String>> = mapOf(
         "playbackPaused" to "Pozastavené",
         "playbackTileIdle" to "Nič sa neprehráva"
     ),
+    "bn" to mapOf(
+        "playbackTileLabel" to "প্লেব্যাক",
+        "playbackPaused" to "বিরতি দেওয়া",
+        "playbackTileIdle" to "কিছুই চলছে না"
+    ),
+    "kk" to mapOf(
+        "playbackTileLabel" to "Ойнату",
+        "playbackPaused" to "Кідіртілді",
+        "playbackTileIdle" to "Ештеңе ойнап тұрған жоқ"
+    ),
+    "sr" to mapOf(
+        "playbackTileLabel" to "Репродукција",
+        "playbackPaused" to "Паузирано",
+        "playbackTileIdle" to "Ништа се не пушта"
+    ),
+    "sq" to mapOf(
+        "playbackTileLabel" to "Luajtja",
+        "playbackPaused" to "Në pauzë",
+        "playbackTileIdle" to "Asgjë nuk po luhet"
+    ),
     "hr" to mapOf(
         "playbackTileLabel" to "Reprodukcija",
         "playbackPaused" to "Pauzirano",

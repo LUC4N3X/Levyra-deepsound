@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.recap
 
+import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -27,7 +28,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CalendarMonth
@@ -42,7 +42,6 @@ import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -149,13 +148,7 @@ fun LevyraListeningRecapOverlay(
                         .padding(bottom = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = onClose) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = strings.back,
-                            tint = LevyraText
-                        )
-                    }
+                    LevyraBackButton(onClick = onClose, contentDescription = strings.back)
                     Column(modifier = Modifier.padding(start = 6.dp)) {
                         Text(
                             text = strings.listeningRecap,
