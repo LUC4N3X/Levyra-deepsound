@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.youtubemusic
 
+import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import android.annotation.SuppressLint
 import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
@@ -7,8 +8,6 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -46,7 +45,7 @@ internal fun YoutubeMusicLoginScreen(copy: YoutubeMusicCopy, checking: Boolean, 
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()) {
             TopAppBar(
                 title = { Text(copy.login) },
-                navigationIcon = { IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, copy.back) } },
+                navigationIcon = { LevyraBackButton(onClick = onClose, contentDescription = copy.back) },
                 windowInsets = WindowInsets(0, 0, 0, 0)
             )
             if (checking || loading || !ready) LinearProgressIndicator(Modifier.fillMaxWidth())
