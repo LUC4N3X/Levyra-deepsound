@@ -12,6 +12,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import com.luc4n3x.levyra.domain.LevyraCustomTheme
 import com.luc4n3x.levyra.domain.LevyraFontPreset
 
 data class LevyraPalette(
@@ -48,6 +50,11 @@ object LevyraThemes {
     const val FROST = "frost"
     const val OCEAN = "ocean"
     const val EMBER = "ember"
+    const val MIDNIGHT = "midnight"
+    const val AURORA = "aurora"
+    const val PURE_MATERIAL = "pure_material"
+    const val VELVET = "velvet"
+    const val EDITORIAL = "editorial"
 
     private const val LEGACY_APPLE_MUSIC = "apple_music"
 
@@ -224,6 +231,97 @@ object LevyraThemes {
         outline = Color(0x33FF8A4C)
     )
 
+    val midnight = cosmic.copy(
+        id = MIDNIGHT,
+        label = "Midnight",
+        emoji = "\uD83C\uDF19",
+        black = Color(0xFF05070F),
+        ink = Color(0xFF0A0E1A),
+        panel = Color(0xFF131A2B),
+        panelSoft = Color(0xFF1C2438),
+        cyan = Color(0xFF8AB4FF),
+        blue = Color(0xFF4C7DFF),
+        violet = Color(0xFFA5B8FF),
+        pink = Color(0xFF7F9CF5),
+        orange = Color(0xFFFFC978),
+        text = Color(0xFFE8ECF6),
+        muted = Color(0xFF8A93AB),
+        outline = Color(0x338AB4FF)
+    )
+
+    val aurora = cosmic.copy(
+        id = AURORA,
+        label = "Aurora",
+        emoji = "\uD83C\uDF0C",
+        black = Color(0xFF040B0A),
+        ink = Color(0xFF081412),
+        panel = Color(0xFF10211E),
+        panelSoft = Color(0xFF172C28),
+        cyan = Color(0xFF5EE6B5),
+        blue = Color(0xFF2BC59A),
+        violet = Color(0xFFB59CFF),
+        pink = Color(0xFFE38BD8),
+        orange = Color(0xFFF6D776),
+        text = Color(0xFFE9F6F1),
+        muted = Color(0xFF8FB0A6),
+        outline = Color(0x335EE6B5)
+    )
+
+    val pureMaterial = cosmic.copy(
+        id = PURE_MATERIAL,
+        label = "Pure Material",
+        emoji = "\u25D0",
+        black = Color(0xFF141218),
+        ink = Color(0xFF1D1B20),
+        panel = Color(0xFF211F26),
+        panelSoft = Color(0xFF2B2930),
+        cyan = Color(0xFFD0BCFF),
+        blue = Color(0xFF6750A4),
+        violet = Color(0xFFCCC2DC),
+        pink = Color(0xFFEFB8C8),
+        orange = Color(0xFFF2B8B5),
+        text = Color(0xFFE6E0E9),
+        muted = Color(0xFFCAC4D0),
+        outline = Color(0x33938F99)
+    )
+
+    val velvet = cosmic.copy(
+        id = VELVET,
+        label = "Velvet",
+        emoji = "\uD83C\uDF77",
+        black = Color(0xFF0E0508),
+        ink = Color(0xFF180A0F),
+        panel = Color(0xFF26111A),
+        panelSoft = Color(0xFF331822),
+        cyan = Color(0xFFF28AA8),
+        blue = Color(0xFFC2416B),
+        violet = Color(0xFFE0A8C0),
+        pink = Color(0xFFFF7E9D),
+        orange = Color(0xFFE8B86B),
+        text = Color(0xFFF6E9EE),
+        muted = Color(0xFFB48E9C),
+        outline = Color(0x33F28AA8)
+    )
+
+    val editorial = cosmic.copy(
+        id = EDITORIAL,
+        label = "Editorial",
+        emoji = "\uD83D\uDCF0",
+        isLight = true,
+        black = Color(0xFFF6F2EA),
+        ink = Color(0xFFEFE9DE),
+        panel = Color(0xFFE6DED0),
+        panelSoft = Color(0xFFDCD2C1),
+        cyan = Color(0xFFA63C26),
+        blue = Color(0xFF8C3420),
+        violet = Color(0xFF3E5C76),
+        pink = Color(0xFFB4442C),
+        orange = Color(0xFF8F6417),
+        text = Color(0xFF1B1813),
+        muted = Color(0xFF6B6357),
+        outline = Color(0x331B1813)
+    )
+
     val presets: List<LevyraPalette> = listOf(
         levyraAura,
         coverFlow,
@@ -235,20 +333,98 @@ object LevyraThemes {
         neonCyan,
         purpleGlass,
         minimalWhite,
-        moodFlow
+        moodFlow,
+        midnight,
+        aurora,
+        pureMaterial,
+        velvet,
+        editorial
     )
 
-    fun byId(id: String): LevyraPalette = when (id) {
-        LEVYRA_AURA, LEGACY_APPLE_MUSIC -> levyraAura
+    @Volatile
+    private var customThemes: List<LevyraCustomTheme> = emptyList()
+
+    @Volatile
+    private var customPalettes: Map<String, LevyraPalette> = emptyMap()
+
+    val defaultPresetId: String get() = normalize("")
+
+    fun setCustomThemes(themes: List<LevyraCustomTheme>) {
+        customThemes = themes
+        customPalettes = themes.associate { it.id to it.toPalette() }
+    }
+
+    fun customTheme(id: String): LevyraCustomTheme? = customThemes.firstOrNull { it.id == id }
+
+    fun byId(id: String): LevyraPalette = when {
+        id == LEVYRA_AURA || id == LEGACY_APPLE_MUSIC -> levyraAura
+        LevyraCustomTheme.isCustomId(id) -> customPalettes[id] ?: levyraAura
         else -> presets.firstOrNull { it.id == id } ?: levyraAura
     }
 
-    fun normalize(id: String): String = byId(id).id
+    fun normalize(id: String): String = if (LevyraCustomTheme.isCustomId(id)) id else byId(id).id
 }
+
+fun LevyraCustomTheme.toPalette(): LevyraPalette {
+    val background = Color(background)
+    val surface = Color(surface)
+    val text = if (isLight) Color(0xFF15161C) else Color(0xFFF4F4F7)
+    val primary = Color(primary)
+    val secondary = Color(secondary)
+    val readablePrimary = readableOn(primary, background, isLight)
+    val readableSecondary = readableOn(secondary, background, isLight)
+    return LevyraPalette(
+        id = id,
+        label = name,
+        emoji = "\u25C6",
+        isLight = isLight,
+        followsCover = false,
+        followsMood = false,
+        black = background,
+        ink = blend(background, surface, 0.35f),
+        panel = surface,
+        panelSoft = blend(surface, text, 0.08f),
+        cyan = readablePrimary,
+        blue = primary,
+        violet = readableSecondary,
+        pink = secondary,
+        orange = Color(accent),
+        text = text,
+        muted = blend(text, background, 0.45f),
+        outline = readablePrimary.copy(alpha = 0.28f)
+    )
+}
+
+private fun blend(from: Color, to: Color, fraction: Float): Color = Color(
+    red = from.red + (to.red - from.red) * fraction,
+    green = from.green + (to.green - from.green) * fraction,
+    blue = from.blue + (to.blue - from.blue) * fraction,
+    alpha = 1f
+)
+
+private fun contrast(a: Color, b: Color): Float {
+    val la = a.luminance() + 0.05f
+    val lb = b.luminance() + 0.05f
+    return if (la > lb) la / lb else lb / la
+}
+
+private fun readableOn(color: Color, background: Color, light: Boolean): Color {
+    val target = if (light) Color.Black else Color.White
+    var candidate = color
+    var step = 0
+    while (contrast(candidate, background) < MIN_ACCENT_CONTRAST && step < 10) {
+        candidate = blend(candidate, target, 0.15f)
+        step += 1
+    }
+    return candidate
+}
+
+private const val MIN_ACCENT_CONTRAST = 3f
 
 private val activePaletteState = mutableStateOf(LevyraThemes.cosmic)
 private val activeFontPresetState = mutableStateOf(LevyraFontPreset.Outfit)
 private val activePureBlackState = mutableStateOf(false)
+private val activeCornerScaleState = mutableStateOf(1f)
 
 object LevyraTypographyController {
     fun apply(preset: LevyraFontPreset) {
@@ -283,8 +459,16 @@ object LevyraThemeController {
         if (activePureBlackState.value != pureBlackActive) {
             activePureBlackState.value = pureBlackActive
         }
+        applyCornerScale(presetId)
         if (activePaletteState.value != palette) {
             activePaletteState.value = palette
+        }
+    }
+
+    private fun applyCornerScale(presetId: String) {
+        val cornerScale = LevyraThemes.customTheme(presetId)?.let { it.cornerScale / 100f } ?: 1f
+        if (activeCornerScaleState.value != cornerScale) {
+            activeCornerScaleState.value = cornerScale
         }
     }
 
@@ -409,6 +593,18 @@ private val LevyraExpressiveShapes = Shapes(
 )
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private fun scaledExpressiveShapes(scale: Float): Shapes = Shapes(
+    extraSmall = RoundedCornerShape((8 * scale).dp),
+    small = RoundedCornerShape((12 * scale).dp),
+    medium = RoundedCornerShape((16 * scale).dp),
+    large = RoundedCornerShape((24 * scale).dp),
+    extraLarge = RoundedCornerShape((32 * scale).dp),
+    largeIncreased = RoundedCornerShape((28 * scale).dp),
+    extraLargeIncreased = RoundedCornerShape((36 * scale).dp),
+    extraExtraLarge = RoundedCornerShape((44 * scale).dp)
+)
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private object LevyraStaticMotionScheme : MotionScheme {
     override fun <T> defaultSpatialSpec(): FiniteAnimationSpec<T> = snap()
 
@@ -432,13 +628,17 @@ fun LevyraTheme(
 ) {
     val palette = activePaletteState.value
     val colorScheme = remember(palette) { levyraColorScheme(palette) }
+    val cornerScale = activeCornerScaleState.value
+    val shapes = remember(cornerScale) {
+        if (cornerScale == 1f) LevyraExpressiveShapes else scaledExpressiveShapes(cornerScale)
+    }
     val motionScheme = remember(animationsEnabled) {
         if (animationsEnabled) MotionScheme.expressive() else LevyraStaticMotionScheme
     }
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
         motionScheme = motionScheme,
-        shapes = LevyraExpressiveShapes,
+        shapes = shapes,
         typography = levyraTypographyFor(fontPreset ?: activeFontPresetState.value),
         content = content
     )
