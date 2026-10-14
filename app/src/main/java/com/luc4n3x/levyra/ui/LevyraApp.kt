@@ -10380,9 +10380,12 @@ private fun StudioHomeScreen(
     val homePullState = rememberPullToRefreshState()
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
-    var addTarget by remember { mutableStateOf<Track?>(null) }
-    var selectedHomeCollectionId by rememberSaveable { mutableStateOf<String?>(null) }
-    var chartMarketSheetOpen by rememberSaveable { mutableStateOf(false) }
+    val addTargetState = remember { mutableStateOf<Track?>(null) }
+    var addTarget by addTargetState
+    val selectedHomeCollectionIdState = rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedHomeCollectionId by selectedHomeCollectionIdState
+    val chartMarketSheetOpenState = rememberSaveable { mutableStateOf(false) }
+    var chartMarketSheetOpen by chartMarketSheetOpenState
     LaunchedEffect(homeDerivedState.artistRefreshFingerprint) {
         viewModel.refreshHomeArtists()
     }
@@ -10465,7 +10468,8 @@ private fun StudioHomeScreen(
     val spotlightCandidates = homeDerivedState.spotlightCandidates
     val editorialCollections = homeDerivedState.editorialCollections
     val spotlightDayKey = HomeEditorialEngine.localDayKey()
-    var stableSpotlightId by rememberSaveable(spotlightDayKey) { mutableStateOf<String?>(null) }
+    val stableSpotlightIdState = rememberSaveable(spotlightDayKey) { mutableStateOf<String?>(null) }
+    var stableSpotlightId by stableSpotlightIdState
     val soundtrackArtistPool = remember(
         state.followedArtists,
         state.homeArtists,
@@ -10632,11 +10636,6 @@ private fun StudioHomeScreen(
             spring(stiffness = Spring.StiffnessMediumLow, visibilityThreshold = IntOffset.VisibilityThreshold)
         }
     }
-    fun LazyItemScope.studioItemModifier(): Modifier =
-        if (homeAnimationsEnabled) Modifier.animateItem(placementSpec = studioPlacementSpec) else Modifier
-    fun studioLayoutOf(id: HomeSectionId): HomeSectionLayout =
-        resolveHomeSectionLayout(homeStyle, id, studioLayout.layoutFor(id))
-    fun usesStudioLayout(id: HomeSectionId): Boolean = studioLayoutOf(id) != HomeSectionLayout.Auto
     val nowPlayingAccent = rememberNowPlayingAccent(state.currentTrack, LevyraCyan)
     val homeAccent = if (studioLayout.dynamicPalette) nowPlayingAccent else LevyraCyan
     val flowShortcutTracks = remember(homeStyle, state.recentListens) {
@@ -10713,6 +10712,42 @@ private fun StudioHomeScreen(
             )
         }
     }
+    val homeContext = StudioHomeContext(
+        viewModel = viewModel,
+        renderSnapshot = renderSnapshot,
+        strings = strings,
+        accountAvatarUrl = accountAvatarUrl,
+        onTrackActions = onTrackActions,
+        homeStyle = homeStyle,
+        studioLayout = studioLayout,
+        styleSpec = styleSpec,
+        studioPlacementSpec = studioPlacementSpec,
+        homeAnimationsEnabled = homeAnimationsEnabled,
+        compactHome = compactHome,
+        showDeferredHomeSections = showDeferredHomeSections,
+        speedDialPins = speedDialPins,
+        quickPicks = quickPicks,
+        newReleases = newReleases,
+        forgottenFavorites = forgottenFavorites,
+        homeAlbums = homeAlbums,
+        showHomeAlbumShimmer = showHomeAlbumShimmer,
+        homeVideoTracks = homeVideoTracks,
+        otherSections = otherSections,
+        visiblePersonalTracks = visiblePersonalTracks,
+        visibleEditorialCollections = visibleEditorialCollections,
+        homeCollectionAccents = homeCollectionAccents,
+        spotlightHeroData = spotlightHeroData,
+        stagedSpotlight = stagedSpotlight,
+        spotlightHero = spotlightHero,
+        spotlightTracks = spotlightTracks,
+        resonanceTracks = resonanceTracks,
+        offlineContent = offlineContent,
+        offlineHomeVisible = offlineHomeVisible,
+        selectedHomeCollectionIdState = selectedHomeCollectionIdState,
+        chartMarketSheetOpenState = chartMarketSheetOpenState,
+        stableSpotlightIdState = stableSpotlightIdState,
+        addTargetState = addTargetState
+    )
     val homeLocalAnimations = LocalAnimationsEnabled.current && studioLayout.motion != HomeMotion.Reduced
     CompositionLocalProvider(
         LocalHomeCompactDensity provides compactHome,
@@ -10784,822 +10819,32 @@ private fun StudioHomeScreen(
                     }
                 }
                 var offlineEmitted = false
-                fun emitOffline() {
-                    if (offlineHomeVisible) {
-                        item(key = "home-offline-notice", contentType = "home-card") {
-                            HomeSectionLead(compactHome) {
-                                HomeSectionInset {
-                                    HomeOfflineNotice(
-                                        title = strings.offlineHomeTitle,
-                                        message = strings.offlineHomeMessage,
-                                        retryLabel = strings.offlineHomeRetry,
-                                        onRetry = viewModel::retryHomeContent
-                                    )
-                                }
-                            }
-                        }
-                        if (offlineContent.downloads.isNotEmpty()) {
-                            item(key = "home-offline-downloads", contentType = HOME_DENSE_SHELF_CONTENT_TYPE) {
-                                HomeSectionLead(compactHome) {
-                                    HomeQuickPicksShelf(
-                                        title = strings.offlineHomeDownloads,
-                                        tracks = offlineContent.downloads,
-                                        currentId = state.currentTrack?.id,
-                                        isPlaying = state.isPlaying,
-                                        isResolving = state.isResolving,
-                                        onPlay = { track -> viewModel.playFrom(offlineContent.downloads, track) },
-                                        onTrackActions = onTrackActions
-                                    )
-                                }
-                            }
-                        }
-                        if (offlineContent.playlists.isNotEmpty()) {
-                            item(key = "home-offline-playlists-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
-                                HomeSectionLead(compactHome) {
-                                    HomeSectionInset { HomeSectionHeader(strings.offlineHomePlaylists) }
-                                }
-                            }
-                            item(key = "home-offline-playlists-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
-                                HomeOfflinePlaylistRow(
-                                    playlists = offlineContent.playlists,
-                                    animationsEnabled = homeAnimationsEnabled,
-                                    onOpen = { playlist -> viewModel.openPlaylist(playlist.id) }
-                                )
-                            }
-                        }
-                        if (offlineContent.favorites.isNotEmpty()) {
-                            item(key = "home-offline-favorites", contentType = HOME_DENSE_SHELF_CONTENT_TYPE) {
-                                HomeSectionLead(compactHome) {
-                                    HomeQuickPicksShelf(
-                                        title = strings.offlineHomeFavorites,
-                                        tracks = offlineContent.favorites,
-                                        currentId = state.currentTrack?.id,
-                                        isPlaying = state.isPlaying,
-                                        isResolving = state.isResolving,
-                                        onPlay = { track -> viewModel.playFrom(offlineContent.favorites, track) },
-                                        onTrackActions = onTrackActions
-                                    )
-                                }
-                            }
-                        }
-                        if (offlineContent.recentlyPlayed.isNotEmpty()) {
-                            item(key = "home-offline-recent", contentType = HOME_DENSE_SHELF_CONTENT_TYPE) {
-                                HomeSectionLead(compactHome) {
-                                    HomeQuickPicksShelf(
-                                        title = strings.offlineHomeRecent,
-                                        tracks = offlineContent.recentlyPlayed,
-                                        currentId = state.currentTrack?.id,
-                                        isPlaying = state.isPlaying,
-                                        isResolving = state.isResolving,
-                                        onPlay = { track -> viewModel.playFrom(offlineContent.recentlyPlayed, track) },
-                                        onTrackActions = onTrackActions
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
                 homeRenderOrder.forEach { sectionId ->
                     if (!offlineEmitted && sectionId !in HomeSectionId.QuickAccess) {
-                        emitOffline()
+                        homeStudioOfflineSection(homeContext)
                         offlineEmitted = true
                     }
                     if (studioLayout.isHidden(sectionId)) return@forEach
                     when (sectionId) {
-                        HomeSectionId.GenreChips -> {
-                            item(key = "home-genre-chips", contentType = "home-genre-chips") {
-                                val chipZones = remember(strings) { ExploreCatalog.getZones(strings) }
-                                if (homeStyle == HomeStyle.MaterialExpressive) {
-                                    MxGenreCloud(zones = chipZones, onSelect = viewModel::openExploreZone)
-                                } else HomeGenreChips(
-                                    zones = chipZones,
-                                    contentPadding = PaddingValues(horizontal = HomeHorizontalInset),
-                                    onSelect = { zone ->
-                                        viewModel.openExploreZone(zone)
-                                    }
-                                )
-                            }
-                        }
-                        HomeSectionId.SpeedDial -> {
-                            if (speedDialPins.isNotEmpty()) {
-                                item(key = "home-speed-dial", contentType = "home-speed-dial") {
-                                    Box(
-                                        modifier = Modifier
-                                            .then(if (homeAnimationsEnabled) Modifier.animateItem() else Modifier)
-                                            .padding(top = LevyraHomeDesign.sectionLead(compactHome))
-                                    ) {
-                                        HomeSpeedDialStrip(
-                                            pins = speedDialPins,
-                                            currentTrackId = state.currentTrack?.id,
-                                            isPlaying = state.isPlaying,
-                                            isResolving = state.isResolving,
-                                            animationsEnabled = homeAnimationsEnabled,
-                                            onOpen = viewModel::openSpeedDialPin,
-                                            onRemove = viewModel::removeSpeedDialPin,
-                                            onReorder = viewModel::reorderSpeedDial,
-                                            onTrackActions = onTrackActions
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        HomeSectionId.Spotlight -> {
-                            if (homeStyle != HomeStyle.Original) {
-                                val studioHero = spotlightHeroData
-                                if (studioHero != null && homeStyle != HomeStyle.MaterialExpressive) {
-                                    item(key = "home-editorial-spotlight-studio", contentType = "home-studio-spotlight") {
-                                        val heroTrack = studioHero.candidate.track
-                                        Box(modifier = studioItemModifier()) {
-                                            StudioSpotlight(
-                                                style = homeStyle,
-                                                spec = styleSpec,
-                                                track = heroTrack,
-                                                artistArtworkUrl = studioHero.artistArtworkUrl,
-                                                label = strings.homeSoundtrackTitle,
-                                                lead = strings.homeSoundtrackLead(studioHero.artists),
-                                                isCurrent = heroTrack.id == state.currentTrack?.id,
-                                                isPlaying = state.isPlaying,
-                                                isResolving = state.isResolving,
-                                                animationsEnabled = homeAnimationsEnabled,
-                                                onOpen = {
-                                                    stableSpotlightId = heroTrack.id
-                                                    when {
-                                                        heroTrack.id != state.currentTrack?.id ->
-                                                            viewModel.playFrom(spotlightTracks, heroTrack)
-                                                        state.isResolving -> Unit
-                                                        else -> viewModel.togglePlay()
-                                                    }
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
-                            } else {
-                                if (spotlightHeroData != null && stagedSpotlight == null) {
-                                    item(key = "home-editorial-spotlight", contentType = "home-spotlight") {
-                                        spotlightHero(null, 0.dp)
-                                    }
-                                }
-                            }
-                        }
-                        HomeSectionId.PersonalOrbit -> {
-                            if (state.interfaceSettings.showPersonalOrbit && visiblePersonalTracks.isEmpty() && renderSnapshot.orbitPending) {
-                                item(key = "home-personal", contentType = "home-personal-orbit") {
-                                    HomeSectionLead(compactHome) {
-                                        StudioPersonalListeningShelfPlaceholder(
-                                            userName = state.userName,
-                                            profilePhotoPath = state.profilePhotoPath,
-                                            profilePhotoVersion = state.profilePhotoVersion,
-                                            accountAvatarUrl = accountAvatarUrl
-                                        )
-                                    }
-                                }
-                            }
-
-                            if (state.interfaceSettings.showPersonalOrbit && visiblePersonalTracks.isNotEmpty()) {
-                                item(key = "home-personal", contentType = "home-personal-orbit") {
-                                    HomeSectionLead(compactHome) {
-                                        StudioPersonalListeningShelf(
-                                            style = homeStyle,
-                                            tracks = visiblePersonalTracks,
-                                            userName = state.userName,
-                                            profilePhotoPath = state.profilePhotoPath,
-                                            profilePhotoVersion = state.profilePhotoVersion,
-                                            accountAvatarUrl = accountAvatarUrl,
-                                            currentId = state.currentTrack?.id,
-                                            isPlaying = state.isPlaying,
-                                            isResolving = state.isResolving,
-                                            onPlay = { track -> viewModel.playFrom(visiblePersonalTracks, track) },
-                                            onPlayAll = { viewModel.playAll(visiblePersonalTracks) },
-                                            onTrackActions = onTrackActions
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        HomeSectionId.EditorialCollections -> {
-                            if (showDeferredHomeSections && visibleEditorialCollections.isNotEmpty()) {
-                                item(key = "home-editorial-collections", contentType = "home-collections") {
-                                    HomeSectionLead(compactHome) {
-                                        if (homeStyle == HomeStyle.MaterialExpressive) {
-                                            val fans = remember(visibleEditorialCollections, homeCollectionAccents, strings) {
-                                                visibleEditorialCollections.map { collection ->
-                                                    StudioCollection(
-                                                        id = collection.id,
-                                                        title = homeCollectionTitle(strings, collection),
-                                                        subtitle = collection.tracks.map { it.artist }.distinct().take(2).joinToString(" · "),
-                                                        tracks = collection.tracks.take(3),
-                                                        accent = homeCollectionAccents[collection.id]?.first
-                                                            ?: exploreEditorialPalette(collection.id).first
-                                                    )
-                                                }
-                                            }
-                                            MxCollectionFan(
-                                                title = strings.collectionsTitle,
-                                                collections = fans,
-                                                onOpen = { id -> selectedHomeCollectionId = id }
-                                            )
-                                        } else HomeEditorialCollectionsShelf(
-                                            collections = visibleEditorialCollections,
-                                            accents = homeCollectionAccents,
-                                            onOpen = { collection -> selectedHomeCollectionId = collection.id }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        HomeSectionId.QuickPicks -> {
-                            if (usesStudioLayout(HomeSectionId.QuickPicks)) {
-                                if (showDeferredHomeSections && quickPicks != null && quickPicks.tracks.isNotEmpty()) {
-                                    item(key = "home-quick-picks-studio", contentType = "home-studio-tracks") {
-                                        StudioTrackSection(
-                                            style = homeStyle,
-                                            spec = styleSpec,
-                                            layout = studioLayoutOf(HomeSectionId.QuickPicks),
-                                            title = quickPicks.title.ifBlank { strings.quickPicks },
-                                            featured = HomeSectionId.QuickPicks in studioLayout.featured,
-                                            tracks = quickPicks.tracks,
-                                            currentId = state.currentTrack?.id,
-                                            isPlaying = state.isPlaying,
-                                            actionsLabel = strings.songOptions,
-                                            onPlay = { track -> viewModel.playFrom(quickPicks.tracks, track) },
-                                            onPlayAll = { viewModel.playAll(quickPicks.tracks) },
-                                            onActions = onTrackActions,
-                                            modifier = studioItemModifier()
-                                        )
-                                    }
-                                }
-                            } else {
-                                if (showDeferredHomeSections && quickPicks != null && quickPicks.tracks.isNotEmpty()) {
-                                    item(key = "home-quick-picks", contentType = HOME_DENSE_SHELF_CONTENT_TYPE) {
-                                        HomeSectionLead(compactHome) {
-                                            HomeQuickPicksShelf(
-                                                title = quickPicks.title.ifBlank { strings.quickPicks },
-                                                tracks = quickPicks.tracks,
-                                                currentId = state.currentTrack?.id,
-                                                isPlaying = state.isPlaying,
-                                                isResolving = state.isResolving,
-                                                onPlay = { track -> viewModel.playFrom(quickPicks.tracks, track) },
-                                                onPlayAll = { viewModel.playAll(quickPicks.tracks) },
-                                                onTrackActions = onTrackActions
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        HomeSectionId.ForgottenFavorites -> {
-                            if (usesStudioLayout(HomeSectionId.ForgottenFavorites)) {
-                                if (showDeferredHomeSections && forgottenFavorites.isNotEmpty()) {
-                                    item(key = "home-forgotten-favorites-studio", contentType = "home-studio-tracks") {
-                                        StudioTrackSection(
-                                            style = homeStyle,
-                                            spec = styleSpec,
-                                            layout = studioLayoutOf(HomeSectionId.ForgottenFavorites),
-                                            title = strings.forgottenFavorites,
-                                            featured = HomeSectionId.ForgottenFavorites in studioLayout.featured,
-                                            tracks = forgottenFavorites,
-                                            currentId = state.currentTrack?.id,
-                                            isPlaying = state.isPlaying,
-                                            actionsLabel = strings.songOptions,
-                                            onPlay = { track -> viewModel.playFrom(forgottenFavorites, track) },
-                                            onPlayAll = { viewModel.playAll(forgottenFavorites) },
-                                            onActions = onTrackActions,
-                                            modifier = studioItemModifier()
-                                        )
-                                    }
-                                }
-                            } else {
-                                if (showDeferredHomeSections && forgottenFavorites.isNotEmpty()) {
-                                    item(key = "home-forgotten-favorites", contentType = HOME_DENSE_SHELF_CONTENT_TYPE) {
-                                        HomeSectionLead(compactHome) {
-                                            HomeQuickPicksShelf(
-                                                title = strings.forgottenFavorites,
-                                                tracks = forgottenFavorites,
-                                                currentId = state.currentTrack?.id,
-                                                isPlaying = state.isPlaying,
-                                                isResolving = state.isResolving,
-                                                onPlay = { track -> viewModel.playFrom(forgottenFavorites, track) },
-                                                onPlayAll = { viewModel.playAll(forgottenFavorites) },
-                                                onTrackActions = onTrackActions
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        HomeSectionId.AlbumsForYou -> {
-                            if (usesStudioLayout(HomeSectionId.AlbumsForYou)) {
-                                if (showDeferredHomeSections && state.interfaceSettings.showAlbumsForYou && homeAlbums.isNotEmpty()) {
-                                    item(key = "sec-home-albums-studio", contentType = "home-studio-albums") {
-                                        StudioAlbumSection(
-                                            style = homeStyle,
-                                            spec = styleSpec,
-                                            layout = studioLayoutOf(HomeSectionId.AlbumsForYou),
-                                            title = strings.albumsForYou,
-                                            featured = HomeSectionId.AlbumsForYou in studioLayout.featured,
-                                            albums = homeAlbums,
-                                            onOpen = viewModel::openAlbum,
-                                            modifier = studioItemModifier()
-                                        )
-                                    }
-                                } else if (showDeferredHomeSections && state.interfaceSettings.showAlbumsForYou && showHomeAlbumShimmer) {
-                                    item(key = "sec-home-albums-studio-loading", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
-                                        HomeAlbumLoadingRow()
-                                    }
-                                }
-                            } else {
-                                if (
-                                    showDeferredHomeSections && state.interfaceSettings.showAlbumsForYou &&
-                                    (homeAlbums.isNotEmpty() || showHomeAlbumShimmer)
-                                ) {
-                                    item(key = "sec-home-albums-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
-                                        HomeSectionLead(compactHome) {
-                                            HomeSectionInset {
-                                                HomeSectionHeader(strings.albumsForYou)
-                                            }
-                                        }
-                                    }
-                                    item(key = "sec-home-albums-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
-                                        if (homeAlbums.isNotEmpty()) {
-                                            HomeAlbumHitRow(
-                                                albums = homeAlbums,
-                                                animationsEnabled = homeAnimationsEnabled,
-                                                onOpen = viewModel::openAlbum
-                                            )
-                                        } else if (showHomeAlbumShimmer) {
-                                            HomeAlbumLoadingRow()
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        HomeSectionId.TrendingArtists -> {
-                            if (usesStudioLayout(HomeSectionId.TrendingArtists) && state.homeArtists.isNotEmpty()) {
-                                if (showDeferredHomeSections && state.interfaceSettings.showTrendingArtists) {
-                                    item(key = "home-trending-artists-studio", contentType = "home-studio-artists") {
-                                        StudioArtistSection(
-                                            style = homeStyle,
-                                            spec = styleSpec,
-                                            layout = studioLayoutOf(HomeSectionId.TrendingArtists),
-                                            title = strings.trendingArtists,
-                                            featured = HomeSectionId.TrendingArtists in studioLayout.featured,
-                                            artists = state.homeArtists.take(HOME_ARTIST_SHELF_SIZE),
-                                            onOpen = viewModel::openArtistFromHit,
-                                            modifier = studioItemModifier()
-                                        )
-                                    }
-                                }
-                            } else {
-                                if (
-                                    showDeferredHomeSections && state.interfaceSettings.showTrendingArtists &&
-                                    (state.homeArtists.isNotEmpty() || state.homeArtistsLoading)
-                                ) {
-                                    item(key = "home-trending-artists", contentType = "home-trending-artists") {
-                                        HomeSectionLead(compactHome) {
-                                            TrendingArtistsShelf(
-                                                artists = state.homeArtists.take(HOME_ARTIST_SHELF_SIZE),
-                                                loadingSlots = if (state.homeArtists.isEmpty() && state.homeArtistsLoading) {
-                                                    HOME_ARTIST_SHELF_SIZE
-                                                } else {
-                                                    0
-                                                },
-                                                onArtistClick = viewModel::openArtistFromHit
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        HomeSectionId.NewReleases -> {
-                            if (usesStudioLayout(HomeSectionId.NewReleases)) {
-                                if (showDeferredHomeSections && state.interfaceSettings.showNewReleases && newReleases != null && newReleases.tracks.isNotEmpty()) {
-                                    item(key = "sec-new-releases-studio", contentType = "home-studio-tracks") {
-                                        StudioTrackSection(
-                                            style = homeStyle,
-                                            spec = styleSpec,
-                                            layout = studioLayoutOf(HomeSectionId.NewReleases),
-                                            title = strings.newReleases,
-                                            featured = HomeSectionId.NewReleases in studioLayout.featured,
-                                            tracks = newReleases.tracks,
-                                            currentId = state.currentTrack?.id,
-                                            isPlaying = state.isPlaying,
-                                            actionsLabel = strings.songOptions,
-                                            onPlay = { track -> viewModel.playFrom(newReleases.tracks, track) },
-                                            onPlayAll = { viewModel.playAll(newReleases.tracks) },
-                                            onActions = onTrackActions,
-                                            modifier = studioItemModifier()
-                                        )
-                                    }
-                                }
-                            } else {
-                                if (
-                                    showDeferredHomeSections && state.interfaceSettings.showNewReleases &&
-                                    newReleases != null && newReleases.tracks.isNotEmpty()
-                                ) {
-                                    item(key = "sec-new-releases-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
-                                        HomeSectionLead(compactHome) {
-                                            HomeSectionInset {
-                                                HomeSectionHeader(strings.newReleases)
-                                            }
-                                        }
-                                    }
-                                    item(key = "sec-new-releases-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
-                                        AlbumCardRow(
-                                            tracks = newReleases.tracks,
-                                            currentId = state.currentTrack?.id,
-                                            animationsEnabled = homeAnimationsEnabled,
-                                            onPlay = { viewModel.playFrom(newReleases.tracks, it) }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        HomeSectionId.MusicVideos -> {
-                            if (showDeferredHomeSections && homeVideoTracks.isNotEmpty()) {
-                                item(key = "home-music-videos", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
-                                    HomeSectionLead(compactHome) {
-                                        HomeMusicVideoShelf(
-                                            title = strings.homeVideoShelfTitle,
-                                            tracks = homeVideoTracks,
-                                            playback = HomeVideoShelfPlayback(
-                                                currentId = state.currentTrack?.id?.takeIf { state.isVideoMode },
-                                                isPlaying = state.isPlaying,
-                                                isResolving = state.isResolving
-                                            ),
-                                            actions = HomeVideoShelfActions(
-                                                onPlay = { track -> viewModel.playVideoFrom(homeVideoTracks, track) },
-                                                onToggleCurrent = viewModel::togglePlay
-                                            )
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        HomeSectionId.ReleaseRadar -> {
-                            if (
-                                showDeferredHomeSections && state.interfaceSettings.showNewReleases &&
-                                state.releaseRadar.isNotEmpty()
-                            ) {
-                                item(key = "sec-release-radar-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
-                                    HomeSectionLead(compactHome) {
-                                        HomeSectionInset { HomeSectionHeader(strings.releaseRadar) }
-                                    }
-                                }
-                                item(key = "sec-release-radar-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
-                                    ReleaseRadarRow(
-                                        entries = state.releaseRadar,
-                                        onOpen = { entry -> viewModel.searchNow("${entry.release.title} ${entry.artistName}") },
-                                        onArtist = viewModel::openArtistByName
-                                    )
-                                }
-                            }
-                        }
-                        HomeSectionId.SimilarArtists -> {
-                            if (usesStudioLayout(HomeSectionId.SimilarArtists)) {
-                                if (showDeferredHomeSections && state.interfaceSettings.showTrendingArtists && state.similarArtists.isNotEmpty()) {
-                                    item(key = "sec-similar-artists-studio", contentType = "home-studio-artists") {
-                                        StudioArtistSection(
-                                            style = homeStyle,
-                                            spec = styleSpec,
-                                            layout = studioLayoutOf(HomeSectionId.SimilarArtists),
-                                            title = strings.similarToFollowed,
-                                            featured = HomeSectionId.SimilarArtists in studioLayout.featured,
-                                            artists = state.similarArtists,
-                                            onOpen = viewModel::openArtistFromHit,
-                                            modifier = studioItemModifier()
-                                        )
-                                    }
-                                }
-                            } else {
-                                if (
-                                    showDeferredHomeSections && state.interfaceSettings.showTrendingArtists &&
-                                    state.similarArtists.isNotEmpty()
-                                ) {
-                                    item(key = "sec-similar-artists-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
-                                        HomeSectionLead(compactHome) {
-                                            HomeSectionInset { HomeSectionHeader(strings.similarToFollowed) }
-                                        }
-                                    }
-                                    item(key = "sec-similar-artists-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
-                                        ArtistHitRow(
-                                            artists = state.similarArtists,
-                                            contentPadding = PaddingValues(
-                                                start = HomeHorizontalInset,
-                                                end = HomeHorizontalShelfEndPadding
-                                            ),
-                                            onClick = viewModel::openArtistFromHit
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        HomeSectionId.MoreSections -> {
-                            if (usesStudioLayout(HomeSectionId.MoreSections)) {
-                                if (showDeferredHomeSections) {
-                                    otherSections.forEach { (sectionPosition, section) ->
-                                        if (section.tracks.isNotEmpty()) {
-                                            val sectionKey = homeSectionLazyKey(
-                                                position = sectionPosition,
-                                                title = section.title,
-                                                trackIds = section.tracks.take(3).map { it.id }
-                                            )
-                                            item(key = "sec-other-$sectionKey-studio", contentType = "home-studio-tracks") {
-                                                StudioTrackSection(
-                                                    style = homeStyle,
-                                                    spec = styleSpec,
-                                                    layout = studioLayoutOf(HomeSectionId.MoreSections),
-                                                    title = section.title,
-                                                    featured = HomeSectionId.MoreSections in studioLayout.featured,
-                                                    tracks = section.tracks,
-                                                    currentId = state.currentTrack?.id,
-                                                    isPlaying = state.isPlaying,
-                                                    actionsLabel = strings.songOptions,
-                                                    onPlay = { track -> viewModel.playFrom(section.tracks, track) },
-                                                    onPlayAll = { viewModel.playAll(section.tracks) },
-                                                    onActions = onTrackActions,
-                                                    modifier = studioItemModifier()
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            } else {
-                                if (showDeferredHomeSections) {
-                                    otherSections.forEach { (sectionPosition, section) ->
-                                        if (section.tracks.isNotEmpty()) {
-                                            val sectionKey = homeSectionLazyKey(
-                                                position = sectionPosition,
-                                                title = section.title,
-                                                trackIds = section.tracks.take(3).map { it.id }
-                                            )
-                                            val presentation = HomeSectionLayoutPolicy.presentationFor(
-                                                position = sectionPosition,
-                                                trackCount = section.tracks.size
-                                            )
-                                            if (presentation == HomeSectionPresentation.TrackGrid) {
-                                                item(
-                                                    key = "sec-other-$sectionKey-dense",
-                                                    contentType = HOME_DENSE_SHELF_CONTENT_TYPE
-                                                ) {
-                                                    HomeSectionLead(compactHome) {
-                                                        HomeQuickPicksShelf(
-                                                            title = section.title,
-                                                            tracks = section.tracks,
-                                                            currentId = state.currentTrack?.id,
-                                                            isPlaying = state.isPlaying,
-                                                            isResolving = state.isResolving,
-                                                            onPlay = { track -> viewModel.playFrom(section.tracks, track) }
-                                                        )
-                                                    }
-                                                }
-                                            } else {
-                                                item(
-                                                    key = "sec-other-$sectionKey-header",
-                                                    contentType = HOME_SECTION_HEADER_CONTENT_TYPE
-                                                ) {
-                                                    HomeSectionLead(compactHome) {
-                                                        HomeSectionInset {
-                                                            SectionHeaderAction(
-                                                                section.title,
-                                                                onPlayAll = { viewModel.playAll(section.tracks) }
-                                                            )
-                                                        }
-                                                    }
-                                                }
-                                                if (presentation == HomeSectionPresentation.ArtworkGrid) {
-                                                    item(
-                                                        key = "sec-other-$sectionKey-grid",
-                                                        contentType = HOME_ARTWORK_GRID_CONTENT_TYPE
-                                                    ) {
-                                                        AlbumCardGrid(
-                                                            tracks = section.tracks,
-                                                            currentId = state.currentTrack?.id,
-                                                            animationsEnabled = homeAnimationsEnabled,
-                                                            onPlay = { viewModel.playFrom(section.tracks, it) }
-                                                        )
-                                                    }
-                                                } else {
-                                                    item(
-                                                        key = "sec-other-$sectionKey-row",
-                                                        contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE
-                                                    ) {
-                                                        AlbumCardRow(
-                                                            tracks = section.tracks,
-                                                            currentId = state.currentTrack?.id,
-                                                            animationsEnabled = homeAnimationsEnabled,
-                                                            onPlay = { viewModel.playFrom(section.tracks, it) }
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        HomeSectionId.Resonance -> {
-                        if (homeStyle == HomeStyle.MaterialExpressive && showDeferredHomeSections && state.interfaceSettings.showResonance && resonanceTracks.isNotEmpty()) {
-                            item(key = "home-resonance-mx", contentType = "home-studio-resonance") {
-                                MxCommentBubbles(
-                                    title = strings.mostCommentedTracks,
-                                    tracks = resonanceTracks,
-                                    comments = state.homeResonanceComments,
-                                    currentId = state.currentTrack?.id,
-                                    isPlaying = state.isPlaying,
-                                    playLabel = strings.play,
-                                    onPlay = { track -> viewModel.playFrom(resonanceTracks, track) },
-                                    onOpenComments = { track -> viewModel.openYoutubeCommentsFor(track) },
-                                    modifier = studioItemModifier()
-                                )
-                            }
-                            return@forEach
-                        }
-                            if (
-                                showDeferredHomeSections && state.interfaceSettings.showResonance &&
-                                resonanceTracks.isNotEmpty()
-                            ) {
-                                item(key = "home-resonance", contentType = "home-resonance") {
-                                    HomeSectionLead(compactHome) {
-                                        ResonanceShelf(
-                                            tracks = resonanceTracks,
-                                            comments = state.homeResonanceComments,
-                                            currentId = state.currentTrack?.id,
-                                            isPlaying = state.isPlaying,
-                                            isResolving = state.isResolving,
-                                            onPlay = { track -> viewModel.playFrom(resonanceTracks, track) },
-                                            onOpenComments = { track -> viewModel.openYoutubeCommentsFor(track) }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        HomeSectionId.Charts -> {
-                        if (homeStyle != HomeStyle.Original && homeStyle != HomeStyle.MaterialExpressive &&
-                            showDeferredHomeSections && state.interfaceSettings.showCharts && state.charts.isNotEmpty()
-                        ) {
-                            item(key = "home-chart-studio", contentType = "home-studio-chart") {
-                                val marketName = remember(state.chartRegions, state.selectedChartId, state.languageCode) {
-                                    state.chartRegions
-                                        .firstOrNull { it.id == state.selectedChartId }
-                                        ?.let { ChartMarketDirectory.displayName(it, state.languageCode) }
-                                        .orEmpty()
-                                }
-                                StudioChartSection(
-                                    style = homeStyle,
-                                    spec = styleSpec,
-                                    title = strings.chartMarketTitle(state.charts.size.coerceAtMost(50), marketName),
-                                    tracks = state.charts,
-                                    currentId = state.currentTrack?.id,
-                                    isPlaying = state.isPlaying,
-                                    playAllLabel = strings.playAll,
-                                    changeMarketLabel = strings.chartMarketChange,
-                                    onPlay = { track -> viewModel.playFrom(state.charts, track) },
-                                    onPlayAll = { viewModel.playAll(state.charts) },
-                                    onChangeMarket = { chartMarketSheetOpen = true },
-                                    modifier = studioItemModifier()
-                                )
-                            }
-                            return@forEach
-                        }
-                        if (homeStyle == HomeStyle.MaterialExpressive && showDeferredHomeSections && state.interfaceSettings.showCharts && state.charts.isNotEmpty()) {
-                            item(key = "home-chart-mx", contentType = "home-studio-chart") {
-                                val marketName = remember(state.chartRegions, state.selectedChartId, state.languageCode) {
-                                    state.chartRegions
-                                        .firstOrNull { it.id == state.selectedChartId }
-                                        ?.let { ChartMarketDirectory.displayName(it, state.languageCode) }
-                                        .orEmpty()
-                                }
-                                MxChartSection(
-                                    title = strings.chartMarketTitle(state.charts.size.coerceAtMost(50), marketName),
-                                    tracks = state.charts,
-                                    currentId = state.currentTrack?.id,
-                                    isPlaying = state.isPlaying,
-                                    playAllLabel = strings.playAll,
-                                    changeMarketLabel = strings.chartMarketChange,
-                                    onPlay = { track -> viewModel.playFrom(state.charts, track) },
-                                    onPlayAll = { viewModel.playAll(state.charts) },
-                                    onChangeMarket = { chartMarketSheetOpen = true },
-                                    modifier = studioItemModifier()
-                                )
-                            }
-                            return@forEach
-                        }
-                            if (showDeferredHomeSections && state.interfaceSettings.showCharts) {
-                                item(key = "home-chart-title", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
-                                    val marketName = remember(state.chartRegions, state.selectedChartId, state.languageCode) {
-                                        state.chartRegions
-                                            .firstOrNull { it.id == state.selectedChartId }
-                                            ?.let { ChartMarketDirectory.displayName(it, state.languageCode) }
-                                            .orEmpty()
-                                    }
-                                    val chartCount = state.charts.size.takeIf { it > 0 }?.coerceAtMost(50) ?: 50
-                                    HomeSectionLead(compactHome) {
-                                        HomeSectionInset {
-                                            ChartMarketHeader(
-                                                title = strings.chartMarketTitle(chartCount, marketName),
-                                                refreshing = state.isLoadingCharts && state.charts.isNotEmpty(),
-                                                onChangeMarket = { chartMarketSheetOpen = true },
-                                                onPlayAll = if (state.charts.isEmpty()) null else { { viewModel.playAll(state.charts) } }
-                                            )
-                                        }
-                                    }
-                                }
-                                if (state.charts.isEmpty()) {
-                                    item(key = "home-chart-empty", contentType = "home-card") {
-                                        HomeSectionInset {
-                                            if (state.isLoadingCharts) {
-                                                ChartLoadingSkeleton()
-                                            } else {
-                                                GlassMessage(strings.top50Unavailable, LevyraOrange)
-                                            }
-                                        }
-                                    }
-                                }
-                                if (state.charts.isNotEmpty()) {
-                                    item(key = "home-chart-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
-                                        val density = LocalDensity.current
-                                        val containerWidthPx = LocalWindowInfo.current.containerSize.width
-                                        val columnWidth = remember(containerWidthPx, density) {
-                                            val availableWidth = with(density) { containerWidthPx.toDp() }
-                                            (availableWidth - LevyraHomeDesign.HorizontalInset - LevyraHomeDesign.TrackColumnPeek)
-                                                .coerceIn(280.dp, 360.dp)
-                                        }
-                                        val chartRowState = key(state.selectedChartId) { rememberLazyListState() }
-                                        val podiumTracks = remember(state.charts) { state.charts.take(HomeChartPodiumSize) }
-                                        val restTracks = remember(state.charts) { state.charts.drop(HomeChartPodiumSize) }
-                                        val rowsPerColumn = remember(restTracks) { chartRowsPerColumn(restTracks.size) }
-                                        val restChunks = remember(restTracks, rowsPerColumn) {
-                                            restTracks.chunked(rowsPerColumn)
-                                        }
-                                        val chartDepthEnabled = carouselDepthEnabled()
-                                        Column(verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap)) {
-                                        HomeChartPodium(
-                                            tracks = podiumTracks,
-                                            currentId = state.currentTrack?.id,
-                                            isPlaying = state.isPlaying,
-                                            contentPadding = PaddingValues(horizontal = LevyraHomeDesign.HorizontalInset),
-                                            onPlay = { track -> viewModel.playFrom(state.charts, track) }
-                                        )
-                                        LazyRow(
-                                            state = chartRowState,
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.TrackColumnGap),
-                                            contentPadding = PaddingValues(
-                                                start = LevyraHomeDesign.HorizontalInset,
-                                                end = LevyraHomeDesign.HorizontalInset + LevyraHomeDesign.TrackColumnPeek
-                                            )
-                                        ) {
-                                            itemsIndexed(
-                                                items = restChunks,
-                                                key = { chunkIndex, _ -> "chart-column-$chunkIndex" },
-                                                contentType = { _, _ -> "chart-column" }
-                                            ) { chunkIndex, chunk ->
-                                                val columnKey = "chart-column-$chunkIndex"
-                                                Column(
-                                                    modifier = Modifier
-                                                        .width(columnWidth)
-                                                        .levyraCarouselDepth(
-                                                            state = chartRowState,
-                                                            key = columnKey,
-                                                            enabled = chartDepthEnabled
-                                                        ),
-                                                    verticalArrangement = Arrangement.spacedBy(3.dp)
-                                                ) {
-                                                    chunk.forEachIndexed { itemIndex, track ->
-                                                        val rank = HomeChartPodiumSize + chunkIndex * rowsPerColumn + itemIndex + 1
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .fillMaxWidth()
-                                                                .clip(levyraGroupedListShape(itemIndex, chunk.size))
-                                                                .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.62f))
-                                                                .padding(start = 6.dp, end = 2.dp, top = 2.dp, bottom = 2.dp)
-                                                        ) {
-                                                        ChartRow(
-                                                            rank = rank,
-                                                            track = track,
-                                                            isCurrent = track.id == state.currentTrack?.id,
-                                                            isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
-                                                            isResolving = state.isResolving && track.id == state.currentTrack?.id,
-                                                            isFavorite = track.id in state.favoriteIds,
-                                                            onClick = { viewModel.playFrom(state.charts, track) },
-                                                            onFavorite = { viewModel.toggleFavorite(track) },
-                                                            onAddToPlaylist = { addTarget = track },
-                                                            onAddToQueue = { viewModel.addToQueue(track) }
-                                                        )
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        HomeSectionId.GenreChips -> homeStudioSectionGenreChips(homeContext)
+                        HomeSectionId.SpeedDial -> homeStudioSectionSpeedDial(homeContext)
+                        HomeSectionId.Spotlight -> homeStudioSectionSpotlight(homeContext)
+                        HomeSectionId.PersonalOrbit -> homeStudioSectionPersonalOrbit(homeContext)
+                        HomeSectionId.EditorialCollections -> homeStudioSectionEditorialCollections(homeContext)
+                        HomeSectionId.QuickPicks -> homeStudioSectionQuickPicks(homeContext)
+                        HomeSectionId.ForgottenFavorites -> homeStudioSectionForgottenFavorites(homeContext)
+                        HomeSectionId.AlbumsForYou -> homeStudioSectionAlbumsForYou(homeContext)
+                        HomeSectionId.TrendingArtists -> homeStudioSectionTrendingArtists(homeContext)
+                        HomeSectionId.NewReleases -> homeStudioSectionNewReleases(homeContext)
+                        HomeSectionId.MusicVideos -> homeStudioSectionMusicVideos(homeContext)
+                        HomeSectionId.ReleaseRadar -> homeStudioSectionReleaseRadar(homeContext)
+                        HomeSectionId.SimilarArtists -> homeStudioSectionSimilarArtists(homeContext)
+                        HomeSectionId.MoreSections -> homeStudioSectionMoreSections(homeContext)
+                        HomeSectionId.Resonance -> homeStudioSectionResonance(homeContext)
+                        HomeSectionId.Charts -> homeStudioSectionCharts(homeContext)
                     }
                 }
-                if (!offlineEmitted) emitOffline()
+                if (!offlineEmitted) homeStudioOfflineSection(homeContext)
 
                 if (state.homeError != null || state.playerError != null) {
                     item(key = "home-status", contentType = "home-card") {
@@ -11678,6 +10923,914 @@ private fun StudioHomeScreen(
             onTrackActions = onTrackActions,
             bottomInset = homeBottomInset
         )
+    }
+}
+
+private class StudioHomeContext(
+    val viewModel: HomeViewModel,
+    val renderSnapshot: HomeRenderSnapshot,
+    val strings: LevyraStrings,
+    val accountAvatarUrl: String,
+    val onTrackActions: (Track) -> Unit,
+    val homeStyle: HomeStyle,
+    val studioLayout: com.luc4n3x.levyra.domain.HomeStyleLayout,
+    val styleSpec: HomeStyleSpec,
+    private val studioPlacementSpec: FiniteAnimationSpec<IntOffset>,
+    val homeAnimationsEnabled: Boolean,
+    val compactHome: Boolean,
+    val showDeferredHomeSections: Boolean,
+    val speedDialPins: List<com.luc4n3x.levyra.domain.SpeedDialPin>,
+    val quickPicks: com.luc4n3x.levyra.domain.HomeSection?,
+    val newReleases: com.luc4n3x.levyra.domain.HomeSection?,
+    val forgottenFavorites: List<Track>,
+    val homeAlbums: List<AlbumHit>,
+    val showHomeAlbumShimmer: Boolean,
+    val homeVideoTracks: List<Track>,
+    val otherSections: List<IndexedValue<com.luc4n3x.levyra.domain.HomeSection>>,
+    val visiblePersonalTracks: List<Track>,
+    val visibleEditorialCollections: List<HomeEditorialCollection>,
+    val homeCollectionAccents: Map<String, Pair<Color, Color>>,
+    val spotlightHeroData: HomeSpotlightHero?,
+    val stagedSpotlight: HomeSpotlightHero?,
+    val spotlightHero: @Composable ((@Composable () -> Unit)?, Dp) -> Unit,
+    val spotlightTracks: List<Track>,
+    val resonanceTracks: List<Track>,
+    val offlineContent: com.luc4n3x.levyra.data.HomeOfflineContent,
+    val offlineHomeVisible: Boolean,
+    private val selectedHomeCollectionIdState: MutableState<String?>,
+    private val chartMarketSheetOpenState: MutableState<Boolean>,
+    private val stableSpotlightIdState: MutableState<String?>,
+    private val addTargetState: MutableState<Track?>
+) {
+    val state: LevyraUiState get() = renderSnapshot.state
+    var selectedHomeCollectionId by selectedHomeCollectionIdState
+    var chartMarketSheetOpen by chartMarketSheetOpenState
+    var stableSpotlightId by stableSpotlightIdState
+    var addTarget by addTargetState
+
+    fun LazyItemScope.studioItemModifier(): Modifier =
+        if (homeAnimationsEnabled) Modifier.animateItem(placementSpec = studioPlacementSpec) else Modifier
+
+    fun studioLayoutOf(id: HomeSectionId): HomeSectionLayout =
+        resolveHomeSectionLayout(homeStyle, id, studioLayout.layoutFor(id))
+
+    fun usesStudioLayout(id: HomeSectionId): Boolean = studioLayoutOf(id) != HomeSectionLayout.Auto
+}
+
+private fun LazyListScope.homeStudioSectionGenreChips(c: StudioHomeContext) {
+    with(c) {
+            item(key = "home-genre-chips", contentType = "home-genre-chips") {
+                val chipZones = remember(strings) { ExploreCatalog.getZones(strings) }
+                if (homeStyle == HomeStyle.MaterialExpressive) {
+                    MxGenreCloud(zones = chipZones, onSelect = viewModel::openExploreZone)
+                } else HomeGenreChips(
+                    zones = chipZones,
+                    contentPadding = PaddingValues(horizontal = HomeHorizontalInset),
+                    onSelect = { zone ->
+                        viewModel.openExploreZone(zone)
+                    }
+                )
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionSpeedDial(c: StudioHomeContext) {
+    with(c) {
+            if (speedDialPins.isNotEmpty()) {
+                item(key = "home-speed-dial", contentType = "home-speed-dial") {
+                    Box(
+                        modifier = Modifier
+                            .then(if (homeAnimationsEnabled) Modifier.animateItem() else Modifier)
+                            .padding(top = LevyraHomeDesign.sectionLead(compactHome))
+                    ) {
+                        HomeSpeedDialStrip(
+                            pins = speedDialPins,
+                            currentTrackId = state.currentTrack?.id,
+                            isPlaying = state.isPlaying,
+                            isResolving = state.isResolving,
+                            animationsEnabled = homeAnimationsEnabled,
+                            onOpen = viewModel::openSpeedDialPin,
+                            onRemove = viewModel::removeSpeedDialPin,
+                            onReorder = viewModel::reorderSpeedDial,
+                            onTrackActions = onTrackActions
+                        )
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionSpotlight(c: StudioHomeContext) {
+    with(c) {
+            if (homeStyle != HomeStyle.Original) {
+                val studioHero = spotlightHeroData
+                if (studioHero != null && homeStyle != HomeStyle.MaterialExpressive) {
+                    item(key = "home-editorial-spotlight-studio", contentType = "home-studio-spotlight") {
+                        val heroTrack = studioHero.candidate.track
+                        Box(modifier = studioItemModifier()) {
+                            StudioSpotlight(
+                                style = homeStyle,
+                                spec = styleSpec,
+                                track = heroTrack,
+                                artistArtworkUrl = studioHero.artistArtworkUrl,
+                                label = strings.homeSoundtrackTitle,
+                                lead = strings.homeSoundtrackLead(studioHero.artists),
+                                isCurrent = heroTrack.id == state.currentTrack?.id,
+                                isPlaying = state.isPlaying,
+                                isResolving = state.isResolving,
+                                animationsEnabled = homeAnimationsEnabled,
+                                onOpen = {
+                                    stableSpotlightId = heroTrack.id
+                                    when {
+                                        heroTrack.id != state.currentTrack?.id ->
+                                            viewModel.playFrom(spotlightTracks, heroTrack)
+                                        state.isResolving -> Unit
+                                        else -> viewModel.togglePlay()
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            } else {
+                if (spotlightHeroData != null && stagedSpotlight == null) {
+                    item(key = "home-editorial-spotlight", contentType = "home-spotlight") {
+                        spotlightHero(null, 0.dp)
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionPersonalOrbit(c: StudioHomeContext) {
+    with(c) {
+            if (state.interfaceSettings.showPersonalOrbit && visiblePersonalTracks.isEmpty() && renderSnapshot.orbitPending) {
+                item(key = "home-personal", contentType = "home-personal-orbit") {
+                    HomeSectionLead(compactHome) {
+                        StudioPersonalListeningShelfPlaceholder(
+                            userName = state.userName,
+                            profilePhotoPath = state.profilePhotoPath,
+                            profilePhotoVersion = state.profilePhotoVersion,
+                            accountAvatarUrl = accountAvatarUrl
+                        )
+                    }
+                }
+            }
+
+            if (state.interfaceSettings.showPersonalOrbit && visiblePersonalTracks.isNotEmpty()) {
+                item(key = "home-personal", contentType = "home-personal-orbit") {
+                    HomeSectionLead(compactHome) {
+                        StudioPersonalListeningShelf(
+                            style = homeStyle,
+                            tracks = visiblePersonalTracks,
+                            userName = state.userName,
+                            profilePhotoPath = state.profilePhotoPath,
+                            profilePhotoVersion = state.profilePhotoVersion,
+                            accountAvatarUrl = accountAvatarUrl,
+                            currentId = state.currentTrack?.id,
+                            isPlaying = state.isPlaying,
+                            isResolving = state.isResolving,
+                            onPlay = { track -> viewModel.playFrom(visiblePersonalTracks, track) },
+                            onPlayAll = { viewModel.playAll(visiblePersonalTracks) },
+                            onTrackActions = onTrackActions
+                        )
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionEditorialCollections(c: StudioHomeContext) {
+    with(c) {
+            if (showDeferredHomeSections && visibleEditorialCollections.isNotEmpty()) {
+                item(key = "home-editorial-collections", contentType = "home-collections") {
+                    HomeSectionLead(compactHome) {
+                        if (homeStyle == HomeStyle.MaterialExpressive) {
+                            val fans = remember(visibleEditorialCollections, homeCollectionAccents, strings) {
+                                visibleEditorialCollections.map { collection ->
+                                    StudioCollection(
+                                        id = collection.id,
+                                        title = homeCollectionTitle(strings, collection),
+                                        subtitle = collection.tracks.map { it.artist }.distinct().take(2).joinToString(" · "),
+                                        tracks = collection.tracks.take(3),
+                                        accent = homeCollectionAccents[collection.id]?.first
+                                            ?: exploreEditorialPalette(collection.id).first
+                                    )
+                                }
+                            }
+                            MxCollectionFan(
+                                title = strings.collectionsTitle,
+                                collections = fans,
+                                onOpen = { id -> selectedHomeCollectionId = id }
+                            )
+                        } else HomeEditorialCollectionsShelf(
+                            collections = visibleEditorialCollections,
+                            accents = homeCollectionAccents,
+                            onOpen = { collection -> selectedHomeCollectionId = collection.id }
+                        )
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionQuickPicks(c: StudioHomeContext) {
+    with(c) {
+            if (usesStudioLayout(HomeSectionId.QuickPicks)) {
+                if (showDeferredHomeSections && quickPicks != null && quickPicks.tracks.isNotEmpty()) {
+                    item(key = "home-quick-picks-studio", contentType = "home-studio-tracks") {
+                        StudioTrackSection(
+                            style = homeStyle,
+                            spec = styleSpec,
+                            layout = studioLayoutOf(HomeSectionId.QuickPicks),
+                            title = quickPicks.title.ifBlank { strings.quickPicks },
+                            featured = HomeSectionId.QuickPicks in studioLayout.featured,
+                            tracks = quickPicks.tracks,
+                            currentId = state.currentTrack?.id,
+                            isPlaying = state.isPlaying,
+                            actionsLabel = strings.songOptions,
+                            onPlay = { track -> viewModel.playFrom(quickPicks.tracks, track) },
+                            onPlayAll = { viewModel.playAll(quickPicks.tracks) },
+                            onActions = onTrackActions,
+                            modifier = studioItemModifier()
+                        )
+                    }
+                }
+            } else {
+                if (showDeferredHomeSections && quickPicks != null && quickPicks.tracks.isNotEmpty()) {
+                    item(key = "home-quick-picks", contentType = HOME_DENSE_SHELF_CONTENT_TYPE) {
+                        HomeSectionLead(compactHome) {
+                            HomeQuickPicksShelf(
+                                title = quickPicks.title.ifBlank { strings.quickPicks },
+                                tracks = quickPicks.tracks,
+                                currentId = state.currentTrack?.id,
+                                isPlaying = state.isPlaying,
+                                isResolving = state.isResolving,
+                                onPlay = { track -> viewModel.playFrom(quickPicks.tracks, track) },
+                                onPlayAll = { viewModel.playAll(quickPicks.tracks) },
+                                onTrackActions = onTrackActions
+                            )
+                        }
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionForgottenFavorites(c: StudioHomeContext) {
+    with(c) {
+            if (usesStudioLayout(HomeSectionId.ForgottenFavorites)) {
+                if (showDeferredHomeSections && forgottenFavorites.isNotEmpty()) {
+                    item(key = "home-forgotten-favorites-studio", contentType = "home-studio-tracks") {
+                        StudioTrackSection(
+                            style = homeStyle,
+                            spec = styleSpec,
+                            layout = studioLayoutOf(HomeSectionId.ForgottenFavorites),
+                            title = strings.forgottenFavorites,
+                            featured = HomeSectionId.ForgottenFavorites in studioLayout.featured,
+                            tracks = forgottenFavorites,
+                            currentId = state.currentTrack?.id,
+                            isPlaying = state.isPlaying,
+                            actionsLabel = strings.songOptions,
+                            onPlay = { track -> viewModel.playFrom(forgottenFavorites, track) },
+                            onPlayAll = { viewModel.playAll(forgottenFavorites) },
+                            onActions = onTrackActions,
+                            modifier = studioItemModifier()
+                        )
+                    }
+                }
+            } else {
+                if (showDeferredHomeSections && forgottenFavorites.isNotEmpty()) {
+                    item(key = "home-forgotten-favorites", contentType = HOME_DENSE_SHELF_CONTENT_TYPE) {
+                        HomeSectionLead(compactHome) {
+                            HomeQuickPicksShelf(
+                                title = strings.forgottenFavorites,
+                                tracks = forgottenFavorites,
+                                currentId = state.currentTrack?.id,
+                                isPlaying = state.isPlaying,
+                                isResolving = state.isResolving,
+                                onPlay = { track -> viewModel.playFrom(forgottenFavorites, track) },
+                                onPlayAll = { viewModel.playAll(forgottenFavorites) },
+                                onTrackActions = onTrackActions
+                            )
+                        }
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionAlbumsForYou(c: StudioHomeContext) {
+    with(c) {
+            if (usesStudioLayout(HomeSectionId.AlbumsForYou)) {
+                if (showDeferredHomeSections && state.interfaceSettings.showAlbumsForYou && homeAlbums.isNotEmpty()) {
+                    item(key = "sec-home-albums-studio", contentType = "home-studio-albums") {
+                        StudioAlbumSection(
+                            style = homeStyle,
+                            spec = styleSpec,
+                            layout = studioLayoutOf(HomeSectionId.AlbumsForYou),
+                            title = strings.albumsForYou,
+                            featured = HomeSectionId.AlbumsForYou in studioLayout.featured,
+                            albums = homeAlbums,
+                            onOpen = viewModel::openAlbum,
+                            modifier = studioItemModifier()
+                        )
+                    }
+                } else if (showDeferredHomeSections && state.interfaceSettings.showAlbumsForYou && showHomeAlbumShimmer) {
+                    item(key = "sec-home-albums-studio-loading", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
+                        HomeAlbumLoadingRow()
+                    }
+                }
+            } else {
+                if (
+                    showDeferredHomeSections && state.interfaceSettings.showAlbumsForYou &&
+                    (homeAlbums.isNotEmpty() || showHomeAlbumShimmer)
+                ) {
+                    item(key = "sec-home-albums-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
+                        HomeSectionLead(compactHome) {
+                            HomeSectionInset {
+                                HomeSectionHeader(strings.albumsForYou)
+                            }
+                        }
+                    }
+                    item(key = "sec-home-albums-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
+                        if (homeAlbums.isNotEmpty()) {
+                            HomeAlbumHitRow(
+                                albums = homeAlbums,
+                                animationsEnabled = homeAnimationsEnabled,
+                                onOpen = viewModel::openAlbum
+                            )
+                        } else if (showHomeAlbumShimmer) {
+                            HomeAlbumLoadingRow()
+                        }
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionTrendingArtists(c: StudioHomeContext) {
+    with(c) {
+            if (usesStudioLayout(HomeSectionId.TrendingArtists) && state.homeArtists.isNotEmpty()) {
+                if (showDeferredHomeSections && state.interfaceSettings.showTrendingArtists) {
+                    item(key = "home-trending-artists-studio", contentType = "home-studio-artists") {
+                        StudioArtistSection(
+                            style = homeStyle,
+                            spec = styleSpec,
+                            layout = studioLayoutOf(HomeSectionId.TrendingArtists),
+                            title = strings.trendingArtists,
+                            featured = HomeSectionId.TrendingArtists in studioLayout.featured,
+                            artists = state.homeArtists.take(HOME_ARTIST_SHELF_SIZE),
+                            onOpen = viewModel::openArtistFromHit,
+                            modifier = studioItemModifier()
+                        )
+                    }
+                }
+            } else {
+                if (
+                    showDeferredHomeSections && state.interfaceSettings.showTrendingArtists &&
+                    (state.homeArtists.isNotEmpty() || state.homeArtistsLoading)
+                ) {
+                    item(key = "home-trending-artists", contentType = "home-trending-artists") {
+                        HomeSectionLead(compactHome) {
+                            TrendingArtistsShelf(
+                                artists = state.homeArtists.take(HOME_ARTIST_SHELF_SIZE),
+                                loadingSlots = if (state.homeArtists.isEmpty() && state.homeArtistsLoading) {
+                                    HOME_ARTIST_SHELF_SIZE
+                                } else {
+                                    0
+                                },
+                                onArtistClick = viewModel::openArtistFromHit
+                            )
+                        }
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionNewReleases(c: StudioHomeContext) {
+    with(c) {
+            if (usesStudioLayout(HomeSectionId.NewReleases)) {
+                if (showDeferredHomeSections && state.interfaceSettings.showNewReleases && newReleases != null && newReleases.tracks.isNotEmpty()) {
+                    item(key = "sec-new-releases-studio", contentType = "home-studio-tracks") {
+                        StudioTrackSection(
+                            style = homeStyle,
+                            spec = styleSpec,
+                            layout = studioLayoutOf(HomeSectionId.NewReleases),
+                            title = strings.newReleases,
+                            featured = HomeSectionId.NewReleases in studioLayout.featured,
+                            tracks = newReleases.tracks,
+                            currentId = state.currentTrack?.id,
+                            isPlaying = state.isPlaying,
+                            actionsLabel = strings.songOptions,
+                            onPlay = { track -> viewModel.playFrom(newReleases.tracks, track) },
+                            onPlayAll = { viewModel.playAll(newReleases.tracks) },
+                            onActions = onTrackActions,
+                            modifier = studioItemModifier()
+                        )
+                    }
+                }
+            } else {
+                if (
+                    showDeferredHomeSections && state.interfaceSettings.showNewReleases &&
+                    newReleases != null && newReleases.tracks.isNotEmpty()
+                ) {
+                    item(key = "sec-new-releases-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
+                        HomeSectionLead(compactHome) {
+                            HomeSectionInset {
+                                HomeSectionHeader(strings.newReleases)
+                            }
+                        }
+                    }
+                    item(key = "sec-new-releases-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
+                        AlbumCardRow(
+                            tracks = newReleases.tracks,
+                            currentId = state.currentTrack?.id,
+                            animationsEnabled = homeAnimationsEnabled,
+                            onPlay = { viewModel.playFrom(newReleases.tracks, it) }
+                        )
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionMusicVideos(c: StudioHomeContext) {
+    with(c) {
+            if (showDeferredHomeSections && homeVideoTracks.isNotEmpty()) {
+                item(key = "home-music-videos", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
+                    HomeSectionLead(compactHome) {
+                        HomeMusicVideoShelf(
+                            title = strings.homeVideoShelfTitle,
+                            tracks = homeVideoTracks,
+                            playback = HomeVideoShelfPlayback(
+                                currentId = state.currentTrack?.id?.takeIf { state.isVideoMode },
+                                isPlaying = state.isPlaying,
+                                isResolving = state.isResolving
+                            ),
+                            actions = HomeVideoShelfActions(
+                                onPlay = { track -> viewModel.playVideoFrom(homeVideoTracks, track) },
+                                onToggleCurrent = viewModel::togglePlay
+                            )
+                        )
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionReleaseRadar(c: StudioHomeContext) {
+    with(c) {
+            if (
+                showDeferredHomeSections && state.interfaceSettings.showNewReleases &&
+                state.releaseRadar.isNotEmpty()
+            ) {
+                item(key = "sec-release-radar-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
+                    HomeSectionLead(compactHome) {
+                        HomeSectionInset { HomeSectionHeader(strings.releaseRadar) }
+                    }
+                }
+                item(key = "sec-release-radar-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
+                    ReleaseRadarRow(
+                        entries = state.releaseRadar,
+                        onOpen = { entry -> viewModel.searchNow("${entry.release.title} ${entry.artistName}") },
+                        onArtist = viewModel::openArtistByName
+                    )
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionSimilarArtists(c: StudioHomeContext) {
+    with(c) {
+            if (usesStudioLayout(HomeSectionId.SimilarArtists)) {
+                if (showDeferredHomeSections && state.interfaceSettings.showTrendingArtists && state.similarArtists.isNotEmpty()) {
+                    item(key = "sec-similar-artists-studio", contentType = "home-studio-artists") {
+                        StudioArtistSection(
+                            style = homeStyle,
+                            spec = styleSpec,
+                            layout = studioLayoutOf(HomeSectionId.SimilarArtists),
+                            title = strings.similarToFollowed,
+                            featured = HomeSectionId.SimilarArtists in studioLayout.featured,
+                            artists = state.similarArtists,
+                            onOpen = viewModel::openArtistFromHit,
+                            modifier = studioItemModifier()
+                        )
+                    }
+                }
+            } else {
+                if (
+                    showDeferredHomeSections && state.interfaceSettings.showTrendingArtists &&
+                    state.similarArtists.isNotEmpty()
+                ) {
+                    item(key = "sec-similar-artists-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
+                        HomeSectionLead(compactHome) {
+                            HomeSectionInset { HomeSectionHeader(strings.similarToFollowed) }
+                        }
+                    }
+                    item(key = "sec-similar-artists-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
+                        ArtistHitRow(
+                            artists = state.similarArtists,
+                            contentPadding = PaddingValues(
+                                start = HomeHorizontalInset,
+                                end = HomeHorizontalShelfEndPadding
+                            ),
+                            onClick = viewModel::openArtistFromHit
+                        )
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionMoreSections(c: StudioHomeContext) {
+    with(c) {
+            if (usesStudioLayout(HomeSectionId.MoreSections)) {
+                if (showDeferredHomeSections) {
+                    otherSections.forEach { (sectionPosition, section) ->
+                        if (section.tracks.isNotEmpty()) {
+                            val sectionKey = homeSectionLazyKey(
+                                position = sectionPosition,
+                                title = section.title,
+                                trackIds = section.tracks.take(3).map { it.id }
+                            )
+                            item(key = "sec-other-$sectionKey-studio", contentType = "home-studio-tracks") {
+                                StudioTrackSection(
+                                    style = homeStyle,
+                                    spec = styleSpec,
+                                    layout = studioLayoutOf(HomeSectionId.MoreSections),
+                                    title = section.title,
+                                    featured = HomeSectionId.MoreSections in studioLayout.featured,
+                                    tracks = section.tracks,
+                                    currentId = state.currentTrack?.id,
+                                    isPlaying = state.isPlaying,
+                                    actionsLabel = strings.songOptions,
+                                    onPlay = { track -> viewModel.playFrom(section.tracks, track) },
+                                    onPlayAll = { viewModel.playAll(section.tracks) },
+                                    onActions = onTrackActions,
+                                    modifier = studioItemModifier()
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (showDeferredHomeSections) {
+                    otherSections.forEach { (sectionPosition, section) ->
+                        if (section.tracks.isNotEmpty()) {
+                            val sectionKey = homeSectionLazyKey(
+                                position = sectionPosition,
+                                title = section.title,
+                                trackIds = section.tracks.take(3).map { it.id }
+                            )
+                            val presentation = HomeSectionLayoutPolicy.presentationFor(
+                                position = sectionPosition,
+                                trackCount = section.tracks.size
+                            )
+                            if (presentation == HomeSectionPresentation.TrackGrid) {
+                                item(
+                                    key = "sec-other-$sectionKey-dense",
+                                    contentType = HOME_DENSE_SHELF_CONTENT_TYPE
+                                ) {
+                                    HomeSectionLead(compactHome) {
+                                        HomeQuickPicksShelf(
+                                            title = section.title,
+                                            tracks = section.tracks,
+                                            currentId = state.currentTrack?.id,
+                                            isPlaying = state.isPlaying,
+                                            isResolving = state.isResolving,
+                                            onPlay = { track -> viewModel.playFrom(section.tracks, track) }
+                                        )
+                                    }
+                                }
+                            } else {
+                                item(
+                                    key = "sec-other-$sectionKey-header",
+                                    contentType = HOME_SECTION_HEADER_CONTENT_TYPE
+                                ) {
+                                    HomeSectionLead(compactHome) {
+                                        HomeSectionInset {
+                                            SectionHeaderAction(
+                                                section.title,
+                                                onPlayAll = { viewModel.playAll(section.tracks) }
+                                            )
+                                        }
+                                    }
+                                }
+                                if (presentation == HomeSectionPresentation.ArtworkGrid) {
+                                    item(
+                                        key = "sec-other-$sectionKey-grid",
+                                        contentType = HOME_ARTWORK_GRID_CONTENT_TYPE
+                                    ) {
+                                        AlbumCardGrid(
+                                            tracks = section.tracks,
+                                            currentId = state.currentTrack?.id,
+                                            animationsEnabled = homeAnimationsEnabled,
+                                            onPlay = { viewModel.playFrom(section.tracks, it) }
+                                        )
+                                    }
+                                } else {
+                                    item(
+                                        key = "sec-other-$sectionKey-row",
+                                        contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE
+                                    ) {
+                                        AlbumCardRow(
+                                            tracks = section.tracks,
+                                            currentId = state.currentTrack?.id,
+                                            animationsEnabled = homeAnimationsEnabled,
+                                            onPlay = { viewModel.playFrom(section.tracks, it) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionResonance(c: StudioHomeContext) {
+    with(c) {
+        if (homeStyle == HomeStyle.MaterialExpressive && showDeferredHomeSections && state.interfaceSettings.showResonance && resonanceTracks.isNotEmpty()) {
+            item(key = "home-resonance-mx", contentType = "home-studio-resonance") {
+                MxCommentBubbles(
+                    title = strings.mostCommentedTracks,
+                    tracks = resonanceTracks,
+                    comments = state.homeResonanceComments,
+                    currentId = state.currentTrack?.id,
+                    isPlaying = state.isPlaying,
+                    playLabel = strings.play,
+                    onPlay = { track -> viewModel.playFrom(resonanceTracks, track) },
+                    onOpenComments = { track -> viewModel.openYoutubeCommentsFor(track) },
+                    modifier = studioItemModifier()
+                )
+            }
+            return
+        }
+            if (
+                showDeferredHomeSections && state.interfaceSettings.showResonance &&
+                resonanceTracks.isNotEmpty()
+            ) {
+                item(key = "home-resonance", contentType = "home-resonance") {
+                    HomeSectionLead(compactHome) {
+                        ResonanceShelf(
+                            tracks = resonanceTracks,
+                            comments = state.homeResonanceComments,
+                            currentId = state.currentTrack?.id,
+                            isPlaying = state.isPlaying,
+                            isResolving = state.isResolving,
+                            onPlay = { track -> viewModel.playFrom(resonanceTracks, track) },
+                            onOpenComments = { track -> viewModel.openYoutubeCommentsFor(track) }
+                        )
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionCharts(c: StudioHomeContext) {
+    with(c) {
+        if (homeStyle != HomeStyle.Original && homeStyle != HomeStyle.MaterialExpressive &&
+            showDeferredHomeSections && state.interfaceSettings.showCharts && state.charts.isNotEmpty()
+        ) {
+            item(key = "home-chart-studio", contentType = "home-studio-chart") {
+                val marketName = remember(state.chartRegions, state.selectedChartId, state.languageCode) {
+                    state.chartRegions
+                        .firstOrNull { it.id == state.selectedChartId }
+                        ?.let { ChartMarketDirectory.displayName(it, state.languageCode) }
+                        .orEmpty()
+                }
+                StudioChartSection(
+                    style = homeStyle,
+                    spec = styleSpec,
+                    title = strings.chartMarketTitle(state.charts.size.coerceAtMost(50), marketName),
+                    tracks = state.charts,
+                    currentId = state.currentTrack?.id,
+                    isPlaying = state.isPlaying,
+                    playAllLabel = strings.playAll,
+                    changeMarketLabel = strings.chartMarketChange,
+                    onPlay = { track -> viewModel.playFrom(state.charts, track) },
+                    onPlayAll = { viewModel.playAll(state.charts) },
+                    onChangeMarket = { chartMarketSheetOpen = true },
+                    modifier = studioItemModifier()
+                )
+            }
+            return
+        }
+        if (homeStyle == HomeStyle.MaterialExpressive && showDeferredHomeSections && state.interfaceSettings.showCharts && state.charts.isNotEmpty()) {
+            item(key = "home-chart-mx", contentType = "home-studio-chart") {
+                val marketName = remember(state.chartRegions, state.selectedChartId, state.languageCode) {
+                    state.chartRegions
+                        .firstOrNull { it.id == state.selectedChartId }
+                        ?.let { ChartMarketDirectory.displayName(it, state.languageCode) }
+                        .orEmpty()
+                }
+                MxChartSection(
+                    title = strings.chartMarketTitle(state.charts.size.coerceAtMost(50), marketName),
+                    tracks = state.charts,
+                    currentId = state.currentTrack?.id,
+                    isPlaying = state.isPlaying,
+                    playAllLabel = strings.playAll,
+                    changeMarketLabel = strings.chartMarketChange,
+                    onPlay = { track -> viewModel.playFrom(state.charts, track) },
+                    onPlayAll = { viewModel.playAll(state.charts) },
+                    onChangeMarket = { chartMarketSheetOpen = true },
+                    modifier = studioItemModifier()
+                )
+            }
+            return
+        }
+            if (showDeferredHomeSections && state.interfaceSettings.showCharts) {
+                item(key = "home-chart-title", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
+                    val marketName = remember(state.chartRegions, state.selectedChartId, state.languageCode) {
+                        state.chartRegions
+                            .firstOrNull { it.id == state.selectedChartId }
+                            ?.let { ChartMarketDirectory.displayName(it, state.languageCode) }
+                            .orEmpty()
+                    }
+                    val chartCount = state.charts.size.takeIf { it > 0 }?.coerceAtMost(50) ?: 50
+                    HomeSectionLead(compactHome) {
+                        HomeSectionInset {
+                            ChartMarketHeader(
+                                title = strings.chartMarketTitle(chartCount, marketName),
+                                refreshing = state.isLoadingCharts && state.charts.isNotEmpty(),
+                                onChangeMarket = { chartMarketSheetOpen = true },
+                                onPlayAll = if (state.charts.isEmpty()) null else { { viewModel.playAll(state.charts) } }
+                            )
+                        }
+                    }
+                }
+                if (state.charts.isEmpty()) {
+                    item(key = "home-chart-empty", contentType = "home-card") {
+                        HomeSectionInset {
+                            if (state.isLoadingCharts) {
+                                ChartLoadingSkeleton()
+                            } else {
+                                GlassMessage(strings.top50Unavailable, LevyraOrange)
+                            }
+                        }
+                    }
+                }
+                if (state.charts.isNotEmpty()) {
+                    item(key = "home-chart-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
+                        val density = LocalDensity.current
+                        val containerWidthPx = LocalWindowInfo.current.containerSize.width
+                        val columnWidth = remember(containerWidthPx, density) {
+                            val availableWidth = with(density) { containerWidthPx.toDp() }
+                            (availableWidth - LevyraHomeDesign.HorizontalInset - LevyraHomeDesign.TrackColumnPeek)
+                                .coerceIn(280.dp, 360.dp)
+                        }
+                        val chartRowState = key(state.selectedChartId) { rememberLazyListState() }
+                        val podiumTracks = remember(state.charts) { state.charts.take(HomeChartPodiumSize) }
+                        val restTracks = remember(state.charts) { state.charts.drop(HomeChartPodiumSize) }
+                        val rowsPerColumn = remember(restTracks) { chartRowsPerColumn(restTracks.size) }
+                        val restChunks = remember(restTracks, rowsPerColumn) {
+                            restTracks.chunked(rowsPerColumn)
+                        }
+                        val chartDepthEnabled = carouselDepthEnabled()
+                        Column(verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap)) {
+                        HomeChartPodium(
+                            tracks = podiumTracks,
+                            currentId = state.currentTrack?.id,
+                            isPlaying = state.isPlaying,
+                            contentPadding = PaddingValues(horizontal = LevyraHomeDesign.HorizontalInset),
+                            onPlay = { track -> viewModel.playFrom(state.charts, track) }
+                        )
+                        LazyRow(
+                            state = chartRowState,
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.TrackColumnGap),
+                            contentPadding = PaddingValues(
+                                start = LevyraHomeDesign.HorizontalInset,
+                                end = LevyraHomeDesign.HorizontalInset + LevyraHomeDesign.TrackColumnPeek
+                            )
+                        ) {
+                            itemsIndexed(
+                                items = restChunks,
+                                key = { chunkIndex, _ -> "chart-column-$chunkIndex" },
+                                contentType = { _, _ -> "chart-column" }
+                            ) { chunkIndex, chunk ->
+                                val columnKey = "chart-column-$chunkIndex"
+                                Column(
+                                    modifier = Modifier
+                                        .width(columnWidth)
+                                        .levyraCarouselDepth(
+                                            state = chartRowState,
+                                            key = columnKey,
+                                            enabled = chartDepthEnabled
+                                        ),
+                                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                                ) {
+                                    chunk.forEachIndexed { itemIndex, track ->
+                                        val rank = HomeChartPodiumSize + chunkIndex * rowsPerColumn + itemIndex + 1
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clip(levyraGroupedListShape(itemIndex, chunk.size))
+                                                .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.62f))
+                                                .padding(start = 6.dp, end = 2.dp, top = 2.dp, bottom = 2.dp)
+                                        ) {
+                                        ChartRow(
+                                            rank = rank,
+                                            track = track,
+                                            isCurrent = track.id == state.currentTrack?.id,
+                                            isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                                            isResolving = state.isResolving && track.id == state.currentTrack?.id,
+                                            isFavorite = track.id in state.favoriteIds,
+                                            onClick = { viewModel.playFrom(state.charts, track) },
+                                            onFavorite = { viewModel.toggleFavorite(track) },
+                                            onAddToPlaylist = { addTarget = track },
+                                            onAddToQueue = { viewModel.addToQueue(track) }
+                                        )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        }
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioOfflineSection(c: StudioHomeContext) {
+    with(c) {
+            if (offlineHomeVisible) {
+                item(key = "home-offline-notice", contentType = "home-card") {
+                    HomeSectionLead(compactHome) {
+                        HomeSectionInset {
+                            HomeOfflineNotice(
+                                title = strings.offlineHomeTitle,
+                                message = strings.offlineHomeMessage,
+                                retryLabel = strings.offlineHomeRetry,
+                                onRetry = viewModel::retryHomeContent
+                            )
+                        }
+                    }
+                }
+                if (offlineContent.downloads.isNotEmpty()) {
+                    item(key = "home-offline-downloads", contentType = HOME_DENSE_SHELF_CONTENT_TYPE) {
+                        HomeSectionLead(compactHome) {
+                            HomeQuickPicksShelf(
+                                title = strings.offlineHomeDownloads,
+                                tracks = offlineContent.downloads,
+                                currentId = state.currentTrack?.id,
+                                isPlaying = state.isPlaying,
+                                isResolving = state.isResolving,
+                                onPlay = { track -> viewModel.playFrom(offlineContent.downloads, track) },
+                                onTrackActions = onTrackActions
+                            )
+                        }
+                    }
+                }
+                if (offlineContent.playlists.isNotEmpty()) {
+                    item(key = "home-offline-playlists-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
+                        HomeSectionLead(compactHome) {
+                            HomeSectionInset { HomeSectionHeader(strings.offlineHomePlaylists) }
+                        }
+                    }
+                    item(key = "home-offline-playlists-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
+                        HomeOfflinePlaylistRow(
+                            playlists = offlineContent.playlists,
+                            animationsEnabled = homeAnimationsEnabled,
+                            onOpen = { playlist -> viewModel.openPlaylist(playlist.id) }
+                        )
+                    }
+                }
+                if (offlineContent.favorites.isNotEmpty()) {
+                    item(key = "home-offline-favorites", contentType = HOME_DENSE_SHELF_CONTENT_TYPE) {
+                        HomeSectionLead(compactHome) {
+                            HomeQuickPicksShelf(
+                                title = strings.offlineHomeFavorites,
+                                tracks = offlineContent.favorites,
+                                currentId = state.currentTrack?.id,
+                                isPlaying = state.isPlaying,
+                                isResolving = state.isResolving,
+                                onPlay = { track -> viewModel.playFrom(offlineContent.favorites, track) },
+                                onTrackActions = onTrackActions
+                            )
+                        }
+                    }
+                }
+                if (offlineContent.recentlyPlayed.isNotEmpty()) {
+                    item(key = "home-offline-recent", contentType = HOME_DENSE_SHELF_CONTENT_TYPE) {
+                        HomeSectionLead(compactHome) {
+                            HomeQuickPicksShelf(
+                                title = strings.offlineHomeRecent,
+                                tracks = offlineContent.recentlyPlayed,
+                                currentId = state.currentTrack?.id,
+                                isPlaying = state.isPlaying,
+                                isResolving = state.isResolving,
+                                onPlay = { track -> viewModel.playFrom(offlineContent.recentlyPlayed, track) },
+                                onTrackActions = onTrackActions
+                            )
+                        }
+                    }
+                }
+            }
     }
 }
 
