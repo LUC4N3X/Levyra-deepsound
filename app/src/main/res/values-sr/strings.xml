@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Мини плејер, брзи омиљени, дневни микс, офлајн микс и текстови песама</string>
+    <string name="widget_idle_subtitle">Додирни за слушање</string>
+    <string name="widget_toggle">Пусти/Паузирај</string>
+    <string name="widget_next">Следећа</string>
+    <string name="widget_previous">Претходна</string>
+    <string name="widget_favorites">Омиљено</string>
+    <string name="widget_flow">Дневни микс</string>
+    <string name="widget_offline">Офлајн микс</string>
+    <string name="widget_lyrics">Текстови песама</string>
+    <string name="radar_channel_name">Радар издања</string>
+    <string name="radar_channel_description">Нова издања извођача које пратиш</string>
+    <string name="radar_new_release_title">Ново издање извођача %1$s</string>
+    <string name="automatic_backups">Аутоматске резервне копије</string>
+    <string name="car_home">Почетна</string>
+    <string name="car_downloads">Преузимања</string>
+    <string name="car_favorites">Омиљено</string>
+    <string name="car_playlists">Плејлисте</string>
+    <string name="car_no_content">Нема садржаја</string>
+    <string name="car_content_unavailable">Садржај није доступан</string>
+    <string name="car_search_tracks">Претражи песме</string>
+    <string name="car_no_results">Нема резултата</string>
+    <string name="car_connecting_player">Повезивање са плејером</string>
+    <string name="car_now_playing">Сада свира</string>
+    <string name="car_queue">Ред</string>
+    <string name="notification_favorite_add">Додај у омиљено</string>
+    <string name="notification_favorite_remove">Уклони из омиљеног</string>
+    <string name="notification_shuffle_enable">Укључи насумично</string>
+    <string name="notification_shuffle_disable">Искључи насумично</string>
+    <string name="notification_repeat_off">Понављање искључено</string>
+    <string name="notification_repeat_all">Понови све</string>
+    <string name="notification_repeat_one">Понови једну</string>
+    <string name="tile_recognize_music">Препознај музику</string>
+    <string name="tile_playback">Репродукција</string>
+    <string name="shortcut_search">Претрага</string>
+    <string name="shortcut_library">Библиотека</string>
+    <string name="shortcut_recognition">Препознај музику</string>
+    <string name="shortcut_resume">Настави репродукцију</string>
+</resources>

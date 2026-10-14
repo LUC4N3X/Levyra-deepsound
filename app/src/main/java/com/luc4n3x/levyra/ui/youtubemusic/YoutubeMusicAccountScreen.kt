@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.youtubemusic
 
+import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
@@ -14,7 +15,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.rounded.*
@@ -79,9 +79,7 @@ internal fun YoutubeMusicAccountScreen(
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
             TopAppBar(
                 title = { Text(state.detail?.title ?: "YouTube Music", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                navigationIcon = { IconButton(onClick = back) {
-                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, copy.back)
-                } },
+                navigationIcon = { LevyraBackButton(onClick = back, contentDescription = copy.back) },
                 actions = {
                     if (state.active != null) IconButton(onClick = viewModel::refresh, enabled = !state.busy) { Icon(Icons.Rounded.Refresh, copy.refresh) }
                     IconButton(onClick = { showAccounts = true }, enabled = !state.restoring) { Icon(Icons.Rounded.AccountCircle, copy.accounts) }

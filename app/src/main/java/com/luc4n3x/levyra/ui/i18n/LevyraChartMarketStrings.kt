@@ -75,6 +75,22 @@ private val chartMarketBundles: Map<String, Map<String, String>> = mapOf(
         "Top {count} {country}", "Zmeniť krajinu", "Vyber rebríček", "Hľadať krajinu",
         "Odporúčané", "Tvoj región", "Všetky krajiny", "Žiadna krajina nezodpovedá „{query}“"
     ),
+    "bn" to chartMarket(
+        "টপ {count} {country}", "দেশ পরিবর্তন করুন", "চার্ট বেছে নিন", "দেশ খুঁজুন",
+        "প্রস্তাবিত", "আপনার অঞ্চল", "সব দেশ", "“{query}”-এর সঙ্গে কোনো দেশ মেলেনি"
+    ),
+    "kk" to chartMarket(
+        "Топ {count} {country}", "Елді өзгерту", "Чартты таңдау", "Елдерді іздеу",
+        "Ұсынылған", "Сіздің аймағыңыз", "Барлық елдер", "«{query}» сұрауына сәйкес ел жоқ"
+    ),
+    "sr" to chartMarket(
+        "Топ {count} {country}", "Промени државу", "Изабери топ-листу", "Претражи државе",
+        "Препоручено", "Твој регион", "Све државе", "Ниједна држава не одговара „{query}“"
+    ),
+    "sq" to chartMarket(
+        "Top {count} {country}", "Ndrysho shtetin", "Zgjidh renditjen", "Kërko shtete",
+        "Të rekomanduara", "Rajoni yt", "Të gjitha shtetet", "Asnjë shtet nuk përputhet me “{query}”"
+    ),
     "hr" to chartMarket(
         "Top {count} {country}", "Promijeni državu", "Odaberi ljestvicu", "Pretraži države",
         "Preporučeno", "Tvoja regija", "Sve države", "Nijedna država ne odgovara „{query}”"

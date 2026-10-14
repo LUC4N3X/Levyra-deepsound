@@ -53,7 +53,10 @@ import com.luc4n3x.levyra.domain.LevyraSmartOfflineSettings
 import com.luc4n3x.levyra.domain.DownloadOwnership
 import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.LevyraCustomThemes
 import com.luc4n3x.levyra.domain.LevyraHomeStudioSettings
+import com.luc4n3x.levyra.domain.LevyraMiniPlayerStudioSettings
+import com.luc4n3x.levyra.domain.LevyraNavigationStudioSettings
 import com.luc4n3x.levyra.domain.LevyraLyricsStudioSettings
 import com.luc4n3x.levyra.domain.LyricsProviderOrdering
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
@@ -1024,6 +1027,9 @@ class LevyraBackupManager(private val context: Context) {
             .put("lyricsLatencyProfiles", JSONObject(snapshot.lyricsLatencyProfiles.encode()))
             .put("lyricsStudioSettings", JSONObject(snapshot.lyricsStudioSettings.encode()))
             .put("homeStudioSettings", JSONObject(snapshot.homeStudioSettings.encode()))
+            .put("miniPlayerStudioSettings", JSONObject(snapshot.miniPlayerStudioSettings.encode()))
+            .put("navigationStudioSettings", JSONObject(snapshot.navigationStudioSettings.encode()))
+            .put("customThemes", JSONObject(LevyraCustomThemes.encode(snapshot.customThemes)))
             .put("videoQualityTarget", snapshot.videoQualityTarget.storageValue)
             .put("lyricsProviderOrdering", JSONArray(snapshot.lyricsProviderOrdering.encode()))
             .put("themePreset", snapshot.themePreset)
@@ -1083,6 +1089,18 @@ class LevyraBackupManager(private val context: Context) {
                 ?.toString()
                 ?.let(LevyraHomeStudioSettings::decode)
                 ?: preferences.homeStudioSettings(),
+            miniPlayerStudioSettings = json.optJSONObject("miniPlayerStudioSettings")
+                ?.toString()
+                ?.let(LevyraMiniPlayerStudioSettings::decode)
+                ?: preferences.miniPlayerStudioSettings(),
+            navigationStudioSettings = json.optJSONObject("navigationStudioSettings")
+                ?.toString()
+                ?.let(LevyraNavigationStudioSettings::decode)
+                ?: preferences.navigationStudioSettings(),
+            customThemes = json.optJSONObject("customThemes")
+                ?.toString()
+                ?.let(LevyraCustomThemes::decode)
+                ?: preferences.customThemes(),
             themePreset = json.optString("themePreset"),
             themeAccent = backupThemeAccentFromJson(json),
             ambientSettings = json.optJSONObject("ambientSettings")

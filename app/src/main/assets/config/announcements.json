@@ -253,6 +253,42 @@
           "settingsTitle": "Podporte Levyra na GitHube",
           "settingsSubtitle": "Pridajte hviezdičku a pomôžte ďalším ľuďom objaviť projekt."
         },
+        "bn": {
+          "badge": "100% ওপেন সোর্স",
+          "title": "Levyra ভালো লাগছে?",
+          "body": "Levyra বিনামূল্যে ও ওপেন সোর্স। GitHub-এ একটি স্টার দিতে মাত্র কয়েক সেকেন্ড লাগে এবং এটি প্রকল্পটিকে সত্যিই বেড়ে উঠতে সাহায্য করে।",
+          "action": "⭐ স্টার দিন",
+          "dismiss": "পরে হয়তো",
+          "settingsTitle": "GitHub-এ Levyra-কে সমর্থন করুন",
+          "settingsSubtitle": "একটি স্টার দিয়ে আরও মানুষকে প্রকল্পটি খুঁজে পেতে সাহায্য করুন।"
+        },
+        "kk": {
+          "badge": "100% АШЫҚ КОД",
+          "title": "Levyra ұнай ма?",
+          "body": "Levyra тегін әрі ашық кодты. GitHub-та жұлдызша қою бірнеше секунд қана алады және жобаның өсуіне шынымен көмектеседі.",
+          "action": "⭐ Жұлдызша қою",
+          "dismiss": "Мүмкін кейінірек",
+          "settingsTitle": "GitHub-та Levyra-ны қолдаңыз",
+          "settingsSubtitle": "Жобаны көбірек адам табуы үшін жұлдызша қалдырыңыз."
+        },
+        "sr": {
+          "badge": "100% ОТВОРЕНИ КОД",
+          "title": "Свиђа ти се Levyra?",
+          "body": "Levyra је бесплатна и отвореног кода. Звездица на GitHub-у одузима само неколико секунди и стварно помаже пројекту да расте.",
+          "action": "⭐ Додај звездицу",
+          "dismiss": "Можда касније",
+          "settingsTitle": "Подржи Levyra на GitHub-у",
+          "settingsSubtitle": "Остави звездицу и помози да више људи открије пројекат."
+        },
+        "sq": {
+          "badge": "100% KOD I HAPUR",
+          "title": "Të pëlqen Levyra?",
+          "body": "Levyra është falas dhe me kod të hapur. Një yll në GitHub merr vetëm pak sekonda dhe e ndihmon vërtet projektin të rritet.",
+          "action": "⭐ Jep një yll",
+          "dismiss": "Ndoshta më vonë",
+          "settingsTitle": "Mbështet Levyra në GitHub",
+          "settingsSubtitle": "Lër një yll që më shumë njerëz ta zbulojnë projektin."
+        },
         "hr": {
           "badge": "100% OTVORENI KÔD",
           "title": "Sviđa vam se Levyra?",

@@ -56,6 +56,8 @@ const LOCALE_META = {
   'cs': { name: 'Čeština', code: 'CS' },
   'sk': { name: 'Slovenčina', code: 'SK' },
   'hr': { name: 'Hrvatski', code: 'HR' },
+  'sr': { name: 'Српски', code: 'SR' },
+  'sq': { name: 'Shqip', code: 'SQ' },
   'bg': { name: 'Български', code: 'BG' },
   'hu': { name: 'Magyar', code: 'HU' },
   'fi': { name: 'Suomi', code: 'FI' },
@@ -64,6 +66,7 @@ const LOCALE_META = {
   'ca': { name: 'Català', code: 'CA' },
   'uk': { name: 'Українська', code: 'UK' },
   'ru': { name: 'Русский', code: 'RU' },
+  'kk': { name: 'Қазақша', code: 'KK' },
   'tr': { name: 'Türkçe', code: 'TR' },
   'ar': { name: 'العربية', code: 'AR' },
   'fa': { name: 'فارسی', code: 'FA' },
@@ -72,6 +75,7 @@ const LOCALE_META = {
   'ja': { name: '日本語', code: 'JA' },
   'ko': { name: '한국어', code: 'KO' },
   'hi': { name: 'हिन्दी', code: 'HI' },
+  'bn': { name: 'বাংলা', code: 'BN' },
   'id': { name: 'Bahasa Indonesia', code: 'ID' },
   'ms': { name: 'Bahasa Melayu', code: 'MS' },
   'vi': { name: 'Tiếng Việt', code: 'VI' },
@@ -138,136 +142,78 @@ const collectRepositoryCoverage = async () => {
   }
 }
 
+const FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
+const MONO = "ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"
+
 const getTheme = isDark => ({
-  isDark,
   bg: isDark ? '#0D1117' : '#FFFFFF',
-  border: isDark ? '#30363D' : '#D0D7DE',
-  barFill: isDark ? '#1F6FEB' : '#0B5796',
-  barTrack: isDark ? '#161B22' : '#F0F3F6',
-  gridLine: isDark ? '#21262D' : '#EAECEF',
-  textTitle: isDark ? '#F0F6FC' : '#1F2328',
-  textSub: isDark ? '#8B949E' : '#57606A',
-  textLabel: isDark ? '#C9D1D9' : '#24292F',
-  tagBg: isDark ? '#1E293B' : '#E0F2FE',
-  tagText: isDark ? '#38BDF8' : '#0369A1',
-  tagBorder: isDark ? '#334155' : '#BAE6FD',
-  accentRed: '#EF4444'
+  border: isDark ? '#21262D' : '#E5E7EB',
+  chipBg: isDark ? '#161B22' : '#F8FAFC',
+  chipBorder: isDark ? '#262C36' : '#E2E8F0',
+  track: isDark ? '#21262D' : '#E2E8F0',
+  accent: isDark ? '#A78BFA' : '#7C3AED',
+  accentSoft: isDark ? '#2E2547' : '#EDE9FE',
+  textTitle: isDark ? '#F0F6FC' : '#0F172A',
+  textSub: isDark ? '#8B949E' : '#64748B',
+  textLabel: isDark ? '#C9D1D9' : '#1E293B'
 })
 
-const renderBarRow = ({ item, y, labelX, barX, maxBarW, barH, theme }) => {
-  const barW = Math.max(3, (maxBarW * item.percent) / 100)
-  const valX = barX + maxBarW + 8
-  const tagWidth = Math.max(24, item.code.length * 6 + 8)
-  const pctStr = `${Math.round(item.percent)}%`
-
-  return `    <g transform="translate(0, ${y.toFixed(1)})">
-      <!-- Language Label -->
-      <text x="${labelX}" y="${(barH - 2).toFixed(1)}" text-anchor="end" fill="${theme.textLabel}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">${escapeXml(item.name)}</text>
-      <!-- Track background -->
-      <rect x="${barX}" y="0" width="${maxBarW}" height="${barH}" rx="2" fill="${theme.barTrack}"/>
-      <!-- Progress Bar -->
-      <rect x="${barX}" y="0" width="${barW.toFixed(1)}" height="${barH}" rx="2" fill="${theme.barFill}"/>
-      <!-- Code tag badge -->
-      <rect x="${valX}" y="0" width="${tagWidth}" height="${barH}" rx="3" fill="${theme.tagBg}" stroke="${theme.tagBorder}" stroke-width="0.5"/>
-      <text x="${valX + tagWidth / 2}" y="${(barH - 2.5).toFixed(1)}" text-anchor="middle" fill="${theme.tagText}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">${escapeXml(item.code)}</text>
-      <!-- Percent -->
-      <text x="${valX + tagWidth + 8}" y="${(barH - 2.5).toFixed(1)}" fill="${theme.textSub}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">${pctStr}</text>
+const renderChip = ({ item, x, y, w, h, theme }) => {
+  const progressW = Math.max(2, (w - 20) * item.percent / 100)
+  const complete = item.percent >= 99.5
+  return `    <g transform="translate(${x.toFixed(1)}, ${y.toFixed(1)})">
+      <rect width="${w}" height="${h}" rx="9" fill="${theme.chipBg}" stroke="${theme.chipBorder}"/>
+      <text x="10" y="13" fill="${theme.accent}" font-family="${MONO}" font-size="9.5" font-weight="700" letter-spacing=".4">${escapeXml(item.code)}</text>
+      <text x="${w - 10}" y="13" text-anchor="end" fill="${complete ? theme.textSub : theme.textLabel}" font-family="${FONT}" font-size="9.5" font-weight="600">${Math.round(item.percent)}%</text>
+      <text x="10" y="26" fill="${theme.textLabel}" font-family="${FONT}" font-size="11" font-weight="600">${escapeXml(item.name)}</text>
+      <rect x="10" y="${h - 5}" width="${w - 20}" height="2" rx="1" fill="${theme.track}"/>
+      <rect x="10" y="${h - 5}" width="${progressW.toFixed(1)}" height="2" rx="1" fill="${theme.accent}"/>
     </g>`
 }
 
-const renderColumn = ({ items, startX, startY, labelW, maxBarW, barH, rowGap, theme }) => {
-  const labelX = startX + labelW
-  const barX = labelX + 10
-  const ticks = [0, 0.25, 0.5, 0.75, 1.0]
-  const colHeight = items.length * barH + (items.length - 1) * rowGap
-
-  // Vertical grid lines like in The Economist charts
-  const gridLines = ticks.map(t => {
-    const gx = barX + maxBarW * t
-    return `    <line x1="${gx.toFixed(1)}" y1="${startY - 8}" x2="${gx.toFixed(1)}" y2="${startY + colHeight}" stroke="${theme.gridLine}" stroke-width="1" stroke-dasharray="${t === 1.0 ? 'none' : '2,2'}"/>
-    <text x="${gx.toFixed(1)}" y="${startY - 12}" text-anchor="middle" fill="${theme.textSub}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5">${Math.round(t * 100)}%</text>`
-  }).join('\n')
-
-  const rows = items.map((item, idx) => {
-    const y = startY + idx * (barH + rowGap)
-    return renderBarRow({ item, y, labelX, barX, maxBarW, barH, theme })
-  }).join('\n')
-
-  return `${gridLines}\n${rows}`
+const renderRing = ({ cx, cy, r, percent, theme }) => {
+  const circumference = 2 * Math.PI * r
+  const dash = (circumference * Math.min(100, Math.max(0, percent))) / 100
+  return `  <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${theme.accentSoft}" stroke-width="6"/>
+  <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${theme.accent}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${dash.toFixed(2)} ${circumference.toFixed(2)}" transform="rotate(-90 ${cx} ${cy})"/>
+  <text x="${cx}" y="${cy + 4}" text-anchor="middle" fill="${theme.textTitle}" font-family="${FONT}" font-size="13" font-weight="700">${Math.round(percent)}%</text>`
 }
 
 const makePulse = ({ languages, globalPercent, isDark, mobile }) => {
   const theme = getTheme(isDark)
   const width = mobile ? 720 : 920
-  const isSingleCol = mobile
-
-  // 2 columns of 18 rows each on desktop (ultra compact ~390px tall)
-  const leftCol = isSingleCol ? languages : languages.slice(0, 18)
-  const rightCol = isSingleCol ? [] : languages.slice(18)
-
-  const labelW = 112
-  const barH = 13
-  const rowGap = 7
-  const startY = 82
-  const maxBarW = isSingleCol ? 150 : 180
-
-  const leftColSvg = renderColumn({
-    items: leftCol,
-    startX: 12,
-    startY,
-    labelW,
-    maxBarW,
-    barH,
-    rowGap,
-    theme
-  })
-
-  const rightColSvg = isSingleCol ? '' : renderColumn({
-    items: rightCol,
-    startX: 472,
-    startY,
-    labelW,
-    maxBarW,
-    barH,
-    rowGap,
-    theme
-  })
-
-  const rowsCount = leftCol.length
-  const chartH = rowsCount * barH + (rowsCount - 1) * rowGap
-  const height = startY + chartH + 46
+  const columns = mobile ? 4 : 7
+  const pad = 20
+  const gap = 6
+  const chipH = 36
+  const headerH = 88
+  const rows = Math.ceil(languages.length / columns)
+  const chipW = (width - pad * 2 - gap * (columns - 1)) / columns
+  const height = headerH + rows * chipH + (rows - 1) * gap + pad
   const roundedPercent = Math.round(globalPercent)
   const aria = `Levyra localization coverage: ${roundedPercent}% across ${languages.length} languages`
 
+  const chips = languages.map((item, index) => {
+    const column = index % columns
+    const row = Math.floor(index / columns)
+    return renderChip({
+      item,
+      x: pad + column * (chipW + gap),
+      y: headerH + row * (chipH + gap),
+      w: chipW,
+      h: chipH,
+      theme
+    })
+  }).join('\n')
+
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeXml(aria)}">
   <title>${escapeXml(aria)}</title>
-
-  <!-- Clean Canvas Background -->
-  <rect width="${width}" height="${height}" fill="${theme.bg}"/>
-
-  <!-- The Economist style top Red Accent Block -->
-  <rect x="20" y="16" width="12" height="4" fill="${theme.accentRed}"/>
-
-  <!-- Chart Title & Subtitle -->
-  <text x="20" y="36" fill="${theme.textTitle}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="16" font-weight="700">Language coverage</text>
-  <text x="20" y="52" fill="${theme.textSub}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11">
-    Translation completion index across ${languages.length} supported Android locales (100% = fully translated)
-  </text>
-
-  <!-- Horizontal Divider -->
-  <line x1="20" y1="62" x2="${width - 20}" y2="62" stroke="${theme.border}" stroke-width="1"/>
-
-  <!-- Left Column Data -->
-${leftColSvg}
-
-  <!-- Right Column Data -->
-${rightColSvg}
-
-  <!-- Footer Info -->
-  <line x1="20" y1="${height - 24}" x2="${width - 20}" y2="${height - 24}" stroke="${theme.border}" stroke-width="0.5"/>
-  <text x="20" y="${height - 10}" fill="${theme.textSub}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9.5">
-    Source: Levyra open-source strings catalog · Translations maintained in the Levyra repository
-  </text>
+  <rect width="${width}" height="${height}" rx="16" fill="${theme.bg}"/>
+  <text x="${pad}" y="30" fill="${theme.textSub}" font-family="${FONT}" font-size="10" font-weight="700" letter-spacing="1.4">LANGUAGE COVERAGE</text>
+  <text x="${pad}" y="56" fill="${theme.textTitle}" font-family="${FONT}" font-size="22" font-weight="800">${languages.length} languages</text>
+  <text x="${pad}" y="74" fill="${theme.textSub}" font-family="${FONT}" font-size="11">Android resource coverage per locale · generated from the Levyra repository</text>
+${renderRing({ cx: width - pad - 30, cy: 44, r: 24, percent: globalPercent, theme })}
+${chips}
 </svg>`
 }
 
@@ -283,4 +229,4 @@ const updateTranslationPulse = async () => {
 }
 
 await updateTranslationPulse()
-console.log('Successfully generated Economist-style data chart SVG.')
+console.log('Generated translation coverage SVG.')

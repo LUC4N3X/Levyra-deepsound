@@ -85,6 +85,30 @@ private val update2512Highlights: Map<String, List<String>> = mapOf(
         "Rádio, poradie a objavovanie lepšie bránia duplicitným nahrávkam a rešpektujú odstránené skladby.",
         "Playlisty z vyhľadávania a zdieľanie viacerých odkazov sa ľahšie kontrolujú a spravujú."
     ),
+    "bn" to listOf(
+        "সিঙ্ক করা গানের কথা এখন সরাসরি প্লেয়ারের ভেতরেই থাকতে পারে।",
+        "ভিডিও মোডে উপলব্ধ কোয়ালিটি বেছে নেওয়া যায় এবং অ্যাডাপটিভ স্ট্রিম আরও নির্ভরযোগ্যভাবে চলে।",
+        "রেডিও, সারি ও আবিষ্কার এখন ডুপ্লিকেট রেকর্ডিং আরও ভালোভাবে এড়ায় এবং সরানো গানকে সম্মান করে।",
+        "সার্চের প্লেলিস্ট আর একাধিক লিংক শেয়ার করা এখন সহজে পর্যালোচনা ও পরিচালনা করা যায়।"
+    ),
+    "kk" to listOf(
+        "Үндестірілген ән мәтіндері енді тікелей ойнатқышта қала алады.",
+        "Бейне режимінде қолжетімді сапаны таңдауға болады, бейімделгіш ағындар сенімдірек өңделеді.",
+        "Радио, кезек және жаңалық ашу қайталанған жазбалардан жақсырақ аулақ болып, жойылған әндерді ескереді.",
+        "Іздеудегі ойнату тізімдері мен бірнеше сілтемемен бөлісуді шолу және басқару оңайырақ."
+    ),
+    "sr" to listOf(
+        "Синхронизовани текстови песама сада могу да остану директно у плејеру.",
+        "Видео режим омогућава избор доступног квалитета и поузданије обрађује прилагодљиве стримове.",
+        "Радио, ред и откривање боље избегавају дуплиране снимке и поштују уклоњене песме.",
+        "Плејлисте из претраге и дељење више линкова лакше је прегледати и њима управљати."
+    ),
+    "sq" to listOf(
+        "Tekstet e sinkronizuara tani mund të qëndrojnë drejtpërdrejt në luajtës.",
+        "Modaliteti video të lejon të zgjedhësh cilësinë e disponueshme dhe i trajton më mirë transmetimet përshtatëse.",
+        "Radioja, radha dhe zbulimi shmangin më mirë regjistrimet e dyfishta dhe respektojnë këngët e hequra.",
+        "Listat nga kërkimi dhe ndarja e shumë lidhjeve janë më të lehta për t’u rishikuar dhe menaxhuar."
+    ),
     "hr" to listOf(
         "Sinkronizirani tekstovi pjesama sada mogu ostati izravno u reproduktoru.",
         "Video način omogućuje odabir dostupne kvalitete i pouzdanije obrađuje prilagodljive streamove.",

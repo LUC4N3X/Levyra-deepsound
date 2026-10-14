@@ -900,7 +900,7 @@ class ArtistLoreRepository(context: Context?) {
             return when (normalized) {
                 "fil" -> "tl"
                 "nb" -> "no"
-                "sk", "hr", "bg", "hu", "fi", "et", "ca", "fa", "ms",
+                "sk", "hr", "bg", "hu", "fi", "et", "ca", "fa", "ms", "bn", "kk", "sr", "sq",
                 "zh", "ar", "pt", "uk", "ru", "tr", "el", "sv", "da", "cs", "pl", "ro", "nl", "de", "fr", "es", "it", "ja", "ko", "hi", "id", "vi", "th", "he" -> normalized
                 else -> "en"
             }

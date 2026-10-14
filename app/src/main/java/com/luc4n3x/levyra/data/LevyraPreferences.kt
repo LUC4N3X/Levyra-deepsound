@@ -34,7 +34,11 @@ import com.luc4n3x.levyra.domain.LevyraSmartOfflineSettings
 import com.luc4n3x.levyra.domain.LevyraAmbientMode
 import com.luc4n3x.levyra.domain.LevyraAmbientSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.LevyraCustomTheme
+import com.luc4n3x.levyra.domain.LevyraCustomThemes
 import com.luc4n3x.levyra.domain.LevyraHomeStudioSettings
+import com.luc4n3x.levyra.domain.LevyraMiniPlayerStudioSettings
+import com.luc4n3x.levyra.domain.LevyraNavigationStudioSettings
 import com.luc4n3x.levyra.domain.LevyraLyricsStudioSettings
 import com.luc4n3x.levyra.domain.LibrarySort
 import com.luc4n3x.levyra.domain.LibrarySortDirection
@@ -109,7 +113,10 @@ data class LevyraPreferencesSnapshot(
     val videoQualityTarget: VideoQualityTarget = VideoQualityTarget.AUTO,
     val lyricsProviderOrdering: LyricsProviderOrdering = LyricsProviderOrdering(),
     val lyricsStudioSettings: LevyraLyricsStudioSettings = LevyraLyricsStudioSettings(),
-    val homeStudioSettings: LevyraHomeStudioSettings = LevyraHomeStudioSettings()
+    val homeStudioSettings: LevyraHomeStudioSettings = LevyraHomeStudioSettings(),
+    val miniPlayerStudioSettings: LevyraMiniPlayerStudioSettings = LevyraMiniPlayerStudioSettings(),
+    val customThemes: List<LevyraCustomTheme> = emptyList(),
+    val navigationStudioSettings: LevyraNavigationStudioSettings = LevyraNavigationStudioSettings()
 )
 
 @Volatile
@@ -163,6 +170,9 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_LYRICS_PROVIDER_ORDERING] = snapshot.lyricsProviderOrdering.encode()
             mutable[KEY_LYRICS_STUDIO_SETTINGS] = snapshot.lyricsStudioSettings.encode()
             mutable[KEY_HOME_STUDIO_SETTINGS] = snapshot.homeStudioSettings.encode()
+            mutable[KEY_MINI_PLAYER_STUDIO_SETTINGS] = snapshot.miniPlayerStudioSettings.encode()
+            mutable[KEY_NAVIGATION_STUDIO_SETTINGS] = snapshot.navigationStudioSettings.encode()
+            mutable[KEY_CUSTOM_THEMES] = LevyraCustomThemes.encode(snapshot.customThemes)
             mutable[KEY_THEME_PRESET] = com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(snapshot.themePreset)
             mutable[KEY_THEME_ACCENT] = snapshot.themeAccent
             mutable[KEY_AMBIENT_BRIGHTNESS] = normalizedAmbient.brightness
@@ -325,6 +335,16 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
     }
 
     fun themeAccent(): Int = read { it[KEY_THEME_ACCENT] ?: 0 }
+
+    val customThemesFlow: kotlinx.coroutines.flow.Flow<List<LevyraCustomTheme>> = store.preferences
+        .map { preferences -> LevyraCustomThemes.decode(preferences[KEY_CUSTOM_THEMES]) }
+        .distinctUntilChanged()
+
+    fun customThemes(): List<LevyraCustomTheme> = read { LevyraCustomThemes.decode(it[KEY_CUSTOM_THEMES]) }
+
+    fun setCustomThemes(value: List<LevyraCustomTheme>) {
+        write { it[KEY_CUSTOM_THEMES] = LevyraCustomThemes.encode(value) }
+    }
 
     fun setThemeAccent(value: Int) {
         write { it[KEY_THEME_ACCENT] = value }
@@ -771,7 +791,10 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             videoQualityTarget = VideoQualityTarget.fromStorage(preferences[KEY_VIDEO_QUALITY]),
             lyricsProviderOrdering = LyricsProviderOrdering.decode(preferences[KEY_LYRICS_PROVIDER_ORDERING]),
             lyricsStudioSettings = LevyraLyricsStudioSettings.decode(preferences[KEY_LYRICS_STUDIO_SETTINGS]),
-            homeStudioSettings = LevyraHomeStudioSettings.decode(preferences[KEY_HOME_STUDIO_SETTINGS])
+            homeStudioSettings = LevyraHomeStudioSettings.decode(preferences[KEY_HOME_STUDIO_SETTINGS]),
+            miniPlayerStudioSettings = LevyraMiniPlayerStudioSettings.decode(preferences[KEY_MINI_PLAYER_STUDIO_SETTINGS]),
+            customThemes = LevyraCustomThemes.decode(preferences[KEY_CUSTOM_THEMES]),
+            navigationStudioSettings = LevyraNavigationStudioSettings.decode(preferences[KEY_NAVIGATION_STUDIO_SETTINGS])
         )
     }
 
@@ -1105,6 +1128,44 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         }
     }
 
+    val miniPlayerStudioSettingsFlow: kotlinx.coroutines.flow.Flow<LevyraMiniPlayerStudioSettings> = store.preferences
+        .map { preferences -> LevyraMiniPlayerStudioSettings.decode(preferences[KEY_MINI_PLAYER_STUDIO_SETTINGS]) }
+        .distinctUntilChanged()
+
+    fun miniPlayerStudioSettings(): LevyraMiniPlayerStudioSettings =
+        read { LevyraMiniPlayerStudioSettings.decode(it[KEY_MINI_PLAYER_STUDIO_SETTINGS]) }
+
+    suspend fun setMiniPlayerStudioSettings(value: LevyraMiniPlayerStudioSettings): Boolean {
+        return try {
+            store.commit { it[KEY_MINI_PLAYER_STUDIO_SETTINGS] = value.normalized().encode() }
+            true
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.w(error, "DataStore mini player studio settings write failed")
+            false
+        }
+    }
+
+    val navigationStudioSettingsFlow: kotlinx.coroutines.flow.Flow<LevyraNavigationStudioSettings> = store.preferences
+        .map { preferences -> LevyraNavigationStudioSettings.decode(preferences[KEY_NAVIGATION_STUDIO_SETTINGS]) }
+        .distinctUntilChanged()
+
+    fun navigationStudioSettings(): LevyraNavigationStudioSettings =
+        read { LevyraNavigationStudioSettings.decode(it[KEY_NAVIGATION_STUDIO_SETTINGS]) }
+
+    suspend fun setNavigationStudioSettings(value: LevyraNavigationStudioSettings): Boolean {
+        return try {
+            store.commit { it[KEY_NAVIGATION_STUDIO_SETTINGS] = value.normalized().encode() }
+            true
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.w(error, "DataStore navigation studio settings write failed")
+            false
+        }
+    }
+
     suspend fun setAutomationSettings(value: LevyraAutomationSettings) {
         val normalized = value.normalized()
         try {
@@ -1204,6 +1265,9 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_LYRICS_PROVIDER_ORDERING = stringPreferencesKey("lyrics_provider_ordering")
         val KEY_LYRICS_STUDIO_SETTINGS = stringPreferencesKey("lyrics_studio_settings")
         val KEY_HOME_STUDIO_SETTINGS = stringPreferencesKey("home_studio_settings")
+        val KEY_MINI_PLAYER_STUDIO_SETTINGS = stringPreferencesKey("mini_player_studio_settings")
+        val KEY_NAVIGATION_STUDIO_SETTINGS = stringPreferencesKey("navigation_studio_settings")
+        val KEY_CUSTOM_THEMES = stringPreferencesKey("custom_themes")
         val KEY_THEME_PRESET = stringPreferencesKey("theme_preset")
         val KEY_THEME_ACCENT = intPreferencesKey("theme_accent")
         val KEY_AUDIO_EQ_ENABLED = booleanPreferencesKey("audio_equalizer_enabled")

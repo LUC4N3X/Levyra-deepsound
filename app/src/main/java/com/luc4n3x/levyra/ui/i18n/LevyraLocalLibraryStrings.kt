@@ -186,6 +186,42 @@ private val localLibraryBundles: Map<String, Map<String, String>> = mapOf(
         "Neznámy interpret", "Neznámy album", "Skryť tento priečinok", "Zobraziť tento priečinok",
         "Tento súbor teraz nie je dostupný.", "Duplikáty skryté"
     ),
+    "bn" to localLibrary(
+        "ডিভাইসে", "এই ফোনে সংরক্ষিত গান, Levyra দ্বারা ইনডেক্স করা।", "ফোল্ডার", "দ্রুত স্ক্যান",
+        "সম্পূর্ণ স্ক্যান", "Levyra ডাউনলোড পুনর্গঠন করুন", "আপনার গান স্ক্যান করা হচ্ছে…",
+        "লাইব্রেরি ইতিমধ্যে হালনাগাদ", "%1\$d নতুন · %2\$d হালনাগাদ · %3\$d অনুপলব্ধ",
+        "এই ডিভাইসে এখনও কোনো গান নেই।",
+        "লোকাল লাইব্রেরির জন্য Levyra-র আপনার অডিও ফাইলে অ্যাক্সেস প্রয়োজন।", "অ্যাক্সেস দিন",
+        "অজানা শিল্পী", "অজানা অ্যালবাম", "এই ফোল্ডার লুকান", "এই ফোল্ডার দেখান",
+        "এই ফাইলটি এখন পাওয়া যাচ্ছে না।", "ডুপ্লিকেট লুকানো আছে"
+    ),
+    "kk" to localLibrary(
+        "Құрылғыда", "Осы телефонда сақталған, Levyra индекстеген музыка.", "Қалталар", "Жылдам сканерлеу",
+        "Толық сканерлеу", "Levyra жүктеп алуларын қайта құру", "Музыкаңыз сканерленуде…",
+        "Кітапхана жаңартылған", "%1\$d жаңа · %2\$d жаңартылды · %3\$d қолжетімсіз",
+        "Бұл құрылғыда әзірге музыка жоқ.",
+        "Жергілікті кітапхана үшін Levyra-ға дыбыс файлдарыңызға рұқсат қажет.", "Рұқсат беру",
+        "Белгісіз орындаушы", "Белгісіз альбом", "Бұл қалтаны жасыру", "Бұл қалтаны көрсету",
+        "Бұл файл қазір қолжетімсіз.", "Қайталанғандар жасырылған"
+    ),
+    "sr" to localLibrary(
+        "На уређају", "Музика сачувана на овом телефону, индексирана у Levyri.", "Фасцикле", "Брзо скенирање",
+        "Потпуно скенирање", "Обнови Levyra преузимања", "Скенирам твоју музику…",
+        "Библиотека је већ ажурна", "%1\$d нових · %2\$d ажурираних · %3\$d недоступних",
+        "На овом уређају још нема музике.",
+        "Levyri је потребан приступ твојим аудио датотекама за локалну библиотеку.", "Дозволи приступ",
+        "Непознат извођач", "Непознат албум", "Сакриј ову фасциклу", "Прикажи ову фасциклу",
+        "Ова датотека тренутно није доступна.", "Дупликати су скривени"
+    ),
+    "sq" to localLibrary(
+        "Në pajisje", "Muzikë e ruajtur në këtë telefon, e indeksuar nga Levyra.", "Dosjet", "Skanim i shpejtë",
+        "Skanim i plotë", "Rindërto shkarkimet e Levyra", "Po skanohet muzika jote…",
+        "Biblioteka është tashmë e përditësuar", "%1\$d të reja · %2\$d të përditësuara · %3\$d të padisponueshme",
+        "Ende nuk ka muzikë në këtë pajisje.",
+        "Levyra ka nevojë për qasje te skedarët e tu audio për bibliotekën lokale.", "Lejo qasjen",
+        "Artist i panjohur", "Album i panjohur", "Fshih këtë dosje", "Shfaq këtë dosje",
+        "Ky skedar nuk është i disponueshëm tani.", "Dublikatat janë fshehur"
+    ),
     "hr" to localLibrary(
         "Na uređaju", "Glazba spremljena na ovom telefonu, indeksirana Levyrom.", "Mape", "Brzo pretraživanje",
         "Potpuno pretraživanje", "Obnovi Levyra preuzimanja", "Pretražujem tvoju glazbu…",
@@ -401,6 +437,10 @@ private val localScanFailedMessages = mapOf(
     "da" to "Din musik kunne ikke scannes.",
     "cs" to "Hudbu se nepodařilo prohledat.",
     "sk" to "Hudbu sa nepodarilo prehľadať.",
+    "bn" to "গান স্ক্যান ব্যর্থ হয়েছে।",
+    "kk" to "Музыканы сканерлеу сәтсіз аяқталды.",
+    "sr" to "Скенирање музике није успело.",
+    "sq" to "Skanimi i muzikës dështoi.",
     "hr" to "Skeniranje glazbe nije uspjelo.",
     "bg" to "Музиката не можа да бъде сканирана.",
     "hu" to "A zene beolvasása nem sikerült.",

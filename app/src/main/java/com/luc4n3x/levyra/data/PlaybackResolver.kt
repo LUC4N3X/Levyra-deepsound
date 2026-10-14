@@ -1389,56 +1389,17 @@ class PlaybackResolver private constructor(private val context: Context) {
         errors: MutableList<String>,
         expectedGeneration: Long
     ): Track? {
-        val policy = playbackPolicyStore.current()
-        val healthyOrder = strategyHealth.order(AUDIO_HEALTH_MODE, policy.audioStrategies)
-        val orderedStrategies = if (selectedPreferredAudioLanguage.isBlank()) {
-            healthyOrder
-        } else {
-            healthyOrder.filterNot { it == PlaybackAudioStrategy.REEL_MUXED } +
-                healthyOrder.filter { it == PlaybackAudioStrategy.REEL_MUXED }
+        val hasYoutubeIdentity = PlaybackSourceIdentity.sourceVideoId(track).isNotBlank()
+        val applicableStrategies = orderedAudioStrategies().filter { strategy ->
+            hasYoutubeIdentity || !strategy.requiresYoutubeIdentity()
         }
-        for ((attemptIndex, strategy) in orderedStrategies.withIndex()) {
+        for ((attemptIndex, strategy) in applicableStrategies.withIndex()) {
             currentCoroutineContext().ensureActive()
             RuntimeHooks.hot(RuntimeSignal.HOT_RESOLVER_ATTEMPT)
             if (attemptIndex > 0) RuntimeHooks.hot(RuntimeSignal.HOT_FALLBACK)
             val startedAt = System.currentTimeMillis()
             val errorsBefore = errors.size
-            val resolved = when (strategy) {
-                PlaybackAudioStrategy.REEL_MUXED -> runCatchingPreservingCancellation {
-                    resolveVideoWithAndroidReel(track)
-                }.onFailure { error ->
-                    errors += "Android Reel muxed: ${error.playbackDiagnostic()}"
-                }.getOrNull()
-
-                PlaybackAudioStrategy.REEL_AUDIO -> runCatchingPreservingCancellation {
-                    resolveAudioWithAndroidReel(track, audioQuality)
-                }.onFailure { error ->
-                    errors += "Android Reel audio: ${error.playbackDiagnostic()}"
-                }.getOrNull()
-
-                PlaybackAudioStrategy.PERSISTED -> restorePersistentSource(
-                    track = track,
-                    isVideoMode = false,
-                    preferMp4Audio = false,
-                    audioQuality = audioQuality,
-                    errors = errors,
-                    expectedGeneration = expectedGeneration
-                )
-
-                PlaybackAudioStrategy.DIRECT -> resolveAudioFast(
-                    track = track,
-                    errors = errors,
-                    preferMp4Audio = false,
-                    audioQuality = audioQuality
-                )
-
-                PlaybackAudioStrategy.SEARCH -> resolveAudioWithSearchFallback(
-                    track = track,
-                    errors = errors,
-                    preferMp4Audio = false,
-                    audioQuality = audioQuality
-                )
-            }
+            val resolved = attemptAudioStrategy(strategy, track, audioQuality, errors, expectedGeneration)
             val elapsedMs = System.currentTimeMillis() - startedAt
             if (resolved != null) {
                 strategyHealth.recordSuccess(AUDIO_HEALTH_MODE, strategy.name, elapsedMs)
@@ -1495,6 +1456,74 @@ class PlaybackResolver private constructor(private val context: Context) {
             )
         }
         return null
+    }
+
+    private suspend fun resolveAudioCandidateByPolicy(
+        candidate: Track,
+        audioQuality: String,
+        errors: MutableList<String>,
+        expectedGeneration: Long
+    ): Track? {
+        if (PlaybackSourceIdentity.sourceVideoId(candidate).isBlank()) return null
+        val strategies = orderedAudioStrategies().filterNot { it == PlaybackAudioStrategy.SEARCH }
+        for (strategy in strategies) {
+            currentCoroutineContext().ensureActive()
+            attemptAudioStrategy(strategy, candidate, audioQuality, errors, expectedGeneration)
+                ?.let { return it }
+        }
+        return null
+    }
+
+    private suspend fun attemptAudioStrategy(
+        strategy: PlaybackAudioStrategy,
+        track: Track,
+        audioQuality: String,
+        errors: MutableList<String>,
+        expectedGeneration: Long
+    ): Track? = when (strategy) {
+        PlaybackAudioStrategy.REEL_MUXED -> runCatchingPreservingCancellation {
+            resolveVideoWithAndroidReel(track)
+        }.onFailure { error ->
+            errors += "Android Reel muxed: ${error.playbackDiagnostic()}"
+        }.getOrNull()
+
+        PlaybackAudioStrategy.REEL_AUDIO -> runCatchingPreservingCancellation {
+            resolveAudioWithAndroidReel(track, audioQuality)
+        }.onFailure { error ->
+            errors += "Android Reel audio: ${error.playbackDiagnostic()}"
+        }.getOrNull()
+
+        PlaybackAudioStrategy.PERSISTED -> restorePersistentSource(
+            track = track,
+            isVideoMode = false,
+            preferMp4Audio = false,
+            audioQuality = audioQuality,
+            errors = errors,
+            expectedGeneration = expectedGeneration
+        )
+
+        PlaybackAudioStrategy.DIRECT -> resolveAudioFast(
+            track = track,
+            errors = errors,
+            preferMp4Audio = false,
+            audioQuality = audioQuality
+        )
+
+        PlaybackAudioStrategy.SEARCH -> resolveAudioWithSearchFallback(
+            track = track,
+            errors = errors,
+            preferMp4Audio = false,
+            audioQuality = audioQuality
+        ) { candidate, candidateErrors ->
+            resolveAudioCandidateByPolicy(candidate, audioQuality, candidateErrors, expectedGeneration)
+        }
+    }
+
+    private fun orderedAudioStrategies(): List<PlaybackAudioStrategy> {
+        val healthyOrder = strategyHealth.order(AUDIO_HEALTH_MODE, playbackPolicyStore.current().audioStrategies)
+        if (selectedPreferredAudioLanguage.isBlank()) return healthyOrder
+        return healthyOrder.filterNot { it == PlaybackAudioStrategy.REEL_MUXED } +
+            healthyOrder.filter { it == PlaybackAudioStrategy.REEL_MUXED }
     }
 
     private suspend fun resolveVideoByCompatibilityPolicy(
@@ -2146,13 +2175,16 @@ class PlaybackResolver private constructor(private val context: Context) {
         track: Track,
         errors: MutableList<String>,
         preferMp4Audio: Boolean,
-        audioQuality: String
+        audioQuality: String,
+        resolveCandidate: suspend (Track, MutableList<String>) -> Track? = { candidate, candidateErrors ->
+            resolveAudioFast(candidate, candidateErrors, preferMp4Audio, audioQuality)
+        }
     ): Track? {
         val candidates = findAlternativeAudioCandidates(track)
         if (candidates.isEmpty()) return null
         for (candidate in candidates) {
             val localErrors = Collections.synchronizedList(mutableListOf<String>())
-            val resolved = runCatchingPreservingCancellation { resolveAudioFast(candidate, localErrors, preferMp4Audio, audioQuality) }.getOrNull()
+            val resolved = runCatchingPreservingCancellation { resolveCandidate(candidate, localErrors) }.getOrNull()
             if (resolved != null && !isResolvedPlaybackFallbackDurationCompatible(track, resolved)) {
                 errors += "Fallback ${candidate.id}: resolved duration ${resolved.durationMs}ms does not match ${track.durationMs}ms"
                 continue
@@ -2171,7 +2203,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                             )
                     )
             ) {
-                return track.copy(
+                return rebaseEditorialFallbackSource(track, resolved).copy(
                     artist = canonicalPlaybackFallbackArtist(track, candidate, resolved),
                     streamUrl = resolved.streamUrl,
                     videoUrl = resolved.videoUrl.ifBlank { candidate.videoUrl },
@@ -2241,6 +2273,28 @@ class PlaybackResolver private constructor(private val context: Context) {
             }
         }
         if (!allowNetworkRefresh) return null
+        return refreshPersistentSourceMatch(
+            track = track,
+            stored = stored,
+            isVideoMode = isVideoMode,
+            preferMp4Audio = preferMp4Audio,
+            audioQuality = audioQuality,
+            preferredAudioLanguage = preferredAudioLanguage,
+            errors = errors,
+            expectedGeneration = expectedGeneration
+        )
+    }
+
+    private suspend fun refreshPersistentSourceMatch(
+        track: Track,
+        stored: StoredPlaybackSourceMatch,
+        isVideoMode: Boolean,
+        preferMp4Audio: Boolean,
+        audioQuality: String,
+        preferredAudioLanguage: String,
+        errors: MutableList<String>,
+        expectedGeneration: Long
+    ): Track? {
         val sourceVideoId = stored.entity.sourceVideoId
             .takeIf(youtubeVideoIdRegex::matches)
             ?: return null
@@ -2248,6 +2302,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         val sourceTrack = track.copy(
             id = sourceVideoId,
             videoUrl = sourceVideoUrl,
+            audioVideoId = if (isVideoMode) track.audioVideoId else sourceVideoId,
             streamUrl = "",
             videoStreamUrl = "",
             playbackManifest = null

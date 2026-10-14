@@ -88,7 +88,7 @@ class BulkLinkCaptureTest {
     fun everySupportedLanguageHasBulkCaptureCopy() {
         val supported = LevyraLanguageCatalog.languages.map { it.code }.toSet()
 
-        assertEquals(37, supported.size)
+        assertEquals(41, supported.size)
         assertEquals(supported, bulkLinkCaptureLocalizationCodes())
         supported.forEach { code ->
             val copy = bulkLinkCaptureCopy(code)

@@ -52,6 +52,10 @@ object LevyraContentLocales {
             "fi" -> listOf("KUUMAA", "Käärijä", "BEHM", "Portion Boys", "suomalaiset hitit 2026", "suomirap", "yöajo", "treenimusiikki")
             "nb" -> listOf("Karpe", "Astrid S", "Kygo", "Ramon", "norske hits 2026", "norsk rap", "nattkjøring", "treningsmusikk")
             "ca" -> listOf("The Tyets", "Mushkaa", "Oques Grasses", "Julieta", "èxits catalans 2026", "rap català", "conducció nocturna", "música d'entrenament")
+            "bn" -> listOf("Habib Wahid", "Tahsan", "Minar Rahman", "Shironamhin", "বাংলা হিট গান 2026", "বাংলা র‍্যাপ", "রাতের ড্রাইভের গান", "ওয়ার্কআউটের গান")
+            "kk" -> listOf("Dimash Kudaibergen", "Ninety One", "Irina Kairatovna", "Kairat Nurtas", "қазақша хиттер 2026", "қазақ рэпі", "түнгі сапарға арналған әндер", "жаттығуға арналған музыка")
+            "sr" -> listOf("Breskvica", "Nucci", "Devito", "Voyage", "српски хитови 2026", "српски реп", "ноћна вожња", "музика за тренинг")
+            "sq" -> listOf("Noizy", "Elvana Gjata", "Era Istrefi", "Capital T", "hitet shqip 2026", "rap shqip", "muzikë për natën në makinë", "muzikë për stërvitje")
             "hr" -> listOf("Grše", "Hiljson Mandela", "Miach", "Baby Lasagna", "hrvatski hitovi 2026", "hrvatski rap", "noćna vožnja", "glazba za trening")
             "sk" -> listOf("Separ", "Kali", "SIMA", "Ego", "slovenské hity 2026", "slovenský rap", "nočná jazda", "hudba na tréning")
             "ms" -> listOf("Siti Nurhaliza", "Aina Abdul", "Hael Husaini", "Naim Daniel", "lagu Malaysia 2026", "rap Malaysia", "muzik pemanduan malam", "muzik senaman")
@@ -93,6 +97,10 @@ object LevyraContentLocales {
             "fi" -> listOf("KUUMAA", "Käärijä", "BEHM", "Portion Boys", "BESS", "Gettomasa", "JVG", "Ellinoora", "Vesala", "Averagekidluke")
             "nb" -> listOf("Karpe", "Astrid S", "Kygo", "Ramon", "Sigrid", "Gabrielle", "Arif", "Ballinciaga", "Dagny", "Undergrunn")
             "ca" -> listOf("The Tyets", "Mushkaa", "Oques Grasses", "Julieta", "Figa Flawas", "Ginestà", "Buhos", "Els Catarres", "31 FAM", "Stay Homas")
+            "bn" -> listOf("Habib Wahid", "Tahsan", "Minar Rahman", "Shironamhin", "Artcell", "Warfaze", "Pritom Hasan", "Imran Mahmudul", "Arnob", "Anupam Roy")
+            "kk" -> listOf("Dimash Kudaibergen", "Ninety One", "Irina Kairatovna", "Kairat Nurtas", "Skryptonite", "Jah Khalib", "Moldanazar", "Dequine", "Imanbek", "Batyrkhan Shukenov")
+            "sr" -> listOf("Breskvica", "Nucci", "Devito", "Voyage", "Coby", "Konstrakta", "Teya Dora", "Ceca", "Zdravko Čolić", "Aca Lukas")
+            "sq" -> listOf("Noizy", "Elvana Gjata", "Era Istrefi", "Capital T", "Ledri Vula", "Dafina Zeqiri", "Butrint Imeri", "Majk", "Rita Ora", "Dhurata Dora")
             "hr" -> listOf("Grše", "Hiljson Mandela", "Miach", "Baby Lasagna", "Vojko V", "Matija Cvek", "Vatra", "Silente", "Toma", "Pocket Palma")
             "sk" -> listOf("Separ", "Kali", "SIMA", "Ego", "Pil C", "Samey", "Majk Spirit", "Richard Müller", "Dara Rolins", "Para")
             "ms" -> listOf("Siti Nurhaliza", "Aina Abdul", "Hael Husaini", "Naim Daniel", "Yuna", "Insomniacks", "Dolla", "Masdo", "Noh Salleh", "Ernie Zakri")
@@ -145,6 +153,10 @@ object LevyraContentLocales {
             "fi" -> "Tutustu artisteihin"
             "nb" -> "Utforsk artister"
             "ca" -> "Explora artistes"
+            "bn" -> "শিল্পীদের খুঁজে দেখুন"
+            "kk" -> "Орындаушыларды ашыңыз"
+            "sr" -> "Истражи извођаче"
+            "sq" -> "Eksploro artistët"
             "hr" -> "Istraži izvođače"
             "sk" -> "Objavuj interpretov"
             "ms" -> "Terokai artis"
@@ -186,6 +198,10 @@ object LevyraContentLocales {
             "fi" -> "Ehdotukset"
             "nb" -> "Forslag"
             "ca" -> "Suggeriments"
+            "bn" -> "পরামর্শ"
+            "kk" -> "Ұсыныстар"
+            "sr" -> "Предлози"
+            "sq" -> "Sugjerime"
             "hr" -> "Prijedlozi"
             "sk" -> "Návrhy"
             "ms" -> "Cadangan"
@@ -761,6 +777,66 @@ object LevyraContentLocales {
                 party = "música de festa catalana 2026",
                 sad = "cançons catalanes tristes"
             )
+            "bn" -> compact(
+                languageCode = "bn",
+                hl = "bn",
+                gl = "BD",
+                chartRegionId = "in",
+                chartCountry = "in",
+                quick = "দ্রুত বাছাই",
+                local = "আপনার কক্ষপথে বাংলা গান",
+                energy = "তাৎক্ষণিক এনার্জি",
+                localMusic = "বাংলা হিট গান 2026",
+                rap = "বাংলা র‍্যাপ 2026",
+                pop = "বাংলা পপ 2026",
+                party = "বাংলা পার্টি গান 2026",
+                sad = "বাংলা দুঃখের গান"
+            )
+            "kk" -> compact(
+                languageCode = "kk",
+                hl = "kk",
+                gl = "KZ",
+                chartRegionId = "ru",
+                chartCountry = "ru",
+                quick = "Жылдам таңдау",
+                local = "Қазақстан сіздің орбитаңызда",
+                energy = "Лезде энергия",
+                localMusic = "қазақша хиттер 2026",
+                rap = "қазақ рэпі 2026",
+                pop = "қазақ попы 2026",
+                party = "қазақша party хиттер 2026",
+                sad = "қазақша мұңды әндер"
+            )
+            "sr" -> compact(
+                languageCode = "sr",
+                hl = "sr",
+                gl = "RS",
+                chartRegionId = "hr",
+                chartCountry = "hr",
+                quick = "Брзи избор",
+                local = "Србија у твојој орбити",
+                energy = "Тренутна енергија",
+                localMusic = "srpski hitovi 2026",
+                rap = "srpski rep 2026",
+                pop = "srpski pop 2026",
+                party = "srpske žurka pesme 2026",
+                sad = "srpske tužne pesme"
+            )
+            "sq" -> compact(
+                languageCode = "sq",
+                hl = "sq",
+                gl = "AL",
+                chartRegionId = "us",
+                chartCountry = "us",
+                quick = "Zgjedhje të shpejta",
+                local = "Shqipëria në orbitën tënde",
+                energy = "Energji e menjëhershme",
+                localMusic = "hitet shqip 2026",
+                rap = "rap shqip 2026",
+                pop = "pop shqip 2026",
+                party = "këngë shqip për festë 2026",
+                sad = "këngë shqip të trishta"
+            )
             "hr" -> compact(
                 languageCode = "hr",
                 hl = "hr",
@@ -885,7 +961,7 @@ object LevyraContentLocales {
             energy = energy,
             homeQueries = listOf(localMusic, rap, pop, "global top hits 2026"),
             tasteQueries = mapOf(
-                "hits" to localMusic,
+                "hits" to "$localMusic top hits",
                 "rap" to rap,
                 "italiana" to localMusic,
                 "pop" to pop,
@@ -899,7 +975,7 @@ object LevyraContentLocales {
                 "rnb" to "$localMusic rnb soul hits"
             ),
             moodQueries = mapOf(
-                "hits" to localMusic,
+                "hits" to "$localMusic top hits",
                 "gym" to "$localMusic gym workout hype",
                 "chill" to "$localMusic chill relax",
                 "focus" to "focus deep concentration music",

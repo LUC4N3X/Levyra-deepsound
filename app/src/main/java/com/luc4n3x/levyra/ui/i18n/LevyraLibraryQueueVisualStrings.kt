@@ -19,6 +19,10 @@ internal fun LevyraStrings.queueSectionCopy(): QueueSectionCopy = when (code) {
     "da" -> QueueSectionCopy("Afspillet", "Næste")
     "cs" -> QueueSectionCopy("Přehráno", "Následuje")
     "sk" -> QueueSectionCopy("Prehrané", "Nasleduje")
+    "bn" -> QueueSectionCopy("শোনা হয়েছে", "এরপর")
+    "kk" -> QueueSectionCopy("Ойнатылды", "Келесі")
+    "sr" -> QueueSectionCopy("Пуштено", "Следеће")
+    "sq" -> QueueSectionCopy("Të luajtura", "Në vijim")
     "hr" -> QueueSectionCopy("Reproducirano", "Sljedeće")
     "bg" -> QueueSectionCopy("Прослушани", "Следва")
     "hu" -> QueueSectionCopy("Lejátszva", "Következik")
@@ -59,6 +63,10 @@ internal fun LevyraStrings.localLibraryRecentFilterLabel(): String = when (code)
     "da" -> "SENESTE"
     "cs" -> "NEDÁVNÉ"
     "sk" -> "NEDÁVNE"
+    "bn" -> "সাম্প্রতিক"
+    "kk" -> "СОҢҒЫ"
+    "sr" -> "НЕДАВНО"
+    "sq" -> "SË FUNDI"
     "hr" -> "NEDAVNO"
     "bg" -> "СКОРОШНИ"
     "hu" -> "LEGUTÓBBI"

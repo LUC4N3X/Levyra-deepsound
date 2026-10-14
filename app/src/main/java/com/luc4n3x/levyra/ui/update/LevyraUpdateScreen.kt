@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.update
 
+import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -28,7 +29,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.SystemUpdateAlt
 import androidx.compose.material.icons.rounded.VerifiedUser
@@ -36,7 +36,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -124,19 +123,7 @@ fun LevyraUpdateScreen(
                 .padding(start = 12.dp, end = 20.dp, top = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(
-                onClick = onLater,
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(LevyraPanel, MaterialShapes.Cookie9Sided.toShape())
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = strings.later,
-                    tint = LevyraText,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+            LevyraBackButton(onClick = onLater, contentDescription = strings.later)
         }
 
         Column(

@@ -79,6 +79,22 @@ private val speedDialCopies = mapOf(
         "Pripnuté", "Pripnúť na Domov", "Odopnúť z Domova", "Na Domov môžete pripnúť najviac 24 položiek",
         "Posunúť skôr", "Posunúť neskôr", "Skladba", "Album", "Interpret", "Playlist", "Podržte a potiahnite na zmenu poradia"
     ),
+    "bn" to speedDial(
+        "পিন করা", "হোমে পিন করুন", "হোম থেকে আনপিন করুন", "হোমে সর্বোচ্চ 24টি আইটেম পিন করতে পারবেন",
+        "আগে সরান", "পরে সরান", "গান", "অ্যালবাম", "শিল্পী", "প্লেলিস্ট", "ক্রম বদলাতে চেপে ধরে টানুন"
+    ),
+    "kk" to speedDial(
+        "Бекітілген", "Басты бетке бекіту", "Басты беттен босату", "Басты бетке ең көбі 24 элемент бекітуге болады",
+        "Ертерек жылжыту", "Кейінірек жылжыту", "Ән", "Альбом", "Орындаушы", "Ойнату тізімі", "Ретін өзгерту үшін басып тұрып сүйреңіз"
+    ),
+    "sr" to speedDial(
+        "Закачено", "Закачи на Почетну", "Откачи са Почетне", "На Почетну можеш закачити највише 24 ставке",
+        "Помери раније", "Помери касније", "Песма", "Албум", "Извођач", "Плејлиста", "Задржи и превуци за промену редоследа"
+    ),
+    "sq" to speedDial(
+        "Të fiksuara", "Fikso në Kreu", "Hiq nga Kreu", "Mund të fiksosh deri në 24 elemente në Kreu",
+        "Lëviz më përpara", "Lëviz më pas", "Këngë", "Album", "Artist", "Listë luajtjeje", "Mbaj dhe tërhiq për të ndryshuar renditjen"
+    ),
     "hr" to speedDial(
         "Prikvačeno", "Prikvači na Početnu", "Otkvači s Početne", "Na Početnu možete prikvačiti najviše 24 stavke",
         "Pomakni ranije", "Pomakni kasnije", "Pjesma", "Album", "Izvođač", "Playlista", "Zadržite i povucite za promjenu redoslijeda"

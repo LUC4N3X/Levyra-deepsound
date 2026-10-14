@@ -113,6 +113,30 @@ private val parametricEqCopies = mapOf(
         "Špičkový", "Dolná polica", "Horná polica", "Vložte profil GraphicEQ alebo ParametricEQ, prípadne otvorte textový súbor",
         "Skontrolujte typ filtra, frekvenciu, zisk a hodnoty Q"
     ),
+    "bn" to eq(
+        "গ্রাফিক ইকুয়ালাইজার", "প্যারামেট্রিক ইকুয়ালাইজার", "AutoEQ ও কাস্টম টিউনিংয়ের জন্য নিখুঁত ফিল্টার", "সক্রিয় প্রোফাইল", "ফিল্টার",
+        "ফিল্টার যোগ করুন", "ফিল্টার সরান", "ফ্রিকোয়েন্সি", "গেইন", "Q ফ্যাক্টর", "প্রোফাইল সংরক্ষণ করুন", "প্যারামেট্রিক ইকুয়ালাইজার রিসেট করুন",
+        "পিক", "লো শেলফ", "হাই শেলফ", "একটি GraphicEQ বা ParametricEQ প্রোফাইল পেস্ট করুন অথবা একটি টেক্সট ফাইল খুলুন",
+        "ফিল্টারের ধরন, ফ্রিকোয়েন্সি, গেইন ও Q মান পরীক্ষা করুন"
+    ),
+    "kk" to eq(
+        "Графикалық эквалайзер", "Параметрлік эквалайзер", "AutoEQ және өзіндік баптауға арналған дәл сүзгілер", "Белсенді профиль", "Сүзгілер",
+        "Сүзгі қосу", "Сүзгіні жою", "Жиілік", "Күшейту", "Q факторы", "Профильді сақтау", "Параметрлік эквалайзерді қалпына келтіру",
+        "Шың", "Төменгі сөре", "Жоғарғы сөре", "GraphicEQ немесе ParametricEQ профилін қойыңыз не мәтіндік файлды ашыңыз",
+        "Сүзгі түрін, жиілікті, күшейтуді және Q мәндерін тексеріңіз"
+    ),
+    "sr" to eq(
+        "Графички еквилајзер", "Параметарски еквилајзер", "Прецизни филтри за AutoEQ и прилагођено подешавање", "Активни профил", "Филтри",
+        "Додај филтер", "Уклони филтер", "Фреквенција", "Појачање", "Q фактор", "Сачувај профил", "Поништи параметарски еквилајзер",
+        "Вршни", "Ниска полица", "Висока полица", "Налепи GraphicEQ или ParametricEQ профил или отвори текстуалну датотеку",
+        "Провери тип филтера, фреквенцију, појачање и Q вредности"
+    ),
+    "sq" to eq(
+        "Ekualizues grafik", "Ekualizues parametrik", "Filtra të saktë për AutoEQ dhe akordim të personalizuar", "Profili aktiv", "Filtrat",
+        "Shto filtër", "Hiq filtrin", "Frekuenca", "Përforcimi", "Faktori Q", "Ruaj profilin", "Rivendos ekualizuesin parametrik",
+        "Kulm", "Raft i ulët", "Raft i lartë", "Ngjit një profil GraphicEQ ose ParametricEQ ose hap një skedar teksti",
+        "Kontrollo llojin e filtrit, frekuencën, përforcimin dhe vlerat Q"
+    ),
     "hr" to eq(
         "Grafički ekvilizator", "Parametarski ekvilizator", "Precizni filtri za AutoEQ i prilagođeno ugađanje", "Aktivni profil", "Filtri",
         "Dodaj filtar", "Ukloni filtar", "Frekvencija", "Pojačanje", "Q faktor", "Spremi profil", "Poništi parametarski ekvilizator",

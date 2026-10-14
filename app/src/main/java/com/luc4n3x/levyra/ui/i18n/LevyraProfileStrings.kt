@@ -72,6 +72,22 @@ private val profileBundles: Map<String, Map<String, String>> = mapOf(
         "Profilová fotka", "Zobrazí sa vedľa tvojho mena na domovskej stránke", "Ťuknutím vyber inú fotku",
         "Odstrániť profilovú fotku", "Túto fotku nemožno použiť"
     ),
+    "bn" to profile(
+        "প্রোফাইল ছবি", "হোমে আপনার নামের পাশে দেখানো হয়", "অন্য ছবি বাছতে ট্যাপ করুন",
+        "প্রোফাইল ছবি সরান", "এই ছবিটি ব্যবহার করা যাবে না"
+    ),
+    "kk" to profile(
+        "Профиль суреті", "Басты бетте атыңыздың жанында көрсетіледі", "Басқа суретті таңдау үшін түртіңіз",
+        "Профиль суретін жою", "Бұл суретті пайдалану мүмкін емес"
+    ),
+    "sr" to profile(
+        "Профилна фотографија", "Приказује се уз твоје име на почетној", "Додирни да изабереш другу фотографију",
+        "Уклони профилну фотографију", "Ова фотографија не може да се користи"
+    ),
+    "sq" to profile(
+        "Foto e profilit", "Shfaqet pranë emrit tënd në Kreu", "Prek për të zgjedhur një foto tjetër",
+        "Hiq foton e profilit", "Kjo foto nuk mund të përdoret"
+    ),
     "hr" to profile(
         "Profilna fotografija", "Prikazuje se uz tvoje ime na početnoj", "Dodirni za odabir druge fotografije",
         "Ukloni profilnu fotografiju", "Ova se fotografija ne može koristiti"

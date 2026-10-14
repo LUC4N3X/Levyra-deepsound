@@ -241,6 +241,50 @@ private val localTagBundles = mapOf(
         "Autori", "Uložiť zmeny", "Ukladanie…", "Tagy uložené",
         "Tieto tagy sa nepodarilo zapísať.", "Bezpečná úprava tagov nie je pre tento formát súboru dostupná.", "Tento súbor je príliš veľký, aby Levyra mohla jeho tagy bezpečne upraviť.", "Povolenie na zápis nebolo udelené."
     ),
+    "bn" to localTagBundle(
+        "শিরোনাম, শিল্পী, অ্যালবাম, সুরকার, গীতিকার, মন্তব্য বা ট্যাগ খুঁজুন",
+        "ফাইলের ট্যাগ সম্পাদনা করুন",
+        "ফাইলের ট্যাগ",
+        "পরিবর্তন সরাসরি অডিও ফাইলে লেখা হয়।",
+        "শিরোনাম", "শিল্পী", "অ্যালবাম", "অ্যালবাম শিল্পী",
+        "ধারা", "বছর", "ট্র্যাক", "ডিস্ক",
+        "সুরকার", "গীতিকার", "মন্তব্য", "কপিরাইট",
+        "কৃতিত্ব", "পরিবর্তন সংরক্ষণ করুন", "সংরক্ষণ করা হচ্ছে…", "ট্যাগ সংরক্ষিত হয়েছে",
+        "এই ট্যাগগুলো লেখা যায়নি।", "এই ফাইল ফরম্যাটের জন্য নিরাপদ ট্যাগ সম্পাদনা উপলব্ধ নয়।", "Levyra নিরাপদে ট্যাগ সম্পাদনা করার জন্য এই ফাইলটি অনেক বড়।", "লেখার অনুমতি দেওয়া হয়নি।"
+    ),
+    "kk" to localTagBundle(
+        "Атауы, орындаушы, альбом, композитор, мәтін авторы, пікірлер немесе тегтер бойынша іздеу",
+        "Файл тегтерін өңдеу",
+        "Файл тегтері",
+        "Өзгерістер тікелей дыбыс файлына жазылады.",
+        "Атауы", "Орындаушы", "Альбом", "Альбом орындаушысы",
+        "Жанр", "Жыл", "Трек", "Диск",
+        "Композитор", "Мәтін авторы", "Пікір", "Авторлық құқық",
+        "Қатысушылар", "Өзгерістерді сақтау", "Сақталуда…", "Тегтер сақталды",
+        "Бұл тегтерді жазу мүмкін болмады.", "Бұл файл пішімі үшін тегтерді қауіпсіз өңдеу қолжетімсіз.", "Levyra тегтерді қауіпсіз өңдеуі үшін бұл файл тым үлкен.", "Жазуға рұқсат берілмеді."
+    ),
+    "sr" to localTagBundle(
+        "Претражи наслов, извођача, албум, композитора, текстописца, коментаре или ознаке",
+        "Уреди ознаке датотеке",
+        "Ознаке датотеке",
+        "Промене се уписују директно у аудио датотеку.",
+        "Наслов", "Извођач", "Албум", "Извођач албума",
+        "Жанр", "Година", "Песма", "Диск",
+        "Композитор", "Текстописац", "Коментар", "Ауторска права",
+        "Заслуге", "Сачувај промене", "Чување…", "Ознаке су сачуване",
+        "Није могуће уписати ове ознаке.", "Безбедно уређивање ознака није доступно за овај формат датотеке.", "Ова датотека је превелика да би Levyra могла безбедно да уреди њене ознаке.", "Дозвола за упис није одобрена."
+    ),
+    "sq" to localTagBundle(
+        "Kërko titull, artist, album, kompozitor, tekstshkrues, komente ose etiketa",
+        "Redakto etiketat e skedarit",
+        "Etiketat e skedarit",
+        "Ndryshimet shkruhen drejtpërdrejt në skedarin audio.",
+        "Titulli", "Artisti", "Albumi", "Artisti i albumit",
+        "Zhanri", "Viti", "Kënga", "Disku",
+        "Kompozitori", "Tekstshkruesi", "Komenti", "E drejta e autorit",
+        "Meritat", "Ruaj ndryshimet", "Po ruhet…", "Etiketat u ruajtën",
+        "Këto etiketa nuk mund të shkruheshin.", "Redaktimi i sigurt i etiketave nuk ofrohet për këtë format skedari.", "Ky skedar është shumë i madh që Levyra të redaktojë me siguri etiketat e tij.", "Leja për shkrim nuk u dha."
+    ),
     "hr" to localTagBundle(
         "Pretraži naslov, izvođača, album, skladatelja, tekstopisca, komentare ili oznake",
         "Uredi oznake datoteke",
@@ -640,6 +684,42 @@ private val localTagEditorBundles = mapOf(
         "Súbor bol presunutý alebo odstránený.",
         "Nedostatok voľného miesta na bezpečné uloženie zmien.",
         "Tento obrázok nemožno použiť ako obal."
+    ),
+    "bn" to localTagEditorBundle(
+        "কভার",
+        "কভার পরিবর্তন করুন",
+        "এমবেড করা কভার সরান",
+        "এমবেড করা গানের কথা",
+        "ফাইলটি সরানো বা মুছে ফেলা হয়েছে।",
+        "পরিবর্তন নিরাপদে সংরক্ষণের জন্য যথেষ্ট খালি জায়গা নেই।",
+        "এই ছবিটি কভার হিসেবে ব্যবহার করা যাবে না।"
+    ),
+    "kk" to localTagEditorBundle(
+        "Мұқаба",
+        "Мұқабаны өзгерту",
+        "Ендірілген мұқабаны жою",
+        "Ендірілген ән мәтіні",
+        "Файл жылжытылған немесе жойылған.",
+        "Өзгерістерді қауіпсіз сақтау үшін бос орын жеткіліксіз.",
+        "Бұл суретті мұқаба ретінде пайдалану мүмкін емес."
+    ),
+    "sr" to localTagEditorBundle(
+        "Омот",
+        "Промени омот",
+        "Уклони уграђени омот",
+        "Уграђени текст песме",
+        "Датотека је премештена или избрисана.",
+        "Нема довољно слободног простора за безбедно чување промена.",
+        "Ова слика не може да се користи као омот."
+    ),
+    "sq" to localTagEditorBundle(
+        "Kopertina",
+        "Ndrysho kopertinën",
+        "Hiq kopertinën e ngulitur",
+        "Teksti i ngulitur",
+        "Skedari u zhvendos ose u fshi.",
+        "Nuk ka hapësirë të mjaftueshme për t’i ruajtur ndryshimet me siguri.",
+        "Ky imazh nuk mund të përdoret si kopertinë."
     ),
     "hr" to localTagEditorBundle(
         "Omot",

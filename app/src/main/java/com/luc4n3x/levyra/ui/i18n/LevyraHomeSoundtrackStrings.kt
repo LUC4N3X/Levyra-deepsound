@@ -73,6 +73,22 @@ private val homeSoundtrackBundles: Map<String, Map<String, String>> = mapOf(
         "RÁDIO", "Môj soundtrack", "Na úvod: {artists}",
         "Rádio, ktoré rastie s každým vypočutím.", ", ", " a "
     ),
+    "bn" to homeSoundtrack(
+        "রেডিও", "আমার সাউন্ডট্র্যাক", "শুরু হচ্ছে {artists} দিয়ে",
+        "প্রতিটি শোনার সঙ্গে বেড়ে ওঠা রেডিও।", ", ", " ও "
+    ),
+    "kk" to homeSoundtrack(
+        "РАДИО", "Менің саундтрегім", "Басталуы: {artists}",
+        "Әр тыңдаған сайын дамитын радио.", ", ", " және "
+    ),
+    "sr" to homeSoundtrack(
+        "РАДИО", "Мој саундтрек", "За почетак: {artists}",
+        "Радио који расте са сваким слушањем.", ", ", " и "
+    ),
+    "sq" to homeSoundtrack(
+        "RADIO", "Kolona ime zanore", "Fillon me {artists}",
+        "Radio që rritet me çdo dëgjim.", ", ", " dhe "
+    ),
     "hr" to homeSoundtrack(
         "RADIO", "Moj soundtrack", "Za početak: {artists}",
         "Radio koji raste sa svakim slušanjem.", ", ", " i "

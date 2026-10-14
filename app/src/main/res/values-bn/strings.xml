@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">মিনি প্লেয়ার, দ্রুত প্রিয়, দৈনিক মিক্স, অফলাইন মিক্স ও গানের কথা</string>
+    <string name="widget_idle_subtitle">শুনতে ট্যাপ করুন</string>
+    <string name="widget_toggle">চালান/বিরতি</string>
+    <string name="widget_next">পরবর্তী</string>
+    <string name="widget_previous">পূর্ববর্তী</string>
+    <string name="widget_favorites">প্রিয়</string>
+    <string name="widget_flow">দৈনিক মিক্স</string>
+    <string name="widget_offline">অফলাইন মিক্স</string>
+    <string name="widget_lyrics">গানের কথা</string>
+    <string name="radar_channel_name">রিলিজ রাডার</string>
+    <string name="radar_channel_description">আপনার অনুসরণ করা শিল্পীদের নতুন রিলিজ</string>
+    <string name="radar_new_release_title">%1$s-এর নতুন রিলিজ</string>
+    <string name="automatic_backups">স্বয়ংক্রিয় ব্যাকআপ</string>
+    <string name="car_home">হোম</string>
+    <string name="car_downloads">ডাউনলোড</string>
+    <string name="car_favorites">প্রিয়</string>
+    <string name="car_playlists">প্লেলিস্ট</string>
+    <string name="car_no_content">কোনো কনটেন্ট নেই</string>
+    <string name="car_content_unavailable">কনটেন্ট উপলব্ধ নয়</string>
+    <string name="car_search_tracks">গান খুঁজুন</string>
+    <string name="car_no_results">কোনো ফলাফল নেই</string>
+    <string name="car_connecting_player">প্লেয়ারের সঙ্গে সংযুক্ত হচ্ছে</string>
+    <string name="car_now_playing">এখন চলছে</string>
+    <string name="car_queue">সারি</string>
+    <string name="notification_favorite_add">প্রিয়তে যোগ করুন</string>
+    <string name="notification_favorite_remove">প্রিয় থেকে সরান</string>
+    <string name="notification_shuffle_enable">এলোমেলো চালু করুন</string>
+    <string name="notification_shuffle_disable">এলোমেলো বন্ধ করুন</string>
+    <string name="notification_repeat_off">রিপিট বন্ধ</string>
+    <string name="notification_repeat_all">সব রিপিট করুন</string>
+    <string name="notification_repeat_one">একটি রিপিট করুন</string>
+    <string name="tile_recognize_music">গান শনাক্ত করুন</string>
+    <string name="tile_playback">প্লেব্যাক</string>
+    <string name="shortcut_search">সার্চ</string>
+    <string name="shortcut_library">লাইব্রেরি</string>
+    <string name="shortcut_recognition">গান শনাক্ত করুন</string>
+    <string name="shortcut_resume">প্লেব্যাক আবার শুরু করুন</string>
+</resources>

@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.recognition
 
+import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,7 +18,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.MusicNote
@@ -83,13 +83,7 @@ internal fun LevyraRecognitionOverlay(
         ) {
             item(contentType = "recognition-header") {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onClose) {
-                        Icon(
-                            Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = strings.back,
-                            tint = LevyraText
-                        )
-                    }
+                    LevyraBackButton(onClick = onClose, contentDescription = strings.back)
                     Column(modifier = Modifier.padding(start = 6.dp)) {
                         Text(
                             strings.recognitionTitle,

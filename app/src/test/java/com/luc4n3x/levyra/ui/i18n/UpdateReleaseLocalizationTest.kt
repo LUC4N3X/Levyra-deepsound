@@ -10,7 +10,7 @@ class UpdateReleaseLocalizationTest {
     @Test
     fun everySupportedLanguageShipsUpdateScreenCopy() {
         val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
-        assertEquals(37, catalogCodes.size)
+        assertEquals(41, catalogCodes.size)
         assertEquals(catalogCodes, updateReleaseLocalizationCodes())
         assertEquals(catalogCodes, update2512HighlightLocalizationCodes())
 

@@ -7,6 +7,10 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonColors
 import androidx.compose.material3.IconButtonDefaults
@@ -18,6 +22,27 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+internal fun LevyraBackButton(
+    onClick: () -> Unit,
+    contentDescription: String,
+    modifier: Modifier = Modifier,
+    size: Dp = LevyraBackButtonSize,
+    colors: IconButtonColors = IconButtonDefaults.filledTonalIconButtonColors()
+) {
+    IconButton(
+        onClick = onClick,
+        colors = colors,
+        shapes = IconButtonDefaults.shapes(),
+        modifier = modifier.size(size)
+    ) {
+        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = contentDescription)
+    }
+}
+
+private val LevyraBackButtonSize = 48.dp
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable

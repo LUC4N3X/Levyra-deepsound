@@ -21,6 +21,10 @@ class ArtistLoreLanguageTest {
             "ca" to "ca",
             "fa" to "fa",
             "ms" to "ms",
+            "bn" to "bn",
+            "kk" to "kk",
+            "sr" to "sr",
+            "sq" to "sq",
             "it" to "it",
             "en" to "en"
         ).forEach { (appLanguage, edition) ->

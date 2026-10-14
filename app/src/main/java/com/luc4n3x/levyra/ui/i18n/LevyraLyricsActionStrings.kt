@@ -183,6 +183,26 @@ private val lyricsOffsetBundles: Map<String, Map<String, String>> = mapOf(
         "lyricsOffsetLater" to "Text o 0,5 sekundy neskôr",
         "lyricsOffsetReset" to "Obnoviť načasovanie textu"
     ),
+    "bn" to mapOf(
+        "lyricsOffsetEarlier" to "গানের কথা 0.5 সেকেন্ড আগে",
+        "lyricsOffsetLater" to "গানের কথা 0.5 সেকেন্ড পরে",
+        "lyricsOffsetReset" to "গানের কথার সময় সরণ রিসেট করুন"
+    ),
+    "kk" to mapOf(
+        "lyricsOffsetEarlier" to "Мәтін 0,5 секунд ертерек",
+        "lyricsOffsetLater" to "Мәтін 0,5 секунд кешірек",
+        "lyricsOffsetReset" to "Мәтін уақыт ығысуын қалпына келтіру"
+    ),
+    "sr" to mapOf(
+        "lyricsOffsetEarlier" to "Текст 0,5 секунди раније",
+        "lyricsOffsetLater" to "Текст 0,5 секунди касније",
+        "lyricsOffsetReset" to "Поништи временски помак текста"
+    ),
+    "sq" to mapOf(
+        "lyricsOffsetEarlier" to "Teksti 0,5 sekonda më herët",
+        "lyricsOffsetLater" to "Teksti 0,5 sekonda më vonë",
+        "lyricsOffsetReset" to "Rivendos zhvendosjen kohore të tekstit"
+    ),
     "hr" to mapOf(
         "lyricsOffsetEarlier" to "Stihovi 0,5 sekunde ranije",
         "lyricsOffsetLater" to "Stihovi 0,5 sekunde kasnije",

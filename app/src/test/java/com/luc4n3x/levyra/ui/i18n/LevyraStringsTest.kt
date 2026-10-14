@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui.i18n
 
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import com.luc4n3x.levyra.domain.MoodEngine
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -327,8 +328,29 @@ class LevyraStringsTest {
     }
 
     @Test
+    fun everyLanguageLocalizesTheWholeSetupFlow() {
+        val english = LevyraStrings.forCode("en")
+        val englishLocalTaste = MoodEngine().tastesForLanguage("en").first { it.id == "italiana" }.label
+        LevyraLanguageCatalog.languages.filter { it.code != "en" }.forEach { language ->
+            val strings = LevyraStrings.forCode(language.code)
+            listOf(
+                english.welcomeBadge to strings.welcomeBadge,
+                english.namePlaceholder to strings.namePlaceholder,
+                english.next to strings.next,
+                english.introHeadline to strings.introHeadline,
+                english.introBody to strings.introBody,
+                english.introStart to strings.introStart
+            ).forEach { (englishValue, localized) ->
+                assertFalse("Setup copy fell back to English for ${language.code}: $localized", englishValue == localized)
+            }
+            val localTaste = MoodEngine().tastesForLanguage(language.code).first { it.id == "italiana" }.label
+            assertFalse("Local taste fell back to English for ${language.code}", localTaste == englishLocalTaste)
+        }
+    }
+
+    @Test
     fun newlySelectableLocalesResolveWithoutFallingBackToEnglish() {
-        val codes = listOf("zh-Hant", "hu", "bg", "fi", "nb", "ca", "hr", "sk", "ms", "fa")
+        val codes = listOf("zh-Hant", "hu", "bg", "fi", "nb", "ca", "hr", "sk", "ms", "fa", "bn", "kk", "sr", "sq")
         codes.forEach { code ->
             val strings = LevyraStrings.forCode(code)
             assertEquals(code, strings.code)

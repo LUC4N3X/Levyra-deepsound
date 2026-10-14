@@ -82,6 +82,22 @@ private val updateReleaseCopies: Map<String, LevyraUpdateReleaseCopy> = mapOf(
         "Aktualizácia pripravená", "Z", "Na", "Hlavné zmeny", "Chránená aktualizácia",
         "Oficiálny APK z GitHubu · balík a identita podpisu sa overia pred inštaláciou"
     ),
+    "bn" to updateReleaseCopy(
+        "আপডেট প্রস্তুত", "বর্তমান", "নতুন", "প্রধান পরিবর্তন", "সুরক্ষিত আপডেট",
+        "অফিশিয়াল GitHub APK · ইনস্টলের আগে প্যাকেজ ও সাইনিং পরিচয় যাচাই করা হয়"
+    ),
+    "kk" to updateReleaseCopy(
+        "Жаңарту дайын", "Қазіргі", "Жаңа", "Негізгі өзгерістер", "Қорғалған жаңарту",
+        "Ресми GitHub APK · орнату алдында бума мен қолтаңба сәйкестігі тексеріледі"
+    ),
+    "sr" to updateReleaseCopy(
+        "Ажурирање је спремно", "Са", "На", "Главне промене", "Заштићено ажурирање",
+        "Званични GitHub APK · пакет и идентитет потписа проверавају се пре инсталације"
+    ),
+    "sq" to updateReleaseCopy(
+        "Përditësimi është gati", "Nga", "Në", "Ndryshimet kryesore", "Përditësim i mbrojtur",
+        "APK zyrtar nga GitHub · paketa dhe identiteti i nënshkrimit verifikohen para instalimit"
+    ),
     "hr" to updateReleaseCopy(
         "Ažuriranje je spremno", "S", "Na", "Glavne promjene", "Zaštićeno ažuriranje",
         "Službeni GitHub APK · paket i identitet potpisa provjeravaju se prije instalacije"

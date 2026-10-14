@@ -14,7 +14,7 @@ class HomeSoundtrackLocalizationTest {
     fun everySupportedLanguageHasATranslatedSoundtrackBundle() {
         val english = homeSoundtrackLocalizationEntries("en")
         assertEquals(homeSoundtrackKeys, english.keys)
-        assertEquals(37, codes.size)
+        assertEquals(41, codes.size)
         codes.forEach { code ->
             val entries = homeSoundtrackLocalizationEntries(code)
             assertEquals("Missing soundtrack keys for $code", homeSoundtrackKeys, entries.keys)

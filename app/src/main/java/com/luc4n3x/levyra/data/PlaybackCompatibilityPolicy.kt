@@ -27,7 +27,9 @@ internal enum class PlaybackAudioStrategy {
     REEL_AUDIO,
     PERSISTED,
     DIRECT,
-    SEARCH
+    SEARCH;
+
+    fun requiresYoutubeIdentity(): Boolean = this == REEL_MUXED || this == REEL_AUDIO || this == DIRECT
 }
 
 internal enum class PlaybackVideoStrategy {

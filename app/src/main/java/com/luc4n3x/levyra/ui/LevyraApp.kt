@@ -1,6 +1,7 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import com.luc4n3x.levyra.ui.components.levyraShimmerSweep
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.pullToRefresh
@@ -268,6 +269,7 @@ import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -306,6 +308,12 @@ import com.luc4n3x.levyra.domain.HomeSectionId
 import com.luc4n3x.levyra.domain.HomeSectionLayout
 import com.luc4n3x.levyra.domain.HomeStyle
 import com.luc4n3x.levyra.domain.LevyraHomeStudioSettings
+import com.luc4n3x.levyra.domain.MiniPlayerStyle
+import com.luc4n3x.levyra.domain.NavStyle
+import com.luc4n3x.levyra.ui.i18n.NavStudioText
+import com.luc4n3x.levyra.ui.i18n.navigationStudioCopy
+import com.luc4n3x.levyra.ui.i18n.MiniStudioText
+import com.luc4n3x.levyra.ui.i18n.miniPlayerStudioCopy
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
@@ -337,6 +345,7 @@ import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.SmartDisplay
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Mood
@@ -386,7 +395,6 @@ import androidx.compose.material.icons.rounded.Swipe
 import androidx.compose.material.icons.rounded.SwipeVertical
 import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Vibration
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.DoNotDisturbOn
 import androidx.compose.material.icons.rounded.Recommend
@@ -1085,7 +1093,7 @@ private fun cinematicTextBrush(): Brush {
     }
 }
 
-private data class LevyraTabEntry(
+internal data class LevyraTabEntry(
     val tab: LevyraTab,
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector,
@@ -1093,7 +1101,7 @@ private data class LevyraTabEntry(
 )
 
 @Composable
-private fun rememberLevyraTabEntries(): List<LevyraTabEntry> {
+internal fun rememberLevyraTabEntries(): List<LevyraTabEntry> {
     val strings = LocalLevyraStrings.current
     return remember(strings) {
         listOf(
@@ -1863,6 +1871,9 @@ fun LevyraApp(
     var showYoutubeMusic by rememberSaveable { mutableStateOf(false) }
 
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val miniPlayerStudio by viewModel.miniPlayerStudio.collectAsStateWithLifecycle()
+    val customThemes by viewModel.customThemes.collectAsStateWithLifecycle()
+    val navigationStudio by viewModel.navigationStudio.collectAsStateWithLifecycle()
     LaunchedEffect(youtubeMusicState.active?.id, state.languageCode) {
         youtubeMusicViewModel.loadHome(state.languageCode)
     }
@@ -1979,7 +1990,8 @@ fun LevyraApp(
         accentTrack?.accentStart,
         accentTrack?.accentEnd,
         state.selectedMood?.id,
-        pureBlack
+        pureBlack,
+        customThemes
     ) {
         LevyraThemeController.apply(
             state.themePreset,
@@ -1992,7 +2004,7 @@ fun LevyraApp(
         )
     }
     val rootView = LocalView.current
-    LaunchedEffect(state.themePreset, pureBlack) {
+    LaunchedEffect(state.themePreset, pureBlack, customThemes) {
         val base = LevyraThemes.byId(state.themePreset)
         val palette = if (pureBlack) LevyraThemeController.asPureBlack(base) else base
         (rootView.context as? Activity)?.window?.let { window ->
@@ -2080,7 +2092,7 @@ fun LevyraApp(
             viewModel.clearBackupMessage()
         }
     }
-    val rootOverlayOpen = showYoutubeMusic || showLanguageRestartDialog || state.youtubeEngagement.comments.visible || state.showRecognition || state.showJam || state.showThemeStudio || state.showLyricsStudio || state.showHomeStudio || state.showYourSound || state.showListeningInsights || state.showListeningRecap || state.sharedMediaPreview != null || showDownloadsFolder || state.playlistHitPreview != null || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel
+    val rootOverlayOpen = showYoutubeMusic || showLanguageRestartDialog || state.youtubeEngagement.comments.visible || state.showRecognition || state.showJam || state.showThemeStudio || state.showLyricsStudio || state.showHomeStudio || miniPlayerStudio.visible || navigationStudio.visible || state.showYourSound || state.showListeningInsights || state.showListeningRecap || state.sharedMediaPreview != null || showDownloadsFolder || state.playlistHitPreview != null || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel
     BackHandler(enabled = rootOverlayOpen || state.selectedTab != LevyraTab.Home) {
         if (showYoutubeMusic) {
             if (youtubeMusicState.showLogin) youtubeMusicViewModel.cancelLogin()
@@ -2096,6 +2108,10 @@ fun LevyraApp(
             viewModel.closeLyricsStudio()
         } else if (state.showHomeStudio) {
             viewModel.closeHomeStudio()
+        } else if (miniPlayerStudio.visible) {
+            viewModel.closeMiniPlayerStudio()
+        } else if (navigationStudio.visible) {
+            viewModel.closeNavigationStudio()
         } else if (state.showJam) {
             viewModel.closeJam()
         } else if (state.showListeningInsights) {
@@ -2408,35 +2424,53 @@ fun LevyraApp(
                                         Modifier
                                     }
                                 ) {
-                                    MiniPlayer(
-                                        model = MiniPlayerModel(
-                                            track = track,
-                                            isPlaying = state.isPlaying,
-                                            isResolving = state.isResolving,
-                                            progress = progressOf(state.positionMs, state.durationMs),
-                                            bufferedProgress = progressOf(state.bufferedPositionMs, state.durationMs),
-                                            liveNowPlaying = state.liveRadioNowPlaying,
-                                            animated = state.animationsEnabled,
-                                            gesturesEnabled = state.interfaceSettings.playerGesturesEnabled,
-                                            swipeTrackChangeEnabled = state.interfaceSettings.swipeTrackChangeEnabled,
-                                            stepDirection = miniStepDirection
-                                        ),
-                                        morphAnchors = morphAnchors,
-                                        compaction = compactionProvider,
-                                        artworkHidden = { artworkMorphActive },
-                                        playbackActions = MiniPlayerPlaybackActions(
-                                            open = { viewModel.selectTab(LevyraTab.Player) },
-                                            toggle = viewModel::togglePlay,
-                                            next = viewModel::next,
-                                            previous = viewModel::previous,
-                                            close = viewModel::closePlayer
-                                        ),
-                                        expansionActions = MiniPlayerExpansionActions(
-                                            start = onExpansionDragStart,
-                                            drag = onExpansionDrag,
-                                            end = { velocity -> settleExpansion(velocity, false) }
-                                        )
+                                    val miniModel = MiniPlayerModel(
+                                        track = track,
+                                        isPlaying = state.isPlaying,
+                                        isResolving = state.isResolving,
+                                        progress = progressOf(state.positionMs, state.durationMs),
+                                        bufferedProgress = progressOf(state.bufferedPositionMs, state.durationMs),
+                                        liveNowPlaying = state.liveRadioNowPlaying,
+                                        animated = state.animationsEnabled,
+                                        gesturesEnabled = state.interfaceSettings.playerGesturesEnabled,
+                                        swipeTrackChangeEnabled = state.interfaceSettings.swipeTrackChangeEnabled,
+                                        stepDirection = miniStepDirection
                                     )
+                                    val miniPlaybackActions = MiniPlayerPlaybackActions(
+                                        open = { viewModel.selectTab(LevyraTab.Player) },
+                                        toggle = viewModel::togglePlay,
+                                        next = viewModel::next,
+                                        previous = viewModel::previous,
+                                        close = viewModel::closePlayer
+                                    )
+                                    val miniExpansionActions = MiniPlayerExpansionActions(
+                                        start = onExpansionDragStart,
+                                        drag = onExpansionDrag,
+                                        end = { velocity -> settleExpansion(velocity, false) }
+                                    )
+                                    val miniStudio = miniPlayerStudio.settings
+                                    if (miniStudio.style == MiniPlayerStyle.Original) {
+                                        MiniPlayer(
+                                            model = miniModel,
+                                            morphAnchors = morphAnchors,
+                                            compaction = compactionProvider,
+                                            artworkHidden = { artworkMorphActive },
+                                            playbackActions = miniPlaybackActions,
+                                            expansionActions = miniExpansionActions
+                                        )
+                                    } else {
+                                        StyledMiniPlayer(
+                                            style = miniStudio.style,
+                                            tuning = miniStudio.activeTuning(),
+                                            model = miniModel,
+                                            morphAnchors = morphAnchors,
+                                            compaction = compactionProvider,
+                                            artworkHidden = { artworkMorphActive },
+                                            playbackActions = miniPlaybackActions,
+                                            expansionActions = miniExpansionActions,
+                                            glass = dockGlass
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -2449,24 +2483,34 @@ fun LevyraApp(
                                 Modifier
                             }
                         ) {
-                            BottomTabs(
-                                selected = backgroundTab,
-                                compaction = compactionProvider,
-                                onSelect = viewModel::selectTab
-                            )
+                            val navStudio = navigationStudio.settings
+                            if (navStudio.style == NavStyle.Original) {
+                                BottomTabs(
+                                    selected = backgroundTab,
+                                    compaction = compactionProvider,
+                                    onSelect = viewModel::selectTab
+                                )
+                            } else {
+                                StyledBottomTabs(
+                                    style = navStudio.style,
+                                    tuning = navStudio.activeTuning(),
+                                    selected = backgroundTab,
+                                    compaction = compactionProvider,
+                                    onSelect = viewModel::selectTab,
+                                    glass = dockGlass
+                                )
+                            }
                         }
                     }
                     if (!dockSideBySide) {
                         miniPlayerSlot()
                     }
-                    LevyraAdaptiveDockSurface(
-                        glass = dockGlass,
-                        modifier = if (miniMaxWidth.isFinite()) {
-                            Modifier.widthIn(max = miniMaxWidth.dp)
-                        } else {
-                            Modifier.fillMaxWidth()
-                        }
-                    ) {
+                    val dockModifier = if (miniMaxWidth.isFinite()) {
+                        Modifier.widthIn(max = miniMaxWidth.dp)
+                    } else {
+                        Modifier.fillMaxWidth()
+                    }
+                    val dockContent: @Composable ColumnScope.() -> Unit = {
                         if (dockSideBySide && miniPlayerVisible) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -2478,6 +2522,17 @@ fun LevyraApp(
                         } else {
                             bottomTabsSlot()
                         }
+                    }
+                    if (navigationStudio.settings.style == NavStyle.Original) {
+                        LevyraAdaptiveDockSurface(glass = dockGlass, modifier = dockModifier, content = dockContent)
+                    } else {
+                        StyledDockSurface(
+                            style = navigationStudio.settings.style,
+                            tuning = navigationStudio.settings.activeTuning(),
+                            glass = dockGlass,
+                            modifier = dockModifier,
+                            content = dockContent
+                        )
                     }
                 }
             }
@@ -2687,6 +2742,16 @@ fun LevyraApp(
                     onOpenHomeStudio = {
                         viewModel.closeSettings()
                         viewModel.openHomeStudio()
+                    },
+                    miniPlayerStyle = miniPlayerStudio.settings.style,
+                    onOpenMiniPlayerStudio = {
+                        viewModel.closeSettings()
+                        viewModel.openMiniPlayerStudio()
+                    },
+                    navigationStyle = navigationStudio.settings.style,
+                    onOpenNavigationStudio = {
+                        viewModel.closeSettings()
+                        viewModel.openNavigationStudio()
                     },
                     onOpenAudioSettings = viewModel::openAudioQualityPanel,
                     onInterfaceSettings = viewModel::setInterfaceSettings,
@@ -3145,7 +3210,12 @@ fun LevyraApp(
                     previewArtist = state.currentTrack?.artist.orEmpty(),
                     onSelectPreset = viewModel::setThemePreset,
                     onSelectAccent = viewModel::setThemeAccent,
-                    onClose = viewModel::closeThemeStudio
+                    onClose = viewModel::closeThemeStudio,
+                    customThemes = customThemes,
+                    onSaveCustomTheme = viewModel::saveCustomTheme,
+                    onDuplicateCustomTheme = viewModel::duplicateCustomTheme,
+                    onDeleteCustomTheme = viewModel::deleteCustomTheme,
+                    onRestoreDefault = viewModel::restoreDefaultTheme
                 )
             }
 
@@ -3170,6 +3240,26 @@ fun LevyraApp(
                     onUpdate = viewModel::setHomeStudioSettings,
                     onInterfaceSettings = viewModel::setInterfaceSettings,
                     onClose = viewModel::closeHomeStudio
+                )
+            }
+
+            AnimatedVisibility(visible = miniPlayerStudio.visible, enter = overlayEnter, exit = overlayExit) {
+                MiniPlayerStudioOverlay(
+                    settings = miniPlayerStudio.settings,
+                    track = state.currentTrack,
+                    isPlaying = state.isPlaying,
+                    progress = progressOf(state.positionMs, state.durationMs),
+                    animated = state.animationsEnabled,
+                    onUpdate = viewModel::setMiniPlayerStudioSettings,
+                    onClose = viewModel::closeMiniPlayerStudio
+                )
+            }
+
+            AnimatedVisibility(visible = navigationStudio.visible, enter = overlayEnter, exit = overlayExit) {
+                NavigationStudioOverlay(
+                    settings = navigationStudio.settings,
+                    onUpdate = viewModel::setNavigationStudioSettings,
+                    onClose = viewModel::closeNavigationStudio
                 )
             }
 
@@ -6179,17 +6269,7 @@ private fun ArtistTopBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        PlayerGlassIconButton(
-            icon = Icons.AutoMirrored.Rounded.ArrowBack,
-            contentDescription = strings.back,
-            onClick = onClose,
-            size = ImmersiveTopBarButtonSize,
-            iconSize = 21.dp,
-            tint = Color.White,
-            fill = ImmersiveTopBarButtonFill,
-            borderTop = Color.Transparent,
-            borderBottom = Color.Transparent
-        )
+        LevyraBackButton(onClick = onClose, contentDescription = strings.back)
         if (title != null) {
             Text(
                 text = title,
@@ -15900,19 +15980,14 @@ private fun SearchHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        IconButton(
+        LevyraBackButton(
             onClick = {
                 onClear()
                 focusManager.clearFocus()
                 keyboardController?.hide()
-            }
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = strings.back,
-                tint = LevyraText
-            )
-        }
+            },
+            contentDescription = strings.back
+        )
 
         Surface(
             color = fieldContainer,
@@ -16501,9 +16576,7 @@ private fun DownloadsFolderOverlay(
                     modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 18.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = onClose) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = LocalLevyraStrings.current.back, tint = LevyraText)
-                    }
+                    LevyraBackButton(onClick = onClose, contentDescription = LocalLevyraStrings.current.back)
                     Spacer(Modifier.width(8.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
@@ -17805,9 +17878,7 @@ private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiSta
         ) {
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { viewModel.closePlaylist() }) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = LocalLevyraStrings.current.back, tint = LevyraText)
-                    }
+                    LevyraBackButton(onClick = { viewModel.closePlaylist() }, contentDescription = LocalLevyraStrings.current.back)
                     Spacer(Modifier.width(4.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(playlist.name, color = LevyraText, fontSize = 26.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -19366,7 +19437,7 @@ private fun PlayerInlineLyricsSection(
 private const val PLAYER_LONG_PRESS_SPEED_MS = 320L
 private const val PLAYER_LONG_PRESS_ARTWORK_MS = 900L
 
-private data class MiniPlayerModel(
+internal data class MiniPlayerModel(
     val track: Track,
     val isPlaying: Boolean,
     val isResolving: Boolean,
@@ -19379,7 +19450,7 @@ private data class MiniPlayerModel(
     val stepDirection: Int
 )
 
-private data class MiniPlayerPlaybackActions(
+internal data class MiniPlayerPlaybackActions(
     val open: () -> Unit,
     val toggle: () -> Unit,
     val next: () -> Unit,
@@ -19387,7 +19458,7 @@ private data class MiniPlayerPlaybackActions(
     val close: () -> Unit
 )
 
-private data class MiniPlayerExpansionActions(
+internal data class MiniPlayerExpansionActions(
     val start: () -> Unit,
     val drag: (Float) -> Unit,
     val end: (Float) -> Unit
@@ -20764,6 +20835,10 @@ private fun SettingsOverlay(
     onOpenLyricsStudio: () -> Unit = {},
     homeStudioStyle: HomeStyle = HomeStyle.Original,
     onOpenHomeStudio: () -> Unit = {},
+    miniPlayerStyle: MiniPlayerStyle = MiniPlayerStyle.Original,
+    onOpenMiniPlayerStudio: () -> Unit = {},
+    navigationStyle: NavStyle = NavStyle.Original,
+    onOpenNavigationStudio: () -> Unit = {},
     onOpenAudioSettings: () -> Unit,
     onInterfaceSettings: (LevyraInterfaceSettings) -> Unit,
     onAmbientSettings: (LevyraAmbientSettings) -> Unit,
@@ -21076,6 +21151,22 @@ private fun SettingsOverlay(
                                     title = strings.homeStudioCopy.title,
                                     subtitle = homeStyleName(homeStudioStyle) + " · " + strings.homeStudioCopy.subtitle,
                                     onClick = onOpenHomeStudio
+                                )
+                            }
+                            item {
+                                SettingsButton(
+                                    icon = Icons.Rounded.SmartDisplay,
+                                    title = strings.miniPlayerStudioCopy[MiniStudioText.Title],
+                                    subtitle = miniPlayerStyleName(miniPlayerStyle) + " · " + strings.miniPlayerStudioCopy[MiniStudioText.Subtitle],
+                                    onClick = onOpenMiniPlayerStudio
+                                )
+                            }
+                            item {
+                                SettingsButton(
+                                    icon = Icons.Rounded.Dashboard,
+                                    title = strings.navigationStudioCopy[NavStudioText.Title],
+                                    subtitle = navigationStyleName(navigationStyle) + " · " + strings.navigationStudioCopy[NavStudioText.Subtitle],
+                                    onClick = onOpenNavigationStudio
                                 )
                             }
                             item {
@@ -22462,16 +22553,7 @@ private fun SettingsTileText(title: String, subtitle: String, modifier: Modifier
 @Composable
 private fun SettingsDetailHeader(title: String, icon: ImageVector, accent: Color, onBack: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(18.dp), modifier = Modifier.fillMaxWidth()) {
-        LevyraExpressiveIconButton(
-            onClick = onBack,
-            modifier = Modifier.size(48.dp),
-            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                containerColor = LevyraAdaptiveCard,
-                contentColor = LevyraText
-            )
-        ) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = LocalLevyraStrings.current.back)
-        }
+        LevyraBackButton(onClick = onBack, contentDescription = LocalLevyraStrings.current.back)
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -25551,7 +25633,7 @@ private fun PlayerArtworkMorphLayer(
     }
 }
 
-private fun handleMiniPlayerDragEvent(
+internal fun handleMiniPlayerDragEvent(
     event: PlayerDragEvent,
     trackId: String,
     playbackActions: MiniPlayerPlaybackActions,
@@ -25637,7 +25719,7 @@ private val MiniPlayerGlowElevation = 18.dp
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun MiniPlayer(
+internal fun MiniPlayer(
     model: MiniPlayerModel,
     morphAnchors: PlayerMorphAnchors,
     compaction: () -> Float,
@@ -26502,7 +26584,8 @@ private fun ExploreOverlays(
             strings = strings,
             backEnabled = backEnabled,
             onBack = { onDestinationChange(null) },
-            onOpenRelease = viewModel::openAlbum
+            onOpenRelease = viewModel::openAlbum,
+            bottomInset = exploreDestinationBottomInset(state)
         )
         ExploreMoodsDestination -> ExploreMoodsDestinationScreen(
             zones = zones,
@@ -26522,7 +26605,8 @@ private fun ExploreOverlays(
                 onMoodReturnChange(ExploreMoodsDestination)
                 onDestinationChange(exploreCategoryDestination(category))
             },
-            onRequestCategoryArtwork = viewModel::ensureExploreCategoryArtwork
+            onRequestCategoryArtwork = viewModel::ensureExploreCategoryArtwork,
+            bottomInset = exploreDestinationBottomInset(state)
         )
         else -> ExploreMoodCollectionDestination(
             destination = exploreDestination,
@@ -26610,7 +26694,8 @@ private fun ExploreMoodCollectionDestination(
             onBack = { onDestinationChange(returnDestination) },
             onPlayAll = { tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } },
             onPlayTrack = { track -> viewModel.playFrom(tracks, track) },
-            onRequestTrackArtwork = viewModel::ensureExploreTrackArtwork
+            onRequestTrackArtwork = viewModel::ensureExploreTrackArtwork,
+            bottomInset = exploreDestinationBottomInset(state)
         )
         return
     }
@@ -26636,9 +26721,16 @@ private fun ExploreMoodCollectionDestination(
         onBack = { onDestinationChange(returnDestination) },
         onPlayAll = { tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } },
         onPlayTrack = { track -> viewModel.playFrom(tracks, track) },
-        onRequestTrackArtwork = viewModel::ensureExploreTrackArtwork
+        onRequestTrackArtwork = viewModel::ensureExploreTrackArtwork,
+        bottomInset = exploreDestinationBottomInset(state)
     )
 }
+
+@Composable
+private fun exploreDestinationBottomInset(state: LevyraUiState): Dp = tabBarBottomContentInset(
+    miniPlayerVisible = state.currentTrack != null,
+    animationsEnabled = state.animationsEnabled
+)
 
 @Composable
 private fun ExploreFreshSectionHeader(
@@ -27180,7 +27272,7 @@ private fun BottomTabsScrim() {
 }
 
 @Composable
-private fun BottomTabs(
+internal fun BottomTabs(
     selected: LevyraTab,
     compaction: () -> Float,
     onSelect: (LevyraTab) -> Unit

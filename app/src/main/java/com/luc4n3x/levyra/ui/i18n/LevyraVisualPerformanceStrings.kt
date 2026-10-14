@@ -392,6 +392,58 @@ private val visualPerformanceBundles = mapOf(
         "Hľadá sa text…",
         "Pre túto skladbu nie je text"
     ),
+    "bn" to visualPerformance(
+        "পারফরম্যান্স মোড",
+        "সম্পূর্ণ",
+        "অটো",
+        "মসৃণ",
+        "সব ইফেক্ট, Levyra-র স্ট্যান্ডার্ড চেহারা",
+        "ব্যাটারি সেভার বা কম মেমরিতে হালকা ইফেক্ট",
+        "হালকা ইফেক্ট, একই ফিচার",
+        "কভার দেখান",
+        "পুরো গানের কথা খুলুন",
+        "গানের কথা খোঁজা হচ্ছে…",
+        "এই গানের কোনো কথা নেই"
+    ),
+    "kk" to visualPerformance(
+        "Өнімділік режимі",
+        "Толық",
+        "Авто",
+        "Біркелкі",
+        "Барлық эффект, Levyra-ның стандартты көрінісі",
+        "Батареяны үнемдеу немесе жад аз болғанда жеңілірек эффектілер",
+        "Жеңілірек эффектілер, бірдей мүмкіндіктер",
+        "Мұқабаны көрсету",
+        "Толық мәтінді ашу",
+        "Мәтін ізделуде…",
+        "Бұл әннің мәтіні жоқ"
+    ),
+    "sr" to visualPerformance(
+        "Режим перформанси",
+        "Пуни",
+        "Ауто",
+        "Глатки",
+        "Сви ефекти, стандардни изглед Levyre",
+        "Лакши ефекти уз уштеду батерије или мало меморије",
+        "Лакши ефекти, исте функције",
+        "Прикажи омот",
+        "Отвори цео текст",
+        "Тражење текста…",
+        "Нема текста за ову песму"
+    ),
+    "sq" to visualPerformance(
+        "Modaliteti i performancës",
+        "I plotë",
+        "Auto",
+        "I butë",
+        "Të gjitha efektet, pamja standarde e Levyra",
+        "Efekte më të lehta me kursim baterie ose memorie të ulët",
+        "Efekte më të lehta, të njëjtat veçori",
+        "Shfaq kopertinën",
+        "Hap tekstin e plotë",
+        "Po kërkohet teksti…",
+        "Nuk ka tekst për këtë këngë"
+    ),
     "hr" to visualPerformance(
         "Način izvedbe",
         "Puni",
