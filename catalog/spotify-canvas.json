@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-14T04:58:47Z",
+  "generatedAt": "2026-10-14T11:59:00Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -2195,7 +2195,7 @@
     },
     {
       "song": "VIVA LA MUERTE",
-      "artist": "DIFF, Roi 6/12, BAKV",
+      "artist": "DIFF, Roi 6/12, BAKV, Spize",
       "album": "COUP DE GRACE",
       "url": "https://canvaz.scdn.co/upload/artist/4rtNK25TiSGNcibilGWcQK/video/a1608860d42c401eb018e24cd03685ae.cnvs.mp4",
       "scope": "track"
@@ -3206,13 +3206,6 @@
       "artist": "Evanescence",
       "album": "Fallen",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/7b03bbea08e8438895ac6334a13a383f.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "The One That Got Away",
-      "artist": "Katy Perry",
-      "album": "Teenage Dream",
-      "url": "https://canvaz.scdn.co/upload/artist/6jJ0s89eD6GaHleKKya26X/video/f374d8ce515d475489868ec09202c9a1.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4739,6 +4732,13 @@
       "artist": "Talisco",
       "album": "Setting Record in Nashville",
       "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/76707554e8cd4bfe9ba540616e1b8429.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Santé mentale",
+      "artist": "Hoshi",
+      "album": "Bonjour docteur",
+      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/06253044ed6f4d108479a8b7204b15de.cnvs.mp4",
       "scope": "track"
     },
     {
