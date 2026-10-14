@@ -34,14 +34,27 @@ class HomePremiumLayoutContractTest {
 
     @Test
     fun `orbit tiles keep playback actions and a single line title`() {
-        val tile = functionBlock("private fun PersonalOrbitTile(")
+        val tile = functionBlock("private fun StudioPersonalOrbitTile(")
 
-        assertTrue(tile.contains("aspectRatio(1f)"))
+        assertTrue(tile.contains(".aspectRatio("))
+        assertTrue(tile.contains("style == HomeStyle.Editorial) 1.18f"))
+        assertTrue(tile.contains("style == HomeStyle.Immersive) 0.86f"))
+        assertTrue(tile.contains("else 1f)"))
         assertTrue(tile.contains("levyraPressable("))
         assertTrue(tile.contains("onLongClick = onActions"))
         assertTrue(tile.contains("strings.songOptions"))
         assertTrue(tile.contains("maxLines = 1"))
         assertTrue(tile.contains("LevyraNowPlayingBadge("))
+    }
+
+    @Test
+    fun `home soundtrack keeps an artist portrait fallback when companions are absent`() {
+        val hero = functionBlock("private fun HomeEditorialSpotlight(")
+
+        assertTrue(hero.contains("companionArtworkUrls.ifEmpty {"))
+        assertTrue(hero.contains("resolvedArtistArtworkUrl.takeIf(String::isNotBlank)"))
+        assertTrue(hero.contains("if (visibleCompanionArtworkUrls.isNotEmpty())"))
+        assertTrue(hero.contains("artworkUrls = visibleCompanionArtworkUrls"))
     }
 
     @Test
