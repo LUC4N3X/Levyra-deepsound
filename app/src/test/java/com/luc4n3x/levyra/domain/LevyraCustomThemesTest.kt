@@ -77,6 +77,14 @@ class LevyraCustomThemesTest {
     }
 
     @Test
+    fun duplicateKeepsSuffixForLongNames() {
+        val long = sample.copy(name = "A".repeat(LevyraCustomTheme.MAX_NAME_LENGTH)).normalized()
+        val duplicated = LevyraCustomThemes.duplicate(listOf(long), long.id, "copy")
+        assertTrue(duplicated[1].name.endsWith(" copy"))
+        assertTrue(duplicated[1].name.length <= LevyraCustomTheme.MAX_NAME_LENGTH)
+    }
+
+    @Test
     fun customIdsSurviveNormalizationAndResolveThroughRegistry() {
         assertEquals(sample.id, LevyraThemes.normalize(sample.id))
         assertEquals(LevyraThemes.levyraAura, LevyraThemes.byId(sample.id))

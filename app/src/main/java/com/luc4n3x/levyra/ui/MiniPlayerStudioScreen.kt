@@ -1005,7 +1005,7 @@ internal fun MiniStudioSlider(
     onPreview: (Int) -> Unit,
     onCommit: (Int) -> Unit
 ) {
-    var dragValue by remember(value) { mutableStateOf<Int?>(null) }
+    var dragValue by remember { mutableStateOf<Int?>(null) }
     val shown = dragValue ?: value
     val adjustable = range.last > range.first
     val safeRange = if (adjustable) range else range.first..(range.first + 1)

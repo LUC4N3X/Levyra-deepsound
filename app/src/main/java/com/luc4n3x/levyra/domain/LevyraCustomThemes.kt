@@ -105,7 +105,8 @@ object LevyraCustomThemes {
     fun duplicate(themes: List<LevyraCustomTheme>, id: String, suffix: String): List<LevyraCustomTheme> {
         if (themes.size >= MAX_THEMES) return themes
         val source = themes.firstOrNull { it.id == id } ?: return themes
-        val copy = source.copy(id = LevyraCustomTheme.newId(), name = "${source.name} $suffix")
+        val base = source.name.take((LevyraCustomTheme.MAX_NAME_LENGTH - suffix.length - 1).coerceAtLeast(1)).trimEnd()
+        val copy = source.copy(id = LevyraCustomTheme.newId(), name = "$base $suffix")
         val index = themes.indexOf(source)
         return themes.toMutableList().apply { add(index + 1, copy.normalized()) }
     }

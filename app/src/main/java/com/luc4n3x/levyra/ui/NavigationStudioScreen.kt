@@ -289,7 +289,8 @@ internal fun NavigationStudioOverlay(
                     val finishDrag: () -> Unit = {
                         dragging = null
                         dragOffset = 0f
-                        commit(latest.activeTuning().copy(order = workingOrder))
+                        val current = latest.activeTuning()
+                        if (workingOrder != current.order) commit(current.copy(order = workingOrder))
                     }
                     NavDestinationRow(
                         tab = tab,
