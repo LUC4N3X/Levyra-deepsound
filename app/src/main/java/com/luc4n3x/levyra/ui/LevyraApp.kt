@@ -129,6 +129,7 @@ import com.luc4n3x.levyra.ui.lyrics.lyricsOffsetIsolated
 import com.luc4n3x.levyra.ui.i18n.lyricsSyncCopy
 import com.luc4n3x.levyra.ui.lyrics.adaptiveLyricFontSizeSp
 import com.luc4n3x.levyra.ui.i18n.homeVideoShelfTitle
+import com.luc4n3x.levyra.ui.i18n.homeStudioCopy
 import com.luc4n3x.levyra.ui.lyrics.lyricLineScaleSafeWidthPx
 import com.luc4n3x.levyra.ui.lyrics.buildTimedLyricText
 import com.luc4n3x.levyra.ui.lyrics.karaokeCharacterProgress
@@ -297,6 +298,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.material.icons.rounded.Dashboard
+import com.luc4n3x.levyra.domain.HomeDensity
+import com.luc4n3x.levyra.domain.HomeMotion
+import com.luc4n3x.levyra.domain.HomeSectionId
+import com.luc4n3x.levyra.domain.HomeSectionLayout
+import com.luc4n3x.levyra.domain.HomeStyle
+import com.luc4n3x.levyra.domain.LevyraHomeStudioSettings
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
@@ -419,6 +428,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -827,6 +837,7 @@ private val SimilarSongsPeekOverlap = 22.dp
 private val SimilarSongsUnderlineWidth = 52.dp
 private const val SIMILAR_SONGS_PEEK_COUNT = 3
 private const val HOME_ARTIST_SHELF_SIZE = 13
+private const val HOME_FLOW_SHORTCUT_LIMIT = 6
 private const val HOME_DEFERRED_SECTION_REVEAL_MS = 180L
 private const val HOME_HORIZONTAL_ROW_CONTENT_TYPE = "home-horizontal-row"
 private const val HOME_SECTION_HEADER_CONTENT_TYPE = "home-section-header"
@@ -2069,7 +2080,7 @@ fun LevyraApp(
             viewModel.clearBackupMessage()
         }
     }
-    val rootOverlayOpen = showYoutubeMusic || showLanguageRestartDialog || state.youtubeEngagement.comments.visible || state.showRecognition || state.showJam || state.showThemeStudio || state.showLyricsStudio || state.showYourSound || state.showListeningInsights || state.showListeningRecap || state.sharedMediaPreview != null || showDownloadsFolder || state.playlistHitPreview != null || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel
+    val rootOverlayOpen = showYoutubeMusic || showLanguageRestartDialog || state.youtubeEngagement.comments.visible || state.showRecognition || state.showJam || state.showThemeStudio || state.showLyricsStudio || state.showHomeStudio || state.showYourSound || state.showListeningInsights || state.showListeningRecap || state.sharedMediaPreview != null || showDownloadsFolder || state.playlistHitPreview != null || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel
     BackHandler(enabled = rootOverlayOpen || state.selectedTab != LevyraTab.Home) {
         if (showYoutubeMusic) {
             if (youtubeMusicState.showLogin) youtubeMusicViewModel.cancelLogin()
@@ -2083,6 +2094,8 @@ fun LevyraApp(
             viewModel.closeThemeStudio()
         } else if (state.showLyricsStudio) {
             viewModel.closeLyricsStudio()
+        } else if (state.showHomeStudio) {
+            viewModel.closeHomeStudio()
         } else if (state.showJam) {
             viewModel.closeJam()
         } else if (state.showListeningInsights) {
@@ -2312,12 +2325,13 @@ fun LevyraApp(
                                 LocalHomeCompactDensity provides
                                     renderSnapshot.state.interfaceSettings.compactHome
                             ) {
-                                HomeScreen(
+                                HomeStudioHost(
                                     viewModel = homeViewModel,
                                     renderSnapshot = renderSnapshot,
                                     homeListState = homeListState,
                                     deferredSectionsRevealed = homeDeferredSectionsRevealed,
                                     accountAvatarUrl = youtubeMusicState.active?.avatarUrl.orEmpty(),
+                                    homeStudio = state.homeStudioSettings,
                                     onPullRefresh = {
                                         homeViewModel.refreshHome { youtubeMusicViewModel.refreshHomeAndAwait(state.languageCode) }
                                     },
@@ -2668,6 +2682,11 @@ fun LevyraApp(
                     onOpenLyricsStudio = {
                         viewModel.closeSettings()
                         viewModel.openLyricsStudio()
+                    },
+                    homeStudioStyle = state.homeStudioSettings.style,
+                    onOpenHomeStudio = {
+                        viewModel.closeSettings()
+                        viewModel.openHomeStudio()
                     },
                     onOpenAudioSettings = viewModel::openAudioQualityPanel,
                     onInterfaceSettings = viewModel::setInterfaceSettings,
@@ -3141,6 +3160,16 @@ fun LevyraApp(
                     onUpdateSettings = viewModel::setLyricsStudioSettings,
                     onResetSettings = viewModel::resetLyricsStudioSettings,
                     onClose = viewModel::closeLyricsStudio
+                )
+            }
+
+            AnimatedVisibility(visible = state.showHomeStudio, enter = overlayEnter, exit = overlayExit) {
+                HomeStudioOverlay(
+                    settings = state.homeStudioSettings,
+                    interfaceSettings = state.interfaceSettings,
+                    onUpdate = viewModel::setHomeStudioSettings,
+                    onInterfaceSettings = viewModel::setInterfaceSettings,
+                    onClose = viewModel::closeHomeStudio
                 )
             }
 
@@ -10334,6 +10363,1991 @@ private fun HomeScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun StudioHomeScreen(
+    viewModel: HomeViewModel,
+    renderSnapshot: HomeRenderSnapshot,
+    homeListState: LazyListState,
+    deferredSectionsRevealed: MutableState<Boolean>,
+    accountAvatarUrl: String,
+    homeStudio: LevyraHomeStudioSettings,
+    onPullRefresh: () -> Unit,
+    onTrackActions: (Track) -> Unit
+) {
+    val state = renderSnapshot.state
+    val homeDerivedState = renderSnapshot.derived
+    val homeRefreshing by viewModel.homeRefreshing.collectAsStateWithLifecycle()
+    val homePullState = rememberPullToRefreshState()
+    val strings = LocalLevyraStrings.current
+    val addTargetState = remember { mutableStateOf<Track?>(null) }
+    val selectedHomeCollectionIdState = rememberSaveable { mutableStateOf<String?>(null) }
+    val chartMarketSheetOpenState = rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(homeDerivedState.artistRefreshFingerprint) {
+        viewModel.refreshHomeArtists()
+    }
+    val personalTracks = remember(state.personalOrbitTracks) {
+        LevyraPersonalOrbit.distinctWorks(
+            LevyraPersonalOrbit.distinctRecordings(state.personalOrbitTracks)
+        ).take(LevyraPersonalOrbit.DISPLAY_LIMIT)
+    }
+    val localSongs = remember(state.localLibrary) { state.localLibrary.completedScanSongs() }
+    val speedDialPins = remember(state.speedDialPins, state.playlists, localSongs) {
+        SpeedDial.visible(
+            pins = state.speedDialPins,
+            playlists = state.playlists,
+            localTrackIds = localSongs?.mapTo(HashSet()) { it.id }
+        )
+    }
+    val resonanceTracks = homeDerivedState.resonanceTracks
+    LaunchedEffect(resonanceTracks, state.interfaceSettings.showResonance) {
+        if (resonanceTracks.isNotEmpty() && state.interfaceSettings.showResonance) {
+            viewModel.refreshHomeResonanceComments(resonanceTracks)
+        }
+    }
+    val quickPicks = homeDerivedState.quickPicks
+    val newReleases = homeDerivedState.newReleases
+    val forgottenFavorites = state.forgottenFavorites
+    val homeAlbums = remember(
+        state.homeAlbums,
+        state.personalOrbitTracks,
+        state.recentListens,
+        state.favorites,
+        quickPicks?.tracks,
+        newReleases?.tracks,
+        state.homeSections,
+        state.charts,
+        state.tracks,
+        state.languageCode
+    ) {
+        buildPersonalizedHomeAlbumShelf(
+            primaryAlbums = state.homeAlbums,
+            personalTracks = state.personalOrbitTracks,
+            recentTracks = state.recentListens,
+            favoriteTracks = state.favorites,
+            quickPickTracks = quickPicks?.tracks.orEmpty(),
+            localizedReleaseTracks = newReleases?.tracks.orEmpty(),
+            localizedSections = state.homeSections,
+            chartTracks = state.charts,
+            fallbackTracks = state.tracks
+        )
+    }
+    val rawOtherSections = homeDerivedState.otherSections
+    val (homeVideoTracks, otherSections) = rememberStudioHomeVideo(state, rawOtherSections, strings)
+    val spotlightDayKey = HomeEditorialEngine.localDayKey()
+    val stableSpotlightIdState = rememberSaveable(spotlightDayKey) { mutableStateOf<String?>(null) }
+    val spotlight = rememberStudioSpotlight(state, homeDerivedState, spotlightDayKey, stableSpotlightIdState)
+    val visiblePersonalTracks = homeDerivedState.personalOrbitDisplayTracks
+    val chartChunks = homeDerivedState.chartChunks
+    val offlineContent = homeDerivedState.offlineContent
+    val offlineHomeVisible = HomeOfflinePolicy.showOfflineHome(state.isDeviceOffline)
+    val homeContent = homeDerivedState.contentAvailability
+    val homeFingerprint = homeDerivedState.contentFingerprint
+    val showDeferredHomeSections by deferredSectionsRevealed
+    LaunchedEffect(homeFingerprint) {
+        if (deferredSectionsRevealed.value) return@LaunchedEffect
+        delay(HOME_DEFERRED_SECTION_REVEAL_MS)
+        deferredSectionsRevealed.value = true
+    }
+    val showHomeAlbumShimmer = HomeLoadingPolicy.showAlbumShimmer(homeContent, state.homeAlbumsLoading)
+    val showChartShimmer = HomeLoadingPolicy.showChartShimmer(homeContent, state.isLoadingCharts)
+    StudioHomeEffects(viewModel, homeListState, homeFingerprint, homeContent, showHomeAlbumShimmer, showChartShimmer)
+    val homeBottomInset = tabBarBottomContentInset(
+        miniPlayerVisible = state.currentTrack != null,
+        animationsEnabled = state.animationsEnabled
+    )
+    val look = rememberStudioHomeLook(homeStudio, state)
+    val homeContext = StudioHomeContext(
+        viewModel = viewModel,
+        renderSnapshot = renderSnapshot,
+        strings = strings,
+        accountAvatarUrl = accountAvatarUrl,
+        onTrackActions = onTrackActions,
+        homeStyle = look.homeStyle,
+        studioLayout = look.studioLayout,
+        styleSpec = look.styleSpec,
+        studioPlacementSpec = look.studioPlacementSpec,
+        homeAnimationsEnabled = look.homeAnimationsEnabled,
+        compactHome = look.compactHome,
+        showDeferredHomeSections = showDeferredHomeSections,
+        speedDialPins = speedDialPins,
+        quickPicks = quickPicks,
+        newReleases = newReleases,
+        forgottenFavorites = forgottenFavorites,
+        homeAlbums = homeAlbums,
+        showHomeAlbumShimmer = showHomeAlbumShimmer,
+        homeVideoTracks = homeVideoTracks,
+        otherSections = otherSections,
+        visiblePersonalTracks = visiblePersonalTracks,
+        visibleEditorialCollections = spotlight.visibleEditorialCollections,
+        homeCollectionAccents = spotlight.homeCollectionAccents,
+        spotlightHeroData = spotlight.heroData,
+        homeRenderOrder = look.homeRenderOrder,
+        spotlightTracks = spotlight.tracks,
+        resonanceTracks = resonanceTracks,
+        offlineContent = offlineContent,
+        offlineHomeVisible = offlineHomeVisible,
+        selectedHomeCollectionIdState = selectedHomeCollectionIdState,
+        chartMarketSheetOpenState = chartMarketSheetOpenState,
+        stableSpotlightIdState = stableSpotlightIdState,
+        addTargetState = addTargetState
+    )
+    StudioHomeContent(
+        c = homeContext,
+        homeListState = homeListState,
+        homeRenderOrder = look.homeRenderOrder,
+        homeAccent = look.homeAccent,
+        spotlightCandidate = spotlight.candidate,
+        flowShortcutTracks = look.flowShortcutTracks,
+        homeSectionGap = look.homeSectionGap,
+        homeBottomInset = homeBottomInset,
+        homeRefreshing = homeRefreshing,
+        homePullState = homePullState,
+        onPullRefresh = onPullRefresh
+    )
+
+    StudioHomeOverlays(homeContext, homeBottomInset)
+}
+
+@Composable
+private fun rememberStudioHomeVideo(
+    state: LevyraUiState,
+    rawOtherSections: List<com.luc4n3x.levyra.domain.HomeSection>,
+    strings: LevyraStrings
+): Pair<List<Track>, List<IndexedValue<com.luc4n3x.levyra.domain.HomeSection>>> {
+    val freshHomeVideoTracks = remember(state.exploreVideos, rawOtherSections, state.charts, strings.exploreNewVideos) {
+        buildStudioHomeVideoTracks(state, rawOtherSections, strings)
+    }
+    val lastHomeVideoTracks = remember { mutableStateOf<List<Track>>(emptyList()) }
+    val homeVideoTracks = if (freshHomeVideoTracks.isEmpty() && state.isLoadingCharts) {
+        lastHomeVideoTracks.value
+    } else {
+        freshHomeVideoTracks
+    }
+    SideEffect {
+        if (freshHomeVideoTracks.isNotEmpty()) lastHomeVideoTracks.value = freshHomeVideoTracks
+    }
+    val otherSections = remember(rawOtherSections, homeVideoTracks, strings.exploreNewVideos) {
+        rawOtherSections.withIndex().filterNot { (_, section) ->
+            homeVideoTracks.isNotEmpty() && isMusicVideoSectionTitle(section.title, strings)
+        }
+    }
+    return homeVideoTracks to otherSections
+}
+
+private class StudioSpotlightState(
+    val candidate: HomeSpotlightCandidate?,
+    val tracks: List<Track>,
+    val heroData: HomeSpotlightHero?,
+    val visibleEditorialCollections: List<HomeEditorialCollection>,
+    val homeCollectionAccents: Map<String, Pair<Color, Color>>
+)
+
+@Composable
+private fun rememberStudioSpotlight(
+    state: LevyraUiState,
+    homeDerivedState: com.luc4n3x.levyra.viewmodel.HomeDerivedState,
+    spotlightDayKey: Int,
+    stableSpotlightIdState: MutableState<String?>
+): StudioSpotlightState {
+    val spotlightCandidates = homeDerivedState.spotlightCandidates
+    val editorialCollections = homeDerivedState.editorialCollections
+    var stableSpotlightId by stableSpotlightIdState
+    val soundtrackArtistPool = remember(
+        state.followedArtists,
+        state.homeArtists,
+        state.similarArtists
+    ) {
+        buildStudioSoundtrackArtistPool(state)
+    }
+    val spotlightCandidate = remember(
+        spotlightCandidates,
+        stableSpotlightId,
+        soundtrackArtistPool,
+        state.currentTrack?.id
+    ) {
+        selectStudioSpotlightCandidate(spotlightCandidates, stableSpotlightId, soundtrackArtistPool, state.currentTrack?.id)
+    }
+    LaunchedEffect(spotlightDayKey, spotlightCandidate?.track?.id, spotlightCandidates) {
+        if (spotlightCandidate != null && stableSpotlightId != spotlightCandidate.track.id) {
+            stableSpotlightId = spotlightCandidate.track.id
+        }
+    }
+    val spotlightTracks = remember(spotlightCandidates) { spotlightCandidates.map { it.track } }
+    val visibleEditorialCollections = remember(editorialCollections, spotlightCandidate?.track?.id) {
+        editorialCollections
+            .map { collection ->
+                val filteredTracks = collection.tracks.filterNot { it.id == spotlightCandidate?.track?.id }
+                collection.copy(tracks = filteredTracks)
+            }
+            .filter { it.tracks.isNotEmpty() }
+    }
+    val homeCollectionAccents = remember(visibleEditorialCollections) {
+        buildHomeCollectionAccents(visibleEditorialCollections)
+    }
+    val spotlightHeroData = remember(
+        spotlightCandidate?.track?.id,
+        spotlightTracks,
+        soundtrackArtistPool,
+        spotlightDayKey,
+        state.languageCode
+    ) {
+        buildStudioSpotlightHero(spotlightCandidate, spotlightTracks, soundtrackArtistPool, spotlightDayKey, state.languageCode)
+    }
+    return StudioSpotlightState(spotlightCandidate, spotlightTracks, spotlightHeroData, visibleEditorialCollections, homeCollectionAccents)
+}
+
+private class StudioHomeLook(
+    val homeStyle: HomeStyle,
+    val studioLayout: com.luc4n3x.levyra.domain.HomeStyleLayout,
+    val homeRenderOrder: List<HomeSectionId>,
+    val styleSpec: HomeStyleSpec,
+    val homeAnimationsEnabled: Boolean,
+    val studioPlacementSpec: FiniteAnimationSpec<IntOffset>,
+    val homeAccent: Color,
+    val flowShortcutTracks: List<Track>,
+    val compactHome: Boolean,
+    val homeSectionGap: Dp
+)
+
+@Composable
+private fun rememberStudioHomeLook(homeStudio: LevyraHomeStudioSettings, state: LevyraUiState): StudioHomeLook {
+    val homeStyle = homeStudio.style
+    val studioLayout = remember(homeStudio) { homeStudio.activeLayout() }
+    val homeRenderOrder = remember(studioLayout) { studioLayout.renderOrder() }
+    val styleSpec = remember(homeStyle, studioLayout.density) { homeStyleSpec(homeStyle, studioLayout.density) }
+    val homeAnimationsEnabled = state.animationsEnabled && studioLayout.motion != HomeMotion.Reduced
+    val studioPlacementSpec = remember(studioLayout.motion) {
+        if (studioLayout.motion == HomeMotion.Expressive) {
+            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow, visibilityThreshold = IntOffset.VisibilityThreshold)
+        } else {
+            spring(stiffness = Spring.StiffnessMediumLow, visibilityThreshold = IntOffset.VisibilityThreshold)
+        }
+    }
+    val nowPlayingAccent = rememberNowPlayingAccent(state.currentTrack, LevyraCyan)
+    val homeAccent = if (studioLayout.dynamicPalette) nowPlayingAccent else LevyraCyan
+    val flowShortcutTracks = remember(homeStyle, state.recentListens) {
+        if (homeStyle == HomeStyle.Flow) {
+            LevyraPersonalOrbit.distinctRecordings(state.recentListens).take(HOME_FLOW_SHORTCUT_LIMIT)
+        } else {
+            emptyList()
+        }
+    }
+    val compactHome = when (studioLayout.density) {
+        HomeDensity.Compact -> true
+        HomeDensity.Balanced -> state.interfaceSettings.compactHome
+        HomeDensity.Spacious -> false
+    }
+    val homeSectionGap = if (homeStyle == HomeStyle.Original) {
+        LevyraHomeDesign.sectionGap(compactHome) + if (studioLayout.density == HomeDensity.Spacious) 8.dp else 0.dp
+    } else {
+        styleSpec.sectionGap
+    }
+    return StudioHomeLook(
+        homeStyle = homeStyle,
+        studioLayout = studioLayout,
+        homeRenderOrder = homeRenderOrder,
+        styleSpec = styleSpec,
+        homeAnimationsEnabled = homeAnimationsEnabled,
+        studioPlacementSpec = studioPlacementSpec,
+        homeAccent = homeAccent,
+        flowShortcutTracks = flowShortcutTracks,
+        compactHome = compactHome,
+        homeSectionGap = homeSectionGap
+    )
+}
+
+@Composable
+private fun StudioHomeEffects(
+    viewModel: HomeViewModel,
+    homeListState: LazyListState,
+    homeFingerprint: String,
+    homeContent: com.luc4n3x.levyra.data.HomeContentAvailability,
+    showHomeAlbumShimmer: Boolean,
+    showChartShimmer: Boolean
+) {
+    val context = LocalContext.current
+    LaunchedEffect(homeFingerprint) {
+        LevyraArtworkStartupMetrics.recordHomeEmission(homeFingerprint, homeContent.hasUsableContent)
+    }
+    LaunchedEffect(showHomeAlbumShimmer, showChartShimmer) {
+        if (showHomeAlbumShimmer) LevyraArtworkStartupMetrics.recordShimmer(homeContent.hasUsableContent)
+        if (showChartShimmer) LevyraArtworkStartupMetrics.recordShimmer(homeContent.hasUsableContent)
+    }
+    LaunchedEffect(homeListState) {
+        snapshotFlow {
+            val atTop = homeListState.firstVisibleItemIndex == 0 && homeListState.firstVisibleItemScrollOffset == 0
+            homeListState.isScrollInProgress to atTop
+        }
+            .distinctUntilChanged()
+            .collect { (scrollInProgress, atTop) ->
+                viewModel.setHomeViewport(scrollInProgress, atTop)
+            }
+    }
+    DisposableEffect(viewModel, homeListState) {
+        val atTop = homeListState.firstVisibleItemIndex == 0 && homeListState.firstVisibleItemScrollOffset == 0
+        viewModel.onHomeEntered(atTop)
+        onDispose { viewModel.onHomeLeft() }
+    }
+    if (BuildConfig.DEBUG) {
+        LaunchedEffect(Unit) {
+            delay(5_000L)
+            withContext(Dispatchers.IO) {
+                LevyraArtworkStartupMetrics.persistSnapshot(context)
+            }
+        }
+    }
+}
+
+private class StudioHomeContext(
+    val viewModel: HomeViewModel,
+    val renderSnapshot: HomeRenderSnapshot,
+    val strings: LevyraStrings,
+    val accountAvatarUrl: String,
+    val onTrackActions: (Track) -> Unit,
+    val homeStyle: HomeStyle,
+    val studioLayout: com.luc4n3x.levyra.domain.HomeStyleLayout,
+    val styleSpec: HomeStyleSpec,
+    private val studioPlacementSpec: FiniteAnimationSpec<IntOffset>,
+    val homeAnimationsEnabled: Boolean,
+    val compactHome: Boolean,
+    val showDeferredHomeSections: Boolean,
+    val speedDialPins: List<com.luc4n3x.levyra.domain.SpeedDialPin>,
+    val quickPicks: com.luc4n3x.levyra.domain.HomeSection?,
+    val newReleases: com.luc4n3x.levyra.domain.HomeSection?,
+    val forgottenFavorites: List<Track>,
+    val homeAlbums: List<AlbumHit>,
+    val showHomeAlbumShimmer: Boolean,
+    val homeVideoTracks: List<Track>,
+    val otherSections: List<IndexedValue<com.luc4n3x.levyra.domain.HomeSection>>,
+    val visiblePersonalTracks: List<Track>,
+    val visibleEditorialCollections: List<HomeEditorialCollection>,
+    val homeCollectionAccents: Map<String, Pair<Color, Color>>,
+    val spotlightHeroData: HomeSpotlightHero?,
+    private val homeRenderOrder: List<HomeSectionId>,
+    val spotlightTracks: List<Track>,
+    val resonanceTracks: List<Track>,
+    val offlineContent: com.luc4n3x.levyra.data.HomeOfflineContent,
+    val offlineHomeVisible: Boolean,
+    private val selectedHomeCollectionIdState: MutableState<String?>,
+    private val chartMarketSheetOpenState: MutableState<Boolean>,
+    private val stableSpotlightIdState: MutableState<String?>,
+    private val addTargetState: MutableState<Track?>
+) {
+    val state: LevyraUiState get() = renderSnapshot.state
+    val stagedSpotlight: HomeSpotlightHero? = run {
+        val spotlightLeadsHome = homeRenderOrder.firstOrNull { it !in HomeSectionId.QuickAccess } == HomeSectionId.Spotlight &&
+            !studioLayout.isHidden(HomeSectionId.Spotlight)
+        spotlightHeroData?.takeIf {
+            homeStyle == HomeStyle.Original && spotlightLeadsHome && speedDialPins.isEmpty() && !offlineHomeVisible
+        }
+    }
+    var selectedHomeCollectionId by selectedHomeCollectionIdState
+    var chartMarketSheetOpen by chartMarketSheetOpenState
+    var stableSpotlightId by stableSpotlightIdState
+    var addTarget by addTargetState
+
+    fun LazyItemScope.studioItemModifier(): Modifier =
+        if (homeAnimationsEnabled) Modifier.animateItem(placementSpec = studioPlacementSpec) else Modifier
+
+    fun studioLayoutOf(id: HomeSectionId): HomeSectionLayout =
+        resolveHomeSectionLayout(homeStyle, id, studioLayout.layoutFor(id))
+
+    fun usesStudioLayout(id: HomeSectionId): Boolean = studioLayoutOf(id) != HomeSectionLayout.Auto
+
+    fun mergedStudioHero(): StudioHero? = spotlightHeroData
+        ?.takeIf { homeStyle == HomeStyle.MaterialExpressive && !studioLayout.isHidden(HomeSectionId.Spotlight) }
+        ?.let { hero ->
+            val heroTrack = hero.candidate.track
+            StudioHero(
+                track = heroTrack,
+                artistArtworkUrl = hero.artistArtworkUrl,
+                companionArtworkUrls = hero.companionArtworkUrls,
+                label = strings.homeSoundtrackTitle,
+                lead = strings.homeSoundtrackLead(hero.artists),
+                isCurrent = heroTrack.id == state.currentTrack?.id,
+                isPlaying = state.isPlaying,
+                isResolving = state.isResolving,
+                animationsEnabled = homeAnimationsEnabled,
+                onOpen = {
+                    stableSpotlightId = heroTrack.id
+                    when {
+                        heroTrack.id != state.currentTrack?.id -> viewModel.playFrom(spotlightTracks, heroTrack)
+                        state.isResolving -> Unit
+                        else -> viewModel.togglePlay()
+                    }
+                }
+            )
+        }
+
+    @Composable
+    fun SpotlightHeroSlot(header: (@Composable () -> Unit)?, bleed: Dp) {
+        spotlightHeroData?.let { (candidate, heroArtistArtworkUrl, soundtrackArtists, companions) ->
+            val heroTrack = candidate.track
+            HomeEditorialSpotlight(
+                candidate = candidate,
+                artistArtworkUrl = heroArtistArtworkUrl,
+                soundtrackArtists = soundtrackArtists,
+                companionArtworkUrls = companions,
+                isCurrent = heroTrack.id == state.currentTrack?.id,
+                isPlaying = state.isPlaying && heroTrack.id == state.currentTrack?.id,
+                isResolving = state.isResolving && heroTrack.id == state.currentTrack?.id,
+                onPaletteChanged = { _, _ -> },
+                onOpen = {
+                    stableSpotlightId = heroTrack.id
+                    when {
+                        heroTrack.id != state.currentTrack?.id ->
+                            viewModel.playFrom(spotlightTracks, heroTrack)
+                        state.isResolving -> Unit
+                        else -> viewModel.togglePlay()
+                    }
+                },
+                header = header,
+                backdropBleed = bleed
+            )
+        }
+    }
+}
+
+private fun buildStudioSoundtrackArtistPool(state: LevyraUiState): List<Triple<String, String, String>> {
+    return buildList<Triple<String, String, String>> {
+        state.followedArtists.forEach { artist ->
+            if (artist.thumbnailUrl.isNotBlank()) {
+                add(Triple(artist.name, artist.browseId, artist.thumbnailUrl))
+            }
+        }
+        (state.homeArtists + state.similarArtists).forEach { artist ->
+            if (artist.thumbnailUrl.isNotBlank()) {
+                add(Triple(artist.name, artist.browseId, artist.thumbnailUrl))
+            }
+        }
+    }.distinctBy { artist ->
+        val identity = artist.second.ifBlank { artist.first.trim().lowercase(Locale.ROOT) }
+        "$identity:${artist.third.trim()}"
+    }
+}
+
+private fun selectStudioSpotlightCandidate(
+    spotlightCandidates: List<HomeSpotlightCandidate>,
+    stableSpotlightId: String?,
+    soundtrackArtistPool: List<Triple<String, String, String>>,
+    currentTrackId: String?
+): HomeSpotlightCandidate? {
+    fun hasArtistPortrait(candidate: HomeSpotlightCandidate): Boolean {
+        return soundtrackArtistPool.any { artist ->
+            homeSoundtrackMatchesArtist(candidate.track, artist.first, artist.second) &&
+                homeArtistPortraitUrlEligible(artist.third)
+        }
+    }
+    return spotlightCandidates.firstOrNull {
+        it.track.id == stableSpotlightId && hasArtistPortrait(it)
+    }
+        ?: spotlightCandidates.firstOrNull {
+            it.track.id != currentTrackId && hasArtistPortrait(it)
+        }
+        ?: spotlightCandidates.firstOrNull(::hasArtistPortrait)
+        ?: spotlightCandidates.firstOrNull { it.track.id == stableSpotlightId }
+        ?: spotlightCandidates.firstOrNull { it.track.id != currentTrackId }
+        ?: spotlightCandidates.firstOrNull()
+}
+
+private fun buildStudioSpotlightHero(
+    spotlightCandidate: HomeSpotlightCandidate?,
+    spotlightTracks: List<Track>,
+    soundtrackArtistPool: List<Triple<String, String, String>>,
+    spotlightDayKey: Int,
+    languageCode: String
+): HomeSpotlightHero? {
+    val candidate = spotlightCandidate ?: return null
+    val heroTrack = candidate.track
+    val matchingPortraits = soundtrackArtistPool.filter { artist ->
+        homeSoundtrackMatchesArtist(heroTrack, artist.first, artist.second) &&
+            homeArtistPortraitUrlEligible(artist.third)
+    }
+    val preferredSourceRank = matchingPortraits.minOfOrNull { artist ->
+        homeArtistPortraitSourceRank(artist.third)
+    }
+    val preferredPortraits = preferredSourceRank
+        ?.let { rank ->
+            matchingPortraits.filter { artist ->
+                homeArtistPortraitSourceRank(artist.third) == rank
+            }
+        }
+        .orEmpty()
+    val portraitRotationSeed = "$spotlightDayKey:${languageCode}:${heroTrack.id}"
+        .hashCode()
+        .let { hash -> if (hash == Int.MIN_VALUE) 0 else kotlin.math.abs(hash) }
+    val heroPortraitArtist = preferredPortraits
+        .takeIf { it.isNotEmpty() }
+        ?.let { portraits -> portraits[portraitRotationSeed % portraits.size] }
+    val heroArtistName = heroPortraitArtist?.first
+        ?.let(::homeSoundtrackPrimaryArtist)
+        ?.takeIf { it.isNotBlank() }
+        ?: homeSoundtrackPrimaryArtist(heroTrack.artist).takeIf { it.isNotBlank() }
+    val soundtrackArtists = listOfNotNull(heroArtistName)
+    val heroArtistArtworkUrl = heroPortraitArtist?.third
+        .orEmpty()
+        .trim()
+        .let(::highResolutionHomeArtistArtworkUrl)
+    val companions = homeSoundtrackCompanions(
+        tracks = spotlightTracks,
+        artistPool = soundtrackArtistPool,
+        heroArtistName = heroArtistName.orEmpty()
+    )
+    return HomeSpotlightHero(candidate, heroArtistArtworkUrl, soundtrackArtists, companions)
+}
+
+private fun buildStudioHomeVideoTracks(
+    state: LevyraUiState,
+    rawOtherSections: List<com.luc4n3x.levyra.domain.HomeSection>,
+    strings: LevyraStrings
+): List<Track> {
+    val sectionVideos = rawOtherSections
+        .filter { section -> isMusicVideoSectionTitle(section.title, strings) }
+        .flatMap { section -> section.tracks }
+    val chartVideos = state.charts.filter { track ->
+        track.counterpartVideoId.isNotBlank() || track.videoUrl.isNotBlank()
+    }
+    return LevyraPersonalOrbit.distinctRecordings(state.exploreVideos + sectionVideos + chartVideos)
+        .filter { track ->
+            track.counterpartVideoId.isNotBlank() ||
+                track.videoType.contains("video", ignoreCase = true) ||
+                track.videoUrl.isNotBlank()
+        }
+        .take(12)
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun StudioHomeContent(
+    c: StudioHomeContext,
+    homeListState: LazyListState,
+    homeRenderOrder: List<HomeSectionId>,
+    homeAccent: Color,
+    spotlightCandidate: HomeSpotlightCandidate?,
+    flowShortcutTracks: List<Track>,
+    homeSectionGap: Dp,
+    homeBottomInset: Dp,
+    homeRefreshing: Boolean,
+    homePullState: androidx.compose.material3.pulltorefresh.PullToRefreshState,
+    onPullRefresh: () -> Unit
+) {
+    with(c) {
+        val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        val homeTopPadding = 8.dp
+        val homeLocalAnimations = LocalAnimationsEnabled.current && studioLayout.motion != HomeMotion.Reduced
+        CompositionLocalProvider(
+            LocalHomeCompactDensity provides compactHome,
+            LocalAnimationsEnabled provides homeLocalAnimations
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                StudioHomeBackdrop(
+                    style = homeStyle,
+                    accent = homeAccent,
+                    heroTrack = spotlightCandidate?.track ?: state.currentTrack,
+                    listState = homeListState,
+                    modifier = Modifier.fillMaxSize()
+                )
+                LazyColumn(
+                    state = homeListState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pullToRefresh(isRefreshing = homeRefreshing, state = homePullState, onRefresh = onPullRefresh),
+                    contentPadding = PaddingValues(
+                        top = statusBarTop + homeTopPadding,
+                        bottom = homeBottomInset
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(homeSectionGap)
+                ) {
+                    if (homeStyle == HomeStyle.Original) {
+                        item(key = "home-top", contentType = "home-header") {
+                            val homeHeader: @Composable () -> Unit = {
+                                HomeSectionInset {
+                                    GreetingBar(
+                                        userName = state.userName,
+                                        isResolving = state.isResolving,
+                                        animationsEnabled = homeAnimationsEnabled,
+                                        onSearch = viewModel::openSearch,
+                                        onSettings = viewModel::openSettings
+                                    )
+                                }
+                            }
+                            if (stagedSpotlight != null) {
+                                SpotlightHeroSlot(homeHeader, statusBarTop + homeTopPadding)
+                            } else {
+                                homeHeader()
+                            }
+                        }
+                    } else {
+                        item(key = "home-top", contentType = "home-studio-header") {
+                            Column(verticalArrangement = Arrangement.spacedBy(styleSpec.sectionGap)) {
+                                StudioHomeHeader(
+                                    style = homeStyle,
+                                    spec = styleSpec,
+                                    userName = state.userName,
+                                    isResolving = state.isResolving,
+                                    onSearch = viewModel::openSearch,
+                                    onSettings = viewModel::openSettings,
+                                    hero = mergedStudioHero(),
+                                    topBleed = statusBarTop + homeTopPadding
+                                )
+                                if (homeStyle == HomeStyle.Flow && flowShortcutTracks.isNotEmpty()) {
+                                    StudioFlowShortcuts(
+                                        spec = styleSpec,
+                                        title = strings.offlineHomeRecent,
+                                        tracks = flowShortcutTracks,
+                                        currentId = state.currentTrack?.id,
+                                        isPlaying = state.isPlaying,
+                                        onPlay = { track -> viewModel.playFrom(flowShortcutTracks, track) },
+                                        onActions = onTrackActions
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    var offlineEmitted = false
+                    homeRenderOrder.forEach { sectionId ->
+                        if (!offlineEmitted && sectionId !in HomeSectionId.QuickAccess) {
+                            homeStudioOfflineSection(c)
+                            offlineEmitted = true
+                        }
+                        if (studioLayout.isHidden(sectionId)) return@forEach
+                        when (sectionId) {
+                            HomeSectionId.GenreChips -> homeStudioSectionGenreChips(c)
+                            HomeSectionId.SpeedDial -> homeStudioSectionSpeedDial(c)
+                            HomeSectionId.Spotlight -> homeStudioSectionSpotlight(c)
+                            HomeSectionId.PersonalOrbit -> homeStudioSectionPersonalOrbit(c)
+                            HomeSectionId.EditorialCollections -> homeStudioSectionEditorialCollections(c)
+                            HomeSectionId.QuickPicks -> homeStudioSectionQuickPicks(c)
+                            HomeSectionId.ForgottenFavorites -> homeStudioSectionForgottenFavorites(c)
+                            HomeSectionId.AlbumsForYou -> homeStudioSectionAlbumsForYou(c)
+                            HomeSectionId.TrendingArtists -> homeStudioSectionTrendingArtists(c)
+                            HomeSectionId.NewReleases -> homeStudioSectionNewReleases(c)
+                            HomeSectionId.MusicVideos -> homeStudioSectionMusicVideos(c)
+                            HomeSectionId.ReleaseRadar -> homeStudioSectionReleaseRadar(c)
+                            HomeSectionId.SimilarArtists -> homeStudioSectionSimilarArtists(c)
+                            HomeSectionId.MoreSections -> homeStudioSectionMoreSections(c)
+                            HomeSectionId.Resonance -> homeStudioSectionResonance(c)
+                            HomeSectionId.Charts -> homeStudioSectionCharts(c)
+                        }
+                    }
+                    if (!offlineEmitted) homeStudioOfflineSection(c)
+
+                    if (state.homeError != null || state.playerError != null) {
+                        item(key = "home-status", contentType = "home-card") {
+                            HomeSectionLead(compactHome) {
+                                HomeSectionInset { StatusBlock(state) }
+                            }
+                        }
+                    }
+                }
+                PullToRefreshDefaults.LoadingIndicator(
+                    state = homePullState,
+                    isRefreshing = homeRefreshing,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = statusBarTop + LevyraHomeDesign.HorizontalInset),
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                HomeStatusBarScrim(
+                    listState = homeListState,
+                    height = statusBarTop,
+                    canvas = homeCanvasColor(LevyraIsLight)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StudioHomeOverlays(c: StudioHomeContext, homeBottomInset: Dp) {
+    with(c) {
+        if (chartMarketSheetOpen) {
+            ChartMarketSheet(
+                regions = state.chartRegions,
+                selectedId = state.selectedChartId,
+                languageCode = state.languageCode,
+                onSelect = viewModel::selectChart,
+                onDismiss = { chartMarketSheetOpen = false }
+            )
+        }
+
+        addTarget?.let { track ->
+            AddToPlaylistDialog(
+                track = track,
+                playlists = state.playlists,
+                onDismiss = { addTarget = null },
+                onAddTo = { playlistId ->
+                    viewModel.addToPlaylist(playlistId, track)
+                    addTarget = null
+                },
+                onCreateWith = { name ->
+                    viewModel.createPlaylist(name, track)
+                    addTarget = null
+                }
+            )
+        }
+
+        val selectedHomeCollection = remember(selectedHomeCollectionId, visibleEditorialCollections) {
+            selectedHomeCollectionId?.let { id ->
+                visibleEditorialCollections.firstOrNull { collection -> collection.id == id }
+            }
+        }
+        selectedHomeCollection?.let { collection ->
+            val (collectionAccentStart, collectionAccentEnd) = homeCollectionAccents[collection.id]
+                ?: exploreEditorialPalette(collection.id)
+            HomeCollectionScreen(
+                title = homeCollectionTitle(strings, collection),
+                tracks = collection.tracks,
+                accentStart = collectionAccentStart,
+                accentEnd = collectionAccentEnd,
+                currentId = state.currentTrack?.id,
+                isPlaying = state.isPlaying,
+                isResolving = state.isResolving,
+                onDismiss = { selectedHomeCollectionId = null },
+                onPlay = { track -> viewModel.playFrom(collection.tracks, track) },
+                onPlayAll = { viewModel.playAll(collection.tracks) },
+                onShuffle = {
+                    val shuffled = collection.tracks.shuffled()
+                    shuffled.firstOrNull()?.let { first -> viewModel.playFrom(shuffled, first) }
+                },
+                onTrackActions = onTrackActions,
+                bottomInset = homeBottomInset
+            )
+        }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionGenreChips(c: StudioHomeContext) {
+    with(c) {
+            item(key = "home-genre-chips", contentType = "home-genre-chips") {
+                val chipZones = remember(strings) { ExploreCatalog.getZones(strings) }
+                if (homeStyle == HomeStyle.MaterialExpressive) {
+                    MxGenreCloud(zones = chipZones, onSelect = viewModel::openExploreZone)
+                } else HomeGenreChips(
+                    zones = chipZones,
+                    contentPadding = PaddingValues(horizontal = HomeHorizontalInset),
+                    onSelect = { zone ->
+                        viewModel.openExploreZone(zone)
+                    }
+                )
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionSpeedDial(c: StudioHomeContext) {
+    with(c) {
+            if (speedDialPins.isNotEmpty()) {
+                item(key = "home-speed-dial", contentType = "home-speed-dial") {
+                    Box(
+                        modifier = Modifier
+                            .then(if (homeAnimationsEnabled) Modifier.animateItem() else Modifier)
+                            .padding(top = LevyraHomeDesign.sectionLead(compactHome))
+                    ) {
+                        HomeSpeedDialStrip(
+                            pins = speedDialPins,
+                            currentTrackId = state.currentTrack?.id,
+                            isPlaying = state.isPlaying,
+                            isResolving = state.isResolving,
+                            animationsEnabled = homeAnimationsEnabled,
+                            onOpen = viewModel::openSpeedDialPin,
+                            onRemove = viewModel::removeSpeedDialPin,
+                            onReorder = viewModel::reorderSpeedDial,
+                            onTrackActions = onTrackActions
+                        )
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionSpotlight(c: StudioHomeContext) {
+    with(c) {
+            if (homeStyle != HomeStyle.Original) {
+                val studioHero = spotlightHeroData
+                if (studioHero != null && homeStyle != HomeStyle.MaterialExpressive) {
+                    item(key = "home-editorial-spotlight-studio", contentType = "home-studio-spotlight") {
+                        val heroTrack = studioHero.candidate.track
+                        Box(modifier = studioItemModifier()) {
+                            StudioSpotlight(
+                                style = homeStyle,
+                                spec = styleSpec,
+                                track = heroTrack,
+                                artistArtworkUrl = studioHero.artistArtworkUrl,
+                                label = strings.homeSoundtrackTitle,
+                                lead = strings.homeSoundtrackLead(studioHero.artists),
+                                isCurrent = heroTrack.id == state.currentTrack?.id,
+                                isPlaying = state.isPlaying,
+                                isResolving = state.isResolving,
+                                animationsEnabled = homeAnimationsEnabled,
+                                onOpen = {
+                                    stableSpotlightId = heroTrack.id
+                                    when {
+                                        heroTrack.id != state.currentTrack?.id ->
+                                            viewModel.playFrom(spotlightTracks, heroTrack)
+                                        state.isResolving -> Unit
+                                        else -> viewModel.togglePlay()
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            } else {
+                if (spotlightHeroData != null && stagedSpotlight == null) {
+                    item(key = "home-editorial-spotlight", contentType = "home-spotlight") {
+                        SpotlightHeroSlot(null, 0.dp)
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionPersonalOrbit(c: StudioHomeContext) {
+    with(c) {
+            if (state.interfaceSettings.showPersonalOrbit && visiblePersonalTracks.isEmpty() && renderSnapshot.orbitPending) {
+                item(key = "home-personal", contentType = "home-personal-orbit") {
+                    HomeSectionLead(compactHome) {
+                        StudioPersonalListeningShelfPlaceholder(
+                            userName = state.userName,
+                            profilePhotoPath = state.profilePhotoPath,
+                            profilePhotoVersion = state.profilePhotoVersion,
+                            accountAvatarUrl = accountAvatarUrl
+                        )
+                    }
+                }
+            }
+
+            if (state.interfaceSettings.showPersonalOrbit && visiblePersonalTracks.isNotEmpty()) {
+                item(key = "home-personal", contentType = "home-personal-orbit") {
+                    HomeSectionLead(compactHome) {
+                        StudioPersonalListeningShelf(
+                            style = homeStyle,
+                            tracks = visiblePersonalTracks,
+                            userName = state.userName,
+                            profilePhotoPath = state.profilePhotoPath,
+                            profilePhotoVersion = state.profilePhotoVersion,
+                            accountAvatarUrl = accountAvatarUrl,
+                            currentId = state.currentTrack?.id,
+                            isPlaying = state.isPlaying,
+                            isResolving = state.isResolving,
+                            onPlay = { track -> viewModel.playFrom(visiblePersonalTracks, track) },
+                            onPlayAll = { viewModel.playAll(visiblePersonalTracks) },
+                            onTrackActions = onTrackActions
+                        )
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionEditorialCollections(c: StudioHomeContext) {
+    with(c) {
+            if (showDeferredHomeSections && visibleEditorialCollections.isNotEmpty()) {
+                item(key = "home-editorial-collections", contentType = "home-collections") {
+                    HomeSectionLead(compactHome) {
+                        if (homeStyle == HomeStyle.MaterialExpressive) {
+                            val fans = remember(visibleEditorialCollections, homeCollectionAccents, strings) {
+                                visibleEditorialCollections.map { collection ->
+                                    StudioCollection(
+                                        id = collection.id,
+                                        title = homeCollectionTitle(strings, collection),
+                                        subtitle = collection.tracks.map { it.artist }.distinct().take(2).joinToString(" · "),
+                                        tracks = collection.tracks.take(3),
+                                        accent = homeCollectionAccents[collection.id]?.first
+                                            ?: exploreEditorialPalette(collection.id).first
+                                    )
+                                }
+                            }
+                            MxCollectionFan(
+                                title = strings.collectionsTitle,
+                                collections = fans,
+                                onOpen = { id -> selectedHomeCollectionId = id }
+                            )
+                        } else HomeEditorialCollectionsShelf(
+                            collections = visibleEditorialCollections,
+                            accents = homeCollectionAccents,
+                            onOpen = { collection -> selectedHomeCollectionId = collection.id }
+                        )
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionQuickPicks(c: StudioHomeContext) {
+    with(c) {
+            if (usesStudioLayout(HomeSectionId.QuickPicks)) {
+                if (showDeferredHomeSections && quickPicks != null && quickPicks.tracks.isNotEmpty()) {
+                    item(key = "home-quick-picks-studio", contentType = "home-studio-tracks") {
+                        StudioTrackSection(
+                            style = homeStyle,
+                            spec = styleSpec,
+                            layout = studioLayoutOf(HomeSectionId.QuickPicks),
+                            title = quickPicks.title.ifBlank { strings.quickPicks },
+                            featured = HomeSectionId.QuickPicks in studioLayout.featured,
+                            tracks = quickPicks.tracks,
+                            currentId = state.currentTrack?.id,
+                            isPlaying = state.isPlaying,
+                            actionsLabel = strings.songOptions,
+                            onPlay = { track -> viewModel.playFrom(quickPicks.tracks, track) },
+                            onPlayAll = { viewModel.playAll(quickPicks.tracks) },
+                            onActions = onTrackActions,
+                            modifier = studioItemModifier()
+                        )
+                    }
+                }
+            } else {
+                if (showDeferredHomeSections && quickPicks != null && quickPicks.tracks.isNotEmpty()) {
+                    item(key = "home-quick-picks", contentType = HOME_DENSE_SHELF_CONTENT_TYPE) {
+                        HomeSectionLead(compactHome) {
+                            HomeQuickPicksShelf(
+                                title = quickPicks.title.ifBlank { strings.quickPicks },
+                                tracks = quickPicks.tracks,
+                                currentId = state.currentTrack?.id,
+                                isPlaying = state.isPlaying,
+                                isResolving = state.isResolving,
+                                onPlay = { track -> viewModel.playFrom(quickPicks.tracks, track) },
+                                onPlayAll = { viewModel.playAll(quickPicks.tracks) },
+                                onTrackActions = onTrackActions
+                            )
+                        }
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionForgottenFavorites(c: StudioHomeContext) {
+    with(c) {
+            if (usesStudioLayout(HomeSectionId.ForgottenFavorites)) {
+                if (showDeferredHomeSections && forgottenFavorites.isNotEmpty()) {
+                    item(key = "home-forgotten-favorites-studio", contentType = "home-studio-tracks") {
+                        StudioTrackSection(
+                            style = homeStyle,
+                            spec = styleSpec,
+                            layout = studioLayoutOf(HomeSectionId.ForgottenFavorites),
+                            title = strings.forgottenFavorites,
+                            featured = HomeSectionId.ForgottenFavorites in studioLayout.featured,
+                            tracks = forgottenFavorites,
+                            currentId = state.currentTrack?.id,
+                            isPlaying = state.isPlaying,
+                            actionsLabel = strings.songOptions,
+                            onPlay = { track -> viewModel.playFrom(forgottenFavorites, track) },
+                            onPlayAll = { viewModel.playAll(forgottenFavorites) },
+                            onActions = onTrackActions,
+                            modifier = studioItemModifier()
+                        )
+                    }
+                }
+            } else {
+                if (showDeferredHomeSections && forgottenFavorites.isNotEmpty()) {
+                    item(key = "home-forgotten-favorites", contentType = HOME_DENSE_SHELF_CONTENT_TYPE) {
+                        HomeSectionLead(compactHome) {
+                            HomeQuickPicksShelf(
+                                title = strings.forgottenFavorites,
+                                tracks = forgottenFavorites,
+                                currentId = state.currentTrack?.id,
+                                isPlaying = state.isPlaying,
+                                isResolving = state.isResolving,
+                                onPlay = { track -> viewModel.playFrom(forgottenFavorites, track) },
+                                onPlayAll = { viewModel.playAll(forgottenFavorites) },
+                                onTrackActions = onTrackActions
+                            )
+                        }
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionAlbumsForYou(c: StudioHomeContext) {
+    with(c) {
+            if (usesStudioLayout(HomeSectionId.AlbumsForYou)) {
+                if (showDeferredHomeSections && state.interfaceSettings.showAlbumsForYou && homeAlbums.isNotEmpty()) {
+                    item(key = "sec-home-albums-studio", contentType = "home-studio-albums") {
+                        StudioAlbumSection(
+                            style = homeStyle,
+                            spec = styleSpec,
+                            layout = studioLayoutOf(HomeSectionId.AlbumsForYou),
+                            title = strings.albumsForYou,
+                            featured = HomeSectionId.AlbumsForYou in studioLayout.featured,
+                            albums = homeAlbums,
+                            onOpen = viewModel::openAlbum,
+                            modifier = studioItemModifier()
+                        )
+                    }
+                } else if (showDeferredHomeSections && state.interfaceSettings.showAlbumsForYou && showHomeAlbumShimmer) {
+                    item(key = "sec-home-albums-studio-loading", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
+                        HomeAlbumLoadingRow()
+                    }
+                }
+            } else {
+                if (
+                    showDeferredHomeSections && state.interfaceSettings.showAlbumsForYou &&
+                    (homeAlbums.isNotEmpty() || showHomeAlbumShimmer)
+                ) {
+                    item(key = "sec-home-albums-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
+                        HomeSectionLead(compactHome) {
+                            HomeSectionInset {
+                                HomeSectionHeader(strings.albumsForYou)
+                            }
+                        }
+                    }
+                    item(key = "sec-home-albums-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
+                        if (homeAlbums.isNotEmpty()) {
+                            HomeAlbumHitRow(
+                                albums = homeAlbums,
+                                animationsEnabled = homeAnimationsEnabled,
+                                onOpen = viewModel::openAlbum
+                            )
+                        } else if (showHomeAlbumShimmer) {
+                            HomeAlbumLoadingRow()
+                        }
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionTrendingArtists(c: StudioHomeContext) {
+    with(c) {
+            if (usesStudioLayout(HomeSectionId.TrendingArtists) && state.homeArtists.isNotEmpty()) {
+                if (showDeferredHomeSections && state.interfaceSettings.showTrendingArtists) {
+                    item(key = "home-trending-artists-studio", contentType = "home-studio-artists") {
+                        StudioArtistSection(
+                            style = homeStyle,
+                            spec = styleSpec,
+                            layout = studioLayoutOf(HomeSectionId.TrendingArtists),
+                            title = strings.trendingArtists,
+                            featured = HomeSectionId.TrendingArtists in studioLayout.featured,
+                            artists = state.homeArtists.take(HOME_ARTIST_SHELF_SIZE),
+                            onOpen = viewModel::openArtistFromHit,
+                            modifier = studioItemModifier()
+                        )
+                    }
+                }
+            } else {
+                if (
+                    showDeferredHomeSections && state.interfaceSettings.showTrendingArtists &&
+                    (state.homeArtists.isNotEmpty() || state.homeArtistsLoading)
+                ) {
+                    item(key = "home-trending-artists", contentType = "home-trending-artists") {
+                        HomeSectionLead(compactHome) {
+                            TrendingArtistsShelf(
+                                artists = state.homeArtists.take(HOME_ARTIST_SHELF_SIZE),
+                                loadingSlots = if (state.homeArtists.isEmpty() && state.homeArtistsLoading) {
+                                    HOME_ARTIST_SHELF_SIZE
+                                } else {
+                                    0
+                                },
+                                onArtistClick = viewModel::openArtistFromHit
+                            )
+                        }
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionNewReleases(c: StudioHomeContext) {
+    with(c) {
+            if (usesStudioLayout(HomeSectionId.NewReleases)) {
+                if (showDeferredHomeSections && state.interfaceSettings.showNewReleases && newReleases != null && newReleases.tracks.isNotEmpty()) {
+                    item(key = "sec-new-releases-studio", contentType = "home-studio-tracks") {
+                        StudioTrackSection(
+                            style = homeStyle,
+                            spec = styleSpec,
+                            layout = studioLayoutOf(HomeSectionId.NewReleases),
+                            title = strings.newReleases,
+                            featured = HomeSectionId.NewReleases in studioLayout.featured,
+                            tracks = newReleases.tracks,
+                            currentId = state.currentTrack?.id,
+                            isPlaying = state.isPlaying,
+                            actionsLabel = strings.songOptions,
+                            onPlay = { track -> viewModel.playFrom(newReleases.tracks, track) },
+                            onPlayAll = { viewModel.playAll(newReleases.tracks) },
+                            onActions = onTrackActions,
+                            modifier = studioItemModifier()
+                        )
+                    }
+                }
+            } else {
+                if (
+                    showDeferredHomeSections && state.interfaceSettings.showNewReleases &&
+                    newReleases != null && newReleases.tracks.isNotEmpty()
+                ) {
+                    item(key = "sec-new-releases-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
+                        HomeSectionLead(compactHome) {
+                            HomeSectionInset {
+                                HomeSectionHeader(strings.newReleases)
+                            }
+                        }
+                    }
+                    item(key = "sec-new-releases-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
+                        AlbumCardRow(
+                            tracks = newReleases.tracks,
+                            currentId = state.currentTrack?.id,
+                            animationsEnabled = homeAnimationsEnabled,
+                            onPlay = { viewModel.playFrom(newReleases.tracks, it) }
+                        )
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionMusicVideos(c: StudioHomeContext) {
+    with(c) {
+            if (showDeferredHomeSections && homeVideoTracks.isNotEmpty()) {
+                item(key = "home-music-videos", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
+                    HomeSectionLead(compactHome) {
+                        HomeMusicVideoShelf(
+                            title = strings.homeVideoShelfTitle,
+                            tracks = homeVideoTracks,
+                            playback = HomeVideoShelfPlayback(
+                                currentId = state.currentTrack?.id?.takeIf { state.isVideoMode },
+                                isPlaying = state.isPlaying,
+                                isResolving = state.isResolving
+                            ),
+                            actions = HomeVideoShelfActions(
+                                onPlay = { track -> viewModel.playVideoFrom(homeVideoTracks, track) },
+                                onToggleCurrent = viewModel::togglePlay
+                            )
+                        )
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionReleaseRadar(c: StudioHomeContext) {
+    with(c) {
+            if (
+                showDeferredHomeSections && state.interfaceSettings.showNewReleases &&
+                state.releaseRadar.isNotEmpty()
+            ) {
+                item(key = "sec-release-radar-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
+                    HomeSectionLead(compactHome) {
+                        HomeSectionInset { HomeSectionHeader(strings.releaseRadar) }
+                    }
+                }
+                item(key = "sec-release-radar-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
+                    ReleaseRadarRow(
+                        entries = state.releaseRadar,
+                        onOpen = { entry -> viewModel.searchNow("${entry.release.title} ${entry.artistName}") },
+                        onArtist = viewModel::openArtistByName
+                    )
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionSimilarArtists(c: StudioHomeContext) {
+    with(c) {
+            if (usesStudioLayout(HomeSectionId.SimilarArtists)) {
+                if (showDeferredHomeSections && state.interfaceSettings.showTrendingArtists && state.similarArtists.isNotEmpty()) {
+                    item(key = "sec-similar-artists-studio", contentType = "home-studio-artists") {
+                        StudioArtistSection(
+                            style = homeStyle,
+                            spec = styleSpec,
+                            layout = studioLayoutOf(HomeSectionId.SimilarArtists),
+                            title = strings.similarToFollowed,
+                            featured = HomeSectionId.SimilarArtists in studioLayout.featured,
+                            artists = state.similarArtists,
+                            onOpen = viewModel::openArtistFromHit,
+                            modifier = studioItemModifier()
+                        )
+                    }
+                }
+            } else {
+                if (
+                    showDeferredHomeSections && state.interfaceSettings.showTrendingArtists &&
+                    state.similarArtists.isNotEmpty()
+                ) {
+                    item(key = "sec-similar-artists-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
+                        HomeSectionLead(compactHome) {
+                            HomeSectionInset { HomeSectionHeader(strings.similarToFollowed) }
+                        }
+                    }
+                    item(key = "sec-similar-artists-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
+                        ArtistHitRow(
+                            artists = state.similarArtists,
+                            contentPadding = PaddingValues(
+                                start = HomeHorizontalInset,
+                                end = HomeHorizontalShelfEndPadding
+                            ),
+                            onClick = viewModel::openArtistFromHit
+                        )
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionMoreSections(c: StudioHomeContext) {
+    with(c) {
+            if (usesStudioLayout(HomeSectionId.MoreSections)) {
+                if (showDeferredHomeSections) {
+                    otherSections.forEach { (sectionPosition, section) ->
+                        if (section.tracks.isNotEmpty()) {
+                            val sectionKey = homeSectionLazyKey(
+                                position = sectionPosition,
+                                title = section.title,
+                                trackIds = section.tracks.take(3).map { it.id }
+                            )
+                            item(key = "sec-other-$sectionKey-studio", contentType = "home-studio-tracks") {
+                                StudioTrackSection(
+                                    style = homeStyle,
+                                    spec = styleSpec,
+                                    layout = studioLayoutOf(HomeSectionId.MoreSections),
+                                    title = section.title,
+                                    featured = HomeSectionId.MoreSections in studioLayout.featured,
+                                    tracks = section.tracks,
+                                    currentId = state.currentTrack?.id,
+                                    isPlaying = state.isPlaying,
+                                    actionsLabel = strings.songOptions,
+                                    onPlay = { track -> viewModel.playFrom(section.tracks, track) },
+                                    onPlayAll = { viewModel.playAll(section.tracks) },
+                                    onActions = onTrackActions,
+                                    modifier = studioItemModifier()
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (showDeferredHomeSections) {
+                    otherSections.forEach { (sectionPosition, section) ->
+                        if (section.tracks.isNotEmpty()) {
+                            val sectionKey = homeSectionLazyKey(
+                                position = sectionPosition,
+                                title = section.title,
+                                trackIds = section.tracks.take(3).map { it.id }
+                            )
+                            val presentation = HomeSectionLayoutPolicy.presentationFor(
+                                position = sectionPosition,
+                                trackCount = section.tracks.size
+                            )
+                            if (presentation == HomeSectionPresentation.TrackGrid) {
+                                item(
+                                    key = "sec-other-$sectionKey-dense",
+                                    contentType = HOME_DENSE_SHELF_CONTENT_TYPE
+                                ) {
+                                    HomeSectionLead(compactHome) {
+                                        HomeQuickPicksShelf(
+                                            title = section.title,
+                                            tracks = section.tracks,
+                                            currentId = state.currentTrack?.id,
+                                            isPlaying = state.isPlaying,
+                                            isResolving = state.isResolving,
+                                            onPlay = { track -> viewModel.playFrom(section.tracks, track) }
+                                        )
+                                    }
+                                }
+                            } else {
+                                item(
+                                    key = "sec-other-$sectionKey-header",
+                                    contentType = HOME_SECTION_HEADER_CONTENT_TYPE
+                                ) {
+                                    HomeSectionLead(compactHome) {
+                                        HomeSectionInset {
+                                            SectionHeaderAction(
+                                                section.title,
+                                                onPlayAll = { viewModel.playAll(section.tracks) }
+                                            )
+                                        }
+                                    }
+                                }
+                                if (presentation == HomeSectionPresentation.ArtworkGrid) {
+                                    item(
+                                        key = "sec-other-$sectionKey-grid",
+                                        contentType = HOME_ARTWORK_GRID_CONTENT_TYPE
+                                    ) {
+                                        AlbumCardGrid(
+                                            tracks = section.tracks,
+                                            currentId = state.currentTrack?.id,
+                                            animationsEnabled = homeAnimationsEnabled,
+                                            onPlay = { viewModel.playFrom(section.tracks, it) }
+                                        )
+                                    }
+                                } else {
+                                    item(
+                                        key = "sec-other-$sectionKey-row",
+                                        contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE
+                                    ) {
+                                        AlbumCardRow(
+                                            tracks = section.tracks,
+                                            currentId = state.currentTrack?.id,
+                                            animationsEnabled = homeAnimationsEnabled,
+                                            onPlay = { viewModel.playFrom(section.tracks, it) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionResonance(c: StudioHomeContext) {
+    with(c) {
+        if (homeStyle == HomeStyle.MaterialExpressive && showDeferredHomeSections && state.interfaceSettings.showResonance && resonanceTracks.isNotEmpty()) {
+            item(key = "home-resonance-mx", contentType = "home-studio-resonance") {
+                MxCommentBubbles(
+                    title = strings.mostCommentedTracks,
+                    tracks = resonanceTracks,
+                    comments = state.homeResonanceComments,
+                    currentId = state.currentTrack?.id,
+                    isPlaying = state.isPlaying,
+                    playLabel = strings.play,
+                    onPlay = { track -> viewModel.playFrom(resonanceTracks, track) },
+                    onOpenComments = { track -> viewModel.openYoutubeCommentsFor(track) },
+                    modifier = studioItemModifier()
+                )
+            }
+            return
+        }
+        if (
+            (homeStyle == HomeStyle.Flow || homeStyle == HomeStyle.ExpressiveMax) &&
+            showDeferredHomeSections && state.interfaceSettings.showResonance && resonanceTracks.isNotEmpty()
+        ) {
+            item(key = "home-resonance-studio", contentType = "home-studio-resonance-${homeStyle.name}") {
+                StudioResonanceSection(
+                    style = homeStyle,
+                    inset = styleSpec.inset,
+                    tracks = resonanceTracks,
+                    comments = state.homeResonanceComments,
+                    actions = StudioResonanceActions(
+                        playLabel = strings.play,
+                        currentId = state.currentTrack?.id,
+                        isPlaying = state.isPlaying,
+                        onPlay = { track -> viewModel.playFrom(resonanceTracks, track) },
+                        onOpenComments = { track -> viewModel.openYoutubeCommentsFor(track) }
+                    ),
+                    modifier = studioItemModifier()
+                )
+            }
+            return
+        }
+            if (
+                showDeferredHomeSections && state.interfaceSettings.showResonance &&
+                resonanceTracks.isNotEmpty()
+            ) {
+                item(key = "home-resonance", contentType = "home-resonance") {
+                    HomeSectionLead(compactHome) {
+                        ResonanceShelf(
+                            tracks = resonanceTracks,
+                            comments = state.homeResonanceComments,
+                            currentId = state.currentTrack?.id,
+                            isPlaying = state.isPlaying,
+                            isResolving = state.isResolving,
+                            onPlay = { track -> viewModel.playFrom(resonanceTracks, track) },
+                            onOpenComments = { track -> viewModel.openYoutubeCommentsFor(track) }
+                        )
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionCharts(c: StudioHomeContext) {
+    with(c) {
+        if (homeStyle != HomeStyle.Original && homeStyle != HomeStyle.MaterialExpressive &&
+            showDeferredHomeSections && state.interfaceSettings.showCharts && state.charts.isNotEmpty()
+        ) {
+            item(key = "home-chart-studio", contentType = "home-studio-chart") {
+                val marketName = remember(state.chartRegions, state.selectedChartId, state.languageCode) {
+                    state.chartRegions
+                        .firstOrNull { it.id == state.selectedChartId }
+                        ?.let { ChartMarketDirectory.displayName(it, state.languageCode) }
+                        .orEmpty()
+                }
+                StudioChartSection(
+                    style = homeStyle,
+                    spec = styleSpec,
+                    title = strings.chartMarketTitle(state.charts.size.coerceAtMost(50), marketName),
+                    tracks = state.charts,
+                    currentId = state.currentTrack?.id,
+                    isPlaying = state.isPlaying,
+                    playAllLabel = strings.playAll,
+                    changeMarketLabel = strings.chartMarketChange,
+                    onPlay = { track -> viewModel.playFrom(state.charts, track) },
+                    onPlayAll = { viewModel.playAll(state.charts) },
+                    onChangeMarket = { chartMarketSheetOpen = true },
+                    modifier = studioItemModifier()
+                )
+            }
+            return
+        }
+        if (homeStyle == HomeStyle.MaterialExpressive && showDeferredHomeSections && state.interfaceSettings.showCharts && state.charts.isNotEmpty()) {
+            item(key = "home-chart-mx", contentType = "home-studio-chart") {
+                val marketName = remember(state.chartRegions, state.selectedChartId, state.languageCode) {
+                    state.chartRegions
+                        .firstOrNull { it.id == state.selectedChartId }
+                        ?.let { ChartMarketDirectory.displayName(it, state.languageCode) }
+                        .orEmpty()
+                }
+                MxChartSection(
+                    title = strings.chartMarketTitle(state.charts.size.coerceAtMost(50), marketName),
+                    tracks = state.charts,
+                    currentId = state.currentTrack?.id,
+                    isPlaying = state.isPlaying,
+                    playAllLabel = strings.playAll,
+                    changeMarketLabel = strings.chartMarketChange,
+                    onPlay = { track -> viewModel.playFrom(state.charts, track) },
+                    onPlayAll = { viewModel.playAll(state.charts) },
+                    onChangeMarket = { chartMarketSheetOpen = true },
+                    modifier = studioItemModifier()
+                )
+            }
+            return
+        }
+            if (showDeferredHomeSections && state.interfaceSettings.showCharts) {
+                item(key = "home-chart-title", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
+                    val marketName = remember(state.chartRegions, state.selectedChartId, state.languageCode) {
+                        state.chartRegions
+                            .firstOrNull { it.id == state.selectedChartId }
+                            ?.let { ChartMarketDirectory.displayName(it, state.languageCode) }
+                            .orEmpty()
+                    }
+                    val chartCount = state.charts.size.takeIf { it > 0 }?.coerceAtMost(50) ?: 50
+                    HomeSectionLead(compactHome) {
+                        HomeSectionInset {
+                            ChartMarketHeader(
+                                title = strings.chartMarketTitle(chartCount, marketName),
+                                refreshing = state.isLoadingCharts && state.charts.isNotEmpty(),
+                                onChangeMarket = { chartMarketSheetOpen = true },
+                                onPlayAll = if (state.charts.isEmpty()) null else { { viewModel.playAll(state.charts) } }
+                            )
+                        }
+                    }
+                }
+                if (state.charts.isEmpty()) {
+                    item(key = "home-chart-empty", contentType = "home-card") {
+                        HomeSectionInset {
+                            if (state.isLoadingCharts) {
+                                ChartLoadingSkeleton()
+                            } else {
+                                GlassMessage(strings.top50Unavailable, LevyraOrange)
+                            }
+                        }
+                    }
+                }
+                if (state.charts.isNotEmpty()) {
+                    item(key = "home-chart-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
+                        val density = LocalDensity.current
+                        val containerWidthPx = LocalWindowInfo.current.containerSize.width
+                        val columnWidth = remember(containerWidthPx, density) {
+                            val availableWidth = with(density) { containerWidthPx.toDp() }
+                            (availableWidth - LevyraHomeDesign.HorizontalInset - LevyraHomeDesign.TrackColumnPeek)
+                                .coerceIn(280.dp, 360.dp)
+                        }
+                        val chartRowState = key(state.selectedChartId) { rememberLazyListState() }
+                        val podiumTracks = remember(state.charts) { state.charts.take(HomeChartPodiumSize) }
+                        val restTracks = remember(state.charts) { state.charts.drop(HomeChartPodiumSize) }
+                        val rowsPerColumn = remember(restTracks) { chartRowsPerColumn(restTracks.size) }
+                        val restChunks = remember(restTracks, rowsPerColumn) {
+                            restTracks.chunked(rowsPerColumn)
+                        }
+                        val chartDepthEnabled = carouselDepthEnabled()
+                        Column(verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap)) {
+                        HomeChartPodium(
+                            tracks = podiumTracks,
+                            currentId = state.currentTrack?.id,
+                            isPlaying = state.isPlaying,
+                            contentPadding = PaddingValues(horizontal = LevyraHomeDesign.HorizontalInset),
+                            onPlay = { track -> viewModel.playFrom(state.charts, track) }
+                        )
+                        LazyRow(
+                            state = chartRowState,
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.TrackColumnGap),
+                            contentPadding = PaddingValues(
+                                start = LevyraHomeDesign.HorizontalInset,
+                                end = LevyraHomeDesign.HorizontalInset + LevyraHomeDesign.TrackColumnPeek
+                            )
+                        ) {
+                            itemsIndexed(
+                                items = restChunks,
+                                key = { chunkIndex, _ -> "chart-column-$chunkIndex" },
+                                contentType = { _, _ -> "chart-column" }
+                            ) { chunkIndex, chunk ->
+                                val columnKey = "chart-column-$chunkIndex"
+                                Column(
+                                    modifier = Modifier
+                                        .width(columnWidth)
+                                        .levyraCarouselDepth(
+                                            state = chartRowState,
+                                            key = columnKey,
+                                            enabled = chartDepthEnabled
+                                        ),
+                                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                                ) {
+                                    chunk.forEachIndexed { itemIndex, track ->
+                                        val rank = HomeChartPodiumSize + chunkIndex * rowsPerColumn + itemIndex + 1
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clip(levyraGroupedListShape(itemIndex, chunk.size))
+                                                .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.62f))
+                                                .padding(start = 6.dp, end = 2.dp, top = 2.dp, bottom = 2.dp)
+                                        ) {
+                                        ChartRow(
+                                            rank = rank,
+                                            track = track,
+                                            isCurrent = track.id == state.currentTrack?.id,
+                                            isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                                            isResolving = state.isResolving && track.id == state.currentTrack?.id,
+                                            isFavorite = track.id in state.favoriteIds,
+                                            onClick = { viewModel.playFrom(state.charts, track) },
+                                            onFavorite = { viewModel.toggleFavorite(track) },
+                                            onAddToPlaylist = { addTarget = track },
+                                            onAddToQueue = { viewModel.addToQueue(track) }
+                                        )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        }
+                    }
+                }
+            }
+    }
+}
+
+private fun LazyListScope.homeStudioOfflineSection(c: StudioHomeContext) {
+    with(c) {
+            if (offlineHomeVisible) {
+                item(key = "home-offline-notice", contentType = "home-card") {
+                    HomeSectionLead(compactHome) {
+                        HomeSectionInset {
+                            HomeOfflineNotice(
+                                title = strings.offlineHomeTitle,
+                                message = strings.offlineHomeMessage,
+                                retryLabel = strings.offlineHomeRetry,
+                                onRetry = viewModel::retryHomeContent
+                            )
+                        }
+                    }
+                }
+                if (offlineContent.downloads.isNotEmpty()) {
+                    item(key = "home-offline-downloads", contentType = HOME_DENSE_SHELF_CONTENT_TYPE) {
+                        HomeSectionLead(compactHome) {
+                            HomeQuickPicksShelf(
+                                title = strings.offlineHomeDownloads,
+                                tracks = offlineContent.downloads,
+                                currentId = state.currentTrack?.id,
+                                isPlaying = state.isPlaying,
+                                isResolving = state.isResolving,
+                                onPlay = { track -> viewModel.playFrom(offlineContent.downloads, track) },
+                                onTrackActions = onTrackActions
+                            )
+                        }
+                    }
+                }
+                if (offlineContent.playlists.isNotEmpty()) {
+                    item(key = "home-offline-playlists-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
+                        HomeSectionLead(compactHome) {
+                            HomeSectionInset { HomeSectionHeader(strings.offlineHomePlaylists) }
+                        }
+                    }
+                    item(key = "home-offline-playlists-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
+                        HomeOfflinePlaylistRow(
+                            playlists = offlineContent.playlists,
+                            animationsEnabled = homeAnimationsEnabled,
+                            onOpen = { playlist -> viewModel.openPlaylist(playlist.id) }
+                        )
+                    }
+                }
+                if (offlineContent.favorites.isNotEmpty()) {
+                    item(key = "home-offline-favorites", contentType = HOME_DENSE_SHELF_CONTENT_TYPE) {
+                        HomeSectionLead(compactHome) {
+                            HomeQuickPicksShelf(
+                                title = strings.offlineHomeFavorites,
+                                tracks = offlineContent.favorites,
+                                currentId = state.currentTrack?.id,
+                                isPlaying = state.isPlaying,
+                                isResolving = state.isResolving,
+                                onPlay = { track -> viewModel.playFrom(offlineContent.favorites, track) },
+                                onTrackActions = onTrackActions
+                            )
+                        }
+                    }
+                }
+                if (offlineContent.recentlyPlayed.isNotEmpty()) {
+                    item(key = "home-offline-recent", contentType = HOME_DENSE_SHELF_CONTENT_TYPE) {
+                        HomeSectionLead(compactHome) {
+                            HomeQuickPicksShelf(
+                                title = strings.offlineHomeRecent,
+                                tracks = offlineContent.recentlyPlayed,
+                                currentId = state.currentTrack?.id,
+                                isPlaying = state.isPlaying,
+                                isResolving = state.isResolving,
+                                onPlay = { track -> viewModel.playFrom(offlineContent.recentlyPlayed, track) },
+                                onTrackActions = onTrackActions
+                            )
+                        }
+                    }
+                }
+            }
+    }
+}
+
+@Composable
+private fun HomeStudioHost(
+    viewModel: HomeViewModel,
+    renderSnapshot: HomeRenderSnapshot,
+    homeListState: LazyListState,
+    deferredSectionsRevealed: MutableState<Boolean>,
+    accountAvatarUrl: String,
+    homeStudio: LevyraHomeStudioSettings,
+    onPullRefresh: () -> Unit,
+    onTrackActions: (Track) -> Unit
+) {
+    if (homeStudio.style == HomeStyle.Original) {
+        HomeScreen(
+            viewModel = viewModel,
+            renderSnapshot = renderSnapshot,
+            homeListState = homeListState,
+            deferredSectionsRevealed = deferredSectionsRevealed,
+            accountAvatarUrl = accountAvatarUrl,
+            onPullRefresh = onPullRefresh,
+            onTrackActions = onTrackActions
+        )
+    } else {
+        StudioHomeScreen(
+            viewModel = viewModel,
+            renderSnapshot = renderSnapshot,
+            homeListState = homeListState,
+            deferredSectionsRevealed = deferredSectionsRevealed,
+            accountAvatarUrl = accountAvatarUrl,
+            homeStudio = homeStudio,
+            onPullRefresh = onPullRefresh,
+            onTrackActions = onTrackActions
+        )
+    }
+}
+
+@Composable
+private fun PersonalListeningShelf(
+    tracks: List<Track>,
+    userName: String,
+    profilePhotoPath: String,
+    profilePhotoVersion: Long,
+    accountAvatarUrl: String,
+    currentId: String?,
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    onPlay: (Track) -> Unit,
+    onPlayAll: () -> Unit,
+    onTrackActions: (Track) -> Unit
+) {
+    val pages = remember(tracks) { homePersonalOrbitPages(tracks) }
+    if (pages.isEmpty()) return
+    val pagerState = rememberPagerState(pageCount = { pages.size })
+    LaunchedEffect(pages.size) {
+        if (pagerState.currentPage > pages.lastIndex) pagerState.scrollToPage(pages.lastIndex)
+    }
+    val pageKey: (Int) -> String = { pageIndex ->
+        pages.getOrNull(pageIndex)?.firstOrNull()?.firstOrNull()
+            ?.let(LevyraPersonalOrbit::identityKey)
+            ?.takeIf(String::isNotBlank)
+            ?.let { "orbit-page-$it" }
+            ?: "orbit-page-index-$pageIndex"
+    }
+    val orbitPage: @Composable (Int, Modifier) -> Unit = { pageIndex, pageModifier ->
+        Column(
+            modifier = pageModifier.padding(
+                start = LevyraHomeDesign.HorizontalInset,
+                end = LevyraHomeDesign.OrbitPageEndInset
+            ),
+            verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.OrbitTileGap)
+        ) {
+            val pageRows = pages.getOrNull(pageIndex).orEmpty()
+            pageRows.forEachIndexed { rowIndex, rowTracks ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.OrbitTileGap)
+                ) {
+                    rowTracks.forEachIndexed { columnIndex, track ->
+                        key(LevyraPersonalOrbit.identityKey(track)) {
+                            PersonalOrbitTile(
+                                shape = levyraGroupedGridShape(
+                                    row = rowIndex,
+                                    column = columnIndex,
+                                    rows = pageRows.size,
+                                    columns = HOME_PERSONAL_ORBIT_GRID_COLUMNS
+                                ),
+                                track = track,
+                                isCurrent = track.id == currentId,
+                                isPlaying = isPlaying && track.id == currentId,
+                                isResolving = isResolving && track.id == currentId,
+                                onPlay = { onPlay(track) },
+                                onActions = { onTrackActions(track) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                    repeat(HOME_PERSONAL_ORBIT_GRID_COLUMNS - rowTracks.size) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(homeHeaderContentGap())) {
+        HomeSectionInset {
+            HomeOrbitHeader(
+                userName = userName,
+                profilePhotoPath = profilePhotoPath,
+                profilePhotoVersion = profilePhotoVersion,
+                accountAvatarUrl = accountAvatarUrl,
+                onPlayAll = onPlayAll
+            )
+        }
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val wall = maxWidth >= LevyraHomeDesign.OrbitWallMinWidth
+            if (wall) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                ) {
+                    pages.indices.forEach { pageIndex ->
+                        key(pageKey(pageIndex)) {
+                            orbitPage(pageIndex, Modifier.width(LevyraHomeDesign.OrbitWallPageWidth))
+                        }
+                    }
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.OrbitDotsTopGap)) {
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxWidth(),
+                        key = pageKey
+                    ) { pageIndex ->
+                        orbitPage(pageIndex, Modifier.fillMaxWidth())
+                    }
+                    if (pages.size > 1) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(
+                                LevyraHomeDesign.OrbitDotGap,
+                                Alignment.CenterHorizontally
+                            ),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            pages.indices.forEach { index ->
+                                Box(
+                                    modifier = Modifier
+                                        .size(LevyraHomeDesign.OrbitDotSize)
+                                        .background(
+                                            if (pagerState.currentPage == index) {
+                                                LevyraText
+                                            } else {
+                                                LevyraText.copy(alpha = 0.30f)
+                                            },
+                                            CircleShape
+                                        )
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PersonalListeningShelfPlaceholder(
+    userName: String,
+    profilePhotoPath: String,
+    profilePhotoVersion: Long,
+    accountAvatarUrl: String
+) {
+    val progress = rememberLevyraShimmerProgress()
+    Column(verticalArrangement = Arrangement.spacedBy(homeHeaderContentGap())) {
+        HomeSectionInset {
+            HomeOrbitHeader(
+                userName = userName,
+                profilePhotoPath = profilePhotoPath,
+                profilePhotoVersion = profilePhotoVersion,
+                accountAvatarUrl = accountAvatarUrl,
+                onPlayAll = null
+            )
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = LevyraHomeDesign.HorizontalInset, end = LevyraHomeDesign.OrbitPageEndInset)
+                .clearAndSetSemantics { },
+            verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.OrbitTileGap)
+        ) {
+            repeat(HOME_PERSONAL_ORBIT_GRID_COLUMNS) { rowIndex ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.OrbitTileGap)
+                ) {
+                    repeat(HOME_PERSONAL_ORBIT_GRID_COLUMNS) { columnIndex ->
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .aspectRatio(1f)
+                                .clip(
+                                    levyraGroupedGridShape(
+                                        row = rowIndex,
+                                        column = columnIndex,
+                                        rows = HOME_PERSONAL_ORBIT_GRID_COLUMNS,
+                                        columns = HOME_PERSONAL_ORBIT_GRID_COLUMNS
+                                    )
+                                )
+                                .background(LevyraPanel)
+                                .levyraShimmerSweep(progress)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeOrbitHeader(
+    userName: String,
+    profilePhotoPath: String,
+    profilePhotoVersion: Long,
+    accountAvatarUrl: String,
+    onPlayAll: (() -> Unit)?
+) {
+    val strings = LocalLevyraStrings.current
+    val displayName = userName.trim()
+    val initial = remember(displayName) { homePersonalOrbitInitial(displayName) }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (initial != null) {
+            HomeOrbitAvatar(
+                initial = initial,
+                photoPath = profilePhotoPath,
+                photoVersion = profilePhotoVersion,
+                accountAvatarUrl = accountAvatarUrl
+            )
+            Spacer(modifier = Modifier.width(LevyraHomeDesign.OrbitAvatarGap))
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            if (initial != null) {
+                Text(
+                    text = displayName.uppercase(),
+                    color = LevyraMuted,
+                    fontSize = LevyraHomeDesign.OrbitHeaderNameSize,
+                    lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitHeaderNameSize),
+                    fontWeight = FontWeight.Normal,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Text(
+                text = strings.personalOrbitTitle,
+                color = LevyraText,
+                fontSize = LevyraHomeDesign.OrbitHeaderTitleSize,
+                lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitHeaderTitleSize),
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.semantics { heading() }
+            )
+        }
+        if (onPlayAll != null) {
+            Spacer(modifier = Modifier.width(6.dp))
+            LevyraSectionPlayAll(onClick = onPlayAll)
+        }
+    }
+}
+
+@Composable
+private fun PersonalOrbitTile(
+    shape: Shape,
+    track: Track,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    onPlay: () -> Unit,
+    onActions: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val strings = LocalLevyraStrings.current
+
+    Box(
+        modifier = modifier
+            .aspectRatio(1f)
+            .clip(shape)
+            .background(LevyraPanel)
+            .levyraPressable(
+                onClick = onPlay,
+                pressedScale = LevyraPressScale.Tile,
+                role = Role.Button,
+                onLongClick = onActions,
+                onLongClickLabel = strings.songOptions
+            )
+    ) {
+        CoverImage(
+            track = track,
+            modifier = Modifier.fillMaxSize(),
+            highRes = true
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.45f)
+                .align(Alignment.BottomCenter)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.68f)
+                        )
+                    )
+                )
+        )
+        Text(
+            text = track.title,
+            color = if (isCurrent) LevyraCyan else Color.White,
+            fontSize = LevyraHomeDesign.OrbitTileTitleSize,
+            lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitTileTitleSize),
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(
+                    start = LevyraHomeDesign.OrbitTileTitleInset,
+                    end = LevyraHomeDesign.OrbitTileTitleInset,
+                    bottom = 7.dp
+                )
+        )
+        if (isCurrent) {
+            LevyraNowPlayingBadge(
+                isPlaying = isPlaying,
+                isResolving = isResolving,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(6.dp)
+            )
+        }
+    }
+}
+
 private fun homeSoundtrackPrimaryArtist(rawArtist: String): String {
     var value = rawArtist.trim()
     if (value.isBlank()) return value
@@ -10414,6 +12428,7 @@ private fun homeSoundtrackMatchesArtist(track: Track, artistName: String, browse
     return primary.equals(artistName.trim(), ignoreCase = true)
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun HomeEditorialSpotlight(
     candidate: HomeSpotlightCandidate,
@@ -10564,6 +12579,9 @@ private fun HomeEditorialSpotlight(
     )
     val soundtrackTitle = strings.homeSoundtrackTitle
     val soundtrackLead = remember(strings, soundtrackArtists) { strings.homeSoundtrackLead(soundtrackArtists) }
+    val visibleCompanionArtworkUrls = companionArtworkUrls.ifEmpty {
+        resolvedArtistArtworkUrl.takeIf(String::isNotBlank)?.let { listOf(it) }.orEmpty()
+    }
     val isLight = LevyraIsLight
     val canvasColor = homeCanvasColor(isLight)
     val heroInk = if (isLight) LevyraText else Color.White
@@ -10711,9 +12729,9 @@ private fun HomeEditorialSpotlight(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        if (companionArtworkUrls.isNotEmpty()) {
+                        if (visibleCompanionArtworkUrls.isNotEmpty()) {
                             HomeSoundtrackCompanionStack(
-                                artworkUrls = companionArtworkUrls,
+                                artworkUrls = visibleCompanionArtworkUrls,
                                 ring = canvasColor,
                                 accent = heroTones.badge
                             )
@@ -12081,7 +14099,8 @@ private fun HomeCompactPlayAllHeader(
 }
 
 @Composable
-private fun HomeOrbitHeader(
+private fun StudioHomeOrbitHeader(
+    style: HomeStyle = HomeStyle.Original,
     userName: String,
     profilePhotoPath: String,
     profilePhotoVersion: Long,
@@ -12091,11 +14110,31 @@ private fun HomeOrbitHeader(
     val strings = LocalLevyraStrings.current
     val displayName = userName.trim()
     val initial = remember(displayName) { homePersonalOrbitInitial(displayName) }
+    val compactPlayAll = style != HomeStyle.Original && style != HomeStyle.MaterialExpressive
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget),
+            .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
+            .then(
+                when (style) {
+                    HomeStyle.ExpressiveMax -> Modifier
+                        .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 12.dp, bottomEnd = 32.dp, bottomStart = 12.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.62f))
+                        .padding(12.dp)
+                    HomeStyle.Flow -> Modifier
+                        .drawBehind {
+                            drawLine(
+                                color = LevyraCyan,
+                                start = Offset.Zero,
+                                end = Offset(size.width, 0f),
+                                strokeWidth = 3.dp.toPx()
+                            )
+                        }
+                        .padding(top = 8.dp)
+                    else -> Modifier
+                }
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (initial != null) {
@@ -12122,23 +14161,37 @@ private fun HomeOrbitHeader(
             Text(
                 text = strings.personalOrbitTitle,
                 color = LevyraText,
-                fontSize = LevyraHomeDesign.OrbitHeaderTitleSize,
-                lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitHeaderTitleSize),
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
+                style = when (style) {
+                    HomeStyle.Editorial -> MaterialTheme.typography.headlineSmall.copy(fontFamily = FontFamily.Serif)
+                    HomeStyle.Minimal -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium)
+                    HomeStyle.Immersive -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black)
+                    HomeStyle.ExpressiveMax, HomeStyle.Flow -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
+                    HomeStyle.Original, HomeStyle.MaterialExpressive -> TextStyle(
+                        fontSize = LevyraHomeDesign.OrbitHeaderTitleSize,
+                        lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitHeaderTitleSize),
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                maxLines = if (compactPlayAll) 2 else 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() }
             )
         }
         if (onPlayAll != null) {
             Spacer(modifier = Modifier.width(6.dp))
-            LevyraSectionPlayAll(onClick = onPlayAll)
+            if (compactPlayAll) {
+                FilledIconButton(onClick = onPlayAll, modifier = Modifier.size(LevyraPlayerDesign.MinimumTouchTarget)) {
+                    Icon(Icons.Rounded.PlayArrow, contentDescription = strings.playAll)
+                }
+            } else {
+                LevyraSectionPlayAll(onClick = onPlayAll)
+            }
         }
     }
 }
 
 @Composable
-private fun PersonalListeningShelfPlaceholder(
+private fun StudioPersonalListeningShelfPlaceholder(
     userName: String,
     profilePhotoPath: String,
     profilePhotoVersion: Long,
@@ -12147,7 +14200,7 @@ private fun PersonalListeningShelfPlaceholder(
     val progress = rememberLevyraShimmerProgress()
     Column(verticalArrangement = Arrangement.spacedBy(homeHeaderContentGap())) {
         HomeSectionInset {
-            HomeOrbitHeader(
+            StudioHomeOrbitHeader(
                 userName = userName,
                 profilePhotoPath = profilePhotoPath,
                 profilePhotoVersion = profilePhotoVersion,
@@ -12237,7 +14290,8 @@ private fun HomeOrbitAvatar(initial: String, photoPath: String, photoVersion: Lo
 }
 
 @Composable
-private fun PersonalListeningShelf(
+private fun StudioPersonalListeningShelf(
+    style: HomeStyle,
     tracks: List<Track>,
     userName: String,
     profilePhotoPath: String,
@@ -12250,7 +14304,17 @@ private fun PersonalListeningShelf(
     onPlayAll: () -> Unit,
     onTrackActions: (Track) -> Unit
 ) {
-    val pages = remember(tracks) { homePersonalOrbitPages(tracks) }
+    val columns = when (style) {
+        HomeStyle.Editorial, HomeStyle.Immersive -> 2
+        else -> HOME_PERSONAL_ORBIT_GRID_COLUMNS
+    }
+    val pages = remember(tracks, columns) {
+        homePersonalOrbitPages(tracks)
+            .flatten()
+            .flatten()
+            .chunked(columns * columns)
+            .map { page -> page.chunked(columns) }
+    }
     if (pages.isEmpty()) return
     val pagerState = rememberPagerState(pageCount = { pages.size })
     LaunchedEffect(pages.size) {
@@ -12279,12 +14343,18 @@ private fun PersonalListeningShelf(
                 ) {
                     rowTracks.forEachIndexed { columnIndex, track ->
                         key(LevyraPersonalOrbit.identityKey(track)) {
-                            PersonalOrbitTile(
-                                shape = levyraGroupedGridShape(
-                                    row = rowIndex,
-                                    column = columnIndex,
-                                    rows = pageRows.size,
-                                    columns = HOME_PERSONAL_ORBIT_GRID_COLUMNS
+                            StudioPersonalOrbitTile(
+                                style = style,
+                                index = rowIndex * columns + columnIndex,
+                                shape = studioOrbitShape(
+                                    style = style,
+                                    index = rowIndex * columns + columnIndex,
+                                    fallback = levyraGroupedGridShape(
+                                        row = rowIndex,
+                                        column = columnIndex,
+                                        rows = pageRows.size,
+                                        columns = columns
+                                    )
                                 ),
                                 track = track,
                                 isCurrent = track.id == currentId,
@@ -12296,7 +14366,7 @@ private fun PersonalListeningShelf(
                             )
                         }
                     }
-                    repeat(HOME_PERSONAL_ORBIT_GRID_COLUMNS - rowTracks.size) {
+                    repeat(columns - rowTracks.size) {
                         Spacer(modifier = Modifier.weight(1f))
                     }
                 }
@@ -12306,7 +14376,8 @@ private fun PersonalListeningShelf(
 
     Column(verticalArrangement = Arrangement.spacedBy(homeHeaderContentGap())) {
         HomeSectionInset {
-            HomeOrbitHeader(
+            StudioHomeOrbitHeader(
+                style = style,
                 userName = userName,
                 profilePhotoPath = profilePhotoPath,
                 profilePhotoVersion = profilePhotoVersion,
@@ -12369,7 +14440,9 @@ private fun PersonalListeningShelf(
 }
 
 @Composable
-private fun PersonalOrbitTile(
+private fun StudioPersonalOrbitTile(
+    style: HomeStyle,
+    index: Int,
     shape: Shape,
     track: Track,
     isCurrent: Boolean,
@@ -12383,7 +14456,12 @@ private fun PersonalOrbitTile(
 
     Box(
         modifier = modifier
-            .aspectRatio(1f)
+            .aspectRatio(if (style == HomeStyle.Editorial) 1.18f else if (style == HomeStyle.Immersive) 0.86f else 1f)
+            .graphicsLayer {
+                rotationZ = if (style == HomeStyle.ExpressiveMax) {
+                    when (index % 3) { 0 -> -2.5f; 1 -> 2f; else -> 0f }
+                } else 0f
+            }
             .clip(shape)
             .background(LevyraPanel)
             .levyraPressable(
@@ -18684,6 +20762,8 @@ private fun SettingsOverlay(
     onOpenJam: () -> Unit,
     onOpenThemeStudio: () -> Unit,
     onOpenLyricsStudio: () -> Unit = {},
+    homeStudioStyle: HomeStyle = HomeStyle.Original,
+    onOpenHomeStudio: () -> Unit = {},
     onOpenAudioSettings: () -> Unit,
     onInterfaceSettings: (LevyraInterfaceSettings) -> Unit,
     onAmbientSettings: (LevyraAmbientSettings) -> Unit,
@@ -18991,6 +21071,14 @@ private fun SettingsOverlay(
                                 )
                             }
                             item {
+                                SettingsButton(
+                                    icon = Icons.Rounded.Home,
+                                    title = strings.homeStudioCopy.title,
+                                    subtitle = homeStyleName(homeStudioStyle) + " · " + strings.homeStudioCopy.subtitle,
+                                    onClick = onOpenHomeStudio
+                                )
+                            }
+                            item {
                                 SettingsChoiceRow(
                                     icon = Icons.Rounded.TextFields,
                                     title = strings.appFont,
@@ -19112,6 +21200,14 @@ private fun SettingsOverlay(
                             }
                         }
                         "home" -> {
+                            item {
+                                SettingsButton(
+                                    icon = Icons.Rounded.Dashboard,
+                                    title = strings.homeStudioCopy.title,
+                                    subtitle = homeStyleName(homeStudioStyle) + " · " + strings.homeStudioCopy.subtitle,
+                                    onClick = onOpenHomeStudio
+                                )
+                            }
                             item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.Home,
@@ -21055,7 +23151,7 @@ internal fun LevyraWordmark(fontSize: TextUnit = 30.sp, dotSize: Dp = 5.dp) {
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun HomeLogoBadge() {
+internal fun HomeLogoBadge() {
     val shape = MaterialShapes.Cookie9Sided.toShape()
     val ring = if (LevyraIsLight) Color(0x1F11131F) else Color.White.copy(alpha = 0.14f)
     Box(
@@ -21245,7 +23341,7 @@ private const val GREETING_NAME_STAGGER_MS = 90L
 private val GREETING_RISE = 14.dp
 
 @Composable
-private fun rememberCurrentGreetingHour() = produceState(
+internal fun rememberCurrentGreetingHour() = produceState(
     initialValue = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
 ) {
     while (true) {

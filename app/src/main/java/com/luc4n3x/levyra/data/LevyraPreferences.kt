@@ -34,6 +34,7 @@ import com.luc4n3x.levyra.domain.LevyraSmartOfflineSettings
 import com.luc4n3x.levyra.domain.LevyraAmbientMode
 import com.luc4n3x.levyra.domain.LevyraAmbientSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.LevyraHomeStudioSettings
 import com.luc4n3x.levyra.domain.LevyraLyricsStudioSettings
 import com.luc4n3x.levyra.domain.LibrarySort
 import com.luc4n3x.levyra.domain.LibrarySortDirection
@@ -107,7 +108,8 @@ data class LevyraPreferencesSnapshot(
     val lyricsLatencyProfiles: LyricsLatencyProfiles = LyricsLatencyProfiles(),
     val videoQualityTarget: VideoQualityTarget = VideoQualityTarget.AUTO,
     val lyricsProviderOrdering: LyricsProviderOrdering = LyricsProviderOrdering(),
-    val lyricsStudioSettings: LevyraLyricsStudioSettings = LevyraLyricsStudioSettings()
+    val lyricsStudioSettings: LevyraLyricsStudioSettings = LevyraLyricsStudioSettings(),
+    val homeStudioSettings: LevyraHomeStudioSettings = LevyraHomeStudioSettings()
 )
 
 @Volatile
@@ -160,6 +162,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_VIDEO_QUALITY] = snapshot.videoQualityTarget.storageValue
             mutable[KEY_LYRICS_PROVIDER_ORDERING] = snapshot.lyricsProviderOrdering.encode()
             mutable[KEY_LYRICS_STUDIO_SETTINGS] = snapshot.lyricsStudioSettings.encode()
+            mutable[KEY_HOME_STUDIO_SETTINGS] = snapshot.homeStudioSettings.encode()
             mutable[KEY_THEME_PRESET] = com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(snapshot.themePreset)
             mutable[KEY_THEME_ACCENT] = snapshot.themeAccent
             mutable[KEY_AMBIENT_BRIGHTNESS] = normalizedAmbient.brightness
@@ -767,7 +770,8 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             lyricsLatencyProfiles = LyricsLatencyProfiles.decode(preferences[KEY_LYRICS_LATENCY_PROFILES].orEmpty()),
             videoQualityTarget = VideoQualityTarget.fromStorage(preferences[KEY_VIDEO_QUALITY]),
             lyricsProviderOrdering = LyricsProviderOrdering.decode(preferences[KEY_LYRICS_PROVIDER_ORDERING]),
-            lyricsStudioSettings = LevyraLyricsStudioSettings.decode(preferences[KEY_LYRICS_STUDIO_SETTINGS])
+            lyricsStudioSettings = LevyraLyricsStudioSettings.decode(preferences[KEY_LYRICS_STUDIO_SETTINGS]),
+            homeStudioSettings = LevyraHomeStudioSettings.decode(preferences[KEY_HOME_STUDIO_SETTINGS])
         )
     }
 
@@ -1082,6 +1086,25 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         }
     }
 
+    val homeStudioSettingsFlow: kotlinx.coroutines.flow.Flow<LevyraHomeStudioSettings> = store.preferences
+        .map { preferences -> LevyraHomeStudioSettings.decode(preferences[KEY_HOME_STUDIO_SETTINGS]) }
+        .distinctUntilChanged()
+
+    fun homeStudioSettings(): LevyraHomeStudioSettings =
+        read { LevyraHomeStudioSettings.decode(it[KEY_HOME_STUDIO_SETTINGS]) }
+
+    suspend fun setHomeStudioSettings(value: LevyraHomeStudioSettings): Boolean {
+        return try {
+            store.commit { it[KEY_HOME_STUDIO_SETTINGS] = value.normalized().encode() }
+            true
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.w(error, "DataStore home studio settings write failed")
+            false
+        }
+    }
+
     suspend fun setAutomationSettings(value: LevyraAutomationSettings) {
         val normalized = value.normalized()
         try {
@@ -1180,6 +1203,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_VIDEO_QUALITY = stringPreferencesKey("video_quality")
         val KEY_LYRICS_PROVIDER_ORDERING = stringPreferencesKey("lyrics_provider_ordering")
         val KEY_LYRICS_STUDIO_SETTINGS = stringPreferencesKey("lyrics_studio_settings")
+        val KEY_HOME_STUDIO_SETTINGS = stringPreferencesKey("home_studio_settings")
         val KEY_THEME_PRESET = stringPreferencesKey("theme_preset")
         val KEY_THEME_ACCENT = intPreferencesKey("theme_accent")
         val KEY_AUDIO_EQ_ENABLED = booleanPreferencesKey("audio_equalizer_enabled")
