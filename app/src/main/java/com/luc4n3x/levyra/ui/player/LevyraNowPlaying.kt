@@ -993,6 +993,10 @@ fun LevyraNowPlaying(
                     surfaces = surfaces,
                     compact = compactPlayer,
                     animated = animated,
+                    useAuraPlayPause = visualMode == PlayerVisualMode.CanvasImmersive &&
+                        playerPane == LevyraPlayerPane.SideBySide &&
+                        maxWidth > maxHeight &&
+                        !state.isVideoMode,
                     labels = playerControlLabels,
                     onShuffle = viewModel::toggleShuffle,
                     onPrevious = viewModel::previous,
