@@ -73,7 +73,9 @@ enum class PlayerVisualMode {
     CanvasCard,
     CanvasImmersive,
     Expressive,
-    Pulse;
+    Pulse,
+    Halo,
+    Folio;
 
     companion object {
         fun from(value: String): PlayerVisualMode =
@@ -91,7 +93,9 @@ enum class PlayerBackgroundMode {
     Dynamic,
     Blur,
     Dark,
-    PureBlack;
+    PureBlack,
+    Aurora,
+    Gradient;
 
     companion object {
         fun from(value: String): PlayerBackgroundMode =
@@ -167,7 +171,7 @@ data class LevyraInterfaceSettings(
     val enhanceVideoMetadata: Boolean = false,
     val pureBlack: Boolean = false,
     val hapticFeedback: Boolean = true,
-    val playerVisualMode: PlayerVisualMode = PlayerVisualMode.CanvasImmersive,
+    val playerVisualMode: PlayerVisualMode = PlayerVisualMode.CanvasCard,
     val playerBackground: PlayerBackgroundMode = PlayerBackgroundMode.Dynamic,
     val librarySort: LibrarySort = LibrarySort.Recent,
     val librarySortDirection: LibrarySortDirection = LibrarySort.Recent.defaultDirection

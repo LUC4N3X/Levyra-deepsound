@@ -5,15 +5,12 @@ import android.graphics.BitmapFactory
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.artistIdentityKey
 import com.luc4n3x.levyra.domain.artistIdentityMatches
-import com.luc4n3x.levyra.data.spotify.SpotifyTokenProvider
+import com.luc4n3x.levyra.data.spotify.SpotifySearchClient
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONArray
-import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
 
 internal const val FLAT_ARTWORK_CHANNEL_SPREAD = 12
@@ -58,7 +55,7 @@ internal fun isAllowedSpotifyArtistArtworkUrl(rawUrl: String): Boolean {
 internal class SpotifyArtistArtworkRepository private constructor(context: Context) {
     private val appContext = context.applicationContext
     private val client = LevyraHttpClientFactory.externalIntegrations()
-    private val tokenProvider = SpotifyTokenProvider.get()
+    private val spotifySearch = SpotifySearchClient()
     private val preferences = appContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val memoryCache = ConcurrentHashMap<String, CachedArtwork>()
 
@@ -81,10 +78,13 @@ internal class SpotifyArtistArtworkRepository private constructor(context: Conte
 
         if (isPersistedFlat(identity, now)) return@withContext ""
 
-        val resolved = runCatching {
-            val bearer = tokenProvider.token()
-            searchArtistPortrait(cleanName, bearer)
-        }.getOrNull().orEmpty()
+        val resolved = try {
+            searchArtistPortrait(cleanName)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            ""
+        }
 
         if (resolved.isBlank()) return@withContext ""
 
@@ -162,95 +162,13 @@ internal class SpotifyArtistArtworkRepository private constructor(context: Conte
 
 
 
-    private fun searchArtistPortrait(artistName: String, bearer: String): String {
-        val variables = JSONObject()
-            .put("searchTerm", artistName)
-            .put("offset", 0)
-            .put("limit", SEARCH_LIMIT)
-            .put("numberOfTopResults", 5)
-            .put("includeAudiobooks", false)
-            .put("includeArtistHasConcertsField", false)
-            .put("includePreReleases", false)
-            .put("includeLocalConcertsField", false)
-            .put("includeAuthors", false)
-        val payload = JSONObject()
-            .put("variables", variables)
-            .put("operationName", SEARCH_OPERATION)
-            .put(
-                "extensions",
-                JSONObject().put(
-                    "persistedQuery",
-                    JSONObject()
-                        .put("version", 1)
-                        .put("sha256Hash", SEARCH_QUERY_HASH)
-                )
-            )
-        val response = executeJson(
-            Request.Builder()
-                .url(GRAPHQL_URL)
-                .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
-                .header("Authorization", "Bearer $bearer")
-                .header("User-Agent", WEB_USER_AGENT)
-                .header("app-platform", "WebPlayer")
-                .header("Origin", "https://open.spotify.com")
-                .header("Referer", "https://open.spotify.com/")
-                .header("Accept", "application/json")
-                .build()
-        )
-        val artists = response
-            .optJSONObject("data")
-            ?.optJSONObject("searchV2")
-            ?.optJSONObject("artists")
-            ?.optJSONArray("items")
-            ?: return ""
-        return selectMatchingArtistPortrait(artistName, artists)
-    }
-
-    private fun selectMatchingArtistPortrait(artistName: String, items: JSONArray): String {
+    private suspend fun searchArtistPortrait(artistName: String): String {
         val expectedIdentity = artistIdentityKey(artistName)
-        for (index in 0 until items.length()) {
-            val wrapper = items.optJSONObject(index) ?: continue
-            if (!wrapper.optString("__typename").equals("ArtistResponseWrapper", ignoreCase = true)) continue
-            val data = wrapper.optJSONObject("data") ?: continue
-            if (!data.optString("__typename").equals("Artist", ignoreCase = true)) continue
-            val resolvedName = data.optJSONObject("profile")?.optString("name").orEmpty().trim()
-            val exactIdentity = artistIdentityKey(resolvedName) == expectedIdentity
-            if (!exactIdentity && !artistIdentityMatches(resolvedName, artistName)) continue
-            val sources = data
-                .optJSONObject("visuals")
-                ?.optJSONObject("avatarImage")
-                ?.optJSONArray("sources")
-                ?: continue
-            bestArtistArtwork(sources)?.let { return it }
-        }
-        return ""
-    }
-
-    private fun bestArtistArtwork(sources: JSONArray): String? {
-        var bestUrl: String? = null
-        var bestArea = -1L
-        for (index in 0 until sources.length()) {
-            val source = sources.optJSONObject(index) ?: continue
-            val url = source.optString("url").trim()
-            if (!isAllowedSpotifyArtistArtworkUrl(url)) continue
-            val width = source.optLong("width", 0L).coerceAtLeast(0L)
-            val height = source.optLong("height", 0L).coerceAtLeast(0L)
-            val area = width * height
-            if (area >= bestArea) {
-                bestArea = area
-                bestUrl = url
-            }
-        }
-        return bestUrl
-    }
-
-    private fun executeJson(request: Request): JSONObject {
-        return client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) error("Spotify request failed with HTTP ${response.code}")
-            val body = response.body.string()
-            if (body.length !in 1..MAX_RESPONSE_CHARS) error("Spotify response is invalid")
-            JSONObject(body)
-        }
+        val matches = spotifySearch.search(artistName, SEARCH_LIMIT).artists.filter {
+            (artistIdentityKey(it.name) == expectedIdentity || artistIdentityMatches(it.name, artistName)) &&
+                isAllowedSpotifyArtistArtworkUrl(it.thumbnailUrl)
+        }.distinctBy { it.thumbnailUrl }
+        return matches.singleOrNull()?.thumbnailUrl.orEmpty()
     }
 
     private data class CachedArtwork(val url: String, val savedAt: Long)
@@ -265,16 +183,10 @@ internal class SpotifyArtistArtworkRepository private constructor(context: Conte
             }
         }
 
-        private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
         private const val PREFERENCES_NAME = "spotify_artist_artwork"
-        private const val GRAPHQL_URL = "https://api-partner.spotify.com/pathfinder/v2/query"
-        private const val SEARCH_OPERATION = "searchDesktop"
-        private const val SEARCH_QUERY_HASH =
-            "4801118d4a100f756e833d33984436a3899cff359c532f8fd3aaf174b60b3b49"
         private const val WEB_USER_AGENT =
             "Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 Chrome/140.0.0.0 Mobile Safari/537.36"
         private const val SEARCH_LIMIT = 10
-        private const val MAX_RESPONSE_CHARS = 1_000_000
         private const val MAX_PORTRAIT_PROBE_BYTES = 2_000_000
         private const val PORTRAIT_PROBE_SAMPLE_SIZE = 16
         private const val ARTWORK_TTL_MS = 7L * 24L * 60L * 60L * 1000L

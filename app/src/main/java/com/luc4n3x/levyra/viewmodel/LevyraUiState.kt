@@ -30,6 +30,8 @@ import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraSmartOfflineSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.LevyraHomeStudioSettings
+import com.luc4n3x.levyra.domain.LevyraLyricsStudioSettings
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.PlaylistImportFailureKind
@@ -110,6 +112,7 @@ data class LevyraUiState(
     val tastes: List<Taste> = emptyList(),
     val quickPickSeeds: List<Track> = emptyList(),
     val showOnboarding: Boolean = false,
+    val youtubeMusicIntroPending: Boolean = false,
     val isVideoMode: Boolean = false,
     val pendingVideoMode: Boolean? = null,
     val selectedVideoSubtitleId: String? = null,
@@ -216,6 +219,10 @@ data class LevyraUiState(
     val lyricsTranslationState: LyricsTranslationState = LyricsTranslationState.DISABLED,
     val lyricsProviderOrdering: LyricsProviderOrdering = LyricsProviderOrdering(),
     val lyricsLatencyProfiles: LyricsLatencyProfiles = LyricsLatencyProfiles(),
+    val lyricsStudioSettings: LevyraLyricsStudioSettings = LevyraLyricsStudioSettings(),
+    val showLyricsStudio: Boolean = false,
+    val homeStudioSettings: LevyraHomeStudioSettings = LevyraHomeStudioSettings(),
+    val showHomeStudio: Boolean = false,
     val smartProfile: SmartMusicProfile = SmartMusicProfile(),
     val cacheReport: CacheReport = CacheReport(0, 0, 0, 0),
     val query: String = "",

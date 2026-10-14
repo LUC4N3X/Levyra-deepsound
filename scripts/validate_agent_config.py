@@ -317,8 +317,8 @@ def main() -> int:
         ),
         (
             ".github/pull_request_template.md",
-            ("complete Levyra", "levyra-humanizer", "without changing"),
-            "mandatory PR-description schema/humanizer contract",
+            ("complete Levyra", "## Summary", "## Changes", "## Testing", "## Risk and compatibility", "## Checklist"),
+            "mandatory PR-description schema",
         ),
         (
             "docs/ai/WORKFLOW.md",

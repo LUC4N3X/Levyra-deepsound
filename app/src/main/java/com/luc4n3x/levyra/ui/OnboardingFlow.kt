@@ -4,13 +4,15 @@ internal enum class OnboardingStep {
     Intro,
     Language,
     Profile,
-    Taste;
+    Taste,
+    YoutubeMusic;
 
     fun next(): OnboardingStep = when (this) {
         Intro -> Language
         Language -> Profile
         Profile -> Taste
-        Taste -> Taste
+        Taste -> YoutubeMusic
+        YoutubeMusic -> YoutubeMusic
     }
 
     fun previous(): OnboardingStep = when (this) {
@@ -18,6 +20,7 @@ internal enum class OnboardingStep {
         Language -> Intro
         Profile -> Language
         Taste -> Profile
+        YoutubeMusic -> Taste
     }
 }
 

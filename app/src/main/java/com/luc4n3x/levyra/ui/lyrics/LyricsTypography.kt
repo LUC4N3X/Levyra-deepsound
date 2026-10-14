@@ -39,3 +39,6 @@ fun adaptiveLyricFontSizeSp(
 
 private const val AVERAGE_GLYPH_WIDTH_RATIO = 0.52f
 private const val COMFORTABLE_LINE_COUNT = 2f
+
+internal fun lyricLineScaleSafeWidthPx(availableWidthPx: Int, scale: Float): Int =
+    if (scale <= 1f) availableWidthPx else (availableWidthPx / scale).toInt().coerceAtLeast(0)

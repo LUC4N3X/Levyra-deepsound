@@ -1,86 +1,96 @@
 package com.luc4n3x.levyra.data.spotify
 
+import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
-import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.Locale
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 
 internal class SpotifySearchClient(
-    private val tokenProvider: SpotifyTokenProvider = SpotifyTokenProvider.get(),
-    private val clientFactory: () -> OkHttpClient = { LevyraHttpClientFactory.externalIntegrations() }
+    private val clientFactory: () -> OkHttpClient = { LevyraHttpClientFactory.externalIntegrations() },
+    private val catalogSearch: suspend (String, Int) -> List<Track> = { _, _ -> emptyList() },
+    private val countryProvider: () -> String = { Locale.getDefault().country },
+    resolverUrl: String = BuildConfig.CANVAS_RESOLVER_URL,
+    private val clientKey: String = BuildConfig.CANVAS_CLIENT_KEY,
+    allowInsecureForTests: Boolean = false
 ) {
-    suspend fun search(query: String, limit: Int = 12): SearchResults = withContext(Dispatchers.IO) {
+    private val endpoint = resolverUrl.toHttpUrlOrNull()?.takeIf {
+        (it.isHttps || allowInsecureForTests && it.scheme == "http") &&
+            it.username.isEmpty() && it.password.isEmpty() && it.query == null && it.fragment == null &&
+            it.encodedPath.endsWith("/v1/resolve")
+    }?.let { it.newBuilder().encodedPath(it.encodedPath.removeSuffix("/v1/resolve") + "/v1/catalog/search").build() }
+    private val retryAfterNanos = AtomicLong(0L)
+    private val client by lazy {
+        clientFactory().newBuilder()
+            .followRedirects(false)
+            .followSslRedirects(false)
+            .callTimeout(8, TimeUnit.SECONDS)
+            .build()
+    }
+
+    suspend fun cachedSearch(query: String, limit: Int = 12): SearchResults = withContext(Dispatchers.IO) {
         val trimmed = query.trim()
         if (trimmed.isEmpty()) return@withContext SearchResults()
-
-        val bearer = try {
-            tokenProvider.token()
-        } catch (error: CancellationException) {
-            throw error
-        } catch (_: Throwable) {
-            return@withContext SearchResults()
-        }
-        val payload = buildSearchPayload(trimmed, limit)
-        val request = Request.Builder()
-            .url(GRAPHQL_URL)
-            .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
-            .header("Authorization", "Bearer $bearer")
-            .header("User-Agent", SpotifyTokenProvider.WEB_USER_AGENT)
-            .header("app-platform", "WebPlayer")
-            .header("Origin", "https://open.spotify.com")
-            .header("Referer", "https://open.spotify.com/")
-            .header("Accept", "application/json")
-            .build()
-
-        val client = clientFactory()
-        val responseJson = try {
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@withContext SearchResults()
-                val body = response.body.readSpotifyJsonBody() ?: return@withContext SearchResults()
-                JSONObject(body)
+        val tracks = try {
+            catalogSearch(trimmed, limit.coerceIn(1, 25)).take(limit.coerceIn(1, 25)).map { track ->
+                if (track.id.startsWith("levyra-") && track.audioVideoId.isBlank() &&
+                    track.counterpartVideoId.isBlank() && track.videoUrl.isBlank()) {
+                    track.copy(id = "spotify:${track.id}")
+                } else track
             }
         } catch (error: CancellationException) {
             throw error
-        } catch (_: Throwable) {
-            return@withContext SearchResults()
+        } catch (_: Exception) {
+            emptyList()
         }
-
-        parseSearchResults(responseJson)
+        SearchResults(topTrack = tracks.firstOrNull(), songs = tracks)
     }
 
-    private fun buildSearchPayload(query: String, limit: Int): JSONObject {
-        val variables = JSONObject()
-            .put("searchTerm", query)
-            .put("offset", 0)
-            .put("limit", limit.coerceIn(1, 25))
-            .put("numberOfTopResults", 5)
-            .put("includeAudiobooks", false)
-            .put("includeArtistHasConcertsField", false)
-            .put("includePreReleases", false)
-            .put("includeLocalConcertsField", false)
-            .put("includeAuthors", false)
-
-        val persistedQuery = JSONObject()
-            .put("version", 1)
-            .put("sha256Hash", SEARCH_QUERY_HASH)
-
-        val extensions = JSONObject().put("persistedQuery", persistedQuery)
-
-        return JSONObject()
-            .put("variables", variables)
-            .put("operationName", SEARCH_OPERATION)
-            .put("extensions", extensions)
+    suspend fun search(query: String, limit: Int = 12, countryCode: String? = null): SearchResults = withContext(Dispatchers.IO) {
+        val trimmed = query.trim()
+        val boundedLimit = limit.coerceIn(1, 25)
+        val cached = cachedSearch(trimmed, boundedLimit)
+        val retryAfter = retryAfterNanos.get()
+        if (trimmed.length !in 2..200 || endpoint == null || clientKey.isBlank() ||
+            retryAfter != 0L && System.nanoTime() - retryAfter < 0L) return@withContext cached
+        val country = (countryCode ?: countryProvider()).trim().uppercase(Locale.ROOT)
+            .takeIf { it.length == 2 && it.all { letter -> letter in 'A'..'Z' } && it in ISO_COUNTRIES } ?: "US"
+        val payload = JSONObject().put("query", trimmed).put("limit", boundedLimit).put("country", country)
+        val request = Request.Builder()
+            .url(endpoint)
+            .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
+            .header("X-Levyra-Key", clientKey)
+            .header("Accept", "application/json")
+            .build()
+        val remote = try {
+            val response = client.newCall(request).awaitSpotifyJson { response ->
+                if (response.code == 429 || response.code == 503) {
+                    val seconds = response.header("Retry-After")?.toLongOrNull()?.coerceIn(1, 86_400) ?: 30L
+                    retryAfterNanos.set(System.nanoTime() + TimeUnit.SECONDS.toNanos(seconds))
+                }
+            } ?: return@withContext cached
+            parseSearchResults(response)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            return@withContext cached
+        }
+        val songs = (remote.songs + cached.songs).distinctBy { it.id }.take(boundedLimit)
+        remote.copy(topTrack = remote.topTrack ?: songs.firstOrNull(), songs = songs)
     }
 
     private fun parseSearchResults(root: JSONObject): SearchResults {
@@ -89,15 +99,13 @@ internal class SpotifySearchClient(
         val tracks = parseTracks(searchV2.optJSONObject("tracksV2"))
         val artists = parseArtists(searchV2.optJSONObject("artists"))
         val albums = parseAlbums(searchV2.optJSONObject("albumsV2"))
-        val playlists = parsePlaylists(searchV2.optJSONObject("playlists"))
         val topTrack = parseTopTrack(searchV2.optJSONObject("topResultsV2")) ?: tracks.firstOrNull()
 
         return SearchResults(
             topTrack = topTrack,
             songs = tracks,
             artists = artists,
-            albums = albums,
-            playlists = playlists
+            albums = albums
         )
     }
 
@@ -168,6 +176,9 @@ internal class SpotifySearchClient(
             accentStart = 0,
             accentEnd = 0,
             explicit = explicit,
+            isrc = data.optJSONObject("externalIds")?.optString("isrc").orEmpty(),
+            releaseDate = albumObj?.optJSONObject("date")?.optString("isoString").orEmpty(),
+            year = albumObj?.optJSONObject("date")?.optInt("year", 0)?.takeIf { it > 0 }?.toString().orEmpty(),
             metadataProvider = "spotify",
             metadataConfidence = 95,
             youtubeViewCount = -1L
@@ -184,7 +195,7 @@ internal class SpotifySearchClient(
             val name = data.optJSONObject("profile")?.optString("name").orEmpty().trim()
             if (name.isBlank()) continue
             val sources = data.optJSONObject("visuals")?.optJSONObject("avatarImage")?.optJSONArray("sources")
-            val (thumbnail, _) = selectArtworkUrls(sources)
+            val (_, thumbnail) = selectArtworkUrls(sources)
             results.add(
                 ArtistHit(
                     name = name,
@@ -229,33 +240,6 @@ internal class SpotifySearchClient(
         return results
     }
 
-    private fun parsePlaylists(playlistsObject: JSONObject?): List<PlaylistHit> {
-        if (playlistsObject == null) return emptyList()
-        val items = playlistsObject.optJSONArray("items") ?: return emptyList()
-        val results = mutableListOf<PlaylistHit>()
-        for (index in 0 until items.length()) {
-            val wrapper = items.optJSONObject(index) ?: continue
-            val data = wrapper.optJSONObject("data") ?: continue
-            val name = data.optString("name").trim()
-            if (name.isBlank()) continue
-            val uri = data.optString("uri").trim()
-            val owner = data.optJSONObject("ownerV2")?.optJSONObject("data")?.optString("name").orEmpty().trim()
-            val imageSources = data.optJSONObject("images")?.optJSONArray("items")?.optJSONObject(0)?.optJSONArray("sources")
-            val (thumbnail, _) = selectArtworkUrls(imageSources)
-            results.add(
-                PlaylistHit(
-                    playlistId = uri,
-                    browseId = uri,
-                    title = name,
-                    author = owner,
-                    thumbnailUrl = thumbnail,
-                    trackCountLabel = ""
-                )
-            )
-        }
-        return results
-    }
-
     private fun parseArtistNames(items: JSONArray?): List<String> {
         if (items == null) return emptyList()
         val names = mutableListOf<String>()
@@ -278,10 +262,10 @@ internal class SpotifySearchClient(
             val source = sources.optJSONObject(index) ?: continue
             val url = source.optString("url").trim()
             if (url.isEmpty()) continue
-            val width = source.optLong("width", 0L).coerceAtLeast(0L)
-            val height = source.optLong("height", 0L).coerceAtLeast(0L)
+            val width = source.optLong("width", 0L).coerceIn(0L, 8_192L)
+            val height = source.optLong("height", 0L).coerceIn(0L, 8_192L)
             val area = width * height
-            if (area < smallestArea) {
+            if (width >= 256L && height >= 256L && area < smallestArea) {
                 smallestArea = area
                 smallestUrl = url
             }
@@ -297,9 +281,6 @@ internal class SpotifySearchClient(
 
     companion object {
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
-        private const val GRAPHQL_URL = "https://api-partner.spotify.com/pathfinder/v2/query"
-        private const val SEARCH_OPERATION = "searchDesktop"
-        private const val SEARCH_QUERY_HASH =
-            "4801118d4a100f756e833d33984436a3899cff359c532f8fd3aaf174b60b3b49"
+        private val ISO_COUNTRIES = Locale.getISOCountries().toSet()
     }
 }

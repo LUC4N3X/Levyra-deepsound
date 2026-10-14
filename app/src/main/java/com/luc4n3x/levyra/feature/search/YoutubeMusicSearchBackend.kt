@@ -43,6 +43,8 @@ internal class YoutubeMusicSearchBackend(
             }
         }
 
+    override suspend fun cachedSpotifyOverview(query: String): SearchResults = spotifyClient.cachedSearch(query)
+
     override suspend fun section(
         filter: SearchFilter,
         query: String,

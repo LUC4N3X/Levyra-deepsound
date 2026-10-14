@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -25,6 +26,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -73,6 +75,10 @@ import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.Celebration
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.LibraryMusic
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.TextFields
@@ -101,13 +107,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalLocale
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -134,7 +143,14 @@ import com.luc4n3x.levyra.ui.components.LevyraMorphShape
 import com.luc4n3x.levyra.ui.components.LevyraWavyProgress
 import com.luc4n3x.levyra.ui.components.levyraGroupedListShape
 import com.luc4n3x.levyra.ui.components.levyraPressable
+import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicAccount
+import com.luc4n3x.levyra.ui.i18n.LevyraOnboardingYoutubeMusicStrings
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import com.luc4n3x.levyra.ui.i18n.OnboardingYoutubeMusicCopy
+import com.luc4n3x.levyra.ui.i18n.youtubeMusicCopy
+import com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicLoginScreen
+import com.luc4n3x.levyra.viewmodel.youtubemusic.YoutubeMusicAccountError
+import com.luc4n3x.levyra.viewmodel.youtubemusic.YoutubeMusicAccountUiState
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 
 private val SetupBase = Color(0xFF07070B)
@@ -147,6 +163,8 @@ private val SetupAquamarine = Color(0xFF5EE6D0)
 private val SetupLilac = Color(0xFFB7A2FF)
 private val SetupCoral = Color(0xFFFF9B85)
 private val SetupSun = Color(0xFFFFD36E)
+private val SetupSky = Color(0xFF8FD3FF)
+private val SetupError = Color(0xFFFFB4AB)
 private val SetupContentMaxWidth = 560.dp
 private val SetupHeroIntroSize = 112.dp
 private val SetupHeroStepSize = 88.dp
@@ -158,6 +176,7 @@ private fun onboardingAccent(step: OnboardingStep): Color = when (step) {
     OnboardingStep.Language -> SetupLilac
     OnboardingStep.Profile -> SetupCoral
     OnboardingStep.Taste -> SetupSun
+    OnboardingStep.YoutubeMusic -> SetupSky
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -166,13 +185,18 @@ private fun onboardingHeroPolygon(step: OnboardingStep): RoundedPolygon = when (
     OnboardingStep.Language -> MaterialShapes.Clover4Leaf
     OnboardingStep.Profile -> MaterialShapes.Cookie9Sided
     OnboardingStep.Taste -> MaterialShapes.SoftBurst
+    OnboardingStep.YoutubeMusic -> MaterialShapes.Flower
 }
 
 @Composable
 internal fun OnboardingOverlay(
     selectedLanguageCode: String,
     artwork: Map<String, List<String>>,
+    youtubeMusic: YoutubeMusicAccountUiState,
     onTasteLanguage: (String) -> Unit,
+    onConnectYoutubeMusic: (String) -> Unit,
+    onYoutubeMusicCookie: (String) -> Unit,
+    onCancelYoutubeMusicLogin: () -> Unit,
     onDone: (String, Set<String>, String) -> Unit
 ) {
     val currentLocale = LocalLocale.current.platformLocale
@@ -186,6 +210,9 @@ internal fun OnboardingOverlay(
     val moodEngine = remember { MoodEngine() }
     val tastes = remember(languageCode) { moodEngine.tastesForLanguage(languageCode) }
     val strings = LevyraStrings.forCode(languageCode)
+    val youtubeMusicCopy = LevyraOnboardingYoutubeMusicStrings.forCode(languageCode)
+    val youtubeMusicAccount = youtubeMusic.active
+    val youtubeMusicError = youtubeMusic.error?.takeIf { youtubeMusicAccount == null && !youtubeMusic.restoring }
     val animated = LocalAnimationsEnabled.current
     LaunchedEffect(languageCode) { onTasteLanguage(languageCode) }
     val accent by animateColorAsState(
@@ -193,9 +220,15 @@ internal fun OnboardingOverlay(
         animationSpec = if (animated) tween(520) else snap(),
         label = "setup-accent"
     )
+    val finish: () -> Unit = { onDone(name, selected, languageCode) }
     val advance: () -> Unit = {
-        if (step == OnboardingStep.Taste) onDone(name, selected, languageCode) else step = step.next()
+        when {
+            step != OnboardingStep.YoutubeMusic -> step = step.next()
+            youtubeMusicAccount != null -> finish()
+            else -> onConnectYoutubeMusic(languageCode)
+        }
     }
+    BackHandler(enabled = step != OnboardingStep.Intro) { step = step.previous() }
     val layoutDirection = if (LevyraLanguageCatalog.isRtl(languageCode)) LayoutDirection.Rtl else LayoutDirection.Ltr
     CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
         Box(
@@ -220,6 +253,7 @@ internal fun OnboardingOverlay(
                     accent = accent,
                     initial = name.trim().take(1).uppercase(currentLocale),
                     selectedTasteCount = selected.size,
+                    youtubeMusicConnected = youtubeMusicAccount != null,
                     animated = animated
                 )
                 AnimatedContent(
@@ -258,21 +292,98 @@ internal fun OnboardingOverlay(
                                 selected = if (tasteId in selected) selected - tasteId else selected + tasteId
                             }
                         )
+                        OnboardingStep.YoutubeMusic -> SetupYoutubeMusicStage(
+                            copy = youtubeMusicCopy,
+                            account = youtubeMusicAccount,
+                            error = youtubeMusicError?.let { onboardingYoutubeMusicErrorText(youtubeMusicCopy, it) },
+                            accent = accent,
+                            animated = animated
+                        )
                     }
                 }
                 SetupFooter(
-                    strings = strings,
-                    step = step,
+                    label = setupPrimaryLabel(step, strings, youtubeMusicCopy, youtubeMusicAccount != null, youtubeMusicError != null),
                     accent = accent,
-                    enabled = onboardingPrimaryEnabled(step, selected.size),
-                    selectedTasteCount = selected.size,
+                    enabled = setupPrimaryEnabled(step, selected.size, youtubeMusic),
+                    skipLabel = setupSkipLabel(step, selected.size, strings, youtubeMusicCopy, youtubeMusicAccount != null),
                     onPrimary = advance,
-                    onSkip = { onDone(name, selected, languageCode) }
+                    onSkip = { if (step == OnboardingStep.Taste) step = step.next() else finish() }
+                )
+            }
+            if (youtubeMusic.showLogin) {
+                SetupYoutubeMusicLogin(
+                    languageCode = languageCode,
+                    backLabel = strings.back,
+                    copy = youtubeMusicCopy,
+                    state = youtubeMusic,
+                    onCookie = onYoutubeMusicCookie,
+                    onClose = onCancelYoutubeMusicLogin
                 )
             }
         }
     }
 }
+
+private fun setupPrimaryLabel(
+    step: OnboardingStep,
+    strings: LevyraStrings,
+    copy: OnboardingYoutubeMusicCopy,
+    connected: Boolean,
+    failed: Boolean
+): String = when {
+    step == OnboardingStep.Intro -> strings.introStart
+    step != OnboardingStep.YoutubeMusic -> strings.next
+    connected -> strings.startListening
+    failed -> copy.retry
+    else -> copy.connect
+}
+
+private fun setupPrimaryEnabled(step: OnboardingStep, selectedTasteCount: Int, youtubeMusic: YoutubeMusicAccountUiState): Boolean =
+    if (step == OnboardingStep.YoutubeMusic) youtubeMusic.active != null || !youtubeMusic.restoring
+    else onboardingPrimaryEnabled(step, selectedTasteCount)
+
+private fun setupSkipLabel(
+    step: OnboardingStep,
+    selectedTasteCount: Int,
+    strings: LevyraStrings,
+    copy: OnboardingYoutubeMusicCopy,
+    connected: Boolean
+): String? = when {
+    step == OnboardingStep.Taste && selectedTasteCount < 3 -> strings.skipAndContinue
+    step == OnboardingStep.YoutubeMusic && !connected -> copy.skip
+    else -> null
+}
+
+@Composable
+private fun SetupYoutubeMusicLogin(
+    languageCode: String,
+    backLabel: String,
+    copy: OnboardingYoutubeMusicCopy,
+    state: YoutubeMusicAccountUiState,
+    onCookie: (String) -> Unit,
+    onClose: () -> Unit
+) {
+    YoutubeMusicLoginScreen(
+        copy = youtubeMusicCopy(languageCode).copy(
+            login = copy.login,
+            back = backLabel,
+            checking = copy.checking,
+            retry = copy.retry,
+            networkError = copy.networkError
+        ),
+        checking = state.checkingLogin,
+        error = state.error?.let { onboardingYoutubeMusicErrorText(copy, it) },
+        onCookie = onCookie,
+        onClose = onClose
+    )
+}
+
+private fun onboardingYoutubeMusicErrorText(copy: OnboardingYoutubeMusicCopy, error: YoutubeMusicAccountError): String =
+    when (error) {
+        YoutubeMusicAccountError.Network -> copy.networkError
+        YoutubeMusicAccountError.SignIn -> copy.signInError
+        else -> copy.genericError
+    }
 
 private fun Modifier.setupAmbience(accent: Color): Modifier = drawBehind {
     val glow = Brush.radialGradient(
@@ -338,6 +449,7 @@ private fun SetupHero(
     accent: Color,
     initial: String,
     selectedTasteCount: Int,
+    youtubeMusicConnected: Boolean,
     animated: Boolean
 ) {
     val intro = step == OnboardingStep.Intro
@@ -399,7 +511,12 @@ private fun SetupHero(
                 modifier = Modifier.graphicsLayer { rotationZ = -turn },
                 label = "setup-hero-glyph"
             ) { glyphStep ->
-                SetupHeroGlyph(step = glyphStep, initial = initial, selectedTasteCount = selectedTasteCount)
+                SetupHeroGlyph(
+                    step = glyphStep,
+                    initial = initial,
+                    selectedTasteCount = selectedTasteCount,
+                    youtubeMusicConnected = youtubeMusicConnected
+                )
             }
         }
     }
@@ -474,7 +591,7 @@ private fun SetupLogoBloom(accent: Color, animated: Boolean) {
 }
 
 @Composable
-private fun SetupHeroGlyph(step: OnboardingStep, initial: String, selectedTasteCount: Int) {
+private fun SetupHeroGlyph(step: OnboardingStep, initial: String, selectedTasteCount: Int, youtubeMusicConnected: Boolean) {
     when (step) {
         OnboardingStep.Intro -> Unit
         OnboardingStep.Language -> Icon(
@@ -493,6 +610,12 @@ private fun SetupHeroGlyph(step: OnboardingStep, initial: String, selectedTasteC
         } else {
             Text("$selectedTasteCount/3", color = SetupOnAccent, fontSize = 24.sp, fontWeight = FontWeight.Black)
         }
+        OnboardingStep.YoutubeMusic -> Icon(
+            if (youtubeMusicConnected) Icons.Rounded.Check else Icons.Rounded.Link,
+            contentDescription = null,
+            tint = SetupOnAccent,
+            modifier = Modifier.size(38.dp)
+        )
     }
 }
 
@@ -1010,6 +1133,262 @@ private fun SetupTasteBadge(visible: Boolean, accent: Color, modifier: Modifier 
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SetupYoutubeMusicStage(
+    copy: OnboardingYoutubeMusicCopy,
+    account: YoutubeMusicAccount?,
+    error: String?,
+    accent: Color,
+    animated: Boolean
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 8.dp)
+    ) {
+        SetupTitle(text = copy.title)
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(copy.body, color = SetupMuted, fontSize = 16.sp, lineHeight = 23.sp)
+        Spacer(modifier = Modifier.height(24.dp))
+        SetupYoutubeMusicLink(accent = accent, connected = account != null, animated = animated)
+        Spacer(modifier = Modifier.height(24.dp))
+        AnimatedContent(
+            targetState = account,
+            transitionSpec = {
+                fadeIn(tween(240, delayMillis = 60)) + scaleIn(spring(dampingRatio = 0.8f, stiffness = 380f), initialScale = 0.94f) togetherWith
+                    fadeOut(tween(120))
+            },
+            contentKey = { it?.id },
+            label = "setup-youtube-music-state"
+        ) { connected ->
+            if (connected != null) {
+                SetupYoutubeMusicAccountCard(copy = copy, account = connected, accent = accent)
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    SetupYoutubeMusicInfoRow(
+                        icon = Icons.Rounded.Schedule,
+                        polygon = MaterialShapes.Cookie4Sided,
+                        title = copy.optionalTitle,
+                        body = copy.optionalBody,
+                        accent = accent,
+                        shape = levyraGroupedListShape(0, 2)
+                    )
+                    SetupYoutubeMusicInfoRow(
+                        icon = Icons.Rounded.Lock,
+                        polygon = MaterialShapes.Clover4Leaf,
+                        title = copy.secureTitle,
+                        body = copy.secureBody,
+                        accent = accent,
+                        shape = levyraGroupedListShape(1, 2)
+                    )
+                }
+            }
+        }
+        AnimatedVisibility(visible = error != null && account == null, enter = fadeIn(tween(200)), exit = fadeOut(tween(140))) {
+            Text(
+                text = error.orEmpty(),
+                color = SetupError,
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 14.dp)
+                    .semantics { liveRegion = LiveRegionMode.Polite }
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SetupYoutubeMusicLink(accent: Color, connected: Boolean, animated: Boolean) {
+    val link by animateFloatAsState(
+        targetValue = if (connected) 1f else 0f,
+        animationSpec = if (animated) spring(dampingRatio = 0.75f, stiffness = 220f) else snap(),
+        label = "setup-youtube-music-link"
+    )
+    val targetColor by animateColorAsState(
+        targetValue = if (connected) accent else accent.copy(alpha = 0.18f),
+        animationSpec = if (animated) tween(320) else snap(),
+        label = "setup-youtube-music-target"
+    )
+    val pulse = if (animated && !connected) {
+        rememberInfiniteTransition(label = "setup-youtube-music-pulse").animateFloat(
+            initialValue = -1f,
+            targetValue = SetupLinkDots + 1f,
+            animationSpec = infiniteRepeatable(tween(1800, easing = LinearEasing), RepeatMode.Restart),
+            label = "setup-youtube-music-pulse-value"
+        )
+    } else {
+        null
+    }
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(76.dp)
+                .background(SetupSurfaceHigh, MaterialShapes.Cookie9Sided.toShape())
+                .border(1.dp, Color.White.copy(alpha = 0.08f), MaterialShapes.Cookie9Sided.toShape()),
+            contentAlignment = Alignment.Center
+        ) {
+            LevyraLogoMark(size = 42.dp, contentDescription = null)
+        }
+        SetupLinkConnector(accent = accent, link = { link }, pulse = { pulse?.value }, mirrored = rtl)
+        Box(
+            modifier = Modifier
+                .size(76.dp)
+                .background(targetColor, MaterialShapes.SoftBurst.toShape()),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                if (connected) Icons.Rounded.Check else Icons.Rounded.LibraryMusic,
+                contentDescription = null,
+                tint = if (connected) SetupOnAccent else accent,
+                modifier = Modifier.size(34.dp)
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SetupYoutubeMusicInfoRow(
+    icon: ImageVector,
+    polygon: RoundedPolygon,
+    title: String,
+    body: String,
+    accent: Color,
+    shape: androidx.compose.ui.graphics.Shape
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(SetupSurface, shape)
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .background(accent.copy(alpha = 0.18f), polygon.toShape()),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(22.dp))
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = title,
+                color = SetupInk,
+                fontSize = 15.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(15.sp),
+                fontWeight = FontWeight.Bold
+            )
+            Text(text = body, color = SetupMuted, fontSize = 14.sp, lineHeight = 20.sp)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SetupYoutubeMusicAccountCard(copy: OnboardingYoutubeMusicCopy, account: YoutubeMusicAccount, accent: Color) {
+    val avatarShape = MaterialShapes.Cookie9Sided.toShape()
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(accent.copy(alpha = 0.12f), RoundedCornerShape(28.dp))
+                .border(1.dp, accent.copy(alpha = 0.32f), RoundedCornerShape(28.dp))
+                .padding(16.dp)
+                .semantics(mergeDescendants = true) {},
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(avatarShape)
+                    .background(accent),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = account.name.trim().take(1).uppercase(),
+                    color = SetupOnAccent,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Black
+                )
+                if (account.avatarUrl.isNotBlank()) AsyncImage(
+                    model = account.avatarUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(copy.connectedTitle, color = accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    text = account.name,
+                    color = SetupInk,
+                    fontSize = 19.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(19.sp),
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (account.handle.startsWith("@")) Text(
+                    text = account.handle,
+                    color = SetupMuted,
+                    fontSize = 13.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        Text(copy.connectedBody, color = SetupMuted, fontSize = 15.sp, lineHeight = 22.sp)
+    }
+}
+
+@Composable
+private fun SetupLinkConnector(accent: Color, link: () -> Float, pulse: () -> Float?, mirrored: Boolean) {
+    Canvas(
+        modifier = Modifier
+            .width(84.dp)
+            .height(20.dp)
+            .graphicsLayer { scaleX = if (mirrored) -1f else 1f }
+    ) {
+        val progress = link()
+        val phase = pulse()
+        val y = size.height / 2f
+        val step = size.width / SetupLinkDots
+        repeat(SetupLinkDots) { index ->
+            drawCircle(
+                color = accent.copy(alpha = (0.22f + 0.7f * setupLinkGlow(phase, index)) * (1f - progress)),
+                radius = 3.dp.toPx(),
+                center = Offset(step * (index + 0.5f), y)
+            )
+        }
+        if (progress > 0f) drawLine(
+            color = accent,
+            start = Offset(step * 0.5f, y),
+            end = Offset(step * 0.5f + (size.width - step) * progress, y),
+            strokeWidth = 4.dp.toPx(),
+            cap = StrokeCap.Round
+        )
+    }
+}
+
+private fun setupLinkGlow(phase: Float?, index: Int): Float =
+    if (phase == null) 0.35f else (1f - kotlin.math.abs(phase - index)).coerceIn(0f, 1f)
+
+private const val SetupLinkDots = 5
+
 private fun setupTastePalette(id: String): Pair<Color, Color> {
     val palette = listOf(
         Color(0xFFE8115B) to Color(0xFF8C0B37),
@@ -1029,19 +1408,13 @@ private fun setupTastePalette(id: String): Pair<Color, Color> {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SetupFooter(
-    strings: LevyraStrings,
-    step: OnboardingStep,
+    label: String,
     accent: Color,
     enabled: Boolean,
-    selectedTasteCount: Int,
+    skipLabel: String?,
     onPrimary: () -> Unit,
     onSkip: () -> Unit
 ) {
-    val label = when (step) {
-        OnboardingStep.Intro -> strings.introStart
-        OnboardingStep.Taste -> strings.startListening
-        else -> strings.next
-    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1068,9 +1441,9 @@ private fun SetupFooter(
             Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, modifier = Modifier.size(22.dp))
         }
         Box(modifier = Modifier.height(48.dp), contentAlignment = Alignment.Center) {
-            if (step == OnboardingStep.Taste && selectedTasteCount < 3) {
+            if (skipLabel != null) {
                 TextButton(onClick = onSkip) {
-                    Text(strings.skipAndContinue, color = SetupMuted, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text(skipLabel, color = SetupMuted, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }

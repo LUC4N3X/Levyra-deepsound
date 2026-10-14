@@ -3,6 +3,9 @@ package com.luc4n3x.levyra.data
 import com.luc4n3x.levyra.data.spotify.MatchedYouTubeData
 import com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatchCache
 import com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher
+import com.luc4n3x.levyra.data.spotify.preservesPersonalMetadata
+import com.luc4n3x.levyra.data.spotify.withSpotifyMetadata
+import com.luc4n3x.levyra.data.spotify.sameSpotifyAlbum
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.PlaylistHit
@@ -145,7 +148,12 @@ private fun stableTrackMergeKeys(track: Track): List<String> {
     val metadata = searchSongMetadataKey(track)
     return buildList {
         if (identity.isNotBlank()) add("id:$identity")
-        if (metadata.isNotBlank()) add("meta:${kind.name}:$metadata")
+        if (metadata.isNotBlank()) {
+            val albumContext = if (kind == SearchTrackKind.Spotify) {
+                com.luc4n3x.levyra.nexus.identity.MusicIdentityText.album(track.album).let { "${it.core}|${it.editions.sortedBy { edition -> edition.name }}" }
+            } else ""
+            add("meta:${kind.name}:$metadata|$albumContext")
+        }
     }
 }
 
@@ -195,7 +203,9 @@ internal fun mergeSpotifyAndYoutubeSongs(existing: List<Track>, incoming: List<T
             }
         }
 
-        val candidates = availableYoutubeIndices.map { ordered[it] }
+        val candidates = availableYoutubeIndices.map { ordered[it] }.filter {
+            compatibleMetadataAlbum(spotifyTrack, it)
+        }
         val matched = SpotifyYouTubeMatcher.findBestMatch(spotifyTrack, candidates)?.candidate
         val cachedVideoId = spotifyTrack.id
             .takeIf { it.startsWith("spotify:", ignoreCase = true) }
@@ -205,7 +215,10 @@ internal fun mergeSpotifyAndYoutubeSongs(existing: List<Track>, incoming: List<T
 
         val youtubeIndex = matched
             ?.let { match -> availableYoutubeIndices.firstOrNull { ordered[it].id == match.id } }
-            ?: youtubeIndexById[cachedVideoId]?.takeIf(availableYoutubeIndices::contains)
+            ?: youtubeIndexById[cachedVideoId]?.takeIf { index ->
+                index in availableYoutubeIndices && compatibleMetadataAlbum(spotifyTrack, ordered[index]) &&
+                    SpotifyYouTubeMatcher.scoreMatch(spotifyTrack, ordered[index]) >= SpotifyYouTubeMatcher.DEFAULT_CONFIDENCE_THRESHOLD
+            }
 
         if (youtubeIndex != null) {
             youtubeBySpotifyIndex[spotifyIndex] = youtubeIndex
@@ -322,14 +335,20 @@ private fun hasSharedYoutubeIdentity(first: Track, second: Track): Boolean {
 }
 
 private fun sameSearchRecording(first: Track, second: Track): Boolean {
+    if ((isSpotifySearchTrack(first) || isSpotifySearchTrack(second)) && !compatibleMetadataAlbum(first, second)) {
+        return false
+    }
     val firstIdentity = searchSongIdentityKey(first)
     if (firstIdentity.isNotBlank() && firstIdentity == searchSongIdentityKey(second)) return true
+    if (hasSharedYoutubeIdentity(first, second)) return true
+
+    if ((isSpotifySearchTrack(first) || isSpotifySearchTrack(second)) &&
+        SpotifyYouTubeMatcher.scoreMatch(first, second) < SpotifyYouTubeMatcher.DEFAULT_CONFIDENCE_THRESHOLD
+    ) return false
 
     val firstIsrc = first.isrc.trim().uppercase(Locale.ROOT)
     val secondIsrc = second.isrc.trim().uppercase(Locale.ROOT)
     if (firstIsrc.isNotBlank() && firstIsrc == secondIsrc) return true
-
-    if (hasSharedYoutubeIdentity(first, second)) return true
 
     val firstMetadata = searchSongMetadataKey(first)
     if (firstMetadata.isNotBlank() && firstMetadata == searchSongMetadataKey(second)) return true
@@ -408,14 +427,8 @@ internal fun filterSearchSongsExcludingTopResult(
 
     val topResultIds = topResultTracks
         .mapNotNullTo(HashSet()) { track -> searchSongIdentityKey(track).takeIf(String::isNotBlank) }
-    val topResultMetadataKeys = topResultTracks
-        .mapNotNullTo(HashSet()) { track -> searchSongMetadataKey(track).takeIf(String::isNotBlank) }
-
     return songs.filterNot { song ->
-        val identity = searchSongIdentityKey(song)
-        val metadata = searchSongMetadataKey(song)
-        identity in topResultIds ||
-            (metadata.isNotBlank() && metadata in topResultMetadataKeys) ||
+        searchSongIdentityKey(song) in topResultIds ||
             topResultTracks.any { topTrack -> sameSearchRecording(song, topTrack) }
     }
 }
@@ -536,8 +549,14 @@ private fun selectBestDuration(metadataDonor: Track, current: Track, candidate: 
     return candidate.durationMs
 }
 
+private fun compatibleMetadataAlbum(first: Track, second: Track): Boolean =
+    first.album.isBlank() || second.album.isBlank() || sameSpotifyAlbum(first.album, second.album)
+
 internal fun richerSong(current: Track, candidate: Track): Track {
+    if (preservesPersonalMetadata(current)) return current
+    if (preservesPersonalMetadata(candidate)) return candidate
     val isAnySpotify = isSpotifySearchTrack(current) || isSpotifySearchTrack(candidate)
+    if (isAnySpotify && !compatibleMetadataAlbum(current, candidate)) return current
     val metadataDonor = selectSongMetadataDonor(current, candidate)
     val playbackDonor = selectSongPlaybackDonor(current, candidate)
     val mergedId = resolveMergedSongId(current, candidate, playbackDonor)
@@ -558,7 +577,8 @@ internal fun richerSong(current: Track, candidate: Track): Track {
         videoId.ifBlank { current.audioVideoId.ifBlank { candidate.audioVideoId } }
     }
 
-    return current.copy(
+    val metadataBase = if (isAnySpotify) withSpotifyMetadata(current, metadataDonor) else current
+    return metadataBase.copy(
         id = mergedId,
         title = metadataDonor.title.ifBlank { current.title.ifBlank { candidate.title } },
         artist = metadataDonor.artist.ifBlank { current.artist.ifBlank { candidate.artist } },
@@ -574,6 +594,15 @@ internal fun richerSong(current: Track, candidate: Track): Track {
         audioVideoId = audioVideoId,
         videoType = playbackDonor.videoType.ifBlank { current.videoType.ifBlank { candidate.videoType } },
         isrc = metadataDonor.isrc.ifBlank { current.isrc.ifBlank { candidate.isrc } },
+        upc = metadataDonor.upc.ifBlank { current.upc.ifBlank { candidate.upc } },
+        releaseDate = metadataDonor.releaseDate.ifBlank { current.releaseDate.ifBlank { candidate.releaseDate } },
+        year = metadataDonor.year.ifBlank { current.year.ifBlank { candidate.year } },
+        trackNumber = metadataDonor.trackNumber.takeIf { it > 0 } ?: current.trackNumber.takeIf { it > 0 } ?: candidate.trackNumber,
+        discNumber = metadataDonor.discNumber.takeIf { it > 0 } ?: current.discNumber.takeIf { it > 0 } ?: candidate.discNumber,
+        trackTotal = metadataDonor.trackTotal.takeIf { it > 0 } ?: current.trackTotal.takeIf { it > 0 } ?: candidate.trackTotal,
+        discTotal = metadataDonor.discTotal.takeIf { it > 0 } ?: current.discTotal.takeIf { it > 0 } ?: candidate.discTotal,
+        albumArtist = metadataDonor.albumArtist.ifBlank { current.albumArtist.ifBlank { candidate.albumArtist } },
+        canonicalAlbumUrl = metadataDonor.canonicalAlbumUrl.ifBlank { current.canonicalAlbumUrl.ifBlank { candidate.canonicalAlbumUrl } },
         explicit = current.explicit || candidate.explicit,
         source = when {
             isLocalSearchTrack(playbackDonor) -> playbackDonor.source

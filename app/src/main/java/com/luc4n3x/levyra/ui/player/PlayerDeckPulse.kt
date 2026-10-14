@@ -44,11 +44,24 @@ import com.luc4n3x.levyra.player.PlaybackService
 import com.luc4n3x.levyra.ui.WaveformVisualizer
 import com.luc4n3x.levyra.ui.theme.LevyraMotion
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
 
 private val PulseSignalHeight = 30.dp
 private val PulseSpecHeight = 18.dp
 private val PulseLiveDot = 6.dp
 private const val PulseSignalGain = 3f
+private const val PulseRecordTurnMillis = 9_000
 private val PulseSpecStyle = TextStyle(fontFeatureSettings = "tnum, case")
 
 @Composable
@@ -79,24 +92,22 @@ internal fun PlayerPulseDeck(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         slots.header()
-        slots.stage(
-            track,
-            if (scrollable) {
-                Modifier
-                    .height(scrollingHeroHeight)
-                    .padding(vertical = LevyraPlayerDesign.SpaceMd)
-            } else {
-                Modifier
-                    .weight(1f)
-                    .padding(
-                        start = LevyraPlayerDesign.SpaceXl,
-                        end = LevyraPlayerDesign.SpaceXl,
-                        top = if (compact) LevyraPlayerDesign.SpaceSm else LevyraPlayerDesign.SpaceLg,
-                        bottom = LevyraPlayerDesign.SpaceMd
-                    )
-            },
-            LevyraPlayerDesign.CornerMd
-        )
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(if (scrollable) Modifier.height(scrollingHeroHeight) else Modifier.weight(1f))
+                .padding(vertical = if (compact) LevyraPlayerDesign.SpaceSm else LevyraPlayerDesign.SpaceLg),
+            contentAlignment = Alignment.Center
+        ) {
+            val side = minOf(maxWidth, maxHeight) * 0.94f
+            PulseRecord(
+                track = track,
+                slots = slots,
+                side = side,
+                accent = accent,
+                spinning = isPlaying && animated
+            )
+        }
         PulseSignal(
             surfaces = surfaces,
             accent = accent,
@@ -111,6 +122,53 @@ internal fun PlayerPulseDeck(
             )
         )
         slots.controls(this, track)
+    }
+}
+
+@Composable
+private fun PulseRecord(
+    track: Track,
+    slots: PlayerDeckSlots,
+    side: Dp,
+    accent: Color,
+    spinning: Boolean
+) {
+    val decorative = LocalLevyraVisualCapabilities.current.decorativeMotion
+    val angle = remember { Animatable(0f) }
+    LaunchedEffect(spinning, decorative) {
+        if (!spinning || !decorative) return@LaunchedEffect
+        while (true) {
+            angle.animateTo(angle.value + 360f, tween(PulseRecordTurnMillis, easing = LinearEasing))
+            angle.snapTo(angle.value % 360f)
+        }
+    }
+    Box(
+        modifier = Modifier
+            .size(side)
+            .graphicsLayer { rotationZ = angle.value }
+            .clip(CircleShape)
+            .background(Color(0xFF0B0B0E)),
+        contentAlignment = Alignment.Center
+    ) {
+        slots.stage(track, Modifier.size(side), side / 2)
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val radius = size.minDimension / 2f
+            var ring = radius * 0.98f
+            while (ring > radius * 0.36f) {
+                drawCircle(Color.Black.copy(alpha = 0.16f), radius = ring, style = Stroke(width = 1.2f))
+                ring -= radius * 0.035f
+            }
+            drawCircle(
+                Brush.radialGradient(
+                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.34f)),
+                    radius = radius
+                ),
+                radius = radius
+            )
+            drawCircle(Color(0xFF0B0B0E), radius = radius * 0.13f)
+            drawCircle(accent, radius = radius * 0.13f, style = Stroke(width = radius * 0.018f))
+            drawCircle(Color.Black, radius = radius * 0.03f)
+        }
     }
 }
 

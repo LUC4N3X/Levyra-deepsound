@@ -76,6 +76,8 @@ Play streamed music and your own files in the same app, save tracks for offline 
 
 I started Levyra because I wanted one player for the music I stream and the files I already have. I wanted local tracks to feel like part of the same library, with playlists, history and downloads that do not depend on a Levyra account.
 
+On Android, you can also sign in to YouTube Music if you want your playlists, liked songs and saved albums in Levyra, along with a Home feed based on your account. It's completely optional. Levyra works as before without signing in, and anything you've imported stays in your library if you disconnect. Sign-in happens through Google's own pages, and Levyra stores the session encrypted on your device using Android Keystore, not your Google password.
+
 Downloaded tracks are saved as normal audio files in your device storage. Local and streamed music can share the same library, playlists and queues, while listening data stays on the device.
 
 As I kept using Levyra, I added the things I missed in other players: synced lyrics with timing controls, romanization, SponsorBlock, Queue Spaces, AutoEQ, Android Auto, music recognition, live radio, backups and a Windows version. They all use the same library and playback flow.
@@ -116,41 +118,18 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
 
 <div align="center">
 
-<a href="docs/assets/showcase/00_levyra_hero_dance_studio.webp"><img src="docs/assets/showcase/00_levyra_hero_dance_studio.webp" width="100%" alt="Levyra music player for Android and Windows" /></a>
+<a href="docs/assets/showcase/00_levyra_hero_dance_studio.webp"><img src="docs/assets/showcase/00_levyra_hero_dance_studio.webp?v=loft-editorial-v9" width="100%" alt="Levyra music player for Android and Windows" /></a>
 
 <p align="center">
   <sub>Browse radio and charts, open an artist, switch to video or follow synced lyrics. Your listening stats stay on your device.</sub>
 </p>
 
 <p align="center">
-  <a href="docs/assets/showcase/cards/01_home.webp"><img src="docs/assets/showcase/cards/01_home.webp?v=material3-expressive-20261011" width="200" alt="Levyra home and personalized radio" /></a>
-  <a href="docs/assets/showcase/cards/02_stay_with_the_song.webp"><img src="docs/assets/showcase/cards/02_stay_with_the_song.webp?v=material3-expressive-20261011" width="200" alt="Levyra offline downloads with local audio files, artwork, and metadata" /></a>
-  <a href="docs/assets/showcase/cards/03_now_playing.webp"><img src="docs/assets/showcase/cards/03_now_playing.webp?v=material3-expressive-20261011" width="200" alt="Levyra synchronized lyrics" /></a>
-  <a href="docs/assets/showcase/cards/04_player_deck.webp"><img src="docs/assets/showcase/cards/04_player_deck.webp?v=material3-expressive-20261011" width="200" alt="Levyra customizable player decks" /></a>
-</p>
-<p align="center">
-  <a href="docs/assets/showcase/cards/05_explore_stage.webp"><img src="docs/assets/showcase/cards/05_explore_stage.webp?v=material3-expressive-20261011" width="200" alt="Levyra explore and fresh currents" /></a>
-  <a href="docs/assets/showcase/cards/06_levyra_mix_stage.webp"><img src="docs/assets/showcase/cards/06_levyra_mix_stage.webp?v=material3-expressive-20261011" width="200" alt="Levyra custom mix and live radio" /></a>
-  <a href="docs/assets/showcase/cards/07_genres.webp"><img src="docs/assets/showcase/cards/07_genres.webp?v=material3-expressive-20261011" width="200" alt="Levyra moods and genres" /></a>
-  <a href="docs/assets/showcase/cards/08_audio_tuning.webp"><img src="docs/assets/showcase/cards/08_audio_tuning.webp?v=material3-expressive-20261011" width="200" alt="Levyra audio tuning and playback engine" /></a>
-</p>
-<p align="center">
-  <a href="docs/assets/showcase/cards/09_album.webp"><img src="docs/assets/showcase/cards/09_album.webp?v=material3-expressive-20261011" width="200" alt="Levyra album details and tracklist" /></a>
-  <a href="docs/assets/showcase/cards/10_search.webp"><img src="docs/assets/showcase/cards/10_search.webp?v=material3-expressive-20261011" width="200" alt="Levyra instant search and suggestions" /></a>
-  <a href="docs/assets/showcase/cards/11_collections.webp"><img src="docs/assets/showcase/cards/11_collections.webp?v=material3-expressive-20261011" width="200" alt="Levyra curated collections and playlists" /></a>
-  <a href="docs/assets/showcase/cards/12_listening_rhythm.webp"><img src="docs/assets/showcase/cards/12_listening_rhythm.webp?v=material3-expressive-20261011" width="200" alt="Levyra listening rhythm and habits" /></a>
-</p>
-<p align="center">
-  <a href="docs/assets/showcase/cards/13_your_orbit.webp"><img src="docs/assets/showcase/cards/13_your_orbit.webp?v=material3-expressive-20261011" width="200" alt="Levyra orbit and favorite tracks" /></a>
-  <a href="docs/assets/showcase/cards/14_listening_pulse.webp"><img src="docs/assets/showcase/cards/14_listening_pulse.webp?v=material3-expressive-20261011" width="200" alt="Levyra private listening stats and charts" /></a>
-  <a href="docs/assets/showcase/cards/15_artist_playlists.webp"><img src="docs/assets/showcase/cards/15_artist_playlists.webp?v=material3-expressive-20261011" width="200" alt="Levyra artist playlists and collections" /></a>
-  <a href="docs/assets/showcase/cards/16_settings_vault.webp"><img src="docs/assets/showcase/cards/16_settings_vault.webp?v=material3-expressive-20261011" width="200" alt="Levyra settings and local vault backups" /></a>
-</p>
-<p align="center">
-  <a href="docs/assets/showcase/cards/17_new_releases.webp"><img src="docs/assets/showcase/cards/17_new_releases.webp?v=material3-expressive-20261011" width="200" alt="Levyra new releases" /></a>
-  <a href="docs/assets/showcase/cards/18_artist_profile.webp"><img src="docs/assets/showcase/cards/18_artist_profile.webp?v=material3-expressive-20261011" width="200" alt="Levyra artist profile and discography" /></a>
-  <a href="docs/assets/showcase/cards/19_top_50.webp"><img src="docs/assets/showcase/cards/19_top_50.webp?v=material3-expressive-20261011" width="200" alt="Levyra Top 50 charts" /></a>
-  <a href="docs/assets/showcase/cards/20_levyra_jam.webp"><img src="docs/assets/showcase/cards/20_levyra_jam.webp?v=material3-expressive-20261011" width="200" alt="Levyra Jam collaborative listening on local Wi-Fi" /></a>
+  <a href="docs/assets/showcase/cards/01_home.webp"><img src="docs/assets/showcase/cards/01_home.webp?v=m3-soft-v3" width="200" alt="Levyra home and personalized radio" /></a><a href="docs/assets/showcase/cards/02_stay_with_the_song.webp"><img src="docs/assets/showcase/cards/02_stay_with_the_song.webp?v=m3-soft-v3" width="200" alt="Levyra offline downloads with local audio files, artwork, and metadata" /></a><a href="docs/assets/showcase/cards/03_now_playing.webp"><img src="docs/assets/showcase/cards/03_now_playing.webp?v=m3-soft-v3" width="200" alt="Levyra synchronized lyrics" /></a><a href="docs/assets/showcase/cards/04_player_deck.webp"><img src="docs/assets/showcase/cards/04_player_deck.webp?v=m3-soft-v3" width="200" alt="Levyra customizable player decks" /></a><br>
+  <a href="docs/assets/showcase/cards/05_explore_stage.webp"><img src="docs/assets/showcase/cards/05_explore_stage.webp?v=m3-soft-v3" width="200" alt="Levyra explore and fresh currents" /></a><a href="docs/assets/showcase/cards/06_levyra_mix_stage.webp"><img src="docs/assets/showcase/cards/06_levyra_mix_stage.webp?v=m3-soft-v3" width="200" alt="Levyra custom mix and live radio" /></a><a href="docs/assets/showcase/cards/07_genres.webp"><img src="docs/assets/showcase/cards/07_genres.webp?v=m3-soft-v3" width="200" alt="Levyra moods and genres" /></a><a href="docs/assets/showcase/cards/08_audio_tuning.webp"><img src="docs/assets/showcase/cards/08_audio_tuning.webp?v=m3-soft-v3" width="200" alt="Levyra audio tuning and playback engine" /></a><br>
+  <a href="docs/assets/showcase/cards/09_album.webp"><img src="docs/assets/showcase/cards/09_album.webp?v=m3-soft-v3" width="200" alt="Levyra album details and tracklist" /></a><a href="docs/assets/showcase/cards/10_search.webp"><img src="docs/assets/showcase/cards/10_search.webp?v=m3-soft-v3" width="200" alt="Levyra instant search and suggestions" /></a><a href="docs/assets/showcase/cards/11_collections.webp"><img src="docs/assets/showcase/cards/11_collections.webp?v=m3-soft-v3" width="200" alt="Levyra curated collections and playlists" /></a><a href="docs/assets/showcase/cards/12_listening_rhythm.webp"><img src="docs/assets/showcase/cards/12_listening_rhythm.webp?v=m3-soft-v3" width="200" alt="Levyra listening rhythm and habits" /></a><br>
+  <a href="docs/assets/showcase/cards/13_your_orbit.webp"><img src="docs/assets/showcase/cards/13_your_orbit.webp?v=m3-soft-v3" width="200" alt="Levyra orbit and favorite tracks" /></a><a href="docs/assets/showcase/cards/14_listening_pulse.webp"><img src="docs/assets/showcase/cards/14_listening_pulse.webp?v=m3-soft-v3" width="200" alt="Levyra private listening stats and charts" /></a><a href="docs/assets/showcase/cards/15_artist_playlists.webp"><img src="docs/assets/showcase/cards/15_artist_playlists.webp?v=m3-soft-v3" width="200" alt="Levyra artist playlists and collections" /></a><a href="docs/assets/showcase/cards/16_settings_vault.webp"><img src="docs/assets/showcase/cards/16_settings_vault.webp?v=m3-soft-v3" width="200" alt="Levyra settings and local vault backups" /></a><br>
+  <a href="docs/assets/showcase/cards/17_new_releases.webp"><img src="docs/assets/showcase/cards/17_new_releases.webp?v=m3-soft-v3" width="200" alt="Levyra new releases" /></a><a href="docs/assets/showcase/cards/18_artist_profile.webp"><img src="docs/assets/showcase/cards/18_artist_profile.webp?v=m3-soft-v3" width="200" alt="Levyra artist profile and discography" /></a><a href="docs/assets/showcase/cards/19_top_50.webp"><img src="docs/assets/showcase/cards/19_top_50.webp?v=m3-soft-v3" width="200" alt="Levyra Top 50 charts" /></a><a href="docs/assets/showcase/cards/20_levyra_jam.webp"><img src="docs/assets/showcase/cards/20_levyra_jam.webp?v=m3-soft-v3" width="200" alt="Levyra Jam collaborative listening on local Wi-Fi" /></a>
 </p>
 
 </div>
@@ -165,6 +144,7 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
 - **Audio & video modes**: one-tap switch between audio-only streaming and full video with subtitle tracks.
 - **Clean offline downloads**: saved directly in device storage as standard M4A files with metadata, artwork, and lyrics.
 - **Unified library**: local files and streamed tracks share the same playlists, favorites, and queues.
+- **Optional YouTube Music sign-in (Android)**: connect your account to browse your music and import playlists, liked songs and albums. No account needed if you'd rather keep using Levyra as it is.
 - **Queue Spaces**: keep multiple active listening sessions side by side without losing your current queue.
 - **Synced lyrics**: tap-to-seek, manual timing adjustments, dedicated Bluetooth latency offset, and non-Latin romanization.
 - **Visuals**: motion artwork on the Now Playing screen, falling back to animated album covers.
@@ -206,14 +186,9 @@ For independent verification, an Apptizo scan of the F-Droid build confirmed zer
 
 ## ✦ Translations
 
-Levyra is available in 37 languages, with community translations maintained on Weblate.
+Levyra is available in 37 languages.
 
 <div align="center">
-<a href="https://hosted.weblate.org/engage/levyra/"><img src="https://hosted.weblate.org/widgets/levyra/-/svg-badge.svg" alt="Translation status"></a>
-
-<br>
-
-<a href="https://hosted.weblate.org/engage/levyra/">
   <picture>
     <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-mobile-light.svg">
     <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse-mobile.svg">
@@ -221,12 +196,6 @@ Levyra is available in 37 languages, with community translations maintained on W
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse.svg">
     <img src="docs/assets/levyra-translation-pulse.svg" alt="Levyra translation progress" width="920">
   </picture>
-</a>
-
-<br>
-
-<a href="https://hosted.weblate.org/engage/levyra/"><b>Help translate Levyra on Weblate</b></a>
-
 </div>
 
 ## ✦ Open-source acknowledgements

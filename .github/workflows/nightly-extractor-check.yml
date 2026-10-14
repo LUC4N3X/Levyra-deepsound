@@ -229,7 +229,7 @@ jobs:
         id: codex
         if: steps.confirm.outputs.decision == 'repair' && steps.agent.outputs.available == 'true'
         continue-on-error: true
-        uses: openai/codex-action@86365089eb2b84e0a8fb0717b304f8bdcb13b20e # v1.12
+        uses: openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675 # v1.13
         with:
           openai-api-key: ${{ secrets.LEVYRA_CANARY_OPENROUTER_API_KEY }}
           responses-api-endpoint: https://openrouter.ai/api/v1/responses

@@ -15,6 +15,21 @@ import org.junit.Test
 class SearchEntityIdentityTest {
 
     @Test
+    fun sameRecordingSpotifyDifferentAlbumKeepsDistinctSearchCards() {
+        val original = track(id = "spotify:original-album", title = "Song", artist = "Artist",
+            album = "Original album", durationMs = 180_000L).copy(
+            source = "spotify", metadataProvider = "spotify", isrc = "USABC2600001"
+        )
+        val compilation = original.copy(id = "spotify:compilation-album", album = "Compilation album")
+
+        val merged = mergeSearchSongs(listOf(original), listOf(compilation))
+
+        assertEquals(listOf(original.id, compilation.id), merged.map { it.id })
+        assertEquals(listOf(original.album, compilation.album), merged.map { it.album })
+        assertEquals(listOf(compilation), filterSearchSongsExcludingTopResult(merged, listOf(original)))
+    }
+
+    @Test
     fun `same album from different endpoints collapses on canonical browse id`() {
         val merged = deduplicateSearchAlbums(
             listOf(
@@ -221,7 +236,7 @@ class SearchEntityIdentityTest {
             assertEquals("local:spotify-yellow", merged.id)
             assertEquals("Offline", merged.source)
             assertEquals("content://media/external/audio/99", merged.streamUrl)
-            assertEquals("spotify", merged.metadataProvider)
+            assertEquals(local.metadataProvider, merged.metadataProvider)
         }
     }
 

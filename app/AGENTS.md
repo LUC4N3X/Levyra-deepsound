@@ -6,15 +6,34 @@ These instructions extend the root `AGENTS.md` for every file under `app/`. The 
 
 The Android application is built with Kotlin, Jetpack Compose, AndroidX Media3, Room, WorkManager, OkHttp, Coil, and the existing extractor integration.
 
-Before editing, load every matching native skill under `.agents/skills/` and the referenced canonical Claude/domain rules under `.agents/claude/rules/` when they apply. The ignored `.claude/` runtime projection is generated from these tracked sources and is not a second source of truth.
+Before editing, route the matching native skills under `.agents/skills/` and read the relevant canonical rules under `.agents/claude/rules/`. Load no more than two skill bodies per active phase (root `AGENTS.md`); advance through separate design, implementation, and review phases when extra skills apply. The external upstream skills are installed by the project tooling, not vendored or copied into `.agents/skills/`. The ignored `.claude/` runtime projection is generated from these tracked sources and is not a second source of truth.
 
-For any visual redesign, UI polish, hierarchy, spacing, typography, color, shape, motion, screenshot/reference recreation, or request to make the Android UI more premium, modern, distinctive, cohesive, or less AI-generated, automatically load both `levyra-compose` and `levyra-design-taste` before editing. The design-taste skill supplements Compose engineering rules; it never overrides accessibility, performance, lifecycle, localization, product behavior, or architecture.
+For any visual redesign, UI polish, hierarchy, spacing, typography, color, shape, motion, screenshot/reference recreation, or request to make the Android UI more premium, modern, distinctive, cohesive, or less AI-generated, load `levyra-compose` and `levyra-design-taste` in the implementation phase. In the focused UI design/compliance phase also read the upstream `material-3` skill and only the relevant references, without exceeding two simultaneous skill bodies. The design-taste skill supplements Compose engineering rules; it never overrides accessibility, performance, lifecycle, localization, product behavior, or architecture.
 
 For Android jank, frame misses, latency, startup, Perfetto/System Trace, CPU/thread-state, graphics, Binder/IPC, blocking, memory, I/O, power, or other measured runtime-performance work, automatically load `levyra-android-performance` together with the affected domain skill. Validate Perfetto schemas/queries rather than guessing them, and do not turn a debug-only trace or a long slice into a release-performance conclusion without direct evidence.
 
 For R8, Proguard, minification, resource shrinking, keep/consumer rules, mapping files, missing classes, reflection/serialization/JNI shrinker issues, APK-size work, or a failure that appears only in a minified release build, automatically load `levyra-r8-proguard` and `levyra-release-check`; also load `levyra-ci-workflows` when build tooling/configuration changes.
 
 For Android Intent/deep-link/PendingIntent/component-boundary work, automatically load both `levyra-android-intent-security` and `levyra-security-review`, plus the affected Android domain skill. This includes exported activities/services/receivers/providers, incoming or nested Intents, URI grants, mutable PendingIntents, FileProvider/ContentProvider exposure, signature permissions, `onNewIntent`, and caller identity/permission checks.
+
+## Material 3 Expressive design contract
+
+- New or materially changed Android UI must follow Material 3 Expressive, adapted to Levyra's existing identity and the Material3 APIs already available in the project.
+- Before drawing a new surface, inspect the surrounding screen, Levyra theme tokens, reusable components, typography, shapes, artwork, navigation, and current interaction pattern.
+- Favor a music-first, premium, calm interface with meaningful color hierarchy, coherent spacing, expressive but restrained shapes and motion, and obvious primary actions. Rich visual treatment must serve discovery or playback, not decoration.
+- Avoid harsh neon, arbitrary saturated green/red status blocks, muddy gradients, excessive pills and badges, generic card grids, cheap glass effects, unnecessary shadows, and random colors. Colorful is allowed when purposeful and consistent with the theme.
+- Prefer native Material3/Expressive components and semantic theme roles where supported; do not add experimental dependencies or new APIs just to imitate a reference. Reuse existing UI primitives before inventing another component family.
+- Keep dark/light and dynamic-color behavior coherent; ensure readable contrast, meaningful semantics, 48dp touch targets, focus order, and support for long translations, RTL, large text, insets and screen-size changes.
+- Protect interaction and navigation behavior, offline/error/loading/empty states, gestures, account-optional paths, and user preferences. Never redesign unrelated surfaces to polish one change.
+- If the result works but looks inconsistent, inspect an actual preview/screenshot or device rendering and polish the assigned surface before calling it complete. Never claim a screenshot or emulator was tested unless it was.
+- During UI design/compliance, consult the installed [hamen/material-3-skill](https://github.com/hamen/material-3-skill) skill `material-3` and applicable references. Cross-check API availability against Levyra's current Compose dependencies; the upstream skill is guidance, not authority to migrate the stack.
+
+## Kotlin footgun review
+
+- For Kotlin/Compose/Media3/Room/coroutines/network or Desktop-KMP code, consult the applicable area index of [maxrave-dev/kotlin-footguns](https://github.com/maxrave-dev/kotlin-footguns) during the relevant review phase, then inspect only the traps matching changed code.
+- Pick by ownership: `compose-screens-footguns` / `compose-visuals-footguns` for UI, `media-playback-footguns` for audio, `data-layer-footguns` for Room/cache, `state-and-background-footguns` for Flow/services, `remote-api-footguns` for auth/network, `kmp-architecture-footguns` for Kotlin architecture, `desktop-and-build-footguns` for Desktop, and `engineering-method-footguns` for tooling/verification.
+- Use `footgun-scan` on a meaningful Kotlin diff when installed and practical; investigate actual hits, not blindly rewrite code for heuristics. Keep Levyra architecture and confirmed working behavior authoritative.
+- Missing upstream installation is `UNAVAILABLE`, not evidence that the footgun/design review passed. Follow `docs/ai/UPSTREAM_ANDROID_SKILLS.md` to install it; continue other work safely if unavailable, without repeated downloads or excessive context.
 
 ## Architecture boundaries
 

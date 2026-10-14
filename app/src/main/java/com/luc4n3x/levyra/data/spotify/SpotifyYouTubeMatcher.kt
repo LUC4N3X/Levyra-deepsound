@@ -12,10 +12,17 @@ internal data class SpotifyYouTubeMatch(
 )
 
 internal object SpotifyYouTubeMatcher {
-    const val DEFAULT_CONFIDENCE_THRESHOLD = 0.58
+    const val DEFAULT_CONFIDENCE_THRESHOLD = 0.94
     private const val TITLE_WEIGHT = 0.45
     private const val ARTIST_WEIGHT = 0.35
     private const val DURATION_WEIGHT = 0.20
+    private val versionDescriptor = Regex("[(\\[{]([^)\\]}]*)[)\\]}]|\\s[-–—]\\s(.+)$")
+
+    private fun versionLabels(title: String): Set<String> = versionDescriptor.findAll(title)
+        .map { it.groupValues[1].ifBlank { it.groupValues[2] } }
+        .filter { MusicIdentityText.title("Track ($it)").markers.isNotEmpty() }
+        .map(MusicIdentityText::normalize)
+        .toSet()
 
     private val UNREQUESTED_PENALTY_MARKERS = setOf(
         TrackVersionMarker.LIVE,
@@ -56,21 +63,34 @@ internal object SpotifyYouTubeMatcher {
     }
 
     fun scoreMatch(spotifyTrack: Track, ytCandidate: Track): Double {
-        val sIsrc = spotifyTrack.isrc.trim().uppercase(Locale.ROOT)
-        val yIsrc = ytCandidate.isrc.trim().uppercase(Locale.ROOT)
-        if (sIsrc.isNotEmpty() && yIsrc.isNotEmpty()) {
-            if (sIsrc == yIsrc) return 1.0
-            return 0.0
-        }
-
         val sTitleId = MusicIdentityText.title(spotifyTrack.title)
         val yTitleId = MusicIdentityText.title(ytCandidate.title)
+        if (sTitleId.markers != yTitleId.markers) return 0.0
+        val sVersionLabels = sTitleId.versionLabels + versionLabels(spotifyTrack.title)
+        val yVersionLabels = yTitleId.versionLabels + versionLabels(ytCandidate.title)
+        if (
+            sVersionLabels.isNotEmpty() &&
+            yVersionLabels.isNotEmpty() &&
+            sVersionLabels != yVersionLabels
+        ) return 0.0
+        val sExplicitHint = sTitleId.explicitHint ?: true.takeIf { spotifyTrack.explicit }
+        val yExplicitHint = yTitleId.explicitHint ?: true.takeIf { ytCandidate.explicit }
+        if (sExplicitHint != null && yExplicitHint != null && sExplicitHint != yExplicitHint) return 0.0
 
         val sArtistCredit = MusicIdentityText.artistCredit(spotifyTrack.artist)
         val yArtistCredit = MusicIdentityText.artistCredit(ytCandidate.artist)
+        val artistScore = computeArtistSimilarity(sArtistCredit.primary, sArtistCredit.names, yArtistCredit.primary, yArtistCredit.names, ytCandidate.title)
+        val sIsrc = spotifyTrack.isrc.trim().uppercase(Locale.ROOT)
+        val yIsrc = ytCandidate.isrc.trim().uppercase(Locale.ROOT)
+        if (sIsrc.isNotEmpty() && yIsrc.isNotEmpty()) {
+            if (sIsrc != yIsrc || artistScore < 0.35) return 0.0
+            if (spotifyTrack.durationMs > 0L && ytCandidate.durationMs > 0L &&
+                abs(spotifyTrack.durationMs - ytCandidate.durationMs) > 30_000L
+            ) return 0.0
+            return 1.0
+        }
 
         val titleScore = computeTitleSimilarity(sTitleId.core, sTitleId.fullNormalized, yTitleId.core, yTitleId.fullNormalized)
-        val artistScore = computeArtistSimilarity(sArtistCredit.primary, sArtistCredit.names, yArtistCredit.primary, yArtistCredit.names, ytCandidate.title)
         val durationScore = computeDurationScore(spotifyTrack.durationMs, ytCandidate.durationMs)
 
         var total = (titleScore * TITLE_WEIGHT) + (artistScore * ARTIST_WEIGHT) + (durationScore * DURATION_WEIGHT)
@@ -88,11 +108,6 @@ internal object SpotifyYouTubeMatcher {
             } else if (deltaMs > 30_000L) {
                 total -= 0.15
             }
-        }
-
-        val unrequestedMarkers = yTitleId.markers.filter { it in UNREQUESTED_PENALTY_MARKERS && it !in sTitleId.markers }
-        if (unrequestedMarkers.isNotEmpty()) {
-            total -= (0.35 * unrequestedMarkers.size).coerceAtMost(0.60)
         }
 
         val sharedSpecialMarkers = yTitleId.markers.filter { it in sTitleId.markers && it in UNREQUESTED_PENALTY_MARKERS }

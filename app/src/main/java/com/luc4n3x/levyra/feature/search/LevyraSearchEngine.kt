@@ -56,6 +56,7 @@ internal interface SearchBackend {
     suspend fun suggestions(query: String, languageCode: String): SearchSuggestionBundle
     suspend fun overview(query: String, languageCode: String): SearchResults
     suspend fun spotifyOverview(query: String): SearchResults? = null
+    suspend fun cachedSpotifyOverview(query: String): SearchResults? = null
     suspend fun section(filter: SearchFilter, query: String, languageCode: String, continuation: String): SearchSectionPage
     suspend fun exactArtist(query: String): ArtistHit?
     suspend fun officialArtists(candidates: List<ArtistHit>): List<ArtistHit>
@@ -346,9 +347,16 @@ internal class LevyraSearchEngine(
             val youtubeOverview = async {
                 searchCatching { remote.overview(request.query, request.languageCode, request.cacheKey) }
             }
+            val cachedSpotify = async {
+                searchCatching { backend.cachedSpotifyOverview(request.query) }
+            }
             val hedge = launch { hedgeSongs(session, youtubeOverview) }
 
-            val channel = Channel<Triple<String, Boolean, SearchResults?>>(2)
+            val channel = Channel<Triple<String, Boolean, SearchResults?>>(3)
+            val cachedWorker = launch {
+                val attempt = cachedSpotify.await()
+                channel.send(Triple("cached-spotify", attempt.isSuccess, attempt.getOrNull()?.takeUnless { it.isEmpty }))
+            }
             val spotifyWorker = launch {
                 val attempt = spotifyOverview.await()
                 channel.send(
@@ -373,6 +381,7 @@ internal class LevyraSearchEngine(
             launch {
                 spotifyWorker.join()
                 youtubeWorker.join()
+                cachedWorker.join()
                 channel.close()
             }
 

@@ -8,6 +8,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -33,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,7 +46,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,9 +65,23 @@ import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraType
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.toShape
+import androidx.compose.ui.graphics.Shape
+import com.luc4n3x.levyra.ui.components.levyraGroupedListShape
 
-private val CollectionMosaicShape = RoundedCornerShape(28.dp)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun collectionMosaicShape(): Shape = MaterialShapes.Cookie4Sided.toShape()
 private val CollectionActionHeight = 56.dp
+private val CollectionActionGroupGap = 4.dp
+private val CollectionActionOuterCorner = 28.dp
+private val CollectionActionInnerCorner = 10.dp
+private val CollectionActionChrome = 16.dp * 2 + 22.dp + 8.dp
+private val CollectionActionLabelStyle: TextStyle
+    @Composable @ReadOnlyComposable
+    get() = LevyraType.contentTitle.copy(fontWeight = FontWeight.Bold)
 
 @Composable
 internal fun HomeCollectionScreen(
@@ -191,30 +210,16 @@ internal fun HomeCollectionScreen(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(top = 8.dp)
                         )
-                        Row(
+                        CollectionActionGroup(
+                            playLabel = strings.playAll,
+                            shuffleLabel = strings.shuffle,
+                            accent = accentStart,
+                            onPlayAll = onPlayAll,
+                            onShuffle = onShuffle,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(top = 22.dp, bottom = 18.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            CollectionAction(
-                                label = strings.playAll,
-                                icon = Icons.Rounded.PlayArrow,
-                                container = accentStart,
-                                content = Color.White,
-                                onClick = onPlayAll,
-                                modifier = Modifier.weight(1.4f)
-                            )
-                            CollectionAction(
-                                label = strings.shuffle,
-                                icon = Icons.Rounded.Shuffle,
-                                container = LevyraText.copy(alpha = 0.10f),
-                                content = LevyraText,
-                                onClick = onShuffle,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
+                                .padding(top = 22.dp, bottom = 18.dp)
+                        )
                     }
                 }
                 itemsIndexed(
@@ -224,6 +229,7 @@ internal fun HomeCollectionScreen(
                     val active = track.id == currentId
                     CollectionTrackRow(
                         rank = index + 1,
+                        count = tracks.size,
                         track = track,
                         active = active,
                         isPlaying = isPlaying && active,
@@ -246,7 +252,7 @@ private fun CollectionMosaic(
 ) {
     Box(
         modifier = modifier
-            .clip(CollectionMosaicShape)
+            .clip(collectionMosaicShape())
             .background(accentStart.copy(alpha = 0.35f))
     ) {
         if (tracks.size >= 4) {
@@ -274,18 +280,125 @@ private fun CollectionMosaic(
 }
 
 @Composable
+private fun CollectionActionGroup(
+    playLabel: String,
+    shuffleLabel: String,
+    accent: Color,
+    onPlayAll: () -> Unit,
+    onShuffle: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val textMeasurer = rememberTextMeasurer()
+    val labelStyle = CollectionActionLabelStyle
+    val density = LocalDensity.current
+    BoxWithConstraints(modifier = modifier) {
+        val stacked = remember(playLabel, shuffleLabel, maxWidth, density, labelStyle) {
+            with(density) {
+                collectionActionsStacked(
+                    availableWidth = maxWidth.toPx(),
+                    playLabelWidth = textMeasurer.measure(playLabel, labelStyle, maxLines = 1).size.width.toFloat(),
+                    shuffleLabelWidth = textMeasurer.measure(shuffleLabel, labelStyle, maxLines = 1).size.width.toFloat(),
+                    buttonChrome = CollectionActionChrome.toPx(),
+                    gap = CollectionActionGroupGap.toPx()
+                )
+            }
+        }
+        val play: @Composable (Modifier, Shape) -> Unit = { buttonModifier, shape ->
+            CollectionAction(
+                label = playLabel,
+                icon = Icons.Rounded.PlayArrow,
+                container = accent,
+                content = Color.White,
+                shape = shape,
+                onClick = onPlayAll,
+                modifier = buttonModifier
+            )
+        }
+        val shuffle: @Composable (Modifier, Shape) -> Unit = { buttonModifier, shape ->
+            CollectionAction(
+                label = shuffleLabel,
+                icon = Icons.Rounded.Shuffle,
+                container = LevyraText.copy(alpha = 0.10f),
+                content = LevyraText,
+                shape = shape,
+                onClick = onShuffle,
+                modifier = buttonModifier
+            )
+        }
+        if (stacked) {
+            Column(verticalArrangement = Arrangement.spacedBy(CollectionActionGroupGap)) {
+                play(
+                    Modifier.fillMaxWidth(),
+                    RoundedCornerShape(
+                        topStart = CollectionActionOuterCorner,
+                        topEnd = CollectionActionOuterCorner,
+                        bottomStart = CollectionActionInnerCorner,
+                        bottomEnd = CollectionActionInnerCorner
+                    )
+                )
+                shuffle(
+                    Modifier.fillMaxWidth(),
+                    RoundedCornerShape(
+                        topStart = CollectionActionInnerCorner,
+                        topEnd = CollectionActionInnerCorner,
+                        bottomStart = CollectionActionOuterCorner,
+                        bottomEnd = CollectionActionOuterCorner
+                    )
+                )
+            }
+        } else {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(CollectionActionGroupGap),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                play(
+                    Modifier.weight(1f),
+                    RoundedCornerShape(
+                        topStart = CollectionActionOuterCorner,
+                        bottomStart = CollectionActionOuterCorner,
+                        topEnd = CollectionActionInnerCorner,
+                        bottomEnd = CollectionActionInnerCorner
+                    )
+                )
+                shuffle(
+                    Modifier.weight(1f),
+                    RoundedCornerShape(
+                        topStart = CollectionActionInnerCorner,
+                        bottomStart = CollectionActionInnerCorner,
+                        topEnd = CollectionActionOuterCorner,
+                        bottomEnd = CollectionActionOuterCorner
+                    )
+                )
+            }
+        }
+    }
+}
+
+internal fun collectionActionsStacked(
+    availableWidth: Float,
+    playLabelWidth: Float,
+    shuffleLabelWidth: Float,
+    buttonChrome: Float,
+    gap: Float
+): Boolean {
+    val buttonWidth = (availableWidth - gap) / 2f
+    return maxOf(playLabelWidth, shuffleLabelWidth) + buttonChrome > buttonWidth
+}
+
+@Composable
 private fun CollectionAction(
     label: String,
     icon: ImageVector,
     container: Color,
     content: Color,
+    shape: Shape,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier
             .height(CollectionActionHeight)
-            .clip(CircleShape)
+            .clip(shape)
             .background(container)
             .levyraPressable(
                 onClick = onClick,
@@ -300,7 +413,7 @@ private fun CollectionAction(
         Text(
             text = label,
             color = content,
-            style = LevyraType.contentTitle.copy(fontWeight = FontWeight.Bold),
+            style = CollectionActionLabelStyle,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -310,6 +423,7 @@ private fun CollectionAction(
 @Composable
 private fun CollectionTrackRow(
     rank: Int,
+    count: Int,
     track: Track,
     active: Boolean,
     isPlaying: Boolean,
@@ -322,10 +436,10 @@ private fun CollectionTrackRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp)
+            .padding(horizontal = 16.dp, vertical = 1.dp)
             .heightIn(min = LevyraCardDesign.RowHeight)
-            .clip(LevyraCardDesign.ArtworkShape)
-            .then(if (active) Modifier.background(LevyraText.copy(alpha = 0.06f)) else Modifier)
+            .clip(levyraGroupedListShape(rank - 1, count))
+            .background(if (active) accent.copy(alpha = 0.18f) else LevyraText.copy(alpha = 0.05f))
             .levyraPressable(onClick = onPlay, pressedScale = LevyraPressScale.Row, role = Role.Button)
             .padding(start = 8.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -333,11 +447,11 @@ private fun CollectionTrackRow(
     ) {
         Text(
             text = rank.toString(),
-            color = if (active) accent else LevyraMuted,
-            style = LevyraType.contentTitle.copy(fontWeight = FontWeight.Bold),
+            color = if (active) accent else LevyraText.copy(alpha = 0.72f),
+            style = LevyraType.contentTitle.copy(fontWeight = FontWeight.Black, fontFeatureSettings = "tnum"),
             textAlign = TextAlign.Center,
             maxLines = 1,
-            modifier = Modifier.width(24.dp)
+            modifier = Modifier.width(28.dp)
         )
         Box(
             modifier = Modifier

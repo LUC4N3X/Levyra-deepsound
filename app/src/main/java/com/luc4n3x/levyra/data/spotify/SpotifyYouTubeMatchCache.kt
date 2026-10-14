@@ -156,7 +156,7 @@ internal class SpotifyYouTubeMatchCache private constructor(context: Context? = 
         key.trim().removePrefix("spotify:track:").removePrefix("spotify:")
 
     companion object {
-        private const val PREFERENCES_NAME = "spotify_yt_match_cache"
+        private const val PREFERENCES_NAME = "spotify_yt_match_cache_v2"
         private const val MAX_MEMORY_ENTRIES = 1_000
         private const val MAX_PERSISTED_ENTRIES = 1_000
         private const val MATCH_TTL_MS = 14L * 24L * 60L * 60L * 1000L

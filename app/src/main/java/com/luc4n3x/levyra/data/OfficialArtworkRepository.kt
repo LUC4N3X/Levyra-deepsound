@@ -3,6 +3,10 @@ package com.luc4n3x.levyra.data
 import android.content.Context
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
+import com.luc4n3x.levyra.data.spotify.preservesPersonalMetadata
+import com.luc4n3x.levyra.data.spotify.SpotifySearchClient
+import com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
@@ -17,9 +21,11 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Request
 import okhttp3.Response
 import org.json.JSONObject
@@ -33,6 +39,8 @@ import kotlin.math.abs
 import kotlin.coroutines.resume
 
 class OfficialArtworkRepository(context: Context) {
+    private val editorialCatalog = EditorialChartsRepository.get(context.applicationContext)
+    private val spotifySearch = SpotifySearchClient(catalogSearch = editorialCatalog::searchSpotifyMetadata)
     private val client = LevyraHttpClientFactory.general(context.applicationContext)
         .newBuilder()
         .connectTimeout(5, TimeUnit.SECONDS)
@@ -43,8 +51,8 @@ class OfficialArtworkRepository(context: Context) {
         .followSslRedirects(true)
         .build()
     private val cacheGuard = Any()
-    private val cache = object : LinkedHashMap<String, OfficialArtwork>(CACHE_MAX_ENTRIES + 1, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, OfficialArtwork>): Boolean =
+    private val cache = object : LinkedHashMap<String, CachedArtwork>(CACHE_MAX_ENTRIES + 1, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CachedArtwork>): Boolean =
             size > CACHE_MAX_ENTRIES
     }
     private val misses = object : LinkedHashMap<String, Long>(MISS_CACHE_MAX_ENTRIES + 1, 0.75f, true) {
@@ -57,7 +65,10 @@ class OfficialArtworkRepository(context: Context) {
 
     suspend fun find(track: Track, country: String): OfficialArtwork? {
         if (track.title.isBlank() || track.artist.isBlank()) return null
+        if (preservesPersonalMetadata(track)) return null
         val key = cacheKey(track, country)
+        val preferred = editorialCatalog.cachedSpotifyMetadata(track)?.toSpotifyArtwork()
+        if (preferred != null) return mergeArtwork(preferred, readCache(key))
         readCache(key)?.let { return it }
         val now = System.currentTimeMillis()
         if (hasFreshMiss(key, now)) return null
@@ -73,6 +84,7 @@ class OfficialArtworkRepository(context: Context) {
 
     suspend fun findApple(track: Track, country: String): OfficialArtwork? {
         if (track.title.isBlank() || track.artist.isBlank()) return null
+        if (preservesPersonalMetadata(track)) return null
         val key = "apple|" + cacheKey(track, country)
         readCache(key)?.let { return it }
         if (hasFreshMiss(key, System.currentTimeMillis())) return null
@@ -82,7 +94,7 @@ class OfficialArtworkRepository(context: Context) {
             if (hasFreshMiss(key, System.currentTimeMillis())) return@withLock null
             val normalizedCountry = country.trim().uppercase(Locale.ROOT).takeIf { it.length == 2 } ?: "IT"
             val response = searchSlots.withPermit {
-                fetchProvider(APPLE_TIMEOUT_MS) { fetchApple(track, primaryQuery(track), normalizedCountry) }
+                fetchProvider(APPLE_TIMEOUT_MS) { fetchAppleWithStorefrontFallback(track, normalizedCountry) }
             }
             val outcome = SearchOutcome(bestAccepted(response.items), response.completed)
             writeOutcome(key, outcome)
@@ -90,11 +102,43 @@ class OfficialArtworkRepository(context: Context) {
         }
     }
 
-    private suspend fun search(track: Track, country: String): SearchOutcome = withContext(Dispatchers.IO) {
+    private suspend fun search(track: Track, country: String): SearchOutcome = coroutineScope {
+        val spotify = async {
+            withTimeoutOrNull(3_500L) {
+                val candidates = spotifySearch.search("${track.title} ${track.artist}", 12, country).songs
+                val compatible = candidates.filter { candidate ->
+                    track.album.isBlank() || com.luc4n3x.levyra.data.spotify.sameSpotifyAlbum(track.album, candidate.album)
+                }
+                val matched = SpotifyYouTubeMatcher.findBestMatch(track, compatible)?.candidate
+                    ?: return@withTimeoutOrNull null
+                val thumbnail = EditorialCatalogParser.publishedArtworkUrl(matched.thumbnailUrl)
+                if (thumbnail.isBlank()) return@withTimeoutOrNull null
+                matched.copy(
+                    thumbnailUrl = thumbnail,
+                    largeThumbnailUrl = EditorialCatalogParser.publishedArtworkUrl(matched.largeThumbnailUrl).ifBlank { thumbnail }
+                ).toSpotifyArtwork()
+            }
+        }
+        val secondary = async {
+            val url = track.thumbnailUrl.toHttpUrlOrNull()
+            if (url?.isHttps == true && url.host.endsWith(".googleusercontent.com") && LevyraPersonalOrbit.hasSquareAlbumArtwork(track)) {
+                SearchOutcome(track.toSpotifyArtwork("YouTube Music"), true)
+            } else {
+                searchSecondary(track, country)
+            }
+        }
+        val preferred = spotify.await()
+        if (preferred == null) return@coroutineScope secondary.await()
+        val supplement = if (secondary.isCompleted) secondary.await().artwork else null
+        secondary.cancel()
+        SearchOutcome(mergeArtwork(preferred, supplement), true)
+    }
+
+    private suspend fun searchSecondary(track: Track, country: String): SearchOutcome = withContext(Dispatchers.IO) {
         val normalizedCountry = country.trim().uppercase(Locale.ROOT).takeIf { it.length == 2 } ?: "IT"
         coroutineScope {
             val apple = async {
-                fetchProvider(APPLE_TIMEOUT_MS) { fetchApple(track, primaryQuery(track), normalizedCountry) }
+                fetchProvider(APPLE_TIMEOUT_MS) { fetchAppleWithStorefrontFallback(track, normalizedCountry) }
             }
             val deezer = async {
                 fetchProvider(DEEZER_TIMEOUT_MS) { fetchDeezer(track) }
@@ -104,13 +148,15 @@ class OfficialArtworkRepository(context: Context) {
                 deezer.onAwait { it to apple }
             }
             val firstBest = bestAccepted(first.first.items)
-            if (firstBest != null && isDecisiveMatch(track, firstBest)) {
+            if (firstBest?.provider == "Apple Music" && isDecisiveMatch(track, firstBest)) {
                 first.second.cancel()
                 return@coroutineScope SearchOutcome(firstBest, first.first.completed)
             }
             val secondResponse = first.second.await()
             val directResponses = listOf(first.first, secondResponse)
-            val directBest = bestAccepted(directResponses.flatMap { it.items })
+            val directItems = directResponses.flatMap { it.items }
+            val directBest = bestAccepted(directItems.filter { it.provider == "Apple Music" })
+                ?: bestAccepted(directItems)
             if (directBest != null && isDecisiveMatch(track, directBest)) {
                 return@coroutineScope SearchOutcome(directBest, directResponses.any { it.completed })
             }
@@ -126,6 +172,12 @@ class OfficialArtworkRepository(context: Context) {
                 completedRequest = directResponses.any { it.completed } || qobuzResponse.completed
             )
         }
+    }
+
+    private suspend fun fetchAppleWithStorefrontFallback(track: Track, country: String): ProviderResponse {
+        val local = fetchApple(track, primaryQuery(track), country)
+        if (!local.completed || bestAccepted(local.items) != null || country == APPLE_FALLBACK_STOREFRONT) return local
+        return fetchApple(track, primaryQuery(track), APPLE_FALLBACK_STOREFRONT)
     }
 
     private suspend fun fetchApple(track: Track, query: String, country: String): ProviderResponse {
@@ -184,9 +236,8 @@ class OfficialArtworkRepository(context: Context) {
     }
 
     private suspend fun fetchDeezer(track: Track): ProviderResponse {
-        val preciseQuery = "track:\"${queryText(removeVersionText(track.title))}\" artist:\"${queryText(track.artist)}\""
         val url = DEEZER_SEARCH_URL.toHttpUrl().newBuilder()
-            .addQueryParameter("q", preciseQuery)
+            .addQueryParameter("q", primaryQuery(track))
             .addQueryParameter("limit", "25")
             .build()
         val root = requestJson(url.toString()) ?: return ProviderResponse(emptyList(), false)
@@ -517,6 +568,9 @@ class OfficialArtworkRepository(context: Context) {
             canonicalAlbumUrl = primary.canonicalAlbumUrl.ifBlank { supplement.canonicalAlbumUrl },
             releaseDate = primary.releaseDate.ifBlank { supplement.releaseDate },
             year = primary.year.ifBlank { supplement.year },
+            isrc = primary.isrc.ifBlank { supplement.isrc },
+            trackNumber = primary.trackNumber.takeIf { it > 0 } ?: supplement.trackNumber,
+            discNumber = primary.discNumber.takeIf { it > 0 } ?: supplement.discNumber,
             explicit = primary.explicit || supplement.explicit,
             upc = primary.upc.ifBlank { supplement.upc },
             title = primary.title.ifBlank { supplement.title },
@@ -538,7 +592,40 @@ class OfficialArtworkRepository(context: Context) {
         }.orEmpty()
     }
 
-    private fun readCache(key: String): OfficialArtwork? = synchronized(cacheGuard) { cache[key] }
+    private fun Track.toSpotifyArtwork(provider: String = "spotify"): OfficialArtwork? {
+        if (thumbnailUrl.isBlank()) return null
+        return OfficialArtwork(
+            thumbnailUrl = thumbnailUrl,
+            largeThumbnailUrl = largeThumbnailUrl.ifBlank { thumbnailUrl },
+            album = album,
+            score = 420,
+            provider = provider,
+            canonicalAlbumUrl = canonicalAlbumUrl,
+            releaseDate = releaseDate,
+            year = year,
+            trackNumber = trackNumber,
+            discNumber = discNumber,
+            explicit = explicit,
+            isrc = isrc,
+            upc = upc,
+            title = title,
+            artist = artist,
+            albumArtist = albumArtist,
+            composer = composer,
+            trackTotal = trackTotal,
+            discTotal = discTotal,
+            copyright = copyright
+        )
+    }
+
+    private fun readCache(key: String): OfficialArtwork? = synchronized(cacheGuard) {
+        val cached = cache[key] ?: return@synchronized null
+        if (System.currentTimeMillis() - cached.savedAt !in 0 until 15L * 60L * 1000L) {
+            cache.remove(key)
+            return@synchronized null
+        }
+        cached.artwork
+    }
 
     private fun hasFreshMiss(key: String, now: Long): Boolean = synchronized(cacheGuard) {
         missSweepCounter += 1
@@ -556,7 +643,7 @@ class OfficialArtworkRepository(context: Context) {
     private fun writeOutcome(key: String, outcome: SearchOutcome) {
         synchronized(cacheGuard) {
             if (outcome.artwork != null) {
-                cache[key] = outcome.artwork
+                cache[key] = CachedArtwork(outcome.artwork, System.currentTimeMillis())
                 misses.remove(key)
             } else if (outcome.completedRequest) {
                 misses[key] = System.currentTimeMillis()
@@ -677,8 +764,11 @@ class OfficialArtworkRepository(context: Context) {
         val completedRequest: Boolean
     )
 
+    private data class CachedArtwork(val artwork: OfficialArtwork, val savedAt: Long)
+
     private companion object {
         const val APPLE_SEARCH_URL = "https://itunes.apple.com/search"
+        const val APPLE_FALLBACK_STOREFRONT = "US"
         const val DEEZER_SEARCH_URL = "https://api.deezer.com/search/track"
         const val DEEZER_ALBUM_URL = "https://api.deezer.com/album"
         const val USER_AGENT = "Levyra/2.3.20 Android"

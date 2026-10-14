@@ -52,14 +52,18 @@ import androidx.compose.material.icons.rounded.Interests
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CloseFullscreen
+import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.DownloadDone
+import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.BlurOn
 import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material.icons.rounded.Newspaper
 import androidx.compose.material.icons.rounded.Nightlight
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.Person
@@ -73,11 +77,14 @@ import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.HighQuality
 import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -103,6 +110,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
@@ -269,6 +277,7 @@ fun LevyraNowPlaying(
     var showTechnicalAudioInfo by remember(track?.id) { mutableStateOf(false) }
     var showAudioRouteCenter by rememberSaveable { mutableStateOf(false) }
     var showDeck by rememberSaveable { mutableStateOf(false) }
+    var downloadRemovalTrackId by rememberSaveable { mutableStateOf<String?>(null) }
     var showArtistPicker by remember(track?.id) { mutableStateOf(false) }
     var openArtistPickerAfterActions by remember(track?.id) { mutableStateOf(false) }
     var playerArtistHits by remember(track?.id, track?.artist, track?.artistBrowseIds) {
@@ -332,7 +341,8 @@ fun LevyraNowPlaying(
     }
 
     val artworkRestsFullBleed = state.isPlaying ||
-        state.interfaceSettings.playerVisualMode == PlayerVisualMode.Artwork
+        state.interfaceSettings.playerVisualMode == PlayerVisualMode.Artwork ||
+        state.interfaceSettings.playerVisualMode == PlayerVisualMode.Folio
     val artRestScale = if (artworkRestsFullBleed) 1f else LevyraPlayerDesign.ArtworkPausedScale
     val artRestOffset = if (artworkRestsFullBleed) 0.dp else 4.dp
     SideEffect {
@@ -369,7 +379,10 @@ fun LevyraNowPlaying(
             hasTrack = track != null
         )
         val deckMode = if (liveRadio) PlayerVisualMode.Artwork else resolvePlayerDeckVisualMode(visualMode, deckLayout)
-        val motionBackdropVisible = deckMode.usesMotionCard() || deckMode.showsCinematicStage()
+        SideEffect {
+            morphAnchors.updateLandsAsCookie(deckLayout == PlayerDeckLayout.Folio)
+        }
+        val motionBackdropVisible = !liveRadio
         LaunchedEffect(
             motionEnabled,
             motionBackdropVisible,
@@ -436,27 +449,6 @@ fun LevyraNowPlaying(
         var rootCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
         var stageTopPx by remember { mutableIntStateOf(-1) }
         var stageBottomPx by remember { mutableIntStateOf(-1) }
-        val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-        val estimatedHeroBottom = playerCinematicStackedHeroBottom(
-            statusBarTop = statusBarTop,
-            chromeTopPadding = LevyraPlayerDesign.SpaceXs,
-            headerHeight = LevyraPlayerDesign.MinimumTouchTarget,
-            itemSpacing = LevyraPlayerDesign.SpaceLg,
-            heroVerticalPadding = 0.dp,
-            artworkSize = min(maxWidth - gutter * 2, maxHeight * 0.42f)
-        )
-        val measuredHeroBottom = if (stageBottomPx > 0) {
-            with(density) { stageBottomPx.toDp() } + PlayerCinematicTitleOverlap
-        } else {
-            estimatedHeroBottom
-        }
-        val cinematicGeometry = playerCinematicGeometry(
-            pane = playerPane,
-            containerWidth = maxWidth,
-            containerHeight = maxHeight,
-            stackedHeroBottom = measuredHeroBottom,
-            paneGap = LevyraPlayerDesign.SpaceXl
-        )
         val backdropFocus = if (stageBottomPx > 0 && containerHeightPx > 0f) {
             ((stageTopPx + stageBottomPx) / 2f / containerHeightPx).coerceIn(0.1f, 0.9f)
         } else {
@@ -464,25 +456,13 @@ fun LevyraNowPlaying(
         }
 
         PlayerVisualHost(
-            visualMode = deckMode,
             backgroundMode = backgroundMode,
-            track = track,
             artworkUrl = artworkUrl,
-            motionArtwork = state.motionArtwork,
-            livingArtwork = livingArtwork,
             ambience = backdropAmbience,
             animationsEnabled = animated,
-            motionEnabled = motionEnabled,
             isPlaying = state.isPlaying,
-            canvasQuality = state.interfaceSettings.canvasQuality,
-            morphAnchors = morphAnchors,
-            morphActive = morphActive,
-            swipeOffset = swipeOffset,
-            cinematicGeometry = cinematicGeometry,
-            isVideoMode = state.isVideoMode,
             backdropFocus = backdropFocus,
-            modifier = Modifier.fillMaxSize(),
-            onDynamicBackdropPalette = acceptDynamicBackdropPalette
+            modifier = Modifier.fillMaxSize()
         )
 
         val headerButtonFill = surfaces.controlQuiet
@@ -733,7 +713,7 @@ fun LevyraNowPlaying(
                         motionArtwork = state.motionArtwork,
                         livingArtwork = livingArtwork,
                         animationsEnabled = animated && !state.isVideoMode,
-                        motionEnabled = motionEnabled && !(lyricsFlip.lyricsSettled && !deckMode.showsCinematicStage()),
+                        motionEnabled = motionEnabled && !lyricsFlip.lyricsSettled,
                         isPlaying = state.isPlaying,
                         cornerRadius = artworkCorner,
                         canvasQuality = state.interfaceSettings.canvasQuality,
@@ -742,7 +722,7 @@ fun LevyraNowPlaying(
                         swipeOffset = swipeOffset,
                         artScale = artScale,
                         artOffset = artOffset,
-                        glowColor = if (deckLayout == PlayerDeckLayout.Expressive || deckLayout == PlayerDeckLayout.Poster) Color.Transparent else primary,
+                        glowColor = if (deckLayout == PlayerDeckLayout.Levyra || deckLayout == PlayerDeckLayout.Pulse || deckLayout == PlayerDeckLayout.Halo) primary else Color.Transparent,
                         modifier = Modifier
                             .fillMaxSize()
                             .playerLyricsFlipFace(
@@ -752,7 +732,7 @@ fun LevyraNowPlaying(
                                 rightToLeft = rightToLeft
                             ),
                         dynamicBackdropEnabled = backgroundMode == PlayerBackgroundMode.Dynamic &&
-                            deckMode.usesMotionCard(),
+                            motionBackdropVisible,
                         onDynamicBackdropPalette = acceptDynamicBackdropPalette
                     )
                     if (lyricsFlipAvailable && lyricsFlip.lyricsComposed) {
@@ -786,7 +766,7 @@ fun LevyraNowPlaying(
                                     back = true,
                                     depth = lyricsFlipDepth,
                                     rightToLeft = rightToLeft,
-                                    frontVisible = !deckMode.showsCinematicStage()
+                                    frontVisible = true
                                 )
                         )
                     }
@@ -961,7 +941,7 @@ fun LevyraNowPlaying(
             }
         }
 
-        val progressBlock: @Composable () -> Unit = {
+        val progressBlock: @Composable (Boolean) -> Unit = { wavy ->
             if (liveRadio) {
                 Box(
                     modifier = Modifier
@@ -986,7 +966,8 @@ fun LevyraNowPlaying(
                     animationsEnabled = animated,
                     motionActive = !motionSuspended,
                     compact = compactPlayer,
-                    onSeek = viewModel::seekTo
+                    onSeek = viewModel::seekTo,
+                    wavy = wavy
                 )
             }
         }
@@ -1022,9 +1003,9 @@ fun LevyraNowPlaying(
             }
         }
 
-        val dockBlock: @Composable (Track) -> Unit = { activeTrack ->
+        val dockActionsFor: @Composable (Track) -> List<PlayerDockAction> = { activeTrack ->
             val isDownloaded = activeTrack.id in state.downloadedTrackIds
-            val actions = remember(
+            remember(
                 activeTrack.id,
                 state.showLyrics,
                 state.isVideoMode,
@@ -1045,11 +1026,18 @@ fun LevyraNowPlaying(
                     onLyrics = viewModel::openLyrics,
                     onQueue = viewModel::openQueue,
                     onOpenDeck = { showDeck = true },
-                    onDownload = viewModel::exportCurrentTrack
+                    onDownload = if (isDownloaded) {
+                        { downloadRemovalTrackId = activeTrack.id }
+                    } else {
+                        viewModel::exportCurrentTrack
+                    }
                 )
             }
+        }
+
+        val dockBlock: @Composable (Track) -> Unit = { activeTrack ->
             PlayerActionDock(
-                actions = actions,
+                actions = dockActionsFor(activeTrack),
                 surfaces = surfaces,
                 compact = compactPlayer,
                 animated = animated
@@ -1062,7 +1050,7 @@ fun LevyraNowPlaying(
             }
             Spacer(modifier = Modifier.height(if (compactPlayer) LevyraPlayerDesign.SpaceXs else LevyraPlayerDesign.SpaceSm))
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                progressBlock()
+                progressBlock(false)
             }
             errorContent?.invoke()
             Spacer(modifier = Modifier.height(if (compactPlayer) LevyraPlayerDesign.SpaceXs else LevyraPlayerDesign.SpaceMd))
@@ -1095,19 +1083,111 @@ fun LevyraNowPlaying(
                     Spacer(modifier = Modifier.height(if (compactPlayer) LevyraPlayerDesign.SpaceXs else LevyraPlayerDesign.SpaceSm))
                 }
             },
-            progress = {
+            progress = { wavy ->
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                    progressBlock()
+                    progressBlock(wavy)
                 }
                 errorContent?.invoke()
             },
-            dock = dockBlock
+            dock = dockBlock,
+            dockActions = dockActionsFor
         )
         val deckModifier = rootModifier
             .widthIn(max = detailMaxWidth)
             .align(Alignment.TopCenter)
 
-        if (deckLayout == PlayerDeckLayout.Expressive && track != null) {
+        if (deckLayout == PlayerDeckLayout.Aura && track != null) {
+            PlayerAuraDeck(
+                track = track,
+                slots = deckSlots,
+                artworkUrl = artworkUrl,
+                motionArtwork = state.motionArtwork,
+                livingArtwork = livingArtwork,
+                motionEnabled = motionEnabled,
+                canvasQuality = state.interfaceSettings.canvasQuality,
+                isFavorite = track.id in state.favoriteIds,
+                isDownloaded = track.id in state.downloadedTrackIds,
+                isPlaying = state.isPlaying,
+                isResolving = state.isResolving,
+                positionMs = state.positionMs,
+                durationMs = state.durationMs,
+                labels = playerControlLabels,
+                animated = animated,
+                onCollapse = collapseActions.collapse,
+                onMore = { showActions = true },
+                onArtistClick = { artistIndex ->
+                    playerArtistHits.getOrNull(artistIndex)?.let(viewModel::openArtist)
+                        ?: viewModel.openArtist(track, artistIndex)
+                },
+                onToggleFavorite = { viewModel.toggleFavorite(track) },
+                onDownload = {
+                    if (track.id in state.downloadedTrackIds) downloadRemovalTrackId = track.id else viewModel.exportCurrentTrack()
+                },
+                onSeek = viewModel::seekTo,
+                onPrevious = viewModel::previous,
+                onTogglePlay = viewModel::togglePlay,
+                onNext = viewModel::next,
+                headlineModifier = lyricsFlipSwipeModifier,
+                modifier = rootModifier
+            )
+        } else if (deckLayout == PlayerDeckLayout.Halo && track != null) {
+            PlayerHaloDeck(
+                track = track,
+                slots = deckSlots,
+                surfaces = surfaces,
+                isFavorite = track.id in state.favoriteIds,
+                queuePosition = playerDeckQueuePosition(state.queue, track.id),
+                isPlaying = state.isPlaying,
+                isResolving = state.isResolving,
+                shuffleOn = state.shuffleEnabled,
+                repeatMode = state.repeatMode,
+                labels = playerControlLabels,
+                animated = animated,
+                scrollable = !fitsViewport,
+                gutter = gutter,
+                onArtistClick = { artistIndex ->
+                    playerArtistHits.getOrNull(artistIndex)?.let(viewModel::openArtist)
+                        ?: viewModel.openArtist(track, artistIndex)
+                },
+                onToggleFavorite = { viewModel.toggleFavorite(track) },
+                onShuffle = viewModel::toggleShuffle,
+                onPrevious = viewModel::previous,
+                onTogglePlay = viewModel::togglePlay,
+                onNext = viewModel::next,
+                onRepeat = viewModel::toggleRepeat,
+                headlineModifier = lyricsFlipSwipeModifier,
+                modifier = deckModifier
+            )
+        } else if (deckLayout == PlayerDeckLayout.Folio && track != null) {
+            PlayerFolioDeck(
+                track = track,
+                slots = deckSlots,
+                surfaces = surfaces,
+                isFavorite = track.id in state.favoriteIds,
+                isPlaying = state.isPlaying,
+                isResolving = state.isResolving,
+                shuffleOn = state.shuffleEnabled,
+                repeatMode = state.repeatMode,
+                labels = playerControlLabels,
+                animated = animated,
+                compact = compactPlayer,
+                scrollable = !fitsViewport,
+                gutter = gutter,
+                artworkCap = artworkCap,
+                onArtistClick = { artistIndex ->
+                    playerArtistHits.getOrNull(artistIndex)?.let(viewModel::openArtist)
+                        ?: viewModel.openArtist(track, artistIndex)
+                },
+                onToggleFavorite = { viewModel.toggleFavorite(track) },
+                onShuffle = viewModel::toggleShuffle,
+                onPrevious = viewModel::previous,
+                onTogglePlay = viewModel::togglePlay,
+                onNext = viewModel::next,
+                onRepeat = viewModel::toggleRepeat,
+                headlineModifier = lyricsFlipSwipeModifier,
+                modifier = deckModifier
+            )
+        } else if (deckLayout == PlayerDeckLayout.Expressive && track != null) {
             PlayerExpressiveDeck(
                 track = track,
                 slots = deckSlots,
@@ -1500,6 +1580,23 @@ fun LevyraNowPlaying(
             )
         }
 
+        val removalTrackId = downloadRemovalTrackId
+        if (removalTrackId != null && (track?.id != removalTrackId || removalTrackId !in state.downloadedTrackIds)) {
+            SideEffect { downloadRemovalTrackId = null }
+        }
+        if (removalTrackId != null && track?.id == removalTrackId && removalTrackId in state.downloadedTrackIds) {
+            PlayerRemoveDownloadDialog(
+                title = strings.removeDownloadPrompt,
+                cancelLabel = strings.cancel,
+                removeLabel = strings.remove,
+                onDismiss = { downloadRemovalTrackId = null },
+                onConfirm = {
+                    downloadRemovalTrackId = null
+                    viewModel.deleteTrackDownload(removalTrackId)
+                }
+            )
+        }
+
         if (showDeck && track != null && !state.isVideoMode) {
             PlayerDeckSheet(
                 track = track,
@@ -1508,9 +1605,16 @@ fun LevyraNowPlaying(
                 surfaces = surfaces,
                 accent = heroTone,
                 animated = animated,
+                background = backgroundMode,
                 onSelect = { mode ->
                     if (mode != visualMode) {
                         viewModel.setPlayerVisualMode(mode)
+                        hapticFeedback.perform(LevyraHapticAction.Confirm)
+                    }
+                },
+                onSelectBackground = { mode ->
+                    if (mode != backgroundMode) {
+                        viewModel.setPlayerBackground(mode)
                         hapticFeedback.perform(LevyraHapticAction.Confirm)
                     }
                 },
@@ -1700,6 +1804,27 @@ private fun playerDockActions(
             )
         )
     }
+}
+
+@Composable
+private fun PlayerRemoveDownloadDialog(
+    title: String,
+    cancelLabel: String,
+    removeLabel: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Rounded.DeleteOutline, contentDescription = null) },
+        title = { Text(title, textAlign = TextAlign.Center) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(removeLabel, color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(cancelLabel) } }
+    )
 }
 
 private fun canvasBackdropPaletteMatches(
@@ -1895,12 +2020,16 @@ internal fun visualModeStateDescription(
     PlayerVisualMode.CanvasImmersive -> strings.playerVisualModeCanvasImmersive
     PlayerVisualMode.Expressive -> strings.playerDeckExpressive
     PlayerVisualMode.Pulse -> strings.playerDeckPulse
+    PlayerVisualMode.Halo -> strings.playerDeckHalo
+    PlayerVisualMode.Folio -> strings.playerDeckFolio
 }
 
 internal fun visualModeIcon(mode: PlayerVisualMode): ImageVector = when (mode) {
     PlayerVisualMode.Artwork -> Icons.Rounded.Image
     PlayerVisualMode.CanvasCard -> Icons.Rounded.AutoAwesome
-    PlayerVisualMode.CanvasImmersive -> Icons.Rounded.Fullscreen
+    PlayerVisualMode.CanvasImmersive -> Icons.Rounded.BlurOn
     PlayerVisualMode.Expressive -> Icons.Rounded.Interests
     PlayerVisualMode.Pulse -> Icons.Rounded.GraphicEq
+    PlayerVisualMode.Halo -> Icons.Rounded.Album
+    PlayerVisualMode.Folio -> Icons.Rounded.Newspaper
 }

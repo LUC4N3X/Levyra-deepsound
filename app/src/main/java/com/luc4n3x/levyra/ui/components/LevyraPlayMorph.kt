@@ -22,13 +22,17 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.graphics.shapes.CornerRounding
 import androidx.graphics.shapes.Morph
+import androidx.graphics.shapes.RoundedPolygon
+import androidx.graphics.shapes.rectangle
 import androidx.graphics.shapes.toPath
 import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
 
 private const val PlaySpinPeriodDegrees = 30f
 private const val PlaySpinPeriodMillis = 5_200
 private const val ArtworkSpinPeriodMillis = 48_000
+private const val NowPlayingSpinPeriodMillis = 3_600
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private val PlayMorph: Morph by lazy {
@@ -40,15 +44,23 @@ private val AvatarPressMorph: Morph by lazy {
     Morph(MaterialShapes.Circle.normalized(), MaterialShapes.Cookie12Sided.normalized())
 }
 
+private const val ArtworkRestRounding = 0.42f
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private val ArtworkMorph: Morph by lazy {
-    Morph(MaterialShapes.Circle.normalized(), MaterialShapes.Puffy.normalized())
+    Morph(
+        RoundedPolygon.rectangle(rounding = CornerRounding(ArtworkRestRounding, smoothing = 1f)).normalized(),
+        MaterialShapes.Puffy.normalized()
+    )
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private val FavoriteMorph: Morph by lazy {
     Morph(MaterialShapes.Circle.normalized(), MaterialShapes.Cookie9Sided.normalized())
 }
+
+internal fun levyraCookieLandingShape(progress: Float, rotationDegrees: Float = 0f): Shape =
+    LevyraMorphShape(PlayMorph, progress, rotationDegrees)
 
 internal class LevyraMorphShape(
     private val morph: Morph,
@@ -134,6 +146,18 @@ private fun rememberSpinningMorphShape(
     val rotation = angle * progress
     return remember(morph, progress, rotation) { LevyraMorphShape(morph, progress, rotation) }
 }
+
+@Composable
+internal fun rememberLevyraNowPlayingShape(playing: Boolean, animated: Boolean): Shape =
+    rememberSpinningMorphShape(
+        morph = AvatarPressMorph,
+        active = playing,
+        animated = animated,
+        spin = true,
+        spinDegrees = PlaySpinPeriodDegrees,
+        spinMillis = NowPlayingSpinPeriodMillis,
+        label = "levyra-now-playing-morph"
+    )
 
 @Composable
 internal fun rememberLevyraAvatarPressShape(pressed: Boolean, animated: Boolean): Shape {

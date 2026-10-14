@@ -16,6 +16,8 @@ import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.PlaybackBufferMode
 import com.luc4n3x.levyra.domain.PlaybackBufferSettings
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
+import com.luc4n3x.levyra.domain.LevyraLyricsStudioSettings
+import com.luc4n3x.levyra.domain.LyricsAlignment
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.LevyraVisualPerformance
 import com.luc4n3x.levyra.domain.PlayerDoubleTapAction
@@ -97,6 +99,28 @@ class LevyraPreferencesStoreTest {
     private fun flush(store: LevyraPreferencesStore) = runBlocking { store.commit { } }
 
     @Test
+    fun lyricsStudioWriteFailureReportsFailureAndKeepsPersistedSettings() = runBlocking {
+        val (_, preferences) = open()
+        val original = LevyraLyricsStudioSettings()
+        val changed = original.copy(alignment = LyricsAlignment.CENTER)
+        assertTrue(preferences.setLyricsStudioSettings(original))
+        disk.writeFailuresRemaining = 1
+        assertFalse(preferences.setLyricsStudioSettings(changed))
+        assertEquals(original, preferences.lyricsStudioSettings())
+        assertEquals(original, reopen().lyricsStudioSettings())
+    }
+
+    @Test
+    fun lyricsStudioSuccessfulWriteSurvivesReopening() = runBlocking {
+        val (_, preferences) = open()
+        val settings = LevyraLyricsStudioSettings().copy(
+            alignment = LyricsAlignment.END
+        )
+        assertTrue(preferences.setLyricsStudioSettings(settings))
+        assertEquals(settings, reopen().lyricsStudioSettings())
+    }
+
+    @Test
     fun emptyStoreExposesExistingDefaults() {
         val (_, preferences) = open()
         val snapshot = preferences.snapshot()
@@ -107,7 +131,7 @@ class LevyraPreferencesStoreTest {
         assertEquals(DEFAULT_SPONSORBLOCK_ENABLED, snapshot.sponsorBlock)
         assertEquals("High", snapshot.audioQuality)
         assertEquals(LevyraAudioSettings().normalized(), preferences.audioSettings())
-        assertEquals(PlayerVisualMode.CanvasImmersive, preferences.interfaceSettings().playerVisualMode)
+        assertEquals(PlayerVisualMode.CanvasCard, preferences.interfaceSettings().playerVisualMode)
         assertEquals(LevyraVisualPerformance.Full, preferences.interfaceSettings().visualPerformance)
         assertNull(snapshot.lastTrack)
         assertEquals(LevyraAutomationSettings().normalized(), runBlocking { preferences.automationSettingsFlow.first() })

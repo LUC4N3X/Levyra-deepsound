@@ -1,12 +1,19 @@
 package com.luc4n3x.levyra.ui.update
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,36 +23,46 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.SystemUpdateAlt
+import androidx.compose.material.icons.rounded.VerifiedUser
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.graphics.shapes.RoundedPolygon
 import com.luc4n3x.levyra.domain.AppUpdateInfo
+import com.luc4n3x.levyra.ui.LevyraLogoMark
+import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
+import com.luc4n3x.levyra.ui.components.levyraGroupedListShape
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LevyraUpdateReleaseCopy
 import com.luc4n3x.levyra.ui.i18n.updateReleaseCopy
@@ -65,9 +82,9 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val UpdateHeroShape = RoundedCornerShape(30.dp)
-private val UpdateCardShape = RoundedCornerShape(22.dp)
+private const val UpdateBadgeSpinMillis = 24_000
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun LevyraUpdateScreen(
     update: AppUpdateInfo,
@@ -89,6 +106,15 @@ fun LevyraUpdateScreen(
         modifier = modifier
             .fillMaxSize()
             .background(LevyraBlack)
+            .drawBehind {
+                drawRect(
+                    Brush.radialGradient(
+                        colors = listOf(LevyraCyan.copy(alpha = 0.16f), Color.Transparent),
+                        center = Offset(size.width * 0.85f, size.height * 0.04f),
+                        radius = size.maxDimension * 0.6f
+                    )
+                )
+            }
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
@@ -102,8 +128,7 @@ fun LevyraUpdateScreen(
                 onClick = onLater,
                 modifier = Modifier
                     .size(48.dp)
-                    .background(LevyraPanel, CircleShape)
-                    .border(1.dp, LevyraGlassBorder, CircleShape)
+                    .background(LevyraPanel, MaterialShapes.Cookie9Sided.toShape())
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
@@ -112,202 +137,190 @@ fun LevyraUpdateScreen(
                     modifier = Modifier.size(20.dp)
                 )
             }
-            Spacer(Modifier.weight(1f))
-            Text(
-                text = copy.releaseReady.uppercase(Locale.ROOT),
-                color = LevyraMuted,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.1.sp
-            )
         }
 
         Column(
             modifier = Modifier
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+                .padding(horizontal = 24.dp)
         ) {
-            Spacer(Modifier.height(6.dp))
-            UpdateHero(update = update, meta = meta, copy = copy)
-
-            if (notes.isNotEmpty()) {
-                UpdateHighlights(
-                    title = copy.releaseHighlights,
-                    notes = notes
-                )
-            }
-
-            UpdateProtectionCard(
-                title = copy.releaseProtection,
-                detail = copy.releaseProtectionDetail
-            )
-            Spacer(Modifier.height(8.dp))
-        }
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(LevyraBlack.copy(alpha = 0.97f))
-                .padding(horizontal = 20.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            OutlinedButton(
-                onClick = onLater,
-                modifier = Modifier
-                    .weight(0.82f)
-                    .height(54.dp),
-                shape = CircleShape,
-                border = BorderStroke(1.dp, LevyraGlassBorder),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = LevyraText)
-            ) {
-                Text(strings.later, fontWeight = FontWeight.SemiBold)
-            }
-            Button(
-                onClick = onUpdate,
-                modifier = Modifier
-                    .weight(1.18f)
-                    .height(54.dp),
-                shape = CircleShape,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = LevyraCyan,
-                    contentColor = LevyraOnAccent
-                )
-            ) {
-                Icon(Icons.Rounded.SystemUpdateAlt, contentDescription = null, modifier = Modifier.size(19.dp))
-                Spacer(Modifier.size(8.dp))
-                Text(strings.update, fontWeight = FontWeight.Bold)
-            }
-        }
-    }
-}
-
-@Composable
-private fun UpdateHero(
-    update: AppUpdateInfo,
-    meta: String,
-    copy: LevyraUpdateReleaseCopy
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                brush = Brush.linearGradient(
-                    listOf(
-                        LevyraCyan.copy(alpha = 0.12f),
-                        LevyraViolet.copy(alpha = 0.08f),
-                        LevyraPanel.copy(alpha = 0.96f)
-                    )
-                ),
-                shape = UpdateHeroShape
-            )
-            .border(1.dp, LevyraGlassBorder, UpdateHeroShape)
-            .padding(horizontal = 20.dp, vertical = 22.dp)
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            UpdateOrbitGlyph()
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(24.dp))
+            UpdateBadge()
+            Spacer(Modifier.height(28.dp))
             Text(
                 text = copy.releaseReady,
-                color = LevyraMuted,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
+                color = LevyraCyan,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = update.latestVersionName,
                 color = LevyraText,
-                fontSize = 48.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(48.sp),
-                fontWeight = FontWeight.Bold,
+                fontSize = 64.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(64.sp),
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-2).sp,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.semantics { heading() }
             )
             if (meta.isNotBlank()) {
-                Spacer(Modifier.height(5.dp))
-                Text(meta, color = LevyraMuted, fontSize = 12.sp)
+                Text(meta, color = LevyraMuted, fontSize = 14.sp)
             }
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(22.dp))
             VersionRunway(
                 current = update.currentVersionName,
                 latest = update.latestVersionName,
-                fromLabel = copy.releaseFrom,
-                toLabel = copy.releaseTo
+                copy = copy
             )
-        }
-    }
-}
-
-@Composable
-private fun UpdateOrbitGlyph() {
-    Box(modifier = Modifier.size(104.dp), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize()) {
-            val center = Offset(size.width / 2f, size.height / 2f)
-            val radii = listOf(size.minDimension * 0.47f, size.minDimension * 0.36f)
-            radii.forEachIndexed { index, radius ->
-                drawCircle(
-                    color = if (index == 0) LevyraViolet.copy(alpha = 0.16f) else LevyraCyan.copy(alpha = 0.24f),
-                    radius = radius,
-                    center = center,
-                    style = Stroke(width = if (index == 0) 1.dp.toPx() else 2.dp.toPx())
-                )
+            if (notes.isNotEmpty()) {
+                Spacer(Modifier.height(30.dp))
+                UpdateHighlights(title = copy.releaseHighlights, notes = notes)
             }
-            drawArc(
-                brush = Brush.sweepGradient(listOf(LevyraCyan, LevyraViolet, LevyraCyan)),
-                startAngle = -80f,
-                sweepAngle = 126f,
-                useCenter = false,
-                topLeft = Offset(size.width * 0.03f, size.height * 0.03f),
-                size = androidx.compose.ui.geometry.Size(size.width * 0.94f, size.height * 0.94f),
-                style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
-            )
+            Spacer(Modifier.height(22.dp))
+            UpdateProtectionCard(title = copy.releaseProtection, detail = copy.releaseProtectionDetail)
+            Spacer(Modifier.height(16.dp))
         }
-        Surface(
-            modifier = Modifier.size(58.dp),
-            shape = CircleShape,
-            color = LevyraBlack.copy(alpha = 0.72f),
-            border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.28f))
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = Icons.Rounded.SystemUpdateAlt,
-                    contentDescription = null,
-                    tint = LevyraCyan,
-                    modifier = Modifier.size(27.dp)
-                )
+            Button(
+                onClick = onUpdate,
+                shapes = ButtonDefaults.shapes(),
+                colors = ButtonDefaults.buttonColors(containerColor = LevyraCyan, contentColor = LevyraOnAccent),
+                contentPadding = PaddingValues(horizontal = 28.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+            ) {
+                Icon(Icons.Rounded.SystemUpdateAlt, contentDescription = null, modifier = Modifier.size(22.dp))
+                Spacer(Modifier.width(10.dp))
+                Text(strings.update, fontSize = 17.sp, fontWeight = FontWeight.Black, maxLines = 1)
+            }
+            TextButton(
+                onClick = onLater,
+                shapes = ButtonDefaults.shapes(),
+                modifier = Modifier.height(48.dp)
+            ) {
+                Text(strings.later, color = LevyraMuted, fontSize = 15.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun VersionRunway(
-    current: String,
-    latest: String,
-    fromLabel: String,
-    toLabel: String
-) {
-    Surface(
-        color = LevyraBlack.copy(alpha = 0.3f),
-        shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, LevyraGlassBorder),
-        modifier = Modifier.fillMaxWidth()
+private fun UpdateBadge() {
+    val animated = LocalAnimationsEnabled.current
+    val bloom = remember { Animatable(if (animated) 0f else 1f) }
+    LaunchedEffect(animated) {
+        if (animated) bloom.animateTo(1f, spring(dampingRatio = 0.6f, stiffness = 160f)) else bloom.snapTo(1f)
+    }
+    val spin = if (animated) {
+        rememberInfiniteTransition(label = "update-badge").animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(tween(UpdateBadgeSpinMillis, easing = LinearEasing), RepeatMode.Restart),
+            label = "update-badge-spin"
+        )
+    } else {
+        null
+    }
+    Box(modifier = Modifier.size(128.dp), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier
+                .size(128.dp)
+                .graphicsLayer {
+                    val value = bloom.value
+                    scaleX = 0.6f + 0.4f * value
+                    scaleY = 0.6f + 0.4f * value
+                    alpha = value.coerceIn(0f, 1f)
+                    rotationZ = -(spin?.value ?: 0f) - 50f * (1f - value)
+                }
+                .border(1.5.dp, LevyraCyan.copy(alpha = 0.45f), MaterialShapes.SoftBurst.toShape())
+        )
+        Box(
+            modifier = Modifier
+                .size(100.dp)
+                .graphicsLayer {
+                    val value = bloom.value
+                    scaleX = 0.7f + 0.3f * value
+                    scaleY = 0.7f + 0.3f * value
+                    rotationZ = (spin?.value ?: 0f) * 1.4f + 70f * (1f - value)
+                }
+                .background(
+                    Brush.linearGradient(listOf(LevyraCyan.copy(alpha = 0.22f), LevyraViolet.copy(alpha = 0.22f))),
+                    MaterialShapes.Cookie12Sided.toShape()
+                )
+        )
+        Box(
+            modifier = Modifier.graphicsLayer {
+                val value = bloom.value
+                scaleX = 0.75f + 0.25f * value
+                scaleY = 0.75f + 0.25f * value
+                alpha = value.coerceIn(0f, 1f)
+            }
+        ) {
+            LevyraLogoMark(size = 72.dp, contentDescription = null)
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .size(40.dp)
+                .graphicsLayer {
+                    val value = ((bloom.value - 0.4f) / 0.6f).coerceIn(0f, 1.2f)
+                    scaleX = value
+                    scaleY = value
+                }
+                .background(LevyraBlack, MaterialShapes.Cookie9Sided.toShape())
+                .padding(3.dp)
+                .background(LevyraCyan, MaterialShapes.Cookie9Sided.toShape()),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Rounded.SystemUpdateAlt, contentDescription = null, tint = LevyraOnAccent, modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun VersionRunway(current: String, latest: String, copy: LevyraUpdateReleaseCopy) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 15.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+        VersionCell(
+            label = copy.releaseFrom,
+            version = current,
+            container = LevyraPanel,
+            labelColor = LevyraMuted,
+            shape = RoundedCornerShape(topStart = 26.dp, bottomStart = 26.dp, topEnd = 8.dp, bottomEnd = 8.dp),
+            modifier = Modifier.weight(1f)
+        )
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .background(LevyraPanel, MaterialShapes.Cookie4Sided.toShape()),
+            contentAlignment = Alignment.Center
         ) {
-            VersionCell(label = fromLabel, version = current, modifier = Modifier.weight(1f))
-            Icon(
-                Icons.AutoMirrored.Rounded.ArrowForward,
-                contentDescription = null,
-                tint = LevyraCyan,
-                modifier = Modifier.size(21.dp)
-            )
-            VersionCell(label = toLabel, version = latest, modifier = Modifier.weight(1f), alignEnd = true)
+            Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(18.dp))
         }
+        VersionCell(
+            label = copy.releaseTo,
+            version = latest,
+            container = LevyraCyan.copy(alpha = 0.16f),
+            labelColor = LevyraCyan,
+            shape = RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp, topEnd = 26.dp, bottomEnd = 26.dp),
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 
@@ -315,84 +328,99 @@ private fun VersionRunway(
 private fun VersionCell(
     label: String,
     version: String,
-    modifier: Modifier,
-    alignEnd: Boolean = false
+    container: Color,
+    labelColor: Color,
+    shape: Shape,
+    modifier: Modifier
 ) {
     Column(
-        modifier = modifier,
-        horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start
+        modifier = modifier
+            .background(container, shape)
+            .padding(horizontal = 18.dp, vertical = 14.dp)
     ) {
-        Text(label.uppercase(Locale.ROOT), color = LevyraMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-        Text(version, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Text(label, color = labelColor, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(version, color = LevyraText, fontSize = 17.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private val UpdateNotePolygons: List<RoundedPolygon> by lazy {
+    listOf(
+        MaterialShapes.Cookie4Sided,
+        MaterialShapes.Clover4Leaf,
+        MaterialShapes.Sunny,
+        MaterialShapes.Cookie6Sided,
+        MaterialShapes.Flower
+    )
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun UpdateHighlights(title: String, notes: List<String>) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.AutoAwesome, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.size(8.dp))
-            Text(title, color = LevyraText, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-        }
-        notes.forEachIndexed { index, note ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 2.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                Text(
-                    text = (index + 1).toString().padStart(2, '0'),
-                    color = LevyraCyan,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 3.dp)
-                )
-                Spacer(Modifier.size(13.dp))
-                Text(
-                    text = note,
-                    color = LevyraMuted,
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun UpdateProtectionCard(title: String, detail: String) {
-    Surface(
-        color = LevyraCyan.copy(alpha = 0.055f),
-        shape = UpdateCardShape,
-        border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.16f)),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                modifier = Modifier.size(42.dp),
-                shape = CircleShape,
-                color = LevyraCyan.copy(alpha = 0.1f)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Rounded.CheckCircle,
-                        contentDescription = null,
-                        tint = LevyraCyan,
-                        modifier = Modifier.size(22.dp)
+    Column {
+        Text(
+            text = title,
+            color = LevyraText,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Black,
+            modifier = Modifier
+                .padding(bottom = 12.dp)
+                .semantics { heading() }
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            notes.forEachIndexed { index, note ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(LevyraPanel, levyraGroupedListShape(index, notes.size))
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .background(LevyraCyan.copy(alpha = 0.16f), UpdateNotePolygons[index % UpdateNotePolygons.size].toShape()),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text((index + 1).toString(), color = LevyraCyan, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                    }
+                    Text(
+                        text = note,
+                        color = LevyraText.copy(alpha = 0.86f),
+                        fontSize = 15.sp,
+                        lineHeight = 21.sp,
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
-            Spacer(Modifier.size(13.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(title, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                Text(detail, color = LevyraMuted, fontSize = 11.sp, lineHeight = 16.sp)
-            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun UpdateProtectionCard(title: String, detail: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(LevyraCyan.copy(alpha = 0.08f), RoundedCornerShape(28.dp))
+            .border(1.dp, LevyraGlassBorder, RoundedCornerShape(28.dp))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .background(LevyraCyan, MaterialShapes.Clover4Leaf.toShape()),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Rounded.VerifiedUser, contentDescription = null, tint = LevyraOnAccent, modifier = Modifier.size(22.dp))
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Text(detail, color = LevyraMuted, fontSize = 13.sp, lineHeight = 18.sp)
         }
     }
 }

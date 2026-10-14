@@ -118,6 +118,50 @@ class SpotifyYouTubeMatcherTest {
     }
 
     @Test
+    fun recordingVariantsAreRejectedInBothDirections() {
+        val original = sampleTrack("sp:original", "Numb", "Linkin Park")
+        val variants = listOf(
+            "Numb (Live)",
+            "Numb (2003 Remaster)",
+            "Numb (Radio Edit)",
+            "Numb (Acoustic)",
+            "Numb (Instrumental)",
+            "Numb (Extended Mix)"
+        )
+
+        variants.forEach { title ->
+            val variant = sampleTrack("yt:variant", title, "Linkin Park")
+            assertEquals(title, 0.0, SpotifyYouTubeMatcher.scoreMatch(original, variant), 0.0)
+            assertEquals(title, 0.0, SpotifyYouTubeMatcher.scoreMatch(variant, original), 0.0)
+        }
+    }
+
+    @Test
+    fun differentNamedRemixesAreNotTheSameRecording() {
+        val first = sampleTrack("sp:remix", "Levitating (The Blessed Madonna Remix)", "Dua Lipa")
+        val second = sampleTrack("yt:remix", "Levitating (Don Diablo Remix)", "Dua Lipa")
+
+        assertEquals(0.0, SpotifyYouTubeMatcher.scoreMatch(first, second), 0.0)
+    }
+
+    @Test
+    fun conflictingCleanAndExplicitLabelsAreRejected() {
+        val clean = sampleTrack("sp:clean", "Numb (Clean)", "Linkin Park")
+        val explicit = sampleTrack("yt:explicit", "Numb (Explicit)", "Linkin Park")
+
+        assertEquals(0.0, SpotifyYouTubeMatcher.scoreMatch(clean, explicit), 0.0)
+        assertEquals(0.0, SpotifyYouTubeMatcher.scoreMatch(explicit, clean), 0.0)
+    }
+
+    @Test
+    fun identicalIsrcCannotOverrideConflictingVersionLabels() {
+        val live = sampleTrack("sp:live", "Numb (Live)", "Linkin Park", isrc = "USWB10301101")
+        val studio = sampleTrack("yt:studio", "Numb", "Linkin Park", isrc = "USWB10301101")
+
+        assertEquals(0.0, SpotifyYouTubeMatcher.scoreMatch(live, studio), 0.0)
+    }
+
+    @Test
     fun homonymDifferentArtistIsRejected() {
         val spotifyAdele = sampleTrack("sp:7", "Hello", "Adele")
         val ytLionel = sampleTrack("yt:7", "Hello", "Lionel Richie")
@@ -258,9 +302,9 @@ class SpotifyYouTubeMatcherTest {
         assertEquals("local:hello", enrichedLocal.id)
         assertEquals("Offline", enrichedLocal.source)
         assertEquals("spotify", enrichedLocal.metadataProvider)
-        assertEquals("ytlocal0001", enrichedLocal.counterpartVideoId)
-        assertEquals("ytlocal0001", enrichedLocal.audioVideoId)
-        assertEquals(4_000_000_000L, enrichedLocal.youtubeViewCount)
+        assertEquals(local.counterpartVideoId, enrichedLocal.counterpartVideoId)
+        assertEquals(local.audioVideoId, enrichedLocal.audioVideoId)
+        assertEquals(local.youtubeViewCount, enrichedLocal.youtubeViewCount)
         assertEquals("content://media/external/audio/1", enrichedLocal.streamUrl)
     }
 }

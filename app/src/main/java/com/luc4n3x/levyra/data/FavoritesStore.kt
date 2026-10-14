@@ -59,6 +59,17 @@ class FavoritesStore(context: Context) {
         favoritesStoreMutationMutex.withLock { saveAndCompleteMigration(tracks) }
     }
 
+    suspend fun addFavorites(tracks: List<Track>): List<Track> = withContext(Dispatchers.IO) {
+        favoritesStoreMutationMutex.withLock {
+            val current = loadInternal(failOnReadError = true)
+            val existingKeys = current.mapTo(hashSetOf(), ::favoriteTrackKey)
+            val added = tracks.filter { it.id.isNotBlank() && existingKeys.add(favoriteTrackKey(it)) }
+            val updated = added + current
+            if (added.isNotEmpty()) saveAndCompleteMigration(updated)
+            updated
+        }
+    }
+
     suspend fun toggleFavorite(track: Track): List<Track> = withContext(Dispatchers.IO) {
         favoritesStoreMutationMutex.withLock {
             val current = loadInternal()

@@ -5,12 +5,6 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.material3.toShape
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.components.LevyraCardCaption
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
@@ -27,7 +21,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.offset
@@ -65,7 +58,6 @@ import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
-import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
 import kotlin.math.min
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
@@ -90,21 +82,6 @@ internal fun LevyraHomeAtmosphere(
     accent: Color,
     modifier: Modifier = Modifier
 ) {
-    val decorativeMotion = LocalLevyraVisualCapabilities.current.decorativeMotion
-    val driftPhase = if (decorativeMotion) {
-        val transition = rememberInfiniteTransition(label = "home-backdrop-drift")
-        transition.animateFloat(
-            initialValue = 0f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 24_000, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "home-backdrop-phase"
-        )
-    } else {
-        null
-    }
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -112,8 +89,7 @@ internal fun LevyraHomeAtmosphere(
                 drawHomeBackdrop(
                     canvas = homeCanvasColor(isLight),
                     isLight = isLight,
-                    accent = accent,
-                    driftPhase = driftPhase?.value ?: 0.5f
+                    accent = accent
                 )
             }
     )
@@ -122,8 +98,7 @@ internal fun LevyraHomeAtmosphere(
 private fun DrawScope.drawHomeBackdrop(
     canvas: Color,
     isLight: Boolean,
-    accent: Color,
-    driftPhase: Float
+    accent: Color
 ) {
     drawRect(canvas)
     val height = min(size.height, HomeBackdropHeight.toPx())
@@ -132,21 +107,20 @@ private fun DrawScope.drawHomeBackdrop(
     val primary = mixHomeBackdropColor(accent, HomeBackdropBlue, 0.18f)
     val secondary = mixHomeBackdropColor(accent, HomeBackdropIndigo, 0.46f)
     val tertiary = mixHomeBackdropColor(accent, Color.White, if (isLight) 0.20f else 0.08f)
-    val drift = (driftPhase.coerceIn(0f, 1f) - 0.5f) * 2f
 
     val primaryCenter = Offset(
-        x = size.width * (0.18f + 0.06f * drift),
-        y = height * (0.02f + 0.025f * drift)
+        x = size.width * 0.18f,
+        y = height * 0.02f
     )
     val primaryRadius = maxOf(size.width, height) * 0.92f
     val secondaryCenter = Offset(
-        x = size.width * (0.96f - 0.05f * drift),
-        y = height * (0.12f + 0.035f * drift)
+        x = size.width * 0.96f,
+        y = height * 0.12f
     )
     val secondaryRadius = size.width * 0.72f
     val tertiaryCenter = Offset(
-        x = size.width * (0.52f - 0.035f * drift),
-        y = height * (0.38f - 0.025f * drift)
+        x = size.width * 0.52f,
+        y = height * 0.38f
     )
     val tertiaryRadius = maxOf(size.width, height) * 0.58f
 
@@ -203,8 +177,6 @@ private val HomeBackdropHeight = 420.dp
 private val HomeChipVisualHeight = 40.dp
 private val HomeChipRestCorner = 20.dp
 private val HomeChipPressedCorner = 12.dp
-private const val HomeChipTintDark = 0.34f
-private const val HomeChipTintLight = 0.20f
 private val HomeBackdropBlue = Color(0xFF0A84FF)
 private val HomeBackdropIndigo = Color(0xFF5E5CE6)
 
@@ -222,16 +194,6 @@ internal fun HomeGenreChips(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(zones, key = { zone -> "home-chip-${zone.id}" }) { zone ->
-            val base = colors.surfaceContainerHigh
-            val tint = if (LevyraIsLight) HomeChipTintLight else HomeChipTintDark
-            val chipBrush = remember(zone.accentStart, zone.accentEnd, base, tint) {
-                Brush.linearGradient(
-                    listOf(
-                        lerp(base, Color(zone.accentStart), tint),
-                        lerp(base, Color(zone.accentEnd), tint * 0.55f)
-                    )
-                )
-            }
             val interaction = remember(zone.id) { MutableInteractionSource() }
             val corner = if (LocalAnimationsEnabled.current) {
                 levyraExpressiveCorner(
@@ -258,7 +220,7 @@ internal fun HomeGenreChips(
                     modifier = Modifier
                         .height(HomeChipVisualHeight)
                         .clip(RoundedCornerShape(corner))
-                        .background(chipBrush)
+                        .background(colors.surfaceContainerHigh)
                         .padding(horizontal = 18.dp),
                     contentAlignment = Alignment.Center
                 ) {

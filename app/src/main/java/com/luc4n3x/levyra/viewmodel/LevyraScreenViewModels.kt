@@ -10,6 +10,8 @@ import com.luc4n3x.levyra.data.HomeOfflineContentBuilder
 import com.luc4n3x.levyra.data.HomeEditorialEngine
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
 import com.luc4n3x.levyra.data.deduplicateHomeAlbums
+import com.luc4n3x.levyra.data.isChartArtworkPlaceholder
+import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicHomeSource
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistExclusions
 import com.luc4n3x.levyra.domain.BatchDownload
@@ -51,11 +53,13 @@ import com.luc4n3x.levyra.domain.prepareMixPlaybackTracks
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
 import com.luc4n3x.levyra.feature.recognition.RecognitionState
 import com.luc4n3x.levyra.feature.radio.RadioStation
+import com.luc4n3x.levyra.ui.HOME_PERSONAL_ORBIT_MAX_TRACKS
+import com.luc4n3x.levyra.ui.homePersonalOrbitFilledTracks
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -134,29 +138,34 @@ abstract class LevyraScreenViewModel(
         )
 }
 
-class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeProjection) {
+class HomeViewModel internal constructor(
+    root: LevyraViewModel,
+    private val youtubeMusicHome: StateFlow<YoutubeMusicHomeSource>
+) : LevyraScreenViewModel(root, ::homeProjection) {
     fun openExploreZone(zone: ExploreZone) = root.openExploreZone(zone)
 
     private val freezeHomeContent = MutableStateFlow(false)
     private val explicitMoodSelection = MutableStateFlow<Mood?>(null)
-    private var homeRenderSettleJob: Job? = null
 
     internal val renderState: StateFlow<HomeRenderSnapshot> = combine(
         state,
         freezeHomeContent,
-        explicitMoodSelection
-    ) { snapshot, freeze, selectedMood ->
+        explicitMoodSelection,
+        youtubeMusicHome
+    ) { snapshot, freeze, selectedMood, source ->
         HomeRenderInput(
             state = snapshot.copy(selectedMood = selectedMood),
-            freezeContent = freeze
+            freezeContent = freeze,
+            source = source
         )
     }
-        .scan(buildHomeRenderSnapshot(root.state.value.copy(selectedMood = null))) { previous, input ->
+        .scan(initialHomeRenderSnapshot()) { previous, input ->
             withContext(Dispatchers.Default) {
                 buildStableHomeRenderSnapshot(
                     state = input.state,
                     previous = previous,
-                    freezeContent = input.freezeContent
+                    freezeContent = input.freezeContent,
+                    source = input.source
                 )
             }
         }
@@ -164,8 +173,11 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000L),
-            initialValue = buildHomeRenderSnapshot(root.state.value.copy(selectedMood = null))
+            initialValue = initialHomeRenderSnapshot()
         )
+
+    private fun initialHomeRenderSnapshot(): HomeRenderSnapshot =
+        buildHomeRenderSnapshot(root.state.value.copy(selectedMood = null), youtubeMusicHome.value)
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
     fun addToQueue(track: Track) = root.addToQueue(track)
     fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
@@ -210,29 +222,41 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
     }
     fun toggleFavorite(track: Track) = root.toggleFavorite(track)
     fun togglePlay() = root.togglePlay()
+    private val _homeRefreshing = MutableStateFlow(false)
+    val homeRefreshing: StateFlow<Boolean> = _homeRefreshing
+    private var homeVisible = false
+
+    fun refreshHome(alsoAwait: suspend () -> Unit) {
+        if (_homeRefreshing.value) return
+        _homeRefreshing.value = true
+        freezeHomeContent.value = false
+        viewModelScope.launch {
+            try {
+                coroutineScope {
+                    launch { root.refreshHomeAndAwait() }
+                    launch { alsoAwait() }
+                }
+            } finally {
+                freezeHomeContent.value = homeVisible
+                _homeRefreshing.value = false
+            }
+        }
+    }
+
     fun onHomeEntered(atTop: Boolean) {
-        homeRenderSettleJob?.cancel()
-        freezeHomeContent.value = shouldFreezeHomeStructure(scrollInProgress = false, atTop = atTop)
+        homeVisible = true
+        freezeHomeContent.value = true
         root.onHomeEntered(atTop)
     }
 
     fun onHomeLeft() {
-        homeRenderSettleJob?.cancel()
+        homeVisible = false
         freezeHomeContent.value = false
         root.onHomeLeft()
     }
 
     fun setHomeViewport(scrollInProgress: Boolean, atTop: Boolean) {
         root.setHomeViewport(scrollInProgress, atTop)
-        homeRenderSettleJob?.cancel()
-        if (shouldFreezeHomeStructure(scrollInProgress, atTop)) {
-            freezeHomeContent.value = true
-        } else {
-            homeRenderSettleJob = viewModelScope.launch {
-                delay(HOME_RENDER_SETTLE_MS)
-                freezeHomeContent.value = false
-            }
-        }
     }
 }
 
@@ -451,6 +475,7 @@ class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::pla
     fun openSleepTimer() = root.openSleepTimer()
     fun openAmbient() = root.openAmbient()
     fun exportCurrentTrack() = root.exportCurrentTrack()
+    fun deleteTrackDownload(trackId: String) = root.deleteTrackDownload(trackId)
     fun next() = root.next()
     suspend fun playerArtistHits(track: Track, resolveArtwork: Boolean = true): List<ArtistHit> =
         root.playerArtistHits(track, resolveArtwork)
@@ -497,13 +522,14 @@ class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::pla
     fun setPlayerBackground(mode: PlayerBackgroundMode) = root.setPlayerBackground(mode)
 }
 
-class LevyraScreenViewModelFactory(
-    private val root: LevyraViewModel
+class LevyraScreenViewModelFactory internal constructor(
+    private val root: LevyraViewModel,
+    private val youtubeMusicHome: StateFlow<YoutubeMusicHomeSource>
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         return when {
-            modelClass.isAssignableFrom(HomeViewModel::class.java) -> HomeViewModel(root)
+            modelClass.isAssignableFrom(HomeViewModel::class.java) -> HomeViewModel(root, youtubeMusicHome)
             modelClass.isAssignableFrom(SearchViewModel::class.java) -> SearchViewModel(root)
             modelClass.isAssignableFrom(ExploreViewModel::class.java) -> ExploreViewModel(root)
             modelClass.isAssignableFrom(LibraryViewModel::class.java) -> LibraryViewModel(root)
@@ -513,66 +539,121 @@ class LevyraScreenViewModelFactory(
     }
 }
 
-private const val HOME_RENDER_SETTLE_MS = 360L
-
 internal fun shouldFreezeHomeStructure(scrollInProgress: Boolean, atTop: Boolean): Boolean {
     return scrollInProgress || !atTop
 }
 
 private data class HomeRenderInput(
     val state: LevyraUiState,
-    val freezeContent: Boolean
+    val freezeContent: Boolean,
+    val source: YoutubeMusicHomeSource
 )
 
 internal fun buildStableHomeRenderSnapshot(
     state: LevyraUiState,
     previous: HomeRenderSnapshot,
-    freezeContent: Boolean
+    freezeContent: Boolean,
+    source: YoutubeMusicHomeSource = YoutubeMusicHomeSource.Standard
 ): HomeRenderSnapshot {
-    val visibleState = if (freezeContent) state.withFrozenHomeContent(previous.state) else state
+    val sourcedState = state.withYoutubeMusicHome(source)
+    val sourceKey = homeSourceKey(source)
+    val visibleState = if (freezeContent && previous.sourceKey == sourceKey) {
+        sourcedState.withFrozenHomeContent(previous.state)
+    } else {
+        sourcedState
+    }
     return buildHomeRenderSnapshot(visibleState, previous)
+        .copy(orbitPending = source == YoutubeMusicHomeSource.Pending, sourceKey = sourceKey)
 }
 
-private fun LevyraUiState.withFrozenHomeContent(previous: LevyraUiState): LevyraUiState {
-    val sameChartIdentity = languageCode == previous.languageCode &&
-        selectedChartId == previous.selectedChartId
-    return copy(
-        tracks = previous.tracks,
-        recentSearches = previous.recentSearches,
-        recentListens = previous.recentListens,
-        personalOrbitTracks = personalOrbitTracks,
-        favorites = previous.favorites,
-        charts = if (sameChartIdentity) previous.charts else charts,
-        isLoadingCharts = if (sameChartIdentity) previous.isLoadingCharts else isLoadingCharts,
-        homeSections = previous.homeSections,
-        homeAlbums = previous.homeAlbums,
-        homeArtists = previous.homeArtists,
-        homeResonanceTracks = previous.homeResonanceTracks,
-        homeResonanceComments = previous.homeResonanceComments,
-        homeArtistsLoading = previous.homeArtistsLoading,
-        homeAlbumsLoading = previous.homeAlbumsLoading,
-        isLoadingHome = previous.isLoadingHome,
-        homeError = previous.homeError,
-        isDeviceOffline = previous.isDeviceOffline,
-        downloads = previous.downloads,
-        releaseRadar = previous.releaseRadar,
-        similarArtists = previous.similarArtists
+internal fun buildHomeRenderSnapshot(state: LevyraUiState, source: YoutubeMusicHomeSource): HomeRenderSnapshot =
+    buildHomeRenderSnapshot(state.withYoutubeMusicHome(source))
+        .copy(orbitPending = source == YoutubeMusicHomeSource.Pending, sourceKey = homeSourceKey(source))
+
+private fun homeSourceKey(source: YoutubeMusicHomeSource): String = when (source) {
+    YoutubeMusicHomeSource.Standard -> HOME_SOURCE_STANDARD
+    YoutubeMusicHomeSource.Pending -> "pending"
+    is YoutubeMusicHomeSource.Ready -> "ytm:" + source.home.accountId
+}
+
+private const val HOME_SOURCE_STANDARD = "standard"
+
+private fun onlyUpgradesPlaceholderArtwork(previous: List<Track>, current: List<Track>): Boolean {
+    if (previous.size != current.size) return false
+    return previous.indices.all { index ->
+        val before = previous[index]
+        val after = current[index]
+        before.id == after.id && (before.thumbnailUrl == after.thumbnailUrl || isChartArtworkPlaceholder(before))
+    }
+}
+
+internal fun LevyraUiState.withYoutubeMusicHome(source: YoutubeMusicHomeSource): LevyraUiState = when (source) {
+    YoutubeMusicHomeSource.Standard -> this
+    YoutubeMusicHomeSource.Pending -> if (personalOrbitTracks.isEmpty()) this else copy(personalOrbitTracks = emptyList())
+    is YoutubeMusicHomeSource.Ready -> copy(
+        personalOrbitTracks = source.home.orbit.ifEmpty { personalOrbitTracks },
+        homeSections = source.home.sections.ifEmpty { homeSections },
+        homeAlbums = source.home.albums.ifEmpty { homeAlbums }
     )
 }
 
+private fun LevyraUiState.withFrozenHomeContent(previous: LevyraUiState): LevyraUiState {
+    if (languageCode != previous.languageCode) return this
+    val keepCharts = selectedChartId == previous.selectedChartId &&
+        previous.charts.isNotEmpty() &&
+        !onlyUpgradesPlaceholderArtwork(previous.charts, charts)
+    val keepSections = previous.homeSections.isNotEmpty()
+    val keepAlbums = previous.homeAlbums.isNotEmpty()
+    val keepArtists = previous.homeArtists.isNotEmpty()
+    return copy(
+        tracks = previous.tracks.ifEmpty { tracks },
+        recentSearches = previous.recentSearches,
+        recentListens = previous.recentListens,
+        favorites = previous.favorites,
+        charts = keepWhen(keepCharts, previous.charts, charts),
+        homeSections = keepWhen(keepSections, previous.homeSections, homeSections),
+        homeAlbums = keepWhen(keepAlbums, previous.homeAlbums, homeAlbums),
+        homeArtists = keepWhen(keepArtists, previous.homeArtists, homeArtists),
+        homeResonanceTracks = previous.homeResonanceTracks.ifEmpty { homeResonanceTracks },
+        homeResonanceComments = frozenResonanceComments(previous.homeResonanceComments, homeResonanceComments),
+        homeArtistsLoading = keepWhen(keepArtists, previous.homeArtistsLoading, homeArtistsLoading),
+        homeAlbumsLoading = keepWhen(keepAlbums, previous.homeAlbumsLoading, homeAlbumsLoading),
+        isLoadingHome = keepWhen(keepSections, previous.isLoadingHome, isLoadingHome),
+        homeError = keepWhen(keepSections, previous.homeError, homeError),
+        isDeviceOffline = previous.isDeviceOffline,
+        downloads = previous.downloads,
+        releaseRadar = previous.releaseRadar.ifEmpty { releaseRadar },
+        similarArtists = previous.similarArtists.ifEmpty { similarArtists }
+    )
+}
+
+private fun <T> keepWhen(keep: Boolean, previous: T, current: T): T = if (keep) previous else current
+
+private fun frozenResonanceComments(
+    previous: Map<String, ResonanceCommentSnippet>,
+    current: Map<String, ResonanceCommentSnippet>
+): Map<String, ResonanceCommentSnippet> =
+    current + previous.filterValues { !it.isLoading && !it.hasError && it.text.isNotBlank() }
+
 internal fun sameHomeRenderSnapshot(previous: HomeRenderSnapshot, current: HomeRenderSnapshot): Boolean {
-    return homeProjection(previous.state) == homeProjection(current.state) && previous.derived == current.derived
+    return previous.orbitPending == current.orbitPending &&
+        previous.sourceKey == current.sourceKey &&
+        homeProjection(previous.state) == homeProjection(current.state) &&
+        previous.derived == current.derived
 }
 
 @Immutable
 internal data class HomeRenderSnapshot(
     val state: LevyraUiState,
-    val derived: HomeDerivedState
+    val derived: HomeDerivedState,
+    val orbitPending: Boolean = false,
+    val sourceKey: String = HOME_SOURCE_STANDARD
 )
 
 @Immutable
 internal data class HomeDerivedState(
     val resonanceTracks: List<Track>,
+    val personalOrbitDisplayTracks: List<Track>,
     val artistRefreshFingerprint: String,
     val quickPicks: HomeSection?,
     val newReleases: HomeSection?,
@@ -744,6 +825,34 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
     val quickPicks = buildQuickPicks(input)?.let { section ->
         section.copy(tracks = moodRank(section.tracks))
     }
+    val orbitBase = homePersonalOrbitFilledTracks(
+        tracks = input.personalOrbitTracks,
+        recommendations = emptyList(),
+        excludedTracks = quickPicks?.tracks.orEmpty()
+    )
+    val personalOrbitDisplayTracks = if (
+        input.showPersonalOrbit && input.personalOrbitTracks.isNotEmpty() && orbitBase.size < HOME_PERSONAL_ORBIT_MAX_TRACKS
+    ) {
+        val tasteRankedCandidates = LevyraPersonalOrbit.build(
+            currentTrack = input.currentTrack?.takeUnless(input.artistExclusions::excludesTrack),
+            recentSearches = input.artistExclusions.filterTracks(input.recentListens),
+            favorites = input.artistExclusions.filterTracks(input.favorites),
+            tracks = input.artistExclusions.filterTracks(input.tracks + input.quickPickSeeds),
+            homeSections = input.homeSections,
+            charts = input.charts,
+            cachedOrbit = input.personalOrbitTracks,
+            limit = LevyraPersonalOrbit.DISPLAY_LIMIT * 4,
+            languageCode = input.languageCode,
+            excluded = { input.artistExclusions.excludesTrack(it) }
+        )
+        homePersonalOrbitFilledTracks(
+            tracks = input.personalOrbitTracks,
+            recommendations = tasteRankedCandidates,
+            excludedTracks = quickPicks?.tracks.orEmpty()
+        )
+    } else {
+        orbitBase
+    }
     val newReleases = input.homeSections.firstOrNull {
         isVerifiedHomeReleaseSectionTitle(it.title, input.languageCode)
     }?.let { it.copy(tracks = moodRank(it.tracks)) }
@@ -792,6 +901,7 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
     )
     return HomeDerivedState(
         resonanceTracks = resonanceTracks,
+        personalOrbitDisplayTracks = personalOrbitDisplayTracks,
         artistRefreshFingerprint = buildHomeArtistRefreshFingerprint(input),
         quickPicks = quickPicks,
         newReleases = newReleases,

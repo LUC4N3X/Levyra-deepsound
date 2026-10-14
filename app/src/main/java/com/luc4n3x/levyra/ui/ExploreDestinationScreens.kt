@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui
 
 import com.luc4n3x.levyra.ui.components.LevyraSectionHeader
+import com.luc4n3x.levyra.ui.components.LevyraPlayAllIconButton
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.graphics.graphicsLayer
@@ -212,21 +213,7 @@ private fun ExploreCollectionPlayAllButton(
     onPlayAll: () -> Unit,
     size: Dp = 42.dp
 ) {
-    Box(
-        modifier = Modifier
-            .size(size)
-            .background(LevyraCyan, CircleShape)
-            .semantics { role = Role.Button }
-            .clickable(onClick = onPlayAll),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = Icons.Rounded.PlayArrow,
-            contentDescription = strings.play,
-            tint = LevyraBlack,
-            modifier = Modifier.size(size * 0.55f)
-        )
-    }
+    LevyraPlayAllIconButton(onClick = onPlayAll, size = size, contentDescription = strings.playAll)
 }
 
 @Composable
