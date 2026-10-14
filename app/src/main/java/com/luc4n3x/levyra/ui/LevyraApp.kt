@@ -15910,6 +15910,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SearchHeader(
     query: String,
@@ -15956,13 +15957,27 @@ private fun SearchHeader(
         animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
         label = "search-field-container"
     )
-    val fieldOutline by animateColorAsState(
-        targetValue = if (fieldFocused) scheme.primary.copy(alpha = 0.32f) else Color.Transparent,
+    val focusRingAlpha by animateFloatAsState(
+        targetValue = if (fieldFocused) 1f else 0f,
         animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
-        label = "search-field-outline"
+        label = "search-field-ring"
     )
+    val searchBadgeColor by animateColorAsState(
+        targetValue = if (fieldFocused || query.isNotEmpty()) scheme.primaryContainer else Color.Transparent,
+        animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
+        label = "search-field-badge"
+    )
+    val focusRing = remember(scheme.primary, scheme.tertiary, focusRingAlpha) {
+        Brush.linearGradient(
+            listOf(
+                scheme.primary.copy(alpha = 0.9f * focusRingAlpha),
+                scheme.tertiary.copy(alpha = 0.75f * focusRingAlpha),
+                scheme.primary.copy(alpha = 0.35f * focusRingAlpha)
+            )
+        )
+    }
     val searchIconTint by animateColorAsState(
-        targetValue = if (fieldFocused) scheme.primary else scheme.onSurfaceVariant,
+        targetValue = if (fieldFocused || query.isNotEmpty()) scheme.onPrimaryContainer else scheme.onSurfaceVariant,
         animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
         label = "search-field-icon"
     )
@@ -15991,25 +16006,32 @@ private fun SearchHeader(
 
         Surface(
             color = fieldContainer,
-            border = BorderStroke(1.dp, fieldOutline),
+            border = BorderStroke(2.dp, focusRing),
             shape = RoundedCornerShape(fieldCorner),
             modifier = Modifier
                 .weight(1f)
-                .heightIn(min = 56.dp)
+                .heightIn(min = 60.dp)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 18.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
+                    .padding(start = 8.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.Search,
-                    contentDescription = null,
-                    tint = searchIconTint,
-                    modifier = Modifier.size(22.dp)
-                )
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(searchBadgeColor, MaterialShapes.Cookie4Sided.toShape())
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Search,
+                        contentDescription = null,
+                        tint = searchIconTint,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
 
                 BasicTextField(
                     value = query,
@@ -16106,30 +16128,45 @@ private fun SearchHeader(
                 }
 
                 if (recognitionAvailable) {
-                    IconButton(
-                        onClick = {
-                            if (recognitionBusy) {
-                                onCancelRecognition()
-                            } else if (
-                                ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
-                                PackageManager.PERMISSION_GRANTED
-                            ) {
-                                onRecognize()
-                            } else {
-                                microphonePermission.launch(Manifest.permission.RECORD_AUDIO)
-                            }
-                        },
+                    val recognitionRotation = if (recognitionBusy && animationsEnabled) {
+                        val spin = rememberInfiniteTransition(label = "search-recognition-spin")
+                        spin.animateFloat(
+                            initialValue = 0f,
+                            targetValue = 360f,
+                            animationSpec = infiniteRepeatable(tween(2_400, easing = LinearEasing)),
+                            label = "search-recognition-rotation"
+                        ).value
+                    } else {
+                        0f
+                    }
+                    Box(
+                        contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .padding(2.dp)
-                            .size(36.dp)
-                            .clip(CircleShape)
+                            .padding(4.dp)
+                            .size(40.dp)
+                            .graphicsLayer { rotationZ = recognitionRotation }
+                            .clip(MaterialShapes.Cookie9Sided.toShape())
                             .background(if (recognitionBusy) scheme.primary else scheme.primaryContainer)
+                            .clickable(onClickLabel = strings.recognizeMusic, role = Role.Button) {
+                                if (recognitionBusy) {
+                                    onCancelRecognition()
+                                } else if (
+                                    ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+                                    PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    onRecognize()
+                                } else {
+                                    microphonePermission.launch(Manifest.permission.RECORD_AUDIO)
+                                }
+                            }
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.GraphicEq,
                             contentDescription = strings.recognizeMusic,
                             tint = if (recognitionBusy) scheme.onPrimary else scheme.onPrimaryContainer,
-                            modifier = Modifier.size(19.dp)
+                            modifier = Modifier
+                                .size(19.dp)
+                                .graphicsLayer { rotationZ = -recognitionRotation }
                         )
                     }
                 }
