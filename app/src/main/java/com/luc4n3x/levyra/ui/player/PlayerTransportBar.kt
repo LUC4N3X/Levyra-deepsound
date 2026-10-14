@@ -95,6 +95,7 @@ internal fun PlayerTransportBar(
     surfaces: PlayerSurfaceTokens,
     compact: Boolean,
     animated: Boolean,
+    useAuraPlayPause: Boolean = false,
     labels: PlayerControlLabels,
     onShuffle: () -> Unit,
     onPrevious: () -> Unit,
@@ -142,17 +143,28 @@ internal fun PlayerTransportBar(
             ) {
                 PlayerIcon(Icons.Rounded.SkipPrevious, surfaces.content, Modifier.size(skipGlyph))
             }
-            PlayerPlaySegment(
-                isPlaying = isPlaying,
-                isResolving = isResolving,
-                surfaces = surfaces,
-                height = height,
-                glyph = if (compact) LevyraPlayerDesign.TransportPlayGlyphCompact else LevyraPlayerDesign.TransportPlayGlyph,
-                animated = animated,
-                labels = labels,
-                weight = weights.playWeight,
-                onClick = onTogglePlay
-            )
+            if (useAuraPlayPause) {
+                PlayerModeSlot(weight = weights.playWeight) {
+                    PlayerAuraPlayPauseButton(
+                        isPlaying = isPlaying,
+                        isResolving = isResolving,
+                        labels = labels,
+                        onTogglePlay = onTogglePlay
+                    )
+                }
+            } else {
+                PlayerPlaySegment(
+                    isPlaying = isPlaying,
+                    isResolving = isResolving,
+                    surfaces = surfaces,
+                    height = height,
+                    glyph = if (compact) LevyraPlayerDesign.TransportPlayGlyphCompact else LevyraPlayerDesign.TransportPlayGlyph,
+                    animated = animated,
+                    labels = labels,
+                    weight = weights.playWeight,
+                    onClick = onTogglePlay
+                )
+            }
             PlayerSegmentButton(
                 position = LevyraSegment.Single,
                 weight = weights.skipWeight,
