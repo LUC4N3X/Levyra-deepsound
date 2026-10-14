@@ -188,7 +188,7 @@ internal class SpotifySearchClient(
     private fun parseArtists(artistsObject: JSONObject?): List<ArtistHit> {
         if (artistsObject == null) return emptyList()
         val items = artistsObject.optJSONArray("items") ?: return emptyList()
-        val results = mutableListOf<ArtistHit>()
+        val results = mutableListOf<Pair<ArtistHit, String>>()
         for (index in 0 until items.length()) {
             val wrapper = items.optJSONObject(index) ?: continue
             val data = wrapper.optJSONObject("data") ?: continue
@@ -205,10 +205,14 @@ internal class SpotifySearchClient(
                     accentStart = 0,
                     accentEnd = 0,
                     officialArtwork = true
-                )
+                ) to data.optString("uri").trim().takeIf { ARTIST_URI.matches(it) }.orEmpty()
+                    .ifBlank { "image:$thumbnail" }
             )
         }
-        return results
+        return results.groupBy { (artist, _) -> artist.name.lowercase(Locale.ROOT) }
+            .values.mapNotNull { candidates ->
+                candidates.first().first.takeIf { candidates.map { it.second }.distinct().size == 1 }
+            }
     }
 
     private fun parseAlbums(albumsObject: JSONObject?): List<AlbumHit> {
@@ -282,5 +286,6 @@ internal class SpotifySearchClient(
     companion object {
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
         private val ISO_COUNTRIES = Locale.getISOCountries().toSet()
+        private val ARTIST_URI = Regex("^spotify:artist:[A-Za-z0-9]{22}$")
     }
 }

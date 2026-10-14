@@ -42,7 +42,7 @@ class SpotifySearchClientTest {
                 assertEquals(null, exchange.requestHeaders.getFirst("Authorization"))
                 assertEquals(null, exchange.requestHeaders.getFirst("Cookie"))
                 val body = JSONObject(exchange.requestBody.bufferedReader().readText())
-                assertEquals(setOf("query", "limit", "country"), body.keySet())
+                assertEquals(setOf("query", "limit", "country"), body.keys().asSequence().toSet())
                 assertEquals("artist song", body.getString("query"))
                 assertEquals(25, body.getInt("limit"))
                 assertEquals("IT", body.getString("country"))
@@ -62,6 +62,49 @@ class SpotifySearchClientTest {
             assertTrue(result.playlists.isEmpty())
         }
     }
+
+    @Test
+    fun ambiguousArtistNamesAreRejectedWhileUniqueArtistsRemain() = runBlocking {
+        val homonyms = listOf(
+            artistResponse("Common Name", "spotify:artist:0000000000000000000001", "first"),
+            artistResponse("COMMON NAME", "spotify:artist:0000000000000000000002", "second")
+        )
+        listOf(homonyms, homonyms + artistResponse("Unique Artist", "spotify:artist:0000000000000000000003", "unique"))
+            .forEachIndexed { index, items ->
+                withServer { server, http ->
+                    server.createContext("/base/v1/catalog/search") { exchange ->
+                        val payload = JSONObject().put("data", JSONObject().put("searchV2", JSONObject()
+                            .put("artists", JSONObject().put("items", org.json.JSONArray(items)))))
+                        val bytes = payload.toString().toByteArray()
+                        exchange.sendResponseHeaders(200, bytes.size.toLong())
+                        exchange.responseBody.use { it.write(bytes) }
+                    }
+                    val result = client(server, http).search("common name")
+                    assertEquals(if (index == 0) emptyList<String>() else listOf("Unique Artist"), result.artists.map { it.name })
+                }
+            }
+    }
+
+    @Test
+    fun missingArtistUrisRequireAnUnambiguousImageIdentity() = runBlocking {
+        withServer { server, http ->
+            server.createContext("/base/v1/catalog/search") { exchange ->
+                val items = listOf(artistResponse("Common Name", "", "first"), artistResponse("Common Name", "", "second"),
+                    artistResponse("Unique Artist", "", "unique"), artistResponse("Unique Artist", "", "unique"))
+                val payload = JSONObject().put("data", JSONObject().put("searchV2", JSONObject()
+                    .put("artists", JSONObject().put("items", org.json.JSONArray(items)))))
+                val bytes = payload.toString().toByteArray()
+                exchange.sendResponseHeaders(200, bytes.size.toLong())
+                exchange.responseBody.use { it.write(bytes) }
+            }
+            assertEquals(listOf("Unique Artist"), client(server, http).search("common name").artists.map { it.name })
+        }
+    }
+
+    private fun artistResponse(name: String, uri: String, image: String): JSONObject = JSONObject().put("data", JSONObject()
+        .put("uri", uri).put("profile", JSONObject().put("name", name))
+        .put("visuals", JSONObject().put("avatarImage", JSONObject().put("sources", org.json.JSONArray()
+            .put(JSONObject().put("url", "https://i.scdn.co/image/ab676161$image").put("width", 640).put("height", 640))))))
 
     @Test
     fun disabledOrUnsafeConfigurationNeverCreatesNetworkClient() = runBlocking {
