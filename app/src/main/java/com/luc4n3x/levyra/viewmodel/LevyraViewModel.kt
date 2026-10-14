@@ -40,6 +40,7 @@ import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.ProfilePhotoStore
 import com.luc4n3x.levyra.data.LyricsLatencyProfiles
 import com.luc4n3x.levyra.domain.LevyraHomeStudioSettings
+import com.luc4n3x.levyra.domain.LevyraMiniPlayerStudioSettings
 import com.luc4n3x.levyra.domain.LevyraLyricsStudioSettings
 import com.luc4n3x.levyra.data.LevyraHomeSnapshotCache
 import com.luc4n3x.levyra.data.EXPLORE_DISCOVERY_CACHE_TTL_MS
@@ -928,6 +929,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var lyricsStudioMutationGeneration = 0L
     private var pendingHomeStudioWrites = 0
     private var homeStudioMutationGeneration = 0L
+    private var pendingMiniPlayerStudioWrites = 0
+    private var miniPlayerStudioMutationGeneration = 0L
     private val smartOfflineSettingsMutationId = AtomicLong()
     @Volatile private var pendingSmartOfflineSettings: LevyraSmartOfflineSettings? = null
     private val recommendationFeedbackMutationMutex = Mutex()
@@ -1420,6 +1423,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     val state: StateFlow<LevyraUiState> = _state.asStateFlow()
+    private val _miniPlayerStudio = MutableStateFlow(MiniPlayerStudioState(settings = startupSettings.miniPlayerStudioSettings))
+    val miniPlayerStudio: StateFlow<MiniPlayerStudioState> = _miniPlayerStudio.asStateFlow()
     private val _onboardingArtwork = MutableStateFlow<Map<String, List<String>>>(emptyMap())
     val onboardingArtwork: StateFlow<Map<String, List<String>>> = _onboardingArtwork.asStateFlow()
     private var onboardingArtworkJob: Job? = null
@@ -1454,6 +1459,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             preferences.homeStudioSettingsFlow.collect { settings ->
                 if (pendingHomeStudioWrites == 0 && settings == preferences.homeStudioSettings()) {
                     _state.update { state -> state.copy(homeStudioSettings = settings) }
+                }
+            }
+        }
+        viewModelScope.launch {
+            preferences.miniPlayerStudioSettingsFlow.collect { settings ->
+                if (pendingMiniPlayerStudioWrites == 0 && settings == preferences.miniPlayerStudioSettings()) {
+                    _miniPlayerStudio.update { it.copy(settings = settings) }
                 }
             }
         }
@@ -2764,6 +2776,33 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
             } finally {
                 pendingHomeStudioWrites -= 1
+            }
+        }
+    }
+
+    fun openMiniPlayerStudio() {
+        _miniPlayerStudio.update { it.copy(visible = true) }
+    }
+
+    fun closeMiniPlayerStudio() {
+        _miniPlayerStudio.update { it.copy(visible = false) }
+    }
+
+    fun setMiniPlayerStudioSettings(settings: LevyraMiniPlayerStudioSettings) {
+        val normalized = settings.normalized()
+        if (normalized == _miniPlayerStudio.value.settings) return
+        val generation = ++miniPlayerStudioMutationGeneration
+        pendingMiniPlayerStudioWrites += 1
+        _miniPlayerStudio.update { it.copy(settings = normalized) }
+        viewModelScope.launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
+            try {
+                val saved = preferences.setMiniPlayerStudioSettings(normalized)
+                if (generation == miniPlayerStudioMutationGeneration) {
+                    val resolved = if (saved) normalized else preferences.miniPlayerStudioSettings()
+                    _miniPlayerStudio.update { it.copy(settings = resolved) }
+                }
+            } finally {
+                pendingMiniPlayerStudioWrites -= 1
             }
         }
     }

@@ -343,3 +343,8 @@ data class LevyraUiState(
     val listeningRecap: ListeningRecapSummary = ListeningRecapSummary(period = ListeningRecapPeriod.Days30),
     val listeningRecapLoading: Boolean = false
 )
+
+data class MiniPlayerStudioState(
+    val settings: com.luc4n3x.levyra.domain.LevyraMiniPlayerStudioSettings = com.luc4n3x.levyra.domain.LevyraMiniPlayerStudioSettings(),
+    val visible: Boolean = false
+)
