@@ -266,7 +266,7 @@ ${rightColSvg}
   <!-- Footer Info -->
   <line x1="20" y1="${height - 24}" x2="${width - 20}" y2="${height - 24}" stroke="${theme.border}" stroke-width="0.5"/>
   <text x="20" y="${height - 10}" fill="${theme.textSub}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9.5">
-    Source: Levyra open-source strings catalog · Translations hosted on Weblate (contributions open)
+    Source: Levyra open-source strings catalog · Translations maintained in the Levyra repository
   </text>
 </svg>`
 }

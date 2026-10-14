@@ -515,6 +515,6 @@
   <!-- Footer Info -->
   <line x1="20" y1="837" x2="700" y2="837" stroke="#30363D" stroke-width="0.5"/>
   <text x="20" y="851" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9.5">
-    Source: Levyra open-source strings catalog · Translations hosted on Weblate (contributions open)
+    Source: Levyra open-source strings catalog · Translations maintained in the Levyra repository
   </text>
 </svg>
