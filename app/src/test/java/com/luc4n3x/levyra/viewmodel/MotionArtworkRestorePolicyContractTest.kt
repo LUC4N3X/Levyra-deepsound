@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.viewmodel
 
 import java.nio.file.Files
 import java.nio.file.Path
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -34,6 +35,19 @@ class MotionArtworkRestorePolicyContractTest {
 
         assertTrue(stateUpdate >= 0)
         assertTrue(motionRefresh > stateUpdate)
+    }
+
+    @Test
+    fun `official artwork always replaces a video frame on the same recording`() {
+        val apply = readSource("viewmodel/LevyraViewModel.kt")
+            .substringAfter("private suspend fun applyOfficialOrbitArtworkBatch(")
+            .substringBefore("fun normalizedMetadataText(")
+            .filterNot(Char::isWhitespace)
+        val lookup = apply.indexOf("valenriched=enrichedByKey[LevyraPersonalOrbit.identityKey(item)]?:returnitem")
+
+        assertTrue(lookup >= 0)
+        assertFalse(apply.contains("scoreMatch(item,enriched)"))
+        assertFalse(apply.contains("sameSpotifyAlbum(item.album,enriched.album)"))
     }
 
     private fun readSource(relativePath: String): String =

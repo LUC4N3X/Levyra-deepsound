@@ -110,6 +110,7 @@ class OfficialArtworkRepository(context: Context) {
                     track.album.isBlank() || com.luc4n3x.levyra.data.spotify.sameSpotifyAlbum(track.album, candidate.album)
                 }
                 val matched = SpotifyYouTubeMatcher.findBestMatch(track, compatible)?.candidate
+                    ?: sameAlbumRecordingForArtwork(track, compatible)
                     ?: return@withTimeoutOrNull null
                 val thumbnail = EditorialCatalogParser.publishedArtworkUrl(matched.thumbnailUrl)
                 if (thumbnail.isBlank()) return@withTimeoutOrNull null
@@ -801,5 +802,22 @@ class OfficialArtworkRepository(context: Context) {
             Regex("(?:UPC|EAN|Barcode)\\s*[:\\-]\\s*(\\d{8,14})", RegexOption.IGNORE_CASE)
         )
         val GENERIC_ALBUMS = setOf("album", "single", "unknown album", "music", "youtube music", "youtube")
+    }
+}
+
+internal fun sameAlbumRecordingForArtwork(track: Track, candidates: List<Track>): Track? {
+    if (track.album.isBlank()) return null
+    val title = com.luc4n3x.levyra.nexus.identity.MusicIdentityText.title(track.title)
+    if (title.core.isBlank()) return null
+    val artist = com.luc4n3x.levyra.domain.primaryArtistSegment(track.artist).ifBlank { track.artist }
+    return candidates.firstOrNull { candidate ->
+        val candidateTitle = com.luc4n3x.levyra.nexus.identity.MusicIdentityText.title(candidate.title)
+        com.luc4n3x.levyra.data.spotify.sameSpotifyAlbum(track.album, candidate.album) &&
+            candidateTitle.core == title.core &&
+            candidateTitle.markers == title.markers &&
+            com.luc4n3x.levyra.domain.artistIdentityMatches(
+                artist,
+                com.luc4n3x.levyra.domain.primaryArtistSegment(candidate.artist).ifBlank { candidate.artist }
+            )
     }
 }

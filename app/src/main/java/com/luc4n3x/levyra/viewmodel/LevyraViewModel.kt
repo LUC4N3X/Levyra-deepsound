@@ -9184,10 +9184,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             fun withArtwork(item: Track): Track {
                 if (com.luc4n3x.levyra.data.spotify.preservesPersonalMetadata(item)) return item
                 val enriched = enrichedByKey[LevyraPersonalOrbit.identityKey(item)] ?: return item
-                if (com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher.scoreMatch(item, enriched) < 0.94) return item
-                if (item.album.isNotBlank() && enriched.album.isNotBlank() &&
-                    !com.luc4n3x.levyra.data.spotify.sameSpotifyAlbum(item.album, enriched.album)
-                ) return item
                 return item.copy(
                     album = enriched.album.ifBlank { item.album },
                     thumbnailUrl = enriched.thumbnailUrl.ifBlank { item.thumbnailUrl },
