@@ -2124,7 +2124,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                             )
                     )
             ) {
-                return track.copy(
+                return rebaseEditorialFallbackSource(track, resolved).copy(
                     artist = canonicalPlaybackFallbackArtist(track, candidate, resolved),
                     streamUrl = resolved.streamUrl,
                     videoUrl = resolved.videoUrl.ifBlank { candidate.videoUrl },
