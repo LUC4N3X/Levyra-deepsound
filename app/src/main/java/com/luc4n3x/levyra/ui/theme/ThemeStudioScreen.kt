@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.theme
 
+import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -24,7 +25,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
@@ -92,16 +92,7 @@ internal fun LevyraThemeStudioOverlay(
         ) {
             item(contentType = "studio-header") {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = onClose,
-                        modifier = Modifier.size(LevyraPlayerDesign.MinimumTouchTarget)
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = strings.back,
-                            tint = LevyraText
-                        )
-                    }
+                    LevyraBackButton(onClick = onClose, contentDescription = strings.back)
                     Column(modifier = Modifier.padding(start = LevyraPlayerDesign.SpaceXs)) {
                         Text(
                             strings.themeStudio,
