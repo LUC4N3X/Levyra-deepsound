@@ -10432,6 +10432,88 @@ private fun StudioHomeScreen(
         )
     }
     val rawOtherSections = homeDerivedState.otherSections
+    val (homeVideoTracks, otherSections) = rememberStudioHomeVideo(state, rawOtherSections, strings)
+    val spotlightDayKey = HomeEditorialEngine.localDayKey()
+    val stableSpotlightIdState = rememberSaveable(spotlightDayKey) { mutableStateOf<String?>(null) }
+    val spotlight = rememberStudioSpotlight(state, homeDerivedState, spotlightDayKey, stableSpotlightIdState)
+    val visiblePersonalTracks = homeDerivedState.personalOrbitDisplayTracks
+    val chartChunks = homeDerivedState.chartChunks
+    val offlineContent = homeDerivedState.offlineContent
+    val offlineHomeVisible = HomeOfflinePolicy.showOfflineHome(state.isDeviceOffline)
+    val homeContent = homeDerivedState.contentAvailability
+    val homeFingerprint = homeDerivedState.contentFingerprint
+    val showDeferredHomeSections by deferredSectionsRevealed
+    LaunchedEffect(homeFingerprint) {
+        if (deferredSectionsRevealed.value) return@LaunchedEffect
+        delay(HOME_DEFERRED_SECTION_REVEAL_MS)
+        deferredSectionsRevealed.value = true
+    }
+    val showHomeAlbumShimmer = HomeLoadingPolicy.showAlbumShimmer(homeContent, state.homeAlbumsLoading)
+    val showChartShimmer = HomeLoadingPolicy.showChartShimmer(homeContent, state.isLoadingCharts)
+    StudioHomeEffects(viewModel, homeListState, homeFingerprint, homeContent, showHomeAlbumShimmer, showChartShimmer)
+    val homeBottomInset = tabBarBottomContentInset(
+        miniPlayerVisible = state.currentTrack != null,
+        animationsEnabled = state.animationsEnabled
+    )
+    val look = rememberStudioHomeLook(homeStudio, state)
+    val homeContext = StudioHomeContext(
+        viewModel = viewModel,
+        renderSnapshot = renderSnapshot,
+        strings = strings,
+        accountAvatarUrl = accountAvatarUrl,
+        onTrackActions = onTrackActions,
+        homeStyle = look.homeStyle,
+        studioLayout = look.studioLayout,
+        styleSpec = look.styleSpec,
+        studioPlacementSpec = look.studioPlacementSpec,
+        homeAnimationsEnabled = look.homeAnimationsEnabled,
+        compactHome = look.compactHome,
+        showDeferredHomeSections = showDeferredHomeSections,
+        speedDialPins = speedDialPins,
+        quickPicks = quickPicks,
+        newReleases = newReleases,
+        forgottenFavorites = forgottenFavorites,
+        homeAlbums = homeAlbums,
+        showHomeAlbumShimmer = showHomeAlbumShimmer,
+        homeVideoTracks = homeVideoTracks,
+        otherSections = otherSections,
+        visiblePersonalTracks = visiblePersonalTracks,
+        visibleEditorialCollections = spotlight.visibleEditorialCollections,
+        homeCollectionAccents = spotlight.homeCollectionAccents,
+        spotlightHeroData = spotlight.heroData,
+        homeRenderOrder = look.homeRenderOrder,
+        spotlightTracks = spotlight.tracks,
+        resonanceTracks = resonanceTracks,
+        offlineContent = offlineContent,
+        offlineHomeVisible = offlineHomeVisible,
+        selectedHomeCollectionIdState = selectedHomeCollectionIdState,
+        chartMarketSheetOpenState = chartMarketSheetOpenState,
+        stableSpotlightIdState = stableSpotlightIdState,
+        addTargetState = addTargetState
+    )
+    StudioHomeContent(
+        c = homeContext,
+        homeListState = homeListState,
+        homeRenderOrder = look.homeRenderOrder,
+        homeAccent = look.homeAccent,
+        spotlightCandidate = spotlight.candidate,
+        flowShortcutTracks = look.flowShortcutTracks,
+        homeSectionGap = look.homeSectionGap,
+        homeBottomInset = homeBottomInset,
+        homeRefreshing = homeRefreshing,
+        homePullState = homePullState,
+        onPullRefresh = onPullRefresh
+    )
+
+    StudioHomeOverlays(homeContext, homeBottomInset)
+}
+
+@Composable
+private fun rememberStudioHomeVideo(
+    state: LevyraUiState,
+    rawOtherSections: List<com.luc4n3x.levyra.domain.HomeSection>,
+    strings: LevyraStrings
+): Pair<List<Track>, List<IndexedValue<com.luc4n3x.levyra.domain.HomeSection>>> {
     val freshHomeVideoTracks = remember(state.exploreVideos, rawOtherSections, state.charts, strings.exploreNewVideos) {
         buildStudioHomeVideoTracks(state, rawOtherSections, strings)
     }
@@ -10449,10 +10531,26 @@ private fun StudioHomeScreen(
             homeVideoTracks.isNotEmpty() && isMusicVideoSectionTitle(section.title, strings)
         }
     }
+    return homeVideoTracks to otherSections
+}
+
+private class StudioSpotlightState(
+    val candidate: HomeSpotlightCandidate?,
+    val tracks: List<Track>,
+    val heroData: HomeSpotlightHero?,
+    val visibleEditorialCollections: List<HomeEditorialCollection>,
+    val homeCollectionAccents: Map<String, Pair<Color, Color>>
+)
+
+@Composable
+private fun rememberStudioSpotlight(
+    state: LevyraUiState,
+    homeDerivedState: com.luc4n3x.levyra.viewmodel.HomeDerivedState,
+    spotlightDayKey: Int,
+    stableSpotlightIdState: MutableState<String?>
+): StudioSpotlightState {
     val spotlightCandidates = homeDerivedState.spotlightCandidates
     val editorialCollections = homeDerivedState.editorialCollections
-    val spotlightDayKey = HomeEditorialEngine.localDayKey()
-    val stableSpotlightIdState = rememberSaveable(spotlightDayKey) { mutableStateOf<String?>(null) }
     var stableSpotlightId by stableSpotlightIdState
     val soundtrackArtistPool = remember(
         state.followedArtists,
@@ -10475,7 +10573,6 @@ private fun StudioHomeScreen(
         }
     }
     val spotlightTracks = remember(spotlightCandidates) { spotlightCandidates.map { it.track } }
-    val visiblePersonalTracks = homeDerivedState.personalOrbitDisplayTracks
     val visibleEditorialCollections = remember(editorialCollections, spotlightCandidate?.track?.id) {
         editorialCollections
             .map { collection ->
@@ -10487,7 +10584,6 @@ private fun StudioHomeScreen(
     val homeCollectionAccents = remember(visibleEditorialCollections) {
         buildHomeCollectionAccents(visibleEditorialCollections)
     }
-    val chartChunks = homeDerivedState.chartChunks
     val spotlightHeroData = remember(
         spotlightCandidate?.track?.id,
         spotlightTracks,
@@ -10497,23 +10593,24 @@ private fun StudioHomeScreen(
     ) {
         buildStudioSpotlightHero(spotlightCandidate, spotlightTracks, soundtrackArtistPool, spotlightDayKey, state.languageCode)
     }
-    val offlineContent = homeDerivedState.offlineContent
-    val offlineHomeVisible = HomeOfflinePolicy.showOfflineHome(state.isDeviceOffline)
-    val homeContent = homeDerivedState.contentAvailability
-    val homeFingerprint = homeDerivedState.contentFingerprint
-    val showDeferredHomeSections by deferredSectionsRevealed
-    LaunchedEffect(homeFingerprint) {
-        if (deferredSectionsRevealed.value) return@LaunchedEffect
-        delay(HOME_DEFERRED_SECTION_REVEAL_MS)
-        deferredSectionsRevealed.value = true
-    }
-    val showHomeAlbumShimmer = HomeLoadingPolicy.showAlbumShimmer(homeContent, state.homeAlbumsLoading)
-    val showChartShimmer = HomeLoadingPolicy.showChartShimmer(homeContent, state.isLoadingCharts)
-    StudioHomeEffects(viewModel, homeListState, homeFingerprint, homeContent, showHomeAlbumShimmer, showChartShimmer)
-    val homeBottomInset = tabBarBottomContentInset(
-        miniPlayerVisible = state.currentTrack != null,
-        animationsEnabled = state.animationsEnabled
-    )
+    return StudioSpotlightState(spotlightCandidate, spotlightTracks, spotlightHeroData, visibleEditorialCollections, homeCollectionAccents)
+}
+
+private class StudioHomeLook(
+    val homeStyle: HomeStyle,
+    val studioLayout: com.luc4n3x.levyra.domain.HomeStyleLayout,
+    val homeRenderOrder: List<HomeSectionId>,
+    val styleSpec: HomeStyleSpec,
+    val homeAnimationsEnabled: Boolean,
+    val studioPlacementSpec: FiniteAnimationSpec<IntOffset>,
+    val homeAccent: Color,
+    val flowShortcutTracks: List<Track>,
+    val compactHome: Boolean,
+    val homeSectionGap: Dp
+)
+
+@Composable
+private fun rememberStudioHomeLook(homeStudio: LevyraHomeStudioSettings, state: LevyraUiState): StudioHomeLook {
     val homeStyle = homeStudio.style
     val studioLayout = remember(homeStudio) { homeStudio.activeLayout() }
     val homeRenderOrder = remember(studioLayout) { studioLayout.renderOrder() }
@@ -10545,61 +10642,18 @@ private fun StudioHomeScreen(
     } else {
         styleSpec.sectionGap
     }
-    val spotlightLeadsHome = homeRenderOrder.firstOrNull { it !in HomeSectionId.QuickAccess } == HomeSectionId.Spotlight &&
-        !studioLayout.isHidden(HomeSectionId.Spotlight)
-    val stagedSpotlight = spotlightHeroData?.takeIf {
-        homeStyle == HomeStyle.Original && spotlightLeadsHome && speedDialPins.isEmpty() && !offlineHomeVisible
-    }
-    val homeContext = StudioHomeContext(
-        viewModel = viewModel,
-        renderSnapshot = renderSnapshot,
-        strings = strings,
-        accountAvatarUrl = accountAvatarUrl,
-        onTrackActions = onTrackActions,
+    return StudioHomeLook(
         homeStyle = homeStyle,
         studioLayout = studioLayout,
-        styleSpec = styleSpec,
-        studioPlacementSpec = studioPlacementSpec,
-        homeAnimationsEnabled = homeAnimationsEnabled,
-        compactHome = compactHome,
-        showDeferredHomeSections = showDeferredHomeSections,
-        speedDialPins = speedDialPins,
-        quickPicks = quickPicks,
-        newReleases = newReleases,
-        forgottenFavorites = forgottenFavorites,
-        homeAlbums = homeAlbums,
-        showHomeAlbumShimmer = showHomeAlbumShimmer,
-        homeVideoTracks = homeVideoTracks,
-        otherSections = otherSections,
-        visiblePersonalTracks = visiblePersonalTracks,
-        visibleEditorialCollections = visibleEditorialCollections,
-        homeCollectionAccents = homeCollectionAccents,
-        spotlightHeroData = spotlightHeroData,
-        stagedSpotlight = stagedSpotlight,
-        spotlightTracks = spotlightTracks,
-        resonanceTracks = resonanceTracks,
-        offlineContent = offlineContent,
-        offlineHomeVisible = offlineHomeVisible,
-        selectedHomeCollectionIdState = selectedHomeCollectionIdState,
-        chartMarketSheetOpenState = chartMarketSheetOpenState,
-        stableSpotlightIdState = stableSpotlightIdState,
-        addTargetState = addTargetState
-    )
-    StudioHomeContent(
-        c = homeContext,
-        homeListState = homeListState,
         homeRenderOrder = homeRenderOrder,
+        styleSpec = styleSpec,
+        homeAnimationsEnabled = homeAnimationsEnabled,
+        studioPlacementSpec = studioPlacementSpec,
         homeAccent = homeAccent,
-        spotlightCandidate = spotlightCandidate,
         flowShortcutTracks = flowShortcutTracks,
-        homeSectionGap = homeSectionGap,
-        homeBottomInset = homeBottomInset,
-        homeRefreshing = homeRefreshing,
-        homePullState = homePullState,
-        onPullRefresh = onPullRefresh
+        compactHome = compactHome,
+        homeSectionGap = homeSectionGap
     )
-
-    StudioHomeOverlays(homeContext, homeBottomInset)
 }
 
 @Composable
@@ -10669,7 +10723,7 @@ private class StudioHomeContext(
     val visibleEditorialCollections: List<HomeEditorialCollection>,
     val homeCollectionAccents: Map<String, Pair<Color, Color>>,
     val spotlightHeroData: HomeSpotlightHero?,
-    val stagedSpotlight: HomeSpotlightHero?,
+    private val homeRenderOrder: List<HomeSectionId>,
     val spotlightTracks: List<Track>,
     val resonanceTracks: List<Track>,
     val offlineContent: com.luc4n3x.levyra.data.HomeOfflineContent,
@@ -10680,6 +10734,13 @@ private class StudioHomeContext(
     private val addTargetState: MutableState<Track?>
 ) {
     val state: LevyraUiState get() = renderSnapshot.state
+    val stagedSpotlight: HomeSpotlightHero? = run {
+        val spotlightLeadsHome = homeRenderOrder.firstOrNull { it !in HomeSectionId.QuickAccess } == HomeSectionId.Spotlight &&
+            !studioLayout.isHidden(HomeSectionId.Spotlight)
+        spotlightHeroData?.takeIf {
+            homeStyle == HomeStyle.Original && spotlightLeadsHome && speedDialPins.isEmpty() && !offlineHomeVisible
+        }
+    }
     var selectedHomeCollectionId by selectedHomeCollectionIdState
     var chartMarketSheetOpen by chartMarketSheetOpenState
     var stableSpotlightId by stableSpotlightIdState
