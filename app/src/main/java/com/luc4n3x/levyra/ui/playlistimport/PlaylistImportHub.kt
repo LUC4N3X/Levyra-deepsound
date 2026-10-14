@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.playlistimport
 
+import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -31,7 +32,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ContentPaste
@@ -44,7 +44,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -203,9 +202,7 @@ internal fun ImportTopBar(title: String, onBack: () -> Unit, backDescription: St
             .padding(horizontal = 4.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = backDescription, tint = LevyraText)
-        }
+        LevyraBackButton(onClick = onBack, contentDescription = backDescription)
         Text(
             text = title,
             color = LevyraText,

@@ -2,6 +2,7 @@
 
 package com.luc4n3x.levyra.ui.jam
 
+import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.offset
@@ -24,7 +25,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
@@ -351,17 +351,7 @@ private fun JamHeader(title: String, subtitle: String, onClose: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            IconButton(
-                onClick = onClose,
-                colors = IconButtonDefaults.filledTonalIconButtonColors(),
-                shapes = IconButtonDefaults.shapes(),
-                modifier = Modifier.size(52.dp)
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = LocalLevyraStrings.current.back
-                )
-            }
+            LevyraBackButton(onClick = onClose, contentDescription = LocalLevyraStrings.current.back, size = 52.dp)
             Box(
                 modifier = Modifier
                     .size(64.dp)

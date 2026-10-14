@@ -445,6 +445,14 @@ internal data class PlaybackResolveRequest(
     val startPaused: Boolean = false
 )
 
+internal fun distinctOnboardingPortraits(
+    candidates: List<String>,
+    otherTastes: Map<String, List<String>>
+): List<String> {
+    val shown = otherTastes.values.flatten().toSet()
+    return candidates.filterNot { it in shown }.ifEmpty { candidates }
+}
+
 internal fun shouldStartPlaybackPaused(
     request: PlaybackResolveRequest,
     activeRequestId: Long
@@ -4684,7 +4692,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         if (attempt > 0) delay(ONBOARDING_ARTWORK_RETRY_MS * attempt)
                         val portraits = gate.withPermit { onboardingPortraitsFor(taste.id, taste.query, code) }
                         if (portraits.isNotEmpty()) {
-                            _onboardingArtwork.update { it + (taste.id to portraits) }
+                            _onboardingArtwork.update { current ->
+                                current + (taste.id to distinctOnboardingPortraits(portraits, current - taste.id))
+                            }
                             return@launch
                         }
                     }

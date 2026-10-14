@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Шағын ойнатқыш, жылдам таңдаулылар, күнделікті микс, офлайн микс және ән мәтіндері</string>
+    <string name="widget_idle_subtitle">Тыңдау үшін түртіңіз</string>
+    <string name="widget_toggle">Ойнату/Кідірту</string>
+    <string name="widget_next">Келесі</string>
+    <string name="widget_previous">Алдыңғы</string>
+    <string name="widget_favorites">Таңдаулылар</string>
+    <string name="widget_flow">Күнделікті микс</string>
+    <string name="widget_offline">Офлайн микс</string>
+    <string name="widget_lyrics">Ән мәтіндері</string>
+    <string name="radar_channel_name">Шығарылым радары</string>
+    <string name="radar_channel_description">Сіз жазылған орындаушылардың жаңа шығарылымдары</string>
+    <string name="radar_new_release_title">%1$s жаңа шығарылымы</string>
+    <string name="automatic_backups">Автоматты сақтық көшірмелер</string>
+    <string name="car_home">Басты бет</string>
+    <string name="car_downloads">Жүктеп алулар</string>
+    <string name="car_favorites">Таңдаулылар</string>
+    <string name="car_playlists">Ойнату тізімдері</string>
+    <string name="car_no_content">Мазмұн жоқ</string>
+    <string name="car_content_unavailable">Мазмұн қолжетімсіз</string>
+    <string name="car_search_tracks">Әндерді іздеу</string>
+    <string name="car_no_results">Нәтиже жоқ</string>
+    <string name="car_connecting_player">Ойнатқышқа қосылуда</string>
+    <string name="car_now_playing">Қазір ойнап тұр</string>
+    <string name="car_queue">Кезек</string>
+    <string name="notification_favorite_add">Таңдаулыларға қосу</string>
+    <string name="notification_favorite_remove">Таңдаулылардан жою</string>
+    <string name="notification_shuffle_enable">Араластыруды қосу</string>
+    <string name="notification_shuffle_disable">Араластыруды өшіру</string>
+    <string name="notification_repeat_off">Қайталау өшірулі</string>
+    <string name="notification_repeat_all">Барлығын қайталау</string>
+    <string name="notification_repeat_one">Біреуін қайталау</string>
+    <string name="tile_recognize_music">Музыканы тану</string>
+    <string name="tile_playback">Ойнату</string>
+    <string name="shortcut_search">Іздеу</string>
+    <string name="shortcut_library">Кітапхана</string>
+    <string name="shortcut_recognition">Музыканы тану</string>
+    <string name="shortcut_resume">Ойнатуды жалғастыру</string>
+</resources>

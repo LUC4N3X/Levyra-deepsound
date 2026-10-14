@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -59,7 +60,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.SelfImprovement
@@ -138,7 +138,6 @@ import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraLanguageOption
 import com.luc4n3x.levyra.domain.MoodEngine
 import com.luc4n3x.levyra.domain.Taste
-import com.luc4n3x.levyra.ui.components.LevyraExpressiveIconButton
 import com.luc4n3x.levyra.ui.components.LevyraMorphShape
 import com.luc4n3x.levyra.ui.components.LevyraWavyProgress
 import com.luc4n3x.levyra.ui.components.levyraGroupedListShape
@@ -421,12 +420,11 @@ private fun SetupHeader(step: OnboardingStep, accent: Color, backLabel: String, 
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            LevyraExpressiveIconButton(
+            LevyraBackButton(
                 onClick = onBack,
-                colors = IconButtonDefaults.iconButtonColors(containerColor = SetupSurfaceHigh, contentColor = SetupInk)
-            ) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = backLabel)
-            }
+                contentDescription = backLabel,
+                colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = SetupSurfaceHigh, contentColor = SetupInk)
+            )
             LevyraWavyProgress(
                 progress = progress,
                 color = accent,

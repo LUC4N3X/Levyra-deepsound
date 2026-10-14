@@ -9,7 +9,7 @@ class LevyraLyricsStudioStringsTest {
     @Test
     fun allSupportedLanguagesHaveCompleteLyricsStudioKeys() {
         val allBundles = LevyraStrings.all()
-        assertEquals("Expected 37 supported languages", 37, allBundles.size)
+        assertEquals("Expected 41 supported languages", 41, allBundles.size)
 
         allBundles.forEach { bundle ->
             assertTrue("lyricsStudio in ${bundle.code} should not be blank", bundle.lyricsStudio.isNotBlank())

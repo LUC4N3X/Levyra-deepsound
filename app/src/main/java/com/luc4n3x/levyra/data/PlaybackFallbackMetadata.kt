@@ -81,6 +81,23 @@ internal fun bestCanonicalPlaybackMetadataMatch(
     return best
 }
 
+private const val EDITORIAL_DISCOVERY_PROVIDER = "Levyra Editorial Discovery"
+
+internal fun isEditorialDiscoveryPlayback(track: Track): Boolean =
+    track.source.equals(EDITORIAL_DISCOVERY_PROVIDER, ignoreCase = true) ||
+        track.metadataProvider.startsWith(EDITORIAL_DISCOVERY_PROVIDER, ignoreCase = true)
+
+internal fun rebaseEditorialFallbackSource(original: Track, resolved: Track): Track {
+    if (!isEditorialDiscoveryPlayback(original)) return original
+    val resolvedId = PlaybackSourceIdentity.sourceVideoId(resolved)
+    if (resolvedId.isBlank()) return original
+    return original.copy(
+        audioVideoId = resolvedId,
+        counterpartVideoId = if (resolvedId == original.audioVideoId) original.counterpartVideoId else "",
+        videoType = resolved.videoType
+    )
+}
+
 internal fun trustedPlaybackFallbackCandidates(
     original: Track,
     candidates: List<Track>
@@ -103,7 +120,14 @@ internal fun trustedPlaybackFallbackCandidates(
 
     if (originalIsrc.isNotBlank()) {
         return eligible.filter { candidate ->
-            candidate.isrc.trim().equals(originalIsrc, ignoreCase = true)
+            val candidateIsrc = candidate.isrc.trim()
+            candidateIsrc.equals(originalIsrc, ignoreCase = true) ||
+                (
+                    isEditorialDiscoveryPlayback(original) &&
+                        candidateIsrc.isBlank() &&
+                        original.durationMs > 0L &&
+                        isTrustedPlaybackRecordingMatch(original, candidate, originalTitle, originalArtist)
+                    )
         }
     }
 
@@ -131,8 +155,7 @@ private fun isTrustedPlaybackRecordingMatch(
     if (candidate.title.playbackRecordingTitleKey() != originalTitle) return false
     if (candidate.artist.playbackPrimaryArtistKey() != originalArtist) return false
     if (addsDifferentPlaybackVariant(original.title, candidate.title)) return false
-    if (original.durationMs > 0L) {
-        if (candidate.durationMs <= 0L) return false
+    if (original.durationMs > 0L && candidate.durationMs > 0L) {
         if (abs(original.durationMs - candidate.durationMs) > CANONICAL_FALLBACK_DURATION_TOLERANCE_MS) return false
     }
     return true
@@ -170,6 +193,10 @@ internal fun playbackAlternativeSearchQueries(track: Track): List<String> {
     val misattributedArtist = isKnownMisattributedPlaybackMetadata(track.artist, track.title)
 
     return buildList {
+        if (isEditorialDiscoveryPlayback(track) && !misattributedArtist) {
+            add(base)
+            if (title != base) add(title)
+        }
         if (misattributedArtist && title.isNotBlank()) {
             add("$title official audio")
             add("$title official video")
