@@ -148,6 +148,9 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
 - **Queue Spaces**: keep multiple active listening sessions side by side without losing your current queue.
 - **Synced lyrics**: tap-to-seek, manual timing adjustments, dedicated Bluetooth latency offset, and non-Latin romanization.
 - **Visuals**: motion artwork on the Now Playing screen, falling back to animated album covers.
+- **Theme Studio**: sixteen presets, including Midnight, Aurora, Pure Material, Velvet and Editorial. You can also build your own themes: pick background, surface and accent colors from swatches or a HEX code, choose light or dark, set how round the corners are, then save, rename or duplicate them. Levyra Aura stays the default, and one tap brings it back.
+- **Mini player studio**: five alternative mini player designs (Super Expressive, Floating, Liquid Glass, Ultra Compact and Artwork Focus), each with its own size, shape, progress bar and control options, plus a live preview. The original mini player stays the default, so nothing changes until you pick something else.
+- **Navigation studio**: four extra styles for the bottom bar (Super Expressive, Floating Dock, Minimal and Expressive Compact). Drag the buttons into the order you like, hide Explore or Library, choose when labels show, and pick the indicator, icon size, height and background. Home and Search always stay in the bar.
 - **System integration**: Android Auto, lockscreen media controls, persistent notifications, and Quick Settings tile.
 - **Song recognition**: on-device music identification through the microphone or internal audio, saved in local history.
 - **Explore**: live radio stations, international charts, and genre or mood browsing.
