@@ -191,6 +191,10 @@ internal fun playbackAlternativeSearchQueries(track: Track): List<String> {
     val misattributedArtist = isKnownMisattributedPlaybackMetadata(track.artist, track.title)
 
     return buildList {
+        if (isEditorialDiscoveryPlayback(track)) {
+            add(base)
+            if (title != base) add(title)
+        }
         if (misattributedArtist && title.isNotBlank()) {
             add("$title official audio")
             add("$title official video")
