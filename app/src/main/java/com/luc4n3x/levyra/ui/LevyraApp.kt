@@ -1,6 +1,7 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import com.luc4n3x.levyra.ui.components.levyraShimmerSweep
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.pullToRefresh
@@ -386,7 +387,6 @@ import androidx.compose.material.icons.rounded.Swipe
 import androidx.compose.material.icons.rounded.SwipeVertical
 import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Vibration
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.DoNotDisturbOn
 import androidx.compose.material.icons.rounded.Recommend
@@ -6179,17 +6179,7 @@ private fun ArtistTopBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        PlayerGlassIconButton(
-            icon = Icons.AutoMirrored.Rounded.ArrowBack,
-            contentDescription = strings.back,
-            onClick = onClose,
-            size = ImmersiveTopBarButtonSize,
-            iconSize = 21.dp,
-            tint = Color.White,
-            fill = ImmersiveTopBarButtonFill,
-            borderTop = Color.Transparent,
-            borderBottom = Color.Transparent
-        )
+        LevyraBackButton(onClick = onClose, contentDescription = strings.back)
         if (title != null) {
             Text(
                 text = title,
@@ -15900,19 +15890,14 @@ private fun SearchHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        IconButton(
+        LevyraBackButton(
             onClick = {
                 onClear()
                 focusManager.clearFocus()
                 keyboardController?.hide()
-            }
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = strings.back,
-                tint = LevyraText
-            )
-        }
+            },
+            contentDescription = strings.back
+        )
 
         Surface(
             color = fieldContainer,
@@ -16501,9 +16486,7 @@ private fun DownloadsFolderOverlay(
                     modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 18.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = onClose) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = LocalLevyraStrings.current.back, tint = LevyraText)
-                    }
+                    LevyraBackButton(onClick = onClose, contentDescription = LocalLevyraStrings.current.back)
                     Spacer(Modifier.width(8.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
@@ -17805,9 +17788,7 @@ private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiSta
         ) {
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { viewModel.closePlaylist() }) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = LocalLevyraStrings.current.back, tint = LevyraText)
-                    }
+                    LevyraBackButton(onClick = { viewModel.closePlaylist() }, contentDescription = LocalLevyraStrings.current.back)
                     Spacer(Modifier.width(4.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(playlist.name, color = LevyraText, fontSize = 26.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -22462,16 +22443,7 @@ private fun SettingsTileText(title: String, subtitle: String, modifier: Modifier
 @Composable
 private fun SettingsDetailHeader(title: String, icon: ImageVector, accent: Color, onBack: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(18.dp), modifier = Modifier.fillMaxWidth()) {
-        LevyraExpressiveIconButton(
-            onClick = onBack,
-            modifier = Modifier.size(48.dp),
-            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                containerColor = LevyraAdaptiveCard,
-                contentColor = LevyraText
-            )
-        ) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = LocalLevyraStrings.current.back)
-        }
+        LevyraBackButton(onClick = onBack, contentDescription = LocalLevyraStrings.current.back)
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -26502,7 +26474,8 @@ private fun ExploreOverlays(
             strings = strings,
             backEnabled = backEnabled,
             onBack = { onDestinationChange(null) },
-            onOpenRelease = viewModel::openAlbum
+            onOpenRelease = viewModel::openAlbum,
+            bottomInset = exploreDestinationBottomInset(state)
         )
         ExploreMoodsDestination -> ExploreMoodsDestinationScreen(
             zones = zones,
@@ -26522,7 +26495,8 @@ private fun ExploreOverlays(
                 onMoodReturnChange(ExploreMoodsDestination)
                 onDestinationChange(exploreCategoryDestination(category))
             },
-            onRequestCategoryArtwork = viewModel::ensureExploreCategoryArtwork
+            onRequestCategoryArtwork = viewModel::ensureExploreCategoryArtwork,
+            bottomInset = exploreDestinationBottomInset(state)
         )
         else -> ExploreMoodCollectionDestination(
             destination = exploreDestination,
@@ -26610,7 +26584,8 @@ private fun ExploreMoodCollectionDestination(
             onBack = { onDestinationChange(returnDestination) },
             onPlayAll = { tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } },
             onPlayTrack = { track -> viewModel.playFrom(tracks, track) },
-            onRequestTrackArtwork = viewModel::ensureExploreTrackArtwork
+            onRequestTrackArtwork = viewModel::ensureExploreTrackArtwork,
+            bottomInset = exploreDestinationBottomInset(state)
         )
         return
     }
@@ -26636,9 +26611,16 @@ private fun ExploreMoodCollectionDestination(
         onBack = { onDestinationChange(returnDestination) },
         onPlayAll = { tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } },
         onPlayTrack = { track -> viewModel.playFrom(tracks, track) },
-        onRequestTrackArtwork = viewModel::ensureExploreTrackArtwork
+        onRequestTrackArtwork = viewModel::ensureExploreTrackArtwork,
+        bottomInset = exploreDestinationBottomInset(state)
     )
 }
+
+@Composable
+private fun exploreDestinationBottomInset(state: LevyraUiState): Dp = tabBarBottomContentInset(
+    miniPlayerVisible = state.currentTrack != null,
+    animationsEnabled = state.animationsEnabled
+)
 
 @Composable
 private fun ExploreFreshSectionHeader(

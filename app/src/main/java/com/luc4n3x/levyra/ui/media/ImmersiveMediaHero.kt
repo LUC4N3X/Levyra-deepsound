@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.media
 
+import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -27,7 +28,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Shuffle
@@ -65,7 +65,6 @@ import com.luc4n3x.levyra.ui.PlayerMinimumContrast
 import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraExpressiveCorner
-import com.luc4n3x.levyra.ui.components.PlayerGlassIconButton
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.harmonizePlayerAccents
 import com.luc4n3x.levyra.ui.playerAdjustForegroundToward
@@ -639,17 +638,7 @@ internal fun ImmersiveMediaTopBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            PlayerGlassIconButton(
-                icon = Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = backLabel,
-                onClick = onBack,
-                size = ImmersiveTopBarButtonSize,
-                iconSize = 21.dp,
-                tint = Color.White,
-                fill = ImmersiveTopBarButtonFill,
-                borderTop = Color.Transparent,
-                borderBottom = Color.Transparent
-            )
+            LevyraBackButton(onClick = onBack, contentDescription = backLabel)
             Text(
                 text = title,
                 color = colors.content,

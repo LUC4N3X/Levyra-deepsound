@@ -1,5 +1,8 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import com.luc4n3x.levyra.ui.components.LevyraSectionHeader
 import com.luc4n3x.levyra.ui.components.LevyraPlayAllIconButton
 import androidx.compose.ui.unit.Dp
@@ -43,12 +46,19 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.toShape
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -101,6 +111,8 @@ internal const val ExploreMoodsDestination = "explore-destination-moods"
 private const val ExploreMoodDestinationPrefix = "explore-destination-mood:"
 private const val ExploreCategoryDestinationPrefix = "explore-destination-provider-category:"
 private val ExploreDestinationHeaderHeight = 66.dp
+private val ExploreMoodsHeroHeight = 184.dp
+private val ExploreDestinationBottomInset = 130.dp
 
 internal fun exploreMoodDestination(zoneId: String): String = "$ExploreMoodDestinationPrefix$zoneId"
 internal fun exploreMoodDestinationId(destination: String?): String? =
@@ -150,7 +162,8 @@ internal fun ExploreCollectionDestinationScreen(
     onBack: () -> Unit,
     onPlayAll: () -> Unit,
     onPlayTrack: (Track) -> Unit,
-    onRequestTrackArtwork: (Track) -> Unit
+    onRequestTrackArtwork: (Track) -> Unit,
+    bottomInset: Dp = ExploreDestinationBottomInset
 ) {
     BackHandler(enabled = backEnabled, onBack = onBack)
     val rotationBucket = remember(identity) {
@@ -186,7 +199,8 @@ internal fun ExploreCollectionDestinationScreen(
             { ExploreCollectionPlayAllButton(strings = strings, onPlayAll = onPlayAll) }
         } else {
             null
-        }
+        },
+        bottomInset = bottomInset
     ) { contentPadding ->
         ExploreCollectionDestinationContent(
             title = title,
@@ -313,9 +327,9 @@ private fun ExploreCollectionList(
         contentPadding = PaddingValues(
             start = ExploreCollectionGutter,
             end = ExploreCollectionGutter,
-            bottom = 130.dp
+            bottom = contentPadding.calculateBottomPadding()
         ),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+        verticalArrangement = Arrangement.spacedBy(ExploreSegmentGap)
     ) {
         exploreCollectionHeroItem(
             title = title,
@@ -445,10 +459,10 @@ private fun LazyListScope.exploreArtistItems(
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             contentPadding = PaddingValues(end = 4.dp)
         ) {
-            items(
+            itemsIndexed(
                 items = artists,
-                key = { artist -> "explore-artist-${artist.key}" }
-            ) { artist ->
+                key = { _, artist -> "explore-artist-${artist.key}" }
+            ) { index, artist ->
                 LaunchedEffect(artist.track.id) {
                     onRequestTrackArtwork(artist.track)
                 }
@@ -461,6 +475,7 @@ private fun LazyListScope.exploreArtistItems(
                 ) {
                     ExploreGenreArtistCard(
                         artist = artist,
+                        shape = exploreArtistShape(index),
                         onClick = { onPlayTrack(artist.track) }
                     )
                 }
@@ -522,15 +537,16 @@ private fun LazyListScope.exploreEssentialItems(
     item(key = "explore-genre-songs-header") {
         ExploreGenreSectionHeader(strings.songsPlain)
     }
-    items(
+    itemsIndexed(
         items = tracks,
-        key = { track -> "explore-destination-track-${track.id}" }
-    ) { track ->
+        key = { _, track -> "explore-destination-track-${track.id}" }
+    ) { index, track ->
         LaunchedEffect(track.id) {
             onRequestTrackArtwork(track)
         }
         ExploreDestinationTrackRow(
             track = track,
+            shape = exploreSegmentShape(index = index, count = tracks.size),
             isCurrent = track.id == currentTrackId,
             isPlaying = isPlaying && track.id == currentTrackId,
             onClick = { onPlayTrack(track) }
@@ -540,7 +556,7 @@ private fun LazyListScope.exploreEssentialItems(
 
 @Composable
 private fun ExploreGenreSectionHeader(title: String) {
-    LevyraSectionHeader(title = title)
+    LevyraSectionHeader(title = title, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
 }
 
 @Composable
@@ -550,25 +566,23 @@ private fun ExploreGenreTrackCard(
     onClick: () -> Unit
 ) {
     val artwork = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }
+    val artworkShape = if (isCurrent) MaterialShapes.Cookie9Sided.toShape() else RoundedCornerShape(28.dp)
     Column(
         modifier = Modifier
             .width(148.dp)
-            .semantics { role = Role.Button }
-            .clickable(onClick = onClick),
+            .levyraPressable(
+                onClick = onClick,
+                pressedScale = LevyraPressScale.Tile,
+                role = Role.Button,
+                onClickLabel = track.title
+            ),
         verticalArrangement = Arrangement.spacedBy(7.dp)
     ) {
         Box(
             modifier = Modifier
                 .size(148.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(artworkShape)
                 .background(LevyraPanel)
-                .border(
-                    BorderStroke(
-                        1.dp,
-                        if (isCurrent) LevyraCyan.copy(alpha = 0.72f) else Color.White.copy(alpha = 0.09f)
-                    ),
-                    RoundedCornerShape(16.dp)
-                )
         ) {
             AsyncImage(
                 model = artwork,
@@ -579,9 +593,12 @@ private fun ExploreGenreTrackCard(
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(8.dp)
-                    .size(34.dp)
-                    .background(if (isCurrent) LevyraCyan else LevyraBlack.copy(alpha = 0.78f), CircleShape),
+                    .padding(10.dp)
+                    .size(38.dp)
+                    .background(
+                        if (isCurrent) LevyraCyan else LevyraBlack.copy(alpha = 0.78f),
+                        if (isCurrent) MaterialShapes.Cookie4Sided.toShape() else CircleShape
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -616,13 +633,18 @@ private fun ExploreGenreTrackCard(
 @Composable
 private fun ExploreGenreArtistCard(
     artist: ExploreGenreArtistCard,
+    shape: Shape,
     onClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .width(116.dp)
-            .semantics { role = Role.Button }
-            .clickable(onClick = onClick),
+            .levyraPressable(
+                onClick = onClick,
+                pressedScale = LevyraPressScale.Tile,
+                role = Role.Button,
+                onClickLabel = artist.name
+            ),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -632,9 +654,8 @@ private fun ExploreGenreArtistCard(
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .size(112.dp)
-                .clip(CircleShape)
+                .clip(shape)
                 .background(LevyraPanel)
-                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)), CircleShape)
         )
         Text(
             text = artist.name,
@@ -658,8 +679,12 @@ private fun ExploreGenreAlbumCard(
     Column(
         modifier = Modifier
             .width(140.dp)
-            .semantics { role = Role.Button }
-            .clickable(onClick = onClick),
+            .levyraPressable(
+                onClick = onClick,
+                pressedScale = LevyraPressScale.Tile,
+                role = Role.Button,
+                onClickLabel = album.title
+            ),
         verticalArrangement = Arrangement.spacedBy(7.dp)
     ) {
         AsyncImage(
@@ -668,9 +693,8 @@ private fun ExploreGenreAlbumCard(
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .size(140.dp)
-                .clip(RoundedCornerShape(14.dp))
+                .clip(RoundedCornerShape(24.dp))
                 .background(LevyraPanel)
-                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.09f)), RoundedCornerShape(14.dp))
         )
         Text(
             text = album.title,
@@ -730,6 +754,20 @@ private fun ExploreCollectionHero(
                         1f to LevyraBlack
                     )
                 )
+        )
+        ExploreExpressiveShape(
+            shape = MaterialShapes.SoftBurst.toShape(),
+            color = lerp(headerColor, Color.White, 0.18f).copy(alpha = 0.42f),
+            size = 196.dp,
+            rotation = 14f,
+            modifier = Modifier.align(Alignment.BottomStart).offset(x = (-58).dp, y = 34.dp)
+        )
+        ExploreExpressiveShape(
+            shape = MaterialShapes.Cookie4Sided.toShape(),
+            color = lerp(headerColor, Color.White, 0.30f).copy(alpha = 0.34f),
+            size = 54.dp,
+            rotation = -10f,
+            modifier = Modifier.align(Alignment.BottomEnd).offset(x = (-96).dp, y = (-118).dp)
         )
         ExploreCollectionHeroText(
             title = title,
@@ -799,6 +837,35 @@ private fun Modifier.exploreFullBleed(gutter: Dp): Modifier = layout { measurabl
     }
 }
 
+@Composable
+private fun exploreSegmentShape(index: Int, count: Int): Shape {
+    val outer = ExploreSegmentOuterRadius
+    val inner = ExploreSegmentInnerRadius
+    val top = if (index == 0) outer else inner
+    val bottom = if (index == count - 1) outer else inner
+    return remember(top, bottom) {
+        RoundedCornerShape(topStart = top, topEnd = top, bottomStart = bottom, bottomEnd = bottom)
+    }
+}
+
+@Composable
+private fun exploreArtistShape(index: Int): Shape {
+    val shapes = remember {
+        listOf(
+            MaterialShapes.Cookie9Sided,
+            MaterialShapes.Clover4Leaf,
+            MaterialShapes.Cookie12Sided,
+            MaterialShapes.Sunny,
+            MaterialShapes.Cookie6Sided,
+            MaterialShapes.Puffy
+        )
+    }
+    return shapes[index % shapes.size].toShape()
+}
+
+private val ExploreSegmentGap = 3.dp
+private val ExploreSegmentOuterRadius = 26.dp
+private val ExploreSegmentInnerRadius = 6.dp
 private val ExploreCollectionGutter = 18.dp
 private val ExploreCollectionHeroHeight = 260.dp
 private const val ExploreCollectionHeaderShade = 0.32f
@@ -810,14 +877,16 @@ internal fun ExploreNewReleasesDestinationScreen(
     strings: LevyraStrings,
     backEnabled: Boolean,
     onBack: () -> Unit,
-    onOpenRelease: (AlbumHit) -> Unit
+    onOpenRelease: (AlbumHit) -> Unit,
+    bottomInset: Dp = ExploreDestinationBottomInset
 ) {
     BackHandler(enabled = backEnabled, onBack = onBack)
     ExploreDestinationSurface(
         title = strings.exploreNewReleases,
         subtitle = null,
         strings = strings,
-        onBack = onBack
+        onBack = onBack,
+        bottomInset = bottomInset
     ) { contentPadding ->
         when {
             isLoading && releases.isEmpty() -> Box(
@@ -844,7 +913,7 @@ internal fun ExploreNewReleasesDestinationScreen(
                     start = 18.dp,
                     end = 18.dp,
                     top = contentPadding.calculateTopPadding() + 10.dp,
-                    bottom = 130.dp
+                    bottom = contentPadding.calculateBottomPadding()
                 ),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -929,22 +998,31 @@ internal fun ExploreMoodsDestinationScreen(
     onBack: () -> Unit,
     onOpenZone: (ExploreZone) -> Unit,
     onOpenCategory: (ExploreCategory) -> Unit,
-    onRequestCategoryArtwork: (String, Boolean) -> Unit
+    onRequestCategoryArtwork: (String, Boolean) -> Unit,
+    bottomInset: Dp = ExploreDestinationBottomInset
 ) {
     BackHandler(enabled = backEnabled, onBack = onBack)
     val sections = remember(categories) { buildExploreCategorySections(categories) }
     val fallbackGenres = remember(zones) {
         destinationCuratedExploreZones(zones)
     }
+    val listState = rememberLazyListState()
+    val heroScrolledAway by remember(listState) {
+        derivedStateOf { listState.firstVisibleItemIndex > 0 }
+    }
 
     ExploreDestinationSurface(
         title = strings.exploreMoods,
         subtitle = strings.exploreSubtitle,
         strings = strings,
-        onBack = onBack
+        onBack = onBack,
+        headerColor = LevyraBlack,
+        titleVisible = heroScrolledAway,
+        bottomInset = bottomInset
     ) { contentPadding ->
         ExploreMoodsList(
             contentPadding = contentPadding,
+            listState = listState,
             sections = sections,
             fallbackGenres = fallbackGenres,
             categoryArtwork = categoryArtwork,
@@ -963,6 +1041,7 @@ internal fun destinationCuratedExploreZones(zones: List<ExploreZone>): List<Expl
 @Composable
 private fun ExploreMoodsList(
     contentPadding: PaddingValues,
+    listState: LazyListState,
     sections: List<ExploreCategorySection>,
     fallbackGenres: List<ExploreZone>,
     categoryArtwork: Map<String, String>,
@@ -980,15 +1059,19 @@ private fun ExploreMoodsList(
     }
 
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
             start = 16.dp,
             end = 16.dp,
-            top = contentPadding.calculateTopPadding() + 18.dp,
-            bottom = 130.dp
+            top = contentPadding.calculateTopPadding(),
+            bottom = contentPadding.calculateBottomPadding()
         ),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        item(key = "moods-and-genres-hero") {
+            ExploreMoodsHero(title = strings.exploreMoods, subtitle = strings.exploreSubtitle)
+        }
         exploreMoodLoadingItems(isLoading, sections, strings)
         exploreProviderCategoryItems(
             sections = sections,
@@ -1010,6 +1093,81 @@ private fun ExploreMoodsList(
             strings = strings
         )
     }
+}
+
+@Composable
+private fun ExploreMoodsHero(title: String, subtitle: String) {
+    val colors = MaterialTheme.colorScheme
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(ExploreMoodsHeroHeight)
+    ) {
+        ExploreExpressiveShape(
+            shape = MaterialShapes.Sunny.toShape(),
+            color = colors.primaryContainer.copy(alpha = 0.62f),
+            size = 112.dp,
+            rotation = 18f,
+            modifier = Modifier.align(Alignment.TopEnd).offset(x = 26.dp, y = (-8).dp)
+        )
+        ExploreExpressiveShape(
+            shape = MaterialShapes.Cookie9Sided.toShape(),
+            color = colors.tertiaryContainer.copy(alpha = 0.78f),
+            size = 54.dp,
+            rotation = -12f,
+            modifier = Modifier.align(Alignment.TopEnd).offset(x = (-104).dp, y = 10.dp)
+        )
+        ExploreExpressiveShape(
+            shape = MaterialShapes.Clover4Leaf.toShape(),
+            color = colors.secondaryContainer.copy(alpha = 0.86f),
+            size = 34.dp,
+            rotation = 24f,
+            modifier = Modifier.align(Alignment.TopEnd).offset(x = (-14).dp, y = 96.dp)
+        )
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(bottom = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = title,
+                color = colors.onBackground,
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Black,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .fillMaxWidth(0.82f)
+                    .semantics { heading() }
+            )
+            Text(
+                text = subtitle,
+                color = colors.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExploreExpressiveShape(
+    shape: Shape,
+    color: Color,
+    size: Dp,
+    rotation: Float,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .size(size)
+            .rotate(rotation)
+            .background(color, shape)
+            .clearAndSetSemantics { }
+    )
 }
 
 private fun LazyListScope.exploreMoodLoadingItems(
@@ -1231,7 +1389,7 @@ private fun exploreCategoryCardMetrics(prominent: Boolean): ExploreCategoryCardM
             emojiSize = 30.sp,
             placeholderSize = 38.dp,
             titleSize = 17.sp,
-            titleWidthFraction = 0.68f
+            titleWidthFraction = 0.74f
         )
     } else {
         ExploreCategoryCardMetrics(
@@ -1239,7 +1397,7 @@ private fun exploreCategoryCardMetrics(prominent: Boolean): ExploreCategoryCardM
             emojiSize = 26.sp,
             placeholderSize = 34.dp,
             titleSize = 16.sp,
-            titleWidthFraction = 0.70f
+            titleWidthFraction = 0.76f
         )
     }
 
@@ -1258,9 +1416,8 @@ internal fun ExploreDiscoveryCategoryCard(
     val (accentStart, accentEnd) = accentColors ?: exploreCategoryPalette(identity)
     val shape = RoundedCornerShape(16.dp)
     val metrics = exploreCategoryCardMetrics(prominent)
-    val longTitle = !prominent && title.length >= 18
-    val titleSize = if (longTitle) 15.sp else metrics.titleSize
-    val titleWidthFraction = if (longTitle) 0.78f else metrics.titleWidthFraction
+    val longTitle = title.length >= 14
+    val titleSize = if (longTitle) metrics.titleSize * 0.92f else metrics.titleSize
     Box(
         modifier = modifier
             .shadow(
@@ -1314,13 +1471,15 @@ internal fun ExploreDiscoveryCategoryCard(
             fontSize = titleSize,
             lineHeight = LevyraTypeRhythm.lineHeight(titleSize),
             fontWeight = FontWeight.Black,
-            maxLines = 1,
-            softWrap = false,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
+            style = TextStyle(
+                shadow = Shadow(color = LevyraBlack.copy(alpha = 0.42f), offset = Offset(0f, 2f), blurRadius = 8f)
+            ),
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .fillMaxWidth(titleWidthFraction)
-                .padding(start = 14.dp, top = 14.dp, end = 4.dp)
+                .fillMaxWidth(metrics.titleWidthFraction)
+                .padding(start = 14.dp, top = 13.dp, end = 4.dp)
         )
     }
 }
@@ -1427,6 +1586,7 @@ private fun ExploreDestinationSurface(
     headerColor: Color = LevyraBlack,
     titleVisible: Boolean = true,
     trailing: (@Composable () -> Unit)? = null,
+    bottomInset: Dp = ExploreDestinationBottomInset,
     content: @Composable (PaddingValues) -> Unit
 ) {
     val titleAlpha by animateFloatAsState(
@@ -1440,7 +1600,7 @@ private fun ExploreDestinationSurface(
             .background(LevyraBlack)
             .zIndex(24f)
     ) {
-        content(PaddingValues(top = statusBarTop + ExploreDestinationHeaderHeight))
+        content(PaddingValues(top = statusBarTop + ExploreDestinationHeaderHeight, bottom = bottomInset))
         Row(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -1448,25 +1608,11 @@ private fun ExploreDestinationSurface(
                 .zIndex(1f)
                 .background(headerColor.copy(alpha = headerColor.alpha * titleAlpha))
                 .statusBarsPadding()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .padding(horizontal = 12.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .background(LevyraPanel, CircleShape)
-                    .semantics { role = Role.Button }
-                    .clickable(onClick = onBack),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = strings.back,
-                    tint = LevyraText,
-                    modifier = Modifier.size(21.dp)
-                )
-            }
+            LevyraBackButton(onClick = onBack, contentDescription = strings.back)
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -1504,24 +1650,17 @@ private fun ExploreDestinationTrackRow(
     track: Track,
     isCurrent: Boolean,
     isPlaying: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    shape: Shape = RoundedCornerShape(12.dp)
 ) {
-    val shape = RoundedCornerShape(12.dp)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 72.dp)
             .clip(shape)
-            .background(if (isCurrent) LevyraCyan.copy(alpha = 0.11f) else LevyraPanel.copy(alpha = 0.72f))
-            .border(
-                BorderStroke(
-                    1.dp,
-                    if (isCurrent) LevyraCyan.copy(alpha = 0.44f) else Color.White.copy(alpha = 0.08f)
-                ),
-                shape
-            )
+            .background(if (isCurrent) LevyraCyan.copy(alpha = 0.16f) else LevyraPanel.copy(alpha = 0.78f))
             .clickable(onClick = onClick)
-            .padding(8.dp),
+            .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -1529,7 +1668,9 @@ private fun ExploreDestinationTrackRow(
             model = track.thumbnailUrl.ifBlank { track.largeThumbnailUrl },
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.size(56.dp).clip(RoundedCornerShape(9.dp))
+            modifier = Modifier
+                .size(56.dp)
+                .clip(if (isCurrent) MaterialShapes.Cookie9Sided.toShape() else RoundedCornerShape(14.dp))
         )
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
@@ -1552,9 +1693,9 @@ private fun ExploreDestinationTrackRow(
             )
         }
         Box(
-            modifier = Modifier.size(38.dp).background(
+            modifier = Modifier.size(40.dp).background(
                 if (isCurrent) LevyraCyan else Color.White.copy(alpha = 0.08f),
-                CircleShape
+                if (isCurrent) MaterialShapes.Cookie4Sided.toShape() else CircleShape
             ),
             contentAlignment = Alignment.Center
         ) {

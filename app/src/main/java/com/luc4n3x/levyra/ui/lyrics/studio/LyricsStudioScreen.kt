@@ -2,6 +2,7 @@
 
 package com.luc4n3x.levyra.ui.lyrics.studio
 
+import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
@@ -35,7 +36,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.FormatAlignLeft
 import androidx.compose.material.icons.automirrored.rounded.FormatAlignRight
 import androidx.compose.material.icons.rounded.AutoAwesome
@@ -159,16 +159,7 @@ internal fun LyricsStudioOverlay(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(
-                        onClick = onClose,
-                        modifier = Modifier.size(LevyraPlayerDesign.MinimumTouchTarget)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = strings.back,
-                            tint = LevyraText
-                        )
-                    }
+                    LevyraBackButton(onClick = onClose, contentDescription = strings.back)
                     Column(
                         modifier = Modifier
                             .weight(1f)

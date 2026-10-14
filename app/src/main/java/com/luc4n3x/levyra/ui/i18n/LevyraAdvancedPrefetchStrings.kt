@@ -94,6 +94,30 @@ private val advancedPrefetchCopies = mapOf(
         "Vypnuté",
         "Skladby: {count}"
     ),
+    "bn" to AdvancedPrefetchCopy(
+        "উন্নত প্রিফেচ",
+        "অস্থির সংযোগেও শোনা চালিয়ে যেতে পরের গানগুলো সাময়িকভাবে ক্যাশে ডাউনলোড করে। এতে বেশি ডেটা ও স্টোরেজ লাগতে পারে।",
+        "বন্ধ",
+        "গান: {count}"
+    ),
+    "kk" to AdvancedPrefetchCopy(
+        "Кеңейтілген алдын ала жүктеу",
+        "Байланыс тұрақсыз болса да тыңдау жалғасуы үшін келесі әндерді уақытша кэшке жүктейді. Көбірек дерек пен жад жұмсалуы мүмкін.",
+        "Өшірулі",
+        "Әндер: {count}"
+    ),
+    "sr" to AdvancedPrefetchCopy(
+        "Напредно претходно учитавање",
+        "Привремено преузима следеће песме у кеш како би се слушање наставило и уз нестабилну везу. Може трошити више података и простора.",
+        "Искључено",
+        "Песме: {count}"
+    ),
+    "sq" to AdvancedPrefetchCopy(
+        "Parangarkim i avancuar",
+        "Shkarkon përkohësisht këngët e radhës në memorien e përkohshme, që dëgjimi të vazhdojë edhe me lidhje të paqëndrueshme. Mund të përdorë më shumë të dhëna dhe hapësirë.",
+        "Joaktiv",
+        "Këngë: {count}"
+    ),
     "hr" to AdvancedPrefetchCopy(
         "Napredno predučitavanje",
         "Privremeno preuzima sljedeće pjesme u predmemoriju kako bi se slušanje nastavilo i uz nestabilnu vezu. Može trošiti više podataka i prostora za pohranu.",

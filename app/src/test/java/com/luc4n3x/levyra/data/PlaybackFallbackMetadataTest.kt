@@ -232,6 +232,182 @@ class PlaybackFallbackMetadataTest {
     }
 
     @Test
+    fun editorialDiscoveryPreservesSpecialRecoveryForKnownMisattribution() {
+        val original = track(
+            id = "catalog-track", title = "SOTTOGONNA",
+            artist = "neptune.", durationMs = 175_000L
+        ).copy(source = "Levyra Editorial Discovery")
+
+        assertEquals("SOTTOGONNA official audio", playbackAlternativeSearchQueries(original).first())
+    }
+
+    @Test
+    fun editorialDiscoveryCanUseSameVerifiedSearchResultWithoutIsrc() {
+        val original = track(
+            id = "catalog-track",
+            title = "By my side",
+            artist = "Tyson Yoshi, Hins Cheung",
+            durationMs = 191_000L,
+            isrc = "HKABC2600001"
+        ).copy(source = "Levyra Editorial Discovery", audioVideoId = "AAAAAAAAAAA")
+        val searchResult = track(
+            id = "BBBBBBBBBBB",
+            title = "By My Side",
+            artist = "Tyson Yoshi",
+            durationMs = 191_000L
+        ).copy(videoUrl = "https://music.youtube.com/watch?v=BBBBBBBBBBB")
+
+        assertEquals(
+            listOf("BBBBBBBBBBB"),
+            trustedPlaybackFallbackCandidates(original, listOf(searchResult)).map { it.id }
+        )
+        val rebased = rebaseEditorialFallbackSource(original, searchResult)
+        assertEquals(original.id, rebased.id)
+        assertEquals("BBBBBBBBBBB", rebased.audioVideoId)
+        assertEquals(original.isrc, rebased.isrc)
+    }
+
+    @Test
+    fun editorialDiscoveryAcceptsSearchResultsThatOmitDurationButKeepsRecordingChecks() {
+        val original = track(
+            id = "levyra-cff760d7cbf458dfaaba",
+            title = "By my side",
+            artist = "Tyson Yoshi, Hins Cheung",
+            durationMs = 191_689L
+        ).copy(source = "Levyra Editorial Discovery")
+        val official = track(
+            id = "_GYbg02dFOw", title = "By my side", artist = "Tyson Yoshi, 張敬軒", durationMs = 0L
+        )
+        val live = track(
+            id = "V3IFwz1f77Q",
+            title = "TYSON YOSHI & 張敬軒 Hins Cheung - By My Side (THE VILLAIN LIVE IN HONG KONG 2025)",
+            artist = "Tyson Yoshi",
+            durationMs = 0L
+        )
+        val sequel = track(
+            id = "yOg2knMuAyk", title = "By my side 2", artist = "Tyson Yoshi", durationMs = 0L
+        )
+        val otherArtist = track(
+            id = "sZvn_-S24uw", title = "By My Side", artist = "AP Dhillon, Shinda Kahlon", durationMs = 0L
+        )
+        val knownWrongDuration = track(
+            id = "CCCCCCCCCCC", title = "By my side", artist = "Tyson Yoshi", durationMs = 240_000L
+        )
+
+        assertEquals(
+            listOf("_GYbg02dFOw"),
+            trustedPlaybackFallbackCandidates(
+                original, listOf(official, live, sequel, otherArtist, knownWrongDuration)
+            ).map { it.id }
+        )
+        assertFalse(isResolvedPlaybackFallbackDurationCompatible(original, official))
+        assertTrue(isResolvedPlaybackFallbackDurationCompatible(original, official.copy(durationMs = 192_000L)))
+    }
+
+    @Test
+    fun editorialDiscoveryStatusSurvivesAPreviousFallbackResolution() {
+        val afterFirstFallback = track(
+            id = "levyra-cff760d7cbf458dfaaba",
+            title = "By my side",
+            artist = "Tyson Yoshi, Hins Cheung",
+            durationMs = 191_689L,
+            isrc = "HKABC2600001"
+        ).copy(
+            source = "Android Reel audio · fallback _GYbg02dFOw",
+            metadataProvider = "Levyra Editorial Discovery",
+            audioVideoId = "_GYbg02dFOw"
+        )
+        val retry = track(id = "BBBBBBBBBBB", title = "By my side", artist = "Tyson Yoshi", durationMs = 192_000L)
+
+        assertTrue(isEditorialDiscoveryPlayback(afterFirstFallback))
+        assertEquals(listOf("BBBBBBBBBBB"), trustedPlaybackFallbackCandidates(afterFirstFallback, listOf(retry)).map { it.id })
+        assertEquals("BBBBBBBBBBB", rebaseEditorialFallbackSource(afterFirstFallback, retry).audioVideoId)
+    }
+
+    @Test
+    fun editorialReleaseTracksAreNotTreatedAsDiscovery() {
+        val release = track(id = "release", title = "Song", artist = "Artist", durationMs = 180_000L)
+            .copy(source = "Levyra Editorial Releases", metadataProvider = "Levyra Editorial Releases")
+
+        assertFalse(isEditorialDiscoveryPlayback(release))
+    }
+
+    @Test
+    fun onlyIdentityBoundAudioStrategiesRequireYoutubeIdentity() {
+        assertTrue(PlaybackAudioStrategy.REEL_MUXED.requiresYoutubeIdentity())
+        assertTrue(PlaybackAudioStrategy.REEL_AUDIO.requiresYoutubeIdentity())
+        assertTrue(PlaybackAudioStrategy.DIRECT.requiresYoutubeIdentity())
+        assertFalse(PlaybackAudioStrategy.PERSISTED.requiresYoutubeIdentity())
+        assertFalse(PlaybackAudioStrategy.SEARCH.requiresYoutubeIdentity())
+    }
+
+    @Test
+    fun editorialDiscoveryTriesNormalSearchBeforeQualifiedVariants() {
+        val track = track(
+            id = "catalog-track", title = "By my side",
+            artist = "Tyson Yoshi, Hins Cheung", durationMs = 191_000L
+        ).copy(source = "Levyra Editorial Discovery")
+
+        assertEquals(
+            "Tyson Yoshi, Hins Cheung By my side",
+            playbackAlternativeSearchQueries(track).first()
+        )
+    }
+
+    @Test
+    fun editorialDiscoveryDoesNotAcceptUnrelatedOrConflictingIsrcResults() {
+        val original = track(
+            id = "catalog-track",
+            title = "By my side",
+            artist = "Tyson Yoshi, Hins Cheung",
+            durationMs = 191_000L,
+            isrc = "HKABC2600001"
+        ).copy(source = "Levyra Editorial Discovery")
+        val wrongArtist = track(
+            id = "AAAAAAAAAAA", title = "By My Side", artist = "Someone Else", durationMs = 191_000L
+        )
+        val wrongDuration = track(
+            id = "BBBBBBBBBBB", title = "By My Side", artist = "Tyson Yoshi", durationMs = 270_000L
+        )
+        val conflictingIsrc = track(
+            id = "CCCCCCCCCCC", title = "By My Side", artist = "Tyson Yoshi",
+            durationMs = 191_000L, isrc = "HKXYZ2600002"
+        )
+        assertTrue(
+            trustedPlaybackFallbackCandidates(
+                original, listOf(wrongArtist, wrongDuration, conflictingIsrc)
+            ).isEmpty()
+        )
+    }
+
+    @Test
+    fun editorialDiscoveryRequiresKnownDurationForMetadataOnlyIsrcFallback() {
+        val original = track(
+            id = "catalog-track", title = "By my side", artist = "Tyson Yoshi",
+            durationMs = 0L, isrc = "HKABC2600001"
+        ).copy(source = "Levyra Editorial Discovery")
+        val candidate = track(
+            id = "BBBBBBBBBBB", title = "By my side", artist = "Tyson Yoshi",
+            durationMs = 191_000L
+        )
+        assertTrue(trustedPlaybackFallbackCandidates(original, listOf(candidate)).isEmpty())
+    }
+
+    @Test
+    fun regularPlaybackKeepsStrictIsrcAndOriginalIdentity() {
+        val original = track(
+            id = "search-track", title = "By my side", artist = "Tyson Yoshi",
+            durationMs = 191_000L, isrc = "HKABC2600001"
+        ).copy(audioVideoId = "AAAAAAAAAAA")
+        val candidate = track(
+            id = "BBBBBBBBBBB", title = "By my side", artist = "Tyson Yoshi",
+            durationMs = 191_000L
+        )
+        assertTrue(trustedPlaybackFallbackCandidates(original, listOf(candidate)).isEmpty())
+        assertEquals(original, rebaseEditorialFallbackSource(original, candidate))
+    }
+
+    @Test
     fun resolvedFallbackRejectsSourceWhoseRealDurationIsOnlyTwentyNineSeconds() {
         val original = track(
             id = "chart-source",

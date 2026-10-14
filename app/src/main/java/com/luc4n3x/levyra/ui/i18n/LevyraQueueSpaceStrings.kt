@@ -234,6 +234,34 @@ private val queueSpaceBundles: Map<String, Map<String, String>> = mapOf(
         "Levyra si vždy ponechá jeden front. Vyprázdni ho.", "Pridať do frontu", "Teraz prehrávaš z %1\$s",
         "Stále prázdny"
     ),
+    "bn" to queueSpace(
+        "সারি", "প্রতিটি সারি নিজের ক্রম ও অবস্থান মনে রাখে।", "বর্তমান", "নতুন সারি", "সারির নাম",
+        "সারির নাম পরিবর্তন", "সারি ডুপ্লিকেট করুন", "সারি খালি করুন", "সারি মুছুন",
+        "এই সারি মুছবেন? গানগুলো আপনার লাইব্রেরিতে থাকবে।",
+        "Levyra সব সময় একটি সারি রাখে। তার বদলে এটি খালি করুন।", "সারিতে যোগ করুন", "এখন শুনছেন %1\$s থেকে",
+        "এখনও খালি"
+    ),
+    "kk" to queueSpace(
+        "Кезектер", "Әр кезек өз ретін және орнын есте сақтайды.", "Ағымдағы", "Жаңа кезек", "Кезек атауы",
+        "Кезектің атын өзгерту", "Кезектің көшірмесін жасау", "Кезекті тазалау", "Кезекті жою",
+        "Бұл кезек жойылсын ба? Әндер кітапханаңызда қалады.",
+        "Levyra әрқашан бір кезекті сақтайды. Оның орнына оны тазалаңыз.", "Кезекке қосу", "Қазір %1\$s ішінен тыңдап отырсыз",
+        "Әзірге бос"
+    ),
+    "sr" to queueSpace(
+        "Редови", "Сваки ред памти сопствени редослед и положај.", "Тренутни", "Нови ред", "Назив реда",
+        "Преименуј ред", "Дуплирај ред", "Испразни ред", "Избриши ред",
+        "Избрисати овај ред? Песме остају у твојој библиотеци.",
+        "Levyra увек задржава један ред. Радије га испразни.", "Додај у ред", "Сада слушаш из %1\$s",
+        "Још је празан"
+    ),
+    "sq" to queueSpace(
+        "Radhët", "Çdo radhë mban mend renditjen dhe pozicionin e vet.", "Aktuale", "Radhë e re", "Emri i radhës",
+        "Riemërto radhën", "Dyfisho radhën", "Pastro radhën", "Fshi radhën",
+        "Të fshihet kjo radhë? Këngët mbeten në bibliotekën tënde.",
+        "Levyra mban gjithmonë një radhë. Më mirë pastroje.", "Shto në radhë", "Po dëgjon nga %1\$s",
+        "Ende bosh"
+    ),
     "hr" to queueSpace(
         "Redovi", "Svaki red pamti vlastiti poredak i položaj.", "Trenutačni", "Novi red", "Naziv reda",
         "Preimenuj red", "Dupliciraj red", "Isprazni red", "Izbriši red",
