@@ -428,6 +428,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -11710,6 +11711,28 @@ private fun LazyListScope.homeStudioSectionResonance(c: StudioHomeContext) {
             }
             return
         }
+        if (
+            (homeStyle == HomeStyle.Flow || homeStyle == HomeStyle.ExpressiveMax) &&
+            showDeferredHomeSections && state.interfaceSettings.showResonance && resonanceTracks.isNotEmpty()
+        ) {
+            item(key = "home-resonance-studio", contentType = "home-studio-resonance-${homeStyle.name}") {
+                StudioResonanceSection(
+                    style = homeStyle,
+                    inset = styleSpec.inset,
+                    tracks = resonanceTracks,
+                    comments = state.homeResonanceComments,
+                    actions = StudioResonanceActions(
+                        playLabel = strings.play,
+                        currentId = state.currentTrack?.id,
+                        isPlaying = state.isPlaying,
+                        onPlay = { track -> viewModel.playFrom(resonanceTracks, track) },
+                        onOpenComments = { track -> viewModel.openYoutubeCommentsFor(track) }
+                    ),
+                    modifier = studioItemModifier()
+                )
+            }
+            return
+        }
             if (
                 showDeferredHomeSections && state.interfaceSettings.showResonance &&
                 resonanceTracks.isNotEmpty()
@@ -14087,6 +14110,7 @@ private fun StudioHomeOrbitHeader(
     val strings = LocalLevyraStrings.current
     val displayName = userName.trim()
     val initial = remember(displayName) { homePersonalOrbitInitial(displayName) }
+    val compactPlayAll = style != HomeStyle.Original && style != HomeStyle.MaterialExpressive
 
     Row(
         modifier = Modifier
@@ -14148,14 +14172,20 @@ private fun StudioHomeOrbitHeader(
                         fontWeight = FontWeight.Bold
                     )
                 },
-                maxLines = 1,
+                maxLines = if (compactPlayAll) 2 else 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() }
             )
         }
         if (onPlayAll != null) {
             Spacer(modifier = Modifier.width(6.dp))
-            LevyraSectionPlayAll(onClick = onPlayAll)
+            if (compactPlayAll) {
+                FilledIconButton(onClick = onPlayAll, modifier = Modifier.size(LevyraPlayerDesign.MinimumTouchTarget)) {
+                    Icon(Icons.Rounded.PlayArrow, contentDescription = strings.playAll)
+                }
+            } else {
+                LevyraSectionPlayAll(onClick = onPlayAll)
+            }
         }
     }
 }

@@ -248,7 +248,7 @@ internal fun rememberArtistShelfItems(artists: List<ArtistHit>, onOpen: (ArtistH
 }
 
 @Composable
-private fun StudioRemoteArtwork(url: String, description: String, modifier: Modifier, highRes: Boolean) {
+internal fun StudioRemoteArtwork(url: String, description: String, modifier: Modifier, highRes: Boolean) {
     Box(modifier = modifier.background(LevyraPanel)) {
         if (url.isNotBlank()) {
             StableRemoteArtwork(
@@ -1173,72 +1173,8 @@ internal fun StudioSpotlight(
         HomeStyle.ExpressiveMax -> ExpressiveSpotlight(style, spec, track, artistArtworkUrl, label, lead, playLabel, playing, resolving, playIcon, animationsEnabled, onOpen)
         HomeStyle.Editorial -> EditorialSpotlight(spec, track, artistArtworkUrl, label, lead, playLabel, resolving, playIcon, onOpen)
         HomeStyle.Immersive -> CinematicSpotlight(style, spec, track, artistArtworkUrl, label, lead, playLabel, playing, resolving, playIcon, animationsEnabled, onOpen)
-        HomeStyle.Flow -> FlowSpotlight(spec, track, label, lead, playLabel, resolving, playIcon, onOpen)
+        HomeStyle.Flow -> StudioFlowSpotlight(track, artistArtworkUrl, label, lead, spec.inset, StudioSpotlightPlayback(playLabel, resolving, playIcon, onOpen))
         else -> CompactSpotlight(style, spec, track, artistArtworkUrl, label, lead, playLabel, playing, resolving, playIcon, animationsEnabled, onOpen)
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun FlowSpotlight(
-    spec: HomeStyleSpec,
-    track: Track,
-    label: String,
-    lead: String,
-    playLabel: String,
-    resolving: Boolean,
-    playIcon: ImageVector,
-    onOpen: () -> Unit
-) {
-    val scheme = MaterialTheme.colorScheme
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = spec.inset)
-            .height(228.dp)
-            .clip(RoundedCornerShape(topStart = 58.dp, topEnd = 16.dp, bottomEnd = 58.dp, bottomStart = 16.dp))
-            .background(Brush.linearGradient(listOf(scheme.primaryContainer, scheme.tertiaryContainer.copy(alpha = 0.72f))))
-            .levyraPressable(onClick = onOpen, onClickLabel = track.title, role = Role.Button)
-    ) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .offset(x = 28.dp)
-                .size(202.dp)
-                .graphicsLayer { rotationZ = 9f }
-                .clip(MaterialShapes.Arch.toShape())
-        ) {
-            CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true)
-            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(scheme.primaryContainer.copy(alpha = 0.72f), Color.Transparent))))
-        }
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .offset(x = (-154).dp, y = 16.dp)
-                .size(34.dp)
-                .clip(MaterialShapes.SoftBurst.toShape())
-                .background(scheme.primary)
-        )
-        Column(
-            modifier = Modifier.align(Alignment.CenterStart).fillMaxWidth(0.62f).padding(start = 22.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = scheme.primary, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
-            Text(track.title, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black), color = scheme.onPrimaryContainer, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(lead.ifBlank { track.artist }, style = MaterialTheme.typography.bodyMedium, color = scheme.onPrimaryContainer.copy(alpha = 0.74f), maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Surface(
-                onClick = onOpen,
-                shape = CircleShape,
-                color = scheme.primary,
-                contentColor = scheme.onPrimary,
-                modifier = Modifier.padding(top = 6.dp).size(48.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    if (resolving) LevyraLoadingIndicator(Modifier.size(22.dp), color = scheme.onPrimary)
-                    else Icon(playIcon, contentDescription = playLabel)
-                }
-            }
-        }
     }
 }
 
@@ -2132,13 +2068,6 @@ private fun StudioExpressiveMaxChart(
     modifier: Modifier = Modifier
 ) {
     val scheme = MaterialTheme.colorScheme
-    val shapes = listOf(
-        MaterialShapes.SoftBurst.toShape(),
-        MaterialShapes.Arch.toShape(),
-        MaterialShapes.Cookie9Sided.toShape(),
-        MaterialShapes.Clover8Leaf.toShape(),
-        MaterialShapes.Gem.toShape()
-    )
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
@@ -2165,50 +2094,7 @@ private fun StudioExpressiveMaxChart(
                 Icon(Icons.Rounded.PlayArrow, contentDescription = playAllLabel)
             }
         }
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            itemsIndexed(tracks.take(14), key = { index, track -> "max-chart-$index-${track.id}" }) { index, track ->
-                val leader = index == 0
-                val width = if (leader) 252.dp else 166.dp
-                val height = if (leader) 318.dp else if (index % 2 == 0) 238.dp else 274.dp
-                Box(
-                    modifier = Modifier
-                        .width(width)
-                        .height(height)
-                        .graphicsLayer { rotationZ = if (leader) -1.5f else if (index % 2 == 0) 2.5f else -2f }
-                        .clip(if (leader) MaterialShapes.SoftBurst.toShape() else shapes[index % shapes.size])
-                        .background(if (leader) scheme.primaryContainer else scheme.secondaryContainer)
-                        .levyraPressable(onClick = { onPlay(track) }, onClickLabel = track.title, role = Role.Button)
-                ) {
-                    CoverImage(track, Modifier.fillMaxSize(), highRes = leader)
-                    Box(
-                        Modifier.fillMaxSize().background(
-                            Brush.verticalGradient(
-                                0f to Color.Transparent,
-                                0.52f to Color.Transparent,
-                                1f to Color.Black.copy(alpha = 0.88f)
-                            )
-                        )
-                    )
-                    Text(
-                        text = (index + 1).toString().padStart(2, '0'),
-                        style = if (leader) MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Black) else MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Black),
-                        color = Color.White,
-                        modifier = Modifier.align(Alignment.TopStart).padding(if (leader) 24.dp else 16.dp)
-                    )
-                    Column(modifier = Modifier.align(Alignment.BottomStart).padding(if (leader) 26.dp else 16.dp)) {
-                        Text(track.title, style = if (leader) MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black) else MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Text(track.artist, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.78f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        if (track.id == currentId) {
-                            Spacer(Modifier.height(8.dp))
-                            LevyraPlayingIndicator(playing = isPlaying, color = Color.White, size = 14.dp)
-                        }
-                    }
-                }
-            }
-        }
+        StudioExpressiveMaxChartBody(tracks, StudioChartRowState(currentId, isPlaying, onPlay))
     }
 }
 
@@ -2367,6 +2253,7 @@ private fun StudioEditorialChart(
             }
             if (index < visible.lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
         }
+        StudioEditorialChartFolio(tracks, StudioChartRowState(currentId, isPlaying, onPlay))
     }
 }
 
