@@ -9,7 +9,7 @@ class SmartOfflineLocalizationTest {
     @Test
     fun everySupportedLanguageProvidesSmartOfflineLabels() {
         val codes = LevyraStrings.supportedCodes()
-        assertEquals(37, codes.size)
+        assertEquals(41, codes.size)
         codes.forEach { code ->
             val copy = LevyraStrings.forCode(code).smartOfflineCopy()
             assertTrue("Missing labels for $code", listOf(
