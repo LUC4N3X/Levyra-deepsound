@@ -658,6 +658,61 @@ class SpotifyWebClient:
                 )
             return selected
 
+    def search_catalog(self, query: str, limit: int, country: str) -> Mapping[str, Any]:
+        from .metadata import validate_catalog_request
+
+        query, limit, country = validate_catalog_request(
+            {"query": query, "limit": limit, "country": country}
+        )
+        with self._upstream_lock:
+            self._ensure_authenticated()
+            variables = {
+                "searchTerm": query, "offset": 0, "limit": limit,
+                "numberOfTopResults": 1, "includeAudiobooks": False,
+                "includeArtistHasConcertsField": False, "includePreReleases": False,
+                "includeLocalConcertsField": False, "includeAuthors": False,
+            }
+            for attempt in range(2):
+                token_before = self._access_token
+                headers = self._pathfinder_headers()
+                headers["Content-Type"] = "application/json"
+                headers["Spotify-Country"] = country
+                response = self._session.post(
+                    PATHFINDER_V2_URL,
+                    headers=headers,
+                    json={"operationName": "searchDesktop", "variables": variables,
+                          "extensions": {"persistedQuery": {"version": 1,
+                          "sha256Hash": self._desktop_search_query_hash}}},
+                    timeout=self._timeout, stream=True, allow_redirects=False,
+                )
+                try:
+                    if response.status_code == 401 and attempt == 0:
+                        self._ensure_authenticated(rejected_token=token_before)
+                        continue
+                    if response.status_code == 429:
+                        error = SpotifySearchUnavailable("Spotify catalog rate-limited")
+                        raw_retry = response.headers.get("Retry-After")
+                        try:
+                            delay = max(1, int(raw_retry or "1"))
+                        except ValueError:
+                            now = int(time.time())
+                            delay = max(1, (_http_date_timestamp(raw_retry) or now + 60) - now)
+                        error.retry_after = delay
+                        raise error
+                    if response.status_code != 200:
+                        raise SpotifySearchUnavailable("Spotify catalog unavailable")
+                    try:
+                        payload = json.loads(_read_bounded_response(response, 2 * 1024 * 1024))
+                    except (ValueError, SourceApiError) as error:
+                        raise SpotifySearchUnavailable("Spotify catalog response unavailable") from error
+                    if not isinstance(payload, Mapping):
+                        raise SpotifySearchUnavailable("Spotify catalog response unavailable")
+                    _raise_search_graphql_error(payload)
+                    return payload
+                finally:
+                    response.close()
+            raise SpotifySearchUnavailable("Spotify catalog authentication unavailable")
+
     def search_tracks(
         self,
         query: str,

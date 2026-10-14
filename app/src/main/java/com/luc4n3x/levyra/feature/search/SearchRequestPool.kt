@@ -41,6 +41,7 @@ internal class DetachedSearchCalls(
 ) {
     private val suggestionCalls = SearchRequestPool<SearchSuggestionBundle>(scope)
     private val overviewCalls = SearchRequestPool<SearchResults>(scope)
+    private val spotifyCalls = SearchRequestPool<SearchResults?>(scope)
     private val sectionCalls = SearchRequestPool<SearchSectionPage>(scope)
     private val exactArtistCalls = SearchRequestPool<ArtistHit?>(scope)
     private val officialArtistCalls = SearchRequestPool<List<ArtistHit>>(scope)
@@ -53,6 +54,9 @@ internal class DetachedSearchCalls(
 
     suspend fun overview(query: String, languageCode: String, cacheKey: String): SearchResults =
         overviewCalls.await(cacheKey) { backend.overview(query, languageCode) }
+
+    suspend fun spotifyOverview(query: String, cacheKey: String): SearchResults? =
+        spotifyCalls.await("spotify|$cacheKey") { backend.spotifyOverview(query) }
 
     suspend fun section(
         filter: SearchFilter,
