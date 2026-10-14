@@ -232,6 +232,16 @@ class PlaybackFallbackMetadataTest {
     }
 
     @Test
+    fun editorialDiscoveryPreservesSpecialRecoveryForKnownMisattribution() {
+        val original = track(
+            id = "catalog-track", title = "SOTTOGONNA",
+            artist = "neptune.", durationMs = 175_000L
+        ).copy(source = "Levyra Editorial Discovery")
+
+        assertEquals("SOTTOGONNA official audio", playbackAlternativeSearchQueries(original).first())
+    }
+
+    @Test
     fun editorialDiscoveryCanUseSameVerifiedSearchResultWithoutIsrc() {
         val original = track(
             id = "catalog-track",
