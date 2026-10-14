@@ -984,6 +984,20 @@ fun LevyraNowPlaying(
                     onStop = viewModel::closePlayer,
                     onToggle = viewModel::togglePlay
                 )
+            } else if (
+                visualMode == PlayerVisualMode.CanvasImmersive &&
+                playerPane == LevyraPlayerPane.SideBySide &&
+                maxWidth > maxHeight &&
+                !state.isVideoMode
+            ) {
+                PlayerAuraTransport(
+                    isPlaying = state.isPlaying,
+                    isResolving = state.isResolving,
+                    labels = playerControlLabels,
+                    onPrevious = viewModel::previous,
+                    onTogglePlay = viewModel::togglePlay,
+                    onNext = viewModel::next
+                )
             } else {
                 PlayerTransportBar(
                     isPlaying = state.isPlaying,

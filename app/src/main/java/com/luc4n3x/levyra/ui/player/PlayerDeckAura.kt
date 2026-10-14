@@ -187,7 +187,7 @@ internal fun PlayerAuraDeck(
             )
             AuraTimes(positionMs = positionMs, durationMs = durationMs)
             Spacer(Modifier.height(10.dp))
-            AuraTransport(
+            PlayerAuraTransport(
                 isPlaying = isPlaying,
                 isResolving = isResolving,
                 labels = labels,
@@ -436,7 +436,7 @@ private fun AuraTime(text: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun AuraTransport(
+internal fun PlayerAuraTransport(
     isPlaying: Boolean,
     isResolving: Boolean,
     labels: PlayerControlLabels,
