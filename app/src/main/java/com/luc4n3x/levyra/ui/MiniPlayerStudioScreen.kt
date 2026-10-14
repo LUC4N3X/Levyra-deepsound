@@ -83,6 +83,7 @@ import com.luc4n3x.levyra.domain.MiniButtonStyle
 import com.luc4n3x.levyra.domain.MiniColorMode
 import com.luc4n3x.levyra.domain.MiniControlSet
 import com.luc4n3x.levyra.domain.MiniMotion
+import com.luc4n3x.levyra.domain.MiniPlayerSpec
 import com.luc4n3x.levyra.domain.MiniPlayerStyle
 import com.luc4n3x.levyra.domain.MiniPlayerTuning
 import com.luc4n3x.levyra.domain.MiniProgressStyle
@@ -519,6 +520,34 @@ private fun LazyListScope.miniStudioItems(
         }
         return
     }
+    miniStudioSizeItems(spec, tuning, copy, onPreview, onCommit)
+    miniStudioDepthItems(spec, tuning, copy, onPreview, onCommit)
+    miniStudioProgressItems(spec, tuning, copy, onPreview, onCommit)
+    miniStudioControlsItems(spec, tuning, copy, onPreview, onCommit)
+    miniStudioAppearanceItems(spec, tuning, copy, onPreview, onCommit)
+    item(key = "mini-reset-style", contentType = "actions") {
+        OutlinedButton(
+            onClick = onResetStyle,
+            enabled = style in settings.normalized().tunings,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+        ) {
+            Icon(Icons.Rounded.RestartAlt, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(copy[MiniStudioText.ResetStyle])
+        }
+    }
+}
+
+private fun LazyListScope.miniStudioSizeItems(
+    spec: MiniPlayerSpec,
+    tuning: MiniPlayerTuning,
+    copy: MiniPlayerStudioCopy,
+    onPreview: (MiniPlayerTuning) -> Unit,
+    onCommit: (MiniPlayerTuning) -> Unit
+) {
+    val options = spec.options
     val sizeOptions = listOf(
         MiniTuningOption.Height,
         MiniTuningOption.Corner,
@@ -580,6 +609,16 @@ private fun LazyListScope.miniStudioItems(
             }
         }
     }
+}
+
+private fun LazyListScope.miniStudioDepthItems(
+    spec: MiniPlayerSpec,
+    tuning: MiniPlayerTuning,
+    copy: MiniPlayerStudioCopy,
+    onPreview: (MiniPlayerTuning) -> Unit,
+    onCommit: (MiniPlayerTuning) -> Unit
+) {
+    val options = spec.options
     val depthOptions = listOf(MiniTuningOption.Shadow, MiniTuningOption.Glow, MiniTuningOption.Opacity)
     if (depthOptions.any { it in options }) {
         item(key = "mini-depth", contentType = "group") {
@@ -617,6 +656,16 @@ private fun LazyListScope.miniStudioItems(
             }
         }
     }
+}
+
+private fun LazyListScope.miniStudioProgressItems(
+    spec: MiniPlayerSpec,
+    tuning: MiniPlayerTuning,
+    copy: MiniPlayerStudioCopy,
+    onPreview: (MiniPlayerTuning) -> Unit,
+    onCommit: (MiniPlayerTuning) -> Unit
+) {
+    val options = spec.options
     if (MiniTuningOption.Progress in options && spec.progressStyles.size > 1) {
         item(key = "mini-progress", contentType = "group") {
             MiniStudioGroup(copy[MiniStudioText.Progress]) {
@@ -629,6 +678,16 @@ private fun LazyListScope.miniStudioItems(
             }
         }
     }
+}
+
+private fun LazyListScope.miniStudioControlsItems(
+    spec: MiniPlayerSpec,
+    tuning: MiniPlayerTuning,
+    copy: MiniPlayerStudioCopy,
+    onPreview: (MiniPlayerTuning) -> Unit,
+    onCommit: (MiniPlayerTuning) -> Unit
+) {
+    val options = spec.options
     val controlOptions = listOf(
         MiniTuningOption.Buttons,
         MiniTuningOption.ControlScale,
@@ -676,6 +735,16 @@ private fun LazyListScope.miniStudioItems(
             }
         }
     }
+}
+
+private fun LazyListScope.miniStudioAppearanceItems(
+    spec: MiniPlayerSpec,
+    tuning: MiniPlayerTuning,
+    copy: MiniPlayerStudioCopy,
+    onPreview: (MiniPlayerTuning) -> Unit,
+    onCommit: (MiniPlayerTuning) -> Unit
+) {
+    val options = spec.options
     val appearanceOptions = listOf(
         MiniTuningOption.Color,
         MiniTuningOption.Typography,
@@ -726,19 +795,6 @@ private fun LazyListScope.miniStudioItems(
                     )
                 }
             }
-        }
-    }
-    item(key = "mini-reset-style", contentType = "actions") {
-        OutlinedButton(
-            onClick = onResetStyle,
-            enabled = style in settings.normalized().tunings,
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 48.dp)
-        ) {
-            Icon(Icons.Rounded.RestartAlt, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(copy[MiniStudioText.ResetStyle])
         }
     }
 }

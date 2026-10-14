@@ -43,6 +43,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -203,44 +204,18 @@ internal fun StyledBottomTabs(
                     .fillMaxSize()
                     .drawBehind {
                         if (selectedIndex < 0) return@drawBehind
-                        val slotPx = slotWidth.toPx()
-                        val travel = abs(indicatorPosition - selectedIndex).coerceAtMost(1f)
-                        val rtl = layoutDirection == LayoutDirection.Rtl
-                        val centerSlot = if (rtl) entries.lastIndex - indicatorPosition else indicatorPosition
-                        val centerX = slotPx * centerSlot + slotPx / 2f
-                        val iconTopPx = iconTop.toPx()
-                        when (tuning.indicator) {
-                            NavIndicator.Pill, NavIndicator.Morph -> {
-                                val base = (slotPx - 20.dp.toPx()).coerceIn(48.dp.toPx(), 64.dp.toPx())
-                                val stretch = if (tuning.indicator == NavIndicator.Morph) slotPx * 0.55f * travel * stretchFactor else 0f
-                                val width = base + stretch
-                                val pillHeight = StyledNavIndicatorHeight.toPx()
-                                drawRoundRect(
-                                    color = indicatorColor,
-                                    topLeft = Offset(centerX - width / 2f, iconTopPx),
-                                    size = Size(width, pillHeight),
-                                    cornerRadius = CornerRadius(pillHeight / 2f)
-                                )
-                            }
-                            NavIndicator.Dot -> {
-                                val radius = 2.5.dp.toPx()
-                                drawCircle(
-                                    color = scheme.primary,
-                                    radius = radius,
-                                    center = Offset(centerX, iconTopPx + StyledNavIndicatorHeight.toPx() + labelRoom.toPx() + 5.dp.toPx())
-                                )
-                            }
-                            NavIndicator.Line -> {
-                                val width = 22.dp.toPx() + 18.dp.toPx() * travel * stretchFactor
-                                val lineHeight = 3.dp.toPx()
-                                drawRoundRect(
-                                    color = scheme.primary,
-                                    topLeft = Offset(centerX - width / 2f, size.height - lineHeight - 6.dp.toPx()),
-                                    size = Size(width, lineHeight),
-                                    cornerRadius = CornerRadius(lineHeight / 2f)
-                                )
-                            }
-                        }
+                        drawNavIndicator(
+                            indicator = tuning.indicator,
+                            slotPx = slotWidth.toPx(),
+                            position = indicatorPosition,
+                            selectedIndex = selectedIndex,
+                            lastIndex = entries.lastIndex,
+                            iconTopPx = iconTop.toPx(),
+                            labelRoomPx = labelRoom.toPx(),
+                            stretchFactor = stretchFactor,
+                            pillColor = indicatorColor,
+                            markColor = scheme.primary
+                        )
                     }
             )
             Row(
@@ -270,6 +245,52 @@ internal fun StyledBottomTabs(
         }
         if (applySystemInset) {
             Spacer(modifier = Modifier.navigationBarsPadding())
+        }
+    }
+}
+
+private fun DrawScope.drawNavIndicator(
+    indicator: NavIndicator,
+    slotPx: Float,
+    position: Float,
+    selectedIndex: Int,
+    lastIndex: Int,
+    iconTopPx: Float,
+    labelRoomPx: Float,
+    stretchFactor: Float,
+    pillColor: Color,
+    markColor: Color
+) {
+    val travel = abs(position - selectedIndex).coerceAtMost(1f)
+    val centerSlot = if (layoutDirection == LayoutDirection.Rtl) lastIndex - position else position
+    val centerX = slotPx * centerSlot + slotPx / 2f
+    val pillHeight = StyledNavIndicatorHeight.toPx()
+    when (indicator) {
+        NavIndicator.Pill, NavIndicator.Morph -> {
+            val base = (slotPx - 20.dp.toPx()).coerceIn(48.dp.toPx(), 64.dp.toPx())
+            val stretch = if (indicator == NavIndicator.Morph) slotPx * 0.55f * travel * stretchFactor else 0f
+            val width = base + stretch
+            drawRoundRect(
+                color = pillColor,
+                topLeft = Offset(centerX - width / 2f, iconTopPx),
+                size = Size(width, pillHeight),
+                cornerRadius = CornerRadius(pillHeight / 2f)
+            )
+        }
+        NavIndicator.Dot -> drawCircle(
+            color = markColor,
+            radius = 2.5.dp.toPx(),
+            center = Offset(centerX, iconTopPx + pillHeight + labelRoomPx + 5.dp.toPx())
+        )
+        NavIndicator.Line -> {
+            val width = 22.dp.toPx() + 18.dp.toPx() * travel * stretchFactor
+            val lineHeight = 3.dp.toPx()
+            drawRoundRect(
+                color = markColor,
+                topLeft = Offset(centerX - width / 2f, size.height - lineHeight - 6.dp.toPx()),
+                size = Size(width, lineHeight),
+                cornerRadius = CornerRadius(lineHeight / 2f)
+            )
         }
     }
 }

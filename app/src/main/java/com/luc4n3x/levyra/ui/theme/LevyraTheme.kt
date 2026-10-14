@@ -459,12 +459,16 @@ object LevyraThemeController {
         if (activePureBlackState.value != pureBlackActive) {
             activePureBlackState.value = pureBlackActive
         }
+        applyCornerScale(presetId)
+        if (activePaletteState.value != palette) {
+            activePaletteState.value = palette
+        }
+    }
+
+    private fun applyCornerScale(presetId: String) {
         val cornerScale = LevyraThemes.customTheme(presetId)?.let { it.cornerScale / 100f } ?: 1f
         if (activeCornerScaleState.value != cornerScale) {
             activeCornerScaleState.value = cornerScale
-        }
-        if (activePaletteState.value != palette) {
-            activePaletteState.value = palette
         }
     }
 

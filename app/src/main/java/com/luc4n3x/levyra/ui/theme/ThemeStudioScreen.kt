@@ -126,10 +126,7 @@ internal fun LevyraThemeStudioOverlay(
     val preview = rememberThemeStudioPreview(selectedPresetId, accent, pureBlack, customThemes)
     val presetRows = remember { themeStudioRows() }
     val defaultPresetId = LevyraThemes.defaultPresetId
-    var confirmRestore by remember { mutableStateOf(false) }
-    var editing by remember { mutableStateOf<LevyraCustomTheme?>(null) }
-    var renaming by remember { mutableStateOf<LevyraCustomTheme?>(null) }
-    var deleting by remember { mutableStateOf<LevyraCustomTheme?>(null) }
+    val dialogs = remember { ThemeStudioDialogState() }
 
     Box(modifier = Modifier.fillMaxSize().background(LevyraInk)) {
         LazyColumn(
@@ -187,7 +184,7 @@ internal fun LevyraThemeStudioOverlay(
                             .semantics { heading() }
                     )
                     TextButton(
-                        onClick = { confirmRestore = true },
+                        onClick = { dialogs.confirmRestore = true },
                         enabled = selectedPresetId != defaultPresetId || accent != 0
                     ) {
                         Icon(Icons.Rounded.RestartAlt, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -239,7 +236,7 @@ internal fun LevyraThemeStudioOverlay(
                             .semantics { heading() }
                     )
                     FilledTonalButton(
-                        onClick = { editing = newCustomThemeFrom(selectedPresetId, accent, customThemes, library[ThemeLibraryText.NewThemeName]) },
+                        onClick = { dialogs.editing = newCustomThemeFrom(selectedPresetId, accent, customThemes, library[ThemeLibraryText.NewThemeName]) },
                         enabled = customThemes.size < LevyraCustomThemes.MAX_THEMES
                     ) {
                         Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -285,10 +282,10 @@ internal fun LevyraThemeStudioOverlay(
                                     copy = library,
                                     tint = palette.text,
                                     modifier = Modifier.align(Alignment.BottomEnd),
-                                    onEdit = { editing = theme },
+                                    onEdit = { dialogs.editing = theme },
                                     onDuplicate = { onDuplicateCustomTheme(theme.id, library[ThemeLibraryText.CopySuffix]) },
-                                    onRename = { renaming = theme },
-                                    onDelete = { deleting = theme },
+                                    onRename = { dialogs.renaming = theme },
+                                    onDelete = { dialogs.deleting = theme },
                                     canDuplicate = customThemes.size < LevyraCustomThemes.MAX_THEMES
                                 )
                             }
@@ -329,24 +326,52 @@ internal fun LevyraThemeStudioOverlay(
         }
     }
 
-    if (confirmRestore) {
+    ThemeStudioDialogs(
+        dialogs = dialogs,
+        previewTitle = previewTitle,
+        previewArtist = previewArtist,
+        onSaveCustomTheme = onSaveCustomTheme,
+        onDeleteCustomTheme = onDeleteCustomTheme,
+        onRestoreDefault = onRestoreDefault
+    )
+}
+
+private class ThemeStudioDialogState {
+    var confirmRestore by mutableStateOf(false)
+    var editing by mutableStateOf<LevyraCustomTheme?>(null)
+    var renaming by mutableStateOf<LevyraCustomTheme?>(null)
+    var deleting by mutableStateOf<LevyraCustomTheme?>(null)
+}
+
+@Composable
+private fun ThemeStudioDialogs(
+    dialogs: ThemeStudioDialogState,
+    previewTitle: String,
+    previewArtist: String,
+    onSaveCustomTheme: (LevyraCustomTheme, Boolean) -> Unit,
+    onDeleteCustomTheme: (String) -> Unit,
+    onRestoreDefault: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val library = strings.themeLibraryCopy
+    if (dialogs.confirmRestore) {
         AlertDialog(
-            onDismissRequest = { confirmRestore = false },
+            onDismissRequest = { dialogs.confirmRestore = false },
             title = { Text(library[ThemeLibraryText.RestoreDefault]) },
             text = { Text(library[ThemeLibraryText.RestoreConfirm]) },
             confirmButton = {
                 TextButton(onClick = {
                     onRestoreDefault()
-                    confirmRestore = false
+                    dialogs.confirmRestore = false
                 }) { Text(library[ThemeLibraryText.Reset]) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmRestore = false }) { Text(strings.cancel) }
+                TextButton(onClick = { dialogs.confirmRestore = false }) { Text(strings.cancel) }
             }
         )
     }
 
-    editing?.let { draft ->
+    dialogs.editing?.let { draft ->
         CustomThemeEditorDialog(
             initial = draft,
             copy = library,
@@ -356,16 +381,16 @@ internal fun LevyraThemeStudioOverlay(
             cancelLabel = strings.cancel,
             onSave = { theme ->
                 onSaveCustomTheme(theme, true)
-                editing = null
+                dialogs.editing = null
             },
-            onDismiss = { editing = null }
+            onDismiss = { dialogs.editing = null }
         )
     }
 
-    renaming?.let { theme ->
+    dialogs.renaming?.let { theme ->
         var name by remember(theme.id) { mutableStateOf(theme.name) }
         AlertDialog(
-            onDismissRequest = { renaming = null },
+            onDismissRequest = { dialogs.renaming = null },
             title = { Text(library[ThemeLibraryText.Rename]) },
             text = {
                 OutlinedTextField(
@@ -379,30 +404,30 @@ internal fun LevyraThemeStudioOverlay(
                 TextButton(
                     onClick = {
                         onSaveCustomTheme(theme.copy(name = name), false)
-                        renaming = null
+                        dialogs.renaming = null
                     },
                     enabled = name.isNotBlank()
                 ) { Text(library[ThemeLibraryText.Save]) }
             },
             dismissButton = {
-                TextButton(onClick = { renaming = null }) { Text(strings.cancel) }
+                TextButton(onClick = { dialogs.renaming = null }) { Text(strings.cancel) }
             }
         )
     }
 
-    deleting?.let { theme ->
+    dialogs.deleting?.let { theme ->
         AlertDialog(
-            onDismissRequest = { deleting = null },
+            onDismissRequest = { dialogs.deleting = null },
             title = { Text("${library[ThemeLibraryText.Delete]} · ${theme.name}") },
             text = { Text(library[ThemeLibraryText.DeleteConfirm]) },
             confirmButton = {
                 TextButton(onClick = {
                     onDeleteCustomTheme(theme.id)
-                    deleting = null
+                    dialogs.deleting = null
                 }) { Text(library[ThemeLibraryText.Delete]) }
             },
             dismissButton = {
-                TextButton(onClick = { deleting = null }) { Text(strings.cancel) }
+                TextButton(onClick = { dialogs.deleting = null }) { Text(strings.cancel) }
             }
         )
     }

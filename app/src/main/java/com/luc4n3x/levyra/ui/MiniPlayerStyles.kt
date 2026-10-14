@@ -20,6 +20,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -108,6 +109,7 @@ import com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.player.PlayerMorphAnchors
 import com.luc4n3x.levyra.ui.player.PlayerMorphSlot
+import com.luc4n3x.levyra.ui.player.PlayerSwipeMotion
 import com.luc4n3x.levyra.ui.player.miniPlayerHorizontalGesturesEnabled
 import com.luc4n3x.levyra.ui.player.playerAxisDragGestures
 import com.luc4n3x.levyra.ui.player.playerMorphAnchor
@@ -332,25 +334,16 @@ internal fun StyledMiniPlayer(
                 .miniOutline(style, palette, containerShape)
                 .then(
                     if (interactive) {
-                        Modifier
-                            .playerAxisDragGestures(
-                                key = "${track.id}:$horizontalGesturesEnabled",
-                                enabled = model.gesturesEnabled,
-                                rightToLeft = rightToLeft,
-                                edgeZonesEnabled = false
-                            ) { event ->
-                                handleMiniPlayerDragEvent(
-                                    event = event,
-                                    trackId = track.id,
-                                    playbackActions = playbackActions,
-                                    expansionActions = expansionActions,
-                                    haptics = haptics,
-                                    horizontalGesturesEnabled = horizontalGesturesEnabled,
-                                    swipe = swipe
-                                )
-                            }
-                            .semantics { onClick(label = strings.expandPlayer, action = null) }
-                            .levyraPressable(onClick = playbackActions.open, pressedScale = LevyraPressScale.Row)
+                        Modifier.miniInteraction(
+                            trackId = track.id,
+                            model = model,
+                            horizontalGesturesEnabled = horizontalGesturesEnabled,
+                            rightToLeft = rightToLeft,
+                            playbackActions = playbackActions,
+                            expansionActions = expansionActions,
+                            swipe = swipe,
+                            expandLabel = strings.expandPlayer
+                        )
                     } else {
                         Modifier
                     }
@@ -465,28 +458,78 @@ internal fun StyledMiniPlayer(
                 )
             }
             if (!liveRadio) {
-                when (tuning.progress) {
-                    MiniProgressStyle.Line -> MiniLineProgress(
-                        progress = progress,
-                        palette = palette,
-                        inset = (tuning.cornerDp.dp * 0.7f).coerceAtLeast(12.dp),
-                        modifier = Modifier.align(Alignment.BottomCenter)
-                    )
-                    MiniProgressStyle.Wavy -> LinearWavyProgressIndicator(
-                        progress = progress,
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .fillMaxWidth()
-                            .padding(start = height * 0.42f, end = height * 0.42f, bottom = 4.dp)
-                            .height(8.dp),
-                        color = palette.accent.playerMix(Color.White, 0.42f),
-                        trackColor = palette.content.copy(alpha = 0.14f),
-                        amplitude = { if (model.isPlaying && animated) 1f else 0f }
-                    )
-                    else -> Unit
-                }
+                MiniBottomProgress(
+                    tuning = tuning,
+                    palette = palette,
+                    progress = progress,
+                    height = height,
+                    waving = model.isPlaying && animated
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun Modifier.miniInteraction(
+    trackId: String,
+    model: MiniPlayerModel,
+    horizontalGesturesEnabled: Boolean,
+    rightToLeft: Boolean,
+    playbackActions: MiniPlayerPlaybackActions,
+    expansionActions: MiniPlayerExpansionActions,
+    swipe: PlayerSwipeMotion,
+    expandLabel: String
+): Modifier {
+    val haptics = LocalLevyraHaptics.current
+    return playerAxisDragGestures(
+        key = "$trackId:$horizontalGesturesEnabled",
+        enabled = model.gesturesEnabled,
+        rightToLeft = rightToLeft,
+        edgeZonesEnabled = false
+    ) { event ->
+        handleMiniPlayerDragEvent(
+            event = event,
+            trackId = trackId,
+            playbackActions = playbackActions,
+            expansionActions = expansionActions,
+            haptics = haptics,
+            horizontalGesturesEnabled = horizontalGesturesEnabled,
+            swipe = swipe
+        )
+    }
+        .semantics { onClick(label = expandLabel, action = null) }
+        .levyraPressable(onClick = playbackActions.open, pressedScale = LevyraPressScale.Row)
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun BoxScope.MiniBottomProgress(
+    tuning: MiniPlayerTuning,
+    palette: MiniPlayerPalette,
+    progress: () -> Float,
+    height: Dp,
+    waving: Boolean
+) {
+    when (tuning.progress) {
+        MiniProgressStyle.Line -> MiniLineProgress(
+            progress = progress,
+            palette = palette,
+            inset = (tuning.cornerDp.dp * 0.7f).coerceAtLeast(12.dp),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
+        MiniProgressStyle.Wavy -> LinearWavyProgressIndicator(
+            progress = progress,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(start = height * 0.42f, end = height * 0.42f, bottom = 4.dp)
+                .height(8.dp),
+            color = palette.accent.playerMix(Color.White, 0.42f),
+            trackColor = palette.content.copy(alpha = 0.14f),
+            amplitude = { if (waving) 1f else 0f }
+        )
+        else -> Unit
     }
 }
 
@@ -932,27 +975,8 @@ private fun MiniStyledPlayButton(
     val outer = if (ring) core + 16.dp else core
     val morphShape = rememberLevyraPlayMorphShape(playing = isPlaying, animated = animated)
     val coreShape = if (style == MiniPlayerStyle.SuperExpressive) morphShape else CircleShape
-    val fillColor = when (tuning.buttons) {
-        MiniButtonStyle.Filled -> if (palette.onDark) palette.accent.playerMix(Color.White, 0.62f) else palette.accent
-        MiniButtonStyle.Tonal -> palette.accent.copy(alpha = if (palette.onDark) 0.30f else 0.18f)
-        else -> Color.Transparent
-    }
-    val glyphColor = when (tuning.buttons) {
-        MiniButtonStyle.Filled -> if (fillColor.luminance() > 0.45f) PlayerDarkSurface else Color.White
-        MiniButtonStyle.Tonal -> if (palette.onDark) {
-            palette.accent.playerMix(Color.White, 0.70f)
-        } else {
-            palette.accent.playerMix(Color.Black, 0.25f)
-        }
-        else -> palette.content
-    }
-    val ringColor = if (palette.onDark) {
-        palette.accent.playerMix(Color.White, 0.62f)
-    } else {
-        palette.accent.playerMix(Color.Black, 0.15f)
-    }
-    val ringTrack = palette.content.copy(alpha = 0.14f)
-    val ringStroke = with(LocalDensity.current) { Stroke(width = StyledMiniRingStroke.toPx(), cap = StrokeCap.Round) }
+    val fillColor = miniPlayFillColor(tuning.buttons, palette)
+    val glyphColor = miniPlayGlyphColor(tuning.buttons, palette, fillColor)
     Box(
         modifier = Modifier
             .sizeIn(minWidth = LevyraPlayerDesign.MinimumTouchTarget, minHeight = LevyraPlayerDesign.MinimumTouchTarget)
@@ -962,32 +986,15 @@ private fun MiniStyledPlayButton(
         contentAlignment = Alignment.Center
     ) {
         if (ring) {
-            when {
-                isResolving -> CircularWavyProgressIndicator(
-                    modifier = Modifier.size(outer),
-                    color = ringColor,
-                    trackColor = ringTrack,
-                    stroke = ringStroke,
-                    trackStroke = ringStroke
-                )
-                liveRadio -> CircularWavyProgressIndicator(
-                    progress = { 1f },
-                    modifier = Modifier.size(outer),
-                    color = ringColor,
-                    trackColor = ringTrack,
-                    stroke = ringStroke,
-                    trackStroke = ringStroke
-                )
-                else -> CircularWavyProgressIndicator(
-                    progress = progress,
-                    modifier = Modifier.size(outer),
-                    color = ringColor,
-                    trackColor = ringTrack,
-                    stroke = ringStroke,
-                    trackStroke = ringStroke,
-                    amplitude = { if (isPlaying && animated) 1f else 0f }
-                )
-            }
+            MiniPlayRing(
+                palette = palette,
+                size = outer,
+                isPlaying = isPlaying,
+                isResolving = isResolving,
+                liveRadio = liveRadio,
+                progress = progress,
+                animated = animated
+            )
         }
         Box(
             modifier = Modifier
@@ -1014,6 +1021,58 @@ private fun MiniStyledPlayButton(
                 )
             }
         }
+    }
+}
+
+private fun miniPlayFillColor(buttons: MiniButtonStyle, palette: MiniPlayerPalette): Color = when (buttons) {
+    MiniButtonStyle.Filled -> if (palette.onDark) palette.accent.playerMix(Color.White, 0.62f) else palette.accent
+    MiniButtonStyle.Tonal -> palette.accent.copy(alpha = if (palette.onDark) 0.30f else 0.18f)
+    else -> Color.Transparent
+}
+
+private fun miniPlayGlyphColor(buttons: MiniButtonStyle, palette: MiniPlayerPalette, fill: Color): Color = when (buttons) {
+    MiniButtonStyle.Filled -> if (fill.luminance() > 0.45f) PlayerDarkSurface else Color.White
+    MiniButtonStyle.Tonal -> palette.accent.playerMix(
+        if (palette.onDark) Color.White else Color.Black,
+        if (palette.onDark) 0.70f else 0.25f
+    )
+    else -> palette.content
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun MiniPlayRing(
+    palette: MiniPlayerPalette,
+    size: Dp,
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    liveRadio: Boolean,
+    progress: () -> Float,
+    animated: Boolean
+) {
+    val ringColor = palette.accent.playerMix(
+        if (palette.onDark) Color.White else Color.Black,
+        if (palette.onDark) 0.62f else 0.15f
+    )
+    val ringTrack = palette.content.copy(alpha = 0.14f)
+    val ringStroke = with(LocalDensity.current) { Stroke(width = StyledMiniRingStroke.toPx(), cap = StrokeCap.Round) }
+    when {
+        isResolving -> CircularWavyProgressIndicator(
+            modifier = Modifier.size(size),
+            color = ringColor,
+            trackColor = ringTrack,
+            stroke = ringStroke,
+            trackStroke = ringStroke
+        )
+        else -> CircularWavyProgressIndicator(
+            progress = if (liveRadio) ({ 1f }) else progress,
+            modifier = Modifier.size(size),
+            color = ringColor,
+            trackColor = ringTrack,
+            stroke = ringStroke,
+            trackStroke = ringStroke,
+            amplitude = { if (isPlaying && animated && !liveRadio) 1f else 0f }
+        )
     }
 }
 
