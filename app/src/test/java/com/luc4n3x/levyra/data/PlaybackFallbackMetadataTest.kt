@@ -258,6 +258,19 @@ class PlaybackFallbackMetadataTest {
     }
 
     @Test
+    fun editorialDiscoveryTriesNormalSearchBeforeQualifiedVariants() {
+        val track = track(
+            id = "catalog-track", title = "By my side",
+            artist = "Tyson Yoshi, Hins Cheung", durationMs = 191_000L
+        ).copy(source = "Levyra Editorial Discovery")
+
+        assertEquals(
+            "Tyson Yoshi, Hins Cheung By my side",
+            playbackAlternativeSearchQueries(track).first()
+        )
+    }
+
+    @Test
     fun editorialDiscoveryDoesNotAcceptUnrelatedOrConflictingIsrcResults() {
         val original = track(
             id = "catalog-track",
