@@ -39,6 +39,8 @@ import com.luc4n3x.levyra.data.VaultPreview
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.ProfilePhotoStore
 import com.luc4n3x.levyra.data.LyricsLatencyProfiles
+import com.luc4n3x.levyra.domain.LevyraCustomTheme
+import com.luc4n3x.levyra.domain.LevyraCustomThemes
 import com.luc4n3x.levyra.domain.LevyraHomeStudioSettings
 import com.luc4n3x.levyra.domain.LevyraMiniPlayerStudioSettings
 import com.luc4n3x.levyra.domain.LevyraLyricsStudioSettings
@@ -1425,6 +1427,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     val state: StateFlow<LevyraUiState> = _state.asStateFlow()
     private val _miniPlayerStudio = MutableStateFlow(MiniPlayerStudioState(settings = startupSettings.miniPlayerStudioSettings))
     val miniPlayerStudio: StateFlow<MiniPlayerStudioState> = _miniPlayerStudio.asStateFlow()
+    private val _customThemes = MutableStateFlow(
+        LevyraCustomThemes.normalized(startupSettings.customThemes).also(LevyraThemes::setCustomThemes)
+    )
+    val customThemes: StateFlow<List<LevyraCustomTheme>> = _customThemes.asStateFlow()
     private val _onboardingArtwork = MutableStateFlow<Map<String, List<String>>>(emptyMap())
     val onboardingArtwork: StateFlow<Map<String, List<String>>> = _onboardingArtwork.asStateFlow()
     private var onboardingArtworkJob: Job? = null
@@ -1452,6 +1458,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             preferences.lyricsStudioSettingsFlow.collect { settings ->
                 if (pendingLyricsStudioWrites == 0 && settings == preferences.lyricsStudioSettings()) {
                     _state.update { state -> state.copy(lyricsStudioSettings = settings) }
+                }
+            }
+        }
+        viewModelScope.launch {
+            preferences.customThemesFlow.collect { themes ->
+                val normalized = LevyraCustomThemes.normalized(themes)
+                if (normalized != _customThemes.value) {
+                    LevyraThemes.setCustomThemes(normalized)
+                    _customThemes.value = normalized
                 }
             }
         }
@@ -2713,6 +2728,33 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (_state.value.themeAccent == value) return
         preferences.setThemeAccent(value)
         _state.update { it.copy(themeAccent = value) }
+    }
+
+    fun saveCustomTheme(theme: LevyraCustomTheme, apply: Boolean) {
+        updateCustomThemes(LevyraCustomThemes.upsert(_customThemes.value, theme))
+        if (apply) setThemePreset(theme.id)
+    }
+
+    fun duplicateCustomTheme(id: String, suffix: String) {
+        updateCustomThemes(LevyraCustomThemes.duplicate(_customThemes.value, id, suffix))
+    }
+
+    fun deleteCustomTheme(id: String) {
+        updateCustomThemes(LevyraCustomThemes.remove(_customThemes.value, id))
+        if (_state.value.themePreset == id) setThemePreset(LevyraThemes.defaultPresetId)
+    }
+
+    fun restoreDefaultTheme() {
+        setThemeAccent(0)
+        setThemePreset(LevyraThemes.defaultPresetId)
+    }
+
+    private fun updateCustomThemes(themes: List<LevyraCustomTheme>) {
+        val normalized = LevyraCustomThemes.normalized(themes)
+        if (normalized == _customThemes.value) return
+        LevyraThemes.setCustomThemes(normalized)
+        _customThemes.value = normalized
+        preferences.setCustomThemes(normalized)
     }
 
     fun openThemeStudio() {

@@ -1868,6 +1868,7 @@ fun LevyraApp(
 
     val state by viewModel.state.collectAsStateWithLifecycle()
     val miniPlayerStudio by viewModel.miniPlayerStudio.collectAsStateWithLifecycle()
+    val customThemes by viewModel.customThemes.collectAsStateWithLifecycle()
     LaunchedEffect(youtubeMusicState.active?.id, state.languageCode) {
         youtubeMusicViewModel.loadHome(state.languageCode)
     }
@@ -1984,7 +1985,8 @@ fun LevyraApp(
         accentTrack?.accentStart,
         accentTrack?.accentEnd,
         state.selectedMood?.id,
-        pureBlack
+        pureBlack,
+        customThemes
     ) {
         LevyraThemeController.apply(
             state.themePreset,
@@ -1997,7 +1999,7 @@ fun LevyraApp(
         )
     }
     val rootView = LocalView.current
-    LaunchedEffect(state.themePreset, pureBlack) {
+    LaunchedEffect(state.themePreset, pureBlack, customThemes) {
         val base = LevyraThemes.byId(state.themePreset)
         val palette = if (pureBlack) LevyraThemeController.asPureBlack(base) else base
         (rootView.context as? Activity)?.window?.let { window ->
@@ -3175,7 +3177,12 @@ fun LevyraApp(
                     previewArtist = state.currentTrack?.artist.orEmpty(),
                     onSelectPreset = viewModel::setThemePreset,
                     onSelectAccent = viewModel::setThemeAccent,
-                    onClose = viewModel::closeThemeStudio
+                    onClose = viewModel::closeThemeStudio,
+                    customThemes = customThemes,
+                    onSaveCustomTheme = viewModel::saveCustomTheme,
+                    onDuplicateCustomTheme = viewModel::duplicateCustomTheme,
+                    onDeleteCustomTheme = viewModel::deleteCustomTheme,
+                    onRestoreDefault = viewModel::restoreDefaultTheme
                 )
             }
 
