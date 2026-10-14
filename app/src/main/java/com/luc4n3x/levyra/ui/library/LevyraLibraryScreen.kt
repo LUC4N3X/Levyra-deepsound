@@ -78,7 +78,9 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.SpeedDial
@@ -153,6 +155,16 @@ private val playlistSelectionSaver = listSaver<Set<String>, String>(
 private const val PLAYLIST_DRAG_EDGE_FACTOR = 1.35f
 private const val PLAYLIST_DRAG_SCROLL_FACTOR = 0.38f
 private const val DEVICE_LIBRARY_PARENT_LEADING_ITEMS = 4
+private val LibraryCategoriesGutter = 16.dp
+
+private fun Modifier.libraryCategoriesBleed(gutter: Dp): Modifier = layout { measurable, constraints ->
+    val gutterPx = gutter.roundToPx()
+    val width = constraints.maxWidth + gutterPx * 2
+    val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
+    layout(constraints.maxWidth, placeable.height) {
+        placeable.place(-gutterPx, 0)
+    }
+}
 
 private data class PlaylistDragUpdate(
     val targetIndex: Int = -1,
@@ -667,7 +679,10 @@ internal fun LevyraLibraryScreen(
 
             item(key = "library-categories") {
                 Row(
-                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    modifier = Modifier
+                        .libraryCategoriesBleed(LibraryCategoriesGutter)
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = LibraryCategoriesGutter),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     LibraryCategory.entries.forEach { item ->
