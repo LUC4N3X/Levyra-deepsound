@@ -187,7 +187,7 @@ internal fun PlayerAuraDeck(
             )
             AuraTimes(positionMs = positionMs, durationMs = durationMs)
             Spacer(Modifier.height(10.dp))
-            PlayerAuraTransport(
+            AuraTransport(
                 isPlaying = isPlaying,
                 isResolving = isResolving,
                 labels = labels,
@@ -436,7 +436,7 @@ private fun AuraTime(text: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-internal fun PlayerAuraTransport(
+private fun AuraTransport(
     isPlaying: Boolean,
     isResolving: Boolean,
     labels: PlayerControlLabels,
@@ -454,29 +454,45 @@ internal fun PlayerAuraTransport(
             haptics.perform(LevyraHapticAction.Transport)
             onPrevious()
         }
-        Box(
-            modifier = Modifier
-                .size(72.dp)
-                .levyraPressable(
-                    onClick = {
-                        haptics.perform(LevyraHapticAction.Transport)
-                        onTogglePlay()
-                    },
-                    role = Role.Button,
-                    pressedScale = LevyraPressScale.Control
-                )
-                .semantics { contentDescription = if (isPlaying) labels.pause else labels.play },
-            contentAlignment = Alignment.Center
-        ) {
-            if (isResolving) {
-                LevyraLoadingIndicator(color = AuraInk, modifier = Modifier.size(42.dp))
-            } else {
-                LevyraPlayPauseGlyph(playing = isPlaying, color = AuraInk, modifier = Modifier.size(42.dp))
-            }
-        }
+        PlayerAuraPlayPauseButton(
+            isPlaying = isPlaying,
+            isResolving = isResolving,
+            labels = labels,
+            onTogglePlay = onTogglePlay
+        )
         AuraTransportButton(Icons.Rounded.FastForward, labels.next, 38.dp) {
             haptics.perform(LevyraHapticAction.Transport)
             onNext()
+        }
+    }
+}
+
+@Composable
+internal fun PlayerAuraPlayPauseButton(
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    labels: PlayerControlLabels,
+    onTogglePlay: () -> Unit
+) {
+    val haptics = LocalLevyraHaptics.current
+    Box(
+        modifier = Modifier
+            .size(72.dp)
+            .levyraPressable(
+                onClick = {
+                    haptics.perform(LevyraHapticAction.Transport)
+                    onTogglePlay()
+                },
+                role = Role.Button,
+                pressedScale = LevyraPressScale.Control
+            )
+            .semantics { contentDescription = if (isPlaying) labels.pause else labels.play },
+        contentAlignment = Alignment.Center
+    ) {
+        if (isResolving) {
+            LevyraLoadingIndicator(color = AuraInk, modifier = Modifier.size(42.dp))
+        } else {
+            LevyraPlayPauseGlyph(playing = isPlaying, color = AuraInk, modifier = Modifier.size(42.dp))
         }
     }
 }
