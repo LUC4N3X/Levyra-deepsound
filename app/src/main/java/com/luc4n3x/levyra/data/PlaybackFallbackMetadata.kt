@@ -152,8 +152,7 @@ private fun isTrustedPlaybackRecordingMatch(
     if (candidate.title.playbackRecordingTitleKey() != originalTitle) return false
     if (candidate.artist.playbackPrimaryArtistKey() != originalArtist) return false
     if (addsDifferentPlaybackVariant(original.title, candidate.title)) return false
-    if (original.durationMs > 0L) {
-        if (candidate.durationMs <= 0L) return false
+    if (original.durationMs > 0L && candidate.durationMs > 0L) {
         if (abs(original.durationMs - candidate.durationMs) > CANONICAL_FALLBACK_DURATION_TOLERANCE_MS) return false
     }
     return true

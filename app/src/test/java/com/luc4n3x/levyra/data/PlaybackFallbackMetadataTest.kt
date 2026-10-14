@@ -268,6 +268,52 @@ class PlaybackFallbackMetadataTest {
     }
 
     @Test
+    fun editorialDiscoveryAcceptsSearchResultsThatOmitDurationButKeepsRecordingChecks() {
+        val original = track(
+            id = "levyra-cff760d7cbf458dfaaba",
+            title = "By my side",
+            artist = "Tyson Yoshi, Hins Cheung",
+            durationMs = 191_689L
+        ).copy(source = "Levyra Editorial Discovery")
+        val official = track(
+            id = "_GYbg02dFOw", title = "By my side", artist = "Tyson Yoshi, 張敬軒", durationMs = 0L
+        )
+        val live = track(
+            id = "V3IFwz1f77Q",
+            title = "TYSON YOSHI & 張敬軒 Hins Cheung - By My Side (THE VILLAIN LIVE IN HONG KONG 2025)",
+            artist = "Tyson Yoshi",
+            durationMs = 0L
+        )
+        val sequel = track(
+            id = "yOg2knMuAyk", title = "By my side 2", artist = "Tyson Yoshi", durationMs = 0L
+        )
+        val otherArtist = track(
+            id = "sZvn_-S24uw", title = "By My Side", artist = "AP Dhillon, Shinda Kahlon", durationMs = 0L
+        )
+        val knownWrongDuration = track(
+            id = "CCCCCCCCCCC", title = "By my side", artist = "Tyson Yoshi", durationMs = 240_000L
+        )
+
+        assertEquals(
+            listOf("_GYbg02dFOw"),
+            trustedPlaybackFallbackCandidates(
+                original, listOf(official, live, sequel, otherArtist, knownWrongDuration)
+            ).map { it.id }
+        )
+        assertFalse(isResolvedPlaybackFallbackDurationCompatible(original, official))
+        assertTrue(isResolvedPlaybackFallbackDurationCompatible(original, official.copy(durationMs = 192_000L)))
+    }
+
+    @Test
+    fun onlyIdentityBoundAudioStrategiesRequireYoutubeIdentity() {
+        assertTrue(PlaybackAudioStrategy.REEL_MUXED.requiresYoutubeIdentity())
+        assertTrue(PlaybackAudioStrategy.REEL_AUDIO.requiresYoutubeIdentity())
+        assertTrue(PlaybackAudioStrategy.DIRECT.requiresYoutubeIdentity())
+        assertFalse(PlaybackAudioStrategy.PERSISTED.requiresYoutubeIdentity())
+        assertFalse(PlaybackAudioStrategy.SEARCH.requiresYoutubeIdentity())
+    }
+
+    @Test
     fun editorialDiscoveryTriesNormalSearchBeforeQualifiedVariants() {
         val track = track(
             id = "catalog-track", title = "By my side",
