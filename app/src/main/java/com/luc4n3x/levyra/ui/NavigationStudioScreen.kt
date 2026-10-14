@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -285,104 +286,41 @@ internal fun NavigationStudioOverlay(
                     val isDragging = dragging == tab
                     val index = workingOrder.indexOf(tab)
                     val title = labels[tab].orEmpty()
-                    val essential = tab in NavDestinations.essential
-                    Row(
-                        modifier = Modifier
-                            .zIndex(if (isDragging) 1f else 0f)
-                            .graphicsLayer {
-                                translationY = if (isDragging) dragOffset else 0f
-                                val lifted = if (isDragging) 1.02f else 1f
-                                scaleX = lifted
-                                scaleY = lifted
-                            }
-                            .then(
-                                if (isDragging) {
-                                    Modifier
-                                } else {
-                                    Modifier.animateItem(
-                                        placementSpec = spring(
-                                            dampingRatio = Spring.DampingRatioLowBouncy,
-                                            stiffness = Spring.StiffnessMediumLow
-                                        )
-                                    )
-                                }
-                            )
-                            .onSizeChanged { rowHeights[tab] = it.height }
-                            .semantics {
-                                customActions = listOfNotNull(
-                                    CustomAccessibilityAction(strings.speedDialCopy().moveEarlier) { moveBy(tab, -1) }
-                                        .takeIf { index > 0 },
-                                    CustomAccessibilityAction(strings.speedDialCopy().moveLater) { moveBy(tab, 1) }
-                                        .takeIf { index < workingOrder.lastIndex }
-                                )
-                            }
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(
-                                if (isDragging) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh
-                            )
-                            .padding(start = 4.dp, end = 12.dp, top = 4.dp, bottom = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .semantics { contentDescription = copy[NavStudioText.DragHandle] }
-                                .pointerInput(tab) {
-                                    detectDragGesturesAfterLongPress(
-                                        onDragStart = {
-                                            dragging = tab
-                                            dragOffset = 0f
-                                            haptics.perform(LevyraHapticAction.Confirm)
-                                        },
-                                        onDragEnd = {
-                                            dragging = null
-                                            dragOffset = 0f
-                                            commit(latest.activeTuning().copy(order = workingOrder))
-                                        },
-                                        onDragCancel = {
-                                            dragging = null
-                                            dragOffset = 0f
-                                            commit(latest.activeTuning().copy(order = workingOrder))
-                                        },
-                                        onDrag = { change, amount ->
-                                            change.consume()
-                                            dragOffset += amount.y
-                                            navReorderStep(workingOrder, tab, dragOffset, rowHeights)?.let { (order, offset) ->
-                                                workingOrder = order
-                                                dragOffset = offset
-                                                haptics.perform(LevyraHapticAction.Reorder)
-                                            }
-                                        }
-                                    )
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Rounded.DragIndicator, contentDescription = null, tint = LevyraMuted)
-                        }
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                            color = LevyraText,
-                            modifier = Modifier.weight(1f)
-                        )
-                        if (essential) {
-                            Icon(
-                                Icons.Rounded.Lock,
-                                contentDescription = null,
-                                tint = LevyraMuted,
-                                modifier = Modifier
-                                    .padding(end = 14.dp)
-                                    .size(18.dp)
-                            )
-                        } else {
-                            Switch(
-                                checked = tab !in tuning.hidden,
-                                onCheckedChange = { visible -> commit(tuning.withVisibility(tab, visible)) },
-                                modifier = Modifier.semantics { contentDescription = "${copy[NavStudioText.Show]}: $title" }
-                            )
-                        }
+                    val finishDrag: () -> Unit = {
+                        dragging = null
+                        dragOffset = 0f
+                        commit(latest.activeTuning().copy(order = workingOrder))
                     }
+                    NavDestinationRow(
+                        tab = tab,
+                        title = title,
+                        dragging = isDragging,
+                        dragOffset = { dragOffset },
+                        visible = tab !in tuning.hidden,
+                        copy = copy,
+                        moveActions = listOfNotNull(
+                            CustomAccessibilityAction(strings.speedDialCopy().moveEarlier) { moveBy(tab, -1) }
+                                .takeIf { index > 0 },
+                            CustomAccessibilityAction(strings.speedDialCopy().moveLater) { moveBy(tab, 1) }
+                                .takeIf { index < workingOrder.lastIndex }
+                        ),
+                        onMeasured = { rowHeights[tab] = it },
+                        onDragStart = {
+                            dragging = tab
+                            dragOffset = 0f
+                            haptics.perform(LevyraHapticAction.Confirm)
+                        },
+                        onDragEnd = finishDrag,
+                        onDrag = { delta ->
+                            dragOffset += delta
+                            navReorderStep(workingOrder, tab, dragOffset, rowHeights)?.let { (order, offset) ->
+                                workingOrder = order
+                                dragOffset = offset
+                                haptics.perform(LevyraHapticAction.Reorder)
+                            }
+                        },
+                        onVisible = { shown -> commit(tuning.withVisibility(tab, shown)) }
+                    )
                 }
                 navOptionItems(tuning, spec.height, copy, preview, commit)
                 item(key = "nav-reset-style", contentType = "actions") {
@@ -517,6 +455,106 @@ private fun LazyListScope.navOptionItems(
                 onCommit = { commit(tuning.copy(intensity = it)) }
             )
         }
+    }
+}
+
+@Composable
+private fun LazyItemScope.NavDestinationRow(
+    tab: LevyraTab,
+    title: String,
+    dragging: Boolean,
+    dragOffset: () -> Float,
+    visible: Boolean,
+    copy: NavigationStudioCopy,
+    moveActions: List<CustomAccessibilityAction>,
+    onMeasured: (Int) -> Unit,
+    onDragStart: () -> Unit,
+    onDragEnd: () -> Unit,
+    onDrag: (Float) -> Unit,
+    onVisible: (Boolean) -> Unit
+) {
+    val scheme = MaterialTheme.colorScheme
+    val placement = if (dragging) {
+        Modifier
+    } else {
+        Modifier.animateItem(
+            placementSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)
+        )
+    }
+    Row(
+        modifier = Modifier
+            .zIndex(if (dragging) 1f else 0f)
+            .graphicsLayer {
+                val lifted = if (dragging) 1.02f else 1f
+                translationY = if (dragging) dragOffset() else 0f
+                scaleX = lifted
+                scaleY = lifted
+            }
+            .then(placement)
+            .onSizeChanged { onMeasured(it.height) }
+            .semantics { customActions = moveActions }
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (dragging) scheme.secondaryContainer else scheme.surfaceContainerHigh)
+            .padding(start = 4.dp, end = 12.dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .semantics { contentDescription = copy[NavStudioText.DragHandle] }
+                .pointerInput(tab) {
+                    detectDragGesturesAfterLongPress(
+                        onDragStart = { onDragStart() },
+                        onDragEnd = onDragEnd,
+                        onDragCancel = onDragEnd,
+                        onDrag = { change, amount ->
+                            change.consume()
+                            onDrag(amount.y)
+                        }
+                    )
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Rounded.DragIndicator, contentDescription = null, tint = LevyraMuted)
+        }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = LevyraText,
+            modifier = Modifier.weight(1f)
+        )
+        NavVisibilityControl(
+            essential = tab in NavDestinations.essential,
+            visible = visible,
+            description = "${copy[NavStudioText.Show]}: $title",
+            onVisible = onVisible
+        )
+    }
+}
+
+@Composable
+private fun NavVisibilityControl(
+    essential: Boolean,
+    visible: Boolean,
+    description: String,
+    onVisible: (Boolean) -> Unit
+) {
+    if (essential) {
+        Icon(
+            Icons.Rounded.Lock,
+            contentDescription = null,
+            tint = LevyraMuted,
+            modifier = Modifier
+                .padding(end = 14.dp)
+                .size(18.dp)
+        )
+    } else {
+        Switch(
+            checked = visible,
+            onCheckedChange = onVisible,
+            modifier = Modifier.semantics { contentDescription = description }
+        )
     }
 }
 

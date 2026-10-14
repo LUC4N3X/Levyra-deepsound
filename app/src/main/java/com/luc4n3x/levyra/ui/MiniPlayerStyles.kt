@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -123,6 +124,7 @@ import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
 
 private const val StyledMiniCarryFraction = 0.5f
+private val FullRingProgress: () -> Float = { 1f }
 private val StyledMiniTrayTop = 4.dp
 private val StyledMiniTrayBottom = 10.dp
 private val StyledMiniFloatingBottom = 12.dp
@@ -251,6 +253,68 @@ private fun miniArtistStyle(typography: MiniTypography, compact: Boolean): TextS
     }
 }
 
+private class StyledMiniLayout(style: MiniPlayerStyle, tuning: MiniPlayerTuning) {
+    val height = tuning.heightDp.dp
+    val compactHeight = (height - StyledMiniCompactShrink).coerceAtLeast(StyledMiniMinHeight)
+    val artworkSize = tuning.artworkDp.dp
+    val artworkCompact = (artworkSize * 0.8f).coerceAtMost(compactHeight - 8.dp)
+    val gutter = when (style) {
+        MiniPlayerStyle.Floating, MiniPlayerStyle.LiquidGlass, MiniPlayerStyle.SuperExpressive -> tuning.insetDp.dp
+        else -> StyledMiniGutter
+    }
+    val bottomGap = when (style) {
+        MiniPlayerStyle.Floating, MiniPlayerStyle.LiquidGlass -> StyledMiniFloatingBottom
+        else -> StyledMiniTrayBottom
+    }
+}
+
+@Composable
+private fun rememberMiniContainerShape(
+    style: MiniPlayerStyle,
+    tuning: MiniPlayerTuning,
+    height: Dp,
+    playing: Boolean,
+    animated: Boolean
+): Shape {
+    val expressiveCorner by animateDpAsState(
+        targetValue = if (playing) height / 2 else height * 0.34f,
+        animationSpec = if (animated) {
+            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
+        } else {
+            snap()
+        },
+        label = "styled-mini-corner"
+    )
+    return if (style == MiniPlayerStyle.SuperExpressive) {
+        RoundedCornerShape(expressiveCorner)
+    } else {
+        RoundedCornerShape(tuning.cornerDp.dp)
+    }
+}
+
+private fun Modifier.morphAnchorWhen(
+    enabled: Boolean,
+    anchors: PlayerMorphAnchors?,
+    slot: PlayerMorphSlot
+): Modifier = if (enabled && anchors != null) playerMorphAnchor(anchors, slot) else this
+
+@Composable
+private fun MiniFillProgress(progress: () -> Float, palette: MiniPlayerPalette) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .drawBehind {
+                val width = size.width * progress().coerceIn(0f, 1f)
+                val start = if (layoutDirection == LayoutDirection.Rtl) size.width - width else 0f
+                drawRect(
+                    color = palette.accent.copy(alpha = if (palette.onDark) 0.24f else 0.16f),
+                    topLeft = Offset(start, 0f),
+                    size = Size(width, size.height)
+                )
+            }
+    )
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun StyledMiniPlayer(
@@ -268,10 +332,7 @@ internal fun StyledMiniPlayer(
     val track = model.track
     val liveRadio = track.isLiveRadio()
     val animated = model.animated && tuning.motion != MiniMotion.Reduced
-    val microMotion = LocalLevyraVisualCapabilities.current.microMotion
     val strings = LocalLevyraStrings.current
-    val radioStrings = LevyraLiveRadioCatalog.forCode(strings.code)
-    val rightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl
     val haptics = LocalLevyraHaptics.current
     val palette = rememberMiniPlayerPalette(style, tuning, track, model.animated)
     val progressState = animateFloatAsState(
@@ -281,91 +342,48 @@ internal fun StyledMiniPlayer(
     )
     val progress: () -> Float = { progressState.value }
     val swipe = rememberPlayerSwipeMotion(animated)
-    val horizontalGesturesEnabled = miniPlayerHorizontalGesturesEnabled(
-        gesturesEnabled = model.gesturesEnabled,
-        swipeTrackChangeEnabled = model.swipeTrackChangeEnabled,
-        liveRadio = liveRadio
-    )
-    val height = tuning.heightDp.dp
-    val compactHeight = (height - StyledMiniCompactShrink).coerceAtLeast(StyledMiniMinHeight)
-    val artworkSize = tuning.artworkDp.dp
-    val artworkCompact = (artworkSize * 0.8f).coerceAtMost(compactHeight - 8.dp)
-    val expressiveCorner by animateDpAsState(
-        targetValue = if (model.isPlaying) height / 2 else height * 0.34f,
-        animationSpec = if (animated) {
-            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
-        } else {
-            snap()
-        },
-        label = "styled-mini-corner"
-    )
-    val containerShape: Shape = when (style) {
-        MiniPlayerStyle.SuperExpressive -> RoundedCornerShape(expressiveCorner)
-        else -> RoundedCornerShape(tuning.cornerDp.dp)
-    }
-    val gutter = when (style) {
-        MiniPlayerStyle.Floating, MiniPlayerStyle.LiquidGlass, MiniPlayerStyle.SuperExpressive -> tuning.insetDp.dp
-        else -> StyledMiniGutter
-    }
-    val bottomGap = when (style) {
-        MiniPlayerStyle.Floating, MiniPlayerStyle.LiquidGlass -> StyledMiniFloatingBottom
-        else -> StyledMiniTrayBottom
+    val layout = remember(style, tuning) { StyledMiniLayout(style, tuning) }
+    val containerShape = rememberMiniContainerShape(style, tuning, layout.height, model.isPlaying, animated)
+    val interaction = if (interactive) {
+        Modifier.miniInteraction(
+            trackId = track.id,
+            model = model,
+            horizontalGesturesEnabled = miniPlayerHorizontalGesturesEnabled(
+                gesturesEnabled = model.gesturesEnabled,
+                swipeTrackChangeEnabled = model.swipeTrackChangeEnabled,
+                liveRadio = liveRadio
+            ),
+            rightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl,
+            playbackActions = playbackActions,
+            expansionActions = expansionActions,
+            swipe = swipe,
+            expandLabel = strings.expandPlayer
+        )
+    } else {
+        Modifier
     }
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = gutter, end = gutter, top = StyledMiniTrayTop, bottom = bottomGap)
+            .padding(start = layout.gutter, end = layout.gutter, top = StyledMiniTrayTop, bottom = layout.bottomGap)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .dockLerpHeight(compaction, height, compactHeight)
-                .then(
-                    if (interactive && morphAnchors != null) {
-                        Modifier.playerMorphAnchor(morphAnchors, PlayerMorphSlot.MiniCard)
-                    } else {
-                        Modifier
-                    }
-                )
+                .dockLerpHeight(compaction, layout.height, layout.compactHeight)
+                .morphAnchorWhen(interactive, morphAnchors, PlayerMorphSlot.MiniCard)
                 .miniDepth(style, tuning, palette, containerShape)
                 .clip(containerShape)
                 .miniBackground(style, tuning, palette, glass)
                 .miniOutline(style, palette, containerShape)
-                .then(
-                    if (interactive) {
-                        Modifier.miniInteraction(
-                            trackId = track.id,
-                            model = model,
-                            horizontalGesturesEnabled = horizontalGesturesEnabled,
-                            rightToLeft = rightToLeft,
-                            playbackActions = playbackActions,
-                            expansionActions = expansionActions,
-                            swipe = swipe,
-                            expandLabel = strings.expandPlayer
-                        )
-                    } else {
-                        Modifier
-                    }
-                )
+                .then(interaction)
         ) {
             if (style == MiniPlayerStyle.ArtworkFocus && tuning.background == MiniBackground.Artwork) {
                 MiniArtworkBackdrop(track = track, palette = palette)
             }
             if (tuning.progress == MiniProgressStyle.Fill && !liveRadio) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .drawBehind {
-                            val width = size.width * progress().coerceIn(0f, 1f)
-                            val start = if (layoutDirection == LayoutDirection.Rtl) size.width - width else 0f
-                            drawRect(
-                                color = palette.accent.copy(alpha = if (palette.onDark) 0.24f else 0.16f),
-                                topLeft = Offset(start, 0f),
-                                size = Size(width, size.height)
-                            )
-                        }
-                )
+                MiniFillProgress(progress = progress, palette = palette)
             }
             Row(
                 modifier = Modifier
@@ -378,68 +396,19 @@ internal fun StyledMiniPlayer(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                AnimatedContent(
-                    targetState = track,
-                    modifier = Modifier
-                        .weight(1f)
-                        .clipToBounds()
-                        .onSizeChanged { size -> swipe.carryLimitPx = size.width * StyledMiniCarryFraction },
-                    transitionSpec = { LevyraMotion.miniTrackSwap(animated) },
-                    contentKey = { it.id },
-                    label = "styled-mini-track"
-                ) { shownTrack ->
-                    val current = shownTrack.id == track.id
-                    Row(
-                        modifier = Modifier.graphicsLayer {
-                            val offset = swipe.offsetFor(shownTrack.id)
-                            translationX = offset
-                            alpha = playerSwipeContentAlpha(offset, size.width)
-                        },
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(if (style == MiniPlayerStyle.UltraCompact) 10.dp else 12.dp)
-                    ) {
-                        MiniStyledArtwork(
-                            track = shownTrack,
-                            style = style,
-                            tuning = tuning,
-                            palette = palette,
-                            modifier = Modifier
-                                .then(
-                                    if (current && interactive && morphAnchors != null) {
-                                        Modifier.playerMorphAnchor(morphAnchors, PlayerMorphSlot.Mini)
-                                    } else {
-                                        Modifier
-                                    }
-                                )
-                                .dockLerpSize(compaction, artworkSize, artworkCompact)
-                                .animateEnterExit(
-                                    enter = LevyraMotion.miniArtworkEnter(microMotion && animated),
-                                    exit = ExitTransition.None
-                                )
-                                .graphicsLayer { alpha = if (current && artworkHidden()) 0f else 1f }
-                        )
-                        MiniStyledMetadata(
-                            track = shownTrack,
-                            style = style,
-                            tuning = tuning,
-                            palette = palette,
-                            subtitle = if (liveRadio) {
-                                model.liveNowPlaying.ifBlank { "${radioStrings.live} / ${shownTrack.artist}" }
-                            } else {
-                                shownTrack.artist
-                            },
-                            playing = current && model.isPlaying,
-                            animated = animated,
-                            compaction = compaction,
-                            modifier = Modifier
-                                .weight(1f)
-                                .animateEnterExit(
-                                    enter = LevyraMotion.miniMetadataEnter(microMotion && animated, model.stepDirection),
-                                    exit = ExitTransition.None
-                                )
-                        )
-                    }
-                }
+                MiniTrackContent(
+                    style = style,
+                    tuning = tuning,
+                    model = model,
+                    palette = palette,
+                    layout = layout,
+                    swipe = swipe,
+                    animated = animated,
+                    liveRadio = liveRadio,
+                    anchors = morphAnchors.takeIf { interactive },
+                    compaction = compaction,
+                    artworkHidden = artworkHidden
+                )
                 MiniStyledControls(
                     style = style,
                     tuning = tuning,
@@ -462,13 +431,84 @@ internal fun StyledMiniPlayer(
                     tuning = tuning,
                     palette = palette,
                     progress = progress,
-                    height = height,
+                    height = layout.height,
                     waving = model.isPlaying && animated
                 )
             }
         }
     }
 }
+
+@Composable
+private fun RowScope.MiniTrackContent(
+    style: MiniPlayerStyle,
+    tuning: MiniPlayerTuning,
+    model: MiniPlayerModel,
+    palette: MiniPlayerPalette,
+    layout: StyledMiniLayout,
+    swipe: PlayerSwipeMotion,
+    animated: Boolean,
+    liveRadio: Boolean,
+    anchors: PlayerMorphAnchors?,
+    compaction: () -> Float,
+    artworkHidden: () -> Boolean
+) {
+    val track = model.track
+    val motion = LocalLevyraVisualCapabilities.current.microMotion && animated
+    val radioStrings = LevyraLiveRadioCatalog.forCode(LocalLevyraStrings.current.code)
+    AnimatedContent(
+        targetState = track,
+        modifier = Modifier
+            .weight(1f)
+            .clipToBounds()
+            .onSizeChanged { size -> swipe.carryLimitPx = size.width * StyledMiniCarryFraction },
+        transitionSpec = { LevyraMotion.miniTrackSwap(animated) },
+        contentKey = { it.id },
+        label = "styled-mini-track"
+    ) { shownTrack ->
+        val current = shownTrack.id == track.id
+        Row(
+            modifier = Modifier.graphicsLayer {
+                val offset = swipe.offsetFor(shownTrack.id)
+                translationX = offset
+                alpha = playerSwipeContentAlpha(offset, size.width)
+            },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(if (style == MiniPlayerStyle.UltraCompact) 10.dp else 12.dp)
+        ) {
+            MiniStyledArtwork(
+                track = shownTrack,
+                style = style,
+                tuning = tuning,
+                palette = palette,
+                modifier = Modifier
+                    .morphAnchorWhen(current, anchors, PlayerMorphSlot.Mini)
+                    .dockLerpSize(compaction, layout.artworkSize, layout.artworkCompact)
+                    .animateEnterExit(enter = LevyraMotion.miniArtworkEnter(motion), exit = ExitTransition.None)
+                    .graphicsLayer { alpha = if (current && artworkHidden()) 0f else 1f }
+            )
+            MiniStyledMetadata(
+                track = shownTrack,
+                style = style,
+                tuning = tuning,
+                palette = palette,
+                subtitle = miniSubtitle(shownTrack, liveRadio, model.liveNowPlaying, radioStrings.live),
+                playing = current && model.isPlaying,
+                animated = animated,
+                compaction = compaction,
+                modifier = Modifier
+                    .weight(1f)
+                    .animateEnterExit(
+                        enter = LevyraMotion.miniMetadataEnter(motion, model.stepDirection),
+                        exit = ExitTransition.None
+                    )
+            )
+        }
+    }
+}
+
+private fun miniSubtitle(track: Track, liveRadio: Boolean, nowPlaying: String, liveLabel: String): String =
+    if (liveRadio) nowPlaying.ifBlank { "$liveLabel / ${track.artist}" } else track.artist
 
 @Composable
 private fun Modifier.miniInteraction(
@@ -996,30 +1036,50 @@ private fun MiniStyledPlayButton(
                 animated = animated
             )
         }
-        Box(
-            modifier = Modifier
-                .size(core)
-                .clip(coreShape)
-                .background(fillColor)
-                .then(
-                    if (tuning.buttons == MiniButtonStyle.Outlined) {
-                        Modifier.border(BorderStroke(1.5.dp, palette.content.copy(alpha = 0.45f)), coreShape)
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            if (isResolving && !ring) {
-                LevyraLoadingIndicator(modifier = Modifier.size(core * 0.7f), color = glyphColor)
-            } else {
-                LevyraPlayPauseGlyph(
-                    playing = isPlaying,
-                    color = glyphColor,
-                    contentDescription = if (isPlaying) strings.pause else strings.play,
-                    modifier = Modifier.size(if (tuning.buttons == MiniButtonStyle.Plain) core * 0.68f else core * 0.5f)
-                )
-            }
+        MiniPlayCore(
+            size = core,
+            shape = coreShape,
+            buttons = tuning.buttons,
+            fill = fillColor,
+            glyph = glyphColor,
+            outline = palette.content.copy(alpha = 0.45f),
+            loading = isResolving && !ring,
+            isPlaying = isPlaying,
+            description = if (isPlaying) strings.pause else strings.play
+        )
+    }
+}
+
+@Composable
+private fun MiniPlayCore(
+    size: Dp,
+    shape: Shape,
+    buttons: MiniButtonStyle,
+    fill: Color,
+    glyph: Color,
+    outline: Color,
+    loading: Boolean,
+    isPlaying: Boolean,
+    description: String
+) {
+    val border = if (buttons == MiniButtonStyle.Outlined) Modifier.border(BorderStroke(1.5.dp, outline), shape) else Modifier
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(shape)
+            .background(fill)
+            .then(border),
+        contentAlignment = Alignment.Center
+    ) {
+        if (loading) {
+            LevyraLoadingIndicator(modifier = Modifier.size(size * 0.7f), color = glyph)
+        } else {
+            LevyraPlayPauseGlyph(
+                playing = isPlaying,
+                color = glyph,
+                contentDescription = description,
+                modifier = Modifier.size(if (buttons == MiniButtonStyle.Plain) size * 0.68f else size * 0.5f)
+            )
         }
     }
 }
@@ -1065,7 +1125,7 @@ private fun MiniPlayRing(
             trackStroke = ringStroke
         )
         else -> CircularWavyProgressIndicator(
-            progress = if (liveRadio) ({ 1f }) else progress,
+            progress = if (liveRadio) FullRingProgress else progress,
             modifier = Modifier.size(size),
             color = ringColor,
             trackColor = ringTrack,

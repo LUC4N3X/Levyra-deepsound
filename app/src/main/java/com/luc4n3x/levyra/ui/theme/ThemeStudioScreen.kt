@@ -718,7 +718,7 @@ private fun ThemeRoleEditor(
             themeRoleSwatches(role, draft.isLight).forEach { swatch ->
                 ThemeAccentDot(
                     color = Color(swatch),
-                    selected = (swatch or 0xFF000000.toInt()) == current,
+                    selected = swatch == current,
                     label = "#" + formatThemeHex(swatch),
                     outlined = true,
                     onClick = { onColor(swatch) }

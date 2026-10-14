@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
@@ -143,60 +144,30 @@ internal fun StyledBottomTabs(
     val selectedIndex = entries.indexOfFirst { it.tab == selected }
     val indicatorPosition by animateFloatAsState(
         targetValue = selectedIndex.coerceAtLeast(0).toFloat(),
-        animationSpec = if (LocalAnimationsEnabled.current) {
-            if (motion) {
-                spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessMediumLow)
-            } else {
-                spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
-            }
-        } else {
-            snap()
-        },
+        animationSpec = navIndicatorSpec(LocalAnimationsEnabled.current, motion),
         label = "styled-nav-indicator"
     )
     val height = tuning.heightDp.dp
     val compactHeight = (height - StyledNavCompactShrink).coerceAtLeast(StyledNavMinHeight)
     val floating = style == NavStyle.FloatingDock
-    val capsuleShape = RoundedCornerShape(height / 2)
     val indicatorColor = scheme.secondaryContainer
     val stretchFactor = tuning.intensity / 100f
-    val labelVisible = tuning.labels != NavLabelMode.Never
-    val labelRoom = if (labelVisible) 16.dp else 0.dp
+    val labelRoom = if (tuning.labels != NavLabelMode.Never) 16.dp else 0.dp
     val iconTop = ((height - StyledNavIndicatorHeight - labelRoom) / 2).coerceAtLeast(4.dp)
+    val capsule = if (floating) {
+        Modifier.navCapsule(height, stretchFactor, tuning.background, glass)
+    } else {
+        Modifier
+    }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         BoxWithConstraints(
             modifier = Modifier
-                .then(
-                    if (floating) {
-                        Modifier.padding(
-                            start = StyledNavFloatingGutter,
-                            end = StyledNavFloatingGutter,
-                            bottom = StyledNavFloatingBottom
-                        )
-                    } else {
-                        Modifier
-                    }
-                )
+                .navFloatingInset(floating)
                 .dockClipHeight(compaction, height - compactHeight)
                 .fillMaxWidth()
                 .height(height)
-                .then(
-                    if (floating) {
-                        Modifier
-                            .shadow(
-                                elevation = (6f + 14f * stretchFactor).dp,
-                                shape = capsuleShape,
-                                ambientColor = Color.Black.copy(alpha = 0.22f),
-                                spotColor = Color.Black.copy(alpha = 0.34f)
-                            )
-                            .clip(capsuleShape)
-                            .navBackground(tuning.background, scheme.surfaceContainerHigh, scheme.surfaceContainerHighest, glass)
-                            .border(LevyraPlayerDesign.Hairline, scheme.outlineVariant.copy(alpha = 0.45f), capsuleShape)
-                    } else {
-                        Modifier
-                    }
-                )
+                .then(capsule)
         ) {
             val slotWidth = maxWidth / entries.size
             Box(
@@ -247,6 +218,56 @@ internal fun StyledBottomTabs(
             Spacer(modifier = Modifier.navigationBarsPadding())
         }
     }
+}
+
+private fun navTintSpec(animationsEnabled: Boolean): AnimationSpec<Color> =
+    if (animationsEnabled) tween(200) else snap()
+
+private fun navScaleSpec(motion: Boolean): AnimationSpec<Float> =
+    if (motion) spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium) else snap()
+
+private fun navTabScale(pressed: Boolean, selected: Boolean, motion: Boolean): Float = when {
+    pressed -> 0.86f
+    selected && motion -> 1.08f
+    else -> 1f
+}
+
+private fun navLabelShown(mode: NavLabelMode, selected: Boolean): Boolean = when (mode) {
+    NavLabelMode.Always -> true
+    NavLabelMode.ActiveOnly -> selected
+    NavLabelMode.Never -> false
+}
+
+private fun navIndicatorSpec(animationsEnabled: Boolean, motion: Boolean): AnimationSpec<Float> = when {
+    !animationsEnabled -> snap()
+    motion -> spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessMediumLow)
+    else -> spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
+}
+
+private fun Modifier.navFloatingInset(floating: Boolean): Modifier = if (floating) {
+    padding(start = StyledNavFloatingGutter, end = StyledNavFloatingGutter, bottom = StyledNavFloatingBottom)
+} else {
+    this
+}
+
+@Composable
+private fun Modifier.navCapsule(
+    height: Dp,
+    stretchFactor: Float,
+    background: NavBackground,
+    glass: GlassBackdropState?
+): Modifier {
+    val scheme = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(height / 2)
+    return shadow(
+        elevation = (6f + 14f * stretchFactor).dp,
+        shape = shape,
+        ambientColor = Color.Black.copy(alpha = 0.22f),
+        spotColor = Color.Black.copy(alpha = 0.34f)
+    )
+        .clip(shape)
+        .navBackground(background, scheme.surfaceContainerHigh, scheme.surfaceContainerHighest, glass)
+        .border(LevyraPlayerDesign.Hairline, scheme.outlineVariant.copy(alpha = 0.45f), shape)
 }
 
 private fun DrawScope.drawNavIndicator(
@@ -309,30 +330,17 @@ private fun RowScope.StyledTabButton(
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val selectedTint = if (onIndicator) scheme.onSecondaryContainer else scheme.primary
-    val idleTint = scheme.onSurfaceVariant
     val tint by animateColorAsState(
-        targetValue = if (isSelected) selectedTint else idleTint,
-        animationSpec = if (LocalAnimationsEnabled.current) tween(200) else snap(),
+        targetValue = if (isSelected) selectedTint else scheme.onSurfaceVariant,
+        animationSpec = navTintSpec(LocalAnimationsEnabled.current),
         label = "styled-tab-tint"
     )
     val scale by animateFloatAsState(
-        targetValue = when {
-            pressed -> 0.86f
-            isSelected && motion -> 1.08f
-            else -> 1f
-        },
-        animationSpec = if (motion) {
-            spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium)
-        } else {
-            snap()
-        },
+        targetValue = navTabScale(pressed, isSelected, motion),
+        animationSpec = navScaleSpec(motion),
         label = "styled-tab-scale"
     )
-    val showLabel = when (tuning.labels) {
-        NavLabelMode.Always -> true
-        NavLabelMode.ActiveOnly -> isSelected
-        NavLabelMode.Never -> false
-    }
+    val showLabel = navLabelShown(tuning.labels, isSelected)
     Box(
         modifier = Modifier
             .weight(1f)
