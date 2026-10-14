@@ -232,6 +232,85 @@ class PlaybackFallbackMetadataTest {
     }
 
     @Test
+    fun editorialDiscoveryCanUseSameVerifiedSearchResultWithoutIsrc() {
+        val original = track(
+            id = "catalog-track",
+            title = "By my side",
+            artist = "Tyson Yoshi, Hins Cheung",
+            durationMs = 191_000L,
+            isrc = "HKABC2600001"
+        ).copy(source = "Levyra Editorial Discovery", audioVideoId = "AAAAAAAAAAA")
+        val searchResult = track(
+            id = "BBBBBBBBBBB",
+            title = "By My Side",
+            artist = "Tyson Yoshi",
+            durationMs = 191_000L
+        ).copy(videoUrl = "https://music.youtube.com/watch?v=BBBBBBBBBBB")
+
+        assertEquals(
+            listOf("BBBBBBBBBBB"),
+            trustedPlaybackFallbackCandidates(original, listOf(searchResult)).map { it.id }
+        )
+        val rebased = rebaseEditorialFallbackSource(original, searchResult)
+        assertEquals(original.id, rebased.id)
+        assertEquals("BBBBBBBBBBB", rebased.audioVideoId)
+        assertEquals(original.isrc, rebased.isrc)
+    }
+
+    @Test
+    fun editorialDiscoveryDoesNotAcceptUnrelatedOrConflictingIsrcResults() {
+        val original = track(
+            id = "catalog-track",
+            title = "By my side",
+            artist = "Tyson Yoshi, Hins Cheung",
+            durationMs = 191_000L,
+            isrc = "HKABC2600001"
+        ).copy(source = "Levyra Editorial Discovery")
+        val wrongArtist = track(
+            id = "AAAAAAAAAAA", title = "By My Side", artist = "Someone Else", durationMs = 191_000L
+        )
+        val wrongDuration = track(
+            id = "BBBBBBBBBBB", title = "By My Side", artist = "Tyson Yoshi", durationMs = 270_000L
+        )
+        val conflictingIsrc = track(
+            id = "CCCCCCCCCCC", title = "By My Side", artist = "Tyson Yoshi",
+            durationMs = 191_000L, isrc = "HKXYZ2600002"
+        )
+        assertTrue(
+            trustedPlaybackFallbackCandidates(
+                original, listOf(wrongArtist, wrongDuration, conflictingIsrc)
+            ).isEmpty()
+        )
+    }
+
+    @Test
+    fun editorialDiscoveryRequiresKnownDurationForMetadataOnlyIsrcFallback() {
+        val original = track(
+            id = "catalog-track", title = "By my side", artist = "Tyson Yoshi",
+            durationMs = 0L, isrc = "HKABC2600001"
+        ).copy(source = "Levyra Editorial Discovery")
+        val candidate = track(
+            id = "BBBBBBBBBBB", title = "By my side", artist = "Tyson Yoshi",
+            durationMs = 191_000L
+        )
+        assertTrue(trustedPlaybackFallbackCandidates(original, listOf(candidate)).isEmpty())
+    }
+
+    @Test
+    fun regularPlaybackKeepsStrictIsrcAndOriginalIdentity() {
+        val original = track(
+            id = "search-track", title = "By my side", artist = "Tyson Yoshi",
+            durationMs = 191_000L, isrc = "HKABC2600001"
+        ).copy(audioVideoId = "AAAAAAAAAAA")
+        val candidate = track(
+            id = "BBBBBBBBBBB", title = "By my side", artist = "Tyson Yoshi",
+            durationMs = 191_000L
+        )
+        assertTrue(trustedPlaybackFallbackCandidates(original, listOf(candidate)).isEmpty())
+        assertEquals(original, rebaseEditorialFallbackSource(original, candidate))
+    }
+
+    @Test
     fun resolvedFallbackRejectsSourceWhoseRealDurationIsOnlyTwentyNineSeconds() {
         val original = track(
             id = "chart-source",
