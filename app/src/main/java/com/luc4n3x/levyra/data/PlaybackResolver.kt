@@ -2226,6 +2226,28 @@ class PlaybackResolver private constructor(private val context: Context) {
             }
         }
         if (!allowNetworkRefresh) return null
+        return refreshPersistentSourceMatch(
+            track = track,
+            stored = stored,
+            isVideoMode = isVideoMode,
+            preferMp4Audio = preferMp4Audio,
+            audioQuality = audioQuality,
+            preferredAudioLanguage = preferredAudioLanguage,
+            errors = errors,
+            expectedGeneration = expectedGeneration
+        )
+    }
+
+    private suspend fun refreshPersistentSourceMatch(
+        track: Track,
+        stored: StoredPlaybackSourceMatch,
+        isVideoMode: Boolean,
+        preferMp4Audio: Boolean,
+        audioQuality: String,
+        preferredAudioLanguage: String,
+        errors: MutableList<String>,
+        expectedGeneration: Long
+    ): Track? {
         val sourceVideoId = stored.entity.sourceVideoId
             .takeIf(youtubeVideoIdRegex::matches)
             ?: return null
