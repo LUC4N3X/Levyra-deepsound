@@ -1046,6 +1046,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             repository = repository,
             artistRepository = artistRepository,
             providerRouter = providerRouter,
+            spotifyClient = com.luc4n3x.levyra.data.spotify.SpotifySearchClient(
+                catalogSearch = editorialChartsRepository::searchSpotifyMetadata,
+                countryProvider = { ChartsCatalog.defaultRegionForLanguage(_state.value.languageCode).country }
+            ),
             localCandidateSource = ::localSearchCandidates,
             playableTrack = { track -> youtubePlayableTrack(track) != null }
         ),
@@ -9096,8 +9100,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun needsOfficialMetadata(track: Track): Boolean {
+        if (com.luc4n3x.levyra.data.spotify.preservesPersonalMetadata(track)) return false
         return !LevyraPersonalOrbit.hasSquareAlbumArtwork(track) ||
-            track.metadataProvider.isBlank() ||
+            !track.metadataProvider.equals("spotify", ignoreCase = true) ||
             (track.canonicalAlbumUrl.isBlank() && track.releaseDate.isBlank())
     }
 
@@ -9119,9 +9124,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             ?.country
             .orEmpty()
             .ifBlank { ChartsCatalog.defaultRegionForLanguage(languageCode).country }
-        val official = runCatching {
+        val official = try {
             officialArtworkRepository.find(track, selectedCountry)
-        }.getOrNull()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            null
+        }
         if (official != null) {
             val enrichedGenres = official.genres.map { it.lowercase(Locale.ROOT) }.toSet()
             val combinedMoodTags = (track.moodTags + enrichedGenres).filter { it.isNotBlank() }.toSet()
@@ -9156,6 +9165,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         return officialTrack.takeIf { LevyraPersonalOrbit.hasSquareAlbumArtwork(it) }
     }
 
+    private fun isSpotifyArtworkUrl(url: String): Boolean = url.startsWith("https://i.scdn.co/image/")
+
     private suspend fun applyOfficialOrbitArtworkBatch(enrichedTracks: List<Track>) {
         val enrichedByKey = enrichedTracks
             .distinctBy { LevyraPersonalOrbit.identityKey(it) }
@@ -9173,11 +9184,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         var searchArtworkPatch: ((SearchResults) -> SearchResults)? = null
         _state.update { current ->
             fun withArtwork(item: Track): Track {
+                if (com.luc4n3x.levyra.data.spotify.preservesPersonalMetadata(item)) return item
                 val enriched = enrichedByKey[LevyraPersonalOrbit.identityKey(item)] ?: return item
+                val keepsArtwork = LevyraPersonalOrbit.hasSquareAlbumArtwork(item) &&
+                    (isSpotifyArtworkUrl(item.thumbnailUrl) || !isSpotifyArtworkUrl(enriched.thumbnailUrl))
                 return item.copy(
-                    album = enriched.album.ifBlank { item.album },
-                    thumbnailUrl = enriched.thumbnailUrl.ifBlank { item.thumbnailUrl },
-                    largeThumbnailUrl = enriched.largeThumbnailUrl.ifBlank { item.largeThumbnailUrl },
+                    album = if (keepsArtwork) item.album.ifBlank { enriched.album } else enriched.album.ifBlank { item.album },
+                    thumbnailUrl = if (keepsArtwork) item.thumbnailUrl else enriched.thumbnailUrl.ifBlank { item.thumbnailUrl },
+                    largeThumbnailUrl = if (keepsArtwork) item.largeThumbnailUrl else enriched.largeThumbnailUrl.ifBlank { item.largeThumbnailUrl },
                     isrc = enriched.isrc.ifBlank { item.isrc },
                     upc = enriched.upc.ifBlank { item.upc },
                     releaseDate = enriched.releaseDate.ifBlank { item.releaseDate },
@@ -9199,11 +9213,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 )
             }
 
-            fun normalizedMetadataText(value: String): String = value
-                .lowercase()
-                .replace(Regex("[^\\p{L}\\p{M}\\p{N}]+"), " ")
-                .replace(Regex("\\s+"), " ")
-                .trim()
+            fun normalizedMetadataText(value: String): String =
+                com.luc4n3x.levyra.nexus.identity.MusicIdentityText.normalize(value)
 
             fun withAlbumMetadata(item: AlbumHit): AlbumHit {
                 val targetTitle = normalizedMetadataText(item.title)
@@ -9231,9 +9242,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                             track.albumBrowseId.equals(item.browseId, ignoreCase = true)
                         val sameUpc = item.upc.isNotBlank() && track.upc.isNotBlank() &&
                             item.upc.equals(track.upc, ignoreCase = true)
-                        val strongIdentifier = sameArtistBrowseId || sameAlbumBrowseId || sameUpc
-                        val artistCompatible = artistScore > 0
-                        if (!artistCompatible && !strongIdentifier) return@mapNotNull null
+                        val strongIdentifier = sameAlbumBrowseId || sameUpc
+                        val artistCompatible = artistScore > 0 || sameArtistBrowseId
+                        if (!com.luc4n3x.levyra.data.spotify.sameSpotifyAlbum(item.title, track.album)) {
+                            return@mapNotNull null
+                        }
+                        if (!artistCompatible) return@mapNotNull null
                         val score = albumScore + artistScore + if (strongIdentifier) 4 else 0
                         (track to score).takeIf { score >= 5 }
                     }
@@ -10263,7 +10277,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             targets.map { track ->
                 async {
                     try {
-                        officialArtworkRepository.findApple(track, market)
+                        officialArtworkRepository.find(track, market)
                     } catch (error: CancellationException) {
                         throw error
                     } catch (error: Throwable) {
@@ -10824,6 +10838,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             )
         }
         handlePlaybackStartSideEffects(playable, startPaused)
+        refreshMotionArtworkAround(playable)
         refreshVideoQualityState(playable)
         prefetchAlternateMode(playable, _state.value.isVideoMode)
         if (_state.value.selectedTab == LevyraTab.Player) {
@@ -13799,7 +13814,10 @@ internal fun youtubePlayableTrack(track: Track, preferVideo: Boolean = false): T
     val fromIdUrl = youtubeVideoId(track.id).trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
     val rawId = track.id.trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
     val storedAudio = track.audioVideoId.trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
-    val regular = sequenceOf(storedAudio, fromIdUrl, rawId, fromUrl)
+    val cachedVideoId = if (track.id.startsWith("spotify:")) {
+        com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatchCache.get().get(track.id)?.videoId?.trim()?.takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
+    } else ""
+    val regular = sequenceOf(storedAudio, fromIdUrl, rawId, fromUrl, cachedVideoId)
         .firstOrNull(String::isNotBlank)
         .orEmpty()
     val type = track.videoType.uppercase()

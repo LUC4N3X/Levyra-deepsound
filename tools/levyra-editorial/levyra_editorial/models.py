@@ -82,6 +82,8 @@ class Track:
     artwork_url: str | None
     isrc: str | None = None
     youtube_music: dict[str, Any] | None = None
+    track_number: int | None = None
+    disc_number: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return _compact(
@@ -100,6 +102,8 @@ class Track:
                 "explicit": self.explicit,
                 "isrc": self.isrc,
                 "youtubeMusic": self.youtube_music,
+                "trackNumber": self.track_number,
+                "discNumber": self.disc_number,
                 "artworkUrl": _public_artwork_url(self.artwork_url),
             }
         )

@@ -80,6 +80,19 @@ class FakeClient:
         ]
 
 
+def test_recording_positions_are_published_without_source_identifiers() -> None:
+    item = FakeClient().iter_playlist_items("public")[0]
+    item["track"]["track_number"] = 4
+    item["track"]["disc_number"] = 2
+
+    public = normalize_playlist_items([item])[0].to_dict()
+
+    assert public["trackNumber"] == 4
+    assert public["discNumber"] == 2
+    assert "uri" not in public
+    assert public["id"].startswith("levyra-")
+
+
 class FakeResponse:
     """Small response double for authentication tests."""
 

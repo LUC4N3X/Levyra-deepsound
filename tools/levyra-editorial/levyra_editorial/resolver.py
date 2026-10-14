@@ -23,6 +23,7 @@ from urllib.parse import urlparse
 import requests
 
 from .collector import _spotify_canvas_url_problem
+from .metadata import CatalogSearchService, validate_catalog_request
 from .spotify import AuthenticationError, EditorialSourceError, SpotifyWebClient
 
 LOGGER = logging.getLogger(__name__)
@@ -834,6 +835,7 @@ def extract_client_ip(peer_ip: str, headers: Mapping[str, str]) -> str:
 
 class CanvasHttpHandler(BaseHTTPRequestHandler):
     service: CanvasResolverService
+    catalog_service: CatalogSearchService
     rate_limiter: RateLimiter
     client_key: str = ""
     timeout: float | None = 10.0
@@ -870,7 +872,7 @@ class CanvasHttpHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
-        if parsed.path not in {"/resolve", "/v1/resolve"}:
+        if parsed.path not in {"/resolve", "/v1/resolve", "/v1/catalog/search"}:
             self._send_json(HTTPStatus.NOT_FOUND, {"status": "error", "message": "Not found"})
             return
 
@@ -955,7 +957,26 @@ class CanvasHttpHandler(BaseHTTPRequestHandler):
             )
             return
 
-        self._handle_resolution(data)
+        if parsed.path == "/v1/catalog/search":
+            self._handle_catalog_search(data)
+        else:
+            self._handle_resolution(data)
+
+    def _handle_catalog_search(self, request_data: Mapping[str, Any]) -> None:
+        try:
+            validate_catalog_request(request_data)
+        except ValueError as error:
+            self._send_json(HTTPStatus.BAD_REQUEST, {"status": "error", "message": str(error)})
+            return
+        try:
+            self._send_json(HTTPStatus.OK, self.catalog_service.search(request_data))
+        except Exception as error:
+            retry_after = max(5, min(86_400, int(getattr(error, "retry_after", 5))))
+            self._send_json(
+                HTTPStatus.SERVICE_UNAVAILABLE,
+                {"status": "unavailable", "message": "Catalog temporarily unavailable"},
+                retry_after=retry_after,
+            )
 
     def _handle_resolution(self, request_data: Mapping[str, Any]) -> None:
         try:
@@ -979,12 +1000,16 @@ class CanvasHttpHandler(BaseHTTPRequestHandler):
                 {"status": "error", "message": "Internal error"},
             )
 
-    def _send_json(self, status: int, payload: Mapping[str, Any]) -> None:
+    def _send_json(
+        self, status: int, payload: Mapping[str, Any], retry_after: int | None = None
+    ) -> None:
         body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        if retry_after is not None:
+            self.send_header("Retry-After", str(retry_after))
         self.end_headers()
         self.wfile.write(body)
 
@@ -995,6 +1020,7 @@ def create_resolver_server(
     port: int = 8080,
     rate_limit: int = DEFAULT_RATE_LIMIT_PER_MINUTE,
     client_key: str | None = None,
+    catalog_service: CatalogSearchService | None = None,
 ) -> ThreadingHTTPServer:
     rate_limiter = RateLimiter(rate_limit)
     resolved_key = (
@@ -1007,6 +1033,7 @@ def create_resolver_server(
         pass
 
     CustomHandler.service = service
+    CustomHandler.catalog_service = catalog_service or CatalogSearchService(service._client)
     CustomHandler.rate_limiter = rate_limiter
     CustomHandler.client_key = resolved_key
 

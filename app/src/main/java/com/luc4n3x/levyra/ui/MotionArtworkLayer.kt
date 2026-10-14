@@ -729,9 +729,12 @@ private fun MotionArtworkVideo(
     var videoSize by remember(artwork.identityKey, artwork.url, artwork.mimeType, presentation, profile) {
         mutableStateOf(VideoSize.UNKNOWN)
     }
+    var decoderRetries by remember(artwork.identityKey, artwork.url, artwork.mimeType, presentation, profile) {
+        mutableIntStateOf(0)
+    }
     var surfaceSize by remember { mutableStateOf(IntSize.Zero) }
     val maxZoom = motionArtworkMaxZoom(presentation)
-    val player = remember(artwork.identityKey, artwork.url, artwork.mimeType, presentation, profile) {
+    val player = remember(artwork.identityKey, artwork.url, artwork.mimeType, presentation, profile, decoderRetries) {
         ExoPlayer.Builder(context, canvasRenderersFactory(context, artwork.url)).build().apply {
             repeatMode = Player.REPEAT_MODE_ONE
             volume = 0f
@@ -773,7 +776,11 @@ private fun MotionArtworkVideo(
                     error.errorCodeName,
                     motionArtworkHost(artwork.url)
                 )
-                CanvasDecoderBlocklist.recordFailure(artwork.url, error)
+                val decoderBlocked = CanvasDecoderBlocklist.recordFailure(artwork.url, error)
+                if (decoderBlocked && decoderRetries < MAX_CANVAS_DECODER_RETRIES) {
+                    decoderRetries += 1
+                    return
+                }
                 failed = true
                 RuntimeHooks.canvas(RuntimeSignal.CANVAS_FALLBACK)
                 currentOnUnavailable()
@@ -899,11 +906,13 @@ internal object CanvasDecoderBlocklist {
             size > MAX_TRACKED_ARTWORKS
     }
 
-    fun recordFailure(artworkKey: String, error: PlaybackException) {
+    fun recordFailure(artworkKey: String, error: PlaybackException): Boolean {
         val decoderName = ((error as? ExoPlaybackException)?.cause as? MediaCodecDecoderException)?.codecInfo?.name
-        if (decoderName.isNullOrBlank()) return
+        if (decoderName.isNullOrBlank()) return false
         synchronized(failedDecoders) {
-            failedDecoders[artworkKey] = failedDecoders[artworkKey].orEmpty() + decoderName
+            val previous = failedDecoders[artworkKey].orEmpty()
+            failedDecoders[artworkKey] = previous + decoderName
+            return decoderName !in previous
         }
     }
 
@@ -919,6 +928,7 @@ private fun canvasRenderersFactory(context: Context, artworkKey: String): Defaul
         .setEnableDecoderFallback(true)
         .setMediaCodecSelector(CanvasDecoderBlocklist.selectorFor(artworkKey))
 
+private const val MAX_CANVAS_DECODER_RETRIES = 2
 private const val DYNAMIC_BACKDROP_SAMPLE_SIZE = 24
 private const val DYNAMIC_BACKDROP_INITIAL_DELAY_MS = 240L
 private const val DYNAMIC_BACKDROP_SAMPLE_INTERVAL_MS = 6_000L
