@@ -81,8 +81,11 @@ internal fun bestCanonicalPlaybackMetadataMatch(
     return best
 }
 
+private const val EDITORIAL_DISCOVERY_PROVIDER = "Levyra Editorial Discovery"
+
 internal fun isEditorialDiscoveryPlayback(track: Track): Boolean =
-    track.source.equals("Levyra Editorial Discovery", ignoreCase = true)
+    track.source.equals(EDITORIAL_DISCOVERY_PROVIDER, ignoreCase = true) ||
+        track.metadataProvider.startsWith(EDITORIAL_DISCOVERY_PROVIDER, ignoreCase = true)
 
 internal fun rebaseEditorialFallbackSource(original: Track, resolved: Track): Track {
     if (!isEditorialDiscoveryPlayback(original)) return original

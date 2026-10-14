@@ -2233,6 +2233,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         val sourceTrack = track.copy(
             id = sourceVideoId,
             videoUrl = sourceVideoUrl,
+            audioVideoId = if (isVideoMode) track.audioVideoId else sourceVideoId,
             streamUrl = "",
             videoStreamUrl = "",
             playbackManifest = null

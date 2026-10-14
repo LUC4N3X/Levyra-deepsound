@@ -305,6 +305,34 @@ class PlaybackFallbackMetadataTest {
     }
 
     @Test
+    fun editorialDiscoveryStatusSurvivesAPreviousFallbackResolution() {
+        val afterFirstFallback = track(
+            id = "levyra-cff760d7cbf458dfaaba",
+            title = "By my side",
+            artist = "Tyson Yoshi, Hins Cheung",
+            durationMs = 191_689L,
+            isrc = "HKABC2600001"
+        ).copy(
+            source = "Android Reel audio · fallback _GYbg02dFOw",
+            metadataProvider = "Levyra Editorial Discovery",
+            audioVideoId = "_GYbg02dFOw"
+        )
+        val retry = track(id = "BBBBBBBBBBB", title = "By my side", artist = "Tyson Yoshi", durationMs = 192_000L)
+
+        assertTrue(isEditorialDiscoveryPlayback(afterFirstFallback))
+        assertEquals(listOf("BBBBBBBBBBB"), trustedPlaybackFallbackCandidates(afterFirstFallback, listOf(retry)).map { it.id })
+        assertEquals("BBBBBBBBBBB", rebaseEditorialFallbackSource(afterFirstFallback, retry).audioVideoId)
+    }
+
+    @Test
+    fun editorialReleaseTracksAreNotTreatedAsDiscovery() {
+        val release = track(id = "release", title = "Song", artist = "Artist", durationMs = 180_000L)
+            .copy(source = "Levyra Editorial Releases", metadataProvider = "Levyra Editorial Releases")
+
+        assertFalse(isEditorialDiscoveryPlayback(release))
+    }
+
+    @Test
     fun onlyIdentityBoundAudioStrategiesRequireYoutubeIdentity() {
         assertTrue(PlaybackAudioStrategy.REEL_MUXED.requiresYoutubeIdentity())
         assertTrue(PlaybackAudioStrategy.REEL_AUDIO.requiresYoutubeIdentity())
