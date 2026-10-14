@@ -9184,10 +9184,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             fun withArtwork(item: Track): Track {
                 if (com.luc4n3x.levyra.data.spotify.preservesPersonalMetadata(item)) return item
                 val enriched = enrichedByKey[LevyraPersonalOrbit.identityKey(item)] ?: return item
+                val keepsArtwork = LevyraPersonalOrbit.hasSquareAlbumArtwork(item)
                 return item.copy(
-                    album = enriched.album.ifBlank { item.album },
-                    thumbnailUrl = enriched.thumbnailUrl.ifBlank { item.thumbnailUrl },
-                    largeThumbnailUrl = enriched.largeThumbnailUrl.ifBlank { item.largeThumbnailUrl },
+                    album = if (keepsArtwork) item.album.ifBlank { enriched.album } else enriched.album.ifBlank { item.album },
+                    thumbnailUrl = if (keepsArtwork) item.thumbnailUrl else enriched.thumbnailUrl.ifBlank { item.thumbnailUrl },
+                    largeThumbnailUrl = if (keepsArtwork) item.largeThumbnailUrl else enriched.largeThumbnailUrl.ifBlank { item.largeThumbnailUrl },
                     isrc = enriched.isrc.ifBlank { item.isrc },
                     upc = enriched.upc.ifBlank { item.upc },
                     releaseDate = enriched.releaseDate.ifBlank { item.releaseDate },
