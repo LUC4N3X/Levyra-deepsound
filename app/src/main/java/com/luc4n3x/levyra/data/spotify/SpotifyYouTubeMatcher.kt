@@ -47,10 +47,11 @@ internal object SpotifyYouTubeMatcher {
 
         for (candidate in candidates) {
             val score = scoreMatch(spotifyTrack, candidate)
-            if (score > bestScore) {
+            val winsTie = score == bestScore && score > 0.0 &&
+                isAudioTrack(candidate) && bestCandidate?.let(::isAudioTrack) == false
+            if (score > bestScore || winsTie) {
                 bestScore = score
                 bestCandidate = candidate
-                if (score >= 0.96) break
             }
         }
 
@@ -61,6 +62,8 @@ internal object SpotifyYouTubeMatcher {
             null
         }
     }
+
+    private fun isAudioTrack(track: Track): Boolean = track.videoType.contains("ATV", ignoreCase = true)
 
     fun scoreMatch(spotifyTrack: Track, ytCandidate: Track): Double {
         val sTitleId = MusicIdentityText.title(spotifyTrack.title)

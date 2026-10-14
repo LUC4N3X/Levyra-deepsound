@@ -668,7 +668,7 @@ class SpotifyWebClient:
             self._ensure_authenticated()
             variables = {
                 "searchTerm": query, "offset": 0, "limit": limit,
-                "numberOfTopResults": 0, "includeAudiobooks": False,
+                "numberOfTopResults": 1, "includeAudiobooks": False,
                 "includeArtistHasConcertsField": False, "includePreReleases": False,
                 "includeLocalConcertsField": False, "includeAuthors": False,
             }

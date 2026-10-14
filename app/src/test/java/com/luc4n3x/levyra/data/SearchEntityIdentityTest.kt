@@ -242,6 +242,140 @@ class SearchEntityIdentityTest {
 
 
     @Test
+    fun `one recording shows once with its official video as counterpart`() {
+        val cover = "https://i.scdn.co/image/ab67616d00001e02e2f039481babe23658fc719a"
+        val spotify = track(
+            id = "spotify:in-the-end",
+            title = "In the End",
+            artist = "Linkin Park",
+            album = "Hybrid Theory (Bonus Edition)",
+            durationMs = 216_000L
+        ).copy(source = "spotify", metadataProvider = "spotify", thumbnailUrl = cover, largeThumbnailUrl = cover)
+        val song = track(id = "BLZWkjBXfN8", title = "In the End", artist = "Linkin Park", album = "", durationMs = 216_000L,
+            youtubeViewCount = 3_300_000_000L)
+            .copy(videoType = "MUSIC_VIDEO_TYPE_ATV", thumbnailUrl = "https://yt3.googleusercontent.com/song")
+        fun video(id: String, title: String, artist: String = "Linkin Park", durationMs: Long = 0L, type: String = "MUSIC_VIDEO_TYPE_OMV") =
+            track(id = id, title = title, artist = artist, album = "", durationMs = durationMs)
+                .copy(videoType = type, thumbnailUrl = "https://i.ytimg.com/vi/$id/hqdefault.jpg")
+        val official = video("eVTXPUF4Oz4", "In the End")
+        val reupload = video("w3xqsMv6T_k", "In the End", durationMs = 215_000L, type = "MUSIC_VIDEO_TYPE_UGC")
+        val live = video("pQto8npSUC0", "In the End (Live In Texas)", durationMs = 234_000L)
+        val remix = video("WNeLUngb-Xg", "Linkin Park - In The End (Mellen Gi & Tommee Profitt Remix)",
+            artist = "TrapMusicHDTV", durationMs = 219_000L, type = "MUSIC_VIDEO_TYPE_UGC")
+        val other = video("dbHi7vyRXbo", "In The End", artist = "Twin", type = "MUSIC_VIDEO_TYPE_ATV")
+
+        listOf(
+            mergeSearchSongs(listOf(spotify), listOf(official, reupload, song, live, remix, other)),
+            mergeSearchSongs(listOf(official, reupload, song, live, remix, other), listOf(spotify))
+        ).forEach { merged ->
+            val recording = merged.filter { it.title.equals("In the End", ignoreCase = true) && it.artist == "Linkin Park" }
+            assertEquals(1, recording.size)
+            val entry = recording.single()
+            assertEquals("BLZWkjBXfN8", entry.id)
+            assertEquals("BLZWkjBXfN8", entry.audioVideoId)
+            assertEquals("eVTXPUF4Oz4", entry.counterpartVideoId)
+            assertEquals(cover, entry.thumbnailUrl)
+            assertEquals(3_300_000_000L, entry.youtubeViewCount)
+            assertEquals(0, merged.indexOf(entry))
+            assertTrue(merged.any { it.id == "pQto8npSUC0" })
+            assertTrue(merged.any { it.id == "WNeLUngb-Xg" })
+            assertTrue(merged.any { it.id == "dbHi7vyRXbo" })
+            assertEquals(4, merged.size)
+        }
+    }
+
+    @Test
+    fun `youtube only results collapse the official video into the song`() {
+        val song = track(id = "BLZWkjBXfN8", title = "In the End", artist = "Linkin Park", album = "Hybrid Theory", durationMs = 216_000L)
+            .copy(videoType = "MUSIC_VIDEO_TYPE_ATV", thumbnailUrl = "https://yt3.googleusercontent.com/song")
+        val official = track(id = "eVTXPUF4Oz4", title = "In the End", artist = "Linkin Park", album = "")
+            .copy(videoType = "MUSIC_VIDEO_TYPE_OMV", thumbnailUrl = "https://i.ytimg.com/vi/eVTXPUF4Oz4/hqdefault.jpg")
+
+        val merged = mergeSearchSongs(listOf(official), listOf(song)).single()
+
+        assertEquals("BLZWkjBXfN8", merged.id)
+        assertEquals("eVTXPUF4Oz4", merged.counterpartVideoId)
+        assertEquals(song.thumbnailUrl, merged.thumbnailUrl)
+    }
+
+    @Test
+    fun `seed top result resolves to the playable recording and lists its versions next`() {
+        val seed = track(id = "chart-seed-76b15b01f1fd9ee9", title = "In The End", artist = "Linkin Park", album = "Hybrid Theory")
+            .copy(source = "Levyra Start", thumbnailUrl = "https://yt3.googleusercontent.com/seed")
+        val unified = track(id = "levyra-08735e6eba50b46580da", title = "In the End", artist = "Linkin Park",
+            album = "Hybrid Theory (Bonus Edition)", durationMs = 216_880L)
+            .copy(source = "spotify", metadataProvider = "spotify", videoType = "MUSIC_VIDEO_TYPE_ATV",
+                audioVideoId = "BLZWkjBXfN8", thumbnailUrl = "https://i.scdn.co/image/hybrid")
+        val live = track(id = "bnecjgMM8IE", title = "In the End (Live)", artist = "Linkin Park", album = "One More Light (Live)")
+            .copy(videoType = "MUSIC_VIDEO_TYPE_ATV")
+        val givenUp = track(id = "D93vYwuMeUw", title = "Given Up", artist = "Linkin Park", album = "")
+            .copy(videoType = "MUSIC_VIDEO_TYPE_ATV")
+        val songs = listOf(unified, live, givenUp)
+
+        val top = selectSearchTopResultTracks(seed, songs)
+
+        assertEquals(listOf("levyra-08735e6eba50b46580da", "bnecjgMM8IE", "D93vYwuMeUw"), top.map { it.id })
+        assertTrue(filterSearchSongsExcludingTopResult(songs, top).isEmpty())
+    }
+
+    @Test
+    fun `seed top result keeps the youtube play count of the unified recording`() {
+        val seed = track(id = "chart-seed-76b15b01f1fd9ee9", title = "In The End", artist = "Linkin Park", album = "Hybrid Theory")
+            .copy(source = "Levyra Start", videoUrl = "https://www.youtube.com/watch?v=eVTXPUF4Oz4",
+                thumbnailUrl = "https://i.ytimg.com/vi/eVTXPUF4Oz4/hqdefault.jpg")
+        val editorial = track(id = "levyra-08735e6eba50b46580da", title = "In the End", artist = "Linkin Park",
+            album = "Hybrid Theory (Bonus Edition)", durationMs = 216_880L)
+            .copy(source = "spotify", metadataProvider = "spotify", videoType = "MUSIC_VIDEO_TYPE_ATV",
+                audioVideoId = "BLZWkjBXfN8", thumbnailUrl = "https://i.scdn.co/image/hybrid")
+        val youtube = track(id = "BLZWkjBXfN8", title = "In the End", artist = "Linkin Park",
+            album = "Hybrid Theory (Bonus Edition)", youtubeViewCount = 3_300_000_000L)
+            .copy(videoType = "MUSIC_VIDEO_TYPE_ATV")
+        val live = track(id = "bnecjgMM8IE", title = "In the End (Live)", artist = "Linkin Park", album = "One More Light (Live)")
+            .copy(videoType = "MUSIC_VIDEO_TYPE_ATV")
+
+        listOf(
+            mergeSearchSongs(listOf(editorial), listOf(youtube, live)),
+            mergeSearchSongs(listOf(youtube, live), listOf(editorial))
+        ).forEach { songs ->
+            val hero = selectSearchTopResultTracks(seed, songs).first()
+            assertEquals(3_300_000_000L, hero.youtubeViewCount)
+            assertEquals("BLZWkjBXfN8", hero.audioVideoId.ifBlank { hero.id })
+            assertEquals("https://i.scdn.co/image/hybrid", hero.thumbnailUrl)
+            assertEquals(1, songs.count { it.title.equals("In the End", ignoreCase = true) })
+        }
+    }
+
+    @Test
+    fun `seed top result never resolves to another album recording`() {
+        val seed = track(id = "chart-seed-1", title = "Song", artist = "Artist", album = "Original Album")
+            .copy(source = "Levyra Start")
+        val compilation = track(id = "ytCompil001", title = "Song", artist = "Artist", album = "Summer Hits 2001")
+            .copy(videoType = "MUSIC_VIDEO_TYPE_ATV")
+
+        assertEquals("chart-seed-1", selectSearchTopResultTracks(seed, listOf(compilation)).first().id)
+    }
+
+    @Test
+    fun `top result video resolves to the single song entry`() {
+        val cover = "https://i.scdn.co/image/ab67616d00001e02e2f039481babe23658fc719a"
+        val spotify = track(id = "spotify:in-the-end", title = "In the End", artist = "Linkin Park",
+            album = "Hybrid Theory (Bonus Edition)", durationMs = 216_000L)
+            .copy(source = "spotify", metadataProvider = "spotify", thumbnailUrl = cover, largeThumbnailUrl = cover)
+        val song = track(id = "BLZWkjBXfN8", title = "In the End", artist = "Linkin Park", album = "", durationMs = 216_000L)
+            .copy(videoType = "MUSIC_VIDEO_TYPE_ATV")
+        val official = track(id = "eVTXPUF4Oz4", title = "In the End", artist = "Linkin Park", album = "")
+            .copy(videoType = "MUSIC_VIDEO_TYPE_OMV", thumbnailUrl = "https://i.ytimg.com/vi/eVTXPUF4Oz4/hqdefault.jpg")
+        val songs = mergeSearchSongs(listOf(spotify), listOf(song))
+
+        val top = selectSearchTopResultTracks(official, songs)
+
+        assertEquals(1, top.count { it.title.equals("In the End", ignoreCase = true) })
+        assertEquals(cover, top.first().thumbnailUrl)
+        assertEquals("eVTXPUF4Oz4", top.first().counterpartVideoId)
+        assertTrue(filterSearchSongsExcludingTopResult(songs, top).none { it.title.equals("In the End", ignoreCase = true) })
+    }
+
+    @Test
     fun `spotify records stay spotify until a youtube match exists`() {
         val first = track(
             id = "spotify:yellow",
@@ -331,7 +465,7 @@ class SearchEntityIdentityTest {
             songs = listOf(spotify, youtube, alternate, other)
         )
 
-        assertEquals(listOf("AbCdEf12345", "LiveAlt1234", "ZyXwVu98765"), selected.map { it.id })
+        assertEquals(listOf("AbCdEf12345", "ZyXwVu98765"), selected.map { it.id })
         assertEquals(934_000L, selected.first().youtubeViewCount)
     }
 

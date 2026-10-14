@@ -293,6 +293,7 @@ def test_upstream_authenticated_refresh_and_public_operation(monkeypatch):
     for _url, options in session.calls:
         assert options["json"]["operationName"] == "searchDesktop"
         assert options["json"]["variables"]["includeAudiobooks"] is False
+        assert options["json"]["variables"]["numberOfTopResults"] >= 1
         assert options["headers"]["Spotify-Country"] == "IT"
         assert options["allow_redirects"] is False and options["stream"] is True
         assert "Cookie" not in options["headers"]

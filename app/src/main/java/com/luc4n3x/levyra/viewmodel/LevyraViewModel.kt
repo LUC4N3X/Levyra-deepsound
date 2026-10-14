@@ -10838,6 +10838,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             )
         }
         handlePlaybackStartSideEffects(playable, startPaused)
+        refreshMotionArtworkAround(playable)
         refreshVideoQualityState(playable)
         prefetchAlternateMode(playable, _state.value.isVideoMode)
         if (_state.value.selectedTab == LevyraTab.Player) {

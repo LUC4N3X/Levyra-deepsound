@@ -23,6 +23,19 @@ class MotionArtworkRestorePolicyContractTest {
         assertTrue(motionRestart > policyUpdate)
     }
 
+    @Test
+    fun `resolved playback start realigns motion artwork with the playing identity`() {
+        val start = readSource("viewmodel/LevyraViewModel.kt")
+            .substringAfter("private fun startPlayback(playable: Track, request: PlaybackResolveRequest)")
+            .substringBefore("private fun handlePlaybackStartSideEffects(")
+            .filterNot(Char::isWhitespace)
+        val stateUpdate = start.indexOf("currentTrack=playable")
+        val motionRefresh = start.indexOf("refreshMotionArtworkAround(playable)")
+
+        assertTrue(stateUpdate >= 0)
+        assertTrue(motionRefresh > stateUpdate)
+    }
+
     private fun readSource(relativePath: String): String =
         Files.readString(sourceFile(relativePath)).replace("\r\n", "\n")
 

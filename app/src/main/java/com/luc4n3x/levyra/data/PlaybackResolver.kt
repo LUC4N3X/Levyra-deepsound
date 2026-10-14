@@ -1094,19 +1094,18 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     suspend fun resolve(track: Track, isVideoMode: Boolean = false): Track {
         if (track.isPersonalCollectionTrack()) return personalCollections.resolveForPlayback(track)
-        val targetTrack = resolveSpotifyIdentityWithinBudget(track)
         val resolved = resolveWithLanguageRevisionRetry(
-            originalTrack = targetTrack,
+            originalTrack = track,
             acceptAcrossLanguageChange = { it.playbackManifest?.alternativeSource != null }
         ) { requestTrack, _ ->
             val alternativeQuery = highQualityPlayback
                 .queryFor(requestTrack, isVideoMode, selectedAudioQuality)
                 ?.takeIf { hasInternetCapableNetwork() }
             if (alternativeQuery == null) {
-                resolveForPlayback(requestTrack, isVideoMode)
+                resolveForPlayback(resolveSpotifyIdentityWithinBudget(requestTrack), isVideoMode)
             } else {
                 highQualityPlayback.resolve(requestTrack, alternativeQuery, ::basePlaybackProvenance) {
-                    resolveForPlayback(requestTrack, isVideoMode)
+                    resolveForPlayback(resolveSpotifyIdentityWithinBudget(requestTrack), isVideoMode)
                 }
             }
         }
