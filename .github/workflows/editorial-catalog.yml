@@ -54,6 +54,62 @@ jobs:
       - name: Unit Tests
         run: pytest tools/levyra-editorial/tests
 
+  public-catalog:
+    name: Verify Authorized Public Spotify Search
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.number == 855 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'feature/spotify-yt-unified-search' &&
+      github.actor == github.repository_owner &&
+      github.triggering_actor == github.repository_owner
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Authorized Ref
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install Collector
+        run: python -m pip install --disable-pip-version-check -e "tools/levyra-editorial"
+      - name: Verify Public Search Contract
+        env:
+          LEVYRA_EDITORIAL_SP_DC: ${{ secrets.LEVYRA_EDITORIAL_SP_DC }}
+        run: |
+          python - <<'PY'
+          import os
+          import sys
+          from levyra_editorial.metadata import sanitize_catalog
+          from levyra_editorial.spotify import SpotifyWebClient
+
+          cookie = os.environ.get("LEVYRA_EDITORIAL_SP_DC", "")
+          if not cookie:
+              print("::error::Missing LEVYRA_EDITORIAL_SP_DC")
+              sys.exit(1)
+          client = SpotifyWebClient(cookie, timeout_seconds=10)
+          try:
+              for query in ("Linkin Park", "The Weeknd"):
+                  result = sanitize_catalog(client.search_catalog(query, 12, "IT"), 12)
+                  catalog = result["data"]["searchV2"]
+                  counts = {kind: len(catalog[kind]["items"]) for kind in ("tracksV2", "artists", "albumsV2")}
+                  if counts["tracksV2"] == 0:
+                      raise ValueError("Public search returned no tracks")
+                  print(f"Public search verified: {counts}")
+          except Exception as error:
+              print(f"::error::Public search unavailable ({type(error).__name__})")
+              sys.exit(1)
+          finally:
+              client.close()
+          PY
+
   integration:
     name: Test Live Editorial Collection
     if: >-
