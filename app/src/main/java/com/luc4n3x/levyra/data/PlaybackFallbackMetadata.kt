@@ -81,6 +81,20 @@ internal fun bestCanonicalPlaybackMetadataMatch(
     return best
 }
 
+internal fun isEditorialDiscoveryPlayback(track: Track): Boolean =
+    track.source.equals("Levyra Editorial Discovery", ignoreCase = true)
+
+internal fun rebaseEditorialFallbackSource(original: Track, resolved: Track): Track {
+    if (!isEditorialDiscoveryPlayback(original)) return original
+    val resolvedId = PlaybackSourceIdentity.sourceVideoId(resolved)
+    if (resolvedId.isBlank()) return original
+    return original.copy(
+        audioVideoId = resolvedId,
+        counterpartVideoId = if (resolvedId == original.audioVideoId) original.counterpartVideoId else "",
+        videoType = resolved.videoType
+    )
+}
+
 internal fun trustedPlaybackFallbackCandidates(
     original: Track,
     candidates: List<Track>
@@ -103,7 +117,14 @@ internal fun trustedPlaybackFallbackCandidates(
 
     if (originalIsrc.isNotBlank()) {
         return eligible.filter { candidate ->
-            candidate.isrc.trim().equals(originalIsrc, ignoreCase = true)
+            val candidateIsrc = candidate.isrc.trim()
+            candidateIsrc.equals(originalIsrc, ignoreCase = true) ||
+                (
+                    isEditorialDiscoveryPlayback(original) &&
+                        candidateIsrc.isBlank() &&
+                        original.durationMs > 0L &&
+                        isTrustedPlaybackRecordingMatch(original, candidate, originalTitle, originalArtist)
+                    )
         }
     }
 
