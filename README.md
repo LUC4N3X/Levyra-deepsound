@@ -184,6 +184,19 @@ There is no telemetry, analytics, or advertising, and you do not need an account
 
 For independent verification, an Apptizo scan of the F-Droid build confirmed zero third-party tracker SDKs ([view the Apptizo report](https://apptizo.com/app/levyra/)), and the Levyra 2.5.10 APK returned **0/68 detections** on [VirusTotal](https://www.virustotal.com/gui/file/f4508db409560441ab1779ff00546ba709520cea567fa769c17e783372487cd9?nocache=1).
 
+## ✦ Translations
+
+Levyra is available in 37 languages.
+
+<div align="center">
+  <picture>
+    <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-mobile-light.svg">
+    <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse-mobile.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-light.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse.svg">
+    <img src="docs/assets/levyra-translation-pulse.svg" alt="Levyra translation progress" width="920">
+  </picture>
+</div>
 
 ## ✦ Open-source acknowledgements
 
