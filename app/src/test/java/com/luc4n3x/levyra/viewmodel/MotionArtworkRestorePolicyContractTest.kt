@@ -38,7 +38,7 @@ class MotionArtworkRestorePolicyContractTest {
     }
 
     @Test
-    fun `official artwork replaces video frames but never an existing album cover`() {
+    fun `spotify artwork wins over other covers and is never replaced`() {
         val apply = readSource("viewmodel/LevyraViewModel.kt")
             .substringAfter("private suspend fun applyOfficialOrbitArtworkBatch(")
             .substringBefore("fun normalizedMetadataText(")
@@ -46,7 +46,7 @@ class MotionArtworkRestorePolicyContractTest {
         val lookup = apply.indexOf("valenriched=enrichedByKey[LevyraPersonalOrbit.identityKey(item)]?:returnitem")
 
         assertTrue(lookup >= 0)
-        assertTrue(apply.contains("valkeepsArtwork=LevyraPersonalOrbit.hasSquareAlbumArtwork(item)"))
+        assertTrue(apply.contains("valkeepsArtwork=LevyraPersonalOrbit.hasSquareAlbumArtwork(item)&&(isSpotifyArtworkUrl(item.thumbnailUrl)||!isSpotifyArtworkUrl(enriched.thumbnailUrl))"))
         assertTrue(apply.contains("thumbnailUrl=if(keepsArtwork)item.thumbnailUrlelse"))
         assertFalse(apply.contains("scoreMatch(item,enriched)"))
         assertFalse(apply.contains("sameSpotifyAlbum(item.album,enriched.album)"))

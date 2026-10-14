@@ -9165,6 +9165,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         return officialTrack.takeIf { LevyraPersonalOrbit.hasSquareAlbumArtwork(it) }
     }
 
+    private fun isSpotifyArtworkUrl(url: String): Boolean = url.startsWith("https://i.scdn.co/image/")
+
     private suspend fun applyOfficialOrbitArtworkBatch(enrichedTracks: List<Track>) {
         val enrichedByKey = enrichedTracks
             .distinctBy { LevyraPersonalOrbit.identityKey(it) }
@@ -9184,7 +9186,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             fun withArtwork(item: Track): Track {
                 if (com.luc4n3x.levyra.data.spotify.preservesPersonalMetadata(item)) return item
                 val enriched = enrichedByKey[LevyraPersonalOrbit.identityKey(item)] ?: return item
-                val keepsArtwork = LevyraPersonalOrbit.hasSquareAlbumArtwork(item)
+                val keepsArtwork = LevyraPersonalOrbit.hasSquareAlbumArtwork(item) &&
+                    (isSpotifyArtworkUrl(item.thumbnailUrl) || !isSpotifyArtworkUrl(enriched.thumbnailUrl))
                 return item.copy(
                     album = if (keepsArtwork) item.album.ifBlank { enriched.album } else enriched.album.ifBlank { item.album },
                     thumbnailUrl = if (keepsArtwork) item.thumbnailUrl else enriched.thumbnailUrl.ifBlank { item.thumbnailUrl },
