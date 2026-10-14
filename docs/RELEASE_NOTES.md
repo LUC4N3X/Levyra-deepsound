@@ -1,64 +1,64 @@
-# Levyra 2.6.7
+# Levyra 2.6.8
 
 ## Highlights
 
-There's quite a lot in this update, even if the version number only moved a little. I've been working on the parts of Levyra you actually use every day, and a few things people kept asking for are finally here.
+This update gives you more ways to make Levyra feel like your own. There are new visual options for Home, lyrics, themes, the mini player and the navigation bar. The designs you already use are still there, and the originals remain the defaults.
 
-The biggest addition is optional YouTube Music sign-in. You can connect your account and bring some of your own music into Levyra, or skip it and carry on as before. Home has had more attention too, there's another player style, and I've fixed some irritating details around lyrics, search and downloads.
+I've also worked on finding music, keeping Home stable while content loads and clearing up a few annoyances with playback and downloads. It's a mix of new tools and fixes to things you use every day.
 
-## ✦ YouTube Music, only if you want it
+## ✦ More room to make it yours
 
-You can now sign in to YouTube Music to see your playlists, liked songs, saved albums and artists. When connected, Levyra can use your account's music feed to make Home feel more personal. Importing into your local library is an explicit action, not something it does behind your back.
+Home Studio adds alternative Home layouts, including expressive and editorial designs. You can choose how sections appear, change their order and adjust some visual settings. Original stays selected by default and keeps the existing Home layout.
 
-There's an account screen for switching accounts and disconnecting. Saved sessions use local storage protected with Android Keystore-backed encryption. If you're not signed in, or the account feed isn't available, the usual Levyra music sources still work.
+Lyrics Studio gives you a separate place to customise how lyrics look. The new options are there if you want them; the previous presentation isn't being replaced.
 
-The option is in first-time setup, with a clear way to continue without an account. Existing users get a one-time introduction instead. The new onboarding text is translated into the 37 supported languages. And no, you don't have to sign in to use Levyra.
+MiniPlayer Studio adds five optional styles, including compact, floating and artwork-focused looks. Navigation Studio adds four styles for the bottom bar, with options for ordering destinations, labels and other details. Both keep their original interfaces as the default.
 
-## ✦ More music in Your Orbit
+Theme Studio gains new presets and personal themes that you can create, edit and manage. These studio settings persist locally and are included in Levyra Vault backups, so restoring a backup can bring them back.
 
-Your Orbit can now show two pages of nine songs. If the list comes up short, Levyra fills the gaps with music based on your tastes, without repeating what's already in Quick Picks. If there really aren't enough different tracks, you can still see the incomplete page.
+## ✦ Better discovery and a steadier Home
 
-Levyra Collections look different again, with bolder artwork, more consistent colours and a less cluttered Material 3 Expressive feel. The Charts collection keeps its orange. My Soundtrack blends into Home more naturally, and the play and shuffle buttons on collection pages are easier to use.
+Search can now use Spotify's public catalogue to enrich song, album and artist metadata and artwork, then rely on other sources when needed. Results arrive progressively. The refreshed Material 3 Expressive search layout puts artwork and the most useful actions in clearer view.
 
-Search suggestions now make the new words easier to spot. Recent-search cards got a bit more room too.
+The work also improves how duplicate recordings and official videos are presented. More bundled first-launch tracks now have official album covers instead of video frames. Existing Spotify covers are preserved as later artwork requests complete. Playback itself still uses Levyra's existing audio providers.
 
-## ✦ Folio and the player fixes
+If you've connected YouTube Music, Your Orbit now keeps its account-specific content visible during session restoration. Home holds on to populated sections while new data is loading, rather than making them disappear or jump unexpectedly. There's also a pull-to-refresh gesture when you want to update the feed.
 
-Folio is a new player style with a more editorial layout and its own artwork animation. You can select it along with the existing looks.
+Top 50 chart content can appear sooner, with cover art filled in progressively. Some artist artwork used during setup, the search suggestion chips and the library category chips have also been improved.
 
-There was also a strange player bug: tapping an empty spot in the expanded player could actually trigger a button on the screen underneath it. That's been fixed.
+## ✦ Playback, Explore and downloads
 
-A small but useful change for downloads: if a song is already saved offline, the Download button can now ask if you want to remove it. You'll get a confirmation first. The prompt is available in all 37 languages, and removing a download doesn't remove the song from your favourites or playlists.
+Editorial Discovery playback has a more dependable fallback when a recording doesn't arrive with a usable YouTube identity. The resolver can look for a regular matching result and retain the resolved audio source during retries.
 
-Motion artwork has a better fallback for video decoder errors as well.
+Moods and genres have updated Material 3 Expressive screens. Category titles can use more space, and the Explore destination layouts account for the tab bar and mini player at the bottom.
 
-## ✦ The smaller things
+The download progress indicator has a new design and can be minimised or dismissed from view without cancelling the actual download. It's positioned so it doesn't sit on top of the player controls. Velvet's landscape controls have received a small alignment and action fix too.
 
-Some synced lyrics were getting their first or last letters cut off near the screen edges. That's fixed, including the way highlighted lines are laid out.
+## ✦ More language options
 
-I've also adjusted the Home play buttons, the little currently-playing indicators, the music-video section and the update screen. A lot of this is the sort of thing you might not notice immediately, but I think it makes the app nicer to use.
+Bengali, Kazakh, Serbian and Albanian are now included in Levyra's language catalogue. Setup copy and several translated music preference labels have also been improved. The Weblate references were removed from the repository while keeping its translation coverage graphics.
 
 ## Validation
 
-This Android update covers changes merged after `v2.6.6`, including YouTube Music sign-in (#918), Home and lyrics work (#917 and #921), the Folio player and download confirmation (#927), and the two-page Orbit correction (#929).
+This Android update covers changes merged after `v2.6.7`, through main commit `965fa80d5a8e8cd63867d133edbed9f353015c21`. These include Home stability and the download indicator, Lyrics Studio, Home Studio, the MiniPlayer/Theme/Navigation studios, Editorial Discovery and translation work, Spotify-first metadata and search, and the Velvet landscape adjustment.
 
-Those pull requests contain their own test reports and emulator results. That is not the same as testing the final signed 2.6.7 APK. No end-to-end physical-device validation of this final release was performed in this session.
+The relevant code changes added or updated tests, but those tests are not evidence that the final signed 2.6.8 APK has passed. No Gradle build, emulator run or physical-device end-to-end check was performed as part of preparing this version bump.
 
-The existing release workflow must still run Android release lint, build the signed APK, verify the version and signing certificate, produce the SHA-256 file and confirm publication. Those results aren't being claimed before the workflow runs. Android Auto, hardware-specific playback and a full manual regression pass on the final APK remain unverified here.
+The Android release workflow still needs to pass lint, assemble the signed APK, verify its version and signing certificate, generate the checksum and publish the release. These are pending steps, not completed checks. A full manual regression pass, Android Auto and device-specific playback remain unverified for the final artifact.
 
 ## Versioning
 
-- Version name: `2.6.7`
-- Version code: `2060700`
+- Version name: `2.6.8`
+- Version code: `2060800`
 
-This is an Android release. Levyra Desktop follows its own version and release schedule.
+This release changes the Android version only. Levyra Desktop has a separate version and release process.
 
 ## Upgrade notes
 
-No sign-in or manual import is required. Just update normally. You can connect YouTube Music during setup or later, but you can also leave it alone.
+No manual migration is required by this version bump. Your original Home, mini player and navigation designs remain selectable as before. The additional styles are optional and existing favourites, playlists, downloads and settings keep their normal storage paths.
 
-Existing music, downloads and settings continue using Levyra's normal data paths. The GitHub APK and its checksum become available after the signed release workflow succeeds. F-Droid and other stores have their own publishing schedules.
+The GitHub APK and its SHA-256 checksum become available after the signed release workflow finishes successfully. F-Droid and other stores follow their own publication schedules.
 
 ## Final note
 
-Thanks for the suggestions and the bug reports. Plenty of the changes here came from things people noticed while using Levyra. I'm still working on it, and I'd rather keep improving those little details than pretend it's all perfect.
+The idea is simple: give you more freedom to change Levyra's appearance without taking away the one you're used to. And keep fixing the small loading and playback details that make a difference when you're listening every day.
