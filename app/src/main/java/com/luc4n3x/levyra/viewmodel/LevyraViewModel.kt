@@ -43,6 +43,7 @@ import com.luc4n3x.levyra.domain.LevyraCustomTheme
 import com.luc4n3x.levyra.domain.LevyraCustomThemes
 import com.luc4n3x.levyra.domain.LevyraHomeStudioSettings
 import com.luc4n3x.levyra.domain.LevyraMiniPlayerStudioSettings
+import com.luc4n3x.levyra.domain.LevyraNavigationStudioSettings
 import com.luc4n3x.levyra.domain.LevyraLyricsStudioSettings
 import com.luc4n3x.levyra.data.LevyraHomeSnapshotCache
 import com.luc4n3x.levyra.data.EXPLORE_DISCOVERY_CACHE_TTL_MS
@@ -933,6 +934,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var homeStudioMutationGeneration = 0L
     private var pendingMiniPlayerStudioWrites = 0
     private var miniPlayerStudioMutationGeneration = 0L
+    private var pendingNavigationStudioWrites = 0
+    private var navigationStudioMutationGeneration = 0L
     private val smartOfflineSettingsMutationId = AtomicLong()
     @Volatile private var pendingSmartOfflineSettings: LevyraSmartOfflineSettings? = null
     private val recommendationFeedbackMutationMutex = Mutex()
@@ -1427,6 +1430,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     val state: StateFlow<LevyraUiState> = _state.asStateFlow()
     private val _miniPlayerStudio = MutableStateFlow(MiniPlayerStudioState(settings = startupSettings.miniPlayerStudioSettings))
     val miniPlayerStudio: StateFlow<MiniPlayerStudioState> = _miniPlayerStudio.asStateFlow()
+    private val _navigationStudio = MutableStateFlow(NavigationStudioState(settings = startupSettings.navigationStudioSettings))
+    val navigationStudio: StateFlow<NavigationStudioState> = _navigationStudio.asStateFlow()
     private val _customThemes = MutableStateFlow(
         LevyraCustomThemes.normalized(startupSettings.customThemes).also(LevyraThemes::setCustomThemes)
     )
@@ -1481,6 +1486,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             preferences.miniPlayerStudioSettingsFlow.collect { settings ->
                 if (pendingMiniPlayerStudioWrites == 0 && settings == preferences.miniPlayerStudioSettings()) {
                     _miniPlayerStudio.update { it.copy(settings = settings) }
+                }
+            }
+        }
+        viewModelScope.launch {
+            preferences.navigationStudioSettingsFlow.collect { settings ->
+                if (pendingNavigationStudioWrites == 0 && settings == preferences.navigationStudioSettings()) {
+                    _navigationStudio.update { it.copy(settings = settings) }
                 }
             }
         }
@@ -2845,6 +2857,33 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
             } finally {
                 pendingMiniPlayerStudioWrites -= 1
+            }
+        }
+    }
+
+    fun openNavigationStudio() {
+        _navigationStudio.update { it.copy(visible = true) }
+    }
+
+    fun closeNavigationStudio() {
+        _navigationStudio.update { it.copy(visible = false) }
+    }
+
+    fun setNavigationStudioSettings(settings: LevyraNavigationStudioSettings) {
+        val normalized = settings.normalized()
+        if (normalized == _navigationStudio.value.settings) return
+        val generation = ++navigationStudioMutationGeneration
+        pendingNavigationStudioWrites += 1
+        _navigationStudio.update { it.copy(settings = normalized) }
+        viewModelScope.launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
+            try {
+                val saved = preferences.setNavigationStudioSettings(normalized)
+                if (generation == navigationStudioMutationGeneration) {
+                    val resolved = if (saved) normalized else preferences.navigationStudioSettings()
+                    _navigationStudio.update { it.copy(settings = resolved) }
+                }
+            } finally {
+                pendingNavigationStudioWrites -= 1
             }
         }
     }

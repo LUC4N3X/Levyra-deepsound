@@ -348,3 +348,8 @@ data class MiniPlayerStudioState(
     val settings: com.luc4n3x.levyra.domain.LevyraMiniPlayerStudioSettings = com.luc4n3x.levyra.domain.LevyraMiniPlayerStudioSettings(),
     val visible: Boolean = false
 )
+
+data class NavigationStudioState(
+    val settings: com.luc4n3x.levyra.domain.LevyraNavigationStudioSettings = com.luc4n3x.levyra.domain.LevyraNavigationStudioSettings(),
+    val visible: Boolean = false
+)

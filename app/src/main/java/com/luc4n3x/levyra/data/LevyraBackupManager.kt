@@ -56,6 +56,7 @@ import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.LevyraCustomThemes
 import com.luc4n3x.levyra.domain.LevyraHomeStudioSettings
 import com.luc4n3x.levyra.domain.LevyraMiniPlayerStudioSettings
+import com.luc4n3x.levyra.domain.LevyraNavigationStudioSettings
 import com.luc4n3x.levyra.domain.LevyraLyricsStudioSettings
 import com.luc4n3x.levyra.domain.LyricsProviderOrdering
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
@@ -1027,6 +1028,7 @@ class LevyraBackupManager(private val context: Context) {
             .put("lyricsStudioSettings", JSONObject(snapshot.lyricsStudioSettings.encode()))
             .put("homeStudioSettings", JSONObject(snapshot.homeStudioSettings.encode()))
             .put("miniPlayerStudioSettings", JSONObject(snapshot.miniPlayerStudioSettings.encode()))
+            .put("navigationStudioSettings", JSONObject(snapshot.navigationStudioSettings.encode()))
             .put("customThemes", JSONObject(LevyraCustomThemes.encode(snapshot.customThemes)))
             .put("videoQualityTarget", snapshot.videoQualityTarget.storageValue)
             .put("lyricsProviderOrdering", JSONArray(snapshot.lyricsProviderOrdering.encode()))
@@ -1091,6 +1093,10 @@ class LevyraBackupManager(private val context: Context) {
                 ?.toString()
                 ?.let(LevyraMiniPlayerStudioSettings::decode)
                 ?: preferences.miniPlayerStudioSettings(),
+            navigationStudioSettings = json.optJSONObject("navigationStudioSettings")
+                ?.toString()
+                ?.let(LevyraNavigationStudioSettings::decode)
+                ?: preferences.navigationStudioSettings(),
             customThemes = json.optJSONObject("customThemes")
                 ?.toString()
                 ?.let(LevyraCustomThemes::decode)

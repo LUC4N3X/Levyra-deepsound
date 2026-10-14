@@ -791,7 +791,7 @@ private fun miniShapeLabel(shape: MiniArtworkShape, copy: MiniPlayerStudioCopy):
 }
 
 @Composable
-private fun MiniStudioLabel(text: String) {
+internal fun MiniStudioLabel(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
@@ -803,7 +803,7 @@ private fun MiniStudioLabel(text: String) {
 }
 
 @Composable
-private fun MiniStudioCaption(text: String) {
+internal fun MiniStudioCaption(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelLarge,
@@ -813,7 +813,7 @@ private fun MiniStudioCaption(text: String) {
 }
 
 @Composable
-private fun MiniStudioGroup(title: String, content: @Composable () -> Unit) {
+internal fun MiniStudioGroup(title: String, content: @Composable () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -925,7 +925,7 @@ private fun MiniStyleCard(
 }
 
 @Composable
-private fun MiniDefaultBadge(label: String) {
+internal fun MiniDefaultBadge(label: String) {
     val scheme = MaterialTheme.colorScheme
     Text(
         text = label,
@@ -941,7 +941,7 @@ private fun MiniDefaultBadge(label: String) {
 }
 
 @Composable
-private fun MiniStudioSlider(
+internal fun MiniStudioSlider(
     title: String,
     value: Int,
     range: IntRange,
@@ -991,7 +991,7 @@ private fun MiniStudioSlider(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun <T> MiniStudioChoice(
+internal fun <T> MiniStudioChoice(
     options: List<T>,
     selected: T,
     label: (T) -> String,
@@ -1029,7 +1029,7 @@ private fun MiniStudioMotionChoice(selected: MiniMotion, onSelect: (MiniMotion) 
 }
 
 @Composable
-private fun MiniStudioSwitch(title: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+internal fun MiniStudioSwitch(title: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
