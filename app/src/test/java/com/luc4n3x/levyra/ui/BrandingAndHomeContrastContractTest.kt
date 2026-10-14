@@ -50,7 +50,7 @@ class BrandingAndHomeContrastContractTest {
     @Test
     fun `home identity header stays transparent and compact`() {
         val greetingBar = functionBlock("private fun GreetingBar(")
-        val logoBadge = functionBlock("private fun HomeLogoBadge()")
+        val logoBadge = functionBlock("internal fun HomeLogoBadge()")
         val greetingName = functionBlock("private fun HomeGreetingName(")
 
         assertTrue(greetingBar.contains(".heightIn(min = LevyraHomeDesign.SettingsControlHeight)"))
@@ -74,7 +74,7 @@ class BrandingAndHomeContrastContractTest {
     fun `home greeting respects reduced motion and refreshes across day parts`() {
         val greeting = functionBlock("private fun HomeGreeting(")
         val dayPart = functionBlock("private fun HomeGreetingDayPart(")
-        val greetingClock = functionBlock("private fun rememberCurrentGreetingHour()")
+        val greetingClock = functionBlock("internal fun rememberCurrentGreetingHour()")
 
         assertTrue(greeting.contains("LaunchedEffect(animationsEnabled)"))
         assertTrue(greeting.contains("dayPartReveal.snapTo(1f)"))

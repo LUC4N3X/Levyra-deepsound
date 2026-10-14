@@ -53,6 +53,7 @@ import com.luc4n3x.levyra.domain.LevyraSmartOfflineSettings
 import com.luc4n3x.levyra.domain.DownloadOwnership
 import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.LevyraHomeStudioSettings
 import com.luc4n3x.levyra.domain.LevyraLyricsStudioSettings
 import com.luc4n3x.levyra.domain.LyricsProviderOrdering
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
@@ -1022,6 +1023,7 @@ class LevyraBackupManager(private val context: Context) {
             .put("lyricsTranslationEnabled", snapshot.lyricsTranslationEnabled)
             .put("lyricsLatencyProfiles", JSONObject(snapshot.lyricsLatencyProfiles.encode()))
             .put("lyricsStudioSettings", JSONObject(snapshot.lyricsStudioSettings.encode()))
+            .put("homeStudioSettings", JSONObject(snapshot.homeStudioSettings.encode()))
             .put("videoQualityTarget", snapshot.videoQualityTarget.storageValue)
             .put("lyricsProviderOrdering", JSONArray(snapshot.lyricsProviderOrdering.encode()))
             .put("themePreset", snapshot.themePreset)
@@ -1077,6 +1079,10 @@ class LevyraBackupManager(private val context: Context) {
                 ?.toString()
                 ?.let(LevyraLyricsStudioSettings::decode)
                 ?: preferences.lyricsStudioSettings(),
+            homeStudioSettings = json.optJSONObject("homeStudioSettings")
+                ?.toString()
+                ?.let(LevyraHomeStudioSettings::decode)
+                ?: preferences.homeStudioSettings(),
             themePreset = json.optString("themePreset"),
             themeAccent = backupThemeAccentFromJson(json),
             ambientSettings = json.optJSONObject("ambientSettings")
