@@ -24667,7 +24667,7 @@ private fun TopResultCard(
         )
         Column(modifier = Modifier.padding(top = 18.dp, bottom = 10.dp)) {
             Text(
-                text = strings.topResult.uppercase(Locale.getDefault()),
+                text = strings.topResult.uppercase(Locale.forLanguageTag(strings.code)),
                 color = MaterialTheme.colorScheme.primary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Black,

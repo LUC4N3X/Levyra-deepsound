@@ -294,11 +294,11 @@ private fun absorbMusicVideo(entry: Track, video: Track): Track {
     if (!hasYoutubeAudioIdentity(entry)) return richerSong(entry, video)
     val audioId = entry.audioVideoId.trim().ifBlank { entry.id.trim() }
     val counterpart = entry.counterpartVideoId.trim()
-    val keepsCounterpart = isPlayableYoutubeId(counterpart) && counterpart != audioId &&
-        !video.videoType.equals(MUSIC_VIDEO_TYPE_OFFICIAL, ignoreCase = true)
+    val hasVideoCounterpart = isPlayableYoutubeId(counterpart) && counterpart != audioId
+    val officialVideo = video.videoType.equals(MUSIC_VIDEO_TYPE_OFFICIAL, ignoreCase = true)
     return entry.copy(
         audioVideoId = audioId,
-        counterpartVideoId = if (keepsCounterpart) counterpart else video.id.trim(),
+        counterpartVideoId = if (officialVideo && !hasVideoCounterpart) video.id.trim() else entry.counterpartVideoId,
         explicit = entry.explicit || video.explicit,
         youtubeViewCount = maxOf(entry.youtubeViewCount, video.youtubeViewCount)
     )
@@ -668,7 +668,10 @@ internal fun richerSong(current: Track, candidate: Track): Track {
     }
 
     val absorbedVideoId = sequenceOf(current, candidate)
-        .firstOrNull { it !== playbackDonor && isSearchMusicVideo(it) && !isSearchMusicVideo(playbackDonor) }
+        .firstOrNull {
+            it !== playbackDonor && isSearchMusicVideo(it) && !isSearchMusicVideo(playbackDonor) &&
+                it.videoType.equals(MUSIC_VIDEO_TYPE_OFFICIAL, ignoreCase = true)
+        }
         ?.id?.trim()
         ?.takeIf(::isPlayableYoutubeId)
     val pairedCounterpart = playbackDonor.counterpartVideoId.trim()
