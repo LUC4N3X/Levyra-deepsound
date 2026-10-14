@@ -5,6 +5,7 @@ import android.util.AtomicFile
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.data.spotify.SpotifyMetadataIndex
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -151,6 +152,21 @@ internal class EditorialChartsRepository private constructor(context: Context) {
             .forEach { track -> index.putIfAbsent(chartArtworkIdentity(track), track) }
         artworkIndex = snapshot to index
         index
+    }
+
+    suspend fun cachedSpotifyMetadata(track: Track): Track? = withContext(Dispatchers.IO) {
+        metadataSnapshot()?.spotifyMetadata?.match(track)
+    }
+
+    suspend fun searchSpotifyMetadata(query: String, limit: Int): List<Track> = withContext(Dispatchers.IO) {
+        metadataSnapshot()?.spotifyMetadata?.search(query, limit).orEmpty()
+    }
+
+    private fun metadataSnapshot(): CatalogSnapshot? {
+        val now = System.currentTimeMillis()
+        val snapshot = usableSnapshot(now)
+        if (snapshot == null || snapshot.needsRefresh(now)) warm()
+        return snapshot
     }
 
     suspend fun cachedAllMarkets(limit: Int): Map<String, List<Track>> = withContext(Dispatchers.IO) {
@@ -337,7 +353,9 @@ internal data class CatalogSnapshot(
     val generatedAtMs: Long,
     val loadedAt: Long,
     val rawJson: String,
+    val metadataTracks: List<Track> = emptyList(),
 ) {
+    val spotifyMetadata: SpotifyMetadataIndex by lazy { SpotifyMetadataIndex(metadataTracks) }
     fun isUsable(now: Long): Boolean {
         val age = now - generatedAtMs
         return age in -MAX_FUTURE_SKEW_MS..MAX_CATALOG_AGE_MS
@@ -373,6 +391,7 @@ internal data class CatalogSnapshot(
 
 internal object EditorialCatalogParser {
     private val PUBLISHED_YOUTUBE_BROWSE_PARAMS = Regex("[A-Za-z0-9_./=+\\-]+")
+    private val METADATA_COLLECTION_KINDS = setOf("chart", "release", "editorial", "mood", "genre")
 
     fun parse(body: String, loadedAt: Long): CatalogSnapshot? {
         val root = runCatching { JSONObject(body) }.getOrNull() ?: return null
@@ -382,11 +401,15 @@ internal object EditorialCatalogParser {
         val byMarket = LinkedHashMap<String, List<Track>>()
         val releaseByMarket = LinkedHashMap<String, List<Track>>()
         val exploreByParams = LinkedHashMap<String, EditorialExploreCollection>()
+        val metadataTracks = ArrayList<Track>()
         for (index in 0 until collections.length()) {
             val collection = collections.optJSONObject(index) ?: continue
             val kind = collection.optString("kind").trim().lowercase(Locale.ROOT)
             val tracks = parseTracks(collection.optJSONArray("tracks"), kind)
             if (tracks.isEmpty()) continue
+            if (kind in METADATA_COLLECTION_KINDS) {
+                metadataTracks.addAll(tracks)
+            }
             when (kind) {
                 "chart", "release" -> {
                     val market = collection.optString("market")
@@ -420,6 +443,7 @@ internal object EditorialCatalogParser {
             generatedAtMs = generatedAtMs,
             loadedAt = loadedAt,
             rawJson = body,
+            metadataTracks = metadataTracks.distinctBy { it.id }.take(10_000),
         )
     }
 
@@ -508,6 +532,8 @@ internal object EditorialCatalogParser {
                 releaseDate = releaseDate,
                 albumType = albumType,
                 trackTotal = albumTotalTracks,
+                trackNumber = item.optInt("trackNumber", 0).coerceAtLeast(0),
+                discNumber = item.optInt("discNumber", 0).coerceAtLeast(0),
                 year = releaseDate.take(4).takeIf { it.length == 4 && it.all(Char::isDigit) }.orEmpty(),
                 explicit = item.optBoolean("explicit", false),
                 isrc = item.optString("isrc").uppercase(Locale.ROOT).filter(Char::isLetterOrDigit),
@@ -566,7 +592,7 @@ internal object EditorialCatalogParser {
         }.orEmpty()
     }
 
-    private fun publishedArtworkUrl(value: String?): String {
+    internal fun publishedArtworkUrl(value: String?): String {
         val normalized = value.orEmpty().trim()
         if (normalized.isEmpty() || normalized.length > MAX_ARTWORK_URL_LENGTH) return ""
         val url = normalized.toHttpUrlOrNull() ?: return ""

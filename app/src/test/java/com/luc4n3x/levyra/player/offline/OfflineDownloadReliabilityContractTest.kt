@@ -99,7 +99,7 @@ class OfflineDownloadReliabilityContractTest {
     fun offlineResolutionPrefersTheWorkingReelMuxedRouteBeforeLegacyMp4Fallbacks() {
         val resolver = Files.readString(sourceFile("data/PlaybackResolver.kt"))
         val offlineStart = resolver.indexOf("suspend fun resolveForOffline")
-        val retryHelper = resolver.indexOf("resolveWithLanguageRevisionRetry(track)", offlineStart)
+        val retryHelper = resolver.indexOf("resolveWithLanguageRevisionRetry(", offlineStart)
         val reel = resolver.indexOf("resolveVideoWithAndroidReel", retryHelper)
         val legacy = resolver.indexOf("resolveInternal(", reel)
 

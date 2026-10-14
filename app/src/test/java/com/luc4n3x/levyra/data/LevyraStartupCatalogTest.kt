@@ -118,4 +118,14 @@ class LevyraStartupCatalogTest {
         assertTrue("Starboy" in titles)
         assertTrue("Believer" in titles)
     }
+
+    @Test
+    fun `startup seeds open with the official album cover instead of a video frame`() {
+        val seed = LevyraStartupCatalog.homeSections("it").flatMap { it.tracks }
+            .first { it.title == "Blinding Lights" && it.artist == "The Weeknd" }
+
+        assertTrue(seed.thumbnailUrl.startsWith("https://i.scdn.co/image/"))
+        assertTrue(seed.largeThumbnailUrl.startsWith("https://i.scdn.co/image/"))
+        assertTrue(seed.videoUrl.contains("4NRXx6U8ABQ"))
+    }
 }

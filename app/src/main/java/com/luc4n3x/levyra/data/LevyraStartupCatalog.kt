@@ -339,7 +339,9 @@ object LevyraStartupCatalog {
         val key = "$title|$artist"
         val seed = stableSeed(key)
         val palette = palette(seed)
-        val art = if (videoId.isBlank()) "" else "https://i.ytimg.com/vi/$videoId/hqdefault.jpg"
+        val cover = LevyraStartupArtwork.coverFor(title, artist)
+        val art = cover?.first ?: if (videoId.isBlank()) "" else "https://i.ytimg.com/vi/$videoId/hqdefault.jpg"
+        val largeArt = cover?.second ?: art
         return Track(
             id = "chart-seed-${stableId(key)}",
             title = title,
@@ -349,7 +351,7 @@ object LevyraStartupCatalog {
             streamUrl = "",
             videoUrl = if (videoId.isBlank()) "" else "https://www.youtube.com/watch?v=$videoId",
             thumbnailUrl = art,
-            largeThumbnailUrl = art,
+            largeThumbnailUrl = largeArt,
             source = "Levyra Start",
             moodTags = tags,
             energy = energy.coerceIn(0, 100),

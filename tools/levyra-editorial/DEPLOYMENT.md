@@ -7,7 +7,7 @@ This document describes the production deployment topology, security configurati
 The on-demand Canvas Resolver runs as an internal daemon behind a TLS-terminating reverse proxy (such as Caddy, Nginx, or Cloudflare).
 
 - Inbound requests: Android client queries `https://canvas.levyra.org/v1/resolve` via HTTPS.
-- Reverse Proxy: Terminates TLS, enforces DDoS protection, provides primary edge rate limiting, restricts HTTP methods (`POST` for `/v1/resolve`, `GET` for `/health`), and forwards requests to the Python service.
+- Reverse Proxy: Terminates TLS, enforces DDoS protection, provides primary edge rate limiting, restricts HTTP methods (`POST` for `/v1/resolve` and `/v1/catalog/search`, `GET` for `/health`), and forwards requests to the Python service.
 - Python Backend: Runs `python -m levyra_editorial.resolver`, handles caching (in-memory L1 and persistent SQLite L2), deduplicates concurrent queries, resolves track candidates via Spotify Web Player Pathfinder (`searchTracks`), coordinates upstream Spotify/PaxSenix Canvas lookups, validates MP4 Canvas links, and records discoveries.
 - Storage: Persistent volume mounted at `/var/lib/levyra/canvas_cache.db` storing positive/negative cache entries and canonical discoveries.
 
@@ -31,7 +31,7 @@ The service is configured using standard environment variables:
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `LEVYRA_EDITORIAL_SP_DC` | Yes | (empty) | Spotify `sp_dc` cookie for server-side web-player token authentication. Remains strictly server-only and is never exposed to clients. |
-| `LEVYRA_RESOLVER_CLIENT_KEY` | Yes | (empty) | Shared authentication key required in the `X-Levyra-Key` header on `POST /v1/resolve`. |
+| `LEVYRA_RESOLVER_CLIENT_KEY` | Yes | (empty) | Shared authentication key required in the `X-Levyra-Key` header on all resolver and catalog POST routes. |
 | `LEVYRA_EDITORIAL_SEARCH_QUERY_HASH` | No | `bc1ca2fcd0ba1013a0fc88e6cc4f190af501851e3dafd3e1ef85840297694428` | 64-character hex persisted query SHA-256 hash for Spotify Web Player Pathfinder `searchTracks`. |
 | `LEVYRA_RESOLVER_HOST` | No | `127.0.0.1` | Local interface binding address. |
 | `LEVYRA_RESOLVER_PORT` | No | `8080` | Internal TCP listening port. |
@@ -102,7 +102,7 @@ canvas.levyra.org {
 
     @resolve {
         method POST
-        path /v1/resolve
+        path /v1/resolve /v1/catalog/search
     }
     handle @resolve {
         request_body {
@@ -147,6 +147,13 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $remote_addr;
         proxy_pass http://127.0.0.1:8080/v1/resolve;
+    }
+
+    location = /v1/catalog/search {
+        limit_except POST { deny all; }
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_pass http://127.0.0.1:8080/v1/catalog/search;
     }
 
     location / {
@@ -200,3 +207,30 @@ Expected output:
 ### 4. Credential Leak Verification
 
 Inspect headers and response body to ensure no authorization tokens, session cookies, or Spotify internals are returned.
+
+## Public Catalog Search
+
+The same daemon accepts authenticated `POST /v1/catalog/search` with exactly
+`{"query":"artist or song","limit":12,"country":"IT"}`. Query length is 2–200,
+limit is 1–25, and country is an uppercase ISO 3166-1 alpha-2 code. The existing
+`X-Levyra-Key`, trusted proxy rules, 16 KB body bound and per-IP quota apply.
+
+Search uses the existing authorized server cookie and public Web Player
+`searchDesktop` query. Configure `LEVYRA_EDITORIAL_DESKTOP_SEARCH_QUERY_HASH`
+when Spotify rotates that persisted query. No Spotify cookie or token is sent
+to Android. Responses contain only public tracks, artists and albums in the
+Android parser's GraphQL shape; playlist/account data is discarded. The 92
+bootstrap collections do not constrain this search.
+
+Catalog cache defaults are 120 seconds and 256 LRU entries. Identical concurrent
+requests share one lookup. Uncached queries share a 60-per-minute global quota
+and two admission slots with the client upstream lock; temporary failures return
+503 and never become cached empty results. Spotify 429 Retry-After suspends new
+catalog upstream requests for the specified interval. Existing successful cache
+entries remain available during that interval.
+
+Deployment requires updating the existing daemon and allowing the new POST
+route in its existing TLS proxy, a valid `LEVYRA_EDITORIAL_SP_DC`, the existing
+client key, and a current searchDesktop persisted-query hash. Verify with the
+client key on the new route; no new service or collection-generation workflow
+is required.
