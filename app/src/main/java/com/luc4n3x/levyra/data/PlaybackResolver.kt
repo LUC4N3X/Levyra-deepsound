@@ -189,6 +189,12 @@ internal fun preserveEditorialArtwork(presented: Track, resolved: Track): Track 
     )
 }
 
+internal suspend fun <T> withinPlaybackResolveBudget(timeoutMs: Long, block: suspend () -> T): T {
+    val outcome = withTimeoutOrNull(timeoutMs) { Result.success(block()) }
+        ?: throw PlaybackBlockedException("YouTube lento: sto aspettando lo stream più del previsto, riprova tra qualche secondo")
+    return outcome.getOrThrow()
+}
+
 private const val YOUTUBE_NONCE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 private const val MAX_YOUTUBE_JSON_RESPONSE_BYTES = 8L * 1024L * 1024L
 private val youtubeNonceRandom = SecureRandom()
@@ -1047,6 +1053,45 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
+    private suspend fun resolveSpotifyTrackIfUnmatched(track: Track): Track {
+        if (!track.id.startsWith("spotify:") || track.counterpartVideoId.isNotBlank() || track.audioVideoId.isNotBlank()) {
+            return track
+        }
+        val cacheMatch = com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatchCache.get(context).get(track.id)
+        if (cacheMatch != null && cacheMatch.videoId.isNotBlank()) {
+            return track.copy(
+                videoUrl = cacheMatch.videoUrl.ifBlank { "https://www.youtube.com/watch?v=${cacheMatch.videoId}" },
+                counterpartVideoId = cacheMatch.videoId,
+                audioVideoId = cacheMatch.audioVideoId.ifBlank { cacheMatch.videoId },
+                videoType = cacheMatch.videoType.ifBlank { track.videoType },
+                source = "spotify_youtube",
+                youtubeViewCount = maxOf(track.youtubeViewCount, cacheMatch.youtubeViewCount)
+            )
+        }
+        val candidates = findAlternativeAudioCandidates(track, spotifyIdentityOnly = true)
+        val matchedYt = com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher
+            .findBestMatch(track, candidates)
+            ?.candidate
+        if (matchedYt != null) {
+            com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatchCache.get(context).put(track.id, matchedYt)
+            val videoId = matchedYt.audioVideoId.ifBlank { matchedYt.id }
+            return track.copy(
+                videoUrl = matchedYt.videoUrl.ifBlank { "https://www.youtube.com/watch?v=$videoId" },
+                counterpartVideoId = matchedYt.counterpartVideoId.ifBlank { videoId },
+                audioVideoId = videoId,
+                videoType = matchedYt.videoType.ifBlank { track.videoType },
+                source = "spotify_youtube",
+                youtubeViewCount = maxOf(track.youtubeViewCount, matchedYt.youtubeViewCount)
+            )
+        }
+        throw PlaybackBlockedException("Stream non disponibile")
+    }
+
+    private suspend fun resolveSpotifyIdentityWithinBudget(track: Track): Track =
+        if (track.id.startsWith("spotify:") && track.counterpartVideoId.isBlank() && track.audioVideoId.isBlank()) {
+            withinPlaybackResolveBudget(3_500L) { resolveSpotifyTrackIfUnmatched(track) }
+        } else track
+
     suspend fun resolve(track: Track, isVideoMode: Boolean = false): Track {
         if (track.isPersonalCollectionTrack()) return personalCollections.resolveForPlayback(track)
         val resolved = resolveWithLanguageRevisionRetry(
@@ -1057,10 +1102,10 @@ class PlaybackResolver private constructor(private val context: Context) {
                 .queryFor(requestTrack, isVideoMode, selectedAudioQuality)
                 ?.takeIf { hasInternetCapableNetwork() }
             if (alternativeQuery == null) {
-                resolveForPlayback(requestTrack, isVideoMode)
+                resolveForPlayback(resolveSpotifyIdentityWithinBudget(requestTrack), isVideoMode)
             } else {
                 highQualityPlayback.resolve(requestTrack, alternativeQuery, ::basePlaybackProvenance) {
-                    resolveForPlayback(requestTrack, isVideoMode)
+                    resolveForPlayback(resolveSpotifyIdentityWithinBudget(requestTrack), isVideoMode)
                 }
             }
         }
@@ -1079,8 +1124,9 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     suspend fun resolveForOffline(track: Track, audioQualityOverride: String? = null): Track {
         if (track.isPersonalCollectionTrack()) return personalCollections.resolveForDownload(track)
+        val targetTrack = resolveSpotifyIdentityWithinBudget(track)
         val quality = normalizeAudioQuality(audioQualityOverride ?: selectedAudioQuality)
-        val resolved = resolveWithLanguageRevisionRetry(track) { requestTrack, preferredLanguage ->
+        val resolved = resolveWithLanguageRevisionRetry(targetTrack) { requestTrack, preferredLanguage ->
             val reel = if (preferredLanguage.isBlank()) {
                 runCatchingPreservingCancellation {
                     resolveVideoWithAndroidReel(requestTrack.copy(streamUrl = "", videoStreamUrl = ""))
@@ -2452,7 +2498,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
-    private suspend fun findAlternativeAudioCandidates(track: Track): List<Track> = withContext(Dispatchers.IO) {
+    private suspend fun findAlternativeAudioCandidates(track: Track, spotifyIdentityOnly: Boolean = false): List<Track> = withContext(Dispatchers.IO) {
         val output = LinkedHashMap<String, Track>()
         val queries = playbackAlternativeSearchQueries(track)
         val repository = YoutubeMusicRepository(context)
@@ -2460,15 +2506,20 @@ class PlaybackResolver private constructor(private val context: Context) {
             val searchResults = runCatchingPreservingCancellation {
                 repository.search(query, 8, userPreferences.languageCode())
             }.getOrDefault(emptyList())
-            trustedPlaybackFallbackCandidates(track, searchResults)
-                .asSequence()
+            val candidates = if (spotifyIdentityOnly) {
+                searchResults.filter { candidate ->
+                    com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher.scoreMatch(track, candidate) >=
+                        com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher.DEFAULT_CONFIDENCE_THRESHOLD
+                }
+            } else trustedPlaybackFallbackCandidates(track, searchResults)
+            candidates.asSequence()
                 .filter { it.id.isNotBlank() }
                 .filter { !sameVideoIdentity(track, it) }
                 .sortedByDescending { scoreAlternativeCandidate(track, it) }
                 .forEach { candidate ->
                     output.putIfAbsent(candidate.id, candidate.copy(streamUrl = "", videoStreamUrl = ""))
                 }
-            if (output.size >= 4) break
+            if (spotifyIdentityOnly && output.isNotEmpty() || output.size >= 4) break
         }
         output.values
             .sortedByDescending { scoreAlternativeCandidate(track, it) }

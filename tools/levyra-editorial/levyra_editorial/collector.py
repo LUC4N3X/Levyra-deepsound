@@ -328,6 +328,8 @@ def normalize_playlist_items(items: list[dict[str, Any]]) -> list[Track]:
                 artwork_url=artwork_url,
                 isrc=_nested_string(raw_track, "external_ids", "isrc"),
                 youtube_music=_safe_youtube_music_match(raw_track.get("youtube_music")),
+                track_number=_positive_int(raw_track.get("track_number")),
+                disc_number=_positive_int(raw_track.get("disc_number")),
             )
         )
     return tracks
