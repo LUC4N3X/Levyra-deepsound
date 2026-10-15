@@ -170,7 +170,7 @@
         <receiver
             android:name=".widget.LevyraWidgetProvider"
             android:exported="false"
-            android:label="@string/app_name">
+            android:label="@string/widget_original_label">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -178,6 +178,105 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/levyra_widget_info" />
         </receiver>
+
+        <receiver
+            android:name=".widget.studio.LevyraMiniWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_studio_mini_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/studio_widget_mini_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.studio.LevyraSlimWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_studio_slim_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/studio_widget_slim_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.studio.LevyraExpressiveWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_studio_expressive_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/studio_widget_expressive_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.studio.LevyraHeroWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_studio_hero_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/studio_widget_hero_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.studio.LevyraImmersiveWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_studio_immersive_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/studio_widget_immersive_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.studio.LevyraVinylWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_studio_vinyl_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/studio_widget_vinyl_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.studio.LevyraQuickActionsWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_studio_quick_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/studio_widget_quick_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.studio.WidgetStudioActionReceiver"
+            android:exported="false" />
+
+        <activity
+            android:name=".widget.studio.WidgetStudioActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Levyra">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
 
         <receiver
             android:name=".widget.RecognitionWidgetProvider"

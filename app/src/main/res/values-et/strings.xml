@@ -37,4 +37,12 @@
     <string name="shortcut_library">Muusikakogu</string>
     <string name="shortcut_recognition">Tuvasta muusika</string>
     <string name="shortcut_resume">Jätka esitust</string>
+    <string name="widget_original_label">Originaal (vaikimisi)</string>
+    <string name="widget_studio_mini_desc">Kompaktne kaanepildiga mängija</string>
+    <string name="widget_studio_slim_desc">Õhukesed juhtnupud ühel real</string>
+    <string name="widget_studio_expressive_desc">Täismängija edenemisega</string>
+    <string name="widget_studio_hero_desc">Suur kaanepilt, premium-mängija</string>
+    <string name="widget_studio_immersive_desc">Kaanepilt, järjekord, laulusõnad ja muu</string>
+    <string name="widget_studio_vinyl_desc">Vinüülistiilis kaanepildiga mängija</string>
+    <string name="widget_studio_quick_desc">Flow, lemmikud, allalaadimised ja muu</string>
 </resources>

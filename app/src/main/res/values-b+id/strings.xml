@@ -37,4 +37,12 @@
     <string name="shortcut_library">Koleksi</string>
     <string name="shortcut_recognition">Kenali musik</string>
     <string name="shortcut_resume">Lanjutkan pemutaran</string>
+    <string name="widget_original_label">Asli (default)</string>
+    <string name="widget_studio_mini_desc">Pemutar ringkas dengan sampul</string>
+    <string name="widget_studio_slim_desc">Kontrol ramping dalam satu baris</string>
+    <string name="widget_studio_expressive_desc">Pemutar lengkap dengan progres</string>
+    <string name="widget_studio_hero_desc">Sampul besar, pemutar premium</string>
+    <string name="widget_studio_immersive_desc">Sampul, antrean, lirik, dan lainnya</string>
+    <string name="widget_studio_vinyl_desc">Pemutar dengan sampul gaya piringan hitam</string>
+    <string name="widget_studio_quick_desc">Flow, favorit, unduhan, dan lainnya</string>
 </resources>

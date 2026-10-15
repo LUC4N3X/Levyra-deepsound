@@ -37,4 +37,12 @@
     <string name="shortcut_library">ライブラリ</string>
     <string name="shortcut_recognition">音楽を認識</string>
     <string name="shortcut_resume">再生を再開</string>
+    <string name="widget_original_label">オリジナル（デフォルト）</string>
+    <string name="widget_studio_mini_desc">アートワーク付きコンパクトプレーヤー</string>
+    <string name="widget_studio_slim_desc">1行のスリムなコントロール</string>
+    <string name="widget_studio_expressive_desc">進行状況付きフルプレーヤー</string>
+    <string name="widget_studio_hero_desc">大きなアートワーク、プレミアムプレーヤー</string>
+    <string name="widget_studio_immersive_desc">アートワーク、キュー、歌詞など</string>
+    <string name="widget_studio_vinyl_desc">レコード風アートワークプレーヤー</string>
+    <string name="widget_studio_quick_desc">Flow、お気に入り、ダウンロードなど</string>
 </resources>

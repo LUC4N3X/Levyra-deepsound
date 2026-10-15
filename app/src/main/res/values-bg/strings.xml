@@ -37,4 +37,12 @@
     <string name="shortcut_library">Библиотека</string>
     <string name="shortcut_recognition">Разпознаване на музика</string>
     <string name="shortcut_resume">Продължи възпроизвеждането</string>
+    <string name="widget_original_label">Оригинален (по подразбиране)</string>
+    <string name="widget_studio_mini_desc">Компактен плейър с обложка</string>
+    <string name="widget_studio_slim_desc">Тънки контроли на един ред</string>
+    <string name="widget_studio_expressive_desc">Пълен плейър с напредък</string>
+    <string name="widget_studio_hero_desc">Голяма обложка, премиум плейър</string>
+    <string name="widget_studio_immersive_desc">Обложка, опашка, текстове и още</string>
+    <string name="widget_studio_vinyl_desc">Плейър с обложка във винилов стил</string>
+    <string name="widget_studio_quick_desc">Flow, любими, изтегляния и още</string>
 </resources>

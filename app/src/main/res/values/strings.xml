@@ -42,4 +42,19 @@
     <string name="shortcut_library">Library</string>
     <string name="shortcut_recognition">Recognize music</string>
     <string name="shortcut_resume">Resume playback</string>
+    <string name="widget_studio_mini_name" translatable="false">Levyra Mini</string>
+    <string name="widget_studio_slim_name" translatable="false">Levyra Slim</string>
+    <string name="widget_studio_expressive_name" translatable="false">Levyra Expressive</string>
+    <string name="widget_studio_hero_name" translatable="false">Levyra Artwork Hero</string>
+    <string name="widget_studio_immersive_name" translatable="false">Levyra Immersive</string>
+    <string name="widget_studio_vinyl_name" translatable="false">Levyra Vinyl</string>
+    <string name="widget_studio_quick_name" translatable="false">Levyra Quick Actions</string>
+    <string name="widget_original_label">Original (default)</string>
+    <string name="widget_studio_mini_desc">Compact artwork player</string>
+    <string name="widget_studio_slim_desc">Slim one-row controls</string>
+    <string name="widget_studio_expressive_desc">Full player with progress</string>
+    <string name="widget_studio_hero_desc">Large artwork, premium player</string>
+    <string name="widget_studio_immersive_desc">Artwork, queue, lyrics and more</string>
+    <string name="widget_studio_vinyl_desc">Record-style artwork player</string>
+    <string name="widget_studio_quick_desc">Flow, favorites, downloads and more</string>
 </resources>

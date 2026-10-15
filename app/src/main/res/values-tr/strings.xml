@@ -37,4 +37,12 @@
     <string name="shortcut_library">Kitaplık</string>
     <string name="shortcut_recognition">Müziği tanı</string>
     <string name="shortcut_resume">Çalmaya devam et</string>
+    <string name="widget_original_label">Orijinal (varsayılan)</string>
+    <string name="widget_studio_mini_desc">Kapaklı kompakt oynatıcı</string>
+    <string name="widget_studio_slim_desc">Tek satırda ince kontroller</string>
+    <string name="widget_studio_expressive_desc">İlerlemeli tam oynatıcı</string>
+    <string name="widget_studio_hero_desc">Büyük kapak, premium oynatıcı</string>
+    <string name="widget_studio_immersive_desc">Kapak, sıra, şarkı sözleri ve dahası</string>
+    <string name="widget_studio_vinyl_desc">Plak tarzı kapaklı oynatıcı</string>
+    <string name="widget_studio_quick_desc">Flow, favoriler, indirmeler ve dahası</string>
 </resources>

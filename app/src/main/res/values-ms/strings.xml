@@ -37,4 +37,12 @@
     <string name="shortcut_library">Pustaka</string>
     <string name="shortcut_recognition">Kenal pasti muzik</string>
     <string name="shortcut_resume">Sambung main semula</string>
+    <string name="widget_original_label">Asal (lalai)</string>
+    <string name="widget_studio_mini_desc">Pemain padat dengan kulit album</string>
+    <string name="widget_studio_slim_desc">Kawalan nipis dalam satu baris</string>
+    <string name="widget_studio_expressive_desc">Pemain penuh dengan kemajuan</string>
+    <string name="widget_studio_hero_desc">Kulit album besar, pemain premium</string>
+    <string name="widget_studio_immersive_desc">Kulit album, baris gilir, lirik dan banyak lagi</string>
+    <string name="widget_studio_vinyl_desc">Pemain dengan kulit album gaya piring hitam</string>
+    <string name="widget_studio_quick_desc">Flow, kegemaran, muat turun dan banyak lagi</string>
 </resources>

@@ -37,4 +37,12 @@
     <string name="shortcut_library">Biblioteka</string>
     <string name="shortcut_recognition">Rozpoznaj muzykę</string>
     <string name="shortcut_resume">Wznów odtwarzanie</string>
+    <string name="widget_original_label">Oryginalny (domyślny)</string>
+    <string name="widget_studio_mini_desc">Kompaktowy odtwarzacz z okładką</string>
+    <string name="widget_studio_slim_desc">Smukłe sterowanie w jednym rzędzie</string>
+    <string name="widget_studio_expressive_desc">Pełny odtwarzacz z postępem</string>
+    <string name="widget_studio_hero_desc">Duża okładka, odtwarzacz premium</string>
+    <string name="widget_studio_immersive_desc">Okładka, kolejka, teksty i więcej</string>
+    <string name="widget_studio_vinyl_desc">Odtwarzacz z okładką w stylu winylu</string>
+    <string name="widget_studio_quick_desc">Flow, ulubione, pobrane i więcej</string>
 </resources>
