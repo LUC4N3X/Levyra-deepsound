@@ -599,7 +599,7 @@ README_CARD_SPECS = [
     ("16_listen_together", "LEVYRA JAM", "Listen\ntogether.", "One room. One queue. Everyone in.", "Screenshot_20261011_133434_LEVYRA.jpg"),
 ]
 
-def make_campaign_screen(filename, width, border_color):
+def make_campaign_screen(filename, width, border_color, variant):
     screenshot_path = resolve_screenshot_path(filename)
     if not screenshot_path:
         raise FileNotFoundError(f"Missing campaign screenshot: {filename}")
@@ -609,7 +609,8 @@ def make_campaign_screen(filename, width, border_color):
     height = round(screenshot.height * width / screenshot.width)
     screenshot = screenshot.resize((width, height), Image.Resampling.LANCZOS)
     pad = max(8, round(width * 0.014))
-    radius = max(28, round(width * 0.055))
+    radius_ratios = [0.045, 0.085, 0.06, 0.105]
+    radius = max(28, round(width * radius_ratios[variant]))
     screen = Image.new("RGBA", (width + pad * 2, height + pad * 2), (0, 0, 0, 0))
     mask = Image.new("L", (width, height), 0)
     ImageDraw.Draw(mask).rounded_rectangle((0, 0, width - 1, height - 1), radius=radius, fill=255)
@@ -623,8 +624,20 @@ def make_campaign_screen(filename, width, border_color):
     )
     return screen
 
-def paste_campaign_screen(canvas, filename, width, horizontal_center, top, angle, border_color, max_height):
-    screen = make_campaign_screen(filename, width, border_color)
+def paste_campaign_screen(
+    canvas,
+    filename,
+    width,
+    horizontal_center,
+    top,
+    angle,
+    border_color,
+    max_height,
+    stage_color,
+    accent_color,
+    variant,
+):
+    screen = make_campaign_screen(filename, width, border_color, variant)
     screen = screen.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
     if screen.height > max_height:
         scale = max_height / screen.height
@@ -632,6 +645,44 @@ def paste_campaign_screen(canvas, filename, width, horizontal_center, top, angle
             (round(screen.width * scale), round(screen.height * scale)),
             Image.Resampling.LANCZOS,
         )
+    stage_pad = max(26, round(screen.width * 0.055))
+    stage = Image.new(
+        "RGBA",
+        (screen.width + stage_pad * 2, screen.height + stage_pad * 2),
+        (0, 0, 0, 0),
+    )
+    stage_draw = ImageDraw.Draw(stage)
+    stage_draw.rounded_rectangle(
+        (
+            stage_pad // 2,
+            stage_pad,
+            stage.width - stage_pad // 2,
+            stage.height - stage_pad // 2,
+        ),
+        radius=max(64, round(screen.width * 0.13)),
+        fill=stage_color + (225,),
+    )
+    accent_size = max(90, round(screen.width * 0.22))
+    if variant % 2 == 0:
+        accent_box = (
+            stage.width - accent_size,
+            0,
+            stage.width,
+            accent_size,
+        )
+    else:
+        accent_box = (
+            0,
+            stage.height - accent_size,
+            accent_size,
+            stage.height,
+        )
+    stage_draw.ellipse(accent_box, fill=accent_color + (175,))
+    stage = stage.rotate(-angle * 0.55, resample=Image.Resampling.BICUBIC, expand=True)
+    stage_x = round(horizontal_center - stage.width / 2)
+    stage_y = round(top + 18)
+    canvas.alpha_composite(stage, (stage_x, stage_y))
+
     shadow_alpha = screen.getchannel("A").filter(ImageFilter.GaussianBlur(max(18, width // 18)))
     shadow_alpha = ImageEnhance.Brightness(shadow_alpha).enhance(0.42)
     shadow = Image.new("RGBA", screen.size, (18, 12, 22, 0))
@@ -694,7 +745,7 @@ def render_readme_card(spec, index):
     variant_order = [0, 1, 2, 3, 2, 3, 0, 1, 1, 0, 3, 2, 3, 2, 1, 0]
     theme = README_CARD_THEMES[theme_order[index]]
     variant = variant_order[index]
-    canvas = Image.new("RGBA", (1000, 1800), theme["background"] + (255,))
+    canvas = Image.new("RGBA", (1000, 1900), theme["background"] + (255,))
     draw = ImageDraw.Draw(canvas)
     draw_readme_card_shapes(draw, theme, variant)
     ribbon_centers = [(705, 920), (190, 930), (700, 1090), (170, 1030)]
@@ -710,12 +761,15 @@ def render_readme_card(spec, index):
     paste_campaign_screen(
         canvas,
         screenshot,
-        750,
+        800,
         screen_centers[variant],
         screen_top,
         angles[variant],
         (22, 20, 24),
-        1750 - screen_top,
+        1850 - screen_top,
+        theme["shape"],
+        theme["accent"],
+        variant,
     )
     return canvas.convert("RGB")
 
