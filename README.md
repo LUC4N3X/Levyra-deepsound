@@ -124,41 +124,12 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
   <sub>Browse radio and charts, open an artist, switch to video or follow synced lyrics. Your listening stats stay on your device.</sub>
 </p>
 
-<table>
-  <tr>
-    <td width="50%"><a href="docs/assets/showcase/cards/01_home.webp"><img src="docs/assets/showcase/cards/01_home.webp?v=editorial-focus-v1" width="100%" alt="Levyra home and personalized radio" /></a></td>
-    <td width="50%"><a href="docs/assets/showcase/cards/02_stay_with_the_song.webp"><img src="docs/assets/showcase/cards/02_stay_with_the_song.webp?v=editorial-focus-v1" width="100%" alt="Levyra offline downloads with local audio files, artwork, and metadata" /></a></td>
-  </tr>
-  <tr>
-    <td width="50%"><a href="docs/assets/showcase/cards/03_now_playing.webp"><img src="docs/assets/showcase/cards/03_now_playing.webp?v=editorial-focus-v1" width="100%" alt="Levyra synchronized lyrics" /></a></td>
-    <td width="50%"><a href="docs/assets/showcase/cards/04_player_deck.webp"><img src="docs/assets/showcase/cards/04_player_deck.webp?v=editorial-focus-v1" width="100%" alt="Levyra customizable player decks" /></a></td>
-  </tr>
-  <tr>
-    <td width="50%"><a href="docs/assets/showcase/cards/05_explore_stage.webp"><img src="docs/assets/showcase/cards/05_explore_stage.webp?v=editorial-focus-v1" width="100%" alt="Levyra explore and fresh currents" /></a></td>
-    <td width="50%"><a href="docs/assets/showcase/cards/08_audio_tuning.webp"><img src="docs/assets/showcase/cards/08_audio_tuning.webp?v=editorial-focus-v1" width="100%" alt="Levyra audio tuning and playback engine" /></a></td>
-  </tr>
-</table>
-
-<details>
-<summary><strong>Explore the full interface</strong> · discovery, library, artists, charts, privacy, and collaborative listening</summary>
-<br>
-<p align="center">
-  <a href="docs/assets/showcase/cards/06_levyra_mix_stage.webp"><img src="docs/assets/showcase/cards/06_levyra_mix_stage.webp?v=editorial-focus-v1" width="32%" alt="Levyra custom mix and live radio" /></a>
-  <a href="docs/assets/showcase/cards/07_genres.webp"><img src="docs/assets/showcase/cards/07_genres.webp?v=editorial-focus-v1" width="32%" alt="Levyra moods and genres" /></a>
-  <a href="docs/assets/showcase/cards/09_album.webp"><img src="docs/assets/showcase/cards/09_album.webp?v=editorial-focus-v1" width="32%" alt="Levyra album details and tracklist" /></a><br>
-  <a href="docs/assets/showcase/cards/10_search.webp"><img src="docs/assets/showcase/cards/10_search.webp?v=editorial-focus-v1" width="32%" alt="Levyra instant search and suggestions" /></a>
-  <a href="docs/assets/showcase/cards/11_collections.webp"><img src="docs/assets/showcase/cards/11_collections.webp?v=editorial-focus-v1" width="32%" alt="Levyra curated collections and playlists" /></a>
-  <a href="docs/assets/showcase/cards/12_listening_rhythm.webp"><img src="docs/assets/showcase/cards/12_listening_rhythm.webp?v=editorial-focus-v1" width="32%" alt="Levyra listening rhythm and habits" /></a><br>
-  <a href="docs/assets/showcase/cards/13_your_orbit.webp"><img src="docs/assets/showcase/cards/13_your_orbit.webp?v=editorial-focus-v1" width="32%" alt="Levyra orbit and favorite tracks" /></a>
-  <a href="docs/assets/showcase/cards/14_listening_pulse.webp"><img src="docs/assets/showcase/cards/14_listening_pulse.webp?v=editorial-focus-v1" width="32%" alt="Levyra private listening stats and charts" /></a>
-  <a href="docs/assets/showcase/cards/15_artist_playlists.webp"><img src="docs/assets/showcase/cards/15_artist_playlists.webp?v=editorial-focus-v1" width="32%" alt="Levyra artist playlists and collections" /></a><br>
-  <a href="docs/assets/showcase/cards/16_settings_vault.webp"><img src="docs/assets/showcase/cards/16_settings_vault.webp?v=editorial-focus-v1" width="32%" alt="Levyra settings and local vault backups" /></a>
-  <a href="docs/assets/showcase/cards/17_new_releases.webp"><img src="docs/assets/showcase/cards/17_new_releases.webp?v=editorial-focus-v1" width="32%" alt="Levyra new releases" /></a>
-  <a href="docs/assets/showcase/cards/18_artist_profile.webp"><img src="docs/assets/showcase/cards/18_artist_profile.webp?v=editorial-focus-v1" width="32%" alt="Levyra artist profile and discography" /></a><br>
-  <a href="docs/assets/showcase/cards/19_top_50.webp"><img src="docs/assets/showcase/cards/19_top_50.webp?v=editorial-focus-v1" width="32%" alt="Levyra Top 50 charts" /></a>
-  <a href="docs/assets/showcase/cards/20_levyra_jam.webp"><img src="docs/assets/showcase/cards/20_levyra_jam.webp?v=editorial-focus-v1" width="32%" alt="Levyra Jam collaborative listening on local Wi-Fi" /></a>
-</p>
-</details>
+<a href="docs/assets/showcase/01_levyra_showcase_wall.webp">
+  <picture>
+    <source media="(max-width: 640px)" srcset="docs/assets/showcase/01_levyra_showcase_wall_mobile.webp?v=editorial-wall-v1">
+    <img src="docs/assets/showcase/01_levyra_showcase_wall.webp?v=editorial-wall-v1" width="100%" alt="Levyra interface showcase with playback, offline music, lyrics, discovery, library, charts, and personalization" />
+  </picture>
+</a>
 
 </div>
 

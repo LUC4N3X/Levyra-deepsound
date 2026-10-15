@@ -547,7 +547,60 @@ def generate_feature_cards():
                 card_rgb.save(out_file, "WEBP", quality=95, method=6)
                 print(f"Saved Material 3 Expressive editorial card: {out_file}")
 
+README_SHOWCASE_CARDS = [
+    "01_home.webp",
+    "02_stay_with_the_song.webp",
+    "03_now_playing.webp",
+    "04_player_deck.webp",
+    "05_explore_stage.webp",
+    "06_levyra_mix_stage.webp",
+    "07_genres.webp",
+    "08_audio_tuning.webp",
+    "09_album.webp",
+    "10_search.webp",
+    "11_collections.webp",
+    "12_listening_rhythm.webp",
+    "13_your_orbit.webp",
+    "14_listening_pulse.webp",
+    "15_artist_playlists.webp",
+    "16_settings_vault.webp",
+    "17_new_releases.webp",
+    "18_artist_profile.webp",
+    "19_top_50.webp",
+    "20_levyra_jam.webp",
+]
+
+def render_readme_showcase_wall(columns, card_width):
+    cards = []
+    for filename in README_SHOWCASE_CARDS:
+        card_path = os.path.join(OUT_CARDS_DIR, filename)
+        if not os.path.exists(card_path):
+            raise FileNotFoundError(f"Missing README showcase card: {card_path}")
+        with Image.open(card_path) as card_source:
+            card = card_source.convert("RGB")
+            card_height = round(card.height * card_width / card.width)
+            cards.append(card.resize((card_width, card_height), Image.Resampling.LANCZOS))
+
+    rows = math.ceil(len(cards) / columns)
+    card_height = cards[0].height
+    wall = Image.new("RGB", (columns * card_width, rows * card_height), (8, 8, 10))
+    for index, card in enumerate(cards):
+        wall.paste(card, ((index % columns) * card_width, (index // columns) * card_height))
+    return wall
+
+def generate_readme_showcase_walls():
+    variants = [
+        ("01_levyra_showcase_wall.webp", 4, 450),
+        ("01_levyra_showcase_wall_mobile.webp", 2, 500),
+    ]
+    for filename, columns, card_width in variants:
+        wall = render_readme_showcase_wall(columns, card_width)
+        out_path = os.path.join(OUT_SHOWCASE_DIR, filename)
+        wall.save(out_path, "WEBP", quality=92, method=6)
+        print(f"Saved README showcase wall at {wall.size}: {out_path}")
+
 if __name__ == "__main__":
     generate_hero_panoramic_showcase()
     generate_feature_cards()
+    generate_readme_showcase_walls()
     print("All Material 3 Expressive editorial-stage assets generated successfully!")
