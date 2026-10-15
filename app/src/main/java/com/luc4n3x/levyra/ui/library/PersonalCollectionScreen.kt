@@ -56,7 +56,8 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -670,7 +671,7 @@ private fun PersonalCollectionSettingsSheet(
     onDismiss: () -> Unit,
     onSave: (String, Boolean, Boolean) -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberBottomSheetState(SheetValue.Hidden, setOf(SheetValue.Hidden, SheetValue.Expanded))
     var name by rememberSaveable(collection.id) { mutableStateOf(collection.name) }
     var autoRefresh by rememberSaveable(collection.id) { mutableStateOf(collection.autoRefresh) }
     var allowCleartext by rememberSaveable(collection.id) { mutableStateOf(collection.allowCleartext) }

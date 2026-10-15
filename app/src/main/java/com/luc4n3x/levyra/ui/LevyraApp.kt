@@ -2143,7 +2143,8 @@ fun LevyraApp(
         LocalLevyraVisualCapabilities provides visualCapabilities,
         LocalLevyraStrings provides currentStrings,
         LocalLevyraHaptics provides rememberLevyraHaptics(state.interfaceSettings.hapticFeedback),
-        LocalLayoutDirection provides layoutDirection
+        LocalLayoutDirection provides layoutDirection,
+        LocalNavDockExtraClearance provides navDockExtraClearance(navigationStudio.settings.style, navigationStudio.settings.activeTuning())
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             BoxWithConstraints(
@@ -3686,7 +3687,7 @@ private fun downloadHudBottomPadding(state: LevyraUiState, dockSideBySide: Boole
 @Composable
 private fun tabBarBottomContentInset(miniPlayerVisible: Boolean, animationsEnabled: Boolean): Dp {
     val navigationBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val collapsed = LevyraTabBarCompactHeight + navigationBarInset + LevyraBottomContentGap
+    val collapsed = LevyraTabBarCompactHeight + navigationBarInset + LevyraBottomContentGap + LocalNavDockExtraClearance.current
     val miniPlayerExtra = if (levyraWindowIsCompactLandscape()) {
         (LevyraMiniPlayerHeight - LevyraTabBarHeight).coerceAtLeast(0.dp)
     } else {
@@ -12540,13 +12541,13 @@ private fun HomeEditorialSpotlight(
     LaunchedEffect(heroArtistName, artistArtworkUrl, spotifyArtistArtworkRepository, appleArtistArtworkRepository) {
         resolvedArtistArtworkUrl = artistArtworkUrl
         if (heroArtistName.isNotBlank()) {
-            val spotifyPortrait = spotifyArtistArtworkRepository.resolveArtistPortrait(heroArtistName)
-            if (spotifyPortrait.isNotBlank()) {
-                resolvedArtistArtworkUrl = highResolutionHomeArtistArtworkUrl(spotifyPortrait)
+            val applePortrait = appleArtistArtworkRepository.resolveArtistPortrait(heroArtistName)
+            if (applePortrait.isNotBlank()) {
+                resolvedArtistArtworkUrl = highResolutionHomeArtistArtworkUrl(applePortrait)
             } else {
-                val applePortrait = appleArtistArtworkRepository.resolveArtistPortrait(heroArtistName)
-                if (applePortrait.isNotBlank()) {
-                    resolvedArtistArtworkUrl = highResolutionHomeArtistArtworkUrl(applePortrait)
+                val spotifyPortrait = spotifyArtistArtworkRepository.resolveArtistPortrait(heroArtistName)
+                if (spotifyPortrait.isNotBlank()) {
+                    resolvedArtistArtworkUrl = highResolutionHomeArtistArtworkUrl(spotifyPortrait)
                 }
             }
         }
