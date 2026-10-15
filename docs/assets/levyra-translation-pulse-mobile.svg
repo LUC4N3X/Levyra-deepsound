@@ -3,14 +3,14 @@
   <desc>English: 100%, Italiano: 100%, Español: 100%, Français: 100%, Deutsch: 100%, Português: 100%, Nederlands: 100%, Polski: 100%, Română: 100%, Ελληνικά: 100%, Svenska: 100%, Dansk: 100%, Čeština: 100%, Slovenčina: 100%, Hrvatski: 100%, Српски: 100%, Shqip: 100%, Български: 100%, Magyar: 100%, Suomi: 100%, Eesti: 100%, Norsk bokmål: 100%, Català: 100%, Українська: 100%, Русский: 100%, Қазақша: 100%, Türkçe: 100%, العربية: 100%, فارسی: 100%, 简体中文: 100%, 繁體中文: 100%, 日本語: 100%, 한국어: 100%, हिन्दी: 100%, বাংলা: 100%, Bahasa Indonesia: 100%, Bahasa Melayu: 100%, Tiếng Việt: 100%, ไทย: 100%, Filipino: 100%, עברית: 100%</desc>
   <style>
     text { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; }
-    .eyebrow { fill: #F09ACB; font-size: 11px; font-weight: 750; letter-spacing: 1.8px; }
+    .eyebrow { fill: #F09ACB; font-size: 13px; font-weight: 780; letter-spacing: 1.7px; }
     .hero { fill: #F7F1F5; font-size: 58px; font-weight: 760; letter-spacing: -3px; }
-    .meta { fill: #A99DA6; font-size: 12px; font-weight: 550; }
-    .status { fill: #F7F1F5; font-size: 12px; font-weight: 750; }
-    .tile-label { fill: #241923; font-size: 13px; font-weight: 800; letter-spacing: .4px; }
-    .tile-count { fill: #241923; font-size: 26px; font-weight: 800; }
-    .tile-examples { fill: #594751; font-size: 10px; }
-    .footer { fill: #A99DA6; font-size: 10px; font-weight: 600; letter-spacing: .3px; }
+    .meta { fill: #C9BDC5; font-size: 14px; font-weight: 580; }
+    .status { fill: #F7F1F5; font-size: 14px; font-weight: 780; }
+    .tile-label { fill: #241923; font-size: 16px; font-weight: 820; letter-spacing: .25px; }
+    .tile-count { fill: #241923; font-size: 28px; font-weight: 820; }
+    .tile-examples { fill: #493741; font-size: 12px; font-weight: 560; }
+    .footer { fill: #C9BDC5; font-size: 11px; font-weight: 650; letter-spacing: .25px; }
   </style>
   <rect width="720" height="530" rx="34" fill="#0D1117"/>
   <rect x="26" y="20" width="668" height="150" rx="44" fill="#2B1D2A"/>
