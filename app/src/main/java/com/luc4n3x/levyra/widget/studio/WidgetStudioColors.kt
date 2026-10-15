@@ -39,7 +39,7 @@ object WidgetStudioColors {
         customColor: Int,
         artworkSeed: Int?
     ): StudioColorScheme {
-        val systemDark = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+        val systemDark = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
             Configuration.UI_MODE_NIGHT_YES
         return when (palette) {
             StudioPalette.Artwork -> fromSeed(artworkSeed ?: LEVYRA_SEED, dark = true, chromaBoost = 1.0)

@@ -592,25 +592,33 @@ internal object WidgetStudioRenderer {
         private fun bindQuickResume() {
             val resumeVisible = layout == StudioLayout.Quick || h >= 150
             views.setViewVisibility(R.id.studio_quick_resume, if (resumeVisible) View.VISIBLE else View.GONE)
-            views.setInt(R.id.studio_quick_resume_bg, "setColorFilter", if (minimal) scheme.surfaceContainerHigh else scheme.primaryContainer)
-            views.setInt(R.id.studio_quick_resume_disc, "setColorFilter", if (minimal) scheme.onSurface else scheme.primary)
-            views.setInt(R.id.studio_quick_resume_icon, "setColorFilter", if (minimal) scheme.surface else scheme.onPrimary)
+            val tones = if (minimal) {
+                intArrayOf(scheme.surfaceContainerHigh, scheme.onSurface, scheme.surface, scheme.onSurface)
+            } else {
+                intArrayOf(scheme.primaryContainer, scheme.primary, scheme.onPrimary, scheme.onPrimaryContainer)
+            }
+            views.setInt(R.id.studio_quick_resume_bg, "setColorFilter", tones[0])
+            views.setInt(R.id.studio_quick_resume_disc, "setColorFilter", tones[1])
+            views.setInt(R.id.studio_quick_resume_icon, "setColorFilter", tones[2])
+            bindQuickResumeTexts(tones[3])
+        }
+
+        private fun bindQuickResumeTexts(foreground: Int) {
             views.setImageViewResource(
                 R.id.studio_quick_resume_icon,
                 if (state.playing) R.drawable.ic_widget_playing else R.drawable.ic_studio_play
             )
-            val resumeFg = if (minimal) scheme.onSurface else scheme.onPrimaryContainer
             views.setTextViewText(
                 R.id.studio_quick_resume_label,
                 context.getString(if (state.playing) R.string.car_now_playing else R.string.shortcut_resume)
             )
-            views.setTextColor(R.id.studio_quick_resume_label, resumeFg)
+            views.setTextColor(R.id.studio_quick_resume_label, foreground)
             views.setTextViewText(
                 R.id.studio_title,
                 if (state.hasTrack) listOf(state.title, state.artist).filter { it.isNotBlank() }.joinToString(" · ")
                 else context.getString(R.string.widget_idle_subtitle)
             )
-            views.setTextColor(R.id.studio_title, WidgetStudioColors.withAlpha(resumeFg, 0.78f))
+            views.setTextColor(R.id.studio_title, WidgetStudioColors.withAlpha(foreground, 0.78f))
         }
 
         private fun likeSpec(): SlotSpec {
@@ -714,7 +722,7 @@ internal object WidgetStudioRenderer {
     private fun formatDuration(ms: Long): String {
         val totalSeconds = max(0L, ms / 1000L)
         val hours = totalSeconds / 3600L
-        val minutes = (totalSeconds % 3600L) / 60L
+        val minutes = totalSeconds % 3600L / 60L
         val seconds = totalSeconds % 60L
         return if (hours > 0) {
             String.format(Locale.ROOT, "%d:%02d:%02d", hours, minutes, seconds)

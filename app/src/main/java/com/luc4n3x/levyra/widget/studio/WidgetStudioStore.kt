@@ -98,27 +98,36 @@ object WidgetStudioStore {
         val legacy = LevyraWidgetCenter.trackSnapshot(context)
         val state = statePrefs(context)
         val sessionActive = sessionLive
-        val sessionTitle = if (sessionActive) state.getString(KEY_SESSION_TITLE, "").orEmpty() else ""
-        val useSession = sessionTitle.isNotBlank()
-        val title = if (useSession) sessionTitle else legacy.title
-        val artist = if (useSession) state.getString(KEY_SESSION_ARTIST, "").orEmpty() else legacy.artist
-        val sessionArtwork = if (useSession) state.getString(KEY_SESSION_ARTWORK, "").orEmpty() else ""
-        val artworkUrl = resolveArtwork(useSession, sessionTitle, sessionArtwork, legacy)
+        val track = resolveTrack(state, sessionActive, legacy)
         val repeat = sessionRepeat(state, sessionActive)
         return StudioPlaybackState(
-            title = title,
-            artist = artist,
-            album = if (useSession) state.getString(KEY_SESSION_ALBUM, "").orEmpty() else "",
-            artworkUrl = artworkUrl,
+            title = track.title,
+            artist = track.artist,
+            album = track.album,
+            artworkUrl = track.artworkUrl,
             playing = resolvePlaying(state, sessionActive, legacy),
-            hasTrack = title.isNotBlank(),
-            accentSeed = if (legacy.title == title) legacy.accent else 0,
+            hasTrack = track.title.isNotBlank(),
+            accentSeed = if (legacy.title == track.title) legacy.accent else 0,
             favorite = sessionFavorite(state, sessionActive),
             shuffle = sessionShuffle(state, repeat),
             repeat = repeat,
             positionMs = if (sessionActive) livePositionMs else state.getLong(KEY_POSITION, 0L),
             durationMs = state.getLong(KEY_DURATION, 0L),
             snapshotRealtimeMs = if (sessionActive) liveSnapshotMs else SystemClock.elapsedRealtime()
+        )
+    }
+
+    private class ResolvedTrack(val title: String, val artist: String, val album: String, val artworkUrl: String)
+
+    private fun resolveTrack(state: SharedPreferences, sessionActive: Boolean, legacy: WidgetTrackSnapshot): ResolvedTrack {
+        val sessionTitle = if (sessionActive) state.getString(KEY_SESSION_TITLE, "").orEmpty() else ""
+        if (sessionTitle.isBlank()) return ResolvedTrack(legacy.title, legacy.artist, "", legacy.artworkUrl)
+        val sessionArtwork = state.getString(KEY_SESSION_ARTWORK, "").orEmpty()
+        return ResolvedTrack(
+            title = sessionTitle,
+            artist = state.getString(KEY_SESSION_ARTIST, "").orEmpty(),
+            album = state.getString(KEY_SESSION_ALBUM, "").orEmpty(),
+            artworkUrl = resolveArtwork(true, sessionTitle, sessionArtwork, legacy)
         )
     }
 
