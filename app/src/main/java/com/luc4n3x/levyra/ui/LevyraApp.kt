@@ -2420,6 +2420,12 @@ fun LevyraApp(
                     val dockCompaction = dockState.animatedCompaction(state.animationsEnabled)
                     val compactionProvider: () -> Float = { dockCompaction.value }
                     val miniPlayerVisible = state.currentTrack != null && !state.isSamplesOpen
+                    val dockLink = rememberConnectedDockLink(
+                        navigation = navigationStudio.settings,
+                        attached = miniPlayerVisible && !dockSideBySide,
+                        compaction = dockCompaction,
+                        animated = state.animationsEnabled
+                    )
                     val miniPlayerSlot: @Composable () -> Unit = {
                         AnimatedVisibility(
                             visible = miniPlayerVisible,
@@ -2483,7 +2489,8 @@ fun LevyraApp(
                                             artworkHidden = { artworkMorphActive },
                                             playbackActions = miniPlaybackActions,
                                             expansionActions = miniExpansionActions,
-                                            glass = dockGlass
+                                            glass = dockGlass,
+                                            link = dockLink.takeIf { miniStudio.style == MiniPlayerStyle.Connected }
                                         )
                                     }
                                 }
@@ -2512,7 +2519,8 @@ fun LevyraApp(
                                     selected = backgroundTab,
                                     compaction = compactionProvider,
                                     onSelect = viewModel::selectTab,
-                                    glass = dockGlass
+                                    glass = dockGlass,
+                                    link = dockLink.takeIf { navStudio.style == NavStyle.ConnectedDock }
                                 )
                             }
                         }

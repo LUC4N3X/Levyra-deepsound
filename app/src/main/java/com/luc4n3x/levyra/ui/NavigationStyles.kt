@@ -30,6 +30,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
@@ -39,13 +41,19 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -53,9 +61,12 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -65,11 +76,16 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.isSpecified
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
+import com.luc4n3x.levyra.domain.LevyraNavigationStudioSettings
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.NavBackground
 import com.luc4n3x.levyra.domain.NavColorSource
@@ -82,9 +98,11 @@ import com.luc4n3x.levyra.domain.NavSurfaceTone
 import com.luc4n3x.levyra.domain.NavTuning
 import com.luc4n3x.levyra.ui.components.dockClipHeight
 import com.luc4n3x.levyra.ui.components.dockLerpHeight
+import com.luc4n3x.levyra.ui.components.dockLerpSize
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
+import com.luc4n3x.levyra.ui.theme.LevyraMotion
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
@@ -113,6 +131,79 @@ internal fun navDockExtraClearance(style: NavStyle, tuning: NavTuning): Dp {
     val footprint = tuning.heightDp.dp + if (style.floating) StyledNavFloatingBottom else 0.dp
     return (footprint - StyledNavOriginalFootprint).coerceAtLeast(0.dp)
 }
+
+private val SplitDockJoinedGap = 4.dp
+private val SplitDockDetachedGap = 10.dp
+private val SplitDockInnerCorner = 8.dp
+private val SplitOrbMarkInset = 5.dp
+private val SplitOrbRingStroke = 2.dp
+private const val SplitOrbTilt = -14f
+private val DockLinkSeamCorner = 10.dp
+private val DockLinkFusedCorner = 4.dp
+private val ConnectedPreviewHeight = 64.dp
+
+@Stable
+internal class DockLink(
+    val attach: () -> Float,
+    val fuse: () -> Float,
+    val outerCorner: Dp
+)
+
+@Composable
+internal fun rememberConnectedDockLink(
+    navigation: LevyraNavigationStudioSettings,
+    attached: Boolean,
+    compaction: State<Float>,
+    animated: Boolean
+): DockLink {
+    val attach = animateFloatAsState(
+        targetValue = if (attached) 1f else 0f,
+        animationSpec = LevyraMotion.physics(animated, LevyraMotion.spatial),
+        label = "connected-dock-attach"
+    )
+    val outer = remember(navigation) {
+        val tuning = navigation.tuningFor(NavStyle.ConnectedDock)
+        minOf(tuning.cornerDp, tuning.heightDp / 2).dp
+    }
+    return remember(attach, compaction, outer) {
+        DockLink(attach = { attach.value }, fuse = { compaction.value }, outerCorner = outer)
+    }
+}
+
+internal fun dockLinkInnerCorner(outer: Dp, attach: Float, fuse: Float): Dp {
+    val joined = lerp(DockLinkSeamCorner, DockLinkFusedCorner, fuse.coerceIn(0f, 1f))
+    return lerp(outer, joined, attach.coerceIn(0f, 1f))
+}
+
+private data class DockBlendCorner(val rest: Dp, val target: Dp, val fraction: Float) : CornerSize {
+    override fun toPx(shapeSize: Size, density: Density): Float {
+        val half = shapeSize.minDimension / 2f
+        val from = with(density) { rest.toPx() }
+        val to = if (target.isSpecified) with(density) { target.toPx() } else half
+        return (from + (to - from) * fraction.coerceIn(0f, 1f)).coerceIn(0f, half)
+    }
+}
+
+internal fun Modifier.dockLinkedClip(elevation: Dp, rim: Color, shape: () -> Shape): Modifier =
+    graphicsLayer {
+        this.shape = shape()
+        clip = true
+        shadowElevation = elevation.toPx()
+        ambientShadowColor = DockLinkAmbientShadow
+        spotShadowColor = DockLinkSpotShadow
+    }.drawWithContent {
+        drawContent()
+        if (rim.alpha > 0f) {
+            drawOutline(
+                outline = shape().createOutline(size, layoutDirection, this),
+                color = rim,
+                style = Stroke(width = LevyraPlayerDesign.Hairline.toPx() * 2f)
+            )
+        }
+    }
+
+private val DockLinkAmbientShadow = Color.Black.copy(alpha = 0.22f)
+private val DockLinkSpotShadow = Color.Black.copy(alpha = 0.32f)
 
 @Immutable
 internal data class NavColors(
@@ -460,11 +551,41 @@ private fun navDockSurface(
     opacity: Int,
     glass: GlassBackdropState?,
     shape: Shape,
-    depth: Float
+    depth: Float,
+    link: DockLink?,
+    outer: Dp
 ): Modifier = when {
     style == NavStyle.LiquidGlass -> Modifier.navLiquidGlass(colors, opacity, glass, shape, depth)
+    style == NavStyle.ConnectedDock -> Modifier
+        .dockLinkedClip((6f + 10f * depth).dp, colors.rim) { connectedNavShape(outer, link) }
+        .navBackground(background, colors, opacity, glass)
     style.floating -> Modifier.navCapsule(colors, background, opacity, glass, shape, depth)
     else -> Modifier
+}
+
+private fun connectedNavShape(outer: Dp, link: DockLink?): Shape {
+    val inner = dockLinkInnerCorner(outer, link?.attach?.invoke() ?: 0f, link?.fuse?.invoke() ?: 0f)
+    return RoundedCornerShape(topStart = inner, topEnd = inner, bottomEnd = outer, bottomStart = outer)
+}
+
+private fun splitCapsuleShape(outer: Dp, detach: Float): Shape {
+    val seam = DockBlendCorner(SplitDockInnerCorner, outer, detach)
+    return RoundedCornerShape(
+        topStart = CornerSize(outer),
+        topEnd = seam,
+        bottomEnd = seam,
+        bottomStart = CornerSize(outer)
+    )
+}
+
+private fun splitOrbShape(detach: Float): Shape {
+    val seam = DockBlendCorner(SplitDockInnerCorner, Dp.Unspecified, detach)
+    return RoundedCornerShape(
+        topStart = seam,
+        topEnd = CornerSize(50),
+        bottomEnd = CornerSize(50),
+        bottomStart = seam
+    )
 }
 
 private fun Modifier.navDockSizing(floating: Boolean, compaction: () -> Float, geometry: NavDockGeometry): Modifier =
@@ -474,6 +595,12 @@ private fun Modifier.navDockSizing(floating: Boolean, compaction: () -> Float, g
         dockClipHeight(compaction, geometry.height - geometry.compactHeight).height(geometry.height)
     }
 
+private fun Modifier.dockGapWidth(gap: () -> Dp): Modifier = layout { measurable, _ ->
+    val width = gap().roundToPx().coerceAtLeast(0)
+    val placeable = measurable.measure(Constraints.fixed(width, 0))
+    layout(width, 0) { placeable.place(0, 0) }
+}
+
 @Composable
 internal fun StyledBottomTabs(
     style: NavStyle,
@@ -482,11 +609,16 @@ internal fun StyledBottomTabs(
     compaction: () -> Float,
     onSelect: (LevyraTab) -> Unit,
     glass: GlassBackdropState?,
-    applySystemInset: Boolean = true
+    applySystemInset: Boolean = true,
+    link: DockLink? = null
 ) {
     val allEntries = rememberLevyraTabEntries()
-    val entries = remember(allEntries, tuning.order, tuning.hidden) {
+    val visibleEntries = remember(allEntries, tuning.order, tuning.hidden) {
         tuning.visibleOrder().mapNotNull { tab -> allEntries.firstOrNull { it.tab == tab } }
+    }
+    val searchEntry = if (style == NavStyle.SplitDock) visibleEntries.firstOrNull { it.tab == LevyraTab.Search } else null
+    val entries = remember(visibleEntries, searchEntry) {
+        if (searchEntry == null) visibleEntries else visibleEntries.filterNot { it.tab == LevyraTab.Search }
     }
     if (entries.isEmpty()) return
     val colors = rememberNavColors(style, tuning)
@@ -495,8 +627,13 @@ internal fun StyledBottomTabs(
         navMotionSpec(tuning.motion, tuning.intensity, animationsEnabled)
     }
     val selectedIndex = entries.indexOfFirst { it.tab == selected }
-    val indicatorPosition by animateFloatAsState(
-        targetValue = selectedIndex.coerceAtLeast(0).toFloat(),
+    var parkedIndex by remember { mutableIntStateOf(0) }
+    if (selectedIndex >= 0) {
+        SideEffect { parkedIndex = selectedIndex }
+    }
+    val restingIndex = if (selectedIndex >= 0) selectedIndex else parkedIndex.coerceIn(0, entries.lastIndex)
+    val indicatorPosition = animateFloatAsState(
+        targetValue = restingIndex.toFloat(),
         animationSpec = motion.position,
         label = "styled-nav-indicator"
     )
@@ -506,70 +643,349 @@ internal fun StyledBottomTabs(
         navDockGeometry(floating, collapsible, tuning.heightDp.dp, tuning.labels)
     }
     val depth = tuning.intensity / 100f
-    val padding = tuning.paddingDp.dp
-    val spacing = tuning.spacingDp.dp
-    val shape = remember(tuning.cornerDp, geometry.height) {
-        RoundedCornerShape(minOf(tuning.cornerDp.dp, geometry.height / 2))
-    }
-    val surface = remember(style, colors, tuning.background, tuning.opacity, glass, shape, depth) {
-        navDockSurface(style, colors, tuning.background, tuning.opacity, glass, shape, depth)
-    }
+    val outer = minOf(tuning.cornerDp.dp, geometry.height / 2)
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        BoxWithConstraints(
-            modifier = Modifier
-                .navFloatingInset(floating)
-                .fillMaxWidth()
-                .navDockSizing(floating, compaction, geometry)
-                .then(surface)
-        ) {
-            val slotWidth = ((maxWidth - padding * 2 - spacing * (entries.size - 1)) / entries.size).coerceAtLeast(0.dp)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight(Alignment.Top, unbounded = true)
-                    .height(geometry.height)
-                    .graphicsLayer { translationY = -geometry.lift.toPx() * compaction() }
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .drawBehind {
-                            if (selectedIndex < 0) return@drawBehind
-                            val fold = compaction().coerceIn(0f, 1f)
-                            drawNavIndicator(
-                                tuning = tuning,
-                                floating = floating,
-                                startPx = padding.toPx(),
-                                slotPx = slotWidth.toPx(),
-                                gapPx = spacing.toPx(),
-                                position = indicatorPosition,
-                                selectedIndex = selectedIndex,
-                                lastIndex = entries.lastIndex,
-                                iconTopPx = geometry.iconTop.toPx(),
-                                labelRoomPx = geometry.labelRoom.toPx(),
-                                visibleTopPx = geometry.lift.toPx() * fold,
-                                visibleHeightPx = size.height - (geometry.height - geometry.compactHeight).toPx() * fold,
-                                stretch = motion.stretch,
-                                colors = colors
-                            )
-                        }
-                )
-                StyledTabRow(
-                    entries = entries,
-                    selected = selected,
-                    tuning = tuning,
-                    colors = colors,
-                    iconTop = geometry.iconTop,
-                    motion = motion,
-                    foldLabel = if (floating) compaction else null,
-                    onSelect = onSelect
-                )
+        if (searchEntry != null) {
+            SplitDockRow(
+                entries = entries,
+                searchEntry = searchEntry,
+                selected = selected,
+                restingIndex = restingIndex,
+                position = { indicatorPosition.value },
+                tuning = tuning,
+                colors = colors,
+                motion = motion,
+                geometry = geometry,
+                compaction = compaction,
+                glass = glass,
+                depth = depth,
+                outer = outer,
+                onSelect = onSelect
+            )
+        } else {
+            val shape = remember(outer) { RoundedCornerShape(outer) }
+            val surface = remember(style, colors, tuning.background, tuning.opacity, glass, shape, depth, link, outer) {
+                navDockSurface(style, colors, tuning.background, tuning.opacity, glass, shape, depth, link, outer)
             }
+            StyledTabCapsule(
+                modifier = Modifier
+                    .navFloatingInset(floating)
+                    .fillMaxWidth()
+                    .navDockSizing(floating, compaction, geometry)
+                    .then(surface),
+                entries = entries,
+                selected = selected,
+                indicatorIndex = selectedIndex,
+                position = { indicatorPosition.value },
+                indicatorAlpha = null,
+                tuning = tuning,
+                colors = colors,
+                motion = motion,
+                geometry = geometry,
+                floating = floating,
+                compaction = compaction,
+                onSelect = onSelect
+            )
         }
         if (applySystemInset) {
             Spacer(modifier = Modifier.navigationBarsPadding())
         }
+    }
+}
+
+@Composable
+private fun StyledTabCapsule(
+    modifier: Modifier,
+    entries: List<LevyraTabEntry>,
+    selected: LevyraTab,
+    indicatorIndex: Int,
+    position: () -> Float,
+    indicatorAlpha: (() -> Float)?,
+    tuning: NavTuning,
+    colors: NavColors,
+    motion: NavMotionSpec,
+    geometry: NavDockGeometry,
+    floating: Boolean,
+    compaction: () -> Float,
+    onSelect: (LevyraTab) -> Unit
+) {
+    val padding = tuning.paddingDp.dp
+    val spacing = tuning.spacingDp.dp
+    BoxWithConstraints(modifier = modifier) {
+        val slotWidth = ((maxWidth - padding * 2 - spacing * (entries.size - 1)) / entries.size).coerceAtLeast(0.dp)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight(Alignment.Top, unbounded = true)
+                .height(geometry.height)
+                .graphicsLayer { translationY = -geometry.lift.toPx() * compaction() }
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(if (indicatorAlpha != null) Modifier.graphicsLayer { alpha = indicatorAlpha() } else Modifier)
+                    .drawBehind {
+                        if (indicatorIndex < 0) return@drawBehind
+                        val fold = compaction().coerceIn(0f, 1f)
+                        drawNavIndicator(
+                            tuning = tuning,
+                            floating = floating,
+                            startPx = padding.toPx(),
+                            slotPx = slotWidth.toPx(),
+                            gapPx = spacing.toPx(),
+                            position = position(),
+                            selectedIndex = indicatorIndex,
+                            lastIndex = entries.lastIndex,
+                            iconTopPx = geometry.iconTop.toPx(),
+                            labelRoomPx = geometry.labelRoom.toPx(),
+                            visibleTopPx = geometry.lift.toPx() * fold,
+                            visibleHeightPx = size.height - (geometry.height - geometry.compactHeight).toPx() * fold,
+                            stretch = motion.stretch,
+                            colors = colors
+                        )
+                    }
+            )
+            StyledTabRow(
+                entries = entries,
+                selected = selected,
+                tuning = tuning,
+                colors = colors,
+                iconTop = geometry.iconTop,
+                motion = motion,
+                foldLabel = if (floating) compaction else null,
+                onSelect = onSelect
+            )
+        }
+    }
+}
+
+@Composable
+private fun SplitDockRow(
+    entries: List<LevyraTabEntry>,
+    searchEntry: LevyraTabEntry,
+    selected: LevyraTab,
+    restingIndex: Int,
+    position: () -> Float,
+    tuning: NavTuning,
+    colors: NavColors,
+    motion: NavMotionSpec,
+    geometry: NavDockGeometry,
+    compaction: () -> Float,
+    glass: GlassBackdropState?,
+    depth: Float,
+    outer: Dp,
+    onSelect: (LevyraTab) -> Unit
+) {
+    val searchSelected = selected == searchEntry.tab
+    val detach = animateFloatAsState(
+        targetValue = if (searchSelected) 1f else 0f,
+        animationSpec = motion.position,
+        label = "split-dock-detach"
+    )
+    val capsuleSurface = remember(colors, tuning.background, tuning.opacity, glass, depth, outer, detach) {
+        Modifier
+            .dockLinkedClip((6f + 12f * depth).dp, colors.rim) { splitCapsuleShape(outer, detach.value) }
+            .navBackground(tuning.background, colors, tuning.opacity, glass)
+    }
+    Row(
+        modifier = Modifier
+            .navFloatingInset(true)
+            .fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        StyledTabCapsule(
+            modifier = Modifier
+                .weight(1f)
+                .navDockSizing(true, compaction, geometry)
+                .then(capsuleSurface),
+            entries = entries,
+            selected = selected,
+            indicatorIndex = restingIndex,
+            position = position,
+            indicatorAlpha = { 1f - detach.value.coerceIn(0f, 1f) },
+            tuning = tuning,
+            colors = colors,
+            motion = motion,
+            geometry = geometry,
+            floating = true,
+            compaction = compaction,
+            onSelect = onSelect
+        )
+        Spacer(
+            modifier = Modifier.dockGapWidth {
+                lerp(SplitDockJoinedGap, SplitDockDetachedGap, detach.value.coerceIn(0f, 1f))
+            }
+        )
+        SplitSearchOrb(
+            entry = searchEntry,
+            isSelected = searchSelected,
+            detach = detach,
+            tuning = tuning,
+            colors = colors,
+            motion = motion,
+            geometry = geometry,
+            compaction = compaction,
+            glass = glass,
+            depth = depth,
+            onSelect = onSelect
+        )
+    }
+}
+
+@Composable
+private fun SplitSearchOrb(
+    entry: LevyraTabEntry,
+    isSelected: Boolean,
+    detach: State<Float>,
+    tuning: NavTuning,
+    colors: NavColors,
+    motion: NavMotionSpec,
+    geometry: NavDockGeometry,
+    compaction: () -> Float,
+    glass: GlassBackdropState?,
+    depth: Float,
+    onSelect: (LevyraTab) -> Unit
+) {
+    val haptics = LocalLevyraHaptics.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val tint by animateColorAsState(
+        targetValue = navTabIconTint(tuning, colors, isSelected),
+        animationSpec = motion.tint,
+        label = "split-orb-icon"
+    )
+    val scale by animateFloatAsState(
+        targetValue = navTabScale(pressed, isSelected, motion),
+        animationSpec = motion.scale,
+        label = "split-orb-scale"
+    )
+    val tilt by animateFloatAsState(
+        targetValue = if (isSelected && motion.animated) SplitOrbTilt else 0f,
+        animationSpec = motion.scale,
+        label = "split-orb-tilt"
+    )
+    val bloom by animateFloatAsState(
+        targetValue = if (isSelected) 1f else 0f,
+        animationSpec = motion.scale,
+        label = "split-orb-bloom"
+    )
+    val surface = remember(colors, tuning.background, tuning.opacity, glass, depth, detach) {
+        Modifier
+            .dockLinkedClip((6f + 12f * depth).dp, colors.rim) { splitOrbShape(detach.value) }
+            .navBackground(tuning.background, colors, tuning.opacity, glass)
+    }
+    val filled = tuning.indicator.filled
+    Box(
+        modifier = Modifier
+            .dockLerpSize(compaction, geometry.height, geometry.compactHeight)
+            .semantics(mergeDescendants = true) {
+                role = Role.Tab
+                selected = isSelected
+                contentDescription = entry.label
+            }
+            .then(surface)
+            .drawBehind { drawSplitOrbMark(bloom, filled, colors) }
+            .levyraPressable(
+                onClick = {
+                    if (!isSelected && tuning.haptics) {
+                        haptics.perform(if (motion.pop > 1f) LevyraHapticAction.Confirm else LevyraHapticAction.SeekSnap)
+                    }
+                    onSelect(entry.tab)
+                },
+                interactionSource = interactionSource,
+                pressedScale = if (motion.animated) 0.94f else 1f
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = if (isSelected) entry.selectedIcon else entry.unselectedIcon,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier
+                .size(tuning.iconDp.dp)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                    rotationZ = tilt
+                }
+        )
+    }
+}
+
+private fun DrawScope.drawSplitOrbMark(bloom: Float, filled: Boolean, colors: NavColors) {
+    val presence = bloom.coerceIn(0f, 1f)
+    val radius = size.minDimension / 2f - SplitOrbMarkInset.toPx()
+    if (presence <= 0f || radius <= 0f) return
+    if (filled) {
+        val markRadius = radius * (0.55f + 0.45f * bloom.coerceIn(0f, 1.08f))
+        drawCircle(color = colors.indicator, radius = markRadius, alpha = presence)
+        drawCircle(
+            brush = Brush.verticalGradient(
+                listOf(Color.White.copy(alpha = if (colors.isLight) 0.30f else 0.10f), Color.Transparent),
+                startY = center.y - markRadius,
+                endY = center.y + markRadius * 0.2f
+            ),
+            radius = markRadius,
+            alpha = presence
+        )
+    } else {
+        val stroke = SplitOrbRingStroke.toPx()
+        drawCircle(
+            color = colors.mark,
+            radius = radius - stroke / 2f,
+            alpha = presence,
+            style = Stroke(width = stroke)
+        )
+    }
+}
+
+@Composable
+internal fun ConnectedDockPreviewSlab(tuning: NavTuning) {
+    val colors = rememberNavColors(NavStyle.ConnectedDock, tuning)
+    val outer = minOf(tuning.cornerDp.dp, ConnectedPreviewHeight / 2)
+    val shape = remember(outer) {
+        RoundedCornerShape(topStart = outer, topEnd = outer, bottomEnd = DockLinkSeamCorner, bottomStart = DockLinkSeamCorner)
+    }
+    Row(
+        modifier = Modifier
+            .padding(start = StyledNavFloatingGutter, end = StyledNavFloatingGutter, top = 4.dp, bottom = 4.dp)
+            .fillMaxWidth()
+            .height(ConnectedPreviewHeight)
+            .clip(shape)
+            .background(colors.raised)
+            .padding(horizontal = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(colors.indicator)
+        )
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.62f)
+                    .height(10.dp)
+                    .clip(CircleShape)
+                    .background(colors.inactive.copy(alpha = 0.55f))
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.38f)
+                    .height(8.dp)
+                    .clip(CircleShape)
+                    .background(colors.inactive.copy(alpha = 0.32f))
+            )
+        }
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(colors.indicator)
+        )
     }
 }
 
