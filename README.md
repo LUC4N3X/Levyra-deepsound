@@ -124,26 +124,12 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
   <sub>Music should feel personal, expressive, and entirely yours.</sub>
 </p>
 
-<a href="docs/assets/showcase/01_music_that_stays.webp">
-  <picture>
-    <source media="(max-width: 640px)" srcset="docs/assets/showcase/01_music_that_stays_mobile.webp?v=m3-campaign-v1">
-    <img src="docs/assets/showcase/01_music_that_stays.webp?v=m3-campaign-v1" width="100%" alt="Levyra home and immersive player: music that stays with you" />
-  </picture>
-</a>
-
-<a href="docs/assets/showcase/02_find_what_moves_you.webp">
-  <picture>
-    <source media="(max-width: 640px)" srcset="docs/assets/showcase/02_find_what_moves_you_mobile.webp?v=m3-campaign-v1">
-    <img src="docs/assets/showcase/02_find_what_moves_you.webp?v=m3-campaign-v1" width="100%" alt="Levyra discovery and moods: find what moves you" />
-  </picture>
-</a>
-
-<a href="docs/assets/showcase/03_personal_not_profiled.webp">
-  <picture>
-    <source media="(max-width: 640px)" srcset="docs/assets/showcase/03_personal_not_profiled_mobile.webp?v=m3-campaign-v1">
-    <img src="docs/assets/showcase/03_personal_not_profiled.webp?v=m3-campaign-v1" width="100%" alt="Levyra private library and settings: personal, not profiled" />
-  </picture>
-</a>
+<p align="center">
+<a href="docs/assets/showcase/editorial-cards/01_pure_listening.webp"><img src="docs/assets/showcase/editorial-cards/01_pure_listening.webp?v=m3-cards-v1" width="200" alt="Levyra radio: Pure listening" /></a><a href="docs/assets/showcase/editorial-cards/02_stay_with_the_song.webp"><img src="docs/assets/showcase/editorial-cards/02_stay_with_the_song.webp?v=m3-cards-v1" width="200" alt="Levyra now playing: Stay with the song" /></a><a href="docs/assets/showcase/editorial-cards/03_sing_along.webp"><img src="docs/assets/showcase/editorial-cards/03_sing_along.webp?v=m3-cards-v1" width="200" alt="Levyra synced lyrics: Sing along" /></a><a href="docs/assets/showcase/editorial-cards/04_open_the_album.webp"><img src="docs/assets/showcase/editorial-cards/04_open_the_album.webp?v=m3-cards-v1" width="200" alt="Levyra offline albums: Open the whole album" /></a><br>
+<a href="docs/assets/showcase/editorial-cards/05_fresh_currents.webp"><img src="docs/assets/showcase/editorial-cards/05_fresh_currents.webp?v=m3-cards-v1" width="200" alt="Levyra discovery: Fresh currents" /></a><a href="docs/assets/showcase/editorial-cards/06_built_for_your_taste.webp"><img src="docs/assets/showcase/editorial-cards/06_built_for_your_taste.webp?v=m3-cards-v1" width="200" alt="Levyra Mix: Built for your taste" /></a><a href="docs/assets/showcase/editorial-cards/07_every_genre.webp"><img src="docs/assets/showcase/editorial-cards/07_every_genre.webp?v=m3-cards-v1" width="200" alt="Levyra moods and genres: Every genre" /></a><a href="docs/assets/showcase/editorial-cards/08_acoustic_precision.webp"><img src="docs/assets/showcase/editorial-cards/08_acoustic_precision.webp?v=m3-cards-v1" width="200" alt="Levyra audio tuning: Acoustic precision" /></a><br>
+<a href="docs/assets/showcase/editorial-cards/09_keep_it_personal.webp"><img src="docs/assets/showcase/editorial-cards/09_keep_it_personal.webp?v=m3-cards-v1" width="200" alt="Levyra library: Keep it personal" /></a><a href="docs/assets/showcase/editorial-cards/10_curated_for_you.webp"><img src="docs/assets/showcase/editorial-cards/10_curated_for_you.webp?v=m3-cards-v1" width="200" alt="Levyra collections: Curated for you" /></a><a href="docs/assets/showcase/editorial-cards/11_your_rhythm.webp"><img src="docs/assets/showcase/editorial-cards/11_your_rhythm.webp?v=m3-cards-v1" width="200" alt="Levyra listening insights: Your rhythm" /></a><a href="docs/assets/showcase/editorial-cards/12_in_your_orbit.webp"><img src="docs/assets/showcase/editorial-cards/12_in_your_orbit.webp?v=m3-cards-v1" width="200" alt="Levyra home: In your orbit" /></a><br>
+<a href="docs/assets/showcase/editorial-cards/13_tailor_every_detail.webp"><img src="docs/assets/showcase/editorial-cards/13_tailor_every_detail.webp?v=m3-cards-v1" width="200" alt="Levyra settings: Tailor every detail" /></a><a href="docs/assets/showcase/editorial-cards/14_fresh_off_the_stage.webp"><img src="docs/assets/showcase/editorial-cards/14_fresh_off_the_stage.webp?v=m3-cards-v1" width="200" alt="Levyra new releases: Fresh off the stage" /></a><a href="docs/assets/showcase/editorial-cards/15_meet_the_artist.webp"><img src="docs/assets/showcase/editorial-cards/15_meet_the_artist.webp?v=m3-cards-v1" width="200" alt="Levyra artist profiles: Meet the artist" /></a><a href="docs/assets/showcase/editorial-cards/16_listen_together.webp"><img src="docs/assets/showcase/editorial-cards/16_listen_together.webp?v=m3-cards-v1" width="200" alt="Levyra Jam: Listen together" /></a>
+</p>
 
 </div>
 

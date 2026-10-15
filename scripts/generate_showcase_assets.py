@@ -547,55 +547,56 @@ def generate_feature_cards():
                 card_rgb.save(out_file, "WEBP", quality=95, method=6)
                 print(f"Saved Material 3 Expressive editorial card: {out_file}")
 
-README_CAMPAIGNS = [
+README_CARD_DIR = os.path.join(OUT_SHOWCASE_DIR, "editorial-cards")
+
+README_CARD_THEMES = [
     {
-        "slug": "01_music_that_stays",
-        "kicker": "LISTENING / 01",
-        "title": "Music that\nstays with you.",
-        "body": "Radio, playback and offline music —\nwithout losing the feeling.",
-        "background": (24, 16, 29),
-        "ink": (255, 247, 251),
-        "muted": (216, 197, 211),
-        "accent": (255, 139, 132),
-        "soft": (65, 43, 70),
-        "screens": [
-            "Screenshot_20260926_171253_LEVYRA.jpg",
-            "Screenshot_20260926_193948_LEVYRA.jpg",
-        ],
-        "text_side": "left",
+        "background": (28, 20, 32),
+        "ink": (255, 247, 252),
+        "muted": (214, 196, 210),
+        "accent": (255, 142, 133),
+        "shape": (79, 54, 83),
     },
     {
-        "slug": "02_find_what_moves_you",
-        "kicker": "DISCOVERY / 02",
-        "title": "Find what\nmoves you.",
-        "body": "Fresh currents, moods and global charts.\nA whole world beyond the algorithm.",
-        "background": (241, 247, 241),
-        "ink": (28, 31, 29),
-        "muted": (72, 78, 73),
-        "accent": (20, 88, 156),
-        "soft": (204, 232, 220),
-        "screens": [
-            "Screenshot_20261010_132210_LEVYRA.jpg",
-            "Screenshot_20261010_132249_LEVYRA.jpg",
-        ],
-        "text_side": "right",
+        "background": (238, 248, 242),
+        "ink": (27, 35, 31),
+        "muted": (77, 88, 82),
+        "accent": (17, 102, 92),
+        "shape": (190, 229, 213),
     },
     {
-        "slug": "03_personal_not_profiled",
-        "kicker": "PRIVACY / 03",
-        "title": "Personal.\nNot profiled.",
-        "body": "Your library, listening insights and backups\nstay where they belong: with you.",
-        "background": (255, 246, 238),
-        "ink": (40, 29, 25),
-        "muted": (91, 74, 68),
-        "accent": (116, 67, 137),
-        "soft": (244, 218, 208),
-        "screens": [
-            "Screenshot_20261010_132050_LEVYRA.jpg",
-            "Screenshot_20261010_140700_LEVYRA.jpg",
-        ],
-        "text_side": "left",
+        "background": (255, 244, 235),
+        "ink": (46, 31, 25),
+        "muted": (98, 76, 67),
+        "accent": (176, 66, 74),
+        "shape": (246, 207, 190),
     },
+    {
+        "background": (238, 240, 255),
+        "ink": (31, 32, 52),
+        "muted": (76, 77, 101),
+        "accent": (75, 65, 161),
+        "shape": (205, 210, 248),
+    },
+]
+
+README_CARD_SPECS = [
+    ("01_pure_listening", "RADIO", "Pure\nlistening.", "Radio that starts with your sound.", "Screenshot_20260926_171253_LEVYRA.jpg"),
+    ("02_stay_with_the_song", "NOW PLAYING", "Stay with\nthe song.", "Immersive playback, no visual noise.", "Screenshot_20260926_193948_LEVYRA.jpg"),
+    ("03_sing_along", "SYNCED LYRICS", "Sing\nalong.", "Translation and timing in one flow.", "screen-lyrics.jpg"),
+    ("04_open_the_album", "OFFLINE", "Open the\nwhole album.", "Keep the music you come back to.", "Screenshot_20260926_194706_LEVYRA.jpg"),
+    ("05_fresh_currents", "DISCOVERY", "Fresh\ncurrents.", "New releases without the scroll fatigue.", "Screenshot_20261010_132210_LEVYRA.jpg"),
+    ("06_built_for_your_taste", "LEVYRA MIX", "Built for\nyour taste.", "A mix shaped around the moment.", "Screenshot_20261010_132217_LEVYRA.jpg"),
+    ("07_every_genre", "MOODS", "Every\ngenre.", "Move by mood, place or energy.", "Screenshot_20261010_132249_LEVYRA.jpg"),
+    ("08_acoustic_precision", "AUDIO", "Acoustic\nprecision.", "Tune the sound, keep the soul.", "Screenshot_20261010_190726_LEVYRA.jpg"),
+    ("09_keep_it_personal", "LIBRARY", "Keep it\npersonal.", "Your collection stays yours.", "Screenshot_20261010_132050_LEVYRA.jpg"),
+    ("10_curated_for_you", "COLLECTIONS", "Curated\nfor you.", "Quick picks, ready when you are.", "Screenshot_20261010_132136_LEVYRA.jpg"),
+    ("11_your_rhythm", "INSIGHTS", "Your\nrhythm.", "See the pattern behind the plays.", "Screenshot_20260927_131943_LEVYRA.jpg"),
+    ("12_in_your_orbit", "HOME", "In your\norbit.", "Artists and albums close at hand.", "Screenshot_20261010_132103_LEVYRA.jpg"),
+    ("13_tailor_every_detail", "SETTINGS", "Tailor every\ndetail.", "Private by design, flexible by choice.", "Screenshot_20261010_140700_LEVYRA.jpg"),
+    ("14_fresh_off_the_stage", "NEW RELEASES", "Fresh off\nthe stage.", "The newest music, without the clutter.", "Screenshot_20261010_144144_LEVYRA.jpg"),
+    ("15_meet_the_artist", "ARTISTS", "Meet the\nartist.", "From the profile straight into the music.", "Screenshot_20261010_143646_LEVYRA.jpg"),
+    ("16_listen_together", "LEVYRA JAM", "Listen\ntogether.", "One room. One queue. Everyone in.", "Screenshot_20261011_133434_LEVYRA.jpg"),
 ]
 
 def make_campaign_device(filename, width, border_color):
@@ -648,72 +649,73 @@ def paste_campaign_ribbon(canvas, width, center, opacity, angle=0):
     y = round(center[1] - ribbon.height / 2)
     canvas.alpha_composite(ribbon, (x, y))
 
-def draw_campaign_copy(draw, campaign, origin, scale):
+def draw_readme_card_copy(draw, spec, theme, index, origin):
+    _, kicker, title, body, _ = spec
     x, y = origin
-    kicker_font = get_font(round(28 * scale), bold=True)
-    title_font = get_font(round(112 * scale), bold=True)
-    body_font = get_font(round(34 * scale))
-    draw.text((x, y), campaign["kicker"], font=kicker_font, fill=campaign["accent"])
-    y += round(82 * scale)
-    draw.multiline_text(
-        (x, y),
-        campaign["title"],
-        font=title_font,
-        fill=campaign["ink"],
-        spacing=round(-8 * scale),
-    )
-    title_box = draw.multiline_textbbox((x, y), campaign["title"], font=title_font, spacing=round(-8 * scale))
-    y = title_box[3] + round(54 * scale)
-    draw.multiline_text(
-        (x, y),
-        campaign["body"],
-        font=body_font,
-        fill=campaign["muted"],
-        spacing=round(13 * scale),
-    )
+    kicker_font = get_font(25, bold=True)
+    number_font = get_font(25, bold=True)
+    title_font = get_font(76, bold=True)
+    body_font = get_font(27)
+    draw.text((x, y), kicker, font=kicker_font, fill=theme["accent"])
+    number = f"{index + 1:02d}"
+    number_width = draw.textlength(number, font=number_font)
+    draw.text((820 - number_width, y), number, font=number_font, fill=theme["muted"])
+    title_y = y + 55
+    draw.multiline_text((x, title_y), title, font=title_font, fill=theme["ink"], spacing=-8)
+    title_box = draw.multiline_textbbox((x, title_y), title, font=title_font, spacing=-8)
+    draw.text((x, title_box[3] + 24), body, font=body_font, fill=theme["muted"])
 
-def render_campaign_desktop(campaign):
-    canvas = Image.new("RGBA", (1800, 1020), campaign["background"] + (255,))
-    draw = ImageDraw.Draw(canvas)
-    draw.ellipse((-260, 610, 640, 1470), fill=campaign["soft"] + (255,))
-    draw.rounded_rectangle((1260, -220, 1940, 410), radius=240, fill=campaign["soft"] + (210,))
-    paste_campaign_ribbon(canvas, 1080, (1230, 525), 0.26 if campaign["text_side"] == "left" else 0.17, -5)
-
-    if campaign["text_side"] == "left":
-        draw_campaign_copy(draw, campaign, (105, 126), 1.0)
-        paste_campaign_device(canvas, campaign["screens"][0], 420, (1160, 550), -5, campaign["ink"])
-        paste_campaign_device(canvas, campaign["screens"][1], 475, (1485, 500), 4, campaign["ink"])
+def draw_readme_card_shapes(draw, theme, variant):
+    if variant == 0:
+        draw.ellipse((-250, 900, 650, 1780), fill=theme["shape"] + (255,))
+        draw.rounded_rectangle((610, -150, 1030, 310), radius=150, fill=theme["shape"] + (210,))
+    elif variant == 1:
+        draw.ellipse((480, 720, 1130, 1390), fill=theme["shape"] + (255,))
+        draw.rounded_rectangle((-180, -120, 390, 250), radius=140, fill=theme["shape"] + (220,))
+    elif variant == 2:
+        draw.rounded_rectangle((-220, 845, 1080, 1520), radius=310, fill=theme["shape"] + (255,))
+        draw.ellipse((650, -180, 1060, 230), fill=theme["shape"] + (210,))
     else:
-        draw_campaign_copy(draw, campaign, (1050, 126), 1.0)
-        paste_campaign_device(canvas, campaign["screens"][0], 445, (335, 520), -5, campaign["ink"])
-        paste_campaign_device(canvas, campaign["screens"][1], 475, (690, 535), 4, campaign["ink"])
+        draw.ellipse((-240, 700, 510, 1460), fill=theme["shape"] + (255,))
+        draw.ellipse((580, -190, 1100, 330), fill=theme["shape"] + (190,))
 
-    return canvas.convert("RGB")
-
-def render_campaign_mobile(campaign):
-    canvas = Image.new("RGBA", (1080, 1350), campaign["background"] + (255,))
+def render_readme_card(spec, index):
+    theme_order = [0, 1, 2, 3, 3, 0, 1, 2, 1, 2, 3, 0, 2, 3, 0, 1]
+    variant_order = [0, 1, 2, 3, 2, 3, 0, 1, 1, 0, 3, 2, 3, 2, 1, 0]
+    theme = README_CARD_THEMES[theme_order[index]]
+    variant = variant_order[index]
+    canvas = Image.new("RGBA", (900, 1500), theme["background"] + (255,))
     draw = ImageDraw.Draw(canvas)
-    draw.ellipse((-300, 920, 620, 1790), fill=campaign["soft"] + (255,))
-    draw.rounded_rectangle((720, -230, 1250, 310), radius=210, fill=campaign["soft"] + (220,))
-    paste_campaign_ribbon(canvas, 880, (665, 770), 0.20, -7)
-    draw_campaign_copy(draw, campaign, (72, 74), 0.72)
-    paste_campaign_device(canvas, campaign["screens"][0], 410, (335, 930), -5, campaign["ink"])
-    paste_campaign_device(canvas, campaign["screens"][1], 440, (740, 920), 4, campaign["ink"])
+    draw_readme_card_shapes(draw, theme, variant)
+    ribbon_centers = [(705, 920), (190, 930), (700, 1090), (170, 1030)]
+    ribbon_angles = [-12, 13, -5, 18]
+    paste_campaign_ribbon(canvas, 780, ribbon_centers[variant], 0.11, ribbon_angles[variant])
+    draw_readme_card_copy(draw, spec, theme, index, (72, 70))
+
+    _, _, _, _, screenshot = spec
+    device_centers = [(590, 1045), (470, 1050), (590, 1045), (445, 1050)]
+    angles = [-4.5, 3.5, -2.5, 4.5]
+    widths = [510, 525, 515, 520]
+    paste_campaign_device(
+        canvas,
+        screenshot,
+        widths[variant],
+        device_centers[variant],
+        angles[variant],
+        (22, 20, 24),
+    )
     return canvas.convert("RGB")
 
-def generate_readme_campaign():
-    for campaign in README_CAMPAIGNS:
-        variants = [
-            (campaign["slug"] + ".webp", render_campaign_desktop(campaign)),
-            (campaign["slug"] + "_mobile.webp", render_campaign_mobile(campaign)),
-        ]
-        for filename, artwork in variants:
-            out_path = os.path.join(OUT_SHOWCASE_DIR, filename)
-            artwork.save(out_path, "WEBP", quality=94, method=6)
-            print(f"Saved README campaign artwork at {artwork.size}: {out_path}")
+def generate_readme_cards():
+    os.makedirs(README_CARD_DIR, exist_ok=True)
+    for index, spec in enumerate(README_CARD_SPECS):
+        artwork = render_readme_card(spec, index)
+        out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
+        artwork.save(out_path, "WEBP", quality=94, method=6)
+        print(f"Saved README editorial card at {artwork.size}: {out_path}")
 
 if __name__ == "__main__":
     generate_hero_panoramic_showcase()
     generate_feature_cards()
-    generate_readme_campaign()
+    generate_readme_cards()
     print("All Material 3 Expressive editorial-stage assets generated successfully!")
