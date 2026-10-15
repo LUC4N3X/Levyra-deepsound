@@ -43,8 +43,8 @@ class BrandingAndHomeContrastContractTest {
 
         assertTrue(dayPart.contains("else -> Color.White.copy(alpha = 0.72f)"))
         assertTrue(name.contains("color = if (LevyraIsLight) LevyraText else Color.White"))
-        assertTrue(headerScrim.contains("if (isLight) 0.94f else 0.78f"))
-        assertTrue(headerScrim.contains("if (isLight) 0.78f else 0.52f"))
+        assertTrue(headerScrim.contains("if (isLight) 0.72f else 0.78f"))
+        assertTrue(headerScrim.contains("if (isLight) 0.38f else 0.52f"))
     }
 
     @Test

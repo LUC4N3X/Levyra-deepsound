@@ -59,6 +59,22 @@ internal fun createPlayerAmbientColorMatrix(
     return matrix
 }
 
+internal fun createPlayerTintedMistMatrix(tint: Color, maxBrightness: Float = 0.58f): ColorMatrix {
+    val source = tint.copy(alpha = 1f)
+    val gain = maxBrightness / maxOf(source.red, source.green, source.blue, 0.01f)
+    val red = source.red * gain
+    val green = source.green * gain
+    val blue = source.blue * gain
+    return ColorMatrix(
+        floatArrayOf(
+            0.299f * red, 0.587f * red, 0.114f * red, 0f, 0f,
+            0.299f * green, 0.587f * green, 0.114f * green, 0f, 0f,
+            0.299f * blue, 0.587f * blue, 0.114f * blue, 0f, 0f,
+            0f, 0f, 0f, 1f, 0f
+        )
+    )
+}
+
 internal fun Color.playerAmbienceMix(other: Color, amount: Float): Color {
     val fraction = amount.coerceIn(0f, 1f)
     return Color(

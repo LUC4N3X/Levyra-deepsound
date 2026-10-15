@@ -144,4 +144,46 @@ class LevyraNavigationStudioSettingsTest {
         assertEquals(expected, navigationStudioLocalizationCodes())
         assertEquals(expected, navigationStudioCompleteLocalizationCodes())
     }
+
+    @Test
+    fun expandingLabelsAreTheDefaultOnlyForCustomizableStyles() {
+        val expanding = listOf(
+            NavStyle.SuperExpressive,
+            NavStyle.FloatingDock,
+            NavStyle.SplitDock,
+            NavStyle.ConnectedDock,
+            NavStyle.LiquidGlass,
+            NavStyle.Minimal,
+            NavStyle.ExpressiveCompact
+        )
+        expanding.forEach { style ->
+            assertEquals(style.name, NavLabelMode.Expanding, LevyraNavigationStudioSettings().tuningFor(style).labels)
+        }
+        assertEquals(NavLabelMode.Always, LevyraNavigationStudioSettings().tuningFor(NavStyle.YtMusic).labels)
+        assertEquals(NavLabelMode.Always, LevyraNavigationStudioSettings().tuningFor(NavStyle.Original).labels)
+        assertEquals(NavColorSource.Theme, LevyraNavigationStudioSettings().tuningFor(NavStyle.FloatingDock).colorSource)
+    }
+
+    @Test
+    fun explicitlyStoredLabelModesSurviveTheNewDefault() {
+        val decoded = LevyraNavigationStudioSettings.decode(
+            """{"version":2,"style":"floating_dock","tunings":{"floating_dock":{"labels":"active","height":70},"minimal":{"labels":"never","height":64},"liquid_glass":{"height":70}}}"""
+        )
+        assertEquals(NavLabelMode.ActiveOnly, decoded.tuningFor(NavStyle.FloatingDock).labels)
+        assertEquals(NavLabelMode.Never, decoded.tuningFor(NavStyle.Minimal).labels)
+        assertEquals(NavLabelMode.Expanding, decoded.tuningFor(NavStyle.LiquidGlass).labels)
+        assertEquals(decoded, LevyraNavigationStudioSettings.decode(decoded.encode()))
+    }
+
+    @Test
+    fun artworkColorSourceRoundTrips() {
+        val style = NavStyle.SplitDock
+        val settings = LevyraNavigationStudioSettings()
+            .withStyle(style)
+            .updateTuning(style) { it.copy(colorSource = NavColorSource.Artwork, labels = NavLabelMode.Always) }
+        val restored = LevyraNavigationStudioSettings.decode(settings.encode())
+        assertEquals(NavColorSource.Artwork, restored.activeTuning().colorSource)
+        assertEquals(NavLabelMode.Always, restored.activeTuning().labels)
+        assertEquals(settings, restored)
+    }
 }

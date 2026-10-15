@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import com.luc4n3x.levyra.ui.i18n.LevyraOnboardingAppearanceStrings
 import com.luc4n3x.levyra.ui.i18n.LevyraOnboardingYoutubeMusicStrings
 import org.junit.Test
 import java.nio.file.Files
@@ -12,9 +13,10 @@ import java.nio.file.Path
 class OnboardingFlowTest {
 
     @Test
-    fun `flow advances through intro language profile taste and youtube music`() {
+    fun `flow advances through intro language appearance profile taste and youtube music`() {
         assertEquals(OnboardingStep.Language, OnboardingStep.Intro.next())
-        assertEquals(OnboardingStep.Profile, OnboardingStep.Language.next())
+        assertEquals(OnboardingStep.Appearance, OnboardingStep.Language.next())
+        assertEquals(OnboardingStep.Profile, OnboardingStep.Appearance.next())
         assertEquals(OnboardingStep.Taste, OnboardingStep.Profile.next())
         assertEquals(OnboardingStep.YoutubeMusic, OnboardingStep.Taste.next())
         assertEquals(OnboardingStep.YoutubeMusic, OnboardingStep.YoutubeMusic.next())
@@ -24,7 +26,8 @@ class OnboardingFlowTest {
     fun `flow returns to the previous completed step`() {
         assertEquals(OnboardingStep.Intro, OnboardingStep.Intro.previous())
         assertEquals(OnboardingStep.Intro, OnboardingStep.Language.previous())
-        assertEquals(OnboardingStep.Language, OnboardingStep.Profile.previous())
+        assertEquals(OnboardingStep.Language, OnboardingStep.Appearance.previous())
+        assertEquals(OnboardingStep.Appearance, OnboardingStep.Profile.previous())
         assertEquals(OnboardingStep.Profile, OnboardingStep.Taste.previous())
         assertEquals(OnboardingStep.Taste, OnboardingStep.YoutubeMusic.previous())
     }
@@ -33,17 +36,18 @@ class OnboardingFlowTest {
     fun `the intro stage owns the whole screen and stays out of the progress dots`() {
         assertFalse(onboardingShowsChrome(OnboardingStep.Intro))
         assertTrue(onboardingShowsChrome(OnboardingStep.Language))
+        assertTrue(onboardingShowsChrome(OnboardingStep.Appearance))
         assertTrue(onboardingShowsChrome(OnboardingStep.Profile))
         assertTrue(onboardingShowsChrome(OnboardingStep.Taste))
         assertTrue(onboardingShowsChrome(OnboardingStep.YoutubeMusic))
         assertEquals(
-            listOf(OnboardingStep.Language, OnboardingStep.Profile, OnboardingStep.Taste, OnboardingStep.YoutubeMusic),
+            listOf(OnboardingStep.Language, OnboardingStep.Appearance, OnboardingStep.Profile, OnboardingStep.Taste, OnboardingStep.YoutubeMusic),
             onboardingProgressSteps()
         )
         assertEquals(0, onboardingProgressIndex(OnboardingStep.Intro))
         assertEquals(0, onboardingProgressIndex(OnboardingStep.Language))
-        assertEquals(2, onboardingProgressIndex(OnboardingStep.Taste))
-        assertEquals(3, onboardingProgressIndex(OnboardingStep.YoutubeMusic))
+        assertEquals(3, onboardingProgressIndex(OnboardingStep.Taste))
+        assertEquals(4, onboardingProgressIndex(OnboardingStep.YoutubeMusic))
     }
 
     @Test
@@ -85,6 +89,17 @@ class OnboardingFlowTest {
             val fields = listOf(copy.title, copy.body, copy.optionalBody, copy.secureBody, copy.skip, copy.connectedBody, copy.signInError)
             assertTrue(code, fields.all(String::isNotBlank))
             assertTrue(code, copy.body != english.body && copy.skip != english.skip && copy.secureBody != english.secureBody)
+        }
+    }
+
+    @Test
+    fun `appearance setup copy is translated for every supported language`() {
+        val english = LevyraOnboardingAppearanceStrings.forCode("en")
+        LevyraLanguageCatalog.languages.map { it.code }.filter { it != "en" }.forEach { code ->
+            val copy = LevyraOnboardingAppearanceStrings.forCode(code)
+            val fields = listOf(copy.title, copy.body, copy.dark, copy.darkBody, copy.light, copy.lightBody, copy.footnote)
+            assertTrue(code, fields.all(String::isNotBlank))
+            assertTrue(code, copy.title != english.title && copy.lightBody != english.lightBody)
         }
     }
 }
