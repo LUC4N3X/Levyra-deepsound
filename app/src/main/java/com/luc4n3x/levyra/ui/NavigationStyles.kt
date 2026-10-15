@@ -1614,7 +1614,7 @@ private fun DrawScope.drawExpandingIndicator(
             val markHeight = if (line) 3.dp.toPx() else 4.dp.toPx() * scale
             val markWidth = markHeight + (width * 0.42f - markHeight).coerceAtLeast(0f) * grown
             val y = if (line) {
-                visibleTop + visibleHeight - markHeight - (if (floating) 5.dp.toPx() else 6.dp.toPx())
+                visibleTop + visibleHeight - markHeight - if (floating) 5.dp.toPx() else 6.dp.toPx()
             } else {
                 iconCenterY + iconBox / 2f + 3.dp.toPx()
             }

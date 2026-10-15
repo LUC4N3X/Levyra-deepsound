@@ -297,45 +297,27 @@ internal fun OnboardingOverlay(
                     modifier = Modifier.weight(1f),
                     label = "setup-step"
                 ) { activeStep ->
-                    when (activeStep) {
-                        OnboardingStep.Intro -> SetupIntroStage(strings = strings, accent = accent)
-                        OnboardingStep.Language -> SetupLanguageStage(
-                            strings = strings,
-                            languageCode = languageCode,
-                            accent = accent,
-                            onLanguage = { languageCode = it }
-                        )
-                        OnboardingStep.Appearance -> SetupAppearanceStage(
-                            copy = LevyraOnboardingAppearanceStrings.forCode(languageCode),
-                            light = LevyraIsLight,
-                            accent = accent,
-                            onLight = onAppearance
-                        )
-                        OnboardingStep.Profile -> SetupProfileStage(
-                            strings = strings,
-                            name = name,
-                            accent = accent,
-                            onName = { name = preserveProfileNameInput(it) },
-                            onSubmit = advance
-                        )
-                        OnboardingStep.Taste -> SetupTasteStage(
-                            strings = strings,
-                            tastes = tastes,
-                            artwork = artwork,
-                            selected = selected,
-                            accent = accent,
-                            onToggle = { tasteId ->
-                                selected = if (tasteId in selected) selected - tasteId else selected + tasteId
-                            }
-                        )
-                        OnboardingStep.YoutubeMusic -> SetupYoutubeMusicStage(
-                            copy = youtubeMusicCopy,
-                            account = youtubeMusicAccount,
-                            error = youtubeMusicError?.let { onboardingYoutubeMusicErrorText(youtubeMusicCopy, it) },
-                            accent = accent,
-                            animated = animated
-                        )
-                    }
+                    SetupStepContent(
+                        step = activeStep,
+                        strings = strings,
+                        languageCode = languageCode,
+                        accent = accent,
+                        name = name,
+                        tastes = tastes,
+                        artwork = artwork,
+                        selected = selected,
+                        youtubeMusicCopy = youtubeMusicCopy,
+                        youtubeMusicAccount = youtubeMusicAccount,
+                        youtubeMusicError = youtubeMusicError,
+                        animated = animated,
+                        onLanguage = { languageCode = it },
+                        onAppearance = onAppearance,
+                        onName = { name = preserveProfileNameInput(it) },
+                        onSubmit = advance,
+                        onToggleTaste = { tasteId ->
+                            selected = if (tasteId in selected) selected - tasteId else selected + tasteId
+                        }
+                    )
                 }
                 SetupFooter(
                     hero = step == OnboardingStep.Intro,
@@ -358,6 +340,65 @@ internal fun OnboardingOverlay(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun SetupStepContent(
+    step: OnboardingStep,
+    strings: LevyraStrings,
+    languageCode: String,
+    accent: Color,
+    name: String,
+    tastes: List<Taste>,
+    artwork: Map<String, List<String>>,
+    selected: Set<String>,
+    youtubeMusicCopy: OnboardingYoutubeMusicCopy,
+    youtubeMusicAccount: YoutubeMusicAccount?,
+    youtubeMusicError: YoutubeMusicAccountError?,
+    animated: Boolean,
+    onLanguage: (String) -> Unit,
+    onAppearance: (Boolean) -> Unit,
+    onName: (String) -> Unit,
+    onSubmit: () -> Unit,
+    onToggleTaste: (String) -> Unit
+) {
+    when (step) {
+        OnboardingStep.Intro -> SetupIntroStage(strings = strings, accent = accent)
+        OnboardingStep.Language -> SetupLanguageStage(
+            strings = strings,
+            languageCode = languageCode,
+            accent = accent,
+            onLanguage = onLanguage
+        )
+        OnboardingStep.Appearance -> SetupAppearanceStage(
+            copy = LevyraOnboardingAppearanceStrings.forCode(languageCode),
+            light = LevyraIsLight,
+            accent = accent,
+            onLight = onAppearance
+        )
+        OnboardingStep.Profile -> SetupProfileStage(
+            strings = strings,
+            name = name,
+            accent = accent,
+            onName = onName,
+            onSubmit = onSubmit
+        )
+        OnboardingStep.Taste -> SetupTasteStage(
+            strings = strings,
+            tastes = tastes,
+            artwork = artwork,
+            selected = selected,
+            accent = accent,
+            onToggle = onToggleTaste
+        )
+        OnboardingStep.YoutubeMusic -> SetupYoutubeMusicStage(
+            copy = youtubeMusicCopy,
+            account = youtubeMusicAccount,
+            error = youtubeMusicError?.let { onboardingYoutubeMusicErrorText(youtubeMusicCopy, it) },
+            accent = accent,
+            animated = animated
+        )
     }
 }
 
@@ -894,37 +935,17 @@ private fun SetupAppearanceCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val animated = LocalAnimationsEnabled.current
-    val corner by animateDpAsState(
-        targetValue = if (selected) 34.dp else 22.dp,
-        animationSpec = if (animated) spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessMediumLow) else snap(),
-        label = "setup-appearance-corner"
-    )
-    val scale by animateFloatAsState(
-        targetValue = if (selected) 1f else 0.95f,
-        animationSpec = if (animated) spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMedium) else snap(),
-        label = "setup-appearance-scale"
-    )
-    val outline by animateColorAsState(
-        targetValue = if (selected) accent else SetupVeil.copy(alpha = 0.10f),
-        animationSpec = if (animated) tween(260) else snap(),
-        label = "setup-appearance-outline"
-    )
-    val container by animateColorAsState(
-        targetValue = if (selected) accent.copy(alpha = 0.12f).compositeOver(SetupSurface) else SetupSurface,
-        animationSpec = if (animated) tween(260) else snap(),
-        label = "setup-appearance-container"
-    )
-    val shape = RoundedCornerShape(corner)
+    val style = rememberSetupAppearanceStyle(selected, accent)
+    val shape = RoundedCornerShape(style.corner)
     Column(
         modifier = modifier
             .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
+                scaleX = style.scale
+                scaleY = style.scale
             }
             .clip(shape)
-            .background(container)
-            .border(if (selected) 3.dp else 1.dp, outline, shape)
+            .background(style.container)
+            .border(style.borderWidth, style.outline, shape)
             .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
             .padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -949,21 +970,7 @@ private fun SetupAppearanceCard(
                 }
             }
         }
-        Row(
-            modifier = Modifier.padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .background(if (selected) accent else SetupSurfaceHigh, badge.toShape()),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(icon, contentDescription = null, tint = if (selected) SetupOnAccent else SetupInk, modifier = Modifier.size(18.dp))
-            }
-            Text(label, color = SetupInk, fontSize = 18.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
+        SetupAppearanceLabel(label = label, icon = icon, badge = badge, selected = selected, accent = accent)
         Text(
             body,
             color = SetupMuted,
@@ -972,6 +979,61 @@ private fun SetupAppearanceCard(
             minLines = 2,
             modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 6.dp)
         )
+    }
+}
+
+private class SetupAppearanceStyle(
+    val corner: Dp,
+    val scale: Float,
+    val outline: Color,
+    val container: Color,
+    val borderWidth: Dp
+)
+
+@Composable
+private fun rememberSetupAppearanceStyle(selected: Boolean, accent: Color): SetupAppearanceStyle {
+    val animated = LocalAnimationsEnabled.current
+    val shapeSpring = if (animated) spring<Dp>(dampingRatio = 0.62f, stiffness = Spring.StiffnessMediumLow) else snap()
+    val scaleSpring = if (animated) spring<Float>(dampingRatio = 0.55f, stiffness = Spring.StiffnessMedium) else snap()
+    val tint = if (animated) tween<Color>(260) else snap()
+    val corner by animateDpAsState(if (selected) 34.dp else 22.dp, shapeSpring, label = "setup-appearance-corner")
+    val scale by animateFloatAsState(if (selected) 1f else 0.95f, scaleSpring, label = "setup-appearance-scale")
+    val outline by animateColorAsState(
+        targetValue = if (selected) accent else SetupVeil.copy(alpha = 0.10f),
+        animationSpec = tint,
+        label = "setup-appearance-outline"
+    )
+    val container by animateColorAsState(
+        targetValue = if (selected) accent.copy(alpha = 0.12f).compositeOver(SetupSurface) else SetupSurface,
+        animationSpec = tint,
+        label = "setup-appearance-container"
+    )
+    return SetupAppearanceStyle(corner, scale, outline, container, if (selected) 3.dp else 1.dp)
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SetupAppearanceLabel(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    badge: RoundedPolygon,
+    selected: Boolean,
+    accent: Color
+) {
+    Row(
+        modifier = Modifier.padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .background(if (selected) accent else SetupSurfaceHigh, badge.toShape()),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = if (selected) SetupOnAccent else SetupInk, modifier = Modifier.size(18.dp))
+        }
+        Text(label, color = SetupInk, fontSize = 18.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
