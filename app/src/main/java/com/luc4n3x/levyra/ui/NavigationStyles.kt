@@ -160,39 +160,70 @@ internal fun rememberNavColors(style: NavStyle, tuning: NavTuning): NavColors {
     }
 }
 
-private fun buildNavColors(scheme: ColorScheme, capsule: Boolean, tuning: NavTuning): NavColors {
-    val auto = tuning.surfaceTone == NavSurfaceTone.Auto
-    val surface = when (tuning.surfaceTone) {
-        NavSurfaceTone.Auto -> if (capsule) scheme.surfaceContainerHigh else scheme.surfaceContainer
+private class NavPalette(
+    val surface: Color,
+    val content: Color,
+    val variant: Color,
+    val raised: Color,
+    val isLight: Boolean
+)
+
+private fun navPalette(scheme: ColorScheme, capsule: Boolean, tone: NavSurfaceTone): NavPalette {
+    if (tone == NavSurfaceTone.Auto) {
+        val surface = if (capsule) scheme.surfaceContainerHigh else scheme.surfaceContainer
+        return NavPalette(
+            surface = surface,
+            content = scheme.onSurface,
+            variant = scheme.onSurfaceVariant,
+            raised = if (capsule) scheme.surfaceContainerHighest else scheme.surfaceContainerHigh,
+            isLight = surface.luminance() > 0.5f
+        )
+    }
+    val surface = when (tone) {
         NavSurfaceTone.Light -> NavLightSurface
         NavSurfaceTone.Dark -> NavDarkSurface
-        NavSurfaceTone.Amoled -> Color.Black
+        else -> Color.Black
     }
     val isLight = surface.luminance() > 0.5f
-    val content = if (auto) scheme.onSurface else if (isLight) NavLightContent else NavDarkContent
-    val variant = if (auto) scheme.onSurfaceVariant else if (isLight) NavLightVariant else NavDarkVariant
-    val raised = if (auto) {
-        if (capsule) scheme.surfaceContainerHighest else scheme.surfaceContainerHigh
+    val content = if (isLight) NavLightContent else NavDarkContent
+    return NavPalette(
+        surface = surface,
+        content = content,
+        variant = if (isLight) NavLightVariant else NavDarkVariant,
+        raised = surface.playerMix(content, 0.06f),
+        isLight = isLight
+    )
+}
+
+private fun navIndicatorPair(
+    tone: NavIndicatorTone,
+    scheme: ColorScheme,
+    palette: NavPalette,
+    accent: Color,
+    themedTonal: Boolean
+): Pair<Color, Color> = when (tone) {
+    NavIndicatorTone.Tonal -> if (themedTonal) {
+        scheme.secondaryContainer to scheme.onSecondaryContainer
     } else {
-        surface.playerMix(content, 0.06f)
+        palette.surface.playerMix(accent, if (palette.isLight) 0.24f else 0.32f) to accent.playerMix(palette.content, 0.55f)
     }
-    val accent = if (tuning.colorSource == NavColorSource.Custom) Color(tuning.accent) else scheme.primary
-    val themedTonal = auto && tuning.colorSource != NavColorSource.Custom
-    val indicator = when (tuning.indicatorTone) {
-        NavIndicatorTone.Tonal -> if (themedTonal) scheme.secondaryContainer else surface.playerMix(accent, if (isLight) 0.24f else 0.32f)
-        NavIndicatorTone.Vivid -> accent
-        NavIndicatorTone.Neutral -> surface.playerMix(content, if (isLight) 0.10f else 0.16f)
-    }
-    val onIndicatorSeed = when (tuning.indicatorTone) {
-        NavIndicatorTone.Tonal -> if (themedTonal) scheme.onSecondaryContainer else accent.playerMix(content, 0.55f)
-        NavIndicatorTone.Vivid -> accent
-        NavIndicatorTone.Neutral -> content
-    }
+    NavIndicatorTone.Vivid -> accent to accent
+    NavIndicatorTone.Neutral -> palette.surface.playerMix(palette.content, if (palette.isLight) 0.10f else 0.16f) to palette.content
+}
+
+private fun buildNavColors(scheme: ColorScheme, capsule: Boolean, tuning: NavTuning): NavColors {
+    val palette = navPalette(scheme, capsule, tuning.surfaceTone)
+    val surface = palette.surface
+    val isLight = palette.isLight
+    val custom = tuning.colorSource == NavColorSource.Custom
+    val accent = if (custom) Color(tuning.accent) else scheme.primary
+    val themedTonal = tuning.surfaceTone == NavSurfaceTone.Auto && !custom
+    val (indicator, onIndicatorSeed) = navIndicatorPair(tuning.indicatorTone, scheme, palette, accent, themedTonal)
     val mark = accent.navReadableOn(surface, NavIconContrast)
-    val inactive = variant.navAlphaReadableOn(surface, tuning.inactiveAlpha / 100f, NavIconContrast)
+    val inactive = palette.variant.navAlphaReadableOn(surface, tuning.inactiveAlpha / 100f, NavIconContrast)
     return NavColors(
         surface = surface,
-        raised = raised,
+        raised = palette.raised,
         rim = if (isLight) Color.Black.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.10f),
         indicator = indicator,
         onIndicator = onIndicatorSeed.navReadableOn(indicator, NavTextContrast),
@@ -399,6 +430,47 @@ private fun Modifier.navFloatingInset(floating: Boolean): Modifier = if (floatin
     this
 }
 
+private class NavDockGeometry(
+    val height: Dp,
+    val compactHeight: Dp,
+    val labelRoom: Dp,
+    val iconTop: Dp,
+    val lift: Dp
+)
+
+private fun navDockGeometry(floating: Boolean, height: Dp, labels: NavLabelMode): NavDockGeometry {
+    val compactHeight = if (floating) {
+        StyledNavCompactFootprint - StyledNavFloatingBottom
+    } else {
+        (height - StyledNavTrayShrink).coerceIn(StyledNavMinTouch, StyledNavCompactFootprint)
+    }.coerceAtMost(height)
+    val labelRoom = navLabelRoom(labels)
+    val iconTop = navIconTop(height, labelRoom)
+    val lift = if (floating) (iconTop - navIconTop(compactHeight, 0.dp)).coerceAtLeast(0.dp) else 0.dp
+    return NavDockGeometry(height, compactHeight, labelRoom, iconTop, lift)
+}
+
+private fun navDockSurface(
+    style: NavStyle,
+    colors: NavColors,
+    background: NavBackground,
+    opacity: Int,
+    glass: GlassBackdropState?,
+    shape: Shape,
+    depth: Float
+): Modifier = when {
+    style == NavStyle.LiquidGlass -> Modifier.navLiquidGlass(colors, opacity, glass, shape, depth)
+    style.floating -> Modifier.navCapsule(colors, background, opacity, glass, shape, depth)
+    else -> Modifier
+}
+
+private fun Modifier.navDockSizing(floating: Boolean, compaction: () -> Float, geometry: NavDockGeometry): Modifier =
+    if (floating) {
+        dockLerpHeight(compaction, geometry.height, geometry.compactHeight)
+    } else {
+        dockClipHeight(compaction, geometry.height - geometry.compactHeight).height(geometry.height)
+    }
+
 @Composable
 internal fun StyledBottomTabs(
     style: NavStyle,
@@ -419,7 +491,6 @@ internal fun StyledBottomTabs(
     val motion = remember(tuning.motion, tuning.intensity, animationsEnabled) {
         navMotionSpec(tuning.motion, tuning.intensity, animationsEnabled)
     }
-    val haptics = LocalLevyraHaptics.current
     val selectedIndex = entries.indexOfFirst { it.tab == selected }
     val indicatorPosition by animateFloatAsState(
         targetValue = selectedIndex.coerceAtLeast(0).toFloat(),
@@ -427,32 +498,17 @@ internal fun StyledBottomTabs(
         label = "styled-nav-indicator"
     )
     val floating = style.floating
-    val height = tuning.heightDp.dp
-    val compactHeight = if (floating) {
-        StyledNavCompactFootprint - StyledNavFloatingBottom
-    } else {
-        (height - StyledNavTrayShrink).coerceIn(StyledNavMinTouch, StyledNavCompactFootprint)
-    }.coerceAtMost(height)
-    val labelRoom = navLabelRoom(tuning.labels)
-    val iconTop = navIconTop(height, labelRoom)
-    val lift = if (floating) (iconTop - navIconTop(compactHeight, 0.dp)).coerceAtLeast(0.dp) else 0.dp
+    val geometry = remember(floating, tuning.heightDp, tuning.labels) {
+        navDockGeometry(floating, tuning.heightDp.dp, tuning.labels)
+    }
     val depth = tuning.intensity / 100f
     val padding = tuning.paddingDp.dp
     val spacing = tuning.spacingDp.dp
-    val shape = remember(tuning.cornerDp, height) { RoundedCornerShape(minOf(tuning.cornerDp.dp, height / 2)) }
-    val surface = remember(style, colors, tuning.background, tuning.opacity, glass, shape, depth) {
-        when {
-            style == NavStyle.LiquidGlass -> Modifier.navLiquidGlass(colors, tuning.opacity, glass, shape, depth)
-            floating -> Modifier.navCapsule(colors, tuning.background, tuning.opacity, glass, shape, depth)
-            else -> Modifier
-        }
+    val shape = remember(tuning.cornerDp, geometry.height) {
+        RoundedCornerShape(minOf(tuning.cornerDp.dp, geometry.height / 2))
     }
-    val sizing = if (floating) {
-        Modifier.dockLerpHeight(compaction, height, compactHeight)
-    } else {
-        Modifier
-            .dockClipHeight(compaction, height - compactHeight)
-            .height(height)
+    val surface = remember(style, colors, tuning.background, tuning.opacity, glass, shape, depth) {
+        navDockSurface(style, colors, tuning.background, tuning.opacity, glass, shape, depth)
     }
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -460,7 +516,7 @@ internal fun StyledBottomTabs(
             modifier = Modifier
                 .navFloatingInset(floating)
                 .fillMaxWidth()
-                .then(sizing)
+                .navDockSizing(floating, compaction, geometry)
                 .then(surface)
         ) {
             val slotWidth = ((maxWidth - padding * 2 - spacing * (entries.size - 1)) / entries.size).coerceAtLeast(0.dp)
@@ -468,8 +524,8 @@ internal fun StyledBottomTabs(
                 modifier = Modifier
                     .fillMaxWidth()
                     .wrapContentHeight(Alignment.Top, unbounded = true)
-                    .height(height)
-                    .graphicsLayer { translationY = -lift.toPx() * compaction() }
+                    .height(geometry.height)
+                    .graphicsLayer { translationY = -geometry.lift.toPx() * compaction() }
             ) {
                 Box(
                     modifier = Modifier
@@ -477,7 +533,6 @@ internal fun StyledBottomTabs(
                         .drawBehind {
                             if (selectedIndex < 0) return@drawBehind
                             val fold = compaction().coerceIn(0f, 1f)
-                            val liftPx = lift.toPx() * fold
                             drawNavIndicator(
                                 tuning = tuning,
                                 floating = floating,
@@ -487,46 +542,70 @@ internal fun StyledBottomTabs(
                                 position = indicatorPosition,
                                 selectedIndex = selectedIndex,
                                 lastIndex = entries.lastIndex,
-                                iconTopPx = iconTop.toPx(),
-                                labelRoomPx = labelRoom.toPx(),
-                                visibleTopPx = liftPx,
-                                visibleHeightPx = size.height - (height - compactHeight).toPx() * fold,
+                                iconTopPx = geometry.iconTop.toPx(),
+                                labelRoomPx = geometry.labelRoom.toPx(),
+                                visibleTopPx = geometry.lift.toPx() * fold,
+                                visibleHeightPx = size.height - (geometry.height - geometry.compactHeight).toPx() * fold,
                                 stretch = motion.stretch,
                                 colors = colors
                             )
                         }
                 )
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = padding)
-                        .selectableGroup(),
-                    horizontalArrangement = Arrangement.spacedBy(spacing),
-                    verticalAlignment = Alignment.Top
-                ) {
-                    entries.forEach { entry ->
-                        val isSelected = entry.tab == selected
-                        StyledTabButton(
-                            entry = entry,
-                            isSelected = isSelected,
-                            tuning = tuning,
-                            colors = colors,
-                            iconTop = iconTop,
-                            motion = motion,
-                            foldLabel = if (floating) compaction else null,
-                            onClick = {
-                                if (!isSelected && tuning.haptics) {
-                                    haptics.perform(if (motion.pop > 1f) LevyraHapticAction.Confirm else LevyraHapticAction.SeekSnap)
-                                }
-                                onSelect(entry.tab)
-                            }
-                        )
-                    }
-                }
+                StyledTabRow(
+                    entries = entries,
+                    selected = selected,
+                    tuning = tuning,
+                    colors = colors,
+                    iconTop = geometry.iconTop,
+                    motion = motion,
+                    foldLabel = if (floating) compaction else null,
+                    onSelect = onSelect
+                )
             }
         }
         if (applySystemInset) {
             Spacer(modifier = Modifier.navigationBarsPadding())
+        }
+    }
+}
+
+@Composable
+private fun StyledTabRow(
+    entries: List<LevyraTabEntry>,
+    selected: LevyraTab,
+    tuning: NavTuning,
+    colors: NavColors,
+    iconTop: Dp,
+    motion: NavMotionSpec,
+    foldLabel: (() -> Float)?,
+    onSelect: (LevyraTab) -> Unit
+) {
+    val haptics = LocalLevyraHaptics.current
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = tuning.paddingDp.dp)
+            .selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(tuning.spacingDp.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        entries.forEach { entry ->
+            val isSelected = entry.tab == selected
+            StyledTabButton(
+                entry = entry,
+                isSelected = isSelected,
+                tuning = tuning,
+                colors = colors,
+                iconTop = iconTop,
+                motion = motion,
+                foldLabel = foldLabel,
+                onClick = {
+                    if (!isSelected && tuning.haptics) {
+                        haptics.perform(if (motion.pop > 1f) LevyraHapticAction.Confirm else LevyraHapticAction.SeekSnap)
+                    }
+                    onSelect(entry.tab)
+                }
+            )
         }
     }
 }
@@ -641,11 +720,7 @@ private fun RowScope.StyledTabButton(
         label = "styled-tab-text"
     )
     val scale by animateFloatAsState(
-        targetValue = when {
-            pressed && motion.animated -> 0.88f
-            isSelected -> motion.pop
-            else -> 1f
-        },
+        targetValue = navTabScale(pressed, isSelected, motion),
         animationSpec = motion.scale,
         label = "styled-tab-scale"
     )
@@ -655,7 +730,6 @@ private fun RowScope.StyledTabButton(
         label = "styled-tab-label"
     )
     val compact = tuning.labels == NavLabelMode.Compact
-    val labelSize: TextUnit = if (compact) 10.sp else 11.sp
     Box(
         modifier = Modifier
             .weight(1f)
@@ -694,24 +768,48 @@ private fun RowScope.StyledTabButton(
                 )
             }
             if (tuning.labels != NavLabelMode.Never) {
-                Text(
+                StyledTabLabel(
                     text = entry.label,
                     color = textTint,
-                    fontSize = labelSize,
-                    lineHeight = LevyraTypeRhythm.lineHeight(labelSize),
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                    letterSpacing = if (compact) 0.sp else 0.1.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .height(if (compact) 12.dp else 14.dp)
-                        .graphicsLayer {
-                            val fold = foldLabel?.invoke()?.coerceIn(0f, 1f) ?: 0f
-                            alpha = labelAlpha * (1f - fold)
-                        }
+                    selected = isSelected,
+                    compact = compact,
+                    alpha = {
+                        val fold = foldLabel?.invoke()?.coerceIn(0f, 1f) ?: 0f
+                        labelAlpha * (1f - fold)
+                    }
                 )
             }
         }
     }
+}
+
+private fun navTabScale(pressed: Boolean, selected: Boolean, motion: NavMotionSpec): Float = when {
+    pressed && motion.animated -> 0.88f
+    selected -> motion.pop
+    else -> 1f
+}
+
+@Composable
+private fun StyledTabLabel(
+    text: String,
+    color: Color,
+    selected: Boolean,
+    compact: Boolean,
+    alpha: () -> Float
+) {
+    val labelSize: TextUnit = if (compact) 10.sp else 11.sp
+    Text(
+        text = text,
+        color = color,
+        fontSize = labelSize,
+        lineHeight = LevyraTypeRhythm.lineHeight(labelSize),
+        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+        letterSpacing = if (compact) 0.sp else 0.1.sp,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .height(if (compact) 12.dp else 14.dp)
+            .graphicsLayer { this.alpha = alpha() }
+    )
 }
