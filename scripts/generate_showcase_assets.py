@@ -709,11 +709,20 @@ def render_readme_card(spec, index):
 
 def generate_readme_cards():
     os.makedirs(README_CARD_DIR, exist_ok=True)
+    cards = []
     for index, spec in enumerate(README_CARD_SPECS):
         artwork = render_readme_card(spec, index)
+        cards.append(artwork)
         out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
         artwork.save(out_path, "WEBP", quality=94, method=6)
         print(f"Saved README editorial card at {artwork.size}: {out_path}")
+    for row_index in range(4):
+        row = Image.new("RGB", (3600, 1500))
+        for column in range(4):
+            row.paste(cards[row_index * 4 + column], (column * 900, 0))
+        out_path = os.path.join(README_CARD_DIR, f"editorial-grid-row-{row_index + 1:02d}.webp")
+        row.save(out_path, "WEBP", quality=95, method=6)
+        print(f"Saved four-card README row at {row.size}: {out_path}")
 
 if __name__ == "__main__":
     generate_hero_panoramic_showcase()
