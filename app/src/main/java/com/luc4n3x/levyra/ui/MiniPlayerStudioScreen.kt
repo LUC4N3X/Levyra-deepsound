@@ -50,6 +50,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -126,6 +127,7 @@ internal fun miniPlayerStyleName(style: MiniPlayerStyle): String = when (style) 
     MiniPlayerStyle.LiquidGlass -> "Liquid Glass"
     MiniPlayerStyle.UltraCompact -> "Ultra Compact"
     MiniPlayerStyle.ArtworkFocus -> "Artwork Focus"
+    MiniPlayerStyle.YtMusic -> "YT Music"
 }
 
 private fun miniPlayerStyleDescription(style: MiniPlayerStyle, copy: MiniPlayerStudioCopy): String = when (style) {
@@ -135,6 +137,7 @@ private fun miniPlayerStyleDescription(style: MiniPlayerStyle, copy: MiniPlayerS
     MiniPlayerStyle.LiquidGlass -> copy[MiniStudioText.DescLiquidGlass]
     MiniPlayerStyle.UltraCompact -> copy[MiniStudioText.DescUltraCompact]
     MiniPlayerStyle.ArtworkFocus -> copy[MiniStudioText.DescArtworkFocus]
+    MiniPlayerStyle.YtMusic -> copy[MiniStudioText.DescYtMusic]
 }
 
 internal fun parseMiniHexColor(raw: String): Int? {
@@ -1023,8 +1026,11 @@ internal fun MiniStudioSlider(
                 color = MaterialTheme.colorScheme.primary
             )
         }
+        val sliderRange = safeRange.first.toFloat()..safeRange.last.toFloat()
+        val sliderState = remember(sliderRange) { SliderState(shown.toFloat(), 0, sliderRange) }
+        sliderState.value = shown.toFloat()
         Slider(
-            value = shown.toFloat(),
+            state = sliderState,
             onValueChange = { raw ->
                 val next = raw.roundToInt().coerceIn(safeRange)
                 if (next != dragValue) {
@@ -1036,7 +1042,6 @@ internal fun MiniStudioSlider(
                 dragValue?.let(onCommit)
                 dragValue = null
             },
-            valueRange = safeRange.first.toFloat()..safeRange.last.toFloat(),
             enabled = adjustable,
             modifier = Modifier
                 .fillMaxWidth()
@@ -1153,7 +1158,7 @@ private fun MiniShapePicker(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun MiniColorEditor(color: Int, copy: MiniPlayerStudioCopy, onColor: (Int) -> Unit) {
+internal fun MiniColorEditor(color: Int, copy: MiniPlayerStudioCopy, onColor: (Int) -> Unit) {
     val scheme = MaterialTheme.colorScheme
     var text by remember(color) { mutableStateOf(formatMiniHexColor(color)) }
     val parsed = parseMiniHexColor(text)

@@ -60,7 +60,7 @@ internal class YoutubeMusicAccountClient {
                         val parsed = response.use {
                             if (it.code == 401 || it.code == 403) throw YoutubeMusicSessionExpired()
                             if (!it.isSuccessful) throw YoutubeMusicAccountHttpException(it.code)
-                            val responseBody = it.body ?: throw YoutubeMusicProtocolException()
+                            val responseBody = it.body
                             if (responseBody.contentLength() > MAX_RESPONSE_BYTES) throw YoutubeMusicProtocolException()
                             val raw = responseBody.byteStream().use { input ->
                                 val output = ByteArrayOutputStream()

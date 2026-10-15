@@ -307,7 +307,7 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
             if (saved.activeId != session.account.id) return@runOperation
             val favorites: (suspend (List<com.luc4n3x.levyra.domain.Track>) -> Unit)? =
                 if (collection == YoutubeMusicCollection.Likes && snapshot.detail == null) {
-                    { items -> com.luc4n3x.levyra.data.FavoritesStore(getApplication<Application>()).addFavorites(items); Unit }
+                    { items -> com.luc4n3x.levyra.data.FavoritesStore(getApplication<Application>()).addFavorites(items) }
                 } else null
             val notice = importYoutubeMusicItems(tracks, { items -> repository.importTracks(session, browseId, title, items) }, favorites)
             _state.update { it.copy(notice = notice) }
