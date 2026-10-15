@@ -693,9 +693,9 @@ def render_readme_card(spec, index):
     draw_readme_card_copy(draw, spec, theme, index, (72, 70))
 
     _, _, _, _, screenshot = spec
-    device_centers = [(590, 1045), (470, 1050), (590, 1045), (445, 1050)]
-    angles = [-4.5, 3.5, -2.5, 4.5]
-    widths = [510, 525, 515, 520]
+    device_centers = [(575, 1090), (455, 1090), (575, 1090), (455, 1090)]
+    angles = [-3.5, 2.8, -2.2, 3.5]
+    widths = [650, 660, 650, 660]
     paste_campaign_device(
         canvas,
         screenshot,
