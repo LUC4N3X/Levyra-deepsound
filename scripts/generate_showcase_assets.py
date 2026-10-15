@@ -547,7 +547,175 @@ def generate_feature_cards():
                 card_rgb.save(out_file, "WEBP", quality=95, method=6)
                 print(f"Saved Material 3 Expressive editorial card: {out_file}")
 
+README_CARD_DIR = os.path.join(OUT_SHOWCASE_DIR, "editorial-cards")
+
+README_CARD_THEMES = [
+    {
+        "background": (28, 20, 32),
+        "ink": (255, 247, 252),
+        "muted": (214, 196, 210),
+        "accent": (255, 142, 133),
+        "shape": (79, 54, 83),
+    },
+    {
+        "background": (238, 248, 242),
+        "ink": (27, 35, 31),
+        "muted": (77, 88, 82),
+        "accent": (17, 102, 92),
+        "shape": (190, 229, 213),
+    },
+    {
+        "background": (255, 244, 235),
+        "ink": (46, 31, 25),
+        "muted": (98, 76, 67),
+        "accent": (176, 66, 74),
+        "shape": (246, 207, 190),
+    },
+    {
+        "background": (238, 240, 255),
+        "ink": (31, 32, 52),
+        "muted": (76, 77, 101),
+        "accent": (75, 65, 161),
+        "shape": (205, 210, 248),
+    },
+]
+
+README_CARD_SPECS = [
+    ("01_pure_listening", "RADIO", "Pure\nlistening.", "Radio that starts with your sound.", "Screenshot_20260926_171253_LEVYRA.jpg"),
+    ("02_stay_with_the_song", "NOW PLAYING", "Stay with\nthe song.", "Immersive playback, no visual noise.", "Screenshot_20260926_193948_LEVYRA.jpg"),
+    ("03_sing_along", "SYNCED LYRICS", "Sing\nalong.", "Translation and timing in one flow.", "screen-lyrics.jpg"),
+    ("04_open_the_album", "OFFLINE", "Open the\nwhole album.", "Keep the music you come back to.", "Screenshot_20260926_194706_LEVYRA.jpg"),
+    ("05_fresh_currents", "DISCOVERY", "Fresh\ncurrents.", "New releases without the scroll fatigue.", "Screenshot_20261010_132210_LEVYRA.jpg"),
+    ("06_built_for_your_taste", "LEVYRA MIX", "Built for\nyour taste.", "A mix shaped around the moment.", "Screenshot_20261010_132217_LEVYRA.jpg"),
+    ("07_every_genre", "MOODS", "Every\ngenre.", "Move by mood, place or energy.", "Screenshot_20261010_132249_LEVYRA.jpg"),
+    ("08_acoustic_precision", "AUDIO", "Acoustic\nprecision.", "Tune the sound, keep the soul.", "Screenshot_20261010_190726_LEVYRA.jpg"),
+    ("09_keep_it_personal", "LIBRARY", "Keep it\npersonal.", "Your collection stays yours.", "Screenshot_20261010_132050_LEVYRA.jpg"),
+    ("10_curated_for_you", "COLLECTIONS", "Curated\nfor you.", "Quick picks, ready when you are.", "Screenshot_20261010_132136_LEVYRA.jpg"),
+    ("11_your_rhythm", "INSIGHTS", "Your\nrhythm.", "See the pattern behind the plays.", "Screenshot_20260927_131943_LEVYRA.jpg"),
+    ("12_in_your_orbit", "HOME", "In your\norbit.", "Artists and albums close at hand.", "Screenshot_20261010_132103_LEVYRA.jpg"),
+    ("13_tailor_every_detail", "SETTINGS", "Tailor every\ndetail.", "Private by design, flexible by choice.", "Screenshot_20261010_140700_LEVYRA.jpg"),
+    ("14_fresh_off_the_stage", "NEW RELEASES", "Fresh off\nthe stage.", "The newest music, without the clutter.", "Screenshot_20261010_144144_LEVYRA.jpg"),
+    ("15_meet_the_artist", "ARTISTS", "Meet the\nartist.", "From the profile straight into the music.", "Screenshot_20261010_143646_LEVYRA.jpg"),
+    ("16_listen_together", "LEVYRA JAM", "Listen\ntogether.", "One room. One queue. Everyone in.", "Screenshot_20261011_133434_LEVYRA.jpg"),
+]
+
+def make_campaign_device(filename, width, border_color):
+    screenshot_path = resolve_screenshot_path(filename)
+    if not screenshot_path:
+        raise FileNotFoundError(f"Missing campaign screenshot: {filename}")
+    with Image.open(screenshot_path) as screenshot_source:
+        screenshot = enhance_screenshot(screenshot_source).convert("RGBA")
+    height = round(screenshot.height * width / screenshot.width)
+    screenshot = screenshot.resize((width, height), Image.Resampling.LANCZOS)
+    radius = max(32, round(width * 0.075))
+    mask = Image.new("L", screenshot.size, 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, width - 1, height - 1), radius=radius, fill=255)
+    device = Image.new("RGBA", screenshot.size, border_color + (255,))
+    device.paste(screenshot, (0, 0), mask)
+    edge = Image.new("RGBA", screenshot.size, (0, 0, 0, 0))
+    ImageDraw.Draw(edge).rounded_rectangle(
+        (2, 2, width - 3, height - 3),
+        radius=radius,
+        outline=border_color + (130,),
+        width=max(2, round(width * 0.008)),
+    )
+    return Image.alpha_composite(device, edge)
+
+def paste_campaign_device(canvas, filename, width, center, angle, border_color):
+    device = make_campaign_device(filename, width, border_color)
+    device = device.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
+    shadow_alpha = device.getchannel("A").filter(ImageFilter.GaussianBlur(max(18, width // 18)))
+    shadow_alpha = ImageEnhance.Brightness(shadow_alpha).enhance(0.42)
+    shadow = Image.new("RGBA", device.size, (18, 12, 22, 0))
+    shadow.putalpha(shadow_alpha)
+    x = round(center[0] - device.width / 2)
+    y = round(center[1] - device.height / 2)
+    canvas.alpha_composite(shadow, (x + 20, y + 34))
+    canvas.alpha_composite(device, (x, y))
+
+def paste_campaign_ribbon(canvas, width, center, opacity, angle=0):
+    ribbon_path = os.path.join(OUT_SHOWCASE_DIR, "levyra_editorial_ribbon.png")
+    if not os.path.exists(ribbon_path):
+        raise FileNotFoundError(f"Missing editorial ribbon: {ribbon_path}")
+    with Image.open(ribbon_path) as ribbon_source:
+        ribbon = ribbon_source.convert("RGBA")
+    height = round(ribbon.height * width / ribbon.width)
+    ribbon = ribbon.resize((width, height), Image.Resampling.LANCZOS)
+    alpha = ribbon.getchannel("A").point(lambda value: round(value * opacity))
+    ribbon.putalpha(alpha)
+    if angle:
+        ribbon = ribbon.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
+    x = round(center[0] - ribbon.width / 2)
+    y = round(center[1] - ribbon.height / 2)
+    canvas.alpha_composite(ribbon, (x, y))
+
+def draw_readme_card_copy(draw, spec, theme, index, origin):
+    _, kicker, title, body, _ = spec
+    x, y = origin
+    kicker_font = get_font(25, bold=True)
+    number_font = get_font(25, bold=True)
+    title_font = get_font(76, bold=True)
+    body_font = get_font(27)
+    draw.text((x, y), kicker, font=kicker_font, fill=theme["accent"])
+    number = f"{index + 1:02d}"
+    number_width = draw.textlength(number, font=number_font)
+    draw.text((820 - number_width, y), number, font=number_font, fill=theme["muted"])
+    title_y = y + 55
+    draw.multiline_text((x, title_y), title, font=title_font, fill=theme["ink"], spacing=-8)
+    title_box = draw.multiline_textbbox((x, title_y), title, font=title_font, spacing=-8)
+    draw.text((x, title_box[3] + 24), body, font=body_font, fill=theme["muted"])
+
+def draw_readme_card_shapes(draw, theme, variant):
+    if variant == 0:
+        draw.ellipse((-250, 900, 650, 1780), fill=theme["shape"] + (255,))
+        draw.rounded_rectangle((610, -150, 1030, 310), radius=150, fill=theme["shape"] + (210,))
+    elif variant == 1:
+        draw.ellipse((480, 720, 1130, 1390), fill=theme["shape"] + (255,))
+        draw.rounded_rectangle((-180, -120, 390, 250), radius=140, fill=theme["shape"] + (220,))
+    elif variant == 2:
+        draw.rounded_rectangle((-220, 845, 1080, 1520), radius=310, fill=theme["shape"] + (255,))
+        draw.ellipse((650, -180, 1060, 230), fill=theme["shape"] + (210,))
+    else:
+        draw.ellipse((-240, 700, 510, 1460), fill=theme["shape"] + (255,))
+        draw.ellipse((580, -190, 1100, 330), fill=theme["shape"] + (190,))
+
+def render_readme_card(spec, index):
+    theme_order = [0, 1, 2, 3, 3, 0, 1, 2, 1, 2, 3, 0, 2, 3, 0, 1]
+    variant_order = [0, 1, 2, 3, 2, 3, 0, 1, 1, 0, 3, 2, 3, 2, 1, 0]
+    theme = README_CARD_THEMES[theme_order[index]]
+    variant = variant_order[index]
+    canvas = Image.new("RGBA", (900, 1500), theme["background"] + (255,))
+    draw = ImageDraw.Draw(canvas)
+    draw_readme_card_shapes(draw, theme, variant)
+    ribbon_centers = [(705, 920), (190, 930), (700, 1090), (170, 1030)]
+    ribbon_angles = [-12, 13, -5, 18]
+    paste_campaign_ribbon(canvas, 780, ribbon_centers[variant], 0.11, ribbon_angles[variant])
+    draw_readme_card_copy(draw, spec, theme, index, (72, 70))
+
+    _, _, _, _, screenshot = spec
+    device_centers = [(575, 1090), (455, 1090), (575, 1090), (455, 1090)]
+    angles = [-3.5, 2.8, -2.2, 3.5]
+    widths = [650, 660, 650, 660]
+    paste_campaign_device(
+        canvas,
+        screenshot,
+        widths[variant],
+        device_centers[variant],
+        angles[variant],
+        (22, 20, 24),
+    )
+    return canvas.convert("RGB")
+
+def generate_readme_cards():
+    os.makedirs(README_CARD_DIR, exist_ok=True)
+    for index, spec in enumerate(README_CARD_SPECS):
+        artwork = render_readme_card(spec, index)
+        out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
+        artwork.save(out_path, "WEBP", quality=94, method=6)
+        print(f"Saved README editorial card at {artwork.size}: {out_path}")
+
 if __name__ == "__main__":
     generate_hero_panoramic_showcase()
     generate_feature_cards()
+    generate_readme_cards()
     print("All Material 3 Expressive editorial-stage assets generated successfully!")
