@@ -167,6 +167,9 @@ import com.luc4n3x.levyra.ui.theme.LevyraThemes
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.runtime.State
 
 private val SetupBase: Color get() = if (LevyraIsLight) Color(0xFFF5F7FB) else Color(0xFF07070B)
 private val SetupInk: Color get() = if (LevyraIsLight) Color(0xFF10141C) else Color(0xFFF4F4F8)
@@ -240,16 +243,8 @@ internal fun OnboardingOverlay(
     val youtubeMusicError = youtubeMusic.error?.takeIf { youtubeMusicAccount == null && !youtubeMusic.restoring }
     val animated = LocalAnimationsEnabled.current
     LaunchedEffect(languageCode) { onTasteLanguage(languageCode) }
-    val accent by animateColorAsState(
-        targetValue = onboardingAccent(step),
-        animationSpec = if (animated) tween(520) else snap(),
-        label = "setup-accent"
-    )
-    val introLevel = animateFloatAsState(
-        targetValue = if (step == OnboardingStep.Intro) 1f else 0f,
-        animationSpec = if (animated) tween(520) else snap(),
-        label = "setup-intro-level"
-    )
+    val accent by animateColorAsState(onboardingAccent(step), setupMotion(animated, tween(520)), label = "setup-accent")
+    val introLevel = rememberSetupIntroLevel(step, animated)
     val finish: () -> Unit = { onDone(name, selected, languageCode) }
     val advance: () -> Unit = {
         when {
@@ -288,12 +283,7 @@ internal fun OnboardingOverlay(
                 )
                 AnimatedContent(
                     targetState = step,
-                    transitionSpec = {
-                        val direction = if (targetState.ordinal >= initialState.ordinal) 1 else -1
-                        val slide = spring<androidx.compose.ui.unit.IntOffset>(dampingRatio = 0.9f, stiffness = 380f)
-                        slideInHorizontally(slide) { it * direction / 4 } + fadeIn(tween(260, delayMillis = 60)) togetherWith
-                            slideOutHorizontally(slide) { -it * direction / 4 } + fadeOut(tween(140))
-                    },
+                    transitionSpec = { setupStepTransition(initialState, targetState) },
                     modifier = Modifier.weight(1f),
                     label = "setup-step"
                 ) { activeStep ->
@@ -341,6 +331,24 @@ internal fun OnboardingOverlay(
             }
         }
     }
+}
+
+private fun <T> setupMotion(animated: Boolean, spec: AnimationSpec<T>): AnimationSpec<T> =
+    if (animated) spec else snap()
+
+@Composable
+private fun rememberSetupIntroLevel(step: OnboardingStep, animated: Boolean): State<Float> =
+    animateFloatAsState(
+        targetValue = if (step == OnboardingStep.Intro) 1f else 0f,
+        animationSpec = setupMotion(animated, tween(520)),
+        label = "setup-intro-level"
+    )
+
+private fun setupStepTransition(initial: OnboardingStep, target: OnboardingStep): ContentTransform {
+    val direction = if (target.ordinal >= initial.ordinal) 1 else -1
+    val slide = spring<androidx.compose.ui.unit.IntOffset>(dampingRatio = 0.9f, stiffness = 380f)
+    return slideInHorizontally(slide) { it * direction / 4 } + fadeIn(tween(260, delayMillis = 60)) togetherWith
+        slideOutHorizontally(slide) { -it * direction / 4 } + fadeOut(tween(140))
 }
 
 @Composable
@@ -990,25 +998,31 @@ private class SetupAppearanceStyle(
     val borderWidth: Dp
 )
 
+private fun setupAppearanceTarget(selected: Boolean, accent: Color): SetupAppearanceStyle =
+    if (selected) {
+        SetupAppearanceStyle(34.dp, 1f, accent, accent.copy(alpha = 0.12f).compositeOver(SetupSurface), 3.dp)
+    } else {
+        SetupAppearanceStyle(22.dp, 0.95f, SetupVeil.copy(alpha = 0.10f), SetupSurface, 1.dp)
+    }
+
 @Composable
 private fun rememberSetupAppearanceStyle(selected: Boolean, accent: Color): SetupAppearanceStyle {
     val animated = LocalAnimationsEnabled.current
-    val shapeSpring = if (animated) spring<Dp>(dampingRatio = 0.62f, stiffness = Spring.StiffnessMediumLow) else snap()
-    val scaleSpring = if (animated) spring<Float>(dampingRatio = 0.55f, stiffness = Spring.StiffnessMedium) else snap()
-    val tint = if (animated) tween<Color>(260) else snap()
-    val corner by animateDpAsState(if (selected) 34.dp else 22.dp, shapeSpring, label = "setup-appearance-corner")
-    val scale by animateFloatAsState(if (selected) 1f else 0.95f, scaleSpring, label = "setup-appearance-scale")
-    val outline by animateColorAsState(
-        targetValue = if (selected) accent else SetupVeil.copy(alpha = 0.10f),
-        animationSpec = tint,
-        label = "setup-appearance-outline"
+    val target = setupAppearanceTarget(selected, accent)
+    val tint = setupMotion(animated, tween<Color>(260))
+    val corner by animateDpAsState(
+        targetValue = target.corner,
+        animationSpec = setupMotion(animated, spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessMediumLow)),
+        label = "setup-appearance-corner"
     )
-    val container by animateColorAsState(
-        targetValue = if (selected) accent.copy(alpha = 0.12f).compositeOver(SetupSurface) else SetupSurface,
-        animationSpec = tint,
-        label = "setup-appearance-container"
+    val scale by animateFloatAsState(
+        targetValue = target.scale,
+        animationSpec = setupMotion(animated, spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMedium)),
+        label = "setup-appearance-scale"
     )
-    return SetupAppearanceStyle(corner, scale, outline, container, if (selected) 3.dp else 1.dp)
+    val outline by animateColorAsState(target.outline, tint, label = "setup-appearance-outline")
+    val container by animateColorAsState(target.container, tint, label = "setup-appearance-container")
+    return SetupAppearanceStyle(corner, scale, outline, container, target.borderWidth)
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
