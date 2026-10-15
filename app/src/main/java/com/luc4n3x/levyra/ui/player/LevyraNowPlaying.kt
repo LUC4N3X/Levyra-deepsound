@@ -997,6 +997,7 @@ fun LevyraNowPlaying(
                         playerPane == LevyraPlayerPane.SideBySide &&
                         maxWidth > maxHeight &&
                         !state.isVideoMode,
+                    animatePlayMorph = visualMode != PlayerVisualMode.CanvasImmersive,
                     labels = playerControlLabels,
                     onShuffle = viewModel::toggleShuffle,
                     onPrevious = viewModel::previous,
