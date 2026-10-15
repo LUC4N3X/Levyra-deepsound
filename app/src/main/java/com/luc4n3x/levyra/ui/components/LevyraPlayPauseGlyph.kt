@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Color
@@ -32,17 +33,21 @@ fun LevyraPlayPauseGlyph(
     playing: Boolean,
     color: Color,
     modifier: Modifier = Modifier,
-    contentDescription: String? = null
+    contentDescription: String? = null,
+    animateMorph: Boolean = true
 ) {
     val animated = LocalAnimationsEnabled.current
-    val morph = animateFloatAsState(
-        targetValue = if (playing) 1f else 0f,
+    val target = if (playing) 1f else 0f
+    val animatedMorph = animateFloatAsState(
+        targetValue = target,
         animationSpec = LevyraMotion.spec(
-            animated,
+            animated && animateMorph,
             tween(LevyraMotion.Durations.Short + 40, easing = LevyraMotion.Easings.Emphasized)
         ),
         label = "levyra-play-pause-morph"
     )
+    val settledMorph = rememberUpdatedState(target)
+    val morph = if (animateMorph) animatedMorph else settledMorph
     val path = remember { Path() }
     Spacer(
         modifier = modifier
