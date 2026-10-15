@@ -694,15 +694,14 @@ def render_readme_card(spec, index):
     draw_readme_card_copy(draw, spec, theme, index, (72, 70))
 
     _, _, _, _, screenshot = spec
-    screen_centers = [(575, 1090), (455, 1090), (575, 1090), (455, 1090)]
-    angles = [-3.5, 2.8, -2.2, 3.5]
-    widths = [650, 660, 650, 660]
+    screen_center = (450, 1090)
+    screen_width = 720
     paste_campaign_screen(
         canvas,
         screenshot,
-        widths[variant],
-        screen_centers[variant],
-        angles[variant],
+        screen_width,
+        screen_center,
+        0,
         (22, 20, 24),
     )
     return canvas.convert("RGB")
