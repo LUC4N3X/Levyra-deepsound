@@ -439,8 +439,10 @@ private class NavDockGeometry(
     val lift: Dp
 )
 
-private fun navDockGeometry(floating: Boolean, height: Dp, labels: NavLabelMode): NavDockGeometry {
-    val compactHeight = if (floating) {
+private fun navDockGeometry(floating: Boolean, collapsible: Boolean, height: Dp, labels: NavLabelMode): NavDockGeometry {
+    val compactHeight = if (!collapsible) {
+        height
+    } else if (floating) {
         StyledNavCompactFootprint - StyledNavFloatingBottom
     } else {
         (height - StyledNavTrayShrink).coerceIn(StyledNavMinTouch, StyledNavCompactFootprint)
@@ -499,8 +501,9 @@ internal fun StyledBottomTabs(
         label = "styled-nav-indicator"
     )
     val floating = style.floating
-    val geometry = remember(floating, tuning.heightDp, tuning.labels) {
-        navDockGeometry(floating, tuning.heightDp.dp, tuning.labels)
+    val collapsible = style != NavStyle.YtMusic
+    val geometry = remember(floating, collapsible, tuning.heightDp, tuning.labels) {
+        navDockGeometry(floating, collapsible, tuning.heightDp.dp, tuning.labels)
     }
     val depth = tuning.intensity / 100f
     val padding = tuning.paddingDp.dp

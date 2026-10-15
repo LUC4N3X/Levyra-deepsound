@@ -137,6 +137,7 @@ private val StyledMiniDarkBase = PlayerDarkSurface
 private val StyledMiniYtMusicSurface = Color.Black
 private val StyledMiniYtMusicContentStart = 16.dp
 private val StyledMiniEdgeProgressHeight = 2.dp
+private val StyledMiniFixedDock: () -> Float = { 0f }
 
 internal class MiniPlayerPalette(
     val accent: Color,
@@ -349,6 +350,7 @@ internal fun StyledMiniPlayer(
     val progress: () -> Float = { progressState.value }
     val swipe = rememberPlayerSwipeMotion(animated)
     val layout = remember(style, tuning) { StyledMiniLayout(style, tuning) }
+    val dockCompaction = if (style == MiniPlayerStyle.YtMusic) StyledMiniFixedDock else compaction
     val containerShape = rememberMiniContainerShape(style, tuning, layout.height, model.isPlaying, animated)
     val interaction = if (interactive) {
         Modifier.miniInteraction(
@@ -377,7 +379,7 @@ internal fun StyledMiniPlayer(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .dockLerpHeight(compaction, layout.height, layout.compactHeight)
+                .dockLerpHeight(dockCompaction, layout.height, layout.compactHeight)
                 .morphAnchorWhen(interactive, morphAnchors, PlayerMorphSlot.MiniCard)
                 .miniDepth(style, tuning, palette, containerShape)
                 .clip(containerShape)
@@ -412,7 +414,7 @@ internal fun StyledMiniPlayer(
                     animated = animated,
                     liveRadio = liveRadio,
                     anchors = morphAnchors.takeIf { interactive },
-                    compaction = compaction,
+                    compaction = dockCompaction,
                     artworkHidden = artworkHidden
                 )
                 MiniStyledControls(
@@ -424,7 +426,7 @@ internal fun StyledMiniPlayer(
                     liveRadio = liveRadio,
                     progress = progress,
                     animated = animated,
-                    compaction = compaction,
+                    compaction = dockCompaction,
                     playbackActions = playbackActions,
                     onToggle = {
                         if (tuning.motion == MiniMotion.Expressive) haptics.perform(LevyraHapticAction.Transport)
