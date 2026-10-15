@@ -44,6 +44,7 @@ import com.luc4n3x.levyra.domain.LevyraCustomThemes
 import com.luc4n3x.levyra.domain.LevyraHomeStudioSettings
 import com.luc4n3x.levyra.domain.LevyraMiniPlayerStudioSettings
 import com.luc4n3x.levyra.domain.LevyraNavigationStudioSettings
+import com.luc4n3x.levyra.domain.LevyraYtMusicPairing
 import com.luc4n3x.levyra.domain.LevyraLyricsStudioSettings
 import com.luc4n3x.levyra.data.LevyraHomeSnapshotCache
 import com.luc4n3x.levyra.data.EXPLORE_DISCOVERY_CACHE_TTL_MS
@@ -2848,10 +2849,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setMiniPlayerStudioSettings(settings: LevyraMiniPlayerStudioSettings) {
         val normalized = settings.normalized()
-        if (normalized == _miniPlayerStudio.value.settings) return
+        val previous = _miniPlayerStudio.value.settings
+        if (normalized == previous) return
         val generation = ++miniPlayerStudioMutationGeneration
         pendingMiniPlayerStudioWrites += 1
         _miniPlayerStudio.update { it.copy(settings = normalized) }
+        val navigation = _navigationStudio.value.settings
+        val pairedNav = LevyraYtMusicPairing.navStyleFor(previous.style, normalized.style, navigation.style)
+        if (pairedNav != navigation.style) setNavigationStudioSettings(navigation.withStyle(pairedNav))
         viewModelScope.launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
             try {
                 val saved = preferences.setMiniPlayerStudioSettings(normalized)
@@ -2875,10 +2880,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setNavigationStudioSettings(settings: LevyraNavigationStudioSettings) {
         val normalized = settings.normalized()
-        if (normalized == _navigationStudio.value.settings) return
+        val previous = _navigationStudio.value.settings
+        if (normalized == previous) return
         val generation = ++navigationStudioMutationGeneration
         pendingNavigationStudioWrites += 1
         _navigationStudio.update { it.copy(settings = normalized) }
+        val miniPlayer = _miniPlayerStudio.value.settings
+        val pairedMini = LevyraYtMusicPairing.miniStyleFor(previous.style, normalized.style, miniPlayer.style)
+        if (pairedMini != miniPlayer.style) setMiniPlayerStudioSettings(miniPlayer.withStyle(pairedMini))
         viewModelScope.launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
             try {
                 val saved = preferences.setNavigationStudioSettings(normalized)

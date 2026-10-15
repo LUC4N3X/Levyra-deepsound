@@ -111,6 +111,7 @@ internal fun navigationStyleName(style: NavStyle): String = when (style) {
     NavStyle.Minimal -> "Minimal"
     NavStyle.ExpressiveCompact -> "Expressive Compact"
     NavStyle.LiquidGlass -> "Liquid Glass"
+    NavStyle.YtMusic -> "YT Music"
 }
 
 private fun navigationStyleDescription(style: NavStyle, copy: NavigationStudioCopy): String = when (style) {
@@ -120,6 +121,7 @@ private fun navigationStyleDescription(style: NavStyle, copy: NavigationStudioCo
     NavStyle.Minimal -> copy[NavStudioText.DescMinimal]
     NavStyle.ExpressiveCompact -> copy[NavStudioText.DescCompact]
     NavStyle.LiquidGlass -> copy[NavStudioText.DescLiquidGlass]
+    NavStyle.YtMusic -> copy[NavStudioText.DescYtMusic]
 }
 
 internal fun navReorderStep(
@@ -601,6 +603,7 @@ private fun navIndicatorLabel(indicator: NavIndicator, copy: NavigationStudioCop
     NavIndicator.Line -> copy[NavStudioText.IndicatorLine]
     NavIndicator.Circle -> copy[NavStudioText.IndicatorCircle]
     NavIndicator.Floating -> copy[NavStudioText.IndicatorFloating]
+    NavIndicator.None -> copy[NavStudioText.IndicatorNone]
 }
 
 @OptIn(ExperimentalLayoutApi::class)

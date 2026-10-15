@@ -12,7 +12,8 @@ enum class NavStudioText {
     ColorTheme, ColorDynamic, ColorCustom, Surface, SurfaceAuto, SurfaceLight,
     SurfaceDark, SurfaceAmoled, Opacity, InactiveIcons, Corners, Spacing,
     Padding, Motion, MotionStandard, MotionExpressive, MotionSpring, MotionMinimal,
-    MotionOff, Advanced, Haptics, DynamicUnavailable, ContrastHint
+    MotionOff, Advanced, Haptics, DynamicUnavailable, ContrastHint,
+    DescYtMusic, IndicatorNone
 }
 
 class NavigationStudioCopy internal constructor(private val texts: Map<NavStudioText, String>) {
@@ -34,7 +35,8 @@ private val englishNavStudio: Map<NavStudioText, String> = navStudio(
     "Levyra theme", "Material You", "Custom", "Surface", "Automatic", "Light",
     "Dark", "AMOLED black", "Opacity", "Inactive icons", "Corner radius", "Button spacing",
     "Side padding", "Animations", "Standard", "Expressive", "Spring", "Minimal",
-    "Off", "Advanced options", "Haptic feedback", "Material You needs Android 12 or later. Levyra theme colors are used instead.", "Colors are adjusted automatically to stay readable."
+    "Off", "Advanced options", "Haptic feedback", "Material You needs Android 12 or later. Levyra theme colors are used instead.", "Colors are adjusted automatically to stay readable.",
+    "Flat black bar with filled icons, paired with its mini player", "None"
 )
 
 private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
@@ -51,7 +53,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Tema Levyra", "Material You", "Personalizzato", "Superficie", "Automatica", "Chiara",
         "Scura", "Nero AMOLED", "Opacità", "Icone inattive", "Raggio degli angoli", "Spaziatura pulsanti",
         "Margine laterale", "Animazioni", "Standard", "Espressive", "Elastiche", "Minimal",
-        "Disattivate", "Opzioni avanzate", "Feedback aptico", "Material You richiede Android 12 o successivo. Vengono usati i colori del tema Levyra.", "I colori vengono regolati automaticamente per restare leggibili."
+        "Disattivate", "Opzioni avanzate", "Feedback aptico", "Material You richiede Android 12 o successivo. Vengono usati i colori del tema Levyra.", "I colori vengono regolati automaticamente per restare leggibili.",
+        "Barra nera piatta con icone piene, abbinata al suo mini player", "Nessuno"
     ),
     "es" to navStudio(
         "Barra de navegación", "Estilos, botones y etiquetas", "Estilo", "Predeterminado", "Seleccionado", "La barra de navegación original de Levyra",
@@ -65,7 +68,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Tema de Levyra", "Material You", "Personalizado", "Superficie", "Automática", "Clara",
         "Oscura", "Negro AMOLED", "Opacidad", "Iconos inactivos", "Radio de esquinas", "Espacio entre botones",
         "Margen lateral", "Animaciones", "Estándar", "Expresivas", "Elásticas", "Mínimas",
-        "Desactivadas", "Opciones avanzadas", "Respuesta háptica", "Material You requiere Android 12 o posterior. Se usan los colores del tema de Levyra.", "Los colores se ajustan automáticamente para seguir siendo legibles."
+        "Desactivadas", "Opciones avanzadas", "Respuesta háptica", "Material You requiere Android 12 o posterior. Se usan los colores del tema de Levyra.", "Los colores se ajustan automáticamente para seguir siendo legibles.",
+        "Barra negra plana con iconos rellenos, a juego con su minirreproductor", "Ninguno"
     ),
     "fr" to navStudio(
         "Barre de navigation", "Styles, boutons et libellés", "Style", "Par défaut", "Sélectionné", "La barre de navigation d'origine de Levyra",
@@ -79,7 +83,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Thème Levyra", "Material You", "Personnalisé", "Surface", "Automatique", "Claire",
         "Sombre", "Noir AMOLED", "Opacité", "Icônes inactives", "Rayon des angles", "Espacement des boutons",
         "Marge latérale", "Animations", "Standard", "Expressives", "Élastiques", "Minimales",
-        "Désactivées", "Options avancées", "Retour haptique", "Material You nécessite Android 12 ou version ultérieure. Les couleurs du thème Levyra sont utilisées.", "Les couleurs sont ajustées automatiquement pour rester lisibles."
+        "Désactivées", "Options avancées", "Retour haptique", "Material You nécessite Android 12 ou version ultérieure. Les couleurs du thème Levyra sont utilisées.", "Les couleurs sont ajustées automatiquement pour rester lisibles.",
+        "Barre noire plate aux icônes pleines, assortie à son mini-lecteur", "Aucun"
     ),
     "de" to navStudio(
         "Navigationsleiste", "Stile, Tasten und Beschriftungen", "Stil", "Standard", "Ausgewählt", "Die originale Levyra-Navigationsleiste",
@@ -93,7 +98,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Levyra-Design", "Material You", "Benutzerdefiniert", "Oberfläche", "Automatisch", "Hell",
         "Dunkel", "AMOLED-Schwarz", "Deckkraft", "Inaktive Symbole", "Eckenradius", "Tastenabstand",
         "Seitenabstand", "Animationen", "Standard", "Ausdrucksstark", "Federnd", "Minimal",
-        "Aus", "Erweiterte Optionen", "Haptisches Feedback", "Material You erfordert Android 12 oder neuer. Stattdessen werden die Levyra-Farben verwendet.", "Farben werden automatisch angepasst, damit alles lesbar bleibt."
+        "Aus", "Erweiterte Optionen", "Haptisches Feedback", "Material You erfordert Android 12 oder neuer. Stattdessen werden die Levyra-Farben verwendet.", "Farben werden automatisch angepasst, damit alles lesbar bleibt.",
+        "Flache schwarze Leiste mit gefüllten Symbolen, passend zum Mini-Player", "Keiner"
     ),
     "pt" to navStudio(
         "Barra de navegação", "Estilos, botões e rótulos", "Estilo", "Padrão", "Selecionado", "A barra de navegação original do Levyra",
@@ -107,7 +113,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Tema Levyra", "Material You", "Personalizado", "Superfície", "Automática", "Clara",
         "Escura", "Preto AMOLED", "Opacidade", "Ícones inativos", "Raio dos cantos", "Espaçamento dos botões",
         "Margem lateral", "Animações", "Padrão", "Expressivas", "Elásticas", "Mínimas",
-        "Desativadas", "Opções avançadas", "Resposta tátil", "O Material You requer Android 12 ou superior. As cores do tema Levyra são usadas.", "As cores são ajustadas automaticamente para continuarem legíveis."
+        "Desativadas", "Opções avançadas", "Resposta tátil", "O Material You requer Android 12 ou superior. As cores do tema Levyra são usadas.", "As cores são ajustadas automaticamente para continuarem legíveis.",
+        "Barra preta plana com ícones preenchidos, combinada com o seu miniplayer", "Nenhum"
     ),
     "nl" to navStudio(
         "Navigatiebalk", "Stijlen, knoppen en labels", "Stijl", "Standaard", "Geselecteerd", "De originele navigatiebalk van Levyra",
@@ -121,7 +128,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Levyra-thema", "Material You", "Aangepast", "Oppervlak", "Automatisch", "Licht",
         "Donker", "AMOLED-zwart", "Dekking", "Inactieve pictogrammen", "Hoekradius", "Knopafstand",
         "Zijmarge", "Animaties", "Standaard", "Expressief", "Verend", "Minimaal",
-        "Uit", "Geavanceerde opties", "Haptische feedback", "Material You vereist Android 12 of hoger. De kleuren van het Levyra-thema worden gebruikt.", "Kleuren worden automatisch aangepast zodat alles leesbaar blijft."
+        "Uit", "Geavanceerde opties", "Haptische feedback", "Material You vereist Android 12 of hoger. De kleuren van het Levyra-thema worden gebruikt.", "Kleuren worden automatisch aangepast zodat alles leesbaar blijft.",
+        "Platte zwarte balk met gevulde pictogrammen, passend bij de minispeler", "Geen"
     ),
     "pl" to navStudio(
         "Pasek nawigacji", "Style, przyciski i etykiety", "Styl", "Domyślny", "Wybrany", "Oryginalny pasek nawigacji Levyra",
@@ -135,7 +143,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Motyw Levyra", "Material You", "Własny", "Powierzchnia", "Automatyczna", "Jasna",
         "Ciemna", "Czerń AMOLED", "Krycie", "Nieaktywne ikony", "Promień narożników", "Odstęp przycisków",
         "Margines boczny", "Animacje", "Standardowe", "Ekspresyjne", "Sprężyste", "Minimalne",
-        "Wyłączone", "Opcje zaawansowane", "Wibracje dotykowe", "Material You wymaga Androida 12 lub nowszego. Używane są kolory motywu Levyra.", "Kolory są dostosowywane automatycznie, aby pozostały czytelne."
+        "Wyłączone", "Opcje zaawansowane", "Wibracje dotykowe", "Material You wymaga Androida 12 lub nowszego. Używane są kolory motywu Levyra.", "Kolory są dostosowywane automatycznie, aby pozostały czytelne.",
+        "Płaski czarny pasek z wypełnionymi ikonami, w parze z miniodtwarzaczem", "Brak"
     ),
     "ro" to navStudio(
         "Bara de navigare", "Stiluri, butoane și etichete", "Stil", "Implicit", "Selectat", "Bara de navigare originală Levyra",
@@ -149,7 +158,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Tema Levyra", "Material You", "Personalizat", "Suprafață", "Automată", "Deschisă",
         "Închisă", "Negru AMOLED", "Opacitate", "Pictograme inactive", "Raza colțurilor", "Spațiere butoane",
         "Margine laterală", "Animații", "Standard", "Expresive", "Elastice", "Minimale",
-        "Dezactivate", "Opțiuni avansate", "Răspuns haptic", "Material You necesită Android 12 sau o versiune ulterioară. Se folosesc culorile temei Levyra.", "Culorile sunt ajustate automat pentru a rămâne lizibile."
+        "Dezactivate", "Opțiuni avansate", "Răspuns haptic", "Material You necesită Android 12 sau o versiune ulterioară. Se folosesc culorile temei Levyra.", "Culorile sunt ajustate automat pentru a rămâne lizibile.",
+        "Bară neagră plată cu pictograme pline, asortată cu mini playerul", "Niciunul"
     ),
     "el" to navStudio(
         "Γραμμή πλοήγησης", "Στιλ, κουμπιά και ετικέτες", "Στιλ", "Προεπιλογή", "Επιλεγμένο", "Η αρχική γραμμή πλοήγησης του Levyra",
@@ -163,7 +173,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Θέμα Levyra", "Material You", "Προσαρμοσμένο", "Επιφάνεια", "Αυτόματη", "Φωτεινή",
         "Σκοτεινή", "Μαύρο AMOLED", "Αδιαφάνεια", "Ανενεργά εικονίδια", "Ακτίνα γωνιών", "Απόσταση κουμπιών",
         "Πλευρικό περιθώριο", "Κινούμενα εφέ", "Τυπικά", "Εκφραστικά", "Ελαστικά", "Ελάχιστα",
-        "Απενεργοποιημένα", "Επιλογές για προχωρημένους", "Απτική απόκριση", "Το Material You απαιτεί Android 12 ή νεότερο. Χρησιμοποιούνται τα χρώματα του θέματος Levyra.", "Τα χρώματα προσαρμόζονται αυτόματα ώστε να παραμένουν ευανάγνωστα."
+        "Απενεργοποιημένα", "Επιλογές για προχωρημένους", "Απτική απόκριση", "Το Material You απαιτεί Android 12 ή νεότερο. Χρησιμοποιούνται τα χρώματα του θέματος Levyra.", "Τα χρώματα προσαρμόζονται αυτόματα ώστε να παραμένουν ευανάγνωστα.",
+        "Επίπεδη μαύρη γραμμή με γεμάτα εικονίδια, σε συνδυασμό με το mini player", "Κανένας"
     ),
     "sv" to navStudio(
         "Navigeringsfält", "Stilar, knappar och etiketter", "Stil", "Standard", "Vald", "Levyras ursprungliga navigeringsfält",
@@ -177,7 +188,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Levyra-tema", "Material You", "Anpassad", "Yta", "Automatisk", "Ljus",
         "Mörk", "AMOLED-svart", "Opacitet", "Inaktiva ikoner", "Hörnradie", "Knappavstånd",
         "Sidomarginal", "Animationer", "Standard", "Uttrycksfulla", "Fjädrande", "Minimala",
-        "Av", "Avancerade alternativ", "Haptisk återkoppling", "Material You kräver Android 12 eller senare. Levyra-temats färger används i stället.", "Färgerna justeras automatiskt så att allt förblir läsbart."
+        "Av", "Avancerade alternativ", "Haptisk återkoppling", "Material You kräver Android 12 eller senare. Levyra-temats färger används i stället.", "Färgerna justeras automatiskt så att allt förblir läsbart.",
+        "Platt svart fält med fyllda ikoner, matchar sin minispelare", "Ingen"
     ),
     "da" to navStudio(
         "Navigationslinje", "Stilarter, knapper og etiketter", "Stil", "Standard", "Valgt", "Levyras oprindelige navigationslinje",
@@ -191,7 +203,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Levyra-tema", "Material You", "Tilpasset", "Overflade", "Automatisk", "Lys",
         "Mørk", "AMOLED-sort", "Gennemsigtighed", "Inaktive ikoner", "Hjørneradius", "Knapafstand",
         "Sidemargen", "Animationer", "Standard", "Udtryksfulde", "Fjedrende", "Minimale",
-        "Fra", "Avancerede indstillinger", "Haptisk feedback", "Material You kræver Android 12 eller nyere. Levyra-temaets farver bruges i stedet.", "Farverne justeres automatisk, så alt forbliver læsbart."
+        "Fra", "Avancerede indstillinger", "Haptisk feedback", "Material You kræver Android 12 eller nyere. Levyra-temaets farver bruges i stedet.", "Farverne justeres automatisk, så alt forbliver læsbart.",
+        "Flad sort bjælke med udfyldte ikoner, matcher sin miniafspiller", "Ingen"
     ),
     "cs" to navStudio(
         "Navigační lišta", "Styly, tlačítka a popisky", "Styl", "Výchozí", "Vybráno", "Původní navigační lišta Levyra",
@@ -205,7 +218,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Motiv Levyra", "Material You", "Vlastní", "Povrch", "Automatický", "Světlý",
         "Tmavý", "Černá AMOLED", "Krytí", "Neaktivní ikony", "Poloměr rohů", "Rozestup tlačítek",
         "Boční okraj", "Animace", "Standardní", "Expresivní", "Pružné", "Minimální",
-        "Vypnuté", "Pokročilé možnosti", "Hmatová odezva", "Material You vyžaduje Android 12 nebo novější. Použijí se barvy motivu Levyra.", "Barvy se automaticky upravují, aby zůstaly čitelné."
+        "Vypnuté", "Pokročilé možnosti", "Hmatová odezva", "Material You vyžaduje Android 12 nebo novější. Použijí se barvy motivu Levyra.", "Barvy se automaticky upravují, aby zůstaly čitelné.",
+        "Plochá černá lišta s plnými ikonami, ladí se svým minipřehrávačem", "Žádný"
     ),
     "sk" to navStudio(
         "Navigačná lišta", "Štýly, tlačidlá a popisy", "Štýl", "Predvolený", "Vybraný", "Pôvodná navigačná lišta Levyra",
@@ -219,7 +233,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Motív Levyra", "Material You", "Vlastná", "Povrch", "Automatický", "Svetlý",
         "Tmavý", "Čierna AMOLED", "Krytie", "Neaktívne ikony", "Polomer rohov", "Rozstup tlačidiel",
         "Bočný okraj", "Animácie", "Štandardné", "Expresívne", "Pružné", "Minimálne",
-        "Vypnuté", "Rozšírené možnosti", "Hmatová odozva", "Material You vyžaduje Android 12 alebo novší. Použijú sa farby motívu Levyra.", "Farby sa automaticky upravujú, aby zostali čitateľné."
+        "Vypnuté", "Rozšírené možnosti", "Hmatová odozva", "Material You vyžaduje Android 12 alebo novší. Použijú sa farby motívu Levyra.", "Farby sa automaticky upravujú, aby zostali čitateľné.",
+        "Plochá čierna lišta s plnými ikonami, ladí so svojím miniprehrávačom", "Žiadny"
     ),
     "bn" to navStudio(
         "নেভিগেশন বার", "স্টাইল, বোতাম ও লেবেল", "স্টাইল", "ডিফল্ট", "নির্বাচিত", "Levyra-র আসল নেভিগেশন বার",
@@ -233,7 +248,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Levyra থিম", "Material You", "কাস্টম", "সারফেস", "স্বয়ংক্রিয়", "হালকা",
         "গাঢ়", "AMOLED কালো", "অস্বচ্ছতা", "নিষ্ক্রিয় আইকন", "কোণের ব্যাসার্ধ", "বোতামের ব্যবধান",
         "পাশের প্যাডিং", "অ্যানিমেশন", "সাধারণ", "অভিব্যক্তিপূর্ণ", "স্প্রিং", "ন্যূনতম",
-        "বন্ধ", "উন্নত বিকল্প", "হ্যাপটিক প্রতিক্রিয়া", "Material You-এর জন্য Android 12 বা নতুন সংস্করণ প্রয়োজন। এর বদলে Levyra থিমের রং ব্যবহার করা হয়।", "পাঠযোগ্য রাখতে রং স্বয়ংক্রিয়ভাবে সমন্বয় করা হয়।"
+        "বন্ধ", "উন্নত বিকল্প", "হ্যাপটিক প্রতিক্রিয়া", "Material You-এর জন্য Android 12 বা নতুন সংস্করণ প্রয়োজন। এর বদলে Levyra থিমের রং ব্যবহার করা হয়।", "পাঠযোগ্য রাখতে রং স্বয়ংক্রিয়ভাবে সমন্বয় করা হয়।",
+        "ভরাট আইকনসহ সমতল কালো বার, নিজস্ব মিনি প্লেয়ারের সঙ্গে মিলিয়ে", "কোনোটিই নয়"
     ),
     "kk" to navStudio(
         "Навигация жолағы", "Стильдер, түймелер және белгілер", "Стиль", "Әдепкі", "Таңдалған", "Levyra-ның түпнұсқа навигация жолағы",
@@ -247,7 +263,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Levyra тақырыбы", "Material You", "Өзіндік", "Бет", "Автоматты", "Ашық",
         "Күңгірт", "AMOLED қара", "Мөлдірсіздік", "Белсенді емес белгішелер", "Бұрыш радиусы", "Түймелер аралығы",
         "Бүйір шегініс", "Анимациялар", "Стандартты", "Мәнерлі", "Серпімді", "Минималды",
-        "Өшірулі", "Кеңейтілген параметрлер", "Тактильді кері байланыс", "Material You үшін Android 12 немесе одан жаңасы қажет. Оның орнына Levyra тақырыбының түстері қолданылады.", "Түстер оқылымды болып қалуы үшін автоматты түрде реттеледі."
+        "Өшірулі", "Кеңейтілген параметрлер", "Тактильді кері байланыс", "Material You үшін Android 12 немесе одан жаңасы қажет. Оның орнына Levyra тақырыбының түстері қолданылады.", "Түстер оқылымды болып қалуы үшін автоматты түрде реттеледі.",
+        "Толтырылған белгішелері бар тегіс қара жолақ, өз мини-ойнатқышымен үйлеседі", "Жоқ"
     ),
     "sr" to navStudio(
         "Трака за навигацију", "Стилови, дугмад и ознаке", "Стил", "Подразумевано", "Изабрано", "Оригинална Levyra трака за навигацију",
@@ -261,7 +278,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Levyra тема", "Material You", "Прилагођено", "Површина", "Аутоматска", "Светла",
         "Тамна", "AMOLED црна", "Непровидност", "Неактивне иконе", "Полупречник углова", "Размак дугмади",
         "Бочна маргина", "Анимације", "Стандардне", "Експресивне", "Еластичне", "Минималне",
-        "Искључене", "Напредне опције", "Хаптичка повратна информација", "Material You захтева Android 12 или новији. Уместо тога се користе боје Levyra теме.", "Боје се аутоматски прилагођавају да остану читљиве."
+        "Искључене", "Напредне опције", "Хаптичка повратна информација", "Material You захтева Android 12 или новији. Уместо тога се користе боје Levyra теме.", "Боје се аутоматски прилагођавају да остану читљиве.",
+        "Равна црна трака са попуњеним иконама, усклађена са својим мини плејером", "Ништа"
     ),
     "sq" to navStudio(
         "Shiriti i navigimit", "Stile, butona dhe etiketa", "Stili", "I parazgjedhur", "I zgjedhur", "Shiriti origjinal i navigimit të Levyra",
@@ -275,7 +293,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Tema Levyra", "Material You", "E personalizuar", "Sipërfaqja", "Automatike", "E çelët",
         "E errët", "E zezë AMOLED", "Patejdukshmëria", "Ikonat joaktive", "Rrezja e qosheve", "Hapësira mes butonave",
         "Mbushja anësore", "Animacionet", "Standarde", "Shprehëse", "Elastike", "Minimale",
-        "Joaktive", "Opsione të avancuara", "Reagimi haptik", "Material You kërkon Android 12 ose më të ri. Përdoren ngjyrat e temës Levyra.", "Ngjyrat rregullohen automatikisht që të mbeten të lexueshme."
+        "Joaktive", "Opsione të avancuara", "Reagimi haptik", "Material You kërkon Android 12 ose më të ri. Përdoren ngjyrat e temës Levyra.", "Ngjyrat rregullohen automatikisht që të mbeten të lexueshme.",
+        "Shirit i zi i sheshtë me ikona të mbushura, në çift me mini luajtësin e vet", "Asnjë"
     ),
     "hr" to navStudio(
         "Navigacijska traka", "Stilovi, gumbi i oznake", "Stil", "Zadano", "Odabrano", "Izvorna Levyra navigacijska traka",
@@ -289,7 +308,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Levyra tema", "Material You", "Prilagođeno", "Površina", "Automatska", "Svijetla",
         "Tamna", "AMOLED crna", "Neprozirnost", "Neaktivne ikone", "Polumjer kutova", "Razmak gumba",
         "Bočna margina", "Animacije", "Standardne", "Ekspresivne", "Elastične", "Minimalne",
-        "Isključene", "Napredne opcije", "Haptička povratna informacija", "Material You zahtijeva Android 12 ili noviji. Umjesto toga koriste se boje Levyra teme.", "Boje se automatski prilagođavaju kako bi ostale čitljive."
+        "Isključene", "Napredne opcije", "Haptička povratna informacija", "Material You zahtijeva Android 12 ili noviji. Umjesto toga koriste se boje Levyra teme.", "Boje se automatski prilagođavaju kako bi ostale čitljive.",
+        "Ravna crna traka s ispunjenim ikonama, usklađena sa svojim mini playerom", "Ništa"
     ),
     "bg" to navStudio(
         "Лента за навигация", "Стилове, бутони и етикети", "Стил", "По подразбиране", "Избран", "Оригиналната лента за навигация на Levyra",
@@ -303,7 +323,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Тема Levyra", "Material You", "Персонализиран", "Повърхност", "Автоматична", "Светла",
         "Тъмна", "AMOLED черно", "Непрозрачност", "Неактивни икони", "Радиус на ъглите", "Разстояние между бутоните",
         "Странично отстояние", "Анимации", "Стандартни", "Изразителни", "Еластични", "Минимални",
-        "Изключени", "Разширени опции", "Тактилна обратна връзка", "Material You изисква Android 12 или по-нова версия. Вместо това се използват цветовете на темата Levyra.", "Цветовете се коригират автоматично, за да останат четими."
+        "Изключени", "Разширени опции", "Тактилна обратна връзка", "Material You изисква Android 12 или по-нова версия. Вместо това се използват цветовете на темата Levyra.", "Цветовете се коригират автоматично, за да останат четими.",
+        "Плоска черна лента с плътни икони, в комплект със своя мини плейър", "Няма"
     ),
     "hu" to navStudio(
         "Navigációs sáv", "Stílusok, gombok és feliratok", "Stílus", "Alapértelmezett", "Kiválasztva", "A Levyra eredeti navigációs sávja",
@@ -317,7 +338,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Levyra téma", "Material You", "Egyéni", "Felület", "Automatikus", "Világos",
         "Sötét", "AMOLED fekete", "Átlátszatlanság", "Inaktív ikonok", "Sarkok sugara", "Gombok távolsága",
         "Oldalsó margó", "Animációk", "Normál", "Kifejező", "Rugalmas", "Minimális",
-        "Kikapcsolva", "Speciális beállítások", "Haptikus visszajelzés", "A Material You Android 12 vagy újabb rendszert igényel. Helyette a Levyra téma színei érvényesek.", "A színek automatikusan igazodnak, hogy olvashatók maradjanak."
+        "Kikapcsolva", "Speciális beállítások", "Haptikus visszajelzés", "A Material You Android 12 vagy újabb rendszert igényel. Helyette a Levyra téma színei érvényesek.", "A színek automatikusan igazodnak, hogy olvashatók maradjanak.",
+        "Lapos fekete sáv kitöltött ikonokkal, a saját minilejátszójához illik", "Nincs"
     ),
     "fi" to navStudio(
         "Navigointipalkki", "Tyylit, painikkeet ja tekstit", "Tyyli", "Oletus", "Valittu", "Levyran alkuperäinen navigointipalkki",
@@ -331,7 +353,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Levyra-teema", "Material You", "Oma", "Pinta", "Automaattinen", "Vaalea",
         "Tumma", "AMOLED-musta", "Peittävyys", "Passiiviset kuvakkeet", "Kulmien pyöristys", "Painikkeiden väli",
         "Sivumarginaali", "Animaatiot", "Tavalliset", "Ilmeikkäät", "Joustavat", "Vähäiset",
-        "Pois", "Lisäasetukset", "Haptinen palaute", "Material You vaatii Android 12:n tai uudemman. Sen sijaan käytetään Levyra-teeman värejä.", "Värejä säädetään automaattisesti, jotta kaikki pysyy luettavana."
+        "Pois", "Lisäasetukset", "Haptinen palaute", "Material You vaatii Android 12:n tai uudemman. Sen sijaan käytetään Levyra-teeman värejä.", "Värejä säädetään automaattisesti, jotta kaikki pysyy luettavana.",
+        "Litteä musta palkki täytetyillä kuvakkeilla, sopii yhteen minisoittimensa kanssa", "Ei mitään"
     ),
     "et" to navStudio(
         "Navigeerimisriba", "Stiilid, nupud ja sildid", "Stiil", "Vaikimisi", "Valitud", "Levyra algne navigeerimisriba",
@@ -345,7 +368,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Levyra teema", "Material You", "Kohandatud", "Pind", "Automaatne", "Hele",
         "Tume", "AMOLED must", "Läbipaistmatus", "Passiivsed ikoonid", "Nurkade raadius", "Nuppude vahe",
         "Külgveeris", "Animatsioonid", "Tavalised", "Väljendusrikkad", "Vetruvad", "Minimaalsed",
-        "Väljas", "Täpsemad valikud", "Haptiline tagasiside", "Material You vajab Android 12 või uuemat. Selle asemel kasutatakse Levyra teema värve.", "Värve kohandatakse automaatselt, et kõik jääks loetavaks."
+        "Väljas", "Täpsemad valikud", "Haptiline tagasiside", "Material You vajab Android 12 või uuemat. Selle asemel kasutatakse Levyra teema värve.", "Värve kohandatakse automaatselt, et kõik jääks loetavaks.",
+        "Lame must riba täidetud ikoonidega, sobib oma minimängijaga", "Puudub"
     ),
     "nb" to navStudio(
         "Navigasjonslinje", "Stiler, knapper og etiketter", "Stil", "Standard", "Valgt", "Levyras opprinnelige navigasjonslinje",
@@ -359,7 +383,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Levyra-tema", "Material You", "Egendefinert", "Overflate", "Automatisk", "Lys",
         "Mørk", "AMOLED-svart", "Dekkevne", "Inaktive ikoner", "Hjørneradius", "Knappeavstand",
         "Sidemarg", "Animasjoner", "Standard", "Uttrykksfulle", "Fjærende", "Minimale",
-        "Av", "Avanserte alternativer", "Haptisk tilbakemelding", "Material You krever Android 12 eller nyere. Fargene fra Levyra-temaet brukes i stedet.", "Fargene justeres automatisk slik at alt forblir lesbart."
+        "Av", "Avanserte alternativer", "Haptisk tilbakemelding", "Material You krever Android 12 eller nyere. Fargene fra Levyra-temaet brukes i stedet.", "Fargene justeres automatisk slik at alt forblir lesbart.",
+        "Flat svart linje med fylte ikoner, matcher sin minispiller", "Ingen"
     ),
     "ca" to navStudio(
         "Barra de navegació", "Estils, botons i etiquetes", "Estil", "Predeterminat", "Seleccionat", "La barra de navegació original de Levyra",
@@ -373,7 +398,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Tema de Levyra", "Material You", "Personalitzat", "Superfície", "Automàtica", "Clara",
         "Fosca", "Negre AMOLED", "Opacitat", "Icones inactives", "Radi de les cantonades", "Espai entre botons",
         "Marge lateral", "Animacions", "Estàndard", "Expressives", "Elàstiques", "Mínimes",
-        "Desactivades", "Opcions avançades", "Resposta hàptica", "Material You requereix Android 12 o posterior. S'utilitzen els colors del tema de Levyra.", "Els colors s'ajusten automàticament perquè continuïn sent llegibles."
+        "Desactivades", "Opcions avançades", "Resposta hàptica", "Material You requereix Android 12 o posterior. S'utilitzen els colors del tema de Levyra.", "Els colors s'ajusten automàticament perquè continuïn sent llegibles.",
+        "Barra negra plana amb icones plenes, conjuntada amb el seu minireproductor", "Cap"
     ),
     "uk" to navStudio(
         "Панель навігації", "Стилі, кнопки та підписи", "Стиль", "За замовчуванням", "Вибрано", "Оригінальна панель навігації Levyra",
@@ -387,7 +413,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Тема Levyra", "Material You", "Власний", "Поверхня", "Автоматична", "Світла",
         "Темна", "Чорна AMOLED", "Непрозорість", "Неактивні значки", "Радіус кутів", "Відстань між кнопками",
         "Бічний відступ", "Анімації", "Стандартні", "Виразні", "Пружні", "Мінімальні",
-        "Вимкнено", "Додаткові параметри", "Тактильний відгук", "Material You потребує Android 12 або новішої версії. Натомість використовуються кольори теми Levyra.", "Кольори коригуються автоматично, щоб залишатися читабельними."
+        "Вимкнено", "Додаткові параметри", "Тактильний відгук", "Material You потребує Android 12 або новішої версії. Натомість використовуються кольори теми Levyra.", "Кольори коригуються автоматично, щоб залишатися читабельними.",
+        "Пласка чорна панель із заповненими значками, у парі зі своїм мініплеєром", "Немає"
     ),
     "ru" to navStudio(
         "Панель навигации", "Стили, кнопки и подписи", "Стиль", "По умолчанию", "Выбран", "Оригинальная панель навигации Levyra",
@@ -401,7 +428,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Тема Levyra", "Material You", "Свой", "Поверхность", "Автоматически", "Светлая",
         "Тёмная", "Чёрная AMOLED", "Непрозрачность", "Неактивные значки", "Радиус углов", "Расстояние между кнопками",
         "Боковой отступ", "Анимации", "Стандартные", "Выразительные", "Пружинящие", "Минимальные",
-        "Выключены", "Дополнительные параметры", "Тактильный отклик", "Для Material You нужен Android 12 или новее. Вместо этого используются цвета темы Levyra.", "Цвета настраиваются автоматически, чтобы оставаться читаемыми."
+        "Выключены", "Дополнительные параметры", "Тактильный отклик", "Для Material You нужен Android 12 или новее. Вместо этого используются цвета темы Levyra.", "Цвета настраиваются автоматически, чтобы оставаться читаемыми.",
+        "Плоская чёрная панель с заполненными значками, в паре со своим мини-плеером", "Нет"
     ),
     "tr" to navStudio(
         "Gezinme çubuğu", "Stiller, düğmeler ve etiketler", "Stil", "Varsayılan", "Seçili", "Levyra'nın orijinal gezinme çubuğu",
@@ -415,7 +443,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Levyra teması", "Material You", "Özel", "Yüzey", "Otomatik", "Açık",
         "Koyu", "AMOLED siyah", "Opaklık", "Etkin olmayan simgeler", "Köşe yarıçapı", "Düğme aralığı",
         "Yan boşluk", "Animasyonlar", "Standart", "Etkileyici", "Yaylı", "Minimal",
-        "Kapalı", "Gelişmiş seçenekler", "Dokunsal geri bildirim", "Material You için Android 12 veya üzeri gerekir. Bunun yerine Levyra teması renkleri kullanılır.", "Renkler okunabilir kalması için otomatik olarak ayarlanır."
+        "Kapalı", "Gelişmiş seçenekler", "Dokunsal geri bildirim", "Material You için Android 12 veya üzeri gerekir. Bunun yerine Levyra teması renkleri kullanılır.", "Renkler okunabilir kalması için otomatik olarak ayarlanır.",
+        "Dolu simgeli düz siyah çubuk, kendi mini oynatıcısıyla uyumlu", "Yok"
     ),
     "ar" to navStudio(
         "شريط التنقل", "أنماط وأزرار وتسميات", "النمط", "الافتراضي", "المحدد", "شريط التنقل الأصلي في Levyra",
@@ -429,7 +458,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "مظهر Levyra", "Material You", "مخصص", "السطح", "تلقائي", "فاتح",
         "داكن", "أسود AMOLED", "العتامة", "الرموز غير النشطة", "نصف قطر الزوايا", "المسافة بين الأزرار",
         "الهامش الجانبي", "الرسوم المتحركة", "قياسية", "معبّرة", "نابضة", "بسيطة",
-        "متوقفة", "خيارات متقدمة", "الاستجابة اللمسية", "يتطلب Material You نظام Android 12 أو أحدث. تُستخدم ألوان مظهر Levyra بدلًا منه.", "تُضبط الألوان تلقائيًا لتبقى سهلة القراءة."
+        "متوقفة", "خيارات متقدمة", "الاستجابة اللمسية", "يتطلب Material You نظام Android 12 أو أحدث. تُستخدم ألوان مظهر Levyra بدلًا منه.", "تُضبط الألوان تلقائيًا لتبقى سهلة القراءة.",
+        "شريط أسود مسطح بأيقونات ممتلئة، متناسق مع مشغّله المصغّر", "بلا"
     ),
     "fa" to navStudio(
         "نوار پیمایش", "سبک‌ها، دکمه‌ها و برچسب‌ها", "سبک", "پیش‌فرض", "انتخاب‌شده", "نوار پیمایش اصلی Levyra",
@@ -443,7 +473,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "زمینه Levyra", "Material You", "سفارشی", "سطح", "خودکار", "روشن",
         "تیره", "سیاه AMOLED", "کدری", "نمادهای غیرفعال", "شعاع گوشه‌ها", "فاصله دکمه‌ها",
         "حاشیه کناری", "پویانمایی‌ها", "استاندارد", "بیانگر", "فنری", "حداقلی",
-        "خاموش", "گزینه‌های پیشرفته", "بازخورد لمسی", "Material You به Android 12 یا جدیدتر نیاز دارد. به‌جای آن از رنگ‌های زمینه Levyra استفاده می‌شود.", "رنگ‌ها به‌طور خودکار تنظیم می‌شوند تا خوانا بمانند."
+        "خاموش", "گزینه‌های پیشرفته", "بازخورد لمسی", "Material You به Android 12 یا جدیدتر نیاز دارد. به‌جای آن از رنگ‌های زمینه Levyra استفاده می‌شود.", "رنگ‌ها به‌طور خودکار تنظیم می‌شوند تا خوانا بمانند.",
+        "نوار سیاه تخت با نمادهای توپر، هماهنگ با پخش‌کننده کوچک خود", "هیچ‌کدام"
     ),
     "zh" to navStudio(
         "导航栏", "风格、按钮与标签", "风格", "默认", "已选择", "Levyra 原版导航栏",
@@ -457,7 +488,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Levyra 主题", "Material You", "自定义", "表面", "自动", "浅色",
         "深色", "AMOLED 纯黑", "不透明度", "未选中图标", "圆角半径", "按钮间距",
         "两侧边距", "动画", "标准", "富有表现力", "弹性", "简约",
-        "关闭", "高级选项", "触感反馈", "Material You 需要 Android 12 或更高版本，将改用 Levyra 主题颜色。", "颜色会自动调整以保持清晰可读。"
+        "关闭", "高级选项", "触感反馈", "Material You 需要 Android 12 或更高版本，将改用 Levyra 主题颜色。", "颜色会自动调整以保持清晰可读。",
+        "扁平黑色导航栏，图标为实心样式，与配套迷你播放器搭配", "无"
     ),
     "zh-Hant" to navStudio(
         "導覽列", "風格、按鈕與標籤", "風格", "預設", "已選取", "Levyra 原版導覽列",
@@ -471,7 +503,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Levyra 主題", "Material You", "自訂", "表面", "自動", "淺色",
         "深色", "AMOLED 純黑", "不透明度", "未選取圖示", "圓角半徑", "按鈕間距",
         "兩側邊距", "動畫", "標準", "富有表現力", "彈性", "簡約",
-        "關閉", "進階選項", "觸覺回饋", "Material You 需要 Android 12 以上版本，將改用 Levyra 主題顏色。", "顏色會自動調整以保持清晰易讀。"
+        "關閉", "進階選項", "觸覺回饋", "Material You 需要 Android 12 以上版本，將改用 Levyra 主題顏色。", "顏色會自動調整以保持清晰易讀。",
+        "扁平黑色導覽列，圖示為實心樣式，與配套迷你播放器搭配", "無"
     ),
     "ja" to navStudio(
         "ナビゲーションバー", "スタイル・ボタン・ラベル", "スタイル", "デフォルト", "選択中", "Levyra オリジナルのナビゲーションバー",
@@ -485,7 +518,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Levyra テーマ", "Material You", "カスタム", "サーフェス", "自動", "ライト",
         "ダーク", "AMOLED ブラック", "不透明度", "非アクティブのアイコン", "角の丸み", "ボタンの間隔",
         "左右の余白", "アニメーション", "標準", "表現豊か", "スプリング", "最小限",
-        "オフ", "詳細オプション", "触覚フィードバック", "Material You には Android 12 以降が必要です。代わりに Levyra テーマの色を使用します。", "読みやすさを保つため、色は自動的に調整されます。"
+        "オフ", "詳細オプション", "触覚フィードバック", "Material You には Android 12 以降が必要です。代わりに Levyra テーマの色を使用します。", "読みやすさを保つため、色は自動的に調整されます。",
+        "塗りつぶしアイコンのフラットな黒いバー。専用のミニプレーヤーとセット", "なし"
     ),
     "ko" to navStudio(
         "탐색 바", "스타일, 버튼 및 라벨", "스타일", "기본값", "선택됨", "Levyra 오리지널 탐색 바",
@@ -499,7 +533,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Levyra 테마", "Material You", "사용자 지정", "표면", "자동", "밝게",
         "어둡게", "AMOLED 블랙", "불투명도", "비활성 아이콘", "모서리 반경", "버튼 간격",
         "좌우 여백", "애니메이션", "표준", "표현력 있게", "스프링", "최소",
-        "끄기", "고급 옵션", "햅틱 피드백", "Material You는 Android 12 이상이 필요합니다. 대신 Levyra 테마 색상이 사용됩니다.", "읽기 쉽도록 색상이 자동으로 조정됩니다."
+        "끄기", "고급 옵션", "햅틱 피드백", "Material You는 Android 12 이상이 필요합니다. 대신 Levyra 테마 색상이 사용됩니다.", "읽기 쉽도록 색상이 자동으로 조정됩니다.",
+        "채워진 아이콘의 평평한 검은색 바, 전용 미니 플레이어와 한 세트", "없음"
     ),
     "hi" to navStudio(
         "नेविगेशन बार", "स्टाइल, बटन और लेबल", "स्टाइल", "डिफ़ॉल्ट", "चुना गया", "Levyra का मूल नेविगेशन बार",
@@ -513,7 +548,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Levyra थीम", "Material You", "कस्टम", "सतह", "स्वचालित", "हल्की",
         "गहरी", "AMOLED काला", "अपारदर्शिता", "निष्क्रिय आइकन", "कोनों की त्रिज्या", "बटन के बीच दूरी",
         "किनारे की पैडिंग", "एनिमेशन", "मानक", "अभिव्यंजक", "स्प्रिंग", "न्यूनतम",
-        "बंद", "उन्नत विकल्प", "हैप्टिक फ़ीडबैक", "Material You के लिए Android 12 या नया संस्करण चाहिए। इसके बजाय Levyra थीम के रंग इस्तेमाल होते हैं।", "पढ़ने में आसान रखने के लिए रंग अपने आप समायोजित होते हैं।"
+        "बंद", "उन्नत विकल्प", "हैप्टिक फ़ीडबैक", "Material You के लिए Android 12 या नया संस्करण चाहिए। इसके बजाय Levyra थीम के रंग इस्तेमाल होते हैं।", "पढ़ने में आसान रखने के लिए रंग अपने आप समायोजित होते हैं।",
+        "भरे हुए आइकन वाली सपाट काली बार, अपने मिनी प्लेयर के साथ जोड़ी", "कोई नहीं"
     ),
     "id" to navStudio(
         "Bilah navigasi", "Gaya, tombol, dan label", "Gaya", "Default", "Dipilih", "Bilah navigasi asli Levyra",
@@ -527,7 +563,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Tema Levyra", "Material You", "Kustom", "Permukaan", "Otomatis", "Terang",
         "Gelap", "Hitam AMOLED", "Opasitas", "Ikon tidak aktif", "Radius sudut", "Jarak tombol",
         "Padding samping", "Animasi", "Standar", "Ekspresif", "Pegas", "Minimal",
-        "Nonaktif", "Opsi lanjutan", "Umpan balik haptik", "Material You memerlukan Android 12 atau yang lebih baru. Warna tema Levyra digunakan sebagai gantinya.", "Warna disesuaikan otomatis agar tetap mudah dibaca."
+        "Nonaktif", "Opsi lanjutan", "Umpan balik haptik", "Material You memerlukan Android 12 atau yang lebih baru. Warna tema Levyra digunakan sebagai gantinya.", "Warna disesuaikan otomatis agar tetap mudah dibaca.",
+        "Bilah hitam datar dengan ikon terisi, serasi dengan pemutar mininya", "Tidak ada"
     ),
     "ms" to navStudio(
         "Bar navigasi", "Gaya, butang dan label", "Gaya", "Lalai", "Dipilih", "Bar navigasi asal Levyra",
@@ -541,7 +578,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Tema Levyra", "Material You", "Tersuai", "Permukaan", "Automatik", "Cerah",
         "Gelap", "Hitam AMOLED", "Kelegapan", "Ikon tidak aktif", "Jejari sudut", "Jarak butang",
         "Pelapik sisi", "Animasi", "Standard", "Ekspresif", "Pegas", "Minimum",
-        "Mati", "Pilihan lanjutan", "Maklum balas haptik", "Material You memerlukan Android 12 atau lebih baharu. Warna tema Levyra digunakan sebagai ganti.", "Warna dilaraskan secara automatik supaya kekal mudah dibaca."
+        "Mati", "Pilihan lanjutan", "Maklum balas haptik", "Material You memerlukan Android 12 atau lebih baharu. Warna tema Levyra digunakan sebagai ganti.", "Warna dilaraskan secara automatik supaya kekal mudah dibaca.",
+        "Bar hitam rata dengan ikon berisi, sepadan dengan pemain mininya", "Tiada"
     ),
     "vi" to navStudio(
         "Thanh điều hướng", "Kiểu, nút và nhãn", "Kiểu", "Mặc định", "Đã chọn", "Thanh điều hướng gốc của Levyra",
@@ -555,7 +593,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Chủ đề Levyra", "Material You", "Tùy chỉnh", "Bề mặt", "Tự động", "Sáng",
         "Tối", "Đen AMOLED", "Độ mờ đục", "Biểu tượng không hoạt động", "Bán kính góc", "Khoảng cách nút",
         "Lề hai bên", "Hiệu ứng chuyển động", "Tiêu chuẩn", "Biểu cảm", "Đàn hồi", "Tối giản",
-        "Tắt", "Tùy chọn nâng cao", "Phản hồi xúc giác", "Material You yêu cầu Android 12 trở lên. Màu của chủ đề Levyra sẽ được dùng thay thế.", "Màu sắc được tự động điều chỉnh để luôn dễ đọc."
+        "Tắt", "Tùy chọn nâng cao", "Phản hồi xúc giác", "Material You yêu cầu Android 12 trở lên. Màu của chủ đề Levyra sẽ được dùng thay thế.", "Màu sắc được tự động điều chỉnh để luôn dễ đọc.",
+        "Thanh đen phẳng với biểu tượng tô đầy, đi cùng trình phát mini của nó", "Không có"
     ),
     "th" to navStudio(
         "แถบนำทาง", "สไตล์ ปุ่ม และป้ายกำกับ", "สไตล์", "ค่าเริ่มต้น", "เลือกอยู่", "แถบนำทางดั้งเดิมของ Levyra",
@@ -569,7 +608,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "ธีม Levyra", "Material You", "กำหนดเอง", "พื้นผิว", "อัตโนมัติ", "สว่าง",
         "มืด", "ดำ AMOLED", "ความทึบ", "ไอคอนที่ไม่ได้ใช้งาน", "รัศมีมุม", "ระยะห่างปุ่ม",
         "ระยะขอบด้านข้าง", "ภาพเคลื่อนไหว", "มาตรฐาน", "แสดงออก", "สปริง", "น้อยที่สุด",
-        "ปิด", "ตัวเลือกขั้นสูง", "การตอบสนองแบบสัมผัส", "Material You ต้องใช้ Android 12 ขึ้นไป จึงใช้สีของธีม Levyra แทน", "สีจะปรับโดยอัตโนมัติเพื่อให้อ่านง่ายเสมอ"
+        "ปิด", "ตัวเลือกขั้นสูง", "การตอบสนองแบบสัมผัส", "Material You ต้องใช้ Android 12 ขึ้นไป จึงใช้สีของธีม Levyra แทน", "สีจะปรับโดยอัตโนมัติเพื่อให้อ่านง่ายเสมอ",
+        "แถบสีดำเรียบพร้อมไอคอนแบบทึบ คู่กับมินิเพลเยอร์ของตัวเอง", "ไม่มี"
     ),
     "fil" to navStudio(
         "Navigation bar", "Mga istilo, button at label", "Istilo", "Default", "Napili", "Ang orihinal na navigation bar ng Levyra",
@@ -583,7 +623,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Tema ng Levyra", "Material You", "Custom", "Surface", "Awtomatiko", "Maliwanag",
         "Madilim", "AMOLED na itim", "Opacity", "Mga hindi aktibong icon", "Radius ng sulok", "Pagitan ng button",
         "Padding sa gilid", "Mga animation", "Karaniwan", "Expressive", "Spring", "Minimal",
-        "Naka-off", "Mga advanced na opsyon", "Haptic feedback", "Kailangan ng Material You ang Android 12 o mas bago. Ginagamit sa halip ang mga kulay ng tema ng Levyra.", "Awtomatikong inaayos ang mga kulay para manatiling nababasa."
+        "Naka-off", "Mga advanced na opsyon", "Haptic feedback", "Kailangan ng Material You ang Android 12 o mas bago. Ginagamit sa halip ang mga kulay ng tema ng Levyra.", "Awtomatikong inaayos ang mga kulay para manatiling nababasa.",
+        "Patag na itim na bar na may punong icon, kapares ng sarili nitong mini player", "Wala"
     ),
     "he" to navStudio(
         "סרגל ניווט", "סגנונות, כפתורים ותוויות", "סגנון", "ברירת מחדל", "נבחר", "סרגל הניווט המקורי של Levyra",
@@ -597,7 +638,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "ערכת Levyra", "Material You", "מותאם אישית", "משטח", "אוטומטי", "בהיר",
         "כהה", "שחור AMOLED", "אטימות", "סמלים לא פעילים", "רדיוס הפינות", "מרווח בין הכפתורים",
         "ריפוד צדדי", "אנימציות", "רגילות", "אקספרסיביות", "קפיציות", "מינימליות",
-        "כבויות", "אפשרויות מתקדמות", "משוב רטט", "Material You דורש Android 12 ומעלה. במקום זאת ייעשה שימוש בצבעי ערכת Levyra.", "הצבעים מותאמים אוטומטית כדי להישאר קריאים."
+        "כבויות", "אפשרויות מתקדמות", "משוב רטט", "Material You דורש Android 12 ומעלה. במקום זאת ייעשה שימוש בצבעי ערכת Levyra.", "הצבעים מותאמים אוטומטית כדי להישאר קריאים.",
+        "פס שחור שטוח עם סמלים מלאים, בהתאמה לנגן המיני שלו", "ללא"
     )
 )
 

@@ -220,7 +220,8 @@ private fun buildNavColors(scheme: ColorScheme, capsule: Boolean, tuning: NavTun
     val themedTonal = tuning.surfaceTone == NavSurfaceTone.Auto && !custom
     val (indicator, onIndicatorSeed) = navIndicatorPair(tuning.indicatorTone, scheme, palette, accent, themedTonal)
     val mark = accent.navReadableOn(surface, NavIconContrast)
-    val inactive = palette.variant.navAlphaReadableOn(surface, tuning.inactiveAlpha / 100f, NavIconContrast)
+    val inactiveBase = if (tuning.indicator == NavIndicator.None) mark else palette.variant
+    val inactive = inactiveBase.navAlphaReadableOn(surface, tuning.inactiveAlpha / 100f, NavIconContrast)
     return NavColors(
         surface = surface,
         raised = palette.raised,
@@ -318,7 +319,7 @@ internal fun StyledDockSurface(
             .drawBehind {
                 if (wash.alpha > 0f) drawRect(Brush.verticalGradient(0f to wash, 0.5f to Color.Transparent))
             }
-            .border(LevyraPlayerDesign.Hairline, colors.rim, shape),
+            .then(if (style == NavStyle.YtMusic) Modifier else Modifier.border(LevyraPlayerDesign.Hairline, colors.rim, shape)),
         content = content
     )
 }
@@ -670,6 +671,7 @@ private fun DrawScope.drawNavIndicator(
                 cornerRadius = CornerRadius(lineHeight / 2f)
             )
         }
+        NavIndicator.None -> Unit
     }
 }
 

@@ -126,6 +126,7 @@ internal fun miniPlayerStyleName(style: MiniPlayerStyle): String = when (style) 
     MiniPlayerStyle.LiquidGlass -> "Liquid Glass"
     MiniPlayerStyle.UltraCompact -> "Ultra Compact"
     MiniPlayerStyle.ArtworkFocus -> "Artwork Focus"
+    MiniPlayerStyle.YtMusic -> "YT Music"
 }
 
 private fun miniPlayerStyleDescription(style: MiniPlayerStyle, copy: MiniPlayerStudioCopy): String = when (style) {
@@ -135,6 +136,7 @@ private fun miniPlayerStyleDescription(style: MiniPlayerStyle, copy: MiniPlayerS
     MiniPlayerStyle.LiquidGlass -> copy[MiniStudioText.DescLiquidGlass]
     MiniPlayerStyle.UltraCompact -> copy[MiniStudioText.DescUltraCompact]
     MiniPlayerStyle.ArtworkFocus -> copy[MiniStudioText.DescArtworkFocus]
+    MiniPlayerStyle.YtMusic -> copy[MiniStudioText.DescYtMusic]
 }
 
 internal fun parseMiniHexColor(raw: String): Int? {

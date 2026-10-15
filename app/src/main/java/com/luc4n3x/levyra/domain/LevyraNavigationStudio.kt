@@ -9,7 +9,8 @@ enum class NavStyle(val storageId: String) {
     FloatingDock("floating_dock"),
     Minimal("minimal"),
     ExpressiveCompact("expressive_compact"),
-    LiquidGlass("liquid_glass");
+    LiquidGlass("liquid_glass"),
+    YtMusic("yt_music");
 
     val floating: Boolean get() = this == FloatingDock || this == LiquidGlass
 
@@ -35,7 +36,8 @@ enum class NavIndicator(val storageId: String) {
     Dot("dot"),
     Line("line"),
     Circle("circle"),
-    Floating("floating");
+    Floating("floating"),
+    None("none");
 
     val filled: Boolean get() = this == Pill || this == Morph || this == Circle || this == Floating
 
@@ -274,6 +276,7 @@ data class LevyraNavigationStudioSettings(
     companion object {
         const val STORAGE_VERSION = 2
 
+        private const val YT_MUSIC_CONTENT = 0xFFFFFFFF.toInt()
         private val allIndicators = NavIndicator.entries.toList()
         private val allBackgrounds = NavBackground.entries.toList()
 
@@ -368,6 +371,26 @@ data class LevyraNavigationStudioSettings(
             )
         )
 
+        private val ytMusicSpec = NavStyleSpec(
+            height = 56..72,
+            corner = 0..0,
+            indicators = listOf(NavIndicator.None, NavIndicator.Line, NavIndicator.Dot),
+            backgrounds = listOf(NavBackground.Solid),
+            defaults = NavTuning(
+                labels = NavLabelMode.Always,
+                indicator = NavIndicator.None,
+                background = NavBackground.Solid,
+                iconDp = 24,
+                heightDp = 60,
+                motion = NavMotion.Minimal,
+                intensity = 0,
+                colorSource = NavColorSource.Custom,
+                accent = YT_MUSIC_CONTENT,
+                surfaceTone = NavSurfaceTone.Amoled,
+                cornerDp = 0
+            )
+        )
+
         fun spec(style: NavStyle): NavStyleSpec = when (style) {
             NavStyle.Original -> originalSpec
             NavStyle.SuperExpressive -> superExpressiveSpec
@@ -375,6 +398,7 @@ data class LevyraNavigationStudioSettings(
             NavStyle.Minimal -> minimalSpec
             NavStyle.ExpressiveCompact -> compactSpec
             NavStyle.LiquidGlass -> liquidGlassSpec
+            NavStyle.YtMusic -> ytMusicSpec
         }
 
         fun decode(raw: String?): LevyraNavigationStudioSettings {
