@@ -178,6 +178,8 @@ const scriptGroupFor = code => {
 
 const getTheme = isDark => ({
   background: isDark ? '#0D1117' : '#FBF8F6',
+  surface: isDark ? '#211923' : '#F4E8EF',
+  surfaceStrong: isDark ? '#352735' : '#EBCFDF',
   ink: isDark ? '#F7F1F5' : '#241B21',
   muted: isDark ? '#A99DA6' : '#70636B',
   rule: isDark ? '#30363D' : '#D8D0D4',
@@ -204,7 +206,8 @@ const makePulse = ({ languages, globalPercent, catalogCount, isDark, mobile }) =
     const rows = groups.map((group, index) => {
       const y = 218 + index * 63
       return `<text x="34" y="${y}" class="group">${escapeXml(group.label)}</text>
-  <text x="686" y="${y}" text-anchor="end" class="count">${group.count}</text>
+  <rect x="650" y="${y - 20}" width="36" height="28" rx="14" fill="${theme.surface}"/>
+  <text x="668" y="${y}" text-anchor="middle" class="count">${group.count}</text>
   <text x="34" y="${y + 22}" class="examples">${escapeXml(group.examples)}</text>
   <line x1="34" y1="${y + 39}" x2="686" y2="${y + 39}" stroke="${theme.rule}"/>`
     }).join('\n  ')
@@ -221,11 +224,13 @@ const makePulse = ({ languages, globalPercent, catalogCount, isDark, mobile }) =
     .examples { fill: ${theme.muted}; font-size: 10px; }
     .footer { fill: ${theme.muted}; font-size: 10px; font-weight: 600; letter-spacing: .3px; }
   </style>
-  <rect width="720" height="560" fill="${theme.background}"/>
-  <rect x="34" y="32" width="38" height="3" fill="${theme.accent}"/>
-  <text x="34" y="66" class="eyebrow">LANGUAGE COVERAGE</text>
-  <text x="31" y="137" class="hero">${languages.length} languages</text>
-  <text x="34" y="166" class="meta">${roundedPercent}% complete · ${catalogCount.toLocaleString('en-US')}+ app strings</text>
+  <rect width="720" height="560" rx="28" fill="${theme.background}"/>
+  <rect x="18" y="18" width="684" height="160" rx="36" fill="${theme.surface}"/>
+  <text x="48" y="61" class="eyebrow">LANGUAGE COVERAGE</text>
+  <text x="45" y="132" class="hero">${languages.length} languages</text>
+  <text x="48" y="157" class="meta">${catalogCount.toLocaleString('en-US')}+ app strings</text>
+  <rect x="584" y="43" width="86" height="38" rx="19" fill="${theme.surfaceStrong}"/>
+  <text x="627" y="67" text-anchor="middle" class="group">${roundedPercent}%</text>
   <line x1="34" y1="190" x2="686" y2="190" stroke="${theme.rule}"/>
   ${rows}
   <text x="34" y="535" class="footer">LOCALIZED IN THE APP · NO CLOUD PROFILE</text>
@@ -234,10 +239,11 @@ const makePulse = ({ languages, globalPercent, catalogCount, isDark, mobile }) =
 
   const rows = groups.map((group, index) => {
     const y = 116 + index * 49
-    return `<text x="318" y="${y}" class="group">${escapeXml(group.label)}</text>
-  <text x="1048" y="${y}" text-anchor="end" class="count">${group.count}</text>
-  <text x="520" y="${y}" class="examples">${escapeXml(group.examples)}</text>
-  <line x1="318" y1="${y + 18}" x2="1048" y2="${y + 18}" stroke="${theme.rule}"/>`
+    return `<text x="348" y="${y}" class="group">${escapeXml(group.label)}</text>
+  <rect x="1002" y="${y - 20}" width="46" height="28" rx="14" fill="${theme.surface}"/>
+  <text x="1025" y="${y}" text-anchor="middle" class="count">${group.count}</text>
+  <text x="540" y="${y}" class="examples">${escapeXml(group.examples)}</text>
+  <line x1="348" y1="${y + 18}" x2="1048" y2="${y + 18}" stroke="${theme.rule}"/>`
   }).join('\n  ')
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="390" viewBox="0 0 1100 390" role="img" aria-label="${escapeXml(aria)}">
   <title>${escapeXml(aria)}</title>
@@ -252,18 +258,19 @@ const makePulse = ({ languages, globalPercent, catalogCount, isDark, mobile }) =
     .examples { fill: ${theme.muted}; font-size: 11px; }
     .footer { fill: ${theme.muted}; font-size: 10px; font-weight: 600; letter-spacing: .35px; }
   </style>
-  <rect width="1100" height="390" fill="${theme.background}"/>
-  <rect x="48" y="44" width="42" height="3" fill="${theme.accent}"/>
-  <text x="48" y="76" class="eyebrow">LANGUAGE COVERAGE</text>
-  <text x="44" y="158" class="hero">${languages.length}</text>
-  <text x="48" y="187" class="meta">languages · ${roundedPercent}% complete</text>
-  <text x="48" y="211" class="meta">${catalogCount.toLocaleString('en-US')}+ app strings</text>
-  <line x1="278" y1="78" x2="278" y2="340" stroke="${theme.rule}"/>
-  <text x="318" y="76" class="footer">WRITING SYSTEM</text>
-  <text x="520" y="76" class="footer">SELECTED LANGUAGES</text>
+  <rect width="1100" height="390" rx="28" fill="${theme.background}"/>
+  <rect x="22" y="22" width="286" height="346" rx="42" fill="${theme.surface}"/>
+  <text x="54" y="72" class="eyebrow">LANGUAGE COVERAGE</text>
+  <text x="49" y="166" class="hero">${languages.length}</text>
+  <text x="54" y="198" class="meta">languages</text>
+  <text x="54" y="224" class="meta">${catalogCount.toLocaleString('en-US')}+ app strings</text>
+  <rect x="54" y="286" width="116" height="42" rx="21" fill="${theme.surfaceStrong}"/>
+  <text x="112" y="312" text-anchor="middle" class="group">${roundedPercent}% complete</text>
+  <text x="348" y="76" class="footer">WRITING SYSTEM</text>
+  <text x="540" y="76" class="footer">SELECTED LANGUAGES</text>
   <text x="1048" y="76" text-anchor="end" class="footer">TOTAL</text>
   ${rows}
-  <text x="318" y="356" class="footer">LOCALIZED IN THE APP · NO CLOUD PROFILE</text>
+  <text x="348" y="356" class="footer">LOCALIZED IN THE APP · NO CLOUD PROFILE</text>
 </svg>`
 }
 
