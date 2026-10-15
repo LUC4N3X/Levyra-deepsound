@@ -4,48 +4,44 @@
   <style>
     text { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; }
     .eyebrow { fill: #8B416E; font-size: 11px; font-weight: 750; letter-spacing: 1.8px; }
-    .hero { fill: #241B21; font-size: 70px; font-weight: 720; letter-spacing: -3.5px; }
-    .meta { fill: #70636B; font-size: 13px; }
-    .group { fill: #241B21; font-size: 12px; font-weight: 700; letter-spacing: .5px; }
-    .count { fill: #70636B; font-size: 14px; font-weight: 650; }
-    .examples { fill: #70636B; font-size: 11px; }
-    .footer { fill: #70636B; font-size: 10px; font-weight: 600; letter-spacing: .35px; }
+    .hero { fill: #241B21; font-size: 92px; font-weight: 780; letter-spacing: -6px; }
+    .hero-label { fill: #241B21; font-size: 25px; font-weight: 720; letter-spacing: -.8px; }
+    .meta { fill: #70636B; font-size: 12px; font-weight: 550; }
+    .status { fill: #241B21; font-size: 12px; font-weight: 750; }
+    .tile-label { fill: #241923; font-size: 13px; font-weight: 800; letter-spacing: .4px; }
+    .tile-count { fill: #241923; font-size: 30px; font-weight: 820; }
+    .tile-examples { fill: #594751; font-size: 10px; }
+    .footer { fill: #70636B; font-size: 9px; font-weight: 650; letter-spacing: .35px; }
   </style>
-  <rect width="1100" height="390" rx="28" fill="#FBF8F6"/>
-  <rect x="22" y="22" width="286" height="346" rx="42" fill="#F4E8EF"/>
-  <text x="54" y="72" class="eyebrow">LANGUAGE COVERAGE</text>
-  <text x="49" y="166" class="hero">41</text>
-  <text x="54" y="198" class="meta">languages</text>
-  <text x="54" y="224" class="meta">1,105+ app strings</text>
-  <rect x="54" y="286" width="116" height="42" rx="21" fill="#EBCFDF"/>
-  <text x="112" y="312" text-anchor="middle" class="group">100% complete</text>
-  <text x="348" y="76" class="footer">WRITING SYSTEM</text>
-  <text x="540" y="76" class="footer">SELECTED LANGUAGES</text>
-  <text x="1048" y="76" text-anchor="end" class="footer">TOTAL</text>
-  <text x="348" y="116" class="group">LATIN</text>
-  <rect x="1002" y="96" width="46" height="28" rx="14" fill="#F4E8EF"/>
-  <text x="1025" y="116" text-anchor="middle" class="count">25</text>
-  <text x="540" y="116" class="examples">English · Italiano · Español · Français · Deutsch · Português</text>
-  <line x1="348" y1="134" x2="1048" y2="134" stroke="#D8D0D4"/>
-  <text x="348" y="165" class="group">CYRILLIC + GREEK</text>
-  <rect x="1002" y="145" width="46" height="28" rx="14" fill="#F4E8EF"/>
-  <text x="1025" y="165" text-anchor="middle" class="count">6</text>
-  <text x="540" y="165" class="examples">Ελληνικά · Српски · Български · Українська · Русский · Қазақша</text>
-  <line x1="348" y1="183" x2="1048" y2="183" stroke="#D8D0D4"/>
-  <text x="348" y="214" class="group">CJK</text>
-  <rect x="1002" y="194" width="46" height="28" rx="14" fill="#F4E8EF"/>
-  <text x="1025" y="214" text-anchor="middle" class="count">4</text>
-  <text x="540" y="214" class="examples">简体中文 · 繁體中文 · 日本語 · 한국어</text>
-  <line x1="348" y1="232" x2="1048" y2="232" stroke="#D8D0D4"/>
-  <text x="348" y="263" class="group">ARABIC + HEBREW</text>
-  <rect x="1002" y="243" width="46" height="28" rx="14" fill="#F4E8EF"/>
-  <text x="1025" y="263" text-anchor="middle" class="count">3</text>
-  <text x="540" y="263" class="examples">العربية · فارسی · עברית</text>
-  <line x1="348" y1="281" x2="1048" y2="281" stroke="#D8D0D4"/>
-  <text x="348" y="312" class="group">INDIC + THAI</text>
-  <rect x="1002" y="292" width="46" height="28" rx="14" fill="#F4E8EF"/>
-  <text x="1025" y="312" text-anchor="middle" class="count">3</text>
-  <text x="540" y="312" class="examples">हिन्दी · বাংলা · ไทย</text>
-  <line x1="348" y1="330" x2="1048" y2="330" stroke="#D8D0D4"/>
-  <text x="348" y="356" class="footer">LOCALIZED IN THE APP · NO CLOUD PROFILE</text>
+  <rect width="1100" height="390" rx="34" fill="#FBF8F6"/>
+  <path d="M68 22H252Q338 22 338 108V284Q338 368 254 368H72Q22 368 22 318V72Q22 22 68 22Z" fill="#F0DCE7"/>
+  <text x="58" y="72" class="eyebrow">LOCAL EVERYWHERE</text>
+  <text x="51" y="183" class="hero">41</text>
+  <text x="58" y="218" class="hero-label">languages</text>
+  <text x="58" y="252" class="meta">Five writing systems</text>
+  <text x="58" y="272" class="meta">1,105+ app strings</text>
+  <circle cx="280" cy="315" r="49" fill="#DFC1D2"/>
+  <text x="280" y="311" text-anchor="middle" class="status">100%</text>
+  <text x="280" y="329" text-anchor="middle" class="footer">COMPLETE</text>
+  <rect x="360" y="46" width="712" height="100" rx="42" fill="#E7B5D3"/>
+  <text x="388" y="86" class="tile-label">LATIN</text>
+  <text x="1044" y="89" text-anchor="end" class="tile-count">25</text>
+  <text x="388" y="114" class="tile-examples">English · Italiano · Español · Français · Deutsch · Português</text>
+  <rect x="360" y="162" width="414" height="88" rx="34" fill="#B9DDCF"/>
+  <text x="388" y="202" class="tile-label">CYRILLIC + GREEK</text>
+  <text x="746" y="205" text-anchor="end" class="tile-count">6</text>
+  <text x="388" y="230" class="tile-examples">Ελληνικά · Српски · Български · Українська · Русский · Қазақша</text>
+  <rect x="790" y="162" width="282" height="88" rx="34" fill="#C9CCF5"/>
+  <text x="818" y="202" class="tile-label">CJK</text>
+  <text x="1044" y="205" text-anchor="end" class="tile-count">4</text>
+
+  <rect x="360" y="266" width="314" height="88" rx="34" fill="#F2C5B2"/>
+  <text x="388" y="306" class="tile-label">ARABIC + HEBREW</text>
+  <text x="646" y="309" text-anchor="end" class="tile-count">3</text>
+
+  <rect x="690" y="266" width="382" height="88" rx="34" fill="#E8D59C"/>
+  <text x="718" y="306" class="tile-label">INDIC + THAI</text>
+  <text x="1044" y="309" text-anchor="end" class="tile-count">3</text>
+  <text x="718" y="334" class="tile-examples">हिन्दी · বাংলা · ไทย</text>
+  <text x="362" y="378" class="footer">TRANSLATIONS LIVE IN THE APP · NO CLOUD PROFILE</text>
 </svg>
