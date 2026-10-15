@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -118,12 +119,11 @@ class WidgetStudioActivity : ComponentActivity() {
             null
         }
         if (configureRequest) {
+            setResult(Activity.RESULT_CANCELED, resultIntent(requestedId))
             if (requestedFamily == null) {
-                setResult(Activity.RESULT_CANCELED, resultIntent(requestedId))
                 finish()
                 return
             }
-            setResult(Activity.RESULT_OK, resultIntent(requestedId))
         }
         val initialTarget = requestedFamily?.let { requestedId to it }
         setContent {
@@ -139,7 +139,11 @@ class WidgetStudioActivity : ComponentActivity() {
                         copy = resolved.widgetStudioCopy,
                         initialTarget = initialTarget,
                         configureMode = configureRequest,
-                        onExit = { finish() }
+                        onExit = { finish() },
+                        onDone = {
+                            setResult(Activity.RESULT_OK, resultIntent(requestedId))
+                            finish()
+                        }
                     )
                 }
             }
@@ -162,7 +166,8 @@ private fun WidgetStudioScreen(
     copy: WidgetStudioCopy,
     initialTarget: Pair<Int, StudioWidgetFamily>?,
     configureMode: Boolean,
-    onExit: () -> Unit
+    onExit: () -> Unit,
+    onDone: () -> Unit
 ) {
     var target by remember { mutableStateOf(initialTarget) }
     val current = target
@@ -181,7 +186,8 @@ private fun WidgetStudioScreen(
                 widgetId = current.first,
                 family = current.second,
                 configureMode = configureMode,
-                onBack = { if (configureMode) onExit() else target = null }
+                onBack = { if (configureMode) onExit() else target = null },
+                onDone = onDone
             )
         }
     }
@@ -288,11 +294,7 @@ private fun WidgetStudioOverview(
         value = withContext(Dispatchers.IO) { WidgetStudioEngine.placedWidgets(context) }
     }
     val hasOriginal by produceState(initialValue = false, refresh) {
-        value = withContext(Dispatchers.IO) {
-            AppWidgetManager.getInstance(context)
-                ?.getAppWidgetIds(ComponentName(context, LevyraWidgetProvider::class.java))
-                ?.isNotEmpty() == true
-        }
+        value = withContext(Dispatchers.IO) { hasOriginalWidget(context) }
     }
     val pinSupported = remember { AppWidgetManager.getInstance(context)?.isRequestPinAppWidgetSupported == true }
     val demos by produceState(initialValue = emptyList<StudioPlaybackState>()) {
@@ -308,30 +310,8 @@ private fun WidgetStudioOverview(
             item(key = "placed-header", contentType = "header") {
                 StudioSectionHeader(copy[WidgetStudioText.YourWidgets], copy[WidgetStudioText.YourWidgetsHint])
             }
-            if (placed.isEmpty() && !hasOriginal) {
-                item(key = "placed-empty", contentType = "info") {
-                    Text(
-                        text = copy[WidgetStudioText.NoWidgets],
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = LevyraMuted,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(StudioCardShape)
-                            .background(MaterialTheme.colorScheme.surfaceContainer)
-                            .padding(20.dp)
-                    )
-                }
-            } else {
-                item(key = "placed-row", contentType = "carousel") {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        items(placed, key = { it.first }) { entry ->
-                            PlacedWidgetCard(copy = copy, widgetId = entry.first, family = entry.second, onClick = { onEdit(entry) })
-                        }
-                        if (hasOriginal) {
-                            item(key = "original") { OriginalWidgetCard(copy) }
-                        }
-                    }
-                }
+            item(key = "placed-row", contentType = "carousel") {
+                PlacedWidgets(copy = copy, placed = placed, hasOriginal = hasOriginal, onEdit = onEdit)
             }
             item(key = "progress-refresh", contentType = "group") {
                 ProgressRefreshGroup(copy)
@@ -393,6 +373,36 @@ private fun ProgressRefreshGroup(copy: WidgetStudioCopy) {
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PlacedWidgets(
+    copy: WidgetStudioCopy,
+    placed: List<Pair<Int, StudioWidgetFamily>>,
+    hasOriginal: Boolean,
+    onEdit: (Pair<Int, StudioWidgetFamily>) -> Unit
+) {
+    if (placed.isEmpty() && !hasOriginal) {
+        Text(
+            text = copy[WidgetStudioText.NoWidgets],
+            style = MaterialTheme.typography.bodyMedium,
+            color = LevyraMuted,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(StudioCardShape)
+                .background(MaterialTheme.colorScheme.surfaceContainer)
+                .padding(20.dp)
+        )
+        return
+    }
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        items(placed, key = { it.first }) { entry ->
+            PlacedWidgetCard(copy = copy, widgetId = entry.first, family = entry.second, onClick = { onEdit(entry) })
+        }
+        if (hasOriginal) {
+            item(key = "original") { OriginalWidgetCard(copy) }
         }
     }
 }
@@ -533,6 +543,11 @@ private fun ThumbnailStage(height: Dp, content: @Composable () -> Unit) {
     }
 }
 
+private fun hasOriginalWidget(context: Context): Boolean =
+    AppWidgetManager.getInstance(context)
+        ?.getAppWidgetIds(ComponentName(context, LevyraWidgetProvider::class.java))
+        ?.isNotEmpty() == true
+
 private fun requestPin(context: Context, family: StudioWidgetFamily) {
     val manager = AppWidgetManager.getInstance(context) ?: return
     runCatching { manager.requestPinAppWidget(ComponentName(context, family.providerClass), null, null) }
@@ -547,7 +562,8 @@ private fun WidgetStudioEditor(
     widgetId: Int,
     family: StudioWidgetFamily,
     configureMode: Boolean,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onDone: () -> Unit
 ) {
     val context = LocalContext.current
     val stored by produceState<StudioWidgetConfig?>(initialValue = null, widgetId) {
@@ -589,74 +605,25 @@ private fun WidgetStudioEditor(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = if (configureMode) 104.dp else 32.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            if (family.styles.size > 1) {
-                item(key = "style", contentType = "group") {
-                    StudioGroup(copy[WidgetStudioText.Style], copy[WidgetStudioText.StyleHint]) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            family.styles.forEach { style ->
-                                StyleCard(
-                                    family = family,
-                                    config = config.copy(style = style),
-                                    label = styleName(copy, style),
-                                    selected = style == config.style,
-                                    selectedLabel = copy[WidgetStudioText.Selected],
-                                    onClick = { apply(config.copy(style = style)) },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            item(key = "colors", contentType = "group") {
-                StudioGroup(copy[WidgetStudioText.Colors], copy[WidgetStudioText.ColorsHint]) {
-                    PaletteGrid(copy = copy, config = config, onSelect = { apply(config.copy(palette = it)) })
-                    AnimatedVisibility(visible = config.palette == StudioPalette.Custom) {
-                        SwatchRow(
-                            label = copy[WidgetStudioText.Custom],
-                            selected = config.customColor,
-                            onSelect = { apply(config.copy(customColor = it)) }
-                        )
-                    }
-                    if (config.palette == StudioPalette.MaterialYou && Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-                        Text(copy[WidgetStudioText.MaterialYouUnavailable], style = MaterialTheme.typography.bodySmall, color = LevyraMuted)
-                    }
-                }
-            }
-            if (family.artworkModes.size > 1) {
-                item(key = "artwork", contentType = "group") {
-                    StudioGroup(copy[WidgetStudioText.Artwork], null) {
-                        ArtworkSegments(copy = copy, family = family, selected = config.artwork, onSelect = { apply(config.copy(artwork = it)) })
-                    }
-                }
-            }
-            if (family.controls.isNotEmpty()) {
-                item(key = "controls", contentType = "group") {
-                    StudioGroup(copy[WidgetStudioText.Controls], copy[WidgetStudioText.ControlsHint]) {
-                        ControlTiles(
-                            copy = copy,
-                            family = family,
-                            selected = config.controls,
-                            onToggle = { control -> apply(config.copy(controls = toggled(family, config.controls, control))) }
-                        )
-                    }
-                }
-            }
+            editorSections(copy, family, config, apply)
         }
     }
-    if (configureMode) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomEnd) {
-            androidx.compose.material3.Button(
-                onClick = onBack,
-                modifier = Modifier
-                    .navigationBarsPadding()
-                    .padding(20.dp)
-                    .height(56.dp)
-            ) {
-                Icon(Icons.Rounded.Check, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(copy[WidgetStudioText.Done])
-            }
+    if (configureMode) ConfigureDoneButton(copy[WidgetStudioText.Done], onDone)
+}
+
+@Composable
+private fun ConfigureDoneButton(label: String, onClick: () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomEnd) {
+        androidx.compose.material3.Button(
+            onClick = onClick,
+            modifier = Modifier
+                .navigationBarsPadding()
+                .padding(20.dp)
+                .height(56.dp)
+        ) {
+            Icon(Icons.Rounded.Check, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(label)
         }
     }
 }
@@ -737,25 +704,31 @@ private fun StyleCard(
                 )
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 4.dp)) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold),
-                color = if (selected) scheme.onSecondaryContainer else LevyraText,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
-            if (selected) {
-                Box(
-                    modifier = Modifier
-                        .size(22.dp)
-                        .clip(CircleShape)
-                        .background(scheme.primary),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Rounded.Check, contentDescription = null, tint = scheme.onPrimary, modifier = Modifier.size(15.dp))
-                }
+        StyleCardLabel(label, selected)
+    }
+}
+
+@Composable
+private fun StyleCardLabel(label: String, selected: Boolean) {
+    val scheme = MaterialTheme.colorScheme
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 4.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge.copy(fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold),
+            color = if (selected) scheme.onSecondaryContainer else LevyraText,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        if (selected) {
+            Box(
+                modifier = Modifier
+                    .size(22.dp)
+                    .clip(CircleShape)
+                    .background(scheme.primary),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.Check, contentDescription = null, tint = scheme.onPrimary, modifier = Modifier.size(15.dp))
             }
         }
     }
@@ -986,6 +959,78 @@ private fun WidgetThumbnail(
                     scaleY = scale
                 }
         )
+    }
+}
+
+private fun LazyListScope.editorSections(
+    copy: WidgetStudioCopy,
+    family: StudioWidgetFamily,
+    config: StudioWidgetConfig,
+    apply: (StudioWidgetConfig) -> Unit
+) {
+    if (family.styles.size > 1) {
+        item(key = "style", contentType = "group") { StyleGroup(copy, family, config, apply) }
+    }
+    item(key = "colors", contentType = "group") { ColorsGroup(copy, config, apply) }
+    if (family.artworkModes.size > 1) {
+        item(key = "artwork", contentType = "group") {
+            StudioGroup(copy[WidgetStudioText.Artwork], null) {
+                ArtworkSegments(copy = copy, family = family, selected = config.artwork, onSelect = { apply(config.copy(artwork = it)) })
+            }
+        }
+    }
+    if (family.controls.isNotEmpty()) {
+        item(key = "controls", contentType = "group") {
+            StudioGroup(copy[WidgetStudioText.Controls], copy[WidgetStudioText.ControlsHint]) {
+                ControlTiles(
+                    copy = copy,
+                    family = family,
+                    selected = config.controls,
+                    onToggle = { control -> apply(config.copy(controls = toggled(family, config.controls, control))) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StyleGroup(
+    copy: WidgetStudioCopy,
+    family: StudioWidgetFamily,
+    config: StudioWidgetConfig,
+    apply: (StudioWidgetConfig) -> Unit
+) {
+    StudioGroup(copy[WidgetStudioText.Style], copy[WidgetStudioText.StyleHint]) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            family.styles.forEach { style ->
+                StyleCard(
+                    family = family,
+                    config = config.copy(style = style),
+                    label = styleName(copy, style),
+                    selected = style == config.style,
+                    selectedLabel = copy[WidgetStudioText.Selected],
+                    onClick = { apply(config.copy(style = style)) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ColorsGroup(copy: WidgetStudioCopy, config: StudioWidgetConfig, apply: (StudioWidgetConfig) -> Unit) {
+    StudioGroup(copy[WidgetStudioText.Colors], copy[WidgetStudioText.ColorsHint]) {
+        PaletteGrid(copy = copy, config = config, onSelect = { apply(config.copy(palette = it)) })
+        AnimatedVisibility(visible = config.palette == StudioPalette.Custom) {
+            SwatchRow(
+                label = copy[WidgetStudioText.Custom],
+                selected = config.customColor,
+                onSelect = { apply(config.copy(customColor = it)) }
+            )
+        }
+        if (config.palette == StudioPalette.MaterialYou && Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            Text(copy[WidgetStudioText.MaterialYouUnavailable], style = MaterialTheme.typography.bodySmall, color = LevyraMuted)
+        }
     }
 }
 

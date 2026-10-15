@@ -16,6 +16,7 @@ internal class WidgetStudioPlaybackSync(context: Context) : Player.Listener {
     private val handler = Handler(Looper.getMainLooper())
     private var player: Player? = null
     private val progressTick = Runnable { publish() }
+    private var publishGeneration = 0
 
     fun attach(session: MediaSession) {
         detachListener()
@@ -25,11 +26,17 @@ internal class WidgetStudioPlaybackSync(context: Context) : Player.Listener {
 
     fun detach() {
         detachListener()
-        WidgetStudioStore.writeSession(appContext, false, false, "", "", "", "", 0L, 0L)
-        if (WidgetStudioEngine.hasWidgets(appContext)) WidgetStudioEngine.requestRender(appContext)
+        WidgetStudioEngine.runInBackground {
+            WidgetStudioStore.writeSession(appContext, false, false, "", "", "", "", 0L, 0L)
+            if (WidgetStudioEngine.hasWidgets(appContext)) WidgetStudioEngine.requestRender(appContext)
+        }
     }
 
     fun onActionsChanged(state: SystemMediaActionState) {
+        WidgetStudioEngine.runInBackground { storeActions(state) }
+    }
+
+    private fun storeActions(state: SystemMediaActionState) {
         WidgetStudioStore.writeActions(
             appContext,
             favorite = when (state.favorite) {
@@ -63,6 +70,7 @@ internal class WidgetStudioPlaybackSync(context: Context) : Player.Listener {
     }
 
     private fun detachListener() {
+        publishGeneration++
         handler.removeCallbacks(progressTick)
         player?.removeListener(this)
         player = null
@@ -75,21 +83,39 @@ internal class WidgetStudioPlaybackSync(context: Context) : Player.Listener {
         val playing = current.playWhenReady &&
             (current.playbackState == Player.STATE_READY || current.playbackState == Player.STATE_BUFFERING)
         val duration = current.duration.takeIf { it != C.TIME_UNSET && it > 0L } ?: 0L
-        val changed = WidgetStudioStore.writeSession(
-            appContext,
-            active = current.mediaItemCount > 0,
-            playing = playing,
-            title = metadata.title?.toString().orEmpty(),
-            artist = (metadata.artist ?: metadata.albumArtist)?.toString().orEmpty(),
-            album = metadata.albumTitle?.toString().orEmpty(),
-            artworkUrl = SafeImageUrlPolicy.sanitize(metadata.artworkUri?.toString()),
-            positionMs = current.currentPosition.coerceAtLeast(0L),
-            durationMs = duration
-        )
-        if (!WidgetStudioEngine.hasWidgets(appContext)) return
-        if (changed) WidgetStudioEngine.requestRender(appContext) else WidgetStudioEngine.requestProgress(appContext)
-        if (playing && duration > 0L && WidgetStudioEngine.hasProgressWidgets(appContext)) {
-            handler.postDelayed(progressTick, WidgetStudioStore.progressRefresh(appContext).intervalMs)
+        val active = current.mediaItemCount > 0
+        val title = metadata.title?.toString().orEmpty()
+        val artist = (metadata.artist ?: metadata.albumArtist)?.toString().orEmpty()
+        val album = metadata.albumTitle?.toString().orEmpty()
+        val artworkUri = metadata.artworkUri?.toString()
+        val positionMs = current.currentPosition.coerceAtLeast(0L)
+        val generation = ++publishGeneration
+        WidgetStudioEngine.runInBackground {
+            val changed = WidgetStudioStore.writeSession(
+                appContext,
+                active = active,
+                playing = playing,
+                title = title,
+                artist = artist,
+                album = album,
+                artworkUrl = SafeImageUrlPolicy.sanitize(artworkUri),
+                positionMs = positionMs,
+                durationMs = duration
+            )
+            if (!WidgetStudioEngine.hasWidgets(appContext)) return@runInBackground
+            if (changed) WidgetStudioEngine.requestRender(appContext) else WidgetStudioEngine.requestProgress(appContext)
+            if (playing && duration > 0L && WidgetStudioEngine.hasProgressWidgets(appContext)) {
+                scheduleTick(generation, WidgetStudioStore.progressRefresh(appContext).intervalMs)
+            }
+        }
+    }
+
+    private fun scheduleTick(generation: Int, delayMs: Long) {
+        handler.post {
+            if (generation == publishGeneration && player != null) {
+                handler.removeCallbacks(progressTick)
+                handler.postDelayed(progressTick, delayMs)
+            }
         }
     }
 }

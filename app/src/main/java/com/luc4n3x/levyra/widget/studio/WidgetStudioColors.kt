@@ -137,43 +137,52 @@ object WidgetStudioColors {
 
     fun artworkSeed(bitmap: Bitmap): Int? {
         val sample = runCatching { Bitmap.createScaledBitmap(bitmap, 32, 32, true) }.getOrNull() ?: return null
-        val buckets = DoubleArray(BUCKETS)
-        val sums = Array(BUCKETS) { DoubleArray(3) }
+        val histogram = HueHistogram()
         val lab = DoubleArray(3)
-        var neutralWeight = 0.0
-        val neutralSum = DoubleArray(3)
         for (y in 0 until sample.height) {
             for (x in 0 until sample.width) {
                 val pixel = sample.getPixel(x, y)
-                if (Color.alpha(pixel) < 128) continue
-                ColorUtils.colorToLAB(pixel, lab)
-                val chroma = hypot(lab[1], lab[2])
-                val lightnessWeight = 1.0 - abs(lab[0] - 55.0) / 70.0
-                if (lightnessWeight <= 0.0) continue
-                if (chroma < 10.0) {
-                    neutralWeight += lightnessWeight
-                    for (i in 0..2) neutralSum[i] += lab[i] * lightnessWeight
-                    continue
+                if (Color.alpha(pixel) >= 128) {
+                    ColorUtils.colorToLAB(pixel, lab)
+                    histogram.add(lab)
                 }
-                val weight = chroma * lightnessWeight
-                val angle = (Math.toDegrees(atan2(lab[2], lab[1])) + 360.0) % 360.0
-                val bucket = (angle / (360.0 / BUCKETS)).toInt().coerceIn(0, BUCKETS - 1)
-                buckets[bucket] += weight
-                for (i in 0..2) sums[bucket][i] += lab[i] * weight
             }
         }
         if (sample !== bitmap) sample.recycle()
-        val best = buckets.indices.maxByOrNull { buckets[it] } ?: return null
-        val bestWeight = buckets[best]
-        if (bestWeight < 40.0) {
+        return histogram.dominant()
+    }
+
+    private class HueHistogram {
+        private val buckets = DoubleArray(BUCKETS)
+        private val sums = Array(BUCKETS) { DoubleArray(3) }
+        private var neutralWeight = 0.0
+        private val neutralSum = DoubleArray(3)
+
+        fun add(lab: DoubleArray) {
+            val lightnessWeight = 1.0 - abs(lab[0] - 55.0) / 70.0
+            if (lightnessWeight <= 0.0) return
+            val chroma = hypot(lab[1], lab[2])
+            if (chroma < 10.0) {
+                neutralWeight += lightnessWeight
+                for (i in 0..2) neutralSum[i] += lab[i] * lightnessWeight
+                return
+            }
+            val weight = chroma * lightnessWeight
+            val angle = (Math.toDegrees(atan2(lab[2], lab[1])) + 360.0) % 360.0
+            val bucket = (angle / (360.0 / BUCKETS)).toInt().coerceIn(0, BUCKETS - 1)
+            buckets[bucket] += weight
+            for (i in 0..2) sums[bucket][i] += lab[i] * weight
+        }
+
+        fun dominant(): Int? {
+            val best = buckets.indices.maxByOrNull { buckets[it] } ?: return null
+            val bestWeight = buckets[best]
+            if (bestWeight >= 40.0) {
+                return ColorUtils.LABToColor(sums[best][0] / bestWeight, sums[best][1] / bestWeight, sums[best][2] / bestWeight)
+            }
             if (neutralWeight <= 0.0) return null
             return ColorUtils.LABToColor(neutralSum[0] / neutralWeight, neutralSum[1] / neutralWeight, neutralSum[2] / neutralWeight)
         }
-        return ColorUtils.LABToColor(
-            sums[best][0] / bestWeight,
-            sums[best][1] / bestWeight,
-            sums[best][2] / bestWeight
-        )
     }
 
     fun withAlpha(color: Int, alpha: Float): Int =

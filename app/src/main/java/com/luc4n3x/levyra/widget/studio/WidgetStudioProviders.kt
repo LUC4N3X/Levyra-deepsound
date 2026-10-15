@@ -65,21 +65,7 @@ class WidgetStudioActionReceiver : BroadcastReceiver() {
     private fun sendSystemCommand(context: Context, action: String) {
         val appContext = context.applicationContext
         val state = WidgetStudioStore.playbackState(appContext)
-        val target = when (action) {
-            ACTION_LIKE -> when (state.favorite) {
-                StudioFavoriteState.Favorite -> SystemMediaCommand.RemoveFavorite
-                StudioFavoriteState.NotFavorite -> SystemMediaCommand.AddFavorite
-                StudioFavoriteState.Unavailable -> null
-            }
-            ACTION_SHUFFLE -> state.shuffle?.let { if (it) SystemMediaCommand.DisableShuffle else SystemMediaCommand.EnableShuffle }
-            ACTION_REPEAT -> when (state.repeat) {
-                StudioRepeatState.Off -> SystemMediaCommand.SetRepeatAll
-                StudioRepeatState.All -> SystemMediaCommand.SetRepeatOne
-                StudioRepeatState.One -> SystemMediaCommand.SetRepeatOff
-                StudioRepeatState.Unavailable -> null
-            }
-            else -> null
-        }
+        val target = targetCommand(action, state)
         if (target == null) {
             WidgetStudioEngine.requestRender(appContext)
             return
@@ -110,6 +96,22 @@ class WidgetStudioActionReceiver : BroadcastReceiver() {
                 ContextCompat.getMainExecutor(appContext)
             )
         }
+    }
+
+    private fun targetCommand(action: String, state: StudioPlaybackState): SystemMediaCommand? = when (action) {
+        ACTION_LIKE -> when (state.favorite) {
+            StudioFavoriteState.Favorite -> SystemMediaCommand.RemoveFavorite
+            StudioFavoriteState.NotFavorite -> SystemMediaCommand.AddFavorite
+            StudioFavoriteState.Unavailable -> null
+        }
+        ACTION_SHUFFLE -> state.shuffle?.let { if (it) SystemMediaCommand.DisableShuffle else SystemMediaCommand.EnableShuffle }
+        ACTION_REPEAT -> when (state.repeat) {
+            StudioRepeatState.Off -> SystemMediaCommand.SetRepeatAll
+            StudioRepeatState.All -> SystemMediaCommand.SetRepeatOne
+            StudioRepeatState.One -> SystemMediaCommand.SetRepeatOff
+            StudioRepeatState.Unavailable -> null
+        }
+        else -> null
     }
 
     private fun applyOptimistic(context: Context, state: StudioPlaybackState, command: SystemMediaCommand) {

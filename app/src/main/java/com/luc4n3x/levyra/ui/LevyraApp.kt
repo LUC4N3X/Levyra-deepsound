@@ -21125,12 +21125,12 @@ private fun SettingsOverlay(
                             title = strings.settingsHubCopy[SettingsHubText.Studios],
                             subtitle = strings.settingsHubCopy[SettingsHubText.StudiosHint],
                             entries = listOf(
-                                SettingsStudioEntry(strings.themeStudio, LevyraThemes.byId(themePreset).label, Icons.Rounded.Palette, LevyraViolet, MaterialShapes.Cookie9Sided, onOpenThemeStudio),
-                                SettingsStudioEntry(strings.homeStudioCopy.title, homeStyleName(homeStudioStyle), Icons.Rounded.Home, LevyraCyan, MaterialShapes.Clover4Leaf, onOpenHomeStudio),
-                                SettingsStudioEntry(strings.miniPlayerStudioCopy[MiniStudioText.Title], miniPlayerStyleName(miniPlayerStyle), Icons.Rounded.SmartDisplay, LevyraPink, MaterialShapes.Sunny, onOpenMiniPlayerStudio),
-                                SettingsStudioEntry(strings.navigationStudioCopy[NavStudioText.Title], navigationStyleName(navigationStyle), Icons.Rounded.Dashboard, LevyraBlue, MaterialShapes.Pill, onOpenNavigationStudio),
-                                SettingsStudioEntry(strings.lyricsStudio, strings.lyricsStudioSubtitle, Icons.Rounded.AutoAwesome, LevyraOrange, MaterialShapes.SoftBurst, onOpenLyricsStudio),
-                                SettingsStudioEntry(strings.widgetStudioCopy[WidgetStudioText.Title], strings.widgetStudioCopy[WidgetStudioText.Subtitle], Icons.Rounded.Widgets, LevyraCyan, MaterialShapes.Gem) {
+                                SettingsStudioEntry("theme", strings.themeStudio, LevyraThemes.byId(themePreset).label, Icons.Rounded.Palette, LevyraViolet, MaterialShapes.Cookie9Sided, onOpenThemeStudio),
+                                SettingsStudioEntry("home", strings.homeStudioCopy.title, homeStyleName(homeStudioStyle), Icons.Rounded.Home, LevyraCyan, MaterialShapes.Clover4Leaf, onOpenHomeStudio),
+                                SettingsStudioEntry("mini_player", strings.miniPlayerStudioCopy[MiniStudioText.Title], miniPlayerStyleName(miniPlayerStyle), Icons.Rounded.SmartDisplay, LevyraPink, MaterialShapes.Sunny, onOpenMiniPlayerStudio),
+                                SettingsStudioEntry("navigation", strings.navigationStudioCopy[NavStudioText.Title], navigationStyleName(navigationStyle), Icons.Rounded.Dashboard, LevyraBlue, MaterialShapes.Pill, onOpenNavigationStudio),
+                                SettingsStudioEntry("lyrics", strings.lyricsStudio, strings.lyricsStudioSubtitle, Icons.Rounded.AutoAwesome, LevyraOrange, MaterialShapes.SoftBurst, onOpenLyricsStudio),
+                                SettingsStudioEntry("widget", strings.widgetStudioCopy[WidgetStudioText.Title], strings.widgetStudioCopy[WidgetStudioText.Subtitle], Icons.Rounded.Widgets, LevyraCyan, MaterialShapes.Gem) {
                                     studioContext.startActivity(WidgetStudioActivity.intent(studioContext))
                                 }
                             )
@@ -22549,6 +22549,7 @@ private fun settingsHubGroupTitle(group: SettingsHubGroup, strings: LevyraString
 ]
 
 private class SettingsStudioEntry(
+    val id: String,
     val title: String,
     val subtitle: String,
     val icon: ImageVector,
@@ -22592,7 +22593,7 @@ private fun SettingsStudioShelf(title: String, subtitle: String, entries: List<S
             modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 12.dp)
         )
         LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            items(entries, key = { it.title }) { entry ->
+            items(entries, key = { it.id }) { entry ->
                 Surface(
                     onClick = entry.onClick,
                     shape = RoundedCornerShape(28.dp),

@@ -36,6 +36,12 @@ object WidgetStudioEngine {
         }
     }
 
+    fun runInBackground(block: () -> Unit) {
+        executor.execute {
+            runCatching(block).onFailure { Timber.w(it, "Studio widget background task failed") }
+        }
+    }
+
     fun requestProgress(context: Context) {
         val appContext = context.applicationContext
         if (!progressQueued.compareAndSet(false, true)) return

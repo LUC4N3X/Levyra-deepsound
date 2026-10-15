@@ -48,6 +48,9 @@ internal enum class StudioPlayShape { Morph, Pill, Circle }
 internal object WidgetStudioRenderer {
     private const val REQUEST_BASE = 0x4C57_0000
     private val ROW_SLOTS = setOf(4, 5, 6, 7, 8)
+    private val SLOT_ROW_LAYOUTS = setOf(
+        StudioLayout.HeroSplit, StudioLayout.Immersive, StudioLayout.HeroFocus, StudioLayout.ImmersiveCompact
+    )
 
     private val slotRoots = intArrayOf(
         0, R.id.studio_slot1, R.id.studio_slot2, R.id.studio_slot3, R.id.studio_slot4,
@@ -93,23 +96,27 @@ internal object WidgetStudioRenderer {
             StudioWidgetFamily.Mini -> StudioLayout.Mini
             StudioWidgetFamily.Slim -> StudioLayout.Slim
             StudioWidgetFamily.Expressive -> if (h < 104) StudioLayout.Slim else StudioLayout.Expressive
-            StudioWidgetFamily.Hero -> when {
-                h < 104 -> StudioLayout.Slim
-                h < 230 && w >= 250 -> StudioLayout.Expressive
-                w < 210 || h < 230 -> StudioLayout.Mini
-                config.style == StudioWidgetStyle.ArtworkControls -> StudioLayout.HeroSplit
-                else -> StudioLayout.HeroFocus
-            }
-            StudioWidgetFamily.Immersive -> when {
-                h < 104 -> StudioLayout.Slim
-                h < 230 && w >= 250 -> StudioLayout.Expressive
-                w < 210 || h < 230 -> StudioLayout.Mini
-                w >= 440 && w >= h * 1.12f -> StudioLayout.Immersive
-                else -> StudioLayout.ImmersiveCompact
-            }
-            StudioWidgetFamily.Vinyl -> if (w >= 220 && h >= 290) StudioLayout.VinylLarge else StudioLayout.VinylSmall
+            StudioWidgetFamily.Hero -> compactFallback(w, h) ?: heroLayout(config)
+            StudioWidgetFamily.Immersive -> compactFallback(w, h) ?: immersiveLayout(w, h)
+            StudioWidgetFamily.Vinyl -> vinylLayout(w, h)
             StudioWidgetFamily.QuickActions -> if (h >= 250) StudioLayout.Quick else StudioLayout.QuickCompact
         }
+    }
+
+    private fun heroLayout(config: StudioWidgetConfig): StudioLayout =
+        if (config.style == StudioWidgetStyle.ArtworkControls) StudioLayout.HeroSplit else StudioLayout.HeroFocus
+
+    private fun immersiveLayout(w: Int, h: Int): StudioLayout =
+        if (w >= 440 && w >= h * 1.12f) StudioLayout.Immersive else StudioLayout.ImmersiveCompact
+
+    private fun vinylLayout(w: Int, h: Int): StudioLayout =
+        if (w >= 220 && h >= 290) StudioLayout.VinylLarge else StudioLayout.VinylSmall
+
+    private fun compactFallback(w: Int, h: Int): StudioLayout? = when {
+        h < 104 -> StudioLayout.Slim
+        h < 230 && w >= 250 -> StudioLayout.Expressive
+        w < 210 || h < 230 -> StudioLayout.Mini
+        else -> null
     }
 
     fun build(
@@ -211,110 +218,94 @@ internal object WidgetStudioRenderer {
         }
 
         private fun bindArtwork() {
-            val radius = 28f * density
             when (layout) {
-                StudioLayout.Mini -> {
-                    val circular = config.artwork == StudioArtworkMode.Circular
-                    val titleVisible = !minimal && !circular && state.hasTrack && w >= 150
-                    val scrim = if (titleVisible) {
-                        WidgetStudioPainter.Scrim(fadeStart = 0.42f, solidAt = 0.86f, solidAlpha = 0.82f, topAlpha = 0f)
-                    } else {
-                        null
-                    }
-                    views.setImageViewBitmap(
-                        R.id.studio_art_full,
-                        WidgetStudioPainter.fullBleed(context, source, px(w.toFloat()), px(h.toFloat()), radius, scheme, scrim, circular)
-                    )
-                }
-                StudioLayout.Slim -> {
-                    val side = (h - 16).coerceIn(36, 56).coerceAtMost(w / 5).toFloat()
-                    views.setImageViewBitmap(
-                        R.id.studio_art,
-                        WidgetStudioPainter.rounded(
-                            context, source, px(side), px(side), 14f * density,
-                            config.artwork == StudioArtworkMode.Circular, scheme, outputScale
-                        )
-                    )
-                }
-                StudioLayout.Expressive -> {
-                    val side = expressiveArtDp()
-                    views.setImageViewBitmap(
-                        R.id.studio_art,
-                        WidgetStudioPainter.rounded(
-                            context, source, px(side), px(side), 20f * density,
-                            config.artwork == StudioArtworkMode.Circular, scheme, outputScale
-                        )
-                    )
-                }
-                StudioLayout.ImmersiveCompact -> {
-                    val textTop = (1f - immersiveCompactBottomDp() / h).coerceIn(0.15f, 0.75f)
-                    val scrim = WidgetStudioPainter.Scrim(
-                        fadeStart = (textTop - 0.28f).coerceAtLeast(0.02f),
-                        solidAt = (textTop + 0.04f).coerceAtMost(0.85f),
-                        solidAlpha = if (scheme.dark) 0.93f else 0.94f,
-                        topAlpha = 0f
-                    )
-                    views.setImageViewBitmap(
-                        R.id.studio_art_full,
-                        WidgetStudioPainter.fullBleed(context, source, px(w.toFloat()), px(h.toFloat()), radius, scheme, scrim)
-                    )
-                }
-                StudioLayout.HeroFocus -> {
-                    val textTop = (1f - heroFocusBottomDp() / h).coerceIn(0.2f, 0.75f)
-                    val scrim = WidgetStudioPainter.Scrim(
-                        fadeStart = (textTop - 0.3f).coerceAtLeast(0.02f),
-                        solidAt = (textTop + 0.02f).coerceAtMost(0.85f),
-                        solidAlpha = if (scheme.dark) 0.93f else 0.94f,
-                        topAlpha = if (scheme.dark) 0.5f else 0.62f
-                    )
-                    views.setImageViewBitmap(
-                        R.id.studio_art_full,
-                        WidgetStudioPainter.fullBleed(context, source, px(w.toFloat()), px(h.toFloat()), radius, scheme, scrim)
-                    )
-                }
-                StudioLayout.HeroSplit -> {
-                    val artWidth = (w - 24).coerceAtLeast(40).toFloat()
-                    val artHeight = (h - 24 - heroSplitBottomDp()).coerceAtLeast(60).toFloat()
-                    views.setImageViewBitmap(
-                        R.id.studio_art,
-                        WidgetStudioPainter.rounded(context, source, px(artWidth), px(artHeight), 22f * density, false, scheme, outputScale)
-                    )
-                }
-                StudioLayout.Immersive -> {
-                    val side = immersiveArtDp()
-                    val art = WidgetStudioPainter.rounded(context, source, px(side), px(side), 24f * density, false, scheme, outputScale)
-                    views.setImageViewBitmap(R.id.studio_art, art)
-                    if (config.artwork == StudioArtworkMode.FullBleed) {
-                        val artFraction = ((side + 14f) / w).coerceIn(0.2f, 0.6f)
-                        val scrim = WidgetStudioPainter.Scrim(
-                            fadeStart = artFraction * 0.35f,
-                            solidAt = (artFraction + 0.12f).coerceAtMost(0.85f),
-                            solidAlpha = 0.9f,
-                            topAlpha = 0f,
-                            horizontal = true
-                        )
-                        views.setImageViewBitmap(
-                            R.id.studio_art_full,
-                            WidgetStudioPainter.fullBleed(context, source, px(w.toFloat()), px(h.toFloat()), radius, scheme, scrim)
-                        )
-                        views.setViewVisibility(R.id.studio_art_full, View.VISIBLE)
-                        views.setViewVisibility(R.id.studio_art, View.INVISIBLE)
-                        views.setViewVisibility(R.id.studio_bg, View.GONE)
-                    } else {
-                        views.setViewVisibility(R.id.studio_art_full, View.GONE)
-                        views.setViewVisibility(R.id.studio_art, View.VISIBLE)
-                    }
-                }
-                StudioLayout.VinylSmall -> {
-                    val side = min(w, h).toFloat() - 8f
-                    views.setImageViewBitmap(R.id.studio_art, WidgetStudioPainter.vinyl(context, source, px(side), scheme))
-                }
-                StudioLayout.VinylLarge -> {
-                    val side = min(w - 32, h - 32 - 128).coerceAtLeast(80).toFloat()
-                    views.setImageViewBitmap(R.id.studio_art, WidgetStudioPainter.vinyl(context, source, px(side), scheme))
-                }
+                StudioLayout.Mini -> bindMiniArtwork()
+                StudioLayout.Slim -> bindRoundedArt((h - 16).coerceIn(36, 56).coerceAtMost(w / 5).toFloat(), 14f)
+                StudioLayout.Expressive -> bindRoundedArt(expressiveArtDp(), 20f)
+                StudioLayout.ImmersiveCompact -> bindScrimmedArt(immersiveCompactBottomDp(), 0.15f, 0.28f, 0.04f, 0f)
+                StudioLayout.HeroFocus -> bindScrimmedArt(
+                    heroFocusBottomDp(), 0.2f, 0.3f, 0.02f, if (scheme.dark) 0.5f else 0.62f
+                )
+                StudioLayout.HeroSplit -> bindHeroSplitArt()
+                StudioLayout.Immersive -> bindImmersiveArt()
+                StudioLayout.VinylSmall -> bindVinyl(min(w, h).toFloat() - 8f)
+                StudioLayout.VinylLarge -> bindVinyl(min(w - 32, h - 32 - 128).coerceAtLeast(80).toFloat())
                 StudioLayout.Quick, StudioLayout.QuickCompact -> Unit
             }
+        }
+
+        private val artRadius: Float
+            get() = 28f * density
+
+        private fun fullBleedArt(scrim: WidgetStudioPainter.Scrim?, circular: Boolean = false) =
+            WidgetStudioPainter.fullBleed(context, source, px(w.toFloat()), px(h.toFloat()), artRadius, scheme, scrim, circular)
+
+        private fun bindMiniArtwork() {
+            val circular = config.artwork == StudioArtworkMode.Circular
+            val titleVisible = !minimal && !circular && state.hasTrack && w >= 150
+            val scrim = if (titleVisible) {
+                WidgetStudioPainter.Scrim(fadeStart = 0.42f, solidAt = 0.86f, solidAlpha = 0.82f, topAlpha = 0f)
+            } else {
+                null
+            }
+            views.setImageViewBitmap(R.id.studio_art_full, fullBleedArt(scrim, circular))
+        }
+
+        private fun bindRoundedArt(side: Float, radiusDp: Float) {
+            views.setImageViewBitmap(
+                R.id.studio_art,
+                WidgetStudioPainter.rounded(
+                    context, source, px(side), px(side), radiusDp * density,
+                    config.artwork == StudioArtworkMode.Circular, scheme, outputScale
+                )
+            )
+        }
+
+        private fun bindScrimmedArt(bottomDp: Float, minTextTop: Float, fadeOffset: Float, solidOffset: Float, topAlpha: Float) {
+            val textTop = (1f - bottomDp / h).coerceIn(minTextTop, 0.75f)
+            val scrim = WidgetStudioPainter.Scrim(
+                fadeStart = (textTop - fadeOffset).coerceAtLeast(0.02f),
+                solidAt = (textTop + solidOffset).coerceAtMost(0.85f),
+                solidAlpha = if (scheme.dark) 0.93f else 0.94f,
+                topAlpha = topAlpha
+            )
+            views.setImageViewBitmap(R.id.studio_art_full, fullBleedArt(scrim))
+        }
+
+        private fun bindHeroSplitArt() {
+            val artWidth = (w - 24).coerceAtLeast(40).toFloat()
+            val artHeight = (h - 24 - heroSplitBottomDp()).coerceAtLeast(60).toFloat()
+            views.setImageViewBitmap(
+                R.id.studio_art,
+                WidgetStudioPainter.rounded(context, source, px(artWidth), px(artHeight), 22f * density, false, scheme, outputScale)
+            )
+        }
+
+        private fun bindImmersiveArt() {
+            val side = immersiveArtDp()
+            val art = WidgetStudioPainter.rounded(context, source, px(side), px(side), 24f * density, false, scheme, outputScale)
+            views.setImageViewBitmap(R.id.studio_art, art)
+            if (config.artwork != StudioArtworkMode.FullBleed) {
+                views.setViewVisibility(R.id.studio_art_full, View.GONE)
+                views.setViewVisibility(R.id.studio_art, View.VISIBLE)
+                return
+            }
+            val artFraction = ((side + 14f) / w).coerceIn(0.2f, 0.6f)
+            val scrim = WidgetStudioPainter.Scrim(
+                fadeStart = artFraction * 0.35f,
+                solidAt = (artFraction + 0.12f).coerceAtMost(0.85f),
+                solidAlpha = 0.9f,
+                topAlpha = 0f,
+                horizontal = true
+            )
+            views.setImageViewBitmap(R.id.studio_art_full, fullBleedArt(scrim))
+            views.setViewVisibility(R.id.studio_art_full, View.VISIBLE)
+            views.setViewVisibility(R.id.studio_art, View.INVISIBLE)
+            views.setViewVisibility(R.id.studio_bg, View.GONE)
+        }
+
+        private fun bindVinyl(side: Float) {
+            views.setImageViewBitmap(R.id.studio_art, WidgetStudioPainter.vinyl(context, source, px(side), scheme))
         }
 
         private fun expressiveArtDp(): Float = min(h - 24f, (w - 24f) * 0.42f).coerceAtLeast(40f)
@@ -357,15 +348,12 @@ internal object WidgetStudioRenderer {
             val artist = if (state.hasTrack) state.artist else context.getString(R.string.widget_idle_subtitle)
             when (layout) {
                 StudioLayout.Mini -> {
-                    val visible = !minimal && config.artwork != StudioArtworkMode.Circular && state.hasTrack && w >= 150
-                    views.setViewVisibility(R.id.studio_title, if (visible) View.VISIBLE else View.GONE)
-                    views.setTextViewText(R.id.studio_title, title)
-                    views.setTextColor(R.id.studio_title, scheme.onSurface)
-                    views.setContentDescription(R.id.studio_root, listOf(title, artist).filter { it.isNotBlank() }.joinToString(", "))
+                    bindMiniTitle(title)
+                    describeRoot(title, artist)
                     return
                 }
                 StudioLayout.VinylSmall -> {
-                    views.setContentDescription(R.id.studio_root, listOf(title, artist).filter { it.isNotBlank() }.joinToString(", "))
+                    describeRoot(title, artist)
                     return
                 }
                 else -> Unit
@@ -374,24 +362,37 @@ internal object WidgetStudioRenderer {
             views.setTextColor(R.id.studio_title, scheme.onSurface)
             views.setTextViewText(R.id.studio_artist, artist)
             views.setTextColor(R.id.studio_artist, scheme.onSurfaceVariant)
-            views.setViewVisibility(R.id.studio_artist, if (artist.isBlank()) View.GONE else View.VISIBLE)
-            if (layout == StudioLayout.Slim) {
-                views.setViewVisibility(R.id.studio_artist, if (artist.isBlank() || h < 52) View.GONE else View.VISIBLE)
-            }
-            if (layout == StudioLayout.HeroSplit || layout == StudioLayout.Immersive) {
-                val album = state.album.takeIf { it.isNotBlank() && it != state.title }
-                val showAlbum = album != null && (layout == StudioLayout.Immersive || h >= 380)
-                views.setTextViewText(R.id.studio_album, album.orEmpty())
-                views.setTextColor(R.id.studio_album, WidgetStudioColors.withAlpha(scheme.onSurfaceVariant, 0.8f))
-                views.setViewVisibility(R.id.studio_album, if (showAlbum) View.VISIBLE else View.GONE)
-            }
-            if (layout == StudioLayout.HeroFocus || layout == StudioLayout.Immersive) {
-                val label = if (state.playing) context.getString(R.string.car_now_playing) else context.getString(R.string.app_name)
-                views.setTextViewText(R.id.studio_label, label.uppercase(Locale.getDefault()))
-                views.setTextColor(R.id.studio_label, scheme.onSurfaceVariant)
-                views.setViewVisibility(R.id.studio_badge, if (state.playing) View.VISIBLE else View.GONE)
-                views.setInt(R.id.studio_badge, "setColorFilter", scheme.primary)
-            }
+            val hideArtist = artist.isBlank() || (layout == StudioLayout.Slim && h < 52)
+            views.setViewVisibility(R.id.studio_artist, if (hideArtist) View.GONE else View.VISIBLE)
+            if (layout == StudioLayout.HeroSplit || layout == StudioLayout.Immersive) bindAlbum()
+            if (layout == StudioLayout.HeroFocus || layout == StudioLayout.Immersive) bindNowPlayingLabel()
+        }
+
+        private fun bindMiniTitle(title: String) {
+            val visible = !minimal && config.artwork != StudioArtworkMode.Circular && state.hasTrack && w >= 150
+            views.setViewVisibility(R.id.studio_title, if (visible) View.VISIBLE else View.GONE)
+            views.setTextViewText(R.id.studio_title, title)
+            views.setTextColor(R.id.studio_title, scheme.onSurface)
+        }
+
+        private fun describeRoot(title: String, artist: String) {
+            views.setContentDescription(R.id.studio_root, listOf(title, artist).filter { it.isNotBlank() }.joinToString(", "))
+        }
+
+        private fun bindAlbum() {
+            val album = state.album.takeIf { it.isNotBlank() && it != state.title }
+            val showAlbum = album != null && (layout == StudioLayout.Immersive || h >= 380)
+            views.setTextViewText(R.id.studio_album, album.orEmpty())
+            views.setTextColor(R.id.studio_album, WidgetStudioColors.withAlpha(scheme.onSurfaceVariant, 0.8f))
+            views.setViewVisibility(R.id.studio_album, if (showAlbum) View.VISIBLE else View.GONE)
+        }
+
+        private fun bindNowPlayingLabel() {
+            val label = if (state.playing) context.getString(R.string.car_now_playing) else context.getString(R.string.app_name)
+            views.setTextViewText(R.id.studio_label, label.uppercase(Locale.getDefault()))
+            views.setTextColor(R.id.studio_label, scheme.onSurfaceVariant)
+            views.setViewVisibility(R.id.studio_badge, if (state.playing) View.VISIBLE else View.GONE)
+            views.setInt(R.id.studio_badge, "setColorFilter", scheme.primary)
         }
 
         private fun bindPlay() {
@@ -436,32 +437,37 @@ internal object WidgetStudioRenderer {
             val order = layout.slotOrder
             return when (layout) {
                 StudioLayout.Slim -> if (w >= 250) order else emptyList()
-                StudioLayout.Expressive -> when {
-                    w >= 300 -> order
-                    w >= 250 -> order.take(1)
-                    else -> emptyList()
-                }
+                StudioLayout.Expressive -> order.take(if (w >= 300) 2 else if (w >= 250) 1 else 0)
                 StudioLayout.ImmersiveCompact -> if (w >= 280) order else order.filter { it == 3 || it in ROW_SLOTS }
-                StudioLayout.HeroFocus -> when {
-                    family == StudioWidgetFamily.Immersive && w >= 280 -> order
-                    family == StudioWidgetFamily.Immersive -> order.filter { it == 3 || it in ROW_SLOTS }
-                    w >= 280 -> order.filter { it !in ROW_SLOTS }
-                    else -> order.take(1)
-                }
-                StudioLayout.HeroSplit -> {
-                    val base = if (w >= 260) listOf(1, 2, 3) else listOf(1)
-                    if (family == StudioWidgetFamily.Immersive && h >= 400) base + ROW_SLOTS.sorted() else base
-                }
-                StudioLayout.Immersive -> {
-                    val compactColumn = w - 28f - immersiveArtDp() - 18f < 300f
-                    when {
-                        compactColumn && h >= 270 -> order.filter { it in ROW_SLOTS }
-                        compactColumn -> emptyList()
-                        h >= 270 -> order
-                        else -> order.filter { it !in ROW_SLOTS }
-                    }
-                }
+                StudioLayout.HeroFocus -> heroFocusSlots(order)
+                StudioLayout.HeroSplit -> heroSplitSlots()
+                StudioLayout.Immersive -> immersiveSlots(order)
                 else -> order
+            }
+        }
+
+        private fun heroFocusSlots(order: List<Int>): List<Int> {
+            val immersive = family == StudioWidgetFamily.Immersive
+            return when {
+                immersive && w >= 280 -> order
+                immersive -> order.filter { it == 3 || it in ROW_SLOTS }
+                w >= 280 -> order.filter { it !in ROW_SLOTS }
+                else -> order.take(1)
+            }
+        }
+
+        private fun heroSplitSlots(): List<Int> {
+            val base = if (w >= 260) listOf(1, 2, 3) else listOf(1)
+            return if (family == StudioWidgetFamily.Immersive && h >= 400) base + ROW_SLOTS.sorted() else base
+        }
+
+        private fun immersiveSlots(order: List<Int>): List<Int> {
+            val compactColumn = w - 28f - immersiveArtDp() - 18f < 300f
+            return when {
+                compactColumn && h >= 270 -> order.filter { it in ROW_SLOTS }
+                compactColumn -> emptyList()
+                h >= 270 -> order
+                else -> order.filter { it !in ROW_SLOTS }
             }
         }
 
@@ -478,24 +484,23 @@ internal object WidgetStudioRenderer {
             val allSlots = layout.slotOrder + layout.balancedPairs.flatMap { listOf(it.first, it.second) }
             for (slot in allSlots.distinct()) {
                 val control = assigned[slot]
-                if (control == null) {
-                    val partner = layout.balancedPairs.firstNotNullOfOrNull { (a, b) ->
-                        when (slot) {
-                            a -> b
-                            b -> a
-                            else -> null
-                        }
-                    }
-                    val keepSpace = partner != null && assigned.containsKey(partner)
+                if (control != null) {
+                    bindSlot(slot, control)
+                } else {
+                    val keepSpace = partnerOf(slot)?.let(assigned::containsKey) == true
                     views.setViewVisibility(slotRoots[slot], if (keepSpace) View.INVISIBLE else View.GONE)
-                    continue
                 }
-                bindSlot(slot, control)
             }
-            if (layout == StudioLayout.HeroSplit || layout == StudioLayout.Immersive || layout == StudioLayout.HeroFocus ||
-                layout == StudioLayout.ImmersiveCompact
-            ) {
+            if (layout in SLOT_ROW_LAYOUTS) {
                 views.setViewVisibility(R.id.studio_slot_row, if (rowVisible()) View.VISIBLE else View.GONE)
+            }
+        }
+
+        private fun partnerOf(slot: Int): Int? = layout.balancedPairs.firstNotNullOfOrNull { (a, b) ->
+            when (slot) {
+                a -> b
+                b -> a
+                else -> null
             }
         }
 
@@ -561,27 +566,7 @@ internal object WidgetStudioRenderer {
 
         fun bindQuick() {
             views.setInt(R.id.studio_bg, "setColorFilter", if (minimal) scheme.surface else scheme.surfaceContainer)
-            val resumeVisible = layout == StudioLayout.Quick || h >= 150
-            views.setViewVisibility(R.id.studio_quick_resume, if (resumeVisible) View.VISIBLE else View.GONE)
-            views.setInt(R.id.studio_quick_resume_bg, "setColorFilter", if (minimal) scheme.surfaceContainerHigh else scheme.primaryContainer)
-            views.setInt(R.id.studio_quick_resume_disc, "setColorFilter", if (minimal) scheme.onSurface else scheme.primary)
-            views.setInt(R.id.studio_quick_resume_icon, "setColorFilter", if (minimal) scheme.surface else scheme.onPrimary)
-            views.setImageViewResource(
-                R.id.studio_quick_resume_icon,
-                if (state.playing) R.drawable.ic_widget_playing else R.drawable.ic_studio_play
-            )
-            val resumeFg = if (minimal) scheme.onSurface else scheme.onPrimaryContainer
-            views.setTextViewText(
-                R.id.studio_quick_resume_label,
-                context.getString(if (state.playing) R.string.car_now_playing else R.string.shortcut_resume)
-            )
-            views.setTextColor(R.id.studio_quick_resume_label, resumeFg)
-            views.setTextViewText(
-                R.id.studio_title,
-                if (state.hasTrack) listOf(state.title, state.artist).filter { it.isNotBlank() }.joinToString(" · ")
-                else context.getString(R.string.widget_idle_subtitle)
-            )
-            views.setTextColor(R.id.studio_title, WidgetStudioColors.withAlpha(resumeFg, 0.78f))
+            bindQuickResume()
             val tones = listOf(
                 scheme.tertiaryContainer to scheme.onTertiaryContainer,
                 scheme.primaryContainer to scheme.onPrimaryContainer,
@@ -604,40 +589,70 @@ internal object WidgetStudioRenderer {
             }
         }
 
-        private fun slotSpec(control: StudioControl): SlotSpec = when (control) {
-            StudioControl.Like -> {
-                val favorite = state.favorite == StudioFavoriteState.Favorite
-                SlotSpec(
-                    icon = if (favorite) R.drawable.ic_studio_favorite else R.drawable.ic_studio_favorite_border,
-                    active = favorite,
-                    enabled = state.hasTrack && state.favorite != StudioFavoriteState.Unavailable,
-                    label = context.getString(if (favorite) R.string.notification_favorite_remove else R.string.notification_favorite_add),
-                    intent = broadcast(WidgetStudioActionReceiver.ACTION_LIKE, 4)
-                )
-            }
-            StudioControl.Shuffle -> {
-                val enabled = state.shuffle == true
-                SlotSpec(
-                    icon = R.drawable.ic_studio_shuffle,
-                    active = enabled,
-                    enabled = state.shuffle != null,
-                    label = context.getString(if (enabled) R.string.notification_shuffle_disable else R.string.notification_shuffle_enable),
-                    intent = broadcast(WidgetStudioActionReceiver.ACTION_SHUFFLE, 5)
-                )
-            }
-            StudioControl.Repeat -> SlotSpec(
-                icon = if (state.repeat == StudioRepeatState.One) R.drawable.ic_studio_repeat_one else R.drawable.ic_studio_repeat,
-                active = state.repeat == StudioRepeatState.All || state.repeat == StudioRepeatState.One,
-                enabled = state.repeat != StudioRepeatState.Unavailable,
-                label = context.getString(
-                    when (state.repeat) {
-                        StudioRepeatState.All -> R.string.notification_repeat_all
-                        StudioRepeatState.One -> R.string.notification_repeat_one
-                        else -> R.string.notification_repeat_off
-                    }
-                ),
-                intent = broadcast(WidgetStudioActionReceiver.ACTION_REPEAT, 6)
+        private fun bindQuickResume() {
+            val resumeVisible = layout == StudioLayout.Quick || h >= 150
+            views.setViewVisibility(R.id.studio_quick_resume, if (resumeVisible) View.VISIBLE else View.GONE)
+            views.setInt(R.id.studio_quick_resume_bg, "setColorFilter", if (minimal) scheme.surfaceContainerHigh else scheme.primaryContainer)
+            views.setInt(R.id.studio_quick_resume_disc, "setColorFilter", if (minimal) scheme.onSurface else scheme.primary)
+            views.setInt(R.id.studio_quick_resume_icon, "setColorFilter", if (minimal) scheme.surface else scheme.onPrimary)
+            views.setImageViewResource(
+                R.id.studio_quick_resume_icon,
+                if (state.playing) R.drawable.ic_widget_playing else R.drawable.ic_studio_play
             )
+            val resumeFg = if (minimal) scheme.onSurface else scheme.onPrimaryContainer
+            views.setTextViewText(
+                R.id.studio_quick_resume_label,
+                context.getString(if (state.playing) R.string.car_now_playing else R.string.shortcut_resume)
+            )
+            views.setTextColor(R.id.studio_quick_resume_label, resumeFg)
+            views.setTextViewText(
+                R.id.studio_title,
+                if (state.hasTrack) listOf(state.title, state.artist).filter { it.isNotBlank() }.joinToString(" · ")
+                else context.getString(R.string.widget_idle_subtitle)
+            )
+            views.setTextColor(R.id.studio_title, WidgetStudioColors.withAlpha(resumeFg, 0.78f))
+        }
+
+        private fun likeSpec(): SlotSpec {
+            val favorite = state.favorite == StudioFavoriteState.Favorite
+            return SlotSpec(
+                icon = if (favorite) R.drawable.ic_studio_favorite else R.drawable.ic_studio_favorite_border,
+                active = favorite,
+                enabled = state.hasTrack && state.favorite != StudioFavoriteState.Unavailable,
+                label = context.getString(if (favorite) R.string.notification_favorite_remove else R.string.notification_favorite_add),
+                intent = broadcast(WidgetStudioActionReceiver.ACTION_LIKE, 4)
+            )
+        }
+
+        private fun shuffleSpec(): SlotSpec {
+            val enabled = state.shuffle == true
+            return SlotSpec(
+                icon = R.drawable.ic_studio_shuffle,
+                active = enabled,
+                enabled = state.shuffle != null,
+                label = context.getString(if (enabled) R.string.notification_shuffle_disable else R.string.notification_shuffle_enable),
+                intent = broadcast(WidgetStudioActionReceiver.ACTION_SHUFFLE, 5)
+            )
+        }
+
+        private fun repeatSpec(): SlotSpec = SlotSpec(
+            icon = if (state.repeat == StudioRepeatState.One) R.drawable.ic_studio_repeat_one else R.drawable.ic_studio_repeat,
+            active = state.repeat == StudioRepeatState.All || state.repeat == StudioRepeatState.One,
+            enabled = state.repeat != StudioRepeatState.Unavailable,
+            label = context.getString(
+                when (state.repeat) {
+                    StudioRepeatState.All -> R.string.notification_repeat_all
+                    StudioRepeatState.One -> R.string.notification_repeat_one
+                    else -> R.string.notification_repeat_off
+                }
+            ),
+            intent = broadcast(WidgetStudioActionReceiver.ACTION_REPEAT, 6)
+        )
+
+        private fun slotSpec(control: StudioControl): SlotSpec = when (control) {
+            StudioControl.Like -> likeSpec()
+            StudioControl.Shuffle -> shuffleSpec()
+            StudioControl.Repeat -> repeatSpec()
             StudioControl.Lyrics -> SlotSpec(
                 R.drawable.ic_studio_lyrics, false, state.hasTrack, context.getString(R.string.widget_lyrics),
                 openApp(LevyraLaunchActions.SHORTCUT_LYRICS, 10)

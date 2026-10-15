@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import android.os.SystemClock
 import com.luc4n3x.levyra.widget.LevyraWidgetBridge
 import com.luc4n3x.levyra.widget.LevyraWidgetCenter
+import com.luc4n3x.levyra.widget.WidgetTrackSnapshot
 
 object WidgetStudioStore {
     @Volatile
@@ -102,44 +103,62 @@ object WidgetStudioStore {
         val title = if (useSession) sessionTitle else legacy.title
         val artist = if (useSession) state.getString(KEY_SESSION_ARTIST, "").orEmpty() else legacy.artist
         val sessionArtwork = if (useSession) state.getString(KEY_SESSION_ARTWORK, "").orEmpty() else ""
-        val artworkUrl = when {
-            !useSession -> legacy.artworkUrl
-            legacy.title == sessionTitle && legacy.artworkUrl.isNotBlank() -> legacy.artworkUrl
-            else -> sessionArtwork.ifBlank { legacy.artworkUrl }
-        }
-        val repeat = if (sessionActive) {
-            StudioRepeatState.entries.getOrElse(state.getInt(KEY_REPEAT, 0)) { StudioRepeatState.Unavailable }
-        } else {
-            StudioRepeatState.Unavailable
-        }
+        val artworkUrl = resolveArtwork(useSession, sessionTitle, sessionArtwork, legacy)
+        val repeat = sessionRepeat(state, sessionActive)
         return StudioPlaybackState(
             title = title,
             artist = artist,
             album = if (useSession) state.getString(KEY_SESSION_ALBUM, "").orEmpty() else "",
             artworkUrl = artworkUrl,
-            playing = when {
-                sessionActive -> state.getBoolean(KEY_SESSION_PLAYING, false)
-                LevyraWidgetBridge.onToggle != null -> legacy.playing
-                else -> false
-            },
+            playing = resolvePlaying(state, sessionActive, legacy),
             hasTrack = title.isNotBlank(),
             accentSeed = if (legacy.title == title) legacy.accent else 0,
-            favorite = if (sessionActive) {
-                StudioFavoriteState.entries.getOrElse(state.getInt(KEY_FAVORITE, 0)) { StudioFavoriteState.Unavailable }
-            } else {
-                StudioFavoriteState.Unavailable
-            },
-            shuffle = if (state.contains(KEY_SHUFFLE) && repeat != StudioRepeatState.Unavailable) {
-                state.getBoolean(KEY_SHUFFLE, false)
-            } else {
-                null
-            },
+            favorite = sessionFavorite(state, sessionActive),
+            shuffle = sessionShuffle(state, repeat),
             repeat = repeat,
             positionMs = if (sessionActive) livePositionMs else state.getLong(KEY_POSITION, 0L),
             durationMs = state.getLong(KEY_DURATION, 0L),
             snapshotRealtimeMs = if (sessionActive) liveSnapshotMs else SystemClock.elapsedRealtime()
         )
     }
+
+    private fun resolveArtwork(
+        useSession: Boolean,
+        sessionTitle: String,
+        sessionArtwork: String,
+        legacy: WidgetTrackSnapshot
+    ): String = when {
+        !useSession -> legacy.artworkUrl
+        legacy.title == sessionTitle && legacy.artworkUrl.isNotBlank() -> legacy.artworkUrl
+        else -> sessionArtwork.ifBlank { legacy.artworkUrl }
+    }
+
+    private fun resolvePlaying(state: SharedPreferences, sessionActive: Boolean, legacy: WidgetTrackSnapshot): Boolean = when {
+        sessionActive -> state.getBoolean(KEY_SESSION_PLAYING, false)
+        LevyraWidgetBridge.onToggle != null -> legacy.playing
+        else -> false
+    }
+
+    private fun sessionRepeat(state: SharedPreferences, sessionActive: Boolean): StudioRepeatState =
+        if (sessionActive) {
+            StudioRepeatState.entries.getOrElse(state.getInt(KEY_REPEAT, 0)) { StudioRepeatState.Unavailable }
+        } else {
+            StudioRepeatState.Unavailable
+        }
+
+    private fun sessionFavorite(state: SharedPreferences, sessionActive: Boolean): StudioFavoriteState =
+        if (sessionActive) {
+            StudioFavoriteState.entries.getOrElse(state.getInt(KEY_FAVORITE, 0)) { StudioFavoriteState.Unavailable }
+        } else {
+            StudioFavoriteState.Unavailable
+        }
+
+    private fun sessionShuffle(state: SharedPreferences, repeat: StudioRepeatState): Boolean? =
+        if (state.contains(KEY_SHUFFLE) && repeat != StudioRepeatState.Unavailable) {
+            state.getBoolean(KEY_SHUFFLE, false)
+        } else {
+            null
+        }
 
     fun writeSession(
         context: Context,
