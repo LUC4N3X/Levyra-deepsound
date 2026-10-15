@@ -178,23 +178,11 @@ const scriptGroupFor = code => {
 
 const getTheme = isDark => ({
   background: isDark ? '#0D1117' : '#FBF8F6',
-  panel: isDark ? '#151019' : '#F4E9EF',
   ink: isDark ? '#F7F1F5' : '#241B21',
   muted: isDark ? '#A99DA6' : '#70636B',
-  rule: isDark ? '#302732' : '#DDD0D7',
-  accent: isDark ? '#E7A7CF' : '#8B416E',
-  accentSoft: isDark ? '#52364A' : '#E7C7D9'
+  rule: isDark ? '#30363D' : '#D8D0D4',
+  accent: isDark ? '#D98AB8' : '#8B416E'
 })
-
-const markerRow = ({ x, y, count, available, theme }) => {
-  const gap = 6
-  const width = Math.min(17, (available - gap * (count - 1)) / count)
-  return Array.from({ length: count }, (_, index) => {
-    const height = [14, 24, 18, 30, 20][index % 5]
-    const fill = index % 4 === 0 ? theme.accentSoft : theme.accent
-    return `<rect x="${(x + index * (width + gap)).toFixed(1)}" y="${(y - height).toFixed(1)}" width="${width.toFixed(1)}" height="${height}" rx="${Math.min(4, width / 2).toFixed(1)}" fill="${fill}"/>`
-  }).join('')
-}
 
 const groupRows = languages => SCRIPT_GROUPS.map(group => {
   const members = languages.filter(language => scriptGroupFor(language.code) === group.id)
@@ -214,83 +202,68 @@ const makePulse = ({ languages, globalPercent, catalogCount, isDark, mobile }) =
 
   if (mobile) {
     const rows = groups.map((group, index) => {
-      const y = 272 + index * 63
-      return `<text x="42" y="${y}" class="group">${escapeXml(group.label)}</text>
-  <text x="678" y="${y}" text-anchor="end" class="count">${String(group.count).padStart(2, '0')}</text>
-  <text x="42" y="${y + 19}" class="examples">${escapeXml(group.examples)}</text>
-  <g>${markerRow({ x: 458, y: y + 24, count: group.count, available: 220, theme })}</g>
-  <line x1="42" y1="${y + 36}" x2="678" y2="${y + 36}" stroke="${theme.rule}"/>`
+      const y = 218 + index * 63
+      return `<text x="34" y="${y}" class="group">${escapeXml(group.label)}</text>
+  <text x="686" y="${y}" text-anchor="end" class="count">${group.count}</text>
+  <text x="34" y="${y + 22}" class="examples">${escapeXml(group.examples)}</text>
+  <line x1="34" y1="${y + 39}" x2="686" y2="${y + 39}" stroke="${theme.rule}"/>`
     }).join('\n  ')
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="620" viewBox="0 0 720 620" role="img" aria-label="${escapeXml(aria)}">
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="560" viewBox="0 0 720 560" role="img" aria-label="${escapeXml(aria)}">
   <title>${escapeXml(aria)}</title>
   <desc>${escapeXml(description)}</desc>
   <style>
     text { font-family: ${FONT}; }
-    .kicker { fill: ${theme.accent}; font-size: 11px; font-weight: 800; letter-spacing: 2px; }
-    .hero { fill: ${theme.ink}; font-size: 112px; font-weight: 850; letter-spacing: -7px; }
-    .hero-label { fill: ${theme.ink}; font-size: 34px; font-weight: 760; letter-spacing: -1.2px; }
-    .meta { fill: ${theme.muted}; font-size: 13px; }
-    .statement { fill: ${theme.ink}; font-size: 28px; font-weight: 850; }
-    .statement-small { fill: ${theme.muted}; font-size: 10px; font-weight: 750; letter-spacing: 1.2px; }
-    .group { fill: ${theme.ink}; font-size: 12px; font-weight: 800; letter-spacing: .7px; }
-    .count { fill: ${theme.accent}; font-size: 20px; font-weight: 850; }
+    .eyebrow { fill: ${theme.accent}; font-size: 11px; font-weight: 750; letter-spacing: 1.8px; }
+    .hero { fill: ${theme.ink}; font-size: 62px; font-weight: 720; letter-spacing: -3px; }
+    .meta { fill: ${theme.muted}; font-size: 12px; }
+    .group { fill: ${theme.ink}; font-size: 13px; font-weight: 700; letter-spacing: .5px; }
+    .count { fill: ${theme.muted}; font-size: 15px; font-weight: 650; }
     .examples { fill: ${theme.muted}; font-size: 10px; }
-    .footer { fill: ${theme.muted}; font-size: 10px; font-weight: 650; letter-spacing: .4px; }
+    .footer { fill: ${theme.muted}; font-size: 10px; font-weight: 600; letter-spacing: .3px; }
   </style>
-  <rect width="720" height="620" rx="20" fill="${theme.background}"/>
-  <path d="M0 0H308C332 64 322 133 285 190C265 220 256 238 258 250H0Z" fill="${theme.panel}"/>
-  <text x="42" y="43" class="kicker">LEVYRA / LOCAL EVERYWHERE</text>
-  <text x="37" y="151" class="hero">${languages.length}</text>
-  <text x="43" y="188" class="hero-label">languages.</text>
-  <text x="43" y="218" class="meta">Five writing systems. Every string complete.</text>
-  <text x="676" y="72" text-anchor="end" class="statement">${roundedPercent}%</text>
-  <text x="676" y="91" text-anchor="end" class="statement-small">TRANSLATION COVERAGE</text>
+  <rect width="720" height="560" fill="${theme.background}"/>
+  <rect x="34" y="32" width="38" height="3" fill="${theme.accent}"/>
+  <text x="34" y="66" class="eyebrow">LANGUAGE COVERAGE</text>
+  <text x="31" y="137" class="hero">${languages.length} languages</text>
+  <text x="34" y="166" class="meta">${roundedPercent}% complete · ${catalogCount.toLocaleString('en-US')}+ app strings</text>
+  <line x1="34" y1="190" x2="686" y2="190" stroke="${theme.rule}"/>
   ${rows}
-  <text x="42" y="590" class="footer">${languages.length} / ${languages.length} LOCALE PACKS COMPLETE</text>
-  <text x="678" y="590" text-anchor="end" class="footer">${catalogCount.toLocaleString('en-US')}+ APP STRINGS</text>
+  <text x="34" y="535" class="footer">LOCALIZED IN THE APP · NO CLOUD PROFILE</text>
 </svg>`
   }
 
   const rows = groups.map((group, index) => {
-    const y = 104 + index * 68
-    return `<line x1="390" y1="${y + 31}" x2="1044" y2="${y + 31}" stroke="${theme.rule}"/>
-  <text x="390" y="${y}" class="group">${escapeXml(group.label)}</text>
-  <text x="1038" y="${y}" text-anchor="end" class="count">${String(group.count).padStart(2, '0')}</text>
-  <text x="390" y="${y + 22}" class="examples">${escapeXml(group.examples)}</text>
-  <g>${markerRow({ x: 790, y: y + 26, count: group.count, available: 248, theme })}</g>`
+    const y = 116 + index * 49
+    return `<text x="318" y="${y}" class="group">${escapeXml(group.label)}</text>
+  <text x="1048" y="${y}" text-anchor="end" class="count">${group.count}</text>
+  <text x="520" y="${y}" class="examples">${escapeXml(group.examples)}</text>
+  <line x1="318" y1="${y + 18}" x2="1048" y2="${y + 18}" stroke="${theme.rule}"/>`
   }).join('\n  ')
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="480" viewBox="0 0 1100 480" role="img" aria-label="${escapeXml(aria)}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="390" viewBox="0 0 1100 390" role="img" aria-label="${escapeXml(aria)}">
   <title>${escapeXml(aria)}</title>
   <desc>${escapeXml(description)}</desc>
   <style>
     text { font-family: ${FONT}; }
-    .kicker { fill: ${theme.accent}; font-size: 12px; font-weight: 800; letter-spacing: 2.2px; }
-    .hero { fill: ${theme.ink}; font-size: 132px; font-weight: 850; letter-spacing: -8px; }
-    .hero-label { fill: ${theme.ink}; font-size: 38px; font-weight: 760; letter-spacing: -1.5px; }
-    .meta { fill: ${theme.muted}; font-size: 14px; }
-    .statement { fill: ${theme.ink}; font-size: 30px; font-weight: 800; letter-spacing: -1px; }
-    .statement-small { fill: ${theme.muted}; font-size: 12px; font-weight: 700; letter-spacing: 1.4px; }
-    .group { fill: ${theme.ink}; font-size: 13px; font-weight: 800; letter-spacing: .8px; }
-    .count { fill: ${theme.accent}; font-size: 24px; font-weight: 850; }
+    .eyebrow { fill: ${theme.accent}; font-size: 11px; font-weight: 750; letter-spacing: 1.8px; }
+    .hero { fill: ${theme.ink}; font-size: 70px; font-weight: 720; letter-spacing: -3.5px; }
+    .meta { fill: ${theme.muted}; font-size: 13px; }
+    .group { fill: ${theme.ink}; font-size: 12px; font-weight: 700; letter-spacing: .5px; }
+    .count { fill: ${theme.muted}; font-size: 14px; font-weight: 650; }
     .examples { fill: ${theme.muted}; font-size: 11px; }
-    .footer { fill: ${theme.muted}; font-size: 11px; font-weight: 650; letter-spacing: .5px; }
+    .footer { fill: ${theme.muted}; font-size: 10px; font-weight: 600; letter-spacing: .35px; }
   </style>
-  <rect width="1100" height="480" rx="22" fill="${theme.background}"/>
-  <path d="M0 0H328C360 78 352 166 310 236C268 306 270 390 334 480H0Z" fill="${theme.panel}"/>
-  <text x="48" y="58" class="kicker">LEVYRA / LOCAL EVERYWHERE</text>
-  <text x="42" y="190" class="hero">${languages.length}</text>
-  <text x="49" y="232" class="hero-label">languages.</text>
-  <text x="50" y="269" class="meta">One interface. Five writing systems.</text>
-  <text x="50" y="290" class="meta">Every app string, complete.</text>
-  <line x1="50" y1="339" x2="302" y2="339" stroke="${theme.rule}"/>
-  <text x="50" y="375" class="statement">${roundedPercent}%</text>
-  <text x="147" y="368" class="statement-small">TRANSLATION</text>
-  <text x="147" y="384" class="statement-small">COVERAGE</text>
-  <text x="390" y="49" class="kicker">THE LANGUAGE SCORE</text>
-  <text x="1038" y="49" text-anchor="end" class="footer">${catalogCount.toLocaleString('en-US')}+ APP STRINGS</text>
+  <rect width="1100" height="390" fill="${theme.background}"/>
+  <rect x="48" y="44" width="42" height="3" fill="${theme.accent}"/>
+  <text x="48" y="76" class="eyebrow">LANGUAGE COVERAGE</text>
+  <text x="44" y="158" class="hero">${languages.length}</text>
+  <text x="48" y="187" class="meta">languages · ${roundedPercent}% complete</text>
+  <text x="48" y="211" class="meta">${catalogCount.toLocaleString('en-US')}+ app strings</text>
+  <line x1="278" y1="78" x2="278" y2="340" stroke="${theme.rule}"/>
+  <text x="318" y="76" class="footer">WRITING SYSTEM</text>
+  <text x="520" y="76" class="footer">SELECTED LANGUAGES</text>
+  <text x="1048" y="76" text-anchor="end" class="footer">TOTAL</text>
   ${rows}
-  <text x="390" y="446" class="footer">${languages.length} / ${languages.length} LOCALE PACKS COMPLETE</text>
-  <text x="1038" y="446" text-anchor="end" class="footer">BUILT INTO LEVYRA · NO CLOUD PROFILE</text>
+  <text x="318" y="356" class="footer">LOCALIZED IN THE APP · NO CLOUD PROFILE</text>
 </svg>`
 }
 

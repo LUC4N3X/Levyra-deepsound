@@ -1,52 +1,41 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="720" height="620" viewBox="0 0 720 620" role="img" aria-label="Levyra localization coverage: 100% across 41 languages">
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="560" viewBox="0 0 720 560" role="img" aria-label="Levyra localization coverage: 100% across 41 languages">
   <title>Levyra localization coverage: 100% across 41 languages</title>
   <desc>English: 100%, Italiano: 100%, Español: 100%, Français: 100%, Deutsch: 100%, Português: 100%, Nederlands: 100%, Polski: 100%, Română: 100%, Ελληνικά: 100%, Svenska: 100%, Dansk: 100%, Čeština: 100%, Slovenčina: 100%, Hrvatski: 100%, Српски: 100%, Shqip: 100%, Български: 100%, Magyar: 100%, Suomi: 100%, Eesti: 100%, Norsk bokmål: 100%, Català: 100%, Українська: 100%, Русский: 100%, Қазақша: 100%, Türkçe: 100%, العربية: 100%, فارسی: 100%, 简体中文: 100%, 繁體中文: 100%, 日本語: 100%, 한국어: 100%, हिन्दी: 100%, বাংলা: 100%, Bahasa Indonesia: 100%, Bahasa Melayu: 100%, Tiếng Việt: 100%, ไทย: 100%, Filipino: 100%, עברית: 100%</desc>
   <style>
     text { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; }
-    .kicker { fill: #8B416E; font-size: 11px; font-weight: 800; letter-spacing: 2px; }
-    .hero { fill: #241B21; font-size: 112px; font-weight: 850; letter-spacing: -7px; }
-    .hero-label { fill: #241B21; font-size: 34px; font-weight: 760; letter-spacing: -1.2px; }
-    .meta { fill: #70636B; font-size: 13px; }
-    .statement { fill: #241B21; font-size: 28px; font-weight: 850; }
-    .statement-small { fill: #70636B; font-size: 10px; font-weight: 750; letter-spacing: 1.2px; }
-    .group { fill: #241B21; font-size: 12px; font-weight: 800; letter-spacing: .7px; }
-    .count { fill: #8B416E; font-size: 20px; font-weight: 850; }
+    .eyebrow { fill: #8B416E; font-size: 11px; font-weight: 750; letter-spacing: 1.8px; }
+    .hero { fill: #241B21; font-size: 62px; font-weight: 720; letter-spacing: -3px; }
+    .meta { fill: #70636B; font-size: 12px; }
+    .group { fill: #241B21; font-size: 13px; font-weight: 700; letter-spacing: .5px; }
+    .count { fill: #70636B; font-size: 15px; font-weight: 650; }
     .examples { fill: #70636B; font-size: 10px; }
-    .footer { fill: #70636B; font-size: 10px; font-weight: 650; letter-spacing: .4px; }
+    .footer { fill: #70636B; font-size: 10px; font-weight: 600; letter-spacing: .3px; }
   </style>
-  <rect width="720" height="620" rx="20" fill="#FBF8F6"/>
-  <path d="M0 0H308C332 64 322 133 285 190C265 220 256 238 258 250H0Z" fill="#F4E9EF"/>
-  <text x="42" y="43" class="kicker">LEVYRA / LOCAL EVERYWHERE</text>
-  <text x="37" y="151" class="hero">41</text>
-  <text x="43" y="188" class="hero-label">languages.</text>
-  <text x="43" y="218" class="meta">Five writing systems. Every string complete.</text>
-  <text x="676" y="72" text-anchor="end" class="statement">100%</text>
-  <text x="676" y="91" text-anchor="end" class="statement-small">TRANSLATION COVERAGE</text>
-  <text x="42" y="272" class="group">LATIN</text>
-  <text x="678" y="272" text-anchor="end" class="count">25</text>
-  <text x="42" y="291" class="examples">English · Italiano · Español · Français · Deutsch · Português</text>
-  <g><rect x="458.0" y="282.0" width="3.0" height="14" rx="1.5" fill="#E7C7D9"/><rect x="467.0" y="272.0" width="3.0" height="24" rx="1.5" fill="#8B416E"/><rect x="476.1" y="278.0" width="3.0" height="18" rx="1.5" fill="#8B416E"/><rect x="485.1" y="266.0" width="3.0" height="30" rx="1.5" fill="#8B416E"/><rect x="494.2" y="276.0" width="3.0" height="20" rx="1.5" fill="#E7C7D9"/><rect x="503.2" y="282.0" width="3.0" height="14" rx="1.5" fill="#8B416E"/><rect x="512.2" y="272.0" width="3.0" height="24" rx="1.5" fill="#8B416E"/><rect x="521.3" y="278.0" width="3.0" height="18" rx="1.5" fill="#8B416E"/><rect x="530.3" y="266.0" width="3.0" height="30" rx="1.5" fill="#E7C7D9"/><rect x="539.4" y="276.0" width="3.0" height="20" rx="1.5" fill="#8B416E"/><rect x="548.4" y="282.0" width="3.0" height="14" rx="1.5" fill="#8B416E"/><rect x="557.4" y="272.0" width="3.0" height="24" rx="1.5" fill="#8B416E"/><rect x="566.5" y="278.0" width="3.0" height="18" rx="1.5" fill="#E7C7D9"/><rect x="575.5" y="266.0" width="3.0" height="30" rx="1.5" fill="#8B416E"/><rect x="584.6" y="276.0" width="3.0" height="20" rx="1.5" fill="#8B416E"/><rect x="593.6" y="282.0" width="3.0" height="14" rx="1.5" fill="#8B416E"/><rect x="602.6" y="272.0" width="3.0" height="24" rx="1.5" fill="#E7C7D9"/><rect x="611.7" y="278.0" width="3.0" height="18" rx="1.5" fill="#8B416E"/><rect x="620.7" y="266.0" width="3.0" height="30" rx="1.5" fill="#8B416E"/><rect x="629.8" y="276.0" width="3.0" height="20" rx="1.5" fill="#8B416E"/><rect x="638.8" y="282.0" width="3.0" height="14" rx="1.5" fill="#E7C7D9"/><rect x="647.8" y="272.0" width="3.0" height="24" rx="1.5" fill="#8B416E"/><rect x="656.9" y="278.0" width="3.0" height="18" rx="1.5" fill="#8B416E"/><rect x="665.9" y="266.0" width="3.0" height="30" rx="1.5" fill="#8B416E"/><rect x="675.0" y="276.0" width="3.0" height="20" rx="1.5" fill="#E7C7D9"/></g>
-  <line x1="42" y1="308" x2="678" y2="308" stroke="#DDD0D7"/>
-  <text x="42" y="335" class="group">CYRILLIC + GREEK</text>
-  <text x="678" y="335" text-anchor="end" class="count">06</text>
-  <text x="42" y="354" class="examples">Ελληνικά · Српски · Български · Українська · Русский · Қазақша</text>
-  <g><rect x="458.0" y="345.0" width="17.0" height="14" rx="4.0" fill="#E7C7D9"/><rect x="481.0" y="335.0" width="17.0" height="24" rx="4.0" fill="#8B416E"/><rect x="504.0" y="341.0" width="17.0" height="18" rx="4.0" fill="#8B416E"/><rect x="527.0" y="329.0" width="17.0" height="30" rx="4.0" fill="#8B416E"/><rect x="550.0" y="339.0" width="17.0" height="20" rx="4.0" fill="#E7C7D9"/><rect x="573.0" y="345.0" width="17.0" height="14" rx="4.0" fill="#8B416E"/></g>
-  <line x1="42" y1="371" x2="678" y2="371" stroke="#DDD0D7"/>
-  <text x="42" y="398" class="group">CJK</text>
-  <text x="678" y="398" text-anchor="end" class="count">04</text>
-  <text x="42" y="417" class="examples">简体中文 · 繁體中文 · 日本語 · 한국어</text>
-  <g><rect x="458.0" y="408.0" width="17.0" height="14" rx="4.0" fill="#E7C7D9"/><rect x="481.0" y="398.0" width="17.0" height="24" rx="4.0" fill="#8B416E"/><rect x="504.0" y="404.0" width="17.0" height="18" rx="4.0" fill="#8B416E"/><rect x="527.0" y="392.0" width="17.0" height="30" rx="4.0" fill="#8B416E"/></g>
-  <line x1="42" y1="434" x2="678" y2="434" stroke="#DDD0D7"/>
-  <text x="42" y="461" class="group">ARABIC + HEBREW</text>
-  <text x="678" y="461" text-anchor="end" class="count">03</text>
-  <text x="42" y="480" class="examples">العربية · فارسی · עברית</text>
-  <g><rect x="458.0" y="471.0" width="17.0" height="14" rx="4.0" fill="#E7C7D9"/><rect x="481.0" y="461.0" width="17.0" height="24" rx="4.0" fill="#8B416E"/><rect x="504.0" y="467.0" width="17.0" height="18" rx="4.0" fill="#8B416E"/></g>
-  <line x1="42" y1="497" x2="678" y2="497" stroke="#DDD0D7"/>
-  <text x="42" y="524" class="group">INDIC + THAI</text>
-  <text x="678" y="524" text-anchor="end" class="count">03</text>
-  <text x="42" y="543" class="examples">हिन्दी · বাংলা · ไทย</text>
-  <g><rect x="458.0" y="534.0" width="17.0" height="14" rx="4.0" fill="#E7C7D9"/><rect x="481.0" y="524.0" width="17.0" height="24" rx="4.0" fill="#8B416E"/><rect x="504.0" y="530.0" width="17.0" height="18" rx="4.0" fill="#8B416E"/></g>
-  <line x1="42" y1="560" x2="678" y2="560" stroke="#DDD0D7"/>
-  <text x="42" y="590" class="footer">41 / 41 LOCALE PACKS COMPLETE</text>
-  <text x="678" y="590" text-anchor="end" class="footer">1,105+ APP STRINGS</text>
+  <rect width="720" height="560" fill="#FBF8F6"/>
+  <rect x="34" y="32" width="38" height="3" fill="#8B416E"/>
+  <text x="34" y="66" class="eyebrow">LANGUAGE COVERAGE</text>
+  <text x="31" y="137" class="hero">41 languages</text>
+  <text x="34" y="166" class="meta">100% complete · 1,105+ app strings</text>
+  <line x1="34" y1="190" x2="686" y2="190" stroke="#D8D0D4"/>
+  <text x="34" y="218" class="group">LATIN</text>
+  <text x="686" y="218" text-anchor="end" class="count">25</text>
+  <text x="34" y="240" class="examples">English · Italiano · Español · Français · Deutsch · Português</text>
+  <line x1="34" y1="257" x2="686" y2="257" stroke="#D8D0D4"/>
+  <text x="34" y="281" class="group">CYRILLIC + GREEK</text>
+  <text x="686" y="281" text-anchor="end" class="count">6</text>
+  <text x="34" y="303" class="examples">Ελληνικά · Српски · Български · Українська · Русский · Қазақша</text>
+  <line x1="34" y1="320" x2="686" y2="320" stroke="#D8D0D4"/>
+  <text x="34" y="344" class="group">CJK</text>
+  <text x="686" y="344" text-anchor="end" class="count">4</text>
+  <text x="34" y="366" class="examples">简体中文 · 繁體中文 · 日本語 · 한국어</text>
+  <line x1="34" y1="383" x2="686" y2="383" stroke="#D8D0D4"/>
+  <text x="34" y="407" class="group">ARABIC + HEBREW</text>
+  <text x="686" y="407" text-anchor="end" class="count">3</text>
+  <text x="34" y="429" class="examples">العربية · فارسی · עברית</text>
+  <line x1="34" y1="446" x2="686" y2="446" stroke="#D8D0D4"/>
+  <text x="34" y="470" class="group">INDIC + THAI</text>
+  <text x="686" y="470" text-anchor="end" class="count">3</text>
+  <text x="34" y="492" class="examples">हिन्दी · বাংলা · ไทย</text>
+  <line x1="34" y1="509" x2="686" y2="509" stroke="#D8D0D4"/>
+  <text x="34" y="535" class="footer">LOCALIZED IN THE APP · NO CLOUD PROFILE</text>
 </svg>
