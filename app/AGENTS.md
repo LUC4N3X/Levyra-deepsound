@@ -70,6 +70,7 @@ The stability reached after issue #427 is a preserved product invariant. Any And
 - Treat existing UI as a redesign by default: preserve behavior, navigation, gestures and state ownership, then improve hierarchy, rhythm and visual consistency before adding decorative effects.
 - Reuse Levyra theme tokens and existing components before introducing one-off colors, radii, spacing values, visual primitives or dependencies.
 - Trace edge-to-edge/system-bar/IME inset ownership before adding padding. Apply each inset once, keep critical controls tappable, and use list `contentPadding` when parent padding would clip scroll-behind behavior.
+- Horizontal carousels (`LazyRow`, `Row` + `horizontalScroll`) placed inside a parent with horizontal padding or `contentPadding` must scroll edge to edge: bleed the scroll container out by the parent gutter (reuse an existing bleed `layout` modifier such as `recentSearchesBleed`) and restore alignment with matching horizontal `contentPadding` or inner padding. Never leave a horizontally scrolling row clipped at the parent gutter.
 - Check relevant larger widths/form factors for layout changes, but do not force Navigation 3, multi-pane scenes, Compose Styles, Grid/FlexBox/MediaQuery, or another experimental API as collateral modernization.
 - Reuse existing screenshot/preview infrastructure when visual regression evidence is needed; inspect golden diffs before accepting new baselines.
 
