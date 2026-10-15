@@ -25,7 +25,8 @@ enum class NavLabelMode(val storageId: String) {
     Always("always"),
     ActiveOnly("active"),
     Never("never"),
-    Compact("compact");
+    Compact("compact"),
+    Expanding("expanding");
 
     companion object {
         fun from(value: String?): NavLabelMode? = entries.firstOrNull { it.storageId == value }
@@ -73,7 +74,8 @@ enum class NavMotion(val storageId: String) {
 enum class NavColorSource(val storageId: String) {
     Theme("theme"),
     Dynamic("dynamic"),
-    Custom("custom");
+    Custom("custom"),
+    Artwork("artwork");
 
     companion object {
         fun from(value: String?): NavColorSource? = entries.firstOrNull { it.storageId == value }
@@ -295,6 +297,7 @@ data class LevyraNavigationStudioSettings(
             indicators = listOf(NavIndicator.Morph, NavIndicator.Pill, NavIndicator.Circle, NavIndicator.Floating),
             backgrounds = allBackgrounds,
             defaults = NavTuning(
+                labels = NavLabelMode.Expanding,
                 indicator = NavIndicator.Morph,
                 background = NavBackground.Gradient,
                 iconDp = 24,
@@ -310,7 +313,7 @@ data class LevyraNavigationStudioSettings(
             indicators = allIndicators,
             backgrounds = allBackgrounds,
             defaults = NavTuning(
-                labels = NavLabelMode.ActiveOnly,
+                labels = NavLabelMode.Expanding,
                 indicator = NavIndicator.Pill,
                 background = NavBackground.Translucent,
                 iconDp = 24,
@@ -326,7 +329,7 @@ data class LevyraNavigationStudioSettings(
             indicators = listOf(NavIndicator.Dot, NavIndicator.Line, NavIndicator.Circle),
             backgrounds = allBackgrounds,
             defaults = NavTuning(
-                labels = NavLabelMode.Never,
+                labels = NavLabelMode.Expanding,
                 indicator = NavIndicator.Dot,
                 background = NavBackground.Solid,
                 iconDp = 24,
@@ -344,7 +347,7 @@ data class LevyraNavigationStudioSettings(
             indicators = listOf(NavIndicator.Morph, NavIndicator.Pill, NavIndicator.Line, NavIndicator.Dot),
             backgrounds = allBackgrounds,
             defaults = NavTuning(
-                labels = NavLabelMode.Compact,
+                labels = NavLabelMode.Expanding,
                 indicator = NavIndicator.Morph,
                 background = NavBackground.Solid,
                 iconDp = 22,
@@ -360,7 +363,7 @@ data class LevyraNavigationStudioSettings(
             indicators = listOf(NavIndicator.Floating, NavIndicator.Pill, NavIndicator.Circle, NavIndicator.Dot),
             backgrounds = listOf(NavBackground.Translucent),
             defaults = NavTuning(
-                labels = NavLabelMode.ActiveOnly,
+                labels = NavLabelMode.Expanding,
                 indicator = NavIndicator.Floating,
                 background = NavBackground.Translucent,
                 iconDp = 24,
@@ -399,7 +402,7 @@ data class LevyraNavigationStudioSettings(
             indicators = listOf(NavIndicator.Floating, NavIndicator.Pill, NavIndicator.Morph, NavIndicator.Dot, NavIndicator.Line),
             backgrounds = allBackgrounds,
             defaults = NavTuning(
-                labels = NavLabelMode.ActiveOnly,
+                labels = NavLabelMode.Expanding,
                 indicator = NavIndicator.Floating,
                 background = NavBackground.Solid,
                 iconDp = 24,
@@ -417,7 +420,7 @@ data class LevyraNavigationStudioSettings(
             indicators = listOf(NavIndicator.Pill, NavIndicator.Floating, NavIndicator.Morph, NavIndicator.Dot, NavIndicator.Line),
             backgrounds = allBackgrounds,
             defaults = NavTuning(
-                labels = NavLabelMode.Always,
+                labels = NavLabelMode.Expanding,
                 indicator = NavIndicator.Pill,
                 background = NavBackground.Solid,
                 iconDp = 24,

@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.ui
 
 import androidx.compose.ui.graphics.Color
+import com.luc4n3x.levyra.domain.PlayerColorMode
+import com.luc4n3x.levyra.ui.theme.LevyraThemes
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -35,5 +37,38 @@ class PlayerPaletteTest {
         val pair = harmonizePlayerAccents(transparentPrimary, transparentSecondary)
         assertEquals(1f, pair.primary.alpha, 0.001f)
         assertEquals(1f, pair.secondary.alpha, 0.001f)
+    }
+
+    @Test
+    fun `dynamic player colors defer to the artwork`() {
+        assertEquals(null, playerFixedAccents(PlayerColorMode.Dynamic, LevyraThemes.byId(LevyraThemes.OCEAN), 0xFF336699.toInt()))
+    }
+
+    @Test
+    fun `theme player colors come only from the selected theme`() {
+        val ocean = LevyraThemes.byId(LevyraThemes.OCEAN)
+        val ember = LevyraThemes.byId(LevyraThemes.EMBER)
+        val first = playerFixedAccents(PlayerColorMode.Theme, ocean, 0)
+        assertEquals(first, playerFixedAccents(PlayerColorMode.Theme, ocean, 0xFFFF0000.toInt()))
+        assertNotEquals(first, playerFixedAccents(PlayerColorMode.Theme, ember, 0))
+    }
+
+    @Test
+    fun `custom player colors build a two tone palette from one color`() {
+        val pair = playerFixedAccents(PlayerColorMode.Custom, LevyraThemes.byId(LevyraThemes.OCEAN), 0xFF3366FF.toInt())!!
+        assertEquals(Color(0xFF3366FF), pair.primary)
+        assertNotEquals(pair.primary, pair.secondary)
+        assertEquals(1f, pair.secondary.alpha, 0.001f)
+    }
+
+    @Test
+    fun `nav artwork seed tames neon and keeps grey covers neutral`() {
+        val neon = navArtworkSeedOf(Color(0xFF00FF00), Color(0xFFFF00FF))
+        val (_, saturation, _) = neon.primary.hsvComponents()
+        assertTrue(saturation <= 0.81f)
+        val grey = navArtworkSeedOf(Color(0xFF101010), Color(0xFFF0F0F0))
+        val (_, greySaturation, greyValue) = grey.primary.hsvComponents()
+        assertTrue(greySaturation < 0.08f)
+        assertTrue(greyValue >= 0.54f)
     }
 }

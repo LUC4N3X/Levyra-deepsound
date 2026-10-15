@@ -150,6 +150,7 @@ import com.luc4n3x.levyra.ui.levyraContentMaxWidthDp
 import com.luc4n3x.levyra.ui.levyraFoldAwareGutterDp
 import com.luc4n3x.levyra.ui.levyraPlayerArtworkMaxWidthDp
 import com.luc4n3x.levyra.ui.playerAmbienceOf
+import com.luc4n3x.levyra.ui.rememberPlayerFixedAccents
 import com.luc4n3x.levyra.ui.preferredPlayerArtworkUrl
 import com.luc4n3x.levyra.ui.resolveLevyraLayoutMode
 import com.luc4n3x.levyra.ui.resolveNowPlayingPane
@@ -227,8 +228,9 @@ fun LevyraNowPlaying(
     val paletteArtworkUrl = track?.let { current ->
         artworkUrl.ifBlank { current.largeThumbnailUrl.ifBlank { current.thumbnailUrl } }
     }.orEmpty()
+    val fixedAccents = rememberPlayerFixedAccents(state.interfaceSettings)
     val activePalette by rememberArtworkPalette(
-        paletteKey = paletteKey,
+        paletteKey = if (fixedAccents == null) paletteKey else "",
         artworkUrl = paletteArtworkUrl,
         fallback = fallbackPalette
     )
@@ -238,9 +240,10 @@ fun LevyraNowPlaying(
     }
     val rawPrimaryTarget = Color(activePalette.start)
     val rawSecondaryTarget = Color(activePalette.end)
-    val harmonizedTargets = remember(rawPrimaryTarget, rawSecondaryTarget) {
+    val artworkTargets = remember(rawPrimaryTarget, rawSecondaryTarget) {
         harmonizePlayerAccents(rawPrimaryTarget, rawSecondaryTarget)
     }
+    val harmonizedTargets = fixedAccents ?: artworkTargets
     val primaryTarget = harmonizedTargets.primary
     val secondaryTarget = harmonizedTargets.secondary
     val primary by animateColorAsState(
@@ -403,6 +406,7 @@ fun LevyraNowPlaying(
             }
         }
         val canvasBackdropTargets = canvasBackdropPalette
+            ?.takeIf { fixedAccents == null }
             ?.takeIf { palette ->
                 canvasBackdropPaletteMatches(
                     palette = palette,
@@ -461,6 +465,7 @@ fun LevyraNowPlaying(
             ambience = backdropAmbience,
             animationsEnabled = animated,
             isPlaying = state.isPlaying,
+            fixedColors = fixedAccents != null,
             backdropFocus = backdropFocus,
             modifier = Modifier.fillMaxSize()
         )

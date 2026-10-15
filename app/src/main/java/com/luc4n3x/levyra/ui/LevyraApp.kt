@@ -155,6 +155,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.player.*
 import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
+import com.luc4n3x.levyra.domain.PlayerColorMode
 import com.luc4n3x.levyra.domain.PlayerDoubleTapAction
 import com.luc4n3x.levyra.domain.PlayerLongPressAction
 import com.luc4n3x.levyra.domain.PlayerVerticalSwipeAction
@@ -309,6 +310,7 @@ import com.luc4n3x.levyra.domain.HomeSectionLayout
 import com.luc4n3x.levyra.domain.HomeStyle
 import com.luc4n3x.levyra.domain.LevyraHomeStudioSettings
 import com.luc4n3x.levyra.domain.MiniPlayerStyle
+import com.luc4n3x.levyra.domain.NavColorSource
 import com.luc4n3x.levyra.domain.NavStyle
 import com.luc4n3x.levyra.ui.i18n.NavStudioText
 import com.luc4n3x.levyra.ui.i18n.navigationStudioCopy
@@ -364,6 +366,7 @@ import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.BookmarkAdd
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ColorLens
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Delete
@@ -2152,13 +2155,19 @@ fun LevyraApp(
         selected = state.interfaceSettings.visualPerformance,
         animationsEnabled = state.animationsEnabled
     )
+    val navArtworkSeed = rememberNavArtworkSeed(
+        track = state.currentTrack,
+        enabled = navigationStudio.visible ||
+            navigationStudio.settings.activeTuning().colorSource == NavColorSource.Artwork
+    )
     CompositionLocalProvider(
         LocalAnimationsEnabled provides state.animationsEnabled,
         LocalLevyraVisualCapabilities provides visualCapabilities,
         LocalLevyraStrings provides currentStrings,
         LocalLevyraHaptics provides rememberLevyraHaptics(state.interfaceSettings.hapticFeedback),
         LocalLayoutDirection provides layoutDirection,
-        LocalNavDockExtraClearance provides navDockExtraClearance(navigationStudio.settings.style, navigationStudio.settings.activeTuning())
+        LocalNavDockExtraClearance provides navDockExtraClearance(navigationStudio.settings.style, navigationStudio.settings.activeTuning()),
+        LocalNavArtworkSeed provides navArtworkSeed
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             BoxWithConstraints(
@@ -2477,7 +2486,8 @@ fun LevyraApp(
                                             compaction = compactionProvider,
                                             artworkHidden = { artworkMorphActive },
                                             playbackActions = miniPlaybackActions,
-                                            expansionActions = miniExpansionActions
+                                            expansionActions = miniExpansionActions,
+                                            fixedAccents = rememberPlayerFixedAccents(state.interfaceSettings)
                                         )
                                     } else {
                                         StyledMiniPlayer(
@@ -2685,6 +2695,9 @@ fun LevyraApp(
                         },
                         onYoutubeMusicCookie = youtubeMusicViewModel::acceptCookie,
                         onCancelYoutubeMusicLogin = youtubeMusicViewModel::cancelLogin,
+                        onAppearance = { light ->
+                            viewModel.setThemePreset(if (light) LevyraThemes.FROST else LevyraThemes.LEVYRA_AURA)
+                        },
                         onDone = viewModel::completeOnboarding
                     )
                 }
@@ -12563,13 +12576,13 @@ private fun HomeEditorialSpotlight(
     LaunchedEffect(heroArtistName, artistArtworkUrl, spotifyArtistArtworkRepository, appleArtistArtworkRepository) {
         resolvedArtistArtworkUrl = artistArtworkUrl
         if (heroArtistName.isNotBlank()) {
-            val applePortrait = appleArtistArtworkRepository.resolveArtistPortrait(heroArtistName)
-            if (applePortrait.isNotBlank()) {
-                resolvedArtistArtworkUrl = highResolutionHomeArtistArtworkUrl(applePortrait)
+            val spotifyPortrait = spotifyArtistArtworkRepository.resolveArtistPortrait(heroArtistName)
+            if (spotifyPortrait.isNotBlank()) {
+                resolvedArtistArtworkUrl = highResolutionHomeArtistArtworkUrl(spotifyPortrait)
             } else {
-                val spotifyPortrait = spotifyArtistArtworkRepository.resolveArtistPortrait(heroArtistName)
-                if (spotifyPortrait.isNotBlank()) {
-                    resolvedArtistArtworkUrl = highResolutionHomeArtistArtworkUrl(spotifyPortrait)
+                val applePortrait = appleArtistArtworkRepository.resolveArtistPortrait(heroArtistName)
+                if (applePortrait.isNotBlank()) {
+                    resolvedArtistArtworkUrl = highResolutionHomeArtistArtworkUrl(applePortrait)
                 }
             }
         }
@@ -12726,7 +12739,7 @@ private fun HomeEditorialSpotlight(
                         contentDescription = null,
                         modifier = Modifier
                             .fillMaxSize()
-                            .graphicsLayer { alpha = if (isLight) 0.42f else 0.58f }
+                            .graphicsLayer { alpha = if (isLight) 0.56f else 0.58f }
                             .blur(64.dp, BlurredEdgeTreatment.Rectangle),
                         contentScale = ContentScale.Crop
                     )
@@ -13062,8 +13075,8 @@ private fun Modifier.homeHeroBlend(
     )
     val textScrim = Brush.radialGradient(
         colorStops = arrayOf(
-            0f to canvas.copy(alpha = if (isLight) 0.36f else 0.32f),
-            0.55f to canvas.copy(alpha = if (isLight) 0.18f else 0.16f),
+            0f to canvas.copy(alpha = if (isLight) 0.24f else 0.32f),
+            0.55f to canvas.copy(alpha = if (isLight) 0.10f else 0.16f),
             1f to canvas.copy(alpha = 0f)
         ),
         center = Offset(0f, size.height),
@@ -13113,8 +13126,8 @@ private fun Modifier.homeHeroHeaderScrim(canvas: Color, isLight: Boolean, bleed:
     val scrim = if (isLight) canvas else Color.Black
     val brush = Brush.verticalGradient(
         colorStops = arrayOf(
-            0f to scrim.copy(alpha = if (isLight) 0.94f else 0.78f),
-            0.58f to scrim.copy(alpha = if (isLight) 0.78f else 0.52f),
+            0f to scrim.copy(alpha = if (isLight) 0.72f else 0.78f),
+            0.58f to scrim.copy(alpha = if (isLight) 0.38f else 0.52f),
             1f to scrim.copy(alpha = 0f)
         ),
         startY = top,
@@ -21048,7 +21061,7 @@ private fun SettingsOverlay(
                 .statusBarsPadding()
                 .navigationBarsPadding(),
                 contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 40.dp),
-                verticalArrangement = Arrangement.spacedBy(if (current == null) 0.dp else 8.dp)
+                verticalArrangement = Arrangement.spacedBy(if (current == null) 0.dp else SettingsGroupGap)
             ) {
                 if (current == null) {
                     item {
@@ -21171,12 +21184,13 @@ private fun SettingsOverlay(
                     item {
                         SettingsDetailHeader(
                             title = meta?.title.orEmpty(),
+                            summary = meta?.summary.orEmpty(),
                             icon = meta?.icon ?: Icons.Rounded.Settings,
                             accent = meta?.accent ?: LevyraCyan,
                             onBack = { activeCategory = null }
                         )
                     }
-                    when (current) {
+                    settingsGroupedItems { when (current) {
                         "network" -> item {
                             NetworkSettingsPanel(
                                 settings = networkSettings,
@@ -21492,7 +21506,7 @@ private fun SettingsOverlay(
                             }
                         }
                         "player" -> {
-                            item { SettingsSectionLabel(strings.mobilePlayerSection) }
+                            standaloneItem { SettingsSectionLabel(strings.mobilePlayerSection) }
                             item {
                                 SettingsChoiceRow(
                                     icon = Icons.Rounded.HighQuality,
@@ -21554,6 +21568,12 @@ private fun SettingsOverlay(
                                             interfaceSettings.copy(playerBackground = PlayerBackgroundMode.from(value))
                                         )
                                     }
+                                )
+                            }
+                            item {
+                                PlayerColorModeSetting(
+                                    settings = interfaceSettings,
+                                    onSettings = onInterfaceSettings
                                 )
                             }
                             item {
@@ -21668,7 +21688,7 @@ private fun SettingsOverlay(
                                     )
                                 }
                             }
-                            item { SettingsSectionLabel(strings.ambientSettingsTitle) }
+                            standaloneItem { SettingsSectionLabel(strings.ambientSettingsTitle) }
                             item {
                                 SettingsButton(
                                     icon = Icons.Rounded.Nightlight,
@@ -21795,7 +21815,7 @@ private fun SettingsOverlay(
                                     onCheckedChange = { onAmbientSettings(ambientSettings.copy(showCanvas = it)) }
                                 )
                             }
-                            item { SettingsSectionLabel(strings.excludedArtists) }
+                            standaloneItem { SettingsSectionLabel(strings.excludedArtists) }
                             if (excludedArtists.isEmpty()) {
                                 item {
                                     SettingsInfoCard(
@@ -21814,7 +21834,7 @@ private fun SettingsOverlay(
                                     )
                                 }
                             }
-                            item { SettingsSectionLabel(strings.playback) }
+                            standaloneItem { SettingsSectionLabel(strings.playback) }
                             item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.SkipNext,
@@ -21846,7 +21866,7 @@ private fun SettingsOverlay(
                                     onCheckedChange = onSkipSilence
                                 )
                             }
-                            item { SettingsSectionLabel(automationCopy.automation) }
+                            standaloneItem { SettingsSectionLabel(automationCopy.automation) }
                             item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.Bluetooth,
@@ -22211,7 +22231,7 @@ private fun SettingsOverlay(
                             }
                         }
                         "system" -> {
-                            item { SettingsSectionLabel(strings.playbackResilienceSection) }
+                            standaloneItem { SettingsSectionLabel(strings.playbackResilienceSection) }
                             item {
                                 SettingsButton(
                                     icon = Icons.Rounded.Bolt,
@@ -22248,7 +22268,7 @@ private fun SettingsOverlay(
                                     onClick = onShareDiagnostics
                                 )
                             }
-                            item { SettingsSectionLabel(strings.preferences) }
+                            standaloneItem { SettingsSectionLabel(strings.preferences) }
                             item {
                                 SettingsButton(
                                     icon = Icons.Rounded.Settings,
@@ -22288,7 +22308,7 @@ private fun SettingsOverlay(
                                 )
                             }
                             if (languageExpanded) {
-                                item { LanguageSelector(selectedCode = currentLanguageCode, onSelect = onLanguage, modifier = Modifier.padding(bottom = 4.dp)) }
+                                standaloneItem { LanguageSelector(selectedCode = currentLanguageCode, onSelect = onLanguage, modifier = Modifier.padding(top = 6.dp, bottom = 4.dp)) }
                             }
                         }
                         "app" -> {
@@ -22302,9 +22322,9 @@ private fun SettingsOverlay(
                                     )
                                 }
                             }
-                            item { SettingsHubFooter() }
+                            standaloneItem { SettingsHubFooter() }
                         }
-                    }
+                    } }
                 }
             }
             }
@@ -22687,14 +22707,17 @@ private fun SettingsTile(
     checked: Boolean? = null,
     onCheckedChange: ((Boolean) -> Unit)? = null,
     enabled: Boolean = true,
-    groupIndex: Int = 0,
-    groupCount: Int = 1,
+    groupIndex: Int? = null,
+    groupCount: Int? = null,
     color: Color = LevyraAdaptiveCard,
     content: @Composable () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val first = groupIndex == 0
-    val last = groupIndex == groupCount - 1
+    val slot = LocalSettingsGroupSlot.current
+    val index = groupIndex ?: slot?.index ?: 0
+    val count = groupCount ?: slot?.count ?: 1
+    val first = index == 0
+    val last = index == count - 1
     val outer = levyraExpressiveCorner(interactionSource, rest = 24.dp, pressed = 14.dp, label = "settingsTileOuter")
     val inner = levyraExpressiveCorner(interactionSource, rest = 6.dp, pressed = 14.dp, label = "settingsTileInner")
     val shape = RoundedCornerShape(
@@ -22730,7 +22753,7 @@ private fun SettingsTile(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SettingsTileIcon(icon: ImageVector, accent: Color, shape: Shape = MaterialShapes.Square.toShape()) {
+private fun SettingsTileIcon(icon: ImageVector, accent: Color, shape: Shape = MaterialShapes.Cookie4Sided.toShape()) {
     Box(
         modifier = Modifier
             .size(44.dp)
@@ -22769,32 +22792,113 @@ private fun SettingsTileText(title: String, subtitle: String, modifier: Modifier
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SettingsDetailHeader(title: String, icon: ImageVector, accent: Color, onBack: () -> Unit) {
+private fun SettingsDetailHeader(title: String, summary: String, icon: ImageVector, accent: Color, onBack: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 10.dp)
+            .padding(bottom = 18.dp)
     ) {
         LevyraBackButton(onClick = onBack, contentDescription = LocalLevyraStrings.current.back)
-        Text(
-            title,
-            color = LevyraText,
-            fontSize = 26.sp,
-            lineHeight = 30.sp,
-            fontWeight = FontWeight.Black,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                title,
+                color = LevyraText,
+                fontSize = 28.sp,
+                lineHeight = 32.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.semantics { heading() }
+            )
+            if (summary.isNotBlank()) {
+                Text(
+                    summary,
+                    color = LevyraMuted,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        Box(
             modifier = Modifier
-                .weight(1f)
-                .semantics { heading() }
-        )
-        SettingsTileIcon(icon = icon, accent = accent, shape = MaterialShapes.Cookie9Sided.toShape())
+                .size(52.dp)
+                .clip(MaterialShapes.Cookie9Sided.toShape())
+                .background(accent),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = LevyraBlack, modifier = Modifier.size(26.dp))
+        }
     }
 }
 
 private val LocalSettingsAccent = compositionLocalOf<Color?> { null }
+
+private val SettingsGroupGap = 2.dp
+
+@Immutable
+private data class SettingsGroupSlot(val index: Int, val count: Int)
+
+private val LocalSettingsGroupSlot = compositionLocalOf<SettingsGroupSlot?> { null }
+
+private class SettingsGroupCollector(private val delegate: LazyListScope) : LazyListScope by delegate {
+    private class Entry(
+        val key: Any?,
+        val contentType: Any?,
+        val standalone: Boolean,
+        val content: @Composable LazyItemScope.() -> Unit
+    )
+
+    private val entries = mutableListOf<Entry>()
+
+    override fun item(key: Any?, contentType: Any?, content: @Composable LazyItemScope.() -> Unit) {
+        entries += Entry(key, contentType, standalone = false, content = content)
+    }
+
+    override fun items(
+        count: Int,
+        key: ((index: Int) -> Any)?,
+        contentType: (index: Int) -> Any?,
+        itemContent: @Composable LazyItemScope.(index: Int) -> Unit
+    ) {
+        repeat(count) { index ->
+            entries += Entry(key?.invoke(index), contentType(index), standalone = false) { itemContent(index) }
+        }
+    }
+
+    fun standaloneItem(key: Any? = null, content: @Composable LazyItemScope.() -> Unit) {
+        entries += Entry(key, null, standalone = true, content = content)
+    }
+
+    fun flush() {
+        var start = 0
+        while (start < entries.size) {
+            val entry = entries[start]
+            if (entry.standalone) {
+                delegate.item(entry.key, entry.contentType, entry.content)
+                start++
+                continue
+            }
+            var end = start
+            while (end < entries.size && !entries[end].standalone) end++
+            for (position in start until end) {
+                val grouped = entries[position]
+                val slot = SettingsGroupSlot(position - start, end - start)
+                delegate.item(grouped.key, grouped.contentType) {
+                    CompositionLocalProvider(LocalSettingsGroupSlot provides slot) { grouped.content(this) }
+                }
+            }
+            start = end
+        }
+    }
+}
+
+private fun LazyListScope.settingsGroupedItems(block: SettingsGroupCollector.() -> Unit) {
+    SettingsGroupCollector(this).apply(block).flush()
+}
 
 @OptIn(ExperimentalLayoutApi::class)
 private fun visualPerformanceLabel(mode: LevyraVisualPerformance, strings: LevyraStrings): String = when (mode) {
@@ -22815,12 +22919,7 @@ private fun LyricsProviderPriorityCard(
     onOrdering: (LyricsProviderOrdering) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    Surface(
-        color = LevyraAdaptiveCard,
-        border = BorderStroke(1.dp, LevyraAdaptiveHairline),
-        shape = RoundedCornerShape(18.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    SettingsTile {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(strings.lyricsProviderPriority, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
@@ -23090,6 +23189,122 @@ private fun SettingsChoiceRow(
 }
 
 @Composable
+private fun PlayerColorModeSetting(
+    settings: LevyraInterfaceSettings,
+    onSettings: (LevyraInterfaceSettings) -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val mode = settings.playerColorMode
+    SettingsTile {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                SettingsTileIcon(icon = Icons.Rounded.ColorLens, accent = LocalSettingsAccent.current ?: LevyraViolet)
+                SettingsTileText(
+                    title = strings.playerColors,
+                    subtitle = strings.playerColorsSubtitle,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            PlayerColorModePreview(mode = mode, customAccent = settings.playerColorAccent)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                PlayerColorMode.entries.forEach { option ->
+                    SettingsChoiceChip(
+                        label = when (option) {
+                            PlayerColorMode.Dynamic -> strings.playerColorsDynamic
+                            PlayerColorMode.Theme -> strings.playerColorsTheme
+                            PlayerColorMode.Custom -> strings.playerColorsCustom
+                        },
+                        active = option == mode,
+                        onClick = { onSettings(settings.copy(playerColorMode = option)) }
+                    )
+                }
+            }
+            Text(
+                text = when (mode) {
+                    PlayerColorMode.Dynamic -> strings.playerColorsDynamicHint
+                    PlayerColorMode.Theme -> strings.playerColorsThemeHint
+                    PlayerColorMode.Custom -> strings.playerColorsCustomHint
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = LevyraMuted
+            )
+            if (mode == PlayerColorMode.Custom) {
+                MiniColorEditor(
+                    color = settings.playerColorAccent,
+                    copy = strings.miniPlayerStudioCopy,
+                    onColor = { onSettings(settings.copy(playerColorAccent = it)) }
+                )
+            }
+        }
+    }
+}
+
+private val PlayerColorPreviewSongs = listOf(
+    Color(0xFFE0566F) to Color(0xFFF2A65A),
+    Color(0xFF3D7BF0) to Color(0xFF39C6C0),
+    Color(0xFF7BC96F) to Color(0xFFE3D25B)
+)
+
+@Composable
+private fun PlayerColorModePreview(mode: PlayerColorMode, customAccent: Int) {
+    val theme = LevyraActivePalette
+    val fixed = remember(mode, customAccent, theme) { playerFixedAccents(mode, theme, customAccent) }
+    val animated = LocalAnimationsEnabled.current
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        PlayerColorPreviewSongs.forEach { (songPrimary, songSecondary) ->
+            val pair = fixed ?: harmonizePlayerAccents(songPrimary, songSecondary)
+            val ambience = remember(pair) { playerAmbienceOf(pair.primary, pair.secondary) }
+            val spec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween<Color>())
+            val top by animateColorAsState(ambience.tint, spec, label = "player-color-preview-top")
+            val bottom by animateColorAsState(ambience.base, spec, label = "player-color-preview-bottom")
+            val highlight by animateColorAsState(playerHighlightOf(pair.primary, pair.secondary), spec, label = "player-color-preview-accent")
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(72.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Brush.verticalGradient(listOf(top, bottom)))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .padding(10.dp)
+                        .size(22.dp)
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(Brush.linearGradient(listOf(songPrimary, songSecondary)))
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 10.dp)
+                        .size(20.dp)
+                        .clip(CircleShape)
+                        .background(highlight)
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = 10.dp, end = 10.dp, bottom = 12.dp)
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.16f))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.55f)
+                            .fillMaxHeight()
+                            .background(highlight)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun SettingsChoiceChip(label: String, active: Boolean, onClick: () -> Unit) {
     val corner = levyraExpressiveToggleCorner(active, unchecked = 12.dp, checkedCorner = 22.dp, label = "settingsChoiceCorner")
     Surface(
@@ -23130,12 +23345,7 @@ private fun DownloadQueueSettingsCard(
     onResume: (String) -> Unit,
     onCancel: (String) -> Unit
 ) {
-    Surface(
-        color = LevyraAdaptiveCard,
-        border = BorderStroke(1.dp, LevyraAdaptiveHairline),
-        shape = RoundedCornerShape(18.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    SettingsTile {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(LocalLevyraStrings.current.persistentQueue, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
             tasks.forEach { task ->
@@ -23178,7 +23388,9 @@ private fun SettingsSectionLabel(text: String) {
         fontSize = 14.sp,
         fontWeight = FontWeight.Bold,
         letterSpacing = 0.2.sp,
-        modifier = Modifier.padding(start = 6.dp, top = 14.dp, bottom = 2.dp)
+        modifier = Modifier
+            .padding(start = 8.dp, top = 18.dp, bottom = 8.dp)
+            .semantics { heading() }
     )
 }
 
@@ -23436,22 +23648,14 @@ internal fun LevyraLogoMark(
 }
 
 @Composable
-internal fun LevyraWordmark(fontSize: TextUnit = 30.sp, dotSize: Dp = 5.dp) {
-    Row(verticalAlignment = Alignment.Bottom) {
-        Text(
-            text = "LEVYRA",
-            color = LevyraText,
-            fontSize = fontSize,
-            fontWeight = FontWeight.Black,
-            letterSpacing = (-1.2).sp
-        )
-        Box(
-            modifier = Modifier
-                .padding(start = 3.dp, bottom = 4.dp)
-                .size(dotSize)
-                .background(LevyraCyan, CircleShape)
-        )
-    }
+internal fun LevyraWordmark(fontSize: TextUnit = 30.sp) {
+    Text(
+        text = "LEVYRA",
+        color = LevyraText,
+        fontSize = fontSize,
+        fontWeight = FontWeight.Black,
+        letterSpacing = (-1.2).sp
+    )
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -26108,7 +26312,8 @@ internal fun MiniPlayer(
     compaction: () -> Float,
     artworkHidden: () -> Boolean,
     playbackActions: MiniPlayerPlaybackActions,
-    expansionActions: MiniPlayerExpansionActions
+    expansionActions: MiniPlayerExpansionActions,
+    fixedAccents: PlayerAccentPair? = null
 ) {
     val track = model.track
     val isPlaying = model.isPlaying
@@ -26151,9 +26356,10 @@ internal fun MiniPlayer(
     val activePalette = artworkPaletteState.value
     val targetAccentStart = Color(activePalette.start)
     val targetAccentEnd = Color(activePalette.end)
-    val harmonizedTargets = remember(targetAccentStart, targetAccentEnd) {
+    val artworkTargets = remember(targetAccentStart, targetAccentEnd) {
         harmonizePlayerAccents(targetAccentStart, targetAccentEnd)
     }
+    val harmonizedTargets = fixedAccents ?: artworkTargets
     val accentStart by animateColorAsState(
         targetValue = harmonizedTargets.primary,
         animationSpec = if (animated) LevyraPlayerDesign.paletteTween() else snap(),

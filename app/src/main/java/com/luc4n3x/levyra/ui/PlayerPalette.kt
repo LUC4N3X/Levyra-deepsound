@@ -1,7 +1,14 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.PlayerColorMode
+import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
+import com.luc4n3x.levyra.ui.theme.LevyraPalette
+import kotlin.math.abs
 
 internal data class PlayerAccentPair(
     val primary: Color,
@@ -31,6 +38,41 @@ internal fun harmonizePlayerAccents(primary: Color, secondary: Color): PlayerAcc
         primary = redAnchor,
         secondary = redAnchor.playerPaletteMix(companionTarget, companionAmount)
     )
+}
+
+internal fun playerFixedAccents(mode: PlayerColorMode, theme: LevyraPalette, customAccent: Int): PlayerAccentPair? =
+    when (mode) {
+        PlayerColorMode.Dynamic -> null
+        PlayerColorMode.Theme -> playerThemeAccents(theme.blue, theme.pink)
+        PlayerColorMode.Custom -> playerAccentsFromSeed(Color(customAccent))
+    }
+
+@Composable
+internal fun rememberPlayerFixedAccents(settings: LevyraInterfaceSettings): PlayerAccentPair? {
+    val theme = LevyraActivePalette
+    return remember(settings.playerColorMode, settings.playerColorAccent, theme) {
+        playerFixedAccents(settings.playerColorMode, theme, settings.playerColorAccent)
+    }
+}
+
+internal fun playerThemeAccents(primary: Color, secondary: Color): PlayerAccentPair {
+    val first = primary.copy(alpha = 1f)
+    val second = secondary.copy(alpha = 1f)
+    val distance = abs(first.red - second.red) +
+        abs(first.green - second.green) +
+        abs(first.blue - second.blue)
+    return if (distance < 0.12f) playerAccentsFromSeed(first) else harmonizePlayerAccents(first, second)
+}
+
+internal fun playerAccentsFromSeed(seed: Color): PlayerAccentPair {
+    val primary = seed.copy(alpha = 1f)
+    val (hue, saturation, value) = primary.hsvComponents()
+    val secondary = Color.hsv(
+        hue = (hue + 32f).mod(360f),
+        saturation = (saturation * 0.82f).coerceIn(0f, 1f),
+        value = (value * 0.86f).coerceIn(0.18f, 1f)
+    )
+    return PlayerAccentPair(primary, secondary)
 }
 
 private fun Color.isPlayerRedDominant(): Boolean {
