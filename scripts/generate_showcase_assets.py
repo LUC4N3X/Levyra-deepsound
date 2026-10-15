@@ -684,15 +684,15 @@ def make_campaign_device(filename, width, border_color):
     )
     return device
 
-def paste_campaign_device(canvas, filename, width, center, angle, border_color):
+def paste_campaign_device(canvas, filename, width, horizontal_center, top, angle, border_color):
     device = make_campaign_device(filename, width, border_color)
     device = device.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
     shadow_alpha = device.getchannel("A").filter(ImageFilter.GaussianBlur(max(18, width // 18)))
     shadow_alpha = ImageEnhance.Brightness(shadow_alpha).enhance(0.42)
     shadow = Image.new("RGBA", device.size, (18, 12, 22, 0))
     shadow.putalpha(shadow_alpha)
-    x = round(center[0] - device.width / 2)
-    y = round(center[1] - device.height / 2)
+    x = round(horizontal_center - device.width / 2)
+    y = round(top)
     canvas.alpha_composite(shadow, (x + 20, y + 34))
     canvas.alpha_composite(device, (x, y))
 
@@ -726,7 +726,9 @@ def draw_readme_card_copy(draw, spec, theme, index, origin):
     title_y = y + 55
     draw.multiline_text((x, title_y), title, font=title_font, fill=theme["ink"], spacing=-8)
     title_box = draw.multiline_textbbox((x, title_y), title, font=title_font, spacing=-8)
-    draw.text((x, title_box[3] + 24), body, font=body_font, fill=theme["muted"])
+    body_y = title_box[3] + 24
+    draw.text((x, body_y), body, font=body_font, fill=theme["muted"])
+    return draw.textbbox((x, body_y), body, font=body_font)[3]
 
 def draw_readme_card_shapes(draw, theme, variant):
     if variant == 0:
@@ -753,17 +755,20 @@ def render_readme_card(spec, index):
     ribbon_centers = [(705, 920), (190, 930), (700, 1090), (170, 1030)]
     ribbon_angles = [-12, 13, -5, 18]
     paste_campaign_ribbon(canvas, 780, ribbon_centers[variant], 0.11, ribbon_angles[variant])
-    draw_readme_card_copy(draw, spec, theme, index, (72, 70))
+    copy_bottom = draw_readme_card_copy(draw, spec, theme, index, (72, 70))
 
     _, _, _, _, screenshot = spec
-    device_centers = [(575, 860), (455, 860), (575, 860), (455, 860)]
+    device_centers = [585, 445, 585, 445]
     angles = [-2.4, 2.0, -1.7, 2.4]
-    widths = [550, 550, 550, 550]
+    device_top = copy_bottom + 52
+    available_height = 1460 - device_top
+    device_width = min(500, max(430, int(available_height / 2.24)))
     paste_campaign_device(
         canvas,
         screenshot,
-        widths[variant],
+        device_width,
         device_centers[variant],
+        device_top,
         angles[variant],
         (22, 20, 24),
     )
