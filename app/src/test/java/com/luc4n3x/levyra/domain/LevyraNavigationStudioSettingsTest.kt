@@ -1,7 +1,9 @@
 package com.luc4n3x.levyra.domain
 
+import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.ui.i18n.navigationStudioCompleteLocalizationCodes
 import com.luc4n3x.levyra.ui.i18n.navigationStudioLocalizationCodes
+import com.luc4n3x.levyra.ui.navDockExtraClearance
 import com.luc4n3x.levyra.ui.navReorderStep
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -75,6 +77,65 @@ class LevyraNavigationStudioSettingsTest {
             navReorderStep(order, LevyraTab.Home, 60f, heights)
         )
         assertEquals(null, navReorderStep(order, LevyraTab.Home, 40f, heights))
+    }
+
+    @Test
+    fun legacyExpressiveFlagMigratesToMotion() {
+        val decoded = LevyraNavigationStudioSettings.decode(
+            """{"version":1,"style":"floating_dock","tunings":{"floating_dock":{"expressive":false,"height":70},"super_expressive":{"expressive":true,"height":84}}}"""
+        )
+        assertEquals(NavStyle.FloatingDock, decoded.style)
+        assertEquals(NavMotion.Minimal, decoded.tuningFor(NavStyle.FloatingDock).motion)
+        assertEquals(70, decoded.tuningFor(NavStyle.FloatingDock).heightDp)
+        assertEquals(NavMotion.Expressive, decoded.tuningFor(NavStyle.SuperExpressive).motion)
+    }
+
+    @Test
+    fun incompatibleChoicesFallBackToStyleDefaults() {
+        val minimal = NavTuning(indicator = NavIndicator.Floating, cornerDp = 99, opacity = 5, spacingDp = -3)
+            .normalized(NavStyle.Minimal)
+        assertEquals(NavIndicator.Dot, minimal.indicator)
+        assertEquals(LevyraNavigationStudioSettings.spec(NavStyle.Minimal).corner.last, minimal.cornerDp)
+        assertEquals(NavTuning.OPACITY_RANGE.first, minimal.opacity)
+        assertEquals(0, minimal.spacingDp)
+        val glass = NavTuning(background = NavBackground.Solid).normalized(NavStyle.LiquidGlass)
+        assertEquals(NavBackground.Translucent, glass.background)
+    }
+
+    @Test
+    fun richCustomizationRoundTrips() {
+        val style = NavStyle.LiquidGlass
+        val settings = LevyraNavigationStudioSettings()
+            .withStyle(style)
+            .updateTuning(style) {
+                it.copy(
+                    labels = NavLabelMode.Compact,
+                    indicator = NavIndicator.Circle,
+                    motion = NavMotion.Off,
+                    colorSource = NavColorSource.Custom,
+                    accent = 0x00FF8A65,
+                    surfaceTone = NavSurfaceTone.Amoled,
+                    indicatorTone = NavIndicatorTone.Vivid,
+                    opacity = 60,
+                    inactiveAlpha = 70,
+                    cornerDp = 28,
+                    spacingDp = 8,
+                    paddingDp = 12,
+                    indicatorScale = 115,
+                    haptics = false
+                )
+            }
+        assertEquals(0xFFFF8A65.toInt(), settings.activeTuning().accent)
+        assertEquals(settings, LevyraNavigationStudioSettings.decode(settings.encode()))
+    }
+
+    @Test
+    fun onlyStyledBarsReserveExtraContentSpace() {
+        assertEquals(0.dp, navDockExtraClearance(NavStyle.Original, NavTuning(heightDp = 120)))
+        val tall = LevyraNavigationStudioSettings.spec(NavStyle.SuperExpressive).defaults.copy(heightDp = 88)
+        assertEquals(12.dp, navDockExtraClearance(NavStyle.SuperExpressive, tall))
+        val floating = LevyraNavigationStudioSettings.spec(NavStyle.FloatingDock).defaults
+        assertEquals(0.dp, navDockExtraClearance(NavStyle.FloatingDock, floating))
     }
 
     @Test

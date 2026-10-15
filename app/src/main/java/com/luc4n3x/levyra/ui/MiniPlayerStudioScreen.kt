@@ -1153,7 +1153,7 @@ private fun MiniShapePicker(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun MiniColorEditor(color: Int, copy: MiniPlayerStudioCopy, onColor: (Int) -> Unit) {
+internal fun MiniColorEditor(color: Int, copy: MiniPlayerStudioCopy, onColor: (Int) -> Unit) {
     val scheme = MaterialTheme.colorScheme
     var text by remember(color) { mutableStateOf(formatMiniHexColor(color)) }
     val parsed = parseMiniHexColor(text)

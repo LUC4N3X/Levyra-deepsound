@@ -4,10 +4,13 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import android.os.Build
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -33,6 +36,8 @@ import androidx.compose.material.icons.rounded.DragIndicator
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -70,10 +75,15 @@ import androidx.compose.ui.zIndex
 import com.luc4n3x.levyra.domain.LevyraNavigationStudioSettings
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.NavBackground
+import com.luc4n3x.levyra.domain.NavColorSource
 import com.luc4n3x.levyra.domain.NavDestinations
 import com.luc4n3x.levyra.domain.NavIndicator
+import com.luc4n3x.levyra.domain.NavIndicatorTone
 import com.luc4n3x.levyra.domain.NavLabelMode
+import com.luc4n3x.levyra.domain.NavMotion
 import com.luc4n3x.levyra.domain.NavStyle
+import com.luc4n3x.levyra.domain.NavStyleSpec
+import com.luc4n3x.levyra.domain.NavSurfaceTone
 import com.luc4n3x.levyra.domain.NavTuning
 import com.luc4n3x.levyra.ui.components.LevyraAdaptiveDockSurface
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
@@ -82,6 +92,7 @@ import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.NavStudioText
 import com.luc4n3x.levyra.ui.i18n.NavigationStudioCopy
 import com.luc4n3x.levyra.ui.i18n.homeStudioCopy
+import com.luc4n3x.levyra.ui.i18n.miniPlayerStudioCopy
 import com.luc4n3x.levyra.ui.i18n.navigationStudioCopy
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
@@ -99,6 +110,7 @@ internal fun navigationStyleName(style: NavStyle): String = when (style) {
     NavStyle.FloatingDock -> "Floating Dock"
     NavStyle.Minimal -> "Minimal"
     NavStyle.ExpressiveCompact -> "Expressive Compact"
+    NavStyle.LiquidGlass -> "Liquid Glass"
 }
 
 private fun navigationStyleDescription(style: NavStyle, copy: NavigationStudioCopy): String = when (style) {
@@ -107,6 +119,7 @@ private fun navigationStyleDescription(style: NavStyle, copy: NavigationStudioCo
     NavStyle.FloatingDock -> copy[NavStudioText.DescFloating]
     NavStyle.Minimal -> copy[NavStudioText.DescMinimal]
     NavStyle.ExpressiveCompact -> copy[NavStudioText.DescCompact]
+    NavStyle.LiquidGlass -> copy[NavStudioText.DescLiquidGlass]
 }
 
 internal fun navReorderStep(
@@ -323,7 +336,7 @@ internal fun NavigationStudioOverlay(
                         onVisible = { shown -> commit(tuning.withVisibility(tab, shown)) }
                     )
                 }
-                navOptionItems(tuning, spec.height, copy, preview, commit)
+                navOptionItems(tuning, spec, copy, preview, commit)
                 item(key = "nav-reset-style", contentType = "actions") {
                     OutlinedButton(
                         onClick = {
@@ -366,46 +379,58 @@ internal fun NavigationStudioOverlay(
 
 private fun LazyListScope.navOptionItems(
     tuning: NavTuning,
-    heightRange: IntRange,
+    spec: NavStyleSpec,
     copy: NavigationStudioCopy,
     preview: (NavTuning) -> Unit,
     commit: (NavTuning) -> Unit
 ) {
-    item(key = "nav-labels", contentType = "group") {
-        MiniStudioGroup(copy[NavStudioText.Labels]) {
+    item(key = "nav-indicator", contentType = "group") {
+        MiniStudioGroup(copy[NavStudioText.Indicator]) {
+            NavChoiceChips(
+                options = spec.indicators,
+                selected = tuning.indicator,
+                label = { navIndicatorLabel(it, copy) },
+                onSelect = { commit(tuning.copy(indicator = it)) }
+            )
+            MiniStudioCaption(copy[NavStudioText.IndicatorColor])
             MiniStudioChoice(
+                options = NavIndicatorTone.entries,
+                selected = tuning.indicatorTone,
+                label = { tone ->
+                    when (tone) {
+                        NavIndicatorTone.Tonal -> copy[NavStudioText.ToneTonal]
+                        NavIndicatorTone.Vivid -> copy[NavStudioText.ToneVivid]
+                        NavIndicatorTone.Neutral -> copy[NavStudioText.ToneNeutral]
+                    }
+                },
+                onSelect = { commit(tuning.copy(indicatorTone = it)) }
+            )
+            MiniStudioSlider(
+                title = copy[NavStudioText.IndicatorSize],
+                value = tuning.indicatorScale,
+                range = NavTuning.INDICATOR_SCALE_RANGE,
+                unit = "%",
+                onPreview = { preview(tuning.copy(indicatorScale = it)) },
+                onCommit = { commit(tuning.copy(indicatorScale = it)) }
+            )
+        }
+    }
+    item(key = "nav-icons-labels", contentType = "group") {
+        MiniStudioGroup(copy[NavStudioText.IconsLabels]) {
+            MiniStudioCaption(copy[NavStudioText.Labels])
+            NavChoiceChips(
                 options = NavLabelMode.entries,
                 selected = tuning.labels,
                 label = { mode ->
                     when (mode) {
                         NavLabelMode.Always -> copy[NavStudioText.LabelsAlways]
                         NavLabelMode.ActiveOnly -> copy[NavStudioText.LabelsActive]
+                        NavLabelMode.Compact -> copy[NavStudioText.LabelsCompact]
                         NavLabelMode.Never -> copy[NavStudioText.LabelsNever]
                     }
                 },
                 onSelect = { commit(tuning.copy(labels = it)) }
             )
-        }
-    }
-    item(key = "nav-indicator", contentType = "group") {
-        MiniStudioGroup(copy[NavStudioText.Indicator]) {
-            MiniStudioChoice(
-                options = NavIndicator.entries,
-                selected = tuning.indicator,
-                label = { indicator ->
-                    when (indicator) {
-                        NavIndicator.Pill -> copy[NavStudioText.IndicatorPill]
-                        NavIndicator.Morph -> copy[NavStudioText.IndicatorMorph]
-                        NavIndicator.Dot -> copy[NavStudioText.IndicatorDot]
-                        NavIndicator.Line -> copy[NavStudioText.IndicatorLine]
-                    }
-                },
-                onSelect = { commit(tuning.copy(indicator = it)) }
-            )
-        }
-    }
-    item(key = "nav-size", contentType = "group") {
-        MiniStudioGroup(copy[NavStudioText.Size]) {
             MiniStudioSlider(
                 title = copy[NavStudioText.IconSize],
                 value = tuning.iconDp,
@@ -415,45 +440,193 @@ private fun LazyListScope.navOptionItems(
                 onCommit = { commit(tuning.copy(iconDp = it)) }
             )
             MiniStudioSlider(
+                title = copy[NavStudioText.InactiveIcons],
+                value = tuning.inactiveAlpha,
+                range = NavTuning.INACTIVE_RANGE,
+                unit = "%",
+                onPreview = { preview(tuning.copy(inactiveAlpha = it)) },
+                onCommit = { commit(tuning.copy(inactiveAlpha = it)) }
+            )
+        }
+    }
+    item(key = "nav-colors", contentType = "group") {
+        val strings = LocalLevyraStrings.current
+        MiniStudioGroup(copy[NavStudioText.Colors]) {
+            MiniStudioCaption(copy[NavStudioText.ColorSource])
+            MiniStudioChoice(
+                options = NavColorSource.entries,
+                selected = tuning.colorSource,
+                label = { source ->
+                    when (source) {
+                        NavColorSource.Theme -> copy[NavStudioText.ColorTheme]
+                        NavColorSource.Dynamic -> copy[NavStudioText.ColorDynamic]
+                        NavColorSource.Custom -> copy[NavStudioText.ColorCustom]
+                    }
+                },
+                onSelect = { commit(tuning.copy(colorSource = it)) }
+            )
+            if (tuning.colorSource == NavColorSource.Dynamic && Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+                Text(copy[NavStudioText.DynamicUnavailable], style = MaterialTheme.typography.bodySmall, color = LevyraMuted)
+            }
+            if (tuning.colorSource == NavColorSource.Custom) {
+                MiniColorEditor(
+                    color = tuning.accent,
+                    copy = strings.miniPlayerStudioCopy,
+                    onColor = { commit(tuning.copy(accent = it)) }
+                )
+            }
+            MiniStudioCaption(copy[NavStudioText.Surface])
+            NavChoiceChips(
+                options = NavSurfaceTone.entries,
+                selected = tuning.surfaceTone,
+                label = { tone ->
+                    when (tone) {
+                        NavSurfaceTone.Auto -> copy[NavStudioText.SurfaceAuto]
+                        NavSurfaceTone.Light -> copy[NavStudioText.SurfaceLight]
+                        NavSurfaceTone.Dark -> copy[NavStudioText.SurfaceDark]
+                        NavSurfaceTone.Amoled -> copy[NavStudioText.SurfaceAmoled]
+                    }
+                },
+                onSelect = { commit(tuning.copy(surfaceTone = it)) }
+            )
+            if (spec.backgrounds.size > 1) {
+                MiniStudioCaption(copy[NavStudioText.Background])
+                MiniStudioChoice(
+                    options = spec.backgrounds,
+                    selected = tuning.background,
+                    label = { background ->
+                        when (background) {
+                            NavBackground.Solid -> copy[NavStudioText.BgSolid]
+                            NavBackground.Gradient -> copy[NavStudioText.BgGradient]
+                            NavBackground.Translucent -> copy[NavStudioText.BgTranslucent]
+                        }
+                    },
+                    onSelect = { commit(tuning.copy(background = it)) }
+                )
+            }
+            if (tuning.background == NavBackground.Translucent) {
+                MiniStudioSlider(
+                    title = copy[NavStudioText.Opacity],
+                    value = tuning.opacity,
+                    range = NavTuning.OPACITY_RANGE,
+                    unit = "%",
+                    onPreview = { preview(tuning.copy(opacity = it)) },
+                    onCommit = { commit(tuning.copy(opacity = it)) }
+                )
+            }
+            Text(copy[NavStudioText.ContrastHint], style = MaterialTheme.typography.bodySmall, color = LevyraMuted)
+        }
+    }
+    item(key = "nav-size", contentType = "group") {
+        MiniStudioGroup(copy[NavStudioText.Size]) {
+            MiniStudioSlider(
                 title = copy[NavStudioText.Height],
                 value = tuning.heightDp,
-                range = heightRange,
+                range = spec.height,
                 unit = "dp",
                 onPreview = { preview(tuning.copy(heightDp = it)) },
                 onCommit = { commit(tuning.copy(heightDp = it)) }
             )
-        }
-    }
-    item(key = "nav-background", contentType = "group") {
-        MiniStudioGroup(copy[NavStudioText.Background]) {
-            MiniStudioChoice(
-                options = NavBackground.entries,
-                selected = tuning.background,
-                label = { background ->
-                    when (background) {
-                        NavBackground.Solid -> copy[NavStudioText.BgSolid]
-                        NavBackground.Gradient -> copy[NavStudioText.BgGradient]
-                        NavBackground.Translucent -> copy[NavStudioText.BgTranslucent]
-                    }
-                },
-                onSelect = { commit(tuning.copy(background = it)) }
-            )
-        }
-    }
-    item(key = "nav-effects", contentType = "group") {
-        MiniStudioGroup(copy[NavStudioText.Effects]) {
-            MiniStudioSwitch(
-                title = copy[NavStudioText.ExpressiveMotion],
-                checked = tuning.expressiveMotion,
-                onCheckedChange = { commit(tuning.copy(expressiveMotion = it)) }
+            if (spec.corner.last > spec.corner.first) {
+                MiniStudioSlider(
+                    title = copy[NavStudioText.Corners],
+                    value = tuning.cornerDp,
+                    range = spec.corner,
+                    unit = "dp",
+                    onPreview = { preview(tuning.copy(cornerDp = it)) },
+                    onCommit = { commit(tuning.copy(cornerDp = it)) }
+                )
+            }
+            MiniStudioSlider(
+                title = copy[NavStudioText.Spacing],
+                value = tuning.spacingDp,
+                range = NavTuning.SPACING_RANGE,
+                unit = "dp",
+                onPreview = { preview(tuning.copy(spacingDp = it)) },
+                onCommit = { commit(tuning.copy(spacingDp = it)) }
             )
             MiniStudioSlider(
-                title = copy[NavStudioText.Intensity],
-                value = tuning.intensity,
-                range = 0..100,
-                unit = "%",
-                onPreview = { preview(tuning.copy(intensity = it)) },
-                onCommit = { commit(tuning.copy(intensity = it)) }
+                title = copy[NavStudioText.Padding],
+                value = tuning.paddingDp,
+                range = NavTuning.PADDING_RANGE,
+                unit = "dp",
+                onPreview = { preview(tuning.copy(paddingDp = it)) },
+                onCommit = { commit(tuning.copy(paddingDp = it)) }
+            )
+        }
+    }
+    item(key = "nav-motion", contentType = "group") {
+        MiniStudioGroup(copy[NavStudioText.Motion]) {
+            NavChoiceChips(
+                options = NavMotion.entries,
+                selected = tuning.motion,
+                label = { motion ->
+                    when (motion) {
+                        NavMotion.Standard -> copy[NavStudioText.MotionStandard]
+                        NavMotion.Expressive -> copy[NavStudioText.MotionExpressive]
+                        NavMotion.Spring -> copy[NavStudioText.MotionSpring]
+                        NavMotion.Minimal -> copy[NavStudioText.MotionMinimal]
+                        NavMotion.Off -> copy[NavStudioText.MotionOff]
+                    }
+                },
+                onSelect = { commit(tuning.copy(motion = it)) }
+            )
+            if (tuning.motion != NavMotion.Off && tuning.motion != NavMotion.Minimal) {
+                MiniStudioSlider(
+                    title = copy[NavStudioText.Intensity],
+                    value = tuning.intensity,
+                    range = 0..100,
+                    unit = "%",
+                    onPreview = { preview(tuning.copy(intensity = it)) },
+                    onCommit = { commit(tuning.copy(intensity = it)) }
+                )
+            }
+        }
+    }
+    item(key = "nav-advanced", contentType = "group") {
+        MiniStudioGroup(copy[NavStudioText.Advanced]) {
+            MiniStudioSwitch(
+                title = copy[NavStudioText.Haptics],
+                checked = tuning.haptics,
+                onCheckedChange = { commit(tuning.copy(haptics = it)) }
+            )
+        }
+    }
+}
+
+private fun navIndicatorLabel(indicator: NavIndicator, copy: NavigationStudioCopy): String = when (indicator) {
+    NavIndicator.Pill -> copy[NavStudioText.IndicatorPill]
+    NavIndicator.Morph -> copy[NavStudioText.IndicatorMorph]
+    NavIndicator.Dot -> copy[NavStudioText.IndicatorDot]
+    NavIndicator.Line -> copy[NavStudioText.IndicatorLine]
+    NavIndicator.Circle -> copy[NavStudioText.IndicatorCircle]
+    NavIndicator.Floating -> copy[NavStudioText.IndicatorFloating]
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun <T> NavChoiceChips(
+    options: List<T>,
+    selected: T,
+    label: (T) -> String,
+    onSelect: (T) -> Unit
+) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        options.forEach { option ->
+            val active = option == selected
+            FilterChip(
+                selected = active,
+                onClick = { onSelect(option) },
+                label = { Text(label(option), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                leadingIcon = if (active) {
+                    { Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(FilterChipDefaults.IconSize)) }
+                } else {
+                    null
+                },
+                shape = RoundedCornerShape(12.dp)
             )
         }
     }
