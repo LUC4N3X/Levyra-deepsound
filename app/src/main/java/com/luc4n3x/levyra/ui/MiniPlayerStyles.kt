@@ -339,7 +339,6 @@ internal fun StyledMiniPlayer(
     val track = model.track
     val liveRadio = track.isLiveRadio()
     val animated = model.animated && tuning.motion != MiniMotion.Reduced
-    val strings = LocalLevyraStrings.current
     val haptics = LocalLevyraHaptics.current
     val palette = rememberMiniPlayerPalette(style, tuning, track, model.animated)
     val progressState = animateFloatAsState(
@@ -350,26 +349,9 @@ internal fun StyledMiniPlayer(
     val progress: () -> Float = { progressState.value }
     val swipe = rememberPlayerSwipeMotion(animated)
     val layout = remember(style, tuning) { StyledMiniLayout(style, tuning) }
-    val dockCompaction = if (style == MiniPlayerStyle.YtMusic) StyledMiniFixedDock else compaction
+    val dockCompaction = miniDockCompaction(style, compaction)
     val containerShape = rememberMiniContainerShape(style, tuning, layout.height, model.isPlaying, animated)
-    val interaction = if (interactive) {
-        Modifier.miniInteraction(
-            trackId = track.id,
-            model = model,
-            horizontalGesturesEnabled = miniPlayerHorizontalGesturesEnabled(
-                gesturesEnabled = model.gesturesEnabled,
-                swipeTrackChangeEnabled = model.swipeTrackChangeEnabled,
-                liveRadio = liveRadio
-            ),
-            rightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl,
-            playbackActions = playbackActions,
-            expansionActions = expansionActions,
-            swipe = swipe,
-            expandLabel = strings.expandPlayer
-        )
-    } else {
-        Modifier
-    }
+    val interaction = rememberMiniInteraction(interactive, model, liveRadio, playbackActions, expansionActions, swipe)
 
     Box(
         modifier = Modifier
@@ -387,19 +369,14 @@ internal fun StyledMiniPlayer(
                 .miniOutline(style, palette, containerShape)
                 .then(interaction)
         ) {
-            if (style == MiniPlayerStyle.ArtworkFocus && tuning.background == MiniBackground.Artwork) {
-                MiniArtworkBackdrop(track = track, palette = palette)
-            }
-            if (tuning.progress == MiniProgressStyle.Fill && !liveRadio) {
-                MiniFillProgress(progress = progress, palette = palette)
-            }
+            MiniBackdropLayers(style, tuning, track, palette, progress, liveRadio)
             Row(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(
                         start = miniContentStart(style, tuning),
                         end = 6.dp,
-                        bottom = if (tuning.progress == MiniProgressStyle.Wavy) 4.dp else 0.dp
+                        bottom = miniContentBottom(tuning)
                     ),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -445,6 +422,55 @@ internal fun StyledMiniPlayer(
                 )
             }
         }
+    }
+}
+
+private fun miniDockCompaction(style: MiniPlayerStyle, compaction: () -> Float): () -> Float =
+    if (style == MiniPlayerStyle.YtMusic) StyledMiniFixedDock else compaction
+
+private fun miniContentBottom(tuning: MiniPlayerTuning): Dp =
+    if (tuning.progress == MiniProgressStyle.Wavy) 4.dp else 0.dp
+
+@Composable
+private fun rememberMiniInteraction(
+    interactive: Boolean,
+    model: MiniPlayerModel,
+    liveRadio: Boolean,
+    playbackActions: MiniPlayerPlaybackActions,
+    expansionActions: MiniPlayerExpansionActions,
+    swipe: PlayerSwipeMotion
+): Modifier {
+    if (!interactive) return Modifier
+    return Modifier.miniInteraction(
+        trackId = model.track.id,
+        model = model,
+        horizontalGesturesEnabled = miniPlayerHorizontalGesturesEnabled(
+            gesturesEnabled = model.gesturesEnabled,
+            swipeTrackChangeEnabled = model.swipeTrackChangeEnabled,
+            liveRadio = liveRadio
+        ),
+        rightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl,
+        playbackActions = playbackActions,
+        expansionActions = expansionActions,
+        swipe = swipe,
+        expandLabel = LocalLevyraStrings.current.expandPlayer
+    )
+}
+
+@Composable
+private fun MiniBackdropLayers(
+    style: MiniPlayerStyle,
+    tuning: MiniPlayerTuning,
+    track: Track,
+    palette: MiniPlayerPalette,
+    progress: () -> Float,
+    liveRadio: Boolean
+) {
+    if (style == MiniPlayerStyle.ArtworkFocus && tuning.background == MiniBackground.Artwork) {
+        MiniArtworkBackdrop(track = track, palette = palette)
+    }
+    if (tuning.progress == MiniProgressStyle.Fill && !liveRadio) {
+        MiniFillProgress(progress = progress, palette = palette)
     }
 }
 
