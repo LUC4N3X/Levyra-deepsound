@@ -8,7 +8,8 @@ enum class MiniPlayerStyle(val storageId: String) {
     Floating("floating"),
     LiquidGlass("liquid_glass"),
     UltraCompact("ultra_compact"),
-    ArtworkFocus("artwork_focus");
+    ArtworkFocus("artwork_focus"),
+    YtMusic("yt_music");
 
     companion object {
         fun from(value: String?): MiniPlayerStyle = entries.firstOrNull { it.storageId == value } ?: Original
@@ -491,6 +492,43 @@ data class LevyraMiniPlayerStudioSettings(
             )
         )
 
+        private val ytMusicSpec = MiniPlayerSpec(
+            options = setOf(
+                MiniTuningOption.Height,
+                MiniTuningOption.ArtworkSize,
+                MiniTuningOption.Progress,
+                MiniTuningOption.ControlScale,
+                MiniTuningOption.Controls,
+                MiniTuningOption.ShowClose,
+                MiniTuningOption.Typography
+            ),
+            height = 56..72,
+            corner = 0..0,
+            inset = 0..0,
+            artwork = 40..56,
+            opacity = 100..100,
+            progressStyles = listOf(MiniProgressStyle.Line, MiniProgressStyle.Hidden),
+            buttonStyles = listOf(MiniButtonStyle.Plain),
+            backgrounds = listOf(MiniBackground.Solid),
+            defaults = baseTuning.copy(
+                heightDp = 64,
+                cornerDp = 0,
+                insetDp = 0,
+                artworkShape = MiniArtworkShape.Square,
+                artworkDp = 48,
+                shadow = 0,
+                glow = 0,
+                opacity = 100,
+                progress = MiniProgressStyle.Line,
+                buttons = MiniButtonStyle.Plain,
+                controlScale = 115,
+                controls = MiniControlSet.Full,
+                showClose = false,
+                colorMode = MiniColorMode.Theme,
+                background = MiniBackground.Solid
+            )
+        )
+
         fun spec(style: MiniPlayerStyle): MiniPlayerSpec = when (style) {
             MiniPlayerStyle.Original -> originalSpec
             MiniPlayerStyle.SuperExpressive -> superExpressiveSpec
@@ -498,6 +536,7 @@ data class LevyraMiniPlayerStudioSettings(
             MiniPlayerStyle.LiquidGlass -> liquidGlassSpec
             MiniPlayerStyle.UltraCompact -> ultraCompactSpec
             MiniPlayerStyle.ArtworkFocus -> artworkFocusSpec
+            MiniPlayerStyle.YtMusic -> ytMusicSpec
         }
 
         fun decode(raw: String?): LevyraMiniPlayerStudioSettings {
