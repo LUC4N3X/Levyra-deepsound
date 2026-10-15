@@ -37,4 +37,12 @@
     <string name="shortcut_library">লাইব্রেরি</string>
     <string name="shortcut_recognition">গান শনাক্ত করুন</string>
     <string name="shortcut_resume">প্লেব্যাক আবার শুরু করুন</string>
+    <string name="widget_original_label">আসল (ডিফল্ট)</string>
+    <string name="widget_studio_mini_desc">কভারসহ কমপ্যাক্ট প্লেয়ার</string>
+    <string name="widget_studio_slim_desc">এক সারিতে সরু নিয়ন্ত্রণ</string>
+    <string name="widget_studio_expressive_desc">অগ্রগতিসহ পূর্ণ প্লেয়ার</string>
+    <string name="widget_studio_hero_desc">বড় কভার, প্রিমিয়াম প্লেয়ার</string>
+    <string name="widget_studio_immersive_desc">কভার, সারি, গানের কথা এবং আরও</string>
+    <string name="widget_studio_vinyl_desc">ভিনাইল ধাঁচের কভারসহ প্লেয়ার</string>
+    <string name="widget_studio_quick_desc">Flow, প্রিয়, ডাউনলোড এবং আরও</string>
 </resources>

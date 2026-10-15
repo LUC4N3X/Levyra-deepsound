@@ -37,4 +37,12 @@
     <string name="shortcut_library">کتابخانه</string>
     <string name="shortcut_recognition">تشخیص موسیقی</string>
     <string name="shortcut_resume">ادامه پخش</string>
+    <string name="widget_original_label">اصلی (پیش‌فرض)</string>
+    <string name="widget_studio_mini_desc">پخش‌کننده جمع‌وجور با کاور</string>
+    <string name="widget_studio_slim_desc">کنترل‌های باریک در یک ردیف</string>
+    <string name="widget_studio_expressive_desc">پخش‌کننده کامل با نوار پیشرفت</string>
+    <string name="widget_studio_hero_desc">کاور بزرگ، پخش‌کننده ممتاز</string>
+    <string name="widget_studio_immersive_desc">کاور، صف، متن آهنگ و بیشتر</string>
+    <string name="widget_studio_vinyl_desc">پخش‌کننده با کاور به سبک صفحه گرامافون</string>
+    <string name="widget_studio_quick_desc">Flow، علاقه‌مندی‌ها، دانلودها و بیشتر</string>
 </resources>

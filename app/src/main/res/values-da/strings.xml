@@ -37,4 +37,12 @@
     <string name="shortcut_library">Bibliotek</string>
     <string name="shortcut_recognition">Genkend musik</string>
     <string name="shortcut_resume">Genoptag afspilning</string>
+    <string name="widget_original_label">Original (standard)</string>
+    <string name="widget_studio_mini_desc">Kompakt afspiller med cover</string>
+    <string name="widget_studio_slim_desc">Slanke kontroller på én linje</string>
+    <string name="widget_studio_expressive_desc">Fuld afspiller med fremskridt</string>
+    <string name="widget_studio_hero_desc">Stort cover, premium-afspiller</string>
+    <string name="widget_studio_immersive_desc">Cover, kø, sangtekster og mere</string>
+    <string name="widget_studio_vinyl_desc">Afspiller med cover i vinylstil</string>
+    <string name="widget_studio_quick_desc">Flow, favoritter, downloads og mere</string>
 </resources>

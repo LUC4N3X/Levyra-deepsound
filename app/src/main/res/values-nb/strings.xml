@@ -37,4 +37,12 @@
     <string name="shortcut_library">Bibliotek</string>
     <string name="shortcut_recognition">Gjenkjenn musikk</string>
     <string name="shortcut_resume">Fortsett avspilling</string>
+    <string name="widget_original_label">Original (standard)</string>
+    <string name="widget_studio_mini_desc">Kompakt spiller med omslag</string>
+    <string name="widget_studio_slim_desc">Slanke kontroller på én rad</string>
+    <string name="widget_studio_expressive_desc">Full spiller med fremdrift</string>
+    <string name="widget_studio_hero_desc">Stort omslag, premium-spiller</string>
+    <string name="widget_studio_immersive_desc">Omslag, kø, sangtekster og mer</string>
+    <string name="widget_studio_vinyl_desc">Spiller med omslag i vinylstil</string>
+    <string name="widget_studio_quick_desc">Flow, favoritter, nedlastinger og mer</string>
 </resources>

@@ -37,4 +37,12 @@
     <string name="shortcut_library">المكتبة</string>
     <string name="shortcut_recognition">التعرّف على الموسيقى</string>
     <string name="shortcut_resume">استئناف التشغيل</string>
+    <string name="widget_original_label">الأصلي (افتراضي)</string>
+    <string name="widget_studio_mini_desc">مشغّل مدمج مع الغلاف</string>
+    <string name="widget_studio_slim_desc">عناصر تحكّم رفيعة في صف واحد</string>
+    <string name="widget_studio_expressive_desc">مشغّل كامل مع شريط التقدّم</string>
+    <string name="widget_studio_hero_desc">غلاف كبير، مشغّل مميّز</string>
+    <string name="widget_studio_immersive_desc">الغلاف وقائمة الانتظار والكلمات والمزيد</string>
+    <string name="widget_studio_vinyl_desc">مشغّل بغلاف على طراز أسطوانة الفينيل</string>
+    <string name="widget_studio_quick_desc">Flow والمفضلة والتنزيلات والمزيد</string>
 </resources>
