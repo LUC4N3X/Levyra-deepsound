@@ -220,7 +220,7 @@ private fun buildNavColors(scheme: ColorScheme, capsule: Boolean, tuning: NavTun
     val themedTonal = tuning.surfaceTone == NavSurfaceTone.Auto && !custom
     val (indicator, onIndicatorSeed) = navIndicatorPair(tuning.indicatorTone, scheme, palette, accent, themedTonal)
     val mark = accent.navReadableOn(surface, NavIconContrast)
-    val inactiveBase = if (tuning.indicator == NavIndicator.None) mark else palette.variant
+    val inactiveBase = if (tuning.indicator == NavIndicator.None) palette.content else palette.variant
     val inactive = inactiveBase.navAlphaReadableOn(surface, tuning.inactiveAlpha / 100f, NavIconContrast)
     return NavColors(
         surface = surface,
