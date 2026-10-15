@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/studio_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/studio_art_full"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:importantForAccessibility="no" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="14dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+            <ImageView
+                android:id="@+id/studio_badge"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginEnd="8dp"
+                android:src="@drawable/ic_widget_playing"
+                android:importantForAccessibility="no" />
+            <TextView
+                android:id="@+id/studio_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="sans-serif-medium"
+                android:textSize="12sp"
+                android:letterSpacing="0.08"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:includeFontPadding="false" />
+            <FrameLayout
+                android:id="@+id/studio_slot3"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:visibility="gone">
+                <ImageView
+                    android:id="@+id/studio_slot3_bg"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitXY"
+                    android:src="@drawable/studio_shape_circle"
+                    android:importantForAccessibility="no" />
+                <ImageView
+                    android:id="@+id/studio_slot3_icon"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:scaleType="fitCenter" />
+            </FrameLayout>
+        </LinearLayout>
+
+        <FrameLayout
+            android:layout_width="1dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/studio_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-medium"
+            android:textSize="24sp"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:layout_marginEnd="4dp" />
+        <TextView
+            android:id="@+id/studio_artist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif"
+            android:textSize="15sp"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:layout_marginTop="6dp" />
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="14dp" />
+
+        <LinearLayout
+            android:id="@+id/studio_progress_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+            <Chronometer
+                android:id="@+id/studio_elapsed"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:textSize="12sp"
+                android:includeFontPadding="false" />
+            <ImageView
+                android:id="@+id/studio_progress"
+                android:layout_width="0dp"
+                android:layout_height="14dp"
+                android:layout_weight="1"
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="10dp"
+                android:scaleType="fitXY"
+                android:importantForAccessibility="no" />
+            <TextView
+                android:id="@+id/studio_duration"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:textSize="12sp"
+                android:includeFontPadding="false" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+            <FrameLayout
+                android:id="@+id/studio_slot1"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:visibility="gone">
+                <ImageView
+                    android:id="@+id/studio_slot1_bg"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitXY"
+                    android:src="@drawable/studio_shape_circle"
+                    android:importantForAccessibility="no" />
+                <ImageView
+                    android:id="@+id/studio_slot1_icon"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:scaleType="fitCenter" />
+            </FrameLayout>
+            <FrameLayout
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+            <ImageView
+                android:id="@+id/studio_previous"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:padding="11dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_studio_previous"
+                android:contentDescription="@string/widget_previous" />
+            <FrameLayout
+                android:id="@+id/studio_play"
+                android:layout_width="76dp"
+                android:layout_height="76dp"
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="10dp">
+                <ImageView
+                    android:id="@+id/studio_play_bg"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitXY"
+                    android:src="@drawable/studio_shape_circle"
+                    android:importantForAccessibility="no" />
+                <ImageView
+                    android:id="@+id/studio_play_icon"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:layout_gravity="center"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_studio_play"
+                    android:contentDescription="@string/widget_toggle" />
+            </FrameLayout>
+            <ImageView
+                android:id="@+id/studio_next"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:padding="11dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_studio_next"
+                android:contentDescription="@string/widget_next" />
+            <FrameLayout
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+            <FrameLayout
+                android:id="@+id/studio_slot2"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:visibility="gone">
+                <ImageView
+                    android:id="@+id/studio_slot2_bg"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitXY"
+                    android:src="@drawable/studio_shape_circle"
+                    android:importantForAccessibility="no" />
+                <ImageView
+                    android:id="@+id/studio_slot2_icon"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:scaleType="fitCenter" />
+            </FrameLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/studio_slot_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal"
+            android:visibility="gone">
+            <FrameLayout
+                android:id="@+id/studio_slot4"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:layout_marginStart="3dp"
+                android:layout_marginEnd="3dp"
+                android:visibility="gone">
+                <ImageView
+                    android:id="@+id/studio_slot4_bg"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitXY"
+                    android:src="@drawable/studio_shape_pill"
+                    android:importantForAccessibility="no" />
+                <ImageView
+                    android:id="@+id/studio_slot4_icon"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center"
+                    android:scaleType="fitCenter" />
+            </FrameLayout>
+            <FrameLayout
+                android:id="@+id/studio_slot5"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:layout_marginStart="3dp"
+                android:layout_marginEnd="3dp"
+                android:visibility="gone">
+                <ImageView
+                    android:id="@+id/studio_slot5_bg"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitXY"
+                    android:src="@drawable/studio_shape_pill"
+                    android:importantForAccessibility="no" />
+                <ImageView
+                    android:id="@+id/studio_slot5_icon"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center"
+                    android:scaleType="fitCenter" />
+            </FrameLayout>
+            <FrameLayout
+                android:id="@+id/studio_slot6"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:layout_marginStart="3dp"
+                android:layout_marginEnd="3dp"
+                android:visibility="gone">
+                <ImageView
+                    android:id="@+id/studio_slot6_bg"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitXY"
+                    android:src="@drawable/studio_shape_pill"
+                    android:importantForAccessibility="no" />
+                <ImageView
+                    android:id="@+id/studio_slot6_icon"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center"
+                    android:scaleType="fitCenter" />
+            </FrameLayout>
+            <FrameLayout
+                android:id="@+id/studio_slot7"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:layout_marginStart="3dp"
+                android:layout_marginEnd="3dp"
+                android:visibility="gone">
+                <ImageView
+                    android:id="@+id/studio_slot7_bg"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitXY"
+                    android:src="@drawable/studio_shape_pill"
+                    android:importantForAccessibility="no" />
+                <ImageView
+                    android:id="@+id/studio_slot7_icon"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center"
+                    android:scaleType="fitCenter" />
+            </FrameLayout>
+            <FrameLayout
+                android:id="@+id/studio_slot8"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:layout_marginStart="3dp"
+                android:layout_marginEnd="3dp"
+                android:visibility="gone">
+                <ImageView
+                    android:id="@+id/studio_slot8_bg"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitXY"
+                    android:src="@drawable/studio_shape_pill"
+                    android:importantForAccessibility="no" />
+                <ImageView
+                    android:id="@+id/studio_slot8_icon"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center"
+                    android:scaleType="fitCenter" />
+            </FrameLayout>
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

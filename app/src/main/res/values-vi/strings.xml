@@ -37,4 +37,12 @@
     <string name="shortcut_library">Thư viện</string>
     <string name="shortcut_recognition">Nhận diện nhạc</string>
     <string name="shortcut_resume">Tiếp tục phát</string>
+    <string name="widget_original_label">Gốc (mặc định)</string>
+    <string name="widget_studio_mini_desc">Trình phát nhỏ gọn có ảnh bìa</string>
+    <string name="widget_studio_slim_desc">Điều khiển mảnh trên một hàng</string>
+    <string name="widget_studio_expressive_desc">Trình phát đầy đủ có tiến trình</string>
+    <string name="widget_studio_hero_desc">Ảnh bìa lớn, trình phát cao cấp</string>
+    <string name="widget_studio_immersive_desc">Ảnh bìa, hàng đợi, lời bài hát và hơn thế</string>
+    <string name="widget_studio_vinyl_desc">Trình phát có ảnh bìa kiểu đĩa than</string>
+    <string name="widget_studio_quick_desc">Flow, yêu thích, tải xuống và hơn thế</string>
 </resources>

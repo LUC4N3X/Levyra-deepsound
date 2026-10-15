@@ -37,4 +37,12 @@
     <string name="shortcut_library">音樂庫</string>
     <string name="shortcut_recognition">辨識音樂</string>
     <string name="shortcut_resume">繼續播放</string>
+    <string name="widget_original_label">原版（預設）</string>
+    <string name="widget_studio_mini_desc">附封面的精簡播放器</string>
+    <string name="widget_studio_slim_desc">單行纖薄控制項</string>
+    <string name="widget_studio_expressive_desc">附進度的完整播放器</string>
+    <string name="widget_studio_hero_desc">大封面進階播放器</string>
+    <string name="widget_studio_immersive_desc">封面、佇列、歌詞等</string>
+    <string name="widget_studio_vinyl_desc">黑膠風格封面播放器</string>
+    <string name="widget_studio_quick_desc">Flow、最愛、下載等</string>
 </resources>

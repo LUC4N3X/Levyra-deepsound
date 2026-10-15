@@ -37,4 +37,12 @@
     <string name="shortcut_library">Кітапхана</string>
     <string name="shortcut_recognition">Музыканы тану</string>
     <string name="shortcut_resume">Ойнатуды жалғастыру</string>
+    <string name="widget_original_label">Түпнұсқа (әдепкі)</string>
+    <string name="widget_studio_mini_desc">Мұқабасы бар шағын ойнатқыш</string>
+    <string name="widget_studio_slim_desc">Бір жолдағы жіңішке басқару</string>
+    <string name="widget_studio_expressive_desc">Барысы бар толық ойнатқыш</string>
+    <string name="widget_studio_hero_desc">Үлкен мұқаба, премиум ойнатқыш</string>
+    <string name="widget_studio_immersive_desc">Мұқаба, кезек, мәтіндер және т.б.</string>
+    <string name="widget_studio_vinyl_desc">Винил стиліндегі мұқабалы ойнатқыш</string>
+    <string name="widget_studio_quick_desc">Flow, таңдаулылар, жүктеулер және т.б.</string>
 </resources>

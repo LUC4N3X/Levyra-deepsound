@@ -37,4 +37,12 @@
     <string name="shortcut_library">लाइब्रेरी</string>
     <string name="shortcut_recognition">संगीत पहचानें</string>
     <string name="shortcut_resume">प्लेबैक फिर से शुरू करें</string>
+    <string name="widget_original_label">मूल (डिफ़ॉल्ट)</string>
+    <string name="widget_studio_mini_desc">कवर के साथ कॉम्पैक्ट प्लेयर</string>
+    <string name="widget_studio_slim_desc">एक पंक्ति में पतले कंट्रोल</string>
+    <string name="widget_studio_expressive_desc">प्रगति के साथ पूरा प्लेयर</string>
+    <string name="widget_studio_hero_desc">बड़ा कवर, प्रीमियम प्लेयर</string>
+    <string name="widget_studio_immersive_desc">कवर, कतार, बोल और बहुत कुछ</string>
+    <string name="widget_studio_vinyl_desc">विनाइल शैली के कवर वाला प्लेयर</string>
+    <string name="widget_studio_quick_desc">Flow, पसंदीदा, डाउनलोड और बहुत कुछ</string>
 </resources>

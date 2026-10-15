@@ -37,4 +37,12 @@
     <string name="shortcut_library">Medijateka</string>
     <string name="shortcut_recognition">Prepoznaj glazbu</string>
     <string name="shortcut_resume">Nastavi reprodukciju</string>
+    <string name="widget_original_label">Izvorni (zadani)</string>
+    <string name="widget_studio_mini_desc">Kompaktni player s omotom</string>
+    <string name="widget_studio_slim_desc">Tanke kontrole u jednom redu</string>
+    <string name="widget_studio_expressive_desc">Potpuni player s napretkom</string>
+    <string name="widget_studio_hero_desc">Veliki omot, premium player</string>
+    <string name="widget_studio_immersive_desc">Omot, red, stihovi i više</string>
+    <string name="widget_studio_vinyl_desc">Player s omotom u stilu vinila</string>
+    <string name="widget_studio_quick_desc">Flow, favoriti, preuzimanja i više</string>
 </resources>
