@@ -11,30 +11,37 @@
     .examples { fill: #A99DA6; font-size: 10px; }
     .footer { fill: #A99DA6; font-size: 10px; font-weight: 600; letter-spacing: .3px; }
   </style>
-  <rect width="720" height="560" fill="#0D1117"/>
-  <rect x="34" y="32" width="38" height="3" fill="#D98AB8"/>
-  <text x="34" y="66" class="eyebrow">LANGUAGE COVERAGE</text>
-  <text x="31" y="137" class="hero">41 languages</text>
-  <text x="34" y="166" class="meta">100% complete · 1,105+ app strings</text>
+  <rect width="720" height="560" rx="28" fill="#0D1117"/>
+  <rect x="18" y="18" width="684" height="160" rx="36" fill="#211923"/>
+  <text x="48" y="61" class="eyebrow">LANGUAGE COVERAGE</text>
+  <text x="45" y="132" class="hero">41 languages</text>
+  <text x="48" y="157" class="meta">1,105+ app strings</text>
+  <rect x="584" y="43" width="86" height="38" rx="19" fill="#352735"/>
+  <text x="627" y="67" text-anchor="middle" class="group">100%</text>
   <line x1="34" y1="190" x2="686" y2="190" stroke="#30363D"/>
   <text x="34" y="218" class="group">LATIN</text>
-  <text x="686" y="218" text-anchor="end" class="count">25</text>
+  <rect x="650" y="198" width="36" height="28" rx="14" fill="#211923"/>
+  <text x="668" y="218" text-anchor="middle" class="count">25</text>
   <text x="34" y="240" class="examples">English · Italiano · Español · Français · Deutsch · Português</text>
   <line x1="34" y1="257" x2="686" y2="257" stroke="#30363D"/>
   <text x="34" y="281" class="group">CYRILLIC + GREEK</text>
-  <text x="686" y="281" text-anchor="end" class="count">6</text>
+  <rect x="650" y="261" width="36" height="28" rx="14" fill="#211923"/>
+  <text x="668" y="281" text-anchor="middle" class="count">6</text>
   <text x="34" y="303" class="examples">Ελληνικά · Српски · Български · Українська · Русский · Қазақша</text>
   <line x1="34" y1="320" x2="686" y2="320" stroke="#30363D"/>
   <text x="34" y="344" class="group">CJK</text>
-  <text x="686" y="344" text-anchor="end" class="count">4</text>
+  <rect x="650" y="324" width="36" height="28" rx="14" fill="#211923"/>
+  <text x="668" y="344" text-anchor="middle" class="count">4</text>
   <text x="34" y="366" class="examples">简体中文 · 繁體中文 · 日本語 · 한국어</text>
   <line x1="34" y1="383" x2="686" y2="383" stroke="#30363D"/>
   <text x="34" y="407" class="group">ARABIC + HEBREW</text>
-  <text x="686" y="407" text-anchor="end" class="count">3</text>
+  <rect x="650" y="387" width="36" height="28" rx="14" fill="#211923"/>
+  <text x="668" y="407" text-anchor="middle" class="count">3</text>
   <text x="34" y="429" class="examples">العربية · فارسی · עברית</text>
   <line x1="34" y1="446" x2="686" y2="446" stroke="#30363D"/>
   <text x="34" y="470" class="group">INDIC + THAI</text>
-  <text x="686" y="470" text-anchor="end" class="count">3</text>
+  <rect x="650" y="450" width="36" height="28" rx="14" fill="#211923"/>
+  <text x="668" y="470" text-anchor="middle" class="count">3</text>
   <text x="34" y="492" class="examples">हिन्दी · বাংলা · ไทย</text>
   <line x1="34" y1="509" x2="686" y2="509" stroke="#30363D"/>
   <text x="34" y="535" class="footer">LOCALIZED IN THE APP · NO CLOUD PROFILE</text>

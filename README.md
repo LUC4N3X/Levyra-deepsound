@@ -192,11 +192,11 @@ Levyra is available in 41 languages.
 
 <div align="center">
   <picture>
-    <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-mobile-light.svg?v=editorial-atlas-v4">
-    <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse-mobile.svg?v=editorial-atlas-v4">
-    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-light.svg?v=editorial-atlas-v4">
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse.svg?v=editorial-atlas-v4">
-    <img src="docs/assets/levyra-translation-pulse.svg?v=editorial-atlas-v4" alt="Levyra translation coverage across 41 languages and five writing systems" width="920">
+    <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-mobile-light.svg?v=editorial-atlas-v5">
+    <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse-mobile.svg?v=editorial-atlas-v5">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-light.svg?v=editorial-atlas-v5">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse.svg?v=editorial-atlas-v5">
+    <img src="docs/assets/levyra-translation-pulse.svg?v=editorial-atlas-v5" alt="Levyra translation coverage across 41 languages and five writing systems" width="920">
   </picture>
 </div>
 
