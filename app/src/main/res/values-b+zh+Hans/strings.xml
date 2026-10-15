@@ -37,4 +37,12 @@
     <string name="shortcut_library">媒体库</string>
     <string name="shortcut_recognition">识别音乐</string>
     <string name="shortcut_resume">继续播放</string>
+    <string name="widget_original_label">原版（默认）</string>
+    <string name="widget_studio_mini_desc">带封面的紧凑播放器</string>
+    <string name="widget_studio_slim_desc">单行纤薄控件</string>
+    <string name="widget_studio_expressive_desc">带进度的完整播放器</string>
+    <string name="widget_studio_hero_desc">大封面高级播放器</string>
+    <string name="widget_studio_immersive_desc">封面、队列、歌词等</string>
+    <string name="widget_studio_vinyl_desc">黑胶风格封面播放器</string>
+    <string name="widget_studio_quick_desc">Flow、收藏、下载等</string>
 </resources>

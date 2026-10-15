@@ -37,4 +37,12 @@
     <string name="shortcut_library">Libreria</string>
     <string name="shortcut_recognition">Riconosci la musica</string>
     <string name="shortcut_resume">Riprendi riproduzione</string>
+    <string name="widget_original_label">Originale (predefinito)</string>
+    <string name="widget_studio_mini_desc">Player compatto con copertina</string>
+    <string name="widget_studio_slim_desc">Controlli sottili su una riga</string>
+    <string name="widget_studio_expressive_desc">Player completo con avanzamento</string>
+    <string name="widget_studio_hero_desc">Copertina grande, player premium</string>
+    <string name="widget_studio_immersive_desc">Copertina, coda, testi e altro</string>
+    <string name="widget_studio_vinyl_desc">Player con copertina in stile vinile</string>
+    <string name="widget_studio_quick_desc">Flow, preferiti, download e altro</string>
 </resources>

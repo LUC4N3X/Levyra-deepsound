@@ -37,4 +37,12 @@
     <string name="shortcut_library">Βιβλιοθήκη</string>
     <string name="shortcut_recognition">Αναγνώριση μουσικής</string>
     <string name="shortcut_resume">Συνέχιση αναπαραγωγής</string>
+    <string name="widget_original_label">Αρχικό (προεπιλογή)</string>
+    <string name="widget_studio_mini_desc">Συμπαγές πρόγραμμα αναπαραγωγής με εξώφυλλο</string>
+    <string name="widget_studio_slim_desc">Λεπτά χειριστήρια σε μία σειρά</string>
+    <string name="widget_studio_expressive_desc">Πλήρες πρόγραμμα αναπαραγωγής με πρόοδο</string>
+    <string name="widget_studio_hero_desc">Μεγάλο εξώφυλλο, premium αναπαραγωγή</string>
+    <string name="widget_studio_immersive_desc">Εξώφυλλο, ουρά, στίχοι και άλλα</string>
+    <string name="widget_studio_vinyl_desc">Αναπαραγωγή με εξώφυλλο σε στιλ βινυλίου</string>
+    <string name="widget_studio_quick_desc">Flow, αγαπημένα, λήψεις και άλλα</string>
 </resources>

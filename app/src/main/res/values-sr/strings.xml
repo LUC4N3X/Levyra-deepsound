@@ -37,4 +37,12 @@
     <string name="shortcut_library">Библиотека</string>
     <string name="shortcut_recognition">Препознај музику</string>
     <string name="shortcut_resume">Настави репродукцију</string>
+    <string name="widget_original_label">Оригинални (подразумевани)</string>
+    <string name="widget_studio_mini_desc">Компактни плејер са омотом</string>
+    <string name="widget_studio_slim_desc">Танке контроле у једном реду</string>
+    <string name="widget_studio_expressive_desc">Потпуни плејер са напретком</string>
+    <string name="widget_studio_hero_desc">Велики омот, премиум плејер</string>
+    <string name="widget_studio_immersive_desc">Омот, ред, текстови и још</string>
+    <string name="widget_studio_vinyl_desc">Плејер са омотом у стилу винила</string>
+    <string name="widget_studio_quick_desc">Flow, омиљено, преузимања и још</string>
 </resources>

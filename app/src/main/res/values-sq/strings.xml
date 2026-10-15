@@ -37,4 +37,12 @@
     <string name="shortcut_library">Biblioteka</string>
     <string name="shortcut_recognition">Njih muzikën</string>
     <string name="shortcut_resume">Vazhdo luajtjen</string>
+    <string name="widget_original_label">Origjinali (i parazgjedhur)</string>
+    <string name="widget_studio_mini_desc">Luajtës kompakt me kopertinë</string>
+    <string name="widget_studio_slim_desc">Kontrolle të holla në një rresht</string>
+    <string name="widget_studio_expressive_desc">Luajtës i plotë me përparim</string>
+    <string name="widget_studio_hero_desc">Kopertinë e madhe, luajtës premium</string>
+    <string name="widget_studio_immersive_desc">Kopertinë, radhë, tekste dhe më shumë</string>
+    <string name="widget_studio_vinyl_desc">Luajtës me kopertinë në stil vinili</string>
+    <string name="widget_studio_quick_desc">Flow, të preferuarat, shkarkimet dhe më shumë</string>
 </resources>

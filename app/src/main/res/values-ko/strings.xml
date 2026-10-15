@@ -37,4 +37,12 @@
     <string name="shortcut_library">보관함</string>
     <string name="shortcut_recognition">음악 인식</string>
     <string name="shortcut_resume">재생 이어하기</string>
+    <string name="widget_original_label">원본 (기본값)</string>
+    <string name="widget_studio_mini_desc">커버가 있는 컴팩트 플레이어</string>
+    <string name="widget_studio_slim_desc">한 줄의 슬림한 컨트롤</string>
+    <string name="widget_studio_expressive_desc">진행률이 있는 전체 플레이어</string>
+    <string name="widget_studio_hero_desc">큰 커버, 프리미엄 플레이어</string>
+    <string name="widget_studio_immersive_desc">커버, 대기열, 가사 등</string>
+    <string name="widget_studio_vinyl_desc">바이닐 스타일 커버 플레이어</string>
+    <string name="widget_studio_quick_desc">Flow, 즐겨찾기, 다운로드 등</string>
 </resources>

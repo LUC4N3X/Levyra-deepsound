@@ -37,4 +37,12 @@
     <string name="shortcut_library">คลัง</string>
     <string name="shortcut_recognition">ระบุเพลง</string>
     <string name="shortcut_resume">เล่นต่อ</string>
+    <string name="widget_original_label">ต้นฉบับ (ค่าเริ่มต้น)</string>
+    <string name="widget_studio_mini_desc">เพลเยอร์ขนาดกะทัดรัดพร้อมปก</string>
+    <string name="widget_studio_slim_desc">ปุ่มควบคุมแบบบางในแถวเดียว</string>
+    <string name="widget_studio_expressive_desc">เพลเยอร์เต็มรูปแบบพร้อมความคืบหน้า</string>
+    <string name="widget_studio_hero_desc">ปกขนาดใหญ่ เพลเยอร์พรีเมียม</string>
+    <string name="widget_studio_immersive_desc">ปก คิว เนื้อเพลง และอื่นๆ</string>
+    <string name="widget_studio_vinyl_desc">เพลเยอร์พร้อมปกสไตล์แผ่นเสียง</string>
+    <string name="widget_studio_quick_desc">Flow รายการโปรด ดาวน์โหลด และอื่นๆ</string>
 </resources>
