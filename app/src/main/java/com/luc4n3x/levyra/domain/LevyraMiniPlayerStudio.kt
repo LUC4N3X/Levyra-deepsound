@@ -9,7 +9,8 @@ enum class MiniPlayerStyle(val storageId: String) {
     LiquidGlass("liquid_glass"),
     UltraCompact("ultra_compact"),
     ArtworkFocus("artwork_focus"),
-    YtMusic("yt_music");
+    YtMusic("yt_music"),
+    Connected("connected");
 
     companion object {
         fun from(value: String?): MiniPlayerStyle = entries.firstOrNull { it.storageId == value } ?: Original
@@ -529,6 +530,43 @@ data class LevyraMiniPlayerStudioSettings(
             )
         )
 
+        private val connectedSpec = MiniPlayerSpec(
+            options = setOf(
+                MiniTuningOption.Height,
+                MiniTuningOption.ArtworkShape,
+                MiniTuningOption.ArtworkSize,
+                MiniTuningOption.Progress,
+                MiniTuningOption.Buttons,
+                MiniTuningOption.ControlScale,
+                MiniTuningOption.Controls,
+                MiniTuningOption.ShowClose,
+                MiniTuningOption.Color,
+                MiniTuningOption.Motion,
+                MiniTuningOption.Typography
+            ),
+            height = 56..72,
+            corner = 28..28,
+            inset = 16..16,
+            artwork = 36..56,
+            opacity = 100..100,
+            progressStyles = listOf(MiniProgressStyle.Line, MiniProgressStyle.Ring, MiniProgressStyle.Hidden),
+            buttonStyles = listOf(MiniButtonStyle.Tonal, MiniButtonStyle.Filled, MiniButtonStyle.Plain),
+            backgrounds = listOf(MiniBackground.Solid),
+            defaults = baseTuning.copy(
+                heightDp = 64,
+                cornerDp = 28,
+                insetDp = 16,
+                artworkShape = MiniArtworkShape.Rounded,
+                artworkDp = 44,
+                shadow = 0,
+                glow = 0,
+                opacity = 100,
+                progress = MiniProgressStyle.Line,
+                buttons = MiniButtonStyle.Tonal,
+                background = MiniBackground.Solid
+            )
+        )
+
         fun spec(style: MiniPlayerStyle): MiniPlayerSpec = when (style) {
             MiniPlayerStyle.Original -> originalSpec
             MiniPlayerStyle.SuperExpressive -> superExpressiveSpec
@@ -537,6 +575,7 @@ data class LevyraMiniPlayerStudioSettings(
             MiniPlayerStyle.UltraCompact -> ultraCompactSpec
             MiniPlayerStyle.ArtworkFocus -> artworkFocusSpec
             MiniPlayerStyle.YtMusic -> ytMusicSpec
+            MiniPlayerStyle.Connected -> connectedSpec
         }
 
         fun decode(raw: String?): LevyraMiniPlayerStudioSettings {

@@ -42,6 +42,62 @@ class LevyraYtMusicPairingTest {
     }
 
     @Test
+    fun connectedDockPairsWithItsMiniPlayerBothWays() {
+        assertEquals(
+            MiniPlayerStyle.Connected,
+            LevyraYtMusicPairing.miniStyleFor(NavStyle.FloatingDock, NavStyle.ConnectedDock, MiniPlayerStyle.Floating)
+        )
+        assertEquals(
+            NavStyle.ConnectedDock,
+            LevyraYtMusicPairing.navStyleFor(MiniPlayerStyle.Floating, MiniPlayerStyle.Connected, NavStyle.SplitDock)
+        )
+        assertEquals(
+            MiniPlayerStyle.Original,
+            LevyraYtMusicPairing.miniStyleFor(NavStyle.ConnectedDock, NavStyle.SplitDock, MiniPlayerStyle.Connected)
+        )
+        assertEquals(
+            NavStyle.Original,
+            LevyraYtMusicPairing.navStyleFor(MiniPlayerStyle.Connected, MiniPlayerStyle.Floating, NavStyle.ConnectedDock)
+        )
+    }
+
+    @Test
+    fun switchingBetweenPairedStylesSwapsThePartnerDirectly() {
+        assertEquals(
+            MiniPlayerStyle.Connected,
+            LevyraYtMusicPairing.miniStyleFor(NavStyle.YtMusic, NavStyle.ConnectedDock, MiniPlayerStyle.YtMusic)
+        )
+        assertEquals(
+            NavStyle.YtMusic,
+            LevyraYtMusicPairing.navStyleFor(MiniPlayerStyle.Connected, MiniPlayerStyle.YtMusic, NavStyle.ConnectedDock)
+        )
+    }
+
+    @Test
+    fun splitDockLeavesTheMiniPlayerAlone() {
+        assertEquals(
+            MiniPlayerStyle.LiquidGlass,
+            LevyraYtMusicPairing.miniStyleFor(NavStyle.Original, NavStyle.SplitDock, MiniPlayerStyle.LiquidGlass)
+        )
+    }
+
+    @Test
+    fun newDockStylesRoundTripAndFloat() {
+        listOf(NavStyle.SplitDock, NavStyle.ConnectedDock).forEach { style ->
+            assertEquals(true, style.floating)
+            val settings = LevyraNavigationStudioSettings()
+                .withStyle(style)
+                .updateTuning(style) { it.copy(cornerDp = 24, heightDp = 60) }
+            assertEquals(settings, LevyraNavigationStudioSettings.decode(settings.encode()))
+            assertEquals(24, settings.activeTuning().cornerDp)
+        }
+        val mini = LevyraMiniPlayerStudioSettings().withStyle(MiniPlayerStyle.Connected)
+        assertEquals(mini, LevyraMiniPlayerStudioSettings.decode(mini.encode()))
+        assertEquals(16, mini.activeTuning().insetDp)
+        assertEquals(MiniProgressStyle.Line, mini.activeTuning().progress)
+    }
+
+    @Test
     fun ytMusicDefaultsAreFlatAndIndicatorFree() {
         val nav = LevyraNavigationStudioSettings.spec(NavStyle.YtMusic).defaults
         assertEquals(NavIndicator.None, nav.indicator)

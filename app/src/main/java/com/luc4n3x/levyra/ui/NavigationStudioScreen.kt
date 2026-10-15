@@ -112,6 +112,8 @@ internal fun navigationStyleName(style: NavStyle): String = when (style) {
     NavStyle.ExpressiveCompact -> "Expressive Compact"
     NavStyle.LiquidGlass -> "Liquid Glass"
     NavStyle.YtMusic -> "YT Music"
+    NavStyle.SplitDock -> "Split Floating Dock"
+    NavStyle.ConnectedDock -> "Connected Dock"
 }
 
 private fun navigationStyleDescription(style: NavStyle, copy: NavigationStudioCopy): String = when (style) {
@@ -122,6 +124,8 @@ private fun navigationStyleDescription(style: NavStyle, copy: NavigationStudioCo
     NavStyle.ExpressiveCompact -> copy[NavStudioText.DescCompact]
     NavStyle.LiquidGlass -> copy[NavStudioText.DescLiquidGlass]
     NavStyle.YtMusic -> copy[NavStudioText.DescYtMusic]
+    NavStyle.SplitDock -> copy[NavStudioText.DescSplitDock]
+    NavStyle.ConnectedDock -> copy[NavStudioText.DescConnectedDock]
 }
 
 internal fun navReorderStep(
@@ -786,7 +790,15 @@ private fun NavStylePreview(
                 BottomTabs(selected = selected, compaction = { 0f }, onSelect = onSelect)
             }
         } else {
+            val previewLink = remember(style, tuning.cornerDp, tuning.heightDp) {
+                if (style == NavStyle.ConnectedDock) {
+                    DockLink(attach = { 1f }, fuse = { 0f }, outerCorner = minOf(tuning.cornerDp, tuning.heightDp / 2).dp)
+                } else {
+                    null
+                }
+            }
             StyledDockSurface(style = style, tuning = tuning, glass = null, modifier = Modifier.fillMaxWidth()) {
+                if (previewLink != null) ConnectedDockPreviewSlab(tuning)
                 StyledBottomTabs(
                     style = style,
                     tuning = tuning,
@@ -794,7 +806,8 @@ private fun NavStylePreview(
                     compaction = { 0f },
                     onSelect = onSelect,
                     glass = null,
-                    applySystemInset = false
+                    applySystemInset = false,
+                    link = previewLink
                 )
             }
         }
