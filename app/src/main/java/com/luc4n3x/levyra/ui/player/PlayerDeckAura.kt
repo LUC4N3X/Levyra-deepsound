@@ -492,7 +492,12 @@ internal fun PlayerAuraPlayPauseButton(
         if (isResolving) {
             LevyraLoadingIndicator(color = AuraInk, modifier = Modifier.size(42.dp))
         } else {
-            LevyraPlayPauseGlyph(playing = isPlaying, color = AuraInk, modifier = Modifier.size(42.dp))
+            LevyraPlayPauseGlyph(
+                playing = isPlaying,
+                color = AuraInk,
+                modifier = Modifier.size(42.dp),
+                animateMorph = false
+            )
         }
     }
 }
