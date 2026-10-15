@@ -37,4 +37,12 @@
     <string name="shortcut_library">Kirjasto</string>
     <string name="shortcut_recognition">Tunnista musiikki</string>
     <string name="shortcut_resume">Jatka toistoa</string>
+    <string name="widget_original_label">Alkuperäinen (oletus)</string>
+    <string name="widget_studio_mini_desc">Kompakti soitin kansikuvalla</string>
+    <string name="widget_studio_slim_desc">Ohuet säätimet yhdellä rivillä</string>
+    <string name="widget_studio_expressive_desc">Täysi soitin edistymisellä</string>
+    <string name="widget_studio_hero_desc">Suuri kansikuva, premium-soitin</string>
+    <string name="widget_studio_immersive_desc">Kansikuva, jono, sanoitukset ja muuta</string>
+    <string name="widget_studio_vinyl_desc">Vinyylityylinen soitin kansikuvalla</string>
+    <string name="widget_studio_quick_desc">Flow, suosikit, lataukset ja muuta</string>
 </resources>

@@ -312,6 +312,15 @@ import com.luc4n3x.levyra.domain.MiniPlayerStyle
 import com.luc4n3x.levyra.domain.NavStyle
 import com.luc4n3x.levyra.ui.i18n.NavStudioText
 import com.luc4n3x.levyra.ui.i18n.navigationStudioCopy
+import androidx.compose.material.icons.rounded.Public
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Groups
+import com.luc4n3x.levyra.ui.i18n.settingsHubCopy
+import com.luc4n3x.levyra.ui.i18n.SettingsHubText
+import androidx.compose.material.icons.rounded.Widgets
+import com.luc4n3x.levyra.ui.i18n.WidgetStudioText
+import com.luc4n3x.levyra.ui.i18n.widgetStudioCopy
+import com.luc4n3x.levyra.widget.studio.WidgetStudioActivity
 import com.luc4n3x.levyra.ui.i18n.MiniStudioText
 import com.luc4n3x.levyra.ui.i18n.miniPlayerStudioCopy
 import androidx.compose.foundation.lazy.LazyListState
@@ -2033,6 +2042,11 @@ fun LevyraApp(
             }
             LevyraLaunchActions.SHORTCUT_AMBIENT -> viewModel.openAmbient()
             LevyraLaunchActions.SHORTCUT_RESUME -> viewModel.resumePlaybackFromShortcut()
+            LevyraLaunchActions.SHORTCUT_PLAYER -> viewModel.selectTab(LevyraTab.Player)
+            LevyraLaunchActions.SHORTCUT_QUEUE -> {
+                viewModel.selectTab(LevyraTab.Player)
+                viewModel.openQueue()
+            }
         }
         if (pendingShortcut != null) LevyraLaunchActions.pendingShortcut.value = null
     }
@@ -20842,6 +20856,7 @@ private fun LanguageSelector(selectedCode: String, onSelect: (String) -> Unit, m
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SettingsOverlay(
     animationsEnabled: Boolean,
@@ -20968,19 +20983,19 @@ private fun SettingsOverlay(
     fun categoryTitle(value: String): String = settingsCategoryTitle(value, categoryLocale)
     val categories = remember(strings.code) {
         listOf(
-            SettingsCategoryMeta("design", categoryTitle(strings.design), "${strings.theme} · ${strings.animations} · ${strings.dynamicColor}", Icons.Rounded.Palette, LevyraCyan),
-            SettingsCategoryMeta("home", categoryTitle(strings.homeInterfaceSection), "${strings.compactHome} · ${strings.newReleases} · ${strings.top50Charts}", Icons.Rounded.Home, LevyraViolet),
-            SettingsCategoryMeta("player", categoryTitle(strings.player), "${strings.advancedGestures} · ${strings.sponsorBlock} · ${strings.skipSilence}", Icons.Rounded.PlayArrow, LevyraPink),
-            SettingsCategoryMeta("audio", strings.audioEngine, strings.audioEngineSubtitle, Icons.Rounded.GraphicEq, LevyraCyan),
-            SettingsCategoryMeta("downloads", categoryTitle(strings.downloads), "${strings.wifiOnly} · ${strings.simultaneousDownloads}", Icons.Rounded.Download, LevyraBlue),
-            SettingsCategoryMeta("lyrics", categoryTitle(strings.lyricsAnalysisSection), strings.lyricsAnalysisCompact, Icons.Rounded.Insights, LevyraOrange),
-            SettingsCategoryMeta("backup", strings.vaultTitle, "${strings.backupNow} · ${strings.restoreBackup}", Icons.Rounded.History, LevyraCyan),
-            SettingsCategoryMeta("system", categoryTitle(strings.preferences), "${strings.batteryUnrestricted} · ${strings.language}", Icons.Rounded.Settings, LevyraViolet),
-            SettingsCategoryMeta("app", categoryTitle(strings.app), "${strings.updates} · ${BuildConfig.VERSION_NAME}", Icons.Rounded.Info, LevyraPink)
-            , SettingsCategoryMeta("youtube_music", "YouTube Music", com.luc4n3x.levyra.ui.i18n.youtubeMusicCopy(strings.code).introduction, Icons.Rounded.AccountCircle, LevyraCyan)
-            , SettingsCategoryMeta("integrations", categoryTitle(strings.integrations), "Last.fm · ListenBrainz · AudD", Icons.Rounded.Settings, LevyraCyan)
-            , SettingsCategoryMeta("network", categoryTitle(strings.networkTitle), strings.networkSubtitle, Icons.Rounded.Settings, LevyraBlue)
-            , SettingsCategoryMeta("jam", categoryTitle(strings.jamTitle), strings.jamSubtitle, Icons.Rounded.PlayArrow, LevyraViolet)
+            SettingsCategoryMeta("design", categoryTitle(strings.design), "${strings.theme} · ${strings.animations} · ${strings.dynamicColor}", Icons.Rounded.Palette, LevyraViolet, SettingsHubGroup.Appearance),
+            SettingsCategoryMeta("home", categoryTitle(strings.homeInterfaceSection), "${strings.compactHome} · ${strings.newReleases} · ${strings.top50Charts}", Icons.Rounded.Home, LevyraViolet, SettingsHubGroup.Appearance),
+            SettingsCategoryMeta("player", categoryTitle(strings.player), "${strings.advancedGestures} · ${strings.sponsorBlock} · ${strings.skipSilence}", Icons.Rounded.PlayArrow, LevyraPink, SettingsHubGroup.Listening),
+            SettingsCategoryMeta("audio", strings.audioEngine, strings.audioEngineSubtitle, Icons.Rounded.GraphicEq, LevyraPink, SettingsHubGroup.Listening),
+            SettingsCategoryMeta("lyrics", categoryTitle(strings.lyricsAnalysisSection), strings.lyricsAnalysisCompact, Icons.Rounded.Insights, LevyraPink, SettingsHubGroup.Listening),
+            SettingsCategoryMeta("jam", categoryTitle(strings.jamTitle), strings.jamSubtitle, Icons.Rounded.Groups, LevyraPink, SettingsHubGroup.Listening),
+            SettingsCategoryMeta("downloads", categoryTitle(strings.downloads), "${strings.wifiOnly} · ${strings.simultaneousDownloads}", Icons.Rounded.Download, LevyraBlue, SettingsHubGroup.Library),
+            SettingsCategoryMeta("backup", strings.vaultTitle, "${strings.backupNow} · ${strings.restoreBackup}", Icons.Rounded.History, LevyraBlue, SettingsHubGroup.Library),
+            SettingsCategoryMeta("youtube_music", "YouTube Music", com.luc4n3x.levyra.ui.i18n.youtubeMusicCopy(strings.code).introduction, Icons.Rounded.AccountCircle, LevyraCyan, SettingsHubGroup.Accounts),
+            SettingsCategoryMeta("integrations", categoryTitle(strings.integrations), "Last.fm · ListenBrainz · AudD", Icons.Rounded.Link, LevyraCyan, SettingsHubGroup.Accounts),
+            SettingsCategoryMeta("system", categoryTitle(strings.preferences), "${strings.batteryUnrestricted} · ${strings.language}", Icons.Rounded.Settings, LevyraOrange, SettingsHubGroup.System),
+            SettingsCategoryMeta("network", categoryTitle(strings.networkTitle), strings.networkSubtitle, Icons.Rounded.Public, LevyraOrange, SettingsHubGroup.System),
+            SettingsCategoryMeta("app", categoryTitle(strings.app), "${strings.updates} · ${BuildConfig.VERSION_NAME}", Icons.Rounded.Info, LevyraOrange, SettingsHubGroup.System)
         )
     }
     val settingsSearchIndex = remember(strings.code) {
@@ -21016,6 +21031,7 @@ private fun SettingsOverlay(
         ) { current ->
             val meta = categories.firstOrNull { it.id == current }
             val settingsListState = remember(current) { LazyListState() }
+            CompositionLocalProvider(LocalSettingsAccent provides meta?.accent) {
             LazyColumn(
                 state = settingsListState,
                 modifier = Modifier
@@ -21023,7 +21039,7 @@ private fun SettingsOverlay(
                 .statusBarsPadding()
                 .navigationBarsPadding(),
                 contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 40.dp),
-                verticalArrangement = Arrangement.spacedBy(if (current == null) 0.dp else 12.dp)
+                verticalArrangement = Arrangement.spacedBy(if (current == null) 0.dp else 8.dp)
             ) {
                 if (current == null) {
                     item {
@@ -21103,16 +21119,40 @@ private fun SettingsOverlay(
                             }
                         }
                     } else {
-                    itemsIndexed(categories, key = { _, item -> item.id }) { index, category ->
-                        SettingsCategoryCard(
-                            meta = category,
-                            index = index,
-                            count = categories.size
-                        ) {
-                            when (category.id) {
-                                "audio" -> onOpenAudioSettings()
-                                "youtube_music" -> onOpenYoutubeMusic()
-                                else -> activeCategory = category.id
+                    item(key = "settings_studios") {
+                        val studioContext = LocalContext.current
+                        SettingsStudioShelf(
+                            title = strings.settingsHubCopy[SettingsHubText.Studios],
+                            subtitle = strings.settingsHubCopy[SettingsHubText.StudiosHint],
+                            entries = listOf(
+                                SettingsStudioEntry("theme", strings.themeStudio, LevyraThemes.byId(themePreset).label, Icons.Rounded.Palette, LevyraViolet, MaterialShapes.Cookie9Sided, onOpenThemeStudio),
+                                SettingsStudioEntry("home", strings.homeStudioCopy.title, homeStyleName(homeStudioStyle), Icons.Rounded.Home, LevyraCyan, MaterialShapes.Clover4Leaf, onOpenHomeStudio),
+                                SettingsStudioEntry("mini_player", strings.miniPlayerStudioCopy[MiniStudioText.Title], miniPlayerStyleName(miniPlayerStyle), Icons.Rounded.SmartDisplay, LevyraPink, MaterialShapes.Sunny, onOpenMiniPlayerStudio),
+                                SettingsStudioEntry("navigation", strings.navigationStudioCopy[NavStudioText.Title], navigationStyleName(navigationStyle), Icons.Rounded.Dashboard, LevyraBlue, MaterialShapes.Pill, onOpenNavigationStudio),
+                                SettingsStudioEntry("lyrics", strings.lyricsStudio, strings.lyricsStudioSubtitle, Icons.Rounded.AutoAwesome, LevyraOrange, MaterialShapes.SoftBurst, onOpenLyricsStudio),
+                                SettingsStudioEntry("widget", strings.widgetStudioCopy[WidgetStudioText.Title], strings.widgetStudioCopy[WidgetStudioText.Subtitle], Icons.Rounded.Widgets, LevyraCyan, MaterialShapes.Gem) {
+                                    studioContext.startActivity(WidgetStudioActivity.intent(studioContext))
+                                }
+                            )
+                        )
+                    }
+                    SettingsHubGroup.entries.forEach { group ->
+                        val groupCategories = categories.filter { it.group == group }
+                        if (groupCategories.isEmpty()) return@forEach
+                        item(key = "settings_group_${group.name}") {
+                            SettingsHubGroupLabel(settingsHubGroupTitle(group, strings))
+                        }
+                        itemsIndexed(groupCategories, key = { _, item -> item.id }) { index, category ->
+                            SettingsCategoryCard(
+                                meta = category,
+                                index = index,
+                                count = groupCategories.size
+                            ) {
+                                when (category.id) {
+                                    "audio" -> onOpenAudioSettings()
+                                    "youtube_music" -> onOpenYoutubeMusic()
+                                    else -> activeCategory = category.id
+                                }
                             }
                         }
                     }
@@ -21217,6 +21257,15 @@ private fun SettingsOverlay(
                                     title = strings.navigationStudioCopy[NavStudioText.Title],
                                     subtitle = navigationStyleName(navigationStyle) + " · " + strings.navigationStudioCopy[NavStudioText.Subtitle],
                                     onClick = onOpenNavigationStudio
+                                )
+                            }
+                            item {
+                                val widgetStudioContext = LocalContext.current
+                                SettingsButton(
+                                    icon = Icons.Rounded.Widgets,
+                                    title = strings.widgetStudioCopy[WidgetStudioText.Title],
+                                    subtitle = strings.widgetStudioCopy[WidgetStudioText.Subtitle],
+                                    onClick = { widgetStudioContext.startActivity(WidgetStudioActivity.intent(widgetStudioContext)) }
                                 )
                             }
                             item {
@@ -22249,6 +22298,7 @@ private fun SettingsOverlay(
                     }
                 }
             }
+            }
         }
     }
 }
@@ -22482,8 +22532,113 @@ private data class SettingsCategoryMeta(
     val title: String,
     val summary: String,
     val icon: ImageVector,
-    val accent: Color
+    val accent: Color,
+    val group: SettingsHubGroup
 )
+
+private enum class SettingsHubGroup { Appearance, Listening, Library, Accounts, System }
+
+private fun settingsHubGroupTitle(group: SettingsHubGroup, strings: LevyraStrings): String = strings.settingsHubCopy[
+    when (group) {
+        SettingsHubGroup.Appearance -> SettingsHubText.Appearance
+        SettingsHubGroup.Listening -> SettingsHubText.Listening
+        SettingsHubGroup.Library -> SettingsHubText.Library
+        SettingsHubGroup.Accounts -> SettingsHubText.Accounts
+        SettingsHubGroup.System -> SettingsHubText.System
+    }
+]
+
+private class SettingsStudioEntry(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val icon: ImageVector,
+    val accent: Color,
+    val shape: RoundedPolygon,
+    val onClick: () -> Unit
+)
+
+@Composable
+private fun SettingsHubGroupLabel(text: String) {
+    Text(
+        text,
+        color = LevyraMuted,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 0.4.sp,
+        modifier = Modifier
+            .padding(start = 8.dp, top = 22.dp, bottom = 10.dp)
+            .semantics { heading() }
+    )
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SettingsStudioShelf(title: String, subtitle: String, entries: List<SettingsStudioEntry>) {
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+        Text(
+            title,
+            color = LevyraText,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Black,
+            modifier = Modifier
+                .padding(start = 4.dp)
+                .semantics { heading() }
+        )
+        Text(
+            subtitle,
+            color = LevyraMuted,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 12.dp)
+        )
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            items(entries, key = { it.id }) { entry ->
+                Surface(
+                    onClick = entry.onClick,
+                    shape = RoundedCornerShape(28.dp),
+                    color = entry.accent.copy(alpha = 0.14f),
+                    modifier = Modifier.width(148.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(52.dp)
+                                .clip(entry.shape.toShape())
+                                .background(entry.accent),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(entry.icon, null, tint = LevyraBlack, modifier = Modifier.size(26.dp))
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                entry.title,
+                                color = LevyraText,
+                                fontSize = 15.sp,
+                                lineHeight = 19.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 2,
+                                minLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                entry.subtitle,
+                                color = LevyraMuted,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -22602,26 +22757,31 @@ private fun SettingsTileText(title: String, subtitle: String, modifier: Modifier
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SettingsDetailHeader(title: String, icon: ImageVector, accent: Color, onBack: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(18.dp), modifier = Modifier.fillMaxWidth()) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 10.dp)
+    ) {
         LevyraBackButton(onClick = onBack, contentDescription = LocalLevyraStrings.current.back)
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            SettingsTileIcon(icon = icon, accent = accent, shape = MaterialShapes.Cookie4Sided.toShape())
-            Text(
-                title,
-                color = LevyraText,
-                fontSize = 30.sp,
-                lineHeight = 34.sp,
-                fontWeight = FontWeight.Black,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
-        }
+        Text(
+            title,
+            color = LevyraText,
+            fontSize = 26.sp,
+            lineHeight = 30.sp,
+            fontWeight = FontWeight.Black,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .weight(1f)
+                .semantics { heading() }
+        )
+        SettingsTileIcon(icon = icon, accent = accent, shape = MaterialShapes.Cookie9Sided.toShape())
     }
 }
+
+private val LocalSettingsAccent = compositionLocalOf<Color?> { null }
 
 @OptIn(ExperimentalLayoutApi::class)
 private fun visualPerformanceLabel(mode: LevyraVisualPerformance, strings: LevyraStrings): String = when (mode) {
@@ -22897,7 +23057,7 @@ private fun SettingsChoiceRow(
     SettingsTile {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                SettingsTileIcon(icon = icon, accent = LevyraViolet)
+                SettingsTileIcon(icon = icon, accent = LocalSettingsAccent.current ?: LevyraViolet)
                 SettingsTileText(title = title, subtitle = subtitle, modifier = Modifier.weight(1f))
             }
             FlowRow(
@@ -23017,7 +23177,7 @@ private fun SettingsToggle(icon: ImageVector, title: String, subtitle: String, c
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            SettingsTileIcon(icon = icon, accent = LevyraCyan)
+            SettingsTileIcon(icon = icon, accent = LocalSettingsAccent.current ?: LevyraCyan)
             SettingsTileText(title = title, subtitle = subtitle, modifier = Modifier.weight(1f))
             Switch(
                 checked = checked,
@@ -23050,7 +23210,7 @@ private fun SettingsButton(icon: ImageVector, title: String, subtitle: String, e
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            SettingsTileIcon(icon = icon, accent = LevyraPink)
+            SettingsTileIcon(icon = icon, accent = LocalSettingsAccent.current ?: LevyraPink)
             SettingsTileText(title = title, subtitle = subtitle, modifier = Modifier.weight(1f))
             Icon(
                 Icons.AutoMirrored.Rounded.KeyboardArrowRight,

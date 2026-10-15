@@ -37,4 +37,12 @@
     <string name="shortcut_library">ספרייה</string>
     <string name="shortcut_recognition">זיהוי מוזיקה</string>
     <string name="shortcut_resume">המשך השמעה</string>
+    <string name="widget_original_label">מקורי (ברירת מחדל)</string>
+    <string name="widget_studio_mini_desc">נגן קומפקטי עם עטיפה</string>
+    <string name="widget_studio_slim_desc">פקדים דקים בשורה אחת</string>
+    <string name="widget_studio_expressive_desc">נגן מלא עם התקדמות</string>
+    <string name="widget_studio_hero_desc">עטיפה גדולה, נגן פרימיום</string>
+    <string name="widget_studio_immersive_desc">עטיפה, תור, מילים ועוד</string>
+    <string name="widget_studio_vinyl_desc">נגן עם עטיפה בסגנון תקליט</string>
+    <string name="widget_studio_quick_desc">Flow, מועדפים, הורדות ועוד</string>
 </resources>

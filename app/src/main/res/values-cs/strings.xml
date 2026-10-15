@@ -37,4 +37,12 @@
     <string name="shortcut_library">Knihovna</string>
     <string name="shortcut_recognition">Rozpoznat hudbu</string>
     <string name="shortcut_resume">Pokračovat v přehrávání</string>
+    <string name="widget_original_label">Původní (výchozí)</string>
+    <string name="widget_studio_mini_desc">Kompaktní přehrávač s obalem</string>
+    <string name="widget_studio_slim_desc">Tenké ovládání na jednom řádku</string>
+    <string name="widget_studio_expressive_desc">Plný přehrávač s průběhem</string>
+    <string name="widget_studio_hero_desc">Velký obal, prémiový přehrávač</string>
+    <string name="widget_studio_immersive_desc">Obal, fronta, texty a další</string>
+    <string name="widget_studio_vinyl_desc">Přehrávač s obalem ve stylu vinylu</string>
+    <string name="widget_studio_quick_desc">Flow, oblíbené, stažené a další</string>
 </resources>

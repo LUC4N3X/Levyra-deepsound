@@ -6,7 +6,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.view.View
 import android.widget.RemoteViews
@@ -14,10 +13,8 @@ import com.luc4n3x.levyra.LevyraLaunchActions
 import com.luc4n3x.levyra.MainActivity
 import com.luc4n3x.levyra.R
 import com.luc4n3x.levyra.data.security.SafeImageUrlPolicy
+import com.luc4n3x.levyra.widget.studio.WidgetStudioEngine
 import timber.log.Timber
-import java.io.ByteArrayOutputStream
-import java.net.HttpURLConnection
-import java.net.URL
 import java.util.concurrent.atomic.AtomicBoolean
 
 object LevyraWidgetCenter {
@@ -68,6 +65,7 @@ object LevyraWidgetCenter {
         val appContext = context.applicationContext
         runCatching { renderInternal(appContext) }
             .onFailure { Timber.w(it, "Widget render failed") }
+        WidgetStudioEngine.requestRender(appContext)
     }
 
     private fun renderInternal(context: Context) {
@@ -132,39 +130,11 @@ object LevyraWidgetCenter {
     }
 
     private fun fetchArtwork(context: Context, url: String) {
-        val safeUrl = SafeImageUrlPolicy.sanitize(url)
-        if (safeUrl.isEmpty()) return
+        if (SafeImageUrlPolicy.sanitize(url).isEmpty()) return
         if (!fetching.compareAndSet(false, true)) return
         Thread {
-            var connection: HttpURLConnection? = null
             try {
-                connection = URL(safeUrl).openConnection() as HttpURLConnection
-                connection.instanceFollowRedirects = false
-                connection.connectTimeout = 8000
-                connection.readTimeout = 8000
-                if (connection.responseCode != HttpURLConnection.HTTP_OK) return@Thread
-                val contentType = connection.contentType
-                if (!SafeImageUrlPolicy.isAllowedImageMimeType(contentType)) return@Thread
-                val stream = connection.inputStream
-                val buffer = ByteArrayOutputStream()
-                val chunk = ByteArray(8192)
-                var totalRead = 0
-                while (true) {
-                    val read = stream.read(chunk)
-                    if (read == -1) break
-                    totalRead += read
-                    if (totalRead > SafeImageUrlPolicy.MAX_IMAGE_PAYLOAD_BYTES) return@Thread
-                    buffer.write(chunk, 0, read)
-                }
-                val bytes = buffer.toByteArray()
-                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-                var sample = 1
-                while (bounds.outWidth / (sample * 2) >= 256 && bounds.outHeight / (sample * 2) >= 256) {
-                    sample *= 2
-                }
-                val options = BitmapFactory.Options().apply { inSampleSize = sample }
-                val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+                val bitmap = WidgetArtworkDownloader.decode(url, 256)
                 if (bitmap != null) {
                     cachedArtwork = bitmap
                     cachedArtworkUrl = url
@@ -173,9 +143,27 @@ object LevyraWidgetCenter {
             } catch (error: Exception) {
                 Timber.w(error, "Widget artwork fetch failed")
             } finally {
-                connection?.disconnect()
                 fetching.set(false)
             }
         }.start()
     }
+
+    internal fun trackSnapshot(context: Context): WidgetTrackSnapshot {
+        val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return WidgetTrackSnapshot(
+            title = prefs.getString(KEY_TITLE, "").orEmpty(),
+            artist = prefs.getString(KEY_ARTIST, "").orEmpty(),
+            artworkUrl = prefs.getString(KEY_ARTWORK, "").orEmpty(),
+            playing = prefs.getBoolean(KEY_PLAYING, false),
+            accent = prefs.getInt(KEY_ACCENT, 0)
+        )
+    }
 }
+
+internal data class WidgetTrackSnapshot(
+    val title: String,
+    val artist: String,
+    val artworkUrl: String,
+    val playing: Boolean,
+    val accent: Int
+)

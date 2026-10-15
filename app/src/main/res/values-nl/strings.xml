@@ -37,4 +37,12 @@
     <string name="shortcut_library">Bibliotheek</string>
     <string name="shortcut_recognition">Muziek herkennen</string>
     <string name="shortcut_resume">Afspelen hervatten</string>
+    <string name="widget_original_label">Origineel (standaard)</string>
+    <string name="widget_studio_mini_desc">Compacte speler met artwork</string>
+    <string name="widget_studio_slim_desc">Slanke bediening op één rij</string>
+    <string name="widget_studio_expressive_desc">Volledige speler met voortgang</string>
+    <string name="widget_studio_hero_desc">Groot artwork, premium speler</string>
+    <string name="widget_studio_immersive_desc">Artwork, wachtrij, songteksten en meer</string>
+    <string name="widget_studio_vinyl_desc">Speler met artwork in vinylstijl</string>
+    <string name="widget_studio_quick_desc">Flow, favorieten, downloads en meer</string>
 </resources>

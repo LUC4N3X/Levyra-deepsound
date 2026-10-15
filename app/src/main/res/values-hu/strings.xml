@@ -37,4 +37,12 @@
     <string name="shortcut_library">Könyvtár</string>
     <string name="shortcut_recognition">Zene felismerése</string>
     <string name="shortcut_resume">Lejátszás folytatása</string>
+    <string name="widget_original_label">Eredeti (alapértelmezett)</string>
+    <string name="widget_studio_mini_desc">Kompakt lejátszó borítóval</string>
+    <string name="widget_studio_slim_desc">Vékony vezérlők egy sorban</string>
+    <string name="widget_studio_expressive_desc">Teljes lejátszó előrehaladással</string>
+    <string name="widget_studio_hero_desc">Nagy borító, prémium lejátszó</string>
+    <string name="widget_studio_immersive_desc">Borító, sor, dalszöveg és más</string>
+    <string name="widget_studio_vinyl_desc">Bakelit stílusú lejátszó borítóval</string>
+    <string name="widget_studio_quick_desc">Flow, kedvencek, letöltések és más</string>
 </resources>

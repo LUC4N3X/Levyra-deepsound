@@ -26,7 +26,8 @@ internal class SystemMediaActionController(
     private val context: Context,
     private val scope: CoroutineScope,
     private val queueState: StateFlow<PlaybackQueueSnapshot>,
-    private val favoriteMembership: Flow<FavoriteMembership>
+    private val favoriteMembership: Flow<FavoriteMembership>,
+    private val onStateChanged: (SystemMediaActionState) -> Unit = {}
 ) {
     private val sessionItem = MutableStateFlow<SystemMediaSessionItem?>(null)
     private var attachedSession: MediaSession? = null
@@ -67,7 +68,10 @@ internal class SystemMediaActionController(
                 systemMediaActionState(queue, item, favorites)
             }
                 .distinctUntilChanged()
-                .collect { state -> session.setMediaButtonPreferences(commandButtons(state)) }
+                .collect { state ->
+                    session.setMediaButtonPreferences(commandButtons(state))
+                    onStateChanged(state)
+                }
         }
     }
 

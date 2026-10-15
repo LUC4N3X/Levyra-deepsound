@@ -115,6 +115,7 @@ import com.luc4n3x.levyra.player.enhanced.EnhancedAudioProcessor
 import com.luc4n3x.levyra.player.enhanced.EnhancedAudioSourceFormatListener
 import com.luc4n3x.levyra.widget.LevyraWidgetBridge
 import com.luc4n3x.levyra.widget.LevyraWidgetCenter
+import com.luc4n3x.levyra.widget.studio.WidgetStudioPlaybackSync
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -471,6 +472,7 @@ class PlaybackService : MediaLibraryService() {
     private var preferredAudioRouteKey: String? = null
     private var audioRouteSelectionState = LevyraAudioRouteSelectionState.Idle
     private var systemMediaActions: SystemMediaActionController? = null
+    private val studioWidgetSync by lazy { WidgetStudioPlaybackSync(this) }
     private val platformTokenCommand by lazy { SessionCommand(ACTION_GET_PLATFORM_TOKEN, Bundle.EMPTY) }
     private val videoSubtitleCommand by lazy { SessionCommand(ACTION_SET_VIDEO_SUBTITLE, Bundle.EMPTY) }
 
@@ -1106,7 +1108,8 @@ class PlaybackService : MediaLibraryService() {
             context = this,
             scope = serviceScope,
             queueState = queueEngine.state,
-            favoriteMembership = favoritesStore.observeMembership()
+            favoriteMembership = favoritesStore.observeMembership(),
+            onStateChanged = studioWidgetSync::onActionsChanged
         )
         systemMediaActions = systemActions
 
@@ -1398,6 +1401,7 @@ class PlaybackService : MediaLibraryService() {
             .setMediaButtonPreferences(systemActions.initialButtons())
             .build()
             .also(systemActions::attach)
+            .also(studioWidgetSync::attach)
 
         setMediaNotificationProvider(DefaultMediaNotificationProvider(this))
         NotificationManagerCompat.from(this).deleteNotificationChannel(RETIRED_PLAYBACK_LIVE_UPDATE_CHANNEL_ID)
@@ -2489,6 +2493,7 @@ class PlaybackService : MediaLibraryService() {
         automationSettingsJob?.cancel()
         systemMediaActions?.detach()
         systemMediaActions = null
+        studioWidgetSync.detach()
         updateDeviceVolumeReceiver(false)
         sleepTimer.cancel()
         _sleepTimerStateFlow.value = PlaybackSleepTimerState.Disabled
