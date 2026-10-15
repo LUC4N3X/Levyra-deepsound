@@ -77,6 +77,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderState
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -639,10 +640,12 @@ private fun CustomThemeEditorDialog(
                             )
                             Text("${draft.cornerScale}%", color = LevyraCyan, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                         }
+                        val cornerRange = LevyraCustomTheme.CORNER_SCALE_RANGE.first.toFloat()..LevyraCustomTheme.CORNER_SCALE_RANGE.last.toFloat()
+                        val cornerState = remember(cornerRange) { SliderState(draft.cornerScale.toFloat(), 0, cornerRange) }
+                        cornerState.value = draft.cornerScale.toFloat()
                         Slider(
-                            value = draft.cornerScale.toFloat(),
+                            state = cornerState,
                             onValueChange = { draft = draft.copy(cornerScale = it.roundToInt()) },
-                            valueRange = LevyraCustomTheme.CORNER_SCALE_RANGE.first.toFloat()..LevyraCustomTheme.CORNER_SCALE_RANGE.last.toFloat(),
                             modifier = Modifier.semantics { contentDescription = copy[ThemeLibraryText.Corners] }
                         )
                     }

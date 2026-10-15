@@ -191,7 +191,7 @@ private fun ColumnScope.YoutubeMusicTracks(state: YoutubeMusicAccountUiState, co
                     Button(onClick = { viewModel.importCurrent(actions.imported) }, enabled = !state.busy, modifier = Modifier.weight(1f)) {
                         Icon(Icons.Rounded.Download, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)); Text(copy.import)
                     }
-                    FilledTonalIconButton(onClick = { page?.tracks?.firstOrNull()?.let { actions.play(page.tracks, it) } }) { Icon(Icons.Rounded.PlayArrow, copy.play) }
+                    FilledTonalIconButton(onClick = { page.tracks.firstOrNull()?.let { actions.play(page.tracks, it) } }) { Icon(Icons.Rounded.PlayArrow, copy.play) }
                 }
                 Text(copy.importDescription, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -288,7 +288,7 @@ private fun AccountAvatar(account: YoutubeMusicAccount?, modifier: Modifier) {
     Surface(modifier.clip(CircleShape), color = MaterialTheme.colorScheme.surfaceContainerHigh, shape = CircleShape) {
         Box(contentAlignment = Alignment.Center) {
             Icon(Icons.Rounded.AccountCircle, null, Modifier.fillMaxSize().padding(8.dp))
-            if (!account?.avatarUrl.isNullOrBlank()) AsyncImage(account?.avatarUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            if (!account?.avatarUrl.isNullOrBlank()) AsyncImage(account.avatarUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         }
     }
 }

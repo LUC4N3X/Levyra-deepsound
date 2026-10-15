@@ -50,6 +50,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -1025,8 +1026,11 @@ internal fun MiniStudioSlider(
                 color = MaterialTheme.colorScheme.primary
             )
         }
+        val sliderRange = safeRange.first.toFloat()..safeRange.last.toFloat()
+        val sliderState = remember(sliderRange) { SliderState(shown.toFloat(), 0, sliderRange) }
+        sliderState.value = shown.toFloat()
         Slider(
-            value = shown.toFloat(),
+            state = sliderState,
             onValueChange = { raw ->
                 val next = raw.roundToInt().coerceIn(safeRange)
                 if (next != dragValue) {
@@ -1038,7 +1042,6 @@ internal fun MiniStudioSlider(
                 dragValue?.let(onCommit)
                 dragValue = null
             },
-            valueRange = safeRange.first.toFloat()..safeRange.last.toFloat(),
             enabled = adjustable,
             modifier = Modifier
                 .fillMaxWidth()

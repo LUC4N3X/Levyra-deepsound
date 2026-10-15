@@ -95,7 +95,7 @@ internal object PersonalCollectionSyncPlanner {
                 audioUrl = entry.audioUrl,
                 videoUrl = entry.videoUrl,
                 artworkUrl = entry.artworkUrl,
-                artworkFile = if (keepArtwork) old?.artworkFile.orEmpty() else "",
+                artworkFile = if (keepArtwork) old.artworkFile.orEmpty() else "",
                 trackNumber = entry.trackNumber,
                 discNumber = entry.discNumber,
                 year = entry.year,
