@@ -160,6 +160,7 @@ M3_MARKETING_COPY = {
     "Screenshot_20261010_132050_LEVYRA.jpg": "Listening insights that stay on-device.",
     "Screenshot_20261010_144048_LEVYRA.jpg": "Essential sets for every artist.",
     "Screenshot_20261010_140700_LEVYRA.jpg": "Design, audio, gestures, and local backups.",
+    "Screenshot_20261015_205614_LEVYRA.jpg": "Theme, home, player, and audio in one place.",
     "Screenshot_20261010_144144_LEVYRA.jpg": "New singles and albums, every week.",
     "Screenshot_20261010_143646_LEVYRA.jpg": "Discography, biography, and top tracks.",
     "Screenshot_20261011_202032_LEVYRA.jpg": "Daily charts from every country.",
@@ -438,9 +439,9 @@ M3_SHOWCASE_SPECS = [
      "Curated sets, tours, and the\nessential catalog of every artist.",
      (100, 50, 190), ["15_artist_playlists.webp"]),
 
-    # Card 16: Vault & Settings
-    ("Screenshot_20261010_140700_LEVYRA.jpg", "PRIVACY & BACKUP", "Tailor every detail.",
-     "Audio, design, gestures, and local\nsingle-file Vault backups.",
+    # Card 16: Settings
+    ("Screenshot_20261015_205614_LEVYRA.jpg", "SETTINGS STUDIO", "Make Levyra yours.",
+     "Theme, home, player, and audio—\nall tuned from one place.",
      (115, 55, 180), ["16_settings_vault.webp"]),
 
     # Card 17: New Releases
@@ -593,7 +594,7 @@ README_CARD_SPECS = [
     ("10_curated_for_you", "COLLECTIONS", "Curated\nfor you.", "Quick picks, ready when you are.", "Screenshot_20261010_132136_LEVYRA.jpg"),
     ("11_your_rhythm", "INSIGHTS", "Your\nrhythm.", "See the pattern behind the plays.", "Screenshot_20260927_131943_LEVYRA.jpg"),
     ("12_in_your_orbit", "HOME", "In your\norbit.", "Artists and albums close at hand.", "Screenshot_20261010_132103_LEVYRA.jpg"),
-    ("13_tailor_every_detail", "SETTINGS", "Tailor every\ndetail.", "Private by design, flexible by choice.", "Screenshot_20261010_140700_LEVYRA.jpg"),
+    ("13_tailor_every_detail", "SETTINGS", "Make Levyra\nyours.", "Theme, home, player and audio—in one place.", "Screenshot_20261015_205614_LEVYRA.jpg"),
     ("14_fresh_off_the_stage", "NEW RELEASES", "Fresh off\nthe stage.", "The newest music, without the clutter.", "Screenshot_20261010_144144_LEVYRA.jpg"),
     ("15_meet_the_artist", "ARTISTS", "Meet the\nartist.", "From the profile straight into the music.", "Screenshot_20261010_143646_LEVYRA.jpg"),
     ("16_listen_together", "LEVYRA JAM", "Listen\ntogether.", "One room. One queue. Everyone in.", "Screenshot_20261011_133434_LEVYRA.jpg"),
