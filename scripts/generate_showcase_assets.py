@@ -599,7 +599,7 @@ README_CARD_SPECS = [
     ("16_listen_together", "LEVYRA JAM", "Listen\ntogether.", "One room. One queue. Everyone in.", "Screenshot_20261011_133434_LEVYRA.jpg"),
 ]
 
-def make_campaign_screen(filename, width, border_color, variant):
+def make_campaign_screen(filename, width, border_color):
     screenshot_path = resolve_screenshot_path(filename)
     if not screenshot_path:
         raise FileNotFoundError(f"Missing campaign screenshot: {filename}")
@@ -608,87 +608,29 @@ def make_campaign_screen(filename, width, border_color, variant):
 
     height = round(screenshot.height * width / screenshot.width)
     screenshot = screenshot.resize((width, height), Image.Resampling.LANCZOS)
-    pad = max(8, round(width * 0.014))
-    radius_ratios = [0.045, 0.085, 0.06, 0.105]
-    radius = max(28, round(width * radius_ratios[variant]))
-    screen = Image.new("RGBA", (width + pad * 2, height + pad * 2), (0, 0, 0, 0))
-    mask = Image.new("L", (width, height), 0)
+    radius = max(32, round(width * 0.075))
+    mask = Image.new("L", screenshot.size, 0)
     ImageDraw.Draw(mask).rounded_rectangle((0, 0, width - 1, height - 1), radius=radius, fill=255)
-    screen.paste(screenshot, (pad, pad), mask)
-    draw = ImageDraw.Draw(screen)
-    draw.rounded_rectangle(
-        (pad, pad, pad + width - 1, pad + height - 1),
+    screen = Image.new("RGBA", screenshot.size, border_color + (255,))
+    screen.paste(screenshot, (0, 0), mask)
+    edge = Image.new("RGBA", screenshot.size, (0, 0, 0, 0))
+    ImageDraw.Draw(edge).rounded_rectangle(
+        (2, 2, width - 3, height - 3),
         radius=radius,
-        outline=border_color + (190,),
-        width=max(3, round(width * 0.006)),
+        outline=border_color + (130,),
+        width=max(2, round(width * 0.008)),
     )
-    return screen
+    return Image.alpha_composite(screen, edge)
 
-def paste_campaign_screen(
-    canvas,
-    filename,
-    width,
-    horizontal_center,
-    top,
-    angle,
-    border_color,
-    max_height,
-    stage_color,
-    accent_color,
-    variant,
-):
-    screen = make_campaign_screen(filename, width, border_color, variant)
+def paste_campaign_screen(canvas, filename, width, center, angle, border_color):
+    screen = make_campaign_screen(filename, width, border_color)
     screen = screen.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
-    if screen.height > max_height:
-        scale = max_height / screen.height
-        screen = screen.resize(
-            (round(screen.width * scale), round(screen.height * scale)),
-            Image.Resampling.LANCZOS,
-        )
-    stage_pad = max(26, round(screen.width * 0.055))
-    stage = Image.new(
-        "RGBA",
-        (screen.width + stage_pad * 2, screen.height + stage_pad * 2),
-        (0, 0, 0, 0),
-    )
-    stage_draw = ImageDraw.Draw(stage)
-    stage_draw.rounded_rectangle(
-        (
-            stage_pad // 2,
-            stage_pad,
-            stage.width - stage_pad // 2,
-            stage.height - stage_pad // 2,
-        ),
-        radius=max(64, round(screen.width * 0.13)),
-        fill=stage_color + (225,),
-    )
-    accent_size = max(90, round(screen.width * 0.22))
-    if variant % 2 == 0:
-        accent_box = (
-            stage.width - accent_size,
-            0,
-            stage.width,
-            accent_size,
-        )
-    else:
-        accent_box = (
-            0,
-            stage.height - accent_size,
-            accent_size,
-            stage.height,
-        )
-    stage_draw.ellipse(accent_box, fill=accent_color + (175,))
-    stage = stage.rotate(-angle * 0.55, resample=Image.Resampling.BICUBIC, expand=True)
-    stage_x = round(horizontal_center - stage.width / 2)
-    stage_y = round(top + 18)
-    canvas.alpha_composite(stage, (stage_x, stage_y))
-
     shadow_alpha = screen.getchannel("A").filter(ImageFilter.GaussianBlur(max(18, width // 18)))
     shadow_alpha = ImageEnhance.Brightness(shadow_alpha).enhance(0.42)
     shadow = Image.new("RGBA", screen.size, (18, 12, 22, 0))
     shadow.putalpha(shadow_alpha)
-    x = round(horizontal_center - screen.width / 2)
-    y = round(top)
+    x = round(center[0] - screen.width / 2)
+    y = round(center[1] - screen.height / 2)
     canvas.alpha_composite(shadow, (x + 20, y + 34))
     canvas.alpha_composite(screen, (x, y))
 
@@ -718,26 +660,24 @@ def draw_readme_card_copy(draw, spec, theme, index, origin):
     draw.text((x, y), kicker, font=kicker_font, fill=theme["accent"])
     number = f"{index + 1:02d}"
     number_width = draw.textlength(number, font=number_font)
-    draw.text((920 - number_width, y), number, font=number_font, fill=theme["muted"])
+    draw.text((820 - number_width, y), number, font=number_font, fill=theme["muted"])
     title_y = y + 55
     draw.multiline_text((x, title_y), title, font=title_font, fill=theme["ink"], spacing=-8)
     title_box = draw.multiline_textbbox((x, title_y), title, font=title_font, spacing=-8)
-    body_y = title_box[3] + 24
-    draw.text((x, body_y), body, font=body_font, fill=theme["muted"])
-    return draw.textbbox((x, body_y), body, font=body_font)[3]
+    draw.text((x, title_box[3] + 24), body, font=body_font, fill=theme["muted"])
 
 def draw_readme_card_shapes(draw, theme, variant):
     if variant == 0:
-        draw.ellipse((-250, 980, 680, 1850), fill=theme["shape"] + (255,))
+        draw.ellipse((-250, 900, 650, 1780), fill=theme["shape"] + (255,))
         draw.rounded_rectangle((610, -150, 1030, 310), radius=150, fill=theme["shape"] + (210,))
     elif variant == 1:
-        draw.ellipse((500, 850, 1150, 1530), fill=theme["shape"] + (255,))
+        draw.ellipse((480, 720, 1130, 1390), fill=theme["shape"] + (255,))
         draw.rounded_rectangle((-180, -120, 390, 250), radius=140, fill=theme["shape"] + (220,))
     elif variant == 2:
-        draw.rounded_rectangle((-220, 980, 1120, 1800), radius=330, fill=theme["shape"] + (255,))
+        draw.rounded_rectangle((-220, 845, 1080, 1520), radius=310, fill=theme["shape"] + (255,))
         draw.ellipse((650, -180, 1060, 230), fill=theme["shape"] + (210,))
     else:
-        draw.ellipse((-240, 900, 540, 1780), fill=theme["shape"] + (255,))
+        draw.ellipse((-240, 700, 510, 1460), fill=theme["shape"] + (255,))
         draw.ellipse((580, -190, 1100, 330), fill=theme["shape"] + (190,))
 
 def render_readme_card(spec, index):
@@ -745,31 +685,25 @@ def render_readme_card(spec, index):
     variant_order = [0, 1, 2, 3, 2, 3, 0, 1, 1, 0, 3, 2, 3, 2, 1, 0]
     theme = README_CARD_THEMES[theme_order[index]]
     variant = variant_order[index]
-    canvas = Image.new("RGBA", (1000, 1900), theme["background"] + (255,))
+    canvas = Image.new("RGBA", (900, 1500), theme["background"] + (255,))
     draw = ImageDraw.Draw(canvas)
     draw_readme_card_shapes(draw, theme, variant)
     ribbon_centers = [(705, 920), (190, 930), (700, 1090), (170, 1030)]
     ribbon_angles = [-12, 13, -5, 18]
     paste_campaign_ribbon(canvas, 780, ribbon_centers[variant], 0.11, ribbon_angles[variant])
-    copy_bottom = draw_readme_card_copy(draw, spec, theme, index, (72, 70))
+    draw_readme_card_copy(draw, spec, theme, index, (72, 70))
 
     _, _, _, _, screenshot = spec
-    screen_centers = [620, 380, 625, 375]
-    angles = [-3.8, 3.2, -2.8, 3.8]
-    top_offsets = [0, 22, 8, 18]
-    screen_top = copy_bottom + 46 + top_offsets[variant]
+    screen_centers = [(575, 1090), (455, 1090), (575, 1090), (455, 1090)]
+    angles = [-3.5, 2.8, -2.2, 3.5]
+    widths = [650, 660, 650, 660]
     paste_campaign_screen(
         canvas,
         screenshot,
-        800,
+        widths[variant],
         screen_centers[variant],
-        screen_top,
         angles[variant],
         (22, 20, 24),
-        1850 - screen_top,
-        theme["shape"],
-        theme["accent"],
-        variant,
     )
     return canvas.convert("RGB")
 
