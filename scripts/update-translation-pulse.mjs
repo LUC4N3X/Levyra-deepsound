@@ -158,14 +158,13 @@ const collectRepositoryCoverage = async () => {
 }
 
 const FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
-const MONO = "ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"
 
 const SCRIPT_GROUPS = [
-  { id: 'latin', label: 'LATIN', dark: ['#C4B5FD', '#7C3AED'], light: ['#8B5CF6', '#5B21B6'] },
-  { id: 'cyrillic', label: 'CYRILLIC & GREEK', dark: ['#7DD3FC', '#0284C7'], light: ['#38BDF8', '#0369A1'] },
-  { id: 'rtl', label: 'ARABIC & HEBREW', dark: ['#FDE68A', '#D97706'], light: ['#FBBF24', '#B45309'] },
-  { id: 'cjk', label: 'CJK', dark: ['#F9A8D4', '#DB2777'], light: ['#F472B6', '#BE185D'] },
-  { id: 'brahmic', label: 'INDIC & THAI', dark: ['#86EFAC', '#16A34A'], light: ['#4ADE80', '#15803D'] }
+  { id: 'latin', label: 'LATIN' },
+  { id: 'cyrillic', label: 'CYRILLIC + GREEK' },
+  { id: 'cjk', label: 'CJK' },
+  { id: 'rtl', label: 'ARABIC + HEBREW' },
+  { id: 'brahmic', label: 'INDIC + THAI' }
 ]
 
 const scriptGroupFor = code => {
@@ -178,121 +177,120 @@ const scriptGroupFor = code => {
 }
 
 const getTheme = isDark => ({
-  bg: isDark ? '#0D1117' : '#FFFFFF',
-  panel: isDark ? '#11161D' : '#F8FAFC',
-  grid: isDark ? '#242B35' : '#E2E8F0',
-  axis: isDark ? '#3A4350' : '#CBD5E1',
-  barTop: isDark ? '#C4B5FD' : '#8B5CF6',
-  barBottom: isDark ? '#7C3AED' : '#5B21B6',
-  missing: isDark ? '#3B2F5C' : '#EDE9FE',
-  accent: isDark ? '#A78BFA' : '#7C3AED',
-  accentSoft: isDark ? '#2E2547' : '#EDE9FE',
-  average: isDark ? '#F472B6' : '#DB2777',
-  textTitle: isDark ? '#F0F6FC' : '#0F172A',
-  textSub: isDark ? '#8B949E' : '#64748B',
-  textLabel: isDark ? '#C9D1D9' : '#1E293B'
+  background: isDark ? '#0D1117' : '#FBF8F6',
+  panel: isDark ? '#151019' : '#F4E9EF',
+  ink: isDark ? '#F7F1F5' : '#241B21',
+  muted: isDark ? '#A99DA6' : '#70636B',
+  rule: isDark ? '#302732' : '#DDD0D7',
+  accent: isDark ? '#E7A7CF' : '#8B416E',
+  accentSoft: isDark ? '#52364A' : '#E7C7D9'
 })
 
-const renderRing = ({ cx, cy, r, percent, theme }) => {
-  const circumference = 2 * Math.PI * r
-  const dash = (circumference * Math.min(100, Math.max(0, percent))) / 100
-  return `  <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${theme.accentSoft}" stroke-width="7"/>
-  <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="url(#ring)" stroke-width="7" stroke-linecap="round" stroke-dasharray="${dash.toFixed(2)} ${circumference.toFixed(2)}" transform="rotate(-90 ${cx} ${cy})"/>
-  <text x="${cx}" y="${cy + 5}" text-anchor="middle" fill="${theme.textTitle}" font-family="${FONT}" font-size="15" font-weight="800">${Math.round(percent)}%</text>`
+const markerRow = ({ x, y, count, available, theme }) => {
+  const gap = 6
+  const width = Math.min(17, (available - gap * (count - 1)) / count)
+  return Array.from({ length: count }, (_, index) => {
+    const height = [14, 24, 18, 30, 20][index % 5]
+    const fill = index % 4 === 0 ? theme.accentSoft : theme.accent
+    return `<rect x="${(x + index * (width + gap)).toFixed(1)}" y="${(y - height).toFixed(1)}" width="${width.toFixed(1)}" height="${height}" rx="${Math.min(4, width / 2).toFixed(1)}" fill="${fill}"/>`
+  }).join('')
 }
+
+const groupRows = languages => SCRIPT_GROUPS.map(group => {
+  const members = languages.filter(language => scriptGroupFor(language.code) === group.id)
+  return {
+    ...group,
+    count: members.length,
+    examples: members.slice(0, 6).map(language => language.name).join(' · ')
+  }
+}).filter(group => group.count > 0)
 
 const makePulse = ({ languages, globalPercent, catalogCount, isDark, mobile }) => {
   const theme = getTheme(isDark)
-  const groupOrder = SCRIPT_GROUPS.map(group => group.id)
-  const ranked = [...languages].sort((a, b) =>
-    b.percent - a.percent ||
-    groupOrder.indexOf(scriptGroupFor(a.code)) - groupOrder.indexOf(scriptGroupFor(b.code)) ||
-    a.name.localeCompare(b.name)
-  )
-  const presentGroups = SCRIPT_GROUPS.filter(group => ranked.some(item => scriptGroupFor(item.code) === group.id))
-  const hasMissing = ranked.some(item => item.percent < 99.5)
-  const width = mobile ? 720 : 1100
-  const pad = 28
-  const headerH = 112
-  const plotTop = headerH + 26
-  const plotH = mobile ? 230 : 300
-  const labelH = mobile ? 54 : 118
-  const footerH = 46
-  const axisW = mobile ? 34 : 96
-  const plotLeft = pad + axisW
-  const plotRight = width - pad
-  const plotW = plotRight - plotLeft
-  const plotBottom = plotTop + plotH
-  const height = plotBottom + labelH + footerH
-  const slot = plotW / ranked.length
-  const barW = Math.max(6, Math.min(18, slot * 0.62))
-  const y = percent => plotBottom - (plotH * Math.min(100, Math.max(0, percent))) / 100
+  const groups = groupRows(languages)
   const roundedPercent = Math.round(globalPercent)
   const aria = `Levyra localization coverage: ${roundedPercent}% across ${languages.length} languages`
+  const description = languages.map(language => `${language.name}: ${Math.round(language.percent)}%`).join(', ')
 
-  const grid = [0, 25, 50, 75, 100].map(value => {
-    const gy = y(value).toFixed(1)
-    return `  <line x1="${plotLeft}" y1="${gy}" x2="${plotRight}" y2="${gy}" stroke="${value === 0 ? theme.axis : theme.grid}" stroke-width="1" ${value === 0 ? '' : 'stroke-dasharray="3 5"'}/>
-  <text x="${plotLeft - 10}" y="${(+gy + 4).toFixed(1)}" text-anchor="end" fill="${theme.textSub}" font-family="${FONT}" font-size="11">${value}</text>`
-  }).join('\n')
-
-  const bars = ranked.map((item, index) => {
-    const cx = plotLeft + slot * index + slot / 2
-    const x = (cx - barW / 2).toFixed(1)
-    const top = y(item.percent)
-    const missingTop = y(100)
-    const radius = Math.min(barW / 2, 6)
-    const label = mobile ? item.code : `${item.name} · ${item.code}`
-    const missing = item.percent < 99.5
-      ? `    <rect x="${x}" y="${missingTop.toFixed(1)}" width="${barW.toFixed(1)}" height="${(top - missingTop).toFixed(1)}" rx="${radius}" fill="${theme.missing}"/>\n`
-      : ''
-    return `  <g>
-    <title>${escapeXml(`${item.name}: ${Math.round(item.percent)}% (${item.translated}/${item.total})`)}</title>
-${missing}    <rect x="${x}" y="${top.toFixed(1)}" width="${barW.toFixed(1)}" height="${(plotBottom - top).toFixed(1)}" rx="${radius}" fill="url(#bar-${scriptGroupFor(item.code)})"/>
-    <text transform="translate(${(cx + 4).toFixed(1)} ${plotBottom + 14}) rotate(-50)" text-anchor="end" fill="${theme.textLabel}" font-family="${mobile ? MONO : FONT}" font-size="${mobile ? 10 : 11}" font-weight="${mobile ? 700 : 500}">${escapeXml(label)}</text>
-  </g>`
-  }).join('\n')
-
-  const avgY = y(globalPercent).toFixed(1)
-  const legendY = 92
-  const legendItems = [
-    ...presentGroups.map(group => ({ swatch: `url(#bar-${group.id})`, label: group.label })),
-    ...(hasMissing ? [{ swatch: theme.missing, label: 'MISSING' }] : [])
-  ]
-  let legendX = pad
-  const legend = legendItems.map(item => {
-    const block = `  <rect x="${legendX}" y="${legendY + 4}" width="12" height="12" rx="3" fill="${item.swatch}"/>
-  <text x="${legendX + 18}" y="${legendY + 14}" fill="${theme.textLabel}" font-family="${FONT}" font-size="${mobile ? 9.5 : 11}" font-weight="600" letter-spacing=".3">${escapeXml(item.label)}</text>`
-    legendX += 18 + item.label.length * (mobile ? 6.4 : 7.4) + 18
-    return block
-  }).join('\n')
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeXml(aria)}">
+  if (mobile) {
+    const rows = groups.map((group, index) => {
+      const y = 272 + index * 63
+      return `<text x="42" y="${y}" class="group">${escapeXml(group.label)}</text>
+  <text x="678" y="${y}" text-anchor="end" class="count">${String(group.count).padStart(2, '0')}</text>
+  <text x="42" y="${y + 19}" class="examples">${escapeXml(group.examples)}</text>
+  <g>${markerRow({ x: 458, y: y + 24, count: group.count, available: 220, theme })}</g>
+  <line x1="42" y1="${y + 36}" x2="678" y2="${y + 36}" stroke="${theme.rule}"/>`
+    }).join('\n  ')
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="620" viewBox="0 0 720 620" role="img" aria-label="${escapeXml(aria)}">
   <title>${escapeXml(aria)}</title>
-  <defs>
-${SCRIPT_GROUPS.map(group => {
-    const [top, bottom] = isDark ? group.dark : group.light
-    return `    <linearGradient id="bar-${group.id}" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="${top}"/>
-      <stop offset="1" stop-color="${bottom}"/>
-    </linearGradient>`
-  }).join('\n')}
-    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="${theme.barTop}"/>
-      <stop offset="1" stop-color="${theme.average}"/>
-    </linearGradient>
-  </defs>
-  <rect width="${width}" height="${height}" rx="20" fill="${theme.bg}"/>
-  <rect x="${pad - 12}" y="${plotTop - 18}" width="${width - (pad - 12) * 2}" height="${plotH + labelH + 18}" rx="14" fill="${theme.panel}"/>
-  <text x="${pad}" y="38" fill="${theme.accent}" font-family="${FONT}" font-size="11" font-weight="800" letter-spacing="1.6">LANGUAGE COVERAGE</text>
-  <text x="${pad}" y="66" fill="${theme.textTitle}" font-family="${FONT}" font-size="${mobile ? 22 : 26}" font-weight="800">Levyra in ${languages.length} languages</text>
-  <text x="${pad}" y="${legendY - 8}" fill="${theme.textSub}" font-family="${FONT}" font-size="12">${catalogCount.toLocaleString('en-US')}+ app strings · coverage per language, grouped by writing system</text>
-${legend}
-${renderRing({ cx: width - pad - 38, cy: 60, r: 30, percent: globalPercent, theme })}
-${grid}
-${bars}
-${hasMissing ? `  <line x1="${plotLeft}" y1="${avgY}" x2="${plotRight}" y2="${avgY}" stroke="${theme.average}" stroke-width="2" stroke-dasharray="6 5" opacity=".9"/>` : ''}
-  <text x="${pad}" y="${height - 20}" fill="${theme.textSub}" font-family="${FONT}" font-size="11" font-style="italic">Ranked by coverage, then by writing system · generated from the Levyra repository</text>
+  <desc>${escapeXml(description)}</desc>
+  <style>
+    text { font-family: ${FONT}; }
+    .kicker { fill: ${theme.accent}; font-size: 11px; font-weight: 800; letter-spacing: 2px; }
+    .hero { fill: ${theme.ink}; font-size: 112px; font-weight: 850; letter-spacing: -7px; }
+    .hero-label { fill: ${theme.ink}; font-size: 34px; font-weight: 760; letter-spacing: -1.2px; }
+    .meta { fill: ${theme.muted}; font-size: 13px; }
+    .statement { fill: ${theme.ink}; font-size: 28px; font-weight: 850; }
+    .statement-small { fill: ${theme.muted}; font-size: 10px; font-weight: 750; letter-spacing: 1.2px; }
+    .group { fill: ${theme.ink}; font-size: 12px; font-weight: 800; letter-spacing: .7px; }
+    .count { fill: ${theme.accent}; font-size: 20px; font-weight: 850; }
+    .examples { fill: ${theme.muted}; font-size: 10px; }
+    .footer { fill: ${theme.muted}; font-size: 10px; font-weight: 650; letter-spacing: .4px; }
+  </style>
+  <rect width="720" height="620" rx="20" fill="${theme.background}"/>
+  <path d="M0 0H308C332 64 322 133 285 190C265 220 256 238 258 250H0Z" fill="${theme.panel}"/>
+  <text x="42" y="43" class="kicker">LEVYRA / LOCAL EVERYWHERE</text>
+  <text x="37" y="151" class="hero">${languages.length}</text>
+  <text x="43" y="188" class="hero-label">languages.</text>
+  <text x="43" y="218" class="meta">Five writing systems. Every string complete.</text>
+  <text x="676" y="72" text-anchor="end" class="statement">${roundedPercent}%</text>
+  <text x="676" y="91" text-anchor="end" class="statement-small">TRANSLATION COVERAGE</text>
+  ${rows}
+  <text x="42" y="590" class="footer">${languages.length} / ${languages.length} LOCALE PACKS COMPLETE</text>
+  <text x="678" y="590" text-anchor="end" class="footer">${catalogCount.toLocaleString('en-US')}+ APP STRINGS</text>
+</svg>`
+  }
+
+  const rows = groups.map((group, index) => {
+    const y = 104 + index * 68
+    return `<line x1="390" y1="${y + 31}" x2="1044" y2="${y + 31}" stroke="${theme.rule}"/>
+  <text x="390" y="${y}" class="group">${escapeXml(group.label)}</text>
+  <text x="1038" y="${y}" text-anchor="end" class="count">${String(group.count).padStart(2, '0')}</text>
+  <text x="390" y="${y + 22}" class="examples">${escapeXml(group.examples)}</text>
+  <g>${markerRow({ x: 790, y: y + 26, count: group.count, available: 248, theme })}</g>`
+  }).join('\n  ')
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="480" viewBox="0 0 1100 480" role="img" aria-label="${escapeXml(aria)}">
+  <title>${escapeXml(aria)}</title>
+  <desc>${escapeXml(description)}</desc>
+  <style>
+    text { font-family: ${FONT}; }
+    .kicker { fill: ${theme.accent}; font-size: 12px; font-weight: 800; letter-spacing: 2.2px; }
+    .hero { fill: ${theme.ink}; font-size: 132px; font-weight: 850; letter-spacing: -8px; }
+    .hero-label { fill: ${theme.ink}; font-size: 38px; font-weight: 760; letter-spacing: -1.5px; }
+    .meta { fill: ${theme.muted}; font-size: 14px; }
+    .statement { fill: ${theme.ink}; font-size: 30px; font-weight: 800; letter-spacing: -1px; }
+    .statement-small { fill: ${theme.muted}; font-size: 12px; font-weight: 700; letter-spacing: 1.4px; }
+    .group { fill: ${theme.ink}; font-size: 13px; font-weight: 800; letter-spacing: .8px; }
+    .count { fill: ${theme.accent}; font-size: 24px; font-weight: 850; }
+    .examples { fill: ${theme.muted}; font-size: 11px; }
+    .footer { fill: ${theme.muted}; font-size: 11px; font-weight: 650; letter-spacing: .5px; }
+  </style>
+  <rect width="1100" height="480" rx="22" fill="${theme.background}"/>
+  <path d="M0 0H328C360 78 352 166 310 236C268 306 270 390 334 480H0Z" fill="${theme.panel}"/>
+  <text x="48" y="58" class="kicker">LEVYRA / LOCAL EVERYWHERE</text>
+  <text x="42" y="190" class="hero">${languages.length}</text>
+  <text x="49" y="232" class="hero-label">languages.</text>
+  <text x="50" y="269" class="meta">One interface. Five writing systems.</text>
+  <text x="50" y="290" class="meta">Every app string, complete.</text>
+  <line x1="50" y1="339" x2="302" y2="339" stroke="${theme.rule}"/>
+  <text x="50" y="375" class="statement">${roundedPercent}%</text>
+  <text x="147" y="368" class="statement-small">TRANSLATION</text>
+  <text x="147" y="384" class="statement-small">COVERAGE</text>
+  <text x="390" y="49" class="kicker">THE LANGUAGE SCORE</text>
+  <text x="1038" y="49" text-anchor="end" class="footer">${catalogCount.toLocaleString('en-US')}+ APP STRINGS</text>
+  ${rows}
+  <text x="390" y="446" class="footer">${languages.length} / ${languages.length} LOCALE PACKS COMPLETE</text>
+  <text x="1038" y="446" text-anchor="end" class="footer">BUILT INTO LEVYRA · NO CLOUD PROFILE</text>
 </svg>`
 }
 
