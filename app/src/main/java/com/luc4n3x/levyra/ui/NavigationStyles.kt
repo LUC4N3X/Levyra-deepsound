@@ -46,12 +46,14 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
@@ -66,6 +68,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
@@ -107,6 +110,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 private val StyledNavTrayShrink = 22.dp
 private val StyledNavMinTouch = 48.dp
@@ -246,9 +250,19 @@ internal fun rememberNavColors(style: NavStyle, tuning: NavTuning): NavColors {
         }
     }
     val scheme = dynamic ?: theme
-    return remember(scheme, style.floating, tuning.colorSource, tuning.accent, tuning.surfaceTone, tuning.indicatorTone, tuning.inactiveAlpha) {
-        buildNavColors(scheme, style.floating, tuning)
+    val seed = if (tuning.colorSource == NavColorSource.Artwork) rememberAnimatedNavArtworkSeed() else null
+    return remember(scheme, style.floating, tuning.colorSource, tuning.accent, tuning.surfaceTone, tuning.indicatorTone, tuning.inactiveAlpha, seed) {
+        buildNavColors(scheme, style.floating, tuning, seed)
     }
+}
+
+@Composable
+private fun rememberAnimatedNavArtworkSeed(): NavArtworkSeed? {
+    val target = LocalNavArtworkSeed.current ?: return null
+    val spec = LevyraPlayerDesign.motion(LocalAnimationsEnabled.current, LevyraPlayerDesign.paletteTween<Color>())
+    val primary by animateColorAsState(target.primary, spec, label = "nav-artwork-primary")
+    val secondary by animateColorAsState(target.secondary, spec, label = "nav-artwork-secondary")
+    return NavArtworkSeed(primary, secondary)
 }
 
 private class NavPalette(
@@ -302,13 +316,31 @@ private fun navIndicatorPair(
     NavIndicatorTone.Neutral -> palette.surface.playerMix(palette.content, if (palette.isLight) 0.10f else 0.16f) to palette.content
 }
 
-private fun buildNavColors(scheme: ColorScheme, capsule: Boolean, tuning: NavTuning): NavColors {
-    val palette = navPalette(scheme, capsule, tuning.surfaceTone)
+private fun NavPalette.tintedBy(tint: Color): NavPalette {
+    val amount = if (isLight) 0.05f else 0.08f
+    val tintedSurface = surface.playerMix(tint, amount)
+    return NavPalette(
+        surface = tintedSurface,
+        content = content,
+        variant = variant,
+        raised = raised.playerMix(tint, amount),
+        isLight = tintedSurface.luminance() > 0.5f
+    )
+}
+
+private fun buildNavColors(scheme: ColorScheme, capsule: Boolean, tuning: NavTuning, seed: NavArtworkSeed?): NavColors {
+    val artwork = seed.takeIf { tuning.colorSource == NavColorSource.Artwork }
+    val basePalette = navPalette(scheme, capsule, tuning.surfaceTone)
+    val palette = if (artwork != null && tuning.surfaceTone != NavSurfaceTone.Amoled) basePalette.tintedBy(artwork.secondary) else basePalette
     val surface = palette.surface
     val isLight = palette.isLight
     val custom = tuning.colorSource == NavColorSource.Custom
-    val accent = if (custom) Color(tuning.accent) else scheme.primary
-    val themedTonal = tuning.surfaceTone == NavSurfaceTone.Auto && !custom
+    val accent = when {
+        custom -> Color(tuning.accent)
+        artwork != null -> artwork.primary
+        else -> scheme.primary
+    }
+    val themedTonal = tuning.surfaceTone == NavSurfaceTone.Auto && !custom && artwork == null
     val (indicator, onIndicatorSeed) = navIndicatorPair(tuning.indicatorTone, scheme, palette, accent, themedTonal)
     val mark = accent.navReadableOn(surface, NavIconContrast)
     val inactiveBase = if (tuning.indicator == NavIndicator.None) palette.content else palette.variant
@@ -316,7 +348,11 @@ private fun buildNavColors(scheme: ColorScheme, capsule: Boolean, tuning: NavTun
     return NavColors(
         surface = surface,
         raised = palette.raised,
-        rim = if (isLight) Color.Black.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.10f),
+        rim = when {
+            artwork != null -> artwork.primary.copy(alpha = if (isLight) 0.16f else 0.20f)
+            isLight -> Color.Black.copy(alpha = 0.08f)
+            else -> Color.White.copy(alpha = 0.10f)
+        },
         indicator = indicator,
         onIndicator = onIndicatorSeed.navReadableOn(indicator, NavTextContrast),
         mark = mark,
@@ -504,7 +540,7 @@ private fun Modifier.navCapsule(
 private fun navLabelRoom(mode: NavLabelMode): Dp = when (mode) {
     NavLabelMode.Always, NavLabelMode.ActiveOnly -> 16.dp
     NavLabelMode.Compact -> 12.dp
-    NavLabelMode.Never -> 0.dp
+    NavLabelMode.Never, NavLabelMode.Expanding -> 0.dp
 }
 
 private fun navIconTop(height: Dp, labelRoom: Dp): Dp =
@@ -512,7 +548,7 @@ private fun navIconTop(height: Dp, labelRoom: Dp): Dp =
 
 private fun navLabelShown(mode: NavLabelMode, selected: Boolean): Boolean = when (mode) {
     NavLabelMode.Always, NavLabelMode.Compact -> true
-    NavLabelMode.ActiveOnly -> selected
+    NavLabelMode.ActiveOnly, NavLabelMode.Expanding -> selected
     NavLabelMode.Never -> false
 }
 
@@ -644,6 +680,9 @@ internal fun StyledBottomTabs(
     }
     val depth = tuning.intensity / 100f
     val outer = minOf(tuning.cornerDp.dp, geometry.height / 2)
+    val expansion = remember(style, tuning.labels) {
+        if (tuning.labels == NavLabelMode.Expanding) navExpansion(style) else null
+    }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         if (searchEntry != null) {
@@ -661,6 +700,7 @@ internal fun StyledBottomTabs(
                 glass = glass,
                 depth = depth,
                 outer = outer,
+                expansion = expansion,
                 onSelect = onSelect
             )
         } else {
@@ -685,6 +725,7 @@ internal fun StyledBottomTabs(
                 geometry = geometry,
                 floating = floating,
                 compaction = compaction,
+                expansion = expansion,
                 onSelect = onSelect
             )
         }
@@ -708,6 +749,7 @@ private fun StyledTabCapsule(
     geometry: NavDockGeometry,
     floating: Boolean,
     compaction: () -> Float,
+    expansion: NavExpansion?,
     onSelect: (LevyraTab) -> Unit
 ) {
     val padding = tuning.paddingDp.dp
@@ -721,41 +763,57 @@ private fun StyledTabCapsule(
                 .height(geometry.height)
                 .graphicsLayer { translationY = -geometry.lift.toPx() * compaction() }
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .then(if (indicatorAlpha != null) Modifier.graphicsLayer { alpha = indicatorAlpha() } else Modifier)
-                    .drawBehind {
-                        if (indicatorIndex < 0) return@drawBehind
-                        val fold = compaction().coerceIn(0f, 1f)
-                        drawNavIndicator(
-                            tuning = tuning,
-                            floating = floating,
-                            startPx = padding.toPx(),
-                            slotPx = slotWidth.toPx(),
-                            gapPx = spacing.toPx(),
-                            position = position(),
-                            selectedIndex = indicatorIndex,
-                            lastIndex = entries.lastIndex,
-                            iconTopPx = geometry.iconTop.toPx(),
-                            labelRoomPx = geometry.labelRoom.toPx(),
-                            visibleTopPx = geometry.lift.toPx() * fold,
-                            visibleHeightPx = size.height - (geometry.height - geometry.compactHeight).toPx() * fold,
-                            stretch = motion.stretch,
-                            colors = colors
-                        )
-                    }
-            )
-            StyledTabRow(
-                entries = entries,
-                selected = selected,
-                tuning = tuning,
-                colors = colors,
-                iconTop = geometry.iconTop,
-                motion = motion,
-                foldLabel = if (floating) compaction else null,
-                onSelect = onSelect
-            )
+            if (expansion != null) {
+                ExpandingTabRow(
+                    entries = entries,
+                    selected = selected,
+                    tuning = tuning,
+                    colors = colors,
+                    motion = motion,
+                    geometry = geometry,
+                    expansion = expansion,
+                    floating = floating,
+                    compaction = compaction,
+                    indicatorAlpha = indicatorAlpha,
+                    onSelect = onSelect
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(if (indicatorAlpha != null) Modifier.graphicsLayer { alpha = indicatorAlpha() } else Modifier)
+                        .drawBehind {
+                            if (indicatorIndex < 0) return@drawBehind
+                            val fold = compaction().coerceIn(0f, 1f)
+                            drawNavIndicator(
+                                tuning = tuning,
+                                floating = floating,
+                                startPx = padding.toPx(),
+                                slotPx = slotWidth.toPx(),
+                                gapPx = spacing.toPx(),
+                                position = position(),
+                                selectedIndex = indicatorIndex,
+                                lastIndex = entries.lastIndex,
+                                iconTopPx = geometry.iconTop.toPx(),
+                                labelRoomPx = geometry.labelRoom.toPx(),
+                                visibleTopPx = geometry.lift.toPx() * fold,
+                                visibleHeightPx = size.height - (geometry.height - geometry.compactHeight).toPx() * fold,
+                                stretch = motion.stretch,
+                                colors = colors
+                            )
+                        }
+                )
+                StyledTabRow(
+                    entries = entries,
+                    selected = selected,
+                    tuning = tuning,
+                    colors = colors,
+                    iconTop = geometry.iconTop,
+                    motion = motion,
+                    foldLabel = if (floating) compaction else null,
+                    onSelect = onSelect
+                )
+            }
         }
     }
 }
@@ -775,6 +833,7 @@ private fun SplitDockRow(
     glass: GlassBackdropState?,
     depth: Float,
     outer: Dp,
+    expansion: NavExpansion?,
     onSelect: (LevyraTab) -> Unit
 ) {
     val searchSelected = selected == searchEntry.tab
@@ -810,6 +869,7 @@ private fun SplitDockRow(
             geometry = geometry,
             floating = true,
             compaction = compaction,
+            expansion = expansion,
             onSelect = onSelect
         )
         Spacer(
@@ -1119,16 +1179,18 @@ private fun DrawScope.drawNavFloatingPill(
     pillSize: Size,
     radius: Float,
     shadowDrop: Float,
-    colors: NavColors
+    colors: NavColors,
+    alpha: Float = 1f
 ) {
     val corner = CornerRadius(radius)
     drawRoundRect(
         color = Color.Black.copy(alpha = if (colors.isLight) 0.08f else 0.22f),
         topLeft = topLeft + Offset(0f, shadowDrop),
         size = pillSize,
-        cornerRadius = corner
+        cornerRadius = corner,
+        alpha = alpha
     )
-    drawRoundRect(color = colors.indicator, topLeft = topLeft, size = pillSize, cornerRadius = corner)
+    drawRoundRect(color = colors.indicator, topLeft = topLeft, size = pillSize, cornerRadius = corner, alpha = alpha)
     drawRoundRect(
         brush = Brush.verticalGradient(
             listOf(Color.White.copy(alpha = if (colors.isLight) 0.30f else 0.10f), Color.Transparent),
@@ -1137,7 +1199,8 @@ private fun DrawScope.drawNavFloatingPill(
         ),
         topLeft = topLeft,
         size = pillSize,
-        cornerRadius = corner
+        cornerRadius = corner,
+        alpha = alpha
     )
 }
 
@@ -1291,4 +1354,278 @@ private fun StyledTabLabel(
                 alpha = labelAlpha * (1f - fold)
             }
     )
+}
+
+@Immutable
+internal data class NavExpansion(
+    val grow: Float,
+    val labelSize: TextUnit,
+    val gap: Dp,
+    val pillHeight: Dp,
+    val inset: Dp,
+    val morph: Boolean,
+    val glass: Boolean
+)
+
+internal fun navExpansion(style: NavStyle): NavExpansion = when (style) {
+    NavStyle.SuperExpressive -> NavExpansion(1.25f, 12.sp, 8.dp, 44.dp, 4.dp, morph = true, glass = false)
+    NavStyle.FloatingDock -> NavExpansion(1.10f, 12.sp, 6.dp, 44.dp, 4.dp, morph = false, glass = false)
+    NavStyle.SplitDock -> NavExpansion(1.00f, 12.sp, 6.dp, 44.dp, 4.dp, morph = false, glass = false)
+    NavStyle.ConnectedDock -> NavExpansion(0.95f, 12.sp, 6.dp, 40.dp, 4.dp, morph = false, glass = false)
+    NavStyle.LiquidGlass -> NavExpansion(1.00f, 12.sp, 6.dp, 44.dp, 4.dp, morph = false, glass = true)
+    NavStyle.Minimal -> NavExpansion(0.70f, 11.sp, 6.dp, 36.dp, 6.dp, morph = false, glass = false)
+    NavStyle.ExpressiveCompact -> NavExpansion(0.60f, 11.sp, 4.dp, 34.dp, 3.dp, morph = true, glass = false)
+    NavStyle.Original, NavStyle.YtMusic -> NavExpansion(0.80f, 12.sp, 6.dp, 40.dp, 4.dp, morph = false, glass = false)
+}
+
+@Composable
+private fun ExpandingTabRow(
+    entries: List<LevyraTabEntry>,
+    selected: LevyraTab,
+    tuning: NavTuning,
+    colors: NavColors,
+    motion: NavMotionSpec,
+    geometry: NavDockGeometry,
+    expansion: NavExpansion,
+    floating: Boolean,
+    compaction: () -> Float,
+    indicatorAlpha: (() -> Float)?,
+    onSelect: (LevyraTab) -> Unit
+) {
+    val haptics = LocalLevyraHaptics.current
+    val fractions = entries.map { entry ->
+        key(entry.tab) {
+            animateFloatAsState(
+                targetValue = if (entry.tab == selected) 1f else 0f,
+                animationSpec = motion.position,
+                label = "nav-expand"
+            )
+        }
+    }
+    val gap = tuning.spacingDp.dp
+    Layout(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = tuning.paddingDp.dp)
+            .selectableGroup(),
+        content = {
+            entries.forEachIndexed { index, entry ->
+                key(entry.tab) {
+                    val isSelected = entry.tab == selected
+                    val fraction = fractions[index]
+                    ExpandingTabButton(
+                        entry = entry,
+                        isSelected = isSelected,
+                        fraction = { fraction.value },
+                        tuning = tuning,
+                        colors = colors,
+                        motion = motion,
+                        geometry = geometry,
+                        expansion = expansion,
+                        floating = floating,
+                        compaction = compaction,
+                        indicatorAlpha = indicatorAlpha,
+                        onClick = {
+                            if (!isSelected && tuning.haptics) {
+                                haptics.perform(if (motion.pop > 1f) LevyraHapticAction.Confirm else LevyraHapticAction.SeekSnap)
+                            }
+                            onSelect(entry.tab)
+                        }
+                    )
+                }
+            }
+        }
+    ) { measurables, constraints ->
+        val gapPx = gap.roundToPx()
+        val width = constraints.maxWidth
+        val available = (width - gapPx * (measurables.size - 1)).coerceAtLeast(0)
+        val weights = fractions.map { 1f + expansion.grow * it.value.coerceIn(0f, 1.2f) }
+        val total = weights.sum().coerceAtLeast(1f)
+        var assigned = 0
+        val placeables = measurables.mapIndexed { index, measurable ->
+            val slot = if (index == measurables.lastIndex) {
+                available - assigned
+            } else {
+                (available * weights[index] / total).roundToInt()
+            }.coerceAtLeast(0)
+            assigned += slot
+            measurable.measure(Constraints.fixed(slot, constraints.maxHeight))
+        }
+        layout(width, constraints.maxHeight) {
+            var x = 0
+            placeables.forEach { placeable ->
+                placeable.placeRelative(x, 0)
+                x += placeable.width + gapPx
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExpandingTabButton(
+    entry: LevyraTabEntry,
+    isSelected: Boolean,
+    fraction: () -> Float,
+    tuning: NavTuning,
+    colors: NavColors,
+    motion: NavMotionSpec,
+    geometry: NavDockGeometry,
+    expansion: NavExpansion,
+    floating: Boolean,
+    compaction: () -> Float,
+    indicatorAlpha: (() -> Float)?,
+    onClick: () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val textColor by animateColorAsState(
+        targetValue = navExpandingTextTint(tuning, colors, isSelected),
+        animationSpec = motion.tint,
+        label = "nav-expand-text"
+    )
+    Box(
+        modifier = Modifier
+            .fillMaxHeight()
+            .semantics(mergeDescendants = true) {
+                role = Role.Tab
+                selected = isSelected
+                contentDescription = entry.label
+            }
+            .drawBehind {
+                val fold = compaction().coerceIn(0f, 1f)
+                drawExpandingIndicator(
+                    tuning = tuning,
+                    colors = colors,
+                    expansion = expansion,
+                    floating = floating,
+                    fraction = fraction().coerceIn(0f, 1.2f),
+                    iconCenterY = geometry.iconTop.toPx() + StyledNavIconBox.toPx() / 2f,
+                    visibleTop = geometry.lift.toPx() * fold,
+                    visibleHeight = size.height - (geometry.height - geometry.compactHeight).toPx() * fold,
+                    alpha = indicatorAlpha?.invoke()?.coerceIn(0f, 1f) ?: 1f
+                )
+            }
+            .levyraPressable(
+                onClick = onClick,
+                interactionSource = interactionSource,
+                pressedScale = if (motion.animated) 0.96f else 1f
+            ),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(top = geometry.iconTop, start = expansion.inset + 6.dp, end = expansion.inset + 6.dp)
+                .height(StyledNavIconBox),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            StyledTabIcon(
+                entry = entry,
+                selected = isSelected,
+                pressed = pressed,
+                tuning = tuning,
+                colors = colors,
+                motion = motion
+            )
+            Spacer(modifier = Modifier.dockGapWidth { expansion.gap * fraction().coerceIn(0f, 1f) })
+            Text(
+                text = entry.label,
+                color = textColor,
+                fontSize = expansion.labelSize,
+                lineHeight = LevyraTypeRhythm.lineHeight(expansion.labelSize),
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.1.sp,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .layout { measurable, constraints ->
+                        val placeable = measurable.measure(constraints.copy(minWidth = 0))
+                        val revealed = (placeable.width * fraction().coerceIn(0f, 1f)).roundToInt()
+                        layout(revealed, placeable.height) { placeable.placeRelative(0, 0) }
+                    }
+                    .clipToBounds()
+                    .graphicsLayer {
+                        val reveal = fraction().coerceIn(0f, 1f)
+                        alpha = reveal * reveal
+                    }
+            )
+        }
+    }
+}
+
+private fun navExpandingTextTint(tuning: NavTuning, colors: NavColors, selected: Boolean): Color = when {
+    !selected -> colors.inactiveText
+    tuning.indicator.filled -> colors.onIndicator
+    else -> colors.markText
+}
+
+private fun DrawScope.drawExpandingIndicator(
+    tuning: NavTuning,
+    colors: NavColors,
+    expansion: NavExpansion,
+    floating: Boolean,
+    fraction: Float,
+    iconCenterY: Float,
+    visibleTop: Float,
+    visibleHeight: Float,
+    alpha: Float
+) {
+    val presence = (fraction * 1.6f).coerceIn(0f, 1f) * alpha
+    if (presence <= 0f) return
+    val grown = fraction.coerceIn(0f, 1f)
+    val inset = expansion.inset.toPx()
+    val iconBox = StyledNavIconBox.toPx()
+    val scale = tuning.indicatorScale / 100f
+    val centerX = size.width / 2f
+    val fullWidth = (size.width - inset * 2f).coerceAtLeast(iconBox)
+    val restWidth = minOf(iconBox * 1.5f, fullWidth)
+    val width = restWidth + (fullWidth - restWidth) * grown
+    when (tuning.indicator) {
+        NavIndicator.Pill, NavIndicator.Morph, NavIndicator.Circle -> {
+            val height = minOf(expansion.pillHeight.toPx() * scale, visibleHeight - 8.dp.toPx()).coerceAtLeast(iconBox)
+            val bend = if (tuning.indicator == NavIndicator.Morph || expansion.morph) grown else 0f
+            drawRoundRect(
+                color = colors.indicator,
+                topLeft = Offset(centerX - width / 2f, iconCenterY - height / 2f),
+                size = Size(width, height),
+                cornerRadius = CornerRadius(height / 2f * (1f - 0.36f * bend)),
+                alpha = presence
+            )
+        }
+        NavIndicator.Floating -> {
+            val edge = if (floating) 5.dp.toPx() else 8.dp.toPx()
+            val height = (visibleHeight - edge * 2f).coerceAtLeast(iconBox)
+            val radius = minOf(tuning.cornerDp.dp.toPx() - edge, height / 2f).coerceAtLeast(10.dp.toPx())
+            val topLeft = Offset(centerX - width / 2f, visibleTop + edge)
+            if (expansion.glass) {
+                drawNavFloatingPill(topLeft, Size(width, height), radius, 2.dp.toPx() * scale, colors, presence)
+            } else {
+                drawRoundRect(
+                    color = colors.indicator,
+                    topLeft = topLeft,
+                    size = Size(width, height),
+                    cornerRadius = CornerRadius(radius),
+                    alpha = presence
+                )
+            }
+        }
+        NavIndicator.Dot, NavIndicator.Line -> {
+            val line = tuning.indicator == NavIndicator.Line
+            val markHeight = if (line) 3.dp.toPx() else 4.dp.toPx() * scale
+            val markWidth = markHeight + (width * 0.42f - markHeight).coerceAtLeast(0f) * grown
+            val y = if (line) {
+                visibleTop + visibleHeight - markHeight - if (floating) 5.dp.toPx() else 6.dp.toPx()
+            } else {
+                iconCenterY + iconBox / 2f + 3.dp.toPx()
+            }
+            drawRoundRect(
+                color = colors.mark,
+                topLeft = Offset(centerX - markWidth / 2f, y),
+                size = Size(markWidth, markHeight),
+                cornerRadius = CornerRadius(markHeight / 2f),
+                alpha = presence
+            )
+        }
+        NavIndicator.None -> Unit
+    }
 }

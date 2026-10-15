@@ -13,7 +13,8 @@ enum class NavStudioText {
     SurfaceDark, SurfaceAmoled, Opacity, InactiveIcons, Corners, Spacing,
     Padding, Motion, MotionStandard, MotionExpressive, MotionSpring, MotionMinimal,
     MotionOff, Advanced, Haptics, DynamicUnavailable, ContrastHint,
-    DescYtMusic, IndicatorNone, DescSplitDock, DescConnectedDock
+    DescYtMusic, IndicatorNone, DescSplitDock, DescConnectedDock, LabelsExpanding, ColorArtwork,
+    ArtworkHint
 }
 
 class NavigationStudioCopy internal constructor(private val texts: Map<NavStudioText, String>) {
@@ -37,7 +38,8 @@ private val englishNavStudio: Map<NavStudioText, String> = navStudio(
     "Side padding", "Animations", "Standard", "Expressive", "Spring", "Minimal",
     "Off", "Advanced options", "Haptic feedback", "Material You needs Android 12 or later. Levyra theme colors are used instead.", "Colors are adjusted automatically to stay readable.",
     "Flat black bar with filled icons, paired with its mini player", "None",
-    "Main tabs with a separate search button", "Navigation bar and mini player joined into one shape"
+    "Main tabs with a separate search button", "Navigation bar and mini player joined into one shape",
+    "Expanding", "From artwork", "Colors follow the cover of the song that's playing."
 )
 
 private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
@@ -56,7 +58,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Margine laterale", "Animazioni", "Standard", "Espressive", "Elastiche", "Minimal",
         "Disattivate", "Opzioni avanzate", "Feedback aptico", "Material You richiede Android 12 o successivo. Vengono usati i colori del tema Levyra.", "I colori vengono regolati automaticamente per restare leggibili.",
         "Barra nera piatta con icone piene, abbinata al suo mini player", "Nessuno",
-        "Schede principali con un pulsante Cerca separato", "Barra di navigazione e mini player uniti in un'unica forma"
+        "Schede principali con un pulsante Cerca separato", "Barra di navigazione e mini player uniti in un'unica forma",
+        "Espandibili", "Dalla copertina", "I colori seguono la copertina del brano in riproduzione."
     ),
     "es" to navStudio(
         "Barra de navegación", "Estilos, botones y etiquetas", "Estilo", "Predeterminado", "Seleccionado", "La barra de navegación original de Levyra",
@@ -72,7 +75,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Margen lateral", "Animaciones", "Estándar", "Expresivas", "Elásticas", "Mínimas",
         "Desactivadas", "Opciones avanzadas", "Respuesta háptica", "Material You requiere Android 12 o posterior. Se usan los colores del tema de Levyra.", "Los colores se ajustan automáticamente para seguir siendo legibles.",
         "Barra negra plana con iconos rellenos, a juego con su minirreproductor", "Ninguno",
-        "Pestañas principales con un botón de búsqueda separado", "Barra de navegación y minirreproductor unidos en una sola forma"
+        "Pestañas principales con un botón de búsqueda separado", "Barra de navegación y minirreproductor unidos en una sola forma",
+        "Expandibles", "De la portada", "Los colores siguen la portada de la canción en reproducción."
     ),
     "fr" to navStudio(
         "Barre de navigation", "Styles, boutons et libellés", "Style", "Par défaut", "Sélectionné", "La barre de navigation d'origine de Levyra",
@@ -88,7 +92,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Marge latérale", "Animations", "Standard", "Expressives", "Élastiques", "Minimales",
         "Désactivées", "Options avancées", "Retour haptique", "Material You nécessite Android 12 ou version ultérieure. Les couleurs du thème Levyra sont utilisées.", "Les couleurs sont ajustées automatiquement pour rester lisibles.",
         "Barre noire plate aux icônes pleines, assortie à son mini-lecteur", "Aucun",
-        "Onglets principaux avec un bouton de recherche séparé", "Barre de navigation et mini-lecteur réunis en une seule forme"
+        "Onglets principaux avec un bouton de recherche séparé", "Barre de navigation et mini-lecteur réunis en une seule forme",
+        "Extensibles", "De la pochette", "Les couleurs suivent la pochette du titre en cours."
     ),
     "de" to navStudio(
         "Navigationsleiste", "Stile, Tasten und Beschriftungen", "Stil", "Standard", "Ausgewählt", "Die originale Levyra-Navigationsleiste",
@@ -104,7 +109,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Seitenabstand", "Animationen", "Standard", "Ausdrucksstark", "Federnd", "Minimal",
         "Aus", "Erweiterte Optionen", "Haptisches Feedback", "Material You erfordert Android 12 oder neuer. Stattdessen werden die Levyra-Farben verwendet.", "Farben werden automatisch angepasst, damit alles lesbar bleibt.",
         "Flache schwarze Leiste mit gefüllten Symbolen, passend zum Mini-Player", "Keiner",
-        "Haupttabs mit separater Suchtaste", "Navigationsleiste und Mini-Player in einer gemeinsamen Form"
+        "Haupttabs mit separater Suchtaste", "Navigationsleiste und Mini-Player in einer gemeinsamen Form",
+        "Ausklappend", "Vom Cover", "Die Farben folgen dem Cover des aktuellen Titels."
     ),
     "pt" to navStudio(
         "Barra de navegação", "Estilos, botões e rótulos", "Estilo", "Padrão", "Selecionado", "A barra de navegação original do Levyra",
@@ -120,7 +126,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Margem lateral", "Animações", "Padrão", "Expressivas", "Elásticas", "Mínimas",
         "Desativadas", "Opções avançadas", "Resposta tátil", "O Material You requer Android 12 ou superior. As cores do tema Levyra são usadas.", "As cores são ajustadas automaticamente para continuarem legíveis.",
         "Barra preta plana com ícones preenchidos, combinada com o seu miniplayer", "Nenhum",
-        "Separadores principais com um botão de pesquisa à parte", "Barra de navegação e minileitor unidos numa só forma"
+        "Separadores principais com um botão de pesquisa à parte", "Barra de navegação e minileitor unidos numa só forma",
+        "Expansíveis", "Da capa", "As cores acompanham a capa da música em reprodução."
     ),
     "nl" to navStudio(
         "Navigatiebalk", "Stijlen, knoppen en labels", "Stijl", "Standaard", "Geselecteerd", "De originele navigatiebalk van Levyra",
@@ -136,7 +143,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Zijmarge", "Animaties", "Standaard", "Expressief", "Verend", "Minimaal",
         "Uit", "Geavanceerde opties", "Haptische feedback", "Material You vereist Android 12 of hoger. De kleuren van het Levyra-thema worden gebruikt.", "Kleuren worden automatisch aangepast zodat alles leesbaar blijft.",
         "Platte zwarte balk met gevulde pictogrammen, passend bij de minispeler", "Geen",
-        "Hoofdtabbladen met een aparte zoekknop", "Navigatiebalk en minispeler samen in één vorm"
+        "Hoofdtabbladen met een aparte zoekknop", "Navigatiebalk en minispeler samen in één vorm",
+        "Uitklappend", "Van de hoes", "De kleuren volgen de hoes van het nummer dat speelt."
     ),
     "pl" to navStudio(
         "Pasek nawigacji", "Style, przyciski i etykiety", "Styl", "Domyślny", "Wybrany", "Oryginalny pasek nawigacji Levyra",
@@ -152,7 +160,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Margines boczny", "Animacje", "Standardowe", "Ekspresyjne", "Sprężyste", "Minimalne",
         "Wyłączone", "Opcje zaawansowane", "Wibracje dotykowe", "Material You wymaga Androida 12 lub nowszego. Używane są kolory motywu Levyra.", "Kolory są dostosowywane automatycznie, aby pozostały czytelne.",
         "Płaski czarny pasek z wypełnionymi ikonami, w parze z miniodtwarzaczem", "Brak",
-        "Główne karty z osobnym przyciskiem wyszukiwania", "Pasek nawigacji i miniodtwarzacz połączone w jeden kształt"
+        "Główne karty z osobnym przyciskiem wyszukiwania", "Pasek nawigacji i miniodtwarzacz połączone w jeden kształt",
+        "Rozwijane", "Z okładki", "Kolory dopasowują się do okładki odtwarzanego utworu."
     ),
     "ro" to navStudio(
         "Bara de navigare", "Stiluri, butoane și etichete", "Stil", "Implicit", "Selectat", "Bara de navigare originală Levyra",
@@ -168,7 +177,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Margine laterală", "Animații", "Standard", "Expresive", "Elastice", "Minimale",
         "Dezactivate", "Opțiuni avansate", "Răspuns haptic", "Material You necesită Android 12 sau o versiune ulterioară. Se folosesc culorile temei Levyra.", "Culorile sunt ajustate automat pentru a rămâne lizibile.",
         "Bară neagră plată cu pictograme pline, asortată cu mini playerul", "Niciunul",
-        "File principale cu un buton de căutare separat", "Bara de navigare și mini playerul unite într-o singură formă"
+        "File principale cu un buton de căutare separat", "Bara de navigare și mini playerul unite într-o singură formă",
+        "Extensibile", "Din copertă", "Culorile urmează coperta melodiei redate."
     ),
     "el" to navStudio(
         "Γραμμή πλοήγησης", "Στιλ, κουμπιά και ετικέτες", "Στιλ", "Προεπιλογή", "Επιλεγμένο", "Η αρχική γραμμή πλοήγησης του Levyra",
@@ -184,7 +194,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Πλευρικό περιθώριο", "Κινούμενα εφέ", "Τυπικά", "Εκφραστικά", "Ελαστικά", "Ελάχιστα",
         "Απενεργοποιημένα", "Επιλογές για προχωρημένους", "Απτική απόκριση", "Το Material You απαιτεί Android 12 ή νεότερο. Χρησιμοποιούνται τα χρώματα του θέματος Levyra.", "Τα χρώματα προσαρμόζονται αυτόματα ώστε να παραμένουν ευανάγνωστα.",
         "Επίπεδη μαύρη γραμμή με γεμάτα εικονίδια, σε συνδυασμό με το mini player", "Κανένας",
-        "Κύριες καρτέλες με ξεχωριστό κουμπί αναζήτησης", "Γραμμή πλοήγησης και μίνι πρόγραμμα αναπαραγωγής ενωμένα σε ένα σχήμα"
+        "Κύριες καρτέλες με ξεχωριστό κουμπί αναζήτησης", "Γραμμή πλοήγησης και μίνι πρόγραμμα αναπαραγωγής ενωμένα σε ένα σχήμα",
+        "Επεκτεινόμενες", "Από το εξώφυλλο", "Τα χρώματα ακολουθούν το εξώφυλλο του τραγουδιού που παίζει."
     ),
     "sv" to navStudio(
         "Navigeringsfält", "Stilar, knappar och etiketter", "Stil", "Standard", "Vald", "Levyras ursprungliga navigeringsfält",
@@ -200,7 +211,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Sidomarginal", "Animationer", "Standard", "Uttrycksfulla", "Fjädrande", "Minimala",
         "Av", "Avancerade alternativ", "Haptisk återkoppling", "Material You kräver Android 12 eller senare. Levyra-temats färger används i stället.", "Färgerna justeras automatiskt så att allt förblir läsbart.",
         "Platt svart fält med fyllda ikoner, matchar sin minispelare", "Ingen",
-        "Huvudflikar med en separat sökknapp", "Navigeringsfält och minispelare förenade i en form"
+        "Huvudflikar med en separat sökknapp", "Navigeringsfält och minispelare förenade i en form",
+        "Expanderande", "Från omslaget", "Färgerna följer omslaget på låten som spelas."
     ),
     "da" to navStudio(
         "Navigationslinje", "Stilarter, knapper og etiketter", "Stil", "Standard", "Valgt", "Levyras oprindelige navigationslinje",
@@ -216,7 +228,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Sidemargen", "Animationer", "Standard", "Udtryksfulde", "Fjedrende", "Minimale",
         "Fra", "Avancerede indstillinger", "Haptisk feedback", "Material You kræver Android 12 eller nyere. Levyra-temaets farver bruges i stedet.", "Farverne justeres automatisk, så alt forbliver læsbart.",
         "Flad sort bjælke med udfyldte ikoner, matcher sin miniafspiller", "Ingen",
-        "Hovedfaner med en separat søgeknap", "Navigationslinje og miniafspiller samlet i én form"
+        "Hovedfaner med en separat søgeknap", "Navigationslinje og miniafspiller samlet i én form",
+        "Udvidende", "Fra coveret", "Farverne følger coveret på det nummer, der afspilles."
     ),
     "cs" to navStudio(
         "Navigační lišta", "Styly, tlačítka a popisky", "Styl", "Výchozí", "Vybráno", "Původní navigační lišta Levyra",
@@ -232,7 +245,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Boční okraj", "Animace", "Standardní", "Expresivní", "Pružné", "Minimální",
         "Vypnuté", "Pokročilé možnosti", "Hmatová odezva", "Material You vyžaduje Android 12 nebo novější. Použijí se barvy motivu Levyra.", "Barvy se automaticky upravují, aby zůstaly čitelné.",
         "Plochá černá lišta s plnými ikonami, ladí se svým minipřehrávačem", "Žádný",
-        "Hlavní karty se samostatným tlačítkem hledání", "Navigační lišta a minipřehrávač spojené do jednoho tvaru"
+        "Hlavní karty se samostatným tlačítkem hledání", "Navigační lišta a minipřehrávač spojené do jednoho tvaru",
+        "Rozbalovací", "Z obalu", "Barvy se řídí obalem právě hrající skladby."
     ),
     "sk" to navStudio(
         "Navigačná lišta", "Štýly, tlačidlá a popisy", "Štýl", "Predvolený", "Vybraný", "Pôvodná navigačná lišta Levyra",
@@ -248,7 +262,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Bočný okraj", "Animácie", "Štandardné", "Expresívne", "Pružné", "Minimálne",
         "Vypnuté", "Rozšírené možnosti", "Hmatová odozva", "Material You vyžaduje Android 12 alebo novší. Použijú sa farby motívu Levyra.", "Farby sa automaticky upravujú, aby zostali čitateľné.",
         "Plochá čierna lišta s plnými ikonami, ladí so svojím miniprehrávačom", "Žiadny",
-        "Hlavné karty so samostatným tlačidlom hľadania", "Navigačný panel a miniprehrávač spojené do jedného tvaru"
+        "Hlavné karty so samostatným tlačidlom hľadania", "Navigačný panel a miniprehrávač spojené do jedného tvaru",
+        "Rozbaľovacie", "Z obalu", "Farby sa riadia obalom práve hranej skladby."
     ),
     "bn" to navStudio(
         "নেভিগেশন বার", "স্টাইল, বোতাম ও লেবেল", "স্টাইল", "ডিফল্ট", "নির্বাচিত", "Levyra-র আসল নেভিগেশন বার",
@@ -264,7 +279,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "পাশের প্যাডিং", "অ্যানিমেশন", "সাধারণ", "অভিব্যক্তিপূর্ণ", "স্প্রিং", "ন্যূনতম",
         "বন্ধ", "উন্নত বিকল্প", "হ্যাপটিক প্রতিক্রিয়া", "Material You-এর জন্য Android 12 বা নতুন সংস্করণ প্রয়োজন। এর বদলে Levyra থিমের রং ব্যবহার করা হয়।", "পাঠযোগ্য রাখতে রং স্বয়ংক্রিয়ভাবে সমন্বয় করা হয়।",
         "ভরাট আইকনসহ সমতল কালো বার, নিজস্ব মিনি প্লেয়ারের সঙ্গে মিলিয়ে", "কোনোটিই নয়",
-        "আলাদা সার্চ বোতাম সহ প্রধান ট্যাব", "নেভিগেশন বার ও মিনি প্লেয়ার এক আকারে যুক্ত"
+        "আলাদা সার্চ বোতাম সহ প্রধান ট্যাব", "নেভিগেশন বার ও মিনি প্লেয়ার এক আকারে যুক্ত",
+        "প্রসারিত", "কভার থেকে", "চলমান গানের কভার অনুযায়ী রং বদলায়।"
     ),
     "kk" to navStudio(
         "Навигация жолағы", "Стильдер, түймелер және белгілер", "Стиль", "Әдепкі", "Таңдалған", "Levyra-ның түпнұсқа навигация жолағы",
@@ -280,7 +296,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Бүйір шегініс", "Анимациялар", "Стандартты", "Мәнерлі", "Серпімді", "Минималды",
         "Өшірулі", "Кеңейтілген параметрлер", "Тактильді кері байланыс", "Material You үшін Android 12 немесе одан жаңасы қажет. Оның орнына Levyra тақырыбының түстері қолданылады.", "Түстер оқылымды болып қалуы үшін автоматты түрде реттеледі.",
         "Толтырылған белгішелері бар тегіс қара жолақ, өз мини-ойнатқышымен үйлеседі", "Жоқ",
-        "Бөлек іздеу түймесі бар негізгі қойындылар", "Навигация жолағы мен мини ойнатқыш бір пішінге біріккен"
+        "Бөлек іздеу түймесі бар негізгі қойындылар", "Навигация жолағы мен мини ойнатқыш бір пішінге біріккен",
+        "Кеңейетін", "Мұқабадан", "Түстер ойнап тұрған әннің мұқабасына сәйкес өзгереді."
     ),
     "sr" to navStudio(
         "Трака за навигацију", "Стилови, дугмад и ознаке", "Стил", "Подразумевано", "Изабрано", "Оригинална Levyra трака за навигацију",
@@ -296,7 +313,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Бочна маргина", "Анимације", "Стандардне", "Експресивне", "Еластичне", "Минималне",
         "Искључене", "Напредне опције", "Хаптичка повратна информација", "Material You захтева Android 12 или новији. Уместо тога се користе боје Levyra теме.", "Боје се аутоматски прилагођавају да остану читљиве.",
         "Равна црна трака са попуњеним иконама, усклађена са својим мини плејером", "Ништа",
-        "Главне картице са засебним дугметом за претрагу", "Трака за навигацију и мини плејер спојени у један облик"
+        "Главне картице са засебним дугметом за претрагу", "Трака за навигацију и мини плејер спојени у један облик",
+        "Проширујуће", "Са омота", "Боје прате омот песме која се пушта."
     ),
     "sq" to navStudio(
         "Shiriti i navigimit", "Stile, butona dhe etiketa", "Stili", "I parazgjedhur", "I zgjedhur", "Shiriti origjinal i navigimit të Levyra",
@@ -312,7 +330,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Mbushja anësore", "Animacionet", "Standarde", "Shprehëse", "Elastike", "Minimale",
         "Joaktive", "Opsione të avancuara", "Reagimi haptik", "Material You kërkon Android 12 ose më të ri. Përdoren ngjyrat e temës Levyra.", "Ngjyrat rregullohen automatikisht që të mbeten të lexueshme.",
         "Shirit i zi i sheshtë me ikona të mbushura, në çift me mini luajtësin e vet", "Asnjë",
-        "Skeda kryesore me një buton kërkimi të veçantë", "Shiriti i navigimit dhe mini luajtësi të bashkuar në një formë"
+        "Skeda kryesore me një buton kërkimi të veçantë", "Shiriti i navigimit dhe mini luajtësi të bashkuar në një formë",
+        "Zgjeruese", "Nga kopertina", "Ngjyrat ndjekin kopertinën e këngës që po luhet."
     ),
     "hr" to navStudio(
         "Navigacijska traka", "Stilovi, gumbi i oznake", "Stil", "Zadano", "Odabrano", "Izvorna Levyra navigacijska traka",
@@ -328,7 +347,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Bočna margina", "Animacije", "Standardne", "Ekspresivne", "Elastične", "Minimalne",
         "Isključene", "Napredne opcije", "Haptička povratna informacija", "Material You zahtijeva Android 12 ili noviji. Umjesto toga koriste se boje Levyra teme.", "Boje se automatski prilagođavaju kako bi ostale čitljive.",
         "Ravna crna traka s ispunjenim ikonama, usklađena sa svojim mini playerom", "Ništa",
-        "Glavne kartice sa zasebnim gumbom za pretraživanje", "Navigacijska traka i mini player spojeni u jedan oblik"
+        "Glavne kartice sa zasebnim gumbom za pretraživanje", "Navigacijska traka i mini player spojeni u jedan oblik",
+        "Proširive", "S omota", "Boje prate omot pjesme koja se reproducira."
     ),
     "bg" to navStudio(
         "Лента за навигация", "Стилове, бутони и етикети", "Стил", "По подразбиране", "Избран", "Оригиналната лента за навигация на Levyra",
@@ -344,7 +364,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Странично отстояние", "Анимации", "Стандартни", "Изразителни", "Еластични", "Минимални",
         "Изключени", "Разширени опции", "Тактилна обратна връзка", "Material You изисква Android 12 или по-нова версия. Вместо това се използват цветовете на темата Levyra.", "Цветовете се коригират автоматично, за да останат четими.",
         "Плоска черна лента с плътни икони, в комплект със своя мини плейър", "Няма",
-        "Основни раздели с отделен бутон за търсене", "Лента за навигация и мини плейър, слети в една форма"
+        "Основни раздели с отделен бутон за търсене", "Лента за навигация и мини плейър, слети в една форма",
+        "Разгъващи се", "От обложката", "Цветовете следват обложката на песента, която звучи."
     ),
     "hu" to navStudio(
         "Navigációs sáv", "Stílusok, gombok és feliratok", "Stílus", "Alapértelmezett", "Kiválasztva", "A Levyra eredeti navigációs sávja",
@@ -360,7 +381,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Oldalsó margó", "Animációk", "Normál", "Kifejező", "Rugalmas", "Minimális",
         "Kikapcsolva", "Speciális beállítások", "Haptikus visszajelzés", "A Material You Android 12 vagy újabb rendszert igényel. Helyette a Levyra téma színei érvényesek.", "A színek automatikusan igazodnak, hogy olvashatók maradjanak.",
         "Lapos fekete sáv kitöltött ikonokkal, a saját minilejátszójához illik", "Nincs",
-        "Fő lapok külön keresés gombbal", "Navigációs sáv és minilejátszó egyetlen formában"
+        "Fő lapok külön keresés gombbal", "Navigációs sáv és minilejátszó egyetlen formában",
+        "Kibomló", "A borítóról", "A színek a lejátszott dal borítóját követik."
     ),
     "fi" to navStudio(
         "Navigointipalkki", "Tyylit, painikkeet ja tekstit", "Tyyli", "Oletus", "Valittu", "Levyran alkuperäinen navigointipalkki",
@@ -376,7 +398,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Sivumarginaali", "Animaatiot", "Tavalliset", "Ilmeikkäät", "Joustavat", "Vähäiset",
         "Pois", "Lisäasetukset", "Haptinen palaute", "Material You vaatii Android 12:n tai uudemman. Sen sijaan käytetään Levyra-teeman värejä.", "Värejä säädetään automaattisesti, jotta kaikki pysyy luettavana.",
         "Litteä musta palkki täytetyillä kuvakkeilla, sopii yhteen minisoittimensa kanssa", "Ei mitään",
-        "Päävälilehdet ja erillinen hakupainike", "Navigointipalkki ja minisoitin yhdeksi muodoksi yhdistettynä"
+        "Päävälilehdet ja erillinen hakupainike", "Navigointipalkki ja minisoitin yhdeksi muodoksi yhdistettynä",
+        "Laajenevat", "Kansikuvasta", "Värit seuraavat soivan kappaleen kansikuvaa."
     ),
     "et" to navStudio(
         "Navigeerimisriba", "Stiilid, nupud ja sildid", "Stiil", "Vaikimisi", "Valitud", "Levyra algne navigeerimisriba",
@@ -392,7 +415,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Külgveeris", "Animatsioonid", "Tavalised", "Väljendusrikkad", "Vetruvad", "Minimaalsed",
         "Väljas", "Täpsemad valikud", "Haptiline tagasiside", "Material You vajab Android 12 või uuemat. Selle asemel kasutatakse Levyra teema värve.", "Värve kohandatakse automaatselt, et kõik jääks loetavaks.",
         "Lame must riba täidetud ikoonidega, sobib oma minimängijaga", "Puudub",
-        "Põhivahekaardid eraldi otsingunupuga", "Navigeerimisriba ja minimängija ühendatud üheks kujuks"
+        "Põhivahekaardid eraldi otsingunupuga", "Navigeerimisriba ja minimängija ühendatud üheks kujuks",
+        "Laienevad", "Kaanepildist", "Värvid järgivad mängiva loo kaanepilti."
     ),
     "nb" to navStudio(
         "Navigasjonslinje", "Stiler, knapper og etiketter", "Stil", "Standard", "Valgt", "Levyras opprinnelige navigasjonslinje",
@@ -408,7 +432,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Sidemarg", "Animasjoner", "Standard", "Uttrykksfulle", "Fjærende", "Minimale",
         "Av", "Avanserte alternativer", "Haptisk tilbakemelding", "Material You krever Android 12 eller nyere. Fargene fra Levyra-temaet brukes i stedet.", "Fargene justeres automatisk slik at alt forblir lesbart.",
         "Flat svart linje med fylte ikoner, matcher sin minispiller", "Ingen",
-        "Hovedfaner med en egen søkeknapp", "Navigasjonslinje og minispiller samlet i én form"
+        "Hovedfaner med en egen søkeknapp", "Navigasjonslinje og minispiller samlet i én form",
+        "Utvidende", "Fra coveret", "Fargene følger coveret til sangen som spilles."
     ),
     "ca" to navStudio(
         "Barra de navegació", "Estils, botons i etiquetes", "Estil", "Predeterminat", "Seleccionat", "La barra de navegació original de Levyra",
@@ -424,7 +449,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Marge lateral", "Animacions", "Estàndard", "Expressives", "Elàstiques", "Mínimes",
         "Desactivades", "Opcions avançades", "Resposta hàptica", "Material You requereix Android 12 o posterior. S'utilitzen els colors del tema de Levyra.", "Els colors s'ajusten automàticament perquè continuïn sent llegibles.",
         "Barra negra plana amb icones plenes, conjuntada amb el seu minireproductor", "Cap",
-        "Pestanyes principals amb un botó de cerca separat", "Barra de navegació i minireproductor units en una sola forma"
+        "Pestanyes principals amb un botó de cerca separat", "Barra de navegació i minireproductor units en una sola forma",
+        "Desplegables", "De la portada", "Els colors segueixen la portada de la cançó que sona."
     ),
     "uk" to navStudio(
         "Панель навігації", "Стилі, кнопки та підписи", "Стиль", "За замовчуванням", "Вибрано", "Оригінальна панель навігації Levyra",
@@ -440,7 +466,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Бічний відступ", "Анімації", "Стандартні", "Виразні", "Пружні", "Мінімальні",
         "Вимкнено", "Додаткові параметри", "Тактильний відгук", "Material You потребує Android 12 або новішої версії. Натомість використовуються кольори теми Levyra.", "Кольори коригуються автоматично, щоб залишатися читабельними.",
         "Пласка чорна панель із заповненими значками, у парі зі своїм мініплеєром", "Немає",
-        "Основні вкладки з окремою кнопкою пошуку", "Панель навігації та мініплеєр, об'єднані в одну форму"
+        "Основні вкладки з окремою кнопкою пошуку", "Панель навігації та мініплеєр, об'єднані в одну форму",
+        "Розгортальні", "З обкладинки", "Кольори відповідають обкладинці пісні, що звучить."
     ),
     "ru" to navStudio(
         "Панель навигации", "Стили, кнопки и подписи", "Стиль", "По умолчанию", "Выбран", "Оригинальная панель навигации Levyra",
@@ -456,7 +483,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Боковой отступ", "Анимации", "Стандартные", "Выразительные", "Пружинящие", "Минимальные",
         "Выключены", "Дополнительные параметры", "Тактильный отклик", "Для Material You нужен Android 12 или новее. Вместо этого используются цвета темы Levyra.", "Цвета настраиваются автоматически, чтобы оставаться читаемыми.",
         "Плоская чёрная панель с заполненными значками, в паре со своим мини-плеером", "Нет",
-        "Основные вкладки с отдельной кнопкой поиска", "Панель навигации и мини-плеер, объединённые в одну форму"
+        "Основные вкладки с отдельной кнопкой поиска", "Панель навигации и мини-плеер, объединённые в одну форму",
+        "Раскрывающиеся", "С обложки", "Цвета подстраиваются под обложку текущего трека."
     ),
     "tr" to navStudio(
         "Gezinme çubuğu", "Stiller, düğmeler ve etiketler", "Stil", "Varsayılan", "Seçili", "Levyra'nın orijinal gezinme çubuğu",
@@ -472,7 +500,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Yan boşluk", "Animasyonlar", "Standart", "Etkileyici", "Yaylı", "Minimal",
         "Kapalı", "Gelişmiş seçenekler", "Dokunsal geri bildirim", "Material You için Android 12 veya üzeri gerekir. Bunun yerine Levyra teması renkleri kullanılır.", "Renkler okunabilir kalması için otomatik olarak ayarlanır.",
         "Dolu simgeli düz siyah çubuk, kendi mini oynatıcısıyla uyumlu", "Yok",
-        "Ayrı bir arama düğmesiyle ana sekmeler", "Gezinme çubuğu ve mini oynatıcı tek bir biçimde birleşik"
+        "Ayrı bir arama düğmesiyle ana sekmeler", "Gezinme çubuğu ve mini oynatıcı tek bir biçimde birleşik",
+        "Genişleyen", "Kapaktan", "Renkler çalan şarkının kapağını izler."
     ),
     "ar" to navStudio(
         "شريط التنقل", "أنماط وأزرار وتسميات", "النمط", "الافتراضي", "المحدد", "شريط التنقل الأصلي في Levyra",
@@ -488,7 +517,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "الهامش الجانبي", "الرسوم المتحركة", "قياسية", "معبّرة", "نابضة", "بسيطة",
         "متوقفة", "خيارات متقدمة", "الاستجابة اللمسية", "يتطلب Material You نظام Android 12 أو أحدث. تُستخدم ألوان مظهر Levyra بدلًا منه.", "تُضبط الألوان تلقائيًا لتبقى سهلة القراءة.",
         "شريط أسود مسطح بأيقونات ممتلئة، متناسق مع مشغّله المصغّر", "بلا",
-        "علامات تبويب رئيسية مع زر بحث منفصل", "شريط التنقل والمشغّل المصغّر مدمجان في شكل واحد"
+        "علامات تبويب رئيسية مع زر بحث منفصل", "شريط التنقل والمشغّل المصغّر مدمجان في شكل واحد",
+        "قابلة للتوسع", "من الغلاف", "تتبع الألوان غلاف الأغنية قيد التشغيل."
     ),
     "fa" to navStudio(
         "نوار پیمایش", "سبک‌ها، دکمه‌ها و برچسب‌ها", "سبک", "پیش‌فرض", "انتخاب‌شده", "نوار پیمایش اصلی Levyra",
@@ -504,7 +534,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "حاشیه کناری", "پویانمایی‌ها", "استاندارد", "بیانگر", "فنری", "حداقلی",
         "خاموش", "گزینه‌های پیشرفته", "بازخورد لمسی", "Material You به Android 12 یا جدیدتر نیاز دارد. به‌جای آن از رنگ‌های زمینه Levyra استفاده می‌شود.", "رنگ‌ها به‌طور خودکار تنظیم می‌شوند تا خوانا بمانند.",
         "نوار سیاه تخت با نمادهای توپر، هماهنگ با پخش‌کننده کوچک خود", "هیچ‌کدام",
-        "زبانه‌های اصلی با دکمه جست‌وجوی جداگانه", "نوار پیمایش و پخش‌کننده کوچک در یک شکل یکپارچه"
+        "زبانه‌های اصلی با دکمه جست‌وجوی جداگانه", "نوار پیمایش و پخش‌کننده کوچک در یک شکل یکپارچه",
+        "گسترش‌یابنده", "از جلد", "رنگ‌ها از جلد آهنگ در حال پخش پیروی می‌کنند."
     ),
     "zh" to navStudio(
         "导航栏", "风格、按钮与标签", "风格", "默认", "已选择", "Levyra 原版导航栏",
@@ -520,7 +551,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "两侧边距", "动画", "标准", "富有表现力", "弹性", "简约",
         "关闭", "高级选项", "触感反馈", "Material You 需要 Android 12 或更高版本，将改用 Levyra 主题颜色。", "颜色会自动调整以保持清晰可读。",
         "扁平黑色导航栏，图标为实心样式，与配套迷你播放器搭配", "无",
-        "主标签页与独立的搜索按钮", "导航栏与迷你播放器融为一体"
+        "主标签页与独立的搜索按钮", "导航栏与迷你播放器融为一体",
+        "展开式", "取自封面", "颜色跟随正在播放歌曲的封面。"
     ),
     "zh-Hant" to navStudio(
         "導覽列", "風格、按鈕與標籤", "風格", "預設", "已選取", "Levyra 原版導覽列",
@@ -536,7 +568,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "兩側邊距", "動畫", "標準", "富有表現力", "彈性", "簡約",
         "關閉", "進階選項", "觸覺回饋", "Material You 需要 Android 12 以上版本，將改用 Levyra 主題顏色。", "顏色會自動調整以保持清晰易讀。",
         "扁平黑色導覽列，圖示為實心樣式，與配套迷你播放器搭配", "無",
-        "主分頁與獨立的搜尋按鈕", "導覽列與迷你播放器融為一體"
+        "主分頁與獨立的搜尋按鈕", "導覽列與迷你播放器融為一體",
+        "展開式", "取自封面", "顏色跟隨正在播放歌曲的封面。"
     ),
     "ja" to navStudio(
         "ナビゲーションバー", "スタイル・ボタン・ラベル", "スタイル", "デフォルト", "選択中", "Levyra オリジナルのナビゲーションバー",
@@ -552,7 +585,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "左右の余白", "アニメーション", "標準", "表現豊か", "スプリング", "最小限",
         "オフ", "詳細オプション", "触覚フィードバック", "Material You には Android 12 以降が必要です。代わりに Levyra テーマの色を使用します。", "読みやすさを保つため、色は自動的に調整されます。",
         "塗りつぶしアイコンのフラットな黒いバー。専用のミニプレーヤーとセット", "なし",
-        "メインタブと独立した検索ボタン", "ナビゲーションバーとミニプレーヤーをひとつの形に"
+        "メインタブと独立した検索ボタン", "ナビゲーションバーとミニプレーヤーをひとつの形に",
+        "展開", "ジャケットから", "再生中の曲のジャケットに合わせて色が変わります。"
     ),
     "ko" to navStudio(
         "탐색 바", "스타일, 버튼 및 라벨", "스타일", "기본값", "선택됨", "Levyra 오리지널 탐색 바",
@@ -568,7 +602,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "좌우 여백", "애니메이션", "표준", "표현력 있게", "스프링", "최소",
         "끄기", "고급 옵션", "햅틱 피드백", "Material You는 Android 12 이상이 필요합니다. 대신 Levyra 테마 색상이 사용됩니다.", "읽기 쉽도록 색상이 자동으로 조정됩니다.",
         "채워진 아이콘의 평평한 검은색 바, 전용 미니 플레이어와 한 세트", "없음",
-        "메인 탭과 분리된 검색 버튼", "내비게이션 바와 미니 플레이어가 하나로 연결된 형태"
+        "메인 탭과 분리된 검색 버튼", "내비게이션 바와 미니 플레이어가 하나로 연결된 형태",
+        "확장형", "앨범 커버에서", "재생 중인 곡의 커버에 맞춰 색상이 바뀝니다."
     ),
     "hi" to navStudio(
         "नेविगेशन बार", "स्टाइल, बटन और लेबल", "स्टाइल", "डिफ़ॉल्ट", "चुना गया", "Levyra का मूल नेविगेशन बार",
@@ -584,7 +619,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "किनारे की पैडिंग", "एनिमेशन", "मानक", "अभिव्यंजक", "स्प्रिंग", "न्यूनतम",
         "बंद", "उन्नत विकल्प", "हैप्टिक फ़ीडबैक", "Material You के लिए Android 12 या नया संस्करण चाहिए। इसके बजाय Levyra थीम के रंग इस्तेमाल होते हैं।", "पढ़ने में आसान रखने के लिए रंग अपने आप समायोजित होते हैं।",
         "भरे हुए आइकन वाली सपाट काली बार, अपने मिनी प्लेयर के साथ जोड़ी", "कोई नहीं",
-        "अलग खोज बटन के साथ मुख्य टैब", "नेविगेशन बार और मिनी प्लेयर एक ही आकार में जुड़े"
+        "अलग खोज बटन के साथ मुख्य टैब", "नेविगेशन बार और मिनी प्लेयर एक ही आकार में जुड़े",
+        "फैलने वाले", "कवर से", "रंग चल रहे गाने के कवर के अनुसार बदलते हैं।"
     ),
     "id" to navStudio(
         "Bilah navigasi", "Gaya, tombol, dan label", "Gaya", "Default", "Dipilih", "Bilah navigasi asli Levyra",
@@ -600,7 +636,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Padding samping", "Animasi", "Standar", "Ekspresif", "Pegas", "Minimal",
         "Nonaktif", "Opsi lanjutan", "Umpan balik haptik", "Material You memerlukan Android 12 atau yang lebih baru. Warna tema Levyra digunakan sebagai gantinya.", "Warna disesuaikan otomatis agar tetap mudah dibaca.",
         "Bilah hitam datar dengan ikon terisi, serasi dengan pemutar mininya", "Tidak ada",
-        "Tab utama dengan tombol cari terpisah", "Bilah navigasi dan pemutar mini menyatu dalam satu bentuk"
+        "Tab utama dengan tombol cari terpisah", "Bilah navigasi dan pemutar mini menyatu dalam satu bentuk",
+        "Melebar", "Dari sampul", "Warna mengikuti sampul lagu yang sedang diputar."
     ),
     "ms" to navStudio(
         "Bar navigasi", "Gaya, butang dan label", "Gaya", "Lalai", "Dipilih", "Bar navigasi asal Levyra",
@@ -616,7 +653,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Pelapik sisi", "Animasi", "Standard", "Ekspresif", "Pegas", "Minimum",
         "Mati", "Pilihan lanjutan", "Maklum balas haptik", "Material You memerlukan Android 12 atau lebih baharu. Warna tema Levyra digunakan sebagai ganti.", "Warna dilaraskan secara automatik supaya kekal mudah dibaca.",
         "Bar hitam rata dengan ikon berisi, sepadan dengan pemain mininya", "Tiada",
-        "Tab utama dengan butang carian berasingan", "Bar navigasi dan pemain mini bercantum dalam satu bentuk"
+        "Tab utama dengan butang carian berasingan", "Bar navigasi dan pemain mini bercantum dalam satu bentuk",
+        "Mengembang", "Daripada kulit album", "Warna mengikut kulit album lagu yang sedang dimainkan."
     ),
     "vi" to navStudio(
         "Thanh điều hướng", "Kiểu, nút và nhãn", "Kiểu", "Mặc định", "Đã chọn", "Thanh điều hướng gốc của Levyra",
@@ -632,7 +670,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Lề hai bên", "Hiệu ứng chuyển động", "Tiêu chuẩn", "Biểu cảm", "Đàn hồi", "Tối giản",
         "Tắt", "Tùy chọn nâng cao", "Phản hồi xúc giác", "Material You yêu cầu Android 12 trở lên. Màu của chủ đề Levyra sẽ được dùng thay thế.", "Màu sắc được tự động điều chỉnh để luôn dễ đọc.",
         "Thanh đen phẳng với biểu tượng tô đầy, đi cùng trình phát mini của nó", "Không có",
-        "Các thẻ chính với nút tìm kiếm riêng", "Thanh điều hướng và trình phát mini hợp thành một khối"
+        "Các thẻ chính với nút tìm kiếm riêng", "Thanh điều hướng và trình phát mini hợp thành một khối",
+        "Mở rộng", "Từ ảnh bìa", "Màu sắc theo ảnh bìa của bài hát đang phát."
     ),
     "th" to navStudio(
         "แถบนำทาง", "สไตล์ ปุ่ม และป้ายกำกับ", "สไตล์", "ค่าเริ่มต้น", "เลือกอยู่", "แถบนำทางดั้งเดิมของ Levyra",
@@ -648,7 +687,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "ระยะขอบด้านข้าง", "ภาพเคลื่อนไหว", "มาตรฐาน", "แสดงออก", "สปริง", "น้อยที่สุด",
         "ปิด", "ตัวเลือกขั้นสูง", "การตอบสนองแบบสัมผัส", "Material You ต้องใช้ Android 12 ขึ้นไป จึงใช้สีของธีม Levyra แทน", "สีจะปรับโดยอัตโนมัติเพื่อให้อ่านง่ายเสมอ",
         "แถบสีดำเรียบพร้อมไอคอนแบบทึบ คู่กับมินิเพลเยอร์ของตัวเอง", "ไม่มี",
-        "แท็บหลักพร้อมปุ่มค้นหาแยก", "แถบนำทางและมินิเพลเยอร์รวมเป็นรูปทรงเดียว"
+        "แท็บหลักพร้อมปุ่มค้นหาแยก", "แถบนำทางและมินิเพลเยอร์รวมเป็นรูปทรงเดียว",
+        "ขยายได้", "จากปกเพลง", "สีจะเปลี่ยนตามปกของเพลงที่กำลังเล่น"
     ),
     "fil" to navStudio(
         "Navigation bar", "Mga istilo, button at label", "Istilo", "Default", "Napili", "Ang orihinal na navigation bar ng Levyra",
@@ -664,7 +704,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "Padding sa gilid", "Mga animation", "Karaniwan", "Expressive", "Spring", "Minimal",
         "Naka-off", "Mga advanced na opsyon", "Haptic feedback", "Kailangan ng Material You ang Android 12 o mas bago. Ginagamit sa halip ang mga kulay ng tema ng Levyra.", "Awtomatikong inaayos ang mga kulay para manatiling nababasa.",
         "Patag na itim na bar na may punong icon, kapares ng sarili nitong mini player", "Wala",
-        "Mga pangunahing tab na may hiwalay na button sa paghahanap", "Navigation bar at mini player na pinagsama sa iisang hugis"
+        "Mga pangunahing tab na may hiwalay na button sa paghahanap", "Navigation bar at mini player na pinagsama sa iisang hugis",
+        "Lumalawak", "Mula sa cover", "Sinusundan ng mga kulay ang cover ng kantang tumutugtog."
     ),
     "he" to navStudio(
         "סרגל ניווט", "סגנונות, כפתורים ותוויות", "סגנון", "ברירת מחדל", "נבחר", "סרגל הניווט המקורי של Levyra",
@@ -680,7 +721,8 @@ private val navStudioCopies: Map<String, Map<NavStudioText, String>> = mapOf(
         "ריפוד צדדי", "אנימציות", "רגילות", "אקספרסיביות", "קפיציות", "מינימליות",
         "כבויות", "אפשרויות מתקדמות", "משוב רטט", "Material You דורש Android 12 ומעלה. במקום זאת ייעשה שימוש בצבעי ערכת Levyra.", "הצבעים מותאמים אוטומטית כדי להישאר קריאים.",
         "פס שחור שטוח עם סמלים מלאים, בהתאמה לנגן המיני שלו", "ללא",
-        "כרטיסיות ראשיות עם כפתור חיפוש נפרד", "סרגל הניווט ונגן המיני מאוחדים לצורה אחת"
+        "כרטיסיות ראשיות עם כפתור חיפוש נפרד", "סרגל הניווט ונגן המיני מאוחדים לצורה אחת",
+        "מתרחבות", "מהעטיפה", "הצבעים עוקבים אחר עטיפת השיר שמתנגן."
     )
 )
 

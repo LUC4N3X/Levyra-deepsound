@@ -45,6 +45,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateMapOf
@@ -433,6 +434,7 @@ private fun LazyListScope.navOptionItems(
                         NavLabelMode.ActiveOnly -> copy[NavStudioText.LabelsActive]
                         NavLabelMode.Compact -> copy[NavStudioText.LabelsCompact]
                         NavLabelMode.Never -> copy[NavStudioText.LabelsNever]
+                        NavLabelMode.Expanding -> copy[NavStudioText.LabelsExpanding]
                     }
                 },
                 onSelect = { commit(tuning.copy(labels = it)) }
@@ -459,13 +461,14 @@ private fun LazyListScope.navOptionItems(
         val strings = LocalLevyraStrings.current
         MiniStudioGroup(copy[NavStudioText.Colors]) {
             MiniStudioCaption(copy[NavStudioText.ColorSource])
-            MiniStudioChoice(
-                options = NavColorSource.entries,
+            NavChoiceChips(
+                options = NavColorSourceOrder,
                 selected = tuning.colorSource,
                 label = { source ->
                     when (source) {
                         NavColorSource.Theme -> copy[NavStudioText.ColorTheme]
                         NavColorSource.Dynamic -> copy[NavStudioText.ColorDynamic]
+                        NavColorSource.Artwork -> copy[NavStudioText.ColorArtwork]
                         NavColorSource.Custom -> copy[NavStudioText.ColorCustom]
                     }
                 },
@@ -473,6 +476,9 @@ private fun LazyListScope.navOptionItems(
             )
             if (tuning.colorSource == NavColorSource.Dynamic && Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
                 Text(copy[NavStudioText.DynamicUnavailable], style = MaterialTheme.typography.bodySmall, color = LevyraMuted)
+            }
+            if (tuning.colorSource == NavColorSource.Artwork) {
+                Text(copy[NavStudioText.ArtworkHint], style = MaterialTheme.typography.bodySmall, color = LevyraMuted)
             }
             if (tuning.colorSource == NavColorSource.Custom) {
                 MiniColorEditor(
@@ -599,6 +605,8 @@ private fun LazyListScope.navOptionItems(
         }
     }
 }
+
+private val NavColorSourceOrder = listOf(NavColorSource.Theme, NavColorSource.Dynamic, NavColorSource.Artwork, NavColorSource.Custom)
 
 private fun navIndicatorLabel(indicator: NavIndicator, copy: NavigationStudioCopy): String = when (indicator) {
     NavIndicator.Pill -> copy[NavStudioText.IndicatorPill]
@@ -783,6 +791,21 @@ private fun NavStylePreview(
     onSelect: (LevyraTab) -> Unit,
     glass: GlassBackdropState,
     modifier: Modifier = Modifier
+) {
+    val artworkSeed = LocalNavArtworkSeed.current ?: NavArtworkDemoSeed
+    CompositionLocalProvider(LocalNavArtworkSeed provides artworkSeed) {
+        NavStylePreviewBar(style, tuning, selected, onSelect, glass, modifier)
+    }
+}
+
+@Composable
+private fun NavStylePreviewBar(
+    style: NavStyle,
+    tuning: NavTuning,
+    selected: LevyraTab,
+    onSelect: (LevyraTab) -> Unit,
+    glass: GlassBackdropState,
+    modifier: Modifier
 ) {
     Box(modifier = modifier) {
         if (style == NavStyle.Original) {

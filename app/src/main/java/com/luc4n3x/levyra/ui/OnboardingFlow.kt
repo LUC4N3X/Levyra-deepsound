@@ -3,13 +3,15 @@ package com.luc4n3x.levyra.ui
 internal enum class OnboardingStep {
     Intro,
     Language,
+    Appearance,
     Profile,
     Taste,
     YoutubeMusic;
 
     fun next(): OnboardingStep = when (this) {
         Intro -> Language
-        Language -> Profile
+        Language -> Appearance
+        Appearance -> Profile
         Profile -> Taste
         Taste -> YoutubeMusic
         YoutubeMusic -> YoutubeMusic
@@ -18,7 +20,8 @@ internal enum class OnboardingStep {
     fun previous(): OnboardingStep = when (this) {
         Intro -> Intro
         Language -> Intro
-        Profile -> Language
+        Appearance -> Language
+        Profile -> Appearance
         Taste -> Profile
         YoutubeMusic -> Taste
     }

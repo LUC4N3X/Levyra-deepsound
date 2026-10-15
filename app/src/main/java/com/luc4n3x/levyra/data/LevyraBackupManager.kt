@@ -60,6 +60,7 @@ import com.luc4n3x.levyra.domain.LevyraNavigationStudioSettings
 import com.luc4n3x.levyra.domain.LevyraLyricsStudioSettings
 import com.luc4n3x.levyra.domain.LyricsProviderOrdering
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
+import com.luc4n3x.levyra.domain.PlayerColorMode
 import com.luc4n3x.levyra.domain.PlayerDoubleTapAction
 import com.luc4n3x.levyra.domain.PlayerLongPressAction
 import com.luc4n3x.levyra.domain.PlayerVerticalSwipeAction
@@ -1813,6 +1814,8 @@ internal fun backupInterfaceSettingsToJson(value: LevyraInterfaceSettings): JSON
     .put("hapticFeedback", value.hapticFeedback)
     .put("playerVisualMode", value.playerVisualMode.name)
     .put("playerBackground", value.playerBackground.name)
+    .put("playerColorMode", value.playerColorMode.name)
+    .put("playerColorAccent", value.playerColorAccent)
 
 internal fun backupInterfaceSettingsFromJson(
     json: JSONObject?,
@@ -1857,6 +1860,8 @@ internal fun backupInterfaceSettingsFromJson(
         pureBlack = json.optBoolean("pureBlack", false),
         hapticFeedback = json.optBoolean("hapticFeedback", true),
         playerVisualMode = visualMode,
-        playerBackground = backgroundMode
+        playerBackground = backgroundMode,
+        playerColorMode = PlayerColorMode.from(json.optString("playerColorMode")),
+        playerColorAccent = json.optInt("playerColorAccent", PlayerColorMode.DEFAULT_ACCENT)
     ).normalized()
 }
