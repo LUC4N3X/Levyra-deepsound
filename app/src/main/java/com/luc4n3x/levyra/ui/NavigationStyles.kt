@@ -632,47 +632,26 @@ private fun DrawScope.drawNavIndicator(
     val scale = tuning.indicatorScale / 100f
     val iconBox = StyledNavIconBox.toPx()
     val iconCenterY = iconTopPx + iconBox / 2f
+    val bend = travel * stretch
     when (tuning.indicator) {
-        NavIndicator.Pill, NavIndicator.Morph -> {
-            val morph = if (tuning.indicator == NavIndicator.Morph) travel * stretch else 0f
-            val base = (slotPx - 20.dp.toPx()).coerceIn(48.dp.toPx(), 64.dp.toPx()) * scale
-            val width = base + slotPx * morph
-            val pillHeight = iconBox * scale * (1f - 0.18f * morph)
-            drawRoundRect(
-                color = colors.indicator,
-                topLeft = Offset(centerX - width / 2f, iconCenterY - pillHeight / 2f),
-                size = Size(width, pillHeight),
-                cornerRadius = CornerRadius(pillHeight / 2f * (1f - 0.42f * morph))
-            )
-        }
+        NavIndicator.Pill -> drawNavPill(centerX, iconCenterY, slotPx, iconBox, scale, 0f, colors.indicator)
+        NavIndicator.Morph -> drawNavPill(centerX, iconCenterY, slotPx, iconBox, scale, bend, colors.indicator)
         NavIndicator.Circle -> drawCircle(
             color = colors.indicator,
-            radius = 20.dp.toPx() * scale * (1f - 0.12f * travel * stretch),
+            radius = 20.dp.toPx() * scale * (1f - 0.12f * bend),
             center = Offset(centerX, iconCenterY)
         )
         NavIndicator.Floating -> {
             val inset = if (floating) 5.dp.toPx() else 8.dp.toPx()
-            val width = (slotPx - 6.dp.toPx()).coerceAtLeast(iconBox) * (0.88f + 0.12f * scale) + slotPx * 0.25f * travel * stretch
+            val width = (slotPx - 6.dp.toPx()).coerceAtLeast(iconBox) * (0.88f + 0.12f * scale) + slotPx * 0.25f * bend
             val pillHeight = (visibleHeightPx - inset * 2f).coerceAtLeast(iconBox)
             val radius = minOf(tuning.cornerDp.dp.toPx() - inset, pillHeight / 2f).coerceAtLeast(10.dp.toPx())
-            val topLeft = Offset(centerX - width / 2f, visibleTopPx + inset)
-            val pillSize = Size(width, pillHeight)
-            drawRoundRect(
-                color = Color.Black.copy(alpha = if (colors.isLight) 0.08f else 0.22f),
-                topLeft = topLeft + Offset(0f, 2.dp.toPx() * scale),
-                size = pillSize,
-                cornerRadius = CornerRadius(radius)
-            )
-            drawRoundRect(color = colors.indicator, topLeft = topLeft, size = pillSize, cornerRadius = CornerRadius(radius))
-            drawRoundRect(
-                brush = Brush.verticalGradient(
-                    listOf(Color.White.copy(alpha = if (colors.isLight) 0.30f else 0.10f), Color.Transparent),
-                    startY = topLeft.y,
-                    endY = topLeft.y + pillHeight * 0.6f
-                ),
-                topLeft = topLeft,
-                size = pillSize,
-                cornerRadius = CornerRadius(radius)
+            drawNavFloatingPill(
+                topLeft = Offset(centerX - width / 2f, visibleTopPx + inset),
+                pillSize = Size(width, pillHeight),
+                radius = radius,
+                shadowDrop = 2.dp.toPx() * scale,
+                colors = colors
             )
         }
         NavIndicator.Dot -> drawCircle(
@@ -681,7 +660,7 @@ private fun DrawScope.drawNavIndicator(
             center = Offset(centerX, iconTopPx + iconBox + labelRoomPx + 5.dp.toPx())
         )
         NavIndicator.Line -> {
-            val width = (22.dp.toPx() + 18.dp.toPx() * travel * stretch) * scale
+            val width = (22.dp.toPx() + 18.dp.toPx() * bend) * scale
             val lineHeight = 3.dp.toPx()
             val bottomGap = if (floating) 5.dp.toPx() else 6.dp.toPx()
             drawRoundRect(
@@ -692,6 +671,53 @@ private fun DrawScope.drawNavIndicator(
             )
         }
     }
+}
+
+private fun DrawScope.drawNavPill(
+    centerX: Float,
+    centerY: Float,
+    slotPx: Float,
+    iconBox: Float,
+    scale: Float,
+    morph: Float,
+    color: Color
+) {
+    val base = (slotPx - 20.dp.toPx()).coerceIn(48.dp.toPx(), 64.dp.toPx()) * scale
+    val width = base + slotPx * morph
+    val pillHeight = iconBox * scale * (1f - 0.18f * morph)
+    drawRoundRect(
+        color = color,
+        topLeft = Offset(centerX - width / 2f, centerY - pillHeight / 2f),
+        size = Size(width, pillHeight),
+        cornerRadius = CornerRadius(pillHeight / 2f * (1f - 0.42f * morph))
+    )
+}
+
+private fun DrawScope.drawNavFloatingPill(
+    topLeft: Offset,
+    pillSize: Size,
+    radius: Float,
+    shadowDrop: Float,
+    colors: NavColors
+) {
+    val corner = CornerRadius(radius)
+    drawRoundRect(
+        color = Color.Black.copy(alpha = if (colors.isLight) 0.08f else 0.22f),
+        topLeft = topLeft + Offset(0f, shadowDrop),
+        size = pillSize,
+        cornerRadius = corner
+    )
+    drawRoundRect(color = colors.indicator, topLeft = topLeft, size = pillSize, cornerRadius = corner)
+    drawRoundRect(
+        brush = Brush.verticalGradient(
+            listOf(Color.White.copy(alpha = if (colors.isLight) 0.30f else 0.10f), Color.Transparent),
+            startY = topLeft.y,
+            endY = topLeft.y + pillSize.height * 0.6f
+        ),
+        topLeft = topLeft,
+        size = pillSize,
+        cornerRadius = corner
+    )
 }
 
 @Composable
@@ -707,28 +733,6 @@ private fun RowScope.StyledTabButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val selectedIcon = if (tuning.indicator.filled) colors.onIndicator else colors.mark
-    val selectedText = if (tuning.indicator == NavIndicator.Floating) colors.onIndicator else colors.markText
-    val iconTint by animateColorAsState(
-        targetValue = if (isSelected) selectedIcon else colors.inactive,
-        animationSpec = motion.tint,
-        label = "styled-tab-icon"
-    )
-    val textTint by animateColorAsState(
-        targetValue = if (isSelected) selectedText else colors.inactiveText,
-        animationSpec = motion.tint,
-        label = "styled-tab-text"
-    )
-    val scale by animateFloatAsState(
-        targetValue = navTabScale(pressed, isSelected, motion),
-        animationSpec = motion.scale,
-        label = "styled-tab-scale"
-    )
-    val labelAlpha by animateFloatAsState(
-        targetValue = if (navLabelShown(tuning.labels, isSelected)) 1f else 0f,
-        animationSpec = motion.fade,
-        label = "styled-tab-label"
-    )
     val compact = tuning.labels == NavLabelMode.Compact
     Box(
         modifier = Modifier
@@ -751,32 +755,22 @@ private fun RowScope.StyledTabButton(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(if (compact) 0.dp else 2.dp)
         ) {
-            Box(
-                modifier = Modifier.height(StyledNavIconBox),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (isSelected) entry.selectedIcon else entry.unselectedIcon,
-                    contentDescription = null,
-                    tint = iconTint,
-                    modifier = Modifier
-                        .size(tuning.iconDp.dp)
-                        .graphicsLayer {
-                            scaleX = scale
-                            scaleY = scale
-                        }
-                )
-            }
+            StyledTabIcon(
+                entry = entry,
+                selected = isSelected,
+                pressed = pressed,
+                tuning = tuning,
+                colors = colors,
+                motion = motion
+            )
             if (tuning.labels != NavLabelMode.Never) {
                 StyledTabLabel(
                     text = entry.label,
-                    color = textTint,
                     selected = isSelected,
-                    compact = compact,
-                    alpha = {
-                        val fold = foldLabel?.invoke()?.coerceIn(0f, 1f) ?: 0f
-                        labelAlpha * (1f - fold)
-                    }
+                    tuning = tuning,
+                    colors = colors,
+                    motion = motion,
+                    foldLabel = foldLabel
                 )
             }
         }
@@ -789,14 +783,75 @@ private fun navTabScale(pressed: Boolean, selected: Boolean, motion: NavMotionSp
     else -> 1f
 }
 
+private fun navTabIconTint(tuning: NavTuning, colors: NavColors, selected: Boolean): Color = when {
+    !selected -> colors.inactive
+    tuning.indicator.filled -> colors.onIndicator
+    else -> colors.mark
+}
+
+private fun navTabTextTint(tuning: NavTuning, colors: NavColors, selected: Boolean): Color = when {
+    !selected -> colors.inactiveText
+    tuning.indicator == NavIndicator.Floating -> colors.onIndicator
+    else -> colors.markText
+}
+
+@Composable
+private fun StyledTabIcon(
+    entry: LevyraTabEntry,
+    selected: Boolean,
+    pressed: Boolean,
+    tuning: NavTuning,
+    colors: NavColors,
+    motion: NavMotionSpec
+) {
+    val tint by animateColorAsState(
+        targetValue = navTabIconTint(tuning, colors, selected),
+        animationSpec = motion.tint,
+        label = "styled-tab-icon"
+    )
+    val scale by animateFloatAsState(
+        targetValue = navTabScale(pressed, selected, motion),
+        animationSpec = motion.scale,
+        label = "styled-tab-scale"
+    )
+    Box(
+        modifier = Modifier.height(StyledNavIconBox),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = if (selected) entry.selectedIcon else entry.unselectedIcon,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier
+                .size(tuning.iconDp.dp)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+        )
+    }
+}
+
 @Composable
 private fun StyledTabLabel(
     text: String,
-    color: Color,
     selected: Boolean,
-    compact: Boolean,
-    alpha: () -> Float
+    tuning: NavTuning,
+    colors: NavColors,
+    motion: NavMotionSpec,
+    foldLabel: (() -> Float)?
 ) {
+    val color by animateColorAsState(
+        targetValue = navTabTextTint(tuning, colors, selected),
+        animationSpec = motion.tint,
+        label = "styled-tab-text"
+    )
+    val labelAlpha by animateFloatAsState(
+        targetValue = if (navLabelShown(tuning.labels, selected)) 1f else 0f,
+        animationSpec = motion.fade,
+        label = "styled-tab-label"
+    )
+    val compact = tuning.labels == NavLabelMode.Compact
     val labelSize: TextUnit = if (compact) 10.sp else 11.sp
     Text(
         text = text,
@@ -810,6 +865,9 @@ private fun StyledTabLabel(
         textAlign = TextAlign.Center,
         modifier = Modifier
             .height(if (compact) 12.dp else 14.dp)
-            .graphicsLayer { this.alpha = alpha() }
+            .graphicsLayer {
+                val fold = foldLabel?.invoke()?.coerceIn(0f, 1f) ?: 0f
+                alpha = labelAlpha * (1f - fold)
+            }
     )
 }
