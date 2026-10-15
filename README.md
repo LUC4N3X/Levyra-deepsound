@@ -121,13 +121,27 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
 <a href="docs/assets/showcase/00_levyra_hero_dance_studio.webp"><img src="docs/assets/showcase/00_levyra_hero_dance_studio.webp?v=light-shadow-v10" width="100%" alt="Levyra music player for Android and Windows" /></a>
 
 <p align="center">
-  <sub>Browse radio and charts, open an artist, switch to video or follow synced lyrics. Your listening stats stay on your device.</sub>
+  <sub>Music should feel personal, expressive, and entirely yours.</sub>
 </p>
 
-<a href="docs/assets/showcase/01_levyra_showcase_wall.webp">
+<a href="docs/assets/showcase/01_music_that_stays.webp">
   <picture>
-    <source media="(max-width: 640px)" srcset="docs/assets/showcase/01_levyra_showcase_wall_mobile.webp?v=editorial-wall-v1">
-    <img src="docs/assets/showcase/01_levyra_showcase_wall.webp?v=editorial-wall-v1" width="100%" alt="Levyra interface showcase with playback, offline music, lyrics, discovery, library, charts, and personalization" />
+    <source media="(max-width: 640px)" srcset="docs/assets/showcase/01_music_that_stays_mobile.webp?v=m3-campaign-v1">
+    <img src="docs/assets/showcase/01_music_that_stays.webp?v=m3-campaign-v1" width="100%" alt="Levyra home and immersive player: music that stays with you" />
+  </picture>
+</a>
+
+<a href="docs/assets/showcase/02_find_what_moves_you.webp">
+  <picture>
+    <source media="(max-width: 640px)" srcset="docs/assets/showcase/02_find_what_moves_you_mobile.webp?v=m3-campaign-v1">
+    <img src="docs/assets/showcase/02_find_what_moves_you.webp?v=m3-campaign-v1" width="100%" alt="Levyra discovery and moods: find what moves you" />
+  </picture>
+</a>
+
+<a href="docs/assets/showcase/03_personal_not_profiled.webp">
+  <picture>
+    <source media="(max-width: 640px)" srcset="docs/assets/showcase/03_personal_not_profiled_mobile.webp?v=m3-campaign-v1">
+    <img src="docs/assets/showcase/03_personal_not_profiled.webp?v=m3-campaign-v1" width="100%" alt="Levyra private library and settings: personal, not profiled" />
   </picture>
 </a>
 

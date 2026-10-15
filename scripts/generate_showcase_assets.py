@@ -547,60 +547,173 @@ def generate_feature_cards():
                 card_rgb.save(out_file, "WEBP", quality=95, method=6)
                 print(f"Saved Material 3 Expressive editorial card: {out_file}")
 
-README_SHOWCASE_CARDS = [
-    "01_home.webp",
-    "02_stay_with_the_song.webp",
-    "03_now_playing.webp",
-    "04_player_deck.webp",
-    "05_explore_stage.webp",
-    "06_levyra_mix_stage.webp",
-    "07_genres.webp",
-    "08_audio_tuning.webp",
-    "09_album.webp",
-    "10_search.webp",
-    "11_collections.webp",
-    "12_listening_rhythm.webp",
-    "13_your_orbit.webp",
-    "14_listening_pulse.webp",
-    "15_artist_playlists.webp",
-    "16_settings_vault.webp",
-    "17_new_releases.webp",
-    "18_artist_profile.webp",
-    "19_top_50.webp",
-    "20_levyra_jam.webp",
+README_CAMPAIGNS = [
+    {
+        "slug": "01_music_that_stays",
+        "kicker": "LISTENING / 01",
+        "title": "Music that\nstays with you.",
+        "body": "Radio, playback and offline music —\nwithout losing the feeling.",
+        "background": (24, 16, 29),
+        "ink": (255, 247, 251),
+        "muted": (216, 197, 211),
+        "accent": (255, 139, 132),
+        "soft": (65, 43, 70),
+        "screens": [
+            "Screenshot_20260926_171253_LEVYRA.jpg",
+            "Screenshot_20260926_193948_LEVYRA.jpg",
+        ],
+        "text_side": "left",
+    },
+    {
+        "slug": "02_find_what_moves_you",
+        "kicker": "DISCOVERY / 02",
+        "title": "Find what\nmoves you.",
+        "body": "Fresh currents, moods and global charts.\nA whole world beyond the algorithm.",
+        "background": (241, 247, 241),
+        "ink": (28, 31, 29),
+        "muted": (72, 78, 73),
+        "accent": (20, 88, 156),
+        "soft": (204, 232, 220),
+        "screens": [
+            "Screenshot_20261010_132210_LEVYRA.jpg",
+            "Screenshot_20261010_132249_LEVYRA.jpg",
+        ],
+        "text_side": "right",
+    },
+    {
+        "slug": "03_personal_not_profiled",
+        "kicker": "PRIVACY / 03",
+        "title": "Personal.\nNot profiled.",
+        "body": "Your library, listening insights and backups\nstay where they belong: with you.",
+        "background": (255, 246, 238),
+        "ink": (40, 29, 25),
+        "muted": (91, 74, 68),
+        "accent": (116, 67, 137),
+        "soft": (244, 218, 208),
+        "screens": [
+            "Screenshot_20261010_132050_LEVYRA.jpg",
+            "Screenshot_20261010_140700_LEVYRA.jpg",
+        ],
+        "text_side": "left",
+    },
 ]
 
-def render_readme_showcase_wall(columns, card_width):
-    cards = []
-    for filename in README_SHOWCASE_CARDS:
-        card_path = os.path.join(OUT_CARDS_DIR, filename)
-        if not os.path.exists(card_path):
-            raise FileNotFoundError(f"Missing README showcase card: {card_path}")
-        with Image.open(card_path) as card_source:
-            card = card_source.convert("RGB")
-            card_height = round(card.height * card_width / card.width)
-            cards.append(card.resize((card_width, card_height), Image.Resampling.LANCZOS))
+def make_campaign_device(filename, width, border_color):
+    screenshot_path = resolve_screenshot_path(filename)
+    if not screenshot_path:
+        raise FileNotFoundError(f"Missing campaign screenshot: {filename}")
+    with Image.open(screenshot_path) as screenshot_source:
+        screenshot = enhance_screenshot(screenshot_source).convert("RGBA")
+    height = round(screenshot.height * width / screenshot.width)
+    screenshot = screenshot.resize((width, height), Image.Resampling.LANCZOS)
+    radius = max(32, round(width * 0.075))
+    mask = Image.new("L", screenshot.size, 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, width - 1, height - 1), radius=radius, fill=255)
+    device = Image.new("RGBA", screenshot.size, border_color + (255,))
+    device.paste(screenshot, (0, 0), mask)
+    edge = Image.new("RGBA", screenshot.size, (0, 0, 0, 0))
+    ImageDraw.Draw(edge).rounded_rectangle(
+        (2, 2, width - 3, height - 3),
+        radius=radius,
+        outline=border_color + (130,),
+        width=max(2, round(width * 0.008)),
+    )
+    return Image.alpha_composite(device, edge)
 
-    rows = math.ceil(len(cards) / columns)
-    card_height = cards[0].height
-    wall = Image.new("RGB", (columns * card_width, rows * card_height), (8, 8, 10))
-    for index, card in enumerate(cards):
-        wall.paste(card, ((index % columns) * card_width, (index // columns) * card_height))
-    return wall
+def paste_campaign_device(canvas, filename, width, center, angle, border_color):
+    device = make_campaign_device(filename, width, border_color)
+    device = device.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
+    shadow_alpha = device.getchannel("A").filter(ImageFilter.GaussianBlur(max(18, width // 18)))
+    shadow_alpha = ImageEnhance.Brightness(shadow_alpha).enhance(0.42)
+    shadow = Image.new("RGBA", device.size, (18, 12, 22, 0))
+    shadow.putalpha(shadow_alpha)
+    x = round(center[0] - device.width / 2)
+    y = round(center[1] - device.height / 2)
+    canvas.alpha_composite(shadow, (x + 20, y + 34))
+    canvas.alpha_composite(device, (x, y))
 
-def generate_readme_showcase_walls():
-    variants = [
-        ("01_levyra_showcase_wall.webp", 4, 450),
-        ("01_levyra_showcase_wall_mobile.webp", 2, 500),
-    ]
-    for filename, columns, card_width in variants:
-        wall = render_readme_showcase_wall(columns, card_width)
-        out_path = os.path.join(OUT_SHOWCASE_DIR, filename)
-        wall.save(out_path, "WEBP", quality=92, method=6)
-        print(f"Saved README showcase wall at {wall.size}: {out_path}")
+def paste_campaign_ribbon(canvas, width, center, opacity, angle=0):
+    ribbon_path = os.path.join(OUT_SHOWCASE_DIR, "levyra_editorial_ribbon.png")
+    if not os.path.exists(ribbon_path):
+        raise FileNotFoundError(f"Missing editorial ribbon: {ribbon_path}")
+    with Image.open(ribbon_path) as ribbon_source:
+        ribbon = ribbon_source.convert("RGBA")
+    height = round(ribbon.height * width / ribbon.width)
+    ribbon = ribbon.resize((width, height), Image.Resampling.LANCZOS)
+    alpha = ribbon.getchannel("A").point(lambda value: round(value * opacity))
+    ribbon.putalpha(alpha)
+    if angle:
+        ribbon = ribbon.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
+    x = round(center[0] - ribbon.width / 2)
+    y = round(center[1] - ribbon.height / 2)
+    canvas.alpha_composite(ribbon, (x, y))
+
+def draw_campaign_copy(draw, campaign, origin, scale):
+    x, y = origin
+    kicker_font = get_font(round(28 * scale), bold=True)
+    title_font = get_font(round(112 * scale), bold=True)
+    body_font = get_font(round(34 * scale))
+    draw.text((x, y), campaign["kicker"], font=kicker_font, fill=campaign["accent"])
+    y += round(82 * scale)
+    draw.multiline_text(
+        (x, y),
+        campaign["title"],
+        font=title_font,
+        fill=campaign["ink"],
+        spacing=round(-8 * scale),
+    )
+    title_box = draw.multiline_textbbox((x, y), campaign["title"], font=title_font, spacing=round(-8 * scale))
+    y = title_box[3] + round(54 * scale)
+    draw.multiline_text(
+        (x, y),
+        campaign["body"],
+        font=body_font,
+        fill=campaign["muted"],
+        spacing=round(13 * scale),
+    )
+
+def render_campaign_desktop(campaign):
+    canvas = Image.new("RGBA", (1800, 1020), campaign["background"] + (255,))
+    draw = ImageDraw.Draw(canvas)
+    draw.ellipse((-260, 610, 640, 1470), fill=campaign["soft"] + (255,))
+    draw.rounded_rectangle((1260, -220, 1940, 410), radius=240, fill=campaign["soft"] + (210,))
+    paste_campaign_ribbon(canvas, 1080, (1230, 525), 0.26 if campaign["text_side"] == "left" else 0.17, -5)
+
+    if campaign["text_side"] == "left":
+        draw_campaign_copy(draw, campaign, (105, 126), 1.0)
+        paste_campaign_device(canvas, campaign["screens"][0], 420, (1160, 550), -5, campaign["ink"])
+        paste_campaign_device(canvas, campaign["screens"][1], 475, (1485, 500), 4, campaign["ink"])
+    else:
+        draw_campaign_copy(draw, campaign, (1050, 126), 1.0)
+        paste_campaign_device(canvas, campaign["screens"][0], 445, (335, 520), -5, campaign["ink"])
+        paste_campaign_device(canvas, campaign["screens"][1], 475, (690, 535), 4, campaign["ink"])
+
+    return canvas.convert("RGB")
+
+def render_campaign_mobile(campaign):
+    canvas = Image.new("RGBA", (1080, 1350), campaign["background"] + (255,))
+    draw = ImageDraw.Draw(canvas)
+    draw.ellipse((-300, 920, 620, 1790), fill=campaign["soft"] + (255,))
+    draw.rounded_rectangle((720, -230, 1250, 310), radius=210, fill=campaign["soft"] + (220,))
+    paste_campaign_ribbon(canvas, 880, (665, 770), 0.20, -7)
+    draw_campaign_copy(draw, campaign, (72, 74), 0.72)
+    paste_campaign_device(canvas, campaign["screens"][0], 410, (335, 930), -5, campaign["ink"])
+    paste_campaign_device(canvas, campaign["screens"][1], 440, (740, 920), 4, campaign["ink"])
+    return canvas.convert("RGB")
+
+def generate_readme_campaign():
+    for campaign in README_CAMPAIGNS:
+        variants = [
+            (campaign["slug"] + ".webp", render_campaign_desktop(campaign)),
+            (campaign["slug"] + "_mobile.webp", render_campaign_mobile(campaign)),
+        ]
+        for filename, artwork in variants:
+            out_path = os.path.join(OUT_SHOWCASE_DIR, filename)
+            artwork.save(out_path, "WEBP", quality=94, method=6)
+            print(f"Saved README campaign artwork at {artwork.size}: {out_path}")
 
 if __name__ == "__main__":
     generate_hero_panoramic_showcase()
     generate_feature_cards()
-    generate_readme_showcase_walls()
+    generate_readme_campaign()
     print("All Material 3 Expressive editorial-stage assets generated successfully!")
