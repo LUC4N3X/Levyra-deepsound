@@ -181,11 +181,11 @@ const getTheme = isDark => ({
   hero: isDark ? '#2B1D2A' : '#F0DCE7',
   heroStrong: isDark ? '#493347' : '#DFC1D2',
   ink: isDark ? '#F7F1F5' : '#241B21',
-  muted: isDark ? '#A99DA6' : '#70636B',
+  muted: isDark ? '#C9BDC5' : '#62545D',
   accent: isDark ? '#F09ACB' : '#8B416E',
   tiles: ['#E7B5D3', '#B9DDCF', '#C9CCF5', '#F2C5B2', '#E8D59C'],
   tileInk: '#241923',
-  tileMuted: '#594751'
+  tileMuted: '#493741'
 })
 
 const groupRows = languages => SCRIPT_GROUPS.map(group => {
@@ -225,14 +225,14 @@ ${showExamples ? `  <text x="${box.x + 24}" y="${box.y + 66}" class="tile-exampl
   <desc>${escapeXml(description)}</desc>
   <style>
     text { font-family: ${FONT}; }
-    .eyebrow { fill: ${theme.accent}; font-size: 11px; font-weight: 750; letter-spacing: 1.8px; }
+    .eyebrow { fill: ${theme.accent}; font-size: 13px; font-weight: 780; letter-spacing: 1.7px; }
     .hero { fill: ${theme.ink}; font-size: 58px; font-weight: 760; letter-spacing: -3px; }
-    .meta { fill: ${theme.muted}; font-size: 12px; font-weight: 550; }
-    .status { fill: ${theme.ink}; font-size: 12px; font-weight: 750; }
-    .tile-label { fill: ${theme.tileInk}; font-size: 13px; font-weight: 800; letter-spacing: .4px; }
-    .tile-count { fill: ${theme.tileInk}; font-size: 26px; font-weight: 800; }
-    .tile-examples { fill: ${theme.tileMuted}; font-size: 10px; }
-    .footer { fill: ${theme.muted}; font-size: 10px; font-weight: 600; letter-spacing: .3px; }
+    .meta { fill: ${theme.muted}; font-size: 14px; font-weight: 580; }
+    .status { fill: ${theme.ink}; font-size: 14px; font-weight: 780; }
+    .tile-label { fill: ${theme.tileInk}; font-size: 16px; font-weight: 820; letter-spacing: .25px; }
+    .tile-count { fill: ${theme.tileInk}; font-size: 28px; font-weight: 820; }
+    .tile-examples { fill: ${theme.tileMuted}; font-size: 12px; font-weight: 560; }
+    .footer { fill: ${theme.muted}; font-size: 11px; font-weight: 650; letter-spacing: .25px; }
   </style>
   <rect width="720" height="530" rx="34" fill="${theme.background}"/>
   <rect x="26" y="20" width="668" height="150" rx="44" fill="${theme.hero}"/>
@@ -266,15 +266,15 @@ ${showExamples ? `  <text x="${box.x + 28}" y="${box.y + 68}" class="tile-exampl
   <desc>${escapeXml(description)}</desc>
   <style>
     text { font-family: ${FONT}; }
-    .eyebrow { fill: ${theme.accent}; font-size: 11px; font-weight: 750; letter-spacing: 1.8px; }
+    .eyebrow { fill: ${theme.accent}; font-size: 13px; font-weight: 780; letter-spacing: 1.7px; }
     .hero { fill: ${theme.ink}; font-size: 92px; font-weight: 780; letter-spacing: -6px; }
     .hero-label { fill: ${theme.ink}; font-size: 25px; font-weight: 720; letter-spacing: -.8px; }
-    .meta { fill: ${theme.muted}; font-size: 12px; font-weight: 550; }
-    .status { fill: ${theme.ink}; font-size: 12px; font-weight: 750; }
-    .tile-label { fill: ${theme.tileInk}; font-size: 13px; font-weight: 800; letter-spacing: .4px; }
-    .tile-count { fill: ${theme.tileInk}; font-size: 30px; font-weight: 820; }
-    .tile-examples { fill: ${theme.tileMuted}; font-size: 10px; }
-    .footer { fill: ${theme.muted}; font-size: 9px; font-weight: 650; letter-spacing: .35px; }
+    .meta { fill: ${theme.muted}; font-size: 15px; font-weight: 580; }
+    .status { fill: ${theme.ink}; font-size: 14px; font-weight: 780; }
+    .tile-label { fill: ${theme.tileInk}; font-size: 16px; font-weight: 820; letter-spacing: .25px; }
+    .tile-count { fill: ${theme.tileInk}; font-size: 32px; font-weight: 840; }
+    .tile-examples { fill: ${theme.tileMuted}; font-size: 12px; font-weight: 560; }
+    .footer { fill: ${theme.muted}; font-size: 11px; font-weight: 680; letter-spacing: .25px; }
   </style>
   <rect width="1100" height="390" rx="34" fill="${theme.background}"/>
   <path d="M68 22H252Q338 22 338 108V284Q338 368 254 368H72Q22 368 22 318V72Q22 22 68 22Z" fill="${theme.hero}"/>

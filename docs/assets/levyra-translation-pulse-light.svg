@@ -3,15 +3,15 @@
   <desc>English: 100%, Italiano: 100%, Español: 100%, Français: 100%, Deutsch: 100%, Português: 100%, Nederlands: 100%, Polski: 100%, Română: 100%, Ελληνικά: 100%, Svenska: 100%, Dansk: 100%, Čeština: 100%, Slovenčina: 100%, Hrvatski: 100%, Српски: 100%, Shqip: 100%, Български: 100%, Magyar: 100%, Suomi: 100%, Eesti: 100%, Norsk bokmål: 100%, Català: 100%, Українська: 100%, Русский: 100%, Қазақша: 100%, Türkçe: 100%, العربية: 100%, فارسی: 100%, 简体中文: 100%, 繁體中文: 100%, 日本語: 100%, 한국어: 100%, हिन्दी: 100%, বাংলা: 100%, Bahasa Indonesia: 100%, Bahasa Melayu: 100%, Tiếng Việt: 100%, ไทย: 100%, Filipino: 100%, עברית: 100%</desc>
   <style>
     text { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; }
-    .eyebrow { fill: #8B416E; font-size: 11px; font-weight: 750; letter-spacing: 1.8px; }
+    .eyebrow { fill: #8B416E; font-size: 13px; font-weight: 780; letter-spacing: 1.7px; }
     .hero { fill: #241B21; font-size: 92px; font-weight: 780; letter-spacing: -6px; }
     .hero-label { fill: #241B21; font-size: 25px; font-weight: 720; letter-spacing: -.8px; }
-    .meta { fill: #70636B; font-size: 12px; font-weight: 550; }
-    .status { fill: #241B21; font-size: 12px; font-weight: 750; }
-    .tile-label { fill: #241923; font-size: 13px; font-weight: 800; letter-spacing: .4px; }
-    .tile-count { fill: #241923; font-size: 30px; font-weight: 820; }
-    .tile-examples { fill: #594751; font-size: 10px; }
-    .footer { fill: #70636B; font-size: 9px; font-weight: 650; letter-spacing: .35px; }
+    .meta { fill: #62545D; font-size: 15px; font-weight: 580; }
+    .status { fill: #241B21; font-size: 14px; font-weight: 780; }
+    .tile-label { fill: #241923; font-size: 16px; font-weight: 820; letter-spacing: .25px; }
+    .tile-count { fill: #241923; font-size: 32px; font-weight: 840; }
+    .tile-examples { fill: #493741; font-size: 12px; font-weight: 560; }
+    .footer { fill: #62545D; font-size: 11px; font-weight: 680; letter-spacing: .25px; }
   </style>
   <rect width="1100" height="390" rx="34" fill="#FBF8F6"/>
   <path d="M68 22H252Q338 22 338 108V284Q338 368 254 368H72Q22 368 22 318V72Q22 22 68 22Z" fill="#F0DCE7"/>
