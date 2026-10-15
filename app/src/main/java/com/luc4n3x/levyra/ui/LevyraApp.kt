@@ -16340,6 +16340,7 @@ private fun Modifier.recentSearchesBleed(gutter: Dp): Modifier = layout { measur
 
 private const val SEARCH_TASTE_HINT_LIMIT = 10
 private val RecentSearchGutter = 18.dp
+private val SettingsStudioGutter = 18.dp
 private val RecentSearchCardWidth = 148.dp
 private val RecentSearchCardShape = RoundedCornerShape(32.dp)
 private val RecentSearchPlayBadge = 44.dp
@@ -22592,7 +22593,11 @@ private fun SettingsStudioShelf(title: String, subtitle: String, entries: List<S
             fontWeight = FontWeight.Medium,
             modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 12.dp)
         )
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        LazyRow(
+            modifier = Modifier.recentSearchesBleed(SettingsStudioGutter),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(horizontal = SettingsStudioGutter)
+        ) {
             items(entries, key = { it.id }) { entry ->
                 Surface(
                     onClick = entry.onClick,
