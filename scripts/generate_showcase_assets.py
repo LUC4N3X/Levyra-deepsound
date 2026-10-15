@@ -732,16 +732,16 @@ def draw_readme_card_copy(draw, spec, theme, index, origin):
 
 def draw_readme_card_shapes(draw, theme, variant):
     if variant == 0:
-        draw.ellipse((-250, 900, 650, 1780), fill=theme["shape"] + (255,))
+        draw.ellipse((-280, 1160, 710, 2120), fill=theme["shape"] + (255,))
         draw.rounded_rectangle((610, -150, 1030, 310), radius=150, fill=theme["shape"] + (210,))
     elif variant == 1:
-        draw.ellipse((480, 870, 1130, 1540), fill=theme["shape"] + (255,))
+        draw.ellipse((430, 1120, 1160, 1870), fill=theme["shape"] + (255,))
         draw.rounded_rectangle((-180, -120, 390, 250), radius=140, fill=theme["shape"] + (220,))
     elif variant == 2:
-        draw.rounded_rectangle((-220, 1040, 1080, 1780), radius=330, fill=theme["shape"] + (255,))
+        draw.rounded_rectangle((-260, 1300, 1120, 2100), radius=360, fill=theme["shape"] + (255,))
         draw.ellipse((650, -180, 1060, 230), fill=theme["shape"] + (210,))
     else:
-        draw.ellipse((-240, 900, 510, 1760), fill=theme["shape"] + (255,))
+        draw.ellipse((-280, 1120, 560, 2080), fill=theme["shape"] + (255,))
         draw.ellipse((580, -190, 1100, 330), fill=theme["shape"] + (190,))
 
 def render_readme_card(spec, index):
@@ -749,7 +749,7 @@ def render_readme_card(spec, index):
     variant_order = [0, 1, 2, 3, 2, 3, 0, 1, 1, 0, 3, 2, 3, 2, 1, 0]
     theme = README_CARD_THEMES[theme_order[index]]
     variant = variant_order[index]
-    canvas = Image.new("RGBA", (900, 1800), theme["background"] + (255,))
+    canvas = Image.new("RGBA", (900, 2100), theme["background"] + (255,))
     draw = ImageDraw.Draw(canvas)
     draw_readme_card_shapes(draw, theme, variant)
     ribbon_centers = [(705, 920), (190, 930), (700, 1090), (170, 1030)]
@@ -758,11 +758,12 @@ def render_readme_card(spec, index):
     copy_bottom = draw_readme_card_copy(draw, spec, theme, index, (72, 70))
 
     _, _, _, _, screenshot = spec
-    device_centers = [585, 445, 585, 445]
-    angles = [-2.4, 2.0, -1.7, 2.4]
-    device_top = copy_bottom + 48
-    available_height = 1750 - device_top
-    device_width = min(640, max(560, int(available_height / 2.24)))
+    device_centers = [505, 395, 510, 390]
+    angles = [-3.2, 2.8, -2.4, 3.2]
+    top_offsets = [0, 24, 8, 20]
+    device_top = copy_bottom + 44 + top_offsets[variant]
+    available_height = 2050 - device_top
+    device_width = min(740, max(680, int(available_height / 2.24)))
     paste_campaign_device(
         canvas,
         screenshot,
