@@ -178,12 +178,14 @@ const scriptGroupFor = code => {
 
 const getTheme = isDark => ({
   background: isDark ? '#0D1117' : '#FBF8F6',
-  surface: isDark ? '#211923' : '#F4E8EF',
-  surfaceStrong: isDark ? '#352735' : '#EBCFDF',
+  hero: isDark ? '#2B1D2A' : '#F0DCE7',
+  heroStrong: isDark ? '#493347' : '#DFC1D2',
   ink: isDark ? '#F7F1F5' : '#241B21',
   muted: isDark ? '#A99DA6' : '#70636B',
-  rule: isDark ? '#30363D' : '#D8D0D4',
-  accent: isDark ? '#D98AB8' : '#8B416E'
+  accent: isDark ? '#F09ACB' : '#8B416E',
+  tiles: ['#E7B5D3', '#B9DDCF', '#C9CCF5', '#F2C5B2', '#E8D59C'],
+  tileInk: '#241923',
+  tileMuted: '#594751'
 })
 
 const groupRows = languages => SCRIPT_GROUPS.map(group => {
@@ -203,47 +205,61 @@ const makePulse = ({ languages, globalPercent, catalogCount, isDark, mobile }) =
   const description = languages.map(language => `${language.name}: ${Math.round(language.percent)}%`).join(', ')
 
   if (mobile) {
-    const rows = groups.map((group, index) => {
-      const y = 218 + index * 63
-      return `<text x="34" y="${y}" class="group">${escapeXml(group.label)}</text>
-  <rect x="650" y="${y - 20}" width="36" height="28" rx="14" fill="${theme.surface}"/>
-  <text x="668" y="${y}" text-anchor="middle" class="count">${group.count}</text>
-  <text x="34" y="${y + 22}" class="examples">${escapeXml(group.examples)}</text>
-  <line x1="34" y1="${y + 39}" x2="686" y2="${y + 39}" stroke="${theme.rule}"/>`
+    const layouts = [
+      { x: 26, y: 190, w: 668, h: 92, r: 38 },
+      { x: 26, y: 298, w: 402, h: 88, r: 32 },
+      { x: 444, y: 298, w: 250, h: 88, r: 32 },
+      { x: 26, y: 402, w: 304, h: 88, r: 32 },
+      { x: 346, y: 402, w: 348, h: 88, r: 32 }
+    ]
+    const tiles = groups.map((group, index) => {
+      const box = layouts[index]
+      const showExamples = box.w > 340
+      return `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" rx="${box.r}" fill="${theme.tiles[index]}"/>
+  <text x="${box.x + 24}" y="${box.y + 38}" class="tile-label">${escapeXml(group.label)}</text>
+  <text x="${box.x + box.w - 25}" y="${box.y + 42}" text-anchor="end" class="tile-count">${group.count}</text>
+${showExamples ? `  <text x="${box.x + 24}" y="${box.y + 66}" class="tile-examples">${escapeXml(group.examples)}</text>` : ''}`
     }).join('\n  ')
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="560" viewBox="0 0 720 560" role="img" aria-label="${escapeXml(aria)}">
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="530" viewBox="0 0 720 530" role="img" aria-label="${escapeXml(aria)}">
   <title>${escapeXml(aria)}</title>
   <desc>${escapeXml(description)}</desc>
   <style>
     text { font-family: ${FONT}; }
     .eyebrow { fill: ${theme.accent}; font-size: 11px; font-weight: 750; letter-spacing: 1.8px; }
-    .hero { fill: ${theme.ink}; font-size: 62px; font-weight: 720; letter-spacing: -3px; }
-    .meta { fill: ${theme.muted}; font-size: 12px; }
-    .group { fill: ${theme.ink}; font-size: 13px; font-weight: 700; letter-spacing: .5px; }
-    .count { fill: ${theme.muted}; font-size: 15px; font-weight: 650; }
-    .examples { fill: ${theme.muted}; font-size: 10px; }
+    .hero { fill: ${theme.ink}; font-size: 58px; font-weight: 760; letter-spacing: -3px; }
+    .meta { fill: ${theme.muted}; font-size: 12px; font-weight: 550; }
+    .status { fill: ${theme.ink}; font-size: 12px; font-weight: 750; }
+    .tile-label { fill: ${theme.tileInk}; font-size: 13px; font-weight: 800; letter-spacing: .4px; }
+    .tile-count { fill: ${theme.tileInk}; font-size: 26px; font-weight: 800; }
+    .tile-examples { fill: ${theme.tileMuted}; font-size: 10px; }
     .footer { fill: ${theme.muted}; font-size: 10px; font-weight: 600; letter-spacing: .3px; }
   </style>
-  <rect width="720" height="560" rx="28" fill="${theme.background}"/>
-  <rect x="18" y="18" width="684" height="160" rx="36" fill="${theme.surface}"/>
-  <text x="48" y="61" class="eyebrow">LANGUAGE COVERAGE</text>
-  <text x="45" y="132" class="hero">${languages.length} languages</text>
-  <text x="48" y="157" class="meta">${catalogCount.toLocaleString('en-US')}+ app strings</text>
-  <rect x="584" y="43" width="86" height="38" rx="19" fill="${theme.surfaceStrong}"/>
-  <text x="627" y="67" text-anchor="middle" class="group">${roundedPercent}%</text>
-  <line x1="34" y1="190" x2="686" y2="190" stroke="${theme.rule}"/>
-  ${rows}
-  <text x="34" y="535" class="footer">LOCALIZED IN THE APP · NO CLOUD PROFILE</text>
+  <rect width="720" height="530" rx="34" fill="${theme.background}"/>
+  <rect x="26" y="20" width="668" height="150" rx="44" fill="${theme.hero}"/>
+  <text x="58" y="62" class="eyebrow">LOCAL EVERYWHERE</text>
+  <text x="54" y="126" class="hero">${languages.length} languages</text>
+  <text x="58" y="151" class="meta">Five writing systems · ${catalogCount.toLocaleString('en-US')}+ app strings</text>
+  <rect x="578" y="48" width="88" height="40" rx="20" fill="${theme.heroStrong}"/>
+  <text x="622" y="73" text-anchor="middle" class="status">${roundedPercent}%</text>
+  ${tiles}
+  <text x="28" y="517" class="footer">TRANSLATIONS LIVE IN THE APP · NO CLOUD PROFILE</text>
 </svg>`
   }
 
-  const rows = groups.map((group, index) => {
-    const y = 116 + index * 49
-    return `<text x="348" y="${y}" class="group">${escapeXml(group.label)}</text>
-  <rect x="1002" y="${y - 20}" width="46" height="28" rx="14" fill="${theme.surface}"/>
-  <text x="1025" y="${y}" text-anchor="middle" class="count">${group.count}</text>
-  <text x="540" y="${y}" class="examples">${escapeXml(group.examples)}</text>
-  <line x1="348" y1="${y + 18}" x2="1048" y2="${y + 18}" stroke="${theme.rule}"/>`
+  const layouts = [
+    { x: 360, y: 46, w: 712, h: 100, r: 42 },
+    { x: 360, y: 162, w: 414, h: 88, r: 34 },
+    { x: 790, y: 162, w: 282, h: 88, r: 34 },
+    { x: 360, y: 266, w: 314, h: 88, r: 34 },
+    { x: 690, y: 266, w: 382, h: 88, r: 34 }
+  ]
+  const tiles = groups.map((group, index) => {
+    const box = layouts[index]
+    const showExamples = box.w > 340
+    return `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" rx="${box.r}" fill="${theme.tiles[index]}"/>
+  <text x="${box.x + 28}" y="${box.y + 40}" class="tile-label">${escapeXml(group.label)}</text>
+  <text x="${box.x + box.w - 28}" y="${box.y + 43}" text-anchor="end" class="tile-count">${group.count}</text>
+${showExamples ? `  <text x="${box.x + 28}" y="${box.y + 68}" class="tile-examples">${escapeXml(group.examples)}</text>` : ''}`
   }).join('\n  ')
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="390" viewBox="0 0 1100 390" role="img" aria-label="${escapeXml(aria)}">
   <title>${escapeXml(aria)}</title>
@@ -251,26 +267,27 @@ const makePulse = ({ languages, globalPercent, catalogCount, isDark, mobile }) =
   <style>
     text { font-family: ${FONT}; }
     .eyebrow { fill: ${theme.accent}; font-size: 11px; font-weight: 750; letter-spacing: 1.8px; }
-    .hero { fill: ${theme.ink}; font-size: 70px; font-weight: 720; letter-spacing: -3.5px; }
-    .meta { fill: ${theme.muted}; font-size: 13px; }
-    .group { fill: ${theme.ink}; font-size: 12px; font-weight: 700; letter-spacing: .5px; }
-    .count { fill: ${theme.muted}; font-size: 14px; font-weight: 650; }
-    .examples { fill: ${theme.muted}; font-size: 11px; }
-    .footer { fill: ${theme.muted}; font-size: 10px; font-weight: 600; letter-spacing: .35px; }
+    .hero { fill: ${theme.ink}; font-size: 92px; font-weight: 780; letter-spacing: -6px; }
+    .hero-label { fill: ${theme.ink}; font-size: 25px; font-weight: 720; letter-spacing: -.8px; }
+    .meta { fill: ${theme.muted}; font-size: 12px; font-weight: 550; }
+    .status { fill: ${theme.ink}; font-size: 12px; font-weight: 750; }
+    .tile-label { fill: ${theme.tileInk}; font-size: 13px; font-weight: 800; letter-spacing: .4px; }
+    .tile-count { fill: ${theme.tileInk}; font-size: 30px; font-weight: 820; }
+    .tile-examples { fill: ${theme.tileMuted}; font-size: 10px; }
+    .footer { fill: ${theme.muted}; font-size: 9px; font-weight: 650; letter-spacing: .35px; }
   </style>
-  <rect width="1100" height="390" rx="28" fill="${theme.background}"/>
-  <rect x="22" y="22" width="286" height="346" rx="42" fill="${theme.surface}"/>
-  <text x="54" y="72" class="eyebrow">LANGUAGE COVERAGE</text>
-  <text x="49" y="166" class="hero">${languages.length}</text>
-  <text x="54" y="198" class="meta">languages</text>
-  <text x="54" y="224" class="meta">${catalogCount.toLocaleString('en-US')}+ app strings</text>
-  <rect x="54" y="286" width="116" height="42" rx="21" fill="${theme.surfaceStrong}"/>
-  <text x="112" y="312" text-anchor="middle" class="group">${roundedPercent}% complete</text>
-  <text x="348" y="76" class="footer">WRITING SYSTEM</text>
-  <text x="540" y="76" class="footer">SELECTED LANGUAGES</text>
-  <text x="1048" y="76" text-anchor="end" class="footer">TOTAL</text>
-  ${rows}
-  <text x="348" y="356" class="footer">LOCALIZED IN THE APP · NO CLOUD PROFILE</text>
+  <rect width="1100" height="390" rx="34" fill="${theme.background}"/>
+  <path d="M68 22H252Q338 22 338 108V284Q338 368 254 368H72Q22 368 22 318V72Q22 22 68 22Z" fill="${theme.hero}"/>
+  <text x="58" y="72" class="eyebrow">LOCAL EVERYWHERE</text>
+  <text x="51" y="183" class="hero">${languages.length}</text>
+  <text x="58" y="218" class="hero-label">languages</text>
+  <text x="58" y="252" class="meta">Five writing systems</text>
+  <text x="58" y="272" class="meta">${catalogCount.toLocaleString('en-US')}+ app strings</text>
+  <circle cx="280" cy="315" r="49" fill="${theme.heroStrong}"/>
+  <text x="280" y="311" text-anchor="middle" class="status">${roundedPercent}%</text>
+  <text x="280" y="329" text-anchor="middle" class="footer">COMPLETE</text>
+  ${tiles}
+  <text x="362" y="378" class="footer">TRANSLATIONS LIVE IN THE APP · NO CLOUD PROFILE</text>
 </svg>`
 }
 
