@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-14T21:44:52Z",
+  "generatedAt": "2026-10-15T04:46:23Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -306,7 +306,7 @@
     {
       "song": "Man I Need",
       "artist": "Olivia Dean",
-      "album": "The Art of Loving",
+      "album": "Man I Need",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
@@ -504,13 +504,6 @@
       "artist": "Jamie Miller",
       "album": "Babydoll",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/2ffb0b9c6b6f4ca898bb73d3602d477f.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "Man I Need",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1189,7 +1182,7 @@
       "song": "GAUNA SPORT",
       "artist": "PAPKE",
       "album": "GAUNA SPORT",
-      "url": "https://canvaz.scdn.co/upload/artist/2MrPCoNGJoi0LlO2FKWASe/video/4964265815c343bcba888233c447878e.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/artist/2MrPCoNGJoi0LlO2FKWASe/video/6ca37c371407490ead941711165a636e.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2401,6 +2394,13 @@
       "artist": "Rasmus Gozzi, FRÖKEN SNUSK, Louise Andersson Bodin",
       "album": "OM DU FRÅGAR NOOSHI",
       "url": "https://canvaz.scdn.co/upload/artist/3loTvAld5Tpk5aSNbboGpj/video/5b831c3498984625bbdf2ca90e3e4070.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "The Art of Loving",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4620,6 +4620,13 @@
       "artist": "Levante",
       "album": "DELL'AMORE IL FALLIMENTO E ALTRI PASSI DI DANZA",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/84f9f6c9325447948d6cbe0618e20c5b.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "FF",
+      "artist": "Troye Sivan",
+      "album": "She’s the Best",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/2803fb2880784a8a954f842b0cc39b5d.cnvs.mp4",
       "scope": "track"
     },
     {
