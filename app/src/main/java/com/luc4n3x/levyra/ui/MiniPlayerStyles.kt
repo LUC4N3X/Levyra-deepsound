@@ -454,6 +454,7 @@ internal fun StyledMiniPlayer(
                     tuning = tuning,
                     palette = palette,
                     progress = progress,
+                    attach = attach,
                     height = layout.height,
                     waving = model.isPlaying && animated
                 )
@@ -691,6 +692,7 @@ private fun BoxScope.MiniBottomProgress(
     tuning: MiniPlayerTuning,
     palette: MiniPlayerPalette,
     progress: () -> Float,
+    attach: () -> Float,
     height: Dp,
     waving: Boolean
 ) {
@@ -701,7 +703,14 @@ private fun BoxScope.MiniBottomProgress(
                 palette = palette,
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
-            MiniPlayerStyle.Connected -> Unit
+            MiniPlayerStyle.Connected -> MiniLineProgress(
+                progress = progress,
+                palette = palette,
+                inset = (tuning.cornerDp.dp * 0.7f).coerceAtLeast(12.dp),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .graphicsLayer { alpha = 1f - attach().coerceIn(0f, 1f) }
+            )
             else -> MiniLineProgress(
                 progress = progress,
                 palette = palette,
