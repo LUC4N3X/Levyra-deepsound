@@ -192,11 +192,11 @@ Levyra is available in 41 languages.
 
 <div align="center">
   <picture>
-    <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-mobile-light.svg">
-    <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse-mobile.svg">
-    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-light.svg">
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse.svg">
-    <img src="docs/assets/levyra-translation-pulse.svg" alt="Levyra translation progress" width="920">
+    <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-mobile-light.svg?v=editorial-atlas-v1">
+    <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse-mobile.svg?v=editorial-atlas-v1">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-light.svg?v=editorial-atlas-v1">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse.svg?v=editorial-atlas-v1">
+    <img src="docs/assets/levyra-translation-pulse.svg?v=editorial-atlas-v1" alt="Levyra translation coverage across 41 languages and five writing systems" width="920">
   </picture>
 </div>
 
