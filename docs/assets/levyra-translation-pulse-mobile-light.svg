@@ -1,28 +1,264 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="720" height="620" viewBox="0 0 720 620" role="img" aria-label="Levyra is fully translated in 41 languages">
-  <title>Levyra speaks 41 languages with 100% translation coverage</title>
-  <desc>Bahasa Indonesia, Bahasa Melayu, Català, Čeština, Dansk, Deutsch, Eesti, English, Español, Filipino, Français, Hrvatski, Italiano, Magyar, Nederlands, Norsk bokmål, Polski, Português, Română, Shqip, Slovenčina, Suomi, Svenska, Tiếng Việt, Türkçe, Ελληνικά, Български, Қазақша, Русский, Српски, Українська, עברית, العربية, فارسی, 한국어, 日本語, 简体中文, 繁體中文, हिन्दी, বাংলা, ไทย</desc>
-  <style>
-    text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-    .kicker { fill: #8B416E; font-size: 11px; font-weight: 800; letter-spacing: 2px; }
-    .hero { fill: #241B21; font-size: 112px; font-weight: 850; letter-spacing: -7px; }
-    .hero-label { fill: #241B21; font-size: 34px; font-weight: 760; letter-spacing: -1.2px; }
-    .meta { fill: #70636B; font-size: 13px; }
-    .statement { fill: #241B21; font-size: 28px; font-weight: 850; }
-    .statement-small { fill: #70636B; font-size: 10px; font-weight: 750; letter-spacing: 1.2px; }
-    .group { fill: #241B21; font-size: 12px; font-weight: 800; letter-spacing: .7px; }
-    .count { fill: #8B416E; font-size: 20px; font-weight: 850; }
-    .examples { fill: #70636B; font-size: 10px; }
-    .footer { fill: #70636B; font-size: 10px; font-weight: 650; letter-spacing: .4px; }
-  </style>
-  <rect width="720" height="620" rx="20" fill="#FBF8F6"/>
-  <path d="M0 0H308C332 64 322 133 285 190C265 220 256 238 258 250H0Z" fill="#F4E9EF"/>
-  <text x="42" y="43" class="kicker">LEVYRA / LOCAL EVERYWHERE</text>
-  <text x="37" y="151" class="hero">41</text>
-  <text x="43" y="188" class="hero-label">languages.</text>
-  <text x="43" y="218" class="meta">Five writing systems. Every string complete.</text>
-  <text x="676" y="72" text-anchor="end" class="statement">100%</text>
-  <text x="676" y="91" text-anchor="end" class="statement-small">TRANSLATION COVERAGE</text>
-  <text x="42" y="272" class="group">LATIN</text><text x="678" y="272" text-anchor="end" class="count">25</text><text x="42" y="291" class="examples">English · Español · Italiano · Français · Deutsch · Português</text><g><rect x="458.0" y="282.0" width="3.0" height="14" rx="1.5" fill="#E7C7D9"/><rect x="467.0" y="272.0" width="3.0" height="24" rx="1.5" fill="#8B416E"/><rect x="476.1" y="278.0" width="3.0" height="18" rx="1.5" fill="#8B416E"/><rect x="485.1" y="266.0" width="3.0" height="30" rx="1.5" fill="#8B416E"/><rect x="494.2" y="276.0" width="3.0" height="20" rx="1.5" fill="#E7C7D9"/><rect x="503.2" y="282.0" width="3.0" height="14" rx="1.5" fill="#8B416E"/><rect x="512.2" y="272.0" width="3.0" height="24" rx="1.5" fill="#8B416E"/><rect x="521.3" y="278.0" width="3.0" height="18" rx="1.5" fill="#8B416E"/><rect x="530.3" y="266.0" width="3.0" height="30" rx="1.5" fill="#E7C7D9"/><rect x="539.4" y="276.0" width="3.0" height="20" rx="1.5" fill="#8B416E"/><rect x="548.4" y="282.0" width="3.0" height="14" rx="1.5" fill="#8B416E"/><rect x="557.4" y="272.0" width="3.0" height="24" rx="1.5" fill="#8B416E"/><rect x="566.5" y="278.0" width="3.0" height="18" rx="1.5" fill="#E7C7D9"/><rect x="575.5" y="266.0" width="3.0" height="30" rx="1.5" fill="#8B416E"/><rect x="584.6" y="276.0" width="3.0" height="20" rx="1.5" fill="#8B416E"/><rect x="593.6" y="282.0" width="3.0" height="14" rx="1.5" fill="#8B416E"/><rect x="602.6" y="272.0" width="3.0" height="24" rx="1.5" fill="#E7C7D9"/><rect x="611.7" y="278.0" width="3.0" height="18" rx="1.5" fill="#8B416E"/><rect x="620.7" y="266.0" width="3.0" height="30" rx="1.5" fill="#8B416E"/><rect x="629.8" y="276.0" width="3.0" height="20" rx="1.5" fill="#8B416E"/><rect x="638.8" y="282.0" width="3.0" height="14" rx="1.5" fill="#E7C7D9"/><rect x="647.8" y="272.0" width="3.0" height="24" rx="1.5" fill="#8B416E"/><rect x="656.9" y="278.0" width="3.0" height="18" rx="1.5" fill="#8B416E"/><rect x="665.9" y="266.0" width="3.0" height="30" rx="1.5" fill="#8B416E"/><rect x="675.0" y="276.0" width="3.0" height="20" rx="1.5" fill="#E7C7D9"/></g><line x1="42" y1="308" x2="678" y2="308" stroke="#DDD0D7"/><text x="42" y="335" class="group">CYRILLIC + GREEK</text><text x="678" y="335" text-anchor="end" class="count">06</text><text x="42" y="354" class="examples">Ελληνικά · Български · Қазақша · Русский · Српски · Українська</text><g><rect x="458.0" y="345.0" width="17.0" height="14" rx="4.0" fill="#E7C7D9"/><rect x="481.0" y="335.0" width="17.0" height="24" rx="4.0" fill="#8B416E"/><rect x="504.0" y="341.0" width="17.0" height="18" rx="4.0" fill="#8B416E"/><rect x="527.0" y="329.0" width="17.0" height="30" rx="4.0" fill="#8B416E"/><rect x="550.0" y="339.0" width="17.0" height="20" rx="4.0" fill="#E7C7D9"/><rect x="573.0" y="345.0" width="17.0" height="14" rx="4.0" fill="#8B416E"/></g><line x1="42" y1="371" x2="678" y2="371" stroke="#DDD0D7"/><text x="42" y="398" class="group">CJK</text><text x="678" y="398" text-anchor="end" class="count">04</text><text x="42" y="417" class="examples">한국어 · 日本語 · 简体中文 · 繁體中文</text><g><rect x="458.0" y="408.0" width="17.0" height="14" rx="4.0" fill="#E7C7D9"/><rect x="481.0" y="398.0" width="17.0" height="24" rx="4.0" fill="#8B416E"/><rect x="504.0" y="404.0" width="17.0" height="18" rx="4.0" fill="#8B416E"/><rect x="527.0" y="392.0" width="17.0" height="30" rx="4.0" fill="#8B416E"/></g><line x1="42" y1="434" x2="678" y2="434" stroke="#DDD0D7"/><text x="42" y="461" class="group">ARABIC + HEBREW</text><text x="678" y="461" text-anchor="end" class="count">03</text><text x="42" y="480" class="examples">עברית · العربية · فارسی</text><g><rect x="458.0" y="471.0" width="17.0" height="14" rx="4.0" fill="#E7C7D9"/><rect x="481.0" y="461.0" width="17.0" height="24" rx="4.0" fill="#8B416E"/><rect x="504.0" y="467.0" width="17.0" height="18" rx="4.0" fill="#8B416E"/></g><line x1="42" y1="497" x2="678" y2="497" stroke="#DDD0D7"/><text x="42" y="524" class="group">INDIC + THAI</text><text x="678" y="524" text-anchor="end" class="count">03</text><text x="42" y="543" class="examples">हिन्दी · বাংলা · ไทย</text><g><rect x="458.0" y="534.0" width="17.0" height="14" rx="4.0" fill="#E7C7D9"/><rect x="481.0" y="524.0" width="17.0" height="24" rx="4.0" fill="#8B416E"/><rect x="504.0" y="530.0" width="17.0" height="18" rx="4.0" fill="#8B416E"/></g><line x1="42" y1="560" x2="678" y2="560" stroke="#DDD0D7"/>
-  <text x="42" y="590" class="footer">41 / 41 LOCALE PACKS COMPLETE</text>
-  <text x="678" y="590" text-anchor="end" class="footer">1,105+ APP STRINGS</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="468" viewBox="0 0 720 468" role="img" aria-label="Levyra localization coverage: 100% across 41 languages">
+  <title>Levyra localization coverage: 100% across 41 languages</title>
+  <defs>
+    <linearGradient id="bar-latin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8B5CF6"/>
+      <stop offset="1" stop-color="#5B21B6"/>
+    </linearGradient>
+    <linearGradient id="bar-cyrillic" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#38BDF8"/>
+      <stop offset="1" stop-color="#0369A1"/>
+    </linearGradient>
+    <linearGradient id="bar-rtl" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FBBF24"/>
+      <stop offset="1" stop-color="#B45309"/>
+    </linearGradient>
+    <linearGradient id="bar-cjk" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F472B6"/>
+      <stop offset="1" stop-color="#BE185D"/>
+    </linearGradient>
+    <linearGradient id="bar-brahmic" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4ADE80"/>
+      <stop offset="1" stop-color="#15803D"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8B5CF6"/>
+      <stop offset="1" stop-color="#DB2777"/>
+    </linearGradient>
+  </defs>
+  <rect width="720" height="468" rx="20" fill="#FFFFFF"/>
+  <rect x="16" y="120" width="688" height="302" rx="14" fill="#F8FAFC"/>
+  <text x="28" y="38" fill="#7C3AED" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing="1.6">LANGUAGE COVERAGE</text>
+  <text x="28" y="66" fill="#0F172A" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="22" font-weight="800">Levyra in 41 languages</text>
+  <text x="28" y="84" fill="#64748B" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12">1,105+ app strings · coverage per language, grouped by writing system</text>
+  <rect x="28" y="96" width="12" height="12" rx="3" fill="url(#bar-latin)"/>
+  <text x="46" y="106" fill="#1E293B" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="600" letter-spacing=".3">LATIN</text>
+  <rect x="96" y="96" width="12" height="12" rx="3" fill="url(#bar-cyrillic)"/>
+  <text x="114" y="106" fill="#1E293B" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="600" letter-spacing=".3">CYRILLIC &amp; GREEK</text>
+  <rect x="234.4" y="96" width="12" height="12" rx="3" fill="url(#bar-rtl)"/>
+  <text x="252.4" y="106" fill="#1E293B" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="600" letter-spacing=".3">ARABIC &amp; HEBREW</text>
+  <rect x="366.4" y="96" width="12" height="12" rx="3" fill="url(#bar-cjk)"/>
+  <text x="384.4" y="106" fill="#1E293B" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="600" letter-spacing=".3">CJK</text>
+  <rect x="421.59999999999997" y="96" width="12" height="12" rx="3" fill="url(#bar-brahmic)"/>
+  <text x="439.59999999999997" y="106" fill="#1E293B" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="600" letter-spacing=".3">INDIC &amp; THAI</text>
+  <circle cx="654" cy="60" r="30" fill="none" stroke="#EDE9FE" stroke-width="7"/>
+  <circle cx="654" cy="60" r="30" fill="none" stroke="url(#ring)" stroke-width="7" stroke-linecap="round" stroke-dasharray="188.50 188.50" transform="rotate(-90 654 60)"/>
+  <text x="654" y="65" text-anchor="middle" fill="#0F172A" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" font-weight="800">100%</text>
+  <line x1="62" y1="368.0" x2="692" y2="368.0" stroke="#CBD5E1" stroke-width="1" />
+  <text x="52" y="372.0" text-anchor="end" fill="#64748B" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="11">0</text>
+  <line x1="62" y1="310.5" x2="692" y2="310.5" stroke="#E2E8F0" stroke-width="1" stroke-dasharray="3 5"/>
+  <text x="52" y="314.5" text-anchor="end" fill="#64748B" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="11">25</text>
+  <line x1="62" y1="253.0" x2="692" y2="253.0" stroke="#E2E8F0" stroke-width="1" stroke-dasharray="3 5"/>
+  <text x="52" y="257.0" text-anchor="end" fill="#64748B" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="11">50</text>
+  <line x1="62" y1="195.5" x2="692" y2="195.5" stroke="#E2E8F0" stroke-width="1" stroke-dasharray="3 5"/>
+  <text x="52" y="199.5" text-anchor="end" fill="#64748B" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="11">75</text>
+  <line x1="62" y1="138.0" x2="692" y2="138.0" stroke="#E2E8F0" stroke-width="1" stroke-dasharray="3 5"/>
+  <text x="52" y="142.0" text-anchor="end" fill="#64748B" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="11">100</text>
+  <g>
+    <title>Bahasa Indonesia: 100% (37/37)</title>
+    <rect x="64.9" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-latin)"/>
+    <text transform="translate(73.7 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">ID</text>
+  </g>
+  <g>
+    <title>Bahasa Melayu: 100% (37/37)</title>
+    <rect x="80.3" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-latin)"/>
+    <text transform="translate(89.0 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">MS</text>
+  </g>
+  <g>
+    <title>Català: 100% (37/37)</title>
+    <rect x="95.7" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-latin)"/>
+    <text transform="translate(104.4 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">CA</text>
+  </g>
+  <g>
+    <title>Čeština: 100% (37/37)</title>
+    <rect x="111.0" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-latin)"/>
+    <text transform="translate(119.8 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">CS</text>
+  </g>
+  <g>
+    <title>Dansk: 100% (37/37)</title>
+    <rect x="126.4" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-latin)"/>
+    <text transform="translate(135.1 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">DA</text>
+  </g>
+  <g>
+    <title>Deutsch: 100% (37/37)</title>
+    <rect x="141.7" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-latin)"/>
+    <text transform="translate(150.5 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">DE</text>
+  </g>
+  <g>
+    <title>Eesti: 100% (37/37)</title>
+    <rect x="157.1" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-latin)"/>
+    <text transform="translate(165.9 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">ET</text>
+  </g>
+  <g>
+    <title>English: 100% (37/37)</title>
+    <rect x="172.5" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-latin)"/>
+    <text transform="translate(181.2 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">EN</text>
+  </g>
+  <g>
+    <title>Español: 100% (37/37)</title>
+    <rect x="187.8" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-latin)"/>
+    <text transform="translate(196.6 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">ES</text>
+  </g>
+  <g>
+    <title>Filipino: 100% (37/37)</title>
+    <rect x="203.2" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-latin)"/>
+    <text transform="translate(212.0 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">FIL</text>
+  </g>
+  <g>
+    <title>Français: 100% (37/37)</title>
+    <rect x="218.6" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-latin)"/>
+    <text transform="translate(227.3 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">FR</text>
+  </g>
+  <g>
+    <title>Hrvatski: 100% (37/37)</title>
+    <rect x="233.9" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-latin)"/>
+    <text transform="translate(242.7 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">HR</text>
+  </g>
+  <g>
+    <title>Italiano: 100% (37/37)</title>
+    <rect x="249.3" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-latin)"/>
+    <text transform="translate(258.1 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">IT</text>
+  </g>
+  <g>
+    <title>Magyar: 100% (37/37)</title>
+    <rect x="264.7" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-latin)"/>
+    <text transform="translate(273.4 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">HU</text>
+  </g>
+  <g>
+    <title>Nederlands: 100% (37/37)</title>
+    <rect x="280.0" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-latin)"/>
+    <text transform="translate(288.8 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">NL</text>
+  </g>
+  <g>
+    <title>Norsk bokmål: 100% (37/37)</title>
+    <rect x="295.4" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-latin)"/>
+    <text transform="translate(304.2 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">NB</text>
+  </g>
+  <g>
+    <title>Polski: 100% (37/37)</title>
+    <rect x="310.8" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-latin)"/>
+    <text transform="translate(319.5 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">PL</text>
+  </g>
+  <g>
+    <title>Português: 100% (37/37)</title>
+    <rect x="326.1" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-latin)"/>
+    <text transform="translate(334.9 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">PT</text>
+  </g>
+  <g>
+    <title>Română: 100% (37/37)</title>
+    <rect x="341.5" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-latin)"/>
+    <text transform="translate(350.3 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">RO</text>
+  </g>
+  <g>
+    <title>Shqip: 100% (37/37)</title>
+    <rect x="356.9" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-latin)"/>
+    <text transform="translate(365.6 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">SQ</text>
+  </g>
+  <g>
+    <title>Slovenčina: 100% (37/37)</title>
+    <rect x="372.2" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-latin)"/>
+    <text transform="translate(381.0 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">SK</text>
+  </g>
+  <g>
+    <title>Suomi: 100% (37/37)</title>
+    <rect x="387.6" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-latin)"/>
+    <text transform="translate(396.4 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">FI</text>
+  </g>
+  <g>
+    <title>Svenska: 100% (37/37)</title>
+    <rect x="403.0" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-latin)"/>
+    <text transform="translate(411.7 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">SV</text>
+  </g>
+  <g>
+    <title>Tiếng Việt: 100% (37/37)</title>
+    <rect x="418.3" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-latin)"/>
+    <text transform="translate(427.1 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">VI</text>
+  </g>
+  <g>
+    <title>Türkçe: 100% (37/37)</title>
+    <rect x="433.7" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-latin)"/>
+    <text transform="translate(442.5 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">TR</text>
+  </g>
+  <g>
+    <title>Ελληνικά: 100% (37/37)</title>
+    <rect x="449.1" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-cyrillic)"/>
+    <text transform="translate(457.8 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">EL</text>
+  </g>
+  <g>
+    <title>Български: 100% (37/37)</title>
+    <rect x="464.4" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-cyrillic)"/>
+    <text transform="translate(473.2 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">BG</text>
+  </g>
+  <g>
+    <title>Қазақша: 100% (37/37)</title>
+    <rect x="479.8" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-cyrillic)"/>
+    <text transform="translate(488.6 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">KK</text>
+  </g>
+  <g>
+    <title>Русский: 100% (37/37)</title>
+    <rect x="495.2" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-cyrillic)"/>
+    <text transform="translate(503.9 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">RU</text>
+  </g>
+  <g>
+    <title>Српски: 100% (37/37)</title>
+    <rect x="510.5" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-cyrillic)"/>
+    <text transform="translate(519.3 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">SR</text>
+  </g>
+  <g>
+    <title>Українська: 100% (37/37)</title>
+    <rect x="525.9" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-cyrillic)"/>
+    <text transform="translate(534.7 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">UK</text>
+  </g>
+  <g>
+    <title>עברית: 100% (37/37)</title>
+    <rect x="541.3" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-rtl)"/>
+    <text transform="translate(550.0 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">HE</text>
+  </g>
+  <g>
+    <title>العربية: 100% (37/37)</title>
+    <rect x="556.6" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-rtl)"/>
+    <text transform="translate(565.4 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">AR</text>
+  </g>
+  <g>
+    <title>فارسی: 100% (37/37)</title>
+    <rect x="572.0" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-rtl)"/>
+    <text transform="translate(580.8 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">FA</text>
+  </g>
+  <g>
+    <title>한국어: 100% (37/37)</title>
+    <rect x="587.4" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-cjk)"/>
+    <text transform="translate(596.1 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">KO</text>
+  </g>
+  <g>
+    <title>日本語: 100% (37/37)</title>
+    <rect x="602.7" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-cjk)"/>
+    <text transform="translate(611.5 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">JA</text>
+  </g>
+  <g>
+    <title>简体中文: 100% (37/37)</title>
+    <rect x="618.1" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-cjk)"/>
+    <text transform="translate(626.9 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">ZH</text>
+  </g>
+  <g>
+    <title>繁體中文: 100% (37/37)</title>
+    <rect x="633.5" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-cjk)"/>
+    <text transform="translate(642.2 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">ZH-TW</text>
+  </g>
+  <g>
+    <title>हिन्दी: 100% (37/37)</title>
+    <rect x="648.8" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-brahmic)"/>
+    <text transform="translate(657.6 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">HI</text>
+  </g>
+  <g>
+    <title>বাংলা: 100% (37/37)</title>
+    <rect x="664.2" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-brahmic)"/>
+    <text transform="translate(673.0 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">BN</text>
+  </g>
+  <g>
+    <title>ไทย: 100% (37/37)</title>
+    <rect x="679.6" y="138.0" width="9.5" height="230.0" rx="4.763414634146342" fill="url(#bar-brahmic)"/>
+    <text transform="translate(688.3 382) rotate(-50)" text-anchor="end" fill="#1E293B" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" font-weight="700">TH</text>
+  </g>
+
+  <text x="28" y="448" fill="#64748B" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="11" font-style="italic">Ranked by coverage, then by writing system · generated from the Levyra repository</text>
 </svg>
