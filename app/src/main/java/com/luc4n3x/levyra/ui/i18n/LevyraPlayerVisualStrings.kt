@@ -16,7 +16,7 @@ internal val playerVisualKeys = setOf(
     "playerBackgroundGradient",
     "enterImmersive",
     "exitImmersive"
-) + liveChatKeys + diagnosticsKeys
+) + liveChatKeys + diagnosticsKeys + playerColorKeys
 
 private fun playerVisual(
     visualMode: String,
@@ -113,7 +113,7 @@ private val playerBackgroundExtraLabels: Map<String, Pair<String, String>> = map
 internal fun playerVisualLocalizationEntries(code: String): Map<String, String> {
     val extra = playerBackgroundExtraLabels[code] ?: playerBackgroundExtraLabels.getValue("en")
     return localizedBundleOrEnglish(playerVisualBundles, code) + liveChatLocalizationEntries(code) +
-        diagnosticsLocalizationEntries(code) + mapOf(
+        diagnosticsLocalizationEntries(code) + playerColorLocalizationEntries(code) + mapOf(
             "playerBackgroundAurora" to extra.first,
             "playerBackgroundGradient" to extra.second
         )

@@ -151,19 +151,42 @@ import com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicLoginScreen
 import com.luc4n3x.levyra.viewmodel.youtubemusic.YoutubeMusicAccountError
 import com.luc4n3x.levyra.viewmodel.youtubemusic.YoutubeMusicAccountUiState
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material.icons.rounded.Contrast
+import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.LightMode
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.semantics.Role
+import com.luc4n3x.levyra.ui.i18n.LevyraOnboardingAppearanceStrings
+import com.luc4n3x.levyra.ui.i18n.OnboardingAppearanceCopy
+import com.luc4n3x.levyra.ui.theme.LevyraPalette
+import com.luc4n3x.levyra.ui.theme.LevyraThemes
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.Shape
 
-private val SetupBase = Color(0xFF07070B)
-private val SetupInk = Color(0xFFF4F4F8)
-private val SetupMuted = Color(0xFFA6A8B5)
-private val SetupSurface = Color(0xFF15151D)
-private val SetupSurfaceHigh = Color(0xFF1F1F2A)
-private val SetupOnAccent = Color(0xFF0A0A10)
-private val SetupAquamarine = Color(0xFF5EE6D0)
-private val SetupLilac = Color(0xFFB7A2FF)
-private val SetupCoral = Color(0xFFFF9B85)
-private val SetupSun = Color(0xFFFFD36E)
-private val SetupSky = Color(0xFF8FD3FF)
-private val SetupError = Color(0xFFFFB4AB)
+private val SetupBase: Color get() = if (LevyraIsLight) Color(0xFFF5F7FB) else Color(0xFF07070B)
+private val SetupInk: Color get() = if (LevyraIsLight) Color(0xFF10141C) else Color(0xFFF4F4F8)
+private val SetupMuted: Color get() = if (LevyraIsLight) Color(0xFF59606E) else Color(0xFFA6A8B5)
+private val SetupSurface: Color get() = if (LevyraIsLight) Color(0xFFFFFFFF) else Color(0xFF15151D)
+private val SetupSurfaceHigh: Color get() = if (LevyraIsLight) Color(0xFFE6EBF3) else Color(0xFF1F1F2A)
+private val SetupOnAccent: Color get() = if (LevyraIsLight) Color(0xFFFFFFFF) else Color(0xFF0A0A10)
+private val SetupVeil: Color get() = if (LevyraIsLight) Color.Black else Color.White
+private val SetupLilac: Color get() = if (LevyraIsLight) Color(0xFF6346D0) else Color(0xFFB7A2FF)
+private val SetupMint: Color get() = if (LevyraIsLight) Color(0xFF2F7A47) else Color(0xFFA6E3B5)
+private val SetupCoral: Color get() = if (LevyraIsLight) Color(0xFFB8442B) else Color(0xFFFF9B85)
+private val SetupSun: Color get() = if (LevyraIsLight) Color(0xFF8A6100) else Color(0xFFFFD36E)
+private val SetupSky: Color get() = if (LevyraIsLight) Color(0xFF1767A8) else Color(0xFF8FD3FF)
+private val SetupPeach: Color get() = if (LevyraIsLight) Color(0xFF9C4317) else Color(0xFFFFB693)
+private val SetupRose: Color get() = if (LevyraIsLight) Color(0xFF9E2F66) else Color(0xFFFFAFD2)
+private val SetupLavender: Color get() = if (LevyraIsLight) Color(0xFF5B43C2) else Color(0xFFCDBDFF)
+private val SetupOnHero: Color get() = if (LevyraIsLight) Color.White else Color(0xFF2A1220)
+private val SetupHeroGradient: Brush
+    get() = Brush.linearGradient(listOf(SetupPeach, SetupRose, SetupLavender))
+private val SetupError: Color get() = if (LevyraIsLight) Color(0xFFBA1A1A) else Color(0xFFFFB4AB)
 private val SetupContentMaxWidth = 560.dp
 private val SetupHeroIntroSize = 112.dp
 private val SetupHeroStepSize = 88.dp
@@ -171,8 +194,9 @@ private const val SetupHeroTurnDegrees = 45f
 private const val SetupLogoSpinMillis = 36_000
 
 private fun onboardingAccent(step: OnboardingStep): Color = when (step) {
-    OnboardingStep.Intro -> SetupAquamarine
+    OnboardingStep.Intro -> SetupRose
     OnboardingStep.Language -> SetupLilac
+    OnboardingStep.Appearance -> SetupMint
     OnboardingStep.Profile -> SetupCoral
     OnboardingStep.Taste -> SetupSun
     OnboardingStep.YoutubeMusic -> SetupSky
@@ -182,6 +206,7 @@ private fun onboardingAccent(step: OnboardingStep): Color = when (step) {
 private fun onboardingHeroPolygon(step: OnboardingStep): RoundedPolygon = when (step) {
     OnboardingStep.Intro -> MaterialShapes.Cookie12Sided
     OnboardingStep.Language -> MaterialShapes.Clover4Leaf
+    OnboardingStep.Appearance -> MaterialShapes.Sunny
     OnboardingStep.Profile -> MaterialShapes.Cookie9Sided
     OnboardingStep.Taste -> MaterialShapes.SoftBurst
     OnboardingStep.YoutubeMusic -> MaterialShapes.Flower
@@ -196,6 +221,7 @@ internal fun OnboardingOverlay(
     onConnectYoutubeMusic: (String) -> Unit,
     onYoutubeMusicCookie: (String) -> Unit,
     onCancelYoutubeMusicLogin: () -> Unit,
+    onAppearance: (Boolean) -> Unit,
     onDone: (String, Set<String>, String) -> Unit
 ) {
     val currentLocale = LocalLocale.current.platformLocale
@@ -219,6 +245,11 @@ internal fun OnboardingOverlay(
         animationSpec = if (animated) tween(520) else snap(),
         label = "setup-accent"
     )
+    val introLevel = animateFloatAsState(
+        targetValue = if (step == OnboardingStep.Intro) 1f else 0f,
+        animationSpec = if (animated) tween(520) else snap(),
+        label = "setup-intro-level"
+    )
     val finish: () -> Unit = { onDone(name, selected, languageCode) }
     val advance: () -> Unit = {
         when {
@@ -234,7 +265,7 @@ internal fun OnboardingOverlay(
             modifier = Modifier
                 .fillMaxSize()
                 .background(SetupBase)
-                .setupAmbience(accent)
+                .setupAmbience(accent) { introLevel.value }
         ) {
             Column(
                 modifier = Modifier
@@ -274,6 +305,12 @@ internal fun OnboardingOverlay(
                             accent = accent,
                             onLanguage = { languageCode = it }
                         )
+                        OnboardingStep.Appearance -> SetupAppearanceStage(
+                            copy = LevyraOnboardingAppearanceStrings.forCode(languageCode),
+                            light = LevyraIsLight,
+                            accent = accent,
+                            onLight = onAppearance
+                        )
                         OnboardingStep.Profile -> SetupProfileStage(
                             strings = strings,
                             name = name,
@@ -301,6 +338,7 @@ internal fun OnboardingOverlay(
                     }
                 }
                 SetupFooter(
+                    hero = step == OnboardingStep.Intro,
                     label = setupPrimaryLabel(step, strings, youtubeMusicCopy, youtubeMusicAccount != null, youtubeMusicError != null),
                     accent = accent,
                     enabled = setupPrimaryEnabled(step, selected.size, youtubeMusic),
@@ -384,15 +422,42 @@ private fun onboardingYoutubeMusicErrorText(copy: OnboardingYoutubeMusicCopy, er
         else -> copy.genericError
     }
 
-private fun Modifier.setupAmbience(accent: Color): Modifier = drawBehind {
+private fun Modifier.setupAmbience(accent: Color, hero: () -> Float): Modifier = drawBehind {
+    val heroLevel = hero().coerceIn(0f, 1f)
+    if (heroLevel > 0f) {
+        val strength = if (LevyraIsLight) 0.20f else 0.30f
+        drawRect(
+            Brush.radialGradient(
+                colors = listOf(SetupLavender.copy(alpha = strength * heroLevel), Color.Transparent),
+                center = Offset(size.width * 0.04f, size.height * 0.08f),
+                radius = size.maxDimension * 0.58f
+            )
+        )
+        drawRect(
+            Brush.radialGradient(
+                colors = listOf(SetupRose.copy(alpha = strength * 0.9f * heroLevel), Color.Transparent),
+                center = Offset(size.width * 0.98f, size.height * 0.30f),
+                radius = size.maxDimension * 0.5f
+            )
+        )
+        drawRect(
+            Brush.radialGradient(
+                colors = listOf(SetupPeach.copy(alpha = strength * 0.75f * heroLevel), Color.Transparent),
+                center = Offset(size.width * 0.5f, size.height * 1.02f),
+                radius = size.maxDimension * 0.6f
+            )
+        )
+    }
+    val stepLevel = 1f - heroLevel
+    if (stepLevel <= 0f) return@drawBehind
     val glow = Brush.radialGradient(
-        colors = listOf(accent.copy(alpha = 0.26f), accent.copy(alpha = 0.06f), Color.Transparent),
+        colors = listOf(accent.copy(alpha = 0.26f * stepLevel), accent.copy(alpha = 0.06f * stepLevel), Color.Transparent),
         center = Offset(size.width * 0.82f, size.height * 0.06f),
         radius = size.maxDimension * 0.62f
     )
     drawRect(glow)
     val depth = Brush.radialGradient(
-        colors = listOf(SetupLilac.copy(alpha = 0.12f), Color.Transparent),
+        colors = listOf(SetupLilac.copy(alpha = 0.12f * stepLevel), Color.Transparent),
         center = Offset(size.width * 0.08f, size.height * 0.96f),
         radius = size.maxDimension * 0.55f
     )
@@ -428,7 +493,7 @@ private fun SetupHeader(step: OnboardingStep, accent: Color, backLabel: String, 
             LevyraWavyProgress(
                 progress = progress,
                 color = accent,
-                trackColor = Color.White.copy(alpha = 0.12f),
+                trackColor = SetupVeil.copy(alpha = 0.12f),
                 modifier = Modifier.weight(1f)
             )
             Text(
@@ -555,8 +620,8 @@ private fun SetupLogoBloom(accent: Color, animated: Boolean) {
                     rotationZ = (spin?.value ?: 0f) - 40f * (1f - value)
                 }
                 .border(
-                    width = 1.dp,
-                    brush = Brush.linearGradient(listOf(accent.copy(alpha = 0.55f), SetupLilac.copy(alpha = 0.10f))),
+                    width = 1.5.dp,
+                    brush = Brush.sweepGradient(listOf(SetupPeach, SetupRose, SetupLavender, SetupPeach.copy(alpha = 0.2f), SetupPeach)),
                     shape = outerShape
                 )
         )
@@ -571,7 +636,9 @@ private fun SetupLogoBloom(accent: Color, animated: Boolean) {
                     rotationZ = -(spin?.value ?: 0f) * 1.6f + 60f * (1f - value)
                 }
                 .background(
-                    Brush.linearGradient(listOf(SetupLilac.copy(alpha = 0.12f), accent.copy(alpha = 0.07f))),
+                    Brush.linearGradient(
+                        listOf(SetupPeach.copy(alpha = 0.16f), SetupRose.copy(alpha = 0.10f), SetupLavender.copy(alpha = 0.16f))
+                    ),
                     innerShape
                 )
         )
@@ -594,6 +661,12 @@ private fun SetupHeroGlyph(step: OnboardingStep, initial: String, selectedTasteC
         OnboardingStep.Intro -> Unit
         OnboardingStep.Language -> Icon(
             Icons.Rounded.Translate,
+            contentDescription = null,
+            tint = SetupOnAccent,
+            modifier = Modifier.size(36.dp)
+        )
+        OnboardingStep.Appearance -> Icon(
+            Icons.Rounded.Contrast,
             contentDescription = null,
             tint = SetupOnAccent,
             modifier = Modifier.size(36.dp)
@@ -660,9 +733,9 @@ private fun SetupTitle(text: String, modifier: Modifier = Modifier, textAlign: T
 private fun SetupIntroStage(strings: LevyraStrings, accent: Color) {
     val features = remember(strings) {
         listOf(
-            SetupFeature(Icons.Rounded.GraphicEq, strings.introFeatureSound, MaterialShapes.Cookie4Sided),
-            SetupFeature(Icons.Rounded.TextFields, strings.introFeatureLyrics, MaterialShapes.Clover4Leaf),
-            SetupFeature(Icons.Rounded.Download, strings.introFeatureOffline, MaterialShapes.Sunny)
+            SetupFeature(Icons.Rounded.GraphicEq, strings.introFeatureSound, MaterialShapes.Cookie4Sided, SetupFeatureTone.Peach),
+            SetupFeature(Icons.Rounded.TextFields, strings.introFeatureLyrics, MaterialShapes.Clover4Leaf, SetupFeatureTone.Rose),
+            SetupFeature(Icons.Rounded.Download, strings.introFeatureOffline, MaterialShapes.Sunny, SetupFeatureTone.Lavender)
         )
     }
     Column(
@@ -672,7 +745,7 @@ private fun SetupIntroStage(strings: LevyraStrings, accent: Color) {
             .padding(horizontal = 28.dp, vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        LevyraWordmark(fontSize = 24.sp, dotSize = 5.dp)
+        LevyraWordmark(fontSize = 24.sp)
         Spacer(modifier = Modifier.height(10.dp))
         SetupTitle(text = strings.introHeadline, textAlign = TextAlign.Center)
         Spacer(modifier = Modifier.height(12.dp))
@@ -687,41 +760,58 @@ private fun SetupIntroStage(strings: LevyraStrings, accent: Color) {
         Spacer(modifier = Modifier.height(22.dp))
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
-            features.forEach { feature ->
-                SetupFeatureTile(feature = feature, accent = accent)
+            features.forEachIndexed { index, feature ->
+                SetupFeatureTile(
+                    feature = feature,
+                    accent = feature.tone.color,
+                    shape = levyraGroupedListShape(index, features.size)
+                )
             }
         }
     }
 }
 
+private enum class SetupFeatureTone {
+    Peach,
+    Rose,
+    Lavender;
+
+    val color: Color
+        get() = when (this) {
+            Peach -> SetupPeach
+            Rose -> SetupRose
+            Lavender -> SetupLavender
+        }
+}
+
 private class SetupFeature(
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
     val label: String,
-    val polygon: RoundedPolygon
+    val polygon: RoundedPolygon,
+    val tone: SetupFeatureTone
 )
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SetupFeatureTile(feature: SetupFeature, accent: Color, modifier: Modifier = Modifier) {
+private fun SetupFeatureTile(feature: SetupFeature, accent: Color, shape: Shape, modifier: Modifier = Modifier) {
     val badgeShape = feature.polygon.toShape()
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(SetupSurface, RoundedCornerShape(26.dp))
-            .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(26.dp))
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .background(accent.copy(alpha = if (LevyraIsLight) 0.10f else 0.12f).compositeOver(SetupSurface), shape)
+            .padding(horizontal = 14.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Box(
             modifier = Modifier
                 .size(44.dp)
-                .background(accent.copy(alpha = 0.18f), badgeShape),
+                .background(accent, badgeShape),
             contentAlignment = Alignment.Center
         ) {
-            Icon(feature.icon, contentDescription = null, tint = accent, modifier = Modifier.size(24.dp))
+            Icon(feature.icon, contentDescription = null, tint = SetupOnHero, modifier = Modifier.size(24.dp))
         }
         Text(
             text = feature.label,
@@ -731,6 +821,263 @@ private fun SetupFeatureTile(feature: SetupFeature, accent: Color, modifier: Mod
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.weight(1f)
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SetupAppearanceStage(
+    copy: OnboardingAppearanceCopy,
+    light: Boolean,
+    accent: Color,
+    onLight: (Boolean) -> Unit
+) {
+    val darkPalette = remember { LevyraThemes.byId(LevyraThemes.LEVYRA_AURA) }
+    val lightPalette = remember { LevyraThemes.byId(LevyraThemes.FROST) }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 8.dp)
+    ) {
+        SetupTitle(text = copy.title)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(copy.body, color = SetupMuted, fontSize = 16.sp, lineHeight = 23.sp)
+        Spacer(modifier = Modifier.height(22.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .selectableGroup(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            SetupAppearanceCard(
+                label = copy.dark,
+                body = copy.darkBody,
+                icon = Icons.Rounded.DarkMode,
+                badge = MaterialShapes.Cookie9Sided,
+                palette = darkPalette,
+                selected = !light,
+                accent = accent,
+                onClick = { onLight(false) },
+                modifier = Modifier.weight(1f)
+            )
+            SetupAppearanceCard(
+                label = copy.light,
+                body = copy.lightBody,
+                icon = Icons.Rounded.LightMode,
+                badge = MaterialShapes.Sunny,
+                palette = lightPalette,
+                selected = light,
+                accent = accent,
+                onClick = { onLight(true) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Spacer(modifier = Modifier.height(18.dp))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Icon(Icons.Rounded.Palette, contentDescription = null, tint = accent, modifier = Modifier.size(18.dp))
+            Text(copy.footnote, color = SetupMuted, fontSize = 13.sp, lineHeight = 18.sp)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SetupAppearanceCard(
+    label: String,
+    body: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    badge: RoundedPolygon,
+    palette: LevyraPalette,
+    selected: Boolean,
+    accent: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val animated = LocalAnimationsEnabled.current
+    val corner by animateDpAsState(
+        targetValue = if (selected) 34.dp else 22.dp,
+        animationSpec = if (animated) spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessMediumLow) else snap(),
+        label = "setup-appearance-corner"
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (selected) 1f else 0.95f,
+        animationSpec = if (animated) spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMedium) else snap(),
+        label = "setup-appearance-scale"
+    )
+    val outline by animateColorAsState(
+        targetValue = if (selected) accent else SetupVeil.copy(alpha = 0.10f),
+        animationSpec = if (animated) tween(260) else snap(),
+        label = "setup-appearance-outline"
+    )
+    val container by animateColorAsState(
+        targetValue = if (selected) accent.copy(alpha = 0.12f).compositeOver(SetupSurface) else SetupSurface,
+        animationSpec = if (animated) tween(260) else snap(),
+        label = "setup-appearance-container"
+    )
+    val shape = RoundedCornerShape(corner)
+    Column(
+        modifier = modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(shape)
+            .background(container)
+            .border(if (selected) 3.dp else 1.dp, outline, shape)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box {
+            SetupThemeMockup(palette = palette, modifier = Modifier.fillMaxWidth())
+            androidx.compose.animation.AnimatedVisibility(
+                visible = selected,
+                enter = scaleIn(spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium)) + fadeIn(tween(160)),
+                exit = scaleOut(tween(140)) + fadeOut(tween(120)),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(accent, MaterialShapes.Cookie9Sided.toShape()),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Rounded.Check, contentDescription = null, tint = SetupOnAccent, modifier = Modifier.size(18.dp))
+                }
+            }
+        }
+        Row(
+            modifier = Modifier.padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .background(if (selected) accent else SetupSurfaceHigh, badge.toShape()),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = if (selected) SetupOnAccent else SetupInk, modifier = Modifier.size(18.dp))
+            }
+            Text(label, color = SetupInk, fontSize = 18.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Text(
+            body,
+            color = SetupMuted,
+            fontSize = 13.sp,
+            lineHeight = 18.sp,
+            minLines = 2,
+            modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 6.dp)
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SetupThemeMockup(palette: LevyraPalette, modifier: Modifier = Modifier) {
+    val screen = RoundedCornerShape(24.dp)
+    Column(
+        modifier = modifier
+            .aspectRatio(0.62f)
+            .clip(screen)
+            .background(palette.black)
+            .border(1.dp, palette.text.copy(alpha = 0.08f), screen)
+            .padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(18.dp)
+                    .background(palette.cyan, MaterialShapes.Cookie4Sided.toShape())
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.55f)
+                    .height(6.dp)
+                    .background(palette.text.copy(alpha = 0.78f), CircleShape)
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Brush.linearGradient(listOf(palette.cyan, palette.violet, palette.pink)))
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(8.dp)
+                    .size(22.dp)
+                    .background(palette.black.copy(alpha = 0.92f), MaterialShapes.Cookie9Sided.toShape())
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.72f)
+                .height(7.dp)
+                .background(palette.text.copy(alpha = 0.86f), CircleShape)
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.46f)
+                .height(5.dp)
+                .background(palette.muted.copy(alpha = 0.7f), CircleShape)
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(26.dp)
+                .background(palette.panel, CircleShape)
+                .padding(horizontal = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(16.dp)
+                    .background(Brush.linearGradient(listOf(palette.pink, palette.blue)), RoundedCornerShape(5.dp))
+            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(5.dp)
+                    .background(palette.text.copy(alpha = 0.5f), CircleShape)
+            )
+            Box(
+                modifier = Modifier
+                    .size(16.dp)
+                    .background(palette.cyan, CircleShape)
+            )
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(24.dp)
+                .background(palette.panelSoft, CircleShape)
+                .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(30.dp)
+                    .height(16.dp)
+                    .background(palette.cyan.copy(alpha = 0.32f), CircleShape)
+            )
+            repeat(3) {
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .background(palette.muted.copy(alpha = 0.8f), CircleShape)
+                )
+            }
+        }
     }
 }
 
@@ -813,7 +1160,7 @@ private fun SetupLanguageRow(
                 modifier = Modifier
                     .size(44.dp)
                     .background(
-                        if (selected) SetupOnAccent.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.06f),
+                        if (selected) SetupOnAccent.copy(alpha = 0.14f) else SetupVeil.copy(alpha = 0.06f),
                         LevyraMorphShape(SetupFlagMorph, flagMorph)
                     ),
                 contentAlignment = Alignment.Center
@@ -867,7 +1214,7 @@ private fun SetupProfileStage(
         label = "setup-name-corner"
     )
     val fieldBorder by animateColorAsState(
-        targetValue = if (focused) accent else Color.White.copy(alpha = 0.08f),
+        targetValue = if (focused) accent else SetupVeil.copy(alpha = 0.08f),
         animationSpec = if (animated) tween(200) else snap(),
         label = "setup-name-border"
     )
@@ -1008,15 +1355,17 @@ private fun SetupTasteTile(
             .levyraPressable(onClick = onClick)
     ) {
         SetupTasteArtwork(portraits = portraits, selected = selected, accent = accent)
+        val onImage = portraits.isNotEmpty()
         Box(modifier = Modifier.fillMaxSize().padding(14.dp)) {
-            SetupTasteIconBadge(id = taste.id, polygon = badgePolygon, selected = selected, accent = accent)
+            SetupTasteIconBadge(id = taste.id, polygon = badgePolygon, selected = selected, accent = accent, onImage = onImage)
             SetupTasteBadge(visible = selected, accent = accent, modifier = Modifier.align(Alignment.TopEnd))
             Text(
                 text = taste.label,
-                color = SetupInk,
+                color = if (onImage) Color.White else SetupInk,
                 fontSize = 16.sp,
                 lineHeight = LevyraTypeRhythm.lineHeight(16.sp),
                 fontWeight = FontWeight.Bold,
+                style = if (onImage) SetupTasteImageLabel else LocalTextStyle.current,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
@@ -1041,7 +1390,7 @@ private fun rememberSetupTasteStyle(selected: Boolean, accent: Color): SetupTast
         label = "setup-taste-fill"
     )
     val outline by animateColorAsState(
-        targetValue = if (selected) accent else Color.White.copy(alpha = 0.06f),
+        targetValue = if (selected) accent else SetupVeil.copy(alpha = 0.06f),
         animationSpec = if (animated) tween(200) else snap(),
         label = "setup-taste-outline"
     )
@@ -1050,21 +1399,30 @@ private fun rememberSetupTasteStyle(selected: Boolean, accent: Color): SetupTast
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SetupTasteIconBadge(id: String, polygon: RoundedPolygon, selected: Boolean, accent: Color) {
+private fun SetupTasteIconBadge(id: String, polygon: RoundedPolygon, selected: Boolean, accent: Color, onImage: Boolean) {
+    val idle = if (onImage) Color.White.copy(alpha = 0.20f) else SetupVeil.copy(alpha = 0.08f)
     Box(
         modifier = Modifier
             .size(34.dp)
-            .background(if (selected) accent else Color.White.copy(alpha = 0.08f), polygon.toShape()),
+            .background(if (selected) accent else idle, polygon.toShape()),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             setupTasteIcon(id),
             contentDescription = null,
-            tint = if (selected) SetupOnAccent else SetupInk,
+            tint = when {
+                selected -> SetupOnAccent
+                onImage -> Color.White
+                else -> SetupInk
+            },
             modifier = Modifier.size(18.dp)
         )
     }
 }
+
+private val SetupTasteImageLabel = TextStyle(
+    shadow = Shadow(color = Color.Black.copy(alpha = 0.55f), offset = Offset(0f, 1f), blurRadius = 6f)
+)
 
 @Composable
 private fun SetupTasteArtwork(portraits: List<String>, selected: Boolean, accent: Color) {
@@ -1234,7 +1592,7 @@ private fun SetupYoutubeMusicLink(accent: Color, connected: Boolean, animated: B
             modifier = Modifier
                 .size(76.dp)
                 .background(SetupSurfaceHigh, MaterialShapes.Cookie9Sided.toShape())
-                .border(1.dp, Color.White.copy(alpha = 0.08f), MaterialShapes.Cookie9Sided.toShape()),
+                .border(1.dp, SetupVeil.copy(alpha = 0.08f), MaterialShapes.Cookie9Sided.toShape()),
             contentAlignment = Alignment.Center
         ) {
             LevyraLogoMark(size = 42.dp, contentDescription = null)
@@ -1406,6 +1764,7 @@ private fun setupTastePalette(id: String): Pair<Color, Color> {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SetupFooter(
+    hero: Boolean,
     label: String,
     accent: Color,
     enabled: Boolean,
@@ -1422,17 +1781,18 @@ private fun SetupFooter(
         Button(
             onClick = onPrimary,
             enabled = enabled,
-            shapes = ButtonDefaults.shapes(),
+            shapes = if (hero) ButtonDefaults.shapes(shape = CircleShape, pressedShape = CircleShape) else ButtonDefaults.shapes(),
             colors = ButtonDefaults.buttonColors(
-                containerColor = accent,
-                contentColor = SetupOnAccent,
-                disabledContainerColor = Color.White.copy(alpha = 0.10f),
+                containerColor = if (hero) Color.Transparent else accent,
+                contentColor = if (hero) SetupOnHero else SetupOnAccent,
+                disabledContainerColor = SetupVeil.copy(alpha = 0.10f),
                 disabledContentColor = SetupMuted
             ),
             contentPadding = PaddingValues(horizontal = 28.dp),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(64.dp)
+                .then(if (hero && enabled) Modifier.background(SetupHeroGradient, CircleShape) else Modifier)
         ) {
             Text(text = label, fontSize = 17.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(modifier = Modifier.width(8.dp))

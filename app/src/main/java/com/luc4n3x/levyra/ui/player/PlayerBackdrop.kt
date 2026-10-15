@@ -38,6 +38,7 @@ import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
 import com.luc4n3x.levyra.ui.PlayerAmbience
 import com.luc4n3x.levyra.ui.createPlayerAmbientColorMatrix
+import com.luc4n3x.levyra.ui.createPlayerTintedMistMatrix
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -76,6 +77,7 @@ internal fun PlayerBackdrop(
     isPlaying: Boolean,
     animationsEnabled: Boolean,
     modifier: Modifier = Modifier,
+    fixedColors: Boolean = false,
     focusY: Float = 0.34f
 ) {
     val colorSpec = LevyraPlayerDesign.motion(
@@ -172,7 +174,12 @@ internal fun PlayerBackdrop(
         }
         PlayerBackgroundMode.Dynamic -> {
             val base = animateColorAsState(ambience.base, colorSpec, label = "player-backdrop-base")
-            val ambientColorFilter = remember { ColorFilter.colorMatrix(createPlayerAmbientColorMatrix()) }
+            val ambientColorFilter = if (fixedColors) {
+                val tint = primary.value
+                remember(tint) { ColorFilter.colorMatrix(createPlayerTintedMistMatrix(tint)) }
+            } else {
+                remember { ColorFilter.colorMatrix(createPlayerAmbientColorMatrix()) }
+            }
             Box(modifier = modifier.drawBehind { drawRect(base.value) }) {
                 PlayerArtworkMist(
                     artworkUrl = artworkUrl,

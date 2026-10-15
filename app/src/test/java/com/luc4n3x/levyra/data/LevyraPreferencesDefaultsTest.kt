@@ -6,6 +6,7 @@ import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.LevyraVisualPerformance
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
+import com.luc4n3x.levyra.domain.PlayerColorMode
 import com.luc4n3x.levyra.domain.PlayerDoubleTapAction
 import com.luc4n3x.levyra.domain.PlayerLongPressAction
 import com.luc4n3x.levyra.domain.PlayerVerticalSwipeAction
@@ -172,5 +173,18 @@ class LevyraPreferencesDefaultsTest {
     @Test
     fun legacyBackupWithoutVisualModeDefaultsToCanvasCard() {
         assertEquals(PlayerVisualMode.CanvasCard, backupInterfaceSettingsFromJson(JSONObject()).playerVisualMode)
+    }
+
+    @Test
+    fun playerColorsDefaultToDynamicAndRoundTripThroughBackup() {
+        assertEquals(PlayerColorMode.Dynamic, LevyraInterfaceSettings().playerColorMode)
+        assertEquals(PlayerColorMode.Dynamic, backupInterfaceSettingsFromJson(JSONObject()).playerColorMode)
+        assertEquals(PlayerColorMode.Dynamic, PlayerColorMode.from("unknown"))
+        val original = LevyraInterfaceSettings(playerColorMode = PlayerColorMode.Custom, playerColorAccent = 0x0033AAFF)
+        val restored = backupInterfaceSettingsFromJson(backupInterfaceSettingsToJson(original))
+        assertEquals(PlayerColorMode.Custom, restored.playerColorMode)
+        assertEquals(0xFF33AAFF.toInt(), restored.playerColorAccent)
+        val theme = backupInterfaceSettingsFromJson(backupInterfaceSettingsToJson(LevyraInterfaceSettings(playerColorMode = PlayerColorMode.Theme)))
+        assertEquals(PlayerColorMode.Theme, theme.playerColorMode)
     }
 }

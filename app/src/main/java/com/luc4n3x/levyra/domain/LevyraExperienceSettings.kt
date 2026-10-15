@@ -89,6 +89,19 @@ enum class PlayerVisualMode {
     }
 }
 
+enum class PlayerColorMode {
+    Dynamic,
+    Theme,
+    Custom;
+
+    companion object {
+        const val DEFAULT_ACCENT = 0xFF7C8CFF.toInt()
+
+        fun from(value: String): PlayerColorMode =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: Dynamic
+    }
+}
+
 enum class PlayerBackgroundMode {
     Dynamic,
     Blur,
@@ -173,12 +186,15 @@ data class LevyraInterfaceSettings(
     val hapticFeedback: Boolean = true,
     val playerVisualMode: PlayerVisualMode = PlayerVisualMode.CanvasCard,
     val playerBackground: PlayerBackgroundMode = PlayerBackgroundMode.Dynamic,
+    val playerColorMode: PlayerColorMode = PlayerColorMode.Dynamic,
+    val playerColorAccent: Int = PlayerColorMode.DEFAULT_ACCENT,
     val librarySort: LibrarySort = LibrarySort.Recent,
     val librarySortDirection: LibrarySortDirection = LibrarySort.Recent.defaultDirection
 ) {
     fun normalized(): LevyraInterfaceSettings = copy(
         doubleTapSeekSeconds = doubleTapSeekSeconds.coerceIn(5, 30),
-        longPressSpeed = longPressSpeed.coerceIn(1.25f, 3f)
+        longPressSpeed = longPressSpeed.coerceIn(1.25f, 3f),
+        playerColorAccent = playerColorAccent or 0xFF000000.toInt()
     )
 }
 
