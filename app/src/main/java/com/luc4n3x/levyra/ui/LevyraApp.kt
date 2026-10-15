@@ -12541,13 +12541,13 @@ private fun HomeEditorialSpotlight(
     LaunchedEffect(heroArtistName, artistArtworkUrl, spotifyArtistArtworkRepository, appleArtistArtworkRepository) {
         resolvedArtistArtworkUrl = artistArtworkUrl
         if (heroArtistName.isNotBlank()) {
-            val spotifyPortrait = spotifyArtistArtworkRepository.resolveArtistPortrait(heroArtistName)
-            if (spotifyPortrait.isNotBlank()) {
-                resolvedArtistArtworkUrl = highResolutionHomeArtistArtworkUrl(spotifyPortrait)
+            val applePortrait = appleArtistArtworkRepository.resolveArtistPortrait(heroArtistName)
+            if (applePortrait.isNotBlank()) {
+                resolvedArtistArtworkUrl = highResolutionHomeArtistArtworkUrl(applePortrait)
             } else {
-                val applePortrait = appleArtistArtworkRepository.resolveArtistPortrait(heroArtistName)
-                if (applePortrait.isNotBlank()) {
-                    resolvedArtistArtworkUrl = highResolutionHomeArtistArtworkUrl(applePortrait)
+                val spotifyPortrait = spotifyArtistArtworkRepository.resolveArtistPortrait(heroArtistName)
+                if (spotifyPortrait.isNotBlank()) {
+                    resolvedArtistArtworkUrl = highResolutionHomeArtistArtworkUrl(spotifyPortrait)
                 }
             }
         }
