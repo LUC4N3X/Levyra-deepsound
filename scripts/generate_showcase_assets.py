@@ -587,7 +587,7 @@ README_CARD_SPECS = [
     ("04_open_the_album", "OFFLINE", "Open the\nwhole album.", "Keep the music you come back to.", "Screenshot_20260926_194706_LEVYRA.jpg"),
     ("05_fresh_currents", "DISCOVERY", "Fresh\ncurrents.", "New releases without the scroll fatigue.", "Screenshot_20261010_132210_LEVYRA.jpg"),
     ("06_built_for_your_taste", "LEVYRA MIX", "Built for\nyour taste.", "A mix shaped around the moment.", "Screenshot_20261010_132217_LEVYRA.jpg"),
-    ("07_every_genre", "MOODS", "Every\ngenre.", "Move by mood, place or energy.", "Screenshot_20261010_132249_LEVYRA.jpg"),
+    ("07_every_genre", "MOODS", "Every\ngenre.", "Move by mood, place or energy.", "Screenshot_20261015_140910_LEVYRA.jpg"),
     ("08_acoustic_precision", "AUDIO", "Acoustic\nprecision.", "Tune the sound, keep the soul.", "Screenshot_20261010_190726_LEVYRA.jpg"),
     ("09_keep_it_personal", "LIBRARY", "Keep it\npersonal.", "Your collection stays yours.", "Screenshot_20261010_132050_LEVYRA.jpg"),
     ("10_curated_for_you", "COLLECTIONS", "Curated\nfor you.", "Quick picks, ready when you are.", "Screenshot_20261010_132136_LEVYRA.jpg"),
