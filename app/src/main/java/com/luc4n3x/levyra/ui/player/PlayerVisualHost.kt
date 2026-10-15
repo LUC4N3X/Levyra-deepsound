@@ -15,6 +15,7 @@ internal fun PlayerVisualHost(
     animationsEnabled: Boolean,
     isPlaying: Boolean,
     modifier: Modifier = Modifier,
+    fixedColors: Boolean = false,
     backdropFocus: Float = 0.34f
 ) {
     Box(modifier = modifier) {
@@ -24,6 +25,7 @@ internal fun PlayerVisualHost(
             ambience = ambience,
             isPlaying = isPlaying,
             animationsEnabled = animationsEnabled,
+            fixedColors = fixedColors,
             focusY = backdropFocus,
             modifier = Modifier.fillMaxSize()
         )
