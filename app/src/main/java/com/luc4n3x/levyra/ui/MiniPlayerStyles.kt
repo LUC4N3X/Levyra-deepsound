@@ -68,6 +68,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -81,6 +82,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
+import androidx.compose.ui.unit.offset
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.data.ArtworkPalette
 import com.luc4n3x.levyra.data.ArtworkPaletteCache
@@ -138,6 +141,15 @@ private val StyledMiniYtMusicSurface = Color.Black
 private val StyledMiniYtMusicContentStart = 16.dp
 private val StyledMiniEdgeProgressHeight = 2.dp
 private val StyledMiniFixedDock: () -> Float = { 0f }
+private val StyledMiniFullAttach: () -> Float = { 1f }
+private val ConnectedMiniDefaultCorner = 28.dp
+private val ConnectedMiniElevation = 6.dp
+private val ConnectedSeamPlaying = 4.dp
+private val ConnectedSeamPaused = 8.dp
+private val ConnectedSeamFused = 2.dp
+private val ConnectedBridgeMax = 3.dp
+private val ConnectedBridgeMin = 1.5.dp
+private val ConnectedBridgeInset = 18.dp
 
 internal class MiniPlayerPalette(
     val accent: Color,
@@ -198,6 +210,7 @@ internal fun rememberMiniPlayerPalette(
         MiniPlayerStyle.UltraCompact -> scheme.surfaceContainerHighest.playerMix(accent, 0.06f)
         MiniPlayerStyle.LiquidGlass -> scheme.surfaceContainerHighest
         MiniPlayerStyle.YtMusic -> StyledMiniYtMusicSurface
+        MiniPlayerStyle.Connected -> scheme.surfaceContainerHigh.playerMix(accent, 0.12f)
         else -> StyledMiniDarkBase
     }
     val onDark = surface.luminance() < 0.45f
@@ -264,13 +277,14 @@ private class StyledMiniLayout(style: MiniPlayerStyle, tuning: MiniPlayerTuning)
     val artworkSize = tuning.artworkDp.dp
     val artworkCompact = (artworkSize * 0.8f).coerceAtMost(compactHeight - 8.dp)
     val gutter = when (style) {
-        MiniPlayerStyle.Floating, MiniPlayerStyle.LiquidGlass, MiniPlayerStyle.SuperExpressive, MiniPlayerStyle.YtMusic -> tuning.insetDp.dp
+        MiniPlayerStyle.Floating, MiniPlayerStyle.LiquidGlass, MiniPlayerStyle.SuperExpressive, MiniPlayerStyle.YtMusic,
+        MiniPlayerStyle.Connected -> tuning.insetDp.dp
         else -> StyledMiniGutter
     }
     val topGap = if (style == MiniPlayerStyle.YtMusic) 0.dp else StyledMiniTrayTop
     val bottomGap = when (style) {
         MiniPlayerStyle.Floating, MiniPlayerStyle.LiquidGlass -> StyledMiniFloatingBottom
-        MiniPlayerStyle.YtMusic -> 0.dp
+        MiniPlayerStyle.YtMusic, MiniPlayerStyle.Connected -> 0.dp
         else -> StyledMiniTrayBottom
     }
 }
@@ -334,7 +348,8 @@ internal fun StyledMiniPlayer(
     playbackActions: MiniPlayerPlaybackActions,
     expansionActions: MiniPlayerExpansionActions,
     glass: GlassBackdropState?,
-    interactive: Boolean = true
+    interactive: Boolean = true,
+    link: DockLink? = null
 ) {
     val track = model.track
     val liveRadio = track.isLiveRadio()
@@ -352,19 +367,41 @@ internal fun StyledMiniPlayer(
     val dockCompaction = miniDockCompaction(style, compaction)
     val containerShape = rememberMiniContainerShape(style, tuning, layout.height, model.isPlaying, animated)
     val interaction = rememberMiniInteraction(interactive, model, liveRadio, playbackActions, expansionActions, swipe)
+    val connected = style == MiniPlayerStyle.Connected
+    val attach = link?.attach ?: StyledMiniFullAttach
+    val fuse = link?.fuse ?: dockCompaction
+    val seam = if (connected) rememberConnectedSeam(model.isPlaying, animated, attach, fuse) else null
+    val connectedOuter = minOf(link?.outerCorner ?: ConnectedMiniDefaultCorner, layout.height / 2)
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .then(
+                if (seam != null && tuning.progress == MiniProgressStyle.Line && !liveRadio) {
+                    Modifier.connectedSeamBridge(seam, attach, progress, palette, layout.gutter)
+                } else {
+                    Modifier
+                }
+            )
             .padding(start = layout.gutter, end = layout.gutter, top = layout.topGap, bottom = layout.bottomGap)
+            .then(if (seam != null) Modifier.dockBottomGap(seam) else Modifier)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .dockLerpHeight(dockCompaction, layout.height, layout.compactHeight)
                 .morphAnchorWhen(interactive, morphAnchors, PlayerMorphSlot.MiniCard)
-                .miniDepth(style, tuning, palette, containerShape)
-                .clip(containerShape)
+                .then(
+                    if (connected) {
+                        Modifier.dockLinkedClip(ConnectedMiniElevation, palette.content.copy(alpha = 0.08f)) {
+                            connectedMiniShape(connectedOuter, attach(), fuse())
+                        }
+                    } else {
+                        Modifier
+                            .miniDepth(style, tuning, palette, containerShape)
+                            .clip(containerShape)
+                    }
+                )
                 .miniBackground(style, tuning, palette, glass)
                 .miniOutline(style, palette, containerShape)
                 .then(interaction)
@@ -422,6 +459,76 @@ internal fun StyledMiniPlayer(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun rememberConnectedSeam(
+    playing: Boolean,
+    animated: Boolean,
+    attach: () -> Float,
+    fuse: () -> Float
+): () -> Dp {
+    val rest = animateDpAsState(
+        targetValue = if (playing) ConnectedSeamPlaying else ConnectedSeamPaused,
+        animationSpec = if (animated) {
+            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
+        } else {
+            snap()
+        },
+        label = "connected-mini-seam"
+    )
+    return remember(rest, attach, fuse) {
+        {
+            val joined = lerp(rest.value, ConnectedSeamFused, fuse().coerceIn(0f, 1f))
+            lerp(StyledMiniFloatingBottom, joined, attach().coerceIn(0f, 1f))
+        }
+    }
+}
+
+private fun connectedMiniShape(outer: Dp, attach: Float, fuse: Float): Shape {
+    val inner = dockLinkInnerCorner(outer, attach, fuse)
+    return RoundedCornerShape(topStart = outer, topEnd = outer, bottomEnd = inner, bottomStart = inner)
+}
+
+private fun Modifier.dockBottomGap(gap: () -> Dp): Modifier = layout { measurable, constraints ->
+    val extra = gap().roundToPx().coerceAtLeast(0)
+    val placeable = measurable.measure(constraints.offset(vertical = -extra))
+    layout(placeable.width, placeable.height + extra) { placeable.place(0, 0) }
+}
+
+private fun Modifier.connectedSeamBridge(
+    seam: () -> Dp,
+    attach: () -> Float,
+    progress: () -> Float,
+    palette: MiniPlayerPalette,
+    gutter: Dp
+): Modifier = drawBehind {
+    val presence = attach().coerceIn(0f, 1f)
+    val gap = seam().toPx()
+    val start = (gutter + ConnectedBridgeInset).toPx()
+    val length = size.width - start * 2f
+    if (presence <= 0f || gap <= 0f || length <= 0f) return@drawBehind
+    val thickness = (gap - 1.dp.toPx()).coerceIn(ConnectedBridgeMin.toPx(), ConnectedBridgeMax.toPx())
+    val top = size.height - gap / 2f - thickness / 2f
+    val corner = CornerRadius(thickness / 2f)
+    drawRoundRect(
+        color = palette.surface,
+        topLeft = Offset(start, top),
+        size = Size(length, thickness),
+        cornerRadius = corner,
+        alpha = presence
+    )
+    val filled = length * progress().coerceIn(0f, 1f)
+    if (filled > 0f) {
+        val left = if (layoutDirection == LayoutDirection.Rtl) start + length - filled else start
+        drawRoundRect(
+            color = palette.accent,
+            topLeft = Offset(left, top),
+            size = Size(filled, thickness),
+            cornerRadius = corner,
+            alpha = presence
+        )
     }
 }
 
@@ -588,10 +695,14 @@ private fun BoxScope.MiniBottomProgress(
     waving: Boolean
 ) {
     when (tuning.progress) {
-        MiniProgressStyle.Line -> if (style == MiniPlayerStyle.YtMusic) {
-            MiniEdgeProgress(progress = progress, palette = palette, modifier = Modifier.align(Alignment.BottomCenter))
-        } else {
-            MiniLineProgress(
+        MiniProgressStyle.Line -> when (style) {
+            MiniPlayerStyle.YtMusic -> MiniEdgeProgress(
+                progress = progress,
+                palette = palette,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
+            MiniPlayerStyle.Connected -> Unit
+            else -> MiniLineProgress(
                 progress = progress,
                 palette = palette,
                 inset = (tuning.cornerDp.dp * 0.7f).coerceAtLeast(12.dp),
@@ -690,7 +801,8 @@ private fun Modifier.miniBackground(
             }
         }
     }
-    MiniPlayerStyle.Floating, MiniPlayerStyle.UltraCompact, MiniPlayerStyle.YtMusic -> background(palette.surface)
+    MiniPlayerStyle.Floating, MiniPlayerStyle.UltraCompact, MiniPlayerStyle.YtMusic,
+    MiniPlayerStyle.Connected -> background(palette.surface)
     MiniPlayerStyle.ArtworkFocus -> if (tuning.background == MiniBackground.Artwork) {
         background(StyledMiniDarkBase)
     } else {

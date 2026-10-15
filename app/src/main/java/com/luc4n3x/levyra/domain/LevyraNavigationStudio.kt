@@ -10,9 +10,11 @@ enum class NavStyle(val storageId: String) {
     Minimal("minimal"),
     ExpressiveCompact("expressive_compact"),
     LiquidGlass("liquid_glass"),
-    YtMusic("yt_music");
+    YtMusic("yt_music"),
+    SplitDock("split_dock"),
+    ConnectedDock("connected_dock");
 
-    val floating: Boolean get() = this == FloatingDock || this == LiquidGlass
+    val floating: Boolean get() = this == FloatingDock || this == LiquidGlass || this == SplitDock || this == ConnectedDock
 
     companion object {
         fun from(value: String?): NavStyle = entries.firstOrNull { it.storageId == value } ?: Original
@@ -391,6 +393,42 @@ data class LevyraNavigationStudioSettings(
             )
         )
 
+        private val splitDockSpec = NavStyleSpec(
+            height = 56..72,
+            corner = 20..36,
+            indicators = listOf(NavIndicator.Floating, NavIndicator.Pill, NavIndicator.Morph, NavIndicator.Dot, NavIndicator.Line),
+            backgrounds = allBackgrounds,
+            defaults = NavTuning(
+                labels = NavLabelMode.ActiveOnly,
+                indicator = NavIndicator.Floating,
+                background = NavBackground.Solid,
+                iconDp = 24,
+                heightDp = 64,
+                motion = NavMotion.Expressive,
+                intensity = 60,
+                cornerDp = 32,
+                paddingDp = 6
+            )
+        )
+
+        private val connectedDockSpec = NavStyleSpec(
+            height = 56..72,
+            corner = 20..36,
+            indicators = listOf(NavIndicator.Pill, NavIndicator.Floating, NavIndicator.Morph, NavIndicator.Dot, NavIndicator.Line),
+            backgrounds = allBackgrounds,
+            defaults = NavTuning(
+                labels = NavLabelMode.Always,
+                indicator = NavIndicator.Pill,
+                background = NavBackground.Solid,
+                iconDp = 24,
+                heightDp = 64,
+                motion = NavMotion.Expressive,
+                intensity = 50,
+                cornerDp = 28,
+                paddingDp = 4
+            )
+        )
+
         fun spec(style: NavStyle): NavStyleSpec = when (style) {
             NavStyle.Original -> originalSpec
             NavStyle.SuperExpressive -> superExpressiveSpec
@@ -399,6 +437,8 @@ data class LevyraNavigationStudioSettings(
             NavStyle.ExpressiveCompact -> compactSpec
             NavStyle.LiquidGlass -> liquidGlassSpec
             NavStyle.YtMusic -> ytMusicSpec
+            NavStyle.SplitDock -> splitDockSpec
+            NavStyle.ConnectedDock -> connectedDockSpec
         }
 
         fun decode(raw: String?): LevyraNavigationStudioSettings {
