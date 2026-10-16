@@ -583,7 +583,7 @@ README_CARD_THEMES = [
 
 README_CARD_SPECS = [
     ("01_pure_listening", "RADIO", "Pure\nlistening.", "Radio that starts with your sound.", "Screenshot_20260926_171253_LEVYRA.jpg"),
-    ("02_stay_with_the_song", "NOW PLAYING", "Stay with\nthe song.", "Immersive playback, no visual noise.", "Screenshot_20260926_193948_LEVYRA.jpg"),
+    ("02_stay_with_the_song", "NOW PLAYING", "Stay with\nthe song.", "Immersive playback, no visual noise.", "Screenshot_20261016_135636_LEVYRA.jpg"),
     ("03_sing_along", "SYNCED LYRICS", "Sing\nalong.", "Translation and timing in one flow.", "screen-lyrics.jpg"),
     ("04_open_the_album", "OFFLINE", "Open the\nwhole album.", "Keep the music you come back to.", "Screenshot_20260926_194706_LEVYRA.jpg"),
     ("05_fresh_currents", "DISCOVERY", "Fresh\ncurrents.", "New releases without the scroll fatigue.", "Screenshot_20261010_132210_LEVYRA.jpg"),
@@ -729,10 +729,10 @@ def paste_campaign_ribbon(canvas, width, center, opacity, angle=0):
 def draw_readme_card_copy(draw, spec, theme, index, origin):
     _, kicker, title, body, _ = spec
     x, y = origin
-    kicker_font = get_font(25, bold=True)
-    number_font = get_font(25, bold=True)
-    title_font = get_font(76, bold=True)
-    body_font = get_font(27)
+    kicker_font = get_font(28, bold=True)
+    number_font = get_font(28, bold=True)
+    title_font = get_font(80, bold=True)
+    body_font = get_font(34)
     draw.text((x, y), kicker, font=kicker_font, fill=theme["accent"])
     number = f"{index + 1:02d}"
     number_width = draw.textlength(number, font=number_font)
@@ -740,7 +740,7 @@ def draw_readme_card_copy(draw, spec, theme, index, origin):
     title_y = y + 55
     draw.multiline_text((x, title_y), title, font=title_font, fill=theme["ink"], spacing=-8)
     title_box = draw.multiline_textbbox((x, title_y), title, font=title_font, spacing=-8)
-    draw.text((x, title_box[3] + 24), body, font=body_font, fill=theme["muted"])
+    draw.text((x, title_box[3] + 28), body, font=body_font, fill=theme["muted"])
 
 def draw_readme_card_shapes(draw, theme, variant):
     if variant == 0:
@@ -766,16 +766,35 @@ def render_readme_card(spec, index):
     draw_readme_card_shapes(draw, theme, variant)
     ribbon_centers = [(705, 920), (190, 930), (700, 1090), (170, 1030)]
     ribbon_angles = [-12, 13, -5, 18]
-    paste_campaign_ribbon(canvas, 780, ribbon_centers[variant], 0.11, ribbon_angles[variant])
-    draw_readme_card_copy(draw, spec, theme, index, (72, 70))
+    paste_campaign_ribbon(canvas, 780, ribbon_centers[variant], 0.14, ribbon_angles[variant])
 
     _, _, _, _, screenshot = spec
     if index == 0:
-        paste_campaign_device(canvas, screenshot, 760, (600, 1240), -7)
+        paste_campaign_device(canvas, screenshot, 1050, (720, 80), -34)
+        draw_readme_card_copy(draw, spec, theme, index, (72, 1360))
     elif index == 1:
-        paste_campaign_device(canvas, screenshot, 760, (300, 1240), 7)
+        paste_campaign_device(canvas, screenshot, 1050, (180, 80), 34)
+        draw_readme_card_copy(draw, spec, theme, index, (72, 1360))
     else:
-        paste_campaign_device(canvas, screenshot, 640, (450, 1065))
+        draw_readme_card_copy(draw, spec, theme, index, (72, 70))
+        placements = [
+            (620, (450, 1065), 0),
+            (640, (485, 1080), -1),
+            (650, (405, 1100), 1.5),
+            (650, (495, 1100), -1.5),
+            (630, (430, 1070), 0),
+            (650, (500, 1100), -1),
+            (630, (420, 1070), 0),
+            (650, (495, 1100), -1.5),
+            (620, (440, 1060), 0),
+            (650, (500, 1100), -1),
+            (650, (405, 1100), 1),
+            (630, (475, 1070), 0),
+            (650, (420, 1100), 1),
+            (640, (490, 1080), -1),
+        ]
+        width, center, angle = placements[index - 2]
+        paste_campaign_device(canvas, screenshot, width, center, angle)
     return canvas.convert("RGB")
 
 def generate_readme_cards():
