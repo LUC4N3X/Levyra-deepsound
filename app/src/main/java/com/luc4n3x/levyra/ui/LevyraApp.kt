@@ -686,6 +686,7 @@ import com.luc4n3x.levyra.feature.search.rankPersonalizedSearchArtists
 import com.luc4n3x.levyra.ui.jam.LevyraJamOverlay
 import com.luc4n3x.levyra.ui.recognition.LevyraRecognitionOverlay
 import com.luc4n3x.levyra.ui.settings.NetworkSettingsPanel
+import com.luc4n3x.levyra.ui.settings.DeviceIntegrationSettingsPanel
 import com.luc4n3x.levyra.ui.settings.SETTINGS_CATEGORY_AUDIO
 import com.luc4n3x.levyra.ui.settings.settingsCategoryTitle
 import com.luc4n3x.levyra.ui.settings.settingsSearchEntries
@@ -21317,20 +21318,23 @@ private fun SettingsOverlay(
                                 }
                             }
                         }
-                        "integrations" -> item {
-                            IntegrationSettingsPanel(
-                                lastFmConfigured,
-                                lastFmAuthorizationPending,
-                                listenBrainzConfigured,
-                                audDConfigured,
-                                onBeginLastFm,
-                                onCompleteLastFm,
-                                onClearLastFm,
-                                onSaveListenBrainz,
-                                onClearListenBrainz,
-                                onSaveAudD,
-                                onClearAudD
-                            )
+                        "integrations" -> {
+                            item { DeviceIntegrationSettingsPanel() }
+                            item {
+                                IntegrationSettingsPanel(
+                                    lastFmConfigured,
+                                    lastFmAuthorizationPending,
+                                    listenBrainzConfigured,
+                                    audDConfigured,
+                                    onBeginLastFm,
+                                    onCompleteLastFm,
+                                    onClearLastFm,
+                                    onSaveListenBrainz,
+                                    onClearListenBrainz,
+                                    onSaveAudD,
+                                    onClearAudD
+                                )
+                            }
                         }
                         "design" -> {
                             item {

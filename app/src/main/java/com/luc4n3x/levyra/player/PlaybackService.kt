@@ -91,6 +91,10 @@ import com.luc4n3x.levyra.feature.systemintegration.OPLUS_LYRIC_INFO_KEY
 import com.luc4n3x.levyra.feature.systemintegration.OPlusLyricsPayloadContext
 import com.luc4n3x.levyra.feature.systemintegration.buildOPlusLyricsPayload
 import com.luc4n3x.levyra.feature.systemintegration.detectLevyraRomMediaCapabilities
+import com.luc4n3x.levyra.feature.systemintegration.LevyraDeviceIntegrationCenter
+import com.luc4n3x.levyra.feature.systemintegration.LevyraDeviceProfiles
+import com.luc4n3x.levyra.feature.systemintegration.levyraIslandAdapters
+import com.luc4n3x.levyra.feature.systemintegration.levyraIslandPlayerState
 import com.luc4n3x.levyra.feature.radio.RadioUrlPolicy
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.feature.radio.liveRadioStreamMetadata
@@ -461,6 +465,9 @@ class PlaybackService : MediaLibraryService() {
     private val romMediaCapabilities by lazy { detectLevyraRomMediaCapabilities() }
     private var romMediaId = ""
     private var romMediaGeneration = 0L
+    private var deviceIntegration: LevyraDeviceIntegrationCenter? = null
+    private var pendingDeviceLyrics: (() -> Unit)? = null
+    private var deviceIntegrationResolved = false
 
     @Volatile
     private var routedOutputIsBluetooth = false
@@ -702,10 +709,12 @@ class PlaybackService : MediaLibraryService() {
         synced: Boolean,
         provider: String
     ) {
+        val mediaId = LevyraMediaItemFactory.mediaId(track)
+        val forwardLyrics = { deviceIntegration?.onLyrics(mediaId, track.id, lines, synced) }
+        if (deviceIntegrationResolved) forwardLyrics() else pendingDeviceLyrics = { forwardLyrics() }
         if (!romMediaCapabilities.timedLyricsMetadata) return
         val player = activePlayer ?: return
         val current = player.currentMediaItem ?: return
-        val mediaId = LevyraMediaItemFactory.metadataOnly(track).mediaId
         if (mediaId.isBlank() || current.mediaId != mediaId || romMediaId != mediaId) return
 
         val payload = buildOPlusLyricsPayload(
@@ -1075,9 +1084,29 @@ class PlaybackService : MediaLibraryService() {
 
             override fun onEvents(player: Player, events: Player.Events) {
                 updatePlaybackProtection(player)
+                deviceIntegration?.onPlayerEvents(events)
             }
         })
         startPlaybackWatchdog(player)
+        serviceScope.launch {
+            val profile = withContext(Dispatchers.IO) { LevyraDeviceProfiles.current(applicationContext) }
+            val adapters = levyraIslandAdapters(applicationContext, profile)
+            deviceIntegrationResolved = true
+            if (adapters.isEmpty()) {
+                pendingDeviceLyrics = null
+                return@launch
+            }
+            deviceIntegration = LevyraDeviceIntegrationCenter(
+                scope = serviceScope,
+                adapters = adapters,
+                latencyProfiles = prefs.lyricsLatencyProfilesFlow,
+                audioOutput = LevyraAudioOutputRepository.state,
+                playerState = { levyraIslandPlayerState(player) }
+            )
+            pendingDeviceLyrics?.invoke()
+            pendingDeviceLyrics = null
+            deviceIntegration?.refresh()
+        }
         sleepTimerStateJob?.cancel()
         sleepTimerStateJob = serviceScope.launch {
             sleepTimer.state.collect { state -> _sleepTimerStateFlow.value = state }
@@ -2494,6 +2523,9 @@ class PlaybackService : MediaLibraryService() {
         systemMediaActions?.detach()
         systemMediaActions = null
         studioWidgetSync.detach()
+        deviceIntegration?.release()
+        deviceIntegration = null
+        pendingDeviceLyrics = null
         updateDeviceVolumeReceiver(false)
         sleepTimer.cancel()
         _sleepTimerStateFlow.value = PlaybackSleepTimerState.Disabled
