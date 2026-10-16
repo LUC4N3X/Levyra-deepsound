@@ -98,6 +98,7 @@ docs/assets/screenshots/video_energy.webp
 docs/assets/showcase/00_levyra_hero_showcase-light.webp
 docs/assets/showcase/00_levyra_hero_showcase.webp
 docs/assets/showcase/00_levyra_hero_neon_dancer.webp
+docs/assets/showcase/00_levyra_hero_human_motion.webp
 docs/assets/showcase/01_playback_and_lyrics-light.webp
 docs/assets/showcase/01_playback_and_lyrics.webp
 docs/assets/showcase/02_home_and_charts-light.webp
