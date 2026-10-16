@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.data
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.AlbumRecommendationSeed
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -213,6 +214,16 @@ class AlbumRecommendationPolicyTest {
         assertEquals("random access memories", albumRecommendationTextKey("Random Access Memories (Official Audio)"))
         assertEquals("no time", albumRecommendationTextKey("No Time feat. Someone Else"))
         assertEquals("a b", albumRecommendationTextKey("  A  &  B  "))
+    }
+
+    @Test
+    fun albumRecommendationTextKeyKeepsIndicVowelSignsWhileFoldingLatinAndArabicMarks() {
+        assertEquals("நீ", albumRecommendationTextKey("நீ"))
+        assertEquals("நா", albumRecommendationTextKey("நா"))
+        assertEquals("కరిగే లోగా", albumRecommendationTextKey("కరిగే లోగా (Official Audio)"))
+        assertFalse(albumRecommendationTextKey("நீ") == albumRecommendationTextKey("நா"))
+        assertEquals(albumRecommendationTextKey("حبيبي"), albumRecommendationTextKey("حَبِيبِي"))
+        assertEquals("perche", albumRecommendationTextKey("Perché"))
     }
 
     @Test

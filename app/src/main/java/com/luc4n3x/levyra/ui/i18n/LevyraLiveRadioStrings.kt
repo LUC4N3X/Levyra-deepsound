@@ -107,6 +107,35 @@ internal object LevyraLiveRadioCatalog {
         "fil" to "Hindi available ang live stream", "he" to "השידור החי אינו זמין"
     )
 
+    private val reconnectingValues = mapOf(
+        "en" to "Reconnecting…", "it" to "Riconnessione…",
+        "es" to "Reconectando…", "fr" to "Reconnexion…",
+        "de" to "Verbindung wird wiederhergestellt…", "pt" to "A restabelecer a ligação…",
+        "nl" to "Opnieuw verbinden…", "pl" to "Ponowne łączenie…",
+        "ro" to "Se reconectează…", "el" to "Επανασύνδεση…",
+        "sv" to "Återansluter…", "da" to "Genopretter forbindelsen…",
+        "cs" to "Opětovné připojování…", "sk" to "Opätovné pripájanie…",
+        "bn" to "পুনরায় সংযোগ হচ্ছে…",
+        "kk" to "Қайта қосылуда…",
+        "sr" to "Поновно повезивање…",
+        "sq" to "Po rilidhet…",
+        "hr" to "Ponovno povezivanje…", "bg" to "Повторно свързване…",
+        "hu" to "Újracsatlakozás…", "fi" to "Yhdistetään uudelleen…",
+        "et" to "Ühendan uuesti…", "nb" to "Kobler til på nytt…",
+        "ca" to "S'està tornant a connectar…",
+        "uk" to "Повторне підключення…",
+        "ru" to "Переподключение…", "tr" to "Yeniden bağlanıyor…",
+        "ar" to "جارٍ إعادة الاتصال…",
+        "fa" to "در حال اتصال دوباره…",
+        "zh" to "正在重新连接…",
+        "zh-Hant" to "正在重新連線…",
+        "ja" to "再接続しています…", "ko" to "다시 연결하는 중…",
+        "hi" to "फिर से कनेक्ट हो रहा है…", "id" to "Menyambungkan ulang…",
+        "ms" to "Menyambung semula…",
+        "vi" to "Đang kết nối lại…", "th" to "กำลังเชื่อมต่อใหม่…",
+        "fil" to "Muling kumokonekta…", "he" to "מתחבר מחדש…"
+    )
+
     private val advertisementValues = mapOf(
         "en" to "Advertisement", "it" to "Pubblicità",
         "es" to "Publicidad", "fr" to "Publicité",
@@ -185,6 +214,7 @@ internal object LevyraLiveRadioCatalog {
         check(localizedCategories.keys == languageCodes)
         check(unavailableValues.keys == languageCodes)
         check(advertisementValues.keys == languageCodes)
+        check(reconnectingValues.keys == languageCodes)
         check(localizedCategories.values.all { it.size == RadioCategory.entries.size })
         check(values.values.all { it.exploreSubtitle.isNotBlank() })
     }
@@ -194,6 +224,9 @@ internal object LevyraLiveRadioCatalog {
 
     fun streamUnavailable(code: String): String =
         localizedValueOrEnglish(unavailableValues, LevyraLanguageCatalog.normalize(code))
+
+    fun reconnecting(code: String): String =
+        localizedValueOrEnglish(reconnectingValues, LevyraLanguageCatalog.normalize(code))
 
     fun advertisement(code: String): String =
         localizedValueOrEnglish(advertisementValues, LevyraLanguageCatalog.normalize(code))

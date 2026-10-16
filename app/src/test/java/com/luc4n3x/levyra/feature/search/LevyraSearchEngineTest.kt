@@ -68,6 +68,73 @@ class LevyraSearchEngineTest {
     }
 
     @Test
+    fun `sparse telugu script results add romanized songs without reordering or extra latin calls`() = runBlocking {
+        val query = "కరిగే లోగా"
+        backend.overview(query).complete(
+            SearchResults(songs = listOf(searchTestTrack("t1", "కరిగే లోగా", "Devi Sri Prasad")))
+        )
+        backend.section = { filter, sectionQuery, _ ->
+            if (filter == SearchFilter.Songs && sectionQuery == "karige loga") {
+                SearchSectionPage(
+                    songs = listOf(
+                        searchTestTrack("t2", "Karige Loga", "Devi Sri Prasad"),
+                        searchTestTrack("t1", "కరిగే లోగా", "Devi Sri Prasad")
+                    )
+                )
+            } else {
+                SearchSectionPage()
+            }
+        }
+        val engine = engine()
+
+        engine.submit(query, "it")
+        val settled = engine.awaitState { it.queryKey == searchQueryKey(query) && it.settled }
+
+        assertEquals(listOf("t1", "t2"), settled.results.songs.map { it.id })
+        assertEquals(listOf(SectionCall(SearchFilter.Songs, "karige loga", "")), backend.sectionCalls.toList())
+    }
+
+    @Test
+    fun `latin query with too few relevant songs appends the songs section once`() = runBlocking {
+        backend.overview("karige loga").complete(
+            SearchResults(songs = listOf(searchTestTrack("x1", "Unrelated", "Someone")))
+        )
+        backend.section = { filter, sectionQuery, _ ->
+            if (filter == SearchFilter.Songs && sectionQuery == "karige loga") {
+                SearchSectionPage(songs = listOf(searchTestTrack("t2", "Karige Loga", "Devi Sri Prasad")))
+            } else {
+                SearchSectionPage()
+            }
+        }
+        val engine = engine()
+
+        engine.submit("karige loga", "it")
+        val settled = engine.awaitState { it.queryKey == "karige loga" && it.settled }
+
+        assertEquals(listOf("x1", "t2"), settled.results.songs.map { it.id })
+        assertEquals(listOf(SectionCall(SearchFilter.Songs, "karige loga", "")), backend.sectionCalls.toList())
+    }
+
+    @Test
+    fun `latin query with enough relevant songs makes no extra request`() = runBlocking {
+        backend.overview("vasco rossi").complete(
+            SearchResults(
+                songs = listOf(
+                    searchTestTrack("v1", "Albachiara", "Vasco Rossi"),
+                    searchTestTrack("v2", "Sally", "Vasco Rossi"),
+                    searchTestTrack("v3", "Vita spericolata", "Vasco Rossi")
+                )
+            )
+        )
+        val engine = engine()
+
+        engine.submit("vasco rossi", "it")
+        engine.awaitState { it.queryKey == "vasco rossi" && it.settled }
+
+        assertTrue(backend.sectionCalls.isEmpty())
+    }
+
+    @Test
     fun `slow spotify enrichment does not keep youtube results pending`() = runBlocking {
         backend.spotifyOverview = { CompletableDeferred<SearchResults?>().await() }
         backend.overview("adele").complete(

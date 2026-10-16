@@ -22,7 +22,9 @@ class PlaybackRecoveryBudgetContractTest {
         assertTrue(service.contains("if (errorCount > TRANSIENT_NETWORK_LOAD_RETRIES) return C.TIME_UNSET"))
         assertTrue(service.contains("if (!isTransientNetworkFailure(error)) return C.TIME_UNSET"))
         assertTrue(service.contains("DefaultMediaSourceFactory("))
-        assertTrue(service.contains(").setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)"))
+        assertTrue(service.contains("if (liveRadio) LiveRadioLoadErrorHandlingPolicy else loadErrorHandlingPolicy"))
+        assertTrue(service.contains("getMinimumLoadableRetryCount(dataType: Int): Int = LIVE_RADIO_LOAD_RETRIES"))
+        assertTrue(service.contains("if (errorCount > LIVE_RADIO_LOAD_RETRIES) C.TIME_UNSET else transientNetworkRetryDelayMs(error, errorCount)"))
         assertTrue(service.contains("uri in subtitleUris -> subtitleDataSourceFactory"))
         assertFalse(service.contains("SingleSampleMediaSource"))
     }

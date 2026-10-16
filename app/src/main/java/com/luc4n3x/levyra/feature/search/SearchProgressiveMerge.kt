@@ -221,6 +221,20 @@ private fun mergeSectionPage(base: SearchResults, filter: SearchFilter, page: Se
         SearchFilter.All -> base
     }
 
+internal fun SearchSessionSnapshot.withRegionalSongs(songs: List<Track>): SearchSessionSnapshot {
+    val base = freshResults
+    val merged = base.copy(
+        topTrack = base.topTrack ?: songs.firstOrNull(),
+        songs = mergeSearchSongs(base.songs, songs),
+        failedSections = base.failedSections - SearchFilter.Songs
+    )
+    return copy(
+        results = merged,
+        carriedOver = false,
+        failure = if (merged.isEmpty) failure else SearchFailure.None
+    )
+}
+
 internal fun SearchSessionSnapshot.withFailedSection(filter: SearchFilter): SearchSessionSnapshot =
     if (carriedOver) {
         copy(pendingSectionFailures = pendingSectionFailures + filter)
