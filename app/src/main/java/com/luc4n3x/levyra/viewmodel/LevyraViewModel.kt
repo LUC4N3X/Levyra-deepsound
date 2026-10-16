@@ -1829,7 +1829,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val current = _state.value.currentTrack
             val liveRadioStation = _state.value.liveRadioStation
             if (current?.isLiveRadio() == true && liveRadioStation != null) {
-                tryLiveRadioSiblingStream(liveRadioStation, playWhenReady = true, errorMessage = errorMsg)
+                val playbackIntended = _state.value.isPlaying || _state.value.isResolving
+                tryLiveRadioSiblingStream(liveRadioStation, playWhenReady = playbackIntended, errorMessage = errorMsg)
             } else {
                 if (current?.isLiveRadio() != true) {
                     current?.takeUnless(::isLocalPlaybackTrack)?.let { resolver.invalidate(it, _state.value.isVideoMode) }
