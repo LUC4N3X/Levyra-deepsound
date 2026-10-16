@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.ui.insights
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -17,6 +18,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -151,89 +153,125 @@ internal fun ListeningWrappedStory(
                 .navigationBarsPadding()
         ) {
             WrappedProgress(count = pages.size, current = pageIndex, progress = { progress.value })
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = if (page == WrappedPage.Intro) "" else strings.wrappedYearInMusic,
-                    color = WrappedMuted,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.6.sp,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 8.dp)
-                )
-                IconButton(onClick = onClose) {
-                    Icon(Icons.Rounded.Close, contentDescription = strings.close, tint = WrappedInk)
-                }
-            }
+            WrappedTopBar(
+                label = if (page == WrappedPage.Intro) "" else strings.wrappedYearInMusic,
+                closeLabel = strings.close,
+                onClose = onClose
+            )
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .then(
-                        if (page != null && page != WrappedPage.Finale) {
-                            Modifier.pointerInput(pages.size) {
-                                detectTapGestures { offset ->
-                                    pageIndex = if (offset.x < size.width * 0.3f) {
-                                        (pageIndex - 1).coerceAtLeast(0)
-                                    } else {
-                                        (pageIndex + 1).coerceAtMost(lastIndex)
-                                    }
-                                }
-                            }
-                        } else {
-                            Modifier
-                        }
+                    .wrappedTapNavigation(
+                        enabled = page != null && page != WrappedPage.Finale,
+                        pageCount = pages.size,
+                        onPrevious = { pageIndex = (pageIndex - 1).coerceAtLeast(0) },
+                        onNext = { pageIndex = (pageIndex + 1).coerceAtMost(lastIndex) }
                     )
             ) {
-                when {
-                    state.loading -> CircularProgressIndicator(
-                        color = accent,
-                        strokeWidth = 2.dp,
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .size(32.dp)
-                    )
-                    snapshot == null || page == null -> Text(
-                        text = if (state.failed) strings.insightsError else strings.wrappedEmpty.replace("%s", state.year.toString()),
-                        color = WrappedMuted,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(32.dp)
-                    )
-                    else -> AnimatedContent(
-                        targetState = page,
-                        transitionSpec = {
-                            if (animationsEnabled) {
-                                (fadeIn(tween(320)) + scaleIn(tween(420, easing = FastOutSlowInEasing), initialScale = 0.96f)) togetherWith
-                                    fadeOut(tween(180))
-                            } else {
-                                fadeIn(snap()) togetherWith fadeOut(snap())
-                            }
-                        },
-                        label = "wrapped-page"
-                    ) { target ->
-                        WrappedPageContent(
-                            page = target,
-                            year = state.year,
-                            snapshot = snapshot,
-                            strings = strings,
-                            locale = locale,
-                            accent = accent,
-                            animationsEnabled = animationsEnabled
-                        )
-                    }
-                }
+                WrappedBody(
+                    state = state,
+                    snapshot = snapshot,
+                    page = page,
+                    strings = strings,
+                    locale = locale,
+                    accent = accent,
+                    animationsEnabled = animationsEnabled
+                )
             }
         }
     }
+}
+
+private fun Modifier.wrappedTapNavigation(
+    enabled: Boolean,
+    pageCount: Int,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit
+): Modifier = if (!enabled) {
+    this
+} else {
+    pointerInput(pageCount) {
+        detectTapGestures { offset ->
+            if (offset.x < size.width * 0.3f) onPrevious() else onNext()
+        }
+    }
+}
+
+@Composable
+private fun WrappedTopBar(label: String, closeLabel: String, onClose: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            color = WrappedMuted,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.6.sp,
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 8.dp)
+        )
+        IconButton(onClick = onClose) {
+            Icon(Icons.Rounded.Close, contentDescription = closeLabel, tint = WrappedInk)
+        }
+    }
+}
+
+@Composable
+private fun BoxScope.WrappedBody(
+    state: ListeningWrappedState,
+    snapshot: ListeningInsightsSnapshot?,
+    page: WrappedPage?,
+    strings: LevyraStrings,
+    locale: Locale,
+    accent: Color,
+    animationsEnabled: Boolean
+) {
+    when {
+        state.loading -> CircularProgressIndicator(
+            color = accent,
+            strokeWidth = 2.dp,
+            modifier = Modifier
+                .align(Alignment.Center)
+                .size(32.dp)
+        )
+        snapshot == null || page == null -> Text(
+            text = if (state.failed) strings.insightsError else strings.wrappedEmpty.replace("%s", state.year.toString()),
+            color = WrappedMuted,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(32.dp)
+        )
+        else -> AnimatedContent(
+            targetState = page,
+            transitionSpec = { wrappedPageTransition(animationsEnabled) },
+            label = "wrapped-page"
+        ) { target ->
+            WrappedPageContent(
+                page = target,
+                year = state.year,
+                snapshot = snapshot,
+                strings = strings,
+                locale = locale,
+                accent = accent,
+                animationsEnabled = animationsEnabled
+            )
+        }
+    }
+}
+
+private fun wrappedPageTransition(animationsEnabled: Boolean): ContentTransform = if (animationsEnabled) {
+    val enter = fadeIn(tween(320)) + scaleIn(tween(420, easing = FastOutSlowInEasing), initialScale = 0.96f)
+    enter togetherWith fadeOut(tween(180))
+} else {
+    fadeIn(snap()) togetherWith fadeOut(snap())
 }
 
 @Composable
@@ -666,61 +704,75 @@ private fun WrappedRhythm(
             )
         }
         Spacer(Modifier.height(28.dp))
-        val maxValue = buckets.maxOrNull()?.coerceAtLeast(1L) ?: 1L
-        Canvas(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(170.dp)
-        ) {
-            val count = buckets.size.coerceAtLeast(1)
-            val step = size.width / count
-            val barWidth = step * 0.62f
-            buckets.forEachIndexed { index, value ->
-                val fraction = (value.toFloat() / maxValue).coerceIn(0f, 1f)
-                val height = (size.height * fraction).coerceAtLeast(barWidth)
-                drawRoundRect(
-                    color = if (index == peak) accent else Color.White.copy(alpha = if (value > 0L) 0.42f else 0.14f),
-                    topLeft = Offset(index * step + (step - barWidth) / 2f, size.height - height),
-                    size = Size(barWidth, height),
-                    cornerRadius = CornerRadius(barWidth / 2f, barWidth / 2f)
-                )
-            }
-        }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            listOf("00", "06", "12", "18", "23").forEach {
-                Text(text = it, color = WrappedMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-            }
-        }
+        WrappedHourChart(buckets = buckets, peak = peak, accent = accent)
         Spacer(Modifier.height(28.dp))
-        val stats = listOf(
-            number.format(snapshot.metrics.countedPlays) to strings.statPlays,
-            number.format(snapshot.metrics.distinctTracks) to strings.statTracks,
-            number.format(snapshot.metrics.distinctArtists) to strings.statArtists
+        WrappedStatTiles(
+            stats = listOf(
+                number.format(snapshot.metrics.countedPlays) to strings.statPlays,
+                number.format(snapshot.metrics.distinctTracks) to strings.statTracks,
+                number.format(snapshot.metrics.distinctArtists) to strings.statArtists
+            ),
+            accent = accent
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            stats.forEachIndexed { index, (value, label) ->
-                val outer = 26.dp
-                val inner = 8.dp
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(
-                            RoundedCornerShape(
-                                topStart = if (index == 0) outer else inner,
-                                bottomStart = if (index == 0) outer else inner,
-                                topEnd = if (index == stats.lastIndex) outer else inner,
-                                bottomEnd = if (index == stats.lastIndex) outer else inner
-                            )
-                        )
-                        .background(accent.copy(alpha = 0.2f))
-                        .padding(horizontal = 14.dp, vertical = 16.dp)
-                ) {
-                    Text(text = value, color = WrappedInk, fontSize = 24.sp, fontWeight = FontWeight.Black, maxLines = 1)
-                    Text(text = label, color = WrappedMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                }
+    }
+}
+
+@Composable
+private fun WrappedHourChart(buckets: List<Long>, peak: Int, accent: Color) {
+    val maxValue = buckets.maxOrNull()?.coerceAtLeast(1L) ?: 1L
+    Canvas(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(170.dp)
+    ) {
+        val count = buckets.size.coerceAtLeast(1)
+        val step = size.width / count
+        val barWidth = step * 0.62f
+        buckets.forEachIndexed { index, value ->
+            val fraction = (value.toFloat() / maxValue).coerceIn(0f, 1f)
+            val height = (size.height * fraction).coerceAtLeast(barWidth)
+            drawRoundRect(
+                color = if (index == peak) accent else Color.White.copy(alpha = if (value > 0L) 0.42f else 0.14f),
+                topLeft = Offset(index * step + (step - barWidth) / 2f, size.height - height),
+                size = Size(barWidth, height),
+                cornerRadius = CornerRadius(barWidth / 2f, barWidth / 2f)
+            )
+        }
+    }
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        listOf("00", "06", "12", "18", "23").forEach {
+            Text(text = it, color = WrappedMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
+private fun WrappedStatTiles(stats: List<Pair<String, String>>, accent: Color) {
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        stats.forEachIndexed { index, (value, label) ->
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(wrappedTileShape(first = index == 0, last = index == stats.lastIndex))
+                    .background(accent.copy(alpha = 0.2f))
+                    .padding(horizontal = 14.dp, vertical = 16.dp)
+            ) {
+                Text(text = value, color = WrappedInk, fontSize = 24.sp, fontWeight = FontWeight.Black, maxLines = 1)
+                Text(text = label, color = WrappedMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
             }
         }
     }
+}
+
+private fun wrappedTileShape(first: Boolean, last: Boolean): RoundedCornerShape {
+    val outer = 26.dp
+    val inner = 8.dp
+    return RoundedCornerShape(
+        topStart = if (first) outer else inner,
+        bottomStart = if (first) outer else inner,
+        topEnd = if (last) outer else inner,
+        bottomEnd = if (last) outer else inner
+    )
 }
 
 @Composable

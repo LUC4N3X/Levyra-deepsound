@@ -2058,16 +2058,7 @@ class PlaybackService : MediaLibraryService() {
     ): Boolean {
         repeat(3) {
             if (!handoffStillValid(primary, secondary, targetIdentity)) return false
-            if (!crossfadeHandoffCanResync(secondary.playbackState)) {
-                val secondaryReady = withTimeoutOrNull(PRIMARY_HANDOFF_SYNC_TIMEOUT_MS) {
-                    while (secondary.playbackState != Player.STATE_READY) {
-                        if (!handoffStillValid(primary, secondary, targetIdentity)) return@withTimeoutOrNull false
-                        delay(30L)
-                    }
-                    true
-                } == true
-                if (!secondaryReady) return@repeat
-            }
+            if (!awaitHandoffSecondaryReady(primary, secondary, targetIdentity)) return@repeat
             if (!crossfadeHandoffNeedsResync(
                     primary.currentPosition,
                     secondary.currentPosition,
@@ -2075,28 +2066,7 @@ class PlaybackService : MediaLibraryService() {
                 )
             ) return true
 
-            primary.seekTo(
-                crossfadeHandoffSeekPosition(
-                    secondaryPositionMs = secondary.currentPosition,
-                    durationMs = primary.duration,
-                    leadMs = PRIMARY_HANDOFF_SYNC_LEAD_MS
-                )
-            )
-            val synced = withTimeoutOrNull(PRIMARY_HANDOFF_SYNC_TIMEOUT_MS) {
-                while (true) {
-                    if (!handoffStillValid(primary, secondary, targetIdentity)) return@withTimeoutOrNull false
-                    if (primary.playerError != null) return@withTimeoutOrNull false
-                    if (primary.playbackState == Player.STATE_READY &&
-                        !crossfadeHandoffNeedsResync(
-                            primary.currentPosition,
-                            secondary.currentPosition,
-                            PRIMARY_HANDOFF_SYNC_TOLERANCE_MS
-                        )
-                    ) return@withTimeoutOrNull true
-                    delay(30L)
-                }
-            } == true
-            if (synced) return true
+            if (resyncPrimaryHandoff(primary, secondary, targetIdentity)) return true
         }
         return primary.playbackState == Player.STATE_READY &&
             handoffStillValid(primary, secondary, targetIdentity) &&
@@ -2105,6 +2075,49 @@ class PlaybackService : MediaLibraryService() {
                 secondary.currentPosition,
                 PRIMARY_HANDOFF_SYNC_TOLERANCE_MS
             )
+    }
+
+    private suspend fun awaitHandoffSecondaryReady(
+        primary: ExoPlayer,
+        secondary: ExoPlayer,
+        targetIdentity: String
+    ): Boolean {
+        if (crossfadeHandoffCanResync(secondary.playbackState)) return true
+        return withTimeoutOrNull(PRIMARY_HANDOFF_SYNC_TIMEOUT_MS) {
+            while (!crossfadeHandoffCanResync(secondary.playbackState)) {
+                if (!handoffStillValid(primary, secondary, targetIdentity)) return@withTimeoutOrNull false
+                delay(30L)
+            }
+            true
+        } == true
+    }
+
+    private suspend fun resyncPrimaryHandoff(
+        primary: ExoPlayer,
+        secondary: ExoPlayer,
+        targetIdentity: String
+    ): Boolean {
+        primary.seekTo(
+            crossfadeHandoffSeekPosition(
+                secondaryPositionMs = secondary.currentPosition,
+                durationMs = primary.duration,
+                leadMs = PRIMARY_HANDOFF_SYNC_LEAD_MS
+            )
+        )
+        return withTimeoutOrNull(PRIMARY_HANDOFF_SYNC_TIMEOUT_MS) {
+            while (true) {
+                if (!handoffStillValid(primary, secondary, targetIdentity)) return@withTimeoutOrNull false
+                if (primary.playerError != null) return@withTimeoutOrNull false
+                if (primary.playbackState == Player.STATE_READY &&
+                    !crossfadeHandoffNeedsResync(
+                        primary.currentPosition,
+                        secondary.currentPosition,
+                        PRIMARY_HANDOFF_SYNC_TOLERANCE_MS
+                    )
+                ) return@withTimeoutOrNull true
+                delay(30L)
+            }
+        } == true
     }
 
     private fun handoffStillValid(

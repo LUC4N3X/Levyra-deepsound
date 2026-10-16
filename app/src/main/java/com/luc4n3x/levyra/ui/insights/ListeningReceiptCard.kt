@@ -881,7 +881,7 @@ internal object ListeningReceiptCard {
         var bottom = -1
         for (y in 0 until height) {
             for (x in 0 until width) {
-                if ((pixels[y * width + x] ushr 24) > LOGO_ALPHA_THRESHOLD) {
+                if (pixels[y * width + x] ushr 24 > LOGO_ALPHA_THRESHOLD) {
                     if (x < left) left = x
                     if (x > right) right = x
                     if (y < top) top = y

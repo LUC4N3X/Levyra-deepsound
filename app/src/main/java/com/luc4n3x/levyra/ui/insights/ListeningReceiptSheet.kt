@@ -196,22 +196,9 @@ internal fun ListeningReceiptComposer(
         message = null
         scope.launch {
             try {
-                when (kind) {
-                    ReceiptAction.Share -> {
-                        val intent = ListeningReceiptCard.createShareIntent(
-                            context, current, assets, style, resolved, strings.receiptCaption
-                        )
-                        if (intent == null || !startReceiptChooser(context, intent, strings.shareVia)) {
-                            message = strings.shareLyricsFailed
-                            messageIsError = true
-                        }
-                    }
-                    ReceiptAction.Save -> {
-                        val saved = ListeningReceiptCard.saveToGallery(context, current, assets, style, resolved)
-                        message = if (saved) strings.receiptSaved else strings.receiptSaveFailed
-                        messageIsError = !saved
-                    }
-                }
+                val outcome = performReceiptAction(kind, context, current, assets, style, resolved, strings)
+                message = outcome?.first
+                messageIsError = outcome?.second == true
             } finally {
                 action = null
             }
@@ -256,43 +243,79 @@ internal fun ListeningReceiptComposer(
                 modifier = Modifier.padding(horizontal = 20.dp)
             )
         }
-        Row(
+        ReceiptActionRow(
+            enabled = ready,
+            busy = action,
+            accent = accent,
+            strings = strings,
+            onAction = { runAction(it) }
+        )
+    }
+}
+
+private suspend fun performReceiptAction(
+    kind: ReceiptAction,
+    context: Context,
+    content: ListeningReceiptContent,
+    assets: ListeningReceiptCovers,
+    style: ListeningReceiptStyle,
+    palette: ListeningReceiptPalette,
+    strings: LevyraStrings
+): Pair<String, Boolean>? = when (kind) {
+    ReceiptAction.Share -> {
+        val intent = ListeningReceiptCard.createShareIntent(context, content, assets, style, palette, strings.receiptCaption)
+        if (intent != null && startReceiptChooser(context, intent, strings.shareVia)) null else strings.shareLyricsFailed to true
+    }
+    ReceiptAction.Save -> {
+        val saved = ListeningReceiptCard.saveToGallery(context, content, assets, style, palette)
+        if (saved) strings.receiptSaved to false else strings.receiptSaveFailed to true
+    }
+}
+
+@Composable
+private fun ReceiptActionRow(
+    enabled: Boolean,
+    busy: ReceiptAction?,
+    accent: Color,
+    strings: LevyraStrings,
+    onAction: (ReceiptAction) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        FilledTonalButton(
+            onClick = { onAction(ReceiptAction.Save) },
+            enabled = enabled,
+            shape = RoundedCornerShape(18.dp),
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                .weight(1f)
+                .heightIn(min = 56.dp)
         ) {
-            FilledTonalButton(
-                onClick = { runAction(ReceiptAction.Save) },
-                enabled = ready,
-                shape = RoundedCornerShape(18.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = 56.dp)
-            ) {
-                ReceiptActionContent(
-                    busy = action == ReceiptAction.Save,
-                    label = strings.save,
-                    icon = { Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-            }
-            Button(
-                onClick = { runAction(ReceiptAction.Share) },
-                enabled = ready,
-                colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = ReceiptOnAccent),
-                shape = RoundedCornerShape(18.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = 56.dp)
-            ) {
-                ReceiptActionContent(
-                    busy = action == ReceiptAction.Share,
-                    label = strings.share,
-                    icon = { Icon(Icons.Rounded.Share, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                    color = ReceiptOnAccent
-                )
-            }
+            ReceiptActionContent(
+                busy = busy == ReceiptAction.Save,
+                label = strings.save,
+                icon = { Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+        }
+        Button(
+            onClick = { onAction(ReceiptAction.Share) },
+            enabled = enabled,
+            colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = ReceiptOnAccent),
+            shape = RoundedCornerShape(18.dp),
+            modifier = Modifier
+                .weight(1f)
+                .heightIn(min = 56.dp)
+        ) {
+            ReceiptActionContent(
+                busy = busy == ReceiptAction.Share,
+                label = strings.share,
+                icon = { Icon(Icons.Rounded.Share, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                color = ReceiptOnAccent
+            )
         }
     }
 }
