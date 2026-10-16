@@ -110,8 +110,14 @@ internal class LevyraDeviceIntegrationCenter(
             lyric = frame
         )
         dispatch { it.publish(snapshot) }
-        if (!state.playing || frame == null || lyricsPositionMs == null) return
-        val delayMs = levyraIslandTickDelayMs(lyricsPositionMs, frame.nextBoundaryMs, state.speed) ?: return
+        if (!state.playing) return
+        val lyricDelayMs = if (frame != null && lyricsPositionMs != null) {
+            levyraIslandTickDelayMs(lyricsPositionMs, frame.nextBoundaryMs, state.speed)
+        } else {
+            null
+        }
+        val progressDelayMs = levyraIslandProgressTickDelayMs(state.positionMs, state.durationMs, state.speed)
+        val delayMs = listOfNotNull(lyricDelayMs, progressDelayMs).minOrNull() ?: return
         tickJob = scope.launch {
             delay(delayMs)
             tickJob = null

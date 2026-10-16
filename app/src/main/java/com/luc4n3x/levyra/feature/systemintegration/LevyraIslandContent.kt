@@ -10,6 +10,8 @@ private const val ISLAND_TEXT_MAX_CHARS = 42
 private const val ISLAND_AOD_MAX_CHARS = 20
 private const val ISLAND_BOUNDARY_SLACK_MS = 24L
 private const val ISLAND_MIN_TICK_MS = 80L
+private const val ISLAND_PROGRESS_STEP_PERCENT = 5L
+private const val ISLAND_MIN_PROGRESS_TICK_MS = 1_000L
 private const val FOCUS_PROGRESS_COLOR = "#FF757575"
 private const val FOCUS_PROGRESS_TRACK_COLOR = "#333333"
 private const val ISLAND_PLACEHOLDER = "♪"
@@ -108,6 +110,17 @@ internal fun hyperOsSuperIslandContent(snapshot: LevyraIslandSnapshot): HyperOsS
         artist
     }.ifBlank { ISLAND_PLACEHOLDER }
     return HyperOsSuperIslandContent(primary, upcoming, detail)
+}
+
+internal fun levyraIslandProgressTickDelayMs(positionMs: Long, durationMs: Long, speed: Float): Long? {
+    if (durationMs <= 0L || positionMs >= durationMs) return null
+    val step = durationMs * ISLAND_PROGRESS_STEP_PERCENT / 100L
+    if (step <= 0L) return null
+    val safePosition = positionMs.coerceAtLeast(0L)
+    val nextMark = ((safePosition / step + 1L) * step).coerceAtMost(durationMs)
+    val safeSpeed = speed.takeIf { it.isFinite() && it > 0f } ?: 1f
+    val realMs = ceil((nextMark - safePosition) / safeSpeed.toDouble()).toLong()
+    return (realMs + ISLAND_BOUNDARY_SLACK_MS).coerceAtLeast(ISLAND_MIN_PROGRESS_TICK_MS)
 }
 
 internal fun hyperOsSuperIslandFocusParam(content: HyperOsSuperIslandContent, progress: Int, packageName: String): String {

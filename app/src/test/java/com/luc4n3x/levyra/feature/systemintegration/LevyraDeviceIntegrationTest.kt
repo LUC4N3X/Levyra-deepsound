@@ -160,6 +160,32 @@ class LevyraDeviceIntegrationTest {
     }
 
     @Test
+    fun progressTickAdvancesInFivePercentStepsWithoutLyrics() {
+        assertEquals(6_024L, levyraIslandProgressTickDelayMs(0L, 120_000L, 1f))
+        assertEquals(1_024L, levyraIslandProgressTickDelayMs(5_000L, 120_000L, 1f))
+        assertEquals(3_024L, levyraIslandProgressTickDelayMs(0L, 120_000L, 2f))
+        assertEquals(1_000L, levyraIslandProgressTickDelayMs(5_990L, 120_000L, 1f))
+        assertNull(levyraIslandProgressTickDelayMs(120_000L, 120_000L, 1f))
+        assertNull(levyraIslandProgressTickDelayMs(1_000L, 0L, 1f))
+    }
+
+    @Test
+    fun centerKeepsRefreshingProgressWhenTrackHasNoLyrics() = runBlocking {
+        val adapter = RecordingAdapter()
+        val startedAt = System.nanoTime()
+        val center = center(this, listOf(adapter)) {
+            val elapsedMs = (System.nanoTime() - startedAt) / 1_000_000L
+            playerState(positionMs = 5_700L + elapsedMs).copy(durationMs = 120_000L)
+        }
+        center.refresh()
+        val firstCount = adapter.published.size
+        delay(1_500L)
+        assertTrue(adapter.published.size > firstCount)
+        assertNull(adapter.published.last().lyric)
+        center.release()
+    }
+
+    @Test
     fun focusPayloadCarriesLyricsSongAndProgress() {
         val lines = levyraIslandLyrics("id", "id", lyricLines(), synced = true)!!.lines
         val snapshot = snapshot(lyric = levyraIslandLyricFrame(lines, 1_500L), positionMs = 30_000L)
