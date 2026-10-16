@@ -84,6 +84,7 @@ internal fun PlayerPosterDeck(
                     .graphicsLayer(),
                 PosterStageCorner
             )
+            slots.gestures(track, Modifier.matchParentSize())
             Box(
                 modifier = Modifier
                     .statusBarsPadding()

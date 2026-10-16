@@ -107,6 +107,7 @@ internal fun PlayerPulseDeck(
                 accent = accent,
                 spinning = isPlaying && animated
             )
+            slots.gestures(track, Modifier.matchParentSize())
         }
         PulseSignal(
             surfaces = surfaces,

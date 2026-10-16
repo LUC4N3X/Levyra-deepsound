@@ -158,6 +158,7 @@ internal fun PlayerFolioDeck(
                     },
                 FolioStageCorner
             )
+            slots.gestures(track, Modifier.matchParentSize())
         }
         FolioHeadline(
             track = track,

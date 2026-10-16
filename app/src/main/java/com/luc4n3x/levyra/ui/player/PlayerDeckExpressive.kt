@@ -125,6 +125,7 @@ internal fun PlayerExpressiveDeck(
                     .clip(artworkShape),
                 ExpressiveStageCorner
             )
+            slots.gestures(track, Modifier.matchParentSize())
         }
         ExpressiveHeadline(
             track = track,
