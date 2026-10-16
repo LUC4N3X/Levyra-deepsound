@@ -28,10 +28,10 @@ internal data class OPlusLyricsPayloadContext(
 
 internal fun detectLevyraRomMediaCapabilities(
     manufacturer: String = Build.MANUFACTURER.orEmpty(),
-    brand: String = Build.BRAND.orEmpty()
+    brand: String = Build.BRAND.orEmpty(),
+    oplusRomVersion: String = levyraSystemProperty(OPLUS_ROM_VERSION_PROPERTY)
 ): LevyraRomMediaCapabilities {
-    val identity = "$manufacturer $brand".lowercase(Locale.ROOT)
-    val oplus = listOf("oppo", "oneplus", "realme").any(identity::contains)
+    val oplus = isOplusIdentity("$manufacturer $brand") || oplusRomVersion.isNotBlank()
     return LevyraRomMediaCapabilities(
         family = if (oplus) LevyraRomFamily.OPLUS else LevyraRomFamily.GENERIC,
         timedLyricsMetadata = oplus
