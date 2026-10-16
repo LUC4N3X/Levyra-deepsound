@@ -402,4 +402,26 @@ class AdaptiveStabilityLoadControlTest {
         control.onMediaItemTransition(itemB, Player.MEDIA_ITEM_TRANSITION_REASON_AUTO)
         assertEquals(PlaybackStabilityProfile.Stable, control.activeProfile)
     }
+
+    private class EscalatingSignals : PlaybackStabilityProfileSource {
+        var escalated = false
+        override fun requestedProfile(): PlaybackStabilityProfile = PlaybackStabilityProfile.Normal
+        override fun isEscalated(): Boolean = escalated
+    }
+
+    @Test
+    fun escalationDuringCurrentItemWidensBufferWithoutWaitingForNextItem() {
+        val normal = recordingControl()
+        val stable = recordingControl()
+        val signals = EscalatingSignals()
+        val control = AdaptiveStabilityLoadControl(normal, stable, signals)
+        control.shouldContinueLoading(parameters())
+        assertEquals(1, normal.shouldContinueLoadingCalls)
+        assertEquals(PlaybackStabilityProfile.Normal, control.activeProfile)
+        signals.escalated = true
+        control.shouldContinueLoading(parameters())
+        assertEquals(1, normal.shouldContinueLoadingCalls)
+        assertEquals(1, stable.shouldContinueLoadingCalls)
+        assertEquals(PlaybackStabilityProfile.Stable, control.activeProfile)
+    }
 }

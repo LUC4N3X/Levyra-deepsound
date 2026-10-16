@@ -774,7 +774,6 @@ fun LevyraNowPlaying(
                     PlayerArtworkHero(
                         track = activeTrack,
                         artworkUrl = artworkUrl,
-                        visualMode = deckMode,
                         motionArtwork = state.motionArtwork,
                         livingArtwork = livingArtwork,
                         animationsEnabled = animated && !state.isVideoMode,

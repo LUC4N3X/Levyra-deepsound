@@ -295,6 +295,8 @@ class PlaybackService : MediaLibraryService() {
         private const val PREPARED_QUEUE_PRIME_BYTES = 384L * 1024L
         private const val PRIMARY_HANDOFF_WARN_MS = 5_000L
         private const val PRIMARY_HANDOFF_SYNC_TIMEOUT_MS = 2_500L
+        private const val RECOVERY_CONNECTIVITY_WAIT_MS = 15_000L
+        private const val RECOVERY_CONNECTIVITY_POLL_MS = 5_000L
         private const val PRIMARY_HANDOFF_FADE_MS = 240L
         private const val PRIMARY_HANDOFF_SYNC_TOLERANCE_MS = 250L
         private const val PRIMARY_HANDOFF_SYNC_LEAD_MS = 120L
@@ -771,7 +773,7 @@ class PlaybackService : MediaLibraryService() {
         activeCustomBufferProfile = bufferProfile.takeIf {
             snapshot.audioSettings.playbackBuffer.mode == PlaybackBufferMode.CUSTOM
         }
-        val stableBufferProfile = AdaptiveStabilityLoadControl.stableProfileOf(bufferProfile)
+        val stableBufferProfile = stabilityBufferProfile(bufferProfile, customProfile = activeCustomBufferProfile != null)
         val sharedAllocator = androidx.media3.exoplayer.upstream.DefaultAllocator(true, androidx.media3.common.C.DEFAULT_BUFFER_SEGMENT_SIZE)
         fun buildLoadControl(profile: PlaybackBufferProfile) = DefaultLoadControl.Builder()
             .setAllocator(sharedAllocator)
@@ -2056,6 +2058,7 @@ class PlaybackService : MediaLibraryService() {
     ): Boolean {
         repeat(3) {
             if (!handoffStillValid(primary, secondary, targetIdentity)) return false
+            if (!awaitHandoffSecondaryReady(primary, secondary, targetIdentity)) return@repeat
             if (!crossfadeHandoffNeedsResync(
                     primary.currentPosition,
                     secondary.currentPosition,
@@ -2063,28 +2066,7 @@ class PlaybackService : MediaLibraryService() {
                 )
             ) return true
 
-            primary.seekTo(
-                crossfadeHandoffSeekPosition(
-                    secondaryPositionMs = secondary.currentPosition,
-                    durationMs = primary.duration,
-                    leadMs = PRIMARY_HANDOFF_SYNC_LEAD_MS
-                )
-            )
-            val synced = withTimeoutOrNull(PRIMARY_HANDOFF_SYNC_TIMEOUT_MS) {
-                while (true) {
-                    if (!handoffStillValid(primary, secondary, targetIdentity)) return@withTimeoutOrNull false
-                    if (primary.playerError != null) return@withTimeoutOrNull false
-                    if (primary.playbackState == Player.STATE_READY &&
-                        !crossfadeHandoffNeedsResync(
-                            primary.currentPosition,
-                            secondary.currentPosition,
-                            PRIMARY_HANDOFF_SYNC_TOLERANCE_MS
-                        )
-                    ) return@withTimeoutOrNull true
-                    delay(30L)
-                }
-            } == true
-            if (synced) return true
+            if (resyncPrimaryHandoff(primary, secondary, targetIdentity)) return true
         }
         return primary.playbackState == Player.STATE_READY &&
             handoffStillValid(primary, secondary, targetIdentity) &&
@@ -2093,6 +2075,49 @@ class PlaybackService : MediaLibraryService() {
                 secondary.currentPosition,
                 PRIMARY_HANDOFF_SYNC_TOLERANCE_MS
             )
+    }
+
+    private suspend fun awaitHandoffSecondaryReady(
+        primary: ExoPlayer,
+        secondary: ExoPlayer,
+        targetIdentity: String
+    ): Boolean {
+        if (crossfadeHandoffCanResync(secondary.playbackState)) return true
+        return withTimeoutOrNull(PRIMARY_HANDOFF_SYNC_TIMEOUT_MS) {
+            while (!crossfadeHandoffCanResync(secondary.playbackState)) {
+                if (!handoffStillValid(primary, secondary, targetIdentity)) return@withTimeoutOrNull false
+                delay(30L)
+            }
+            true
+        } == true
+    }
+
+    private suspend fun resyncPrimaryHandoff(
+        primary: ExoPlayer,
+        secondary: ExoPlayer,
+        targetIdentity: String
+    ): Boolean {
+        primary.seekTo(
+            crossfadeHandoffSeekPosition(
+                secondaryPositionMs = secondary.currentPosition,
+                durationMs = primary.duration,
+                leadMs = PRIMARY_HANDOFF_SYNC_LEAD_MS
+            )
+        )
+        return withTimeoutOrNull(PRIMARY_HANDOFF_SYNC_TIMEOUT_MS) {
+            while (true) {
+                if (!handoffStillValid(primary, secondary, targetIdentity)) return@withTimeoutOrNull false
+                if (primary.playerError != null) return@withTimeoutOrNull false
+                if (primary.playbackState == Player.STATE_READY &&
+                    !crossfadeHandoffNeedsResync(
+                        primary.currentPosition,
+                        secondary.currentPosition,
+                        PRIMARY_HANDOFF_SYNC_TOLERANCE_MS
+                    )
+                ) return@withTimeoutOrNull true
+                delay(30L)
+            }
+        } == true
     }
 
     private fun handoffStillValid(
@@ -2935,7 +2960,10 @@ class PlaybackService : MediaLibraryService() {
         if (localPlayback || hasInternetCapableNetwork()) return false
         releasePlaybackWakeLock()
         Timber.d("Background playback recovery waiting for network")
-        delay(5_000L)
+        val connectivity = getSystemService(ConnectivityManager::class.java)
+        if (connectivity?.awaitInternetNetwork(RECOVERY_CONNECTIVITY_WAIT_MS) == null) {
+            delay(RECOVERY_CONNECTIVITY_POLL_MS)
+        }
         return true
     }
 
@@ -3227,6 +3255,10 @@ class PlaybackService : MediaLibraryService() {
             Timber.d("Playback watchdog recovery deferred to load retries at %d ms", positionMs)
             return
         }
+        if (shouldDeferWatchdogForConnectivity(isCurrentPlaybackLocal(), hasInternetCapableNetwork())) {
+            Timber.d("Playback watchdog waiting for network at %d ms", positionMs)
+            return
+        }
         Timber.w("Playback watchdog detected a stalled player at %d ms", positionMs)
         serviceRecoveryJob = serviceScope.launch {
             val restored = restoreCurrentPlayback(
@@ -3381,6 +3413,11 @@ internal class WatchdogRecoveryAllowance(private val limit: Int = WATCHDOG_RECOV
         used = 0
     }
 }
+
+internal fun shouldDeferWatchdogForConnectivity(localPlayback: Boolean, hasInternet: Boolean): Boolean =
+    !localPlayback && !hasInternet
+
+internal fun crossfadeHandoffCanResync(secondaryState: Int): Boolean = secondaryState == Player.STATE_READY
 
 internal fun isGenuineWatchdogProgress(previousPositionMs: Long, positionMs: Long): Boolean =
     previousPositionMs != C.TIME_UNSET && positionMs > previousPositionMs + WATCHDOG_PROGRESS_THRESHOLD_MS

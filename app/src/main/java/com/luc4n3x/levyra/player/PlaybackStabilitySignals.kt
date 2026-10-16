@@ -11,6 +11,8 @@ enum class PlaybackStabilityProfile { Normal, Stable }
 
 interface PlaybackStabilityProfileSource {
     fun requestedProfile(): PlaybackStabilityProfile
+
+    fun isEscalated(): Boolean = false
 }
 
 class PlaybackStabilitySignals(
@@ -19,6 +21,9 @@ class PlaybackStabilitySignals(
 
     private val lock = Any()
     private var profile = PlaybackStabilityProfile.Normal
+
+    @Volatile
+    private var escalated = false
     private var stableSinceMs: Long? = null
     private var lastState = Player.STATE_IDLE
     private var lastPlayWhenReady = false
@@ -31,6 +36,7 @@ class PlaybackStabilitySignals(
         pruneRebufferWindowLocked()
         if (profile == PlaybackStabilityProfile.Stable && canRecoverLocked()) {
             profile = PlaybackStabilityProfile.Normal
+            escalated = false
             stableSinceMs = null
             consecutiveFailuresByTrack.clear()
         }
@@ -154,7 +160,10 @@ class PlaybackStabilitySignals(
         }
     }
 
+    override fun isEscalated(): Boolean = escalated
+
     private fun escalateLocked() {
+        escalated = true
         profile = PlaybackStabilityProfile.Stable
         stableSinceMs = nowMs()
     }

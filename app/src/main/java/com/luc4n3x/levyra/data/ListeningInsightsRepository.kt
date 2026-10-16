@@ -38,9 +38,22 @@ class ListeningInsightsRepository(context: Context) {
         period: ListeningInsightsPeriod,
         nowMs: Long = System.currentTimeMillis(),
         zone: ZoneId = ZoneId.systemDefault()
+    ): ListeningInsightsSnapshot = snapshotFor(period, ListeningInsightsRanges.current(period, nowMs, zone), nowMs, zone)
+
+    suspend fun yearSnapshot(
+        year: Int,
+        nowMs: Long = System.currentTimeMillis(),
+        zone: ZoneId = ZoneId.systemDefault()
+    ): ListeningInsightsSnapshot =
+        snapshotFor(ListeningInsightsPeriod.HalfYear, ListeningInsightsRanges.year(year, nowMs, zone), nowMs, zone)
+
+    private suspend fun snapshotFor(
+        period: ListeningInsightsPeriod,
+        range: ListeningInsightsRange,
+        nowMs: Long,
+        zone: ZoneId
     ): ListeningInsightsSnapshot = withContext(Dispatchers.IO) {
         database.withTransaction {
-            val range = ListeningInsightsRanges.current(period, nowMs, zone)
             val isAllTime = period == ListeningInsightsPeriod.AllTime
 
             val aggregate = resolveWindowAggregate(isAllTime, range)
