@@ -70,6 +70,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -597,7 +598,6 @@ private fun WrappedArtist(
 
 @Composable
 private fun WrappedTracks(tracks: List<ListeningInsightsTrack>, strings: LevyraStrings, accent: Color) {
-    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -607,72 +607,83 @@ private fun WrappedTracks(tracks: List<ListeningInsightsTrack>, strings: LevyraS
         Text(text = strings.wrappedTracksTitle, color = WrappedInk, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(20.dp))
         tracks.take(ListeningReceiptModel.MAX_TRACKS).forEachIndexed { index, track ->
-            val first = index == 0
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)
-                    .clip(RoundedCornerShape(if (first) 28.dp else 18.dp))
-                    .background(if (first) accent.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.06f))
-                    .padding(10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            WrappedTrackRow(rank = index + 1, track = track, accent = accent)
+        }
+    }
+}
+
+@Composable
+private fun WrappedTrackRow(rank: Int, track: ListeningInsightsTrack, accent: Color) {
+    val first = rank == 1
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clip(RoundedCornerShape(if (first) 28.dp else 18.dp))
+            .background(if (first) accent.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.06f))
+            .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = rank.toString(),
+            color = if (first) accent else WrappedMuted,
+            fontSize = if (first) 28.sp else 20.sp,
+            fontWeight = FontWeight.Black,
+            modifier = Modifier.width(34.dp)
+        )
+        WrappedTrackCover(track = track, accent = accent, size = if (first) 64.dp else 52.dp)
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 14.dp)
+        ) {
+            Text(
+                text = track.title,
+                color = WrappedInk,
+                fontSize = if (first) 19.sp else 16.sp,
+                fontWeight = if (first) FontWeight.Black else FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (track.artist.isNotBlank()) {
                 Text(
-                    text = (index + 1).toString(),
-                    color = if (first) accent else WrappedMuted,
-                    fontSize = if (first) 28.sp else 20.sp,
-                    fontWeight = FontWeight.Black,
-                    modifier = Modifier.width(34.dp)
+                    text = track.artist,
+                    color = WrappedMuted,
+                    fontSize = 13.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                Box(
-                    modifier = Modifier
-                        .size(if (first) 64.dp else 52.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Brush.linearGradient(listOf(accent, LevyraViolet))),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = ListeningReceiptModel.initial(track.title),
-                        color = WrappedOnAccent,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                    if (track.artworkUrl.isNotBlank()) {
-                        val request = remember(context, track.artworkUrl) {
-                            ImageRequest.Builder(context).data(LevyraArtworkCache.large(track.artworkUrl)).crossfade(true).build()
-                        }
-                        AsyncImage(
-                            model = request,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                }
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 14.dp)
-                ) {
-                    Text(
-                        text = track.title,
-                        color = WrappedInk,
-                        fontSize = if (first) 19.sp else 16.sp,
-                        fontWeight = if (first) FontWeight.Black else FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    if (track.artist.isNotBlank()) {
-                        Text(
-                            text = track.artist,
-                            color = WrappedMuted,
-                            fontSize = 13.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
             }
+        }
+    }
+}
+
+@Composable
+private fun WrappedTrackCover(track: ListeningInsightsTrack, accent: Color, size: Dp) {
+    val context = LocalContext.current
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(RoundedCornerShape(14.dp))
+            .background(Brush.linearGradient(listOf(accent, LevyraViolet))),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = ListeningReceiptModel.initial(track.title),
+            color = WrappedOnAccent,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Black
+        )
+        if (track.artworkUrl.isNotBlank()) {
+            val request = remember(context, track.artworkUrl) {
+                ImageRequest.Builder(context).data(LevyraArtworkCache.large(track.artworkUrl)).crossfade(true).build()
+            }
+            AsyncImage(
+                model = request,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
         }
     }
 }
