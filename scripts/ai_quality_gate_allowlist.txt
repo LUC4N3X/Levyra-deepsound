@@ -32,6 +32,9 @@ docs/assets/showcase/editorial-cards/editorial-grid-row-01-orbit-reference.webp
 docs/assets/showcase/editorial-cards/editorial-grid-row-02.webp
 docs/assets/showcase/editorial-cards/editorial-grid-row-03.webp
 docs/assets/showcase/editorial-cards/editorial-grid-row-04.webp
+docs/assets/showcase/editorial-cards/editorial-grid-row-02-uniform-centered.webp
+docs/assets/showcase/editorial-cards/editorial-grid-row-03-uniform-centered.webp
+docs/assets/showcase/editorial-cards/editorial-grid-row-04-uniform-centered.webp
 docs/assets/showcase/cards/01_home.webp
 docs/assets/showcase/cards/02_stay_with_the_song.webp
 docs/assets/showcase/cards/03_now_playing.webp
