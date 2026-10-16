@@ -5,6 +5,7 @@ import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.advancedPrefetchCopy
 import com.luc4n3x.levyra.ui.i18n.advancedPrefetchMobileDataCopy
 import com.luc4n3x.levyra.ui.i18n.automationCopy
+import com.luc4n3x.levyra.ui.i18n.deviceIntegrationCopy
 import com.luc4n3x.levyra.ui.i18n.parametricEqCopy
 import com.luc4n3x.levyra.ui.i18n.smartOfflineCopy
 import com.luc4n3x.levyra.ui.preloadNextTrack
@@ -202,6 +203,7 @@ private fun MutableList<SettingsSearchEntry>.systemEntries(
     entry("integrations.lastfm", "Last.fm", strings.integrations, "lastfm scrobble scrobbling", categories.integrations)
     entry("integrations.listenbrainz", "ListenBrainz", strings.integrations, "listenbrainz scrobble scrobbling", categories.integrations)
     entry("integrations.audd", "AudD", strings.integrations, "audd recognition identify", categories.integrations)
+    entry("integrations.device", deviceIntegrationCopy(strings.code).title, deviceIntegrationCopy(strings.code).subtitle, "hyperos xiaomi poco redmi super island vivo originos atomic island oppo oneplus realme coloros oxygenos samsung one ui now bar honor pixel battery autostart background", categories.integrations)
     entry("network.dns", strings.networkDns, strings.networkSubtitle, "${strings.networkCustomDohUrl} dns doh", categories.network)
     entry("network.proxy", strings.networkProxy, strings.networkSubtitle, "${strings.networkProxyHost} ${strings.networkProxyAuthentication} proxy http socks", categories.network)
     entry("network.byedpi", strings.networkByeDpi, strings.networkByeDpiSubtitle, "byedpi dpi desync", categories.network)
