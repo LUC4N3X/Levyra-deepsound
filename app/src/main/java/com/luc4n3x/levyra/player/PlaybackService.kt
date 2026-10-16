@@ -86,6 +86,7 @@ import com.luc4n3x.levyra.domain.selectReplayGain
 import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.radio.LIVE_RADIO_SOURCE
+import com.luc4n3x.levyra.feature.radio.LiveRadioPlaylistDataSource
 import com.luc4n3x.levyra.feature.radio.LiveRadioStreamMetadata
 import com.luc4n3x.levyra.feature.systemintegration.OPLUS_LYRIC_INFO_KEY
 import com.luc4n3x.levyra.feature.systemintegration.OPlusLyricsPayloadContext
@@ -135,6 +136,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import timber.log.Timber
+import java.util.concurrent.TimeUnit
 import java.io.IOException
 import java.util.ArrayList
 
@@ -805,6 +807,7 @@ class PlaybackService : MediaLibraryService() {
                 chain.proceed(request.newBuilder().header("Icy-MetaData", "1").build())
             }
             .dns(RadioUrlPolicy.publicDns)
+            .readTimeout(LIVE_RADIO_READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .build()
         val liveRadioDataSourceFactory = OkHttpDataSource.Factory(liveRadioHttpClient)
             .setDefaultRequestProperties(
@@ -3343,6 +3346,24 @@ private object LevyraPlaybackLoadErrorHandlingPolicy : LoadErrorHandlingPolicy {
 
 internal const val TRANSIENT_NETWORK_LOAD_RETRIES = 8
 
+private object LiveRadioLoadErrorHandlingPolicy : LoadErrorHandlingPolicy {
+    override fun getFallbackSelectionFor(
+        fallbackOptions: LoadErrorHandlingPolicy.FallbackOptions,
+        loadErrorInfo: LoadErrorHandlingPolicy.LoadErrorInfo
+    ): LoadErrorHandlingPolicy.FallbackSelection? = null
+
+    override fun getRetryDelayMsFor(loadErrorInfo: LoadErrorHandlingPolicy.LoadErrorInfo): Long =
+        liveRadioLoadRetryDelayMs(loadErrorInfo.exception, loadErrorInfo.errorCount)
+
+    override fun getMinimumLoadableRetryCount(dataType: Int): Int = LIVE_RADIO_LOAD_RETRIES
+}
+
+internal const val LIVE_RADIO_LOAD_RETRIES = 2
+internal const val LIVE_RADIO_READ_TIMEOUT_SECONDS = 15L
+
+internal fun liveRadioLoadRetryDelayMs(error: Throwable, errorCount: Int): Long =
+    if (errorCount > LIVE_RADIO_LOAD_RETRIES) C.TIME_UNSET else transientNetworkRetryDelayMs(error, errorCount)
+
 internal const val WATCHDOG_RECOVERIES_WITHOUT_PROGRESS = 1
 private const val WATCHDOG_PROGRESS_THRESHOLD_MS = 250L
 private const val RETIRED_PLAYBACK_LIVE_UPDATE_CHANNEL_ID = "levyra_playback_live_update"
@@ -3469,10 +3490,16 @@ private class LevyraMediaSourceFactory(
             drmSessionManagerProvider?.let { factory.setDrmSessionManagerProvider(it) }
             return factory.createMediaSource(mediaItem)
         }
-        val routedFactory = if (isLiveRadioMediaItem(mediaItem)) {
-            liveRadioDataSourceFactory
-        } else {
-            LevyraRoutingDataSourceFactory(
+        val localUri = mediaItem.localConfiguration?.uri
+        val inferredManifestMimeType = mediaItem.localConfiguration?.mimeType
+            ?.takeIf { it.isNotBlank() }
+            ?: LevyraMediaItemFactory.mimeTypeFor(localUri?.toString().orEmpty(), false)
+                ?.takeIf { it == MimeTypes.APPLICATION_M3U8 || it == MimeTypes.APPLICATION_MPD }
+        val liveRadio = isLiveRadioMediaItem(mediaItem)
+        val routedFactory = when {
+            liveRadio && inferredManifestMimeType == null -> LiveRadioPlaylistDataSource.Factory(liveRadioDataSourceFactory)
+            liveRadio -> liveRadioDataSourceFactory
+            else -> LevyraRoutingDataSourceFactory(
                 dataSourceFactory = dataSourceFactory,
                 localDataSourceFactory = localDataSourceFactory,
                 sabrDataSourceFactory = sabrDataSourceFactory,
@@ -3480,13 +3507,10 @@ private class LevyraMediaSourceFactory(
                 subtitleUris = subtitleUris
             )
         }
-        val factory = DefaultMediaSourceFactory(routedFactory).setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
+        val factory = DefaultMediaSourceFactory(routedFactory).setLoadErrorHandlingPolicy(
+            if (liveRadio) LiveRadioLoadErrorHandlingPolicy else loadErrorHandlingPolicy
+        )
         drmSessionManagerProvider?.let { factory.setDrmSessionManagerProvider(it) }
-        val localUri = mediaItem.localConfiguration?.uri
-        val inferredManifestMimeType = mediaItem.localConfiguration?.mimeType
-            ?.takeIf { it.isNotBlank() }
-            ?: LevyraMediaItemFactory.mimeTypeFor(localUri?.toString().orEmpty(), false)
-                ?.takeIf { it == MimeTypes.APPLICATION_M3U8 || it == MimeTypes.APPLICATION_MPD }
         val item = if (
             SabrStreamSpec.isSabrUri(localUri?.toString().orEmpty()) ||
             localUri?.scheme.orEmpty().lowercase() == "content" ||

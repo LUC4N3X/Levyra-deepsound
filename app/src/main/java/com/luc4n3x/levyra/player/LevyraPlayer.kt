@@ -37,6 +37,8 @@ import timber.log.Timber
 
 private const val MODE_HANDOFF_BACKWARD_SEEK_TOLERANCE_MS = 1_500L
 private const val VIDEO_FIRST_FRAME_TIMEOUT_MS = 5_500L
+internal const val LIVE_RADIO_STALL_TIMEOUT_MS = 20_000L
+private const val LIVE_RADIO_STALL_MESSAGE = "Live radio stream stalled while buffering"
 
 internal fun replacementStartPosition(
     sameTrack: Boolean,
@@ -77,6 +79,9 @@ internal fun isRecoverablePlaybackErrorCode(errorCode: Int): Boolean =
         errorCode in 2000..2008 ||
         errorCode in 3001..3004 ||
         errorCode in 4001..4005
+
+internal fun isRecoverableLiveRadioErrorCode(errorCode: Int): Boolean =
+    errorCode != PlaybackException.ERROR_CODE_FAILED_RUNTIME_CHECK && errorCode !in 6000..7999
 
 internal fun shouldRunDelayedVideoRecovery(
     expectedGeneration: Long,
@@ -127,6 +132,7 @@ class LevyraPlayer(context: Context) {
     private var recoveryAttempts = 0
     private var invalidVideoRecoveryJob: Job? = null
     private var videoFrameWatchdogJob: Job? = null
+    private var liveRadioStallJob: Job? = null
     private var playbackGeneration = 0L
     private var observedServicePlayer: Player? = null
     private var videoSurfaceAttached = false
@@ -193,7 +199,12 @@ class LevyraPlayer(context: Context) {
                         loadedVideoMode -> queueTrack.copy(videoStreamUrl = playingUri)
                         else -> queueTrack.copy(streamUrl = playingUri)
                     }
+                    val previousStreamIdentity = loadedStreamIdentity
                     loadedStreamIdentity = streamIdentity(mediaItem, loadedVideoMode)
+                    if (previousStreamIdentity != loadedStreamIdentity) {
+                        cancelLiveRadioStallWatchdog()
+                        updateLiveRadioStallWatchdog(connected)
+                    }
                     renderedVideoFrame = false
                     itemReachedReady = false
                     refreshVideoSurfaceState()
@@ -222,6 +233,7 @@ class LevyraPlayer(context: Context) {
                         )
                         if (stallKind == VideoStallKind.MID_PLAY) onVideoStall?.invoke()
                     }
+                    updateLiveRadioStallWatchdog(connected)
                     if (playbackState != Player.STATE_ENDED) return
                     sponsorJob?.cancel()
                     sponsorJob = null
@@ -233,6 +245,7 @@ class LevyraPlayer(context: Context) {
                 }
 
                 override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                    updateLiveRadioStallWatchdog(connected)
                     if (!playWhenReady) {
                         videoFrameWatchdogJob?.cancel()
                         videoFrameWatchdogJob = null
@@ -261,35 +274,13 @@ class LevyraPlayer(context: Context) {
                         return
                     }
                     val terminalFailure = isTerminalPlaybackFailure(classifyPlaybackFailureReason(message))
-                    val allowRecovery = (!terminalFailure || track.isLiveRadio()) && isRecoverable(error) && !recoveryInFlight && recoveryAttempts < 3 && onRecoverableStreamError != null
-                    if (allowRecovery) {
-                        recoveryInFlight = true
-                        recoveryAttempts++
-                        val playWhenReadyBeforeError = connected.playWhenReady
-                        sponsorJob?.cancel()
-                        sponsorJob = null
-                        videoFrameWatchdogJob?.cancel()
-                        videoFrameWatchdogJob = null
-                        Timber.i(
-                            "stream recovery start attempt=%d playWhenReady=%s positionMs=%d",
-                            recoveryAttempts,
-                            playWhenReadyBeforeError,
-                            connected.currentPosition
-                        )
-                        onRecoverableStreamError?.invoke(
-                            track,
-                            if (track.isLiveRadio()) 0L else connected.currentPosition.coerceAtLeast(0L),
-                            loadedVideoMode,
-                            playWhenReadyBeforeError,
-                            message
-                        )
-                        return
+                    val recoverable = if (track.isLiveRadio()) {
+                        isRecoverableLiveRadioErrorCode(error.errorCode) || isRecoverable(error)
+                    } else {
+                        !terminalFailure && isRecoverable(error)
                     }
-                    sponsorJob?.cancel()
-                    sponsorJob = null
-                    clearLoadedState()
-                    connected.pause()
-                    onError?.invoke(message)
+                    if (recoverable && startStreamRecovery(connected, track, message)) return
+                    failLoadedStream(connected, message)
                 }
             })
             pendingPlayback?.let { pending ->
@@ -308,6 +299,81 @@ class LevyraPlayer(context: Context) {
         get() = controller?.let { it.isPlaying || it.playWhenReady && it.playbackState == Player.STATE_BUFFERING }
             ?: pendingPlayback?.playWhenReady
             ?: false
+
+    val isRendering: Boolean
+        get() = controller?.isPlaying == true
+
+    val playWhenReady: Boolean
+        get() = controller?.playWhenReady ?: pendingPlayback?.playWhenReady ?: false
+
+    val hasMediaItem: Boolean
+        get() = (controller?.mediaItemCount ?: 0) > 0 || pendingPlayback != null
+
+    private fun startStreamRecovery(active: Player, track: Track, message: String): Boolean {
+        if (recoveryInFlight || recoveryAttempts >= 3) return false
+        val callback = onRecoverableStreamError ?: return false
+        recoveryInFlight = true
+        recoveryAttempts++
+        val playWhenReadyBeforeError = active.playWhenReady
+        sponsorJob?.cancel()
+        sponsorJob = null
+        videoFrameWatchdogJob?.cancel()
+        videoFrameWatchdogJob = null
+        cancelLiveRadioStallWatchdog()
+        Timber.i(
+            "stream recovery start attempt=%d playWhenReady=%s positionMs=%d",
+            recoveryAttempts,
+            playWhenReadyBeforeError,
+            active.currentPosition
+        )
+        callback(
+            track,
+            if (track.isLiveRadio()) 0L else active.currentPosition.coerceAtLeast(0L),
+            loadedVideoMode,
+            playWhenReadyBeforeError,
+            message
+        )
+        return true
+    }
+
+    private fun failLoadedStream(active: Player, message: String) {
+        sponsorJob?.cancel()
+        sponsorJob = null
+        clearLoadedState()
+        active.pause()
+        onError?.invoke(message)
+    }
+
+    private fun updateLiveRadioStallWatchdog(active: Player) {
+        val stalled = loadedTrack?.isLiveRadio() == true &&
+            active.playWhenReady &&
+            active.playbackState == Player.STATE_BUFFERING
+        if (!stalled) {
+            cancelLiveRadioStallWatchdog()
+            return
+        }
+        if (liveRadioStallJob?.isActive == true) return
+        val generation = playbackGeneration
+        val identity = loadedStreamIdentity
+        liveRadioStallJob = scope.launch {
+            delay(LIVE_RADIO_STALL_TIMEOUT_MS)
+            val current = controller ?: return@launch
+            if (generation != playbackGeneration || identity != loadedStreamIdentity) return@launch
+            if (recoveryInFlight || !current.playWhenReady || current.playbackState != Player.STATE_BUFFERING) return@launch
+            val track = loadedTrack?.takeIf { it.isLiveRadio() } ?: return@launch
+            liveRadioStallJob = null
+            Timber.w("live radio stalled while buffering for %d ms", LIVE_RADIO_STALL_TIMEOUT_MS)
+            current.stop()
+            if (!startStreamRecovery(current, track, LIVE_RADIO_STALL_MESSAGE)) {
+                failLoadedStream(current, LIVE_RADIO_STALL_MESSAGE)
+            }
+        }
+    }
+
+    private fun cancelLiveRadioStallWatchdog() {
+        liveRadioStallJob?.cancel()
+        liveRadioStallJob = null
+    }
 
     fun markRecoverySucceeded() {
         if (!recoveryInFlight) recoveryAttempts = 0
@@ -667,6 +733,7 @@ class LevyraPlayer(context: Context) {
         invalidVideoRecoveryJob = null
         videoFrameWatchdogJob?.cancel()
         videoFrameWatchdogJob = null
+        cancelLiveRadioStallWatchdog()
     }
 
     private fun refreshVideoSurfaceState(): Boolean {
@@ -713,6 +780,7 @@ class LevyraPlayer(context: Context) {
         invalidVideoRecoveryJob = null
         videoFrameWatchdogJob?.cancel()
         videoFrameWatchdogJob = null
+        cancelLiveRadioStallWatchdog()
     }
 
     private fun streamIdentity(track: Track, videoMode: Boolean): String {

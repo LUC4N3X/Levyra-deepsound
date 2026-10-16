@@ -37,7 +37,8 @@ data class RadioStation(
 
     val alternateStreamUrl: String
         get() = streamUrl.takeIf {
-            it != preferredStreamUrl && RadioUrlPolicy.isAllowed(it) && !isRadioPlaylistUrl(it)
+            it != preferredStreamUrl && RadioUrlPolicy.isAllowed(it) &&
+                (!isRadioPlaylistUrl(it) || isResolvableRadioPlaylistUrl(it))
         }.orEmpty()
 
     val safeFaviconUrl: String
@@ -109,6 +110,56 @@ internal fun liveRadioRetryPlan(
 }
 
 internal val LIVE_RADIO_RETRY_DELAYS_MS = longArrayOf(1_500L, 3_000L, 6_000L)
+
+internal const val LIVE_RADIO_MAX_SIBLING_STREAMS = 3
+
+internal fun liveRadioSiblingStreamUrls(station: RadioStation, candidates: List<RadioStation>): List<String> {
+    val name = normalizeRadioName(station.name)
+    val homepageHost = radioHomepageHost(station.homepageUrl)
+    val ownStreams = setOf(station.preferredStreamUrl, station.alternateStreamUrl, station.streamUrl)
+    return candidates.asSequence()
+        .filter { it.uuid != station.uuid && normalizeRadioName(it.name) == name }
+        .filter { candidate ->
+            val sameCountry = station.countryCode.isNotBlank() && candidate.countryCode == station.countryCode
+            val sameHomepage = homepageHost.isNotBlank() && radioHomepageHost(candidate.homepageUrl) == homepageHost
+            sameCountry || sameHomepage
+        }
+        .filter { it.preferredStreamUrl.isNotBlank() && it.preferredStreamUrl !in ownStreams }
+        .sortedWith(
+            compareByDescending<RadioStation> { it.lastCheckOk }
+                .thenBy { isAdInsertingRadioStream(it.preferredStreamUrl) }
+                .thenByDescending(::radioStationScore)
+        )
+        .map { it.preferredStreamUrl }
+        .distinct()
+        .take(LIVE_RADIO_MAX_SIBLING_STREAMS)
+        .toList()
+}
+
+internal fun liveRadioRecoveryStreamUrls(
+    station: RadioStation,
+    fresh: RadioStation?,
+    namedCandidates: List<RadioStation>
+): List<String> {
+    val ownStreams = setOf(station.preferredStreamUrl, station.alternateStreamUrl, station.streamUrl)
+    val refreshed = fresh?.takeIf { it.uuid == station.uuid }
+        ?.let { listOf(it.preferredStreamUrl, it.alternateStreamUrl) }
+        .orEmpty()
+        .filter { it.isNotBlank() && it !in ownStreams }
+    return (refreshed + liveRadioSiblingStreamUrls(station, namedCandidates))
+        .distinct()
+        .take(LIVE_RADIO_MAX_SIBLING_STREAMS + 2)
+}
+
+private val adInsertingRadioStreamDomains = setOf("zeno.fm", "surfernetwork.com", "streamtheworld.com", "adswizz.com")
+
+internal fun isAdInsertingRadioStream(value: String): Boolean {
+    val host = runCatching { URI(value.trim()).host }.getOrNull().orEmpty().lowercase(Locale.ROOT)
+    return adInsertingRadioStreamDomains.any { host == it || host.endsWith(".$it") }
+}
+
+private fun radioHomepageHost(value: String): String =
+    runCatching { URI(value.trim()).host }.getOrNull().orEmpty().lowercase(Locale.ROOT).removePrefix("www.")
 
 internal object RadioLanguagePreferences {
     private val values = listOf(

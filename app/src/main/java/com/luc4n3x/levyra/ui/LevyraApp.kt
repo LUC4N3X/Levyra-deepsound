@@ -2468,7 +2468,12 @@ fun LevyraApp(
                                         isResolving = state.isResolving,
                                         progress = progressOf(state.positionMs, state.durationMs),
                                         bufferedProgress = progressOf(state.bufferedPositionMs, state.durationMs),
-                                        liveNowPlaying = state.liveRadioNowPlaying,
+                                        liveNowPlaying = when {
+                                            state.liveRadioStation == null -> state.liveRadioNowPlaying
+                                            state.isResolving && state.liveRadioReconnectAttempt > 0 ->
+                                                com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog.reconnecting(state.languageCode)
+                                            else -> state.playerError ?: state.liveRadioNowPlaying
+                                        },
                                         animated = state.animationsEnabled,
                                         gesturesEnabled = state.interfaceSettings.playerGesturesEnabled,
                                         swipeTrackChangeEnabled = state.interfaceSettings.swipeTrackChangeEnabled,
