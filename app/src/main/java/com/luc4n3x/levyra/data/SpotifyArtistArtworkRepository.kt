@@ -59,6 +59,17 @@ internal class SpotifyArtistArtworkRepository private constructor(context: Conte
     private val preferences = appContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val memoryCache = ConcurrentHashMap<String, CachedArtwork>()
 
+    fun cachedArtistPortrait(artistName: String): String {
+        val identity = artistIdentityKey(artistName.trim())
+        if (identity.isBlank()) return ""
+        val now = System.currentTimeMillis()
+        return memoryCache[identity]
+            ?.takeIf { now - it.savedAt in 0 until ARTWORK_TTL_MS }
+            ?.url
+            ?.takeIf(::isAllowedSpotifyArtistArtworkUrl)
+            .orEmpty()
+    }
+
     suspend fun resolveArtistPortrait(artistName: String): String = withContext(Dispatchers.IO) {
         val cleanName = artistName.trim()
         val identity = artistIdentityKey(cleanName)
