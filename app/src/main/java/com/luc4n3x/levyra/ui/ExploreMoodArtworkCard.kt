@@ -44,6 +44,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.data.AppleArtistArtworkRepository
+import com.luc4n3x.levyra.data.ArtistPortraitFallbackRepository
 import com.luc4n3x.levyra.data.SpotifyArtistArtworkRepository
 import com.luc4n3x.levyra.domain.ExploreCatalog
 import com.luc4n3x.levyra.domain.ExploreZone
@@ -185,6 +186,7 @@ internal fun rememberExploreMoodArtworkUrl(zone: ExploreZone): String {
     val context = LocalContext.current
     val spotifyRepository = remember(context) { SpotifyArtistArtworkRepository.get(context) }
     val appleRepository = remember(context) { AppleArtistArtworkRepository.get(context) }
+    val fallbackRepository = remember(context) { ArtistPortraitFallbackRepository.get(context) }
     val rotationBucket = remember(zone.id) { exploreGenreRotationBucket(System.currentTimeMillis()) }
     val portraitCandidates = remember(zone.id, strings, rotationBucket) {
         exploreMoodPortraitWindow(
@@ -203,13 +205,18 @@ internal fun rememberExploreMoodArtworkUrl(zone: ExploreZone): String {
         )
     }
 
-    LaunchedEffect(portraitCandidates, spotifyRepository, appleRepository, hardFallbackPortraitUrl) {
+    LaunchedEffect(portraitCandidates, spotifyRepository, appleRepository, fallbackRepository, hardFallbackPortraitUrl) {
         if (artworkUrl.isNotBlank()) return@LaunchedEffect
         val resolved = ExploreMoodPortraitLookupSemaphore.withPermit {
             resolveExploreMoodPortrait(
                 candidates = portraitCandidates,
-                spotifyPortrait = spotifyRepository::resolveArtistPortrait,
-                applePortrait = appleRepository::resolveArtistPortrait
+                providers = listOf(
+                    spotifyRepository::resolveArtistPortrait,
+                    appleRepository::resolveArtistPortrait,
+                    fallbackRepository::youtubePortrait,
+                    fallbackRepository::deezerPortrait,
+                    fallbackRepository::tidalPortrait
+                )
             )
         }
         artworkUrl = resolved.ifBlank { hardFallbackPortraitUrl }
@@ -220,16 +227,13 @@ internal fun rememberExploreMoodArtworkUrl(zone: ExploreZone): String {
 
 internal suspend fun resolveExploreMoodPortrait(
     candidates: List<String>,
-    spotifyPortrait: suspend (String) -> String,
-    applePortrait: suspend (String) -> String
+    providers: List<suspend (String) -> String>
 ): String {
-    for (candidate in candidates) {
-        val portrait = spotifyPortrait(candidate)
-        if (portrait.isNotBlank()) return portrait
-    }
-    for (candidate in candidates) {
-        val portrait = applePortrait(candidate)
-        if (portrait.isNotBlank()) return portrait
+    for (provider in providers) {
+        for (candidate in candidates) {
+            val portrait = provider(candidate)
+            if (portrait.isNotBlank()) return portrait
+        }
     }
     return ""
 }

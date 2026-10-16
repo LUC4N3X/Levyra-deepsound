@@ -127,36 +127,51 @@ class ExploreMoodArtworkCardTest {
     }
 
     @Test
-    fun portraitResolutionPrefersSpotifyAcrossAllCandidatesBeforeApple() = runBlocking {
+    fun portraitResolutionPrefersEarlierProviderAcrossAllCandidates() = runBlocking {
         val spotify = mapOf("Second" to "spotify-second")
         val apple = mapOf("First" to "apple-first", "Second" to "apple-second")
 
         val portrait = resolveExploreMoodPortrait(
             candidates = listOf("First", "Second"),
-            spotifyPortrait = { spotify[it].orEmpty() },
-            applePortrait = { apple[it].orEmpty() }
+            providers = listOf<suspend (String) -> String>(
+                { name -> spotify[name].orEmpty() },
+                { name -> apple[name].orEmpty() }
+            )
         )
 
         assertEquals("spotify-second", portrait)
     }
 
     @Test
-    fun portraitResolutionFallsBackToAppleWhenSpotifyHasNoPortrait() = runBlocking {
-        val portrait = resolveExploreMoodPortrait(
-            candidates = listOf("First", "Second"),
-            spotifyPortrait = { "" },
-            applePortrait = { if (it == "Second") "apple-second" else "" }
-        )
+    fun portraitResolutionFallsBackThroughProvidersInOrder() = runBlocking {
+        val calls = mutableListOf<String>()
+        val providers = listOf("spotify", "apple", "youtube", "deezer", "tidal").map { provider ->
+            val lookup: suspend (String) -> String = { name ->
+                calls += "$provider:$name"
+                if (provider == "deezer" && name == "Second") "deezer-second" else ""
+            }
+            lookup
+        }
 
-        assertEquals("apple-second", portrait)
+        val portrait = resolveExploreMoodPortrait(candidates = listOf("First", "Second"), providers = providers)
+
+        assertEquals("deezer-second", portrait)
+        assertEquals(
+            listOf(
+                "spotify:First", "spotify:Second",
+                "apple:First", "apple:Second",
+                "youtube:First", "youtube:Second",
+                "deezer:First", "deezer:Second"
+            ),
+            calls
+        )
     }
 
     @Test
     fun portraitResolutionReturnsBlankWhenNoProviderHasPortrait() = runBlocking {
         val portrait = resolveExploreMoodPortrait(
             candidates = listOf("First"),
-            spotifyPortrait = { "" },
-            applePortrait = { "" }
+            providers = listOf<suspend (String) -> String>({ "" }, { "" })
         )
 
         assertEquals("", portrait)
