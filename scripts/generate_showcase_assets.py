@@ -600,40 +600,115 @@ README_CARD_SPECS = [
     ("16_listen_together", "LEVYRA JAM", "Listen\ntogether.", "One room. One queue. Everyone in.", "Screenshot_20261011_133434_LEVYRA.jpg"),
 ]
 
-def make_campaign_screen(filename, width, border_color):
+def make_campaign_device(filename, width):
     screenshot_path = resolve_screenshot_path(filename)
     if not screenshot_path:
         raise FileNotFoundError(f"Missing campaign screenshot: {filename}")
     with Image.open(screenshot_path) as screenshot_source:
         screenshot = enhance_screenshot(screenshot_source).convert("RGBA")
 
-    height = round(screenshot.height * width / screenshot.width)
-    screenshot = screenshot.resize((width, height), Image.Resampling.LANCZOS)
-    radius = max(32, round(width * 0.075))
-    mask = Image.new("L", screenshot.size, 0)
-    ImageDraw.Draw(mask).rounded_rectangle((0, 0, width - 1, height - 1), radius=radius, fill=255)
-    screen = Image.new("RGBA", screenshot.size, border_color + (255,))
-    screen.paste(screenshot, (0, 0), mask)
-    edge = Image.new("RGBA", screenshot.size, (0, 0, 0, 0))
-    ImageDraw.Draw(edge).rounded_rectangle(
-        (2, 2, width - 3, height - 3),
-        radius=radius,
-        outline=border_color + (130,),
-        width=max(2, round(width * 0.008)),
+    outer_width = width
+    outer_height = round(width * 2.13)
+    padding = max(18, round(width * 0.03))
+    frame = max(11, round(width * 0.02))
+    radius = max(48, round(width * 0.085))
+    device = Image.new(
+        "RGBA",
+        (outer_width + padding * 2, outer_height + padding * 2),
+        (0, 0, 0, 0),
     )
-    return Image.alpha_composite(screen, edge)
+    draw = ImageDraw.Draw(device)
+    body = (padding, padding, padding + outer_width - 1, padding + outer_height - 1)
+    draw.rounded_rectangle(
+        body,
+        radius=radius,
+        fill=(18, 19, 23, 255),
+        outline=(164, 165, 171, 255),
+        width=max(4, round(width * 0.007)),
+    )
+    inner_edge = max(4, round(width * 0.007))
+    draw.rounded_rectangle(
+        (
+            body[0] + inner_edge,
+            body[1] + inner_edge,
+            body[2] - inner_edge,
+            body[3] - inner_edge,
+        ),
+        radius=radius - inner_edge,
+        outline=(54, 56, 63, 255),
+        width=max(2, round(width * 0.004)),
+    )
 
-def paste_campaign_screen(canvas, filename, width, center, angle, border_color):
-    screen = make_campaign_screen(filename, width, border_color)
-    screen = screen.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
-    shadow_alpha = screen.getchannel("A").filter(ImageFilter.GaussianBlur(max(18, width // 18)))
+    screen_width = outer_width - frame * 2
+    screen_height = outer_height - frame * 2
+    screen = crop_to_fill(screenshot, screen_width, screen_height)
+    screen_radius = max(38, radius - frame)
+    screen_mask = Image.new("L", (screen_width, screen_height), 0)
+    ImageDraw.Draw(screen_mask).rounded_rectangle(
+        (0, 0, screen_width - 1, screen_height - 1),
+        radius=screen_radius,
+        fill=255,
+    )
+    screen_x = padding + frame
+    screen_y = padding + frame
+    device.paste(screen, (screen_x, screen_y), screen_mask)
+    draw.rounded_rectangle(
+        (screen_x, screen_y, screen_x + screen_width - 1, screen_y + screen_height - 1),
+        radius=screen_radius,
+        outline=(5, 6, 9, 255),
+        width=max(3, round(width * 0.006)),
+    )
+
+    camera_x = padding + outer_width // 2
+    camera_y = screen_y + max(17, round(width * 0.033))
+    camera_radius = max(8, round(width * 0.014))
+    draw.ellipse(
+        (
+            camera_x - camera_radius,
+            camera_y - camera_radius,
+            camera_x + camera_radius,
+            camera_y + camera_radius,
+        ),
+        fill=(3, 4, 7, 255),
+    )
+    draw.ellipse(
+        (camera_x - 4, camera_y - 4, camera_x + 4, camera_y + 4),
+        fill=(27, 49, 77, 240),
+    )
+    speaker_half = max(22, round(width * 0.045))
+    draw.rounded_rectangle(
+        (camera_x - speaker_half, padding + 4, camera_x + speaker_half, padding + 8),
+        radius=2,
+        fill=(70, 71, 77, 255),
+    )
+
+    button_width = max(4, round(width * 0.008))
+    button_x = padding + outer_width - 1
+    for top_ratio, bottom_ratio in ((0.20, 0.31), (0.35, 0.44)):
+        draw.rounded_rectangle(
+            (
+                button_x,
+                padding + round(outer_height * top_ratio),
+                button_x + button_width,
+                padding + round(outer_height * bottom_ratio),
+            ),
+            radius=button_width // 2,
+            fill=(91, 93, 101, 255),
+        )
+    return device
+
+def paste_campaign_device(canvas, filename, width, center, angle=0):
+    device = make_campaign_device(filename, width)
+    if angle:
+        device = device.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
+    shadow_alpha = device.getchannel("A").filter(ImageFilter.GaussianBlur(max(24, width // 16)))
     shadow_alpha = ImageEnhance.Brightness(shadow_alpha).enhance(0.42)
-    shadow = Image.new("RGBA", screen.size, (18, 12, 22, 0))
+    shadow = Image.new("RGBA", device.size, (18, 12, 22, 0))
     shadow.putalpha(shadow_alpha)
-    x = round(center[0] - screen.width / 2)
-    y = round(center[1] - screen.height / 2)
-    canvas.alpha_composite(shadow, (x + 20, y + 34))
-    canvas.alpha_composite(screen, (x, y))
+    x = round(center[0] - device.width / 2)
+    y = round(center[1] - device.height / 2)
+    canvas.alpha_composite(shadow, (x + 24, y + 42))
+    canvas.alpha_composite(device, (x, y))
 
 def paste_campaign_ribbon(canvas, width, center, opacity, angle=0):
     ribbon_path = os.path.join(OUT_SHOWCASE_DIR, "levyra_editorial_ribbon.png")
@@ -686,7 +761,7 @@ def render_readme_card(spec, index):
     variant_order = [0, 1, 2, 3, 2, 3, 0, 1, 1, 0, 3, 2, 3, 2, 1, 0]
     theme = README_CARD_THEMES[theme_order[index]]
     variant = variant_order[index]
-    canvas = Image.new("RGBA", (900, 1500), theme["background"] + (255,))
+    canvas = Image.new("RGBA", (900, 1800), theme["background"] + (255,))
     draw = ImageDraw.Draw(canvas)
     draw_readme_card_shapes(draw, theme, variant)
     ribbon_centers = [(705, 920), (190, 930), (700, 1090), (170, 1030)]
@@ -695,17 +770,12 @@ def render_readme_card(spec, index):
     draw_readme_card_copy(draw, spec, theme, index, (72, 70))
 
     _, _, _, _, screenshot = spec
-    screen_centers = [(575, 1090), (455, 1090), (575, 1090), (455, 1090)]
-    angles = [-3.5, 2.8, -2.2, 3.5]
-    widths = [650, 660, 650, 660]
-    paste_campaign_screen(
-        canvas,
-        screenshot,
-        widths[variant],
-        screen_centers[variant],
-        angles[variant],
-        (22, 20, 24),
-    )
+    if index == 0:
+        paste_campaign_device(canvas, screenshot, 760, (600, 1240), -7)
+    elif index == 1:
+        paste_campaign_device(canvas, screenshot, 760, (300, 1240), 7)
+    else:
+        paste_campaign_device(canvas, screenshot, 640, (450, 1065))
     return canvas.convert("RGB")
 
 def generate_readme_cards():
@@ -718,7 +788,7 @@ def generate_readme_cards():
         artwork.save(out_path, "WEBP", quality=94, method=6)
         print(f"Saved README editorial card at {artwork.size}: {out_path}")
     for row_index in range(4):
-        row = Image.new("RGB", (3600, 1500))
+        row = Image.new("RGB", (3600, 1800))
         for column in range(4):
             row.paste(cards[row_index * 4 + column], (column * 900, 0))
         out_path = os.path.join(README_CARD_DIR, f"editorial-grid-row-{row_index + 1:02d}.webp")
