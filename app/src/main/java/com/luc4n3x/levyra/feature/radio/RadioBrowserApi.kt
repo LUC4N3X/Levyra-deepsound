@@ -89,6 +89,28 @@ internal class RadioBrowserApi(
         }
     }
 
+    suspend fun stationByUuid(stationUuid: String): RadioStation? {
+        if (!SAFE_UUID.matches(stationUuid)) return null
+        return stationRequest("json/stations/byuuid", mapOf("uuids" to stationUuid))
+            .firstOrNull { it.uuid == stationUuid }
+    }
+
+    suspend fun stationsNamed(name: String, limit: Int = SIBLING_STATION_LIMIT): List<RadioStation> {
+        val clean = name.trim().take(MAX_QUERY_LENGTH)
+        if (clean.length < 2) return emptyList()
+        return stationRequest(
+            path = "json/stations/search",
+            params = mapOf(
+                "name" to clean,
+                "nameExact" to "true",
+                "order" to "votes",
+                "reverse" to "true",
+                "hidebroken" to "false",
+                "limit" to limit.coerceIn(1, MAX_STATION_LIMIT).toString()
+            )
+        )
+    }
+
     suspend fun countries(): List<RadioDirectoryEntry> = directoryRequest("json/countries") { json ->
         RadioDirectoryEntry(
             name = json.optString("name").trim(),
@@ -204,6 +226,7 @@ internal class RadioBrowserApi(
         const val MAX_QUERY_LENGTH = 80
         const val MAX_TOKEN_SEARCHES = 4
         const val MAX_STATION_LIMIT = 64
+        const val SIBLING_STATION_LIMIT = 20
         const val MAX_PARSED_STATIONS = 256
         const val MAX_SERVER_ATTEMPTS = 3
         const val MAX_RESPONSE_BYTES = 2_000_000

@@ -7,6 +7,7 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.viewmodel.playbackIdentity
 import com.luc4n3x.levyra.viewmodel.youtubePlayableTrack
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -156,6 +157,16 @@ class LevyraPlayerTest {
     fun remoteAndTimeoutPlaybackErrorsUseRecoverableStreamPath() {
         assertTrue(isRecoverablePlaybackErrorCode(PlaybackException.ERROR_CODE_REMOTE_ERROR))
         assertTrue(isRecoverablePlaybackErrorCode(PlaybackException.ERROR_CODE_TIMEOUT))
+    }
+
+    @Test
+    fun liveRadioRecoversBehindLiveWindowAndAudioErrorsButNotDrm() {
+        assertTrue(isRecoverableLiveRadioErrorCode(PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW))
+        assertTrue(isRecoverableLiveRadioErrorCode(PlaybackException.ERROR_CODE_UNSPECIFIED))
+        assertTrue(isRecoverableLiveRadioErrorCode(PlaybackException.ERROR_CODE_AUDIO_TRACK_WRITE_FAILED))
+        assertTrue(isRecoverableLiveRadioErrorCode(PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED))
+        assertFalse(isRecoverableLiveRadioErrorCode(PlaybackException.ERROR_CODE_DRM_UNSPECIFIED))
+        assertFalse(isRecoverableLiveRadioErrorCode(PlaybackException.ERROR_CODE_FAILED_RUNTIME_CHECK))
     }
 
     private fun track(streamUrl: String): Track = Track(

@@ -927,7 +927,10 @@ fun LevyraNowPlaying(
             if (activeTrack.isLiveRadio()) {
                 PlayerLiveRadioMetadata(
                     track = activeTrack,
-                    nowPlaying = state.liveRadioNowPlaying,
+                    nowPlaying = when {
+                        state.isResolving && state.liveRadioReconnectAttempt > 0 -> LevyraLiveRadioCatalog.reconnecting(strings.code)
+                        else -> state.playerError ?: state.liveRadioNowPlaying
+                    },
                     liveLabel = liveRadioStrings.live,
                     details = state.liveRadioStation?.let { station ->
                         listOf(station.country, station.language, station.qualityLabel)
