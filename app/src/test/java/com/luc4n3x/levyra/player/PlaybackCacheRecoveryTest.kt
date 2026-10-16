@@ -168,6 +168,15 @@ class PlaybackCacheRecoveryTest {
     }
 
     @Test
+    fun liveRadioLoadRetriesStopEarlySoFailuresSurfaceQuickly() {
+        val refused = IOException("load failed", ConnectException("ECONNREFUSED"))
+        val delays = (1..LIVE_RADIO_LOAD_RETRIES).map { liveRadioLoadRetryDelayMs(refused, it) }
+        assertEquals(listOf(1_000L, 2_000L), delays)
+        assertEquals(androidx.media3.common.C.TIME_UNSET, liveRadioLoadRetryDelayMs(refused, LIVE_RADIO_LOAD_RETRIES + 1))
+        assertEquals(androidx.media3.common.C.TIME_UNSET, liveRadioLoadRetryDelayMs(IOException("http 404 not found"), 1))
+    }
+
+    @Test
     fun cronetConnectionResetIsTransientForStreamResumeAndLoadRetries() {
         val cronetReset = cronetReadFailure("net::ERR_CONNECTION_RESET")
         assertTrue(isTransientStreamTransportFailure(cronetReset))

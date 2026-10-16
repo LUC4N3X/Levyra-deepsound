@@ -115,6 +115,20 @@ internal class RadioRepository(
         filterAndRankRadioSearchResults(api.search(query), query).take(64)
     }
 
+    suspend fun siblingStreams(station: RadioStation): List<String> = withContext(Dispatchers.IO) {
+        val fresh = async { optionalRadioLookup { api.stationByUuid(station.uuid) } }
+        val named = async { optionalRadioLookup { api.stationsNamed(station.name) }.orEmpty() }
+        liveRadioRecoveryStreamUrls(station, fresh.await(), named.await())
+    }
+
+    private suspend fun <T> optionalRadioLookup(block: suspend () -> T): T? = try {
+        block()
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
+        null
+    }
+
     suspend fun countries(): List<RadioDirectoryEntry> = withContext(Dispatchers.IO) {
         countriesCache?.takeIf { now() - it.savedAt < DIRECTORY_CACHE_MS }?.entries ?: api.countries().also {
             countriesCache = DirectoryCacheEntry(it, now())

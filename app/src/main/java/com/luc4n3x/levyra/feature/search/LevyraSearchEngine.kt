@@ -397,6 +397,7 @@ internal class LevyraSearchEngine(
             hedge.cancel()
 
             val finalResults = _state.value.takeIf { it.generation == session.generation }?.results
+            launch { runRegionalFallback(session, finalResults) }
             if (deliveredCount > 0 && finalResults != null && !finalResults.isEmpty) {
                 schedulePrefetch(session)
                 runVerification(session, finalResults, exactArtist)
@@ -410,6 +411,22 @@ internal class LevyraSearchEngine(
             }
         }
         settle(session, remoteFailed, cacheHit = false)
+    }
+
+    private suspend fun runRegionalFallback(session: ActiveSession, results: SearchResults?) {
+        val request = session.request
+        val variant = regionalSearchFallbackQuery(request.query, results) ?: return
+        val page = withTimeoutOrNull(REGIONAL_FALLBACK_TIMEOUT_MS) {
+            session.sectionGate.withPermit {
+                searchCatching {
+                    remote.section(SearchFilter.Songs, variant, request.languageCode, "${request.cacheKey}|regional", "")
+                }.getOrNull()
+            }
+        } ?: return
+        if (page.songs.isEmpty()) return
+        val updated = publish(session) { it.withRegionalSongs(page.songs) } ?: return
+        sideEffects.onRemoteTracks(page.songs)
+        if (!updated.results.isEmpty) resultCache.put(request.cacheKey, updated.results)
     }
 
     private suspend fun fetchSection(request: SearchRequest, filter: SearchFilter, continuation: String): SearchSectionPage =
