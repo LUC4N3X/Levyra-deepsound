@@ -697,7 +697,7 @@ def make_campaign_device(filename, width):
         )
     return device
 
-def paste_campaign_device(canvas, filename, width, center, angle=0):
+def paste_campaign_device(canvas, filename, width, center=None, angle=0, top_left=None):
     device = make_campaign_device(filename, width)
     if angle:
         device = device.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
@@ -705,8 +705,11 @@ def paste_campaign_device(canvas, filename, width, center, angle=0):
     shadow_alpha = ImageEnhance.Brightness(shadow_alpha).enhance(0.42)
     shadow = Image.new("RGBA", device.size, (18, 12, 22, 0))
     shadow.putalpha(shadow_alpha)
-    x = round(center[0] - device.width / 2)
-    y = round(center[1] - device.height / 2)
+    if top_left is None:
+        x = round(center[0] - device.width / 2)
+        y = round(center[1] - device.height / 2)
+    else:
+        x, y = top_left
     canvas.alpha_composite(shadow, (x + 24, y + 42))
     canvas.alpha_composite(device, (x, y))
 
@@ -756,6 +759,61 @@ def draw_readme_card_shapes(draw, theme, variant):
         draw.ellipse((-240, 700, 510, 1460), fill=theme["shape"] + (255,))
         draw.ellipse((580, -190, 1100, 330), fill=theme["shape"] + (190,))
 
+def draw_orbit_readme_copy(card, spec, placement):
+    draw = ImageDraw.Draw(card)
+    _, kicker, title, body, _ = spec
+    scale = 1.125
+    surface = (250, 247, 255, 255)
+    primary = (103, 80, 164, 255)
+    on_surface = (32, 29, 36, 255)
+    on_surface_variant = (73, 69, 79, 255)
+    x = 66
+    y = round((48 if placement == "top" else 1240) * scale)
+    if placement == "bottom":
+        draw.rounded_rectangle(
+            (-70, round(1200 * scale), 970, 1800),
+            radius=82,
+            fill=surface,
+        )
+    label_font = get_font(27, bold=True)
+    label_box = draw.textbbox((0, 0), kicker, font=label_font)
+    label_width = label_box[2] - label_box[0]
+    draw.rounded_rectangle((x, y, x + label_width + 80, y + 52), radius=26, fill=primary)
+    draw_vector_sparkle(draw, x + 27, y + 26, 12, (255, 255, 255, 255))
+    draw.text((x + 50, y + 10 - label_box[1]), kicker, font=label_font, fill=(255, 255, 255, 255))
+    title_y = y + 72
+    title_font = fit_title_font(draw, title.replace("\n", " "), 768, initial_size=68, minimum_size=50)
+    draw.text((x, title_y), title.replace("\n", " "), font=title_font, fill=on_surface)
+    draw.text((x, title_y + 86), body, font=get_font(31), fill=on_surface_variant)
+
+def render_orbit_readme_pair(left_spec, right_spec):
+    card_w, card_h = 900, 1800
+    pair_w = card_w * 2
+    surface = np.array((250, 247, 255), dtype=np.float32)
+    container = np.array((234, 221, 255), dtype=np.float32)
+    pixels = np.zeros((card_h, pair_w, 4), dtype=np.uint8)
+    for y in range(card_h):
+        progress = y / float(card_h)
+        pixels[y, :, :3] = (surface * (1 - progress * 0.55) + container * (progress * 0.55)).astype(np.uint8)
+    pixels[:, :, 3] = 255
+    canvas = Image.fromarray(pixels, mode="RGBA")
+    shapes = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(shapes)
+    scale = 1.125
+    draw.ellipse((380, round(-330 * scale), 1460, round(720 * scale)), fill=(232, 222, 248, 220))
+    draw.ellipse((-320, round(180 * scale), 540, round(1040 * scale)), fill=(103, 80, 164, 34))
+    draw.ellipse((1190, round(760 * scale), 2050, round(1620 * scale)), fill=(103, 80, 164, 30))
+    canvas = Image.alpha_composite(canvas, shapes)
+
+    paste_campaign_device(canvas, left_spec[4], 700, angle=12, top_left=(230, round(-110 * scale)))
+    paste_campaign_device(canvas, right_spec[4], 700, angle=-9, top_left=(card_w + 160, round(315 * scale)))
+
+    left = canvas.crop((0, 0, card_w, card_h))
+    right = canvas.crop((card_w, 0, pair_w, card_h))
+    draw_orbit_readme_copy(left, left_spec, "bottom")
+    draw_orbit_readme_copy(right, right_spec, "top")
+    return left.convert("RGB"), right.convert("RGB")
+
 def render_readme_card(spec, index):
     theme_order = [0, 1, 2, 3, 3, 0, 1, 2, 1, 2, 3, 0, 2, 3, 0, 1]
     variant_order = [0, 1, 2, 3, 2, 3, 0, 1, 1, 0, 3, 2, 3, 2, 1, 0]
@@ -770,11 +828,23 @@ def render_readme_card(spec, index):
 
     _, _, _, _, screenshot = spec
     if index == 0:
-        paste_campaign_device(canvas, screenshot, 1050, (720, 80), -34)
+        paste_campaign_device(
+            canvas,
+            screenshot,
+            760,
+            angle=12,
+            top_left=(230, -110),
+        )
         draw_readme_card_copy(draw, spec, theme, index, (72, 1360))
     elif index == 1:
-        paste_campaign_device(canvas, screenshot, 1050, (180, 80), 34)
-        draw_readme_card_copy(draw, spec, theme, index, (72, 1360))
+        paste_campaign_device(
+            canvas,
+            screenshot,
+            760,
+            angle=-9,
+            top_left=(160, 315),
+        )
+        draw_readme_card_copy(draw, spec, theme, index, (72, 70))
     else:
         draw_readme_card_copy(draw, spec, theme, index, (72, 70))
         placements = [
@@ -801,6 +871,16 @@ def generate_readme_cards():
     os.makedirs(README_CARD_DIR, exist_ok=True)
     cards = []
     for index, spec in enumerate(README_CARD_SPECS):
+        if index == 0:
+            left_card, right_card = render_orbit_readme_pair(spec, README_CARD_SPECS[1])
+            for artwork, artwork_spec in ((left_card, spec), (right_card, README_CARD_SPECS[1])):
+                cards.append(artwork)
+                out_path = os.path.join(README_CARD_DIR, artwork_spec[0] + ".webp")
+                artwork.save(out_path, "WEBP", quality=94, method=6)
+                print(f"Saved README editorial card at {artwork.size}: {out_path}")
+            continue
+        if index == 1:
+            continue
         artwork = render_readme_card(spec, index)
         cards.append(artwork)
         out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
