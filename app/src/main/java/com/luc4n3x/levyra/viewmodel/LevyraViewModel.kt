@@ -359,11 +359,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.filterNotNull
@@ -466,6 +468,26 @@ internal fun shouldStartPlaybackPaused(
 internal fun LevyraUiState.withExplicitPlaybackMode(videoMode: Boolean): LevyraUiState =
     if (isVideoMode == videoMode && pendingVideoMode == null) this
     else copy(isVideoMode = videoMode, pendingVideoMode = null)
+
+internal fun releaseRadarAlbumHit(entry: ReleaseRadarEntry): AlbumHit? {
+    val release = entry.release
+    val browseId = release.browseId.trim()
+    if (browseId.isBlank()) return null
+    val artist = entry.artistName.trim().ifBlank { release.subtitle.trim() }
+    return AlbumHit(
+        title = release.title,
+        artist = artist,
+        year = release.year,
+        thumbnailUrl = release.thumbnailUrl,
+        query = listOf(artist, release.title).filter(String::isNotBlank).joinToString(" "),
+        browseId = browseId,
+        artistBrowseId = entry.artistBrowseId.trim(),
+        explicit = release.explicit
+    )
+}
+
+internal fun releaseRadarSearchQuery(entry: ReleaseRadarEntry): String =
+    listOf(entry.release.title, entry.artistName).map(String::trim).filter(String::isNotBlank).joinToString(" ")
 
 internal fun prioritizeNewReleasesForUser(
     releases: List<AlbumHit>,
@@ -775,6 +797,12 @@ internal fun selectArtistMotionSeeds(
 }.take(limit)
 
 private const val MAX_ARTIST_MOTION_SEEDS = 4
+
+internal suspend fun firstAvailableMotionArtwork(
+    attempts: List<suspend () -> MotionArtwork?>
+): MotionArtwork? = channelFlow {
+    attempts.forEach { attempt -> launch { send(attempt()) } }
+}.firstOrNull { it != null }
 
 internal fun selectAlbumMotionSeed(
     detail: AlbumDetail,
@@ -1129,6 +1157,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var playlistHitJob: Job? = null
     private var albumFavoriteJob: Job? = null
     private var artistMotionJob: Job? = null
+    private var artistMotionRequest: ArtistMotionRequest? = null
+    private var artistMotionPublished = false
     private var albumMotionJob: Job? = null
     private var homeFeedJob: Job? = null
     private var homeAlbumsJob: Job? = null
@@ -7739,7 +7769,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         artistProfile = initialProfile
                     )
                 }
-                refreshArtistMotionArtwork(initialProfile)
+                refreshArtistMotionArtwork(initialProfile, keepCurrent = true)
                 initialBiography?.let {
                     startArtistLore(initialProfile)
                 } ?: run {
@@ -7770,10 +7800,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun publishArtistPreview(preview: ArtistProfile, requestKey: String, biography: ArtistBiography?) {
+        var published = false
         _state.update { current ->
+            published = false
             if (!current.showArtist || !current.artistLoading || current.artistListStateKey != requestKey) return@update current
             if (current.artistProfile != null && current.artistProfile !== artistPlaceholder) return@update current
+            published = true
             current.copy(artistProfile = biography?.let { artistRepository.mergeBiography(preview, it) } ?: preview)
+        }
+        if (published && preview.topSongs.isNotEmpty()) {
+            viewModelScope.launch { refreshArtistMotionArtwork(preview, keepCurrent = true) }
         }
     }
 
@@ -7839,6 +7875,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun openAlbum(album: AlbumHit) {
         openAlbumInternal(album, DetailReturnTarget.None)
+    }
+
+    fun openReleaseRadarEntry(entry: ReleaseRadarEntry) {
+        val album = releaseRadarAlbumHit(entry)
+        if (album != null) {
+            openAlbum(album)
+        } else {
+            searchNow(releaseRadarSearchQuery(entry))
+        }
     }
 
     private fun openAlbumInternal(album: AlbumHit, returnTarget: DetailReturnTarget) {
@@ -11769,48 +11814,52 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (state.showAlbum) state.albumDetail?.let(::refreshAlbumMotionArtwork)
     }
 
-    private fun refreshArtistMotionArtwork(profile: ArtistProfile) {
-        artistMotionJob?.cancel()
-        if (!_state.value.animationsEnabled || !_state.value.motionArtworkEnabled) {
-            _state.update { it.copy(artistMotionArtwork = null) }
-            return
-        }
+    private fun refreshArtistMotionArtwork(profile: ArtistProfile, keepCurrent: Boolean = false) {
         val seeds = selectArtistMotionSeeds(
             profileName = profile.name,
             tracks = profile.topSongs,
             isLocal = ::isLocalPlaybackTrack
         )
+        val request = ArtistMotionRequest(artistMotionIdentity(profile), seeds.map(::playbackIdentity))
+        if (keepCurrent && request.identity == artistMotionRequest?.identity) {
+            val published = _state.value.artistMotionArtwork != null && artistMotionPublished
+            val sameWorkInFlight = artistMotionJob?.isActive == true && request == artistMotionRequest
+            if (published || sameWorkInFlight) return
+        }
+        artistMotionJob?.cancel()
+        artistMotionRequest = request
+        artistMotionPublished = false
+        if (!_state.value.animationsEnabled || !_state.value.motionArtworkEnabled) {
+            _state.update { it.copy(artistMotionArtwork = null) }
+            return
+        }
         if (profile.name.isBlank() && seeds.isEmpty()) {
             _state.update { it.copy(artistMotionArtwork = null) }
             return
         }
         artistMotionJob = viewModelScope.launch(Dispatchers.IO) {
             val canvasSource = _state.value.interfaceSettings.canvasSource
-            val artistVideo = if (profile.name.isBlank()) {
-                null
-            } else {
-                runCatching {
-                    motionArtworkEngine.resolveArtist(profile.name, profile.browseId, canvasSource)
+            val attempts = buildList<suspend () -> MotionArtwork?> {
+                if (profile.name.isNotBlank()) {
+                    add {
+                        runCatchingPreservingCancellation {
+                            motionArtworkEngine.awaitArtist(profile.name, profile.browseId, canvasSource)
+                        }.onFailure { error ->
+                            Timber.d(error, "Artist motion video resolve failed for %s", profile.name)
+                        }.getOrNull()
+                    }
                 }
-                    .onFailure { error ->
-                        if (error is CancellationException) throw error
-                        Timber.d(error, "Artist motion video resolve failed for %s", profile.name)
+                seeds.forEach { track ->
+                    add {
+                        runCatchingPreservingCancellation {
+                            motionArtworkEngine.resolve(track, LevyraCanvasSource.Auto)
+                        }.onFailure { error ->
+                            Timber.d(error, "Artist motion artwork resolve failed for %s", profile.name)
+                        }.getOrNull()
                     }
-                    .getOrNull()
+                }
             }
-            if (!isActive) return@launch
-            if (artistVideo == null) {
-                Timber.d("Artist hero Apple motion unavailable; trying track canvas fallback artist=%s", profile.name)
-            }
-            val resolved = artistVideo ?: seeds.firstNotNullOfOrNull { track ->
-                if (!isActive) return@launch
-                runCatching { motionArtworkEngine.resolve(track, LevyraCanvasSource.Auto) }
-                    .onFailure { error ->
-                        if (error is CancellationException) throw error
-                        Timber.d(error, "Artist motion artwork resolve failed for %s", profile.name)
-                    }
-                    .getOrNull()
-            }
+            val resolved = firstAvailableMotionArtwork(attempts)
             Timber.d(
                 "Artist hero motion %s artist=%s provider=%s",
                 if (resolved == null) "NONE" else "ASSIGNED",
@@ -11820,9 +11869,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             if (!isActive) return@launch
             val visible = _state.value.artistProfile ?: return@launch
             if (!_state.value.showArtist || !sameArtistProfile(visible, profile)) return@launch
-            _state.update { it.copy(artistMotionArtwork = resolved) }
+            withContext(Dispatchers.Main) {
+                if (artistMotionRequest != request) return@withContext
+                artistMotionPublished = resolved != null
+                _state.update { it.copy(artistMotionArtwork = resolved) }
+            }
         }
     }
+
+    private data class ArtistMotionRequest(
+        val identity: String,
+        val seedIdentities: List<String>
+    )
+
+    private fun artistMotionIdentity(profile: ArtistProfile): String =
+        profile.browseId.trim().lowercase(Locale.ROOT).ifBlank { profile.name.trim().lowercase(Locale.ROOT) }
 
     private fun refreshAlbumMotionArtwork(detail: AlbumDetail) {
         albumMotionJob?.cancel()

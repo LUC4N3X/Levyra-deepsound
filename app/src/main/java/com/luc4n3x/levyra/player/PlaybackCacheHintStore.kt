@@ -45,10 +45,11 @@ internal fun isPlaybackCacheHintQualityCompatible(
     }
 }
 
+internal const val PLAYBACK_CACHE_HINT_CAPACITY = 32
+
 internal object PlaybackCacheHintStore {
     private const val PREFS_NAME = "levyra.playback.cache.hints"
     private const val KEY_HINTS = "recent"
-    private const val MAX_HINTS = 16
     private const val MAX_CACHE_KEY_LENGTH = 512
 
     private val lock = Any()
@@ -112,7 +113,7 @@ internal object PlaybackCacheHintStore {
         PlaybackSourceIdentity.sourceVideoId(track).trim()
 
     private fun trimLocked() {
-        while (hints.size > MAX_HINTS) {
+        while (hints.size > PLAYBACK_CACHE_HINT_CAPACITY) {
             val oldest = hints.entries.firstOrNull()?.key ?: break
             hints.remove(oldest)
         }

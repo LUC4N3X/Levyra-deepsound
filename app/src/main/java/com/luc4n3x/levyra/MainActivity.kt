@@ -367,16 +367,19 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 }
+                if (updateRequestToken != requestToken) return@launch
                 pendingUpdate = prepared
                 updatePhase.value = LevyraUpdatePhase.Ready(prepared.versionName)
                 requestPackageInstall(prepared)
             } catch (cancelled: CancellationException) {
-                updatePhase.value = LevyraUpdatePhase.Idle
+                if (updateRequestToken == requestToken) updatePhase.value = LevyraUpdatePhase.Idle
                 throw cancelled
             } catch (error: Throwable) {
                 Timber.w(error, "In-app update failed")
-                pendingUpdate = null
-                updatePhase.value = LevyraUpdatePhase.Failed(fallbackVersion)
+                if (updateRequestToken == requestToken) {
+                    pendingUpdate = null
+                    updatePhase.value = LevyraUpdatePhase.Failed(fallbackVersion)
+                }
             } finally {
                 if (updateJob === job) updateJob = null
             }
