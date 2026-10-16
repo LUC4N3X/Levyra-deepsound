@@ -28,6 +28,7 @@ docs/assets/showcase/editorial-cards/14_fresh_off_the_stage.webp
 docs/assets/showcase/editorial-cards/15_meet_the_artist.webp
 docs/assets/showcase/editorial-cards/16_listen_together.webp
 docs/assets/showcase/editorial-cards/editorial-grid-row-01.webp
+docs/assets/showcase/editorial-cards/editorial-grid-row-01-orbit-reference.webp
 docs/assets/showcase/editorial-cards/editorial-grid-row-02.webp
 docs/assets/showcase/editorial-cards/editorial-grid-row-03.webp
 docs/assets/showcase/editorial-cards/editorial-grid-row-04.webp
