@@ -27,6 +27,10 @@ docs/assets/showcase/editorial-cards/13_tailor_every_detail.webp
 docs/assets/showcase/editorial-cards/14_fresh_off_the_stage.webp
 docs/assets/showcase/editorial-cards/15_meet_the_artist.webp
 docs/assets/showcase/editorial-cards/16_listen_together.webp
+docs/assets/showcase/editorial-cards/editorial-grid-row-01.webp
+docs/assets/showcase/editorial-cards/editorial-grid-row-02.webp
+docs/assets/showcase/editorial-cards/editorial-grid-row-03.webp
+docs/assets/showcase/editorial-cards/editorial-grid-row-04.webp
 docs/assets/showcase/cards/01_home.webp
 docs/assets/showcase/cards/02_stay_with_the_song.webp
 docs/assets/showcase/cards/03_now_playing.webp
