@@ -422,7 +422,7 @@ jobs:
   fdroid:
     name: Build and Publish Reproducible F-Droid APK
     needs: release
-    if: ${{ success() && !(github.event_name == 'push' && github.event.head_commit.message == 'chore(release): refresh v2.6.9 APK') && !(github.event_name == 'workflow_dispatch' && inputs.refresh_existing_github_apk) && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish_fdroid_asset)) }}
+    if: ${{ success() && ((github.event_name == 'push' && github.event.head_commit.message != 'chore(release): refresh v2.6.9 APK') || (github.event_name == 'workflow_dispatch' && inputs.publish_fdroid_asset && inputs.refresh_existing_github_apk != true)) }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
