@@ -1,20 +1,34 @@
 package com.luc4n3x.levyra.feature.search
 
 import com.luc4n3x.levyra.domain.SearchResults
+import com.luc4n3x.levyra.domain.Track
 import java.text.Normalizer
 import java.util.Locale
 
-internal const val REGIONAL_FALLBACK_MIN_SONGS = 4
+internal const val REGIONAL_FALLBACK_MIN_RELEVANT_SONGS = 3
 internal const val REGIONAL_FALLBACK_TIMEOUT_MS = 4_000L
 
 private val regionalWhitespace = Regex("""\s+""")
 
-internal fun regionalSearchFallbackQuery(query: String, results: SearchResults?): String? {
-    if (results != null && results.songs.size >= REGIONAL_FALLBACK_MIN_SONGS) return null
-    val variant = southIndianLatinVariant(query) ?: return null
-    val variantKey = searchQueryKey(variant)
-    if (variantKey.length < MIN_SEARCH_QUERY_CHARS || variantKey == searchQueryKey(query)) return null
-    return variant
+internal fun regionalSearchFallbackQuery(
+    query: String,
+    results: SearchResults?,
+    songsSectionLoaded: Boolean = false
+): String? {
+    val queryKey = searchQueryKey(query)
+    if (queryKey.length < MIN_SEARCH_QUERY_CHARS) return null
+    val variant = southIndianLatinVariant(query)
+        ?.takeIf { searchQueryKey(it).length >= MIN_SEARCH_QUERY_CHARS && searchQueryKey(it) != queryKey }
+    val tokenSets = listOfNotNull(query, variant).map(::searchQueryTokens).filter(List<String>::isNotEmpty)
+    val relevantSongs = results?.songs.orEmpty().count { song -> tokenSets.any { songMatchesAllTokens(song, it) } }
+    if (relevantSongs >= REGIONAL_FALLBACK_MIN_RELEVANT_SONGS) return null
+    if (variant != null) return variant
+    return if (songsSectionLoaded) null else query.trim()
+}
+
+private fun songMatchesAllTokens(song: Track, tokens: List<String>): Boolean {
+    val haystack = searchQueryKey("${song.title} ${song.artist} ${song.album}")
+    return tokens.all(haystack::contains)
 }
 
 internal fun southIndianLatinVariant(query: String): String? {

@@ -396,8 +396,10 @@ internal class LevyraSearchEngine(
             }
             hedge.cancel()
 
-            val finalResults = _state.value.takeIf { it.generation == session.generation }?.results
-            launch { runRegionalFallback(session, finalResults) }
+            val finalSnapshot = _state.value.takeIf { it.generation == session.generation }
+            val finalResults = finalSnapshot?.results
+            val songsSectionLoaded = finalSnapshot?.let { SearchFilter.Songs in it.sectionContinuations } == true
+            launch { runRegionalFallback(session, finalResults, songsSectionLoaded) }
             if (deliveredCount > 0 && finalResults != null && !finalResults.isEmpty) {
                 schedulePrefetch(session)
                 runVerification(session, finalResults, exactArtist)
@@ -413,9 +415,9 @@ internal class LevyraSearchEngine(
         settle(session, remoteFailed, cacheHit = false)
     }
 
-    private suspend fun runRegionalFallback(session: ActiveSession, results: SearchResults?) {
+    private suspend fun runRegionalFallback(session: ActiveSession, results: SearchResults?, songsSectionLoaded: Boolean) {
         val request = session.request
-        val variant = regionalSearchFallbackQuery(request.query, results) ?: return
+        val variant = regionalSearchFallbackQuery(request.query, results, songsSectionLoaded) ?: return
         val page = withTimeoutOrNull(REGIONAL_FALLBACK_TIMEOUT_MS) {
             session.sectionGate.withPermit {
                 searchCatching {
@@ -426,7 +428,7 @@ internal class LevyraSearchEngine(
         if (page.songs.isEmpty()) return
         val updated = publish(session) { it.withRegionalSongs(page.songs) } ?: return
         sideEffects.onRemoteTracks(page.songs)
-        if (!updated.results.isEmpty) resultCache.put(request.cacheKey, updated.results)
+        if (updated.verified && !updated.results.isEmpty) resultCache.put(request.cacheKey, updated.results)
     }
 
     private suspend fun fetchSection(request: SearchRequest, filter: SearchFilter, continuation: String): SearchSectionPage =

@@ -32,9 +32,10 @@ internal fun isResolvableRadioPlaylistUrl(value: String): Boolean {
 internal fun isLiveRadioPlaylistResponse(url: String, contentType: String?): Boolean {
     val path = runCatching { URI(url.trim()).path }.getOrNull().orEmpty().lowercase(Locale.ROOT)
     if (path.endsWith(".m3u8")) return false
-    if (isResolvableRadioPlaylistUrl(url)) return true
-    val type = contentType?.substringBefore(';')?.trim()?.lowercase(Locale.ROOT) ?: return false
-    return type in liveRadioPlaylistContentTypes
+    val type = contentType?.substringBefore(';')?.trim()?.lowercase(Locale.ROOT).orEmpty()
+    if (type in liveRadioPlaylistContentTypes) return true
+    if (type.startsWith("audio/") || type.startsWith("video/") || type == "application/ogg") return false
+    return isResolvableRadioPlaylistUrl(url)
 }
 
 internal fun liveRadioPlaylistStreamUrl(body: String, baseUrl: String): String? {
@@ -75,7 +76,8 @@ internal class LiveRadioPlaylistDataSource(private val upstream: DataSource) : D
             if (!isLiveRadioPlaylistResponse(url, contentTypeOf(upstream.responseHeaders))) return length
             val body = readBounded()
             upstream.close()
-            val next = liveRadioPlaylistStreamUrl(body, url) ?: return upstream.open(spec)
+            val next = liveRadioPlaylistStreamUrl(body, url)
+                ?: throw IOException("Live radio playlist has no playable entry")
             spec = spec.buildUpon()
                 .setUri(Uri.parse(next))
                 .setPosition(0L)

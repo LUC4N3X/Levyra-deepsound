@@ -199,7 +199,12 @@ class LevyraPlayer(context: Context) {
                         loadedVideoMode -> queueTrack.copy(videoStreamUrl = playingUri)
                         else -> queueTrack.copy(streamUrl = playingUri)
                     }
+                    val previousStreamIdentity = loadedStreamIdentity
                     loadedStreamIdentity = streamIdentity(mediaItem, loadedVideoMode)
+                    if (previousStreamIdentity != loadedStreamIdentity) {
+                        cancelLiveRadioStallWatchdog()
+                        updateLiveRadioStallWatchdog(connected)
+                    }
                     renderedVideoFrame = false
                     itemReachedReady = false
                     refreshVideoSurfaceState()

@@ -9659,7 +9659,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun tryLiveRadioSiblingStream(station: RadioStation, playWhenReady: Boolean, errorMessage: String) {
         streamRecoveryJob?.cancel()
-        if (!playWhenReady) {
+        if (!playWhenReady || liveRadioSessionRecoveries > LIVE_RADIO_MAX_SESSION_RECOVERIES) {
             failLiveRadioStation(errorMessage)
             return
         }

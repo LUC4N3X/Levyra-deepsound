@@ -26,6 +26,30 @@ class LiveRadioPlaylistTest {
     }
 
     @Test
+    fun realSomaFmPlaylistResolvesItsFirstServer() {
+        val body = """
+            [playlist]
+            numberofentries=3
+            File1=https://ice6.somafm.com/groovesalad-128-mp3
+            Title1=SomaFM: Groove Salad (#1): A nicely chilled plate of ambient/downtempo beats and grooves.
+            Length1=-1
+            File2=https://ice2.somafm.com/groovesalad-128-mp3
+            Title2=SomaFM: Groove Salad (#2): A nicely chilled plate of ambient/downtempo beats and grooves.
+            Length2=-1
+            Version=2
+        """.trimIndent()
+
+        assertEquals(
+            "https://ice6.somafm.com/groovesalad-128-mp3",
+            liveRadioPlaylistStreamUrl(body, "https://somafm.com/groovesalad.pls")
+        )
+        assertEquals(
+            "https://c14.radioboss.fm:8033/stream",
+            liveRadioPlaylistStreamUrl("https://c14.radioboss.fm:8033/stream\n", "https://c14.radioboss.fm/playlist/33/stream.m3u")
+        )
+    }
+
+    @Test
     fun m3uPlaylistSkipsCommentsAndResolvesRelativeEntries() {
         val body = "﻿#EXTM3U\n#EXTINF:-1,Telugu FM\n/stream/live.mp3\n"
 
@@ -53,5 +77,10 @@ class LiveRadioPlaylistTest {
         assertFalse(isLiveRadioPlaylistResponse("https://radio.example/live", "audio/mpeg"))
         assertFalse(isLiveRadioPlaylistResponse("https://radio.example/live", null))
         assertFalse(isResolvableRadioPlaylistUrl("https://radio.example/live.asx"))
+        assertFalse(isLiveRadioPlaylistResponse("http://wma08.fluidstream.net:3612/;listen.pls", "audio/mpeg"))
+        assertFalse(isLiveRadioPlaylistResponse("http://www.streamingsoundtracks.com/modules/Listen/MP3-hi.pls", "audio/aacp"))
+        assertTrue(isLiveRadioPlaylistResponse("https://somafm.com/groovesalad.pls", "audio/x-scpls"))
+        assertTrue(isLiveRadioPlaylistResponse("https://c14.radioboss.fm/playlist/33/stream.m3u", "audio/x-mpegurl"))
+        assertTrue(isLiveRadioPlaylistResponse("https://somafm.com/groovesalad.pls", "text/plain"))
     }
 }

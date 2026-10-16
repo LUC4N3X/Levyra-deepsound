@@ -225,7 +225,8 @@ internal fun SearchSessionSnapshot.withRegionalSongs(songs: List<Track>): Search
     val base = freshResults
     val merged = base.copy(
         topTrack = base.topTrack ?: songs.firstOrNull(),
-        songs = mergeSearchSongs(base.songs, songs)
+        songs = mergeSearchSongs(base.songs, songs),
+        failedSections = base.failedSections - SearchFilter.Songs
     )
     return copy(
         results = merged,
