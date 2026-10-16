@@ -7,13 +7,14 @@ on:
     paths:
       - gradle.properties
       - docs/RELEASE_NOTES.md
+      - .github/workflows/release-apk.yml
   workflow_dispatch:
     inputs:
       publish_fdroid_asset:
         description: "Publish the reproducible APK in a commit-bound F-Droid release"
         required: false
         type: boolean
-        default: false
+        default: true
       fdroid_release_suffix:
         description: "F-Droid release suffix; keep r6 for the automatic update channel"
         required: false
@@ -360,7 +361,7 @@ jobs:
   fdroid:
     name: Build and Publish Reproducible F-Droid APK
     needs: release
-    if: ${{ (github.event_name == 'push' && needs.release.outputs.publish == 'true') || (github.event_name == 'workflow_dispatch' && inputs.publish_fdroid_asset) }}
+    if: ${{ success() && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish_fdroid_asset)) }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
