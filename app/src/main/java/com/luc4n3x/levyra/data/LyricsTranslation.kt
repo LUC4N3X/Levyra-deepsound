@@ -10,7 +10,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeoutOrNull
 
 internal sealed interface LyricsBatchTranslation {
-    data class Success(val batches: List<String>) : LyricsBatchTranslation
+    data class Success(val texts: List<String?>) : LyricsBatchTranslation
     data object SameLanguage : LyricsBatchTranslation
     data class Unavailable(val state: LyricsTranslationState) : LyricsBatchTranslation
 }
@@ -19,7 +19,7 @@ internal interface LyricsTranslationBackend {
     val version: String
 
     suspend fun translate(
-        batches: List<String>,
+        texts: List<String>,
         targetLanguageTag: String
     ): LyricsBatchTranslation
 }
@@ -30,7 +30,8 @@ internal data class LyricsTranslationOutcome(
 )
 
 internal class LyricsTranslationCoordinator(
-    private val backend: LyricsTranslationBackend?
+    private val backend: LyricsTranslationBackend?,
+    private val timeoutMs: Long = TRANSLATION_TIMEOUT_MS
 ) {
     private val cache = object : LinkedHashMap<String, Map<Int, String>>(CACHE_SIZE + 1, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Map<Int, String>>?): Boolean =
@@ -55,17 +56,10 @@ internal class LyricsTranslationCoordinator(
         synchronized(cache) { cache[cacheKey] }?.let { cached ->
             return LyricsTranslationOutcome(applyTranslations(lines, cached), LyricsTranslationState.ON_DEVICE)
         }
-        val requests = eligibleIndices.chunked(LINES_PER_BATCH).map { indices ->
-            TranslationBatch(
-                indices = indices,
-                payload = indices.joinToString("\n") { index ->
-                    "${marker(index)} ${lines[index].text.trim()}"
-                }
-            )
-        }
+        val sources = eligibleIndices.map { index -> lines[index].text.trim() }
         val result = try {
-            withTimeoutOrNull(TRANSLATION_TIMEOUT_MS) {
-                translator.translate(requests.map(TranslationBatch::payload), target)
+            withTimeoutOrNull(timeoutMs) {
+                translateCompletely(translator, sources, target)
             } ?: LyricsBatchTranslation.Unavailable(LyricsTranslationState.FAILED)
         } catch (cancelled: CancellationException) {
             throw cancelled
@@ -76,33 +70,38 @@ internal class LyricsTranslationCoordinator(
             LyricsBatchTranslation.SameLanguage -> LyricsTranslationOutcome(lines, LyricsTranslationState.SAME_LANGUAGE)
             is LyricsBatchTranslation.Unavailable -> providerOr(lines, result.state)
             is LyricsBatchTranslation.Success -> {
-                val translations = parseTranslations(requests, result.batches)
-                    ?: return providerOr(lines, LyricsTranslationState.FAILED)
+                val translations = eligibleIndices.zip(result.texts)
+                    .mapNotNull { (index, text) -> text?.let { index to it } }
+                    .toMap()
                 synchronized(cache) { cache[cacheKey] = translations }
                 LyricsTranslationOutcome(applyTranslations(lines, translations), LyricsTranslationState.ON_DEVICE)
             }
         }
     }
 
-    private fun parseTranslations(
-        requests: List<TranslationBatch>,
-        translatedBatches: List<String>
-    ): Map<Int, String>? {
-        if (translatedBatches.size != requests.size) return null
-        val translations = HashMap<Int, String>()
-        requests.zip(translatedBatches).forEach { (request, translated) ->
-            val translatedLines = translated.lineSequence().filter(String::isNotBlank).toList()
-            if (translatedLines.size != request.indices.size) return null
-            request.indices.zip(translatedLines).forEach { (expectedIndex, translatedLine) ->
-                val match = LINE_MARKER.matchEntire(translatedLine.trim()) ?: return null
-                val actualIndex = match.groupValues[1].toIntOrNull() ?: return null
-                val text = match.groupValues[2].trim()
-                if (actualIndex != expectedIndex || text.isBlank()) return null
-                translations[expectedIndex] = text
+    private suspend fun translateCompletely(
+        translator: LyricsTranslationBackend,
+        sources: List<String>,
+        target: String
+    ): LyricsBatchTranslation {
+        val first = translator.translate(sources, target)
+        if (first !is LyricsBatchTranslation.Success) return first
+        if (first.texts.size != sources.size) return LyricsBatchTranslation.Unavailable(LyricsTranslationState.FAILED)
+        val merged = first.texts.map(::normalizeTranslatedLine).toMutableList()
+        val missing = merged.indices.filter { merged[it] == null }
+        if (missing.isNotEmpty()) {
+            val retry = translator.translate(missing.map(sources::get), target)
+            if (retry is LyricsBatchTranslation.Success && retry.texts.size == missing.size) {
+                missing.zip(retry.texts).forEach { (position, text) ->
+                    merged[position] = normalizeTranslatedLine(text)
+                }
             }
         }
-        if (translations.size != requests.sumOf { it.indices.size }) return null
-        return translations
+        val stillMissing = merged.count { it == null }
+        if (stillMissing > merged.size / MAX_UNTRANSLATED_LINE_RATIO) {
+            return LyricsBatchTranslation.Unavailable(LyricsTranslationState.FAILED)
+        }
+        return LyricsBatchTranslation.Success(merged)
     }
 
     private fun applyTranslations(
@@ -134,18 +133,14 @@ internal class LyricsTranslationCoordinator(
             .joinToString("") { byte -> "%02x".format(byte) }
     }
 
-    private data class TranslationBatch(
-        val indices: List<Int>,
-        val payload: String
-    )
-
     companion object {
         private const val CACHE_SIZE = 24
-        private const val LINES_PER_BATCH = 6
         private const val TRANSLATION_TIMEOUT_MS = 120_000L
-        private val LINE_MARKER = Regex("^__LEVYRA_LINE_(\\d+)__\\s+(.+)$")
+        private const val MAX_UNTRANSLATED_LINE_RATIO = 10
+        private val WHITESPACE = Regex("\\s+")
 
-        private fun marker(index: Int): String = "__LEVYRA_LINE_${index}__"
+        private fun normalizeTranslatedLine(text: String?): String? =
+            text?.replace(WHITESPACE, " ")?.trim()?.takeIf(String::isNotEmpty)
     }
 }
 

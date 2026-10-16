@@ -11,6 +11,7 @@ import com.luc4n3x.levyra.data.HomeEditorialEngine
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
 import com.luc4n3x.levyra.data.deduplicateHomeAlbums
 import com.luc4n3x.levyra.data.isChartArtworkPlaceholder
+import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicHome
 import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicHomeSource
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistExclusions
@@ -592,11 +593,20 @@ internal fun LevyraUiState.withYoutubeMusicHome(source: YoutubeMusicHomeSource):
     YoutubeMusicHomeSource.Standard -> this
     YoutubeMusicHomeSource.Pending -> if (personalOrbitTracks.isEmpty()) this else copy(personalOrbitTracks = emptyList())
     is YoutubeMusicHomeSource.Ready -> copy(
-        personalOrbitTracks = source.home.orbit.ifEmpty { personalOrbitTracks },
+        personalOrbitTracks = mergeYoutubeMusicOrbit(recentListens, source.home, personalOrbitTracks),
         homeSections = source.home.sections.ifEmpty { homeSections },
         homeAlbums = source.home.albums.ifEmpty { homeAlbums }
     )
 }
+
+internal fun mergeYoutubeMusicOrbit(recentListens: List<Track>, home: YoutubeMusicHome, localOrbit: List<Track>): List<Track> {
+    if (home.orbit.isEmpty()) return localOrbit
+    return (recentListens.take(RECENT_LISTENS_IN_ACCOUNT_ORBIT) + home.orbit + home.sections.flatMap { it.tracks })
+        .distinctBy(LevyraPersonalOrbit::identityKey)
+        .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
+}
+
+private const val RECENT_LISTENS_IN_ACCOUNT_ORBIT = 6
 
 private fun LevyraUiState.withFrozenHomeContent(previous: LevyraUiState): LevyraUiState {
     if (languageCode != previous.languageCode) return this
