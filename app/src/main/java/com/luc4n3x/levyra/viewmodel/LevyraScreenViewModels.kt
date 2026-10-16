@@ -182,6 +182,7 @@ class HomeViewModel internal constructor(
     fun addToQueue(track: Track) = root.addToQueue(track)
     fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
     fun openAlbum(album: AlbumHit) = root.openAlbum(album)
+    fun openReleaseRadarEntry(entry: ReleaseRadarEntry) = root.openReleaseRadarEntry(entry)
     fun openArtistByName(name: String) = root.openArtistByName(name)
     fun openArtistFromHit(hit: ArtistHit) = root.openArtistFromHit(hit)
     fun openSettings() = root.openSettings()
