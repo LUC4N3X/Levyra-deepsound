@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
@@ -123,5 +124,41 @@ class ExploreMoodArtworkCardTest {
     fun unknownGenreDoesNotTriggerPortraitLookup() {
         assertNull(exploreMoodPortraitArtist("unknown-zone", "it", 0L))
         assertTrue(exploreMoodPortraitCandidates("unknown-zone", "it", 0L).isEmpty())
+    }
+
+    @Test
+    fun portraitResolutionPrefersSpotifyAcrossAllCandidatesBeforeApple() = runBlocking {
+        val spotify = mapOf("Second" to "spotify-second")
+        val apple = mapOf("First" to "apple-first", "Second" to "apple-second")
+
+        val portrait = resolveExploreMoodPortrait(
+            candidates = listOf("First", "Second"),
+            spotifyPortrait = { spotify[it].orEmpty() },
+            applePortrait = { apple[it].orEmpty() }
+        )
+
+        assertEquals("spotify-second", portrait)
+    }
+
+    @Test
+    fun portraitResolutionFallsBackToAppleWhenSpotifyHasNoPortrait() = runBlocking {
+        val portrait = resolveExploreMoodPortrait(
+            candidates = listOf("First", "Second"),
+            spotifyPortrait = { "" },
+            applePortrait = { if (it == "Second") "apple-second" else "" }
+        )
+
+        assertEquals("apple-second", portrait)
+    }
+
+    @Test
+    fun portraitResolutionReturnsBlankWhenNoProviderHasPortrait() = runBlocking {
+        val portrait = resolveExploreMoodPortrait(
+            candidates = listOf("First"),
+            spotifyPortrait = { "" },
+            applePortrait = { "" }
+        )
+
+        assertEquals("", portrait)
     }
 }
