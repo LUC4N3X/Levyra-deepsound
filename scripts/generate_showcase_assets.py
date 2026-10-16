@@ -611,7 +611,7 @@ def make_campaign_device(filename, width):
     outer_height = round(width * 2.13)
     padding = max(18, round(width * 0.03))
     frame = max(11, round(width * 0.02))
-    radius = max(48, round(width * 0.085))
+    radius = max(26, round(width * 0.042))
     device = Image.new(
         "RGBA",
         (outer_width + padding * 2, outer_height + padding * 2),
@@ -759,6 +759,52 @@ def draw_readme_card_shapes(draw, theme, variant):
         draw.ellipse((-240, 700, 510, 1460), fill=theme["shape"] + (255,))
         draw.ellipse((580, -190, 1100, 330), fill=theme["shape"] + (190,))
 
+def render_readme_card_pair(left_spec, right_spec):
+    card_w, card_h = 900, 1800
+    pair_w = card_w * 2
+
+    theme_0 = README_CARD_THEMES[0]
+    canvas_0 = Image.new("RGBA", (card_w, card_h), theme_0["background"] + (255,))
+    draw_0 = ImageDraw.Draw(canvas_0)
+    draw_readme_card_shapes(draw_0, theme_0, 0)
+    paste_campaign_ribbon(canvas_0, 780, (705, 920), 0.14, -12)
+
+    theme_1 = README_CARD_THEMES[1]
+    canvas_1 = Image.new("RGBA", (card_w, card_h), theme_1["background"] + (255,))
+    draw_1 = ImageDraw.Draw(canvas_1)
+    draw_readme_card_shapes(draw_1, theme_1, 1)
+    paste_campaign_ribbon(canvas_1, 780, (190, 930), 0.14, 13)
+
+    pair_canvas = Image.new("RGBA", (pair_w, card_h), (0, 0, 0, 0))
+    pair_canvas.paste(canvas_0, (0, 0))
+    pair_canvas.paste(canvas_1, (card_w, 0))
+
+    paste_campaign_device(
+        pair_canvas,
+        left_spec[4],
+        width=720,
+        angle=12,
+        top_left=(155, -135),
+    )
+    paste_campaign_device(
+        pair_canvas,
+        right_spec[4],
+        width=725,
+        angle=-9,
+        top_left=(card_w + 155, 345),
+    )
+
+    left_card = pair_canvas.crop((0, 0, card_w, card_h))
+    right_card = pair_canvas.crop((card_w, 0, pair_w, card_h))
+
+    draw_left = ImageDraw.Draw(left_card)
+    draw_readme_card_copy(draw_left, left_spec, theme_0, 0, (72, 1360))
+
+    draw_right = ImageDraw.Draw(right_card)
+    draw_readme_card_copy(draw_right, right_spec, theme_1, 1, (72, 70))
+
+    return left_card.convert("RGB"), right_card.convert("RGB")
+
 def render_readme_card(spec, index):
     theme_order = [0, 1, 2, 3, 3, 0, 1, 2, 1, 2, 3, 0, 2, 3, 0, 1]
     variant_order = [0, 1, 2, 3, 2, 3, 0, 1, 1, 0, 3, 2, 3, 2, 1, 0]
@@ -772,55 +818,48 @@ def render_readme_card(spec, index):
     paste_campaign_ribbon(canvas, 780, ribbon_centers[variant], 0.14, ribbon_angles[variant])
 
     _, _, _, _, screenshot = spec
-    if index == 0:
-        paste_campaign_device(
-            canvas,
-            screenshot,
-            700,
-            angle=12,
-            top_left=(230, -124),
-        )
-        draw_readme_card_copy(draw, spec, theme, index, (72, 1360))
-    elif index == 1:
-        paste_campaign_device(
-            canvas,
-            screenshot,
-            700,
-            angle=-9,
-            top_left=(160, 354),
-        )
-        draw_readme_card_copy(draw, spec, theme, index, (72, 70))
-    else:
-        draw_readme_card_copy(draw, spec, theme, index, (72, 70))
-        placements = [
-            (620, (450, 1065), 0),
-            (640, (485, 1080), -1),
-            (650, (405, 1100), 1.5),
-            (650, (495, 1100), -1.5),
-            (630, (430, 1070), 0),
-            (650, (500, 1100), -1),
-            (630, (420, 1070), 0),
-            (650, (495, 1100), -1.5),
-            (620, (440, 1060), 0),
-            (650, (500, 1100), -1),
-            (650, (405, 1100), 1),
-            (630, (475, 1070), 0),
-            (650, (420, 1100), 1),
-            (640, (490, 1080), -1),
-        ]
-        width, center, angle = placements[index - 2]
-        paste_campaign_device(canvas, screenshot, width, center, angle)
+    draw_readme_card_copy(draw, spec, theme, index, (72, 70))
+    placements = [
+        (620, (450, 1065), 0),
+        (640, (485, 1080), -1),
+        (650, (405, 1100), 1.5),
+        (650, (495, 1100), -1.5),
+        (630, (430, 1070), 0),
+        (650, (500, 1100), -1),
+        (630, (420, 1070), 0),
+        (650, (495, 1100), -1.5),
+        (620, (440, 1060), 0),
+        (650, (500, 1100), -1),
+        (650, (405, 1100), 1),
+        (630, (475, 1070), 0),
+        (650, (420, 1100), 1),
+        (640, (490, 1080), -1),
+    ]
+    width, center, angle = placements[index - 2]
+    paste_campaign_device(canvas, screenshot, width, center, angle)
     return canvas.convert("RGB")
 
 def generate_readme_cards():
     os.makedirs(README_CARD_DIR, exist_ok=True)
     cards = []
-    for index, spec in enumerate(README_CARD_SPECS):
+    left_card, right_card = render_readme_card_pair(
+        README_CARD_SPECS[0],
+        README_CARD_SPECS[1],
+    )
+    for artwork, spec in ((left_card, README_CARD_SPECS[0]), (right_card, README_CARD_SPECS[1])):
+        cards.append(artwork)
+        out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
+        artwork.save(out_path, "WEBP", quality=94, method=6)
+        print(f"Saved README editorial card at {artwork.size}: {out_path}")
+
+    for index in range(2, len(README_CARD_SPECS)):
+        spec = README_CARD_SPECS[index]
         artwork = render_readme_card(spec, index)
         cards.append(artwork)
         out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
         artwork.save(out_path, "WEBP", quality=94, method=6)
         print(f"Saved README editorial card at {artwork.size}: {out_path}")
+
     for row_index in range(4):
         row = Image.new("RGB", (3600, 1800))
         for column in range(4):
@@ -832,6 +871,8 @@ def generate_readme_cards():
         )
         out_path = os.path.join(README_CARD_DIR, row_filename)
         row.save(out_path, "WEBP", quality=95, method=6)
+        if row_index == 0:
+            row.save(os.path.join(README_CARD_DIR, "editorial-grid-row-01.webp"), "WEBP", quality=95, method=6)
         print(f"Saved four-card README row at {row.size}: {out_path}")
 
 if __name__ == "__main__":
