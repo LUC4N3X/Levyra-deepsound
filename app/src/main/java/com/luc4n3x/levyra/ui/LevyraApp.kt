@@ -7626,20 +7626,27 @@ private fun LyricsOverlay(
     val showTranslation = state.lyricsTranslationEnabled
     val translationContext = LocalContext.current
     var awaitingTranslationLanguage by rememberSaveable { mutableStateOf(false) }
+    var translationSettingsUnavailable by rememberSaveable { mutableStateOf(false) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         if (awaitingTranslationLanguage) {
             awaitingTranslationLanguage = false
             if (state.lyricsTranslationEnabled) onTranslation(true)
         }
     }
-    val translationFeedback = if (showTranslation) lyricsTranslationFeedback(strings, state.lyricsTranslationState) else null
+    val feedbackState = when {
+        !translationSettingsUnavailable -> state.lyricsTranslationState
+        state.lyricsTranslationState == LyricsTranslationState.MODEL_DOWNLOAD_REQUIRED ||
+            state.lyricsTranslationState == LyricsTranslationState.MODEL_DOWNLOADING -> LyricsTranslationState.UNAVAILABLE
+        else -> state.lyricsTranslationState
+    }
+    val translationFeedback = if (showTranslation) lyricsTranslationFeedback(strings, feedbackState) else null
     val onTranslationFeedback: () -> Unit = {
-        when (state.lyricsTranslationState) {
+        when (feedbackState) {
             LyricsTranslationState.PENDING -> Unit
             LyricsTranslationState.MODEL_DOWNLOAD_REQUIRED,
             LyricsTranslationState.MODEL_DOWNLOADING -> {
                 awaitingTranslationLanguage = openTranslationLanguageSettings(translationContext)
-                if (!awaitingTranslationLanguage) onTranslation(true)
+                translationSettingsUnavailable = !awaitingTranslationLanguage
             }
             else -> onTranslation(true)
         }
