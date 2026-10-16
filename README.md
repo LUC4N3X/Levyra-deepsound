@@ -118,7 +118,7 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
 
 <div align="center">
 
-<a href="docs/assets/showcase/00_levyra_hero_dance_studio.webp"><img src="docs/assets/showcase/00_levyra_hero_dance_studio.webp?v=light-shadow-v10" width="100%" alt="Levyra music player for Android and Windows" /></a>
+<a href="docs/assets/showcase/00_levyra_hero_neon_dancer.webp"><img src="docs/assets/showcase/00_levyra_hero_neon_dancer.webp" width="100%" alt="Levyra music player for Android and Windows" /></a>
 
 <p align="center">
   <sub>Music should feel personal, expressive, and entirely yours.</sub>
@@ -126,9 +126,9 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
 
 <div align="center">
 <div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-01-orbit-reference.webp?v=s26ultra-diptych-v1" width="900" align="top" alt="Levyra showcase: radio, now playing, lyrics, and offline albums" /></div>
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-02.webp?v=editorial-orbit-reference-v8" width="900" align="top" alt="Levyra showcase: discovery, mixes, moods, and audio controls" /></div>
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-03.webp?v=editorial-orbit-reference-v8" width="900" align="top" alt="Levyra showcase: library, collections, insights, and home" /></div>
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-04.webp?v=editorial-orbit-reference-v8" width="900" align="top" alt="Levyra showcase: settings, new releases, artists, and Jam" /></div>
+<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-02-uniform-centered.webp" width="900" align="top" alt="Levyra showcase: discovery, mixes, moods, and audio controls" /></div>
+<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-03-uniform-centered.webp" width="900" align="top" alt="Levyra showcase: library, collections, insights, and home" /></div>
+<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-04-uniform-centered.webp" width="900" align="top" alt="Levyra showcase: settings, new releases, artists, and Jam" /></div>
 </div>
 
 </div>

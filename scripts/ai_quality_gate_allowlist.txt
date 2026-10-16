@@ -32,6 +32,9 @@ docs/assets/showcase/editorial-cards/editorial-grid-row-01-orbit-reference.webp
 docs/assets/showcase/editorial-cards/editorial-grid-row-02.webp
 docs/assets/showcase/editorial-cards/editorial-grid-row-03.webp
 docs/assets/showcase/editorial-cards/editorial-grid-row-04.webp
+docs/assets/showcase/editorial-cards/editorial-grid-row-02-uniform-centered.webp
+docs/assets/showcase/editorial-cards/editorial-grid-row-03-uniform-centered.webp
+docs/assets/showcase/editorial-cards/editorial-grid-row-04-uniform-centered.webp
 docs/assets/showcase/cards/01_home.webp
 docs/assets/showcase/cards/02_stay_with_the_song.webp
 docs/assets/showcase/cards/03_now_playing.webp
@@ -94,6 +97,7 @@ docs/assets/screenshots/search_recent.webp
 docs/assets/screenshots/video_energy.webp
 docs/assets/showcase/00_levyra_hero_showcase-light.webp
 docs/assets/showcase/00_levyra_hero_showcase.webp
+docs/assets/showcase/00_levyra_hero_neon_dancer.webp
 docs/assets/showcase/01_playback_and_lyrics-light.webp
 docs/assets/showcase/01_playback_and_lyrics.webp
 docs/assets/showcase/02_home_and_charts-light.webp
