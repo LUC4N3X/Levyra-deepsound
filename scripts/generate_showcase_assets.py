@@ -806,7 +806,7 @@ def render_readme_card_pair(left_spec, right_spec):
     return left_card.convert("RGB"), right_card.convert("RGB")
 
 def render_readme_card(spec, index):
-    theme_order = [0, 1, 2, 3, 3, 0, 1, 2, 1, 2, 3, 0, 2, 3, 0, 1]
+    theme_order = [0, 1, 2, 3, 3, 2, 1, 2, 1, 2, 3, 1, 2, 3, 1, 2]
     variant_order = [0, 1, 2, 3, 2, 3, 0, 1, 1, 0, 3, 2, 3, 2, 1, 0]
     theme = README_CARD_THEMES[theme_order[index]]
     variant = variant_order[index]
@@ -819,24 +819,7 @@ def render_readme_card(spec, index):
 
     _, _, _, _, screenshot = spec
     draw_readme_card_copy(draw, spec, theme, index, (72, 70))
-    placements = [
-        (620, (450, 1065), 0),
-        (640, (485, 1080), -1),
-        (650, (405, 1100), 1.5),
-        (650, (495, 1100), -1.5),
-        (630, (430, 1070), 0),
-        (650, (500, 1100), -1),
-        (630, (420, 1070), 0),
-        (650, (495, 1100), -1.5),
-        (620, (440, 1060), 0),
-        (650, (500, 1100), -1),
-        (650, (405, 1100), 1),
-        (630, (475, 1070), 0),
-        (650, (420, 1100), 1),
-        (640, (490, 1080), -1),
-    ]
-    width, center, angle = placements[index - 2]
-    paste_campaign_device(canvas, screenshot, width, center, angle)
+    paste_campaign_device(canvas, screenshot, 640, (450, 1095), 0)
     return canvas.convert("RGB")
 
 def generate_readme_cards():
@@ -867,7 +850,7 @@ def generate_readme_cards():
         row_filename = (
             "editorial-grid-row-01-orbit-reference.webp"
             if row_index == 0
-            else f"editorial-grid-row-{row_index + 1:02d}.webp"
+            else f"editorial-grid-row-{row_index + 1:02d}-uniform-centered.webp"
         )
         out_path = os.path.join(README_CARD_DIR, row_filename)
         row.save(out_path, "WEBP", quality=95, method=6)
