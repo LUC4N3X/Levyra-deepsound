@@ -11,6 +11,33 @@ private const val MIN_REPORTABLE_BYTES_PER_SECOND = 1024.0
 private const val KIB = 1024.0
 private const val MIB = 1024.0 * KIB
 
+internal data class UpdateUnits(
+    val locale: Locale = Locale.ROOT,
+    val bytes: String = "B",
+    val kilobytes: String = "KB",
+    val megabytes: String = "MB",
+    val perSecond: String = "/s",
+    val hours: String = "h",
+    val minutes: String = "m",
+    val seconds: String = "s"
+)
+
+private val defaultUpdateUnits = UpdateUnits()
+
+private val russianUpdateUnits = UpdateUnits(
+    locale = Locale.forLanguageTag("ru"),
+    bytes = "Б",
+    kilobytes = "КБ",
+    megabytes = "МБ",
+    perSecond = "/с",
+    hours = "ч",
+    minutes = "мин",
+    seconds = "с"
+)
+
+internal fun updateUnitsFor(languageCode: String): UpdateUnits =
+    if (languageCode.substringBefore('-').equals("ru", ignoreCase = true)) russianUpdateUnits else defaultUpdateUnits
+
 internal fun updateProgressPercent(downloadedBytes: Long, totalBytes: Long?): Int? {
     if (totalBytes == null || totalBytes <= 0L) return null
     val downloaded = downloadedBytes.coerceAtLeast(0L)
@@ -30,52 +57,53 @@ internal fun updateEtaMs(remainingBytes: Long, bytesPerSecond: Double?): Long? {
     return (remainingBytes / speed * 1000.0).roundToLong().coerceAtLeast(0L)
 }
 
-internal fun formatUpdateBytes(bytes: Long): String {
+internal fun formatUpdateBytes(bytes: Long, units: UpdateUnits = defaultUpdateUnits): String {
     val safe = bytes.coerceAtLeast(0L)
     return when {
-        safe >= MIB -> String.format(Locale.ROOT, "%.1f MB", safe / MIB)
-        safe >= KIB -> String.format(Locale.ROOT, "%.0f KB", safe / KIB)
-        else -> String.format(Locale.ROOT, "%d B", safe)
+        safe >= MIB -> String.format(units.locale, "%.1f %s", safe / MIB, units.megabytes)
+        safe >= KIB -> String.format(units.locale, "%.0f %s", safe / KIB, units.kilobytes)
+        else -> String.format(units.locale, "%d %s", safe, units.bytes)
     }
 }
 
-internal fun formatUpdateSpeed(bytesPerSecond: Double?): String? {
+internal fun formatUpdateSpeed(bytesPerSecond: Double?, units: UpdateUnits = defaultUpdateUnits): String? {
     val speed = bytesPerSecond ?: return null
     if (speed < MIN_REPORTABLE_BYTES_PER_SECOND) return null
     return when {
-        speed >= MIB -> String.format(Locale.ROOT, "%.1f MB/s", speed / MIB)
-        else -> String.format(Locale.ROOT, "%.0f KB/s", speed / KIB)
+        speed >= MIB -> String.format(units.locale, "%.1f %s%s", speed / MIB, units.megabytes, units.perSecond)
+        else -> String.format(units.locale, "%.0f %s%s", speed / KIB, units.kilobytes, units.perSecond)
     }
 }
 
-internal fun formatUpdateDuration(millis: Long?): String? {
+internal fun formatUpdateDuration(millis: Long?, units: UpdateUnits = defaultUpdateUnits): String? {
     val value = millis?.takeIf { it >= 0L } ?: return null
     val totalSeconds = (value / 1000L).coerceAtLeast(0L)
     val hours = totalSeconds / 3600L
     val minutes = (totalSeconds % 3600L) / 60L
     val seconds = totalSeconds % 60L
     return when {
-        hours > 0L -> String.format(Locale.ROOT, "%d h %02d m", hours, minutes)
-        minutes > 0L -> String.format(Locale.ROOT, "%d m %02d s", minutes, seconds)
-        else -> String.format(Locale.ROOT, "%d s", seconds)
+        hours > 0L -> String.format(units.locale, "%d %s %02d %s", hours, units.hours, minutes, units.minutes)
+        minutes > 0L -> String.format(units.locale, "%d %s %02d %s", minutes, units.minutes, seconds, units.seconds)
+        else -> String.format(units.locale, "%d %s", seconds, units.seconds)
     }
 }
 
 internal fun formatUpdateTransferLine(
     downloadedBytes: Long,
     totalBytes: Long?,
-    bytesPerSecond: Double?
+    bytesPerSecond: Double?,
+    units: UpdateUnits = defaultUpdateUnits
 ): String {
     val parts = mutableListOf<String>()
     parts += if (totalBytes != null && totalBytes > 0L) {
-        "${formatUpdateBytes(downloadedBytes)} / ${formatUpdateBytes(totalBytes)}"
+        "${formatUpdateBytes(downloadedBytes, units)} / ${formatUpdateBytes(totalBytes, units)}"
     } else {
-        formatUpdateBytes(downloadedBytes)
+        formatUpdateBytes(downloadedBytes, units)
     }
-    formatUpdateSpeed(bytesPerSecond)?.let(parts::add)
+    formatUpdateSpeed(bytesPerSecond, units)?.let(parts::add)
     val remaining = totalBytes?.let { (it - downloadedBytes).coerceAtLeast(0L) } ?: -1L
     if (remaining > 0L) {
-        formatUpdateDuration(updateEtaMs(remaining, bytesPerSecond))?.let { parts += "~$it" }
+        formatUpdateDuration(updateEtaMs(remaining, bytesPerSecond), units)?.let { parts += "~$it" }
     }
     return parts.joinToString(separator = " · ")
 }

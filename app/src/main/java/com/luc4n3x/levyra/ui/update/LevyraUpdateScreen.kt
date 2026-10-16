@@ -76,6 +76,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 import com.luc4n3x.levyra.ui.theme.LevyraViolet
 import com.luc4n3x.levyra.update.formatUpdateBytes
+import com.luc4n3x.levyra.update.updateUnitsFor
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -415,7 +416,7 @@ private fun UpdateProtectionCard(title: String, detail: String) {
 internal fun updateMetaLine(publishedAtEpochMs: Long, assetSizeBytes: Long, languageCode: String): String {
     val parts = mutableListOf<String>()
     formatUpdateReleaseDate(publishedAtEpochMs, languageCode)?.let(parts::add)
-    if (assetSizeBytes > 0L) parts += formatUpdateBytes(assetSizeBytes)
+    if (assetSizeBytes > 0L) parts += formatUpdateBytes(assetSizeBytes, updateUnitsFor(languageCode))
     return parts.joinToString(separator = " · ")
 }
 

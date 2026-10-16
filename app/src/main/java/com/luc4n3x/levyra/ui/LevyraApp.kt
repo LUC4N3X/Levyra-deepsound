@@ -400,6 +400,7 @@ import androidx.compose.material.icons.rounded.HighQuality
 import androidx.compose.material.icons.rounded.LibraryAdd
 import androidx.compose.material.icons.rounded.Source
 import androidx.compose.material.icons.rounded.Wifi
+import androidx.compose.material.icons.rounded.NetworkCell
 import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Speed
@@ -608,6 +609,8 @@ import com.luc4n3x.levyra.data.selectSearchTopResultTracks
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.player.NativeAudioIntegration
 import com.luc4n3x.levyra.player.PlaybackService
+import com.luc4n3x.levyra.domain.ADVANCED_QUEUE_PREFETCH_OFF
+import com.luc4n3x.levyra.domain.ADVANCED_QUEUE_PREFETCH_OPTIONS
 import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.domain.ArtistBiography
 import com.luc4n3x.levyra.domain.artistBiographyEditorial
@@ -751,6 +754,8 @@ import com.luc4n3x.levyra.ui.i18n.personalizedSearchCopy
 import com.luc4n3x.levyra.ui.i18n.personalizedSearchPromptText
 import com.luc4n3x.levyra.ui.i18n.queueSectionCopy
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
+import com.luc4n3x.levyra.ui.i18n.advancedPrefetchCopy
+import com.luc4n3x.levyra.ui.i18n.advancedPrefetchMobileDataCopy
 import com.luc4n3x.levyra.ui.i18n.automationCopy
 import com.luc4n3x.levyra.ui.i18n.smartOfflineCopy
 import com.luc4n3x.levyra.ui.i18n.formatLibraryBytes
@@ -2740,6 +2745,8 @@ fun LevyraApp(
                     excludedArtists = state.excludedArtists,
                     downloadSettings = state.downloadSettings,
                     smartOfflineSettings = state.smartOfflineSettings,
+                    advancedQueuePrefetchTracks = state.audioSettings.advancedQueuePrefetchTracks,
+                    advancedQueuePrefetchOnMobileData = state.audioSettings.advancedQueuePrefetchOnMobileData,
                     backupSettings = state.backupSettings,
                     automationSettings = state.automationSettings,
                     vaultStatus = state.vaultStatus,
@@ -2800,6 +2807,8 @@ fun LevyraApp(
                     onDownloadSettings = viewModel::setDownloadSettings,
                     onSmartOfflineSettings = viewModel::setSmartOfflineSettings,
                     onRefreshSmartOffline = viewModel::refreshSmartOffline,
+                    onAdvancedQueuePrefetch = viewModel::setAdvancedQueuePrefetchTracks,
+                    onAdvancedQueuePrefetchOnMobileData = viewModel::setAdvancedQueuePrefetchOnMobileData,
                     onSelectDownloadLocation = { downloadLocationLauncher.launch(null) },
                     onClearDownloadLocation = {
                         viewModel.setDownloadSettings(
@@ -2976,7 +2985,6 @@ fun LevyraApp(
                     onPitch = viewModel::setPitch,
                     onGapless = viewModel::setGaplessEnabled,
                     onPreloadNextTrack = viewModel::setPreloadNextTrack,
-                    onAdvancedQueuePrefetch = viewModel::setAdvancedQueuePrefetchTracks,
                     aaudioOutputAvailable = remember { NativeAudioIntegration.isAaudioOutputSupported() },
                     onAaudioOutput = viewModel::setAaudioOutputEnabled,
                     onAudioOffloadPreference = viewModel::setAudioOffloadPreference,
@@ -10169,7 +10177,7 @@ private fun HomeScreen(
                 item(key = "sec-release-radar-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
                     ReleaseRadarRow(
                         entries = state.releaseRadar,
-                        onOpen = { entry -> viewModel.searchNow("${entry.release.title} ${entry.artistName}") },
+                        onOpen = viewModel::openReleaseRadarEntry,
                         onArtist = viewModel::openArtistByName
                     )
                 }
@@ -11652,7 +11660,7 @@ private fun LazyListScope.homeStudioSectionReleaseRadar(c: StudioHomeContext) {
                 item(key = "sec-release-radar-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
                     ReleaseRadarRow(
                         entries = state.releaseRadar,
-                        onOpen = { entry -> viewModel.searchNow("${entry.release.title} ${entry.artistName}") },
+                        onOpen = viewModel::openReleaseRadarEntry,
                         onArtist = viewModel::openArtistByName
                     )
                 }
@@ -12125,7 +12133,7 @@ private fun HomeStudioHost(
     onPullRefresh: () -> Unit,
     onTrackActions: (Track) -> Unit
 ) {
-    if (homeStudio.style == HomeStyle.Original) {
+    if (homeStudio.usesClassicOriginalHome()) {
         HomeScreen(
             viewModel = viewModel,
             renderSnapshot = renderSnapshot,
@@ -20895,6 +20903,8 @@ private fun SettingsOverlay(
     excludedArtists: List<ExcludedArtist>,
     downloadSettings: LevyraDownloadSettings,
     smartOfflineSettings: LevyraSmartOfflineSettings,
+    advancedQueuePrefetchTracks: Int,
+    advancedQueuePrefetchOnMobileData: Boolean,
     backupSettings: LevyraBackupSettings,
     automationSettings: LevyraAutomationSettings,
     vaultStatus: LevyraVaultStatus,
@@ -20934,6 +20944,8 @@ private fun SettingsOverlay(
     onDownloadSettings: (LevyraDownloadSettings) -> Unit,
     onSmartOfflineSettings: (LevyraSmartOfflineSettings) -> Unit,
     onRefreshSmartOffline: () -> Unit,
+    onAdvancedQueuePrefetch: (Int) -> Unit,
+    onAdvancedQueuePrefetchOnMobileData: (Boolean) -> Unit,
     onSelectDownloadLocation: () -> Unit,
     onClearDownloadLocation: () -> Unit,
     onBackupSettings: (LevyraBackupSettings) -> Unit,
@@ -21923,6 +21935,31 @@ private fun SettingsOverlay(
                                     onSettings = onSmartOfflineSettings,
                                     onRefresh = onRefreshSmartOffline
                                 )
+                            }
+                            item {
+                                val prefetchCopy = advancedPrefetchCopy(strings.code)
+                                SettingsChoiceRow(
+                                    icon = Icons.AutoMirrored.Rounded.QueueMusic,
+                                    title = prefetchCopy.title,
+                                    subtitle = prefetchCopy.description,
+                                    options = ADVANCED_QUEUE_PREFETCH_OPTIONS.map { tracks ->
+                                        tracks.toString() to if (tracks == ADVANCED_QUEUE_PREFETCH_OFF) prefetchCopy.off else prefetchCopy.tracks(tracks)
+                                    },
+                                    selected = advancedQueuePrefetchTracks.toString(),
+                                    onSelect = { value -> value.toIntOrNull()?.let(onAdvancedQueuePrefetch) }
+                                )
+                            }
+                            if (advancedQueuePrefetchTracks > ADVANCED_QUEUE_PREFETCH_OFF) {
+                                item {
+                                    val mobileDataCopy = advancedPrefetchMobileDataCopy(strings.code)
+                                    SettingsToggle(
+                                        icon = Icons.Rounded.NetworkCell,
+                                        title = mobileDataCopy.title,
+                                        subtitle = mobileDataCopy.description,
+                                        checked = advancedQueuePrefetchOnMobileData,
+                                        onCheckedChange = onAdvancedQueuePrefetchOnMobileData
+                                    )
+                                }
                             }
                             item {
                                 SettingsChoiceRow(
