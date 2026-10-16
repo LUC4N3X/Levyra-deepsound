@@ -86,9 +86,19 @@ class AdaptiveStabilityLoadControl(
 
     override fun retainBackBufferFromKeyframe(playerId: PlayerId): Boolean = active.retainBackBufferFromKeyframe(playerId)
 
-    override fun shouldContinueLoading(parameters: LoadControl.Parameters): Boolean = active.shouldContinueLoading(parameters)
+    override fun shouldContinueLoading(parameters: LoadControl.Parameters): Boolean {
+        promoteEscalatedPlayback()
+        return active.shouldContinueLoading(parameters)
+    }
 
-    override fun shouldStartPlayback(parameters: LoadControl.Parameters): Boolean = active.shouldStartPlayback(parameters)
+    override fun shouldStartPlayback(parameters: LoadControl.Parameters): Boolean {
+        promoteEscalatedPlayback()
+        return active.shouldStartPlayback(parameters)
+    }
+
+    private fun promoteEscalatedPlayback() {
+        if (active === normal && signals.isEscalated()) active = stable
+    }
 
     override fun shouldContinuePreloading(
         playerId: PlayerId,

@@ -32,7 +32,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.LevyraCanvasQuality
-import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
@@ -56,7 +55,6 @@ private const val ArtworkLandingMs = 260
 internal fun PlayerArtworkHero(
     track: Track,
     artworkUrl: String,
-    visualMode: PlayerVisualMode,
     motionArtwork: MotionArtwork?,
     livingArtwork: LivingArtworkColors?,
     animationsEnabled: Boolean,
@@ -148,33 +146,21 @@ internal fun PlayerArtworkHero(
         ) {
             if (track.isLiveRadio()) {
                 LiveRadioLogoArtwork(track = track, artworkUrl = artworkUrl)
-            } else when (visualMode) {
-                PlayerVisualMode.Artwork -> {
+            } else {
+                MotionArtworkLayer(
+                    artwork = motionArtwork,
+                    enabled = motionEnabled,
+                    isPlaying = isPlaying,
+                    cornerRadius = cornerRadius,
+                    presentation = MotionArtworkPresentation.Card,
+                    quality = canvasQuality,
+                    livingArtwork = livingArtwork,
+                    dynamicBackdropEnabled = dynamicBackdropEnabled,
+                    onDynamicBackdropPalette = onDynamicBackdropPalette,
+                    modifier = Modifier.fillMaxSize()
+                ) {
                     SeamlessArtworkImage(url = artworkUrl, modifier = Modifier.fillMaxSize()) {
                         InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
-                    }
-                }
-                PlayerVisualMode.CanvasCard,
-                PlayerVisualMode.CanvasImmersive,
-                PlayerVisualMode.Expressive,
-                PlayerVisualMode.Halo,
-                PlayerVisualMode.Folio,
-                PlayerVisualMode.Pulse -> {
-                    MotionArtworkLayer(
-                        artwork = motionArtwork,
-                        enabled = motionEnabled,
-                        isPlaying = isPlaying,
-                        cornerRadius = cornerRadius,
-                        presentation = MotionArtworkPresentation.Card,
-                        quality = canvasQuality,
-                        livingArtwork = livingArtwork,
-                        dynamicBackdropEnabled = dynamicBackdropEnabled,
-                        onDynamicBackdropPalette = onDynamicBackdropPalette,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        SeamlessArtworkImage(url = artworkUrl, modifier = Modifier.fillMaxSize()) {
-                            InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
-                        }
                     }
                 }
             }

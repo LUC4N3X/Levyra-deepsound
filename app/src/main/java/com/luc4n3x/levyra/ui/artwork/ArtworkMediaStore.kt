@@ -22,13 +22,18 @@ internal object ArtworkMediaStore {
     private const val RELATIVE_PATH = "Pictures/Levyra"
     private const val MIME_TYPE = "image/jpeg"
 
-    suspend fun save(context: Context, fileName: String, write: (OutputStream) -> Boolean): Boolean =
+    suspend fun save(
+        context: Context,
+        fileName: String,
+        mimeType: String = MIME_TYPE,
+        write: (OutputStream) -> Boolean
+    ): Boolean =
         withContext(Dispatchers.IO) {
             currentCoroutineContext().ensureActive()
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
                 saveToAppPictures(context, fileName, write)
             } else {
-                saveToMediaStore(context, fileName, write)
+                saveToMediaStore(context, fileName, mimeType, write)
             }
         }
 
@@ -36,6 +41,7 @@ internal object ArtworkMediaStore {
     private fun saveToMediaStore(
         context: Context,
         fileName: String,
+        mimeType: String,
         write: (OutputStream) -> Boolean
     ): Boolean {
         var pendingUri: Uri? = null
@@ -43,7 +49,7 @@ internal object ArtworkMediaStore {
         return try {
             val values = ContentValues().apply {
                 put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
-                put(MediaStore.Images.Media.MIME_TYPE, MIME_TYPE)
+                put(MediaStore.Images.Media.MIME_TYPE, mimeType)
                 put(MediaStore.Images.Media.RELATIVE_PATH, RELATIVE_PATH)
                 put(MediaStore.Images.Media.IS_PENDING, 1)
             }
