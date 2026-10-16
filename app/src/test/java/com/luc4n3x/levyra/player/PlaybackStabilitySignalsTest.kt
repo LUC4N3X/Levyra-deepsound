@@ -7,6 +7,8 @@ import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.LoadEventInfo
 import androidx.media3.exoplayer.source.MediaLoadData
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
 
@@ -249,5 +251,17 @@ class PlaybackStabilitySignalsTest {
         clock.advance(1_000L)
         signals.rebuffer()
         assertEquals(PlaybackStabilityProfile.Stable, signals.requestedProfile())
+    }
+
+    @Test
+    fun escalationIsVisibleImmediatelyThroughFastFlag() {
+        val clock = FakeClock()
+        val signals = signals(clock)
+        assertFalse(signals.isEscalated())
+        signals.startPlayback()
+        signals.rebuffer()
+        clock.advance(1_000L)
+        signals.rebuffer()
+        assertTrue(signals.isEscalated())
     }
 }
