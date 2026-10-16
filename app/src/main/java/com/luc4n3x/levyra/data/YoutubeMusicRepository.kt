@@ -231,6 +231,37 @@ private fun albumRecommendationDisplayTitleKey(value: String): String {
 private val RECOMMENDATION_WHITESPACE = Regex("""\s+""")
 private val RECOMMENDATION_COMBINING_MARKS = Regex("""\p{M}+""")
 private val RECOMMENDATION_NON_ALPHANUMERIC = Regex("""[^\p{L}\p{N}]+""")
+private val RECOMMENDATION_SCRIPT_AWARE_SEPARATOR = Regex("""[^\p{L}\p{M}\p{N}]+""")
+private val RECOMMENDATION_FOLDED_MARK_SCRIPTS = setOf(
+    Character.UnicodeScript.LATIN,
+    Character.UnicodeScript.GREEK,
+    Character.UnicodeScript.CYRILLIC,
+    Character.UnicodeScript.ARABIC,
+    Character.UnicodeScript.HEBREW,
+    Character.UnicodeScript.COMMON,
+    Character.UnicodeScript.INHERITED
+)
+
+private fun withoutFoldableCombiningMarks(decomposed: String): String {
+    val out = StringBuilder(decomposed.length)
+    var keepMarks = false
+    var index = 0
+    while (index < decomposed.length) {
+        val codePoint = decomposed.codePointAt(index)
+        index += Character.charCount(codePoint)
+        when (Character.getType(codePoint)) {
+            Character.NON_SPACING_MARK.toInt(),
+            Character.COMBINING_SPACING_MARK.toInt(),
+            Character.ENCLOSING_MARK.toInt() -> if (keepMarks) out.appendCodePoint(codePoint)
+            else -> {
+                keepMarks = Character.isLetterOrDigit(codePoint) &&
+                    Character.UnicodeScript.of(codePoint) !in RECOMMENDATION_FOLDED_MARK_SCRIPTS
+                out.appendCodePoint(codePoint)
+            }
+        }
+    }
+    return out.toString()
+}
 private val RECOMMENDATION_CREDIT_SUFFIX =
     Regex("""(?i)\b(feat|featuring|ft|with|prod|official|audio|video|lyrics)\b.*$""")
 
@@ -354,12 +385,11 @@ internal fun albumRecommendationTextKey(value: String): String {
 
 private fun computeAlbumRecommendationTextKey(value: String): String {
     val decomposed = Normalizer.normalize(value, Normalizer.Form.NFD)
-    return decomposed
-        .replace(RECOMMENDATION_COMBINING_MARKS, "")
+    return withoutFoldableCombiningMarks(decomposed)
         .lowercase(Locale.ROOT)
         .replace('&', ' ')
         .replace(RECOMMENDATION_CREDIT_SUFFIX, " ")
-        .replace(RECOMMENDATION_NON_ALPHANUMERIC, " ")
+        .replace(RECOMMENDATION_SCRIPT_AWARE_SEPARATOR, " ")
         .replace(RECOMMENDATION_WHITESPACE, " ")
         .trim()
 }

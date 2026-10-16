@@ -132,6 +132,52 @@ class RadioModelsTest {
     }
 
     @Test
+    fun recoveryStreamsPreferFreshUrlThenSameBroadcasterSiblingsOnly() {
+        val broken = station(uuid = "tamil-sun-a", name = "Tamil Sun FM", url = "http://192.99.4.210:3596/", ok = false)
+            .copy(countryCode = "IN", homepageUrl = "https://tamilsunradio.com/")
+        val fresh = broken.copy(resolvedStreamUrl = "https://fresh.tamilsun.example/live")
+        val sibling = station(uuid = "tamil-sun-b", name = "Tamil Sun FM", url = "https://usa2.fastcast4u.com/proxy/tamilsun?mp=/;")
+            .copy(countryCode = "IN")
+        val brokenSibling = station(uuid = "tamil-sun-c", name = "tamil sun fm", url = "https://dead.example/sun", ok = false)
+            .copy(countryCode = "IN")
+        val sameNameElsewhere = station(uuid = "sun-us", name = "Tamil Sun FM", url = "https://other.example/sun")
+            .copy(countryCode = "US", homepageUrl = "https://other.example/")
+        val differentStation = station(uuid = "suryan", name = "Suryan FM", url = "https://suryan.example/live")
+            .copy(countryCode = "IN")
+        val duplicateOfOwn = station(uuid = "tamil-sun-d", name = "Tamil Sun FM", url = broken.streamUrl).copy(countryCode = "IN")
+
+        assertEquals(
+            listOf(
+                "https://fresh.tamilsun.example/live",
+                "https://usa2.fastcast4u.com/proxy/tamilsun?mp=/;",
+                "https://dead.example/sun"
+            ),
+            liveRadioRecoveryStreamUrls(
+                broken,
+                fresh,
+                listOf(brokenSibling, sameNameElsewhere, differentStation, duplicateOfOwn, sibling, broken)
+            )
+        )
+        assertEquals(emptyList<String>(), liveRadioRecoveryStreamUrls(broken, null, listOf(differentStation, sameNameElsewhere)))
+    }
+
+    @Test
+    fun healthySiblingsWithoutServerInsertedAdsComeFirst() {
+        val station = station(uuid = "telugu-a", name = "Telugu FM", url = "https://dead.example/telugu").copy(countryCode = "IN")
+        val adInserting = station(uuid = "telugu-b", name = "Telugu FM", url = "https://stream-289.surfernetwork.com/abc", votes = 5_000)
+            .copy(countryCode = "IN")
+        val clean = station(uuid = "telugu-c", name = "Telugu FM", url = "https://icecast.example/telugu", votes = 10)
+            .copy(countryCode = "IN")
+
+        assertEquals(
+            listOf("https://icecast.example/telugu", "https://stream-289.surfernetwork.com/abc"),
+            liveRadioSiblingStreamUrls(station, listOf(adInserting, clean))
+        )
+        assertTrue(isAdInsertingRadioStream("https://stream-151.zeno.fm/7kbt507d3qzuv"))
+        assertFalse(isAdInsertingRadioStream("https://notzeno.fm/live"))
+    }
+
+    @Test
     fun retryUsesAlternateOnceThenStopsAfterBoundedBackoff() {
         val station = station(uuid = "station-a").copy(
             streamUrl = "https://radio.example/original",
@@ -144,15 +190,18 @@ class RadioModelsTest {
     }
 
     @Test
-    fun playlistUrlIsNeverUsedAsAlternateStream() {
+    fun resolvablePlaylistIsUsedAsAlternateButUnsupportedPlaylistsAreNot() {
         val station = station(uuid = "181-salsa").copy(
             streamUrl = "http://www.181.fm/stream/pls/181-salsa.pls",
             resolvedStreamUrl = "http://listen.181fm.com/181-salsa_128k.mp3"
         )
+        val asx = station.copy(streamUrl = "http://www.181.fm/stream/asx/181-salsa.asx")
 
         assertEquals("http://listen.181fm.com/181-salsa_128k.mp3", station.preferredStreamUrl)
-        assertEquals("", station.alternateStreamUrl)
-        assertEquals(station.preferredStreamUrl, liveRadioRetryPlan(station, station.preferredStreamUrl, 1)?.streamUrl)
+        assertEquals("http://www.181.fm/stream/pls/181-salsa.pls", station.alternateStreamUrl)
+        assertEquals(station.alternateStreamUrl, liveRadioRetryPlan(station, station.preferredStreamUrl, 1)?.streamUrl)
+        assertEquals("", asx.alternateStreamUrl)
+        assertEquals(asx.preferredStreamUrl, liveRadioRetryPlan(asx, asx.preferredStreamUrl, 1)?.streamUrl)
         assertTrue(isRadioPlaylistUrl("https://radio.example/live.M3U?x=1"))
         assertFalse(isRadioPlaylistUrl("https://radio.example/live.m3u8"))
     }
