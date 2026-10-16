@@ -1027,8 +1027,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val externalCredentialStore = com.luc4n3x.levyra.data.security.AndroidKeystoreCredentialStore(application.applicationContext)
     private val lastFmScrobbling = com.luc4n3x.levyra.feature.scrobbling.LastFmScrobbleProvider(externalCredentialStore)
     private val listenBrainzScrobbling = com.luc4n3x.levyra.feature.scrobbling.ListenBrainzScrobbleProvider(externalCredentialStore)
+    private val youtubeMusicHistory = com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicHistoryProvider(
+        application.applicationContext,
+        videoId = { track -> youtubePlayableTrack(track)?.videoUrl?.let(::youtubeVideoId) }
+    )
     private val scrobbling = com.luc4n3x.levyra.feature.scrobbling.ScrobblingCoordinator(
-        listOf(lastFmScrobbling, listenBrainzScrobbling)
+        listOf(lastFmScrobbling, listenBrainzScrobbling, youtubeMusicHistory)
     )
     private val listeningPulseEngine = ListeningPulseEngine()
     private val listeningRecapRepository = ListeningRecapRepository(listeningPulseStore)

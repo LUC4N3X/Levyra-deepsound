@@ -190,6 +190,7 @@ import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import android.app.Activity
 import android.content.ClipData
 import android.media.AudioManager
+import android.content.Context
 import android.content.Intent
 import com.luc4n3x.levyra.update.AppUpdateContract
 import android.net.Uri
@@ -495,6 +496,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
@@ -7622,6 +7624,33 @@ private fun LyricsOverlay(
     var viewMode by remember(track?.id) { mutableStateOf(LyricsViewMode.CINEMA) }
     var showRomanization by rememberSaveable { mutableStateOf(true) }
     val showTranslation = state.lyricsTranslationEnabled
+    val translationContext = LocalContext.current
+    var awaitingTranslationLanguage by rememberSaveable { mutableStateOf(false) }
+    var translationSettingsUnavailable by rememberSaveable { mutableStateOf(false) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        if (awaitingTranslationLanguage) {
+            awaitingTranslationLanguage = false
+            if (state.lyricsTranslationEnabled) onTranslation(true)
+        }
+    }
+    val feedbackState = when {
+        !translationSettingsUnavailable -> state.lyricsTranslationState
+        state.lyricsTranslationState == LyricsTranslationState.MODEL_DOWNLOAD_REQUIRED ||
+            state.lyricsTranslationState == LyricsTranslationState.MODEL_DOWNLOADING -> LyricsTranslationState.UNAVAILABLE
+        else -> state.lyricsTranslationState
+    }
+    val translationFeedback = if (showTranslation) lyricsTranslationFeedback(strings, feedbackState) else null
+    val onTranslationFeedback: () -> Unit = {
+        when (feedbackState) {
+            LyricsTranslationState.PENDING -> Unit
+            LyricsTranslationState.MODEL_DOWNLOAD_REQUIRED,
+            LyricsTranslationState.MODEL_DOWNLOADING -> {
+                awaitingTranslationLanguage = openTranslationLanguageSettings(translationContext)
+                translationSettingsUnavailable = !awaitingTranslationLanguage
+            }
+            else -> onTranslation(true)
+        }
+    }
     var showSecondaryVoices by remember(track?.id) { mutableStateOf(true) }
     var autoScrollEnabled by remember(track?.id) { mutableStateOf(true) }
     val lyricsAnimationsEnabled = LocalAnimationsEnabled.current
@@ -7827,7 +7856,13 @@ private fun LyricsOverlay(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Box(modifier = Modifier.weight(1f)) {
-                if (visibleLyrics.isNotEmpty() && viewMode != LyricsViewMode.COMPACT) {
+                if (translationFeedback != null && visibleLyrics.isNotEmpty()) {
+                    LyricsTranslationStatus(
+                        label = translationFeedback,
+                        working = state.lyricsTranslationState == LyricsTranslationState.PENDING,
+                        onClick = onTranslationFeedback
+                    )
+                } else if (visibleLyrics.isNotEmpty() && viewMode != LyricsViewMode.COMPACT) {
                     LyricsSyncStatus(
                         synced = state.lyricsSynced,
                         syncedLabel = strings.lyricsSyncedStatus,
@@ -8370,7 +8405,7 @@ private fun LyricsOverlay(
                     LyricsTranslationState.MODEL_DOWNLOAD_REQUIRED -> "${strings.automaticTranslation} · ${strings.download}"
                     LyricsTranslationState.MODEL_DOWNLOADING -> "${strings.automaticTranslation} · ${strings.updateDownloading}"
                     LyricsTranslationState.UNAVAILABLE,
-                    LyricsTranslationState.FAILED -> strings.lyricsUnavailable
+                    LyricsTranslationState.FAILED,
                     LyricsTranslationState.DISABLED,
                     LyricsTranslationState.PENDING,
                     LyricsTranslationState.PROVIDER,
@@ -8769,8 +8804,8 @@ private fun LyricsControlChip(
     onClick: () -> Unit
 ) {
     Surface(
-        color = if (selected) LevyraCyan.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.06f),
-        border = BorderStroke(1.dp, if (selected) LevyraCyan.copy(alpha = 0.32f) else Color.White.copy(alpha = 0.08f)),
+        color = if (selected) LevyraCyan.copy(alpha = 0.18f) else LevyraText.copy(alpha = 0.06f),
+        border = BorderStroke(1.dp, if (selected) LevyraCyan.copy(alpha = 0.40f) else LevyraText.copy(alpha = 0.14f)),
         shape = CircleShape,
         modifier = Modifier.pressable(onClick = onClick)
     ) {
@@ -8782,12 +8817,12 @@ private fun LyricsControlChip(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = if (selected) LevyraCyan else Color.White.copy(alpha = 0.55f),
+                tint = if (selected) LevyraCyan else LevyraMuted,
                 modifier = Modifier.size(15.dp)
             )
             Text(
                 text = label,
-                color = if (selected) Color.White else Color.White.copy(alpha = 0.68f),
+                color = if (selected) LevyraText else LevyraMuted,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Black
             )
@@ -9427,6 +9462,52 @@ private fun LyricsIntelligenceDialog(
             }
         }
     )
+}
+
+private const val LIVE_TRANSLATE_SETTINGS_ACTION = "com.android.settings.action.live_translate"
+
+private fun openTranslationLanguageSettings(context: Context): Boolean = runCatching {
+    context.startActivity(Intent(LIVE_TRANSLATE_SETTINGS_ACTION).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+}.isSuccess
+
+private fun lyricsTranslationFeedback(strings: LevyraStrings, state: LyricsTranslationState): String? = when (state) {
+    LyricsTranslationState.PENDING -> strings.lyricsTranslationWorking
+    LyricsTranslationState.MODEL_DOWNLOAD_REQUIRED -> strings.lyricsTranslationDownloadRequired
+    LyricsTranslationState.MODEL_DOWNLOADING -> strings.lyricsTranslationDownloading
+    LyricsTranslationState.UNAVAILABLE -> strings.lyricsTranslationUnavailable
+    LyricsTranslationState.FAILED -> strings.lyricsTranslationFailed
+    LyricsTranslationState.DISABLED,
+    LyricsTranslationState.PROVIDER,
+    LyricsTranslationState.ON_DEVICE,
+    LyricsTranslationState.SAME_LANGUAGE -> null
+}
+
+@Composable
+private fun LyricsTranslationStatus(label: String, working: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .clip(CircleShape)
+            .clickable(enabled = !working, role = Role.Button, onClick = onClick)
+            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Translate,
+            contentDescription = null,
+            tint = if (working) LevyraCyan else Color.White.copy(alpha = 0.78f),
+            modifier = Modifier.size(15.dp)
+        )
+        Text(
+            text = label,
+            color = Color.White.copy(alpha = 0.78f),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
 }
 
 @Composable
@@ -15787,8 +15868,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                     },
                                     onFavorite = { viewModel.toggleFavorite(track) },
                                     onAddToPlaylist = { addTarget = track },
-                                    onDownload = { viewModel.exportTrack(track) },
-                                    onArtist = { viewModel.openArtist(track) }
+                                    onDownload = { viewModel.exportTrack(track) }
                                 )
                                 }
                             }
@@ -15829,8 +15909,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                         },
                                         onFavorite = { viewModel.toggleFavorite(track) },
                                         onAddToPlaylist = { addTarget = track },
-                                        onDownload = { viewModel.exportTrack(track) },
-                                        onArtist = { viewModel.openArtist(track) }
+                                        onDownload = { viewModel.exportTrack(track) }
                                     )
                                     }
                                 }
@@ -25541,8 +25620,7 @@ private fun SearchTrackCard(
     onClick: () -> Unit,
     onFavorite: () -> Unit,
     onAddToPlaylist: () -> Unit,
-    onDownload: () -> Unit,
-    onArtist: () -> Unit
+    onDownload: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val rowAccent = if (isCurrent) rememberNowPlayingAccent(track, LevyraCyan) else LevyraCyan
@@ -25621,9 +25699,7 @@ private fun SearchTrackCard(
                     style = LevyraType.metadata,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .weight(1f, fill = false)
-                        .clickable(enabled = !selectionActive) { onArtist() }
+                    modifier = Modifier.weight(1f, fill = false)
                 )
                 if (playsLabel.isNotEmpty()) {
                     Text(
