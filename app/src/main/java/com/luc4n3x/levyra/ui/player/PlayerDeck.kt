@@ -44,6 +44,9 @@ internal fun PlayerVisualMode.deckLayout(): PlayerDeckLayout = when (this) {
     PlayerVisualMode.Folio -> PlayerDeckLayout.Folio
 }
 
+internal fun PlayerDeckLayout.showsLyricsFace(): Boolean =
+    this != PlayerDeckLayout.Aura && this != PlayerDeckLayout.Pulse
+
 internal fun resolvePlayerDeckLayout(
     mode: PlayerVisualMode,
     isVideoMode: Boolean,
@@ -154,6 +157,7 @@ private fun formatChannelLayout(channels: Int): String = when (channels) {
 internal class PlayerDeckSlots(
     val header: @Composable () -> Unit,
     val stage: @Composable (Track, Modifier, Dp?) -> Unit,
+    val gestures: @Composable (Track, Modifier) -> Unit,
     val controls: @Composable ColumnScope.(Track) -> Unit,
     val controlsWithoutMetadata: @Composable ColumnScope.(Track) -> Unit,
     val engagement: @Composable (Track) -> Unit,
