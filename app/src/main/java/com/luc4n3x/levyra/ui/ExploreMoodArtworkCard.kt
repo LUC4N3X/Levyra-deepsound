@@ -28,6 +28,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +43,8 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.luc4n3x.levyra.data.AppleArtistArtworkRepository
+import com.luc4n3x.levyra.data.ArtistPortraitFallbackRepository
 import com.luc4n3x.levyra.data.SpotifyArtistArtworkRepository
 import com.luc4n3x.levyra.domain.ExploreCatalog
 import com.luc4n3x.levyra.domain.ExploreZone
@@ -181,7 +184,9 @@ internal fun exploreMoodHardFallbackPortraitUrl(zoneId: String): String =
 internal fun rememberExploreMoodArtworkUrl(zone: ExploreZone): String {
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
-    val artworkRepository = remember(context) { SpotifyArtistArtworkRepository.get(context) }
+    val spotifyRepository = remember(context) { SpotifyArtistArtworkRepository.get(context) }
+    val appleRepository = remember(context) { AppleArtistArtworkRepository.get(context) }
+    val fallbackRepository = remember(context) { ArtistPortraitFallbackRepository.get(context) }
     val rotationBucket = remember(zone.id) { exploreGenreRotationBucket(System.currentTimeMillis()) }
     val portraitCandidates = remember(zone.id, strings, rotationBucket) {
         exploreMoodPortraitWindow(
@@ -191,25 +196,46 @@ internal fun rememberExploreMoodArtworkUrl(zone: ExploreZone): String {
             rotationBucket = rotationBucket
         )
     }
-    val portraitLookupLimit = portraitCandidates.size
     val hardFallbackPortraitUrl = remember(zone.id) { exploreMoodHardFallbackPortraitUrl(zone.id) }
-    var artworkUrl by remember(portraitCandidates, hardFallbackPortraitUrl) {
-        mutableStateOf(hardFallbackPortraitUrl)
+    var artworkUrl by rememberSaveable(portraitCandidates, hardFallbackPortraitUrl) {
+        mutableStateOf(
+            portraitCandidates.firstOrNull()
+                ?.let(spotifyRepository::cachedArtistPortrait)
+                .orEmpty()
+        )
     }
 
-    LaunchedEffect(portraitCandidates, portraitLookupLimit, artworkRepository, hardFallbackPortraitUrl) {
+    LaunchedEffect(portraitCandidates, spotifyRepository, appleRepository, fallbackRepository, hardFallbackPortraitUrl) {
+        if (artworkUrl.isNotBlank()) return@LaunchedEffect
         val resolved = ExploreMoodPortraitLookupSemaphore.withPermit {
-            var candidateArtwork = ""
-            for (candidate in portraitCandidates.take(portraitLookupLimit)) {
-                candidateArtwork = artworkRepository.resolveArtistPortrait(candidate)
-                if (candidateArtwork.isNotBlank()) break
-            }
-            candidateArtwork
+            resolveExploreMoodPortrait(
+                candidates = portraitCandidates,
+                providers = listOf(
+                    spotifyRepository::resolveArtistPortrait,
+                    appleRepository::resolveArtistPortrait,
+                    fallbackRepository::youtubePortrait,
+                    fallbackRepository::deezerPortrait,
+                    fallbackRepository::tidalPortrait
+                )
+            )
         }
         artworkUrl = resolved.ifBlank { hardFallbackPortraitUrl }
     }
 
     return artworkUrl
+}
+
+internal suspend fun resolveExploreMoodPortrait(
+    candidates: List<String>,
+    providers: List<suspend (String) -> String>
+): String {
+    for (provider in providers) {
+        for (candidate in candidates) {
+            val portrait = provider(candidate)
+            if (portrait.isNotBlank()) return portrait
+        }
+    }
+    return ""
 }
 
 @Composable
