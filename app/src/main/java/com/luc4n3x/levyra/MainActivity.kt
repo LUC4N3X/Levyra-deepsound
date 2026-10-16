@@ -338,7 +338,7 @@ class MainActivity : ComponentActivity() {
         lateinit var job: Job
         job = lifecycleScope.launch {
             try {
-                if (!skipBackup && !runPreUpdateBackup()) return@launch
+                if (!skipBackup && !runPreUpdateBackup(requestToken)) return@launch
                 val prepared = updateInstaller.prepareLatestUpdate { versionName, downloaded, total ->
                     publishUpdateProgress(requestToken, startedAtMs, versionName, downloaded, total)
                 }
@@ -364,7 +364,7 @@ class MainActivity : ComponentActivity() {
 
     private fun isCurrentUpdateRequest(requestToken: Long): Boolean = updateRequestToken == requestToken
 
-    private suspend fun runPreUpdateBackup(): Boolean {
+    private suspend fun runPreUpdateBackup(requestToken: Long): Boolean {
         val backupSettings = viewModel.state.value.backupSettings
         if (!backupSettings.preUpdate) return true
         return try {
@@ -374,8 +374,10 @@ class MainActivity : ComponentActivity() {
             throw cancelled
         } catch (error: Throwable) {
             Timber.w(error, "Pre-update backup failed")
-            updatePhase.value = LevyraUpdatePhase.Idle
-            viewModel.setPreUpdateBackupFailed(true)
+            if (isCurrentUpdateRequest(requestToken)) {
+                updatePhase.value = LevyraUpdatePhase.Idle
+                viewModel.setPreUpdateBackupFailed(true)
+            }
             false
         }
     }
@@ -387,10 +389,10 @@ class MainActivity : ComponentActivity() {
         downloadedBytes: Long,
         totalBytes: Long?
     ) {
-        val nowMs = SystemClock.elapsedRealtime()
-        val speed = updateSpeedTracker.sample(downloadedBytes, nowMs)
         runOnUiThread {
             if (!isCurrentUpdateRequest(requestToken)) return@runOnUiThread
+            val nowMs = SystemClock.elapsedRealtime()
+            val speed = updateSpeedTracker.sample(downloadedBytes, nowMs)
             updatePhase.value = LevyraUpdatePhase.Downloading(
                 versionName = versionName,
                 downloadedBytes = downloadedBytes,
