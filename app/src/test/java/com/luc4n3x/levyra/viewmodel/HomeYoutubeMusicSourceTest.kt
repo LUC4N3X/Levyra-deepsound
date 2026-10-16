@@ -168,6 +168,32 @@ class HomeYoutubeMusicSourceTest {
         assertSame(previous.state.charts, frozen.state.charts)
     }
 
+    @Test
+    fun accountOrbitStartsWithTracksJustPlayedInLevyra() {
+        val played = listOf(track("played1"), track("ytm3"))
+        val snapshot = buildHomeRenderSnapshot(base.copy(recentListens = played), ready)
+
+        val ids = snapshot.state.personalOrbitTracks.map { it.id }
+        assertEquals(listOf("played1", "ytm3", "ytm1", "ytm2", "ytm4"), ids.take(5))
+        assertEquals(ids.distinct(), ids)
+        assertFalse(ids.any { it.startsWith("std") })
+    }
+
+    @Test
+    fun shortAccountOrbitIsFilledFromOtherYoutubeMusicShelves() {
+        val shortOrbit = (1..9).map { track("orbit$it") }
+        val shelf = (1..12).map { track("shelf$it") }
+        val source = YoutubeMusicHomeSource.Ready(
+            YoutubeMusicHome("account", "it", shortOrbit, listOf(HomeSection("Mixed for you", shelf)), emptyList())
+        )
+
+        val orbit = buildHomeRenderSnapshot(base, source).state.personalOrbitTracks.map { it.id }
+
+        assertEquals(shortOrbit.map { it.id }, orbit.take(9))
+        assertTrue(orbit.size >= HOME_PERSONAL_ORBIT_MAX_TRACKS)
+        assertTrue(orbit.drop(9).all { it.startsWith("shelf") })
+    }
+
     private fun track(id: String) = Track(
         id = id,
         title = "Title $id",

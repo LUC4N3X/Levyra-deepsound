@@ -15861,8 +15861,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                     },
                                     onFavorite = { viewModel.toggleFavorite(track) },
                                     onAddToPlaylist = { addTarget = track },
-                                    onDownload = { viewModel.exportTrack(track) },
-                                    onArtist = { viewModel.openArtist(track) }
+                                    onDownload = { viewModel.exportTrack(track) }
                                 )
                                 }
                             }
@@ -15903,8 +15902,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                         },
                                         onFavorite = { viewModel.toggleFavorite(track) },
                                         onAddToPlaylist = { addTarget = track },
-                                        onDownload = { viewModel.exportTrack(track) },
-                                        onArtist = { viewModel.openArtist(track) }
+                                        onDownload = { viewModel.exportTrack(track) }
                                     )
                                     }
                                 }
@@ -25615,8 +25613,7 @@ private fun SearchTrackCard(
     onClick: () -> Unit,
     onFavorite: () -> Unit,
     onAddToPlaylist: () -> Unit,
-    onDownload: () -> Unit,
-    onArtist: () -> Unit
+    onDownload: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val rowAccent = if (isCurrent) rememberNowPlayingAccent(track, LevyraCyan) else LevyraCyan
@@ -25695,9 +25692,7 @@ private fun SearchTrackCard(
                     style = LevyraType.metadata,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .weight(1f, fill = false)
-                        .clickable(enabled = !selectionActive) { onArtist() }
+                    modifier = Modifier.weight(1f, fill = false)
                 )
                 if (playsLabel.isNotEmpty()) {
                     Text(
