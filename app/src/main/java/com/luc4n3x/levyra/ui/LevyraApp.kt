@@ -12665,11 +12665,10 @@ private fun HomeEditorialSpotlight(
     val appleArtistArtworkRepository = remember(context) {
         AppleArtistArtworkRepository.get(context)
     }
-    var resolvedArtistArtworkUrl by remember(heroArtistName, artistArtworkUrl) {
+    var resolvedArtistArtworkUrl by rememberSaveable(heroArtistName, artistArtworkUrl) {
         mutableStateOf(artistArtworkUrl)
     }
     LaunchedEffect(heroArtistName, artistArtworkUrl, spotifyArtistArtworkRepository, appleArtistArtworkRepository) {
-        resolvedArtistArtworkUrl = artistArtworkUrl
         if (heroArtistName.isNotBlank()) {
             val spotifyPortrait = spotifyArtistArtworkRepository.resolveArtistPortrait(heroArtistName)
             if (spotifyPortrait.isNotBlank()) {
