@@ -316,19 +316,7 @@ fun LevyraNowPlaying(
     )
     val lyricsFlip = rememberPlayerLyricsFlipState()
     val lyricsFlipDepth = LocalLevyraVisualCapabilities.current.depthTransitions
-    val lyricsFlipAvailable = track != null && !liveRadio && !state.isVideoMode
     val latestMorphActive by rememberUpdatedState(morphActive)
-    LaunchedEffect(lyricsFlipAvailable) {
-        snapshotFlow { latestMorphActive() }.collect { active ->
-            if (!lyricsFlipAvailable || active) lyricsFlip.snapTo(PlayerLyricsFace.Player)
-        }
-    }
-    val lyricsFlipSwipeModifier = Modifier.playerLyricsFlipDrag(
-        state = lyricsFlip,
-        enabled = lyricsFlipAvailable,
-        rightToLeft = rightToLeft,
-        depth = lyricsFlipDepth
-    )
 
     LaunchedEffect(mediaSeekFeedbackEvent) {
         if (mediaSeekFeedbackEvent > 0) {
@@ -382,6 +370,19 @@ fun LevyraNowPlaying(
             hasTrack = track != null
         )
         val deckMode = if (liveRadio) PlayerVisualMode.Artwork else resolvePlayerDeckVisualMode(visualMode, deckLayout)
+        val deckOwnsStageGestures = deckLayout != PlayerDeckLayout.Levyra
+        val lyricsFlipAvailable = track != null && !liveRadio && !state.isVideoMode && deckLayout.showsLyricsFace()
+        LaunchedEffect(lyricsFlipAvailable) {
+            snapshotFlow { latestMorphActive() }.collect { active ->
+                if (!lyricsFlipAvailable || active) lyricsFlip.snapTo(PlayerLyricsFace.Player)
+            }
+        }
+        val lyricsFlipSwipeModifier = Modifier.playerLyricsFlipDrag(
+            state = lyricsFlip,
+            enabled = lyricsFlipAvailable,
+            rightToLeft = rightToLeft,
+            depth = lyricsFlipDepth
+        )
         SideEffect {
             morphAnchors.updateLandsAsCookie(deckLayout == PlayerDeckLayout.Folio)
         }
@@ -671,6 +672,65 @@ fun LevyraNowPlaying(
         }
         val headerBlock: @Composable () -> Unit = { headerRow(headerCentered) }
 
+        val stageGestureBlock: @Composable (Track, Modifier) -> Unit = { activeTrack, gestureModifier ->
+            val videoGesturesEnabled = state.isVideoMode && activeTrack.videoUrl.isNotBlank()
+            val gesturesAllowed = !liveRadio &&
+                (state.interfaceSettings.playerGesturesEnabled || videoGesturesEnabled) &&
+                !videoFullscreen &&
+                lyricsFlip.playerSettled
+            if (gesturesAllowed && gestureLayerContent != null) {
+                gestureLayerContent(
+                    activeTrack,
+                    PlayerGestureConfig(
+                        trackId = activeTrack.id,
+                        settings = state.interfaceSettings,
+                        playbackSpeed = state.playbackSpeed,
+                        environment = PlayerGestureEnvironment(
+                            activity = playerActivity,
+                            audioManager = audioManager,
+                            brightnessLabel = strings.brightness,
+                            volumeLabel = strings.volume,
+                            rightToLeft = rightToLeft
+                        )
+                    ),
+                    PlayerGestureMediaActions(
+                        seekBy = { delta ->
+                            viewModel.seekBy(delta)
+                            hapticFeedback.perform(LevyraHapticAction.TrackSwipe)
+                            mediaSeekFeedbackMs = delta
+                            mediaSeekFeedbackEvent += 1
+                        },
+                        togglePlay = viewModel::togglePlay,
+                        next = viewModel::next,
+                        previous = viewModel::previous,
+                        swipeOffset = { offset -> swipe.follow(activeTrack.id, offset) },
+                        swipeSettled = { committed -> swipe.release(committed, carry = false) },
+                        temporarySpeed = viewModel::setTemporaryPlaybackSpeed
+                    ),
+                    PlayerGestureUiActions(
+                        feedback = { message ->
+                            gestureFeedback = message
+                            gestureFeedbackEvent += 1
+                        },
+                        haptic = {
+                            hapticFeedback.perform(LevyraHapticAction.TrackSwipe)
+                        },
+                        toggleFavorite = { viewModel.toggleFavorite(activeTrack) },
+                        openQueue = viewModel::openQueue,
+                        openLyrics = viewModel::openLyrics,
+                        collapse = collapseActions,
+                        artworkPreview = if (artworkPreviewAvailable) {
+                            { showArtworkPreview = true }
+                        } else {
+                            null
+                        }
+                    ),
+                    videoTransform.takeIf { videoGesturesEnabled },
+                    gestureModifier
+                )
+            }
+        }
+
         val mediaHeroBlock: @Composable (Track, Dp, Dp?) -> Unit = { activeTrack, heroSize, cornerOverride ->
             val artworkCorner = cornerOverride ?: LevyraPlayerShapes.artworkCorner(heroSize)
             Box(
@@ -778,58 +838,9 @@ fun LevyraNowPlaying(
                 }
 
                 val videoGesturesEnabled = state.isVideoMode && activeTrack.videoUrl.isNotBlank()
-                val gesturesAllowed = !liveRadio &&
-                    (state.interfaceSettings.playerGesturesEnabled || videoGesturesEnabled) &&
-                    !videoFullscreen &&
-                    lyricsFlip.playerSettled
-                if (gesturesAllowed && gestureLayerContent != null) {
-                    gestureLayerContent(
+                if (!deckOwnsStageGestures) {
+                    stageGestureBlock(
                         activeTrack,
-                        PlayerGestureConfig(
-                            trackId = activeTrack.id,
-                            settings = state.interfaceSettings,
-                            playbackSpeed = state.playbackSpeed,
-                            environment = PlayerGestureEnvironment(
-                                activity = playerActivity,
-                                audioManager = audioManager,
-                                brightnessLabel = strings.brightness,
-                                volumeLabel = strings.volume,
-                                rightToLeft = rightToLeft
-                            )
-                        ),
-                        PlayerGestureMediaActions(
-                            seekBy = { delta ->
-                                viewModel.seekBy(delta)
-                                hapticFeedback.perform(LevyraHapticAction.TrackSwipe)
-                                mediaSeekFeedbackMs = delta
-                                mediaSeekFeedbackEvent += 1
-                            },
-                            togglePlay = viewModel::togglePlay,
-                            next = viewModel::next,
-                            previous = viewModel::previous,
-                            swipeOffset = { offset -> swipe.follow(activeTrack.id, offset) },
-                            swipeSettled = { committed -> swipe.release(committed, carry = false) },
-                            temporarySpeed = viewModel::setTemporaryPlaybackSpeed
-                        ),
-                        PlayerGestureUiActions(
-                            feedback = { message ->
-                                gestureFeedback = message
-                                gestureFeedbackEvent += 1
-                            },
-                            haptic = {
-                                hapticFeedback.perform(LevyraHapticAction.TrackSwipe)
-                            },
-                            toggleFavorite = { viewModel.toggleFavorite(activeTrack) },
-                            openQueue = viewModel::openQueue,
-                            openLyrics = viewModel::openLyrics,
-                            collapse = collapseActions,
-                            artworkPreview = if (artworkPreviewAvailable) {
-                                { showArtworkPreview = true }
-                            } else {
-                                null
-                            }
-                        ),
-                        videoTransform.takeIf { videoGesturesEnabled },
                         Modifier
                             .matchParentSize()
                             .zIndex(if (videoGesturesEnabled) 21f else 20f)
@@ -1085,6 +1096,7 @@ fun LevyraNowPlaying(
         val deckSlots = PlayerDeckSlots(
             header = headerBlock,
             stage = stageBlock,
+            gestures = stageGestureBlock,
             controls = controlsBlock,
             controlsWithoutMetadata = controlsTailBlock,
             engagement = { activeTrack ->

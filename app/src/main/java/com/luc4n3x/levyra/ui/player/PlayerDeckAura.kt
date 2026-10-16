@@ -167,7 +167,13 @@ internal fun PlayerAuraDeck(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             AuraGrabber(onCollapse = onCollapse)
-            Spacer(Modifier.weight(1f))
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+                slots.gestures(track, Modifier.matchParentSize())
+            }
             AuraHeadline(
                 track = track,
                 isFavorite = isFavorite,
