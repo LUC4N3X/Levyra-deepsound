@@ -338,45 +338,20 @@ class MainActivity : ComponentActivity() {
         lateinit var job: Job
         job = lifecycleScope.launch {
             try {
-                if (!skipBackup) {
-                    val backupSettings = viewModel.state.value.backupSettings
-                    if (backupSettings.preUpdate) {
-                        try {
-                            LevyraBackupManager(applicationContext).exportAutomatic(backupSettings.retentionCount)
-                        } catch (cancelled: CancellationException) {
-                            throw cancelled
-                        } catch (error: Throwable) {
-                            Timber.w(error, "Pre-update backup failed")
-                            updatePhase.value = LevyraUpdatePhase.Idle
-                            viewModel.setPreUpdateBackupFailed(true)
-                            return@launch
-                        }
-                    }
-                }
+                if (!skipBackup && !runPreUpdateBackup()) return@launch
                 val prepared = updateInstaller.prepareLatestUpdate { versionName, downloaded, total ->
-                    val nowMs = SystemClock.elapsedRealtime()
-                    val speed = updateSpeedTracker.sample(downloaded, nowMs)
-                    runOnUiThread {
-                        if (updateRequestToken != requestToken) return@runOnUiThread
-                        updatePhase.value = LevyraUpdatePhase.Downloading(
-                            versionName = versionName,
-                            downloadedBytes = downloaded,
-                            totalBytes = total,
-                            bytesPerSecond = speed,
-                            elapsedMs = nowMs - startedAtMs
-                        )
-                    }
+                    publishUpdateProgress(requestToken, startedAtMs, versionName, downloaded, total)
                 }
-                if (updateRequestToken != requestToken) return@launch
+                if (!isCurrentUpdateRequest(requestToken)) return@launch
                 pendingUpdate = prepared
                 updatePhase.value = LevyraUpdatePhase.Ready(prepared.versionName)
                 requestPackageInstall(prepared)
             } catch (cancelled: CancellationException) {
-                if (updateRequestToken == requestToken) updatePhase.value = LevyraUpdatePhase.Idle
+                if (isCurrentUpdateRequest(requestToken)) updatePhase.value = LevyraUpdatePhase.Idle
                 throw cancelled
             } catch (error: Throwable) {
                 Timber.w(error, "In-app update failed")
-                if (updateRequestToken == requestToken) {
+                if (isCurrentUpdateRequest(requestToken)) {
                     pendingUpdate = null
                     updatePhase.value = LevyraUpdatePhase.Failed(fallbackVersion)
                 }
@@ -385,6 +360,45 @@ class MainActivity : ComponentActivity() {
             }
         }
         updateJob = job
+    }
+
+    private fun isCurrentUpdateRequest(requestToken: Long): Boolean = updateRequestToken == requestToken
+
+    private suspend fun runPreUpdateBackup(): Boolean {
+        val backupSettings = viewModel.state.value.backupSettings
+        if (!backupSettings.preUpdate) return true
+        return try {
+            LevyraBackupManager(applicationContext).exportAutomatic(backupSettings.retentionCount)
+            true
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Throwable) {
+            Timber.w(error, "Pre-update backup failed")
+            updatePhase.value = LevyraUpdatePhase.Idle
+            viewModel.setPreUpdateBackupFailed(true)
+            false
+        }
+    }
+
+    private fun publishUpdateProgress(
+        requestToken: Long,
+        startedAtMs: Long,
+        versionName: String,
+        downloadedBytes: Long,
+        totalBytes: Long?
+    ) {
+        val nowMs = SystemClock.elapsedRealtime()
+        val speed = updateSpeedTracker.sample(downloadedBytes, nowMs)
+        runOnUiThread {
+            if (!isCurrentUpdateRequest(requestToken)) return@runOnUiThread
+            updatePhase.value = LevyraUpdatePhase.Downloading(
+                versionName = versionName,
+                downloadedBytes = downloadedBytes,
+                totalBytes = totalBytes,
+                bytesPerSecond = speed,
+                elapsedMs = nowMs - startedAtMs
+            )
+        }
     }
 
     private fun retryPreUpdateBackup() {
