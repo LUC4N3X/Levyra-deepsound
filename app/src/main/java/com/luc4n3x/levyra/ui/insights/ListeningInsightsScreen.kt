@@ -50,6 +50,7 @@ import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.Receipt
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -61,6 +62,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -140,6 +143,8 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.toShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.foundation.layout.IntrinsicSize
 import com.luc4n3x.levyra.ui.components.levyraGroupedGridShape
 
 private val InsightsPeriods = ListeningInsightsPeriod.entries
@@ -160,6 +165,9 @@ internal fun ListeningInsightsScreen(
     val keyboard = LocalSoftwareKeyboardController.current
     val animationsEnabled = LocalAnimationsEnabled.current
     val historyGroups = remember(state.history, locale) { groupHistory(state.history, locale, strings) }
+    var receiptVisible by rememberSaveable { mutableStateOf(false) }
+    var wrappedVisible by rememberSaveable { mutableStateOf(false) }
+    val wrappedYear = remember { LocalDate.now().year }
 
     LaunchedEffect(viewModel) { viewModel.refresh() }
 
@@ -203,7 +211,13 @@ internal fun ListeningInsightsScreen(
                     accent = accent,
                     animationsEnabled = animationsEnabled,
                     onPlayTrack = onPlayTrack,
-                    onOpenArtist = onOpenArtist
+                    onOpenArtist = onOpenArtist,
+                    wrappedYear = wrappedYear,
+                    onOpenReceipt = { receiptVisible = true },
+                    onOpenWrapped = {
+                        viewModel.loadWrapped(wrappedYear)
+                        wrappedVisible = true
+                    }
                 )
                 insightsHistoryItems(
                     state = state,
@@ -222,6 +236,21 @@ internal fun ListeningInsightsScreen(
                     onLoadMore = viewModel::loadMoreHistory
                 )
             }
+        }
+        if (receiptVisible) {
+            ListeningReceiptSheet(
+                state = state,
+                accent = accent,
+                onSelectPeriod = viewModel::selectPeriod,
+                onDismiss = { receiptVisible = false }
+            )
+        }
+        if (wrappedVisible) {
+            ListeningWrappedStory(
+                state = state.wrapped,
+                accent = accent,
+                onClose = { wrappedVisible = false }
+            )
         }
     }
 }
@@ -256,7 +285,10 @@ private fun LazyListScope.insightsSignalContent(
     accent: Color,
     animationsEnabled: Boolean,
     onPlayTrack: (ListeningInsightsTrack) -> Unit,
-    onOpenArtist: (ListeningInsightsArtist) -> Unit
+    onOpenArtist: (ListeningInsightsArtist) -> Unit,
+    wrappedYear: Int,
+    onOpenReceipt: () -> Unit,
+    onOpenWrapped: () -> Unit
 ) {
     item(key = "insights-hero", contentType = "hero") {
         AnimatedContent(
@@ -272,6 +304,9 @@ private fun LazyListScope.insightsSignalContent(
         ) { currentSnapshot ->
             InsightsHero(currentSnapshot, strings, locale, accent)
         }
+    }
+    item(key = "insights-receipt", contentType = "receipt") {
+        ListeningShareEntries(strings, accent, wrappedYear, onOpenWrapped, onOpenReceipt)
     }
     item(key = "insights-metrics", contentType = "metrics") {
         InsightsMetricRibbon(snapshot, strings, locale, accent)
@@ -425,7 +460,7 @@ private fun InsightsHeader(
 }
 
 @Composable
-private fun InsightsPeriodSelector(
+internal fun InsightsPeriodSelector(
     selected: ListeningInsightsPeriod,
     strings: LevyraStrings,
     accent: Color,
@@ -637,6 +672,93 @@ private fun InsightsHero(
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ListeningShareEntries(
+    strings: LevyraStrings,
+    accent: Color,
+    year: Int,
+    onOpenWrapped: () -> Unit,
+    onOpenReceipt: () -> Unit
+) {
+    val scheme = MaterialTheme.colorScheme
+    val wrappedTitle = strings.wrappedEntryTitle.replace("%s", year.toString())
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min)
+            .padding(horizontal = 20.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .weight(1.15f)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(topStart = 28.dp, bottomStart = 28.dp, topEnd = 8.dp, bottomEnd = 8.dp))
+                .background(Brush.linearGradient(listOf(Color(0xFF0B0C12), accent.copy(alpha = 0.55f).compositeOverDark())))
+                .levyraPressable(onClick = onOpenWrapped, role = Role.Button, onClickLabel = wrappedTitle)
+                .padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                year.toString(),
+                color = Color.White,
+                fontSize = 34.sp,
+                lineHeight = 36.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-1.2).sp
+            )
+            Text(
+                strings.wrappedYearInMusic,
+                color = Color.White,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.2.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                strings.wrappedTapToBegin,
+                color = Color.White.copy(alpha = 0.72f),
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp, topEnd = 28.dp, bottomEnd = 28.dp))
+                .background(scheme.surfaceContainerHigh)
+                .levyraPressable(onClick = onOpenReceipt, role = Role.Button, onClickLabel = strings.receiptEntryTitle)
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(MaterialShapes.Cookie7Sided.toShape())
+                    .background(accent),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.Receipt, contentDescription = null, tint = Color(0xFF07080C), modifier = Modifier.size(20.dp))
+            }
+            Text(
+                strings.receiptEntryTitle,
+                color = LevyraText,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+private fun Color.compositeOverDark(): Color = compositeOver(Color(0xFF0B0C12))
 
 @Composable
 private fun InsightsMetricRibbon(
@@ -1449,7 +1571,7 @@ private fun groupHistory(items: List<ListeningInsightsHistoryItem>, locale: Loca
     }
 }
 
-private fun periodLongLabel(period: ListeningInsightsPeriod, strings: LevyraStrings): String = when (period) {
+internal fun periodLongLabel(period: ListeningInsightsPeriod, strings: LevyraStrings): String = when (period) {
     ListeningInsightsPeriod.Day -> strings.insightsPeriod24h
     ListeningInsightsPeriod.Week -> strings.insightsPeriod7d
     ListeningInsightsPeriod.Month -> strings.insightsPeriod30d

@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.time.LocalDate
 
 @Immutable
 data class ListeningInsightsUiState(
@@ -29,6 +30,15 @@ data class ListeningInsightsUiState(
     val loading: Boolean = true,
     val historyLoading: Boolean = false,
     val hasMoreHistory: Boolean = true,
+    val failed: Boolean = false,
+    val wrapped: ListeningWrappedState = ListeningWrappedState()
+)
+
+@Immutable
+data class ListeningWrappedState(
+    val year: Int = 0,
+    val snapshot: ListeningInsightsSnapshot? = null,
+    val loading: Boolean = false,
     val failed: Boolean = false
 )
 
@@ -41,6 +51,52 @@ class ListeningInsightsViewModel(application: Application) : AndroidViewModel(ap
     private var portraitJob: Job? = null
     private var historyJob: Job? = null
     private var searchJob: Job? = null
+    private var wrappedJob: Job? = null
+
+    fun loadWrapped(year: Int = LocalDate.now().year) {
+        val current = _state.value.wrapped
+        if (current.year == year && (current.loading || current.snapshot != null)) return
+        wrappedJob?.cancel()
+        _state.update { it.copy(wrapped = ListeningWrappedState(year = year, loading = true)) }
+        wrappedJob = viewModelScope.launch {
+            try {
+                val snapshot = repository.yearSnapshot(year)
+                val artists = if (snapshot.topArtists.any { it.artworkUrl.isBlank() }) {
+                    runCatchingPortraits(snapshot.topArtists)
+                } else {
+                    snapshot.topArtists
+                }
+                _state.update { latest ->
+                    if (latest.wrapped.year == year) {
+                        latest.copy(wrapped = ListeningWrappedState(year, snapshot.copy(topArtists = artists), loading = false))
+                    } else {
+                        latest
+                    }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "Listening wrapped load failed")
+                _state.update { latest ->
+                    if (latest.wrapped.year == year) {
+                        latest.copy(wrapped = ListeningWrappedState(year, loading = false, failed = true))
+                    } else {
+                        latest
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun runCatchingPortraits(artists: List<ListeningInsightsArtist>): List<ListeningInsightsArtist> =
+        try {
+            repository.resolveArtistPortraits(artists)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Timber.w(error, "Listening wrapped artist portraits resolution failed")
+            artists
+        }
 
     fun selectPeriod(period: ListeningInsightsPeriod) {
         if (_state.value.period == period) return

@@ -108,6 +108,19 @@ object ListeningInsightsRanges {
         )
     }
 
+    fun year(year: Int, nowMs: Long, zone: ZoneId): ListeningInsightsRange {
+        val start = LocalDate.of(year, 1, 1).atStartOfDay(zone).toInstant().toEpochMilli()
+        val end = LocalDate.of(year + 1, 1, 1).atStartOfDay(zone).toInstant().toEpochMilli()
+        val toMs = (nowMs + 1L).coerceIn(start + 1L, end)
+        val previousStart = LocalDate.of(year - 1, 1, 1).atStartOfDay(zone).toInstant().toEpochMilli()
+        return ListeningInsightsRange(
+            fromMs = start,
+            toMs = toMs,
+            previousFromMs = previousStart,
+            previousToMs = (previousStart + (toMs - start)).coerceAtMost(start)
+        )
+    }
+
     fun trendPercent(currentMs: Long, previousMs: Long): Int? {
         if (previousMs <= 0L) return null
         val percent = (currentMs - previousMs) * 100.0 / previousMs.toDouble()
