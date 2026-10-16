@@ -255,7 +255,66 @@ private val lyricsOffsetBundles: Map<String, Map<String, String>> = mapOf(
     )
 )
 
+private fun lyricsTranslationStatus(
+    working: String,
+    downloadRequired: String,
+    downloading: String,
+    unavailable: String,
+    failed: String
+): Map<String, String> = mapOf(
+    "lyricsTranslationWorking" to working,
+    "lyricsTranslationDownloadRequired" to downloadRequired,
+    "lyricsTranslationDownloading" to downloading,
+    "lyricsTranslationUnavailable" to unavailable,
+    "lyricsTranslationFailed" to failed
+)
+
+private val lyricsTranslationStatusBundles: Map<String, Map<String, String>> = mapOf(
+    "en" to lyricsTranslationStatus("Translating lyrics…", "Translation language not downloaded · Tap to get it", "Downloading translation language…", "Translation isn't available for this language on this device", "Translation failed · Tap to retry"),
+    "it" to lyricsTranslationStatus("Traduzione del testo in corso…", "Lingua di traduzione non scaricata · Tocca per ottenerla", "Download della lingua di traduzione…", "Traduzione non disponibile per questa lingua su questo dispositivo", "Traduzione non riuscita · Tocca per riprovare"),
+    "es" to lyricsTranslationStatus("Traduciendo la letra…", "Idioma de traducción no descargado · Toca para obtenerlo", "Descargando el idioma de traducción…", "La traducción no está disponible para este idioma en este dispositivo", "La traducción falló · Toca para reintentar"),
+    "fr" to lyricsTranslationStatus("Traduction des paroles…", "Langue de traduction non téléchargée · Touchez pour l'obtenir", "Téléchargement de la langue de traduction…", "Traduction indisponible pour cette langue sur cet appareil", "Échec de la traduction · Touchez pour réessayer"),
+    "de" to lyricsTranslationStatus("Liedtext wird übersetzt…", "Übersetzungssprache nicht heruntergeladen · Zum Laden tippen", "Übersetzungssprache wird heruntergeladen…", "Übersetzung für diese Sprache auf diesem Gerät nicht verfügbar", "Übersetzung fehlgeschlagen · Zum Wiederholen tippen"),
+    "pt" to lyricsTranslationStatus("Traduzindo a letra…", "Idioma de tradução não baixado · Toque para obter", "Baixando o idioma de tradução…", "Tradução indisponível para este idioma neste dispositivo", "A tradução falhou · Toque para tentar novamente"),
+    "nl" to lyricsTranslationStatus("Songtekst wordt vertaald…", "Vertaaltaal niet gedownload · Tik om te downloaden", "Vertaaltaal wordt gedownload…", "Vertaling niet beschikbaar voor deze taal op dit apparaat", "Vertaling mislukt · Tik om opnieuw te proberen"),
+    "pl" to lyricsTranslationStatus("Tłumaczenie tekstu…", "Język tłumaczenia nie jest pobrany · Dotknij, aby pobrać", "Pobieranie języka tłumaczenia…", "Tłumaczenie tego języka jest niedostępne na tym urządzeniu", "Tłumaczenie nie powiodło się · Dotknij, aby ponowić"),
+    "ro" to lyricsTranslationStatus("Se traduc versurile…", "Limba de traducere nu este descărcată · Atinge pentru a o obține", "Se descarcă limba de traducere…", "Traducerea nu este disponibilă pentru această limbă pe acest dispozitiv", "Traducerea a eșuat · Atinge pentru a reîncerca"),
+    "el" to lyricsTranslationStatus("Μετάφραση στίχων…", "Η γλώσσα μετάφρασης δεν έχει ληφθεί · Πατήστε για λήψη", "Λήψη γλώσσας μετάφρασης…", "Η μετάφραση δεν είναι διαθέσιμη για αυτή τη γλώσσα σε αυτή τη συσκευή", "Η μετάφραση απέτυχε · Πατήστε για επανάληψη"),
+    "sv" to lyricsTranslationStatus("Översätter låttexten…", "Översättningsspråket är inte nedladdat · Tryck för att hämta", "Laddar ned översättningsspråk…", "Översättning är inte tillgänglig för det här språket på den här enheten", "Översättningen misslyckades · Tryck för att försöka igen"),
+    "da" to lyricsTranslationStatus("Oversætter sangteksten…", "Oversættelsessproget er ikke downloadet · Tryk for at hente det", "Downloader oversættelsessprog…", "Oversættelse er ikke tilgængelig for dette sprog på denne enhed", "Oversættelsen mislykkedes · Tryk for at prøve igen"),
+    "cs" to lyricsTranslationStatus("Překládám text…", "Jazyk překladu není stažen · Klepnutím jej získáte", "Stahování jazyka překladu…", "Překlad není pro tento jazyk na tomto zařízení dostupný", "Překlad se nezdařil · Klepnutím to zkuste znovu"),
+    "sk" to lyricsTranslationStatus("Prekladám text…", "Jazyk prekladu nie je stiahnutý · Klepnutím ho získate", "Sťahovanie jazyka prekladu…", "Preklad nie je pre tento jazyk na tomto zariadení dostupný", "Preklad zlyhal · Klepnutím to skúste znova"),
+    "hr" to lyricsTranslationStatus("Prevođenje stihova…", "Jezik prijevoda nije preuzet · Dodirnite za preuzimanje", "Preuzimanje jezika prijevoda…", "Prijevod nije dostupan za ovaj jezik na ovom uređaju", "Prijevod nije uspio · Dodirnite za ponovni pokušaj"),
+    "sr" to lyricsTranslationStatus("Превођење стихова…", "Језик превода није преузет · Додирните да га преузмете", "Преузимање језика превода…", "Превод није доступан за овај језик на овом уређају", "Превод није успео · Додирните да покушате поново"),
+    "sq" to lyricsTranslationStatus("Po përkthehen tekstet…", "Gjuha e përkthimit nuk është shkarkuar · Prek për ta marrë", "Po shkarkohet gjuha e përkthimit…", "Përkthimi nuk është i disponueshëm për këtë gjuhë në këtë pajisje", "Përkthimi dështoi · Prek për të provuar përsëri"),
+    "bg" to lyricsTranslationStatus("Превеждане на текста…", "Езикът за превод не е изтеглен · Докоснете, за да го изтеглите", "Изтегляне на езика за превод…", "Преводът не е наличен за този език на това устройство", "Преводът не бе успешен · Докоснете, за да опитате отново"),
+    "hu" to lyricsTranslationStatus("Dalszöveg fordítása…", "A fordítási nyelv nincs letöltve · Koppints a letöltéshez", "Fordítási nyelv letöltése…", "A fordítás ezen a nyelven nem érhető el ezen az eszközön", "A fordítás sikertelen · Koppints az újrapróbáláshoz"),
+    "fi" to lyricsTranslationStatus("Käännetään sanoituksia…", "Käännöskieltä ei ole ladattu · Lataa napauttamalla", "Ladataan käännöskieltä…", "Käännös ei ole saatavilla tälle kielelle tällä laitteella", "Käännös epäonnistui · Yritä uudelleen napauttamalla"),
+    "et" to lyricsTranslationStatus("Laulusõnade tõlkimine…", "Tõlkekeel pole alla laaditud · Puuduta hankimiseks", "Tõlkekeele allalaadimine…", "Tõlge pole selle keele jaoks selles seadmes saadaval", "Tõlkimine ebaõnnestus · Puuduta uuesti proovimiseks"),
+    "nb" to lyricsTranslationStatus("Oversetter sangteksten…", "Oversettelsesspråket er ikke lastet ned · Trykk for å hente det", "Laster ned oversettelsesspråk…", "Oversettelse er ikke tilgjengelig for dette språket på denne enheten", "Oversettelsen mislyktes · Trykk for å prøve igjen"),
+    "ca" to lyricsTranslationStatus("S'està traduint la lletra…", "L'idioma de traducció no s'ha baixat · Toca per obtenir-lo", "S'està baixant l'idioma de traducció…", "La traducció no està disponible per a aquest idioma en aquest dispositiu", "La traducció ha fallat · Toca per tornar-ho a provar"),
+    "uk" to lyricsTranslationStatus("Перекладаємо текст…", "Мову перекладу не завантажено · Торкніться, щоб завантажити", "Завантаження мови перекладу…", "Переклад цієї мови недоступний на цьому пристрої", "Не вдалося перекласти · Торкніться, щоб повторити"),
+    "ru" to lyricsTranslationStatus("Переводим текст…", "Язык перевода не загружен · Нажмите, чтобы загрузить", "Загрузка языка перевода…", "Перевод для этого языка недоступен на этом устройстве", "Не удалось перевести · Нажмите, чтобы повторить"),
+    "kk" to lyricsTranslationStatus("Мәтін аударылуда…", "Аударма тілі жүктелмеген · Жүктеу үшін түртіңіз", "Аударма тілі жүктелуде…", "Бұл құрылғыда осы тілге аударма қолжетімсіз", "Аударма сәтсіз аяқталды · Қайталау үшін түртіңіз"),
+    "tr" to lyricsTranslationStatus("Şarkı sözleri çevriliyor…", "Çeviri dili indirilmedi · Almak için dokunun", "Çeviri dili indiriliyor…", "Bu cihazda bu dil için çeviri kullanılamıyor", "Çeviri başarısız oldu · Yeniden denemek için dokunun"),
+    "ar" to lyricsTranslationStatus("جارٍ ترجمة الكلمات…", "لم يتم تنزيل لغة الترجمة · انقر للحصول عليها", "جارٍ تنزيل لغة الترجمة…", "الترجمة غير متاحة لهذه اللغة على هذا الجهاز", "فشلت الترجمة · انقر لإعادة المحاولة"),
+    "fa" to lyricsTranslationStatus("در حال ترجمه متن ترانه…", "زبان ترجمه دانلود نشده است · برای دریافت ضربه بزنید", "در حال دانلود زبان ترجمه…", "ترجمه برای این زبان در این دستگاه در دسترس نیست", "ترجمه ناموفق بود · برای تلاش دوباره ضربه بزنید"),
+    "zh" to lyricsTranslationStatus("正在翻译歌词…", "未下载翻译语言 · 点按获取", "正在下载翻译语言…", "此设备不支持该语言的翻译", "翻译失败 · 点按重试"),
+    "zh-Hant" to lyricsTranslationStatus("正在翻譯歌詞…", "尚未下載翻譯語言 · 輕觸以取得", "正在下載翻譯語言…", "此裝置不支援該語言的翻譯", "翻譯失敗 · 輕觸以重試"),
+    "ja" to lyricsTranslationStatus("歌詞を翻訳中…", "翻訳言語がダウンロードされていません · タップして取得", "翻訳言語をダウンロード中…", "このデバイスではこの言語の翻訳を利用できません", "翻訳に失敗しました · タップして再試行"),
+    "ko" to lyricsTranslationStatus("가사 번역 중…", "번역 언어가 다운로드되지 않았습니다 · 탭하여 받기", "번역 언어 다운로드 중…", "이 기기에서는 이 언어의 번역을 사용할 수 없습니다", "번역 실패 · 탭하여 다시 시도"),
+    "hi" to lyricsTranslationStatus("बोल का अनुवाद हो रहा है…", "अनुवाद भाषा डाउनलोड नहीं हुई · पाने के लिए टैप करें", "अनुवाद भाषा डाउनलोड हो रही है…", "इस डिवाइस पर इस भाषा के लिए अनुवाद उपलब्ध नहीं है", "अनुवाद विफल रहा · फिर से कोशिश करने के लिए टैप करें"),
+    "bn" to lyricsTranslationStatus("গানের কথা অনুবাদ করা হচ্ছে…", "অনুবাদের ভাষা ডাউনলোড করা হয়নি · পেতে ট্যাপ করুন", "অনুবাদের ভাষা ডাউনলোড হচ্ছে…", "এই ডিভাইসে এই ভাষার অনুবাদ উপলব্ধ নয়", "অনুবাদ ব্যর্থ হয়েছে · আবার চেষ্টা করতে ট্যাপ করুন"),
+    "id" to lyricsTranslationStatus("Menerjemahkan lirik…", "Bahasa terjemahan belum diunduh · Ketuk untuk mendapatkannya", "Mengunduh bahasa terjemahan…", "Terjemahan tidak tersedia untuk bahasa ini di perangkat ini", "Terjemahan gagal · Ketuk untuk mencoba lagi"),
+    "ms" to lyricsTranslationStatus("Menterjemah lirik…", "Bahasa terjemahan belum dimuat turun · Ketik untuk mendapatkannya", "Memuat turun bahasa terjemahan…", "Terjemahan tidak tersedia untuk bahasa ini pada peranti ini", "Terjemahan gagal · Ketik untuk cuba lagi"),
+    "vi" to lyricsTranslationStatus("Đang dịch lời bài hát…", "Chưa tải ngôn ngữ dịch · Nhấn để tải", "Đang tải ngôn ngữ dịch…", "Không thể dịch ngôn ngữ này trên thiết bị này", "Dịch không thành công · Nhấn để thử lại"),
+    "th" to lyricsTranslationStatus("กำลังแปลเนื้อเพลง…", "ยังไม่ได้ดาวน์โหลดภาษาสำหรับแปล · แตะเพื่อดาวน์โหลด", "กำลังดาวน์โหลดภาษาสำหรับแปล…", "อุปกรณ์นี้ไม่รองรับการแปลภาษานี้", "แปลไม่สำเร็จ · แตะเพื่อลองอีกครั้ง"),
+    "fil" to lyricsTranslationStatus("Isinasalin ang lyrics…", "Hindi pa na-download ang wika ng pagsasalin · I-tap para makuha", "Dina-download ang wika ng pagsasalin…", "Hindi available ang pagsasalin para sa wikang ito sa device na ito", "Nabigo ang pagsasalin · I-tap para subukan ulit"),
+    "he" to lyricsTranslationStatus("מתרגם את המילים…", "שפת התרגום לא הורדה · יש להקיש כדי להוריד", "מוריד את שפת התרגום…", "התרגום לא זמין לשפה זו במכשיר הזה", "התרגום נכשל · יש להקיש כדי לנסות שוב")
+)
+
 internal fun lyricsActionLocalizationEntries(code: String): Map<String, String> =
-    localizedBundleOrEnglish(lyricsActionBundles, code) + localizedBundleOrEnglish(lyricsOffsetBundles, code)
+    localizedBundleOrEnglish(lyricsActionBundles, code) + localizedBundleOrEnglish(lyricsOffsetBundles, code) +
+        localizedBundleOrEnglish(lyricsTranslationStatusBundles, code)
 
 internal fun lyricsActionLocalizationCodes(): Set<String> = supportedLocalizationCodes()

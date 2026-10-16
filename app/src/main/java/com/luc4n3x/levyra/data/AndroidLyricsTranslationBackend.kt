@@ -21,33 +21,35 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 
 internal class AndroidLyricsTranslationBackend(context: Context) : LyricsTranslationBackend {
     private val appContext = context.applicationContext
 
-    override val version: String = "android-platform-v1"
+    override val version: String = "android-platform-v2"
 
     override suspend fun translate(
-        batches: List<String>,
+        texts: List<String>,
         targetLanguageTag: String
     ): LyricsBatchTranslation {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
             return LyricsBatchTranslation.Unavailable(LyricsTranslationState.UNAVAILABLE)
         }
         return withContext(Dispatchers.Default) {
-            translateOnAndroid12(batches, targetLanguageTag)
+            translateOnAndroid12(texts, targetLanguageTag)
         }
     }
 
     @RequiresApi(Build.VERSION_CODES.S)
     private suspend fun translateOnAndroid12(
-        batches: List<String>,
+        texts: List<String>,
         targetLanguageTag: String
     ): LyricsBatchTranslation {
-        if (batches.isEmpty()) return LyricsBatchTranslation.Unavailable(LyricsTranslationState.UNAVAILABLE)
-        val sourceLocale = detectSourceLocale(batches.joinToString("\n").take(MAX_LANGUAGE_SAMPLE_CHARS))
-            ?: return LyricsBatchTranslation.Unavailable(LyricsTranslationState.UNAVAILABLE)
+        if (texts.isEmpty()) return LyricsBatchTranslation.Unavailable(LyricsTranslationState.UNAVAILABLE)
+        val sourceLocale = runCatching {
+            detectSourceLocale(texts.joinToString("\n").take(MAX_LANGUAGE_SAMPLE_CHARS))
+        }.getOrNull() ?: return LyricsBatchTranslation.Unavailable(LyricsTranslationState.UNAVAILABLE)
         val targetLocale = ULocale.forLanguageTag(canonicalTranslationLanguageTag(targetLanguageTag))
         if (targetLocale.language.isNullOrBlank()) {
             return LyricsBatchTranslation.Unavailable(LyricsTranslationState.UNAVAILABLE)
@@ -55,15 +57,17 @@ internal class AndroidLyricsTranslationBackend(context: Context) : LyricsTransla
         if (sameLanguageVariant(sourceLocale, targetLocale)) return LyricsBatchTranslation.SameLanguage
         val manager = appContext.getSystemService(TranslationManager::class.java)
             ?: return LyricsBatchTranslation.Unavailable(LyricsTranslationState.UNAVAILABLE)
-        val capability = manager.getOnDeviceTranslationCapabilities(
-            TranslationSpec.DATA_FORMAT_TEXT,
-            TranslationSpec.DATA_FORMAT_TEXT
-        ).filter { candidate ->
+        val capability = runCatching {
+            manager.getOnDeviceTranslationCapabilities(
+                TranslationSpec.DATA_FORMAT_TEXT,
+                TranslationSpec.DATA_FORMAT_TEXT
+            )
+        }.getOrNull().orEmpty().filter { candidate ->
             localeMatches(candidate.sourceSpec.locale, sourceLocale) &&
                 localeMatches(candidate.targetSpec.locale, targetLocale)
         }.maxByOrNull(::capabilityPriority)
             ?: return LyricsBatchTranslation.Unavailable(LyricsTranslationState.UNAVAILABLE)
-        if (capability.state == TranslationCapability.STATE_NOT_AVAILABLE) {
+        if (capability.state != TranslationCapability.STATE_ON_DEVICE) {
             return LyricsBatchTranslation.Unavailable(capability.unavailableState())
         }
         val flags = if (
@@ -76,18 +80,22 @@ internal class AndroidLyricsTranslationBackend(context: Context) : LyricsTransla
         val translationContext = TranslationContext.Builder(capability.sourceSpec, capability.targetSpec)
             .setTranslationFlags(flags)
             .build()
-        val translator = createTranslator(manager, translationContext)
-            ?: return LyricsBatchTranslation.Unavailable(capability.unavailableState())
+        val translator = try {
+            withTimeoutOrNull(TRANSLATOR_CREATE_TIMEOUT_MS) { createTranslator(manager, translationContext) }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            null
+        } ?: return LyricsBatchTranslation.Unavailable(LyricsTranslationState.FAILED)
         return try {
-            val translated = ArrayList<String>(batches.size)
-            batches.chunked(MAX_BATCHES_PER_REQUEST).forEach { requestBatches ->
-                translated += translateRequest(translator, requestBatches)
-                    ?: return LyricsBatchTranslation.Unavailable(LyricsTranslationState.FAILED)
+            val translated = ArrayList<String?>(texts.size)
+            texts.chunked(MAX_LINES_PER_REQUEST).forEach { requestTexts ->
+                translated += translateRequest(translator, requestTexts)
             }
             LyricsBatchTranslation.Success(translated)
         } catch (cancelled: CancellationException) {
             throw cancelled
-        } catch (_: Throwable) {
+        } catch (_: Exception) {
             LyricsBatchTranslation.Unavailable(LyricsTranslationState.FAILED)
         } finally {
             translator.destroy()
@@ -122,29 +130,29 @@ internal class AndroidLyricsTranslationBackend(context: Context) : LyricsTransla
     @RequiresApi(Build.VERSION_CODES.S)
     private suspend fun translateRequest(
         translator: Translator,
-        batches: List<String>
-    ): List<String>? = suspendCancellableCoroutine { continuation ->
+        texts: List<String>
+    ): List<String?> = suspendCancellableCoroutine { continuation ->
         val cancellationSignal = CancellationSignal()
         continuation.invokeOnCancellation { cancellationSignal.cancel() }
         val request = TranslationRequest.Builder()
             .setFlags(TranslationRequest.FLAG_TRANSLATION_RESULT)
-            .setTranslationRequestValues(batches.map(TranslationRequestValue::forText))
+            .setTranslationRequestValues(texts.map(TranslationRequestValue::forText))
             .build()
         translator.translate(request, cancellationSignal, appContext.mainExecutor) { response ->
             if (!continuation.isActive) return@translate
             if (response.translationStatus != TranslationResponse.TRANSLATION_STATUS_SUCCESS) {
-                continuation.resume(null)
+                continuation.resume(List(texts.size) { null })
                 return@translate
             }
             val values = response.translationResponseValues
-            val translated = batches.indices.mapNotNull { index ->
-                values[index]
-                    ?.takeIf { it.statusCode == TranslationResponseValue.STATUS_SUCCESS }
-                    ?.text
-                    ?.toString()
-                    ?.takeIf(String::isNotBlank)
-            }
-            continuation.resume(translated.takeIf { it.size == batches.size })
+            continuation.resume(
+                texts.indices.map { index ->
+                    values[index]
+                        ?.takeIf { it.statusCode == TranslationResponseValue.STATUS_SUCCESS }
+                        ?.text
+                        ?.toString()
+                }
+            )
         }
     }
 
@@ -172,7 +180,8 @@ internal class AndroidLyricsTranslationBackend(context: Context) : LyricsTransla
     }
 
     companion object {
-        private const val MAX_BATCHES_PER_REQUEST = 12
+        private const val MAX_LINES_PER_REQUEST = 24
+        private const val TRANSLATOR_CREATE_TIMEOUT_MS = 20_000L
         private const val MAX_LANGUAGE_SAMPLE_CHARS = 8_000
         private const val MIN_LANGUAGE_CONFIDENCE = 0.45f
     }
