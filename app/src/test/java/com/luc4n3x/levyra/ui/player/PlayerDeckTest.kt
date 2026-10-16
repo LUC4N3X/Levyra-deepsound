@@ -33,6 +33,15 @@ class PlayerDeckTest {
     }
 
     @Test
+    fun `lyrics flip is offered only by decks that render an upright lyrics face`() {
+        assertFalse(PlayerDeckLayout.Aura.showsLyricsFace())
+        assertFalse(PlayerDeckLayout.Pulse.showsLyricsFace())
+        PlayerDeckLayout.entries
+            .filterNot { it == PlayerDeckLayout.Aura || it == PlayerDeckLayout.Pulse }
+            .forEach { assertTrue(it.showsLyricsFace()) }
+    }
+
+    @Test
     fun `new styles fall back to the levyra layout where they are not designed to run`() {
         listOf(PlayerVisualMode.CanvasImmersive, PlayerVisualMode.Expressive, PlayerVisualMode.Artwork, PlayerVisualMode.Pulse).forEach { mode ->
             val supported = resolvePlayerDeckLayout(mode, false, false, LevyraPlayerPane.Stacked, true)
