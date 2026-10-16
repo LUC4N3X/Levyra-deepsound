@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
@@ -123,5 +124,56 @@ class ExploreMoodArtworkCardTest {
     fun unknownGenreDoesNotTriggerPortraitLookup() {
         assertNull(exploreMoodPortraitArtist("unknown-zone", "it", 0L))
         assertTrue(exploreMoodPortraitCandidates("unknown-zone", "it", 0L).isEmpty())
+    }
+
+    @Test
+    fun portraitResolutionPrefersEarlierProviderAcrossAllCandidates() = runBlocking {
+        val spotify = mapOf("Second" to "spotify-second")
+        val apple = mapOf("First" to "apple-first", "Second" to "apple-second")
+
+        val portrait = resolveExploreMoodPortrait(
+            candidates = listOf("First", "Second"),
+            providers = listOf<suspend (String) -> String>(
+                { name -> spotify[name].orEmpty() },
+                { name -> apple[name].orEmpty() }
+            )
+        )
+
+        assertEquals("spotify-second", portrait)
+    }
+
+    @Test
+    fun portraitResolutionFallsBackThroughProvidersInOrder() = runBlocking {
+        val calls = mutableListOf<String>()
+        val providers = listOf("spotify", "apple", "youtube", "deezer", "tidal").map { provider ->
+            val lookup: suspend (String) -> String = { name ->
+                calls += "$provider:$name"
+                if (provider == "deezer" && name == "Second") "deezer-second" else ""
+            }
+            lookup
+        }
+
+        val portrait = resolveExploreMoodPortrait(candidates = listOf("First", "Second"), providers = providers)
+
+        assertEquals("deezer-second", portrait)
+        assertEquals(
+            listOf(
+                "spotify:First", "spotify:Second",
+                "apple:First", "apple:Second",
+                "youtube:First", "youtube:Second",
+                "deezer:First", "deezer:Second"
+            ),
+            calls
+        )
+    }
+
+    @Test
+    fun portraitResolutionReturnsBlankWhenNoProviderHasPortrait() = runBlocking {
+        val portrait = resolveExploreMoodPortrait(
+            candidates = listOf("First"),
+            providers = listOf<suspend (String) -> String>({ "" }, { "" })
+        )
+
+        assertEquals("", portrait)
     }
 }

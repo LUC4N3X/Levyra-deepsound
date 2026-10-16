@@ -285,10 +285,11 @@ private class OkHttpTidalMotionTransport(context: Context) : TidalMotionTranspor
 
     private companion object {
         const val BASE_URL = "https://api.tidal.com/v1"
-        const val TIDAL_EMBED_TOKEN = "vNVdglQOjFJJGG2U"
         const val USER_AGENT = "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/130 Mobile Safari/537.36"
     }
 }
+
+internal const val TIDAL_EMBED_TOKEN = "vNVdglQOjFJJGG2U"
 
 internal fun tidalSearchQueries(identity: MotionTrackIdentity, type: String): List<String> {
     val artist = identity.artists.joinToString(" ")
