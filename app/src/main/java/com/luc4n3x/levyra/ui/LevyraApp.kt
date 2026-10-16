@@ -9823,7 +9823,7 @@ private fun HomeScreen(
         buildHomeCollectionAccents(visibleEditorialCollections)
     }
     val chartChunks = homeDerivedState.chartChunks
-    val spotlightHeroData = remember(
+    val spotlightHeroBase = remember(
         spotlightCandidate?.track?.id,
         spotlightTracks,
         soundtrackArtistPool,
@@ -9868,6 +9868,7 @@ private fun HomeScreen(
         )
         HomeSpotlightHero(candidate, heroArtistArtworkUrl, soundtrackArtists, companions)
     }
+    val spotlightHeroData = rememberHomeHeroPortrait(spotlightHeroBase)
     val offlineContent = homeDerivedState.offlineContent
     val offlineHomeVisible = HomeOfflinePolicy.showOfflineHome(state.isDeviceOffline)
     val homeContent = homeDerivedState.contentAvailability
@@ -10796,7 +10797,7 @@ private fun rememberStudioSpotlight(
     val homeCollectionAccents = remember(visibleEditorialCollections) {
         buildHomeCollectionAccents(visibleEditorialCollections)
     }
-    val spotlightHeroData = remember(
+    val spotlightHeroBase = remember(
         spotlightCandidate?.track?.id,
         spotlightTracks,
         soundtrackArtistPool,
@@ -10805,6 +10806,7 @@ private fun rememberStudioSpotlight(
     ) {
         buildStudioSpotlightHero(spotlightCandidate, spotlightTracks, soundtrackArtistPool, spotlightDayKey, state.languageCode)
     }
+    val spotlightHeroData = rememberHomeHeroPortrait(spotlightHeroBase)
     return StudioSpotlightState(spotlightCandidate, spotlightTracks, spotlightHeroData, visibleEditorialCollections, homeCollectionAccents)
 }
 
@@ -12632,6 +12634,47 @@ private fun highResolutionHomeArtistArtworkUrl(url: String): String {
         .replace("ab6761610000f178", "ab6761610000e5eb", ignoreCase = true)
 }
 
+@Composable
+private fun rememberHomeHeroPortrait(hero: HomeSpotlightHero?): HomeSpotlightHero? {
+    val context = LocalContext.current
+    val spotifyRepository = remember(context) { SpotifyArtistArtworkRepository.get(context) }
+    val appleRepository = remember(context) { AppleArtistArtworkRepository.get(context) }
+    val artistName = hero?.artists?.firstOrNull().orEmpty().trim()
+    val fallbackUrl = hero?.artistArtworkUrl.orEmpty()
+    var externalPortraitUrl by rememberSaveable(artistName) {
+        mutableStateOf(
+            spotifyRepository.cachedArtistPortrait(artistName)
+                .takeIf(String::isNotBlank)
+                ?.let(::highResolutionHomeArtistArtworkUrl)
+                .orEmpty()
+        )
+    }
+    var portraitLookupComplete by rememberSaveable(artistName) {
+        mutableStateOf(artistName.isBlank() || externalPortraitUrl.isNotBlank())
+    }
+    var lockedFallbackUrl by rememberSaveable(artistName) { mutableStateOf("") }
+    LaunchedEffect(artistName, spotifyRepository, appleRepository) {
+        if (portraitLookupComplete) return@LaunchedEffect
+        val portrait = spotifyRepository.resolveArtistPortrait(artistName)
+            .ifBlank { appleRepository.resolveArtistPortrait(artistName) }
+        externalPortraitUrl = portrait.takeIf(String::isNotBlank)
+            ?.let(::highResolutionHomeArtistArtworkUrl)
+            .orEmpty()
+        portraitLookupComplete = true
+    }
+    LaunchedEffect(portraitLookupComplete, externalPortraitUrl, fallbackUrl) {
+        if (portraitLookupComplete && externalPortraitUrl.isBlank() && lockedFallbackUrl.isBlank()) {
+            lockedFallbackUrl = fallbackUrl
+        }
+    }
+    val portraitUrl = when {
+        !portraitLookupComplete -> ""
+        externalPortraitUrl.isNotBlank() -> externalPortraitUrl
+        else -> lockedFallbackUrl.ifBlank { fallbackUrl }
+    }
+    return remember(hero, portraitUrl) { hero?.copy(artistArtworkUrl = portraitUrl) }
+}
+
 private fun homeSoundtrackMatchesArtist(track: Track, artistName: String, browseId: String): Boolean {
     if (artistName.isBlank()) return false
     if (browseId.isNotBlank() && track.artistBrowseIds.any { it.equals(browseId, ignoreCase = true) }) return true
@@ -12658,29 +12701,7 @@ private fun HomeEditorialSpotlight(
     val strings = LocalLevyraStrings.current
     val interaction = remember { MutableInteractionSource() }
     val context = LocalContext.current
-    val heroArtistName = soundtrackArtists.firstOrNull().orEmpty().trim()
-    val spotifyArtistArtworkRepository = remember(context) {
-        SpotifyArtistArtworkRepository.get(context)
-    }
-    val appleArtistArtworkRepository = remember(context) {
-        AppleArtistArtworkRepository.get(context)
-    }
-    var resolvedArtistArtworkUrl by rememberSaveable(heroArtistName, artistArtworkUrl) {
-        mutableStateOf(artistArtworkUrl)
-    }
-    LaunchedEffect(heroArtistName, artistArtworkUrl, spotifyArtistArtworkRepository, appleArtistArtworkRepository) {
-        if (heroArtistName.isNotBlank()) {
-            val spotifyPortrait = spotifyArtistArtworkRepository.resolveArtistPortrait(heroArtistName)
-            if (spotifyPortrait.isNotBlank()) {
-                resolvedArtistArtworkUrl = highResolutionHomeArtistArtworkUrl(spotifyPortrait)
-            } else {
-                val applePortrait = appleArtistArtworkRepository.resolveArtistPortrait(heroArtistName)
-                if (applePortrait.isNotBlank()) {
-                    resolvedArtistArtworkUrl = highResolutionHomeArtistArtworkUrl(applePortrait)
-                }
-            }
-        }
-    }
+    val resolvedArtistArtworkUrl = artistArtworkUrl
     val fallbackPalette = remember(track.accentStart, track.accentEnd) {
         ArtworkPalette(track.accentStart, track.accentEnd)
     }
