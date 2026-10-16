@@ -7,6 +7,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.font.FontWeight
@@ -52,10 +54,12 @@ import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraGlassBorder
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
+import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraViolet
 import com.luc4n3x.levyra.update.formatUpdateDuration
 import com.luc4n3x.levyra.update.formatUpdateTransferLine
+import com.luc4n3x.levyra.update.updateUnitsFor
 import com.luc4n3x.levyra.update.updateProgressPercent
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -106,16 +110,19 @@ fun LevyraUpdateBanner(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .shadow(elevation = 10.dp, shape = BannerShape)
             .clip(BannerShape)
+            .background(LevyraPanel)
             .background(
                 Brush.linearGradient(
                     listOf(
-                        LevyraCyan.copy(alpha = if (phase is LevyraUpdatePhase.Available) 0.16f else 0.08f),
+                        LevyraCyan.copy(alpha = if (phase is LevyraUpdatePhase.Available) 0.16f else 0.10f),
                         LevyraViolet.copy(alpha = 0.10f),
-                        LevyraPanel
+                        Color.Transparent
                     )
                 )
             )
+            .border(width = 1.dp, color = LevyraGlassBorder, shape = BannerShape)
     ) {
         Column(modifier = Modifier.padding(start = 18.dp, end = 10.dp, top = 16.dp, bottom = 12.dp)) {
             BannerHeader(
@@ -273,22 +280,24 @@ private fun BannerBody(
                     text = formatUpdateTransferLine(
                         downloadedBytes = phase.downloadedBytes,
                         totalBytes = phase.totalBytes,
-                        bytesPerSecond = phase.bytesPerSecond
+                        bytesPerSecond = phase.bytesPerSecond,
+                        units = updateUnitsFor(strings.code)
                     ),
                     color = LevyraMuted,
-                    fontSize = 11.sp,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
                 )
-                val trailing = percent?.let { "$it%" } ?: formatUpdateDuration(phase.elapsedMs)
+                val trailing = percent?.let { "$it%" } ?: formatUpdateDuration(phase.elapsedMs, updateUnitsFor(strings.code))
                 if (trailing != null) {
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
                         text = trailing,
                         color = LevyraText,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
                         maxLines = 1
                     )
                 }
@@ -364,7 +373,7 @@ private fun QuietAction(label: String, onClick: () -> Unit) {
     FilledTonalButton(
         onClick = onClick,
         colors = ButtonDefaults.filledTonalButtonColors(
-            containerColor = LevyraText.copy(alpha = 0.08f),
+            containerColor = LevyraPanelSoft,
             contentColor = LevyraText
         ),
         shapes = ButtonDefaults.shapes()
@@ -391,14 +400,14 @@ private fun DeterminateTrack(fraction: Float) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(end = 10.dp)
-            .height(4.dp)
+            .height(6.dp)
             .clip(TrackShape)
-            .background(LevyraGlassBorder)
+            .background(LevyraText.copy(alpha = 0.12f))
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth(fraction.coerceIn(0f, 1f))
-                .height(4.dp)
+                .height(6.dp)
                 .clip(TrackShape)
                 .background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet)))
         )
@@ -421,15 +430,15 @@ private fun IndeterminateTrack() {
         modifier = Modifier
             .fillMaxWidth()
             .padding(end = 10.dp)
-            .height(4.dp)
+            .height(6.dp)
             .clip(TrackShape)
-            .background(LevyraGlassBorder)
+            .background(LevyraText.copy(alpha = 0.12f))
     ) {
         Layout(
             content = {
                 Box(
                     modifier = Modifier
-                        .height(4.dp)
+                        .height(6.dp)
                         .clip(TrackShape)
                         .background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet)))
                 )

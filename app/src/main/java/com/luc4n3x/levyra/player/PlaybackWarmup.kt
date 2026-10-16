@@ -91,6 +91,7 @@ class PlaybackWarmup(context: Context) {
                     val cache = LevyraMediaCache.get(appContext)
                     val metadataLength = ContentMetadata.getContentLength(cache.getContentMetadata(cacheKey))
                     if (isPlaybackResourceFullyCached(cache, cacheKey)) {
+                        rememberPrefetchedCacheHint(track, url, cacheKey, mimeType)
                         return@runCatchingPreservingCancellation FullCacheOutcome(true, metadataLength)
                     }
                     val declaredLength = metadataLength.takeIf { it > 0L } ?: audioContentLengthFromUrl(url)
@@ -128,6 +129,7 @@ class PlaybackWarmup(context: Context) {
                     }
                     cacheUntilCancelled(writer)
                     val complete = isPlaybackResourceFullyCached(cache, cacheKey)
+                    if (complete) rememberPrefetchedCacheHint(track, url, cacheKey, mimeType)
                     val length = ContentMetadata.getContentLength(cache.getContentMetadata(cacheKey))
                     Timber.d("advanced prefetch complete=%s bytes=%d key=%s", complete, length, cacheKey)
                     FullCacheOutcome(complete, if (complete) length else cache.getCachedBytes(cacheKey, 0L, C.LENGTH_UNSET.toLong()))
@@ -135,6 +137,12 @@ class PlaybackWarmup(context: Context) {
             }
         } finally {
             primeLocks.remove(cacheKey, lock)
+        }
+    }
+
+    private fun rememberPrefetchedCacheHint(track: Track, url: String, cacheKey: String, mimeType: String?) {
+        if (shouldRememberPlaybackCacheHint(url, mimeType, videoMode = false)) {
+            PlaybackCacheHintStore.record(track, cacheKey, mimeType.orEmpty())
         }
     }
 

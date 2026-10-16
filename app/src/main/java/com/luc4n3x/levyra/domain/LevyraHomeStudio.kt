@@ -194,6 +194,9 @@ data class LevyraHomeStudioSettings(
 
     fun activeLayout(): HomeStyleLayout = layoutFor(style)
 
+    fun usesClassicOriginalHome(): Boolean =
+        style == HomeStyle.Original && activeLayout() == defaultLayout(HomeStyle.Original)
+
     fun withStyle(target: HomeStyle): LevyraHomeStudioSettings = copy(style = target)
 
     fun updateLayout(target: HomeStyle, transform: (HomeStyleLayout) -> HomeStyleLayout): LevyraHomeStudioSettings {

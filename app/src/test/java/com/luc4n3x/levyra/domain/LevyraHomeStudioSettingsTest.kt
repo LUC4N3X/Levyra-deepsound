@@ -11,6 +11,28 @@ import org.junit.Test
 
 class LevyraHomeStudioSettingsTest {
     @Test
+    fun untouchedOriginalKeepsTheClassicHomeRenderer() {
+        assertTrue(LevyraHomeStudioSettings().usesClassicOriginalHome())
+        assertTrue(LevyraHomeStudioSettings.decode(null).usesClassicOriginalHome())
+        val resetAfterEdit = LevyraHomeStudioSettings()
+            .updateLayout(HomeStyle.Original) { it.withVisibility(HomeSectionId.PersonalOrbit, false) }
+            .resetStyle(HomeStyle.Original)
+        assertTrue(resetAfterEdit.usesClassicOriginalHome())
+    }
+
+    @Test
+    fun customizedOriginalUsesTheRendererThatHonoursHiddenAndReorderedSections() {
+        val hidden = LevyraHomeStudioSettings()
+            .updateLayout(HomeStyle.Original) { it.withVisibility(HomeSectionId.PersonalOrbit, false) }
+        val reordered = LevyraHomeStudioSettings()
+            .updateLayout(HomeStyle.Original) { it.moved(2, 0) }
+
+        assertFalse(hidden.usesClassicOriginalHome())
+        assertFalse(reordered.usesClassicOriginalHome())
+        assertFalse(LevyraHomeStudioSettings(style = HomeStyle.ExpressiveMax).usesClassicOriginalHome())
+    }
+
+    @Test
     fun freshInstallDefaultsToOriginalWithCurrentHomeOrder() {
         val settings = LevyraHomeStudioSettings.decode(null)
         val layout = settings.activeLayout()

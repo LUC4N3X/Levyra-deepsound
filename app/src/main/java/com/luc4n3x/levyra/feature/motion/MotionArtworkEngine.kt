@@ -140,6 +140,19 @@ class MotionArtworkEngine(context: Context) {
         artistName: String,
         artistBrowseId: String,
         source: LevyraCanvasSource = LevyraCanvasSource.Auto
+    ): MotionArtwork? = resolveArtistWithin(artistName, artistBrowseId, source, artistMotionForegroundWaitMs(source))
+
+    suspend fun awaitArtist(
+        artistName: String,
+        artistBrowseId: String,
+        source: LevyraCanvasSource = LevyraCanvasSource.Auto
+    ): MotionArtwork? = resolveArtistWithin(artistName, artistBrowseId, source, ARTIST_MOTION_REQUEST_TIMEOUT_MS)
+
+    private suspend fun resolveArtistWithin(
+        artistName: String,
+        artistBrowseId: String,
+        source: LevyraCanvasSource,
+        foregroundWaitMs: Long
     ): MotionArtwork? {
         val clean = artistName.trim()
         if (clean.length < 2) return null
@@ -161,7 +174,6 @@ class MotionArtworkEngine(context: Context) {
             resolveArtistFresh(clean, identityKey, runtime.epoch, config)?.let { emit(it) }
         }
         lookupScope.launch { request.lastOrNull() }
-        val foregroundWaitMs = artistMotionForegroundWaitMs(source)
         if (foregroundWaitMs <= 0L) return null
         return withTimeoutOrNull(foregroundWaitMs) { request.lastOrNull() }
     }

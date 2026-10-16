@@ -45,6 +45,7 @@ internal data class AdvancedPrefetchConditions(
     val videoMode: Boolean,
     val connected: Boolean,
     val unmetered: Boolean,
+    val mobileDataAllowed: Boolean = false,
     val lowRam: Boolean,
     val powerConstrained: Boolean,
     val freeDiskBytes: Long
@@ -54,10 +55,29 @@ internal fun advancedPrefetchAllowed(conditions: AdvancedPrefetchConditions): Bo
     conditions.windowSize > 0 &&
         !conditions.videoMode &&
         conditions.connected &&
-        conditions.unmetered &&
+        (conditions.unmetered || conditions.mobileDataAllowed) &&
         !conditions.lowRam &&
         !conditions.powerConstrained &&
         conditions.freeDiskBytes >= ADVANCED_PREFETCH_MIN_FREE_DISK_BYTES
+
+internal fun advancedPrefetchNetworkAllowed(
+    internet: Boolean,
+    validated: Boolean,
+    unmetered: Boolean,
+    mobileDataAllowed: Boolean,
+    dataSaverOn: Boolean
+): Boolean = internet && validated && (unmetered || (mobileDataAllowed && !dataSaverOn))
+
+internal const val RADIO_TAIL_MIN_UPCOMING = 3
+private const val RADIO_TAIL_FETCH_HEADROOM = 5
+private const val RADIO_TAIL_MAX_FETCH = 30
+
+internal fun radioTailTargetUpcoming(advancedPrefetchTracks: Int): Int =
+    maxOf(RADIO_TAIL_MIN_UPCOMING, advancedPrefetchTracks)
+
+internal fun radioTailFetchLimit(targetUpcoming: Int, currentUpcoming: Int): Int =
+    (targetUpcoming - currentUpcoming.coerceAtLeast(0) + RADIO_TAIL_FETCH_HEADROOM)
+        .coerceIn(RADIO_TAIL_FETCH_HEADROOM, RADIO_TAIL_MAX_FETCH)
 
 internal fun advancedPrefetchBudgetBytes(cacheMaxBytes: Long): Long =
     (cacheMaxBytes / 2L).coerceAtLeast(0L)

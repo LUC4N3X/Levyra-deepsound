@@ -310,6 +310,9 @@ import com.luc4n3x.levyra.player.AdvancedPrefetchConditions
 import com.luc4n3x.levyra.player.LevyraMediaCache
 import com.luc4n3x.levyra.player.LevyraPlayer
 import com.luc4n3x.levyra.player.advancedPrefetchAllowed
+import com.luc4n3x.levyra.player.advancedPrefetchNetworkAllowed
+import com.luc4n3x.levyra.player.radioTailFetchLimit
+import com.luc4n3x.levyra.player.radioTailTargetUpcoming
 import com.luc4n3x.levyra.player.advancedPrefetchBudgetBytes
 import com.luc4n3x.levyra.player.advancedPrefetchTrackLimit
 import com.luc4n3x.levyra.player.PlaybackService
@@ -359,11 +362,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.filterNotNull
@@ -388,6 +393,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 private const val ARTIST_PROFILE_UNAVAILABLE_ERROR = "artist_profile_unavailable"
 private const val ARTIST_INITIAL_BIOGRAPHY_WAIT_MS = 250L
+private const val RADIO_TAIL_MAX_APPEND_ROUNDS = 3
 private const val EXPLORE_SHORTS_FEED_LIMIT = 24
 private const val ONBOARDING_ARTWORK_PARALLELISM = 4
 private const val ONBOARDING_ARTWORK_SEARCH_LIMIT = 12
@@ -466,6 +472,26 @@ internal fun shouldStartPlaybackPaused(
 internal fun LevyraUiState.withExplicitPlaybackMode(videoMode: Boolean): LevyraUiState =
     if (isVideoMode == videoMode && pendingVideoMode == null) this
     else copy(isVideoMode = videoMode, pendingVideoMode = null)
+
+internal fun releaseRadarAlbumHit(entry: ReleaseRadarEntry): AlbumHit? {
+    val release = entry.release
+    val browseId = release.browseId.trim()
+    if (browseId.isBlank()) return null
+    val artist = entry.artistName.trim().ifBlank { release.subtitle.trim() }
+    return AlbumHit(
+        title = release.title,
+        artist = artist,
+        year = release.year,
+        thumbnailUrl = release.thumbnailUrl,
+        query = listOf(artist, release.title).filter(String::isNotBlank).joinToString(" "),
+        browseId = browseId,
+        artistBrowseId = entry.artistBrowseId.trim(),
+        explicit = release.explicit
+    )
+}
+
+internal fun releaseRadarSearchQuery(entry: ReleaseRadarEntry): String =
+    listOf(entry.release.title, entry.artistName).map(String::trim).filter(String::isNotBlank).joinToString(" ")
 
 internal fun prioritizeNewReleasesForUser(
     releases: List<AlbumHit>,
@@ -775,6 +801,12 @@ internal fun selectArtistMotionSeeds(
 }.take(limit)
 
 private const val MAX_ARTIST_MOTION_SEEDS = 4
+
+internal suspend fun firstAvailableMotionArtwork(
+    attempts: List<suspend () -> MotionArtwork?>
+): MotionArtwork? = channelFlow {
+    attempts.forEach { attempt -> launch { send(attempt()) } }
+}.firstOrNull { it != null }
 
 internal fun selectAlbumMotionSeed(
     detail: AlbumDetail,
@@ -1129,6 +1161,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var playlistHitJob: Job? = null
     private var albumFavoriteJob: Job? = null
     private var artistMotionJob: Job? = null
+    private var artistMotionRequest: ArtistMotionRequest? = null
+    private var artistMotionPublished = false
     private var albumMotionJob: Job? = null
     private var homeFeedJob: Job? = null
     private var homeAlbumsJob: Job? = null
@@ -4719,6 +4753,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (_state.value.isPlaying) syncAdvancedQueuePrefetch() else cancelAdvancedQueuePrefetch()
     }
 
+    fun setAdvancedQueuePrefetchOnMobileData(enabled: Boolean) {
+        updateAudioSettings(_state.value.audioSettings.copy(advancedQueuePrefetchOnMobileData = enabled))
+        if (_state.value.isPlaying) syncAdvancedQueuePrefetch() else cancelAdvancedQueuePrefetch()
+    }
+
     fun setAaudioOutputEnabled(value: Boolean) {
         updateAudioSettings(_state.value.audioSettings.copy(aaudioOutputEnabled = value))
     }
@@ -7739,7 +7778,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         artistProfile = initialProfile
                     )
                 }
-                refreshArtistMotionArtwork(initialProfile)
+                refreshArtistMotionArtwork(initialProfile, keepCurrent = true)
                 initialBiography?.let {
                     startArtistLore(initialProfile)
                 } ?: run {
@@ -7770,10 +7809,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun publishArtistPreview(preview: ArtistProfile, requestKey: String, biography: ArtistBiography?) {
+        var published = false
         _state.update { current ->
+            published = false
             if (!current.showArtist || !current.artistLoading || current.artistListStateKey != requestKey) return@update current
             if (current.artistProfile != null && current.artistProfile !== artistPlaceholder) return@update current
+            published = true
             current.copy(artistProfile = biography?.let { artistRepository.mergeBiography(preview, it) } ?: preview)
+        }
+        if (published && preview.topSongs.isNotEmpty()) {
+            viewModelScope.launch { refreshArtistMotionArtwork(preview, keepCurrent = true) }
         }
     }
 
@@ -7839,6 +7884,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun openAlbum(album: AlbumHit) {
         openAlbumInternal(album, DetailReturnTarget.None)
+    }
+
+    fun openReleaseRadarEntry(entry: ReleaseRadarEntry) {
+        val album = releaseRadarAlbumHit(entry)
+        if (album != null) {
+            openAlbum(album)
+        } else {
+            searchNow(releaseRadarSearchQuery(entry))
+        }
     }
 
     private fun openAlbumInternal(album: AlbumHit, returnTarget: DetailReturnTarget) {
@@ -11769,48 +11823,52 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (state.showAlbum) state.albumDetail?.let(::refreshAlbumMotionArtwork)
     }
 
-    private fun refreshArtistMotionArtwork(profile: ArtistProfile) {
-        artistMotionJob?.cancel()
-        if (!_state.value.animationsEnabled || !_state.value.motionArtworkEnabled) {
-            _state.update { it.copy(artistMotionArtwork = null) }
-            return
-        }
+    private fun refreshArtistMotionArtwork(profile: ArtistProfile, keepCurrent: Boolean = false) {
         val seeds = selectArtistMotionSeeds(
             profileName = profile.name,
             tracks = profile.topSongs,
             isLocal = ::isLocalPlaybackTrack
         )
+        val request = ArtistMotionRequest(artistMotionIdentity(profile), seeds.map(::playbackIdentity))
+        if (keepCurrent && request.identity == artistMotionRequest?.identity) {
+            val published = _state.value.artistMotionArtwork != null && artistMotionPublished
+            val sameWorkInFlight = artistMotionJob?.isActive == true && request == artistMotionRequest
+            if (published || sameWorkInFlight) return
+        }
+        artistMotionJob?.cancel()
+        artistMotionRequest = request
+        artistMotionPublished = false
+        if (!_state.value.animationsEnabled || !_state.value.motionArtworkEnabled) {
+            _state.update { it.copy(artistMotionArtwork = null) }
+            return
+        }
         if (profile.name.isBlank() && seeds.isEmpty()) {
             _state.update { it.copy(artistMotionArtwork = null) }
             return
         }
         artistMotionJob = viewModelScope.launch(Dispatchers.IO) {
             val canvasSource = _state.value.interfaceSettings.canvasSource
-            val artistVideo = if (profile.name.isBlank()) {
-                null
-            } else {
-                runCatching {
-                    motionArtworkEngine.resolveArtist(profile.name, profile.browseId, canvasSource)
+            val attempts = buildList<suspend () -> MotionArtwork?> {
+                if (profile.name.isNotBlank()) {
+                    add {
+                        runCatchingPreservingCancellation {
+                            motionArtworkEngine.awaitArtist(profile.name, profile.browseId, canvasSource)
+                        }.onFailure { error ->
+                            Timber.d(error, "Artist motion video resolve failed for %s", profile.name)
+                        }.getOrNull()
+                    }
                 }
-                    .onFailure { error ->
-                        if (error is CancellationException) throw error
-                        Timber.d(error, "Artist motion video resolve failed for %s", profile.name)
+                seeds.forEach { track ->
+                    add {
+                        runCatchingPreservingCancellation {
+                            motionArtworkEngine.resolve(track, LevyraCanvasSource.Auto)
+                        }.onFailure { error ->
+                            Timber.d(error, "Artist motion artwork resolve failed for %s", profile.name)
+                        }.getOrNull()
                     }
-                    .getOrNull()
+                }
             }
-            if (!isActive) return@launch
-            if (artistVideo == null) {
-                Timber.d("Artist hero Apple motion unavailable; trying track canvas fallback artist=%s", profile.name)
-            }
-            val resolved = artistVideo ?: seeds.firstNotNullOfOrNull { track ->
-                if (!isActive) return@launch
-                runCatching { motionArtworkEngine.resolve(track, LevyraCanvasSource.Auto) }
-                    .onFailure { error ->
-                        if (error is CancellationException) throw error
-                        Timber.d(error, "Artist motion artwork resolve failed for %s", profile.name)
-                    }
-                    .getOrNull()
-            }
+            val resolved = firstAvailableMotionArtwork(attempts)
             Timber.d(
                 "Artist hero motion %s artist=%s provider=%s",
                 if (resolved == null) "NONE" else "ASSIGNED",
@@ -11820,9 +11878,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             if (!isActive) return@launch
             val visible = _state.value.artistProfile ?: return@launch
             if (!_state.value.showArtist || !sameArtistProfile(visible, profile)) return@launch
-            _state.update { it.copy(artistMotionArtwork = resolved) }
+            withContext(Dispatchers.Main) {
+                if (artistMotionRequest != request) return@withContext
+                artistMotionPublished = resolved != null
+                _state.update { it.copy(artistMotionArtwork = resolved) }
+            }
         }
     }
+
+    private data class ArtistMotionRequest(
+        val identity: String,
+        val seedIdentities: List<String>
+    )
+
+    private fun artistMotionIdentity(profile: ArtistProfile): String =
+        profile.browseId.trim().lowercase(Locale.ROOT).ifBlank { profile.name.trim().lowercase(Locale.ROOT) }
 
     private fun refreshAlbumMotionArtwork(detail: AlbumDetail) {
         albumMotionJob?.cancel()
@@ -12005,7 +12075,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val generation: Long,
         val identity: String,
         val windowSize: Int,
-        val shuffleEnabled: Boolean
+        val shuffleEnabled: Boolean,
+        val mobileDataAllowed: Boolean
     )
 
     private fun syncAdvancedQueuePrefetch() {
@@ -12032,7 +12103,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             generation = queueSnapshot.generation,
             identity = playbackIdentity(current),
             windowSize = windowSize,
-            shuffleEnabled = queueSnapshot.shuffleEnabled
+            shuffleEnabled = queueSnapshot.shuffleEnabled,
+            mobileDataAllowed = snapshot.audioSettings.advancedQueuePrefetchOnMobileData
         )
         if (advancedPrefetchJob?.isActive == true && advancedPrefetchKey == key) return
         advancedPrefetchJob?.cancel()
@@ -12044,7 +12116,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val windowFinished = CompletableDeferred<Unit>()
             coroutineScope {
                 val networkWatch = launch {
-                    advancedPrefetchNetworkSuitable().collectLatest { suitable ->
+                    advancedPrefetchNetworkSuitable(key.mobileDataAllowed).collectLatest { suitable ->
                         if (suitable) {
                             prefetchAdvancedWindow(current, key)
                             windowFinished.complete(Unit)
@@ -12070,7 +12142,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         return queueSnapshot.generation == key.generation &&
             queueSnapshot.shuffleEnabled == key.shuffleEnabled &&
             playbackIdentity(current) == key.identity &&
-            snapshot.audioSettings.advancedQueuePrefetchTracks == key.windowSize
+            snapshot.audioSettings.advancedQueuePrefetchTracks == key.windowSize &&
+            snapshot.audioSettings.advancedQueuePrefetchOnMobileData == key.mobileDataAllowed
     }
 
     private fun advancedPrefetchConditionsMet(windowSize: Int): Boolean {
@@ -12082,6 +12155,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 videoMode = _state.value.isVideoMode,
                 connected = network.connected,
                 unmetered = network.unmetered,
+                mobileDataAllowed = _state.value.audioSettings.advancedQueuePrefetchOnMobileData,
                 lowRam = plan.lowRam,
                 powerConstrained = plan.powerConstrained,
                 freeDiskBytes = getApplication<Application>().cacheDir.usableSpace
@@ -12138,11 +12212,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         )
     }
 
-    private fun advancedPrefetchNetworkSuitable(): Flow<Boolean> = callbackFlow {
+    private fun advancedPrefetchNetworkSuitable(mobileDataAllowed: Boolean): Flow<Boolean> = callbackFlow {
         val connectivity = getApplication<Application>().getSystemService(ConnectivityManager::class.java)
         val callback = object : ConnectivityManager.NetworkCallback() {
             override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
-                trySend(isAdvancedPrefetchNetwork(capabilities))
+                val dataSaverOn = connectivity?.restrictBackgroundStatus ==
+                    ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED
+                trySend(isAdvancedPrefetchNetwork(capabilities, mobileDataAllowed, dataSaverOn))
             }
 
             override fun onLost(network: Network) {
@@ -12158,10 +12234,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }.distinctUntilChanged()
 
-    private fun isAdvancedPrefetchNetwork(capabilities: NetworkCapabilities): Boolean =
-        capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED) &&
-            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    private fun isAdvancedPrefetchNetwork(
+        capabilities: NetworkCapabilities,
+        mobileDataAllowed: Boolean,
+        dataSaverOn: Boolean
+    ): Boolean = advancedPrefetchNetworkAllowed(
+        internet = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET),
+        validated = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED),
+        unmetered = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED),
+        mobileDataAllowed = mobileDataAllowed,
+        dataSaverOn = dataSaverOn
+    )
 
     private data class RadioTailRequest(
         val seed: Track,
@@ -12184,7 +12267,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val seed = snapshot.currentTrack ?: return null
         if (seed.isLiveRadio()) return null
         if (!snapshot.radioEnabled) return null
-        if (!force && queueEngine.upcoming(3).size >= 3) return null
+        val targetUpcoming = radioTailTargetUpcoming(_state.value.audioSettings.advancedQueuePrefetchTracks)
+        if (!force && queueEngine.upcoming(targetUpcoming).size >= targetUpcoming) return null
         if (radioJob?.isActive == true) return null
         if (isLocalPlaybackTrack(seed) || !lyricsNetworkProfile().connected) return null
         return RadioTailRequest(seed = seed, generation = snapshot.generation)
@@ -12195,8 +12279,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         playWhenReady: Boolean,
         insertAfterCurrent: Boolean = false
     ) {
+        val targetUpcoming = radioTailTargetUpcoming(_state.value.audioSettings.advancedQueuePrefetchTracks)
+        val fetchLimit = radioTailFetchLimit(targetUpcoming, queueEngine.upcoming(targetUpcoming).size)
         val fetchedRadioTracks = try {
-            repository.radio(request.seed, _state.value.languageCode, 5)
+            repository.radio(request.seed, _state.value.languageCode, fetchLimit)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {
@@ -12222,11 +12308,25 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (insertAfterCurrent) {
             queueEngine.insertRadioTracksAfterCurrent(orderedRadioTracks)
         } else {
-            queueEngine.appendRadioTracks(orderedRadioTracks)
+            appendRadioTracksUntil(orderedRadioTracks, targetUpcoming)
         }
-        if (!playWhenReady) return
+        if (!playWhenReady) {
+            if (_state.value.audioSettings.advancedQueuePrefetchTracks > 0) {
+                withContext(Dispatchers.Main) { syncAdvancedQueuePrefetch() }
+            }
+            return
+        }
         withContext(Dispatchers.Main) {
             queueEngine.next(respectRepeatOne = false)?.let(::startResolve)
+        }
+    }
+
+    private fun appendRadioTracksUntil(tracks: List<Track>, targetUpcoming: Int) {
+        repeat(RADIO_TAIL_MAX_APPEND_ROUNDS) {
+            val before = queueEngine.upcoming(targetUpcoming).size
+            queueEngine.appendRadioTracks(tracks)
+            val after = queueEngine.upcoming(targetUpcoming).size
+            if (after <= before || after >= targetUpcoming) return
         }
     }
 

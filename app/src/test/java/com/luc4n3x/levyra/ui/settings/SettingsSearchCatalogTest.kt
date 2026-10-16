@@ -79,6 +79,15 @@ class SettingsSearchCatalogTest {
     }
 
     @Test
+    fun `playlist preloading search opens downloads and cache`() {
+        assertEquals("downloads.advanced_prefetch", topId("prefetch playlist"))
+        assertEquals("downloads", index.search("advanced preloading").first().categoryId)
+        val italian = SettingsSearchIndex(entries(LevyraStrings.forCode("it")), Locale.ITALIAN)
+        assertEquals("downloads.advanced_prefetch", italian.search("precaricamento avanzato").first().id)
+        assertFalse(entries(english).any { it.categoryId == SETTINGS_CATEGORY_AUDIO && it.id.endsWith("advanced_prefetch") })
+    }
+
+    @Test
     fun `youtube music account search opens the dedicated category`() {
         assertEquals("youtube_music.account", topId("YouTube Music"))
         assertEquals("youtube_music", index.search("Google login").first().categoryId)
