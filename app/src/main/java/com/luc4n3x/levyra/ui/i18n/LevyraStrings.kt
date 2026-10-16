@@ -876,6 +876,35 @@ class LevyraStrings private constructor(
     val shareLyricsTextOriginal: String get() = value("shareLyricsTextOriginal")
     val shareLyricsTextTranslation: String get() = value("shareLyricsTextTranslation")
     val shareLyricsShareImage: String get() = value("shareLyricsShareImage")
+    val receiptTitle: String get() = value("receiptTitle")
+    val receiptEntryTitle: String get() = value("receiptEntryTitle")
+    val receiptEntrySubtitle: String get() = value("receiptEntrySubtitle")
+    val receiptPreviewDescription: String get() = value("receiptPreviewDescription")
+    val receiptStyleAurora: String get() = value("receiptStyleAurora")
+    val receiptStyleNoir: String get() = value("receiptStyleNoir")
+    val receiptStylePaper: String get() = value("receiptStylePaper")
+    val receiptMinutesListened: String get() = value("receiptMinutesListened")
+    val receiptTopArtist: String get() = value("receiptTopArtist")
+    val receiptSaved: String get() = value("receiptSaved")
+    val receiptSaveFailed: String get() = value("receiptSaveFailed")
+    val receiptEmpty: String get() = value("receiptEmpty")
+    val receiptCaption: String get() = value("receiptCaption")
+    val wrappedEntryTitle: String get() = value("wrappedEntryTitle")
+    val wrappedEntrySubtitle: String get() = value("wrappedEntrySubtitle")
+    val wrappedYearInMusic: String get() = value("wrappedYearInMusic")
+    val wrappedTapToBegin: String get() = value("wrappedTapToBegin")
+    val wrappedMinutesTitle: String get() = value("wrappedMinutesTitle")
+    val wrappedMinutesUnit: String get() = value("wrappedMinutesUnit")
+    val wrappedHours: String get() = value("wrappedHours")
+    val wrappedTrendUp: String get() = value("wrappedTrendUp")
+    val wrappedTrendDown: String get() = value("wrappedTrendDown")
+    val wrappedArtistTitle: String get() = value("wrappedArtistTitle")
+    val wrappedTracksTitle: String get() = value("wrappedTracksTitle")
+    val wrappedRhythmTitle: String get() = value("wrappedRhythmTitle")
+    val wrappedPeakHour: String get() = value("wrappedPeakHour")
+    val wrappedFinaleTitle: String get() = value("wrappedFinaleTitle")
+    val wrappedEmpty: String get() = value("wrappedEmpty")
+    val wrappedReceiptTitle: String get() = value("wrappedReceiptTitle")
     val shareLyricsPreparing: String get() = value("shareLyricsPreparing")
     val shareLyricsFailed: String get() = value("shareLyricsFailed")
     val shareLyricsLineSelected: String get() = value("shareLyricsLineSelected")
@@ -2231,9 +2260,9 @@ class LevyraStrings private constructor(
         }
 
         private fun bundle(code: String, entries: Map<String, String>): LevyraStrings {
-            val localizedEntries = entries + profileLocalizationEntries(code) + freshCurrentsLocalizationEntries(code) + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + lyricsShareLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + audioOutputLocalizationEntries(code) + alternativeAudioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + jamModerationLocalizationEntries(code) + ambientModeLocalizationEntries(code) + themeStudioLocalizationEntries(code) + lyricsStudioLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + downloadLocationLocalizationEntries(code) + similarSongsLocalizationEntries(code) + playerVisualLocalizationEntries(code) + playerDeckLocalizationEntries(code) + playerGestureLocalizationEntries(code) + playlistStudioLocalizationEntries(code) + queueSelectionLocalizationEntries(code) + librarySortLocalizationEntries(code) + offlineHomeLocalizationEntries(code) + recapLocalizationEntries(code) + listeningInsightsLocalizationEntries(code) + queueSpaceLocalizationEntries(code) + localLibraryLocalizationEntries(code) + localTagLocalizationEntries(code) + playbackTileLocalizationEntries(code) + visualPerformanceLocalizationEntries(code) + liquidGlassLocalizationEntries(code) + videoQualityLocalizationEntries(code) + lyricsProviderPriorityLocalizationEntries(code) + mixLabLocalizationEntries(code) + chartMarketLocalizationEntries(code) + homeSoundtrackLocalizationEntries(code) + settingsSearchLocalizationEntries(code)
+            val localizedEntries = entries + profileLocalizationEntries(code) + freshCurrentsLocalizationEntries(code) + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + lyricsShareLocalizationEntries(code) + listeningReceiptLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + audioOutputLocalizationEntries(code) + alternativeAudioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + jamModerationLocalizationEntries(code) + ambientModeLocalizationEntries(code) + themeStudioLocalizationEntries(code) + lyricsStudioLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + downloadLocationLocalizationEntries(code) + similarSongsLocalizationEntries(code) + playerVisualLocalizationEntries(code) + playerDeckLocalizationEntries(code) + playerGestureLocalizationEntries(code) + playlistStudioLocalizationEntries(code) + queueSelectionLocalizationEntries(code) + librarySortLocalizationEntries(code) + offlineHomeLocalizationEntries(code) + recapLocalizationEntries(code) + listeningInsightsLocalizationEntries(code) + queueSpaceLocalizationEntries(code) + localLibraryLocalizationEntries(code) + localTagLocalizationEntries(code) + playbackTileLocalizationEntries(code) + visualPerformanceLocalizationEntries(code) + liquidGlassLocalizationEntries(code) + videoQualityLocalizationEntries(code) + lyricsProviderPriorityLocalizationEntries(code) + mixLabLocalizationEntries(code) + chartMarketLocalizationEntries(code) + homeSoundtrackLocalizationEntries(code) + settingsSearchLocalizationEntries(code)
             val resolvedEntries = localizedEntries + smartOfflineLocalizationEntries(code, localizedEntries)
-            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + profileKeys + motionArtworkKeys + exploreSectionKeys + freshCurrentsKeys + canvasKeys + audioKeys + audioOutputKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + jamModerationKeys + ambientModeKeys + themeStudioKeys + lyricsStudioKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playerGestureKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys + localTagKeys + lyricsOffsetKeys + lyricsTranslationStatusKeys + playbackTileKeys + visualPerformanceKeys + liquidGlassKeys + videoQualityKeys + lyricsProviderPriorityKeys + mixLabKeys + chartMarketKeys + homeSoundtrackKeys + lyricsShareKeys + settingsSearchKeys + smartOfflineLocalizationKeys
+            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + profileKeys + motionArtworkKeys + exploreSectionKeys + freshCurrentsKeys + canvasKeys + audioKeys + audioOutputKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + jamModerationKeys + ambientModeKeys + themeStudioKeys + lyricsStudioKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playerGestureKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys + localTagKeys + lyricsOffsetKeys + lyricsTranslationStatusKeys + playbackTileKeys + visualPerformanceKeys + liquidGlassKeys + videoQualityKeys + lyricsProviderPriorityKeys + mixLabKeys + chartMarketKeys + homeSoundtrackKeys + lyricsShareKeys + listeningReceiptKeys + settingsSearchKeys + smartOfflineLocalizationKeys
             require(resolvedEntries.keys == allRequiredKeys) {
                 "Invalid localization bundle $code: missing=${allRequiredKeys - resolvedEntries.keys}, extra=${resolvedEntries.keys - allRequiredKeys}"
             }

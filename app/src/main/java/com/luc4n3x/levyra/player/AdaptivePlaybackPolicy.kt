@@ -122,6 +122,9 @@ internal fun playbackBufferProfile(
     )
 }
 
+internal fun stabilityBufferProfile(profile: PlaybackBufferProfile, customProfile: Boolean): PlaybackBufferProfile =
+    if (customProfile) profile else AdaptiveStabilityLoadControl.stableProfileOf(profile)
+
 internal fun transitionPlaybackBufferMs(playbackBufferMs: Int): Int =
     playbackBufferMs.coerceAtMost(2_000)
 
