@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.player
 
+import com.luc4n3x.levyra.domain.ADVANCED_QUEUE_PREFETCH_OPTIONS
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -24,6 +25,13 @@ class PlaybackCacheHintStoreTest {
         assertEquals(hint.mimeType, restored?.mimeType)
         assertTrue(uri.startsWith("levyra-cache://media?"))
         assertFalse(uri.contains("googlevideo.com"))
+    }
+
+    @Test
+    fun hintCapacityKeepsTheLargestPrefetchWindowPlusRecentPlays() {
+        val largestWindow = ADVANCED_QUEUE_PREFETCH_OPTIONS.max()
+
+        assertTrue(PLAYBACK_CACHE_HINT_CAPACITY >= largestWindow * 2)
     }
 
     @Test

@@ -1700,6 +1700,7 @@ internal fun backupAudioSettingsToJson(value: LevyraAudioSettings): JSONObject =
     .put("gaplessEnabled", value.gaplessEnabled)
     .put("preloadNextTrack", value.preloadNextTrack)
     .put("advancedQueuePrefetchTracks", value.advancedQueuePrefetchTracks)
+    .put("advancedQueuePrefetchOnMobileData", value.advancedQueuePrefetchOnMobileData)
     .put("aaudioOutputEnabled", value.aaudioOutputEnabled)
     .put("customPresets", JSONArray().apply { value.customPresets.forEach { put(customPresetToJson(it)) } })
     .put("parametricEqualizerEnabled", value.parametricEqualizerEnabled)
@@ -1776,6 +1777,7 @@ internal fun backupAudioSettingsFromJson(json: JSONObject?): LevyraAudioSettings
         gaplessEnabled = json.optBoolean("gaplessEnabled", true),
         preloadNextTrack = json.optBoolean("preloadNextTrack", true),
         advancedQueuePrefetchTracks = json.optInt("advancedQueuePrefetchTracks", ADVANCED_QUEUE_PREFETCH_OFF),
+        advancedQueuePrefetchOnMobileData = json.optBoolean("advancedQueuePrefetchOnMobileData", false),
         aaudioOutputEnabled = json.optBoolean("aaudioOutputEnabled", false),
         customPresets = customPresets,
         parametricEqualizerEnabled = json.optBoolean("parametricEqualizerEnabled", false),

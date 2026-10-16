@@ -39,6 +39,16 @@ class AdvancedQueuePrefetchSettingsTest {
     }
 
     @Test
+    fun mobileDataChoiceIsOffByDefaultAndRoundTripsThroughBackup() {
+        assertEquals(false, LevyraAudioSettings().advancedQueuePrefetchOnMobileData)
+        val restored = backupAudioSettingsFromJson(
+            backupAudioSettingsToJson(LevyraAudioSettings(advancedQueuePrefetchTracks = 15, advancedQueuePrefetchOnMobileData = true))
+        )
+        assertEquals(true, restored.advancedQueuePrefetchOnMobileData)
+        assertEquals(false, backupAudioSettingsFromJson(JSONObject()).advancedQueuePrefetchOnMobileData)
+    }
+
+    @Test
     fun legacyBackupWithoutTheFieldRestoresOff() {
         val legacy = JSONObject().put("preloadNextTrack", true).put("gaplessEnabled", true)
         val restored = backupAudioSettingsFromJson(legacy)

@@ -116,8 +116,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.luc4n3x.levyra.domain.ADVANCED_QUEUE_PREFETCH_OFF
-import com.luc4n3x.levyra.domain.ADVANCED_QUEUE_PREFETCH_OPTIONS
 import com.luc4n3x.levyra.domain.AutoEqCatalog
 import com.luc4n3x.levyra.domain.AutoEqCatalogEntry
 import com.luc4n3x.levyra.domain.AutoEqImporter
@@ -139,9 +137,7 @@ import com.luc4n3x.levyra.ui.i18n.crossfadeLabCopy
 import com.luc4n3x.levyra.ui.i18n.localizedAudioPresetLabel
 import com.luc4n3x.levyra.ui.i18n.parametricEqCopy
 import com.luc4n3x.levyra.ui.i18n.parametricProfileCopy
-import com.luc4n3x.levyra.ui.i18n.AdvancedPrefetchCopy
 import com.luc4n3x.levyra.ui.i18n.PlaybackBufferCopy
-import com.luc4n3x.levyra.ui.i18n.advancedPrefetchCopy
 import com.luc4n3x.levyra.ui.i18n.playbackBufferCopy
 import com.luc4n3x.levyra.ui.i18n.replayGainCopy
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
@@ -195,7 +191,6 @@ internal fun AudioSettingsPanel(
     onPitch: (Float) -> Unit,
     onGapless: (Boolean) -> Unit,
     onPreloadNextTrack: (Boolean) -> Unit,
-    onAdvancedQueuePrefetch: (Int) -> Unit,
     aaudioOutputAvailable: Boolean,
     onAaudioOutput: (Boolean) -> Unit,
     onAudioOffloadPreference: (AudioOffloadPreference) -> Unit = {},
@@ -223,7 +218,6 @@ internal fun AudioSettingsPanel(
     val parametricProfileCopy = strings.parametricProfileCopy()
     val outputState = rememberLevyraAudioOutputState()
     val bufferCopy = playbackBufferCopy(strings.code)
-    val advancedPrefetch = advancedPrefetchCopy(strings.code)
     val blocker = remember { MutableInteractionSource() }
     val equalizerEnabled = audioSettings.equalizerEnabled
     var showAutoEqImport by remember { mutableStateOf(false) }
@@ -550,13 +544,6 @@ internal fun AudioSettingsPanel(
                         subtitle = strings.preloadNextTrackSubtitle,
                         checked = audioSettings.preloadNextTrack,
                         onCheckedChange = onPreloadNextTrack
-                    )
-                }
-                item {
-                    AdvancedQueuePrefetchCard(
-                        selectedTracks = audioSettings.advancedQueuePrefetchTracks,
-                        copy = advancedPrefetch,
-                        onSelect = onAdvancedQueuePrefetch
                     )
                 }
                 item { AudioSectionLabel(bufferCopy.title) }
@@ -1480,39 +1467,6 @@ private fun PlaybackBufferModeCard(
                 fontWeight = FontWeight.Medium,
                 lineHeight = 17.sp
             )
-        }
-    }
-}
-
-@Composable
-private fun AdvancedQueuePrefetchCard(
-    selectedTracks: Int,
-    copy: AdvancedPrefetchCopy,
-    onSelect: (Int) -> Unit
-) {
-    AudioCard {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(copy.title, color = LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Text(
-                copy.description,
-                color = LevyraMuted,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                lineHeight = 18.sp
-            )
-            LazyRow(
-                modifier = Modifier.selectableGroup(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(ADVANCED_QUEUE_PREFETCH_OPTIONS, key = { it }) { tracks ->
-                    AudioPresetChip(
-                        label = if (tracks == ADVANCED_QUEUE_PREFETCH_OFF) copy.off else copy.tracks(tracks),
-                        selected = selectedTracks == tracks,
-                        enabled = true,
-                        onClick = { onSelect(tracks) }
-                    )
-                }
-            }
         }
     }
 }
