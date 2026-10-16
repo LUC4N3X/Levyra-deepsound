@@ -118,7 +118,7 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
 
 <div align="center">
 
-<a href="docs/assets/showcase/00_levyra_hero_dance_studio.webp"><img src="docs/assets/showcase/00_levyra_hero_dance_studio.webp?v=light-shadow-v10" width="100%" alt="Levyra music player for Android and Windows" /></a>
+<a href="docs/assets/showcase/00_levyra_hero_neon_dancer.webp"><img src="docs/assets/showcase/00_levyra_hero_neon_dancer.webp" width="100%" alt="Levyra music player for Android and Windows" /></a>
 
 <p align="center">
   <sub>Music should feel personal, expressive, and entirely yours.</sub>
