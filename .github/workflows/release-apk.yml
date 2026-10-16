@@ -15,6 +15,11 @@ on:
         required: false
         type: boolean
         default: true
+      refresh_existing_github_apk:
+        description: "Explicitly rebuild and replace only an existing 2.6.9 GitHub APK and its checksum"
+        required: false
+        type: boolean
+        default: false
       fdroid_release_suffix:
         description: "F-Droid release suffix; keep r6 for the automatic update channel"
         required: false
@@ -95,10 +100,33 @@ jobs:
           APK_NAME="LEVYRA-${VERSION}.apk"
           CHECKSUM_NAME="${APK_NAME}.sha256"
           PUBLISH="true"
+          REFRESH_APK="false"
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${{ inputs.refresh_existing_github_apk || false }}" == "true" ]]; then
+            REFRESH_APK="true"
+          fi
+          if [[ "${GITHUB_EVENT_NAME}" == "push" && "$(git log -1 --format=%s)" == "chore(release): refresh v2.6.9 APK" ]]; then
+            REFRESH_APK="true"
+          fi
+          if [[ "${REFRESH_APK}" == "true" ]]; then
+            test "${VERSION}" = "2.6.9"
+            test "${VERSION_CODE}" = "2060900"
+          fi
 
           if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            PUBLISH="false"
+            if [[ "${REFRESH_APK}" == "true" ]]; then
+              gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" > existing-release.json
+              test "$(jq -r '.tag_name' existing-release.json)" = "${TAG}"
+              test "$(jq -r '.name' existing-release.json)" = "Levyra ${VERSION}"
+              test "$(jq -r '.draft' existing-release.json)" = "false"
+              test "$(jq -r '.prerelease' existing-release.json)" = "false"
+            else
+              PUBLISH="false"
+            fi
           else
+            if [[ "${REFRESH_APK}" == "true" ]]; then
+              echo "Existing ${TAG} release is required before refreshing its APK." >&2
+              exit 1
+            fi
             git fetch --tags --force "https://github.com/${GITHUB_REPOSITORY}.git"
             if git rev-parse "refs/tags/${TAG}" >/dev/null 2>&1; then
               TAG_SHA="$(git rev-list -n 1 "${TAG}")"
@@ -115,6 +143,7 @@ jobs:
             echo "TAG=${TAG}"
             echo "APK_NAME=${APK_NAME}"
             echo "CHECKSUM_NAME=${CHECKSUM_NAME}"
+            echo "REFRESH_APK=${REFRESH_APK}"
           } >> "${GITHUB_ENV}"
 
           echo "publish=${PUBLISH}" >> "${GITHUB_OUTPUT}"
@@ -309,10 +338,36 @@ jobs:
             RELEASE_FLAGS+=(--latest)
           fi
 
-          gh release create "${TAG}" \
-            "${APK_PATH}#LEVYRA Android APK" \
-            "${CHECKSUM_PATH}#SHA-256 checksum" \
-            "${RELEASE_FLAGS[@]}"
+          if [[ "${REFRESH_APK}" == "true" ]]; then
+            mkdir -p previous-release-assets
+            gh release download "${TAG}" \
+              --pattern "${APK_NAME}" \
+              --pattern "${CHECKSUM_NAME}" \
+              --dir previous-release-assets \
+              --repo "${GITHUB_REPOSITORY}"
+            (
+              cd previous-release-assets
+              sha256sum --check "${CHECKSUM_NAME}"
+            )
+            if ! gh release upload "${TAG}" \
+              "${APK_PATH}#LEVYRA Android APK" \
+              "${CHECKSUM_PATH}#SHA-256 checksum" \
+              --clobber \
+              --repo "${GITHUB_REPOSITORY}"; then
+              echo "APK asset replacement failed. Attempting to restore previous assets." >&2
+              gh release upload "${TAG}" \
+                "previous-release-assets/${APK_NAME}#LEVYRA Android APK" \
+                "previous-release-assets/${CHECKSUM_NAME}#SHA-256 checksum" \
+                --clobber \
+                --repo "${GITHUB_REPOSITORY}" || true
+              exit 1
+            fi
+          else
+            gh release create "${TAG}" \
+              "${APK_PATH}#LEVYRA Android APK" \
+              "${CHECKSUM_PATH}#SHA-256 checksum" \
+              "${RELEASE_FLAGS[@]}"
+          fi
 
       - name: Verify Published Release
         if: steps.version.outputs.publish == 'true'
@@ -349,6 +404,12 @@ jobs:
           test "$(jq -r '.tagName' published-release.json)" = "${TAG}"
           test "$(jq -r '.name' published-release.json)" = "Levyra ${VERSION}"
           test "$(jq -r '.isDraft' published-release.json)" = "false"
+          if [[ "${REFRESH_APK}" == "true" ]]; then
+            gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" > refreshed-release.json
+            jq -S '{tag_name, name, body, target_commitish, draft, prerelease, make_latest}' existing-release.json > release-before.json
+            jq -S '{tag_name, name, body, target_commitish, draft, prerelease, make_latest}' refreshed-release.json > release-after.json
+            cmp release-before.json release-after.json
+          fi
           jq -r '.body' published-release.json | grep -Fx "# Levyra ${VERSION}"
           jq -r '.body' published-release.json | grep -Fx -- "- Version code: \`${VERSION_CODE}\`"
           jq -r '.url' published-release.json
@@ -361,7 +422,7 @@ jobs:
   fdroid:
     name: Build and Publish Reproducible F-Droid APK
     needs: release
-    if: ${{ success() && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish_fdroid_asset)) }}
+    if: ${{ success() && !(github.event_name == 'push' && github.event.head_commit.message == 'chore(release): refresh v2.6.9 APK') && !(github.event_name == 'workflow_dispatch' && inputs.refresh_existing_github_apk) && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish_fdroid_asset)) }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
