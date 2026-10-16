@@ -136,6 +136,7 @@ internal fun PlayerHaloDeck(
                     )
                 }
             }
+            slots.gestures(track, Modifier.matchParentSize())
         }
         HaloHeadline(
             track = track,
