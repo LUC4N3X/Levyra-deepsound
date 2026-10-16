@@ -310,6 +310,9 @@ import com.luc4n3x.levyra.player.AdvancedPrefetchConditions
 import com.luc4n3x.levyra.player.LevyraMediaCache
 import com.luc4n3x.levyra.player.LevyraPlayer
 import com.luc4n3x.levyra.player.advancedPrefetchAllowed
+import com.luc4n3x.levyra.player.advancedPrefetchNetworkAllowed
+import com.luc4n3x.levyra.player.radioTailFetchLimit
+import com.luc4n3x.levyra.player.radioTailTargetUpcoming
 import com.luc4n3x.levyra.player.advancedPrefetchBudgetBytes
 import com.luc4n3x.levyra.player.advancedPrefetchTrackLimit
 import com.luc4n3x.levyra.player.PlaybackService
@@ -390,6 +393,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 private const val ARTIST_PROFILE_UNAVAILABLE_ERROR = "artist_profile_unavailable"
 private const val ARTIST_INITIAL_BIOGRAPHY_WAIT_MS = 250L
+private const val RADIO_TAIL_MAX_APPEND_ROUNDS = 3
 private const val EXPLORE_SHORTS_FEED_LIMIT = 24
 private const val ONBOARDING_ARTWORK_PARALLELISM = 4
 private const val ONBOARDING_ARTWORK_SEARCH_LIMIT = 12
@@ -4746,6 +4750,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setAdvancedQueuePrefetchTracks(value: Int) {
         updateAudioSettings(_state.value.audioSettings.copy(advancedQueuePrefetchTracks = value))
+        if (_state.value.isPlaying) syncAdvancedQueuePrefetch() else cancelAdvancedQueuePrefetch()
+    }
+
+    fun setAdvancedQueuePrefetchOnMobileData(enabled: Boolean) {
+        updateAudioSettings(_state.value.audioSettings.copy(advancedQueuePrefetchOnMobileData = enabled))
         if (_state.value.isPlaying) syncAdvancedQueuePrefetch() else cancelAdvancedQueuePrefetch()
     }
 
@@ -12066,7 +12075,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val generation: Long,
         val identity: String,
         val windowSize: Int,
-        val shuffleEnabled: Boolean
+        val shuffleEnabled: Boolean,
+        val mobileDataAllowed: Boolean
     )
 
     private fun syncAdvancedQueuePrefetch() {
@@ -12093,7 +12103,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             generation = queueSnapshot.generation,
             identity = playbackIdentity(current),
             windowSize = windowSize,
-            shuffleEnabled = queueSnapshot.shuffleEnabled
+            shuffleEnabled = queueSnapshot.shuffleEnabled,
+            mobileDataAllowed = snapshot.audioSettings.advancedQueuePrefetchOnMobileData
         )
         if (advancedPrefetchJob?.isActive == true && advancedPrefetchKey == key) return
         advancedPrefetchJob?.cancel()
@@ -12105,7 +12116,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val windowFinished = CompletableDeferred<Unit>()
             coroutineScope {
                 val networkWatch = launch {
-                    advancedPrefetchNetworkSuitable().collectLatest { suitable ->
+                    advancedPrefetchNetworkSuitable(key.mobileDataAllowed).collectLatest { suitable ->
                         if (suitable) {
                             prefetchAdvancedWindow(current, key)
                             windowFinished.complete(Unit)
@@ -12131,7 +12142,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         return queueSnapshot.generation == key.generation &&
             queueSnapshot.shuffleEnabled == key.shuffleEnabled &&
             playbackIdentity(current) == key.identity &&
-            snapshot.audioSettings.advancedQueuePrefetchTracks == key.windowSize
+            snapshot.audioSettings.advancedQueuePrefetchTracks == key.windowSize &&
+            snapshot.audioSettings.advancedQueuePrefetchOnMobileData == key.mobileDataAllowed
     }
 
     private fun advancedPrefetchConditionsMet(windowSize: Int): Boolean {
@@ -12143,6 +12155,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 videoMode = _state.value.isVideoMode,
                 connected = network.connected,
                 unmetered = network.unmetered,
+                mobileDataAllowed = _state.value.audioSettings.advancedQueuePrefetchOnMobileData,
                 lowRam = plan.lowRam,
                 powerConstrained = plan.powerConstrained,
                 freeDiskBytes = getApplication<Application>().cacheDir.usableSpace
@@ -12199,11 +12212,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         )
     }
 
-    private fun advancedPrefetchNetworkSuitable(): Flow<Boolean> = callbackFlow {
+    private fun advancedPrefetchNetworkSuitable(mobileDataAllowed: Boolean): Flow<Boolean> = callbackFlow {
         val connectivity = getApplication<Application>().getSystemService(ConnectivityManager::class.java)
         val callback = object : ConnectivityManager.NetworkCallback() {
             override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
-                trySend(isAdvancedPrefetchNetwork(capabilities))
+                val dataSaverOn = connectivity?.restrictBackgroundStatus ==
+                    ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED
+                trySend(isAdvancedPrefetchNetwork(capabilities, mobileDataAllowed, dataSaverOn))
             }
 
             override fun onLost(network: Network) {
@@ -12219,10 +12234,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }.distinctUntilChanged()
 
-    private fun isAdvancedPrefetchNetwork(capabilities: NetworkCapabilities): Boolean =
-        capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED) &&
-            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    private fun isAdvancedPrefetchNetwork(
+        capabilities: NetworkCapabilities,
+        mobileDataAllowed: Boolean,
+        dataSaverOn: Boolean
+    ): Boolean = advancedPrefetchNetworkAllowed(
+        internet = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET),
+        validated = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED),
+        unmetered = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED),
+        mobileDataAllowed = mobileDataAllowed,
+        dataSaverOn = dataSaverOn
+    )
 
     private data class RadioTailRequest(
         val seed: Track,
@@ -12245,7 +12267,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val seed = snapshot.currentTrack ?: return null
         if (seed.isLiveRadio()) return null
         if (!snapshot.radioEnabled) return null
-        if (!force && queueEngine.upcoming(3).size >= 3) return null
+        val targetUpcoming = radioTailTargetUpcoming(_state.value.audioSettings.advancedQueuePrefetchTracks)
+        if (!force && queueEngine.upcoming(targetUpcoming).size >= targetUpcoming) return null
         if (radioJob?.isActive == true) return null
         if (isLocalPlaybackTrack(seed) || !lyricsNetworkProfile().connected) return null
         return RadioTailRequest(seed = seed, generation = snapshot.generation)
@@ -12256,8 +12279,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         playWhenReady: Boolean,
         insertAfterCurrent: Boolean = false
     ) {
+        val targetUpcoming = radioTailTargetUpcoming(_state.value.audioSettings.advancedQueuePrefetchTracks)
+        val fetchLimit = radioTailFetchLimit(targetUpcoming, queueEngine.upcoming(targetUpcoming).size)
         val fetchedRadioTracks = try {
-            repository.radio(request.seed, _state.value.languageCode, 5)
+            repository.radio(request.seed, _state.value.languageCode, fetchLimit)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {
@@ -12283,11 +12308,25 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (insertAfterCurrent) {
             queueEngine.insertRadioTracksAfterCurrent(orderedRadioTracks)
         } else {
-            queueEngine.appendRadioTracks(orderedRadioTracks)
+            appendRadioTracksUntil(orderedRadioTracks, targetUpcoming)
         }
-        if (!playWhenReady) return
+        if (!playWhenReady) {
+            if (_state.value.audioSettings.advancedQueuePrefetchTracks > 0) {
+                withContext(Dispatchers.Main) { syncAdvancedQueuePrefetch() }
+            }
+            return
+        }
         withContext(Dispatchers.Main) {
             queueEngine.next(respectRepeatOne = false)?.let(::startResolve)
+        }
+    }
+
+    private fun appendRadioTracksUntil(tracks: List<Track>, targetUpcoming: Int) {
+        repeat(RADIO_TAIL_MAX_APPEND_ROUNDS) {
+            val before = queueEngine.upcoming(targetUpcoming).size
+            queueEngine.appendRadioTracks(tracks)
+            val after = queueEngine.upcoming(targetUpcoming).size
+            if (after <= before || after >= targetUpcoming) return
         }
     }
 

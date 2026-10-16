@@ -16,6 +16,29 @@ import org.junit.Test
 
 class AppUpdateProgressTest {
     @Test
+    fun russianTransferLineUsesRussianUnitsAndDecimalComma() {
+        val russian = updateUnitsFor("ru")
+        assertEquals(
+            "4,6 МБ / 45,5 МБ · 2,6 МБ/с · ~15 с",
+            formatUpdateTransferLine(
+                downloadedBytes = (4.6 * 1024 * 1024).toLong(),
+                totalBytes = (45.5 * 1024 * 1024).toLong(),
+                bytesPerSecond = 2.6 * 1024 * 1024,
+                units = russian
+            )
+        )
+        assertEquals("2 мин 05 с", formatUpdateDuration(125_000L, russian))
+        assertEquals("1 ч 05 мин", formatUpdateDuration(3_900_000L, russian))
+        assertEquals("512 КБ", formatUpdateBytes(512L * 1024L, russian))
+    }
+
+    @Test
+    fun otherLanguagesKeepTheExistingTransferFormat() {
+        assertEquals("45.5 MB", formatUpdateBytes((45.5 * 1024 * 1024).toLong(), updateUnitsFor("it")))
+        assertEquals("2 m 05 s", formatUpdateDuration(125_000L, updateUnitsFor("en")))
+    }
+
+    @Test
     fun percentIsReportedOnlyWhenTheTotalSizeIsKnown() {
         assertEquals(0, updateProgressPercent(0L, 100L))
         assertEquals(50, updateProgressPercent(50L, 100L))

@@ -22,6 +22,21 @@ class AdvancedPrefetchLocalizationTest {
     }
 
     @Test
+    fun mobileDataOptionShipsInEverySupportedLanguage() {
+        val supported = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        assertEquals(supported, advancedPrefetchMobileDataLocalizationCodes())
+        val english = advancedPrefetchMobileDataCopy("en")
+        supported.forEach { code ->
+            val copy = advancedPrefetchMobileDataCopy(code)
+            assertTrue(code, copy.title.isNotBlank() && copy.description.isNotBlank())
+            if (code != "en") assertNotEquals(code, english.description, copy.description)
+        }
+        val russian = advancedPrefetchMobileDataCopy("ru")
+        assertEquals("Использовать мобильный интернет", russian.title)
+        assertEquals("Заранее загружать следующие треки и через мобильный интернет. Может расходоваться много трафика.", russian.description)
+    }
+
+    @Test
     fun italianCopyMatchesTheRequestedWording() {
         val copy = advancedPrefetchCopy("it")
         assertEquals("Precaricamento avanzato", copy.title)

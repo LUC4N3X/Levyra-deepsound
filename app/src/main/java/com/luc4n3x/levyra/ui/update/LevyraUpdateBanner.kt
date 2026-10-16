@@ -59,6 +59,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraViolet
 import com.luc4n3x.levyra.update.formatUpdateDuration
 import com.luc4n3x.levyra.update.formatUpdateTransferLine
+import com.luc4n3x.levyra.update.updateUnitsFor
 import com.luc4n3x.levyra.update.updateProgressPercent
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -279,7 +280,8 @@ private fun BannerBody(
                     text = formatUpdateTransferLine(
                         downloadedBytes = phase.downloadedBytes,
                         totalBytes = phase.totalBytes,
-                        bytesPerSecond = phase.bytesPerSecond
+                        bytesPerSecond = phase.bytesPerSecond,
+                        units = updateUnitsFor(strings.code)
                     ),
                     color = LevyraMuted,
                     fontSize = 12.sp,
@@ -288,7 +290,7 @@ private fun BannerBody(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
                 )
-                val trailing = percent?.let { "$it%" } ?: formatUpdateDuration(phase.elapsedMs)
+                val trailing = percent?.let { "$it%" } ?: formatUpdateDuration(phase.elapsedMs, updateUnitsFor(strings.code))
                 if (trailing != null) {
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(

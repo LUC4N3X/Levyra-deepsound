@@ -262,3 +262,180 @@ internal fun advancedPrefetchCopy(code: String): AdvancedPrefetchCopy =
     localizedValueOrEnglish(advancedPrefetchCopies, code)
 
 internal fun advancedPrefetchLocalizationCodes(): Set<String> = advancedPrefetchCopies.keys
+
+internal data class AdvancedPrefetchMobileDataCopy(
+    val title: String,
+    val description: String
+)
+
+private val advancedPrefetchMobileDataCopies = mapOf(
+    "en" to AdvancedPrefetchMobileDataCopy(
+        "Use mobile data",
+        "Also preload upcoming tracks on mobile data. This can use a lot of data."
+    ),
+    "it" to AdvancedPrefetchMobileDataCopy(
+        "Usa dati mobili",
+        "Precarica i brani successivi anche con i dati mobili. Può consumare molto traffico."
+    ),
+    "es" to AdvancedPrefetchMobileDataCopy(
+        "Usar datos móviles",
+        "Precarga las siguientes canciones también con datos móviles. Puede consumir muchos datos."
+    ),
+    "fr" to AdvancedPrefetchMobileDataCopy(
+        "Utiliser les données mobiles",
+        "Précharge aussi les titres suivants avec les données mobiles. Peut consommer beaucoup de données."
+    ),
+    "de" to AdvancedPrefetchMobileDataCopy(
+        "Mobile Daten verwenden",
+        "Nächste Titel auch über mobile Daten vorladen. Kann viel Datenvolumen verbrauchen."
+    ),
+    "pt" to AdvancedPrefetchMobileDataCopy(
+        "Usar dados móveis",
+        "Pré-carrega as próximas faixas também com dados móveis. Pode consumir muitos dados."
+    ),
+    "nl" to AdvancedPrefetchMobileDataCopy(
+        "Mobiele data gebruiken",
+        "Laad volgende nummers ook via mobiele data vooraf. Dit kan veel data verbruiken."
+    ),
+    "pl" to AdvancedPrefetchMobileDataCopy(
+        "Używaj danych mobilnych",
+        "Wstępnie ładuj kolejne utwory także przez dane mobilne. Może zużywać dużo transferu."
+    ),
+    "ro" to AdvancedPrefetchMobileDataCopy(
+        "Folosește datele mobile",
+        "Preîncarcă melodiile următoare și prin date mobile. Poate consuma mult trafic."
+    ),
+    "el" to AdvancedPrefetchMobileDataCopy(
+        "Χρήση δεδομένων κινητής",
+        "Προφόρτωση των επόμενων κομματιών και με δεδομένα κινητής. Μπορεί να καταναλώσει πολλά δεδομένα."
+    ),
+    "sv" to AdvancedPrefetchMobileDataCopy(
+        "Använd mobildata",
+        "Förladda kommande låtar även via mobildata. Kan använda mycket data."
+    ),
+    "da" to AdvancedPrefetchMobileDataCopy(
+        "Brug mobildata",
+        "Forudindlæs også kommende numre via mobildata. Kan bruge meget data."
+    ),
+    "cs" to AdvancedPrefetchMobileDataCopy(
+        "Používat mobilní data",
+        "Přednačítat další skladby i přes mobilní data. Může spotřebovat hodně dat."
+    ),
+    "sk" to AdvancedPrefetchMobileDataCopy(
+        "Používať mobilné dáta",
+        "Prednačítavať ďalšie skladby aj cez mobilné dáta. Môže spotrebovať veľa dát."
+    ),
+    "bn" to AdvancedPrefetchMobileDataCopy(
+        "মোবাইল ডেটা ব্যবহার করুন",
+        "মোবাইল ডেটাতেও পরের গানগুলো আগে থেকে লোড করুন। এতে অনেক ডেটা খরচ হতে পারে।"
+    ),
+    "kk" to AdvancedPrefetchMobileDataCopy(
+        "Мобильді интернетті пайдалану",
+        "Келесі тректерді мобильді интернет арқылы да алдын ала жүктеу. Көп трафик жұмсалуы мүмкін."
+    ),
+    "sr" to AdvancedPrefetchMobileDataCopy(
+        "Користи мобилне податке",
+        "Унапред учитава следеће песме и преко мобилних података. Може потрошити доста података."
+    ),
+    "sq" to AdvancedPrefetchMobileDataCopy(
+        "Përdor të dhënat celulare",
+        "Parangarko këngët e radhës edhe me të dhëna celulare. Mund të konsumojë shumë të dhëna."
+    ),
+    "hr" to AdvancedPrefetchMobileDataCopy(
+        "Koristi mobilne podatke",
+        "Unaprijed učitava sljedeće pjesme i putem mobilnih podataka. Može potrošiti mnogo podataka."
+    ),
+    "bg" to AdvancedPrefetchMobileDataCopy(
+        "Използване на мобилни данни",
+        "Предварително зарежда следващите песни и през мобилни данни. Може да изразходва много трафик."
+    ),
+    "hu" to AdvancedPrefetchMobileDataCopy(
+        "Mobiladat használata",
+        "A következő számok előtöltése mobiladat-kapcsolaton is. Sok adatforgalmat használhat."
+    ),
+    "fi" to AdvancedPrefetchMobileDataCopy(
+        "Käytä mobiilidataa",
+        "Esilataa seuraavat kappaleet myös mobiilidatalla. Voi kuluttaa paljon dataa."
+    ),
+    "et" to AdvancedPrefetchMobileDataCopy(
+        "Kasuta mobiilset andmesidet",
+        "Eellaadi järgmised lood ka mobiilse andmeside kaudu. Võib kulutada palju andmemahtu."
+    ),
+    "nb" to AdvancedPrefetchMobileDataCopy(
+        "Bruk mobildata",
+        "Forhåndslast også neste spor over mobildata. Kan bruke mye data."
+    ),
+    "ca" to AdvancedPrefetchMobileDataCopy(
+        "Utilitza les dades mòbils",
+        "Precarrega també les cançons següents amb dades mòbils. Pot consumir moltes dades."
+    ),
+    "uk" to AdvancedPrefetchMobileDataCopy(
+        "Використовувати мобільний інтернет",
+        "Попередньо завантажувати наступні треки і через мобільний інтернет. Може витрачатися багато трафіку."
+    ),
+    "ru" to AdvancedPrefetchMobileDataCopy(
+        "Использовать мобильный интернет",
+        "Заранее загружать следующие треки и через мобильный интернет. Может расходоваться много трафика."
+    ),
+    "tr" to AdvancedPrefetchMobileDataCopy(
+        "Mobil veri kullan",
+        "Sonraki parçaları mobil veriyle de önceden yükle. Çok fazla veri tüketebilir."
+    ),
+    "ar" to AdvancedPrefetchMobileDataCopy(
+        "استخدام بيانات الجوال",
+        "تحميل المقاطع التالية مسبقًا عبر بيانات الجوال أيضًا. قد يستهلك ذلك الكثير من البيانات."
+    ),
+    "fa" to AdvancedPrefetchMobileDataCopy(
+        "استفاده از دادهٔ همراه",
+        "آهنگ‌های بعدی با دادهٔ همراه هم از قبل بارگیری شوند. ممکن است حجم زیادی مصرف کند."
+    ),
+    "zh" to AdvancedPrefetchMobileDataCopy(
+        "使用移动数据",
+        "使用移动数据时也预加载后续曲目。可能会消耗大量流量。"
+    ),
+    "zh-Hant" to AdvancedPrefetchMobileDataCopy(
+        "使用行動數據",
+        "使用行動數據時也預先載入接下來的曲目。可能會消耗大量數據流量。"
+    ),
+    "ja" to AdvancedPrefetchMobileDataCopy(
+        "モバイルデータを使用",
+        "モバイルデータ通信でも次の曲を先読みします。大量の通信量を消費する場合があります。"
+    ),
+    "ko" to AdvancedPrefetchMobileDataCopy(
+        "모바일 데이터 사용",
+        "모바일 데이터에서도 다음 곡을 미리 불러옵니다. 데이터가 많이 사용될 수 있습니다."
+    ),
+    "hi" to AdvancedPrefetchMobileDataCopy(
+        "मोबाइल डेटा का उपयोग करें",
+        "मोबाइल डेटा पर भी अगले गाने पहले से लोड करें। इससे काफ़ी डेटा खर्च हो सकता है।"
+    ),
+    "id" to AdvancedPrefetchMobileDataCopy(
+        "Gunakan data seluler",
+        "Pramuat lagu berikutnya juga saat memakai data seluler. Dapat menghabiskan banyak kuota."
+    ),
+    "ms" to AdvancedPrefetchMobileDataCopy(
+        "Guna data mudah alih",
+        "Pramuat lagu seterusnya juga melalui data mudah alih. Mungkin menggunakan banyak data."
+    ),
+    "vi" to AdvancedPrefetchMobileDataCopy(
+        "Dùng dữ liệu di động",
+        "Tải trước các bài tiếp theo cả khi dùng dữ liệu di động. Có thể tốn nhiều dung lượng."
+    ),
+    "th" to AdvancedPrefetchMobileDataCopy(
+        "ใช้อินเทอร์เน็ตมือถือ",
+        "โหลดเพลงถัดไปล่วงหน้าแม้ใช้อินเทอร์เน็ตมือถือ อาจใช้ปริมาณข้อมูลมาก"
+    ),
+    "fil" to AdvancedPrefetchMobileDataCopy(
+        "Gamitin ang mobile data",
+        "Mag-preload din ng mga susunod na kanta gamit ang mobile data. Maaaring gumamit ng maraming data."
+    ),
+    "he" to AdvancedPrefetchMobileDataCopy(
+        "שימוש בנתונים סלולריים",
+        "טעינה מראש של הרצועות הבאות גם ברשת סלולרית. עשוי לצרוך נתונים רבים."
+    )
+)
+
+internal fun advancedPrefetchMobileDataCopy(code: String): AdvancedPrefetchMobileDataCopy =
+    localizedValueOrEnglish(advancedPrefetchMobileDataCopies, code)
+
+internal fun advancedPrefetchMobileDataLocalizationCodes(): Set<String> = advancedPrefetchMobileDataCopies.keys

@@ -400,6 +400,7 @@ import androidx.compose.material.icons.rounded.HighQuality
 import androidx.compose.material.icons.rounded.LibraryAdd
 import androidx.compose.material.icons.rounded.Source
 import androidx.compose.material.icons.rounded.Wifi
+import androidx.compose.material.icons.rounded.NetworkCell
 import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Speed
@@ -754,6 +755,7 @@ import com.luc4n3x.levyra.ui.i18n.personalizedSearchPromptText
 import com.luc4n3x.levyra.ui.i18n.queueSectionCopy
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.ui.i18n.advancedPrefetchCopy
+import com.luc4n3x.levyra.ui.i18n.advancedPrefetchMobileDataCopy
 import com.luc4n3x.levyra.ui.i18n.automationCopy
 import com.luc4n3x.levyra.ui.i18n.smartOfflineCopy
 import com.luc4n3x.levyra.ui.i18n.formatLibraryBytes
@@ -2744,6 +2746,7 @@ fun LevyraApp(
                     downloadSettings = state.downloadSettings,
                     smartOfflineSettings = state.smartOfflineSettings,
                     advancedQueuePrefetchTracks = state.audioSettings.advancedQueuePrefetchTracks,
+                    advancedQueuePrefetchOnMobileData = state.audioSettings.advancedQueuePrefetchOnMobileData,
                     backupSettings = state.backupSettings,
                     automationSettings = state.automationSettings,
                     vaultStatus = state.vaultStatus,
@@ -2805,6 +2808,7 @@ fun LevyraApp(
                     onSmartOfflineSettings = viewModel::setSmartOfflineSettings,
                     onRefreshSmartOffline = viewModel::refreshSmartOffline,
                     onAdvancedQueuePrefetch = viewModel::setAdvancedQueuePrefetchTracks,
+                    onAdvancedQueuePrefetchOnMobileData = viewModel::setAdvancedQueuePrefetchOnMobileData,
                     onSelectDownloadLocation = { downloadLocationLauncher.launch(null) },
                     onClearDownloadLocation = {
                         viewModel.setDownloadSettings(
@@ -20900,6 +20904,7 @@ private fun SettingsOverlay(
     downloadSettings: LevyraDownloadSettings,
     smartOfflineSettings: LevyraSmartOfflineSettings,
     advancedQueuePrefetchTracks: Int,
+    advancedQueuePrefetchOnMobileData: Boolean,
     backupSettings: LevyraBackupSettings,
     automationSettings: LevyraAutomationSettings,
     vaultStatus: LevyraVaultStatus,
@@ -20940,6 +20945,7 @@ private fun SettingsOverlay(
     onSmartOfflineSettings: (LevyraSmartOfflineSettings) -> Unit,
     onRefreshSmartOffline: () -> Unit,
     onAdvancedQueuePrefetch: (Int) -> Unit,
+    onAdvancedQueuePrefetchOnMobileData: (Boolean) -> Unit,
     onSelectDownloadLocation: () -> Unit,
     onClearDownloadLocation: () -> Unit,
     onBackupSettings: (LevyraBackupSettings) -> Unit,
@@ -21942,6 +21948,18 @@ private fun SettingsOverlay(
                                     selected = advancedQueuePrefetchTracks.toString(),
                                     onSelect = { value -> value.toIntOrNull()?.let(onAdvancedQueuePrefetch) }
                                 )
+                            }
+                            if (advancedQueuePrefetchTracks > ADVANCED_QUEUE_PREFETCH_OFF) {
+                                item {
+                                    val mobileDataCopy = advancedPrefetchMobileDataCopy(strings.code)
+                                    SettingsToggle(
+                                        icon = Icons.Rounded.NetworkCell,
+                                        title = mobileDataCopy.title,
+                                        subtitle = mobileDataCopy.description,
+                                        checked = advancedQueuePrefetchOnMobileData,
+                                        onCheckedChange = onAdvancedQueuePrefetchOnMobileData
+                                    )
+                                }
                             }
                             item {
                                 SettingsChoiceRow(

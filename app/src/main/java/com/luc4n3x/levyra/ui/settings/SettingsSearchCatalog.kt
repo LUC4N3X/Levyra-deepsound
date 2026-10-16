@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.ui.settings
 import com.luc4n3x.levyra.feature.settings.SettingsSearchEntry
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.advancedPrefetchCopy
+import com.luc4n3x.levyra.ui.i18n.advancedPrefetchMobileDataCopy
 import com.luc4n3x.levyra.ui.i18n.automationCopy
 import com.luc4n3x.levyra.ui.i18n.parametricEqCopy
 import com.luc4n3x.levyra.ui.i18n.smartOfflineCopy
@@ -154,6 +155,8 @@ private fun MutableList<SettingsSearchEntry>.libraryEntries(strings: LevyraStrin
     entry("downloads.smart_offline_constraints", smartOffline.wifiOnly, smartOffline.chargingOnlySubtitle, "wifi charging battery", categories.downloads)
     val advancedPrefetch = advancedPrefetchCopy(strings.code)
     entry("downloads.advanced_prefetch", advancedPrefetch.title, advancedPrefetch.description, "preload prefetch playlist queue cache upcoming tracks offline 5 10 15", categories.downloads)
+    val advancedPrefetchMobileData = advancedPrefetchMobileDataCopy(strings.code)
+    entry("downloads.advanced_prefetch_mobile_data", advancedPrefetchMobileData.title, advancedPrefetchMobileData.description, "preload prefetch mobile data cellular 4g 5g lte", categories.downloads)
     entry("downloads.quality", strings.downloadQualityPreset, strings.downloadQualityPresetSubtitle, "quality bitrate format", categories.downloads)
     entry("downloads.location", strings.downloadLocation, strings.downloadLocationSubtitle, "folder storage sd card", categories.downloads)
     entry("downloads.folder_organization", strings.downloadFolderOrganization, strings.downloadFolderOrganizationSubtitle, "folder organize", categories.downloads)
