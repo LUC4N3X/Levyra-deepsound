@@ -15596,7 +15596,8 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
             },
             onClear = {
                 viewModel.setQuery("")
-            }
+            },
+            onBack = { viewModel.navigateBack() }
         )
 
         val data = state.searchData
@@ -16074,7 +16075,8 @@ private fun SearchHeader(
     onCancelRecognition: () -> Unit,
     onQuery: (String) -> Unit,
     onSearch: (String) -> Unit,
-    onClear: () -> Unit
+    onClear: () -> Unit,
+    onBack: () -> Unit
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -16148,7 +16150,7 @@ private fun SearchHeader(
     ) {
         LevyraBackButton(
             onClick = {
-                onClear()
+                if (query.isBlank()) onBack() else onClear()
                 focusManager.clearFocus()
                 keyboardController?.hide()
             },
