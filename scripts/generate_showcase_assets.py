@@ -582,7 +582,7 @@ README_CARD_THEMES = [
 ]
 
 README_CARD_SPECS = [
-    ("01_pure_listening", "RADIO", "Pure\nlistening.", "Radio that starts with your sound.", "Screenshot_20260926_171253_LEVYRA.jpg"),
+    ("01_pure_listening", "RADIO", "Pure\nlistening.", "Radio that starts with your sound.", "Screenshot_20261016_223653_LEVYRA.jpg"),
     ("02_stay_with_the_song", "NOW PLAYING", "Stay with\nthe song.", "Immersive playback, no visual noise.", "Screenshot_20261016_135636_LEVYRA.jpg"),
     ("03_sing_along", "SYNCED LYRICS", "Sing\nalong.", "Translation and timing in one flow.", "screen-lyrics.jpg"),
     ("04_open_the_album", "OFFLINE", "Open the\nwhole album.", "Keep the music you come back to.", "Screenshot_20260926_194706_LEVYRA.jpg"),
@@ -761,7 +761,8 @@ def draw_readme_card_shapes(draw, theme, variant):
 
 def render_readme_card_pair(left_spec, right_spec):
     card_w, card_h = 900, 1800
-    pair_w = card_w * 2
+    gap = 32
+    pair_w = card_w * 2 + gap
 
     theme_0 = README_CARD_THEMES[0]
     canvas_0 = Image.new("RGBA", (card_w, card_h), theme_0["background"] + (255,))
@@ -777,25 +778,25 @@ def render_readme_card_pair(left_spec, right_spec):
 
     pair_canvas = Image.new("RGBA", (pair_w, card_h), (0, 0, 0, 0))
     pair_canvas.paste(canvas_0, (0, 0))
-    pair_canvas.paste(canvas_1, (card_w, 0))
+    pair_canvas.paste(canvas_1, (card_w + gap, 0))
 
     paste_campaign_device(
         pair_canvas,
         left_spec[4],
         width=720,
-        angle=12,
-        top_left=(155, -135),
+        angle=13,
+        top_left=(220, -150),
     )
     paste_campaign_device(
         pair_canvas,
         right_spec[4],
-        width=725,
-        angle=-9,
-        top_left=(card_w + 155, 345),
+        width=720,
+        angle=-8.5,
+        top_left=(card_w + gap + 200, 370),
     )
 
     left_card = pair_canvas.crop((0, 0, card_w, card_h))
-    right_card = pair_canvas.crop((card_w, 0, pair_w, card_h))
+    right_card = pair_canvas.crop((card_w + gap, 0, pair_w, card_h))
 
     draw_left = ImageDraw.Draw(left_card)
     draw_readme_card_copy(draw_left, left_spec, theme_0, 0, (72, 1360))
@@ -837,16 +838,32 @@ def generate_readme_cards():
 
     for index in range(2, len(README_CARD_SPECS)):
         spec = README_CARD_SPECS[index]
-        artwork = render_readme_card(spec, index)
-        cards.append(artwork)
         out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
-        artwork.save(out_path, "WEBP", quality=94, method=6)
-        print(f"Saved README editorial card at {artwork.size}: {out_path}")
+        if os.path.exists(out_path):
+            artwork = Image.open(out_path).convert("RGB")
+        else:
+            artwork = render_readme_card(spec, index)
+            artwork.save(out_path, "WEBP", quality=94, method=6)
+            print(f"Saved README editorial card at {artwork.size}: {out_path}")
+        cards.append(artwork)
+
+    mask = Image.new("L", (900, 1800), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, 899, 1799), radius=44, fill=255)
 
     for row_index in range(4):
+        spaced_row_path = os.path.join(README_CARD_DIR, f"editorial-grid-row-{row_index + 1:02d}-spaced.webp")
+        if row_index > 0 and os.path.exists(spaced_row_path):
+            continue
+
         row = Image.new("RGB", (3600, 1800))
+        spaced_row = Image.new("RGBA", (3696, 1800), (0, 0, 0, 0))
         for column in range(4):
-            row.paste(cards[row_index * 4 + column], (column * 900, 0))
+            card = cards[row_index * 4 + column]
+            row.paste(card, (column * 900, 0))
+            card_rgba = card.convert("RGBA")
+            card_rgba.putalpha(mask)
+            spaced_row.paste(card_rgba, (column * (900 + 32), 0))
+
         row_filename = (
             "editorial-grid-row-01-orbit-reference.webp"
             if row_index == 0
@@ -857,6 +874,9 @@ def generate_readme_cards():
         if row_index == 0:
             row.save(os.path.join(README_CARD_DIR, "editorial-grid-row-01.webp"), "WEBP", quality=95, method=6)
         print(f"Saved four-card README row at {row.size}: {out_path}")
+
+        spaced_row.save(spaced_row_path, "WEBP", quality=95, method=6)
+        print(f"Saved four-card spaced README row at {spaced_row.size}: {spaced_row_path}")
 
 if __name__ == "__main__":
     generate_hero_panoramic_showcase()
