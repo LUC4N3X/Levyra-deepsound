@@ -663,7 +663,7 @@ internal fun LevyraLibraryScreen(
                         LibraryCategory.Playlists -> "${visiblePlaylists.size} ${strings.playlistsPlain}"
                         else -> categorySummary(category)
                     },
-                    onBack = if (category == LibraryCategory.Overview) null else ({ switchCategory(LibraryCategory.Overview) })
+                    onBack = { switchCategory(LibraryCategory.Overview) }.takeIf { category != LibraryCategory.Overview }
                 )
             }
 

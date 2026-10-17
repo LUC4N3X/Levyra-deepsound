@@ -404,6 +404,6 @@ private fun LibrarySearchSectionTitle(
         title = title,
         detail = count.toString(),
         action = if (canExpand) strings.showAll else null,
-        onAction = if (canExpand) ({ actions.onShowAll(category) }) else null
+        onAction = { actions.onShowAll(category) }.takeIf { canExpand }
     )
 }

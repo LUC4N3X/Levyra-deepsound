@@ -45,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
@@ -255,26 +256,12 @@ private fun PulseWeekChart(week: List<PulseDay>, locale: Locale) {
     val baselineColor = colors.outlineVariant.copy(alpha = 0.45f)
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        val selectedDay = week.getOrNull(selected)
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = selectedDay?.let { day ->
-                    if (selected == week.lastIndex) strings.insightsToday
-                    else day.date.format(dayFormatter).replaceFirstChar { it.titlecase(locale) }
-                }.orEmpty(),
-                color = colors.onSurfaceVariant,
-                style = LevyraType.caption,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
-            Text(
-                text = selectedDay?.let { strings.formatLibraryDuration(it.listenedMs) }.orEmpty(),
-                color = colors.onSurface,
-                style = LevyraType.cardTitle.copy(fontWeight = FontWeight.Bold),
-                maxLines = 1
-            )
-        }
+        PulseSelectedDayRow(
+            day = week.getOrNull(selected),
+            isToday = selected == week.lastIndex,
+            dayFormatter = dayFormatter,
+            locale = locale
+        )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -306,47 +293,84 @@ private fun PulseWeekChart(week: List<PulseDay>, locale: Locale) {
                 )
             }
         }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            week.forEachIndexed { index, day ->
-                val isSelected = index == selected
-                Text(
-                    text = day.date.dayOfWeek.getDisplayName(TextStyle.NARROW, locale),
-                    color = if (isSelected) colors.primary else colors.onSurfaceVariant,
-                    style = LevyraType.caption.copy(fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.weight(1f).clearAndSetSemantics {}
-                )
-            }
-        }
+        PulseDayLabels(week = week, selected = selected, locale = locale)
         if (averageMs > 0L) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.semantics(mergeDescendants = true) {}
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(16.dp)
-                        .height(2.dp)
-                        .drawBehind {
-                            drawLine(
-                                color = dashColor,
-                                start = Offset(0f, size.height / 2f),
-                                end = Offset(size.width, size.height / 2f),
-                                strokeWidth = 1.5.dp.toPx(),
-                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx()))
-                            )
-                        }
-                )
-                Text(
-                    text = strings.pulseProAverage + " · " + strings.formatLibraryDuration(averageMs),
-                    color = colors.onSurfaceVariant,
-                    style = LevyraType.caption,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+            PulseAverageLegend(averageMs = averageMs, dashColor = dashColor)
         }
+    }
+}
+
+@Composable
+private fun PulseSelectedDayRow(day: PulseDay?, isToday: Boolean, dayFormatter: DateTimeFormatter, locale: Locale) {
+    val strings = LocalLevyraStrings.current
+    val colors = MaterialTheme.colorScheme
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = day?.let {
+                if (isToday) strings.insightsToday
+                else it.date.format(dayFormatter).replaceFirstChar { char -> char.titlecase(locale) }
+            }.orEmpty(),
+            color = colors.onSurfaceVariant,
+            style = LevyraType.caption,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = day?.let { strings.formatLibraryDuration(it.listenedMs) }.orEmpty(),
+            color = colors.onSurface,
+            style = LevyraType.cardTitle.copy(fontWeight = FontWeight.Bold),
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
+private fun PulseDayLabels(week: List<PulseDay>, selected: Int, locale: Locale) {
+    val colors = MaterialTheme.colorScheme
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        week.forEachIndexed { index, day ->
+            val isSelected = index == selected
+            Text(
+                text = day.date.dayOfWeek.getDisplayName(TextStyle.NARROW, locale),
+                color = if (isSelected) colors.primary else colors.onSurfaceVariant,
+                style = LevyraType.caption.copy(fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f).clearAndSetSemantics {}
+            )
+        }
+    }
+}
+
+@Composable
+private fun PulseAverageLegend(averageMs: Long, dashColor: Color) {
+    val strings = LocalLevyraStrings.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.semantics(mergeDescendants = true) {}
+    ) {
+        Box(
+            modifier = Modifier
+                .width(16.dp)
+                .height(2.dp)
+                .drawBehind {
+                    drawLine(
+                        color = dashColor,
+                        start = Offset(0f, size.height / 2f),
+                        end = Offset(size.width, size.height / 2f),
+                        strokeWidth = 1.5.dp.toPx(),
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx()))
+                    )
+                }
+        )
+        Text(
+            text = strings.pulseProAverage + " · " + strings.formatLibraryDuration(averageMs),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = LevyraType.caption,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
