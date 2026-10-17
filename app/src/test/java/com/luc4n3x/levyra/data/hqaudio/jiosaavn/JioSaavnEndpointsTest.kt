@@ -132,4 +132,11 @@ class JioSaavnEndpointsTest {
         cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec("38346591".toByteArray(Charsets.US_ASCII), "DES"))
         return Base64.getEncoder().encodeToString(cipher.doFinal(plain.toByteArray(Charsets.UTF_8)))
     }
+
+    @Test
+    fun searchRequestsTheGivenPage() {
+        assertEquals("1", JioSaavnEndpoints.search("song", 10).toHttpUrl().queryParameter("p"))
+        assertEquals("2", JioSaavnEndpoints.search("song", 10, page = 2).toHttpUrl().queryParameter("p"))
+        assertEquals("1", JioSaavnEndpoints.search("song", 10, page = 0).toHttpUrl().queryParameter("p"))
+    }
 }

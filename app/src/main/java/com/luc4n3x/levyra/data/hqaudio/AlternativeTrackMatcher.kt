@@ -123,7 +123,10 @@ class AlternativeTrackMatcher {
             val featuredOnly = expectedCredit.primary in candidateFeatured
             return rejected(if (featuredOnly) MatchRejection.FEATURED_ARTIST_ONLY else MatchRejection.PRIMARY_ARTIST_MISMATCH)
         }
-        if (candidatePrimary.first() !in expectedArtists && performingPrimary.first() !in expectedArtists) {
+        val ledByExpectedArtist = candidatePrimary.first() in expectedArtists || performingPrimary.first() in expectedArtists
+        val ledByCreditedCreator = !ledByExpectedArtist &&
+            expectedArtistFollowsLeadingCreators(candidate, performingPrimary, expectedArtists)
+        if (!ledByExpectedArtist && !ledByCreditedCreator) {
             return rejected(MatchRejection.PRIMARY_ARTIST_MISMATCH)
         }
         val expectedExplicit = query.explicit ?: expectedTitle.explicitHint
@@ -137,6 +140,14 @@ class AlternativeTrackMatcher {
             return rejected(MatchRejection.ALBUM_MISMATCH, relation)
         }
         if (delta > MAXIMUM_DURATION_DELTA_SECONDS) return rejected(MatchRejection.DURATION_OUT_OF_RANGE, relation)
+        val creatorLeadConfirmed = isrcConfirmed || (
+            creatorLeadAlbumConfirmed(query, candidate, relation, candidateTitle) &&
+                delta <= EXCELLENT_DURATION_DELTA_SECONDS &&
+                candidatePrimary.containsAll(expectedCredit.names)
+            )
+        if (ledByCreditedCreator && !creatorLeadConfirmed) {
+            return rejected(MatchRejection.PRIMARY_ARTIST_MISMATCH, relation)
+        }
         val candidateArtists = candidatePrimary.toSet() + candidateFeatured
         if (!candidateArtists.containsAll(expectedCredit.names)) {
             return rejected(MatchRejection.PRIMARY_ARTIST_MISMATCH, relation)
@@ -231,6 +242,40 @@ class AlternativeTrackMatcher {
             (right.containsAll(left) && creators(b).containsAll(right - left))
     }
 
+    private fun expectedArtistFollowsLeadingCreators(
+        candidate: AlternativeTrackCandidate,
+        performingPrimary: List<String>,
+        expectedArtists: Collection<String>
+    ): Boolean {
+        val creators = creators(candidate)
+        val leadingCreators = performingPrimary.takeWhile { it in creators }.size
+        if (leadingCreators == 0) return false
+        return performingPrimary.getOrNull(leadingCreators)?.let { it in expectedArtists } == true
+    }
+
+    private fun creatorLeadAlbumConfirmed(
+        query: AlternativeTrackQuery,
+        candidate: AlternativeTrackCandidate,
+        relation: AlbumRelation,
+        candidateTitle: TitleIdentity
+    ): Boolean = when (relation) {
+        AlbumRelation.SAME, AlbumRelation.EDITION_VARIANT -> true
+        AlbumRelation.SINGLE_RELEASE -> {
+            val album = AlternativeTrackText.album(candidate.album)
+            album.core == candidateTitle.core ||
+                album.editions.any(singleEditions::contains) ||
+                album.core in releaseSources(query)
+        }
+        else -> false
+    }
+
+    private fun releaseSources(query: AlternativeTrackQuery): Set<String> =
+        listOf(query.title, query.album)
+            .flatMap { text -> releaseSource.findAll(AlternativeTrackText.decodeHtmlEntities(text)).map { it.groupValues[1] } }
+            .map { AlternativeTrackText.album(it).core }
+            .filter { it.isNotBlank() }
+            .toSet()
+
     private fun creators(candidate: AlternativeTrackCandidate): Set<String> =
         candidate.creatorArtists.flatMap(AlternativeTrackText::artistNames).toSet()
 
@@ -322,6 +367,7 @@ class AlternativeTrackMatcher {
         const val SAME_RECORDING_DURATION_SECONDS = 4
 
         private val singleEditions = setOf(AlbumEdition.SINGLE, AlbumEdition.EP)
+        private val releaseSource = Regex("[(\\[]\\s*from\\s+[\"“”']?([^\"“”)\\]]+)", RegexOption.IGNORE_CASE)
         internal val untrustedAlbumNames = setOf(
             "levyra",
             "youtube",

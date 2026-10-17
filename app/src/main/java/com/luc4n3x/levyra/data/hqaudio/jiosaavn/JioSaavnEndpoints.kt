@@ -14,10 +14,10 @@ internal object JioSaavnEndpoints {
     private const val API_VERSION = "4"
     private const val CLIENT_CONTEXT = "web6dot0"
 
-    fun search(query: String, limit: Int): String = call("search.getResults")
+    fun search(query: String, limit: Int, page: Int = 1): String = call("search.getResults")
         .addQueryParameter("q", query)
         .addQueryParameter("n", limit.toString())
-        .addQueryParameter("p", "1")
+        .addQueryParameter("p", page.coerceAtLeast(1).toString())
         .build()
         .toString()
 

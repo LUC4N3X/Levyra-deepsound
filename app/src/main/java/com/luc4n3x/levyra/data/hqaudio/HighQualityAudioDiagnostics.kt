@@ -58,12 +58,14 @@ internal object HighQualityAudioDiagnostics {
         Timber.d("HQ_PROVIDER_MAPPING_RETAINED provider=%s id=%s cause=%s", providerId, providerTrackId, cause)
     }
 
-    fun search(providerId: String, pass: Int, query: String, results: Int) {
+    fun search(providerId: String, pass: Int, page: Int, query: String, results: Int, hasMore: Boolean) {
         Timber.d(
-            "HQ_PROVIDER_SEARCH provider=%s pass=%d results=%d query=\"%s\"",
+            "HQ_PROVIDER_SEARCH provider=%s pass=%d page=%d results=%d more=%s query=\"%s\"",
             providerId,
             pass,
+            page,
             results,
+            hasMore,
             query.take(MAX_TEXT)
         )
     }

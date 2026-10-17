@@ -1,0 +1,169 @@
+package com.luc4n3x.levyra.data.hqaudio
+
+import com.luc4n3x.levyra.domain.HighQualityAudioMode
+import java.util.concurrent.atomic.AtomicLong
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class HighQualityDeeperPagesTest {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val identity = "playback-key-v2|track:blinding-lights"
+    private val plan = AlternativeSearchPlan.queries(query())
+    private val now = AtomicLong(1_000_000L)
+
+    @After
+    fun tearDown() {
+        scope.cancel()
+    }
+
+    private fun resolve(provider: FakeHighQualityProvider, budgetMs: Long = 5_000L): HighQualityResolution {
+        val resolver = HighQualityAudioResolver(
+            provider = provider,
+            mappingStore = HighQualityMappingStore(InMemoryMappingStorage()),
+            scope = scope,
+            clock = now::get,
+            lookupBudgetMs = budgetMs
+        ).apply { mode = HighQualityAudioMode.AUTOMATIC }
+        return runBlocking { resolver.await(resolver.begin(identity, query()), 5_000L) }
+    }
+
+    private fun provider(pages: suspend (String, Int) -> ProviderSearchOutcome) = FakeHighQualityProvider(
+        pageOutcome = pages,
+        lookupOutcome = { ProviderLookupOutcome.Found(candidate()) }
+    )
+
+    private val coverFlood = ProviderSearchOutcome.Found(
+        listOf(candidate(id = "cover", primary = listOf("Cover Band"), album = "Workout Hits")),
+        hasMore = true
+    )
+
+    private fun deeperPages(provider: FakeHighQualityProvider) = provider.pages.filter { it.second > 1 }
+
+    @Test
+    fun decisiveFirstPageNeverRequestsAnotherPage() {
+        val provider = provider { _, _ -> ProviderSearchOutcome.Found(listOf(candidate()), hasMore = true) }
+        assertTrue(resolve(provider) is HighQualityResolution.Selected)
+        assertEquals(listOf(plan.first() to 1), provider.pages)
+    }
+
+    @Test
+    fun recordingOnlyOnTheSecondPageIsFound() {
+        val provider = provider { text, page ->
+            if (text == plan.first() && page == 2) ProviderSearchOutcome.Found(listOf(candidate())) else coverFlood
+        }
+        val result = resolve(provider)
+        assertEquals("pW-kkdqr", (result as HighQualityResolution.Selected).stream.providerTrackId)
+        assertEquals(plan.map { it to 1 }, provider.pages.take(plan.size))
+        assertEquals(listOf(plan.first() to 2), deeperPages(provider))
+    }
+
+    @Test
+    fun exhaustedPaginationStopsAfterThePlannedQueries() {
+        val provider = provider { _, _ -> ProviderSearchOutcome.Found(emptyList(), hasMore = false) }
+        assertEquals(HighQualityFallbackReason.NO_MATCH, (resolve(provider) as HighQualityResolution.Fallback).reason)
+        assertTrue(deeperPages(provider).isEmpty())
+    }
+
+    @Test
+    fun repeatedPageEndsThatQueryPagination() {
+        val provider = provider { _, _ -> coverFlood }
+        resolve(provider)
+        val firstQueryPages = provider.pages.filter { it.first == plan.first() }.map { it.second }
+        assertEquals(listOf(1, 2), firstQueryPages)
+    }
+
+    @Test
+    fun deeperPagesAreBoundedPerLookup() {
+        var serial = 0
+        val provider = provider { _, _ ->
+            serial++
+            ProviderSearchOutcome.Found(
+                listOf(candidate(id = "cover-$serial", primary = listOf("Cover Band $serial"), album = "Hits $serial")),
+                hasMore = true
+            )
+        }
+        assertEquals(HighQualityFallbackReason.NO_MATCH, (resolve(provider) as HighQualityResolution.Fallback).reason)
+        assertEquals(HighQualityProviderLane.MAX_EXTRA_PAGES, deeperPages(provider).size)
+        assertTrue(provider.pages.all { it.second <= HighQualityProviderLane.MAX_SEARCH_PAGE })
+    }
+
+    @Test
+    fun unrelatedTitlesDoNotEarnAnotherPage() {
+        val provider = provider { _, _ ->
+            ProviderSearchOutcome.Found(listOf(candidate(id = "other", title = "Save Your Tears")), hasMore = true)
+        }
+        resolve(provider)
+        assertTrue(deeperPages(provider).isEmpty())
+    }
+
+    @Test
+    fun pageWithOnlyFilteredEntriesStillEarnsAnotherPage() {
+        val provider = provider { text, page ->
+            when {
+                text == plan.first() && page == 2 -> ProviderSearchOutcome.Found(listOf(candidate()))
+                else -> ProviderSearchOutcome.Found(emptyList(), hasMore = true)
+            }
+        }
+        assertTrue(resolve(provider) is HighQualityResolution.Selected)
+    }
+
+    @Test
+    fun secondPageFailureIsNotRememberedAsNoMatch() {
+        val provider = provider { _, page ->
+            if (page == 2) ProviderSearchOutcome.Failed(ProviderFailure.TIMEOUT) else coverFlood
+        }
+        val result = resolve(provider) as HighQualityResolution.Fallback
+        assertEquals(HighQualityFallbackReason.PROVIDER_UNAVAILABLE, result.reason)
+        assertEquals("TIMEOUT", result.detail)
+    }
+
+    @Test
+    fun malformedSecondPageFallsBackAsUnavailable() {
+        val provider = provider { _, page ->
+            if (page == 2) ProviderSearchOutcome.Failed(ProviderFailure.MALFORMED_RESPONSE) else coverFlood
+        }
+        val result = resolve(provider) as HighQualityResolution.Fallback
+        assertEquals(HighQualityFallbackReason.PROVIDER_UNAVAILABLE, result.reason)
+        assertEquals("MALFORMED_RESPONSE", result.detail)
+    }
+
+    @Test
+    fun ambiguousFirstPagesAreNotExpanded() {
+        val provider = provider { _, _ ->
+            ProviderSearchOutcome.Found(
+                listOf(candidate(id = "a", duration = 197), candidate(id = "b", duration = 203)),
+                hasMore = true
+            )
+        }
+        assertEquals(HighQualityFallbackReason.AMBIGUOUS, (resolve(provider) as HighQualityResolution.Fallback).reason)
+        assertTrue(deeperPages(provider).isEmpty())
+    }
+
+    @Test
+    fun slowLookupSkipsDeeperPages() {
+        val provider = provider { _, _ ->
+            now.addAndGet(HighQualityProviderLane.DEEPER_PAGE_WINDOW_MS)
+            coverFlood
+        }
+        resolve(provider)
+        assertTrue(deeperPages(provider).isEmpty())
+    }
+
+    @Test
+    fun hangingSecondPageIsBoundedByTheLookupBudget() {
+        val provider = provider { _, page ->
+            if (page == 2) delay(10_000L)
+            coverFlood
+        }
+        val result = resolve(provider, budgetMs = 300L) as HighQualityResolution.Fallback
+        assertEquals(HighQualityFallbackReason.TIMEOUT, result.reason)
+    }
+}

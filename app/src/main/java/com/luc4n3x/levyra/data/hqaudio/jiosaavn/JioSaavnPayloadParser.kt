@@ -17,11 +17,26 @@ internal sealed interface JioSaavnMediaAuthorization {
     data object Malformed : JioSaavnMediaAuthorization
 }
 
+internal data class JioSaavnSearchPage(
+    val candidates: List<AlternativeTrackCandidate>,
+    val hasMore: Boolean
+)
+
 internal object JioSaavnPayloadParser {
-    fun searchCandidates(body: String): List<AlternativeTrackCandidate>? {
+    fun searchPage(body: String, pageSize: Int): JioSaavnSearchPage? {
         val root = parseObject(body) ?: return null
         val results = root.optJSONArray("results") ?: return null
-        return objects(results).mapNotNull(::candidateOf)
+        val returned = results.length()
+        return JioSaavnSearchPage(
+            candidates = objects(results).mapNotNull(::candidateOf),
+            hasMore = returned > 0 && returned >= pageSize && resultsRemain(root, returned)
+        )
+    }
+
+    private fun resultsRemain(root: JSONObject, returned: Int): Boolean {
+        val total = root.opt("total")?.toString()?.trim()?.toIntOrNull() ?: return true
+        val start = root.opt("start")?.toString()?.trim()?.toIntOrNull() ?: return true
+        return start - 1 + returned < total
     }
 
     fun songDetails(body: String, providerTrackId: String): JioSaavnSongDetails {

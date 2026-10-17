@@ -55,10 +55,10 @@ internal class JioSaavnAudioProvider(
         }
     }
 
-    override suspend fun search(query: String): ProviderSearchOutcome =
-        when (val result = api(JioSaavnEndpoints.search(query, SEARCH_RESULT_LIMIT), catalogCircuitBreaker)) {
-            is ApiResult.Success -> JioSaavnPayloadParser.searchCandidates(result.body)
-                ?.let { ProviderSearchOutcome.Found(it) }
+    override suspend fun search(query: String, page: Int): ProviderSearchOutcome =
+        when (val result = api(JioSaavnEndpoints.search(query, SEARCH_RESULT_LIMIT, page), catalogCircuitBreaker)) {
+            is ApiResult.Success -> JioSaavnPayloadParser.searchPage(result.body, SEARCH_RESULT_LIMIT)
+                ?.let { ProviderSearchOutcome.Found(it.candidates, it.hasMore) }
                 ?: ProviderSearchOutcome.Failed(ProviderFailure.MALFORMED_RESPONSE)
             is ApiResult.Failure -> ProviderSearchOutcome.Failed(result.failure)
         }
