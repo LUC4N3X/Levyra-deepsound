@@ -435,30 +435,38 @@ public final class YoutubeSabrSession {
         final String originalUrl = serverAbrStreamingUrl;
         List<String> alternatives = null;
         int nextAlternative = 0;
-        while (true) {
-            try {
-                return YoutubeSabrProbe.postMediaRequest(info, requestBody, requestNumber,
-                        serverAbrStreamingUrl, segmentConsumer, startedConsumer,
-                        segmentSpoolDirectory, localization, sessionPolicyHost.getMediaProtocol());
-            } catch (final IOException e) {
-                if (!SabrNodeFallback.isNodeUnreachable(e)
-                        || Thread.currentThread().isInterrupted()) {
-                    serverAbrStreamingUrl = originalUrl;
-                    throw e;
+        boolean delivered = false;
+        try {
+            while (true) {
+                try {
+                    final YoutubeSabrProbeResult result = YoutubeSabrProbe.postMediaRequest(info,
+                            requestBody, requestNumber, serverAbrStreamingUrl, segmentConsumer,
+                            startedConsumer, segmentSpoolDirectory, localization,
+                            sessionPolicyHost.getMediaProtocol());
+                    delivered = true;
+                    return result;
+                } catch (final IOException e) {
+                    if (!SabrNodeFallback.isNodeUnreachable(e) || cacheClosed
+                            || Thread.currentThread().isInterrupted()) {
+                        throw e;
+                    }
+                    if (alternatives == null) {
+                        alternatives = SabrNodeFallback.alternativeUrls(originalUrl);
+                    }
+                    addDiagnosticEvent("node_unreachable n=" + requestNumber
+                            + " host=" + SabrNodeFallback.hostOf(serverAbrStreamingUrl)
+                            + " type=" + e.getClass().getSimpleName());
+                    if (nextAlternative >= alternatives.size()) {
+                        throw e;
+                    }
+                    serverAbrStreamingUrl = alternatives.get(nextAlternative++);
+                    addDiagnosticEvent("node_fallback n=" + requestNumber
+                            + " host=" + SabrNodeFallback.hostOf(serverAbrStreamingUrl));
                 }
-                if (alternatives == null) {
-                    alternatives = SabrNodeFallback.alternativeUrls(originalUrl);
-                }
-                addDiagnosticEvent("node_unreachable n=" + requestNumber
-                        + " host=" + SabrNodeFallback.hostOf(serverAbrStreamingUrl)
-                        + " type=" + e.getClass().getSimpleName());
-                if (nextAlternative >= alternatives.size()) {
-                    serverAbrStreamingUrl = originalUrl;
-                    throw e;
-                }
-                serverAbrStreamingUrl = alternatives.get(nextAlternative++);
-                addDiagnosticEvent("node_fallback n=" + requestNumber
-                        + " host=" + SabrNodeFallback.hostOf(serverAbrStreamingUrl));
+            }
+        } finally {
+            if (!delivered) {
+                serverAbrStreamingUrl = originalUrl;
             }
         }
     }

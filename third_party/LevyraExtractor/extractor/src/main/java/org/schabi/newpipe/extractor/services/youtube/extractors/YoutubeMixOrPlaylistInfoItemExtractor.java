@@ -13,12 +13,20 @@ import org.schabi.newpipe.extractor.playlist.PlaylistInfo;
 import org.schabi.newpipe.extractor.playlist.PlaylistInfoItemExtractor;
 import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper;
 import org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubePlaylistLinkHandlerFactory;
+import org.schabi.newpipe.extractor.utils.Utils;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.annotation.Nonnull;
 
 public class YoutubeMixOrPlaylistInfoItemExtractor implements PlaylistInfoItemExtractor {
     private static final String MIX_TITLE_PREFIX = "Mix - ";
     private static final String ZULU_MIX_TITLE_PREFIX = "Imiksi - ";
+    private static final Pattern ABBREVIATED_COUNT =
+            Pattern.compile("\\d+(?:[.,]\\d+)?[KMBkmb](?!\\p{L})");
+    private static final Pattern GROUPED_COUNT =
+            Pattern.compile("\\d+(?:[.,\\u00a0\\u202f]\\d+)*");
     private final JsonObject mixInfoItem;
 
     public YoutubeMixOrPlaylistInfoItemExtractor(final JsonObject mixInfoItem) {
@@ -110,8 +118,25 @@ public class YoutubeMixOrPlaylistInfoItemExtractor implements PlaylistInfoItemEx
         if (countString.contains("+")) {
             return ListExtractor.ITEM_COUNT_INFINITE;
         }
-        final String digits = countString.replaceAll("[^0-9]", "");
-        if (digits.isEmpty() || digits.length() > 9) {
+        if (ABBREVIATED_COUNT.matcher(countString).find()) {
+            try {
+                return Utils.mixedNumberWordToLong(countString);
+            } catch (final NumberFormatException | ParsingException e) {
+                return ListExtractor.ITEM_COUNT_UNKNOWN;
+            }
+        }
+        final Matcher number = GROUPED_COUNT.matcher(countString);
+        if (!number.find()) {
+            return ListExtractor.ITEM_COUNT_UNKNOWN;
+        }
+        final String[] groups = number.group().split("[.,\\u00a0\\u202f]");
+        for (int i = 1; i < groups.length; i++) {
+            if (groups[i].length() != 3) {
+                return ListExtractor.ITEM_COUNT_UNKNOWN;
+            }
+        }
+        final String digits = String.join("", groups);
+        if (digits.length() > 9) {
             return ListExtractor.ITEM_COUNT_UNKNOWN;
         }
         return Long.parseLong(digits);

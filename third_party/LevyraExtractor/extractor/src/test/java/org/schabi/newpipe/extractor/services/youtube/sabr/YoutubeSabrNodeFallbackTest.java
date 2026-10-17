@@ -21,6 +21,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InterruptedIOException;
+import java.lang.reflect.Field;
 import java.net.ConnectException;
 import java.net.NoRouteToHostException;
 import java.net.SocketTimeoutException;
@@ -168,6 +169,45 @@ class YoutubeSabrNodeFallbackTest {
     }
 
     @Test
+    void protocolErrorOnAlternativeRestoresServerUrl() throws Exception {
+        final NodeDownloader downloader = new NodeDownloader(
+                Set.of("rr3---sn-aaa111.googlevideo.com"), new UnknownHostException("dns"));
+        downloader.htmlHosts = Set.of("rr3---sn-bbb222.googlevideo.com");
+        final YoutubeSabrSession session = session(downloader, NODE_URL);
+        final SabrSegmentRequest request = SabrSegmentRequest.media(videoFormat, 1);
+
+        assertThrows(SabrProtocolException.class,
+                () -> session.pumpOnceStreamingForDemand(LOCALIZATION, request));
+        assertThrows(SabrProtocolException.class,
+                () -> session.pumpOnceStreamingForDemand(LOCALIZATION, request));
+
+        assertEquals(List.of("rr3---sn-aaa111.googlevideo.com", "rr3---sn-bbb222.googlevideo.com",
+                "rr3---sn-aaa111.googlevideo.com", "rr3---sn-bbb222.googlevideo.com"),
+                downloader.hosts);
+    }
+
+    @Test
+    void closedSessionStopsNodeFallback() throws Exception {
+        final NodeDownloader downloader = new NodeDownloader(
+                Set.of("rr3---sn-aaa111.googlevideo.com"), new UnknownHostException("dns"));
+        final YoutubeSabrSession session = session(downloader, NODE_URL);
+        final Field closed = YoutubeSabrSession.class.getDeclaredField("cacheClosed");
+        closed.setAccessible(true);
+        downloader.beforeResponse = () -> {
+            try {
+                closed.setBoolean(session, true);
+            } catch (final IllegalAccessException e) {
+                throw new AssertionError(e);
+            }
+        };
+
+        assertThrows(UnknownHostException.class,
+                () -> session.pumpOnceStreamingForDemand(LOCALIZATION,
+                        SabrSegmentRequest.media(videoFormat, 1)));
+        assertEquals(1, downloader.hosts.size());
+    }
+
+    @Test
     void reloadTokenIsSentInsidePlaybackContextOnlyWhenPresent() throws Exception {
         assertEquals("tok", playbackContext("tok").getObject("reloadPlaybackContext")
                 .getObject("reloadPlaybackParams").getString("token"));
@@ -231,6 +271,8 @@ class YoutubeSabrNodeFallbackTest {
         @Nonnull private final IOException failure;
         @Nonnull private final List<String> hosts = new ArrayList<>();
         @Nonnull private final List<String> urls = new ArrayList<>();
+        @Nonnull private Set<String> htmlHosts = Set.of();
+        @Nullable private Runnable beforeResponse;
 
         private NodeDownloader(@Nonnull final Set<String> failingHosts,
                                @Nonnull final IOException failure) {
@@ -247,12 +289,15 @@ class YoutubeSabrNodeFallbackTest {
             final String host = URI.create(url).getHost();
             hosts.add(host);
             urls.add(url);
+            if (beforeResponse != null) {
+                beforeResponse.run();
+            }
             if (failingHosts.contains(host)) {
                 throw failure;
             }
             return new StreamingResponse(200,
-                    Collections.singletonMap("Content-Type",
-                            Collections.singletonList("application/vnd.yt-ump")),
+                    Collections.singletonMap("Content-Type", Collections.singletonList(
+                            htmlHosts.contains(host) ? "text/html" : "application/vnd.yt-ump")),
                     new ByteArrayInputStream(okResponse()));
         }
 

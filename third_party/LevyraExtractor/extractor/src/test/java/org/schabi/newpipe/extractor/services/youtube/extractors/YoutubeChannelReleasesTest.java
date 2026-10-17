@@ -56,6 +56,22 @@ class YoutubeChannelReleasesTest {
     }
 
     @Test
+    void formattedCountsKeepMagnitudeOrStayUnknown() throws Exception {
+        assertEquals(1200, countText("1.2K videos"));
+        assertEquals(3_000_000, countText("3M videos"));
+        assertEquals(1234, countText("1,234 videos"));
+        assertEquals(1234, countText("1.234 video"));
+        assertEquals(3, countText("3 vídeos"));
+        assertEquals(ListExtractor.ITEM_COUNT_UNKNOWN, countText("1,2 Mn video"));
+        assertEquals(ListExtractor.ITEM_COUNT_UNKNOWN, countText("videos"));
+    }
+
+    private static long countText(final String text) throws Exception {
+        return extractor("{\"videoCountText\":{\"simpleText\":\"" + text + "\"}}")
+                .getStreamCount();
+    }
+
+    @Test
     void missingThumbnailFormatsStayOptional() throws Exception {
         assertNull(extractor("{\"thumbnail\":{\"thumbnails\":[]},"
                 + "\"thumbnailRenderer\":{\"playlistCustomThumbnailRenderer\":{}}}")
