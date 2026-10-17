@@ -116,7 +116,7 @@ class AlternativeTrackMatcher {
             return rejected(MatchRejection.ISRC_MISMATCH)
         }
         val romanizedTitle = expectedTitle.core != candidateTitle.core &&
-            romanizedVariant(expectedTitle.core, candidateTitle.core, candidate)
+            romanizedVariant(expectedTitle.core, candidateTitle.core, candidate.language)
         if (expectedTitle.core != candidateTitle.core && !romanizedTitle) return rejected(MatchRejection.TITLE_MISMATCH)
         if (expectedTitle.versionSignature != candidateTitle.versionSignature) {
             return rejected(MatchRejection.VERSION_MISMATCH)
@@ -180,10 +180,10 @@ class AlternativeTrackMatcher {
         )
     }
 
-    fun sharesTitle(query: AlternativeTrackQuery, candidate: AlternativeTrackCandidate): Boolean {
+    fun sharesTitle(query: AlternativeTrackQuery, title: String, language: String): Boolean {
         val expected = AlternativeTrackText.title(query.title).core
-        val actual = AlternativeTrackText.title(candidate.title).core
-        return expected == actual || romanizedVariant(expected, actual, candidate)
+        val actual = AlternativeTrackText.title(title).core
+        return expected == actual || romanizedVariant(expected, actual, language)
     }
 
     fun select(query: AlternativeTrackQuery, candidates: List<AlternativeTrackCandidate>): AlternativeMatchSelection {
@@ -228,7 +228,7 @@ class AlternativeTrackMatcher {
         val aTitle = AlternativeTrackText.title(a.title)
         val bTitle = AlternativeTrackText.title(b.title)
         val sameTitle = aTitle.core == bTitle.core || (
-            isIndianRelease(a) && isIndianRelease(b) && romanizationKey(aTitle.core) == romanizationKey(bTitle.core)
+            isIndianRelease(a.language) && isIndianRelease(b.language) && romanizationKey(aTitle.core) == romanizationKey(bTitle.core)
             )
         return sameTitle &&
             aTitle.versionSignature == bTitle.versionSignature &&
@@ -265,13 +265,13 @@ class AlternativeTrackMatcher {
         return afterCreators.firstOrNull()?.let { it in expectedArtists } == true
     }
 
-    private fun isIndianRelease(candidate: AlternativeTrackCandidate): Boolean =
-        candidate.language.lowercase(Locale.ROOT) in indianReleaseLanguages
+    private fun isIndianRelease(language: String): Boolean =
+        language.lowercase(Locale.ROOT) in indianReleaseLanguages
 
     private fun romanizationKey(core: String): String = core.replace(lengthenedVowel, "$1")
 
-    private fun romanizedVariant(expectedCore: String, candidateCore: String, candidate: AlternativeTrackCandidate): Boolean =
-        isIndianRelease(candidate) && romanizationKey(expectedCore) == romanizationKey(candidateCore)
+    private fun romanizedVariant(expectedCore: String, candidateCore: String, language: String): Boolean =
+        isIndianRelease(language) && romanizationKey(expectedCore) == romanizationKey(candidateCore)
 
     private fun albumConfirmsRecording(
         query: AlternativeTrackQuery,

@@ -152,9 +152,14 @@ internal class HighQualityProviderLane(
     ): DeeperSearch {
         var selection: AlternativeMatchSelection? = null
         var extraPages = 0
-        for ((index, text) in deeper) {
-            var page = FIRST_PAGE + 1
-            while (page <= MAX_SEARCH_PAGE && extraPages < MAX_EXTRA_PAGES && clock() - startedAt < DEEPER_PAGE_WINDOW_MS) {
+        var frontier = deeper
+        var page = FIRST_PAGE + 1
+        while (frontier.isNotEmpty() && page <= MAX_SEARCH_PAGE) {
+            val stillDeeper = ArrayList<IndexedValue<String>>()
+            for ((index, text) in frontier) {
+                if (extraPages >= MAX_EXTRA_PAGES || clock() - startedAt >= DEEPER_PAGE_WINDOW_MS) {
+                    return DeeperSearch.Settled(selection)
+                }
                 extraPages++
                 val loaded = when (val outcome = search.fetch(index + 1, text, page)) {
                     is SearchPage.Failed -> return DeeperSearch.Failed(outcome.fallback)
@@ -162,9 +167,10 @@ internal class HighQualityProviderLane(
                 }
                 val current = matcher.select(query, search.candidates()).also { selection = it }
                 if (!needsDeeperPages(current)) return DeeperSearch.Settled(current)
-                if (!loaded.worthDeeperPage) break
-                page++
+                if (loaded.worthDeeperPage) stillDeeper += IndexedValue(index, text)
             }
+            frontier = stillDeeper
+            page++
         }
         return DeeperSearch.Settled(selection)
     }
@@ -197,7 +203,9 @@ internal class HighQualityProviderLane(
                         .filterNot { isTrackQuarantined(it.providerTrackId) }
                         .forEach { collected.putIfAbsent(it.providerTrackId, it) }
                     val repeated = outcome.candidates.isNotEmpty() && unseen == 0
-                    val relevant = outcome.candidates.isEmpty() || outcome.candidates.any { matcher.sharesTitle(query, it) }
+                    val relevant = outcome.candidates.isEmpty() ||
+                        outcome.candidates.any { matcher.sharesTitle(query, it.title, it.language) } ||
+                        outcome.unplayableRows.any { matcher.sharesTitle(query, it.title, it.language) }
                     SearchPage.Loaded(worthDeeperPage = outcome.hasMore && !repeated && relevant)
                 }
             }
@@ -258,7 +266,7 @@ internal class HighQualityProviderLane(
         const val HYDRATION_TIMEOUT_MS = 1_500L
         const val FIRST_PAGE = 1
         const val MAX_SEARCH_PAGE = 3
-        const val MAX_EXTRA_PAGES = 2
+        const val MAX_EXTRA_PAGES = 3
         const val DEEPER_PAGE_WINDOW_MS = 3_000L
     }
 }

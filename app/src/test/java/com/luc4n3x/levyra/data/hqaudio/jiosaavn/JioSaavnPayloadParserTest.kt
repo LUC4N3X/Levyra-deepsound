@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.data.hqaudio.jiosaavn
 
+import com.luc4n3x.levyra.data.hqaudio.UnplayableSearchRow
 import com.luc4n3x.levyra.data.hqaudio.saavnSong
 import com.luc4n3x.levyra.data.hqaudio.searchBody
 import com.luc4n3x.levyra.data.hqaudio.searchCandidates
@@ -176,6 +177,18 @@ class JioSaavnPayloadParserTest {
         val page = JioSaavnPayloadParser.searchPage(body, 10)!!
         assertTrue(page.candidates.isEmpty())
         assertTrue(page.hasMore)
+    }
+
+    @Test
+    fun restrictedRowsAreReportedOnlyAsUnplayableTitles() {
+        val restricted = saavnSong("r1", "Despacito", listOf("Luis Fonsi"), "Despacito", 228).apply {
+            getJSONObject("more_info").put("rights", JSONObject().put("code", "0").put("cacheable", "false").put("delete_cached_object", "true"))
+            put("language", "spanish")
+        }
+        val playable = saavnSong("p1", "Despacito", listOf("Luis Fonsi"), "VIDA", 228)
+        val page = JioSaavnPayloadParser.searchPage(searchBody(restricted, playable), 10)!!
+        assertEquals(listOf("p1"), page.candidates.map { it.providerTrackId })
+        assertEquals(listOf(UnplayableSearchRow("Despacito", "spanish")), page.unplayableRows)
     }
 
     @Test

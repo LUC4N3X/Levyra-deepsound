@@ -59,6 +59,37 @@ class HighQualityDeeperPagesTest {
     }
 
     @Test
+    fun secondPagesOfEveryQueryComeBeforeAnyThirdPage() {
+        var serial = 0
+        val provider = provider { text, page ->
+            if (text == plan[1] && page == 2) {
+                ProviderSearchOutcome.Found(listOf(candidate()))
+            } else {
+                serial++
+                ProviderSearchOutcome.Found(listOf(candidate(id = "cover-$serial", primary = listOf("Cover Band"), album = "Hits")), hasMore = true)
+            }
+        }
+        val result = resolve(provider)
+        assertEquals("pW-kkdqr", (result as HighQualityResolution.Selected).stream.providerTrackId)
+        assertEquals(listOf(plan[0] to 2, plan[1] to 2), deeperPages(provider))
+    }
+
+    @Test
+    fun filteredRowsWithTheExpectedTitleKeepPaginationAlive() {
+        val provider = provider { text, page ->
+            when {
+                text == plan.first() && page == 2 -> ProviderSearchOutcome.Found(listOf(candidate()))
+                else -> ProviderSearchOutcome.Found(
+                    listOf(candidate(id = "other", title = "Save Your Tears")),
+                    hasMore = true,
+                    unplayableRows = listOf(UnplayableSearchRow("Blinding Lights", "english"))
+                )
+            }
+        }
+        assertTrue(resolve(provider) is HighQualityResolution.Selected)
+    }
+
+    @Test
     fun laterQueryWithOverlappingFirstPageStillEarnsAnotherPage() {
         val provider = provider { text, page ->
             when {
