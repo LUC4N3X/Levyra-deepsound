@@ -28,9 +28,9 @@ import java.io.IOException
 import java.net.SocketTimeoutException
 import java.util.Base64
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicInteger
 import javax.crypto.Cipher
 import javax.crypto.spec.SecretKeySpec
-import java.util.concurrent.atomic.AtomicInteger
 import kotlin.random.Random
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -42,6 +42,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.After
@@ -853,5 +854,15 @@ class JioSaavnAudioProviderTest {
     private companion object {
         const val REAL_MEDIA_TOKEN = "ID2ieOjCrwfgWvL5sXl4B1ImC5QfbsDy8IXxuTNJ1oLbvDGDneZj5h25kdaKPCof228ruhJnw7PIr7uKBnaPmxw7tS9a8Gtq"
         const val REAL_MEDIA_STEM = "eca27e31e93211051fa0de18160ea825"
+    }
+
+    @Test
+    fun searchPageIsForwardedAndPagingReported() {
+        val songs = (1..JioSaavnAudioProvider.SEARCH_RESULT_LIMIT).map { saavnSong("s$it", "Song $it", listOf("Artist"), "Album", 180) }
+        val body = JSONObject().put("total", 95).put("start", 11).put("results", JSONArray(songs)).toString()
+        val exchange = ScriptedExchange { jsonResponse(body) }
+        val outcome = runBlocking { provider(exchange).search("song", page = 2) } as ProviderSearchOutcome.Found
+        assertTrue(outcome.hasMore)
+        assertEquals("2", exchange.requests.single().url.toHttpUrl().queryParameter("p"))
     }
 }

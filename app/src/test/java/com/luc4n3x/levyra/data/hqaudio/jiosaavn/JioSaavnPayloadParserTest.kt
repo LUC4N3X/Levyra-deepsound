@@ -1,10 +1,13 @@
 package com.luc4n3x.levyra.data.hqaudio.jiosaavn
 
+import com.luc4n3x.levyra.data.hqaudio.UnplayableSearchRow
 import com.luc4n3x.levyra.data.hqaudio.saavnSong
 import com.luc4n3x.levyra.data.hqaudio.searchBody
+import com.luc4n3x.levyra.data.hqaudio.searchCandidates
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -23,7 +26,7 @@ class JioSaavnPayloadParserTest {
                 explicit = "1"
             )
         )
-        val candidate = JioSaavnPayloadParser.searchCandidates(body)!!.single()
+        val candidate = searchCandidates(body)!!.single()
         assertEquals("jiosaavn", candidate.providerId)
         assertEquals("2IuQsex6", candidate.providerTrackId)
         assertEquals(listOf("Dua Lipa"), candidate.primaryArtists)
@@ -50,7 +53,7 @@ class JioSaavnPayloadParserTest {
                     .put(JSONObject().put("name", "Shraddha Kapoor").put("role", "starring"))
             )
         }
-        val candidate = JioSaavnPayloadParser.searchCandidates(searchBody(song))!!.single()
+        val candidate = searchCandidates(searchBody(song))!!.single()
         assertEquals(setOf("Mithoon", "Shraddha Kapoor"), candidate.nonPerformingArtists)
         assertEquals(setOf("Mithoon", "Irshad Kamil", "Shraddha Kapoor"), candidate.creatorArtists)
         assertEquals(2013, candidate.releaseYear)
@@ -59,7 +62,7 @@ class JioSaavnPayloadParserTest {
     @Test
     fun missingRolesAndMalformedYearStayNeutral() {
         val song = saavnSong("n1", "Song", listOf("Artist"), "Album", 180).apply { put("year", "20xx") }
-        val candidate = JioSaavnPayloadParser.searchCandidates(searchBody(song))!!.single()
+        val candidate = searchCandidates(searchBody(song))!!.single()
         assertEquals(emptySet<String>(), candidate.nonPerformingArtists)
         assertEquals(emptySet<String>(), candidate.creatorArtists)
         assertEquals(0, candidate.releaseYear)
@@ -71,7 +74,7 @@ class JioSaavnPayloadParserTest {
             getJSONObject("more_info").remove("320kbps")
         }
         val unreadable = saavnSong("m2", "Odd Flag", listOf("Artist"), "Album", 180, offers320 = "maybe")
-        val candidates = JioSaavnPayloadParser.searchCandidates(searchBody(missing, unreadable))!!
+        val candidates = searchCandidates(searchBody(missing, unreadable))!!
         assertEquals(listOf(null, null), candidates.map { it.offers320 })
     }
 
@@ -89,20 +92,20 @@ class JioSaavnPayloadParserTest {
         val album = JSONObject().put("id", "album1").put("title", "An Album").put("type", "album")
         val unplayable = saavnSong("x1", "No Media", listOf("Artist"), "Album", 180, token = "")
         val playable = saavnSong("x2", "Media", listOf("Artist"), "Album", 180, offers320 = "false")
-        val candidates = JioSaavnPayloadParser.searchCandidates(searchBody(album, unplayable, playable))!!
+        val candidates = searchCandidates(searchBody(album, unplayable, playable))!!
         assertEquals(listOf("x2"), candidates.map { it.providerTrackId })
         assertEquals(false, candidates.single().offers320)
     }
 
     @Test
     fun malformedSearchPayloadIsNull() {
-        assertNull(JioSaavnPayloadParser.searchCandidates("<html></html>"))
-        assertNull(JioSaavnPayloadParser.searchCandidates("{\"error\":{\"code\":\"INPUT_INVALID\"}}"))
+        assertNull(searchCandidates("<html></html>"))
+        assertNull(searchCandidates("{\"error\":{\"code\":\"INPUT_INVALID\"}}"))
     }
 
     @Test
     fun emptySearchPayloadIsEmpty() {
-        assertTrue(JioSaavnPayloadParser.searchCandidates("{\"total\":0,\"start\":1,\"results\":[]}")!!.isEmpty())
+        assertTrue(searchCandidates("{\"total\":0,\"start\":1,\"results\":[]}")!!.isEmpty())
     }
 
     @Test
@@ -137,7 +140,65 @@ class JioSaavnPayloadParserTest {
         val paywalledSong = saavnSong("pw1", "Paywalled Song", listOf("Artist"), "Album", 180).apply {
             getJSONObject("more_info").put("paywalled", "true")
         }
-        val candidates = JioSaavnPayloadParser.searchCandidates(searchBody(validSong, proOnlySong, rightsUnavailableSong, paywalledSong))!!
+        val candidates = searchCandidates(searchBody(validSong, proOnlySong, rightsUnavailableSong, paywalledSong))!!
         assertEquals(listOf("v1"), candidates.map { it.providerTrackId })
+    }
+
+    @Test
+    fun fullPageWithRemainingTotalReportsMoreResults() {
+        val songs = (1..10).map { saavnSong("p$it", "Song $it", listOf("Artist"), "Album", 180) }
+        val body = JSONObject().put("total", "42").put("start", 11).put("results", JSONArray(songs)).toString()
+        val page = JioSaavnPayloadParser.searchPage(body, 10)!!
+        assertEquals(10, page.candidates.size)
+        assertTrue(page.hasMore)
+    }
+
+    @Test
+    fun lastFullPageReportsNoMoreResults() {
+        val songs = (1..10).map { saavnSong("p$it", "Song $it", listOf("Artist"), "Album", 180) }
+        val body = JSONObject().put("total", 20).put("start", 11).put("results", JSONArray(songs)).toString()
+        assertFalse(JioSaavnPayloadParser.searchPage(body, 10)!!.hasMore)
+    }
+
+    @Test
+    fun shortOrEmptyPageReportsNoMoreResults() {
+        assertFalse(JioSaavnPayloadParser.searchPage(searchBody(saavnSong("p1", "Song", listOf("Artist"), "Album", 180)), 10)!!.hasMore)
+        val empty = JioSaavnPayloadParser.searchPage("{\"total\":500,\"start\":31,\"results\":[]}", 10)!!
+        assertTrue(empty.candidates.isEmpty())
+        assertFalse(empty.hasMore)
+    }
+
+    @Test
+    fun fullPageOfRestrictedEntriesStillReportsMoreResults() {
+        val restricted = (1..10).map {
+            saavnSong("r$it", "Song", listOf("Artist"), "Album", 180).apply { getJSONObject("more_info").put("is_pro_only", "true") }
+        }
+        val body = JSONObject().put("total", 300).put("start", 1).put("results", JSONArray(restricted)).toString()
+        val page = JioSaavnPayloadParser.searchPage(body, 10)!!
+        assertTrue(page.candidates.isEmpty())
+        assertTrue(page.hasMore)
+    }
+
+    @Test
+    fun restrictedRowsAreReportedOnlyAsUnplayableTitles() {
+        val restricted = saavnSong("r1", "Despacito", listOf("Luis Fonsi"), "Despacito", 228).apply {
+            getJSONObject("more_info").put("rights", JSONObject().put("code", "0").put("cacheable", "false").put("delete_cached_object", "true"))
+            put("language", "spanish")
+        }
+        val playable = saavnSong("p1", "Despacito", listOf("Luis Fonsi"), "VIDA", 228)
+        val page = JioSaavnPayloadParser.searchPage(searchBody(restricted, playable), 10)!!
+        assertEquals(listOf("p1"), page.candidates.map { it.providerTrackId })
+        assertEquals(listOf(UnplayableSearchRow("Despacito", "spanish")), page.unplayableRows)
+    }
+
+    @Test
+    fun missingPagingMetadataTrustsAFullPage() {
+        val songs = (1..10).map { saavnSong("p$it", "Song $it", listOf("Artist"), "Album", 180) }
+        assertTrue(JioSaavnPayloadParser.searchPage(JSONObject().put("results", JSONArray(songs)).toString(), 10)!!.hasMore)
+    }
+
+    @Test
+    fun errorEnvelopeIsNotASearchPage() {
+        assertNull(JioSaavnPayloadParser.searchPage("{\"error\":{\"code\":\"INPUT_INVALID\"}}", 10))
     }
 }

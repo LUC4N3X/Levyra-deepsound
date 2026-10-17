@@ -22,9 +22,18 @@ enum class ProviderFailure {
 }
 
 sealed interface ProviderSearchOutcome {
-    data class Found(val candidates: List<AlternativeTrackCandidate>) : ProviderSearchOutcome
+    data class Found(
+        val candidates: List<AlternativeTrackCandidate>,
+        val hasMore: Boolean = false,
+        val unplayableRows: List<UnplayableSearchRow> = emptyList()
+    ) : ProviderSearchOutcome
     data class Failed(val failure: ProviderFailure) : ProviderSearchOutcome
 }
+
+data class UnplayableSearchRow(
+    val title: String,
+    val language: String
+)
 
 sealed interface ProviderLookupOutcome {
     data class Found(val candidate: AlternativeTrackCandidate) : ProviderLookupOutcome
@@ -84,7 +93,7 @@ interface HighQualityAudioProvider {
     val id: String
     val displayName: String
 
-    suspend fun search(query: String): ProviderSearchOutcome
+    suspend fun search(query: String, page: Int = 1): ProviderSearchOutcome
 
     suspend fun lookup(providerTrackId: String): ProviderLookupOutcome
 

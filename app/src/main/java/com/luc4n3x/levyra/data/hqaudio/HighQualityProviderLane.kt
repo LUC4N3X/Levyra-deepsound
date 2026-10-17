@@ -67,22 +67,23 @@ internal class HighQualityProviderLane(
         query: AlternativeTrackQuery,
         queryFingerprint: String
     ): HighQualityResolution {
-        val collected = LinkedHashMap<String, AlternativeTrackCandidate>()
+        val startedAt = clock()
+        val search = CandidateSearch(query)
+        val deeper = ArrayList<IndexedValue<String>>()
         var selection: AlternativeMatchSelection = AlternativeMatchSelection.Rejected(MatchRejection.NO_CANDIDATES, emptyList())
         for ((index, text) in AlternativeSearchPlan.queries(query).withIndex()) {
-            currentCoroutineContext().ensureActive()
-            when (val outcome = provider.search(text)) {
-                is ProviderSearchOutcome.Failed ->
-                    return HighQualityResolution.Fallback(HighQualityFallbackReason.PROVIDER_UNAVAILABLE, outcome.failure.name)
-                is ProviderSearchOutcome.Found -> {
-                    HighQualityAudioDiagnostics.search(provider.id, index + 1, text, outcome.candidates.size)
-                    outcome.candidates
-                        .filterNot { isTrackQuarantined(it.providerTrackId) }
-                        .forEach { collected.putIfAbsent(it.providerTrackId, it) }
-                }
+            when (val page = search.fetch(index + 1, text, FIRST_PAGE)) {
+                is SearchPage.Failed -> return page.fallback
+                is SearchPage.Loaded -> if (page.worthDeeperPage) deeper += IndexedValue(index, text)
             }
-            selection = matcher.select(query, collected.values.toList())
+            selection = matcher.select(query, search.candidates())
             if (isDecisive(selection, index)) break
+        }
+        if (needsDeeperPages(selection)) {
+            when (val deeperSearch = searchDeeperPages(query, search, deeper, startedAt)) {
+                is DeeperSearch.Failed -> return deeperSearch.fallback
+                is DeeperSearch.Settled -> deeperSearch.selection?.let { selection = it }
+            }
         }
         return when (val finalSelection = selection) {
             is AlternativeMatchSelection.Rejected -> {
@@ -143,6 +144,84 @@ internal class HighQualityProviderLane(
         return Hydration.Refused(HighQualityResolution.Fallback(HighQualityFallbackReason.NO_MATCH, "HYDRATION_$outcome"))
     }
 
+    private suspend fun searchDeeperPages(
+        query: AlternativeTrackQuery,
+        search: CandidateSearch,
+        deeper: List<IndexedValue<String>>,
+        startedAt: Long
+    ): DeeperSearch {
+        var selection: AlternativeMatchSelection? = null
+        var extraPages = 0
+        var frontier = deeper
+        var page = FIRST_PAGE + 1
+        while (frontier.isNotEmpty() && page <= MAX_SEARCH_PAGE) {
+            val stillDeeper = ArrayList<IndexedValue<String>>()
+            for ((index, text) in frontier) {
+                if (extraPages >= MAX_EXTRA_PAGES || clock() - startedAt >= DEEPER_PAGE_WINDOW_MS) {
+                    return DeeperSearch.Settled(selection)
+                }
+                extraPages++
+                val loaded = when (val outcome = search.fetch(index + 1, text, page)) {
+                    is SearchPage.Failed -> return if (selection is AlternativeMatchSelection.Accepted) {
+                        DeeperSearch.Settled(selection)
+                    } else {
+                        DeeperSearch.Failed(outcome.fallback)
+                    }
+                    is SearchPage.Loaded -> outcome
+                }
+                val current = matcher.select(query, search.candidates())
+                selection = current
+                if (isDecisive(current, index)) return DeeperSearch.Settled(current)
+                if (needsDeeperPages(current) && loaded.worthDeeperPage) stillDeeper += IndexedValue(index, text)
+            }
+            frontier = stillDeeper
+            page++
+        }
+        return DeeperSearch.Settled(selection)
+    }
+
+    private sealed interface DeeperSearch {
+        data class Settled(val selection: AlternativeMatchSelection?) : DeeperSearch
+        data class Failed(val fallback: HighQualityResolution.Fallback) : DeeperSearch
+    }
+
+    private fun needsDeeperPages(selection: AlternativeMatchSelection): Boolean =
+        selection is AlternativeMatchSelection.Rejected && selection.reason != MatchRejection.AMBIGUOUS
+
+    private inner class CandidateSearch(private val query: AlternativeTrackQuery) {
+        private val collected = LinkedHashMap<String, AlternativeTrackCandidate>()
+        private val seenTrackIdsByQuery = HashMap<String, MutableSet<String>>()
+
+        fun candidates(): List<AlternativeTrackCandidate> = collected.values.toList()
+
+        suspend fun fetch(pass: Int, text: String, page: Int): SearchPage {
+            currentCoroutineContext().ensureActive()
+            return when (val outcome = provider.search(text, page)) {
+                is ProviderSearchOutcome.Failed -> SearchPage.Failed(
+                    HighQualityResolution.Fallback(HighQualityFallbackReason.PROVIDER_UNAVAILABLE, outcome.failure.name)
+                )
+                is ProviderSearchOutcome.Found -> {
+                    HighQualityAudioDiagnostics.search(provider.id, pass, page, text, outcome.candidates.size, outcome.hasMore)
+                    val seen = seenTrackIdsByQuery.getOrPut(text) { HashSet() }
+                    val unseen = outcome.candidates.count { seen.add(it.providerTrackId) }
+                    outcome.candidates
+                        .filterNot { isTrackQuarantined(it.providerTrackId) }
+                        .forEach { collected.putIfAbsent(it.providerTrackId, it) }
+                    val repeated = outcome.candidates.isNotEmpty() && unseen == 0
+                    val relevant = outcome.candidates.isEmpty() ||
+                        outcome.candidates.any { matcher.sharesTitle(query, it.title, it.language) } ||
+                        outcome.unplayableRows.any { matcher.sharesTitle(query, it.title, it.language) }
+                    SearchPage.Loaded(worthDeeperPage = outcome.hasMore && !repeated && relevant)
+                }
+            }
+        }
+    }
+
+    private sealed interface SearchPage {
+        data class Loaded(val worthDeeperPage: Boolean) : SearchPage
+        data class Failed(val fallback: HighQualityResolution.Fallback) : SearchPage
+    }
+
     private fun isDecisive(selection: AlternativeMatchSelection, index: Int): Boolean = when (selection) {
         is AlternativeMatchSelection.Accepted ->
             selection.evaluation.verdict == AlternativeMatchVerdict.EXACT ||
@@ -190,5 +269,9 @@ internal class HighQualityProviderLane(
     companion object {
         const val ISRC_CONFIRMED_CONFIDENCE = 100
         const val HYDRATION_TIMEOUT_MS = 1_500L
+        const val FIRST_PAGE = 1
+        const val MAX_SEARCH_PAGE = 3
+        const val MAX_EXTRA_PAGES = 3
+        const val DEEPER_PAGE_WINDOW_MS = 3_000L
     }
 }
