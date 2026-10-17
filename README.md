@@ -22,24 +22,16 @@ Play streamed music and your own files in the same app, save tracks for offline 
 
 
 <p align="center">
-  <a href="https://trendshift.io/repositories/204798?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-204798"><img src="https://trendshift.io/api/badge/trendshift/repositories/204798/daily?language=Kotlin" alt="Levyra Trendshift repository of the day" width="250" height="55"></a>
+  <a href="https://trendshift.io/repositories/204798?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-204798"><img src="https://trendshift.io/api/badge/trendshift/repositories/204798/daily?language=Kotlin" alt="Levyra Trendshift daily ranking" width="250" height="55"></a>
 </p>
 
-<br>
-
-<h3>Download Levyra</h3>
+<p align="center"><b>Download Levyra</b></p>
 
 <p align="center">
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-github-download.svg" width="185" alt="Download Levyra from GitHub Releases"></a>
   <a href="https://f-droid.org/packages/com.luc4n3x.levyra/"><img src="docs/assets/levyra-fdroid.svg" width="185" alt="Get Levyra on F-Droid"></a>
   <a href="https://www.openapk.net/levyra/com.luc4n3x.levyra/"><img src="docs/assets/levyra-openapk.svg" width="185" alt="Get Levyra on OpenAPK"></a>
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/tag/desktop-v1.2.2"><img src="docs/assets/levyra-windows-download.svg" width="185" alt="Download Levyra for Windows"></a>
-</p>
-
-<p align="center">
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/discussions"><b>Join the community →</b></a>
-  &nbsp;&middot;&nbsp;
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/issues">Report a bug</a>
 </p>
 
 <details>
@@ -59,11 +51,12 @@ Play streamed music and your own files in the same app, save tracks for offline 
 
 </details>
 
-<br>
+<p align="center">
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/discussions"><img src="docs/assets/levyra-discussions.svg" width="168" alt="Join the Levyra community on GitHub Discussions"></a>
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/issues"><img src="docs/assets/levyra-bug-report.svg" width="168" alt="Report a bug on GitHub"></a>
+</p>
 
-<p align="center"><b>41 languages</b> &nbsp;&middot;&nbsp; <b>100% Android translation coverage</b> &nbsp;&middot;&nbsp; <b>Zero tracking</b></p>
-
-<p align="center"><sub>100% Kotlin &nbsp;·&nbsp; Jetpack Compose &nbsp;·&nbsp; Compose Multiplatform &nbsp;·&nbsp; AndroidX Media3 &nbsp;·&nbsp; libVLC</sub></p>
+<p align="center"><sub>41 languages &nbsp;·&nbsp; 100% Android translation coverage &nbsp;·&nbsp; Zero tracking</sub></p>
 
 </div>
 
