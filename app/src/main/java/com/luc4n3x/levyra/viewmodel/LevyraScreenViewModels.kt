@@ -285,6 +285,7 @@ class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::sea
     fun searchNow() = root.searchNow()
     fun searchNow(query: String) = root.searchNow(query)
     fun setQuery(query: String) = root.setQuery(query)
+    fun navigateBack() = root.navigateBack()
     fun startMusicRecognition() = root.startMusicRecognition()
     fun cancelMusicRecognition() = root.cancelMusicRecognition()
     fun setSearchFilter(filter: SearchFilter) = root.setSearchFilter(filter)
