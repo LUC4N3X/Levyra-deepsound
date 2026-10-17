@@ -19,12 +19,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.scrollBy
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,11 +36,11 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyListLayoutInfo
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
@@ -156,6 +154,7 @@ private const val PLAYLIST_DRAG_EDGE_FACTOR = 1.35f
 private const val PLAYLIST_DRAG_SCROLL_FACTOR = 0.38f
 private const val DEVICE_LIBRARY_PARENT_LEADING_ITEMS = 4
 private val LibraryCategoriesGutter = 16.dp
+private val LibraryBrowseCategories = LibraryCategory.entries.filter { it != LibraryCategory.Overview }
 
 private fun Modifier.libraryCategoriesBleed(gutter: Dp): Modifier = layout { measurable, constraints ->
     val gutterPx = gutter.roundToPx()
@@ -586,6 +585,54 @@ internal fun LevyraLibraryScreen(
         }
     }
     val selectionActive = selectedKeys.isNotEmpty()
+    fun categorySummary(target: LibraryCategory): String = when (target) {
+        LibraryCategory.Overview -> ""
+        LibraryCategory.Songs -> strings.formatTrackCount(catalog.tracks.size)
+        LibraryCategory.Playlists -> "${state.playlists.visibleInLibrary().size} ${strings.playlistsPlain}"
+        LibraryCategory.Albums -> "${catalog.albums.size} ${strings.albumsPlain}"
+        LibraryCategory.Artists -> "${catalog.artists.size} ${strings.artists}"
+        LibraryCategory.Offline -> strings.formatDownloadedTrackCount(state.downloads.size)
+        LibraryCategory.Device -> strings.formatTrackCount(state.localLibrary.catalog.totalCount)
+        LibraryCategory.Collections -> collectionStrings.title
+    }
+    val librarySections = remember(
+        strings,
+        catalog,
+        state.playlists,
+        state.downloads.size,
+        state.localLibrary.catalog.totalCount,
+        collectionStrings
+    ) {
+        LibraryBrowseCategories.map { LibrarySectionEntry(it, categorySummary(it)) }
+    }
+    val overviewSearchActions = LibraryOverviewSearchActions(
+        onShowAll = { switchCategory(it) },
+        onOpenPlaylist = { viewModel.openPlaylist(it.id) },
+        onPlayPlaylist = { viewModel.playPlaylist(it.id) },
+        onOpenAlbum = { viewModel.openAlbum(it.toAlbumHit()) },
+        onPlayAlbum = { album -> album.tracks.firstOrNull()?.let { viewModel.playFrom(album.tracks, it) } },
+        onOpenArtist = { viewModel.openArtistReference(it.name, it.browseId, it.artworkUrl) },
+        onPlayArtist = { artist -> artist.tracks.firstOrNull()?.let { viewModel.playFrom(artist.tracks, it) } },
+        trackRow = { track, rowModifier ->
+            LibraryTrackRow(
+                track = track,
+                selected = false,
+                selectionActive = false,
+                isCurrent = track.id == state.currentTrack?.id,
+                isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                isFavorite = track.id in state.favoriteIds,
+                isDownloaded = libraryDownloadForTrack(track, state.downloads) != null,
+                downloadProgress = downloadProgressFor(track, state),
+                onClick = { viewModel.playFrom(visibleTracks, track) },
+                onLongClick = null,
+                onFavorite = { viewModel.toggleFavorite(track) },
+                onDownload = { viewModel.exportTrack(track) },
+                onQueue = { viewModel.addToQueue(track) },
+                onAddToPlaylist = { addToPlaylistTracks = listOf(track) },
+                modifier = rowModifier
+            )
+        }
+    )
 
     BackHandler(
         enabled = !selectionActive && openSmartCollectionName == null && openCollection == null &&
@@ -610,19 +657,13 @@ internal fun LevyraLibraryScreen(
         ) {
             item(key = "library-title") {
                 LibraryHero(
-                    title = strings.libraryTitle,
+                    title = if (category == LibraryCategory.Overview) strings.libraryTitle else category.libraryLabel(strings),
                     subtitle = when (category) {
                         LibraryCategory.Overview -> ""
-                        LibraryCategory.Songs -> strings.formatTrackCount(catalog.tracks.size)
                         LibraryCategory.Playlists -> "${visiblePlaylists.size} ${strings.playlistsPlain}"
-                        LibraryCategory.Albums -> "${catalog.albums.size} ${strings.albumsPlain}"
-                        LibraryCategory.Artists -> "${catalog.artists.size} ${strings.artists}"
-                        LibraryCategory.Offline ->
-                            strings.formatDownloadedTrackCount(state.downloads.size)
-                        LibraryCategory.Device ->
-                            strings.formatTrackCount(state.localLibrary.catalog.totalCount)
-                        LibraryCategory.Collections -> collectionStrings.title
-                    }
+                        else -> categorySummary(category)
+                    },
+                    onBack = { switchCategory(LibraryCategory.Overview) }.takeIf { category != LibraryCategory.Overview }
                 )
             }
 
@@ -677,15 +718,21 @@ internal fun LevyraLibraryScreen(
                 )
             }
 
-            item(key = "library-categories") {
-                Row(
-                    modifier = Modifier
-                        .libraryCategoriesBleed(LibraryCategoriesGutter)
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = LibraryCategoriesGutter),
+            if (category != LibraryCategory.Overview) item(key = "library-categories") {
+                val chipRowState = rememberLazyListState(
+                    initialFirstVisibleItemIndex = LibraryBrowseCategories.indexOf(category).coerceAtLeast(0)
+                )
+                LaunchedEffect(category) {
+                    val index = LibraryBrowseCategories.indexOf(category)
+                    if (index >= 0) chipRowState.animateScrollToItem(index)
+                }
+                LazyRow(
+                    state = chipRowState,
+                    modifier = Modifier.libraryCategoriesBleed(LibraryCategoriesGutter),
+                    contentPadding = PaddingValues(horizontal = LibraryCategoriesGutter),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    LibraryCategory.entries.forEach { item ->
+                    items(LibraryBrowseCategories, key = { "category-${it.name}" }) { item ->
                         LibraryCategoryChip(
                             label = item.libraryLabel(strings),
                             selected = item == category,
@@ -729,18 +776,32 @@ internal fun LevyraLibraryScreen(
             }
 
             when (category) {
-                LibraryCategory.Overview -> {
+                LibraryCategory.Overview -> if (query.isNotBlank()) {
+                    libraryOverviewSearch(
+                        tracks = visibleTracks,
+                        playlists = visiblePlaylists,
+                        albums = visibleAlbums,
+                        artists = visibleArtists,
+                        strings = strings,
+                        actions = overviewSearchActions
+                    )
+                } else {
+                    item(key = "overview-sections") {
+                        LibrarySectionGrid(
+                            entries = librarySections,
+                            onOpen = { switchCategory(it) }
+                        )
+                    }
                     item(key = "overview-smart-title") {
                         LibrarySectionTitle(strings.quickPicks, "")
                     }
                     item(key = "overview-smart-grid") {
                         SmartCollectionGrid(
                             favorites = state.favorites,
-                            downloads = catalog.offlineTracks,
                             recent = catalog.recent,
                             mostPlayed = catalog.mostPlayed,
                             onOpenCollection = { openSmartCollectionName = it },
-                            onOpenOffline = { switchCategory(LibraryCategory.Offline) }
+                            onPlayTracks = { tracks -> tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } }
                         )
                     }
                     if (visiblePlaylists.isNotEmpty()) {
