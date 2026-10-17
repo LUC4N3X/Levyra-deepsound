@@ -224,6 +224,13 @@ class JioSaavnComposerCreditsMatchingTest {
     }
 
     @Test
+    fun doubledConsonantsStillSeparateDistinctTitles() {
+        val kalla = song("kalla001", "Kalla", listOf("Arijit Singh"), "Rockstar", 240, singers("Arijit Singh"))
+        val query = query(title = "Kala", artist = "Arijit Singh", album = "Rockstar", durationMs = 240_000L)
+        assertRejected(MatchRejection.TITLE_MISMATCH, query, parse(kalla).single())
+    }
+
+    @Test
     fun transliterationIsOnlyTrustedForIndianReleases() {
         val english = saavnSong(
             id = "moon0001",

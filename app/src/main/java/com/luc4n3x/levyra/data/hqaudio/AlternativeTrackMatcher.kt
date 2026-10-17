@@ -268,7 +268,7 @@ class AlternativeTrackMatcher {
     private fun isIndianRelease(candidate: AlternativeTrackCandidate): Boolean =
         candidate.language.lowercase(Locale.ROOT) in indianReleaseLanguages
 
-    private fun romanizationKey(core: String): String = core.replace(repeatedLetter, "$1")
+    private fun romanizationKey(core: String): String = core.replace(lengthenedVowel, "$1")
 
     private fun romanizedVariant(expectedCore: String, candidateCore: String, candidate: AlternativeTrackCandidate): Boolean =
         isIndianRelease(candidate) && romanizationKey(expectedCore) == romanizationKey(candidateCore)
@@ -387,7 +387,7 @@ class AlternativeTrackMatcher {
         const val SAME_RECORDING_DURATION_SECONDS = 4
 
         private val singleEditions = setOf(AlbumEdition.SINGLE, AlbumEdition.EP)
-        private val repeatedLetter = Regex("(\\p{L})\\1+")
+        private val lengthenedVowel = Regex("([aeiou])\\1+")
         private val indianReleaseLanguages = setOf(
             "hindi",
             "punjabi",
