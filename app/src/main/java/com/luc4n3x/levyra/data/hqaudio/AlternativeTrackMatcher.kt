@@ -115,7 +115,10 @@ class AlternativeTrackMatcher {
         if (expectedIsrc.isNotEmpty() && candidateIsrc.isNotEmpty() && expectedIsrc != candidateIsrc) {
             return rejected(MatchRejection.ISRC_MISMATCH)
         }
-        if (expectedTitle.core != candidateTitle.core) return rejected(MatchRejection.TITLE_MISMATCH)
+        val romanizedTitle = expectedTitle.core != candidateTitle.core &&
+            isIndianRelease(candidate) &&
+            romanizationKey(expectedTitle.core) == romanizationKey(candidateTitle.core)
+        if (expectedTitle.core != candidateTitle.core && !romanizedTitle) return rejected(MatchRejection.TITLE_MISMATCH)
         if (expectedTitle.versionSignature != candidateTitle.versionSignature) {
             return rejected(MatchRejection.VERSION_MISMATCH)
         }
@@ -125,7 +128,7 @@ class AlternativeTrackMatcher {
         }
         val ledByExpectedArtist = candidatePrimary.first() in expectedArtists || performingPrimary.first() in expectedArtists
         val ledByCreditedCreator = !ledByExpectedArtist &&
-            expectedArtistFollowsLeadingCreators(candidate, performingPrimary, expectedArtists)
+            expectedArtistLeadsAfterCreators(candidate, performingPrimary, expectedArtists)
         if (!ledByExpectedArtist && !ledByCreditedCreator) {
             return rejected(MatchRejection.PRIMARY_ARTIST_MISMATCH)
         }
@@ -140,12 +143,13 @@ class AlternativeTrackMatcher {
             return rejected(MatchRejection.ALBUM_MISMATCH, relation)
         }
         if (delta > MAXIMUM_DURATION_DELTA_SECONDS) return rejected(MatchRejection.DURATION_OUT_OF_RANGE, relation)
-        val creatorLeadConfirmed = isrcConfirmed || (
-            creatorLeadAlbumConfirmed(query, candidate, relation, candidateTitle) &&
+        val recordingConfirmed = isrcConfirmed || (
+            albumConfirmsRecording(query, candidate, relation, candidateTitle) &&
                 delta <= EXCELLENT_DURATION_DELTA_SECONDS &&
                 candidatePrimary.containsAll(expectedCredit.names)
             )
-        if (ledByCreditedCreator && !creatorLeadConfirmed) {
+        if (romanizedTitle && !recordingConfirmed) return rejected(MatchRejection.TITLE_MISMATCH, relation)
+        if (ledByCreditedCreator && !recordingConfirmed) {
             return rejected(MatchRejection.PRIMARY_ARTIST_MISMATCH, relation)
         }
         val candidateArtists = candidatePrimary.toSet() + candidateFeatured
@@ -218,7 +222,10 @@ class AlternativeTrackMatcher {
         if (a.providerId == b.providerId && a.providerTrackId == b.providerTrackId) return true
         val aTitle = AlternativeTrackText.title(a.title)
         val bTitle = AlternativeTrackText.title(b.title)
-        return aTitle.core == bTitle.core &&
+        val sameTitle = aTitle.core == bTitle.core || (
+            isIndianRelease(a) && isIndianRelease(b) && romanizationKey(aTitle.core) == romanizationKey(bTitle.core)
+            )
+        return sameTitle &&
             aTitle.versionSignature == bTitle.versionSignature &&
             sameFeaturedCredits(featuredSet(a, aTitle), featuredSet(b, bTitle)) &&
             samePrimaryCredits(a, b) &&
@@ -242,18 +249,23 @@ class AlternativeTrackMatcher {
             (right.containsAll(left) && creators(b).containsAll(right - left))
     }
 
-    private fun expectedArtistFollowsLeadingCreators(
+    private fun expectedArtistLeadsAfterCreators(
         candidate: AlternativeTrackCandidate,
         performingPrimary: List<String>,
         expectedArtists: Collection<String>
     ): Boolean {
         val creators = creators(candidate)
-        val leadingCreators = performingPrimary.takeWhile { it in creators }.size
-        if (leadingCreators == 0) return false
-        return performingPrimary.getOrNull(leadingCreators)?.let { it in expectedArtists } == true
+        val afterCreators = performingPrimary.dropWhile { it in creators && it !in expectedArtists }
+        if (afterCreators.size == performingPrimary.size) return false
+        return afterCreators.firstOrNull()?.let { it in expectedArtists } == true
     }
 
-    private fun creatorLeadAlbumConfirmed(
+    private fun isIndianRelease(candidate: AlternativeTrackCandidate): Boolean =
+        candidate.language.lowercase(Locale.ROOT) in indianReleaseLanguages
+
+    private fun romanizationKey(core: String): String = core.replace(repeatedLetter, "$1")
+
+    private fun albumConfirmsRecording(
         query: AlternativeTrackQuery,
         candidate: AlternativeTrackCandidate,
         relation: AlbumRelation,
@@ -367,6 +379,24 @@ class AlternativeTrackMatcher {
         const val SAME_RECORDING_DURATION_SECONDS = 4
 
         private val singleEditions = setOf(AlbumEdition.SINGLE, AlbumEdition.EP)
+        private val repeatedLetter = Regex("(\\p{L})\\1+")
+        private val indianReleaseLanguages = setOf(
+            "hindi",
+            "punjabi",
+            "urdu",
+            "tamil",
+            "telugu",
+            "kannada",
+            "malayalam",
+            "marathi",
+            "bengali",
+            "gujarati",
+            "bhojpuri",
+            "odia",
+            "haryanvi",
+            "rajasthani",
+            "assamese"
+        )
         private val releaseSource = Regex("[(\\[]\\s*from\\s+[\"“”']?([^\"“”)\\]]+)", RegexOption.IGNORE_CASE)
         internal val untrustedAlbumNames = setOf(
             "levyra",

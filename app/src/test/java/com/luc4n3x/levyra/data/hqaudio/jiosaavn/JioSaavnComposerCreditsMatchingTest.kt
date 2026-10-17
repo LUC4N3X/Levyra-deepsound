@@ -169,6 +169,74 @@ class JioSaavnComposerCreditsMatchingTest {
         assertRejected(MatchRejection.PRIMARY_ARTIST_MISMATCH, meriAashiqui(artist = "Arijit Singh"), parse(rendition).single())
     }
 
+    @Test
+    fun heeriyeWithEveryArtistTaggedAsCreatorMatchesTheSingle() {
+        val chosen = assertAccepted("NIidiD9g", matcher.select(heeriye(), parse(heeriyeLofi, heeriyeOriginal, heeriyeOtherFilm)))
+        assertEquals(AlternativeMatchVerdict.HIGH, chosen.verdict)
+    }
+
+    @Test
+    fun heeriyeRemixAndOtherFilmSongStayRejected() {
+        assertRejected(MatchRejection.TITLE_MISMATCH, heeriye(), parse(heeriyeLofi).single())
+        assertRejected(MatchRejection.PRIMARY_ARTIST_MISMATCH, heeriye(), parse(heeriyeOtherFilm).single())
+    }
+
+    @Test
+    fun heeriyeLedByAnActorWithoutTheExpectedSingerFirstIsRejected() {
+        val actorLed = song(
+            "actorled",
+            "Heeriye",
+            listOf("Dulquer Salmaan", "Neha Bhasin"),
+            "Heeriye",
+            194,
+            mapOf("Dulquer Salmaan" to listOf("music", "starring"), "Neha Bhasin" to listOf("music"))
+        )
+        assertRejected(MatchRejection.PRIMARY_ARTIST_MISMATCH, heeriye(), parse(actorLed).single())
+    }
+
+    @Test
+    fun tereVaasteLedByItsLyricistMatchesTheFilmRecording() {
+        assertAccepted("rBltEr7X", matcher.select(tereVaaste(), parse(tereVaasteUnplugged, tereVaasteOriginal)))
+    }
+
+    @Test
+    fun tereVaasteUnpluggedIsRejected() {
+        assertRejected(MatchRejection.VERSION_MISMATCH, tereVaaste(), parse(tereVaasteUnplugged).single())
+    }
+
+    @Test
+    fun kunFaayaKunTransliterationMatchesTheSoundtrack() {
+        val chosen = assertAccepted("csaEsVWV", matcher.select(kunFayaKun(), parse(kunFaayaKunCompilation, kunFaayaKunOriginal)))
+        assertEquals(AlternativeMatchVerdict.HIGH, chosen.verdict)
+    }
+
+    @Test
+    fun transliteratedTitleNeedsTheSameAlbum() {
+        assertRejected(MatchRejection.ALBUM_MISMATCH, kunFayaKun(), parse(kunFaayaKunCompilation).single())
+        val unverified = kunFayaKun().copy(album = "")
+        assertRejected(MatchRejection.TITLE_MISMATCH, unverified, parse(kunFaayaKunOriginal).single())
+    }
+
+    @Test
+    fun transliteratedTitleNeedsAnExcellentDuration() {
+        val drifted = song("kunDrift", "Kun Faaya Kun", kunArtists, "Rockstar", 475, kunCredits)
+        assertRejected(MatchRejection.TITLE_MISMATCH, kunFayaKun(), parse(drifted).single())
+    }
+
+    @Test
+    fun transliterationIsOnlyTrustedForIndianReleases() {
+        val english = saavnSong(
+            id = "moon0001",
+            title = "Mooon",
+            primary = listOf("Singer"),
+            album = "Moon",
+            duration = 200,
+            language = "english"
+        )
+        val query = query(title = "Moon", artist = "Singer", album = "Moon", durationMs = 200_000L)
+        assertRejected(MatchRejection.TITLE_MISMATCH, query, parse(english).single())
+    }
+
     private fun assertAccepted(id: String, selection: AlternativeMatchSelection): AlternativeMatchEvaluation =
         when (selection) {
             is AlternativeMatchSelection.Accepted -> selection.evaluation.also { assertEquals(id, it.candidate.providerTrackId) }
@@ -220,7 +288,83 @@ class JioSaavnComposerCreditsMatchingTest {
     private fun meriAashiqui(artist: String = "Arijit Singh, Palak Muchhal") =
         query(title = "Meri Aashiqui", artist = artist, album = "Aashiqui 2", durationMs = 266_000L)
 
-    private val chaleyaCredits = composerSinger("Anirudh Ravichander") + singers("Arijit Singh", "Shilpa Rao") +
+    private fun heeriye() = query(title = "Heeriye", artist = "Jasleen Royal, Arijit Singh", album = "Heeriye", durationMs = 195_000L)
+
+    private fun tereVaaste() = query(
+        title = "Tere Vaaste (From \"Zara Hatke Zara Bachke\")",
+        artist = "Varun Jain, Sachin-Jigar, Altamash Faridi",
+        album = "Tere Vaaste (From \"Zara Hatke Zara Bachke\")",
+        durationMs = 190_000L
+    )
+
+    private fun kunFayaKun() =
+        query(title = "Kun Faya Kun", artist = "A.R. Rahman, Javed Ali, Mohit Chauhan", album = "Rockstar", durationMs = 471_000L)
+
+    private val heeriyeCredits = mapOf(
+        "Jasleen Royal" to listOf("music", "starring"),
+        "Arijit Singh" to listOf("music"),
+        "Dulquer Salmaan" to listOf("music", "starring")
+    )
+
+    private val heeriyeOriginal = song(
+        "NIidiD9g",
+        "Heeriye (feat. Arijit Singh)",
+        listOf("Dulquer Salmaan", "Jasleen Royal", "Arijit Singh"),
+        "Heeriye (feat. Arijit Singh)",
+        194,
+        heeriyeCredits
+    )
+
+    private val heeriyeLofi = song(
+        "XXaCE1xt",
+        "Heeriye Lofi Remix (feat. Arijit Singh)",
+        listOf("Dulquer Salmaan", "Jasleen Royal", "Arijit Singh"),
+        "Heeriye Lofi Remix (feat. Arijit Singh)",
+        196,
+        heeriyeCredits
+    )
+
+    private val heeriyeOtherFilm = song(
+        "y_1n5ZOS",
+        "Heeriye",
+        listOf("Arijit Singh", "Shreya Ghoshal"),
+        "Happy Hardy And Heer",
+        195,
+        singers("Arijit Singh", "Shreya Ghoshal")
+    )
+
+    private val tereVaasteCredits = mapOf(
+        "Sachin-Jigar" to listOf("music"),
+        "Varun Jain" to listOf("music"),
+        "Shadab Faridi" to listOf("music"),
+        "Altamash Faridi" to listOf("music"),
+        "Amitabh Bhattacharya" to listOf("music", "lyricist"),
+        "Vicky Kaushal" to listOf("starring")
+    )
+
+    private val tereVaasteArtists = listOf("Amitabh Bhattacharya", "Sachin-Jigar", "Varun Jain", "Shadab Faridi", "Altamash Faridi")
+
+    private val tereVaasteOriginal = song(
+        "rBltEr7X",
+        "Tere Vaaste (From &quot;Zara Hatke Zara Bachke&quot;)",
+        tereVaasteArtists,
+        "Zara Hatke Zara Bachke",
+        189,
+        tereVaasteCredits
+    )
+
+    private val tereVaasteUnplugged = song("MdCnqlfo", "Tere Vaaste - Unplugged", tereVaasteArtists, "Zara Hatke Zara Bachke", 189, tereVaasteCredits)
+
+    private val kunArtists = listOf("A.R. Rahman", "Javed Ali", "Mohit Chauhan")
+
+    private val kunCredits = composerSinger("A.R. Rahman") + singers("Javed Ali", "Mohit Chauhan") +
+        mapOf("Irshad Kamil" to listOf("lyricist"), "Ranbir Kapoor" to listOf("starring"))
+
+    private val kunFaayaKunOriginal = song("csaEsVWV", "Kun Faaya Kun", kunArtists, "Rockstar", 473, kunCredits)
+
+    private val kunFaayaKunCompilation = song("haS4X2V2", "Kun Faaya Kun", kunArtists, "Best Of A.R. Rahman", 469, kunCredits)
+
+    private val chaleyaCredits =composerSinger("Anirudh Ravichander") + singers("Arijit Singh", "Shilpa Rao") +
         mapOf("Kumaar" to listOf("lyricist"), "Shah Rukh Khan" to listOf("starring"), "Nayanthara" to listOf("starring"))
 
     private val chaleyaOriginal =
