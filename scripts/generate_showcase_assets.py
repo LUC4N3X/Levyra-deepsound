@@ -598,6 +598,10 @@ README_CARD_SPECS = [
     ("14_fresh_off_the_stage", "NEW RELEASES", "Fresh off\nthe stage.", "The newest music, without the clutter.", "Screenshot_20261010_144144_LEVYRA.jpg"),
     ("15_meet_the_artist", "ARTISTS", "Meet the\nartist.", "From the profile straight into the music.", "Screenshot_20261010_143646_LEVYRA.jpg"),
     ("16_listen_together", "LEVYRA JAM", "Listen\ntogether.", "One room. One queue. Everyone in.", "Screenshot_20261011_133434_LEVYRA.jpg"),
+    ("17_daylight_expressive", "LIGHT THEME", "Bask in\nthe light.", "Every curve and color tuned for daylight.", "Screenshot_20261017_133945_LEVYRA.jpg"),
+    ("18_midnight_obsidian", "DARK THEME", "Into the\ndark.", "Deep contrast for midnight listening.", "Screenshot_20261017_134057_LEVYRA.jpg"),
+    ("19_top_charts", "CHARTS", "Pulse of\nthe charts.", "What the world is playing right now.", "Screenshot_20261017_123908_LEVYRA.jpg"),
+    ("20_your_year_in_music", "YEAR IN MUSIC", "Your year\nin sound.", "A story of your year, made on this device.", "Screenshot_20261016_223757_LEVYRA.jpg"),
 ]
 
 def make_campaign_device(filename, width):
@@ -806,9 +810,69 @@ def render_readme_card_pair(left_spec, right_spec):
 
     return left_card.convert("RGB"), right_card.convert("RGB")
 
+def render_readme_light_dark_pair(left_spec, right_spec):
+    card_w, card_h = 900, 1800
+    gap = 32
+    pair_w = card_w * 2 + gap
+
+    theme_0 = {
+        "background": (255, 248, 240),
+        "ink": (35, 28, 24),
+        "muted": (115, 96, 85),
+        "accent": (210, 105, 30),
+        "shape": (250, 230, 212),
+    }
+    theme_1 = {
+        "background": (18, 20, 26),
+        "ink": (245, 248, 255),
+        "muted": (160, 175, 195),
+        "accent": (96, 165, 250),
+        "shape": (35, 45, 60),
+    }
+
+    canvas_0 = Image.new("RGBA", (card_w, card_h), theme_0["background"] + (255,))
+    draw_0 = ImageDraw.Draw(canvas_0)
+    draw_0.rounded_rectangle((-200, 850, 850, 1650), radius=280, fill=theme_0["shape"] + (255,))
+    draw_0.ellipse((550, -100, 1050, 400), fill=theme_0["shape"] + (220,))
+
+    canvas_1 = Image.new("RGBA", (card_w, card_h), theme_1["background"] + (255,))
+    draw_1 = ImageDraw.Draw(canvas_1)
+    draw_1.ellipse((350, 750, 1050, 1550), fill=theme_1["shape"] + (255,))
+    draw_1.rounded_rectangle((-150, 850, 450, 1450), radius=180, fill=theme_1["shape"] + (220,))
+
+    pair_canvas = Image.new("RGBA", (pair_w, card_h), (0, 0, 0, 0))
+    pair_canvas.paste(canvas_0, (0, 0))
+    pair_canvas.paste(canvas_1, (card_w + gap, 0))
+
+    paste_campaign_device(
+        pair_canvas,
+        left_spec[4],
+        width=720,
+        angle=-10,
+        top_left=(65, 310),
+    )
+    paste_campaign_device(
+        pair_canvas,
+        right_spec[4],
+        width=720,
+        angle=10.5,
+        top_left=(card_w + gap + 15, 380),
+    )
+
+    left_card = pair_canvas.crop((0, 0, card_w, card_h))
+    right_card = pair_canvas.crop((card_w + gap, 0, pair_w, card_h))
+
+    draw_left = ImageDraw.Draw(left_card)
+    draw_readme_card_copy(draw_left, left_spec, theme_0, 16, (72, 70))
+
+    draw_right = ImageDraw.Draw(right_card)
+    draw_readme_card_copy(draw_right, right_spec, theme_1, 17, (72, 70))
+
+    return left_card.convert("RGB"), right_card.convert("RGB")
+
 def render_readme_card(spec, index):
-    theme_order = [0, 1, 2, 3, 3, 2, 1, 2, 1, 2, 3, 1, 2, 3, 1, 2]
-    variant_order = [0, 1, 2, 3, 2, 3, 0, 1, 1, 0, 3, 2, 3, 2, 1, 0]
+    theme_order = [0, 1, 2, 3, 3, 2, 1, 2, 1, 2, 3, 1, 2, 3, 1, 2, 2, 0, 3, 0]
+    variant_order = [0, 1, 2, 3, 2, 3, 0, 1, 1, 0, 3, 2, 3, 2, 1, 0, 0, 1, 1, 2]
     theme = README_CARD_THEMES[theme_order[index]]
     variant = variant_order[index]
     canvas = Image.new("RGBA", (900, 1800), theme["background"] + (255,))
@@ -833,10 +897,11 @@ def generate_readme_cards():
     for artwork, spec in ((left_card, README_CARD_SPECS[0]), (right_card, README_CARD_SPECS[1])):
         cards.append(artwork)
         out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
-        artwork.save(out_path, "WEBP", quality=94, method=6)
-        print(f"Saved README editorial card at {artwork.size}: {out_path}")
+        if not os.path.exists(out_path):
+            artwork.save(out_path, "WEBP", quality=94, method=6)
+            print(f"Saved README editorial card at {artwork.size}: {out_path}")
 
-    for index in range(2, len(README_CARD_SPECS)):
+    for index in range(2, 16):
         spec = README_CARD_SPECS[index]
         out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
         if os.path.exists(out_path):
@@ -847,12 +912,30 @@ def generate_readme_cards():
             print(f"Saved README editorial card at {artwork.size}: {out_path}")
         cards.append(artwork)
 
+    ld_left, ld_right = render_readme_light_dark_pair(
+        README_CARD_SPECS[16],
+        README_CARD_SPECS[17],
+    )
+    for artwork, spec in ((ld_left, README_CARD_SPECS[16]), (ld_right, README_CARD_SPECS[17])):
+        cards.append(artwork)
+        out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
+        artwork.save(out_path, "WEBP", quality=94, method=6)
+        print(f"Saved README editorial card at {artwork.size}: {out_path}")
+
+    for index in range(18, len(README_CARD_SPECS)):
+        spec = README_CARD_SPECS[index]
+        out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
+        artwork = render_readme_card(spec, index)
+        artwork.save(out_path, "WEBP", quality=94, method=6)
+        print(f"Saved README editorial card at {artwork.size}: {out_path}")
+        cards.append(artwork)
+
     mask = Image.new("L", (900, 1800), 0)
     ImageDraw.Draw(mask).rounded_rectangle((0, 0, 899, 1799), radius=44, fill=255)
 
-    for row_index in range(4):
+    for row_index in range(5):
         spaced_row_path = os.path.join(README_CARD_DIR, f"editorial-grid-row-{row_index + 1:02d}-spaced.webp")
-        if row_index > 0 and os.path.exists(spaced_row_path):
+        if row_index < 4 and os.path.exists(spaced_row_path):
             continue
 
         row = Image.new("RGB", (3600, 1800))
@@ -873,6 +956,8 @@ def generate_readme_cards():
         row.save(out_path, "WEBP", quality=95, method=6)
         if row_index == 0:
             row.save(os.path.join(README_CARD_DIR, "editorial-grid-row-01.webp"), "WEBP", quality=95, method=6)
+        elif row_index == 4:
+            row.save(os.path.join(README_CARD_DIR, "editorial-grid-row-05.webp"), "WEBP", quality=95, method=6)
         print(f"Saved four-card README row at {row.size}: {out_path}")
 
         spaced_row.save(spaced_row_path, "WEBP", quality=95, method=6)
