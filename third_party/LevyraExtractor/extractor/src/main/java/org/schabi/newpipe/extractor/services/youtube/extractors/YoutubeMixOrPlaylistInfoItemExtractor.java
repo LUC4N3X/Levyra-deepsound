@@ -84,22 +84,37 @@ public class YoutubeMixOrPlaylistInfoItemExtractor implements PlaylistInfoItemEx
 
     @Override
     public long getStreamCount() throws ParsingException {
-        final String countString = YoutubeParsingHelper.getTextFromObject(
+        final String shortCountString = YoutubeParsingHelper.getTextFromObject(
                 mixInfoItem.getObject("videoCountShortText"));
-        if (countString == null) {
+        if (shortCountString != null) {
+            try {
+                return Integer.parseInt(shortCountString);
+            } catch (final NumberFormatException ignored) {
+                // un-parsable integer: this is a mix with infinite items and "50+" as count string
+                // (though youtube music mixes do not necessarily have an infinite count of songs)
+                return ListExtractor.ITEM_COUNT_INFINITE;
+            }
+        }
+
+        String countString = mixInfoItem.getString("videoCount");
+        if (isNullOrEmpty(countString)) {
+            countString = YoutubeParsingHelper.getTextFromObject(
+                    mixInfoItem.getObject("videoCountText"));
+        }
+        if (isNullOrEmpty(countString)) {
             // The item count is optional too: some incomplete playlist/mix items have no
-            // "videoCountShortText". Report "unknown" rather than throwing, so the item is
+            // count at all. Report "unknown" rather than throwing, so the item is
             // still committed instead of bubbling up a spurious error (#2546).
             return ListExtractor.ITEM_COUNT_UNKNOWN;
         }
-
-        try {
-            return Integer.parseInt(countString);
-        } catch (final NumberFormatException ignored) {
-            // un-parsable integer: this is a mix with infinite items and "50+" as count string
-            // (though youtube music mixes do not necessarily have an infinite count of songs)
+        if (countString.contains("+")) {
             return ListExtractor.ITEM_COUNT_INFINITE;
         }
+        final String digits = countString.replaceAll("[^0-9]", "");
+        if (digits.isEmpty() || digits.length() > 9) {
+            return ListExtractor.ITEM_COUNT_UNKNOWN;
+        }
+        return Long.parseLong(digits);
     }
 
     @Nonnull

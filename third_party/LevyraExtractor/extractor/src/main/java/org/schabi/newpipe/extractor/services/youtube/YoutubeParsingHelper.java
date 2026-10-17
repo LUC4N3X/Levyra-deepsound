@@ -1538,21 +1538,24 @@ YoutubeParsingHelper {
     public static String getThumbnailUrlFromInfoItem(final JsonObject infoItem)
             throws ParsingException {
         // TODO: Don't simply get the first item, but look at all thumbnails and their resolution
-        try {
-            JsonArray thumbnails = infoItem.getObject("thumbnail").getArray("thumbnails");
-            return fixThumbnailUrl(thumbnails.getObject(thumbnails.size() - 1).getString("url"));
-        } catch (final Exception e) {
-            // lockupViewModel format
-            try {
-                JsonArray thumbnails = infoItem.getObject("contentImage")
-                        .getObject("thumbnailViewModel")
-                        .getObject("image")
-                        .getArray("sources");
-                return fixThumbnailUrl(thumbnails.getObject(thumbnails.size() - 1).getString("url"));
-            } catch (final Exception e2) {
-                throw new ParsingException("Could not get thumbnail url", e2);
+        final JsonArray[] candidates = {
+                infoItem.getObject("thumbnail").getArray("thumbnails"),
+                infoItem.getObject("contentImage").getObject("thumbnailViewModel")
+                        .getObject("image").getArray("sources"),
+                infoItem.getObject("thumbnailRenderer")
+                        .getObject("playlistCustomThumbnailRenderer")
+                        .getObject("thumbnail").getArray("thumbnails")
+        };
+        for (final JsonArray thumbnails : candidates) {
+            if (thumbnails.isEmpty()) {
+                continue;
+            }
+            final String url = thumbnails.getObject(thumbnails.size() - 1).getString("url");
+            if (!isNullOrEmpty(url)) {
+                return fixThumbnailUrl(url);
             }
         }
+        throw new ParsingException("Could not get thumbnail url");
     }
 
     /**
