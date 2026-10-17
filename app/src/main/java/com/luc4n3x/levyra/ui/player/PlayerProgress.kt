@@ -22,9 +22,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.luc4n3x.levyra.player.PlaybackService
 import com.luc4n3x.levyra.player.waveseek.WaveSeekStore
 import com.luc4n3x.levyra.ui.components.PremiumSeekbar
+import com.luc4n3x.levyra.ui.components.SeekbarThumbShape
 import com.luc4n3x.levyra.ui.components.LevyraWavySeekbar
 import com.luc4n3x.levyra.ui.components.formatSeekbarMillis
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
+
+internal enum class PlayerProgressStyle {
+    Classic,
+    Wavy,
+    Expressive
+}
 
 @Composable
 internal fun PlayerProgress(
@@ -41,7 +48,7 @@ internal fun PlayerProgress(
     compact: Boolean,
     onSeek: (Float) -> Unit,
     modifier: Modifier = Modifier,
-    wavy: Boolean = false
+    style: PlayerProgressStyle = PlayerProgressStyle.Classic
 ) {
     val context = LocalContext.current.applicationContext
     val activePlayer by PlaybackService.activePlayerFlow.collectAsStateWithLifecycle()
@@ -53,7 +60,7 @@ internal fun PlayerProgress(
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        if (wavy) {
+        if (style == PlayerProgressStyle.Wavy) {
             LevyraWavySeekbar(
                 positionMs = positionMs,
                 durationMs = durationMs,
@@ -81,7 +88,8 @@ internal fun PlayerProgress(
                 animated = animationsEnabled,
                 motionActive = motionActive,
                 waveform = waveform,
-                interactionKey = mediaId
+                interactionKey = mediaId,
+                thumbShape = if (style == PlayerProgressStyle.Expressive) SeekbarThumbShape.Notched else SeekbarThumbShape.Round
             )
         }
         Row(

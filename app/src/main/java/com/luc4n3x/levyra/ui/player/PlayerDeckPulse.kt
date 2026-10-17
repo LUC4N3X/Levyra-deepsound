@@ -56,12 +56,40 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.toShape
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Path
+import com.luc4n3x.levyra.player.VisualizerAudioProcessor
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.sin
 
 private val PulseSignalHeight = 30.dp
 private val PulseSpecHeight = 18.dp
 private val PulseLiveDot = 6.dp
 private const val PulseSignalGain = 3f
 private const val PulseRecordTurnMillis = 9_000
+private const val PulseDiscScale = 0.84f
+private const val PulseLabelScale = 0.1f
+private const val PulseGrooveInner = 0.36f
+private const val PulseSpindleScale = 0.022f
+private const val PulseRestDim = 0.22f
+private const val PulseRestShrink = 0.03f
+private val PulseRingGap = 12.dp
+private val PulseRingStroke = 4.dp
+private val PulseRingAmplitude = 3.dp
+private const val PulseRingIdleWave = 0.35f
+private const val PulseRingWaves = 24f
+private const val PulseRingSegments = 360
+private const val PulseRingGapDegrees = 5f
 private val PulseSpecStyle = TextStyle(fontFeatureSettings = "tnum, case")
 
 @Composable
@@ -71,6 +99,7 @@ internal fun PlayerPulseDeck(
     surfaces: PlayerSurfaceTokens,
     accent: Color,
     isPlaying: Boolean,
+    progress: () -> Float,
     animated: Boolean,
     compact: Boolean,
     scrollable: Boolean,
@@ -99,13 +128,16 @@ internal fun PlayerPulseDeck(
                 .padding(vertical = if (compact) LevyraPlayerDesign.SpaceSm else LevyraPlayerDesign.SpaceLg),
             contentAlignment = Alignment.Center
         ) {
-            val side = minOf(maxWidth, maxHeight) * 0.94f
+            val side = minOf(maxWidth, maxHeight)
             PulseRecord(
                 track = track,
                 slots = slots,
                 side = side,
                 accent = accent,
-                spinning = isPlaying && animated
+                trackColor = surfaces.contentFaint.copy(alpha = 0.22f),
+                playing = isPlaying,
+                progress = progress,
+                animated = animated
             )
             slots.gestures(track, Modifier.matchParentSize())
         }
@@ -126,51 +158,155 @@ internal fun PlayerPulseDeck(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun PulseRecord(
     track: Track,
     slots: PlayerDeckSlots,
     side: Dp,
     accent: Color,
-    spinning: Boolean
+    trackColor: Color,
+    playing: Boolean,
+    progress: () -> Float,
+    animated: Boolean
 ) {
     val decorative = LocalLevyraVisualCapabilities.current.decorativeMotion
     val angle = remember { Animatable(0f) }
-    LaunchedEffect(spinning, decorative) {
-        if (!spinning || !decorative) return@LaunchedEffect
+    LaunchedEffect(playing, animated, decorative) {
+        if (!playing || !animated || !decorative) return@LaunchedEffect
         while (true) {
             angle.animateTo(angle.value + 360f, tween(PulseRecordTurnMillis, easing = LinearEasing))
             angle.snapTo(angle.value % 360f)
         }
     }
-    Box(
-        modifier = Modifier
-            .size(side)
-            .graphicsLayer { rotationZ = angle.value }
-            .clip(CircleShape)
-            .background(Color(0xFF0B0B0E)),
-        contentAlignment = Alignment.Center
-    ) {
-        slots.stage(track, Modifier.size(side), side / 2)
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val radius = size.minDimension / 2f
-            var ring = radius * 0.98f
-            while (ring > radius * 0.36f) {
-                drawCircle(Color.Black.copy(alpha = 0.16f), radius = ring, style = Stroke(width = 1.2f))
-                ring -= radius * 0.035f
-            }
-            drawCircle(
-                Brush.radialGradient(
-                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.34f)),
-                    radius = radius
-                ),
-                radius = radius
+    val rest = animateFloatAsState(
+        targetValue = if (playing) 0f else 1f,
+        animationSpec = if (animated) LevyraPlayerDesign.expressiveSpring() else snap(),
+        label = "player-pulse-rest"
+    )
+    val signal = VisualizerAudioProcessor.waveformState.collectAsStateWithLifecycle()
+    val level = remember { PulseSignalLevel() }
+    val reactive = playing && animated && decorative
+    val disc = side * PulseDiscScale
+    Box(modifier = Modifier.size(side), contentAlignment = Alignment.Center) {
+        Canvas(modifier = Modifier.matchParentSize()) {
+            val energy = level.follow(if (reactive) signal.value else EmptySignal)
+            drawPulseProgressRing(
+                discRadius = disc.toPx() / 2f,
+                progress = progress().coerceIn(0f, 1f),
+                phase = angle.value,
+                energy = energy,
+                waviness = 1f - rest.value,
+                accent = accent,
+                trackColor = trackColor
             )
-            drawCircle(Color(0xFF0B0B0E), radius = radius * 0.13f)
-            drawCircle(accent, radius = radius * 0.13f, style = Stroke(width = radius * 0.018f))
-            drawCircle(Color.Black, radius = radius * 0.03f)
+        }
+        Box(
+            modifier = Modifier
+                .size(disc)
+                .graphicsLayer {
+                    rotationZ = angle.value
+                    val settle = 1f - PulseRestShrink * rest.value
+                    scaleX = settle
+                    scaleY = settle
+                }
+                .clip(CircleShape)
+                .background(Color(0xFF0B0B0E)),
+            contentAlignment = Alignment.Center
+        ) {
+            slots.stage(track, Modifier.size(disc), disc / 2)
+            Canvas(modifier = Modifier.fillMaxSize()) { drawPulseGrooves(dim = rest.value) }
+            Box(
+                modifier = Modifier
+                    .size(disc * PulseLabelScale)
+                    .clip(MaterialShapes.Cookie9Sided.toShape())
+                    .background(accent),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(disc * PulseSpindleScale)
+                        .background(Color(0xFF0B0B0E), CircleShape)
+                )
+            }
         }
     }
+}
+
+private val EmptySignal = FloatArray(0)
+
+private class PulseSignalLevel {
+    private var smoothed = 0f
+
+    fun follow(samples: FloatArray): Float {
+        var peak = 0f
+        for (sample in samples) peak = maxOf(peak, abs(sample))
+        val target = (peak * PulseSignalGain).coerceIn(0f, 1f)
+        smoothed += (target - smoothed) * if (target > smoothed) 0.5f else 0.12f
+        return smoothed
+    }
+}
+
+private fun DrawScope.drawPulseGrooves(dim: Float) {
+    val radius = size.minDimension / 2f
+    var ring = radius * 0.98f
+    while (ring > radius * PulseGrooveInner) {
+        drawCircle(Color.Black.copy(alpha = 0.16f), radius = ring, style = Stroke(width = 1.2f))
+        ring -= radius * 0.035f
+    }
+    drawCircle(
+        Brush.radialGradient(
+            listOf(Color.Transparent, Color.Black.copy(alpha = 0.34f)),
+            radius = radius
+        ),
+        radius = radius
+    )
+    if (dim > 0f) drawCircle(Color.Black.copy(alpha = PulseRestDim * dim), radius = radius)
+}
+
+private fun DrawScope.drawPulseProgressRing(
+    discRadius: Float,
+    progress: Float,
+    phase: Float,
+    energy: Float,
+    waviness: Float,
+    accent: Color,
+    trackColor: Color
+) {
+    val stroke = PulseRingStroke.toPx()
+    val radius = discRadius + PulseRingGap.toPx()
+    val gapDegrees = if (progress > 0f && progress < 1f) PulseRingGapDegrees else 0f
+    val remaining = (1f - progress) * 360f - gapDegrees * 2f
+    if (remaining > 0f) {
+        drawArc(
+            color = trackColor,
+            startAngle = -90f + progress * 360f + gapDegrees,
+            sweepAngle = remaining,
+            useCenter = false,
+            topLeft = Offset(center.x - radius, center.y - radius),
+            size = Size(radius * 2f, radius * 2f),
+            style = Stroke(width = stroke, cap = StrokeCap.Round)
+        )
+    }
+    if (progress <= 0f) return
+    val amplitude = PulseRingAmplitude.toPx() * (PulseRingIdleWave + (1f - PulseRingIdleWave) * energy) * waviness
+    val fullTurn = 2f * PI.toFloat()
+    val sweep = progress * fullTurn
+    val start = -PI.toFloat() / 2f
+    val turn = Math.toRadians(phase.toDouble()).toFloat()
+    val steps = (progress * PulseRingSegments).toInt().coerceAtLeast(2)
+    val feather = 0.35f
+    val ring = Path()
+    for (index in 0..steps) {
+        val t = index / steps.toFloat()
+        val theta = start + sweep * t
+        val edge = minOf(1f, t * sweep / feather, (1f - t) * sweep / feather)
+        val r = radius + amplitude * edge * sin(theta * PulseRingWaves - turn * 2f)
+        val x = center.x + r * cos(theta)
+        val y = center.y + r * sin(theta)
+        if (index == 0) ring.moveTo(x, y) else ring.lineTo(x, y)
+    }
+    drawPath(ring, accent, style = Stroke(width = stroke, cap = StrokeCap.Round))
 }
 
 @Composable

@@ -24,6 +24,13 @@ private const val StageHandOffEnd = 0.98f
 
 internal val PlayerMorphFlightShadow = 18.dp
 
+enum class PlayerMorphLanding {
+    Rounded,
+    Cookie,
+    FlowPlaying,
+    FlowPaused
+}
+
 enum class PlayerMorphSlot {
     Mini,
     MiniCard,
@@ -43,7 +50,7 @@ class PlayerMorphAnchors(private val expansion: () -> Float = { PlayerExpansionE
         private set
     var stageActive by mutableStateOf(false)
         private set
-    var landsAsCookie by mutableStateOf(false)
+    var landing by mutableStateOf(PlayerMorphLanding.Rounded)
         private set
     private var fullRestScale by mutableFloatStateOf(1f)
     private var fullRestOffsetY by mutableFloatStateOf(0f)
@@ -78,8 +85,8 @@ class PlayerMorphAnchors(private val expansion: () -> Float = { PlayerExpansionE
 
     internal fun currentExpansion(): Float = expansion()
 
-    fun updateLandsAsCookie(cookie: Boolean) {
-        if (landsAsCookie != cookie) landsAsCookie = cookie
+    fun updateLanding(shape: PlayerMorphLanding) {
+        if (landing != shape) landing = shape
     }
 
     fun updateStageActive(active: Boolean) {

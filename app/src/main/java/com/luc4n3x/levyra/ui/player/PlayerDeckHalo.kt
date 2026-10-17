@@ -148,7 +148,7 @@ internal fun PlayerHaloDeck(
             modifier = headlineModifier
         )
         Spacer(Modifier.height(LevyraPlayerDesign.SpaceSm))
-        slots.progress(true)
+        slots.progress(PlayerProgressStyle.Wavy)
         Spacer(Modifier.height(LevyraPlayerDesign.SpaceSm))
         HaloToolbar(
             surfaces = surfaces,
