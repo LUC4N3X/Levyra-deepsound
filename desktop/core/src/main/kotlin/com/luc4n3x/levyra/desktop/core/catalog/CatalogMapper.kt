@@ -63,7 +63,7 @@ object CatalogMapper {
         val playlistKind = if (filter == SearchFilter.ALBUMS) CollectionKind.ALBUM else CollectionKind.PLAYLIST
         items.forEach { item ->
             when (item) {
-                is StreamInfoItem -> toTrack(item)?.let(tracks::add)
+                is StreamInfoItem -> item.takeUnless { it.isShortFormContent }?.let(::toTrack)?.let(tracks::add)
                 is PlaylistInfoItem -> toCollection(item, playlistKind)?.let(collections::add)
                 is ChannelInfoItem -> toCollection(item)?.let(collections::add)
                 else -> Unit

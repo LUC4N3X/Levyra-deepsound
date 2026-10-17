@@ -4,7 +4,6 @@ import static org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper
 import static org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper.YOUTUBEI_V1_URL;
 import static org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper.getJsonPostResponse;
 import static org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper.getTextFromObject;
-import static org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper.getValidJsonResponseBody;
 import static org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper.prepareDesktopJsonBuilder;
 import static org.schabi.newpipe.extractor.utils.Utils.isNullOrEmpty;
 
@@ -13,8 +12,6 @@ import org.schabi.newpipe.extractor.services.youtube.search.filter.YoutubeFilter
 import com.grack.nanojson.JsonArray;
 import com.grack.nanojson.JsonBuilder;
 import com.grack.nanojson.JsonObject;
-import com.grack.nanojson.JsonParser;
-import com.grack.nanojson.JsonParserException;
 import com.grack.nanojson.JsonWriter;
 
 import org.schabi.newpipe.extractor.downloader.Downloader;
@@ -27,7 +24,6 @@ import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper;
 import org.schabi.newpipe.extractor.utils.JsonUtils;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 
 import javax.annotation.Nonnull;
@@ -155,33 +151,47 @@ public class YoutubeSearchExtractor extends YoutubeBaseSearchExtractor {
                 .getBytes(StandardCharsets.UTF_8);
         // @formatter:on
 
-        final String responseBody = getValidJsonResponseBody(getDownloader().post(
-                page.getUrl(), new HashMap<>(), json));
-
-        final JsonObject ajaxJson;
-        try {
-            ajaxJson = JsonParser.object().from(responseBody);
-        } catch (final JsonParserException e) {
-            throw new ParsingException("Could not parse JSON", e);
-        }
+        final JsonObject ajaxJson = getJsonPostResponse("search", json, localization);
 
         final JsonArray continuationItems = ajaxJson.getArray("onResponseReceivedCommands")
                 .getObject(0).getObject("appendContinuationItemsAction")
                 .getArray("continuationItems");
 
-        final JsonArray contents = continuationItems.getObject(0)
-                .getObject("itemSectionRenderer").getArray("contents");
-        collectStreamsFrom(collector, contents);
-        return new InfoItemsPage<>(collector, getNextPageFrom(continuationItems.getObject(1)
-                .getObject("continuationItemRenderer")));
+        Page nextPage = null;
+        for (final Object continuationItem : continuationItems) {
+            if (!(continuationItem instanceof JsonObject)) {
+                continue;
+            }
+            final JsonObject item = (JsonObject) continuationItem;
+            if (item.has("itemSectionRenderer")) {
+                collectStreamsFrom(collector,
+                        item.getObject("itemSectionRenderer").getArray("contents"));
+            } else if (item.has("continuationItemRenderer")) {
+                nextPage = getNextPageFrom(item.getObject("continuationItemRenderer"));
+            }
+        }
+        if (nextPage != null && nextPage.getId().equals(page.getId())) {
+            nextPage = null;
+        }
+        return new InfoItemsPage<>(collector.getItems(), nextPage, collector.getErrors(), true);
     }
 
     private void collectStreamsFrom(final MultiInfoItemsCollector collector,
                                     final JsonArray contents) throws NothingFoundException,
             ParsingException {
+        collectStreamsFrom(collector, contents, true);
+    }
+
+    private void collectStreamsFrom(final MultiInfoItemsCollector collector,
+                                    final JsonArray contents,
+                                    final boolean expandShelves) throws NothingFoundException,
+            ParsingException {
         final TimeAgoParser timeAgoParser = getTimeAgoParser();
 
         for (final Object content : contents) {
+            if (!(content instanceof JsonObject)) {
+                continue;
+            }
             final JsonObject item = (JsonObject) content;
             if (item.has("backgroundPromoRenderer")) {
                 throw new NothingFoundException(getTextFromObject(
@@ -197,11 +207,21 @@ public class YoutubeSearchExtractor extends YoutubeBaseSearchExtractor {
                         .getObject("playlistRenderer")));
             } else if (item.has("lockupViewModel")) {
                 final JsonObject lockupViewModel = item.getObject("lockupViewModel");
-                if ("LOCKUP_CONTENT_TYPE_PLAYLIST".equals(
-                        lockupViewModel.getString("contentType"))) {
+                final String contentType = lockupViewModel.getString("contentType");
+                if ("LOCKUP_CONTENT_TYPE_PLAYLIST".equals(contentType)
+                        || "LOCKUP_CONTENT_TYPE_PODCAST".equals(contentType)) {
                     collector.commit(
                             new YoutubeMixOrPlaylistLockupInfoItemExtractor(lockupViewModel));
+                } else if ("LOCKUP_CONTENT_TYPE_VIDEO".equals(contentType)) {
+                    collector.commit(new YoutubeLockupStreamInfoItemExtractor(
+                            lockupViewModel, timeAgoParser));
                 }
+            } else if (item.has("shortsLockupViewModel")) {
+                collector.commit(new YoutubeShortsInfoItemExtractor(
+                        item.getObject("shortsLockupViewModel")));
+            } else if (expandShelves && item.has("gridShelfViewModel")) {
+                collectStreamsFrom(collector,
+                        item.getObject("gridShelfViewModel").getArray("contents"), false);
             }
         }
     }
@@ -214,6 +234,9 @@ public class YoutubeSearchExtractor extends YoutubeBaseSearchExtractor {
 
         final String token = continuationItemRenderer.getObject("continuationEndpoint")
                 .getObject("continuationCommand").getString("token");
+        if (isNullOrEmpty(token)) {
+            return null;
+        }
 
         final String url = YOUTUBEI_V1_URL + "search?"
                 + DISABLE_PRETTY_PRINT_PARAMETER;
