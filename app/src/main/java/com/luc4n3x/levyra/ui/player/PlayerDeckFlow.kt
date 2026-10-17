@@ -113,7 +113,7 @@ internal data class FlowLeafShape(
         val side = size.minDimension
         val big = (side * major).coerceIn(0f, side / 2)
         val small = (side * minor).coerceIn(0f, side / 2)
-        val startLeads = (layoutDirection == LayoutDirection.Ltr) != mirrored
+        val startLeads = if (mirrored) layoutDirection == LayoutDirection.Rtl else layoutDirection == LayoutDirection.Ltr
         val topLeft = if (startLeads) big else small
         val topRight = if (startLeads) small else big
         return Outline.Rounded(

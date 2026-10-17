@@ -48,6 +48,7 @@ import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -70,9 +71,33 @@ private const val ThumbHaloAlpha = 0.5f
 private val ThumbHaloWidth = 3.dp
 private val TrackStopRadius = 2.dp
 private val NotchGap = 3.dp
-private val ClassicWaveLength = 78.dp
-private val RefinedWaveLength = 56.dp
-private val RefinedWaveFeather = 28.dp
+
+private class SeekbarWaveStyle(
+    val waveLength: Dp,
+    val minimumSpan: Dp,
+    val feather: Dp,
+    val ripple: Float,
+    val smoothEdges: Boolean,
+    val roundStart: Boolean
+)
+
+private val ClassicWave = SeekbarWaveStyle(
+    waveLength = 78.dp,
+    minimumSpan = 28.dp,
+    feather = 18.dp,
+    ripple = 0.07f,
+    smoothEdges = false,
+    roundStart = false
+)
+
+private val RefinedWave = SeekbarWaveStyle(
+    waveLength = 56.dp,
+    minimumSpan = 84.dp,
+    feather = 28.dp,
+    ripple = 0f,
+    smoothEdges = true,
+    roundStart = true
+)
 
 enum class SeekbarThumbShape {
     Round,
@@ -394,7 +419,7 @@ fun PremiumSeekbar(
                         bottom = centerY + trackHeight / 2f
                     ),
                     waveIntensity = waveIntensity.value,
-                    refined = thumbShape == SeekbarThumbShape.Notched
+                    style = if (thumbShape == SeekbarThumbShape.Notched) RefinedWave else ClassicWave
                 )
             }
 
@@ -523,7 +548,7 @@ private fun DrawScope.drawAnimatedWaveform(
     activeColor: Color,
     waveBrush: Brush,
     waveIntensity: Float,
-    refined: Boolean
+    style: SeekbarWaveStyle
 ) {
     val centerY = size.height / 2f
     val radius = CornerRadius(trackHeight / 2f, trackHeight / 2f)
@@ -555,18 +580,17 @@ private fun DrawScope.drawAnimatedWaveform(
         val waveAlpha = (1f - scrub).coerceIn(0f, 1f)
         if (waveAlpha <= 0.001f) return@clipRect
 
-        val waveLength = (if (refined) RefinedWaveLength else ClassicWaveLength).toPx()
-        val minimumWaveSpan = if (refined) RefinedWaveLength.toPx() * 1.5f else 28.dp.toPx()
-        val amplitudeScale = (activeSpan / minimumWaveSpan).coerceIn(0f, 1f)
+        val waveLength = style.waveLength.toPx()
+        val amplitudeScale = (activeSpan / style.minimumSpan.toPx()).coerceIn(0f, 1f)
         val waveHeight = WaveCrestHeight.toPx() * waveReveal * amplitudeScale * waveIntensity.coerceIn(0f, 1f)
         val baselineY = centerY + trackHeight / 2f
         val topBaseY = centerY - trackHeight / 2f
         val step = 2.dp.toPx().coerceAtLeast(1f)
         val phaseOffset = if (animated && !isDragging) wavePhase else 0f
-        val edgeFeather = (if (refined) RefinedWaveFeather else 18.dp).toPx().coerceAtMost(activeSpan / 2f)
+        val edgeFeather = style.feather.toPx().coerceAtMost(activeSpan / 2f)
 
-        val capRadius = if (refined) trackHeight / 2f else 0f
-        if (refined) {
+        val capRadius = if (style.roundStart) trackHeight / 2f else 0f
+        if (style.roundStart) {
             drawCircle(
                 color = activeColor.copy(alpha = activeColor.alpha * waveAlpha),
                 radius = capRadius,
@@ -581,18 +605,8 @@ private fun DrawScope.drawAnimatedWaveform(
                 val localX = x - trackStart
                 val phase = (localX / waveLength) * (2f * PI.toFloat()) + phaseOffset
                 val primaryCrest = (1f - cos(phase)) * 0.5f
-                val secondaryRipple = if (refined) 0f else sin(phase * 2f) * 0.07f
-                val waterProfile = (primaryCrest + secondaryRipple).coerceIn(0f, 1f)
-                val edgeEnvelope = if (edgeFeather > 0f) {
-                    minOf(
-                        1f,
-                        localX / edgeFeather,
-                        (activeSpan - localX) / edgeFeather
-                    ).coerceIn(0f, 1f)
-                } else {
-                    1f
-                }
-                val envelope = if (refined) edgeEnvelope * edgeEnvelope * (3f - 2f * edgeEnvelope) else edgeEnvelope
+                val waterProfile = (primaryCrest + sin(phase * 2f) * style.ripple).coerceIn(0f, 1f)
+                val envelope = waveEdgeEnvelope(localX, activeSpan, edgeFeather, style.smoothEdges)
                 lineTo(
                     x,
                     topBaseY - waveHeight * waterProfile * envelope
@@ -614,6 +628,12 @@ private fun DrawScope.drawAnimatedWaveform(
             alpha = activeColor.alpha * waveAlpha
         )
     }
+}
+
+private fun waveEdgeEnvelope(localX: Float, span: Float, feather: Float, smooth: Boolean): Float {
+    if (feather <= 0f) return 1f
+    val edge = minOf(1f, localX / feather, (span - localX) / feather).coerceIn(0f, 1f)
+    return if (smooth) edge * edge * (3f - 2f * edge) else edge
 }
 
 internal fun formatSeekbarMillis(ms: Long): String {
