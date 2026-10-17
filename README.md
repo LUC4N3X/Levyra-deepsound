@@ -52,8 +52,9 @@ Play streamed music and your own files in the same app, save tracks for offline 
 </details>
 
 <p align="center">
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/discussions"><img src="docs/assets/levyra-discussions.svg" width="168" alt="Join the Levyra community on GitHub Discussions"></a>
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/issues"><img src="docs/assets/levyra-bug-report.svg" width="168" alt="Report a bug on GitHub"></a>
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/discussions"><strong>✦ Let's talk Levyra ↗</strong></a>
+  &nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp;
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/issues"><strong>Found a bug? ↗</strong></a>
 </p>
 
 <p align="center"><sub>41 languages &nbsp;·&nbsp; 100% Android translation coverage &nbsp;·&nbsp; Zero tracking</sub></p>
