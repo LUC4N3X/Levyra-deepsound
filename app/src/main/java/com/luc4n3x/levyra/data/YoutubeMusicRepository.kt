@@ -592,6 +592,28 @@ private data class RankedYoutubeMusicRelease(
     val bucket: Int
 )
 
+private class RadioCandidateAccumulator(
+    private val seedVideoId: String,
+    private val excludedIds: Set<String>,
+    private val keepLowQuality: Boolean
+) {
+    private val tracks = LinkedHashMap<String, Track>()
+
+    val size: Int
+        get() = tracks.size
+
+    fun add(candidate: Track) {
+        if (candidate.id == seedVideoId || candidate.id in excludedIds) return
+        if (isNonMusicVideoType(candidate.videoType)) return
+        if (!keepLowQuality && isLowQualityRadioCandidate(candidate.title, candidate.artist)) return
+        tracks.putIfAbsent(candidate.id, candidate)
+    }
+
+    fun take(limit: Int): List<Track> = tracks.values.take(limit)
+
+    fun hasHomogeneousArtists(): Boolean = isArtistHomogeneous(tracks.values)
+}
+
 internal fun rankYoutubeMusicNewReleases(
     releases: List<AlbumHit>,
     preferredArtists: List<String>,
@@ -2808,44 +2830,65 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         val videoId = resolveVideoId(seed)
         if (videoId.isBlank()) return@withContext emptyList()
         val query = "radio ${seed.artist} ${seed.title}".trim()
-        val keepLowQuality = isLowQualityRadioCandidate(seed.title, seed.artist)
-        val tracks = LinkedHashMap<String, Track>()
-        fun admit(candidate: Track) {
-            if (candidate.id == videoId || candidate.id in excludeIds) return
-            if (isNonMusicVideoType(candidate.videoType)) return
-            if (!keepLowQuality && isLowQualityRadioCandidate(candidate.title, candidate.artist)) return
-            tracks.putIfAbsent(candidate.id, candidate)
-        }
-        val watch = runCatching {
-            watchRepository.getWatchPlaylistAdvanced(
-                videoId = videoId,
-                languageCode = languageCode,
-                limit = (boundedLimit + 8 + excludeIds.size).coerceAtMost(MAX_RADIO_WATCH_TRACKS),
-                radio = true
-            )
-        }.getOrNull()
-
-        watch?.tracks?.forEach { admit(watchTrackToTrack(it, seed, query)) }
-
-        val relatedBrowseId = watch?.relatedBrowseId.orEmpty()
-        val needsRelated = tracks.size < boundedLimit || (diversify && isArtistHomogeneous(tracks.values))
-        if (needsRelated && relatedBrowseId.isNotBlank()) {
-            runCatching { watchRepository.getSongRelated(relatedBrowseId, languageCode) }
-                .getOrDefault(emptyList())
-                .asSequence()
-                .flatMap { it.items.asSequence() }
-                .filter { it.type == YoutubeMusicRelatedType.Song || it.type == YoutubeMusicRelatedType.Video }
-                .filter { it.videoId.isNotBlank() }
-                .forEach { admit(relatedItemToTrack(it, seed, query)) }
-        }
-
-        val searchFloor = if (diversify) MIN_DIVERSE_RADIO_CANDIDATES else boundedLimit
-        if (tracks.size < searchFloor) {
-            search("${seed.artist} ${seed.title} radio", boundedLimit + 4, languageCode).forEach(::admit)
-        }
-
+        val candidates = RadioCandidateAccumulator(
+            seedVideoId = videoId,
+            excludedIds = excludeIds,
+            keepLowQuality = isLowQualityRadioCandidate(seed.title, seed.artist)
+        )
+        val watch = loadRadioWatch(videoId, languageCode, boundedLimit, excludeIds.size)
+        watch?.tracks?.forEach { candidates.add(watchTrackToTrack(it, seed, query)) }
+        appendRelatedRadioCandidates(watch, seed, query, languageCode, boundedLimit, diversify, candidates)
+        appendSearchRadioCandidates(seed, languageCode, boundedLimit, diversify, candidates)
         val resultLimit = if (diversify) MAX_DIVERSE_RADIO_CANDIDATES else boundedLimit
-        tracks.values.take(resultLimit).also { items -> items.forEach { memory[it.id] = it } }
+        candidates.take(resultLimit).also { items -> items.forEach { memory[it.id] = it } }
+    }
+
+    private suspend fun loadRadioWatch(
+        videoId: String,
+        languageCode: String,
+        boundedLimit: Int,
+        excludedCount: Int
+    ): YoutubeMusicWatchPlaylist? = runCatchingPreservingCancellation {
+        watchRepository.getWatchPlaylistAdvanced(
+            videoId = videoId,
+            languageCode = languageCode,
+            limit = (boundedLimit + 8 + excludedCount).coerceAtMost(MAX_RADIO_WATCH_TRACKS),
+            radio = true
+        )
+    }.getOrNull()
+
+    private suspend fun appendRelatedRadioCandidates(
+        watch: YoutubeMusicWatchPlaylist?,
+        seed: Track,
+        query: String,
+        languageCode: String,
+        boundedLimit: Int,
+        diversify: Boolean,
+        candidates: RadioCandidateAccumulator
+    ) {
+        val needsRelated = candidates.size < boundedLimit || diversify && candidates.hasHomogeneousArtists()
+        val relatedBrowseId = watch?.relatedBrowseId.orEmpty()
+        if (!needsRelated || relatedBrowseId.isBlank()) return
+        runCatchingPreservingCancellation { watchRepository.getSongRelated(relatedBrowseId, languageCode) }
+            .getOrDefault(emptyList())
+            .asSequence()
+            .flatMap { it.items.asSequence() }
+            .filter { it.type == YoutubeMusicRelatedType.Song || it.type == YoutubeMusicRelatedType.Video }
+            .filter { it.videoId.isNotBlank() }
+            .forEach { candidates.add(relatedItemToTrack(it, seed, query)) }
+    }
+
+    private suspend fun appendSearchRadioCandidates(
+        seed: Track,
+        languageCode: String,
+        boundedLimit: Int,
+        diversify: Boolean,
+        candidates: RadioCandidateAccumulator
+    ) {
+        val searchFloor = if (diversify) MIN_DIVERSE_RADIO_CANDIDATES else boundedLimit
+        val needsSearch = candidates.size < searchFloor || diversify && candidates.hasHomogeneousArtists()
+        if (!needsSearch) return
+        search("${seed.artist} ${seed.title} radio", boundedLimit + 4, languageCode).forEach(candidates::add)
     }
 
     private fun resolveVideoId(seed: Track): String {

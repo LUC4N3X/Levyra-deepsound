@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -73,13 +74,15 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -134,7 +137,7 @@ private const val NightPressedCorner = 28
 private const val NightPausedPlayCorner = 34
 private const val NightPlayWidePlaying = 1.62f
 private const val NightPlayWideResting = 1.3f
-private val NightChipHeight = 44.dp
+private val NightChipHeight = LevyraPlayerDesign.MinimumTouchTarget
 private val NightTileHeight = 64.dp
 private val NightSpecStyle = TextStyle(fontFeatureSettings = "tnum, case")
 private val NightFavoriteTint = Color(0xFFFF6B8B)
@@ -142,6 +145,118 @@ private val NightFavoriteTint = Color(0xFFFF6B8B)
 private const val NightActionLyrics = "lyrics"
 private const val NightActionQueue = "queue"
 private const val NightActionDeck = "visual-mode"
+
+private data class NightDeckMotion(
+    val sky: Color,
+    val playProgress: State<Float>,
+    val floor: Color,
+    val skyScale: Float
+)
+
+private data class NightDeckSpacing(
+    val bottomPadding: Dp,
+    val stagePadding: Dp,
+    val progressSpacing: Dp,
+    val transportSpacing: Dp
+)
+
+@Composable
+private fun rememberNightDeckMotion(
+    accent: Color,
+    surfaces: PlayerSurfaceTokens,
+    isPlaying: Boolean,
+    animated: Boolean
+): NightDeckMotion {
+    val sky by animateColorAsState(
+        targetValue = accent,
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween()),
+        label = "player-night-sky"
+    )
+    val playProgress = animateFloatAsState(
+        targetValue = if (isPlaying) 1f else 0f,
+        animationSpec = if (animated) {
+            spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow)
+        } else {
+            snap()
+        },
+        label = "player-night-play"
+    )
+    return NightDeckMotion(
+        sky = sky,
+        playProgress = playProgress,
+        floor = if (surfaces.amoled) Color.Black else sky.playerMix(PlayerDarkSurface, NightFloorDepth),
+        skyScale = if (surfaces.amoled) NightSkyAmoledFactor else 1f
+    )
+}
+
+private fun nightDeckSpacing(compact: Boolean): NightDeckSpacing = if (compact) {
+    NightDeckSpacing(
+        bottomPadding = LevyraPlayerDesign.SpaceSm,
+        stagePadding = LevyraPlayerDesign.SpaceXs,
+        progressSpacing = LevyraPlayerDesign.SpaceXs,
+        transportSpacing = LevyraPlayerDesign.SpaceSm
+    )
+} else {
+    NightDeckSpacing(
+        bottomPadding = LevyraPlayerDesign.SpaceMd,
+        stagePadding = LevyraPlayerDesign.SpaceSm,
+        progressSpacing = LevyraPlayerDesign.SpaceSm,
+        transportSpacing = LevyraPlayerDesign.SpaceMd
+    )
+}
+
+@Composable
+private fun Modifier.nightDeckContainer(
+    motion: NightDeckMotion,
+    scrollable: Boolean,
+    gutter: Dp,
+    bottomPadding: Dp
+): Modifier = this
+    .drawBehind {
+        val light = lerp(NightSkyAlphaResting, NightSkyAlphaPlaying, motion.playProgress.value) * motion.skyScale
+        val radius = size.width * 0.9f
+        val center = Offset(size.width / 2f, size.height * 0.24f)
+        drawCircle(
+            brush = Brush.radialGradient(
+                0f to motion.sky.copy(alpha = light),
+                0.6f to motion.sky.copy(alpha = light * 0.3f),
+                1f to Color.Transparent,
+                center = center,
+                radius = radius
+            ),
+            radius = radius,
+            center = center
+        )
+        drawRect(
+            Brush.verticalGradient(
+                0.5f to Color.Transparent,
+                1f to motion.floor,
+                startY = 0f,
+                endY = size.height
+            )
+        )
+    }
+    .statusBarsPadding()
+    .navigationBarsPadding()
+    .then(if (scrollable) Modifier.verticalScroll(rememberScrollState()) else Modifier)
+    .padding(
+        start = gutter,
+        end = gutter,
+        top = LevyraPlayerDesign.SpaceXs,
+        bottom = bottomPadding
+    )
+
+private fun ColumnScope.nightStageModifier(scrollable: Boolean, verticalPadding: Dp): Modifier = Modifier
+    .fillMaxWidth()
+    .then(if (scrollable) Modifier.height(NightScrollingStage) else Modifier.weight(1f))
+    .padding(vertical = verticalPadding)
+
+private fun Modifier.nightHorizontalBleed(gutter: Dp): Modifier = layout { measurable, constraints ->
+    val gutterPx = gutter.roundToPx()
+    val width = constraints.maxWidth + gutterPx * 2
+    val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
+    layout(constraints.maxWidth, placeable.height) { placeable.place(-gutterPx, 0) }
+}
 
 @Composable
 internal fun PlayerPulseDeck(
@@ -174,65 +289,18 @@ internal fun PlayerPulseDeck(
     modifier: Modifier = Modifier,
     headlineModifier: Modifier = Modifier
 ) {
-    val sky by animateColorAsState(
-        targetValue = accent,
-        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween()),
-        label = "player-night-sky"
-    )
-    val playProgress = animateFloatAsState(
-        targetValue = if (isPlaying) 1f else 0f,
-        animationSpec = if (animated) {
-            spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow)
-        } else {
-            snap()
-        },
-        label = "player-night-play"
-    )
-    val floor = if (surfaces.amoled) Color.Black else sky.playerMix(PlayerDarkSurface, NightFloorDepth)
-    val skyScale = if (surfaces.amoled) NightSkyAmoledFactor else 1f
+    val motion = rememberNightDeckMotion(accent, surfaces, isPlaying, animated)
+    val spacing = nightDeckSpacing(compact)
     Column(
-        modifier = modifier
-            .drawBehind {
-                val light = lerp(NightSkyAlphaResting, NightSkyAlphaPlaying, playProgress.value) * skyScale
-                val radius = size.width * 0.9f
-                val center = Offset(size.width / 2f, size.height * 0.24f)
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        0f to sky.copy(alpha = light),
-                        0.6f to sky.copy(alpha = light * 0.3f),
-                        1f to Color.Transparent,
-                        center = center,
-                        radius = radius
-                    ),
-                    radius = radius,
-                    center = center
-                )
-                drawRect(
-                    Brush.verticalGradient(
-                        0.5f to Color.Transparent,
-                        1f to floor,
-                        startY = 0f,
-                        endY = size.height
-                    )
-                )
-            }
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .then(if (scrollable) Modifier.verticalScroll(rememberScrollState()) else Modifier)
-            .padding(
-                start = gutter,
-                end = gutter,
-                top = LevyraPlayerDesign.SpaceXs,
-                bottom = if (compact) LevyraPlayerDesign.SpaceSm else LevyraPlayerDesign.SpaceMd
-            ),
+        modifier = modifier.nightDeckContainer(motion, scrollable, gutter, spacing.bottomPadding),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         slots.header()
         NightStage(
             track = track,
             slots = slots,
-            sky = sky,
-            playProgress = playProgress,
+            sky = motion.sky,
+            playProgress = motion.playProgress,
             playing = isPlaying,
             animated = animated,
             compact = compact,
@@ -242,29 +310,27 @@ internal fun PlayerPulseDeck(
             onArtistClick = onArtistClick,
             onToggleFavorite = onToggleFavorite,
             headlineModifier = headlineModifier,
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(if (scrollable) Modifier.height(NightScrollingStage) else Modifier.weight(1f))
-                .padding(vertical = if (compact) LevyraPlayerDesign.SpaceXs else LevyraPlayerDesign.SpaceSm)
+            modifier = nightStageModifier(scrollable, spacing.stagePadding)
         )
         slots.engagement(track)
         slots.progress(PlayerProgressStyle.Wavy)
-        Spacer(Modifier.height(if (compact) LevyraPlayerDesign.SpaceXs else LevyraPlayerDesign.SpaceSm))
+        Spacer(Modifier.height(spacing.progressSpacing))
         NightTransport(
             isPlaying = isPlaying,
             isResolving = isResolving,
-            playProgress = playProgress,
+            playProgress = motion.playProgress,
             labels = labels,
             seekStepMs = seekStepMs,
             surfaces = surfaces,
             compact = compact,
             animated = animated,
+            gutter = gutter,
             onPrevious = onPrevious,
             onTogglePlay = onTogglePlay,
             onNext = onNext,
             onSeekBy = onSeekBy
         )
-        Spacer(Modifier.height(if (compact) LevyraPlayerDesign.SpaceSm else LevyraPlayerDesign.SpaceMd))
+        Spacer(Modifier.height(spacing.transportSpacing))
         NightActions(
             track = track,
             slots = slots,
@@ -275,6 +341,7 @@ internal fun PlayerPulseDeck(
             queuePosition = queuePosition,
             compact = compact,
             animated = animated,
+            gutter = gutter,
             onShuffle = onShuffle,
             onRepeat = onRepeat
         )
@@ -504,7 +571,7 @@ private fun NightFavoriteButton(
             )
             .semantics {
                 contentDescription = label
-                selected = isFavorite
+                toggleableState = ToggleableState(isFavorite)
             },
         contentAlignment = Alignment.Center
     ) {
@@ -590,6 +657,7 @@ private fun NightTransport(
     surfaces: PlayerSurfaceTokens,
     compact: Boolean,
     animated: Boolean,
+    gutter: Dp,
     onPrevious: () -> Unit,
     onTogglePlay: () -> Unit,
     onNext: () -> Unit,
@@ -613,66 +681,76 @@ private fun NightTransport(
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.expressiveSpring()),
         label = "player-night-play-width"
     )
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(percent = NightPillCorner))
-            .background(surfaces.controlQuiet)
-            .padding(LevyraPlayerDesign.SpaceSm),
-        horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs),
-        verticalAlignment = Alignment.CenterVertically
+    val scrollState = rememberScrollState()
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxWidth().nightHorizontalBleed(gutter),
+        contentAlignment = Alignment.Center
     ) {
-        NightButton(
-            icon = Icons.Rounded.SkipPrevious,
-            label = labels.previous,
-            height = height,
-            width = height * 1.12f,
-            container = surfaces.active,
-            content = surfaces.activeContent,
-            animated = animated,
-            onClick = onPrevious
-        )
-        NightButton(
-            icon = replayIcon(seconds),
-            label = "${strings.gestureActionSeek} -${seconds}s",
-            height = height,
-            width = height,
-            container = Color.Transparent,
-            content = surfaces.content,
-            animated = animated,
-            onClick = { onSeekBy(-seekStepMs) }
-        )
-        NightPlayButton(
-            isPlaying = isPlaying,
-            isResolving = isResolving,
-            playProgress = playProgress,
-            labels = labels,
-            height = height,
-            width = playWidth,
-            container = hero,
-            content = heroContent,
-            animated = animated,
-            onClick = onTogglePlay
-        )
-        NightButton(
-            icon = forwardIcon(seconds),
-            label = "${strings.gestureActionSeek} +${seconds}s",
-            height = height,
-            width = height,
-            container = Color.Transparent,
-            content = surfaces.content,
-            animated = animated,
-            onClick = { onSeekBy(seekStepMs) }
-        )
-        NightButton(
-            icon = Icons.Rounded.SkipNext,
-            label = labels.next,
-            height = height,
-            width = height * 1.12f,
-            container = surfaces.active,
-            content = surfaces.activeContent,
-            animated = animated,
-            onClick = onNext
-        )
+        val requiredWidth = height * 4.24f + playWidth +
+            LevyraPlayerDesign.SpaceSm * 2 + LevyraPlayerDesign.SpaceXs * 4
+        Row(
+            modifier = Modifier
+                .then(if (requiredWidth > maxWidth) Modifier.horizontalScroll(scrollState) else Modifier)
+                .padding(horizontal = gutter)
+                .clip(RoundedCornerShape(percent = NightPillCorner))
+                .background(surfaces.controlQuiet)
+                .padding(LevyraPlayerDesign.SpaceSm),
+            horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            NightButton(
+                icon = Icons.Rounded.SkipPrevious,
+                label = labels.previous,
+                height = height,
+                width = height * 1.12f,
+                container = surfaces.active,
+                content = surfaces.activeContent,
+                animated = animated,
+                onClick = onPrevious
+            )
+            NightButton(
+                icon = replayIcon(seconds),
+                label = "${strings.gestureActionSeek} -${seconds}s",
+                height = height,
+                width = height,
+                container = Color.Transparent,
+                content = surfaces.content,
+                animated = animated,
+                onClick = { onSeekBy(-seekStepMs) }
+            )
+            NightPlayButton(
+                isPlaying = isPlaying,
+                isResolving = isResolving,
+                playProgress = playProgress,
+                labels = labels,
+                height = height,
+                width = playWidth,
+                container = hero,
+                content = heroContent,
+                animated = animated,
+                onClick = onTogglePlay
+            )
+            NightButton(
+                icon = forwardIcon(seconds),
+                label = "${strings.gestureActionSeek} +${seconds}s",
+                height = height,
+                width = height,
+                container = Color.Transparent,
+                content = surfaces.content,
+                animated = animated,
+                onClick = { onSeekBy(seekStepMs) }
+            )
+            NightButton(
+                icon = Icons.Rounded.SkipNext,
+                label = labels.next,
+                height = height,
+                width = height * 1.12f,
+                container = surfaces.active,
+                content = surfaces.activeContent,
+                animated = animated,
+                onClick = onNext
+            )
+        }
     }
 }
 
@@ -778,6 +856,7 @@ private fun NightActions(
     queuePosition: PlayerDeckQueuePosition?,
     compact: Boolean,
     animated: Boolean,
+    gutter: Dp,
     onShuffle: () -> Unit,
     onRepeat: () -> Unit
 ) {
@@ -789,11 +868,12 @@ private fun NightActions(
         dockActions.filter { it.key == NightActionQueue || it.key == NightActionDeck }
     }
     val extras = dockActions.filter { it.key != NightActionLyrics && it !in tiles }
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth().nightHorizontalBleed(gutter)) {
         Row(
             modifier = Modifier
                 .horizontalScroll(rememberScrollState())
-                .widthIn(min = maxWidth),
+                .widthIn(min = maxWidth)
+                .padding(horizontal = gutter),
             horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -910,7 +990,7 @@ private fun NightChip(
             )
             .semantics {
                 contentDescription = label
-                if (toggle) selected = active
+                if (toggle) toggleableState = ToggleableState(active)
                 if (stateDescription != null) this.stateDescription = stateDescription
             }
             .padding(horizontal = LevyraPlayerDesign.SpaceMd),
