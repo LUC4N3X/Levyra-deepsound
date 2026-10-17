@@ -75,7 +75,8 @@ enum class PlayerVisualMode {
     Expressive,
     Pulse,
     Halo,
-    Folio;
+    Folio,
+    Flow;
 
     companion object {
         fun from(value: String): PlayerVisualMode =
@@ -184,7 +185,7 @@ data class LevyraInterfaceSettings(
     val enhanceVideoMetadata: Boolean = false,
     val pureBlack: Boolean = false,
     val hapticFeedback: Boolean = true,
-    val playerVisualMode: PlayerVisualMode = PlayerVisualMode.CanvasCard,
+    val playerVisualMode: PlayerVisualMode = PlayerVisualMode.Flow,
     val playerBackground: PlayerBackgroundMode = PlayerBackgroundMode.Dynamic,
     val playerColorMode: PlayerColorMode = PlayerColorMode.Dynamic,
     val playerColorAccent: Int = PlayerColorMode.DEFAULT_ACCENT,

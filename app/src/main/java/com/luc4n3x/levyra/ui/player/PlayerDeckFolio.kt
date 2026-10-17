@@ -248,7 +248,7 @@ private fun FolioTransport(
     ) {
         FolioRoundButton(Icons.Rounded.SkipPrevious, labels.previous, metrics.controlHeight, ink, inkContent, onPrevious)
         Box(modifier = Modifier.weight(1f)) {
-            slots.progress(true)
+            slots.progress(PlayerProgressStyle.Wavy)
         }
     }
 }
