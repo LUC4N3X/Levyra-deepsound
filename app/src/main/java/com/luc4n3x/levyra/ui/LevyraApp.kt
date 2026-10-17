@@ -15776,7 +15776,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                         focusManager.clearFocus()
                                         keyboardController?.hide()
                                         heroTrack?.let { track ->
-                                            viewModel.startSongRadioFrom(track, data.songs)
+                                            viewModel.startSongRadioFrom(track)
                                         }
                                     }
                                 )

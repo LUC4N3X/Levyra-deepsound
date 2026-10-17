@@ -410,6 +410,8 @@ class AlternativeTrackMatcher {
             "levyra",
             "youtube",
             "youtube music",
+            "youtube music radio",
+            "youtube music related",
             "unknown",
             "unknown album",
             "single",

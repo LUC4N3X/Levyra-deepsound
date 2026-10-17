@@ -892,26 +892,28 @@ class PersistentQueueEngine internal constructor(
         return indices.mapNotNull(current.tracks::getOrNull)
     }
 
-    fun appendRadioTracks(tracks: List<Track>): PlaybackQueueSnapshot = addRadioTracks(tracks, afterCurrent = false)
+    fun appendRadioTracks(tracks: List<Track>): PlaybackQueueSnapshot =
+        addRadioTracks(tracks, afterCurrent = false, batchSize = RADIO_BATCH_SIZE)
 
-    fun insertRadioTracksAfterCurrent(tracks: List<Track>): PlaybackQueueSnapshot =
-        addRadioTracks(tracks, afterCurrent = true)
+    fun insertRadioTracksAfterCurrent(tracks: List<Track>, batchSize: Int = RADIO_BATCH_SIZE): PlaybackQueueSnapshot =
+        addRadioTracks(tracks, afterCurrent = true, batchSize = batchSize.coerceAtLeast(1))
 
     private fun addRadioTracks(
         tracks: List<Track>,
-        afterCurrent: Boolean
+        afterCurrent: Boolean,
+        batchSize: Int
     ): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
         val candidates = radioCandidateTracks(
             existingTracks = current.tracks,
             candidates = tracks.filterNot { tombstones.isRejected(current.spaceId, it) },
-            limit = RADIO_BATCH_SIZE
+            limit = batchSize
         )
         if (candidates.isEmpty()) return@mutate current
 
         val prepared = trimPlayedRadioHistory(current, candidates.size)
         val available = (MAX_RADIO_QUEUE_SIZE - prepared.tracks.size).coerceAtLeast(0)
         val additions = candidates
-            .take(minOf(RADIO_BATCH_SIZE, available))
+            .take(minOf(batchSize, available))
             .map { it.queueStoredCopy() }
         if (additions.isEmpty()) return@mutate current
         val insertionIndex = if (afterCurrent) {
