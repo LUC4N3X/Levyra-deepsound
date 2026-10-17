@@ -179,7 +179,7 @@ internal class HighQualityProviderLane(
 
     private inner class CandidateSearch(private val query: AlternativeTrackQuery) {
         private val collected = LinkedHashMap<String, AlternativeTrackCandidate>()
-        private val seenTrackIds = HashSet<String>()
+        private val seenTrackIdsByQuery = HashMap<String, MutableSet<String>>()
 
         fun candidates(): List<AlternativeTrackCandidate> = collected.values.toList()
 
@@ -191,7 +191,8 @@ internal class HighQualityProviderLane(
                 )
                 is ProviderSearchOutcome.Found -> {
                     HighQualityAudioDiagnostics.search(provider.id, pass, page, text, outcome.candidates.size, outcome.hasMore)
-                    val unseen = outcome.candidates.count { seenTrackIds.add(it.providerTrackId) }
+                    val seen = seenTrackIdsByQuery.getOrPut(text) { HashSet() }
+                    val unseen = outcome.candidates.count { seen.add(it.providerTrackId) }
                     outcome.candidates
                         .filterNot { isTrackQuarantined(it.providerTrackId) }
                         .forEach { collected.putIfAbsent(it.providerTrackId, it) }

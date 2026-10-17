@@ -59,6 +59,20 @@ class HighQualityDeeperPagesTest {
     }
 
     @Test
+    fun laterQueryWithOverlappingFirstPageStillEarnsAnotherPage() {
+        val provider = provider { text, page ->
+            when {
+                text == plan.last() && page == 2 -> ProviderSearchOutcome.Found(listOf(candidate()))
+                text == plan.first() -> ProviderSearchOutcome.Found(listOf(candidate(id = "cover", primary = listOf("Cover Band"), album = "Hits")), hasMore = false)
+                else -> coverFlood
+            }
+        }
+        val result = resolve(provider)
+        assertEquals("pW-kkdqr", (result as HighQualityResolution.Selected).stream.providerTrackId)
+        assertTrue(plan.last() to 2 in provider.pages)
+    }
+
+    @Test
     fun quarantinedFirstPageStillEarnsAnotherPage() {
         val provider = provider { text, page ->
             when {
