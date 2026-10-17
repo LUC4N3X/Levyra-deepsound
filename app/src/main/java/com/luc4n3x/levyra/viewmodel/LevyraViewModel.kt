@@ -24,7 +24,6 @@ import com.luc4n3x.levyra.data.isChartArtworkPlaceholder
 import com.luc4n3x.levyra.data.EditorialChartsRepository
 import com.luc4n3x.levyra.data.FavoriteMembership
 import com.luc4n3x.levyra.data.FavoritesStore
-import com.luc4n3x.levyra.data.deduplicateSearchSongs
 import com.luc4n3x.levyra.data.areAllFavoriteTracks
 import com.luc4n3x.levyra.data.FollowedArtistsStore
 import com.luc4n3x.levyra.data.ReleaseRadarPolicy
@@ -182,6 +181,7 @@ import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.ListenPlayPolicy
 import com.luc4n3x.levyra.domain.ListeningSignalProfile
 import com.luc4n3x.levyra.domain.ListeningSignalRanker
+import com.luc4n3x.levyra.domain.RadioMixer
 import com.luc4n3x.levyra.domain.SmartOrbitEngine
 import com.luc4n3x.levyra.domain.SmartOrbitPool
 import com.luc4n3x.levyra.domain.ListeningDna
@@ -334,6 +334,10 @@ import com.luc4n3x.levyra.player.queue.QueueSpaceSummary
 import com.luc4n3x.levyra.player.queue.shouldPromptForQueueDestination
 import com.luc4n3x.levyra.player.queue.mergePendingQueueDestinationTracks
 import com.luc4n3x.levyra.player.queue.PlaybackQueueSnapshot
+import com.luc4n3x.levyra.player.queue.RadioSession
+import com.luc4n3x.levyra.player.queue.radioMixContext
+import com.luc4n3x.levyra.player.queue.radioRecentlyPlayed
+import com.luc4n3x.levyra.player.queue.radioSeedFor
 import com.luc4n3x.levyra.player.queue.QueuePlaylistExport
 import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
 import com.luc4n3x.levyra.player.queue.prepareQueuePlaylistExport
@@ -396,6 +400,9 @@ import java.util.concurrent.atomic.AtomicReference
 private const val ARTIST_PROFILE_UNAVAILABLE_ERROR = "artist_profile_unavailable"
 private const val ARTIST_INITIAL_BIOGRAPHY_WAIT_MS = 250L
 private const val RADIO_TAIL_MAX_APPEND_ROUNDS = 3
+private const val RADIO_MIX_LIMIT = 15
+private const val RADIO_START_TRACKS = 20
+private const val RADIO_START_FETCH = 30
 private const val EXPLORE_SHORTS_FEED_LIMIT = 24
 private const val ONBOARDING_ARTWORK_PARALLELISM = 4
 private const val ONBOARDING_ARTWORK_SEARCH_LIMIT = 12
@@ -1188,6 +1195,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var excludedArtistsGeneration = 0L
     private var followedArtistsGeneration = 0L
     private var radioJob: Job? = null
+    private val radioSession = AtomicReference<RadioSession?>(null)
     private var sponsorSegments: List<SponsorSegment> = emptyList()
     private val sponsorSkipTracker = SponsorBlockSkipOnceTracker()
     private val tabBackStack = ArrayDeque<LevyraTab>()
@@ -6879,7 +6887,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (_state.value.currentTrack?.isLiveRadio() == true) return
         val enabled = !queueEngine.state.value.radioEnabled
         queueEngine.setRadioEnabled(enabled)
-        if (enabled) ensureRadioTail(force = true) else radioJob?.cancel()
+        if (enabled) {
+            radioJob?.cancel()
+            beginRadioSession()
+            ensureRadioTail(force = true)
+        } else {
+            radioJob?.cancel()
+            radioSession.set(null)
+        }
     }
 
     fun startSongRadio() {
@@ -6887,12 +6902,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (jamController.rejectGuestLocalMutation()) return
         if (!queueEngine.state.value.radioEnabled) queueEngine.setRadioEnabled(true)
         radioJob?.cancel()
+        beginRadioSession()
         ensureRadioTail(force = true, insertAfterCurrent = true)
     }
 
-    fun startSongRadioFrom(track: Track, context: List<Track> = emptyList()) {
-        val playbackContext = deduplicateSearchSongs(listOf(track) + context)
-        playFrom(playbackContext, track)
+    private fun beginRadioSession() {
+        val snapshot = queueEngine.state.value
+        val seed = snapshot.currentTrack?.takeUnless { it.isLiveRadio() || isLocalPlaybackTrack(it) }
+        radioSession.set(seed?.let { RadioSession(spaceId = snapshot.spaceId, seed = it) })
+    }
+
+    fun startSongRadioFrom(track: Track) {
+        playFrom(listOf(track), track)
         startSongRadio()
     }
 
@@ -12362,7 +12383,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private data class RadioTailRequest(
         val seed: Track,
-        val generation: Long
+        val anchor: Track,
+        val generation: Long,
+        val session: RadioSession?
     )
 
     private fun ensureRadioTail(
@@ -12378,14 +12401,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun radioTailRequest(force: Boolean): RadioTailRequest? {
         val snapshot = queueEngine.state.value
-        val seed = snapshot.currentTrack ?: return null
-        if (seed.isLiveRadio()) return null
+        val anchor = snapshot.currentTrack ?: return null
+        if (anchor.isLiveRadio()) return null
         if (!snapshot.radioEnabled) return null
         val targetUpcoming = radioTailTargetUpcoming(_state.value.audioSettings.advancedQueuePrefetchTracks)
         if (!force && queueEngine.upcoming(targetUpcoming).size >= targetUpcoming) return null
         if (radioJob?.isActive == true) return null
-        if (isLocalPlaybackTrack(seed) || !lyricsNetworkProfile().connected) return null
-        return RadioTailRequest(seed = seed, generation = snapshot.generation)
+        if (isLocalPlaybackTrack(anchor) || !lyricsNetworkProfile().connected) return null
+        val session = radioSession.get()?.takeIf { it.isActiveFor(snapshot) }
+        val seed = radioSeedFor(session, snapshot) ?: return null
+        return RadioTailRequest(seed = seed, anchor = anchor, generation = snapshot.generation, session = session)
     }
 
     private suspend fun appendRadioTail(
@@ -12394,36 +12419,93 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         insertAfterCurrent: Boolean = false
     ) {
         val targetUpcoming = radioTailTargetUpcoming(_state.value.audioSettings.advancedQueuePrefetchTracks)
-        val fetchLimit = radioTailFetchLimit(targetUpcoming, queueEngine.upcoming(targetUpcoming).size)
-        val fetchedRadioTracks = try {
-            repository.radio(request.seed, _state.value.languageCode, fetchLimit)
+        val tailFetchLimit = radioTailFetchLimit(targetUpcoming, queueEngine.upcoming(targetUpcoming).size)
+        val fetchLimit = if (insertAfterCurrent) maxOf(tailFetchLimit, RADIO_START_FETCH) else tailFetchLimit
+        val fetchedRadioTracks = fetchRadioTracks(request, fetchLimit)
+        rememberRelatedCandidates(request.seed, fetchedRadioTracks)
+        val current = currentRadioSnapshot(request) ?: return
+        val mixedRadioTracks = mixRadioTracks(request, current, fetchedRadioTracks, insertAfterCurrent)
+        appendMixedRadioTracks(mixedRadioTracks, targetUpcoming, insertAfterCurrent)
+        updateRadioSession(request, fetchedRadioTracks, mixedRadioTracks)
+        continueAfterRadioAppend(mixedRadioTracks, playWhenReady)
+    }
+
+    private suspend fun fetchRadioTracks(request: RadioTailRequest, fetchLimit: Int): List<Track> =
+        try {
+            repository.radio(
+                seed = request.seed,
+                languageCode = _state.value.languageCode,
+                limit = fetchLimit,
+                excludeIds = request.session?.addedIds.orEmpty(),
+                diversify = true
+            )
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {
             emptyList()
         }
-        rememberRelatedCandidates(request.seed, fetchedRadioTracks)
-        val radioTracks = _state.value.artistExclusions.filterTracks(fetchedRadioTracks)
-        if (radioTracks.isEmpty()) return
+
+    private fun currentRadioSnapshot(request: RadioTailRequest): PlaybackQueueSnapshot? {
         val current = queueEngine.state.value
-        if (!current.radioEnabled) return
-        if (!isSameRadioSeed(current.currentTrack, request.seed)) return
-        if (current.generation != request.generation) return
+        return current.takeIf {
+            it.radioEnabled &&
+                isSameRadioSeed(it.currentTrack, request.anchor) &&
+                it.generation == request.generation
+        }
+    }
+
+    private fun mixRadioTracks(
+        request: RadioTailRequest,
+        current: PlaybackQueueSnapshot,
+        fetchedRadioTracks: List<Track>,
+        insertAfterCurrent: Boolean
+    ): List<Track> {
+        val radioTracks = _state.value.artistExclusions.filterTracks(fetchedRadioTracks)
         val bonusScores = smartOrbitPool.bonusScores
         val orderedRadioTracks = smartRankingProfile(bonusScores)?.let { signals ->
             ListeningSignalRanker.rank(
                 candidates = radioTracks,
                 profile = signals,
                 limit = radioTracks.size,
-                contextArtist = request.seed.artist,
                 bonusScores = bonusScores
             )
         } ?: radioTracks
+        return RadioMixer.mix(
+            candidates = orderedRadioTracks,
+            seed = request.seed,
+            queued = current.tracks,
+            recentContext = radioMixContext(current, insertAfterCurrent),
+            recentlyPlayed = radioRecentlyPlayed(current),
+            limit = if (insertAfterCurrent) RADIO_START_TRACKS else RADIO_MIX_LIMIT
+        )
+    }
+
+    private fun appendMixedRadioTracks(
+        tracks: List<Track>,
+        targetUpcoming: Int,
+        insertAfterCurrent: Boolean
+    ) {
+        if (tracks.isEmpty()) return
         if (insertAfterCurrent) {
-            queueEngine.insertRadioTracksAfterCurrent(orderedRadioTracks)
+            queueEngine.insertRadioTracksAfterCurrent(tracks, RADIO_START_TRACKS)
         } else {
-            appendRadioTracksUntil(orderedRadioTracks, targetUpcoming)
+            appendRadioTracksUntil(tracks, targetUpcoming)
         }
+    }
+
+    private fun updateRadioSession(
+        request: RadioTailRequest,
+        fetchedRadioTracks: List<Track>,
+        mixedRadioTracks: List<Track>
+    ) {
+        val session = request.session?.takeIf { fetchedRadioTracks.isNotEmpty() } ?: return
+        val queuedIds = queueEngine.state.value.tracks.mapTo(HashSet(), Track::id)
+        val added = mixedRadioTracks.map(Track::id).filter { it in queuedIds && it !in session.addedIds }
+        radioSession.compareAndSet(session, session.recordAdded(added))
+    }
+
+    private suspend fun continueAfterRadioAppend(tracks: List<Track>, playWhenReady: Boolean) {
+        if (tracks.isEmpty()) return
         if (!playWhenReady) {
             if (_state.value.audioSettings.advancedQueuePrefetchTracks > 0) {
                 withContext(Dispatchers.Main) { syncAdvancedQueuePrefetch() }
