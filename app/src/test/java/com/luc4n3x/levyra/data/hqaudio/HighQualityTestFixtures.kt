@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.data.hqaudio
 
+import com.luc4n3x.levyra.data.hqaudio.jiosaavn.JioSaavnAudioProvider
+import com.luc4n3x.levyra.data.hqaudio.jiosaavn.JioSaavnPayloadParser
 import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
 import com.luc4n3x.levyra.domain.PlaybackStreamDescriptor
 import com.luc4n3x.levyra.domain.PlaybackStreamKind
@@ -99,11 +101,14 @@ internal fun saavnSong(
     featured: List<String> = emptyList(),
     explicit: String = "0",
     offers320: String = "true",
-    token: String = "enc-$id"
+    token: String = "enc-$id",
+    credits: Map<String, List<String>> = emptyMap(),
+    language: String = ""
 ): JSONObject = JSONObject()
     .put("id", id)
     .put("title", title)
     .put("type", "song")
+    .put("language", language)
     .put("explicit_content", explicit)
     .put(
         "more_info",
@@ -117,8 +122,15 @@ internal fun saavnSong(
                 JSONObject()
                     .put("primary_artists", JSONArray(primary.map { JSONObject().put("name", it) }))
                     .put("featured_artists", JSONArray(featured.map { JSONObject().put("name", it) }))
+                    .put(
+                        "artists",
+                        JSONArray(credits.flatMap { (name, roles) -> roles.map { JSONObject().put("name", name).put("role", it) } })
+                    )
             )
     )
+
+internal fun searchCandidates(body: String): List<AlternativeTrackCandidate>? =
+    JioSaavnPayloadParser.searchPage(body, JioSaavnAudioProvider.SEARCH_RESULT_LIMIT)?.candidates
 
 internal fun searchBody(vararg songs: JSONObject): String = JSONObject()
     .put("total", songs.size)
@@ -199,6 +211,7 @@ internal class InMemoryMappingStorage : HighQualityMappingStorage {
 
 internal class FakeHighQualityProvider(
     var searchOutcome: suspend (String) -> ProviderSearchOutcome = { ProviderSearchOutcome.Found(emptyList()) },
+    var pageOutcome: suspend (String, Int) -> ProviderSearchOutcome = { query, _ -> searchOutcome(query) },
     var lookupOutcome: suspend (String) -> ProviderLookupOutcome = { ProviderLookupOutcome.Missing },
     var streamOutcome: suspend (AlternativeTrackCandidate) -> ProviderStreamOutcome = {
         ProviderStreamOutcome.Resolved(resolvedStream(it))
@@ -208,12 +221,14 @@ internal class FakeHighQualityProvider(
     override val displayName: String = "JioSaavn"
 
     val searches = CopyOnWriteArrayList<String>()
+    val pages = CopyOnWriteArrayList<Pair<String, Int>>()
     val lookups = CopyOnWriteArrayList<String>()
     val streamRequests = CopyOnWriteArrayList<String>()
 
-    override suspend fun search(query: String): ProviderSearchOutcome {
+    override suspend fun search(query: String, page: Int): ProviderSearchOutcome {
         searches += query
-        return searchOutcome(query)
+        pages += query to page
+        return pageOutcome(query, page)
     }
 
     override suspend fun lookup(providerTrackId: String): ProviderLookupOutcome {

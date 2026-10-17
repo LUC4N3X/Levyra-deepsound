@@ -115,7 +115,9 @@ class AlternativeTrackMatcher {
         if (expectedIsrc.isNotEmpty() && candidateIsrc.isNotEmpty() && expectedIsrc != candidateIsrc) {
             return rejected(MatchRejection.ISRC_MISMATCH)
         }
-        if (expectedTitle.core != candidateTitle.core) return rejected(MatchRejection.TITLE_MISMATCH)
+        val romanizedTitle = expectedTitle.core != candidateTitle.core &&
+            romanizedVariant(expectedTitle.core, candidateTitle.core, candidate.language)
+        if (expectedTitle.core != candidateTitle.core && !romanizedTitle) return rejected(MatchRejection.TITLE_MISMATCH)
         if (expectedTitle.versionSignature != candidateTitle.versionSignature) {
             return rejected(MatchRejection.VERSION_MISMATCH)
         }
@@ -123,7 +125,10 @@ class AlternativeTrackMatcher {
             val featuredOnly = expectedCredit.primary in candidateFeatured
             return rejected(if (featuredOnly) MatchRejection.FEATURED_ARTIST_ONLY else MatchRejection.PRIMARY_ARTIST_MISMATCH)
         }
-        if (candidatePrimary.first() !in expectedArtists && performingPrimary.first() !in expectedArtists) {
+        val ledByExpectedArtist = candidatePrimary.first() in expectedArtists || performingPrimary.first() in expectedArtists
+        val ledByCreditedCreator = !ledByExpectedArtist &&
+            expectedArtistLeadsAfterCreators(candidate, performingPrimary, expectedArtists)
+        if (!ledByExpectedArtist && !ledByCreditedCreator) {
             return rejected(MatchRejection.PRIMARY_ARTIST_MISMATCH)
         }
         val expectedExplicit = query.explicit ?: expectedTitle.explicitHint
@@ -137,6 +142,15 @@ class AlternativeTrackMatcher {
             return rejected(MatchRejection.ALBUM_MISMATCH, relation)
         }
         if (delta > MAXIMUM_DURATION_DELTA_SECONDS) return rejected(MatchRejection.DURATION_OUT_OF_RANGE, relation)
+        val recordingConfirmed = isrcConfirmed || (
+            albumConfirmsRecording(query, candidate, relation, candidateTitle) &&
+                delta <= EXCELLENT_DURATION_DELTA_SECONDS &&
+                candidatePrimary.containsAll(expectedCredit.names)
+            )
+        if (romanizedTitle && !recordingConfirmed) return rejected(MatchRejection.TITLE_MISMATCH, relation)
+        if (ledByCreditedCreator && !recordingConfirmed) {
+            return rejected(MatchRejection.PRIMARY_ARTIST_MISMATCH, relation)
+        }
         val candidateArtists = candidatePrimary.toSet() + candidateFeatured
         if (!candidateArtists.containsAll(expectedCredit.names)) {
             return rejected(MatchRejection.PRIMARY_ARTIST_MISMATCH, relation)
@@ -164,6 +178,12 @@ class AlternativeTrackMatcher {
             albumRelation = relation,
             versionSignature = candidateTitle.versionSignature
         )
+    }
+
+    fun sharesTitle(query: AlternativeTrackQuery, title: String, language: String): Boolean {
+        val expected = AlternativeTrackText.title(query.title).core
+        val actual = AlternativeTrackText.title(title).core
+        return expected == actual || romanizedVariant(expected, actual, language)
     }
 
     fun select(query: AlternativeTrackQuery, candidates: List<AlternativeTrackCandidate>): AlternativeMatchSelection {
@@ -207,7 +227,10 @@ class AlternativeTrackMatcher {
         if (a.providerId == b.providerId && a.providerTrackId == b.providerTrackId) return true
         val aTitle = AlternativeTrackText.title(a.title)
         val bTitle = AlternativeTrackText.title(b.title)
-        return aTitle.core == bTitle.core &&
+        val sameTitle = aTitle.core == bTitle.core || (
+            isIndianRelease(a.language) && isIndianRelease(b.language) && romanizationKey(aTitle.core) == romanizationKey(bTitle.core)
+            )
+        return sameTitle &&
             aTitle.versionSignature == bTitle.versionSignature &&
             sameFeaturedCredits(featuredSet(a, aTitle), featuredSet(b, bTitle)) &&
             samePrimaryCredits(a, b) &&
@@ -230,6 +253,48 @@ class AlternativeTrackMatcher {
             (left.containsAll(right) && creators(a).containsAll(left - right)) ||
             (right.containsAll(left) && creators(b).containsAll(right - left))
     }
+
+    private fun expectedArtistLeadsAfterCreators(
+        candidate: AlternativeTrackCandidate,
+        performingPrimary: List<String>,
+        expectedArtists: Collection<String>
+    ): Boolean {
+        val creators = creators(candidate)
+        val afterCreators = performingPrimary.dropWhile { it in creators && it !in expectedArtists }
+        if (afterCreators.size == performingPrimary.size) return false
+        return afterCreators.firstOrNull()?.let { it in expectedArtists } == true
+    }
+
+    private fun isIndianRelease(language: String): Boolean =
+        language.lowercase(Locale.ROOT) in indianReleaseLanguages
+
+    private fun romanizationKey(core: String): String = core.replace(lengthenedVowel, "$1")
+
+    private fun romanizedVariant(expectedCore: String, candidateCore: String, language: String): Boolean =
+        isIndianRelease(language) && romanizationKey(expectedCore) == romanizationKey(candidateCore)
+
+    private fun albumConfirmsRecording(
+        query: AlternativeTrackQuery,
+        candidate: AlternativeTrackCandidate,
+        relation: AlbumRelation,
+        candidateTitle: TitleIdentity
+    ): Boolean = when (relation) {
+        AlbumRelation.SAME, AlbumRelation.EDITION_VARIANT -> true
+        AlbumRelation.SINGLE_RELEASE -> {
+            val album = AlternativeTrackText.album(candidate.album)
+            album.core == candidateTitle.core ||
+                album.editions.any(singleEditions::contains) ||
+                album.core in releaseSources(query)
+        }
+        else -> false
+    }
+
+    private fun releaseSources(query: AlternativeTrackQuery): Set<String> =
+        listOf(query.title, query.album)
+            .flatMap { text -> releaseSource.findAll(AlternativeTrackText.decodeHtmlEntities(text)).map { it.groupValues[1] } }
+            .map { AlternativeTrackText.album(it).core }
+            .filter { it.isNotBlank() }
+            .toSet()
 
     private fun creators(candidate: AlternativeTrackCandidate): Set<String> =
         candidate.creatorArtists.flatMap(AlternativeTrackText::artistNames).toSet()
@@ -322,6 +387,25 @@ class AlternativeTrackMatcher {
         const val SAME_RECORDING_DURATION_SECONDS = 4
 
         private val singleEditions = setOf(AlbumEdition.SINGLE, AlbumEdition.EP)
+        private val lengthenedVowel = Regex("([aeiou])\\1+")
+        private val indianReleaseLanguages = setOf(
+            "hindi",
+            "punjabi",
+            "urdu",
+            "tamil",
+            "telugu",
+            "kannada",
+            "malayalam",
+            "marathi",
+            "bengali",
+            "gujarati",
+            "bhojpuri",
+            "odia",
+            "haryanvi",
+            "rajasthani",
+            "assamese"
+        )
+        private val releaseSource = Regex("[(\\[]\\s*from\\s+[\"“”']?([^\"“”)\\]]+)", RegexOption.IGNORE_CASE)
         internal val untrustedAlbumNames = setOf(
             "levyra",
             "youtube",
