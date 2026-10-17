@@ -255,6 +255,48 @@ class ListeningPulseEngineTest {
         assertEquals(2, pulse.topTracks.first().plays)
     }
 
+    @Test
+    fun lastSevenDaysAndPreviousSevenDaysAreSplitOnCalendarDays() {
+        val events = listOf(
+            event(trackId = "now", listenedMs = 60_000L, startedAt = hoursAgo(1)),
+            event(trackId = "edge", listenedMs = 120_000L, startedAt = daysAgo(6)),
+            event(trackId = "previous", listenedMs = 240_000L, startedAt = daysAgo(7)),
+            event(trackId = "previousEdge", listenedMs = 300_000L, startedAt = daysAgo(13)),
+            event(trackId = "older", listenedMs = 600_000L, startedAt = daysAgo(14))
+        )
+
+        val pulse = engine.build(events, now)
+
+        assertEquals(180_000L, pulse.last7Days.totalListenMs)
+        assertEquals(540_000L, pulse.previous7DaysListenMs)
+        assertEquals(listOf("edge", "now"), pulse.last7Days.topTracks.map { it.trackId })
+    }
+
+    @Test
+    fun weeklyPeakHourIgnoresOlderListening() {
+        val events = listOf(
+            event(trackId = "recent", listenedMs = 60_000L, startedAt = hoursAgo(1)),
+            event(trackId = "old", listenedMs = 900_000L, startedAt = daysAgo(20) - 10 * 3_600_000L)
+        )
+
+        val pulse = engine.build(events, now)
+
+        assertEquals(20, pulse.last7Days.peakHour)
+        assertEquals(11, pulse.peakHour)
+    }
+
+    @Test
+    fun topTrackKeepsArtworkFromAnyListen() {
+        val events = listOf(
+            event(trackId = "a", startedAt = hoursAgo(1)),
+            event(trackId = "a", startedAt = hoursAgo(2), thumbnailUrl = "https://img.example/a.jpg")
+        )
+
+        val pulse = engine.build(events, now)
+
+        assertEquals("https://img.example/a.jpg", pulse.last7Days.topTracks.single().thumbnailUrl)
+    }
+
     private fun hoursAgo(hours: Int): Long = now - hours * 3_600_000L
 
     private fun daysAgo(days: Int): Long = now - days * 86_400_000L
@@ -267,7 +309,8 @@ class ListeningPulseEngineTest {
         listenedMs: Long = 30_000L,
         durationMs: Long = 180_000L,
         completed: Boolean = false,
-        startedAt: Long
+        startedAt: Long,
+        thumbnailUrl: String = ""
     ): ListenEvent = ListenEvent(
         trackId = trackId,
         title = title,
@@ -276,6 +319,7 @@ class ListeningPulseEngineTest {
         listenedMs = listenedMs,
         trackDurationMs = durationMs,
         completed = completed,
-        startedAt = startedAt
+        startedAt = startedAt,
+        thumbnailUrl = thumbnailUrl
     )
 }

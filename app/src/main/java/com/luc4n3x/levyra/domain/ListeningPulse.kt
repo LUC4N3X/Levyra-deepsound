@@ -22,7 +22,8 @@ data class PulseTrack(
     val title: String,
     val artist: String,
     val plays: Int,
-    val listenedMs: Long
+    val listenedMs: Long,
+    val thumbnailUrl: String = ""
 )
 
 data class PulseArtist(
@@ -43,7 +44,8 @@ data class PulsePeriod(
     val distinctArtists: Int = 0,
     val completionRate: Int = 0,
     val topTracks: List<PulseTrack> = emptyList(),
-    val topArtists: List<PulseArtist> = emptyList()
+    val topArtists: List<PulseArtist> = emptyList(),
+    val peakHour: Int = -1
 ) {
     val totalMinutes: Long
         get() = totalListenMs / 60_000L
@@ -62,6 +64,8 @@ data class ListeningPulse(
     val topDay: PulseDay? = null,
     val topTracks: List<PulseTrack> = emptyList(),
     val topArtists: List<PulseArtist> = emptyList(),
+    val last7Days: PulsePeriod = PulsePeriod(),
+    val previous7DaysListenMs: Long = 0L,
     val last30Days: PulsePeriod = PulsePeriod(),
     val last365Days: PulsePeriod = PulsePeriod(),
     val week: List<PulseDay> = emptyList(),
@@ -88,6 +92,11 @@ class ListeningPulseEngine(private val zone: ZoneId = ZoneId.systemDefault()) {
         val completedCount = valid.count { it.completed }
         val byDay = valid.groupBy { dayOf(it.startedAt) }
         val activeDates = byDay.keys
+        val days7 = valid.filter { dayOf(it.startedAt) >= today.minusDays(WEEK_DAYS - 1L) }
+        val previous7 = valid.filter {
+            val day = dayOf(it.startedAt)
+            day >= today.minusDays(WEEK_DAYS * 2 - 1L) && day < today.minusDays(WEEK_DAYS - 1L)
+        }
         val days30 = valid.filter { dayOf(it.startedAt) >= today.minusDays(LAST_30_DAYS - 1L) }
         val days365 = valid.filter { dayOf(it.startedAt) >= today.minusDays(LAST_365_DAYS - 1L) }
 
@@ -106,6 +115,8 @@ class ListeningPulseEngine(private val zone: ZoneId = ZoneId.systemDefault()) {
                 .maxByOrNull { it.listenedMs },
             topTracks = topTracks(valid),
             topArtists = topArtists(valid),
+            last7Days = period(days7),
+            previous7DaysListenMs = previous7.sumOf { it.listenedMs },
             last30Days = period(days30),
             last365Days = period(days365),
             week = week(byDay, nowMs),
@@ -123,7 +134,8 @@ class ListeningPulseEngine(private val zone: ZoneId = ZoneId.systemDefault()) {
             distinctArtists = artists.toSet().size,
             completionRate = (events.count { it.completed } * 100) / events.size,
             topTracks = topTracks(events),
-            topArtists = topArtists(events)
+            topArtists = topArtists(events),
+            peakHour = peakHour(events)
         )
     }
 
@@ -136,7 +148,10 @@ class ListeningPulseEngine(private val zone: ZoneId = ZoneId.systemDefault()) {
                     title = newest.title,
                     artist = newest.artist,
                     plays = countedPlays(group),
-                    listenedMs = group.sumOf { it.listenedMs }
+                    listenedMs = group.sumOf { it.listenedMs },
+                    thumbnailUrl = newest.thumbnailUrl.ifBlank {
+                        group.firstNotNullOfOrNull { event -> event.thumbnailUrl.takeIf(String::isNotBlank) }.orEmpty()
+                    }
                 )
             }
             .sortedWith(compareByDescending<PulseTrack> { it.listenedMs }.thenByDescending { it.plays })
