@@ -80,20 +80,9 @@ internal class HighQualityProviderLane(
             if (isDecisive(selection, index)) break
         }
         if (needsDeeperPages(selection)) {
-            var extraPages = 0
-            deeper@ for ((index, text) in deeper) {
-                var page = FIRST_PAGE + 1
-                while (page <= MAX_SEARCH_PAGE && extraPages < MAX_EXTRA_PAGES && clock() - startedAt < DEEPER_PAGE_WINDOW_MS) {
-                    extraPages++
-                    val loaded = when (val outcome = search.fetch(index + 1, text, page)) {
-                        is SearchPage.Failed -> return outcome.fallback
-                        is SearchPage.Loaded -> outcome
-                    }
-                    selection = matcher.select(query, search.candidates())
-                    if (!needsDeeperPages(selection)) break@deeper
-                    if (!loaded.worthDeeperPage) break
-                    page++
-                }
+            when (val deeperSearch = searchDeeperPages(query, search, deeper, startedAt)) {
+                is DeeperSearch.Failed -> return deeperSearch.fallback
+                is DeeperSearch.Settled -> deeperSearch.selection?.let { selection = it }
             }
         }
         return when (val finalSelection = selection) {
@@ -153,6 +142,36 @@ internal class HighQualityProviderLane(
     private fun refuse(searched: AlternativeTrackCandidate, outcome: String, detail: String): Hydration {
         HighQualityAudioDiagnostics.hydration(provider.id, searched.providerTrackId, outcome, searched.offers320, detail)
         return Hydration.Refused(HighQualityResolution.Fallback(HighQualityFallbackReason.NO_MATCH, "HYDRATION_$outcome"))
+    }
+
+    private suspend fun searchDeeperPages(
+        query: AlternativeTrackQuery,
+        search: CandidateSearch,
+        deeper: List<IndexedValue<String>>,
+        startedAt: Long
+    ): DeeperSearch {
+        var selection: AlternativeMatchSelection? = null
+        var extraPages = 0
+        for ((index, text) in deeper) {
+            var page = FIRST_PAGE + 1
+            while (page <= MAX_SEARCH_PAGE && extraPages < MAX_EXTRA_PAGES && clock() - startedAt < DEEPER_PAGE_WINDOW_MS) {
+                extraPages++
+                val loaded = when (val outcome = search.fetch(index + 1, text, page)) {
+                    is SearchPage.Failed -> return DeeperSearch.Failed(outcome.fallback)
+                    is SearchPage.Loaded -> outcome
+                }
+                val current = matcher.select(query, search.candidates()).also { selection = it }
+                if (!needsDeeperPages(current)) return DeeperSearch.Settled(current)
+                if (!loaded.worthDeeperPage) break
+                page++
+            }
+        }
+        return DeeperSearch.Settled(selection)
+    }
+
+    private sealed interface DeeperSearch {
+        data class Settled(val selection: AlternativeMatchSelection?) : DeeperSearch
+        data class Failed(val fallback: HighQualityResolution.Fallback) : DeeperSearch
     }
 
     private fun needsDeeperPages(selection: AlternativeMatchSelection): Boolean =
