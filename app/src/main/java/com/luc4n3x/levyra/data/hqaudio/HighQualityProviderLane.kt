@@ -166,8 +166,8 @@ internal class HighQualityProviderLane(
                     is SearchPage.Loaded -> outcome
                 }
                 val current = matcher.select(query, search.candidates()).also { selection = it }
-                if (!needsDeeperPages(current)) return DeeperSearch.Settled(current)
-                if (loaded.worthDeeperPage) stillDeeper += IndexedValue(index, text)
+                if (isDecisive(current, index)) return DeeperSearch.Settled(current)
+                if (needsDeeperPages(current) && loaded.worthDeeperPage) stillDeeper += IndexedValue(index, text)
             }
             frontier = stillDeeper
             page++
