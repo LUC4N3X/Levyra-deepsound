@@ -15741,8 +15741,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                     onPlay = { track ->
                                         focusManager.clearFocus()
                                         keyboardController?.hide()
-                                        val playbackContext = deduplicateSearchSongs(listOf(track) + data.songs)
-                                        viewModel.playFrom(playbackContext, track)
+                                        viewModel.startSongRadioFrom(track)
                                     },
                                     onFavorite = viewModel::toggleFavorite,
                                     onAddToPlaylist = { track -> addTarget = track },
@@ -15776,7 +15775,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                         focusManager.clearFocus()
                                         keyboardController?.hide()
                                         heroTrack?.let { track ->
-                                            viewModel.startSongRadioFrom(track, data.songs)
+                                            viewModel.startSongRadioFrom(track)
                                         }
                                     }
                                 )

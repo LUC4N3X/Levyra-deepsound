@@ -16,6 +16,7 @@ import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraLocalizedDiscovery
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
+import com.luc4n3x.levyra.domain.ListeningSignalEngine
 import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.SearchPage
 import com.luc4n3x.levyra.domain.SearchResults
@@ -543,6 +544,12 @@ private const val SUGGESTION_RICH_VIDEO_LIMIT = 2
 private const val SUGGESTION_RICH_ARTIST_LIMIT = 3
 private const val SUGGESTION_RICH_ALBUM_LIMIT = 3
 private const val MIN_CONTINUOUS_RADIO_CANDIDATES = 20
+private const val MIN_DIVERSE_RADIO_CANDIDATES = 6
+private const val MAX_DIVERSE_RADIO_CANDIDATES = 60
+private const val MAX_RADIO_WATCH_TRACKS = 100
+private const val HOMOGENEOUS_RADIO_SAMPLE = 20
+private const val HOMOGENEOUS_RADIO_MIN_ARTISTS = 8
+private const val HOMOGENEOUS_RADIO_TOP_ARTIST_SHARE = 0.3
 internal const val YOUTUBE_MUSIC_VIDEO_SEARCH_PARAMS = "EgWKAQIQAWoMEA4QChADEAQQCRAF"
 internal const val YOUTUBE_MUSIC_SONG_SEARCH_PARAMS = "EgWKAQIIAWoMEA4QChADEAQQCRAF"
 internal const val YOUTUBE_MUSIC_ALBUM_SEARCH_PARAMS = "EgWKAQIYAWoMEA4QChADEAQQCRAF"
@@ -2790,58 +2797,55 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         runCatching { watchRepository.getSongRelated(watch.relatedBrowseId, languageCode) }.getOrDefault(emptyList())
     }
 
-    /**
-     * Returns a discovery pool rather than the exact queue append size. Continuous radio appends
-     * at most five tracks after de-duplication, so a wider pool prevents a duplicate-heavy top five
-     * from starving the tail while keeping the network request bounded.
-     */
     suspend fun radio(
         seed: Track,
         languageCode: String = LevyraLanguageCatalog.deviceDefault(),
-        limit: Int = 20
+        limit: Int = 20,
+        excludeIds: Set<String> = emptySet(),
+        diversify: Boolean = false
     ): List<Track> = withContext(Dispatchers.IO) {
         val boundedLimit = maxOf(limit.coerceIn(1, 30), MIN_CONTINUOUS_RADIO_CANDIDATES)
         val videoId = resolveVideoId(seed)
         if (videoId.isBlank()) return@withContext emptyList()
         val query = "radio ${seed.artist} ${seed.title}".trim()
+        val keepLowQuality = isLowQualityRadioCandidate(seed.title, seed.artist)
         val tracks = LinkedHashMap<String, Track>()
+        fun admit(candidate: Track) {
+            if (candidate.id == videoId || candidate.id in excludeIds) return
+            if (isNonMusicVideoType(candidate.videoType)) return
+            if (!keepLowQuality && isLowQualityRadioCandidate(candidate.title, candidate.artist)) return
+            tracks.putIfAbsent(candidate.id, candidate)
+        }
         val watch = runCatching {
             watchRepository.getWatchPlaylistAdvanced(
                 videoId = videoId,
                 languageCode = languageCode,
-                limit = boundedLimit + 8,
+                limit = (boundedLimit + 8 + excludeIds.size).coerceAtMost(MAX_RADIO_WATCH_TRACKS),
                 radio = true
             )
         }.getOrNull()
 
-        watch?.tracks
-            ?.asSequence()
-            ?.filter { it.videoId != videoId }
-            ?.map { watchTrackToTrack(it, seed, query) }
-            ?.filterNot { candidate -> isLowQualityRadioCandidate(candidate.title, candidate.artist) }
-            ?.forEach { track -> tracks.putIfAbsent(track.id, track) }
+        watch?.tracks?.forEach { admit(watchTrackToTrack(it, seed, query)) }
 
         val relatedBrowseId = watch?.relatedBrowseId.orEmpty()
-        if (tracks.size < boundedLimit && relatedBrowseId.isNotBlank()) {
+        val needsRelated = tracks.size < boundedLimit || (diversify && isArtistHomogeneous(tracks.values))
+        if (needsRelated && relatedBrowseId.isNotBlank()) {
             runCatching { watchRepository.getSongRelated(relatedBrowseId, languageCode) }
                 .getOrDefault(emptyList())
                 .asSequence()
                 .flatMap { it.items.asSequence() }
                 .filter { it.type == YoutubeMusicRelatedType.Song || it.type == YoutubeMusicRelatedType.Video }
-                .filter { it.videoId.isNotBlank() && it.videoId != videoId }
-                .map { relatedItemToTrack(it, seed, query) }
-                .filterNot { candidate -> isLowQualityRadioCandidate(candidate.title, candidate.artist) }
-                .forEach { track -> tracks.putIfAbsent(track.id, track) }
+                .filter { it.videoId.isNotBlank() }
+                .forEach { admit(relatedItemToTrack(it, seed, query)) }
         }
 
-        if (tracks.size < boundedLimit) {
-            search("${seed.artist} ${seed.title} radio", boundedLimit + 4, languageCode)
-                .filter { it.id != videoId }
-                .filterNot { candidate -> isLowQualityRadioCandidate(candidate.title, candidate.artist) }
-                .forEach { candidate -> tracks.putIfAbsent(candidate.id, candidate) }
+        val searchFloor = if (diversify) MIN_DIVERSE_RADIO_CANDIDATES else boundedLimit
+        if (tracks.size < searchFloor) {
+            search("${seed.artist} ${seed.title} radio", boundedLimit + 4, languageCode).forEach(::admit)
         }
 
-        tracks.values.take(boundedLimit).also { items -> items.forEach { memory[it.id] = it } }
+        val resultLimit = if (diversify) MAX_DIVERSE_RADIO_CANDIDATES else boundedLimit
+        tracks.values.take(resultLimit).also { items -> items.forEach { memory[it.id] = it } }
     }
 
     private fun resolveVideoId(seed: Track): String {
@@ -2854,7 +2858,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             id = item.videoId,
             title = item.title,
             artist = item.artists.joinToString(", ") { it.name }.ifBlank { seed.artist },
-            album = item.albumTitle.ifBlank { "YouTube Music Radio" },
+            album = item.albumTitle,
             durationMs = item.durationMs,
             thumbnailUrl = thumbnail,
             largeThumbnailUrl = upgradeThumbnail(thumbnail),
@@ -2876,7 +2880,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             id = item.videoId,
             title = item.title,
             artist = item.artists.joinToString(", ") { it.name }.ifBlank { seed.artist },
-            album = item.albumTitle.ifBlank { "YouTube Music Related" },
+            album = item.albumTitle,
             durationMs = item.durationMs,
             thumbnailUrl = thumbnail,
             largeThumbnailUrl = upgradeThumbnail(thumbnail),
@@ -2886,7 +2890,8 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             year = item.year,
             explicit = item.explicit,
             albumBrowseId = item.albumBrowseId,
-            artistBrowseIds = item.artists.map { it.browseId }.filter { it.isNotBlank() }
+            artistBrowseIds = item.artists.map { it.browseId }.filter { it.isNotBlank() },
+            videoType = item.videoType
         )
     }
 
@@ -3521,6 +3526,18 @@ private val ALBUM_TRACK_METRIC_PATTERN = Regex(
     "(?:^|\\s)[\\d.,]+\\s*(?:k|m|mln|mil|mio|mrd|bn|b|milioni?|miliardi?|millions?|billions?)?\\s*(?:views?|visualizzazioni?|riproduzioni?|ascolti?|plays?|streams?)\\b",
     RegexOption.IGNORE_CASE
 )
+
+internal fun isArtistHomogeneous(candidates: Collection<Track>): Boolean {
+    val sample = candidates.take(HOMOGENEOUS_RADIO_SAMPLE)
+    if (sample.isEmpty()) return true
+    val counts = sample
+        .mapNotNull { track -> ListeningSignalEngine.splitArtists(track.artist).firstOrNull()?.lowercase(Locale.ROOT) }
+        .groupingBy { it }
+        .eachCount()
+    val top = counts.values.maxOrNull() ?: return true
+    return counts.size < minOf(HOMOGENEOUS_RADIO_MIN_ARTISTS, sample.size) ||
+        top > sample.size * HOMOGENEOUS_RADIO_TOP_ARTIST_SHARE
+}
 
 internal fun isLowQualityRadioCandidate(title: String, artist: String): Boolean {
     val value = "$title $artist"

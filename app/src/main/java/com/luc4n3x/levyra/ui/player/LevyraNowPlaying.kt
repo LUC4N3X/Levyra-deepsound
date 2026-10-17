@@ -1310,13 +1310,32 @@ fun LevyraNowPlaying(
                 slots = deckSlots,
                 surfaces = surfaces,
                 accent = heroTone,
+                isFavorite = track.id in state.favoriteIds,
                 isPlaying = state.isPlaying,
-                progress = { if (state.durationMs > 0L) state.positionMs.toFloat() / state.durationMs else 0f },
+                isResolving = state.isResolving,
+                shuffleOn = state.shuffleEnabled,
+                repeatMode = state.repeatMode,
+                labels = playerControlLabels,
+                queuePosition = playerDeckQueuePosition(state.queue, track.id),
+                seekStepMs = state.interfaceSettings.doubleTapSeekSeconds * 1_000L,
                 animated = animated,
                 compact = compactPlayer,
                 scrollable = !fitsViewport,
-                scrollingHeroHeight = scrollingArtworkHeight,
                 gutter = gutter,
+                artworkCap = artworkCap,
+                stepDirection = stepDirection,
+                onArtistClick = { artistIndex ->
+                    playerArtistHits.getOrNull(artistIndex)?.let(viewModel::openArtist)
+                        ?: viewModel.openArtist(track, artistIndex)
+                },
+                onToggleFavorite = { viewModel.toggleFavorite(track) },
+                onShuffle = viewModel::toggleShuffle,
+                onPrevious = viewModel::previous,
+                onTogglePlay = viewModel::togglePlay,
+                onNext = viewModel::next,
+                onRepeat = viewModel::toggleRepeat,
+                onSeekBy = viewModel::seekBy,
+                headlineModifier = lyricsFlipSwipeModifier,
                 modifier = deckModifier
             )
         } else if (playerPane == LevyraPlayerPane.SideBySide && track != null && compactLandscape && !state.isVideoMode) {

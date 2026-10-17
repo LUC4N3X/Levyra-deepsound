@@ -485,6 +485,24 @@ class QueueSpaceEngineTest {
     }
 
     @Test
+    fun mixedRadioInsertKeepsManualPlayNextTracksAheadOfTheRadio() = runBlocking {
+        val engine = restoredEngine("a", listOf(track("seed"), track("later")))
+        engine.playNext(track("manual"))
+        val snapshot = engine.state.value
+        val mixed = com.luc4n3x.levyra.domain.RadioMixer.mix(
+            candidates = listOf(track("manual"), track("r1"), track("r2")),
+            seed = snapshot.currentTrack!!,
+            queued = snapshot.tracks,
+            recentContext = radioMixContext(snapshot, insertAfterCurrent = true),
+            limit = 5
+        )
+
+        engine.insertRadioTracksAfterCurrent(mixed)
+
+        assertEquals(listOf("seed", "manual", "r1", "r2", "later"), engine.state.value.tracks.map { it.id })
+    }
+
+    @Test
     fun removingAManualTrackDoesNotCreateATombstone() = runBlocking {
         val engine = restoredEngine("a", listOf(track("seed")))
         engine.addLast(track("m1"))

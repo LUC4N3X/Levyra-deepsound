@@ -604,9 +604,16 @@ private fun PulsePreview(track: Track, artworkUrl: String, accent: Color) {
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(top = 22.dp)
-                .fillMaxWidth(0.56f)
+                .fillMaxWidth(0.62f)
                 .aspectRatio(1f)
-                .clip(RoundedCornerShape(10.dp))
+                .clip(
+                    RoundedCornerShape(
+                        topStartPercent = 50,
+                        topEndPercent = 50,
+                        bottomEndPercent = 7,
+                        bottomStartPercent = 7
+                    )
+                )
         )
         Column(
             modifier = Modifier
