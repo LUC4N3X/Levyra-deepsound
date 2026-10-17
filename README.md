@@ -38,6 +38,10 @@ Play streamed music and your own files in the same app, save tracks for offline 
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/tag/desktop-v1.2.2"><img src="docs/assets/levyra-windows-download.svg" width="185" alt="Download Levyra for Windows"></a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/discussions"><b>💬 Join the Levyra community · Ideas, questions &amp; feedback →</b></a>
+</p>
+
 <details>
 <summary><b>More download options</b></summary>
 <br>
