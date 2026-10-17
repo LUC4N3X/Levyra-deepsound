@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="184" height="56" viewBox="0 0 184 56" role="img" aria-label="Join Levyra Discussions">
+  <title>Join Levyra Discussions</title>
+  <rect x=".75" y=".75" width="182.5" height="54.5" rx="11" fill="#0D1117" stroke="#384253" stroke-width="1.5"/>
+  <rect x="10" y="10" width="36" height="36" rx="10" fill="#211931" stroke="#544073"/>
+  <path d="M19 20.5c0-2 1.7-3.5 3.7-3.5h10.6c2 0 3.7 1.5 3.7 3.5v8c0 2-1.7 3.5-3.7 3.5h-6.2l-5.5 4v-4c-1.5-.4-2.6-1.7-2.6-3.5z" fill="none" stroke="#C4A3FF" stroke-width="1.8" stroke-linejoin="round"/>
+  <circle cx="24.2" cy="24.5" r="1.1" fill="#C4A3FF"/>
+  <circle cx="28" cy="24.5" r="1.1" fill="#C4A3FF"/>
+  <circle cx="31.8" cy="24.5" r="1.1" fill="#C4A3FF"/>
+  <text x="55" y="23" fill="#B9A4D8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".85">COMMUNITY</text>
+  <text x="55" y="39" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="13.5" font-weight="700">Join Discussions</text>
+</svg>
