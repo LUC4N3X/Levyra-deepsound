@@ -364,7 +364,7 @@ class JioSaavnComposerCreditsMatchingTest {
 
     private val kunFaayaKunCompilation = song("haS4X2V2", "Kun Faaya Kun", kunArtists, "Best Of A.R. Rahman", 469, kunCredits)
 
-    private val chaleyaCredits =composerSinger("Anirudh Ravichander") + singers("Arijit Singh", "Shilpa Rao") +
+    private val chaleyaCredits = composerSinger("Anirudh Ravichander") + singers("Arijit Singh", "Shilpa Rao") +
         mapOf("Kumaar" to listOf("lyricist"), "Shah Rukh Khan" to listOf("starring"), "Nayanthara" to listOf("starring"))
 
     private val chaleyaOriginal =
