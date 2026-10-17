@@ -63,7 +63,21 @@ public final class YoutubeSabrProbe {
         final PlayerIdentityPair playerIdentity = resolvePlayerIdentity(profile, clientVersion,
                 localization, contentCountry, playerPoToken, visitorDataOverride);
         return fetchSabrInfoWithIdentity(videoId, profile, localization, contentCountry,
-                clientVersion, playerIdentity);
+                clientVersion, playerIdentity, null);
+    }
+
+    @Nonnull
+    static YoutubeSabrInfo fetchSabrInfoForReload(@Nonnull final String videoId,
+                                                  @Nonnull final YoutubeSabrClientProfile profile,
+                                                  @Nonnull final Localization localization,
+                                                  @Nonnull final ContentCountry contentCountry,
+                                                  @Nullable final String reloadPlaybackToken)
+            throws IOException, ExtractionException {
+        final String clientVersion = resolveClientVersion(profile);
+        final PlayerIdentityPair playerIdentity = resolvePlayerIdentity(profile, clientVersion,
+                localization, contentCountry, null, null);
+        return fetchSabrInfoWithIdentity(videoId, profile, localization, contentCountry,
+                clientVersion, playerIdentity, reloadPlaybackToken);
     }
 
     @Nonnull
@@ -78,7 +92,7 @@ public final class YoutubeSabrProbe {
         final PlayerIdentityPair playerIdentity = resolveRequiredPlayerIdentity(profile,
                 clientVersion, localization, contentCountry, poTokenProvider);
         return fetchSabrInfoWithIdentity(videoId, profile, localization, contentCountry,
-                clientVersion, playerIdentity);
+                clientVersion, playerIdentity, null);
     }
 
     @Nonnull
@@ -88,12 +102,13 @@ public final class YoutubeSabrProbe {
             @Nonnull final Localization localization,
             @Nonnull final ContentCountry contentCountry,
             @Nonnull final String clientVersion,
-            @Nonnull final PlayerIdentityPair playerIdentity)
+            @Nonnull final PlayerIdentityPair playerIdentity,
+            @Nullable final String reloadPlaybackToken)
             throws IOException, ExtractionException {
         final String cpn = YoutubeParsingHelper.generateContentPlaybackNonce();
         final JsonObject playerResponse = fetchPlayerResponse(videoId, profile, localization,
                 contentCountry, cpn, playerIdentity.playerPoToken, playerIdentity.visitorData,
-                clientVersion);
+                clientVersion, reloadPlaybackToken);
         return fromPlayerResponse(videoId, profile, cpn, playerResponse,
                 playerIdentity.visitorData, clientVersion, playerIdentity.hasPoToken());
     }
@@ -669,10 +684,11 @@ public final class YoutubeSabrProbe {
                                                    @Nonnull final String cpn,
                                                    @Nullable final String playerPoToken,
                                                    @Nullable final String visitorDataOverride,
-                                                   @Nonnull final String clientVersion)
+                                                   @Nonnull final String clientVersion,
+                                                   @Nullable final String reloadPlaybackToken)
             throws IOException, ExtractionException {
         final byte[] body = createPlayerBody(videoId, profile, localization, contentCountry,
-                cpn, playerPoToken, visitorDataOverride, clientVersion);
+                cpn, playerPoToken, visitorDataOverride, clientVersion, reloadPlaybackToken);
         final String url = getInnertubeBaseUrl(profile) + PLAYER + "?"
                 + YoutubeParsingHelper.DISABLE_PRETTY_PRINT_PARAMETER;
         final Response response = NewPipe.getDownloader().post(url,
@@ -689,7 +705,8 @@ public final class YoutubeSabrProbe {
                                             @Nonnull final String cpn,
                                             @Nullable final String playerPoToken,
                                             @Nullable final String visitorDataOverride,
-                                            @Nonnull final String clientVersion)
+                                            @Nonnull final String clientVersion,
+                                            @Nullable final String reloadPlaybackToken)
             throws ParsingException {
         final JsonBuilder<JsonObject> builder = JsonObject.builder()
                 .object("context")
@@ -755,8 +772,9 @@ public final class YoutubeSabrProbe {
                         .value("signatureTimestamp",
                                 YoutubeJavaScriptPlayerManager.getSignatureTimestamp(videoId))
                         .value("html5Preference", "HTML5_PREF_WANTS")
-                    .end()
-                .end()
+                    .end();
+        appendReloadPlaybackContext(builder, reloadPlaybackToken);
+        builder.end()
                 .value(YoutubeParsingHelper.CPN, cpn)
                 .value(YoutubeParsingHelper.VIDEO_ID, videoId)
                 .value(YoutubeParsingHelper.CONTENT_CHECK_OK, true)
@@ -769,6 +787,18 @@ public final class YoutubeSabrProbe {
         }
 
         return JsonWriter.string(builder.done()).getBytes(StandardCharsets.UTF_8);
+    }
+
+    static void appendReloadPlaybackContext(@Nonnull final JsonBuilder<JsonObject> playbackContext,
+                                            @Nullable final String reloadPlaybackToken) {
+        if (reloadPlaybackToken == null || reloadPlaybackToken.isEmpty()) {
+            return;
+        }
+        playbackContext.object("reloadPlaybackContext")
+                    .object("reloadPlaybackParams")
+                        .value("token", reloadPlaybackToken)
+                    .end()
+                .end();
     }
 
     @Nonnull

@@ -3050,6 +3050,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         val info = org.schabi.newpipe.extractor.search.SearchInfo.getInfo(service, handler)
         return info.relatedItems
             .filterIsInstance<org.schabi.newpipe.extractor.stream.StreamInfoItem>()
+            .filterNot { it.isShortFormContent }
             .mapNotNull { item ->
                 val id = extractVideoId(item.url).ifBlank { stableId(item.url) }
                 if (id.isBlank()) return@mapNotNull null
