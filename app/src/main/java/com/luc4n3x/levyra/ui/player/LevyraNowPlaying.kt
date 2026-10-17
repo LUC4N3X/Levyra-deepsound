@@ -64,6 +64,7 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Newspaper
+import androidx.compose.material.icons.rounded.Waves
 import androidx.compose.material.icons.rounded.Nightlight
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.Person
@@ -333,7 +334,9 @@ fun LevyraNowPlaying(
 
     val artworkRestsFullBleed = state.isPlaying ||
         state.interfaceSettings.playerVisualMode == PlayerVisualMode.Artwork ||
-        state.interfaceSettings.playerVisualMode == PlayerVisualMode.Folio
+        state.interfaceSettings.playerVisualMode == PlayerVisualMode.Folio ||
+        state.interfaceSettings.playerVisualMode == PlayerVisualMode.Flow ||
+        state.interfaceSettings.playerVisualMode == PlayerVisualMode.Pulse
     val artRestScale = if (artworkRestsFullBleed) 1f else LevyraPlayerDesign.ArtworkPausedScale
     val artRestOffset = if (artworkRestsFullBleed) 0.dp else 4.dp
     SideEffect {
@@ -384,7 +387,13 @@ fun LevyraNowPlaying(
             depth = lyricsFlipDepth
         )
         SideEffect {
-            morphAnchors.updateLandsAsCookie(deckLayout == PlayerDeckLayout.Folio)
+            morphAnchors.updateLanding(
+                when (deckLayout) {
+                    PlayerDeckLayout.Folio -> PlayerMorphLanding.Cookie
+                    PlayerDeckLayout.Flow -> if (state.isPlaying) PlayerMorphLanding.FlowPlaying else PlayerMorphLanding.FlowPaused
+                    else -> PlayerMorphLanding.Rounded
+                }
+            )
         }
         val motionBackdropVisible = !liveRadio
         LaunchedEffect(
@@ -678,55 +687,61 @@ fun LevyraNowPlaying(
                 (state.interfaceSettings.playerGesturesEnabled || videoGesturesEnabled) &&
                 !videoFullscreen &&
                 lyricsFlip.playerSettled
-            if (gesturesAllowed && gestureLayerContent != null) {
-                gestureLayerContent(
-                    activeTrack,
-                    PlayerGestureConfig(
-                        trackId = activeTrack.id,
-                        settings = state.interfaceSettings,
-                        playbackSpeed = state.playbackSpeed,
-                        environment = PlayerGestureEnvironment(
-                            activity = playerActivity,
-                            audioManager = audioManager,
-                            brightnessLabel = strings.brightness,
-                            volumeLabel = strings.volume,
-                            rightToLeft = rightToLeft
-                        )
-                    ),
-                    PlayerGestureMediaActions(
-                        seekBy = { delta ->
-                            viewModel.seekBy(delta)
-                            hapticFeedback.perform(LevyraHapticAction.TrackSwipe)
-                            mediaSeekFeedbackMs = delta
-                            mediaSeekFeedbackEvent += 1
-                        },
-                        togglePlay = viewModel::togglePlay,
-                        next = viewModel::next,
-                        previous = viewModel::previous,
-                        swipeOffset = { offset -> swipe.follow(activeTrack.id, offset) },
-                        swipeSettled = { committed -> swipe.release(committed, carry = false) },
-                        temporarySpeed = viewModel::setTemporaryPlaybackSpeed
-                    ),
-                    PlayerGestureUiActions(
-                        feedback = { message ->
-                            gestureFeedback = message
-                            gestureFeedbackEvent += 1
-                        },
-                        haptic = {
-                            hapticFeedback.perform(LevyraHapticAction.TrackSwipe)
-                        },
-                        toggleFavorite = { viewModel.toggleFavorite(activeTrack) },
-                        openQueue = viewModel::openQueue,
-                        openLyrics = viewModel::openLyrics,
-                        collapse = collapseActions,
-                        artworkPreview = if (artworkPreviewAvailable) {
-                            { showArtworkPreview = true }
-                        } else {
-                            null
-                        }
-                    ),
-                    videoTransform.takeIf { videoGesturesEnabled },
-                    gestureModifier
+            Box(modifier = gestureModifier) {
+                if (gesturesAllowed && gestureLayerContent != null) {
+                    gestureLayerContent(
+                        activeTrack,
+                        PlayerGestureConfig(
+                            trackId = activeTrack.id,
+                            settings = state.interfaceSettings,
+                            playbackSpeed = state.playbackSpeed,
+                            environment = PlayerGestureEnvironment(
+                                activity = playerActivity,
+                                audioManager = audioManager,
+                                brightnessLabel = strings.brightness,
+                                volumeLabel = strings.volume,
+                                rightToLeft = rightToLeft
+                            )
+                        ),
+                        PlayerGestureMediaActions(
+                            seekBy = { delta ->
+                                viewModel.seekBy(delta)
+                                hapticFeedback.perform(LevyraHapticAction.TrackSwipe)
+                                mediaSeekFeedbackMs = delta
+                                mediaSeekFeedbackEvent += 1
+                            },
+                            togglePlay = viewModel::togglePlay,
+                            next = viewModel::next,
+                            previous = viewModel::previous,
+                            swipeOffset = { offset -> swipe.follow(activeTrack.id, offset) },
+                            swipeSettled = { committed -> swipe.release(committed, carry = false) },
+                            temporarySpeed = viewModel::setTemporaryPlaybackSpeed
+                        ),
+                        PlayerGestureUiActions(
+                            feedback = { message ->
+                                gestureFeedback = message
+                                gestureFeedbackEvent += 1
+                            },
+                            haptic = {
+                                hapticFeedback.perform(LevyraHapticAction.TrackSwipe)
+                            },
+                            toggleFavorite = { viewModel.toggleFavorite(activeTrack) },
+                            openQueue = viewModel::openQueue,
+                            openLyrics = viewModel::openLyrics,
+                            collapse = collapseActions,
+                            artworkPreview = if (artworkPreviewAvailable) {
+                                { showArtworkPreview = true }
+                            } else {
+                                null
+                            }
+                        ),
+                        videoTransform.takeIf { videoGesturesEnabled },
+                        Modifier.matchParentSize()
+                    )
+                }
+                PlayerGestureFeedbackPill(
+                    text = gestureFeedback,
+                    modifier = Modifier.align(Alignment.Center)
                 )
             }
         }
@@ -786,7 +801,7 @@ fun LevyraNowPlaying(
                         swipeOffset = swipeOffset,
                         artScale = artScale,
                         artOffset = artOffset,
-                        glowColor = if (deckLayout == PlayerDeckLayout.Levyra || deckLayout == PlayerDeckLayout.Pulse || deckLayout == PlayerDeckLayout.Halo) primary else Color.Transparent,
+                        glowColor = if (deckLayout == PlayerDeckLayout.Levyra || deckLayout == PlayerDeckLayout.Sleeve || deckLayout == PlayerDeckLayout.Pulse || deckLayout == PlayerDeckLayout.Halo) primary else Color.Transparent,
                         modifier = Modifier
                             .fillMaxSize()
                             .playerLyricsFlipFace(
@@ -878,26 +893,6 @@ fun LevyraNowPlaying(
                     )
                 }
 
-                AnimatedVisibility(
-                    visible = gestureFeedback.isNotBlank(),
-                    modifier = Modifier.align(Alignment.Center).zIndex(22f),
-                    enter = fadeIn(animationSpec = tween(110)),
-                    exit = fadeOut(animationSpec = tween(180))
-                ) {
-                    Surface(
-                        color = Color.Black.copy(alpha = 0.74f),
-                        border = BorderStroke(LevyraPlayerDesign.Hairline, Color.White.copy(alpha = 0.16f)),
-                        shape = CircleShape
-                    ) {
-                        Text(
-                            text = gestureFeedback,
-                            color = Color.White,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp)
-                        )
-                    }
-                }
             }
         }
 
@@ -959,7 +954,7 @@ fun LevyraNowPlaying(
             }
         }
 
-        val progressBlock: @Composable (Boolean) -> Unit = { wavy ->
+        val progressBlock: @Composable (PlayerProgressStyle) -> Unit = { style ->
             if (liveRadio) {
                 Box(
                     modifier = Modifier
@@ -985,7 +980,7 @@ fun LevyraNowPlaying(
                     motionActive = !motionSuspended,
                     compact = compactPlayer,
                     onSeek = viewModel::seekTo,
-                    wavy = wavy
+                    style = style
                 )
             }
         }
@@ -1073,7 +1068,7 @@ fun LevyraNowPlaying(
             }
             Spacer(modifier = Modifier.height(if (compactPlayer) LevyraPlayerDesign.SpaceXs else LevyraPlayerDesign.SpaceSm))
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                progressBlock(false)
+                progressBlock(PlayerProgressStyle.Classic)
             }
             errorContent?.invoke()
             Spacer(modifier = Modifier.height(if (compactPlayer) LevyraPlayerDesign.SpaceXs else LevyraPlayerDesign.SpaceMd))
@@ -1107,9 +1102,9 @@ fun LevyraNowPlaying(
                     Spacer(modifier = Modifier.height(if (compactPlayer) LevyraPlayerDesign.SpaceXs else LevyraPlayerDesign.SpaceSm))
                 }
             },
-            progress = { wavy ->
+            progress = { style ->
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                    progressBlock(wavy)
+                    progressBlock(style)
                 }
                 errorContent?.invoke()
             },
@@ -1211,6 +1206,58 @@ fun LevyraNowPlaying(
                 headlineModifier = lyricsFlipSwipeModifier,
                 modifier = deckModifier
             )
+        } else if (deckLayout == PlayerDeckLayout.Sleeve && track != null) {
+            PlayerSleeveDeck(
+                track = track,
+                slots = deckSlots,
+                surfaces = surfaces,
+                isFavorite = track.id in state.favoriteIds,
+                queuePosition = playerDeckQueuePosition(state.queue, track.id),
+                isPlaying = state.isPlaying,
+                animated = animated,
+                compact = compactPlayer,
+                scrollable = !fitsViewport,
+                gutter = gutter,
+                artworkCap = artworkCap,
+                stepDirection = stepDirection,
+                onArtistClick = { artistIndex ->
+                    playerArtistHits.getOrNull(artistIndex)?.let(viewModel::openArtist)
+                        ?: viewModel.openArtist(track, artistIndex)
+                },
+                onToggleFavorite = { viewModel.toggleFavorite(track) },
+                headlineModifier = lyricsFlipSwipeModifier,
+                modifier = deckModifier
+            )
+        } else if (deckLayout == PlayerDeckLayout.Flow && track != null) {
+            PlayerFlowDeck(
+                track = track,
+                slots = deckSlots,
+                surfaces = surfaces,
+                isFavorite = track.id in state.favoriteIds,
+                isPlaying = state.isPlaying,
+                isResolving = state.isResolving,
+                shuffleOn = state.shuffleEnabled,
+                repeatMode = state.repeatMode,
+                labels = playerControlLabels,
+                animated = animated,
+                compact = compactPlayer,
+                scrollable = !fitsViewport,
+                gutter = gutter,
+                artworkCap = artworkCap,
+                stepDirection = stepDirection,
+                onArtistClick = { artistIndex ->
+                    playerArtistHits.getOrNull(artistIndex)?.let(viewModel::openArtist)
+                        ?: viewModel.openArtist(track, artistIndex)
+                },
+                onToggleFavorite = { viewModel.toggleFavorite(track) },
+                onShuffle = viewModel::toggleShuffle,
+                onPrevious = viewModel::previous,
+                onTogglePlay = viewModel::togglePlay,
+                onNext = viewModel::next,
+                onRepeat = viewModel::toggleRepeat,
+                headlineModifier = lyricsFlipSwipeModifier,
+                modifier = deckModifier
+            )
         } else if (deckLayout == PlayerDeckLayout.Expressive && track != null) {
             PlayerExpressiveDeck(
                 track = track,
@@ -1264,6 +1311,7 @@ fun LevyraNowPlaying(
                 surfaces = surfaces,
                 accent = heroTone,
                 isPlaying = state.isPlaying,
+                progress = { if (state.durationMs > 0L) state.positionMs.toFloat() / state.durationMs else 0f },
                 animated = animated,
                 compact = compactPlayer,
                 scrollable = !fitsViewport,
@@ -2046,6 +2094,7 @@ internal fun visualModeStateDescription(
     PlayerVisualMode.Pulse -> strings.playerDeckPulse
     PlayerVisualMode.Halo -> strings.playerDeckHalo
     PlayerVisualMode.Folio -> strings.playerDeckFolio
+    PlayerVisualMode.Flow -> strings.playerDeckFlow
 }
 
 internal fun visualModeIcon(mode: PlayerVisualMode): ImageVector = when (mode) {
@@ -2056,4 +2105,29 @@ internal fun visualModeIcon(mode: PlayerVisualMode): ImageVector = when (mode) {
     PlayerVisualMode.Pulse -> Icons.Rounded.GraphicEq
     PlayerVisualMode.Halo -> Icons.Rounded.Album
     PlayerVisualMode.Folio -> Icons.Rounded.Newspaper
+    PlayerVisualMode.Flow -> Icons.Rounded.Waves
+}
+
+@Composable
+private fun PlayerGestureFeedbackPill(text: String, modifier: Modifier = Modifier) {
+    AnimatedVisibility(
+        visible = text.isNotBlank(),
+        modifier = modifier,
+        enter = fadeIn(animationSpec = tween(110)),
+        exit = fadeOut(animationSpec = tween(180))
+    ) {
+        Surface(
+            color = Color.Black.copy(alpha = 0.74f),
+            border = BorderStroke(LevyraPlayerDesign.Hairline, Color.White.copy(alpha = 0.16f)),
+            shape = CircleShape
+        ) {
+            Text(
+                text = text,
+                color = Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp)
+            )
+        }
+    }
 }

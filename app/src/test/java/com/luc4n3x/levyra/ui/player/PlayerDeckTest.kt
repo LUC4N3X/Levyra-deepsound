@@ -20,16 +20,17 @@ class PlayerDeckTest {
     fun `deck order lists every visual mode exactly once`() {
         assertEquals(PlayerVisualMode.entries.toSet(), PlayerDeckOrder.toSet())
         assertEquals(PlayerVisualMode.entries.size, PlayerDeckOrder.size)
-        assertEquals(PlayerVisualMode.CanvasCard, PlayerDeckOrder.first())
+        assertEquals(PlayerVisualMode.Flow, PlayerDeckOrder.first())
     }
 
     @Test
     fun `existing modes keep the levyra layout and new styles get their own`() {
         assertEquals(PlayerDeckLayout.Poster, PlayerVisualMode.Artwork.deckLayout())
-        assertEquals(PlayerDeckLayout.Levyra, PlayerVisualMode.CanvasCard.deckLayout())
+        assertEquals(PlayerDeckLayout.Sleeve, PlayerVisualMode.CanvasCard.deckLayout())
         assertEquals(PlayerDeckLayout.Aura, PlayerVisualMode.CanvasImmersive.deckLayout())
         assertEquals(PlayerDeckLayout.Expressive, PlayerVisualMode.Expressive.deckLayout())
         assertEquals(PlayerDeckLayout.Pulse, PlayerVisualMode.Pulse.deckLayout())
+        assertEquals(PlayerDeckLayout.Flow, PlayerVisualMode.Flow.deckLayout())
     }
 
     @Test
@@ -43,7 +44,7 @@ class PlayerDeckTest {
 
     @Test
     fun `new styles fall back to the levyra layout where they are not designed to run`() {
-        listOf(PlayerVisualMode.CanvasImmersive, PlayerVisualMode.Expressive, PlayerVisualMode.Artwork, PlayerVisualMode.Pulse).forEach { mode ->
+        listOf(PlayerVisualMode.CanvasImmersive, PlayerVisualMode.Expressive, PlayerVisualMode.Artwork, PlayerVisualMode.Pulse, PlayerVisualMode.Flow, PlayerVisualMode.CanvasCard).forEach { mode ->
             val supported = resolvePlayerDeckLayout(mode, false, false, LevyraPlayerPane.Stacked, true)
             assertEquals(mode.deckLayout(), supported)
             assertEquals(PlayerDeckLayout.Levyra, resolvePlayerDeckLayout(mode, true, false, LevyraPlayerPane.Stacked, true))
@@ -73,7 +74,7 @@ class PlayerDeckTest {
     }
 
     @Test
-    fun `levyra layouts resolve identically regardless of playback context`() {
+    fun `sleeve falls back to the levyra layout for video and radio`() {
         listOf(PlayerVisualMode.CanvasCard).forEach { mode ->
             listOf(true, false).forEach { video ->
                 listOf(LevyraPlayerPane.Stacked, LevyraPlayerPane.SideBySide).forEach { pane ->
@@ -134,6 +135,53 @@ class PlayerDeckTest {
     }
 
     @Test
+    fun `flow is the default deck and stored choices stay untouched`() {
+        assertEquals(PlayerVisualMode.Flow, LevyraInterfaceSettings().playerVisualMode)
+        assertEquals(PlayerVisualMode.Flow, DefaultPlayerVisualMode)
+        assertEquals(PlayerVisualMode.CanvasCard, PlayerVisualMode.from("CanvasCard"))
+        assertEquals(PlayerVisualMode.Flow, PlayerVisualMode.from("flow"))
+        assertEquals(PlayerVisualMode.Folio, PlayerVisualMode.from("Folio"))
+        assertEquals(PlayerVisualMode.Flow, resolvePlayerDeckVisualMode(PlayerVisualMode.Flow, PlayerDeckLayout.Flow))
+        assertEquals(PlayerVisualMode.CanvasCard, resolvePlayerDeckVisualMode(PlayerVisualMode.Flow, PlayerDeckLayout.Levyra))
+    }
+
+    @Test
+    fun `flow type scales down for long titles and compact screens`() {
+        val short = flowTitleSize("Sajni", compact = false).value
+        val medium = flowTitleSize("Midnight City Lights", compact = false).value
+        val long = flowTitleSize("A Very Long Title That Keeps Going Forever And Ever", compact = false).value
+        assertTrue(short > medium)
+        assertTrue(medium > long)
+        assertTrue(flowTitleSize("Sajni", compact = true).value < short)
+    }
+
+    @Test
+    fun `flow eyebrow names the album only when it adds information`() {
+        assertEquals("", playerDeckAlbumEyebrow(track("a")))
+        assertEquals("", playerDeckAlbumEyebrow(track("a", album = "Title a")))
+        assertEquals("", playerDeckAlbumEyebrow(track("a", album = "  ")))
+        assertEquals("NIGHT DRIVE", playerDeckAlbumEyebrow(track("a", album = "Night Drive")))
+    }
+
+    @Test
+    fun `flow flight lands exactly on the resting cover shape`() {
+        val side = 400f
+        val start = 12f
+        listOf(true, false).forEach { playing ->
+            val landed = flowLandingShape(1f, start, side, playing)
+            val rest = flowCoverShape(if (playing) 1f else 0f)
+            assertEquals(rest.major, landed.major, 0.0001f)
+            assertEquals(rest.minor, landed.minor, 0.0001f)
+            assertFalse(landed.mirrored)
+        }
+        val takeOff = flowLandingShape(0f, start, side, true)
+        assertEquals(start / side, takeOff.major, 0.0001f)
+        assertEquals(start / side, takeOff.minor, 0.0001f)
+        assertTrue(flowCoverShape(1f).major > flowCoverShape(1f).minor)
+        assertEquals(flowCoverShape(0f).major, flowCoverShape(0f).minor, 0.0001f)
+    }
+
+    @Test
     fun `stored editorial choice migrates to the expressive deck`() {
         assertEquals(PlayerVisualMode.Expressive, PlayerVisualMode.from("Editorial"))
         assertEquals(PlayerVisualMode.Expressive, PlayerVisualMode.from("Expressive"))
@@ -174,7 +222,7 @@ class PlayerDeckTest {
         assertEquals("Bloom", visualModeStateDescription(PlayerVisualMode.Expressive, italian))
         assertEquals("Late Night", visualModeStateDescription(PlayerVisualMode.Pulse, italian))
         assertEquals("Velvet", playerDeckLabel(PlayerVisualMode.CanvasImmersive, italian))
-        assertEquals("Studio", playerDeckLabel(PlayerVisualMode.CanvasCard, italian))
+        assertEquals("Sleeve", playerDeckLabel(PlayerVisualMode.CanvasCard, italian))
     }
 
     private fun track(

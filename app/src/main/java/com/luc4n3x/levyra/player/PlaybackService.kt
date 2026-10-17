@@ -889,7 +889,7 @@ class PlaybackService : MediaLibraryService() {
             }
         }
         renderersFactory.setEnableDecoderFallback(true)
-        renderersFactory.setMediaCodecSelector(NativeAudioIntegration.mediaCodecSelector)
+        renderersFactory.setMediaCodecSelector(VideoDecoderFallback.Shared.selector(NativeAudioIntegration.mediaCodecSelector))
         renderersFactory.setExtensionRendererMode(NativeAudioIntegration.EXTENSION_RENDERER_MODE)
 
         val player = ExoPlayer.Builder(this)
@@ -952,6 +952,7 @@ class PlaybackService : MediaLibraryService() {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 if (mediaItem?.mediaId != lastTransitionMediaId) {
                     lastTransitionMediaId = mediaItem?.mediaId
+                    VideoDecoderFallback.Shared.reset()
                     _liveRadioMetadataFlow.value = LiveRadioStreamMetadata()
                     liveRadioPausedAtMs = C.TIME_UNSET
                     liveRadioReconnectJob?.cancel()
@@ -1036,6 +1037,11 @@ class PlaybackService : MediaLibraryService() {
             }
 
             override fun onPlayerError(error: PlaybackException) {
+                if (VideoDecoderFallback.Shared.redirect(error)) {
+                    Timber.w("Video decoder failed; retrying with the next available decoder")
+                    player.prepare()
+                    return
+                }
                 NativeAudioIntegration.redirectFailedPlatformDecoder(error)?.let { mimeType ->
                     Timber.w("Platform audio decoder failed for %s; retrying with FFmpeg", mimeType)
                     player.prepare()

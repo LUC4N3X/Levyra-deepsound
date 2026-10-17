@@ -21,10 +21,13 @@ internal enum class PlayerDeckLayout {
     Poster,
     Pulse,
     Halo,
-    Folio
+    Folio,
+    Flow,
+    Sleeve
 }
 
 internal val PlayerDeckOrder: List<PlayerVisualMode> = listOf(
+    PlayerVisualMode.Flow,
     PlayerVisualMode.CanvasCard,
     PlayerVisualMode.CanvasImmersive,
     PlayerVisualMode.Halo,
@@ -35,13 +38,14 @@ internal val PlayerDeckOrder: List<PlayerVisualMode> = listOf(
 )
 
 internal fun PlayerVisualMode.deckLayout(): PlayerDeckLayout = when (this) {
-    PlayerVisualMode.CanvasCard -> PlayerDeckLayout.Levyra
+    PlayerVisualMode.CanvasCard -> PlayerDeckLayout.Sleeve
     PlayerVisualMode.CanvasImmersive -> PlayerDeckLayout.Aura
     PlayerVisualMode.Artwork -> PlayerDeckLayout.Poster
     PlayerVisualMode.Expressive -> PlayerDeckLayout.Expressive
     PlayerVisualMode.Pulse -> PlayerDeckLayout.Pulse
     PlayerVisualMode.Halo -> PlayerDeckLayout.Halo
     PlayerVisualMode.Folio -> PlayerDeckLayout.Folio
+    PlayerVisualMode.Flow -> PlayerDeckLayout.Flow
 }
 
 internal fun PlayerDeckLayout.showsLyricsFace(): Boolean =
@@ -82,6 +86,11 @@ internal fun playerDeckQueuePosition(queue: List<Track>, trackId: String): Playe
     if (queue.size < 2 || trackId.isBlank()) return null
     val index = queue.indexOfFirst { it.id == trackId }
     return if (index < 0) null else PlayerDeckQueuePosition(index, queue.size)
+}
+
+internal fun playerDeckAlbumEyebrow(track: Track): String {
+    val album = track.album.trim()
+    return if (album.isEmpty() || album.equals(track.title.trim(), ignoreCase = true)) "" else album.uppercase()
 }
 
 internal fun expressiveTitleSize(title: String, compact: Boolean): TextUnit {
@@ -161,7 +170,7 @@ internal class PlayerDeckSlots(
     val controls: @Composable ColumnScope.(Track) -> Unit,
     val controlsWithoutMetadata: @Composable ColumnScope.(Track) -> Unit,
     val engagement: @Composable (Track) -> Unit,
-    val progress: @Composable (wavy: Boolean) -> Unit,
+    val progress: @Composable (style: PlayerProgressStyle) -> Unit,
     val dock: @Composable (Track) -> Unit,
     val dockActions: @Composable (Track) -> List<PlayerDockAction>
 )

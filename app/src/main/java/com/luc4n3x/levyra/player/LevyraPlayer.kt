@@ -256,6 +256,7 @@ class LevyraPlayer(context: Context) {
 
                 override fun onPlayerError(error: PlaybackException) {
                     if (NativeAudioIntegration.consumeRecoveredControllerError(error)) return
+                    if (VideoDecoderFallback.Shared.consumeRecoveredControllerError(error)) return
                     if (ignoreEndedFromManualStop || connected.mediaItemCount == 0) return
                     val track = loadedTrack ?: return
                     val message = cleanError(error)

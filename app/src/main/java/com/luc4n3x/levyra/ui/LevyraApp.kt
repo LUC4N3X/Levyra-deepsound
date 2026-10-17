@@ -803,6 +803,8 @@ import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.ui.player.PlayerDragEvent
 import com.luc4n3x.levyra.ui.player.PlayerGestureZone
 import com.luc4n3x.levyra.ui.player.PlayerMorphAnchors
+import com.luc4n3x.levyra.ui.player.PlayerMorphLanding
+import com.luc4n3x.levyra.ui.player.flowLandingShape
 import com.luc4n3x.levyra.ui.player.PlayerExpansionExpanded
 import com.luc4n3x.levyra.ui.player.PlayerPrewarmExpansion
 import com.luc4n3x.levyra.ui.player.PlayerMorphSlot
@@ -21659,7 +21661,8 @@ private fun SettingsOverlay(
                                         PlayerVisualMode.Expressive.name to strings.playerDeckExpressive,
                                         PlayerVisualMode.Pulse.name to strings.playerDeckPulse,
                                         PlayerVisualMode.Halo.name to strings.playerDeckHalo,
-                                        PlayerVisualMode.Folio.name to strings.playerDeckFolio
+                                        PlayerVisualMode.Folio.name to strings.playerDeckFolio,
+                                        PlayerVisualMode.Flow.name to strings.playerDeckFlow
                                     ),
                                     selected = interfaceSettings.playerVisualMode.name,
                                     onSelect = { value ->
@@ -26349,10 +26352,15 @@ private fun PlayerArtworkMorphLayer(
                 val endCornerPx = if (anchors.targetsStage) 0f else cardCornerPx
                 alpha = flightAlpha
                 shadowElevation = flightShadowPx * fraction * flightAlpha
-                shape = if (anchors.landsAsCookie) {
-                    levyraCookieLandingShape(fraction)
-                } else {
-                    RoundedCornerShape(morphCornerRadius(startCornerPx, endCornerPx, fraction))
+                shape = when (anchors.landing) {
+                    PlayerMorphLanding.Cookie -> levyraCookieLandingShape(fraction)
+                    PlayerMorphLanding.FlowPlaying, PlayerMorphLanding.FlowPaused -> flowLandingShape(
+                        fraction = fraction,
+                        startCorner = startCornerPx,
+                        side = size.minDimension,
+                        playing = anchors.landing == PlayerMorphLanding.FlowPlaying
+                    )
+                    PlayerMorphLanding.Rounded -> RoundedCornerShape(morphCornerRadius(startCornerPx, endCornerPx, fraction))
                 }
                 clip = true
             }
