@@ -591,7 +591,7 @@ README_CARD_SPECS = [
     ("07_every_genre", "MOODS", "Every\ngenre.", "Move by mood, place or energy.", "Screenshot_20261015_140910_LEVYRA.jpg"),
     ("08_acoustic_precision", "AUDIO", "Acoustic\nprecision.", "Tune the sound, keep the soul.", "Screenshot_20261010_190726_LEVYRA.jpg"),
     ("09_keep_it_personal", "LIBRARY", "Keep it\npersonal.", "Your collection stays yours.", "Screenshot_20261010_132050_LEVYRA.jpg"),
-    ("10_curated_for_you", "COLLECTIONS", "Curated\nfor you.", "Quick picks, ready when you are.", "Screenshot_20261010_132136_LEVYRA.jpg"),
+    ("10_curated_for_you", "COLLECTIONS", "Curated\nfor you.", "Quick picks, ready when you are.", "Screenshot_20261017_143917_LEVYRA.jpg"),
     ("11_your_rhythm", "INSIGHTS", "Your\nrhythm.", "See the pattern behind the plays.", "Screenshot_20260927_131943_LEVYRA.jpg"),
     ("12_in_your_orbit", "HOME", "In your\norbit.", "Artists and albums close at hand.", "Screenshot_20261010_132103_LEVYRA.jpg"),
     ("13_tailor_every_detail", "SETTINGS", "Make Levyra\nyours.", "Theme, home, player and audio—in one place.", "Screenshot_20261015_205614_LEVYRA.jpg"),
@@ -912,22 +912,29 @@ def generate_readme_cards():
             print(f"Saved README editorial card at {artwork.size}: {out_path}")
         cards.append(artwork)
 
-    ld_left, ld_right = render_readme_light_dark_pair(
-        README_CARD_SPECS[16],
-        README_CARD_SPECS[17],
-    )
-    for artwork, spec in ((ld_left, README_CARD_SPECS[16]), (ld_right, README_CARD_SPECS[17])):
-        cards.append(artwork)
-        out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
-        artwork.save(out_path, "WEBP", quality=94, method=6)
-        print(f"Saved README editorial card at {artwork.size}: {out_path}")
+    ld_spec_0 = README_CARD_SPECS[16]
+    ld_spec_1 = README_CARD_SPECS[17]
+    ld_path_0 = os.path.join(README_CARD_DIR, ld_spec_0[0] + ".webp")
+    ld_path_1 = os.path.join(README_CARD_DIR, ld_spec_1[0] + ".webp")
+    if os.path.exists(ld_path_0) and os.path.exists(ld_path_1):
+        cards.append(Image.open(ld_path_0).convert("RGB"))
+        cards.append(Image.open(ld_path_1).convert("RGB"))
+    else:
+        ld_left, ld_right = render_readme_light_dark_pair(ld_spec_0, ld_spec_1)
+        for artwork, spec, out_path in ((ld_left, ld_spec_0, ld_path_0), (ld_right, ld_spec_1, ld_path_1)):
+            cards.append(artwork)
+            artwork.save(out_path, "WEBP", quality=94, method=6)
+            print(f"Saved README editorial card at {artwork.size}: {out_path}")
 
     for index in range(18, len(README_CARD_SPECS)):
         spec = README_CARD_SPECS[index]
         out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
-        artwork = render_readme_card(spec, index)
-        artwork.save(out_path, "WEBP", quality=94, method=6)
-        print(f"Saved README editorial card at {artwork.size}: {out_path}")
+        if os.path.exists(out_path):
+            artwork = Image.open(out_path).convert("RGB")
+        else:
+            artwork = render_readme_card(spec, index)
+            artwork.save(out_path, "WEBP", quality=94, method=6)
+            print(f"Saved README editorial card at {artwork.size}: {out_path}")
         cards.append(artwork)
 
     mask = Image.new("L", (900, 1800), 0)
@@ -935,7 +942,7 @@ def generate_readme_cards():
 
     for row_index in range(5):
         spaced_row_path = os.path.join(README_CARD_DIR, f"editorial-grid-row-{row_index + 1:02d}-spaced.webp")
-        if row_index < 4 and os.path.exists(spaced_row_path):
+        if os.path.exists(spaced_row_path):
             continue
 
         row = Image.new("RGB", (3600, 1800))
@@ -954,10 +961,7 @@ def generate_readme_cards():
         )
         out_path = os.path.join(README_CARD_DIR, row_filename)
         row.save(out_path, "WEBP", quality=95, method=6)
-        if row_index == 0:
-            row.save(os.path.join(README_CARD_DIR, "editorial-grid-row-01.webp"), "WEBP", quality=95, method=6)
-        elif row_index == 4:
-            row.save(os.path.join(README_CARD_DIR, "editorial-grid-row-05.webp"), "WEBP", quality=95, method=6)
+        row.save(os.path.join(README_CARD_DIR, f"editorial-grid-row-{row_index + 1:02d}.webp"), "WEBP", quality=95, method=6)
         print(f"Saved four-card README row at {row.size}: {out_path}")
 
         spaced_row.save(spaced_row_path, "WEBP", quality=95, method=6)
