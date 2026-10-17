@@ -94,6 +94,24 @@ class HighQualityDeeperPagesTest {
     }
 
     @Test
+    fun acceptedDeeperMatchSurvivesAFailingPeerPage() {
+        val high = candidate(id = "high", album = "After Hours (Deluxe)", duration = 201)
+        val provider = FakeHighQualityProvider(
+            pageOutcome = { text, page ->
+                when {
+                    page == 2 && text == plan[0] -> ProviderSearchOutcome.Found(listOf(high))
+                    page == 2 && text == plan[1] -> ProviderSearchOutcome.Failed(ProviderFailure.TIMEOUT)
+                    else -> coverFlood
+                }
+            },
+            lookupOutcome = { ProviderLookupOutcome.Found(high) }
+        )
+        val result = resolve(provider)
+        assertEquals("high", (result as HighQualityResolution.Selected).stream.providerTrackId)
+        assertTrue(plan[1] to 2 in provider.pages)
+    }
+
+    @Test
     fun filteredRowsWithTheExpectedTitleKeepPaginationAlive() {
         val provider = provider { text, page ->
             when {

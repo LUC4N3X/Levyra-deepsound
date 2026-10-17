@@ -162,10 +162,15 @@ internal class HighQualityProviderLane(
                 }
                 extraPages++
                 val loaded = when (val outcome = search.fetch(index + 1, text, page)) {
-                    is SearchPage.Failed -> return DeeperSearch.Failed(outcome.fallback)
+                    is SearchPage.Failed -> return if (selection is AlternativeMatchSelection.Accepted) {
+                        DeeperSearch.Settled(selection)
+                    } else {
+                        DeeperSearch.Failed(outcome.fallback)
+                    }
                     is SearchPage.Loaded -> outcome
                 }
-                val current = matcher.select(query, search.candidates()).also { selection = it }
+                val current = matcher.select(query, search.candidates())
+                selection = current
                 if (isDecisive(current, index)) return DeeperSearch.Settled(current)
                 if (needsDeeperPages(current) && loaded.worthDeeperPage) stillDeeper += IndexedValue(index, text)
             }
