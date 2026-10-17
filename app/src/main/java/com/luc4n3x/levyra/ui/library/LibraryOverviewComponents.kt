@@ -1,6 +1,5 @@
 package com.luc4n3x.levyra.ui.library
 
-import com.luc4n3x.levyra.ui.components.levyraGroupedGridShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.material3.toShape
 import androidx.compose.material3.MaterialShapes
@@ -8,19 +7,17 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.text.BasicText
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import com.luc4n3x.levyra.ui.components.LevyraBackButton
+import com.luc4n3x.levyra.ui.components.levyraExpressiveCorner
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -33,11 +30,9 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material.icons.rounded.ArrowDownward
@@ -48,21 +43,16 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.luc4n3x.levyra.domain.LibrarySort
 import com.luc4n3x.levyra.domain.LibrarySortDirection
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.DoneAll
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material.icons.rounded.LibraryMusic
-import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.OfflinePin
-import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Replay
-import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -80,8 +70,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -89,8 +77,6 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -100,7 +86,6 @@ import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.LevyraSectionAction
 import com.luc4n3x.levyra.ui.components.LevyraSectionHeader
 import com.luc4n3x.levyra.ui.components.levyraPressable
-import com.luc4n3x.levyra.domain.ListeningPulse
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.selection.TrackSelectionActions
@@ -108,36 +93,26 @@ import com.luc4n3x.levyra.ui.selection.TrackSelectionBar
 import com.luc4n3x.levyra.ui.selection.rememberTrackSelectionState
 import com.luc4n3x.levyra.ui.selection.resolveSelected
 import com.luc4n3x.levyra.ui.selection.trackSelectionKey
-import com.luc4n3x.levyra.ui.i18n.formatLibraryDuration
-import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraGlass
-import com.luc4n3x.levyra.ui.theme.LevyraMuted
-import com.luc4n3x.levyra.ui.theme.LevyraPanel
-import com.luc4n3x.levyra.ui.theme.LevyraPink
-import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraViolet
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LibraryViewModel
-import java.text.NumberFormat
-import java.time.LocalTime
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
-import java.time.format.TextStyle as DayTextStyle
-import java.util.Locale
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraType
-import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
-import com.luc4n3x.levyra.domain.ListeningChartProjection
 
 internal val LibraryPillShape = RoundedCornerShape(999.dp)
 
 @Composable
-internal fun LibraryHero(title: String, subtitle: String) {
+internal fun LibraryHero(title: String, subtitle: String, onBack: (() -> Unit)? = null) {
     val colors = MaterialTheme.colorScheme
+    val strings = LocalLevyraStrings.current
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 6.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = if (onBack == null) 8.dp else 0.dp, bottom = 6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
+        if (onBack != null) {
+            LevyraBackButton(onClick = onBack, contentDescription = strings.back, modifier = Modifier.padding(bottom = 4.dp))
+        }
         Text(title, color = colors.onSurface, style = LevyraType.heroTitle, softWrap = true, modifier = Modifier.semantics { heading() })
         if (subtitle.isNotBlank()) {
             Text(subtitle, color = colors.onSurfaceVariant, style = LevyraType.metadata, softWrap = true)
@@ -304,33 +279,13 @@ internal fun LibrarySectionTitle(
 @Composable
 internal fun SmartCollectionGrid(
     favorites: List<Track>,
-    downloads: List<Track>,
     recent: List<Track>,
     mostPlayed: List<Track>,
     onOpenCollection: (String) -> Unit,
-    onOpenOffline: () -> Unit
+    onPlayTracks: (List<Track>) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val cards = listOf(
-        SmartCollection(
-            id = SMART_COLLECTION_FAVORITES,
-            title = strings.favoritesPlain,
-            detail = strings.formatTrackCount(favorites.size),
-            icon = Icons.Rounded.Favorite,
-            accent = LevyraPink,
-            tracks = favorites,
-            onClick = { onOpenCollection(SMART_COLLECTION_FAVORITES) }
-        ),
-        SmartCollection(
-            id = "offline",
-            title = strings.offline,
-            detail = strings.formatTrackCount(downloads.size),
-            icon = Icons.Rounded.DownloadDone,
-            accent = LevyraCyan,
-            tracks = downloads,
-            enabledWhenEmpty = true,
-            onClick = onOpenOffline
-        ),
+    val shortcuts = listOf(
         SmartCollection(
             id = SMART_COLLECTION_RECENT,
             title = strings.recent,
@@ -351,18 +306,20 @@ internal fun SmartCollectionGrid(
         )
     )
 
-    val rows = cards.chunked(2)
     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        rows.forEachIndexed { rowIndex, row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                row.forEachIndexed { columnIndex, card ->
-                    SmartCollectionShortcut(
-                        card = card,
-                        shape = levyraGroupedGridShape(rowIndex, columnIndex, rows.size, 2),
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+        LibraryFavoritesSpotlight(
+            tracks = favorites,
+            shape = LibrarySpotlightShape,
+            onOpen = { onOpenCollection(SMART_COLLECTION_FAVORITES) },
+            onPlay = { onPlayTracks(favorites) }
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            shortcuts.forEachIndexed { columnIndex, card ->
+                SmartCollectionShortcut(
+                    card = card,
+                    shape = libraryShortcutShape(columnIndex),
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
@@ -409,7 +366,7 @@ private fun smartCollectionStyle(collectionId: String): SmartCollectionStyle {
         else -> SmartCollectionStyle(
             title = strings.favoritesPlain,
             subtitle = strings.tapHeartToAdd,
-            accent = LevyraPink,
+            accent = MaterialTheme.colorScheme.primary,
             icon = Icons.Rounded.Favorite
         )
     }
@@ -557,40 +514,51 @@ internal fun SmartCollectionDetail(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SmartCollectionHero(style: SmartCollectionStyle, countLabel: String, onClose: () -> Unit) {
-    Box(
+    val colors = MaterialTheme.colorScheme
+    val strings = LocalLevyraStrings.current
+    val badgeShape = MaterialShapes.Cookie9Sided.toShape()
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(26.dp))
-            .background(
-                Brush.linearGradient(
-                    listOf(style.accent.copy(alpha = 0.30f), LevyraPanel.copy(alpha = 0.92f))
-                )
-            )
-            .padding(20.dp)
+            .clip(LevyraCardDesign.SurfaceShape)
+            .background(Brush.verticalGradient(listOf(style.accent.copy(alpha = 0.24f), colors.surfaceContainer)))
+            .padding(start = 12.dp, end = 20.dp, top = 12.dp, bottom = 22.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        LevyraBackButton(onClick = onClose, contentDescription = strings.back)
         Row(
+            modifier = Modifier.padding(start = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            modifier = Modifier.padding(end = 40.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Surface(shape = RoundedCornerShape(18.dp), color = style.accent.copy(alpha = 0.22f)) {
-                Icon(
-                    style.icon,
-                    contentDescription = null,
-                    tint = style.accent,
-                    modifier = Modifier.padding(13.dp).size(28.dp)
-                )
+            Box(
+                modifier = Modifier.size(76.dp).clip(badgeShape).background(style.accent.copy(alpha = 0.26f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(style.icon, contentDescription = null, tint = style.accent, modifier = Modifier.size(34.dp))
             }
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(style.title, color = LevyraText, fontSize = 23.sp, fontWeight = FontWeight.Black)
-                Text(style.subtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                Text(countLabel, color = style.accent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    style.title,
+                    color = colors.onSurface,
+                    style = LevyraType.screenTitle,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.semantics { heading() }
+                )
+                Text(countLabel, color = colors.onSurfaceVariant, style = LevyraType.metadata, maxLines = 1)
             }
         }
-        IconButton(onClick = onClose, modifier = Modifier.align(Alignment.TopEnd)) {
-            Icon(Icons.Rounded.Close, contentDescription = null, tint = LevyraMuted)
+        if (style.subtitle.isNotBlank()) {
+            Text(
+                style.subtitle,
+                color = colors.onSurfaceVariant,
+                style = LevyraType.caption,
+                modifier = Modifier.padding(start = 8.dp)
+            )
         }
     }
 }
@@ -652,7 +620,6 @@ private fun SmartCollectionTrackRow(
     )
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SmartCollectionAction(
     label: String,
@@ -663,21 +630,35 @@ private fun SmartCollectionAction(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    Surface(
-        color = if (filled) accent.copy(alpha = if (enabled) 0.92f else 0.35f) else LevyraPanel.copy(alpha = 0.85f),
-        shape = RoundedCornerShape(18.dp),
-        border = if (filled) null else BorderStroke(1.dp, accent.copy(alpha = 0.35f)),
-        modifier = modifier.height(46.dp).clip(RoundedCornerShape(18.dp)).combinedClickable(enabled = enabled, onClick = onClick)
+    val colors = MaterialTheme.colorScheme
+    val interaction = remember { MutableInteractionSource() }
+    val corner = levyraExpressiveCorner(
+        interactionSource = interaction,
+        rest = 26.dp,
+        pressed = 12.dp,
+        label = "smart-collection-action-corner"
+    )
+    val shape = RoundedCornerShape(corner)
+    val container = if (filled) colors.primary else colors.secondaryContainer
+    val content = if (filled) colors.onPrimary else colors.onSecondaryContainer
+    Row(
+        modifier = modifier
+            .height(52.dp)
+            .clip(shape)
+            .background(if (enabled) container else container.copy(alpha = 0.38f))
+            .levyraPressable(
+                onClick = onClick,
+                enabled = enabled,
+                interactionSource = interaction,
+                role = Role.Button,
+                pressedScale = LevyraPressScale.Control
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
     ) {
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Icon(icon, contentDescription = null, tint = if (filled) Color.Black else accent, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(label, color = if (filled) Color.Black else LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-        }
+        Icon(icon, contentDescription = null, tint = if (filled) content else accent, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(label, color = content, style = LevyraType.cardTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -732,305 +713,3 @@ private fun SmartCollectionShortcut(card: SmartCollection, shape: Shape, modifie
 }
 
 private val SmartCollectionShortcutHeight = 64.dp
-
-@Composable
-internal fun LibraryListeningDashboard(
-    pulse: ListeningPulse,
-    onOpenInsights: (() -> Unit)? = null
-) {
-    val strings = LocalLevyraStrings.current
-    val locale = remember(strings.code) { Locale.forLanguageTag(strings.code) }
-    val number = remember(locale) { NumberFormat.getIntegerInstance(locale) }
-    val timeFormatter = remember(locale) {
-        DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale)
-    }
-    val weekMinutes = pulse.week.takeLast(7).sumOf { it.listenedMs } / 60_000L
-    val peakHour = if (pulse.peakHour in 0..23) {
-        LocalTime.of(pulse.peakHour, 0).format(timeFormatter)
-    } else {
-        "—"
-    }
-    val topArtist = pulse.topArtists.firstOrNull()?.name.orEmpty().ifBlank { "—" }
-
-    val openSurface = if (onOpenInsights != null) {
-        Modifier.levyraPressable(
-            onClick = onOpenInsights,
-            pressedScale = LevyraPressScale.Surface,
-            role = Role.Button,
-            onClickLabel = strings.listeningInsights
-        )
-    } else {
-        Modifier
-    }
-
-    Surface(
-        modifier = Modifier.fillMaxWidth().then(openSurface),
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        shape = LevyraCardDesign.SurfaceShape
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp)
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Top,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            text = "${number.format(weekMinutes)} ${strings.pulseMinuteShort}",
-                            color = MaterialTheme.colorScheme.onSurface,
-                            style = LevyraType.heroTitle
-                        )
-                        Text(
-                            text = strings.pulseWeek,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = LevyraType.metadata
-                        )
-                    }
-
-                    Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = CircleShape
-                    ) {
-                        Box(
-                            modifier = Modifier.size(48.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                }
-
-                LibraryWeekChart(
-                    pulse = pulse,
-                    locale = locale,
-                    durationLabel = { strings.formatLibraryDuration(it) }
-                )
-
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    PulsePreviewInsight(
-                        modifier = Modifier.fillMaxWidth(),
-                        icon = Icons.Rounded.LocalFireDepartment,
-                        label = strings.pulseStreak,
-                        value = number.format(pulse.streakDays),
-                        accent = LevyraViolet
-                    )
-                    PulsePreviewInsight(
-                        modifier = Modifier.fillMaxWidth(),
-                        icon = Icons.Rounded.Schedule,
-                        label = strings.pulsePeakHour,
-                        value = peakHour,
-                        accent = LevyraCyan
-                    )
-                    PulsePreviewInsight(
-                        modifier = Modifier.fillMaxWidth(),
-                        icon = Icons.Rounded.Person,
-                        label = strings.pulseTopArtists,
-                        value = topArtist,
-                        accent = LevyraPink
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PulsePreviewInsight(
-    modifier: Modifier,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    value: String,
-    accent: Color
-) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Surface(color = accent.copy(alpha = 0.12f), shape = LevyraCardDesign.ThumbShape) {
-            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.padding(10.dp).size(20.dp))
-        }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = LevyraType.caption)
-            Text(value, color = MaterialTheme.colorScheme.onSurface, style = LevyraType.contentTitle, softWrap = true)
-        }
-    }
-}
-
-@Composable
-private fun ReplayPeriodMetric(
-    modifier: Modifier,
-    periodLabel: String,
-    minutes: Long,
-    plays: Int,
-    minuteLabel: String,
-    playLabel: String,
-    accent: Color,
-    number: NumberFormat
-) {
-    Surface(
-        modifier = modifier,
-        color = Color.White.copy(alpha = 0.025f),
-        shape = RoundedCornerShape(15.dp),
-        border = BorderStroke(1.dp, accent.copy(alpha = 0.14f))
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp)
-        ) {
-            Text(periodLabel, color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-            Text("${number.format(minutes)} $minuteLabel", color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black, maxLines = 1)
-            Text("${number.format(plays)} $playLabel", color = LevyraMuted, fontSize = 9.sp, fontWeight = FontWeight.Medium, maxLines = 1)
-        }
-    }
-}
-
-@Composable
-private fun LibraryInsightMetric(
-    modifier: Modifier,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    value: String,
-    label: String,
-    accent: Color
-) {
-    Surface(
-        modifier = modifier,
-        color = Color.White.copy(alpha = 0.03f),
-        shape = RoundedCornerShape(15.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f))
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
-            verticalArrangement = Arrangement.spacedBy(7.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(7.dp)
-            ) {
-                Icon(imageVector = icon, contentDescription = null, tint = accent, modifier = Modifier.size(15.dp))
-                Text(
-                    text = label,
-                    color = LevyraMuted,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Text(
-                text = value,
-                color = LevyraText,
-                fontSize = 17.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(17.sp),
-                fontWeight = FontWeight.Black,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
-}
-
-private val LibraryRingPalette = listOf(
-    LevyraCyan,
-    LevyraViolet,
-    LevyraPink,
-    Color(0xFFFFC857),
-    Color(0xFF5AD8A6)
-)
-
-private fun peakHourLabel(prefix: String, hour: Int): String =
-    prefix + " · " + hour.toString().padStart(2, '0') + ":00"
-
-@Composable
-private fun LibraryWeekChart(
-    pulse: ListeningPulse,
-    locale: Locale,
-    durationLabel: (Long) -> String
-) {
-    val week = remember(pulse.week) { pulse.week.takeLast(7) }
-    val fractions = remember(week) { ListeningChartProjection.weekFractions(week, 1L) }
-    val today = week.lastIndex
-    val dateFormatter = remember(locale) { DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale) }
-    val colors = MaterialTheme.colorScheme
-    val gridColor = colors.outlineVariant.copy(alpha = 0.30f)
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        if (week.isNotEmpty()) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
-                Text(
-                    week.first().date.format(dateFormatter) + " · " + week.last().date.format(dateFormatter),
-                    color = colors.onSurfaceVariant, style = LevyraType.caption,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    durationLabel(week.maxOf { it.listenedMs }),
-                    color = colors.onSurfaceVariant, style = LevyraType.caption, textAlign = TextAlign.End
-                )
-            }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth().height(112.dp).drawBehind {
-                for (line in 0..2) {
-                    val y = size.height * line / 2f
-                    drawLine(gridColor, Offset(0f, y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
-                }
-            },
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.Bottom
-        ) {
-            if (week.isEmpty()) {
-                repeat(7) {
-                    Box(Modifier.weight(1f).height(4.dp).clip(LevyraCardDesign.ThumbShape).background(colors.surfaceContainerHighest))
-                }
-            } else {
-                week.forEachIndexed { index, day ->
-                    Box(
-                        modifier = Modifier.weight(1f).fillMaxHeight().semantics {
-                            contentDescription = day.date.toString() + " · " +
-                                day.date.dayOfWeek.getDisplayName(DayTextStyle.FULL, locale) + " · " + durationLabel(day.listenedMs)
-                        },
-                        contentAlignment = Alignment.BottomCenter
-                    ) {
-                        Box(
-                            Modifier.width(18.dp).fillMaxHeight(fractions[index].coerceAtLeast(0.025f))
-                                .clip(RoundedCornerShape(9.dp))
-                                .background(
-                                    if (day.listenedMs == 0L) colors.outlineVariant
-                                    else if (index == today) colors.primary
-                                    else colors.secondary.copy(alpha = 0.82f)
-                                )
-                        )
-                    }
-                }
-            }
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            week.forEachIndexed { index, day ->
-                Column(
-                    Modifier.weight(1f).clip(LevyraCardDesign.ThumbShape)
-                        .background(if (index == today) colors.primaryContainer else Color.Transparent).padding(vertical = 6.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        day.date.dayOfWeek.getDisplayName(DayTextStyle.NARROW, locale),
-                        color = if (index == today) colors.onPrimaryContainer else colors.onSurfaceVariant,
-                        style = LevyraType.caption, textAlign = TextAlign.Center
-                    )
-                    Text(
-                        day.date.dayOfMonth.toString(), color = if (index == today) colors.onPrimaryContainer else colors.onSurfaceVariant,
-                        style = LevyraType.caption, textAlign = TextAlign.Center
-                    )
-                }
-            }
-        }
-    }
-}

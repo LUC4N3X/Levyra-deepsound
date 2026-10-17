@@ -55,7 +55,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -385,8 +384,7 @@ internal fun LibraryAlbumRow(
                 Text(
                     album.title,
                     color = LevyraText,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
+                    style = LevyraType.contentTitle,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -395,7 +393,7 @@ internal fun LibraryAlbumRow(
                         .filter(String::isNotBlank)
                         .joinToString(" · "),
                     color = LevyraMuted,
-                    fontSize = 11.sp,
+                    style = LevyraType.caption,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -442,8 +440,7 @@ internal fun LibraryArtistRow(
                 Text(
                     artist.name,
                     color = LevyraText,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
+                    style = LevyraType.contentTitle,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
