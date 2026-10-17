@@ -13,6 +13,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.net.URLEncoder
@@ -59,6 +60,9 @@ data class YoutubeMusicWatchPlaylist(
     val shuffled: Boolean = false
 )
 
+internal fun isNonMusicVideoType(videoType: String): Boolean =
+    videoType.uppercase(Locale.ROOT).contains("PODCAST")
+
 internal fun YoutubeMusicWatchPlaylist.hasRequestedCounterpart(videoId: String): Boolean {
     val requested = videoId.trim()
     if (requested.isBlank()) return false
@@ -90,7 +94,8 @@ data class YoutubeMusicRelatedItem(
     val thumbnailUrl: String,
     val description: String,
     val year: String,
-    val explicit: Boolean
+    val explicit: Boolean,
+    val videoType: String = ""
 )
 
 data class YoutubeMusicRelatedSection(
@@ -289,17 +294,7 @@ class YoutubeMusicWatchRepository(private val context: Context? = null) {
             .put("context", JSONObject().put("client", clientPayload(languageCode, mobile)).put("user", JSONObject()))
             .toString()
             .toRequestBody(JSON_MEDIA_TYPE)
-        val requestBuilder = Request.Builder()
-            .url(url)
-            .post(body)
-            .header("Accept", "application/json")
-            .header("Accept-Encoding", "br,gzip")
-            .header("Accept-Language", YoutubeRegionProfile.effectiveAcceptLanguage("*"))
-            .header("Origin", "https://music.youtube.com")
-            .header("Referer", "https://music.youtube.com/")
-            .header("User-Agent", if (mobile) MOBILE_USER_AGENT else WEB_USER_AGENT)
-            .header("X-Youtube-Client-Name", if (mobile) ANDROID_MUSIC_CLIENT_ID else WEB_REMIX_CLIENT_ID)
-            .header("X-Youtube-Client-Version", if (mobile) ANDROID_MUSIC_CLIENT_VERSION else WEB_REMIX_CLIENT_VERSION)
+        val requestBuilder = innertubeRequestBuilder(url, body, mobile)
         GoogleApiKeyHeaders.applyTo(requestBuilder, context)
         return client.newCall(requestBuilder.build()).execute().use { response ->
             val body: okhttp3.ResponseBody? = response.body
@@ -369,6 +364,18 @@ class YoutubeMusicWatchRepository(private val context: Context? = null) {
         private const val RELATED_CACHE_MAX_ENTRIES = 64
         private const val LYRICS_CACHE_MAX_ENTRIES = 128
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
+
+        internal fun innertubeRequestBuilder(url: String, body: RequestBody, mobile: Boolean): Request.Builder =
+            Request.Builder()
+                .url(url)
+                .post(body)
+                .header("Accept", "application/json")
+                .header("Accept-Language", YoutubeRegionProfile.effectiveAcceptLanguage("*"))
+                .header("Origin", "https://music.youtube.com")
+                .header("Referer", "https://music.youtube.com/")
+                .header("User-Agent", if (mobile) MOBILE_USER_AGENT else WEB_USER_AGENT)
+                .header("X-Youtube-Client-Name", if (mobile) ANDROID_MUSIC_CLIENT_ID else WEB_REMIX_CLIENT_ID)
+                .header("X-Youtube-Client-Version", if (mobile) ANDROID_MUSIC_CLIENT_VERSION else WEB_REMIX_CLIENT_VERSION)
         private val watchCache = LinkedHashMap<String, TimedValue<YoutubeMusicWatchPlaylist>>()
         private val relatedCache = LinkedHashMap<String, TimedValue<List<YoutubeMusicRelatedSection>>>()
         private val lyricsCache = LinkedHashMap<String, TimedValue<YoutubeMusicNativeLyrics>>()
@@ -565,11 +572,13 @@ internal object YoutubeMusicWatchParser {
             ?.optJSONObject("browseEndpointContextMusicConfig")
             ?.optString("pageType")
             .orEmpty()
+        val musicVideoType = watch?.optJSONObject("watchEndpointMusicSupportedConfigs")
+            ?.optJSONObject("watchEndpointMusicConfig")
+            ?.optString("musicVideoType")
+            .orEmpty()
         val type = when {
-            videoId.isNotBlank() && watch?.optJSONObject("watchEndpointMusicSupportedConfigs")
-                ?.optJSONObject("watchEndpointMusicConfig")
-                ?.optString("musicVideoType")
-                ?.contains("OMV") == true -> YoutubeMusicRelatedType.Video
+            videoId.isNotBlank() && isNonMusicVideoType(musicVideoType) -> YoutubeMusicRelatedType.Unknown
+            videoId.isNotBlank() && musicVideoType.contains("OMV") -> YoutubeMusicRelatedType.Video
             videoId.isNotBlank() -> YoutubeMusicRelatedType.Song
             pageType.contains("ALBUM") || browseId.startsWith("MPRE") -> YoutubeMusicRelatedType.Album
             pageType.contains("ARTIST") || pageType.contains("USER_CHANNEL") || browseId.startsWith("UC") -> YoutubeMusicRelatedType.Artist
@@ -612,7 +621,8 @@ internal object YoutubeMusicWatchParser {
             thumbnailUrl = renderer.findBestThumbnail(),
             description = subtitle,
             year = year,
-            explicit = renderer.toString().contains("MUSIC_ITEM_BADGE_EXPLICIT")
+            explicit = renderer.toString().contains("MUSIC_ITEM_BADGE_EXPLICIT"),
+            videoType = musicVideoType
         )
     }
 
