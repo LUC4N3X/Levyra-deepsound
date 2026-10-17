@@ -116,8 +116,7 @@ class AlternativeTrackMatcher {
             return rejected(MatchRejection.ISRC_MISMATCH)
         }
         val romanizedTitle = expectedTitle.core != candidateTitle.core &&
-            isIndianRelease(candidate) &&
-            romanizationKey(expectedTitle.core) == romanizationKey(candidateTitle.core)
+            romanizedVariant(expectedTitle.core, candidateTitle.core, candidate)
         if (expectedTitle.core != candidateTitle.core && !romanizedTitle) return rejected(MatchRejection.TITLE_MISMATCH)
         if (expectedTitle.versionSignature != candidateTitle.versionSignature) {
             return rejected(MatchRejection.VERSION_MISMATCH)
@@ -179,6 +178,12 @@ class AlternativeTrackMatcher {
             albumRelation = relation,
             versionSignature = candidateTitle.versionSignature
         )
+    }
+
+    fun sharesTitle(query: AlternativeTrackQuery, candidate: AlternativeTrackCandidate): Boolean {
+        val expected = AlternativeTrackText.title(query.title).core
+        val actual = AlternativeTrackText.title(candidate.title).core
+        return expected == actual || romanizedVariant(expected, actual, candidate)
     }
 
     fun select(query: AlternativeTrackQuery, candidates: List<AlternativeTrackCandidate>): AlternativeMatchSelection {
@@ -264,6 +269,9 @@ class AlternativeTrackMatcher {
         candidate.language.lowercase(Locale.ROOT) in indianReleaseLanguages
 
     private fun romanizationKey(core: String): String = core.replace(repeatedLetter, "$1")
+
+    private fun romanizedVariant(expectedCore: String, candidateCore: String, candidate: AlternativeTrackCandidate): Boolean =
+        isIndianRelease(candidate) && romanizationKey(expectedCore) == romanizationKey(candidateCore)
 
     private fun albumConfirmsRecording(
         query: AlternativeTrackQuery,

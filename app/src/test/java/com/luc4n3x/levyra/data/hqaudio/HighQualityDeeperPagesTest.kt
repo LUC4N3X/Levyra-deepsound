@@ -24,7 +24,12 @@ class HighQualityDeeperPagesTest {
         scope.cancel()
     }
 
-    private fun resolve(provider: FakeHighQualityProvider, budgetMs: Long = 5_000L): HighQualityResolution {
+    private fun resolve(
+        provider: FakeHighQualityProvider,
+        budgetMs: Long = 5_000L,
+        query: AlternativeTrackQuery = query(),
+        quarantinedTrack: String? = null
+    ): HighQualityResolution {
         val resolver = HighQualityAudioResolver(
             provider = provider,
             mappingStore = HighQualityMappingStore(InMemoryMappingStorage()),
@@ -32,7 +37,37 @@ class HighQualityDeeperPagesTest {
             clock = now::get,
             lookupBudgetMs = budgetMs
         ).apply { mode = HighQualityAudioMode.AUTOMATIC }
-        return runBlocking { resolver.await(resolver.begin(identity, query()), 5_000L) }
+        quarantinedTrack?.let { resolver.reportPlaybackFailure("playback-key-v2|track:other", it, "test") }
+        return runBlocking { resolver.await(resolver.begin(identity, query), 5_000L) }
+    }
+
+    @Test
+    fun transliteratedTitlesOnTheFirstPageEarnAnotherPage() {
+        val kunFayaKun = query(title = "Kun Faya Kun", artist = "A.R. Rahman", album = "Rockstar", durationMs = 471_000L)
+        val compilation = candidate(id = "compiled", title = "Kun Faaya Kun", primary = listOf("A.R. Rahman"), album = "Best Of A.R. Rahman", duration = 471)
+            .copy(language = "hindi")
+        val original = candidate(id = "csaEsVWV", title = "Kun Faaya Kun", primary = listOf("A.R. Rahman"), album = "Rockstar", duration = 472)
+            .copy(language = "hindi")
+        val provider = FakeHighQualityProvider(
+            pageOutcome = { _, page ->
+                if (page == 2) ProviderSearchOutcome.Found(listOf(original)) else ProviderSearchOutcome.Found(listOf(compilation), hasMore = true)
+            },
+            lookupOutcome = { ProviderLookupOutcome.Found(original) }
+        )
+        val result = resolve(provider, query = kunFayaKun)
+        assertEquals("csaEsVWV", (result as HighQualityResolution.Selected).stream.providerTrackId)
+    }
+
+    @Test
+    fun quarantinedFirstPageStillEarnsAnotherPage() {
+        val provider = provider { text, page ->
+            when {
+                text == plan.first() && page == 2 -> ProviderSearchOutcome.Found(listOf(candidate()))
+                else -> ProviderSearchOutcome.Found(listOf(candidate(id = "broken")), hasMore = true)
+            }
+        }
+        val result = resolve(provider, quarantinedTrack = "broken")
+        assertEquals("pW-kkdqr", (result as HighQualityResolution.Selected).stream.providerTrackId)
     }
 
     private fun provider(pages: suspend (String, Int) -> ProviderSearchOutcome) = FakeHighQualityProvider(

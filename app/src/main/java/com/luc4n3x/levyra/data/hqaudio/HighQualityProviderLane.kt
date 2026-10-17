@@ -177,9 +177,9 @@ internal class HighQualityProviderLane(
     private fun needsDeeperPages(selection: AlternativeMatchSelection): Boolean =
         selection is AlternativeMatchSelection.Rejected && selection.reason != MatchRejection.AMBIGUOUS
 
-    private inner class CandidateSearch(query: AlternativeTrackQuery) {
-        private val titleCore = AlternativeTrackText.title(query.title).core
+    private inner class CandidateSearch(private val query: AlternativeTrackQuery) {
         private val collected = LinkedHashMap<String, AlternativeTrackCandidate>()
+        private val seenTrackIds = HashSet<String>()
 
         fun candidates(): List<AlternativeTrackCandidate> = collected.values.toList()
 
@@ -191,12 +191,12 @@ internal class HighQualityProviderLane(
                 )
                 is ProviderSearchOutcome.Found -> {
                     HighQualityAudioDiagnostics.search(provider.id, pass, page, text, outcome.candidates.size, outcome.hasMore)
-                    val added = outcome.candidates
+                    val unseen = outcome.candidates.count { seenTrackIds.add(it.providerTrackId) }
+                    outcome.candidates
                         .filterNot { isTrackQuarantined(it.providerTrackId) }
-                        .count { collected.putIfAbsent(it.providerTrackId, it) == null }
-                    val repeated = outcome.candidates.isNotEmpty() && added == 0
-                    val relevant = outcome.candidates.isEmpty() ||
-                        outcome.candidates.any { AlternativeTrackText.title(it.title).core == titleCore }
+                        .forEach { collected.putIfAbsent(it.providerTrackId, it) }
+                    val repeated = outcome.candidates.isNotEmpty() && unseen == 0
+                    val relevant = outcome.candidates.isEmpty() || outcome.candidates.any { matcher.sharesTitle(query, it) }
                     SearchPage.Loaded(worthDeeperPage = outcome.hasMore && !repeated && relevant)
                 }
             }
