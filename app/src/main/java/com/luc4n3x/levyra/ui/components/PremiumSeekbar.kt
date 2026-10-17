@@ -30,11 +30,14 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -45,6 +48,7 @@ import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -66,6 +70,39 @@ private val WaveCrestHeight = 12.dp
 private const val ThumbHaloAlpha = 0.5f
 private val ThumbHaloWidth = 3.dp
 private val TrackStopRadius = 2.dp
+private val NotchGap = 3.dp
+
+private class SeekbarWaveStyle(
+    val waveLength: Dp,
+    val minimumSpan: Dp,
+    val feather: Dp,
+    val ripple: Float,
+    val smoothEdges: Boolean,
+    val roundStart: Boolean
+)
+
+private val ClassicWave = SeekbarWaveStyle(
+    waveLength = 78.dp,
+    minimumSpan = 28.dp,
+    feather = 18.dp,
+    ripple = 0.07f,
+    smoothEdges = false,
+    roundStart = false
+)
+
+private val RefinedWave = SeekbarWaveStyle(
+    waveLength = 56.dp,
+    minimumSpan = 84.dp,
+    feather = 28.dp,
+    ripple = 0f,
+    smoothEdges = true,
+    roundStart = true
+)
+
+enum class SeekbarThumbShape {
+    Round,
+    Notched
+}
 
 @Suppress("CognitiveComplexMethod")
 @Composable
@@ -85,7 +122,8 @@ fun PremiumSeekbar(
     motionActive: Boolean = true,
     contentDescription: String? = null,
     waveform: FloatArray? = null,
-    interactionKey: Any? = null
+    interactionKey: Any? = null,
+    thumbShape: SeekbarThumbShape = SeekbarThumbShape.Round
 ) {
     val density = LocalDensity.current
     val haptics = LocalLevyraHaptics.current
@@ -249,6 +287,13 @@ fun PremiumSeekbar(
                 .fillMaxWidth()
                 .height(LevyraPlayerDesign.MinimumTouchTarget)
                 .clipToBounds()
+                .then(
+                    if (thumbShape == SeekbarThumbShape.Notched) {
+                        Modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                    } else {
+                        Modifier
+                    }
+                )
                 .semantics {
                     contentDescription?.let { this.contentDescription = it }
                     progressBarRangeInfo = ProgressBarRangeInfo(
@@ -318,27 +363,29 @@ fun PremiumSeekbar(
 
             val handleX = trackStart + seekbarHandleCenterX(renderedProgress, trackSpan, thumbRadius * 2f)
 
-            drawRoundRect(
-                color = inactiveColor,
-                topLeft = Offset(trackStart, trackTop),
-                size = Size(trackSpan, trackHeight),
-                cornerRadius = radius
-            )
-            drawCircle(
-                color = activeColor.copy(alpha = activeColor.alpha * 0.7f),
-                radius = TrackStopRadius.toPx(),
-                center = Offset(trackEnd - TrackStopRadius.toPx(), centerY)
-            )
-
-            val bufferedEnd = (trackStart + bufferedProgress * trackSpan).coerceIn(trackStart, trackEnd)
-            val bufferedSpan = bufferedEnd - trackStart
-            if (bufferedSpan > 0f) {
+            clipRect(left = if (thumbShape == SeekbarThumbShape.Notched) handleX else 0f) {
                 drawRoundRect(
-                    color = LevyraPlayerDesign.TrackBuffered,
+                    color = inactiveColor,
                     topLeft = Offset(trackStart, trackTop),
-                    size = Size(bufferedSpan, trackHeight),
+                    size = Size(trackSpan, trackHeight),
                     cornerRadius = radius
                 )
+                drawCircle(
+                    color = activeColor.copy(alpha = activeColor.alpha * 0.7f),
+                    radius = TrackStopRadius.toPx(),
+                    center = Offset(trackEnd - TrackStopRadius.toPx(), centerY)
+                )
+
+                val bufferedEnd = (trackStart + bufferedProgress * trackSpan).coerceIn(trackStart, trackEnd)
+                val bufferedSpan = bufferedEnd - trackStart
+                if (bufferedSpan > 0f) {
+                    drawRoundRect(
+                        color = LevyraPlayerDesign.TrackBuffered,
+                        topLeft = Offset(trackStart, trackTop),
+                        size = Size(bufferedSpan, trackHeight),
+                        cornerRadius = radius
+                    )
+                }
             }
 
             if (measuredWaveform != null) {
@@ -371,8 +418,14 @@ fun PremiumSeekbar(
                         top = centerY - trackHeight / 2f - WaveCrestHeight.toPx(),
                         bottom = centerY + trackHeight / 2f
                     ),
-                    waveIntensity = waveIntensity.value
+                    waveIntensity = waveIntensity.value,
+                    style = if (thumbShape == SeekbarThumbShape.Notched) RefinedWave else ClassicWave
                 )
+            }
+
+            if (thumbShape == SeekbarThumbShape.Notched) {
+                drawNotchedThumb(Offset(handleX, centerY), thumbRadius, activeColor.copy(alpha = 1f))
+                return@Canvas
             }
 
             if (scrub > 0.01f) {
@@ -401,6 +454,16 @@ fun PremiumSeekbar(
             )
         }
     }
+}
+
+private fun DrawScope.drawNotchedThumb(center: Offset, radius: Float, color: Color) {
+    drawCircle(
+        color = Color.Transparent,
+        radius = radius + NotchGap.toPx(),
+        center = center,
+        blendMode = BlendMode.Clear
+    )
+    drawCircle(color = color, radius = radius, center = center)
 }
 
 private class WaveBrushCache {
@@ -484,7 +547,8 @@ private fun DrawScope.drawAnimatedWaveform(
     trailingColor: Color,
     activeColor: Color,
     waveBrush: Brush,
-    waveIntensity: Float
+    waveIntensity: Float,
+    style: SeekbarWaveStyle
 ) {
     val centerY = size.height / 2f
     val radius = CornerRadius(trackHeight / 2f, trackHeight / 2f)
@@ -516,38 +580,36 @@ private fun DrawScope.drawAnimatedWaveform(
         val waveAlpha = (1f - scrub).coerceIn(0f, 1f)
         if (waveAlpha <= 0.001f) return@clipRect
 
-        val waveLength = 78.dp.toPx()
-        val minimumWaveSpan = 28.dp.toPx()
-        val amplitudeScale = (activeSpan / minimumWaveSpan).coerceIn(0f, 1f)
+        val waveLength = style.waveLength.toPx()
+        val amplitudeScale = (activeSpan / style.minimumSpan.toPx()).coerceIn(0f, 1f)
         val waveHeight = WaveCrestHeight.toPx() * waveReveal * amplitudeScale * waveIntensity.coerceIn(0f, 1f)
         val baselineY = centerY + trackHeight / 2f
         val topBaseY = centerY - trackHeight / 2f
         val step = 2.dp.toPx().coerceAtLeast(1f)
         val phaseOffset = if (animated && !isDragging) wavePhase else 0f
-        val edgeFeather = 18.dp.toPx().coerceAtMost(activeSpan / 2f)
+        val edgeFeather = style.feather.toPx().coerceAtMost(activeSpan / 2f)
 
+        val capRadius = if (style.roundStart) trackHeight / 2f else 0f
+        if (style.roundStart) {
+            drawCircle(
+                color = activeColor.copy(alpha = activeColor.alpha * waveAlpha),
+                radius = capRadius,
+                center = Offset(trackStart + capRadius, centerY)
+            )
+        }
         val waveFill = Path().apply {
-            moveTo(trackStart, baselineY)
-            lineTo(trackStart, topBaseY)
-            var x = trackStart
+            moveTo(trackStart + capRadius, baselineY)
+            lineTo(trackStart + capRadius, topBaseY)
+            var x = trackStart + capRadius
             while (x < handleX) {
                 val localX = x - trackStart
                 val phase = (localX / waveLength) * (2f * PI.toFloat()) + phaseOffset
                 val primaryCrest = (1f - cos(phase)) * 0.5f
-                val secondaryRipple = sin(phase * 2f) * 0.07f
-                val waterProfile = (primaryCrest + secondaryRipple).coerceIn(0f, 1f)
-                val edgeEnvelope = if (edgeFeather > 0f) {
-                    minOf(
-                        1f,
-                        localX / edgeFeather,
-                        (activeSpan - localX) / edgeFeather
-                    ).coerceIn(0f, 1f)
-                } else {
-                    1f
-                }
+                val waterProfile = (primaryCrest + sin(phase * 2f) * style.ripple).coerceIn(0f, 1f)
+                val envelope = waveEdgeEnvelope(localX, activeSpan, edgeFeather, style.smoothEdges)
                 lineTo(
                     x,
-                    topBaseY - waveHeight * waterProfile * edgeEnvelope
+                    topBaseY - waveHeight * waterProfile * envelope
                 )
                 x += step
             }
@@ -566,6 +628,12 @@ private fun DrawScope.drawAnimatedWaveform(
             alpha = activeColor.alpha * waveAlpha
         )
     }
+}
+
+private fun waveEdgeEnvelope(localX: Float, span: Float, feather: Float, smooth: Boolean): Float {
+    if (feather <= 0f) return 1f
+    val edge = minOf(1f, localX / feather, (span - localX) / feather).coerceIn(0f, 1f)
+    return if (smooth) edge * edge * (3f - 2f * edge) else edge
 }
 
 internal fun formatSeekbarMillis(ms: Long): String {

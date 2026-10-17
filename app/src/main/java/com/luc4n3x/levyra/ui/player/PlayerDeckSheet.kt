@@ -298,6 +298,7 @@ internal fun playerDeckLabel(mode: PlayerVisualMode, strings: LevyraStrings): St
         PlayerVisualMode.Pulse -> labels.pulse
         PlayerVisualMode.Halo -> labels.halo
         PlayerVisualMode.Folio -> labels.folio
+        PlayerVisualMode.Flow -> labels.flow
     }
 }
 
@@ -309,6 +310,7 @@ internal fun playerDeckHint(mode: PlayerVisualMode, strings: LevyraStrings): Str
     PlayerVisualMode.Pulse -> strings.playerDeckPulseHint
     PlayerVisualMode.Halo -> strings.playerDeckHaloHint
     PlayerVisualMode.Folio -> strings.playerDeckFolioHint
+    PlayerVisualMode.Flow -> strings.playerDeckFlowHint
 }
 
 @Composable
@@ -320,12 +322,13 @@ private fun PlayerDeckPreview(
 ) {
     when (mode) {
         PlayerVisualMode.CanvasImmersive -> ImmersivePreview(track, artworkUrl, accent)
-        PlayerVisualMode.CanvasCard -> CardPreview(track, artworkUrl, accent, glow = true)
-        PlayerVisualMode.Artwork -> CardPreview(track, artworkUrl, accent, glow = false)
+        PlayerVisualMode.CanvasCard -> SleevePreview(track, artworkUrl, accent)
+        PlayerVisualMode.Artwork -> CardPreview(track, artworkUrl, accent)
         PlayerVisualMode.Expressive -> ExpressivePreview(track, artworkUrl, accent)
         PlayerVisualMode.Pulse -> PulsePreview(track, artworkUrl, accent)
         PlayerVisualMode.Halo -> ExpressivePreview(track, artworkUrl, accent)
         PlayerVisualMode.Folio -> ExpressivePreview(track, artworkUrl, accent)
+        PlayerVisualMode.Flow -> FlowPreview(track, artworkUrl, accent)
     }
 }
 
@@ -384,13 +387,13 @@ private fun ImmersivePreview(track: Track, artworkUrl: String, accent: Color) {
 }
 
 @Composable
-private fun CardPreview(track: Track, artworkUrl: String, accent: Color, glow: Boolean) {
+private fun CardPreview(track: Track, artworkUrl: String, accent: Color) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    listOf(accent.copy(alpha = if (glow) 0.34f else 0.18f).compositeOnBlack(), Color.Black)
+                    listOf(accent.copy(alpha = 0.18f).compositeOnBlack(), Color.Black)
                 )
             )
     ) {
@@ -401,15 +404,6 @@ private fun CardPreview(track: Track, artworkUrl: String, accent: Color, glow: B
                 .fillMaxWidth(0.72f)
                 .aspectRatio(1f)
         ) {
-            if (glow) {
-                Canvas(modifier = Modifier.fillMaxSize().graphicsLayer { scaleX = 1.3f; scaleY = 1.3f }) {
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            listOf(accent.copy(alpha = 0.45f), Color.Transparent)
-                        )
-                    )
-                }
-            }
             DeckArtwork(
                 track = track,
                 artworkUrl = artworkUrl,
@@ -471,6 +465,130 @@ private fun ExpressivePreview(track: Track, artworkUrl: String, accent: Color) {
                     modifier = Modifier
                         .size(16.dp)
                         .background(ink.copy(alpha = 0.32f), CircleShape)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SleevePreview(track: Track, artworkUrl: String, accent: Color) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(accent.copy(alpha = 0.22f).compositeOnBlack(), Color.Black)))
+    ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 16.dp)
+                .fillMaxWidth(0.78f)
+                .aspectRatio(1.26f)
+        ) {
+            Canvas(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .fillMaxHeight(0.94f)
+                    .aspectRatio(1f)
+            ) {
+                drawCircle(Color(0xFF0B0B0D))
+                drawCircle(Color.White.copy(alpha = 0.08f), radius = size.minDimension * 0.34f, style = Stroke(width = 1.dp.toPx()))
+                drawCircle(accent, radius = size.minDimension * 0.18f)
+            }
+            DeckArtwork(
+                track = track,
+                artworkUrl = artworkUrl,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .fillMaxHeight()
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(6.dp))
+            )
+        }
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            PreviewBar(width = 70.dp, height = 7.dp, color = Color.White)
+            PreviewBar(width = 44.dp, height = 4.dp, color = Color.White.copy(alpha = 0.55f))
+            Spacer(modifier = Modifier.height(2.dp))
+            PreviewTransport(accent = accent)
+        }
+    }
+}
+
+@Composable
+private fun FlowPreview(track: Track, artworkUrl: String, accent: Color) {
+    val hero = lerp(accent, Color.White, 0.8f)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    0.46f to Color.Black,
+                    1f to lerp(accent, Color.Black, 0.86f)
+                )
+            )
+    ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 14.dp)
+                .fillMaxWidth(0.6f)
+                .aspectRatio(1f)
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize().graphicsLayer { scaleX = 1.45f; scaleY = 1.45f }) {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        0f to accent.copy(alpha = 0.46f),
+                        0.55f to accent.copy(alpha = 0.16f),
+                        1f to Color.Transparent
+                    )
+                )
+            }
+            DeckArtwork(
+                track = track,
+                artworkUrl = artworkUrl,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(flowCoverShape(1f))
+            )
+        }
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(start = 10.dp, end = 10.dp, bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            PreviewBar(width = 30.dp, height = 3.dp, color = Color.White.copy(alpha = 0.4f))
+            PreviewBar(width = 84.dp, height = 9.dp, color = Color.White)
+            PreviewBar(width = 50.dp, height = 4.dp, color = Color.White.copy(alpha = 0.6f))
+            Spacer(modifier = Modifier.height(1.dp))
+            PreviewWave(accent = hero)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(14.dp)
+                        .background(Color.White.copy(alpha = 0.16f), FlowLeafShape(0.42f, 0.16f, mirrored = true))
+                )
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .background(hero, FlowLeafShape(FlowLeafMajor, FlowLeafMinor * 1.4f))
+                )
+                Box(
+                    modifier = Modifier
+                        .size(14.dp)
+                        .background(Color.White.copy(alpha = 0.16f), FlowLeafShape(0.42f, 0.16f))
                 )
             }
         }
