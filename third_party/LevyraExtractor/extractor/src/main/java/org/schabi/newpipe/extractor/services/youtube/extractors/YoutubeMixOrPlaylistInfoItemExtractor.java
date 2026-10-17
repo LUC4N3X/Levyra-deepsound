@@ -13,12 +13,20 @@ import org.schabi.newpipe.extractor.playlist.PlaylistInfo;
 import org.schabi.newpipe.extractor.playlist.PlaylistInfoItemExtractor;
 import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper;
 import org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubePlaylistLinkHandlerFactory;
+import org.schabi.newpipe.extractor.utils.Utils;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.annotation.Nonnull;
 
 public class YoutubeMixOrPlaylistInfoItemExtractor implements PlaylistInfoItemExtractor {
     private static final String MIX_TITLE_PREFIX = "Mix - ";
     private static final String ZULU_MIX_TITLE_PREFIX = "Imiksi - ";
+    private static final Pattern ABBREVIATED_COUNT =
+            Pattern.compile("\\d+(?:[.,]\\d+)?[KMBkmb](?!\\p{L})");
+    private static final Pattern GROUPED_COUNT =
+            Pattern.compile("\\d+(?:[.,\\u00a0\\u202f]\\d+)*");
     private final JsonObject mixInfoItem;
 
     public YoutubeMixOrPlaylistInfoItemExtractor(final JsonObject mixInfoItem) {
@@ -84,22 +92,54 @@ public class YoutubeMixOrPlaylistInfoItemExtractor implements PlaylistInfoItemEx
 
     @Override
     public long getStreamCount() throws ParsingException {
-        final String countString = YoutubeParsingHelper.getTextFromObject(
+        final String shortCountString = YoutubeParsingHelper.getTextFromObject(
                 mixInfoItem.getObject("videoCountShortText"));
-        if (countString == null) {
+        if (shortCountString != null) {
+            try {
+                return Integer.parseInt(shortCountString);
+            } catch (final NumberFormatException ignored) {
+                // un-parsable integer: this is a mix with infinite items and "50+" as count string
+                // (though youtube music mixes do not necessarily have an infinite count of songs)
+                return ListExtractor.ITEM_COUNT_INFINITE;
+            }
+        }
+
+        String countString = mixInfoItem.getString("videoCount");
+        if (isNullOrEmpty(countString)) {
+            countString = YoutubeParsingHelper.getTextFromObject(
+                    mixInfoItem.getObject("videoCountText"));
+        }
+        if (isNullOrEmpty(countString)) {
             // The item count is optional too: some incomplete playlist/mix items have no
-            // "videoCountShortText". Report "unknown" rather than throwing, so the item is
+            // count at all. Report "unknown" rather than throwing, so the item is
             // still committed instead of bubbling up a spurious error (#2546).
             return ListExtractor.ITEM_COUNT_UNKNOWN;
         }
-
-        try {
-            return Integer.parseInt(countString);
-        } catch (final NumberFormatException ignored) {
-            // un-parsable integer: this is a mix with infinite items and "50+" as count string
-            // (though youtube music mixes do not necessarily have an infinite count of songs)
+        if (countString.contains("+")) {
             return ListExtractor.ITEM_COUNT_INFINITE;
         }
+        if (ABBREVIATED_COUNT.matcher(countString).find()) {
+            try {
+                return Utils.mixedNumberWordToLong(countString);
+            } catch (final NumberFormatException | ParsingException e) {
+                return ListExtractor.ITEM_COUNT_UNKNOWN;
+            }
+        }
+        final Matcher number = GROUPED_COUNT.matcher(countString);
+        if (!number.find()) {
+            return ListExtractor.ITEM_COUNT_UNKNOWN;
+        }
+        final String[] groups = number.group().split("[.,\\u00a0\\u202f]");
+        for (int i = 1; i < groups.length; i++) {
+            if (groups[i].length() != 3) {
+                return ListExtractor.ITEM_COUNT_UNKNOWN;
+            }
+        }
+        final String digits = String.join("", groups);
+        if (digits.length() > 9) {
+            return ListExtractor.ITEM_COUNT_UNKNOWN;
+        }
+        return Long.parseLong(digits);
     }
 
     @Nonnull
