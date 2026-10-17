@@ -6,6 +6,7 @@ import com.luc4n3x.levyra.data.hqaudio.AlternativeTrackCandidate
 import com.luc4n3x.levyra.data.hqaudio.AlternativeTrackMatcher
 import com.luc4n3x.levyra.data.hqaudio.AlternativeTrackQuery
 import com.luc4n3x.levyra.data.hqaudio.MatchRejection
+import com.luc4n3x.levyra.data.hqaudio.searchCandidates
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -159,7 +160,7 @@ class JioSaavnFamousTracksMatchingTest {
 
     private fun load(name: String): List<AlternativeTrackCandidate> {
         val body = requireNotNull(javaClass.classLoader?.getResource("jiosaavn/$name")) { name }.readText()
-        return requireNotNull(JioSaavnPayloadParser.searchCandidates(body)) { name }
+        return requireNotNull(searchCandidates(body)) { name }
     }
 
     private fun select(query: AlternativeTrackQuery, candidates: List<AlternativeTrackCandidate>) =

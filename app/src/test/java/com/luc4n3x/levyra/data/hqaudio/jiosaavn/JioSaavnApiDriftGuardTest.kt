@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.data.hqaudio.jiosaavn
 
 import com.luc4n3x.levyra.data.hqaudio.saavnSong
 import com.luc4n3x.levyra.data.hqaudio.searchBody
+import com.luc4n3x.levyra.data.hqaudio.searchCandidates
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -12,7 +13,7 @@ class JioSaavnApiDriftGuardTest {
     @Test
     fun searchResultMissingIdIsSkippedNotCrashed() {
         val song = saavnSong("k1", "Some Song", listOf("Artist"), "Album", 180).apply { remove("id") }
-        assertTrue(JioSaavnPayloadParser.searchCandidates(searchBody(song))!!.isEmpty())
+        assertTrue(searchCandidates(searchBody(song))!!.isEmpty())
     }
 
     @Test
@@ -23,7 +24,7 @@ class JioSaavnApiDriftGuardTest {
                 put("primary_artists", "Ariana Grande, The Weeknd")
             }
         }
-        val candidate = JioSaavnPayloadParser.searchCandidates(searchBody(song))!!.single()
+        val candidate = searchCandidates(searchBody(song))!!.single()
         assertEquals(listOf("Ariana Grande", "The Weeknd"), candidate.primaryArtists)
     }
 
@@ -32,7 +33,7 @@ class JioSaavnApiDriftGuardTest {
         val song = saavnSong("k3", "Some Song", listOf("Artist"), "Album", 180).apply {
             getJSONObject("more_info").put("320kbps", 1)
         }
-        val candidate = JioSaavnPayloadParser.searchCandidates(searchBody(song))!!.single()
+        val candidate = searchCandidates(searchBody(song))!!.single()
         assertEquals(true, candidate.offers320)
     }
 
@@ -75,6 +76,6 @@ class JioSaavnApiDriftGuardTest {
 
     @Test
     fun malformedTopLevelSearchEnvelopeIsNullNotACrash() {
-        assertNull(JioSaavnPayloadParser.searchCandidates("{\"results\":\"not-an-array\"}"))
+        assertNull(searchCandidates("{\"results\":\"not-an-array\"}"))
     }
 }

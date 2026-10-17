@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.data.hqaudio.jiosaavn
 
 import com.luc4n3x.levyra.data.hqaudio.AlternativeTrackCandidate
 import com.luc4n3x.levyra.data.hqaudio.AlternativeTrackText
+import com.luc4n3x.levyra.data.hqaudio.UnplayableSearchRow
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -17,11 +18,36 @@ internal sealed interface JioSaavnMediaAuthorization {
     data object Malformed : JioSaavnMediaAuthorization
 }
 
+internal data class JioSaavnSearchPage(
+    val candidates: List<AlternativeTrackCandidate>,
+    val hasMore: Boolean,
+    val unplayableRows: List<UnplayableSearchRow> = emptyList()
+)
+
 internal object JioSaavnPayloadParser {
-    fun searchCandidates(body: String): List<AlternativeTrackCandidate>? {
+    fun searchPage(body: String, pageSize: Int): JioSaavnSearchPage? {
         val root = parseObject(body) ?: return null
         val results = root.optJSONArray("results") ?: return null
-        return objects(results).mapNotNull(::candidateOf)
+        val returned = results.length()
+        val songs = objects(results).filter { it.optString("type").let { type -> type.isEmpty() || type == "song" } }
+        val parsed = songs.map { it to candidateOf(it) }
+        return JioSaavnSearchPage(
+            candidates = parsed.mapNotNull { it.second },
+            hasMore = returned > 0 && returned >= pageSize && resultsRemain(root, returned),
+            unplayableRows = parsed.filter { it.second == null }.mapNotNull { (json, _) -> unplayableRow(json) }
+        )
+    }
+
+    private fun unplayableRow(json: JSONObject): UnplayableSearchRow? {
+        val title = decode(json.optString("title").ifBlank { json.optString("song") })
+        if (title.isBlank()) return null
+        return UnplayableSearchRow(title, json.optString("language").trim().lowercase())
+    }
+
+    private fun resultsRemain(root: JSONObject, returned: Int): Boolean {
+        val total = root.opt("total")?.toString()?.trim()?.toIntOrNull() ?: return true
+        val start = root.opt("start")?.toString()?.trim()?.toIntOrNull() ?: return true
+        return start - 1 + returned < total
     }
 
     fun songDetails(body: String, providerTrackId: String): JioSaavnSongDetails {
