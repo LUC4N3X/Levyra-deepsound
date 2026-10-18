@@ -34,7 +34,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.FastRewind
 import androidx.compose.material.icons.rounded.Favorite
@@ -83,7 +82,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -447,7 +452,6 @@ private fun NightStage(
             )
             slots.gestures(track, Modifier.matchParentSize())
             NightHeadline(
-                linerNotes = slots.linerNotes,
                 track = track,
                 isFavorite = isFavorite,
                 animated = animated,
@@ -455,6 +459,7 @@ private fun NightStage(
                 stepDirection = stepDirection,
                 onArtistClick = onArtistClick,
                 onToggleFavorite = onToggleFavorite,
+                creditsEyebrow = slots.creditsEyebrow,
                 modifier = headlineModifier
                     .fillMaxWidth()
                     .padding(
@@ -482,7 +487,6 @@ private class NightSignalLevel {
 
 @Composable
 private fun NightHeadline(
-    linerNotes: PlayerLinerNotesState?,
     track: Track,
     isFavorite: Boolean,
     animated: Boolean,
@@ -490,6 +494,7 @@ private fun NightHeadline(
     stepDirection: Int,
     onArtistClick: (Int) -> Unit,
     onToggleFavorite: () -> Unit,
+    creditsEyebrow: PlayerCreditsEyebrow?,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
@@ -504,6 +509,10 @@ private fun NightHeadline(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            if (creditsEyebrow != null && creditsEyebrow.trackId == shown.id) {
+                NightCreditsEyebrow(creditsEyebrow)
+                Spacer(Modifier.height(LevyraPlayerDesign.SpaceXs))
+            }
             val titleSize = flowTitleSize(shown.title, compact)
             Text(
                 text = shown.title,
@@ -530,7 +539,6 @@ private fun NightHeadline(
                 onArtistClick = onArtistClick,
                 enabled = shown.id == track.id
             )
-            PlayerLinerNotes(notes = linerNotes, track = shown, color = Color.White.copy(alpha = 0.8f))
             Spacer(Modifier.height(LevyraPlayerDesign.SpaceSm))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -548,6 +556,46 @@ private fun NightHeadline(
         }
     }
 }
+
+@Composable
+private fun NightCreditsEyebrow(eyebrow: PlayerCreditsEyebrow) {
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        val available = constraints.maxWidth - with(density) { (NightEyebrowPadding * 2).roundToPx() }
+        val heading = eyebrow.heading.uppercase()
+        val line = remember(heading, eyebrow.names, available) {
+            playerCreditsLine(eyebrow.names) { names ->
+                measurer.measure("$heading  ${names.uppercase()}", NightEyebrowStyle).size.width <= available
+            }
+        }
+        Text(
+            text = buildAnnotatedString {
+                withStyle(SpanStyle(color = Color.White.copy(alpha = 0.56f))) { append(heading) }
+                append("  ")
+                withStyle(SpanStyle(color = Color.White.copy(alpha = 0.9f))) { append(line.uppercase()) }
+            },
+            style = NightEyebrowStyle,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            modifier = Modifier
+                .clip(CircleShape)
+                .levyraPressable(onClick = eyebrow.onClick, role = Role.Button)
+                .semantics {
+                    contentDescription = "${eyebrow.contentDescription}: ${eyebrow.names.joinToString(", ")}"
+                }
+                .padding(horizontal = NightEyebrowPadding, vertical = 6.dp)
+        )
+    }
+}
+
+private val NightEyebrowPadding = 10.dp
+private val NightEyebrowStyle = TextStyle(
+    fontSize = 11.sp,
+    fontWeight = FontWeight.Bold,
+    letterSpacing = 1.8.sp,
+    shadow = Shadow(Color.Black.copy(alpha = 0.4f), blurRadius = 8f)
+)
 
 @Composable
 private fun NightFavoriteButton(
@@ -871,7 +919,18 @@ private fun NightActions(
         dockActions.filter { it.key == NightActionQueue || it.key == NightActionDeck }
     }
     val extras = dockActions.filter { it.key != NightActionLyrics && it !in tiles }
+    val textMeasurer = rememberTextMeasurer()
+    val density = LocalDensity.current
     BoxWithConstraints(modifier = Modifier.fillMaxWidth().nightHorizontalBleed(gutter)) {
+        val labelsFit = remember(labels.shuffle, labels.repeat, lyrics?.label, extras.size, maxWidth, gutter, density) {
+            nightChipLabelsFit(
+                labeled = listOfNotNull(labels.shuffle, lyrics?.label, labels.repeat),
+                iconOnlyCount = extras.size,
+                available = maxWidth - gutter * 2,
+                measure = { textMeasurer.measure(it, NightChipLabelStyle).size.width },
+                density = density
+            )
+        }
         Row(
             modifier = Modifier
                 .horizontalScroll(rememberScrollState())
@@ -883,7 +942,7 @@ private fun NightActions(
             NightChip(
                 icon = Icons.Rounded.Shuffle,
                 label = labels.shuffle,
-                showLabel = true,
+                showLabel = labelsFit,
                 active = shuffleOn,
                 toggle = true,
                 surfaces = surfaces,
@@ -906,7 +965,7 @@ private fun NightActions(
             NightChip(
                 icon = if (repeatMode == RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
                 label = labels.repeat,
-                showLabel = true,
+                showLabel = labelsFit,
                 active = repeatMode != RepeatMode.Off,
                 toggle = true,
                 surfaces = surfaces,
@@ -1005,8 +1064,7 @@ private fun NightChip(
             Text(
                 text = label,
                 color = content,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = NightChipLabelStyle,
                 maxLines = 1,
                 modifier = Modifier.clearAndSetSemantics { }
             )
@@ -1062,8 +1120,24 @@ private fun NightTile(
                 )
             }
         }
-        PlayerIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, surfaces.contentFaint, Modifier.size(18.dp))
     }
+}
+
+private val NightChipLabelStyle = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+
+private fun nightChipLabelsFit(
+    labeled: List<String>,
+    iconOnlyCount: Int,
+    available: Dp,
+    measure: (String) -> Int,
+    density: Density
+): Boolean = with(density) {
+    val iconChip = 20.dp.toPx() + LevyraPlayerDesign.SpaceMd.toPx() * 2
+    val labeledChrome = iconChip + LevyraPlayerDesign.SpaceSm.toPx()
+    val chips = labeled.size + iconOnlyCount
+    val gaps = LevyraPlayerDesign.SpaceSm.toPx() * (chips - 1).coerceAtLeast(0)
+    val needed = labeled.sumOf(measure) + labeledChrome * labeled.size + iconChip * iconOnlyCount + gaps
+    needed <= available.toPx()
 }
 
 @Composable

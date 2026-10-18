@@ -106,7 +106,6 @@ internal fun PlayerPosterDeck(
                 )
         ) {
             PosterHeadline(
-                linerNotes = slots.linerNotes,
                 track = track,
                 surfaces = surfaces,
                 isFavorite = isFavorite,
@@ -123,7 +122,6 @@ internal fun PlayerPosterDeck(
 
 @Composable
 private fun PosterHeadline(
-    linerNotes: PlayerLinerNotesState?,
     track: Track,
     surfaces: PlayerSurfaceTokens,
     isFavorite: Boolean,
@@ -172,7 +170,6 @@ private fun PosterHeadline(
                     onArtistClick = onArtistClick,
                     enabled = isCurrent
                 )
-                PlayerLinerNotes(notes = linerNotes, track = shown, color = surfaces.contentMuted)
             }
             if (isCurrent) {
                 PlayerFavoriteButton(

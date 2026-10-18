@@ -170,7 +170,8 @@ import com.luc4n3x.levyra.viewmodel.PlayerViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
-private const val LinerNotesPrefetchDelayMs = 1_200L
+private const val CreditsPrefetchDelayMs = 1_200L
+private const val CreditsCaptionRevealMs = 360
 private val MinimumFittedPlayerHeight = 600.dp
 private val ScrollingArtworkMax = 260.dp
 private val HeaderSideReserve = 108.dp
@@ -283,22 +284,13 @@ fun LevyraNowPlaying(
     var showActions by remember { mutableStateOf(false) }
     var showTechnicalAudioInfo by remember(track?.id) { mutableStateOf(false) }
     var showTrackCredits by remember(track?.id) { mutableStateOf(false) }
-    val openTrackCredits: () -> Unit = remember(track?.id) { { showTrackCredits = true } }
-    val trackCreditsCopy = strings.trackCreditsCopy()
-    var linerNotes by remember { mutableStateOf<PlayerLinerNotesState?>(null) }
+    var creditWriters by remember { mutableStateOf<Pair<String, List<String>>?>(null) }
     LaunchedEffect(track?.id, liveRadio) {
         val current = track
-        if (current == null || liveRadio) {
-            linerNotes = null
-            return@LaunchedEffect
-        }
-        delay(LinerNotesPrefetchDelayMs)
-        val credits = viewModel.trackCredits(current, false)
-        linerNotes = PlayerLinerNotesState(
-            trackId = current.id,
-            text = playerLinerNotesText(credits, trackCreditsCopy),
-            onClick = openTrackCredits
-        )
+        if (current == null || liveRadio) return@LaunchedEffect
+        delay(CreditsPrefetchDelayMs)
+        val writers = viewModel.trackCredits(current, false).writers
+        creditWriters = current.id to writers
     }
     var showAudioRouteCenter by rememberSaveable { mutableStateOf(false) }
     var showDeck by rememberSaveable { mutableStateOf(false) }
@@ -970,7 +962,6 @@ fun LevyraNowPlaying(
                             ?: viewModel.openArtist(activeTrack, artistIndex)
                     },
                     onToggleFavorite = { viewModel.toggleFavorite(activeTrack) },
-                    linerNotes = linerNotes,
                     modifier = lyricsFlipSwipeModifier
                 )
             }
@@ -1128,7 +1119,15 @@ fun LevyraNowPlaying(
             },
             dock = dockBlock,
             dockActions = dockActionsFor,
-            linerNotes = linerNotes
+            creditsEyebrow = creditWriters?.takeIf { it.second.isNotEmpty() }?.let { (id, writers) ->
+                PlayerCreditsEyebrow(
+                    trackId = id,
+                    heading = strings.trackCreditsCopy().writtenBy,
+                    names = writers,
+                    contentDescription = strings.trackCreditsCopy().title,
+                    onClick = { showTrackCredits = true }
+                )
+            }
         )
         val deckModifier = rootModifier
             .widthIn(max = detailMaxWidth)
@@ -1574,6 +1573,31 @@ fun LevyraNowPlaying(
                     onClick = { videoFullscreen = false }
                 )
             }
+        }
+
+        val captionWriters = creditWriters?.takeIf { it.first == track?.id }?.second.orEmpty()
+        AnimatedVisibility(
+            visible = captionWriters.isNotEmpty() && !liveRadio &&
+                !state.isVideoMode && playerPane != LevyraPlayerPane.SideBySide &&
+                deckLayout != PlayerDeckLayout.Aura && deckLayout != PlayerDeckLayout.Pulse,
+            enter = fadeIn(tween(if (animated) CreditsCaptionRevealMs else 0)),
+            exit = fadeOut(tween(if (animated) CreditsCaptionRevealMs / 2 else 0)),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
+                .padding(
+                    end = gutter,
+                    top = LevyraPlayerDesign.MinimumTouchTarget + LevyraPlayerDesign.SpaceLg
+                )
+                .zIndex(24f)
+        ) {
+            PlayerCreditsCaption(
+                heading = strings.trackCreditsCopy().writtenBy,
+                names = captionWriters,
+                contentDescription = strings.trackCreditsCopy().title,
+                surfaces = surfaces,
+                onClick = { showTrackCredits = true }
+            )
         }
 
         if (showTopArtistCluster) {

@@ -144,7 +144,6 @@ internal fun PlayerSleeveDeck(
             slots.gestures(track, Modifier.matchParentSize())
         }
         SleeveHeadline(
-            linerNotes = slots.linerNotes,
             track = track,
             surfaces = surfaces,
             isFavorite = isFavorite,
@@ -242,7 +241,6 @@ private fun DrawScope.drawSleeveLabel(label: Color, labelShade: Color) {
 
 @Composable
 private fun SleeveHeadline(
-    linerNotes: PlayerLinerNotesState?,
     track: Track,
     surfaces: PlayerSurfaceTokens,
     isFavorite: Boolean,
@@ -331,7 +329,6 @@ private fun SleeveHeadline(
                     onArtistClick = onArtistClick,
                     enabled = shown.id == track.id
                 )
-                PlayerLinerNotes(notes = linerNotes, track = shown, color = surfaces.content.copy(alpha = SleeveArtistAlpha))
             }
         }
     }

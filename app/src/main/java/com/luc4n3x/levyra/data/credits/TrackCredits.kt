@@ -40,6 +40,13 @@ data class TrackCredits(
     val remoteResolved: Boolean = false
 ) {
     val isEmpty: Boolean get() = sections.none { it.people.isNotEmpty() } && release.isEmpty
+
+    val writers: List<String>
+        get() = sections
+            .filter { it.group == TrackCreditGroup.Composition }
+            .flatMap { it.people }
+            .map { it.name }
+            .distinct()
 }
 
 internal object TrackCreditsParser {
