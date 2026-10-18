@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
+import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
@@ -38,6 +39,10 @@ import com.luc4n3x.levyra.ui.theme.LevyraPink
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraType
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
+
+@Composable
+internal fun Modifier.levyraMarquee(enabled: Boolean = true): Modifier =
+    if (enabled && LocalAnimationsEnabled.current) basicMarquee() else this
 
 @Composable
 internal fun Modifier.levyraDockSurface(): Modifier {
@@ -104,7 +109,7 @@ internal fun LevyraCardCaption(
             style = titleStyle,
             maxLines = effectiveLines,
             overflow = TextOverflow.Ellipsis,
-            modifier = if (marqueeTitle) Modifier.basicMarquee() else Modifier
+            modifier = Modifier.levyraMarquee(enabled = marqueeTitle)
         )
         if (subtitle.isNotBlank()) {
             Text(

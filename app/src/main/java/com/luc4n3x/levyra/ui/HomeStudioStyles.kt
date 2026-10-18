@@ -121,6 +121,7 @@ import com.luc4n3x.levyra.domain.HomeStyle
 import com.luc4n3x.levyra.domain.LevyraHomeStudioSettings
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.components.LevyraCardCaption
+import com.luc4n3x.levyra.ui.components.levyraMarquee
 import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import com.luc4n3x.levyra.ui.components.LevyraPlayingIndicator
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
@@ -135,7 +136,6 @@ import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import java.util.Date
-import androidx.compose.ui.platform.LocalLocale
 import java.util.Locale
 
 @Immutable
@@ -598,7 +598,7 @@ private fun StudioExpressiveCarousel(
                     color = Color.White,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.basicMarquee()
+                    modifier = Modifier.levyraMarquee()
                 )
                 if (item.subtitle.isNotBlank()) {
                     Text(
@@ -647,7 +647,7 @@ private fun StudioExpressiveMosaic(
                             color = Color.White,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.basicMarquee()
+                            modifier = Modifier.levyraMarquee()
                         )
                         Text(
                             text = hero.subtitle,
@@ -767,7 +767,7 @@ private fun StudioLargeOverlayCaption(
             color = Color.White,
             maxLines = if (marquee) 1 else 2,
             overflow = TextOverflow.Ellipsis,
-            modifier = if (marquee) Modifier.basicMarquee() else Modifier
+            modifier = Modifier.levyraMarquee(enabled = marquee)
         )
         if (item.subtitle.isNotBlank()) {
             Text(
@@ -799,7 +799,7 @@ private fun StudioLargeExternalCaption(
             color = studioTitleColor(item),
             maxLines = if (marquee) 1 else 2,
             overflow = TextOverflow.Ellipsis,
-            modifier = if (marquee) Modifier.basicMarquee() else Modifier
+            modifier = Modifier.levyraMarquee(enabled = marquee)
         )
         if (item.subtitle.isNotBlank()) {
             Text(
@@ -910,7 +910,7 @@ private fun StudioList(
                         color = studioTitleColor(item),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = if (marquee) Modifier.basicMarquee() else Modifier
+                        modifier = Modifier.levyraMarquee(enabled = marquee)
                     )
                     if (item.subtitle.isNotBlank()) {
                         Text(
@@ -978,7 +978,7 @@ private fun StudioCompact(
                             modifier = Modifier
                                 .weight(1f)
                                 .padding(horizontal = 10.dp)
-                                .then(if (marquee) Modifier.basicMarquee() else Modifier)
+                                .levyraMarquee(enabled = marquee)
                         )
                         if (item.current) {
                             Box(modifier = Modifier.padding(end = 10.dp)) {
@@ -1020,7 +1020,7 @@ private fun StudioChipRow(spec: HomeStyleSpec, items: List<StudioShelfItem>, mod
                     color = LevyraText,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.basicMarquee()
+                    modifier = Modifier.levyraMarquee()
                 )
             }
         }
@@ -1135,7 +1135,7 @@ internal fun StudioHomeHeader(
                         color = LevyraText,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.basicMarquee()
+                        modifier = Modifier.levyraMarquee()
                     )
                 }
             }
@@ -1510,7 +1510,7 @@ private fun ExpressiveSpotlight(
                                     .background(scheme.tertiary)
                             )
                             Text(
-                                text = strings.homeSoundtrackRadio.uppercase(LocalLocale.current.platformLocale),
+                                text = strings.homeSoundtrackRadio.uppercase(Locale.forLanguageTag(strings.code)),
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontWeight = FontWeight.ExtraBold,
                                     letterSpacing = 1.2.sp
@@ -1556,7 +1556,7 @@ private fun ExpressiveSpotlight(
                                 color = if (isLight) LevyraText else Color.White,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.basicMarquee()
+                                modifier = Modifier.levyraMarquee()
                             )
                             Text(
                                 text = lead.ifBlank { track.artist },
@@ -1566,7 +1566,7 @@ private fun ExpressiveSpotlight(
                                 color = if (isLight) LevyraMuted else Color.White.copy(alpha = 0.78f),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.basicMarquee()
+                                modifier = Modifier.levyraMarquee()
                             )
                         }
                     }
@@ -1712,7 +1712,7 @@ private fun EditorialSpotlight(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = lead.ifBlank { track.artist }.uppercase(LocalLocale.current.platformLocale),
+                    text = lead.ifBlank { track.artist }.uppercase(Locale.forLanguageTag(LocalLevyraStrings.current.code)),
                     style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 1.6.sp),
                     color = Color.White.copy(alpha = 0.78f),
                     maxLines = 2,
@@ -3535,7 +3535,7 @@ private fun MxBleedGreeting(
                 color = textColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.basicMarquee()
+                modifier = Modifier.levyraMarquee()
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -3620,7 +3620,7 @@ private fun MxBleedTitle(
                             .background(scheme.tertiary)
                     )
                     Text(
-                        text = radioLabel.uppercase(LocalLocale.current.platformLocale),
+                        text = radioLabel.uppercase(Locale.forLanguageTag(LocalLevyraStrings.current.code)),
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.ExtraBold,
                             letterSpacing = 1.2.sp
@@ -3694,7 +3694,7 @@ private fun MxBleedTitle(
                         ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.basicMarquee()
+                        modifier = Modifier.levyraMarquee()
                     )
                     Text(
                         text = hero.lead.ifBlank { hero.track.artist },
@@ -3704,7 +3704,7 @@ private fun MxBleedTitle(
                         color = scheme.onTertiaryContainer.copy(alpha = 0.78f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.basicMarquee()
+                        modifier = Modifier.levyraMarquee()
                     )
                 }
                 Box(
@@ -3779,7 +3779,7 @@ private fun MxGreetingRow(
                 style = MaterialTheme.typography.headlineLargeEmphasized,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.basicMarquee()
+                modifier = Modifier.levyraMarquee()
             )
         }
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {

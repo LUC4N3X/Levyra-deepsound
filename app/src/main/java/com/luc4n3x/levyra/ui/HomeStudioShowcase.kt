@@ -13,7 +13,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.basicMarquee
+import com.luc4n3x.levyra.ui.components.levyraMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -292,7 +292,7 @@ private fun MaxChartPodium(podium: List<Track>, rowState: StudioChartRowState) {
             textAlign = TextAlign.Center,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 32.dp).basicMarquee()
+            modifier = Modifier.padding(horizontal = 32.dp).levyraMarquee()
         )
         Text(
             text = leader.artist,
@@ -433,7 +433,7 @@ private fun MaxTickerChip(rank: Int, track: Track, rowState: StudioChartRowState
                 MaxRankBadge(rank = rank, size = 26.dp, modifier = Modifier.align(Alignment.BottomEnd).offset(x = 4.dp, y = 4.dp))
             }
             Column(modifier = Modifier.weight(1f).padding(end = 10.dp)) {
-                Text(track.title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.basicMarquee())
+                Text(track.title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.levyraMarquee())
                 Text(track.artist, style = MaterialTheme.typography.bodySmall, color = LevyraMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (current) {
@@ -501,7 +501,7 @@ private fun MaxSegmentRow(rank: Int, track: Track, first: Boolean, last: Boolean
             MaxRankBadge(rank = rank, size = 38.dp)
             Box(Modifier.size(46.dp).clip(RoundedCornerShape(14.dp))) { CoverImage(track = track, modifier = Modifier.fillMaxSize()) }
             Column(modifier = Modifier.weight(1f)) {
-                Text(track.title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.basicMarquee())
+                Text(track.title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.levyraMarquee())
                 Text(track.artist, style = MaterialTheme.typography.bodySmall, color = LevyraMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (current) LevyraPlayingIndicator(playing = rowState.isPlaying, color = scheme.primary, size = 12.dp)
@@ -799,7 +799,7 @@ private fun ResonanceTrackLine(track: Track, actions: StudioResonanceActions, co
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Box(Modifier.size(40.dp).clip(coverShape)) { CoverImage(track = track, modifier = Modifier.fillMaxSize()) }
         Column(modifier = Modifier.weight(1f)) {
-            Text(track.title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = if (current) MaterialTheme.colorScheme.primary else LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.basicMarquee())
+            Text(track.title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = if (current) MaterialTheme.colorScheme.primary else LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.levyraMarquee())
             Text(track.artist, style = MaterialTheme.typography.bodySmall, color = LevyraMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         FilledIconButton(onClick = { actions.onPlay(track) }, shapes = IconButtonDefaults.shapes(), modifier = Modifier.size(40.dp)) {
