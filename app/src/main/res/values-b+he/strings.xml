@@ -77,7 +77,7 @@
     <string name="car_item_unavailable">הפריט לא זמין</string>
     <string name="car_artist_folder_subtitle">שירים, מועדפים והצעות</string>
     <plurals name="car_tracks_count">
-        <item quantity="one">%1$d שיר</item>
+        <item quantity="one">שיר אחד</item>
         <item quantity="two">%1$d שירים</item>
         <item quantity="other">%1$d שירים</item>
     </plurals>

@@ -65,13 +65,13 @@
     <string name="car_home_recommended_title">Për ty</string>
     <string name="car_home_recommended_subtitle">Rekomandime nga profili muzikor</string>
     <string name="car_home_driver_title">Për makinë</string>
-    <string name="car_home_driver_subtitle">Të preferuara, të fundit dhe këngë energjike</string>
+    <string name="car_home_driver_subtitle">Të preferuarat, të fundit dhe këngë energjike</string>
     <string name="car_home_offline_title">Gati offline</string>
     <string name="car_home_offline_subtitle">Shkarkime që luhen pa rrjet</string>
     <string name="car_home_top_local_title">Top lokal</string>
     <string name="car_home_top_local_subtitle">Listë e përditësuar për gjuhën e zgjedhur</string>
     <string name="car_home_flow_subtitle">Miks personal i vazhdueshëm</string>
-    <string name="car_playlist_unavailable">Lista nuk është e disponueshme</string>
+    <string name="car_playlist_unavailable">Lista e luajtjes nuk është e disponueshme</string>
     <string name="car_album_unavailable">Albumi nuk është i disponueshëm</string>
     <string name="car_artist_unavailable">Artisti nuk është i disponueshëm</string>
     <string name="car_item_unavailable">Elementi nuk është i disponueshëm</string>

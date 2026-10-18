@@ -78,8 +78,8 @@
     <string name="car_artist_folder_subtitle">مقاطع ومفضلة واقتراحات</string>
     <plurals name="car_tracks_count">
         <item quantity="zero">%1$d مقطع</item>
-        <item quantity="one">%1$d مقطع</item>
-        <item quantity="two">%1$d مقطع</item>
+        <item quantity="one">مقطع واحد</item>
+        <item quantity="two">مقطعان</item>
         <item quantity="few">%1$d مقاطع</item>
         <item quantity="many">%1$d مقطعًا</item>
         <item quantity="other">%1$d مقطع</item>

@@ -71,7 +71,7 @@
     <string name="car_home_top_local_title">Τοπικό top</string>
     <string name="car_home_top_local_subtitle">Ενημερωμένο τσαρτ για την επιλεγμένη γλώσσα</string>
     <string name="car_home_flow_subtitle">Συνεχές προσωπικό μίξ</string>
-    <string name="car_playlist_unavailable">Η λίστα δεν είναι διαθέσιμη</string>
+    <string name="car_playlist_unavailable">Η λίστα αναπαραγωγής δεν είναι διαθέσιμη</string>
     <string name="car_album_unavailable">Το άλμπουμ δεν είναι διαθέσιμο</string>
     <string name="car_artist_unavailable">Ο καλλιτέχνης δεν είναι διαθέσιμος</string>
     <string name="car_item_unavailable">Το στοιχείο δεν είναι διαθέσιμο</string>

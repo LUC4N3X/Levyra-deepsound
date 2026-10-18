@@ -62,7 +62,7 @@
     <string name="car_playlists_subtitle">Kolekcje utworzone w aplikacji</string>
     <string name="car_recents_title">Ostatnio słuchane</string>
     <string name="car_recents_subtitle">Ostatnio znalezione utwory</string>
-    <string name="car_home_recommended_title">Dla ciebie</string>
+    <string name="car_home_recommended_title">Dla Ciebie</string>
     <string name="car_home_recommended_subtitle">Rekomendacje z profilu muzycznego</string>
     <string name="car_home_driver_title">Do jazdy</string>
     <string name="car_home_driver_subtitle">Ulubione, ostatnie i energetyczne utwory</string>

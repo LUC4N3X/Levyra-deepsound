@@ -71,7 +71,7 @@
     <string name="car_home_top_local_title">Top local</string>
     <string name="car_home_top_local_subtitle">Llista musical actualitzada per a l\'idioma triat</string>
     <string name="car_home_flow_subtitle">Mescla personal contínua</string>
-    <string name="car_playlist_unavailable">Llista no disponible</string>
+    <string name="car_playlist_unavailable">Llista de reproducció no disponible</string>
     <string name="car_album_unavailable">Àlbum no disponible</string>
     <string name="car_artist_unavailable">Artista no disponible</string>
     <string name="car_item_unavailable">Element no disponible</string>

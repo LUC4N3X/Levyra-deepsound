@@ -59,7 +59,7 @@
     <string name="car_flow_subtitle">Особисте радіо Levyra</string>
     <string name="car_favorites_subtitle">Збережені треки</string>
     <string name="car_downloads_subtitle">Музика, доступна офлайн</string>
-    <string name="car_playlists_subtitle">Добірки, створені в застосунку</string>
+    <string name="car_playlists_subtitle">Створені в застосунку</string>
     <string name="car_recents_title">Недавно прослухане</string>
     <string name="car_recents_subtitle">Недавно знайдені треки</string>
     <string name="car_home_recommended_title">Для вас</string>
@@ -71,7 +71,7 @@
     <string name="car_home_top_local_title">Місцевий топ</string>
     <string name="car_home_top_local_subtitle">Оновлений чарт для вибраної мови</string>
     <string name="car_home_flow_subtitle">Безперервний особистий мікс</string>
-    <string name="car_playlist_unavailable">Плейлист недоступний</string>
+    <string name="car_playlist_unavailable">Добірка недоступна</string>
     <string name="car_album_unavailable">Альбом недоступний</string>
     <string name="car_artist_unavailable">Виконавець недоступний</string>
     <string name="car_item_unavailable">Елемент недоступний</string>

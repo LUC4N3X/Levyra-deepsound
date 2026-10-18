@@ -64,7 +64,7 @@
     <string name="car_recents_subtitle">Жақында табылған әндер</string>
     <string name="car_home_recommended_title">Сіз үшін</string>
     <string name="car_home_recommended_subtitle">Музыкалық профильден ұсыныстар</string>
-    <string name="car_home_driver_title">Жүргізуге</string>
+    <string name="car_home_driver_title">Көлік жүргізуге</string>
     <string name="car_home_driver_subtitle">Таңдаулылар, соңғылар және серпінді әндер</string>
     <string name="car_home_offline_title">Офлайнға дайын</string>
     <string name="car_home_offline_subtitle">Желісіз ойнатылатын жүктеулер</string>

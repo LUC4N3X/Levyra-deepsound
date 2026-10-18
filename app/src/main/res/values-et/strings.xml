@@ -46,7 +46,7 @@
     <string name="widget_studio_vinyl_desc">Vinüülistiilis kaanepildiga mängija</string>
     <string name="widget_studio_quick_desc">Flow, lemmikud, allalaadimised ja muu</string>
     <!-- Android Auto browse tree -->
-    <string name="car_root_subtitle">Android Autole optimeeritud muusika</string>
+    <string name="car_root_subtitle">Android Auto jaoks optimeeritud muusika</string>
     <string name="car_home_subtitle">Kiired miksid, võrguühenduseta ja edetabelid</string>
     <string name="car_queue_title">Esitusjärjekord</string>
     <string name="car_queue_subtitle">Püsiv järjekord, jagatud Levyraga</string>
