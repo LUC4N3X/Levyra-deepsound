@@ -26,6 +26,47 @@
     <string name="car_connecting_player">Connecting to player</string>
     <string name="car_now_playing">Now playing</string>
     <string name="car_queue">Queue</string>
+
+    <!-- Android Auto browse tree -->
+    <string name="car_root_title" translatable="false">Levyra</string>
+    <string name="car_root_subtitle">Music optimized for Android Auto</string>
+    <string name="car_home_subtitle">Quick mixes, offline and charts</string>
+    <string name="car_queue_title">Queue</string>
+    <string name="car_queue_subtitle">Persistent queue shared with Levyra</string>
+    <string name="car_recommended_title">Recommended</string>
+    <string name="car_recommended_subtitle">Music profile, favorites and recent listens</string>
+    <string name="car_albums_title">Albums</string>
+    <string name="car_albums_subtitle">Local albums and suggested</string>
+    <string name="car_artists_title">Artists</string>
+    <string name="car_artists_subtitle">Most listened and followed artists</string>
+    <string name="car_flow_title" translatable="false">Flow</string>
+    <string name="car_flow_subtitle">Personal Levyra radio</string>
+    <string name="car_favorites_subtitle">Saved tracks</string>
+    <string name="car_downloads_subtitle">Music available offline</string>
+    <string name="car_playlists_subtitle">Collections created in the app</string>
+    <string name="car_recents_title">Recent listens</string>
+    <string name="car_recents_subtitle">Recently found tracks</string>
+    <string name="car_home_recommended_title">For you</string>
+    <string name="car_home_recommended_subtitle">Recommendations from music profile</string>
+    <string name="car_home_driver_title">For driving</string>
+    <string name="car_home_driver_subtitle">Favorites, recents and high-energy tracks</string>
+    <string name="car_home_offline_title">Offline ready</string>
+    <string name="car_home_offline_subtitle">Downloads playable without network</string>
+    <string name="car_home_top_local_title">Top local</string>
+    <string name="car_home_top_local_subtitle">Updated music chart for chosen language</string>
+    <string name="car_home_flow_title" translatable="false">Flow Levyra</string>
+    <string name="car_home_flow_subtitle">Continuous personal mix</string>
+    <string name="car_playlist_unavailable">Playlist unavailable</string>
+    <string name="car_album_unavailable">Album unavailable</string>
+    <string name="car_artist_unavailable">Artist unavailable</string>
+    <string name="car_item_unavailable">Item unavailable</string>
+
+    <!-- Android Auto dynamic strings -->
+    <plurals name="car_tracks_count">
+        <item quantity="one">%1$d track</item>
+        <item quantity="other">%1$d tracks</item>
+    </plurals>
+    <string name="car_artist_folder_subtitle">Tracks, favorites and suggestions</string>
     <string name="notification_favorite_add">Add to favorites</string>
     <string name="notification_favorite_remove">Remove from favorites</string>
     <string name="notification_shuffle_enable">Enable shuffle</string>

@@ -45,4 +45,39 @@
     <string name="widget_studio_immersive_desc">Portada, cua, lletres i més</string>
     <string name="widget_studio_vinyl_desc">Reproductor amb portada d\'estil vinil</string>
     <string name="widget_studio_quick_desc">Flow, preferits, baixades i més</string>
+    <!-- Android Auto browse tree -->
+    <string name="car_root_subtitle">Música optimitzada per a Android Auto</string>
+    <string name="car_home_subtitle">Mescles ràpides, fora de línia i llistes</string>
+    <string name="car_queue_title">Cua</string>
+    <string name="car_queue_subtitle">Cua persistent compartida amb Levyra</string>
+    <string name="car_recommended_title">Recomanats</string>
+    <string name="car_recommended_subtitle">Perfil musical, preferits i escoltes recents</string>
+    <string name="car_albums_title">Àlbums</string>
+    <string name="car_albums_subtitle">Àlbums locals i suggerits</string>
+    <string name="car_artists_title">Artistes</string>
+    <string name="car_artists_subtitle">Artistes més escoltats i seguits</string>
+    <string name="car_flow_subtitle">Ràdio personal de Levyra</string>
+    <string name="car_favorites_subtitle">Cançons desades</string>
+    <string name="car_downloads_subtitle">Música disponible fora de línia</string>
+    <string name="car_playlists_subtitle">Col·leccions creades a l\'app</string>
+    <string name="car_recents_title">Escoltes recents</string>
+    <string name="car_recents_subtitle">Cançons trobades recentment</string>
+    <string name="car_home_recommended_title">Per a tu</string>
+    <string name="car_home_recommended_subtitle">Recomanacions del perfil musical</string>
+    <string name="car_home_driver_title">Per conduir</string>
+    <string name="car_home_driver_subtitle">Preferits, recents i cançons enèrgiques</string>
+    <string name="car_home_offline_title">Llest fora de línia</string>
+    <string name="car_home_offline_subtitle">Baixades reproduïbles sense xarxa</string>
+    <string name="car_home_top_local_title">Top local</string>
+    <string name="car_home_top_local_subtitle">Llista musical actualitzada per a l\'idioma triat</string>
+    <string name="car_home_flow_subtitle">Mescla personal contínua</string>
+    <string name="car_playlist_unavailable">Llista de reproducció no disponible</string>
+    <string name="car_album_unavailable">Àlbum no disponible</string>
+    <string name="car_artist_unavailable">Artista no disponible</string>
+    <string name="car_item_unavailable">Element no disponible</string>
+    <string name="car_artist_folder_subtitle">Cançons, preferits i suggeriments</string>
+    <plurals name="car_tracks_count">
+        <item quantity="one">%1$d cançó</item>
+        <item quantity="other">%1$d cançons</item>
+    </plurals>
 </resources>

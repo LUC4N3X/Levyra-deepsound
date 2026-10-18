@@ -45,4 +45,39 @@
     <string name="widget_studio_immersive_desc">কভার, সারি, গানের কথা এবং আরও</string>
     <string name="widget_studio_vinyl_desc">ভিনাইল ধাঁচের কভারসহ প্লেয়ার</string>
     <string name="widget_studio_quick_desc">Flow, প্রিয়, ডাউনলোড এবং আরও</string>
+    <!-- Android Auto browse tree -->
+    <string name="car_root_subtitle">Android Auto-এর জন্য অপ্টিমাইজ করা সংগীত</string>
+    <string name="car_home_subtitle">দ্রুত মিক্স, অফলাইন ও চার্ট</string>
+    <string name="car_queue_title">সারি</string>
+    <string name="car_queue_subtitle">Levyra-এর সাথে শেয়ার করা স্থায়ী সারি</string>
+    <string name="car_recommended_title">প্রস্তাবিত</string>
+    <string name="car_recommended_subtitle">সংগীত প্রোফাইল, প্রিয় ও সাম্প্রতিক শোনা</string>
+    <string name="car_albums_title">অ্যালবাম</string>
+    <string name="car_albums_subtitle">স্থানীয় ও প্রস্তাবিত অ্যালবাম</string>
+    <string name="car_artists_title">শিল্পী</string>
+    <string name="car_artists_subtitle">সবচেয়ে বেশি শোনা ও অনুসৃত শিল্পী</string>
+    <string name="car_flow_subtitle">Levyra ব্যক্তিগত রেডিও</string>
+    <string name="car_favorites_subtitle">সংরক্ষিত গান</string>
+    <string name="car_downloads_subtitle">অফলাইনে উপলব্ধ সংগীত</string>
+    <string name="car_playlists_subtitle">অ্যাপে তৈরি সংগ্রহ</string>
+    <string name="car_recents_title">সাম্প্রতিক শোনা</string>
+    <string name="car_recents_subtitle">সম্প্রতি পাওয়া গান</string>
+    <string name="car_home_recommended_title">আপনার জন্য</string>
+    <string name="car_home_recommended_subtitle">সংগীত প্রোফাইল থেকে সুপারিশ</string>
+    <string name="car_home_driver_title">ড্রাইভিংয়ের জন্য</string>
+    <string name="car_home_driver_subtitle">প্রিয়, সাম্প্রতিক ও উচ্চ-শক্তির গান</string>
+    <string name="car_home_offline_title">অফলাইনের জন্য প্রস্তুত</string>
+    <string name="car_home_offline_subtitle">নেটওয়ার্ক ছাড়া চালানো যায় এমন ডাউনলোড</string>
+    <string name="car_home_top_local_title">স্থানীয় শীর্ষ</string>
+    <string name="car_home_top_local_subtitle">নির্বাচিত ভাষার হালনাগাদ চার্ট</string>
+    <string name="car_home_flow_subtitle">অবিরাম ব্যক্তিগত মিক্স</string>
+    <string name="car_playlist_unavailable">প্লেলিস্ট উপলব্ধ নয়</string>
+    <string name="car_album_unavailable">অ্যালবাম উপলব্ধ নয়</string>
+    <string name="car_artist_unavailable">শিল্পী উপলব্ধ নয়</string>
+    <string name="car_item_unavailable">আইটেম উপলব্ধ নয়</string>
+    <string name="car_artist_folder_subtitle">গান, প্রিয় ও পরামর্শ</string>
+    <plurals name="car_tracks_count">
+        <item quantity="one">%1$dটি গান</item>
+        <item quantity="other">%1$dটি গান</item>
+    </plurals>
 </resources>

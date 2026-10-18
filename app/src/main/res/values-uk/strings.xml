@@ -45,4 +45,41 @@
     <string name="widget_studio_immersive_desc">Обкладинка, черга, тексти та інше</string>
     <string name="widget_studio_vinyl_desc">Плеєр з обкладинкою в стилі вінілу</string>
     <string name="widget_studio_quick_desc">Flow, обране, завантаження та інше</string>
+    <!-- Android Auto browse tree -->
+    <string name="car_root_subtitle">Музика, оптимізована для Android Auto</string>
+    <string name="car_home_subtitle">Швидкі мікси, офлайн і чарти</string>
+    <string name="car_queue_title">Черга</string>
+    <string name="car_queue_subtitle">Постійна черга, спільна з Levyra</string>
+    <string name="car_recommended_title">Рекомендоване</string>
+    <string name="car_recommended_subtitle">Музичний профіль, обране й недавні прослуховування</string>
+    <string name="car_albums_title">Альбоми</string>
+    <string name="car_albums_subtitle">Локальні та запропоновані альбоми</string>
+    <string name="car_artists_title">Виконавці</string>
+    <string name="car_artists_subtitle">Найпопулярніші та відстежувані виконавці</string>
+    <string name="car_flow_subtitle">Особисте радіо Levyra</string>
+    <string name="car_favorites_subtitle">Збережені треки</string>
+    <string name="car_downloads_subtitle">Музика, доступна офлайн</string>
+    <string name="car_playlists_subtitle">Створені в застосунку</string>
+    <string name="car_recents_title">Недавно прослухане</string>
+    <string name="car_recents_subtitle">Недавно знайдені треки</string>
+    <string name="car_home_recommended_title">Для вас</string>
+    <string name="car_home_recommended_subtitle">Рекомендації з музичного профілю</string>
+    <string name="car_home_driver_title">Для поїздок</string>
+    <string name="car_home_driver_subtitle">Обране, недавнє й енергійні треки</string>
+    <string name="car_home_offline_title">Готово офлайн</string>
+    <string name="car_home_offline_subtitle">Завантаження, що грають без мережі</string>
+    <string name="car_home_top_local_title">Місцевий топ</string>
+    <string name="car_home_top_local_subtitle">Оновлений чарт для вибраної мови</string>
+    <string name="car_home_flow_subtitle">Безперервний особистий мікс</string>
+    <string name="car_playlist_unavailable">Добірка недоступна</string>
+    <string name="car_album_unavailable">Альбом недоступний</string>
+    <string name="car_artist_unavailable">Виконавець недоступний</string>
+    <string name="car_item_unavailable">Елемент недоступний</string>
+    <string name="car_artist_folder_subtitle">Треки, обране й пропозиції</string>
+    <plurals name="car_tracks_count">
+        <item quantity="one">%1$d трек</item>
+        <item quantity="few">%1$d треки</item>
+        <item quantity="many">%1$d треків</item>
+        <item quantity="other">%1$d трека</item>
+    </plurals>
 </resources>

@@ -45,4 +45,39 @@
     <string name="widget_studio_immersive_desc">Artwork, wachtrij, songteksten en meer</string>
     <string name="widget_studio_vinyl_desc">Speler met artwork in vinylstijl</string>
     <string name="widget_studio_quick_desc">Flow, favorieten, downloads en meer</string>
+    <!-- Android Auto browse tree -->
+    <string name="car_root_subtitle">Muziek geoptimaliseerd voor Android Auto</string>
+    <string name="car_home_subtitle">Snelle mixen, offline en hitlijsten</string>
+    <string name="car_queue_title">Wachtrij</string>
+    <string name="car_queue_subtitle">Blijvende wachtrij gedeeld met Levyra</string>
+    <string name="car_recommended_title">Aanbevolen</string>
+    <string name="car_recommended_subtitle">Muziekprofiel, favorieten en recent geluisterd</string>
+    <string name="car_albums_title">Albums</string>
+    <string name="car_albums_subtitle">Lokale en voorgestelde albums</string>
+    <string name="car_artists_title">Artiesten</string>
+    <string name="car_artists_subtitle">Meest beluisterde en gevolgde artiesten</string>
+    <string name="car_flow_subtitle">Persoonlijke Levyra-radio</string>
+    <string name="car_favorites_subtitle">Opgeslagen nummers</string>
+    <string name="car_downloads_subtitle">Muziek offline beschikbaar</string>
+    <string name="car_playlists_subtitle">Collecties gemaakt in de app</string>
+    <string name="car_recents_title">Recent geluisterd</string>
+    <string name="car_recents_subtitle">Recent gevonden nummers</string>
+    <string name="car_home_recommended_title">Voor jou</string>
+    <string name="car_home_recommended_subtitle">Aanbevelingen uit je muziekprofiel</string>
+    <string name="car_home_driver_title">Voor onderweg</string>
+    <string name="car_home_driver_subtitle">Favorieten, recente en energieke nummers</string>
+    <string name="car_home_offline_title">Offline klaar</string>
+    <string name="car_home_offline_subtitle">Downloads die zonder netwerk spelen</string>
+    <string name="car_home_top_local_title">Lokale top</string>
+    <string name="car_home_top_local_subtitle">Bijgewerkte hitlijst voor de gekozen taal</string>
+    <string name="car_home_flow_subtitle">Doorlopende persoonlijke mix</string>
+    <string name="car_playlist_unavailable">Afspeellijst niet beschikbaar</string>
+    <string name="car_album_unavailable">Album niet beschikbaar</string>
+    <string name="car_artist_unavailable">Artiest niet beschikbaar</string>
+    <string name="car_item_unavailable">Item niet beschikbaar</string>
+    <string name="car_artist_folder_subtitle">Nummers, favorieten en suggesties</string>
+    <plurals name="car_tracks_count">
+        <item quantity="one">%1$d nummer</item>
+        <item quantity="other">%1$d nummers</item>
+    </plurals>
 </resources>
