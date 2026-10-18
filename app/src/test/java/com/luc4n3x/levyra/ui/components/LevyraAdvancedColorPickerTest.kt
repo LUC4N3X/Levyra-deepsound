@@ -155,7 +155,7 @@ class LevyraAdvancedColorPickerTest {
         for (fingerY in interiorHueYs) {
             val fraction = hueBarNormalizedFraction(fingerY, hueHeight, hueInsetYPx)
             val updated = baseHsv.withHueFraction(fraction)
-            val centerY = hueBarIndicatorCenterY(updated, hueHeight.toFloat(), hueInsetYPx)
+            val centerY = hueBarIndicatorCenter(updated, hueHeight.toFloat(), hueInsetYPx)
             assertEquals(fingerY, centerY, 0.01f)
         }
         assertEquals(0f, hueBarNormalizedFraction(0f, hueHeight, hueInsetYPx), 0.0001f)
