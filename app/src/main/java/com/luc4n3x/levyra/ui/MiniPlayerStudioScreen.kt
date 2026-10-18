@@ -142,13 +142,11 @@ private fun miniPlayerStyleDescription(style: MiniPlayerStyle, copy: MiniPlayerS
     MiniPlayerStyle.Connected -> copy[MiniStudioText.DescConnected]
 }
 
-internal fun parseMiniHexColor(raw: String): Int? {
-    val digits = raw.trim().removePrefix("#")
-    if (digits.length != 6 || digits.any { it !in "0123456789abcdefABCDEF" }) return null
-    return (0xFF000000 or digits.toLong(16)).toInt()
-}
+internal fun parseMiniHexColor(raw: String): Int? =
+    com.luc4n3x.levyra.ui.components.parseLevyraHexColor(raw)
 
-internal fun formatMiniHexColor(color: Int): String = "%06X".format(color and 0xFFFFFF)
+internal fun formatMiniHexColor(color: Int): String =
+    com.luc4n3x.levyra.ui.components.formatLevyraHexColor(color)
 
 @Composable
 internal fun MiniPlayerStudioOverlay(
@@ -771,6 +769,8 @@ private fun LazyListScope.miniStudioAppearanceItems(
                         MiniColorEditor(
                             color = tuning.customColor,
                             copy = copy,
+                            onPreviewColor = { onPreview(tuning.copy(customColor = it)) },
+                            onCancelPreview = { onPreview(tuning) },
                             onColor = { onCommit(tuning.copy(customColor = it)) }
                         )
                     }
@@ -1160,9 +1160,16 @@ private fun MiniShapePicker(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun MiniColorEditor(color: Int, copy: MiniPlayerStudioCopy, onColor: (Int) -> Unit) {
+internal fun MiniColorEditor(
+    color: Int,
+    copy: MiniPlayerStudioCopy,
+    onColor: (Int) -> Unit,
+    onPreviewColor: ((Int) -> Unit)? = null,
+    onCancelPreview: (() -> Unit)? = null
+) {
     val scheme = MaterialTheme.colorScheme
     var text by remember(color) { mutableStateOf(formatMiniHexColor(color)) }
+    var showPicker by remember { mutableStateOf(false) }
     val parsed = parseMiniHexColor(text)
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         FlowRow(
@@ -1175,7 +1182,14 @@ internal fun MiniColorEditor(color: Int, copy: MiniPlayerStudioCopy, onColor: (I
                 Box(
                     modifier = Modifier
                         .size(48.dp)
-                        .levyraPressable(onClick = { onColor(swatch) }, onClickLabel = hex, role = Role.RadioButton)
+                        .levyraPressable(
+                            onClick = {
+                                text = formatMiniHexColor(swatch)
+                                onColor(swatch)
+                            },
+                            onClickLabel = hex,
+                            role = Role.RadioButton
+                        )
                         .semantics {
                             this.selected = active
                             contentDescription = hex
@@ -1196,31 +1210,32 @@ internal fun MiniColorEditor(color: Int, copy: MiniPlayerStudioCopy, onColor: (I
                 }
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color(parsed ?: color))
-            )
-            OutlinedTextField(
-                value = text,
-                onValueChange = { raw ->
-                    val cleaned = raw.removePrefix("#").filter { it in "0123456789abcdefABCDEF" }.take(6).uppercase()
-                    text = cleaned
-                    parseMiniHexColor(cleaned)?.let(onColor)
-                },
-                singleLine = true,
-                isError = parsed == null,
-                prefix = { Text("#") },
-                label = { Text(copy[MiniStudioText.Hex]) },
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Characters,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(onDone = { parsed?.let(onColor) }),
-                modifier = Modifier.weight(1f)
-            )
-        }
+        com.luc4n3x.levyra.ui.components.LevyraColorInputAndPickerRow(
+            color = parsed ?: color,
+            hexText = text,
+            hexLabel = copy[MiniStudioText.Hex],
+            onHexTextChange = { raw ->
+                val cleaned = com.luc4n3x.levyra.ui.components.sanitizeHexInput(raw)
+                text = cleaned
+                parseMiniHexColor(cleaned)?.let(onColor)
+            },
+            onOpenPicker = { showPicker = true }
+        )
+    }
+    if (showPicker) {
+        com.luc4n3x.levyra.ui.components.LevyraAdvancedColorPickerDialog(
+            initialColor = parsed ?: color,
+            presets = MiniCustomSwatches,
+            onPreviewColor = onPreviewColor,
+            onConfirmColor = { chosen ->
+                showPicker = false
+                text = formatMiniHexColor(chosen)
+                onColor(chosen)
+            },
+            onDismiss = {
+                showPicker = false
+                onCancelPreview?.invoke()
+            }
+        )
     }
 }

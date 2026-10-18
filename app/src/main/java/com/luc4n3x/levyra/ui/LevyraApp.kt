@@ -23362,6 +23362,8 @@ private fun PlayerColorModeSetting(
 ) {
     val strings = LocalLevyraStrings.current
     val mode = settings.playerColorMode
+    var previewAccent by remember(settings.playerColorAccent) { mutableStateOf<Int?>(null) }
+    val effectiveAccent = previewAccent ?: settings.playerColorAccent
     SettingsTile {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -23372,7 +23374,7 @@ private fun PlayerColorModeSetting(
                     modifier = Modifier.weight(1f)
                 )
             }
-            PlayerColorModePreview(mode = mode, customAccent = settings.playerColorAccent)
+            PlayerColorModePreview(mode = mode, customAccent = effectiveAccent)
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -23402,7 +23404,12 @@ private fun PlayerColorModeSetting(
                 MiniColorEditor(
                     color = settings.playerColorAccent,
                     copy = strings.miniPlayerStudioCopy,
-                    onColor = { onSettings(settings.copy(playerColorAccent = it)) }
+                    onPreviewColor = { previewAccent = it },
+                    onCancelPreview = { previewAccent = null },
+                    onColor = {
+                        previewAccent = null
+                        onSettings(settings.copy(playerColorAccent = it))
+                    }
                 )
             }
         }

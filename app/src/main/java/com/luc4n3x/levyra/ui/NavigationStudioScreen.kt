@@ -484,6 +484,8 @@ private fun LazyListScope.navOptionItems(
                 MiniColorEditor(
                     color = tuning.accent,
                     copy = strings.miniPlayerStudioCopy,
+                    onPreviewColor = { preview(tuning.copy(accent = it)) },
+                    onCancelPreview = { preview(tuning) },
                     onColor = { commit(tuning.copy(accent = it)) }
                 )
             }
