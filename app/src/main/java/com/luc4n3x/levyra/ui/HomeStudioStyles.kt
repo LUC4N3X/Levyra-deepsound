@@ -1291,10 +1291,7 @@ private fun ExpressiveSpotlight(
     val seed = if (track.accentStart != 0) Color(track.accentStart) else scheme.primary
     val secondarySeed = if (track.accentEnd != 0) Color(track.accentEnd) else scheme.tertiary
     val morph = rememberLevyraPlayMorphShape(playing = playing, animated = animationsEnabled, spinWhilePlaying = !resolving)
-    val spin = rememberSpotlightMotion(animationsEnabled && playing, 0f, 360f, 44_000, reverse = false)
     val breathe = rememberSpotlightMotion(animationsEnabled, 0.18f, 0.72f, 6_800, reverse = true)
-    val sleeveShape = RoundedCornerShape(topStart = 96.dp, topEnd = 26.dp, bottomEnd = 92.dp, bottomStart = 28.dp)
-    val backingShape = RoundedCornerShape(topStart = 76.dp, topEnd = 46.dp, bottomEnd = 104.dp, bottomStart = 34.dp)
     val stampShape = MaterialShapes.Cookie6Sided.toShape()
     val radioShape = MaterialShapes.Sunny.toShape()
 
@@ -1308,96 +1305,90 @@ private fun ExpressiveSpotlight(
                 pressedScale = 1f
             )
     ) {
-        val coverSize = (maxWidth * 0.90f).coerceAtMost(380.dp)
+        // Full-bleed portrait: no card edges, borders, corners or side padding.
+        // Dissolve the photo into the same canvas used by the rest of Home.
+        val artworkHeight = (maxWidth * 0.96f).coerceIn(330.dp, 404.dp)
         Column(modifier = Modifier.fillMaxWidth()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(coverSize + 28.dp)
+                    .height(artworkHeight)
             ) {
                 Box(
                     modifier = Modifier
                         .matchParentSize()
                         .drawBehind {
-                            val focus = Offset(size.width * 0.78f, size.height * 0.44f)
+                            val focus = Offset(size.width * 0.66f, size.height * 0.48f)
                             drawCircle(
                                 brush = Brush.radialGradient(
                                     colors = listOf(
-                                        seed.copy(alpha = if (isLight) 0.24f else 0.34f),
-                                        secondarySeed.copy(alpha = if (isLight) 0.10f else 0.16f),
+                                        seed.copy(alpha = if (isLight) 0.17f else 0.27f),
+                                        secondarySeed.copy(alpha = if (isLight) 0.07f else 0.12f),
                                         Color.Transparent
                                     ),
                                     center = focus,
-                                    radius = size.width * 0.82f
+                                    radius = size.width * 0.80f
                                 ),
                                 center = focus,
-                                radius = size.width * 0.82f
+                                radius = size.width * 0.80f
                             )
                         }
                 )
-                // A single off-axis sleeve peeks out behind the artwork, rather than spinning decorative bursts.
                 Box(
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(x = 3.dp, y = 14.dp)
-                        .size(coverSize)
-                        .graphicsLayer { rotationZ = -5f + spin.value * 0.012f }
-                        .clip(backingShape)
-                        .background(
-                            Brush.linearGradient(
-                                listOf(
-                                    scheme.primaryContainer.copy(alpha = 0.70f),
-                                    secondarySeed.copy(alpha = if (isLight) 0.24f else 0.34f),
-                                    scheme.tertiaryContainer.copy(alpha = 0.46f)
-                                )
+                        .matchParentSize()
+                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                        .drawWithContent {
+                            drawContent()
+                            drawRect(
+                                brush = Brush.horizontalGradient(
+                                    0.0f to Color.Black.copy(alpha = 0.45f),
+                                    0.18f to Color.Black.copy(alpha = 0.92f),
+                                    0.64f to Color.Black,
+                                    1.0f to Color.Black
+                                ),
+                                blendMode = BlendMode.DstIn
                             )
-                        )
-                )
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(x = 16.dp, y = 4.dp)
-                        .size(coverSize)
-                        .clip(sleeveShape)
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    0.0f to Color.Transparent,
+                                    0.12f to Color.Black,
+                                    0.58f to Color.Black,
+                                    0.82f to Color.Black.copy(alpha = 0.66f),
+                                    1.0f to Color.Transparent
+                                ),
+                                blendMode = BlendMode.DstIn
+                            )
+                        }
                 ) {
                     if (artistArtworkUrl.isNotBlank()) {
                         StudioRemoteArtwork(artistArtworkUrl, track.artist, Modifier.fillMaxSize(), true)
                     } else {
                         CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true)
                     }
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    0.0f to Color.Transparent,
-                                    0.56f to Color.Transparent,
-                                    0.80f to canvas.copy(alpha = if (isLight) 0.30f else 0.40f),
-                                    1.0f to canvas.copy(alpha = if (isLight) 0.76f else 0.84f)
-                                )
-                            )
-                    )
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .border(
-                                1.dp,
-                                scheme.primary.copy(alpha = if (isLight) 0.25f else 0.38f),
-                                sleeveShape
-                            )
-                    )
                 }
-                // The copy sits over a soft tonal fade, but the cover stays crisp and fully readable.
+                // Unlike a floating cover tile, this fade reaches the exact Home canvas color.
                 Box(
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .height(154.dp)
+                        .matchParentSize()
                         .background(
                             Brush.verticalGradient(
-                                0.0f to Color.Transparent,
-                                0.44f to canvas.copy(alpha = if (isLight) 0.46f else 0.56f),
-                                1.0f to canvas.copy(alpha = if (isLight) 0.94f else 0.96f)
+                                0.0f to canvas.copy(alpha = if (isLight) 0.58f else 0.48f),
+                                0.15f to canvas.copy(alpha = 0.06f),
+                                0.44f to Color.Transparent,
+                                0.68f to canvas.copy(alpha = if (isLight) 0.12f else 0.18f),
+                                0.84f to canvas.copy(alpha = 0.76f),
+                                1.0f to canvas
+                            )
+                        )
+                )
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(
+                            Brush.horizontalGradient(
+                                0.0f to canvas.copy(alpha = if (isLight) 0.22f else 0.30f),
+                                0.40f to Color.Transparent
                             )
                         )
                 )
@@ -1405,7 +1396,7 @@ private fun ExpressiveSpotlight(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .fillMaxWidth()
-                        .padding(start = spec.inset, end = spec.inset, bottom = 12.dp),
+                        .padding(start = spec.inset, end = spec.inset, bottom = 6.dp),
                     verticalArrangement = Arrangement.spacedBy(9.dp)
                 ) {
                     Surface(
