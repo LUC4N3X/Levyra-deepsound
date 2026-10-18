@@ -314,10 +314,17 @@ private fun DiscoveryEditorialText(
             title,
             style = LevyraType.sectionTitle.copy(fontSize = 24.sp, lineHeight = 27.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.7).sp),
             color = textColor,
-            softWrap = true
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
         )
         if (subtitle.isNotBlank()) {
-            Text(subtitle, style = LevyraType.metadata, color = textColor.copy(alpha = 0.78f), softWrap = true)
+            Text(
+                subtitle,
+                style = LevyraType.metadata,
+                color = textColor.copy(alpha = 0.78f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }

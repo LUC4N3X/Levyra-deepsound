@@ -75,6 +75,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import kotlin.math.roundToInt
+import kotlin.math.sin
+import kotlin.math.cos
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.State
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -1170,7 +1185,7 @@ internal fun StudioSpotlight(
     val resolving = isCurrent && isResolving
     val playIcon = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow
     when (style) {
-        HomeStyle.ExpressiveMax -> ExpressiveSpotlight(style, spec, track, artistArtworkUrl, label, lead, playLabel, playing, resolving, playIcon, animationsEnabled, onOpen)
+        HomeStyle.ExpressiveMax -> ExpressiveSpotlight(spec, track, artistArtworkUrl, label, lead, playLabel, playing, resolving, playIcon, animationsEnabled, onOpen)
         HomeStyle.Editorial -> EditorialSpotlight(spec, track, artistArtworkUrl, label, lead, playLabel, resolving, playIcon, onOpen)
         HomeStyle.Immersive -> CinematicSpotlight(style, spec, track, artistArtworkUrl, label, lead, playLabel, playing, resolving, playIcon, animationsEnabled, onOpen)
         HomeStyle.Flow -> StudioFlowSpotlight(track, artistArtworkUrl, label, lead, spec.inset, StudioSpotlightPlayback(playLabel, resolving, playIcon, onOpen))
@@ -1178,10 +1193,30 @@ internal fun StudioSpotlight(
     }
 }
 
+@Composable
+private fun rememberSpotlightMotion(
+    active: Boolean,
+    from: Float,
+    to: Float,
+    durationMillis: Int,
+    reverse: Boolean
+): State<Float> {
+    if (!active) return remember { mutableFloatStateOf(0f) }
+    val transition = rememberInfiniteTransition(label = "spotlight-motion")
+    return transition.animateFloat(
+        initialValue = from,
+        targetValue = to,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis, easing = if (reverse) FastOutSlowInEasing else LinearEasing),
+            repeatMode = if (reverse) RepeatMode.Reverse else RepeatMode.Restart
+        ),
+        label = "spotlight-motion-value"
+    )
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ExpressiveSpotlight(
-    style: HomeStyle,
     spec: HomeStyleSpec,
     track: Track,
     artistArtworkUrl: String,
@@ -1194,75 +1229,129 @@ private fun ExpressiveSpotlight(
     animationsEnabled: Boolean,
     onOpen: () -> Unit
 ) {
+    val scheme = MaterialTheme.colorScheme
+    val isLight = LevyraIsLight
+    val seed = if (track.accentStart != 0) Color(track.accentStart) else scheme.primary
     val morph = rememberLevyraPlayMorphShape(playing = playing, animated = animationsEnabled)
-    val canvas = homeCanvasColor(LevyraIsLight)
+    val spin = rememberSpotlightMotion(animationsEnabled && playing, 0f, 360f, 36_000, reverse = false)
+    val outerShape = MaterialShapes.Cookie12Sided.toShape()
+    val innerShape = MaterialShapes.SoftBurst.toShape()
+    val portraitShape = MaterialShapes.Cookie9Sided.toShape()
+    val textShadow = if (isLight) null else Shadow(Color.Black.copy(alpha = 0.55f), blurRadius = 22f)
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = spec.inset)
-            .heightIn(min = 288.dp)
             .levyraPressable(onClick = onOpen, onClickLabel = track.title, role = Role.Button)
     ) {
-        val artSize = maxWidth.coerceAtMost(252.dp)
+        val bloom = (maxWidth * 0.8f).coerceAtMost(330.dp)
+        val stamp = 96.dp
+        val bloomShift = bloom * 0.16f
+        val stampX = maxWidth - bloom * 0.24f - stamp / 2
         Box(
             modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .size(artSize)
-                .clip(MaterialShapes.SoftBurst.toShape())
-                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.56f))
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 16.dp)
-                .size(artSize - 32.dp)
-                .clip(morph)
+                .fillMaxWidth()
+                .height(bloom + 132.dp)
         ) {
-            CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true)
-            Box(modifier = Modifier.fillMaxSize().background(studioExpressiveArtScrim(canvas)))
-        }
-        Column(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .fillMaxWidth(0.58f)
-                .padding(start = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.primary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = bloom * 0.42f, y = -bloom * 0.2f)
+                    .size(bloom * 1.5f)
+                    .background(
+                        Brush.radialGradient(
+                            0f to seed.copy(alpha = if (isLight) 0.28f else 0.46f),
+                            0.5f to seed.copy(alpha = if (isLight) 0.10f else 0.16f),
+                            1f to Color.Transparent
+                        )
+                    )
             )
-            Text(
-                text = track.title,
-                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black),
-                color = LevyraText,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = bloomShift)
+                    .size(bloom)
+                    .graphicsLayer { rotationZ = spin.value }
+                    .clip(outerShape)
+                    .background(seed.copy(alpha = 0.30f))
             )
-            Text(
-                text = track.artist,
-                style = MaterialTheme.typography.bodyMedium,
-                color = LevyraMuted,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = bloomShift - bloom * 0.07f, y = bloom * 0.07f)
+                    .size(bloom * 0.86f)
+                    .graphicsLayer { rotationZ = -spin.value * 1.6f }
+                    .clip(innerShape)
+                    .background(scheme.primaryContainer.copy(alpha = 0.62f))
             )
-            FilledIconButton(
-                onClick = onOpen,
-                shapes = IconButtonDefaults.shapes(),
-                modifier = Modifier.padding(top = 8.dp).size(56.dp)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = bloomShift - bloom * 0.14f, y = bloom * 0.14f)
+                    .size(bloom * 0.72f)
+                    .clip(portraitShape)
+                    .background(LevyraPanel)
             ) {
-                if (resolving) {
-                    LevyraLoadingIndicator(modifier = Modifier.size(28.dp), color = MaterialTheme.colorScheme.onPrimary)
+                if (artistArtworkUrl.isNotBlank()) {
+                    StudioRemoteArtwork(artistArtworkUrl, track.artist, Modifier.fillMaxSize(), true)
                 } else {
-                    Icon(playIcon, contentDescription = playLabel)
+                    CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true)
                 }
+            }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .offset(x = stampX, y = bloom * 0.9f - stamp / 2)
+                    .size(stamp)
+                    .clip(morph)
+                    .background(scheme.primary)
+                    .levyraPressable(onClick = onOpen, onClickLabel = playLabel, role = Role.Button),
+                contentAlignment = Alignment.Center
+            ) {
+                CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = false)
+                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.34f)))
+                if (resolving) {
+                    LevyraLoadingIndicator(modifier = Modifier.size(34.dp), color = Color.White)
+                } else {
+                    Icon(playIcon, contentDescription = playLabel, tint = Color.White, modifier = Modifier.size(40.dp))
+                }
+            }
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth(0.66f)
+                    .padding(start = spec.inset, bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Surface(
+                    color = scheme.tertiaryContainer,
+                    contentColor = scheme.onTertiaryContainer,
+                    shape = CircleShape
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Text(
+                    text = track.title,
+                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Black, shadow = textShadow),
+                    color = LevyraText,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = lead.ifBlank { track.artist },
+                    style = MaterialTheme.typography.bodyLarge.copy(shadow = textShadow),
+                    color = LevyraMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }
-
 }
 
 @Composable
@@ -1277,11 +1366,15 @@ private fun EditorialSpotlight(
     playIcon: ImageVector,
     onOpen: () -> Unit
 ) {
-    val canvas = homeCanvasColor(LevyraIsLight)
+    val scheme = MaterialTheme.colorScheme
+    val hasPortrait = artistArtworkUrl.isNotBlank()
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 360.dp)
+            .padding(horizontal = spec.inset)
+            .aspectRatio(0.84f)
+            .clip(RoundedCornerShape(spec.artworkCorner))
+            .background(LevyraPanel)
             .levyraPressable(
                 onClick = onOpen,
                 onClickLabel = track.title,
@@ -1289,79 +1382,103 @@ private fun EditorialSpotlight(
                 pressedScale = LevyraPressScale.Surface
             )
     ) {
+        if (hasPortrait) {
+            StudioRemoteArtwork(artistArtworkUrl, track.artist, Modifier.fillMaxSize(), true)
+        } else {
+            CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true)
+        }
         Box(
             modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .fillMaxWidth(0.88f)
-                .fillMaxHeight()
-        ) {
-            if (artistArtworkUrl.isNotBlank()) {
-                StudioRemoteArtwork(artistArtworkUrl, track.artist, Modifier.fillMaxSize(), true)
-            } else {
-                CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true)
-            }
-            Box(modifier = Modifier.fillMaxSize().background(studioEditorialPortraitHorizontalScrim(canvas)))
-            Box(modifier = Modifier.fillMaxSize().background(studioEditorialPortraitVerticalScrim(canvas)))
-        }
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .fillMaxWidth(0.76f)
-                .padding(start = spec.inset, end = 8.dp, bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(
-                    modifier = Modifier
-                        .width(28.dp)
-                        .height(1.dp)
-                        .background(MaterialTheme.colorScheme.primary)
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        0f to Color.Black.copy(alpha = 0.46f),
+                        0.26f to Color.Transparent,
+                        0.5f to Color.Transparent,
+                        0.78f to Color.Black.copy(alpha = 0.62f),
+                        1f to Color.Black.copy(alpha = 0.9f)
+                    )
                 )
+        )
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .fillMaxWidth()
+                .padding(start = 20.dp, end = 18.dp, top = 18.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontFamily = FontFamily.Serif,
+                        fontStyle = FontStyle.Italic,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = Color.White,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                Box(
+                    modifier = Modifier
+                        .width(44.dp)
+                        .height(2.dp)
+                        .background(scheme.primary)
+                )
             }
-            Text(
-                text = track.title,
-                style = MaterialTheme.typography.displaySmall.copy(fontFamily = FontFamily.Serif),
-                color = LevyraText,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = lead.ifBlank { track.artist },
-                style = MaterialTheme.typography.bodyLarge,
-                color = LevyraMuted,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Row(
-                modifier = Modifier
-                    .padding(top = 8.dp)
-                    .heightIn(min = 48.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary)
-                    .padding(horizontal = 20.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            if (hasPortrait) {
+                CoverImage(
+                    track = track,
+                    modifier = Modifier
+                        .padding(start = 12.dp)
+                        .size(72.dp)
+                        .graphicsLayer { rotationZ = 5f }
+                        .background(Color.White)
+                        .padding(3.dp),
+                    highRes = false
+                )
+            }
+        }
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(start = 20.dp, end = 18.dp, bottom = 20.dp),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = track.title,
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        fontFamily = FontFamily.Serif,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = Color.White,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = lead.ifBlank { track.artist }.uppercase(Locale.getDefault()),
+                    style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 1.6.sp),
+                    color = Color.White.copy(alpha = 0.78f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            FilledIconButton(
+                onClick = onOpen,
+                modifier = Modifier.size(60.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = scheme.primary,
+                    contentColor = scheme.onPrimary
+                )
             ) {
                 if (resolving) {
-                    LevyraLoadingIndicator(
-                        modifier = Modifier.size(22.dp),
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
+                    LevyraLoadingIndicator(modifier = Modifier.size(26.dp), color = scheme.onPrimary)
                 } else {
-                    Icon(playIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
+                    Icon(playIcon, contentDescription = playLabel, modifier = Modifier.size(30.dp))
                 }
-                Text(
-                    text = playLabel,
-                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
             }
         }
     }
@@ -1594,29 +1711,6 @@ private val StudioImmersiveHeroScrim = Brush.verticalGradient(
     0.0f to Color.Black.copy(alpha = 0.10f),
     0.40f to Color.Transparent,
     1.0f to Color.Black.copy(alpha = 0.86f)
-)
-
-private fun studioExpressiveArtScrim(canvas: Color): Brush = Brush.horizontalGradient(
-    0.0f to canvas.copy(alpha = 0.92f),
-    0.34f to canvas.copy(alpha = 0.26f),
-    0.72f to Color.Transparent,
-    1.0f to canvas.copy(alpha = 0.10f)
-)
-
-private fun studioEditorialPortraitHorizontalScrim(canvas: Color): Brush = Brush.horizontalGradient(
-    colorStops = arrayOf(
-        0.00f to canvas,
-        0.24f to canvas.copy(alpha = 0.94f),
-        0.52f to canvas.copy(alpha = 0.30f),
-        0.80f to canvas.copy(alpha = 0.06f),
-        1.00f to canvas
-    )
-)
-
-private fun studioEditorialPortraitVerticalScrim(canvas: Color): Brush = Brush.verticalGradient(
-    0.00f to canvas.copy(alpha = 0.08f),
-    0.62f to Color.Transparent,
-    1.00f to canvas
 )
 
 @Composable
@@ -2987,7 +3081,9 @@ private fun MxBleedHero(
     )
     val companionShapes = listOf(MaterialShapes.Cookie9Sided.toShape(), MaterialShapes.Clover4Leaf.toShape(), MaterialShapes.Gem.toShape())
     val heroHeight = 560.dp
-    Box(
+    val sway = rememberSpotlightMotion(hero.animationsEnabled && playing, -16f, 16f, 7_000, reverse = true)
+    val satellites = hero.companionArtworkUrls.take(MxOrbitSatelliteAngles.size)
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
             .height(heroHeight)
@@ -2998,6 +3094,8 @@ private fun MxBleedHero(
                 pressedScale = 1f
             )
     ) {
+        val orbitCenterX = maxWidth - MxPortraitEndInset - MxPortraitSize / 2
+        val orbitCenterY = MxPortraitTop + MxPortraitSize / 2
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -3023,8 +3121,8 @@ private fun MxBleedHero(
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .offset(x = (-22).dp, y = 96.dp)
-                .size(292.dp)
+                .offset(x = -MxPortraitEndInset, y = MxPortraitTop)
+                .size(MxPortraitSize)
                 .graphicsLayer { rotationZ = -6f + 10f * drift }
                 .clip(maskShape)
                 .background(scheme.surfaceContainerHigh)
@@ -3042,24 +3140,47 @@ private fun MxBleedHero(
                 .align(Alignment.BottomCenter)
                 .background(Brush.verticalGradient(0f to Color.Transparent, 1f to canvas))
         )
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .offset(x = (-26).dp, y = 40.dp)
-                .size(92.dp)
-                .graphicsLayer { rotationZ = 20f + 40f * drift }
-                .clip(MaterialShapes.Sunny.toShape())
-                .background(scheme.tertiary.copy(alpha = 0.85f))
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .offset(x = 28.dp, y = 330.dp)
-                .size(width = 70.dp, height = 28.dp)
-                .graphicsLayer { rotationZ = -32f }
-                .clip(CircleShape)
-                .background(scheme.primary.copy(alpha = 0.7f))
-        )
+        val ringColor = Color.White.copy(alpha = if (LevyraIsLight) 0.5f else 0.3f)
+        Canvas(modifier = Modifier.matchParentSize()) {
+            val center = Offset(orbitCenterX.toPx(), orbitCenterY.toPx())
+            val dash = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 9.dp.toPx()))
+            drawCircle(
+                color = ringColor,
+                radius = MxOrbitRadius.toPx(),
+                center = center,
+                style = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round, pathEffect = dash)
+            )
+            drawCircle(
+                color = ringColor.copy(alpha = ringColor.alpha * 0.5f),
+                radius = (MxOrbitRadius + 36.dp).toPx(),
+                center = center,
+                style = Stroke(width = 1.dp.toPx())
+            )
+        }
+        satellites.forEachIndexed { index, url ->
+            val shape = companionShapes[index % companionShapes.size]
+            val baseAngle = MxOrbitSatelliteAngles[index]
+            Box(
+                modifier = Modifier
+                    .offset {
+                        val angle = Math.toRadians((baseAngle + sway.value).toDouble())
+                        val radius = MxOrbitRadius.toPx()
+                        val half = MxSatelliteSize.toPx() / 2f
+                        IntOffset(
+                            (orbitCenterX.toPx() + radius * cos(angle).toFloat() - half).roundToInt(),
+                            (orbitCenterY.toPx() + radius * sin(angle).toFloat() - half).roundToInt()
+                        )
+                    }
+                    .size(MxSatelliteSize)
+                    .graphicsLayer { rotationZ = sway.value * (if (index % 2 == 0) 1.5f else -1.5f) }
+                    .clip(shape)
+                    .background(scheme.tertiary)
+                    .padding(3.dp)
+                    .clip(shape)
+            ) {
+                StudioRemoteArtwork(url, "", Modifier.fillMaxSize(), false)
+            }
+        }
         MxBleedGreeting(
             modifier = Modifier.align(Alignment.TopStart),
             dayPart = dayPart,
@@ -3076,8 +3197,7 @@ private fun MxBleedHero(
             hero = hero,
             playLabel = playLabel,
             playing = playing,
-            playShape = playShape,
-            companionShapes = companionShapes
+            playShape = playShape
         )
     }
 }
@@ -3162,8 +3282,7 @@ private fun MxBleedTitle(
     hero: StudioHero,
     playLabel: String,
     playing: Boolean,
-    playShape: Shape,
-    companionShapes: List<Shape>
+    playShape: Shape
 ) {
     val scheme = MaterialTheme.colorScheme
     Row(
@@ -3195,33 +3314,13 @@ private fun MxBleedTitle(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (hero.companionArtworkUrls.isNotEmpty()) {
-                    Row(horizontalArrangement = Arrangement.spacedBy((-8).dp)) {
-                        hero.companionArtworkUrls.take(3).forEachIndexed { index, url ->
-                            val shape = companionShapes[index % companionShapes.size]
-                            Box(
-                                modifier = Modifier
-                                    .size(30.dp)
-                                    .graphicsLayer { rotationZ = (index - 1) * 12f }
-                                    .clip(shape)
-                                    .background(scheme.tertiary)
-                                    .padding(2.dp)
-                                    .clip(shape)
-                            ) {
-                                StudioRemoteArtwork(url, "", Modifier.fillMaxSize(), false)
-                            }
-                        }
-                    }
-                }
-                Text(
-                    text = hero.lead.ifBlank { hero.track.artist },
-                    style = MaterialTheme.typography.titleMediumEmphasized,
-                    color = LevyraMuted,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+            Text(
+                text = hero.lead.ifBlank { hero.track.artist },
+                style = MaterialTheme.typography.titleMediumEmphasized,
+                color = LevyraMuted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
         Box(
             modifier = Modifier
@@ -3245,6 +3344,13 @@ private fun MxBleedTitle(
     }
 }
 
+
+private val MxPortraitSize = 292.dp
+private val MxPortraitEndInset = 22.dp
+private val MxPortraitTop = 96.dp
+private val MxOrbitRadius = 172.dp
+private val MxSatelliteSize = 56.dp
+private val MxOrbitSatelliteAngles = listOf(122f, 166f, 208f)
 
 @Immutable
 internal class StudioHero(
