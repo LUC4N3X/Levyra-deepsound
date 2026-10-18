@@ -219,50 +219,53 @@ Contributions and bug reports are welcome. Technical documentation and architect
 <div align="center">
 
 <a href="https://luc4n3x.pages.dev/">
-  <img src="docs/assets/levyra-signature.png?v=neon-tech" width="205" alt="LUC4N3X">
+  <img src="docs/assets/levyra-signature.png?v=neon-tech" width="220" alt="LUC4N3X — Creator & Maintainer">
 </a>
 
-### LUC4N3X · Creator & Maintainer
-
-<sub>I build and maintain Levyra for Android and Windows, review incoming changes, and shape each release.</sub>
+### LUC4N3X
+**Creator & Maintainer**
 
 <p>
-  <a href="https://github.com/LUC4N3X"><b>GitHub</b></a>
-  &nbsp;·&nbsp;
-  <a href="https://luc4n3x.pages.dev/"><b>Website</b></a>
+  I created Levyra and actively develop it for Android and Windows.<br>
+  I review community pull requests, fix bugs, and publish each release.
+</p>
+
+<p>
+  <a href="https://github.com/LUC4N3X"><b>GitHub Profile</b></a>
+  &nbsp;•&nbsp;
+  <a href="https://luc4n3x.pages.dev/"><b>Personal Website</b></a>
 </p>
 
 <p>
   <a href="https://www.codefactor.io/repository/github/luc4n3x/levyra-deepsound"><img src="https://www.codefactor.io/repository/github/luc4n3x/levyra-deepsound/badge" alt="CodeFactor"></a>
+  &nbsp;
   <a href="https://www.bestpractices.dev/projects/14606"><img src="https://www.bestpractices.dev/projects/14606/badge" alt="OpenSSF Best Practices"></a>
+  &nbsp;
   <a href="https://api.reuse.software/info/github.com/LUC4N3X/Levyra-deepsound"><img src="https://api.reuse.software/badge/github.com/LUC4N3X/Levyra-deepsound" alt="REUSE compliant"></a>
+  &nbsp;
   <a href="https://www.saashub.com/levyra-deepsound?utm_source=badge&utm_campaign=badge&utm_content=levyra-deepsound&badge_variant=color&badge_kind=approved"><img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" height="20"></a>
 </p>
 
-<sub>
-  <b>Featured:</b>
-  <a href="https://mailchi.mp/kotlinweekly/kotlin-weekly-530"><b>Kotlin Weekly</b></a>
-  &nbsp;·&nbsp;
-  <a href="https://techno360.in/levyra-review/"><b>Techno360</b></a>
-  &nbsp;·&nbsp;
-  <a href="https://australiabyaussie.com/levyra-open-source-music-player-gains-kotlin-spotlight/"><b>Australia By Aussie</b></a>
-  &nbsp;·&nbsp;
-  <a href="https://www.oschina.net/news/502584"><b>OSCHINA 开源中国</b></a>
-  &nbsp;·&nbsp;
-  <a href="https://blog.csdn.net/techforward/article/details/165886477"><b>CSDN</b></a>
-  &nbsp;·&nbsp;
-  <a href="https://www.securitylab.ru/blog/personal/SimlpeHacker/362601.php"><b>SecurityLab.ru</b></a>
-  &nbsp;·&nbsp;
-  <a href="https://www.geekparadize.fr/articles/levyra-lecteur-musical-open-source-android-windows"><b>GeekParadize</b></a>
-  &nbsp;·&nbsp;
-  <a href="https://www.opensalerno.it/levyra-musica-libera-da-account-pubblicita-e-tracciamento-un-nuovo-player-open-source-android-e"><b>OpenSalerno</b></a>
-  &nbsp;·&nbsp;
-  <a href="https://techolay.net/levyra-android-ve-windows-icin-acik-kaynak-muzik-oynaticisi/"><b>Techolay</b></a>
-  &nbsp;·&nbsp;
-  <a href="https://hysenlabs.com/en/projects/luc4n3x-levyra-deepsound"><b>Hysen Labs</b></a>
-  &nbsp;·&nbsp;
-  <a href="https://www.pitchhut.com/project/levyra-music-player"><b>PitchHut</b></a>
-</sub>
+<br>
+
+<p>
+  <b>Featured in tech media & open-source spotlights</b>
+</p>
+
+<p>
+  <a href="https://mailchi.mp/kotlinweekly/kotlin-weekly-530">Kotlin Weekly</a> &nbsp;•&nbsp;
+  <a href="https://techno360.in/levyra-review/">Techno360</a> &nbsp;•&nbsp;
+  <a href="https://australiabyaussie.com/levyra-open-source-music-player-gains-kotlin-spotlight/">Australia By Aussie</a> &nbsp;•&nbsp;
+  <a href="https://www.oschina.net/news/502584">OSCHINA 开源中国</a> &nbsp;•&nbsp;
+  <a href="https://blog.csdn.net/techforward/article/details/165886477">CSDN</a> &nbsp;•&nbsp;
+  <a href="https://www.securitylab.ru/blog/personal/SimlpeHacker/362601.php">SecurityLab.ru</a>
+  <br>
+  <a href="https://www.geekparadize.fr/articles/levyra-lecteur-musical-open-source-android-windows">GeekParadize</a> &nbsp;•&nbsp;
+  <a href="https://www.opensalerno.it/levyra-musica-libera-da-account-pubblicita-e-tracciamento-un-nuovo-player-open-source-android-e">OpenSalerno</a> &nbsp;•&nbsp;
+  <a href="https://techolay.net/levyra-android-ve-windows-icin-acik-kaynak-muzik-oynaticisi/">Techolay</a> &nbsp;•&nbsp;
+  <a href="https://hysenlabs.com/en/projects/luc4n3x-levyra-deepsound">Hysen Labs</a> &nbsp;•&nbsp;
+  <a href="https://www.pitchhut.com/project/levyra-music-player">PitchHut</a>
+</p>
 
 </div>
 
