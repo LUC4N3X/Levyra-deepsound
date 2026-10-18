@@ -16,7 +16,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.Canvas
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.animation.core.snap
@@ -75,10 +74,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import kotlin.math.roundToInt
-import kotlin.math.sin
-import kotlin.math.cos
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.runtime.mutableFloatStateOf
@@ -95,9 +90,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -137,6 +135,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import java.util.Date
+import androidx.compose.ui.platform.LocalLocale
 import java.util.Locale
 
 @Immutable
@@ -545,7 +544,8 @@ private fun StudioCarousel(
                     subtitle = if (item.round) "" else item.subtitle,
                     titleColor = studioTitleColor(item),
                     titleLines = if (style == HomeStyle.Flow || item.round) 1 else 2,
-                    reserveTitleLines = !item.round
+                    reserveTitleLines = !item.round,
+                    marqueeTitle = style == HomeStyle.ExpressiveMax
                 )
             }
         }
@@ -597,7 +597,8 @@ private fun StudioExpressiveCarousel(
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
                     color = Color.White,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.basicMarquee()
                 )
                 if (item.subtitle.isNotBlank()) {
                     Text(
@@ -644,8 +645,9 @@ private fun StudioExpressiveMosaic(
                             text = hero.title,
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
                             color = Color.White,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.basicMarquee()
                         )
                         Text(
                             text = hero.subtitle,
@@ -699,6 +701,7 @@ private fun StudioLargeRow(
     val roundItems = items.first().round
     val overlay = style == HomeStyle.Immersive || roundItems
     val aspect = if (roundItems) 0.78f else spec.largeAspect
+    val marquee = style == HomeStyle.ExpressiveMax
     LazyRow(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -725,8 +728,9 @@ private fun StudioLargeRow(
                                 text = item.title,
                                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                                 color = Color.White,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
+                                maxLines = if (marquee) 1 else 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = if (marquee) Modifier.basicMarquee() else Modifier
                             )
                             if (item.subtitle.isNotBlank()) {
                                 Text(
@@ -751,8 +755,9 @@ private fun StudioLargeRow(
                                 MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
                             },
                             color = studioTitleColor(item),
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
+                            maxLines = if (marquee) 1 else 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = if (marquee) Modifier.basicMarquee() else Modifier
                         )
                         if (item.subtitle.isNotBlank()) {
                             Text(
@@ -808,7 +813,8 @@ private fun StudioGrid(
                             subtitle = if (item.round) "" else item.subtitle,
                             titleColor = studioTitleColor(item),
                             titleLines = 1,
-                            reserveTitleLines = false
+                            reserveTitleLines = false,
+                            marqueeTitle = style == HomeStyle.ExpressiveMax
                         )
                     }
                 }
@@ -828,6 +834,7 @@ private fun StudioList(
     modifier: Modifier
 ) {
     val visible = remember(items, spec.listLimit) { items.take(spec.listLimit) }
+    val marquee = style == HomeStyle.ExpressiveMax
     Column(
         modifier = modifier.fillMaxWidth().padding(horizontal = spec.inset),
         verticalArrangement = Arrangement.spacedBy(if (style == HomeStyle.Minimal) 2.dp else 6.dp)
@@ -864,7 +871,8 @@ private fun StudioList(
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                         color = studioTitleColor(item),
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = if (marquee) Modifier.basicMarquee() else Modifier
                     )
                     if (item.subtitle.isNotBlank()) {
                         Text(
@@ -903,6 +911,7 @@ private fun StudioCompact(
     }
     val rows = remember(items, spec.compactLimit) { items.take(spec.compactLimit).chunked(2) }
     val tileShape = RoundedCornerShape(if (style == HomeStyle.Flow) 6.dp else spec.artworkCorner.coerceAtMost(12.dp))
+    val marquee = style == HomeStyle.ExpressiveMax
     Column(
         modifier = modifier.fillMaxWidth().padding(horizontal = spec.inset),
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -926,11 +935,12 @@ private fun StudioCompact(
                             text = item.title,
                             style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                             color = studioTitleColor(item),
-                            maxLines = 2,
+                            maxLines = if (marquee) 1 else 2,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier
                                 .weight(1f)
                                 .padding(horizontal = 10.dp)
+                                .then(if (marquee) Modifier.basicMarquee() else Modifier)
                         )
                         if (item.current) {
                             Box(modifier = Modifier.padding(end = 10.dp)) {
@@ -971,7 +981,8 @@ private fun StudioChipRow(spec: HomeStyleSpec, items: List<StudioShelfItem>, mod
                     style = MaterialTheme.typography.labelLarge,
                     color = LevyraText,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.basicMarquee()
                 )
             }
         }
@@ -1001,11 +1012,18 @@ internal fun StudioHomeHeader(
     val dayPart = remember(strings, greetingHour) { strings.greetingDayPart(greetingHour) }
     val name = remember(strings, userName) { strings.greetingName(userName) }
     val greeting = remember(strings, userName, greetingHour) { strings.formatGreeting(userName, greetingHour) }
+    val today = remember(greetingHour, strings.code) {
+        val locale = Locale.forLanguageTag(strings.code)
+        DateFormat.getInstanceForSkeleton("EEEEMMMMd", locale).format(Date())
+            .replaceFirstChar { it.titlecase(locale) }
+    }
+    val topKicker = if (name.isNotBlank()) dayPart else today
+    val mainHeading = if (name.isNotBlank()) name else dayPart
     if (style == HomeStyle.MaterialExpressive && hero != null) {
         MxBleedHero(
             hero = hero,
-            dayPart = dayPart,
-            name = name,
+            kicker = topKicker,
+            headline = mainHeading,
             greeting = greeting,
             searchLabel = strings.search,
             settingsLabel = strings.settings,
@@ -1057,7 +1075,7 @@ internal fun StudioHomeHeader(
     ) {
         when (style) {
             HomeStyle.MaterialExpressive -> MxHeader(
-                dayPart, name, greeting, strings.search, strings.settings, isResolving, onSearch, onSettings
+                topKicker, mainHeading, greeting, strings.search, strings.settings, isResolving, onSearch, onSettings
             )
             HomeStyle.ExpressiveMax -> {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1067,26 +1085,23 @@ internal fun StudioHomeHeader(
                 }
                 Column(modifier = headingModifier.padding(top = 18.dp)) {
                     Text(
-                        text = dayPart,
+                        text = topKicker,
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                    if (name.isNotBlank()) {
-                        Text(
-                            text = name,
-                            style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Black),
-                            color = LevyraText,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+                    Text(
+                        text = mainHeading,
+                        style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Black),
+                        color = LevyraText,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.basicMarquee()
+                    )
                 }
             }
             HomeStyle.Editorial -> {
-                val today = remember(greetingHour, strings.code) {
-                    val locale = Locale.forLanguageTag(strings.code)
-                    DateFormat.getInstanceForSkeleton("EEEEMMMMd", locale).format(Date())
-                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = today.uppercase(Locale.forLanguageTag(strings.code)),
@@ -1215,6 +1230,7 @@ private fun rememberSpotlightMotion(
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 private fun ExpressiveSpotlight(
     spec: HomeStyleSpec,
@@ -1229,126 +1245,324 @@ private fun ExpressiveSpotlight(
     animationsEnabled: Boolean,
     onOpen: () -> Unit
 ) {
+    val strings = LocalLevyraStrings.current
     val scheme = MaterialTheme.colorScheme
     val isLight = LevyraIsLight
+    val canvas = homeCanvasColor(isLight)
     val seed = if (track.accentStart != 0) Color(track.accentStart) else scheme.primary
-    val morph = rememberLevyraPlayMorphShape(playing = playing, animated = animationsEnabled)
-    val spin = rememberSpotlightMotion(animationsEnabled && playing, 0f, 360f, 36_000, reverse = false)
-    val outerShape = MaterialShapes.Cookie12Sided.toShape()
-    val innerShape = MaterialShapes.SoftBurst.toShape()
-    val portraitShape = MaterialShapes.Cookie9Sided.toShape()
-    val textShadow = if (isLight) null else Shadow(Color.Black.copy(alpha = 0.55f), blurRadius = 22f)
+    val secondarySeed = if (track.accentEnd != 0) Color(track.accentEnd) else scheme.tertiary
+    val morph = rememberLevyraPlayMorphShape(playing = playing, animated = animationsEnabled, spinWhilePlaying = !resolving)
+    val spin = rememberSpotlightMotion(animationsEnabled && playing, 0f, 360f, 44_000, reverse = false)
+    val breathe = rememberSpotlightMotion(animationsEnabled, 0.18f, 0.72f, 6_800, reverse = true)
+    val outerShape = remember { MaterialShapes.Cookie12Sided.toShape() }
+    val innerShape = remember { MaterialShapes.Clover8Leaf.toShape() }
+    val stampShape = remember { MaterialShapes.Cookie6Sided.toShape() }
+    val portraitShape = remember { MaterialShapes.Cookie9Sided.toShape() }
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .levyraPressable(onClick = onOpen, onClickLabel = track.title, role = Role.Button)
+            .levyraPressable(
+                onClick = onOpen,
+                onClickLabel = track.title,
+                role = Role.Button,
+                pressedScale = 1f
+            )
     ) {
-        val bloom = (maxWidth * 0.8f).coerceAtMost(330.dp)
-        val stamp = 96.dp
-        val bloomShift = bloom * 0.16f
-        val stampX = maxWidth - bloom * 0.24f - stamp / 2
+        val heroHeight = (maxWidth * 1.06f).coerceIn(376.dp, 428.dp)
+        val artSpan = (maxWidth * 0.94f).coerceAtMost(392.dp)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(bloom + 132.dp)
+                .height(heroHeight)
         ) {
             Box(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = bloom * 0.42f, y = -bloom * 0.2f)
-                    .size(bloom * 1.5f)
-                    .background(
-                        Brush.radialGradient(
-                            0f to seed.copy(alpha = if (isLight) 0.28f else 0.46f),
-                            0.5f to seed.copy(alpha = if (isLight) 0.10f else 0.16f),
-                            1f to Color.Transparent
+                    .matchParentSize()
+                    .drawBehind {
+                        val primaryCenter = Offset(size.width * 0.74f, size.height * 0.40f)
+                        val secondaryCenter = Offset(size.width * 0.28f, size.height * 0.68f)
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    seed.copy(alpha = if (isLight) 0.30f else 0.48f),
+                                    secondarySeed.copy(alpha = if (isLight) 0.12f else 0.20f),
+                                    Color.Transparent
+                                ),
+                                center = primaryCenter,
+                                radius = size.width * 0.72f
+                            ),
+                            center = primaryCenter,
+                            radius = size.width * 0.72f
                         )
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    scheme.tertiary.copy(alpha = if (isLight) 0.14f else 0.22f),
+                                    Color.Transparent
+                                ),
+                                center = secondaryCenter,
+                                radius = size.width * 0.56f
+                            ),
+                            center = secondaryCenter,
+                            radius = size.width * 0.56f
+                        )
+                    }
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                    .drawWithContent {
+                        drawContent()
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                0.0f to Color.Transparent,
+                                0.10f to Color.Black.copy(alpha = 0.92f),
+                                0.66f to Color.Black,
+                                0.86f to Color.Black.copy(alpha = 0.46f),
+                                1.0f to Color.Transparent
+                            ),
+                            blendMode = BlendMode.DstIn
+                        )
+                        drawRect(
+                            brush = Brush.horizontalGradient(
+                                0.0f to Color.Black.copy(alpha = 0.22f),
+                                0.28f to Color.Black.copy(alpha = 0.68f),
+                                0.56f to Color.Black
+                            ),
+                            blendMode = BlendMode.DstIn
+                        )
+                    }
+            ) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = artSpan * 0.22f, y = -artSpan * 0.04f)
+                        .size(artSpan * 1.04f)
+                        .graphicsLayer { rotationZ = spin.value }
+                        .clip(outerShape)
+                        .background(
+                            Brush.linearGradient(
+                                listOf(
+                                    seed.copy(alpha = if (isLight) 0.24f else 0.34f),
+                                    secondarySeed.copy(alpha = if (isLight) 0.10f else 0.16f)
+                                )
+                            )
+                        )
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = artSpan * 0.14f, y = artSpan * 0.04f)
+                        .size(artSpan * 0.90f)
+                        .graphicsLayer { rotationZ = -spin.value * 1.35f }
+                        .clip(innerShape)
+                        .background(scheme.tertiaryContainer.copy(alpha = if (isLight) 0.38f else 0.26f))
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = artSpan * 0.10f, y = artSpan * 0.01f)
+                        .size(artSpan * 0.96f)
+                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                        .drawWithContent {
+                            drawContent()
+                            drawRect(
+                                brush = Brush.radialGradient(
+                                    0.0f to Color.Black,
+                                    0.58f to Color.Black.copy(alpha = 0.96f),
+                                    0.82f to Color.Black.copy(alpha = 0.52f),
+                                    1.0f to Color.Transparent,
+                                    center = Offset(size.width * 0.54f, size.height * 0.44f),
+                                    radius = size.minDimension * 0.56f
+                                ),
+                                blendMode = BlendMode.DstIn
+                            )
+                            drawRect(
+                                brush = Brush.horizontalGradient(
+                                    0.0f to Color.Transparent,
+                                    0.22f to Color.Black.copy(alpha = 0.62f),
+                                    0.50f to Color.Black
+                                ),
+                                blendMode = BlendMode.DstIn
+                            )
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    0.0f to Color.Black.copy(alpha = 0.94f),
+                                    0.60f to Color.Black,
+                                    0.85f to Color.Black.copy(alpha = 0.38f),
+                                    1.0f to Color.Transparent
+                                ),
+                                blendMode = BlendMode.DstIn
+                            )
+                        }
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(artSpan * 0.04f)
+                            .graphicsLayer { rotationZ = -3f + 6f * breathe.value }
+                            .clip(portraitShape)
+                    ) {
+                        if (artistArtworkUrl.isNotBlank()) {
+                            StudioRemoteArtwork(artistArtworkUrl, track.artist, Modifier.fillMaxSize(), true)
+                        } else {
+                            CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true)
+                        }
+                    }
+                }
+                Canvas(modifier = Modifier.matchParentSize()) {
+                    val arcCenter = Offset(size.width * 0.68f, size.height * 0.42f)
+                    val ringRadius = artSpan.toPx() * 0.45f
+                    val dash = PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 10.dp.toPx()))
+                    drawCircle(
+                        color = seed.copy(alpha = if (isLight) 0.28f else 0.36f),
+                        radius = ringRadius,
+                        center = arcCenter,
+                        style = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round, pathEffect = dash)
                     )
-            )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = bloomShift)
-                    .size(bloom)
-                    .graphicsLayer { rotationZ = spin.value }
-                    .clip(outerShape)
-                    .background(seed.copy(alpha = 0.30f))
-            )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = bloomShift - bloom * 0.07f, y = bloom * 0.07f)
-                    .size(bloom * 0.86f)
-                    .graphicsLayer { rotationZ = -spin.value * 1.6f }
-                    .clip(innerShape)
-                    .background(scheme.primaryContainer.copy(alpha = 0.62f))
-            )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = bloomShift - bloom * 0.14f, y = bloom * 0.14f)
-                    .size(bloom * 0.72f)
-                    .clip(portraitShape)
-                    .background(LevyraPanel)
-            ) {
-                if (artistArtworkUrl.isNotBlank()) {
-                    StudioRemoteArtwork(artistArtworkUrl, track.artist, Modifier.fillMaxSize(), true)
-                } else {
-                    CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true)
+                    drawCircle(
+                        color = Color.White.copy(alpha = if (isLight) 0.32f else 0.14f),
+                        radius = ringRadius * 1.13f,
+                        center = arcCenter,
+                        style = Stroke(width = 1.dp.toPx())
+                    )
                 }
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(
+                            Brush.verticalGradient(
+                                0.0f to Color.Transparent,
+                                0.46f to Color.Transparent,
+                                0.74f to canvas.copy(alpha = if (isLight) 0.62f else 0.70f),
+                                1.0f to canvas.copy(alpha = if (isLight) 0.80f else 0.88f)
+                            )
+                        )
+                )
             }
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .offset(x = stampX, y = bloom * 0.9f - stamp / 2)
-                    .size(stamp)
-                    .clip(morph)
-                    .background(scheme.primary)
-                    .levyraPressable(onClick = onOpen, onClickLabel = playLabel, role = Role.Button),
-                contentAlignment = Alignment.Center
-            ) {
-                CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = false)
-                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.34f)))
-                if (resolving) {
-                    LevyraLoadingIndicator(modifier = Modifier.size(34.dp), color = Color.White)
-                } else {
-                    Icon(playIcon, contentDescription = playLabel, tint = Color.White, modifier = Modifier.size(40.dp))
-                }
-            }
-            Column(
+            Row(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .fillMaxWidth(0.66f)
-                    .padding(start = spec.inset, bottom = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                    .fillMaxWidth()
+                    .padding(start = spec.inset, end = spec.inset, bottom = 14.dp),
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Surface(
-                    color = scheme.tertiaryContainer,
-                    contentColor = scheme.onTertiaryContainer,
-                    shape = CircleShape
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
+                    Surface(
+                        color = scheme.tertiaryContainer.copy(alpha = 0.90f),
+                        contentColor = scheme.onTertiaryContainer,
+                        shape = CircleShape
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(start = 7.dp, end = 12.dp, top = 5.dp, bottom = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(7.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(14.dp)
+                                    .graphicsLayer { rotationZ = spin.value * 2f }
+                                    .clip(sunnyShape)
+                                    .background(scheme.tertiary)
+                            )
+                            Text(
+                                text = strings.homeSoundtrackRadio.uppercase(LocalLocale.current.platformLocale),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.ExtraBold,
+                                    letterSpacing = 1.2.sp
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
                     Text(
                         text = label,
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
-                        maxLines = 1,
+                        style = MaterialTheme.typography.displaySmallEmphasized.copy(
+                            fontWeight = FontWeight.Black
+                        ),
+                        color = LevyraText,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(46.dp)
+                                .graphicsLayer { rotationZ = -6f + 12f * breathe.value }
+                                .clip(stampShape)
+                                .background(scheme.primaryContainer)
+                                .padding(2.5.dp)
+                                .clip(stampShape)
+                        ) {
+                            CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = false)
+                        }
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                text = track.title,
+                                style = MaterialTheme.typography.titleMediumEmphasized.copy(
+                                    fontWeight = FontWeight.ExtraBold
+                                ),
+                                color = if (isLight) LevyraText else Color.White,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.basicMarquee()
+                            )
+                            Text(
+                                text = lead.ifBlank { track.artist },
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.Medium
+                                ),
+                                color = if (isLight) LevyraMuted else Color.White.copy(alpha = 0.78f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.basicMarquee()
+                            )
+                        }
+                    }
                 }
-                Text(
-                    text = track.title,
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Black, shadow = textShadow),
-                    color = LevyraText,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = lead.ifBlank { track.artist },
-                    style = MaterialTheme.typography.bodyLarge.copy(shadow = textShadow),
-                    color = LevyraMuted,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Box(
+                    modifier = Modifier
+                        .size(76.dp)
+                        .clip(morph)
+                        .background(
+                            Brush.linearGradient(
+                                listOf(scheme.primary, scheme.tertiary)
+                            )
+                        )
+                        .levyraPressable(onClick = onOpen, onClickLabel = playLabel, role = Role.Button),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(68.dp)
+                            .clip(morph)
+                            .background(scheme.primary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (resolving) {
+                            LevyraLoadingIndicator(modifier = Modifier.size(30.dp), color = scheme.onPrimary)
+                        } else {
+                            Icon(
+                                imageVector = playIcon,
+                                contentDescription = playLabel,
+                                tint = scheme.onPrimary,
+                                modifier = Modifier.size(36.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -1459,7 +1673,7 @@ private fun EditorialSpotlight(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = lead.ifBlank { track.artist }.uppercase(Locale.getDefault()),
+                    text = lead.ifBlank { track.artist }.uppercase(LocalLocale.current.platformLocale),
                     style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 1.6.sp),
                     color = Color.White.copy(alpha = 0.78f),
                     maxLines = 2,
@@ -2022,8 +2236,8 @@ private val MxGalleryShapes = listOf(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun MxHeader(
-    dayPart: String,
-    name: String,
+    kicker: String,
+    headline: String,
     greeting: String,
     searchLabel: String,
     settingsLabel: String,
@@ -2041,7 +2255,7 @@ private fun MxHeader(
         Box {
             MxHeroDecor(Modifier.matchParentSize())
             Column(modifier = Modifier.padding(start = 22.dp, end = 14.dp, top = 18.dp, bottom = 20.dp)) {
-                MxGreetingRow(dayPart, name, greeting, searchLabel, settingsLabel, isResolving, onSearch, onSettings)
+                MxGreetingRow(kicker, headline, greeting, searchLabel, settingsLabel, isResolving, onSearch, onSettings)
             }
         }
     }
@@ -2752,7 +2966,7 @@ internal fun MxCommentBubbles(
                                     .background(content.copy(alpha = 0.10f))
                             )
                             Text(
-                                text = "“",
+                                text = "\u201C",
                                 style = MaterialTheme.typography.displayLargeEmphasized,
                                 color = content.copy(alpha = 0.28f),
                                 modifier = Modifier.padding(start = 14.dp).offset(y = (-14).dp)
@@ -3054,11 +3268,12 @@ private fun MxTonalTiles(spec: HomeStyleSpec, items: List<StudioShelfItem>, isPl
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 private fun MxBleedHero(
     hero: StudioHero,
-    dayPart: String,
-    name: String,
+    kicker: String,
+    headline: String,
     greeting: String,
     searchLabel: String,
     settingsLabel: String,
@@ -3068,21 +3283,23 @@ private fun MxBleedHero(
     onSearch: () -> Unit,
     onSettings: () -> Unit
 ) {
+    val strings = LocalLevyraStrings.current
     val scheme = MaterialTheme.colorScheme
-    val canvas = homeCanvasColor(LevyraIsLight)
+    val isLight = LevyraIsLight
+    val canvas = homeCanvasColor(isLight)
     val playing = hero.isCurrent && hero.isPlaying
     val seed = if (hero.track.accentStart != 0) Color(hero.track.accentStart) else scheme.primary
-    val maskShape = rememberLevyraArtworkMorphShape(playing = playing, animated = false)
-    val playShape = rememberLevyraPlayMorphShape(playing = playing, animated = hero.animationsEnabled)
-    val drift by animateFloatAsState(
-        targetValue = if (playing) 1f else 0f,
-        animationSpec = if (hero.animationsEnabled) MaterialTheme.motionScheme.slowSpatialSpec() else snap(),
-        label = "mx-bleed-drift"
+    val secondarySeed = if (hero.track.accentEnd != 0) Color(hero.track.accentEnd) else scheme.tertiary
+    val playShape = rememberLevyraPlayMorphShape(
+        playing = playing,
+        animated = hero.animationsEnabled,
+        spinWhilePlaying = !hero.isResolving
     )
-    val companionShapes = listOf(MaterialShapes.Cookie9Sided.toShape(), MaterialShapes.Clover4Leaf.toShape(), MaterialShapes.Gem.toShape())
-    val heroHeight = 560.dp
-    val sway = rememberSpotlightMotion(hero.animationsEnabled && playing, -16f, 16f, 7_000, reverse = true)
-    val satellites = hero.companionArtworkUrls.take(MxOrbitSatelliteAngles.size)
+    val spin = rememberSpotlightMotion(hero.animationsEnabled && playing, 0f, 360f, 46_000, reverse = false)
+    val breathe = rememberSpotlightMotion(hero.animationsEnabled, 0.16f, 0.84f, 7_200, reverse = true)
+    val heroHeight = 540.dp
+    val sunnyShape = remember { MaterialShapes.Sunny.toShape() }
+    val cookieShape = remember { MaterialShapes.Cookie9Sided.toShape() }
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
@@ -3094,98 +3311,121 @@ private fun MxBleedHero(
                 pressedScale = 1f
             )
     ) {
-        val orbitCenterX = maxWidth - MxPortraitEndInset - MxPortraitSize / 2
-        val orbitCenterY = MxPortraitTop + MxPortraitSize / 2
+        val totalHeight = heroHeight + topBleed
+        val cutSize = maxWidth * 1.20f
+        val haloSize = cutSize * 1.12f
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(heroHeight + topBleed)
+                .height(totalHeight)
                 .offset(y = -topBleed)
-                .background(
-                    Brush.verticalGradient(
-                        0f to seed.copy(alpha = 0.55f),
-                        0.55f to seed.copy(alpha = 0.18f),
-                        1f to canvas.copy(alpha = 0f)
+                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                .drawWithContent {
+                    drawContent()
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            0.0f to Color.Black,
+                            0.62f to Color.Black,
+                            0.86f to Color.Black.copy(alpha = 0.46f),
+                            1.0f to Color.Transparent
+                        ),
+                        blendMode = BlendMode.DstIn
                     )
-                )
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .offset(x = 84.dp, y = 30.dp)
-                .size(380.dp)
-                .graphicsLayer { rotationZ = 14f + 24f * drift }
-                .clip(MaterialShapes.SoftBurst.toShape())
-                .background(seed.copy(alpha = 0.42f))
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .offset(x = -MxPortraitEndInset, y = MxPortraitTop)
-                .size(MxPortraitSize)
-                .graphicsLayer { rotationZ = -6f + 10f * drift }
-                .clip(maskShape)
-                .background(scheme.surfaceContainerHigh)
+                }
         ) {
-            if (hero.artistArtworkUrl.isNotBlank()) {
-                StudioRemoteArtwork(hero.artistArtworkUrl, hero.track.artist, Modifier.fillMaxSize(), true)
-            } else {
-                CoverImage(track = hero.track, modifier = Modifier.fillMaxSize(), highRes = true)
-            }
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(heroHeight * 0.3f)
-                .align(Alignment.BottomCenter)
-                .background(Brush.verticalGradient(0f to Color.Transparent, 1f to canvas))
-        )
-        val ringColor = Color.White.copy(alpha = if (LevyraIsLight) 0.5f else 0.3f)
-        Canvas(modifier = Modifier.matchParentSize()) {
-            val center = Offset(orbitCenterX.toPx(), orbitCenterY.toPx())
-            val dash = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 9.dp.toPx()))
-            drawCircle(
-                color = ringColor,
-                radius = MxOrbitRadius.toPx(),
-                center = center,
-                style = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round, pathEffect = dash)
-            )
-            drawCircle(
-                color = ringColor.copy(alpha = ringColor.alpha * 0.5f),
-                radius = (MxOrbitRadius + 36.dp).toPx(),
-                center = center,
-                style = Stroke(width = 1.dp.toPx())
-            )
-        }
-        satellites.forEachIndexed { index, url ->
-            val shape = companionShapes[index % companionShapes.size]
-            val baseAngle = MxOrbitSatelliteAngles[index]
-            val swayDirection = if (index % 2 == 0) 1.5f else -1.5f
             Box(
                 modifier = Modifier
-                    .offset {
-                        val angle = Math.toRadians((baseAngle + sway.value).toDouble())
-                        val radius = MxOrbitRadius.toPx()
-                        val half = MxSatelliteSize.toPx() / 2f
-                        IntOffset(
-                            (orbitCenterX.toPx() + radius * cos(angle).toFloat() - half).roundToInt(),
-                            (orbitCenterY.toPx() + radius * sin(angle).toFloat() - half).roundToInt()
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0.0f to seed.copy(alpha = if (isLight) 0.34f else 0.54f),
+                            0.46f to secondarySeed.copy(alpha = if (isLight) 0.16f else 0.26f),
+                            1.0f to canvas.copy(alpha = 0f)
+                        )
+                    )
+                    .drawBehind {
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    seed.copy(alpha = if (isLight) 0.42f else 0.62f),
+                                    scheme.tertiary.copy(alpha = if (isLight) 0.18f else 0.28f),
+                                    Color.Transparent
+                                ),
+                                center = Offset(size.width * 0.78f, size.height * 0.40f),
+                                radius = size.width * 0.92f
+                            ),
+                            center = Offset(size.width * 0.78f, size.height * 0.40f),
+                            radius = size.width * 0.92f
                         )
                     }
-                    .size(MxSatelliteSize)
-                    .graphicsLayer { rotationZ = sway.value * swayDirection }
-                    .clip(shape)
-                    .background(scheme.tertiary)
-                    .padding(3.dp)
-                    .clip(shape)
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = haloSize * 0.22f, y = topBleed - 8.dp)
+                    .size(haloSize)
+                    .graphicsLayer { rotationZ = spin.value }
+                    .clip(sunnyShape)
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                scheme.tertiary.copy(alpha = if (isLight) 0.80f else 0.70f),
+                                seed.copy(alpha = if (isLight) 0.62f else 0.58f)
+                            )
+                        )
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = cutSize * 0.17f, y = topBleed + 44.dp)
+                    .size(cutSize)
+                    .clip(cookieShape)
             ) {
-                StudioRemoteArtwork(url, "", Modifier.fillMaxSize(), false)
+                if (hero.artistArtworkUrl.isNotBlank()) {
+                    StudioRemoteArtwork(
+                        url = hero.artistArtworkUrl,
+                        description = hero.track.artist,
+                        modifier = Modifier.fillMaxSize(),
+                        highRes = true
+                    )
+                } else {
+                    CoverImage(
+                        track = hero.track,
+                        modifier = Modifier.fillMaxSize(),
+                        highRes = true
+                    )
+                }
             }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0.0f to Color.Black.copy(alpha = if (isLight) 0.06f else 0.26f),
+                            0.20f to Color.Transparent,
+                            0.56f to canvas.copy(alpha = if (isLight) 0.22f else 0.30f),
+                            0.82f to canvas.copy(alpha = if (isLight) 0.82f else 0.88f),
+                            1.0f to canvas
+                        )
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            0.0f to canvas.copy(alpha = if (isLight) 0.50f else 0.58f),
+                            0.40f to canvas.copy(alpha = if (isLight) 0.14f else 0.18f),
+                            0.76f to Color.Transparent
+                        )
+                    )
+            )
         }
         MxBleedGreeting(
             modifier = Modifier.align(Alignment.TopStart),
-            dayPart = dayPart,
-            name = name,
+            kicker = kicker,
+            headline = headline,
             greeting = greeting,
             searchLabel = searchLabel,
             settingsLabel = settingsLabel,
@@ -3196,19 +3436,23 @@ private fun MxBleedHero(
         MxBleedTitle(
             modifier = Modifier.align(Alignment.BottomStart),
             hero = hero,
+            radioLabel = strings.homeSoundtrackRadio,
             playLabel = playLabel,
             playing = playing,
+            spinAngle = { spin.value },
+            breathe = { breathe.value },
             playShape = playShape
         )
     }
 }
 
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun MxBleedGreeting(
     modifier: Modifier,
-    dayPart: String,
-    name: String,
+    kicker: String,
+    headline: String,
     greeting: String,
     searchLabel: String,
     settingsLabel: String,
@@ -3216,12 +3460,19 @@ private fun MxBleedGreeting(
     onSearch: () -> Unit,
     onSettings: () -> Unit
 ) {
+    val isLight = LevyraIsLight
+    val textColor = if (isLight) LevyraText else Color.White
+    val subColor = if (isLight) LevyraText.copy(alpha = 0.76f) else Color.White.copy(alpha = 0.82f)
+    val buttonContainer = if (isLight) Color.White.copy(alpha = 0.68f) else Color.Black.copy(alpha = 0.38f)
+    val buttonContent = if (isLight) LevyraText else Color.White
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = 4.dp, start = 20.dp, end = 12.dp),
-        verticalAlignment = Alignment.Top
+            .padding(top = 6.dp, start = 18.dp, end = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        HomeLogoBadge()
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -3231,29 +3482,32 @@ private fun MxBleedGreeting(
                 }
         ) {
             Text(
-                text = dayPart,
-                style = MaterialTheme.typography.titleMediumEmphasized,
-                color = Color.White.copy(alpha = 0.86f)
-            )
-            Text(
-                text = name.ifBlank { greeting },
-                style = MaterialTheme.typography.displayMediumEmphasized.copy(
-                    shadow = Shadow(Color.Black.copy(alpha = 0.35f), blurRadius = 18f)
-                ),
-                color = Color.White,
+                text = kicker,
+                style = MaterialTheme.typography.labelLargeEmphasized,
+                color = subColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+            Text(
+                text = headline,
+                style = MaterialTheme.typography.headlineMediumEmphasized.copy(
+                    fontWeight = FontWeight.Black
+                ),
+                color = textColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.basicMarquee()
+            )
         }
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilledTonalIconButton(
                 onClick = onSearch,
                 shapes = IconButtonDefaults.shapes(),
                 colors = IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = Color.Black.copy(alpha = 0.32f),
-                    contentColor = Color.White
+                    containerColor = buttonContainer,
+                    contentColor = buttonContent
                 ),
-                modifier = Modifier.size(52.dp)
+                modifier = Modifier.size(46.dp)
             ) {
                 Icon(Icons.Rounded.Search, contentDescription = searchLabel)
             }
@@ -3261,13 +3515,13 @@ private fun MxBleedGreeting(
                 onClick = onSettings,
                 shapes = IconButtonDefaults.shapes(),
                 colors = IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = Color.Black.copy(alpha = 0.32f),
-                    contentColor = Color.White
+                    containerColor = buttonContainer,
+                    contentColor = buttonContent
                 ),
-                modifier = Modifier.size(52.dp)
+                modifier = Modifier.size(46.dp)
             ) {
                 if (isResolving) {
-                    LevyraLoadingIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+                    LevyraLoadingIndicator(modifier = Modifier.size(22.dp), color = buttonContent)
                 } else {
                     Icon(Icons.Rounded.Settings, contentDescription = settingsLabel)
                 }
@@ -3281,77 +3535,165 @@ private fun MxBleedGreeting(
 private fun MxBleedTitle(
     modifier: Modifier,
     hero: StudioHero,
+    radioLabel: String,
     playLabel: String,
     playing: Boolean,
+    spinAngle: () -> Float,
+    breathe: () -> Float,
     playShape: Shape
 ) {
     val scheme = MaterialTheme.colorScheme
-    Row(
+    val isLight = LevyraIsLight
+    val canvas = homeCanvasColor(isLight)
+    val badgeShape = remember { MaterialShapes.Sunny.toShape() }
+    val coverStampShape = remember { MaterialShapes.Cookie9Sided.toShape() }
+    val companionShapes = remember {
+        listOf(
+            MaterialShapes.Cookie9Sided.toShape(),
+            MaterialShapes.Clover4Leaf.toShape(),
+            MaterialShapes.Sunny.toShape()
+        )
+    }
+    val companions = remember(hero.companionArtworkUrls) { hero.companionArtworkUrls.take(3) }
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 20.dp, end = 16.dp, bottom = 4.dp),
-        verticalAlignment = Alignment.Bottom,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
+            .padding(start = 16.dp, end = 16.dp, bottom = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Surface(
-                color = scheme.tertiary,
-                contentColor = scheme.onTertiary,
-                shape = CircleShape,
-                modifier = Modifier.graphicsLayer { rotationZ = -4f }
-            ) {
-                Text(
-                    text = hero.label,
-                    style = MaterialTheme.typography.labelLargeEmphasized,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Text(
-                text = hero.track.title,
-                style = MaterialTheme.typography.displaySmallEmphasized,
-                color = LevyraText,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = hero.lead.ifBlank { hero.track.artist },
-                style = MaterialTheme.typography.titleMediumEmphasized,
-                color = LevyraMuted,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        Box(
-            modifier = Modifier
-                .size(84.dp)
-                .clip(playShape)
-                .background(scheme.tertiary)
-                .levyraPressable(onClick = hero.onOpen, onClickLabel = playLabel, role = Role.Button),
-            contentAlignment = Alignment.Center
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(start = 4.dp)
         ) {
-            if (hero.isCurrent && hero.isResolving) {
-                LevyraLoadingIndicator(modifier = Modifier.size(36.dp), color = scheme.onTertiary)
-            } else {
-                Icon(
-                    imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                    contentDescription = playLabel,
-                    tint = scheme.onTertiary,
-                    modifier = Modifier.size(40.dp)
-                )
+            Surface(
+                color = scheme.tertiaryContainer.copy(alpha = 0.92f),
+                contentColor = scheme.onTertiaryContainer,
+                shape = CircleShape
+            ) {
+                Row(
+                    modifier = Modifier.padding(start = 7.dp, end = 13.dp, top = 5.dp, bottom = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(14.dp)
+                            .graphicsLayer { rotationZ = spinAngle() * 2f }
+                            .clip(badgeShape)
+                            .background(scheme.tertiary)
+                    )
+                    Text(
+                        text = radioLabel.uppercase(LocalLocale.current.platformLocale),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 1.2.sp
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            if (companions.isNotEmpty()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy((-7).dp)
+                ) {
+                    companions.forEachIndexed { index, url ->
+                        val shape = companionShapes[index % companionShapes.size]
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(shape)
+                                .background(canvas)
+                                .padding(2.dp)
+                                .clip(shape)
+                        ) {
+                            StudioRemoteArtwork(url, "", Modifier.fillMaxSize(), false)
+                        }
+                    }
+                }
+            }
+        }
+        Text(
+            text = hero.label,
+            style = MaterialTheme.typography.displaySmallEmphasized.copy(
+                fontWeight = FontWeight.Black
+            ),
+            color = if (isLight) LevyraText else Color.White,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(start = 4.dp)
+        )
+        Surface(
+            color = scheme.tertiaryContainer.copy(alpha = 0.94f),
+            contentColor = scheme.onTertiaryContainer,
+            shape = RoundedCornerShape(topStart = 40.dp, topEnd = 14.dp, bottomEnd = 40.dp, bottomStart = 14.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(54.dp)
+                        .graphicsLayer { rotationZ = -6f + 12f * breathe() }
+                        .clip(coverStampShape)
+                        .background(scheme.tertiary)
+                        .padding(2.5.dp)
+                        .clip(coverStampShape)
+                ) {
+                    CoverImage(track = hero.track, modifier = Modifier.fillMaxSize(), highRes = false)
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = hero.track.title,
+                        style = MaterialTheme.typography.titleMediumEmphasized.copy(
+                            fontWeight = FontWeight.ExtraBold
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.basicMarquee()
+                    )
+                    Text(
+                        text = hero.lead.ifBlank { hero.track.artist },
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = scheme.onTertiaryContainer.copy(alpha = 0.78f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.basicMarquee()
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(playShape)
+                        .background(scheme.tertiary)
+                        .levyraPressable(onClick = hero.onOpen, onClickLabel = playLabel, role = Role.Button),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (hero.isCurrent && hero.isResolving) {
+                        LevyraLoadingIndicator(modifier = Modifier.size(28.dp), color = scheme.onTertiary)
+                    } else {
+                        Icon(
+                            imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                            contentDescription = playLabel,
+                            tint = scheme.onTertiary,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                }
             }
         }
     }
 }
-
-
-private val MxPortraitSize = 292.dp
-private val MxPortraitEndInset = 22.dp
-private val MxPortraitTop = 96.dp
-private val MxOrbitRadius = 172.dp
-private val MxSatelliteSize = 56.dp
-private val MxOrbitSatelliteAngles = listOf(122f, 166f, 208f)
 
 @Immutable
 internal class StudioHero(
@@ -3370,8 +3712,8 @@ internal class StudioHero(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun MxGreetingRow(
-    dayPart: String,
-    name: String,
+    kicker: String,
+    headline: String,
     greeting: String,
     searchLabel: String,
     settingsLabel: String,
@@ -3390,15 +3732,18 @@ private fun MxGreetingRow(
                 }
         ) {
             Text(
-                text = dayPart,
+                text = kicker,
                 style = MaterialTheme.typography.titleMediumEmphasized,
-                color = LocalContentColor.current.copy(alpha = 0.78f)
+                color = LocalContentColor.current.copy(alpha = 0.78f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = name.ifBlank { greeting },
+                text = headline,
                 style = MaterialTheme.typography.headlineLargeEmphasized,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.basicMarquee()
             )
         }
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {

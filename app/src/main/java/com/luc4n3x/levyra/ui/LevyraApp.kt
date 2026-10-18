@@ -1,6 +1,7 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.foundation.basicMarquee
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import com.luc4n3x.levyra.ui.components.levyraShimmerSweep
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
@@ -14732,7 +14733,7 @@ private fun StudioPersonalOrbitTile(
                 textAlign = TextAlign.Center,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp).basicMarquee()
             )
         }
     } else {
