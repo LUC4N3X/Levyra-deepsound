@@ -11,6 +11,19 @@ data class RemoteTrackPage(
     val artworkUrl: String = ""
 )
 
+data class SpotifyEmbedPayload(
+    val page: RemoteTrackPage,
+    val accessToken: String?
+)
+
+data class SpotifyTrackPage(
+    val tracks: List<ImportedTrackIdentity>,
+    val total: Int,
+    val offset: Int,
+    val itemCount: Int,
+    val hasNext: Boolean
+)
+
 object RemotePlaylistPayloads {
     private val nextData = Regex("<script[^>]*id=\"__NEXT_DATA__\"[^>]*>(.*?)</script>", RegexOption.DOT_MATCHES_ALL)
     private val serverData = Regex("<script[^>]*id=\"serialized-server-data\"[^>]*>(.*?)</script>", RegexOption.DOT_MATCHES_ALL)
@@ -19,9 +32,13 @@ object RemotePlaylistPayloads {
     private val spotifyTrackUri = Regex("^spotify:track:([A-Za-z0-9]{22})$")
     private val htmlEntity = Regex("&(#[xX][0-9a-fA-F]{1,6}|#\\d{1,7}|amp|lt|gt|quot|apos|#39);")
 
-    fun spotifyEmbed(html: String): RemoteTrackPage {
+    fun spotifyEmbed(html: String): RemoteTrackPage = spotifyEmbedPayload(html).page
+
+    fun spotifyEmbedPayload(html: String): SpotifyEmbedPayload {
         val json = nextData.find(html)?.groupValues?.get(1) ?: providerChanged("Spotify embed data missing")
-        val entity = BoundedJson.parseOrNull(json).path("props", "pageProps", "state", "data", "entity").jsonObject()
+        val state = BoundedJson.parseOrNull(json).path("props", "pageProps", "state")
+            ?: providerChanged("Spotify embed state missing")
+        val entity = state.path("data", "entity").jsonObject()
             ?: providerChanged("Spotify embed entity missing")
         val list = entity["trackList"].jsonArray() ?: providerChanged("Spotify track list missing")
         val tracks = list.mapNotNull { raw ->
@@ -41,13 +58,142 @@ object RemotePlaylistPayloads {
             ?.mapNotNull { it.jsonObject()?.string("url") }
             ?.firstOrNull { it.startsWith("https://") }
             .orEmpty()
-        return RemoteTrackPage(
-            tracks = tracks.reindexed(),
-            total = null,
-            title = entity.string("name", "title"),
-            owner = entity.string("subtitle"),
-            artworkUrl = artwork
+        return SpotifyEmbedPayload(
+            page = RemoteTrackPage(
+                tracks = tracks.reindexed(),
+                total = null,
+                title = entity.string("name", "title"),
+                owner = entity.string("subtitle"),
+                artworkUrl = artwork
+            ),
+            accessToken = spotifyAccessToken(state)
         )
+    }
+
+    fun spotifyTracks(json: String): SpotifyTrackPage {
+        val root = BoundedJson.parseOrNull(json).jsonObject() ?: providerChanged("Spotify tracks payload invalid")
+        val items = root["items"].jsonArray() ?: providerChanged("Spotify tracks missing")
+        val total = root.long("total")?.toInt()?.takeIf { it >= 0 }
+            ?: providerChanged("Spotify track total missing")
+        val offset = root.long("offset")?.toInt()?.takeIf { it >= 0 }
+            ?: providerChanged("Spotify track offset missing")
+        val tracks = items.mapNotNull { raw ->
+            val item = raw.jsonObject() ?: return@mapNotNull null
+            val track = item["item"].jsonObject() ?: item["track"].jsonObject() ?: return@mapNotNull null
+            if (track.string("type").let { it.isNotBlank() && it != "track" }) return@mapNotNull null
+            val title = track.string("name")
+            if (title.isBlank()) return@mapNotNull null
+            val album = track["album"].jsonObject()
+            val artwork = album?.get("images").jsonArray().orEmpty()
+                .mapNotNull { it.jsonObject()?.string("url") }
+                .firstOrNull { it.startsWith("https://") }
+                .orEmpty()
+            val releaseYear = album?.string("release_date")
+                ?.take(4)
+                ?.toIntOrNull()
+                ?: 0
+            ImportedTrackIdentity(
+                position = 0,
+                title = title,
+                artists = track["artists"].jsonArray().orEmpty()
+                    .mapNotNull { it.jsonObject()?.string("name")?.takeIf(String::isNotBlank) },
+                album = album?.string("name").orEmpty(),
+                durationMs = track.long("duration_ms")?.coerceAtLeast(0L) ?: 0L,
+                isrc = track["external_ids"].jsonObject()?.string("isrc").orEmpty(),
+                sourceTrackId = track.string("id"),
+                releaseYear = releaseYear,
+                explicit = track.bool("explicit"),
+                trackNumber = track.long("track_number")?.toInt() ?: 0,
+                discNumber = track.long("disc_number")?.toInt() ?: 0,
+                artworkUrl = artwork,
+                originalUrl = track["external_urls"].jsonObject()?.string("spotify")
+                    ?.takeIf { it.startsWith("https://") }
+                    .orEmpty()
+            )
+        }
+        return SpotifyTrackPage(
+            tracks = tracks.reindexed(),
+            total = total,
+            offset = offset,
+            itemCount = items.size,
+            hasNext = root.string("next").isNotBlank()
+        )
+    }
+
+    fun spotifyPathfinderTracks(json: String, requestedOffset: Int): SpotifyTrackPage {
+        val root = BoundedJson.parseOrNull(json).jsonObject()
+            ?: providerChanged("Spotify Pathfinder payload invalid")
+        val content = root["data"].jsonObject()
+            ?.get("playlistV2").jsonObject()
+            ?.get("content").jsonObject()
+            ?: providerChanged("Spotify Pathfinder content missing")
+        val items = content["items"].jsonArray()
+            ?: providerChanged("Spotify Pathfinder tracks missing")
+        val total = content.long("totalCount")?.toInt()?.takeIf { it >= 0 }
+            ?: providerChanged("Spotify Pathfinder total missing")
+        val tracks = items.mapNotNull { raw ->
+            val wrapper = raw.jsonObject()?.get("itemV2").jsonObject() ?: return@mapNotNull null
+            val track = wrapper["data"].jsonObject() ?: return@mapNotNull null
+            val uri = track.string("uri", "_uri").ifBlank { wrapper.string("_uri", "uri") }
+            val sourceId = spotifyTrackUri.find(uri)?.groupValues?.get(1) ?: return@mapNotNull null
+            val title = track.string("name")
+            if (title.isBlank()) return@mapNotNull null
+            val album = track["albumOfTrack"].jsonObject()
+            val artwork = album?.get("coverArt").jsonObject()?.get("sources").jsonArray().orEmpty()
+                .mapNotNull { it.jsonObject()?.string("url") }
+                .firstOrNull { it.startsWith("https://") }
+                .orEmpty()
+            ImportedTrackIdentity(
+                position = 0,
+                title = title,
+                artists = track["artists"].jsonObject()?.get("items").jsonArray().orEmpty()
+                    .mapNotNull { it.jsonObject()?.get("profile").jsonObject()?.string("name")?.takeIf(String::isNotBlank) },
+                album = album?.string("name").orEmpty(),
+                durationMs = (track["trackDuration"].jsonObject()?.long("totalMilliseconds")
+                    ?: track["duration"].jsonObject()?.long("totalMilliseconds"))
+                    ?.coerceAtLeast(0L)
+                    ?: 0L,
+                isrc = track["externalIds"].jsonObject()?.string("isrc").orEmpty(),
+                sourceTrackId = sourceId,
+                releaseYear = album?.get("date").jsonObject()?.long("year")?.toInt() ?: 0,
+                explicit = track["contentRating"].jsonObject()?.string("label")
+                    ?.equals("EXPLICIT", ignoreCase = true),
+                trackNumber = track.long("trackNumber")?.toInt() ?: 0,
+                discNumber = track.long("discNumber")?.toInt() ?: 0,
+                artworkUrl = artwork,
+                originalUrl = "https://open.spotify.com/track/$sourceId"
+            )
+        }
+        return SpotifyTrackPage(
+            tracks = tracks.reindexed(),
+            total = total,
+            offset = requestedOffset,
+            itemCount = items.size,
+            hasNext = requestedOffset + items.size < total
+        )
+    }
+
+    private fun spotifyAccessToken(state: Any?): String? {
+        val root = state.jsonObject() ?: return null
+        val known = listOf(
+            root["settings"].jsonObject()?.get("session").jsonObject()?.string("accessToken"),
+            root["session"].jsonObject()?.string("accessToken"),
+            root["settings"].jsonObject()?.string("accessToken")
+        )
+        return known.firstOrNull { !it.isNullOrBlank() } ?: findString(state, "accessToken", 0)
+    }
+
+    private fun findString(node: Any?, key: String, depth: Int): String? {
+        if (depth > 40) return null
+        return when (node) {
+            is Map<*, *> -> {
+                val map = node.jsonObject() ?: return null
+                map[key]?.let { it as? String }?.takeIf(String::isNotBlank)
+                    ?: map.values.firstNotNullOfOrNull { findString(it, key, depth + 1) }
+            }
+            is List<*> -> node.firstNotNullOfOrNull { findString(it, key, depth + 1) }
+            else -> null
+        }
     }
 
     fun deezerPlaylist(json: String): RemoteTrackPage {

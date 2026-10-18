@@ -205,15 +205,18 @@ class SpotifyPlaylistAdapter(private val fetcher: PlaylistImportFetcher) : Playl
         val remote = detected as? DetectedPlaylistInput.RemotePlaylist
             ?: throw PlaylistImportException(PlaylistImportFailureKind.INVALID_INPUT, "Not a Spotify playlist")
         val id = remote.id.ifBlank { resolveShortLink(remote.url) }
-        val embed = try {
-            RemotePlaylistPayloads.spotifyEmbed(
+        if (!SPOTIFY_PLAYLIST_ID.matches(id)) {
+            throw PlaylistImportException(PlaylistImportFailureKind.NOT_A_PLAYLIST, "Invalid Spotify playlist id")
+        }
+        val embedPayload = try {
+            RemotePlaylistPayloads.spotifyEmbedPayload(
                 fetcher.fetch(html("https://open.spotify.com/embed/playlist/$id", 4L * 1024 * 1024)).body
             )
         } catch (error: PlaylistParseException) {
             throw error.toImportException(remote = true)
         }
+        val embed = embedPayload.page
         if (embed.tracks.isEmpty()) throw PlaylistImportException(PlaylistImportFailureKind.NOT_AVAILABLE, "Spotify playlist empty")
-        progress.onRead(embed.tracks.size, null)
         val page = try {
             parseSpotifyPlaylistPage(spotifyHeadOnly(fetcher.fetch(html("https://open.spotify.com/playlist/$id", 1024L * 1024)).body))
         } catch (error: CancellationException) {
@@ -221,13 +224,20 @@ class SpotifyPlaylistAdapter(private val fetcher: PlaylistImportFetcher) : Playl
         } catch (_: Exception) {
             null
         }
-        val declared = page?.declaredTrackCount
+        val paged = embedPayload.accessToken?.let { readSpotifyPages(id, it, progress) }
+        val usePaged = paged != null && paged.tracks.isNotEmpty() &&
+            (paged.complete || paged.tracks.size > embed.tracks.size)
+        val tracks = if (usePaged) requireNotNull(paged).tracks else embed.tracks
+        val declared = paged?.total ?: page?.declaredTrackCount
         val completeness = when {
-            declared != null -> completenessOf(embed.tracks.size, declared, IncompleteReason.PROVIDER_PAGE_LIMIT)
-            embed.tracks.size >= SPOTIFY_EMBED_PAGE -> PlaylistImportCompleteness.Incomplete(embed.tracks.size, null, IncompleteReason.PROVIDER_PAGE_LIMIT)
+            usePaged && paged?.complete == true -> PlaylistImportCompleteness.Complete
+            usePaged ->
+                PlaylistImportCompleteness.Incomplete(tracks.size, declared, IncompleteReason.PAGINATION_STOPPED)
+            declared != null -> completenessOf(tracks.size, declared, IncompleteReason.PROVIDER_PAGE_LIMIT)
+            tracks.size >= SPOTIFY_EMBED_PAGE -> PlaylistImportCompleteness.Incomplete(tracks.size, null, IncompleteReason.PROVIDER_PAGE_LIMIT)
             else -> PlaylistImportCompleteness.Unknown
         }
-        progress.onRead(embed.tracks.size, declared)
+        progress.onRead(tracks.size, declared)
         return PlaylistSourceResult(
             ParsedPlaylist(
                 ImportedPlaylistDescriptor(
@@ -238,11 +248,73 @@ class SpotifyPlaylistAdapter(private val fetcher: PlaylistImportFetcher) : Playl
                     artworkUrl = embed.artworkUrl,
                     declaredTrackCount = declared
                 ),
-                embed.tracks,
+                tracks.mapIndexed { position, track -> track.copy(position = position) },
                 completeness
             )
         )
     }
+
+    private suspend fun readSpotifyPages(
+        id: String,
+        accessToken: String,
+        progress: PlaylistReadProgress
+    ): SpotifyPaginationResult {
+        val tracks = ArrayList<ImportedTrackIdentity>()
+        var offset = 0
+        var total: Int? = null
+        var complete = false
+        while (offset < MAX_PLAYLIST_IMPORT_TRACKS) {
+            val pageSize = minOf(SPOTIFY_PATHFINDER_PAGE_SIZE, MAX_PLAYLIST_IMPORT_TRACKS - offset)
+            val page = try {
+                RemotePlaylistPayloads.spotifyPathfinderTracks(
+                    fetcher.fetch(
+                        PlaylistFetchRequest(
+                            url = SPOTIFY_PATHFINDER_URL,
+                            allowedHosts = SPOTIFY_PATHFINDER_HOSTS,
+                            acceptedMimeTypes = PlaylistImportFetcher.JSON,
+                            maxBytes = SPOTIFY_API_PAGE_BYTES,
+                            bearerToken = accessToken,
+                            headers = mapOf(
+                                "app-platform" to "WebPlayer",
+                                "Origin" to "https://open.spotify.com",
+                                "Referer" to "https://open.spotify.com/"
+                            ),
+                            jsonBody = spotifyPathfinderBody(id, offset, pageSize)
+                        )
+                    ).body,
+                    requestedOffset = offset
+                )
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: PlaylistImportException) {
+                break
+            } catch (_: Exception) {
+                break
+            }
+            if (page.offset != offset || page.itemCount > pageSize || page.itemCount == 0 && page.hasNext) break
+            total = page.total
+            tracks += page.tracks
+            offset += page.itemCount
+            if (tracks.size > SPOTIFY_EMBED_PAGE || !page.hasNext) {
+                progress.onRead(tracks.size, total)
+            }
+            if (!page.hasNext) {
+                complete = offset >= page.total
+                break
+            }
+            if (offset >= page.total) break
+        }
+        if (tracks.isEmpty() && total == null) return SpotifyPaginationResult(emptyList(), null, offset, complete = false)
+        return SpotifyPaginationResult(
+            tracks = tracks.mapIndexed { position, track -> track.copy(position = position) },
+            total = total,
+            processed = offset,
+            complete = complete
+        )
+    }
+
+    private fun spotifyPathfinderBody(id: String, offset: Int, limit: Int): String =
+        """{"variables":{"uri":"spotify:playlist:$id","offset":$offset,"limit":$limit,"enableWatchFeedEntrypoint":false},"operationName":"fetchPlaylist","extensions":{"persistedQuery":{"version":1,"sha256Hash":"$SPOTIFY_FETCH_PLAYLIST_HASH"}}}"""
 
     private suspend fun resolveShortLink(url: String): String {
         val final = fetcher.fetch(html(url, 1024L * 1024)).finalUrl.toString()
@@ -255,9 +327,22 @@ class SpotifyPlaylistAdapter(private val fetcher: PlaylistImportFetcher) : Playl
 
     companion object {
         const val SPOTIFY_EMBED_PAGE = 100
+        private const val SPOTIFY_API_PAGE_BYTES = 2L * 1024 * 1024
+        private const val SPOTIFY_PATHFINDER_PAGE_SIZE = 100
+        private const val SPOTIFY_PATHFINDER_URL = "https://api-partner.spotify.com/pathfinder/v2/query"
+        private const val SPOTIFY_FETCH_PLAYLIST_HASH = "346811f856fb0b7e4f6c59f8ebea78dd081c6e2fb01b77c954b26259d5fc6763"
         private val SPOTIFY_HOSTS = setOf("open.spotify.com", "spotify.link", "spotify.app.link", "www.spotify.com", "spotify.com")
+        private val SPOTIFY_PATHFINDER_HOSTS = setOf("api-partner.spotify.com")
+        private val SPOTIFY_PLAYLIST_ID = Regex("^[A-Za-z0-9]{22}$")
     }
 }
+
+private data class SpotifyPaginationResult(
+    val tracks: List<ImportedTrackIdentity>,
+    val total: Int?,
+    val processed: Int,
+    val complete: Boolean
+)
 
 class DeezerPlaylistAdapter(private val fetcher: PlaylistImportFetcher) : PlaylistImportSourceAdapter {
     override val sources = setOf(PlaylistImportSource.DEEZER)
