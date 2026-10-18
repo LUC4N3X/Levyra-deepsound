@@ -55,6 +55,26 @@ class PlayerDeckTest {
     }
 
     @Test
+    fun `velvet keeps its static play pause in song and video across orientations`() {
+        assertTrue(PlayerVisualMode.CanvasImmersive.usesAuraPlayPause())
+        listOf(false, true).forEach { video ->
+            listOf(LevyraPlayerPane.Stacked, LevyraPlayerPane.SideBySide).forEach { pane ->
+                val layout = resolvePlayerDeckLayout(PlayerVisualMode.CanvasImmersive, video, false, pane, true)
+                val supported = !video && pane == LevyraPlayerPane.Stacked
+                assertEquals(if (supported) PlayerDeckLayout.Aura else PlayerDeckLayout.Levyra, layout)
+                assertTrue(layout == PlayerDeckLayout.Aura || PlayerVisualMode.CanvasImmersive.usesAuraPlayPause())
+            }
+        }
+    }
+
+    @Test
+    fun `other styles keep the morphing play pause segment`() {
+        PlayerVisualMode.entries
+            .filterNot { it == PlayerVisualMode.CanvasImmersive }
+            .forEach { assertFalse(it.usesAuraPlayPause()) }
+    }
+
+    @Test
     fun `fallback presentation never lands on the immersive exit affordance`() {
         assertEquals(
             PlayerVisualMode.CanvasCard,
