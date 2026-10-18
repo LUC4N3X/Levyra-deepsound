@@ -96,7 +96,6 @@ internal fun PlayerTransportBar(
     compact: Boolean,
     animated: Boolean,
     useAuraPlayPause: Boolean = false,
-    animatePlayMorph: Boolean = true,
     labels: PlayerControlLabels,
     onShuffle: () -> Unit,
     onPrevious: () -> Unit,
@@ -161,7 +160,6 @@ internal fun PlayerTransportBar(
                     height = height,
                     glyph = if (compact) LevyraPlayerDesign.TransportPlayGlyphCompact else LevyraPlayerDesign.TransportPlayGlyph,
                     animated = animated,
-                    animateGlyphMorph = animatePlayMorph,
                     labels = labels,
                     weight = weights.playWeight,
                     onClick = onTogglePlay
@@ -216,7 +214,6 @@ private fun RowScope.PlayerPlaySegment(
     height: Dp,
     glyph: Dp,
     animated: Boolean,
-    animateGlyphMorph: Boolean,
     labels: PlayerControlLabels,
     weight: Float,
     onClick: () -> Unit
@@ -257,8 +254,7 @@ private fun RowScope.PlayerPlaySegment(
             isResolving = isResolving,
             isPlaying = isPlaying,
             content = content,
-            glyph = glyph,
-            animateMorph = animateGlyphMorph
+            glyph = glyph
         )
     }
 }
@@ -271,8 +267,7 @@ private fun PlayGlyphContent(
     isResolving: Boolean,
     isPlaying: Boolean,
     content: Color,
-    glyph: Dp,
-    animateMorph: Boolean
+    glyph: Dp
 ) {
     if (isResolving) {
         LevyraLoadingIndicator(
@@ -283,8 +278,7 @@ private fun PlayGlyphContent(
         LevyraPlayPauseGlyph(
             playing = isPlaying,
             color = content,
-            modifier = Modifier.size(glyph),
-            animateMorph = animateMorph
+            modifier = Modifier.size(glyph)
         )
     }
 }

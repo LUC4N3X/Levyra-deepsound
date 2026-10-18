@@ -48,6 +48,9 @@ internal fun PlayerVisualMode.deckLayout(): PlayerDeckLayout = when (this) {
     PlayerVisualMode.Flow -> PlayerDeckLayout.Flow
 }
 
+internal fun PlayerVisualMode.usesAuraPlayPause(): Boolean =
+    deckLayout() == PlayerDeckLayout.Aura
+
 internal fun PlayerDeckLayout.showsLyricsFace(): Boolean =
     this != PlayerDeckLayout.Aura && this != PlayerDeckLayout.Pulse
 
