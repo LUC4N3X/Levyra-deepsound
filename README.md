@@ -219,7 +219,7 @@ Contributions and bug reports are welcome. Technical documentation and architect
 <div align="center">
 
 <a href="https://luc4n3x.pages.dev/">
-  <img src="docs/assets/levyra-signature.png?v=lounge-neon" width="275" alt="LUC4N3X — Creator &amp; Maintainer">
+  <img src="docs/assets/levyra-signature.png?v=gamer-dog" width="350" alt="LUC4N3X — Creator &amp; Maintainer">
 </a>
 
 ### LUC4N3X
