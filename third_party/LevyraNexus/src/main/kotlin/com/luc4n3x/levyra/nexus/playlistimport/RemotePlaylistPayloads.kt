@@ -134,7 +134,7 @@ object RemotePlaylistPayloads {
         val tracks = items.mapNotNull { raw ->
             val wrapper = raw.jsonObject()?.get("itemV2").jsonObject() ?: return@mapNotNull null
             val track = wrapper["data"].jsonObject() ?: return@mapNotNull null
-            val uri = wrapper.string("_uri", "uri")
+            val uri = track.string("uri", "_uri").ifBlank { wrapper.string("_uri", "uri") }
             val sourceId = spotifyTrackUri.find(uri)?.groupValues?.get(1) ?: return@mapNotNull null
             val title = track.string("name")
             if (title.isBlank()) return@mapNotNull null
@@ -149,7 +149,10 @@ object RemotePlaylistPayloads {
                 artists = track["artists"].jsonObject()?.get("items").jsonArray().orEmpty()
                     .mapNotNull { it.jsonObject()?.get("profile").jsonObject()?.string("name")?.takeIf(String::isNotBlank) },
                 album = album?.string("name").orEmpty(),
-                durationMs = track["duration"].jsonObject()?.long("totalMilliseconds")?.coerceAtLeast(0L) ?: 0L,
+                durationMs = (track["trackDuration"].jsonObject() ?: track["duration"].jsonObject())
+                    ?.long("totalMilliseconds")
+                    ?.coerceAtLeast(0L)
+                    ?: 0L,
                 isrc = track["externalIds"].jsonObject()?.string("isrc").orEmpty(),
                 sourceTrackId = sourceId,
                 releaseYear = album?.get("date").jsonObject()?.long("year")?.toInt() ?: 0,

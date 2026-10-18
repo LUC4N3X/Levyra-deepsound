@@ -346,6 +346,19 @@ class RemotePlaylistPayloadsTest {
     }
 
     @Test
+    fun parsesSpotifyPathfinderTrackDataShape() {
+        val json = """{"data":{"playlistV2":{"content":{"totalCount":1000,"items":[{"uid":"one","itemV2":{"__typename":"TrackResponseWrapper","data":{"name":"María","uri":"spotify:track:6eQQLxpKeoNqwT90zSD4Em","trackDuration":{"totalMilliseconds":229880},"artists":{"items":[{"profile":{"name":"Ricky Martin"},"uri":"spotify:artist:x"}]},"albumOfTrack":{"name":"Album","coverArt":{"sources":[{"url":"https://i.scdn.co/cover"}]}},"contentRating":{"label":"NONE"},"trackNumber":2,"discNumber":1}}},{"uid":"two","itemV2":{"data":{"name":"María","uri":"spotify:track:6eQQLxpKeoNqwT90zSD4Em","trackDuration":{"totalMilliseconds":229880},"artists":{"items":[{"profile":{"name":"Ricky Martin"}}]},"albumOfTrack":{"name":"Album","coverArt":{"sources":[]}},"contentRating":{"label":"NONE"}}}}]}}}}"""
+        val page = RemotePlaylistPayloads.spotifyPathfinderTracks(json, requestedOffset = 100)
+        assertEquals(1000, page.total)
+        assertEquals(2, page.itemCount)
+        assertTrue(page.hasNext)
+        assertEquals(listOf("6eQQLxpKeoNqwT90zSD4Em", "6eQQLxpKeoNqwT90zSD4Em"), page.tracks.map { it.sourceTrackId })
+        assertEquals(listOf(0, 1), page.tracks.map { it.position })
+        assertEquals(229_880L, page.tracks.first().durationMs)
+        assertEquals(listOf("Ricky Martin"), page.tracks.first().artists)
+    }
+
+    @Test
     fun spotifyLayoutChangeFailsSafely() {
         try {
             RemotePlaylistPayloads.spotifyEmbed("<html>new layout</html>")
