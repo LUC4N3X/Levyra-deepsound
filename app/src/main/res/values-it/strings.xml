@@ -36,7 +36,6 @@
     <string name="car_albums_subtitle">Album veri, playlist offline e raccolte locali</string>
     <string name="car_artists_title">Artisti</string>
     <string name="car_artists_subtitle">Artisti più ascoltati e seguiti</string>
-    <string name="car_flow_title">Flow</string>
     <string name="car_flow_subtitle">Radio personale Levyra</string>
     <string name="car_favorites_subtitle">Brani salvati</string>
     <string name="car_downloads_subtitle">Musica disponibile offline</string>
@@ -51,7 +50,6 @@
     <string name="car_home_offline_subtitle">Download riproducibili senza rete</string>
     <string name="car_home_top_local_title">Top locali</string>
     <string name="car_home_top_local_subtitle">Classifica musicale aggiornata per la lingua scelta</string>
-    <string name="car_home_flow_title">Flow Levyra</string>
     <string name="car_home_flow_subtitle">Mix personale continuo</string>
     <string name="car_playlist_unavailable">Playlist non disponibile</string>
     <string name="car_album_unavailable">Album non disponibile</string>

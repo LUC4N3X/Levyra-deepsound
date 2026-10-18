@@ -36,7 +36,6 @@
     <string name="car_albums_subtitle">本地專輯與推薦</string>
     <string name="car_artists_title">歌手</string>
     <string name="car_artists_subtitle">播放最多與追蹤的歌手</string>
-    <string name="car_flow_title">Flow</string>
     <string name="car_flow_subtitle">個人 Levyra 電台</string>
     <string name="car_favorites_subtitle">已儲存的歌曲</string>
     <string name="car_downloads_subtitle">可離線播放的音樂</string>
@@ -51,7 +50,6 @@
     <string name="car_home_offline_subtitle">無網路可播放的下載內容</string>
     <string name="car_home_top_local_title">本地熱門</string>
     <string name="car_home_top_local_subtitle">所選語言的最新音樂排行榜</string>
-    <string name="car_home_flow_title">Flow Levyra</string>
     <string name="car_home_flow_subtitle">持續的個人混音</string>
     <string name="car_playlist_unavailable">播放清單不可用</string>
     <string name="car_album_unavailable">專輯不可用</string>

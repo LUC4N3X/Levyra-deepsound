@@ -36,7 +36,6 @@
     <string name="car_albums_subtitle">ローカルアルバムとおすすめ</string>
     <string name="car_artists_title">アーティスト</string>
     <string name="car_artists_subtitle">最も再生され、フォローされているアーティスト</string>
-    <string name="car_flow_title">Flow</string>
     <string name="car_flow_subtitle">パーソナルLevyraラジオ</string>
     <string name="car_favorites_subtitle">保存した曲</string>
     <string name="car_downloads_subtitle">オフラインで利用可能な音楽</string>
@@ -51,7 +50,6 @@
     <string name="car_home_offline_subtitle">ネットワークなしで再生可能なダウンロード</string>
     <string name="car_home_top_local_title">ローカルトップ</string>
     <string name="car_home_top_local_subtitle">選択した言語の最新音楽チャート</string>
-    <string name="car_home_flow_title">Flow Levyra</string>
     <string name="car_home_flow_subtitle">継続的なパーソナルミックス</string>
     <string name="car_playlist_unavailable">プレイリストを利用できません</string>
     <string name="car_album_unavailable">アルバムを利用できません</string>

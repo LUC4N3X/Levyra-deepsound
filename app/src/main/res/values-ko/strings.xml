@@ -36,7 +36,6 @@
     <string name="car_albums_subtitle">로컬 앨범 및 추천</string>
     <string name="car_artists_title">아티스트</string>
     <string name="car_artists_subtitle">가장 많이 재생되고 팔로우된 아티스트</string>
-    <string name="car_flow_title">Flow</string>
     <string name="car_flow_subtitle">개인 Levyra 라디오</string>
     <string name="car_favorites_subtitle">저장한 곡</string>
     <string name="car_downloads_subtitle">오프라인에서 사용 가능한 음악</string>
@@ -51,7 +50,6 @@
     <string name="car_home_offline_subtitle">네트워크 없이 재생 가능한 다운로드</string>
     <string name="car_home_top_local_title">로컬 인기</string>
     <string name="car_home_top_local_subtitle">선택한 언어의 최신 음악 차트</string>
-    <string name="car_home_flow_title">Flow Levyra</string>
     <string name="car_home_flow_subtitle">지속적인 개인 믹스</string>
     <string name="car_playlist_unavailable">플레이리스트를 사용할 수 없음</string>
     <string name="car_album_unavailable">앨범을 사용할 수 없음</string>

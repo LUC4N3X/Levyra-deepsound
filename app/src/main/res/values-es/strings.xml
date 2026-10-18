@@ -36,7 +36,6 @@
     <string name="car_albums_subtitle">Álbumes locales y sugeridos</string>
     <string name="car_artists_title">Artistas</string>
     <string name="car_artists_subtitle">Artistas más escuchados y seguidos</string>
-    <string name="car_flow_title">Flow</string>
     <string name="car_flow_subtitle">Radio personal Levyra</string>
     <string name="car_favorites_subtitle">Canciones guardadas</string>
     <string name="car_downloads_subtitle">Música disponible sin conexión</string>
@@ -51,7 +50,6 @@
     <string name="car_home_offline_subtitle">Descargas reproducibles sin red</string>
     <string name="car_home_top_local_title">Top local</string>
     <string name="car_home_top_local_subtitle">Lista musical actualizada para el idioma elegido</string>
-    <string name="car_home_flow_title">Flow Levyra</string>
     <string name="car_home_flow_subtitle">Mix personal continuo</string>
     <string name="car_playlist_unavailable">Lista no disponible</string>
     <string name="car_album_unavailable">Álbum no disponible</string>
