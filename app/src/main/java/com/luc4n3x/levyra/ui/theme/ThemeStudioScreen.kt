@@ -1308,7 +1308,7 @@ private fun ThemeAccentPicker(
             onConfirmColor = { chosen ->
                 showCustomPicker = false
                 onPreviewAccent(null)
-                val unchangedPresetAccent = selected == 0 && chosen == (pickerInitialColor or 0xFF000000.toInt())
+                val unchangedPresetAccent = selected == 0 && chosen == pickerInitialColor or 0xFF000000.toInt()
                 if (!unchangedPresetAccent) onSelect(chosen)
             },
             onDismiss = {
