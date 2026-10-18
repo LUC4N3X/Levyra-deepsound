@@ -377,9 +377,7 @@ internal fun LevyraAdvancedColorPickerDialog(
     onConfirmColor: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val scheme = MaterialTheme.colorScheme
-    val strings = LocalLevyraStrings.current
-    val copy = strings.colorPickerCopy
+    val copy = LocalLevyraStrings.current.colorPickerCopy
     val haptics = LocalLevyraHaptics.current
     val focusManager = LocalFocusManager.current
     val animated = LocalAnimationsEnabled.current
@@ -402,32 +400,25 @@ internal fun LevyraAdvancedColorPickerDialog(
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(180)),
         label = "picker-dialog-primary"
     )
-    val slidersToggleCorner by animateDpAsState(
-        targetValue = if (showSliders) 16.dp else 26.dp,
-        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.snappySpring()),
-        label = "sliders-toggle-corner"
-    )
 
-    val updateFromHsv: (LevyraHsvColor) -> Unit = { nextHsv ->
-        val clean = nextHsv.normalized()
-        hsv = clean
-        val argb = clean.toArgb()
-        hexInput = formatLevyraHexColor(argb)
+    val dispatchPreview: (Int) -> Unit = { argb ->
         if (argb != lastPreviewedArgb) {
             lastPreviewedArgb = argb
             latestOnPreviewColor?.invoke(argb)
         }
     }
-
+    val updateFromHsv: (LevyraHsvColor) -> Unit = { nextHsv ->
+        val clean = nextHsv.normalized()
+        hsv = clean
+        val argb = clean.toArgb()
+        hexInput = formatLevyraHexColor(argb)
+        dispatchPreview(argb)
+    }
     val selectArgb: (Int) -> Unit = { targetArgb ->
         val opaque = targetArgb or 0xFF000000.toInt()
-        val nextHsv = argbToHsv(opaque, preserveHue = hsv.hue)
-        hsv = nextHsv
+        hsv = argbToHsv(opaque, preserveHue = hsv.hue)
         hexInput = formatLevyraHexColor(opaque)
-        if (opaque != lastPreviewedArgb) {
-            lastPreviewedArgb = opaque
-            latestOnPreviewColor?.invoke(opaque)
-        }
+        dispatchPreview(opaque)
     }
 
     Dialog(
@@ -437,230 +428,274 @@ internal fun LevyraAdvancedColorPickerDialog(
             dismissOnClickOutside = false
         )
     ) {
-        Surface(
-            shape = PickerDialogShape,
-            color = scheme.surfaceContainerLow,
-            contentColor = scheme.onSurface,
-            tonalElevation = 6.dp,
-            border = BorderStroke(
-                width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        animatedPrimary.copy(alpha = 0.42f),
-                        scheme.outlineVariant.copy(alpha = 0.24f)
-                    )
+        ColorPickerDialogContainer(accentColor = animatedPrimary) {
+            ColorPickerHeader(
+                title = title ?: copy[ColorPickerText.Title],
+                subtitle = copy[ColorPickerText.Subtitle],
+                accentColor = animatedPrimary,
+                selectedHex = "#${formatLevyraHexColor(selectedArgb)}",
+                cancelLabel = copy[ColorPickerText.Cancel],
+                onClose = { latestOnDismiss() }
+            )
+            ColorPickerLiveStage(
+                savedArgb = normalizedInitial,
+                selectedArgb = selectedArgb,
+                hsv = hsv,
+                copy = copy,
+                onResetToSaved = {
+                    haptics.perform(LevyraHapticAction.Transport)
+                    selectArgb(normalizedInitial)
+                }
+            )
+            ColorPickerHsvWorkspace(
+                hsv = hsv,
+                selectedColor = selectedColor,
+                copy = copy,
+                onHsvChange = updateFromHsv
+            )
+            if (presets.isNotEmpty()) {
+                ColorPickerPresetsRow(
+                    presets = presets,
+                    selectedArgb = selectedArgb,
+                    copy = copy,
+                    onSelectPreset = { swatch ->
+                        haptics.perform(LevyraHapticAction.Confirm)
+                        focusManager.clearFocus()
+                        selectArgb(swatch)
+                    }
                 )
-            ),
+            }
+            ColorPickerHexAndTuneRow(
+                hexInput = hexInput,
+                isHexError = hexParsed == null,
+                showSliders = showSliders,
+                accentColor = animatedPrimary,
+                copy = copy,
+                onHexChange = { raw ->
+                    val cleaned = sanitizeHexInput(raw)
+                    hexInput = cleaned
+                    val parsed = parseLevyraHexColor(cleaned)
+                    if (parsed != null && parsed != hsv.toArgb()) {
+                        hsv = argbToHsv(parsed, preserveHue = hsv.hue)
+                        dispatchPreview(parsed)
+                    }
+                },
+                onToggleSliders = {
+                    haptics.perform(LevyraHapticAction.Transport)
+                    showSliders = !showSliders
+                },
+                onDoneIme = { focusManager.clearFocus() }
+            )
+            AnimatedVisibility(
+                visible = showSliders,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                ColorPickerPrecisionSliders(
+                    hsv = hsv,
+                    copy = copy,
+                    onHsvChange = updateFromHsv
+                )
+            }
+            ColorPickerActionFooter(
+                cancelLabel = copy[ColorPickerText.Cancel],
+                applyLabel = copy[ColorPickerText.Apply],
+                onCancel = { latestOnDismiss() },
+                onApply = {
+                    val finalArgb = hexParsed ?: selectedArgb
+                    haptics.perform(LevyraHapticAction.Confirm)
+                    latestOnConfirmColor(finalArgb)
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ColorPickerDialogContainer(
+    accentColor: Color,
+    content: @Composable () -> Unit
+) {
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        shape = PickerDialogShape,
+        color = scheme.surfaceContainerLow,
+        contentColor = scheme.onSurface,
+        tonalElevation = 6.dp,
+        border = BorderStroke(
+            width = 1.dp,
+            brush = Brush.verticalGradient(
+                colors = listOf(
+                    accentColor.copy(alpha = 0.42f),
+                    scheme.outlineVariant.copy(alpha = 0.24f)
+                )
+            )
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .widthIn(max = 432.dp)
+            .imePadding()
+    ) {
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp)
-                .widthIn(max = 432.dp)
-                .imePadding()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            accentColor.copy(alpha = 0.14f),
+                            scheme.surfaceContainerLow.copy(alpha = 0.0f)
+                        ),
+                        endY = 420f
+                    )
+                )
         ) {
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                animatedPrimary.copy(alpha = 0.14f),
-                                scheme.surfaceContainerLow.copy(alpha = 0.0f)
-                            ),
-                            endY = 420f
-                        )
-                    )
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 18.dp, vertical = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 18.dp, vertical = 18.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    ColorPickerHeader(
-                        title = title ?: copy[ColorPickerText.Title],
-                        subtitle = copy[ColorPickerText.Subtitle],
-                        accentColor = animatedPrimary,
-                        selectedHex = "#${formatLevyraHexColor(selectedArgb)}",
-                        cancelLabel = copy[ColorPickerText.Cancel],
-                        onClose = { latestOnDismiss() }
-                    )
-
-                    ColorPickerLiveStage(
-                        savedArgb = normalizedInitial,
-                        selectedArgb = selectedArgb,
-                        hsv = hsv,
-                        copy = copy,
-                        onResetToSaved = {
-                            haptics.perform(LevyraHapticAction.Transport)
-                            selectArgb(normalizedInitial)
-                        }
-                    )
-
-                    ColorPickerHsvWorkspace(
-                        hsv = hsv,
-                        selectedColor = selectedColor,
-                        copy = copy,
-                        onHsvChange = updateFromHsv
-                    )
-
-                    if (presets.isNotEmpty()) {
-                        ColorPickerPresetsRow(
-                            presets = presets,
-                            selectedArgb = selectedArgb,
-                            copy = copy,
-                            onSelectPreset = { swatch ->
-                                haptics.perform(LevyraHapticAction.Confirm)
-                                focusManager.clearFocus()
-                                selectArgb(swatch)
-                            }
-                        )
-                    }
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        OutlinedTextField(
-                            value = hexInput,
-                            onValueChange = { raw ->
-                                val cleaned = sanitizeHexInput(raw)
-                                hexInput = cleaned
-                                val parsed = parseLevyraHexColor(cleaned)
-                                if (parsed != null && parsed != hsv.toArgb()) {
-                                    hsv = argbToHsv(parsed, preserveHue = hsv.hue)
-                                    if (parsed != lastPreviewedArgb) {
-                                        lastPreviewedArgb = parsed
-                                        latestOnPreviewColor?.invoke(parsed)
-                                    }
-                                }
-                            },
-                            singleLine = true,
-                            isError = hexParsed == null,
-                            prefix = { Text("#", fontWeight = FontWeight.Bold) },
-                            label = { Text(copy[ColorPickerText.HexLabel], maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                            supportingText = if (hexParsed == null) {
-                                { Text(copy[ColorPickerText.HexInvalid], maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                            } else {
-                                null
-                            },
-                            shape = RoundedCornerShape(18.dp),
-                            keyboardOptions = KeyboardOptions(
-                                capitalization = KeyboardCapitalization.Characters,
-                                imeAction = ImeAction.Done
-                            ),
-                            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-                            modifier = Modifier.weight(1f)
-                        )
-
-                        Surface(
-                            onClick = {
-                                haptics.perform(LevyraHapticAction.Transport)
-                                showSliders = !showSliders
-                            },
-                            shape = RoundedCornerShape(slidersToggleCorner),
-                            color = if (showSliders) scheme.secondaryContainer else scheme.surfaceContainerHigh,
-                            contentColor = if (showSliders) scheme.onSecondaryContainer else scheme.onSurface,
-                            border = BorderStroke(
-                                width = 1.dp,
-                                color = if (showSliders) {
-                                    animatedPrimary.copy(alpha = 0.55f)
-                                } else {
-                                    scheme.outlineVariant.copy(alpha = 0.35f)
-                                }
-                            ),
-                            modifier = Modifier
-                                .height(56.dp)
-                                .semantics {
-                                    selected = showSliders
-                                    contentDescription = copy[ColorPickerText.FineTune]
-                                }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 14.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(7.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Tune,
-                                    contentDescription = null,
-                                    tint = if (showSliders) animatedPrimary else scheme.onSurfaceVariant,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Text(
-                                    text = copy[ColorPickerText.FineTune],
-                                    maxLines = 1,
-                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
-                                )
-                            }
-                        }
-                    }
-
-                    AnimatedVisibility(
-                        visible = showSliders,
-                        enter = expandVertically() + fadeIn(),
-                        exit = shrinkVertically() + fadeOut()
-                    ) {
-                        ColorPickerPrecisionSliders(
-                            hsv = hsv,
-                            copy = copy,
-                            onHsvChange = updateFromHsv
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 2.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        FilledTonalButton(
-                            onClick = { latestOnDismiss() },
-                            shape = CircleShape,
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = scheme.surfaceContainerHigh,
-                                contentColor = scheme.onSurface
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(52.dp)
-                        ) {
-                            Text(
-                                text = copy[ColorPickerText.Cancel],
-                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                        Button(
-                            onClick = {
-                                val finalArgb = hexParsed ?: selectedArgb
-                                haptics.perform(LevyraHapticAction.Confirm)
-                                latestOnConfirmColor(finalArgb)
-                            },
-                            shape = CircleShape,
-                            modifier = Modifier
-                                .weight(1.35f)
-                                .height(52.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Check,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = copy[ColorPickerText.Apply],
-                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-                }
+                content()
             }
+        }
+    }
+}
+
+@Composable
+private fun ColorPickerHexAndTuneRow(
+    hexInput: String,
+    isHexError: Boolean,
+    showSliders: Boolean,
+    accentColor: Color,
+    copy: ColorPickerCopy,
+    onHexChange: (String) -> Unit,
+    onToggleSliders: () -> Unit,
+    onDoneIme: () -> Unit
+) {
+    val scheme = MaterialTheme.colorScheme
+    val animated = LocalAnimationsEnabled.current
+    val slidersToggleCorner by animateDpAsState(
+        targetValue = if (showSliders) 16.dp else 26.dp,
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.snappySpring()),
+        label = "sliders-toggle-corner"
+    )
+    val supportingContent: (@Composable () -> Unit)? = if (isHexError) {
+        { Text(copy[ColorPickerText.HexInvalid], maxLines = 1, overflow = TextOverflow.Ellipsis) }
+    } else {
+        null
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        OutlinedTextField(
+            value = hexInput,
+            onValueChange = onHexChange,
+            singleLine = true,
+            isError = isHexError,
+            prefix = { Text("#", fontWeight = FontWeight.Bold) },
+            label = { Text(copy[ColorPickerText.HexLabel], maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            supportingText = supportingContent,
+            shape = RoundedCornerShape(18.dp),
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.Characters,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(onDone = { onDoneIme() }),
+            modifier = Modifier.weight(1f)
+        )
+        Surface(
+            onClick = onToggleSliders,
+            shape = RoundedCornerShape(slidersToggleCorner),
+            color = if (showSliders) scheme.secondaryContainer else scheme.surfaceContainerHigh,
+            contentColor = if (showSliders) scheme.onSecondaryContainer else scheme.onSurface,
+            border = BorderStroke(
+                width = 1.dp,
+                color = if (showSliders) accentColor.copy(alpha = 0.55f) else scheme.outlineVariant.copy(alpha = 0.35f)
+            ),
+            modifier = Modifier
+                .height(56.dp)
+                .semantics {
+                    selected = showSliders
+                    contentDescription = copy[ColorPickerText.FineTune]
+                }
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Tune,
+                    contentDescription = null,
+                    tint = if (showSliders) accentColor else scheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = copy[ColorPickerText.FineTune],
+                    maxLines = 1,
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ColorPickerActionFooter(
+    cancelLabel: String,
+    applyLabel: String,
+    onCancel: () -> Unit,
+    onApply: () -> Unit
+) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        FilledTonalButton(
+            onClick = onCancel,
+            shape = CircleShape,
+            colors = ButtonDefaults.filledTonalButtonColors(
+                containerColor = scheme.surfaceContainerHigh,
+                contentColor = scheme.onSurface
+            ),
+            modifier = Modifier
+                .weight(1f)
+                .height(52.dp)
+        ) {
+            Text(
+                text = cancelLabel,
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Button(
+            onClick = onApply,
+            shape = CircleShape,
+            modifier = Modifier
+                .weight(1.35f)
+                .height(52.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Check,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = applyLabel,
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -783,8 +818,6 @@ private fun ColorPickerLiveStage(
     val scheme = MaterialTheme.colorScheme
     val animated = LocalAnimationsEnabled.current
     val selectedColor = Color(selectedArgb)
-    val savedColor = Color(savedArgb)
-    val hasChanged = selectedArgb != savedArgb
     val accentPair = remember(selectedArgb) { playerAccentsFromSeed(selectedColor) }
     val animatedPrimary by animateColorAsState(
         targetValue = accentPair.primary,
@@ -796,13 +829,7 @@ private fun ColorPickerLiveStage(
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(160)),
         label = "picker-stage-secondary"
     )
-    val newSwatchCorner by animateDpAsState(
-        targetValue = if (hasChanged) 14.dp else 18.dp,
-        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.snappySpring()),
-        label = "new-swatch-corner"
-    )
     val onSelected = if (selectedColor.luminance() > 0.52f) Color.Black else Color.White
-    val onSaved = if (savedColor.luminance() > 0.52f) Color.Black else Color.White
     val (r, g, b) = rgbChannelsOf(selectedArgb)
     val hDeg = hsv.hue.roundToInt().coerceIn(0, 360)
     val sPct = (hsv.saturation * 100f).roundToInt().coerceIn(0, 100)
@@ -825,180 +852,20 @@ private fun ColorPickerLiveStage(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Row(
-                    modifier = Modifier
-                        .height(54.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(scheme.surfaceContainerHigh)
-                        .padding(4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .width(58.dp)
-                            .fillMaxHeight()
-                            .clip(RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp, topEnd = 8.dp, bottomEnd = 8.dp))
-                            .background(savedColor)
-                            .levyraPressable(
-                                onClick = onResetToSaved,
-                                onClickLabel = copy[ColorPickerText.SavedColor],
-                                role = Role.Button
-                            )
-                            .semantics {
-                                contentDescription = "${copy[ColorPickerText.SavedColor]} #${formatLevyraHexColor(savedArgb)}"
-                            },
-                        contentAlignment = Alignment.BottomCenter
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .padding(horizontal = 3.dp, vertical = 4.dp)
-                                .clip(CircleShape)
-                                .background(Color.Black.copy(alpha = if (savedColor.luminance() > 0.52f) 0.18f else 0.42f))
-                                .padding(horizontal = 6.dp, vertical = 1.5.dp)
-                        ) {
-                            Text(
-                                text = copy[ColorPickerText.SavedColor],
-                                fontSize = 8.5.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = onSaved,
-                                maxLines = 1,
-                                softWrap = false
-                            )
-                        }
-                    }
-                    Box(
-                        modifier = Modifier
-                            .width(58.dp)
-                            .fillMaxHeight()
-                            .clip(
-                                RoundedCornerShape(
-                                    topStart = 8.dp,
-                                    bottomStart = 8.dp,
-                                    topEnd = newSwatchCorner,
-                                    bottomEnd = newSwatchCorner
-                                )
-                            )
-                            .background(selectedColor)
-                            .then(
-                                if (hasChanged) {
-                                    Modifier.border(
-                                        width = 1.5.dp,
-                                        color = onSelected.copy(alpha = 0.65f),
-                                        shape = RoundedCornerShape(
-                                            topStart = 8.dp,
-                                            bottomStart = 8.dp,
-                                            topEnd = newSwatchCorner,
-                                            bottomEnd = newSwatchCorner
-                                        )
-                                    )
-                                } else {
-                                    Modifier
-                                }
-                            )
-                            .semantics {
-                                contentDescription = "${copy[ColorPickerText.SelectedColor]} #${formatLevyraHexColor(selectedArgb)}"
-                            },
-                        contentAlignment = Alignment.BottomCenter
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .padding(horizontal = 3.dp, vertical = 4.dp)
-                                .clip(CircleShape)
-                                .background(Color.Black.copy(alpha = if (selectedColor.luminance() > 0.52f) 0.18f else 0.42f))
-                                .padding(horizontal = 6.dp, vertical = 1.5.dp)
-                        ) {
-                            Text(
-                                text = copy[ColorPickerText.SelectedColor],
-                                fontSize = 8.5.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = onSelected,
-                                maxLines = 1,
-                                softWrap = false
-                            )
-                        }
-                    }
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = scheme.surfaceContainerHigh,
-                    border = BorderStroke(1.dp, animatedPrimary.copy(alpha = 0.34f)),
+                ColorPickerComparisonSwatches(
+                    savedArgb = savedArgb,
+                    selectedArgb = selectedArgb,
+                    copy = copy,
+                    onResetToSaved = onResetToSaved
+                )
+                ColorPickerStageMiniCard(
+                    animatedPrimary = animatedPrimary,
+                    animatedSecondary = animatedSecondary,
+                    onSelected = onSelected,
                     modifier = Modifier
                         .weight(1f)
                         .height(54.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Brush.linearGradient(listOf(animatedPrimary, animatedSecondary))),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Palette,
-                                contentDescription = null,
-                                tint = onSelected.copy(alpha = 0.92f),
-                                modifier = Modifier.size(17.dp)
-                            )
-                        }
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(0.76f)
-                                    .height(7.dp)
-                                    .clip(CircleShape)
-                                    .background(scheme.onSurface.copy(alpha = 0.82f))
-                            )
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .weight(0.66f)
-                                        .height(5.dp)
-                                        .clip(CircleShape)
-                                        .background(
-                                            Brush.horizontalGradient(listOf(animatedPrimary, animatedSecondary))
-                                        )
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .weight(0.34f)
-                                        .height(5.dp)
-                                        .clip(CircleShape)
-                                        .background(scheme.onSurfaceVariant.copy(alpha = 0.24f))
-                                )
-                            }
-                        }
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(RoundedCornerShape(11.dp))
-                                .background(animatedPrimary),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.PlayArrow,
-                                contentDescription = null,
-                                tint = onSelected,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                }
+                )
             }
 
             Row(
@@ -1026,6 +893,197 @@ private fun ColorPickerLiveStage(
                     valueText = "$r · $g · $b",
                     accentColor = animatedPrimary,
                     modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ColorPickerComparisonSwatches(
+    savedArgb: Int,
+    selectedArgb: Int,
+    copy: ColorPickerCopy,
+    onResetToSaved: () -> Unit
+) {
+    val scheme = MaterialTheme.colorScheme
+    val animated = LocalAnimationsEnabled.current
+    val savedColor = Color(savedArgb)
+    val selectedColor = Color(selectedArgb)
+    val hasChanged = selectedArgb != savedArgb
+    val newSwatchCorner by animateDpAsState(
+        targetValue = if (hasChanged) 14.dp else 18.dp,
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.snappySpring()),
+        label = "new-swatch-corner"
+    )
+    val onSaved = if (savedColor.luminance() > 0.52f) Color.Black else Color.White
+    val onSelected = if (selectedColor.luminance() > 0.52f) Color.Black else Color.White
+
+    Row(
+        modifier = Modifier
+            .height(54.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(scheme.surfaceContainerHigh)
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .width(58.dp)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp, topEnd = 8.dp, bottomEnd = 8.dp))
+                .background(savedColor)
+                .levyraPressable(
+                    onClick = onResetToSaved,
+                    onClickLabel = copy[ColorPickerText.SavedColor],
+                    role = Role.Button
+                )
+                .semantics {
+                    contentDescription = "${copy[ColorPickerText.SavedColor]} #${formatLevyraHexColor(savedArgb)}"
+                },
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            ColorSwatchBadge(label = copy[ColorPickerText.SavedColor], swatchColor = savedColor, textColor = onSaved)
+        }
+        val selectedShape = RoundedCornerShape(
+            topStart = 8.dp,
+            bottomStart = 8.dp,
+            topEnd = newSwatchCorner,
+            bottomEnd = newSwatchCorner
+        )
+        Box(
+            modifier = Modifier
+                .width(58.dp)
+                .fillMaxHeight()
+                .clip(selectedShape)
+                .background(selectedColor)
+                .then(
+                    if (hasChanged) {
+                        Modifier.border(
+                            width = 1.5.dp,
+                            color = onSelected.copy(alpha = 0.65f),
+                            shape = selectedShape
+                        )
+                    } else {
+                        Modifier
+                    }
+                )
+                .semantics {
+                    contentDescription = "${copy[ColorPickerText.SelectedColor]} #${formatLevyraHexColor(selectedArgb)}"
+                },
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            ColorSwatchBadge(label = copy[ColorPickerText.SelectedColor], swatchColor = selectedColor, textColor = onSelected)
+        }
+    }
+}
+
+@Composable
+private fun ColorSwatchBadge(
+    label: String,
+    swatchColor: Color,
+    textColor: Color
+) {
+    Box(
+        modifier = Modifier
+            .padding(horizontal = 3.dp, vertical = 4.dp)
+            .clip(CircleShape)
+            .background(Color.Black.copy(alpha = if (swatchColor.luminance() > 0.52f) 0.18f else 0.42f))
+            .padding(horizontal = 6.dp, vertical = 1.5.dp)
+    ) {
+        Text(
+            text = label,
+            fontSize = 8.5.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = textColor,
+            maxLines = 1,
+            softWrap = false
+        )
+    }
+}
+
+@Composable
+private fun ColorPickerStageMiniCard(
+    animatedPrimary: Color,
+    animatedSecondary: Color,
+    onSelected: Color,
+    modifier: Modifier = Modifier
+) {
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = scheme.surfaceContainerHigh,
+        border = BorderStroke(1.dp, animatedPrimary.copy(alpha = 0.34f)),
+        modifier = modifier
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Brush.linearGradient(listOf(animatedPrimary, animatedSecondary))),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Palette,
+                    contentDescription = null,
+                    tint = onSelected.copy(alpha = 0.92f),
+                    modifier = Modifier.size(17.dp)
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.76f)
+                        .height(7.dp)
+                        .clip(CircleShape)
+                        .background(scheme.onSurface.copy(alpha = 0.82f))
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(0.66f)
+                            .height(5.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.horizontalGradient(listOf(animatedPrimary, animatedSecondary))
+                            )
+                    )
+                    Box(
+                        modifier = Modifier
+                            .weight(0.34f)
+                            .height(5.dp)
+                            .clip(CircleShape)
+                            .background(scheme.onSurfaceVariant.copy(alpha = 0.24f))
+                    )
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(11.dp))
+                    .background(animatedPrimary),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.PlayArrow,
+                    contentDescription = null,
+                    tint = onSelected,
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }
