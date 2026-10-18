@@ -72,11 +72,11 @@ class AppleMetadataEnricher(private val context: Context) {
     suspend fun fetchSongCredits(songId: String, country: String? = null): AppleSongCreditsPayload? {
         if (songId.isBlank() || !songId.all(Char::isDigit)) return null
         val storefront = resolveCountry(country).lowercase(Locale.ROOT)
-        val token = tokenProvider.getDeveloperToken() ?: return null
+        val developerToken = tokenProvider.getDeveloperToken() ?: return null
         return withContext(Dispatchers.IO) {
             coroutineScope {
-                val song = async { fetchAmpSongDetail(songId, storefront, token) }
-                val credits = async { fetchAmpJson("$AMP_BASE_URL/v1/catalog/$storefront/songs/$songId/credits", token) }
+                val song = async { fetchAmpSongDetail(songId, storefront, developerToken) }
+                val credits = async { fetchAmpJson("$AMP_BASE_URL/v1/catalog/$storefront/songs/$songId/credits", developerToken) }
                 AppleSongCreditsPayload(song = song.await(), credits = credits.await())
             }
         }.takeIf { it.song != null || it.credits != null }
