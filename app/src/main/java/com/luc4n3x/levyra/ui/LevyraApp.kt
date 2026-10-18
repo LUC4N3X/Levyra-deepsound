@@ -24041,14 +24041,13 @@ private fun HomeGreetingName(name: String, reveal: () -> Float) {
         text = name,
         color = if (LevyraIsLight) LevyraText else Color.White,
         style = LevyraType.screenTitle.copy(
-            fontSize = GREETING_TITLE_MAX_SIZE,
+            fontSize = 26.sp,
             lineHeight = 29.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = (-0.9).sp
         ),
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        autoSize = TextAutoSize.StepBased(minFontSize = GREETING_TITLE_MIN_SIZE, maxFontSize = GREETING_TITLE_MAX_SIZE),
+        maxLines = 2,
+        softWrap = true,
         modifier = Modifier
             .fillMaxWidth()
             .graphicsLayer {
