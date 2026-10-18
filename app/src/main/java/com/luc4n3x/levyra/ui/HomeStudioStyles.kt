@@ -3160,6 +3160,7 @@ private fun MxBleedHero(
         satellites.forEachIndexed { index, url ->
             val shape = companionShapes[index % companionShapes.size]
             val baseAngle = MxOrbitSatelliteAngles[index]
+            val swayDirection = if (index % 2 == 0) 1.5f else -1.5f
             Box(
                 modifier = Modifier
                     .offset {
@@ -3172,7 +3173,7 @@ private fun MxBleedHero(
                         )
                     }
                     .size(MxSatelliteSize)
-                    .graphicsLayer { rotationZ = sway.value * (if (index % 2 == 0) 1.5f else -1.5f) }
+                    .graphicsLayer { rotationZ = sway.value * swayDirection }
                     .clip(shape)
                     .background(scheme.tertiary)
                     .padding(3.dp)

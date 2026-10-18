@@ -14699,7 +14699,6 @@ private fun StudioPersonalOrbitTile(
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
-    val captionBelow = style == HomeStyle.ExpressiveMax
     val pressModifier = Modifier.levyraPressable(
         onClick = onPlay,
         pressedScale = LevyraPressScale.Tile,
@@ -14707,74 +14706,23 @@ private fun StudioPersonalOrbitTile(
         onLongClick = onActions,
         onLongClickLabel = strings.songOptions
     )
-    val artwork: @Composable (Modifier) -> Unit = { artModifier ->
-        Box(
-            modifier = artModifier
-                .aspectRatio(if (style == HomeStyle.Editorial) 1.18f else if (style == HomeStyle.Immersive) 0.86f else 1f)
-                .graphicsLayer {
-                    rotationZ = if (style == HomeStyle.ExpressiveMax) {
-                        when (index % 3) { 0 -> -2.5f; 1 -> 2f; else -> 0f }
-                    } else 0f
-                }
-                .clip(shape)
-                .background(LevyraPanel)
-                .then(if (captionBelow) Modifier else pressModifier)
-        ) {
-            CoverImage(
-                track = track,
-                modifier = Modifier.fillMaxSize(),
-                highRes = true
-            )
-            if (!captionBelow) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight(0.45f)
-                        .align(Alignment.BottomCenter)
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    Color.Transparent,
-                                    Color.Black.copy(alpha = 0.68f)
-                                )
-                            )
-                        )
-                )
-                Text(
-                    text = track.title,
-                    color = if (isCurrent) LevyraCyan else Color.White,
-                    fontSize = LevyraHomeDesign.OrbitTileTitleSize,
-                    lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitTileTitleSize),
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(
-                            start = LevyraHomeDesign.OrbitTileTitleInset,
-                            end = LevyraHomeDesign.OrbitTileTitleInset,
-                            bottom = 7.dp
-                        )
-                )
-            }
-            if (isCurrent) {
-                LevyraNowPlayingBadge(
-                    isPlaying = isPlaying,
-                    isResolving = isResolving,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(6.dp)
-                )
-            }
-        }
-    }
-    if (captionBelow) {
+    if (style == HomeStyle.ExpressiveMax) {
         Column(
             modifier = modifier.then(pressModifier),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            artwork(Modifier.fillMaxWidth())
+            StudioPersonalOrbitArtwork(
+                style = style,
+                index = index,
+                shape = shape,
+                track = track,
+                isCurrent = isCurrent,
+                isPlaying = isPlaying,
+                isResolving = isResolving,
+                titleInside = false,
+                modifier = Modifier.fillMaxWidth()
+            )
             Text(
                 text = track.title,
                 color = if (isCurrent) MaterialTheme.colorScheme.primary else LevyraText,
@@ -14788,8 +14736,102 @@ private fun StudioPersonalOrbitTile(
             )
         }
     } else {
-        artwork(modifier)
+        StudioPersonalOrbitArtwork(
+            style = style,
+            index = index,
+            shape = shape,
+            track = track,
+            isCurrent = isCurrent,
+            isPlaying = isPlaying,
+            isResolving = isResolving,
+            titleInside = true,
+            modifier = modifier,
+            pressModifier = pressModifier
+        )
     }
+}
+
+@Composable
+private fun StudioPersonalOrbitArtwork(
+    style: HomeStyle,
+    index: Int,
+    shape: Shape,
+    track: Track,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    titleInside: Boolean,
+    modifier: Modifier,
+    pressModifier: Modifier = Modifier
+) {
+    val ratio = when (style) {
+        HomeStyle.Editorial -> 1.18f
+        HomeStyle.Immersive -> 0.86f
+        else -> 1f
+    }
+    val tilt = if (style == HomeStyle.ExpressiveMax) {
+        when (index % 3) { 0 -> -2.5f; 1 -> 2f; else -> 0f }
+    } else 0f
+    Box(
+        modifier = modifier
+            .aspectRatio(ratio)
+            .graphicsLayer { rotationZ = tilt }
+            .clip(shape)
+            .background(LevyraPanel)
+            .then(pressModifier)
+    ) {
+        CoverImage(
+            track = track,
+            modifier = Modifier.fillMaxSize(),
+            highRes = true
+        )
+        if (titleInside) {
+            StudioPersonalOrbitOverlayTitle(track = track, isCurrent = isCurrent)
+        }
+        if (isCurrent) {
+            LevyraNowPlayingBadge(
+                isPlaying = isPlaying,
+                isResolving = isResolving,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(6.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun BoxScope.StudioPersonalOrbitOverlayTitle(track: Track, isCurrent: Boolean) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(0.45f)
+            .align(Alignment.BottomCenter)
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color.Transparent,
+                        Color.Black.copy(alpha = 0.68f)
+                    )
+                )
+            )
+    )
+    Text(
+        text = track.title,
+        color = if (isCurrent) LevyraCyan else Color.White,
+        fontSize = LevyraHomeDesign.OrbitTileTitleSize,
+        lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitTileTitleSize),
+        fontWeight = FontWeight.Bold,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier
+            .align(Alignment.BottomStart)
+            .padding(
+                start = LevyraHomeDesign.OrbitTileTitleInset,
+                end = LevyraHomeDesign.OrbitTileTitleInset,
+                bottom = 7.dp
+            )
+    )
 }
 
 private fun trackAlbumHit(track: Track): AlbumHit = AlbumHit(
