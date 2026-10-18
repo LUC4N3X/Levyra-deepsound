@@ -19,12 +19,16 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.ui.GlassBackdropState
+import com.luc4n3x.levyra.ui.LevyraGlassStyle
 import com.luc4n3x.levyra.ui.LocalGlassBackdrop
+import com.luc4n3x.levyra.ui.LocalLevyraGlassStyle
 import com.luc4n3x.levyra.ui.glassSurface
 import com.luc4n3x.levyra.ui.playerMix
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 
 val LocalLevyraLiquidGlassEnabled = staticCompositionLocalOf { false }
+
+private const val GlassSheenShare = 0.5f
 
 enum class LevyraGlassIntensity {
     Subtle,
@@ -92,7 +96,8 @@ fun Modifier.levyraGlass(
         fallbackBorderColor = fallbackBorderColor,
         intensity = intensity,
         artworkTint = artworkTint,
-        borderWidth = borderWidth
+        borderWidth = borderWidth,
+        style = LocalLevyraGlassStyle.current
     )
 }
 
@@ -103,13 +108,14 @@ internal fun Modifier.resolvedLevyraGlass(
     fallbackBorderColor: Color,
     intensity: LevyraGlassIntensity,
     artworkTint: Color?,
-    borderWidth: Dp
+    borderWidth: Dp,
+    style: LevyraGlassStyle = LevyraGlassStyle()
 ): Modifier {
     val tokens = LevyraGlassDefaults.tokens(intensity)
     val harmonizedTint = artworkTint
-        ?.let { baseTint.playerMix(it, 0.10f) }
+        ?.let { baseTint.playerMix(it, style.tintMix) }
         ?: baseTint
-    val glassTint = harmonizedTint.copy(alpha = tokens.tintAlpha)
+    val glassTint = harmonizedTint.copy(alpha = (tokens.tintAlpha * style.tintAlphaScale).coerceIn(0.06f, 0.6f))
     val lightweightFallback = harmonizedTint.copy(alpha = tokens.fallbackTintAlpha)
     val highlight = Color.White.copy(alpha = tokens.highlightAlpha)
     val border = fallbackBorderColor.playerMix(highlight, 0.45f)
@@ -122,7 +128,9 @@ internal fun Modifier.resolvedLevyraGlass(
             fallbackColor = lightweightFallback,
             borderColor = border.copy(alpha = tokens.borderAlpha.coerceAtLeast(border.alpha)),
             blurRadius = tokens.blurRadius,
-            borderWidth = borderWidth
+            borderWidth = borderWidth,
+            highlightAlpha = tokens.highlightAlpha * GlassSheenShare,
+            refraction = true
         )
     } else {
         this

@@ -181,6 +181,10 @@ data class LevyraInterfaceSettings(
     val canvasSource: LevyraCanvasSource = LevyraCanvasSource.Auto,
     val visualPerformance: LevyraVisualPerformance = LevyraVisualPerformance.Full,
     val liquidGlassEnabled: Boolean = true,
+    val glassBlur: Int = DEFAULT_GLASS_LEVEL,
+    val glassTransparency: Int = DEFAULT_GLASS_LEVEL,
+    val glassTint: Int = DEFAULT_GLASS_LEVEL,
+    val glassRefraction: Boolean = true,
     val motionArtworkWifiOnly: Boolean = false,
     val enhanceVideoMetadata: Boolean = false,
     val pureBlack: Boolean = false,
@@ -195,8 +199,15 @@ data class LevyraInterfaceSettings(
     fun normalized(): LevyraInterfaceSettings = copy(
         doubleTapSeekSeconds = doubleTapSeekSeconds.coerceIn(5, 30),
         longPressSpeed = longPressSpeed.coerceIn(1.25f, 3f),
+        glassBlur = glassBlur.coerceIn(0, 100),
+        glassTransparency = glassTransparency.coerceIn(0, 100),
+        glassTint = glassTint.coerceIn(0, 100),
         playerColorAccent = playerColorAccent or 0xFF000000.toInt()
     )
+
+    companion object {
+        const val DEFAULT_GLASS_LEVEL = 50
+    }
 }
 
 enum class LevyraDownloadPreset {
