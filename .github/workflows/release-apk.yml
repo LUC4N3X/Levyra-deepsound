@@ -422,7 +422,7 @@ jobs:
   fdroid:
     name: Build and Publish Reproducible F-Droid APK
     needs: release
-    if: "${{ success() && ((github.event_name == 'push' && github.event.head_commit.message != 'chore(release): refresh v2.6.9 APK') || (github.event_name == 'workflow_dispatch' && inputs.publish_fdroid_asset && inputs.refresh_existing_github_apk != true)) }}"
+    if: "${{ needs.release.result == 'success' && ((github.event_name == 'push' && github.event.head_commit.message != 'chore(release): refresh v2.6.9 APK') || (github.event_name == 'workflow_dispatch' && inputs.publish_fdroid_asset && inputs.refresh_existing_github_apk != true)) }}"
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
@@ -434,9 +434,6 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-
-      - name: Validate F-Droid Review Contract
-        run: python3 scripts/validate_fdroid_review_contract.py
 
       - name: Resolve F-Droid Asset
         id: fdroid
@@ -465,8 +462,17 @@ jobs:
           FDROID_APK_NAME="LEVYRA-${VERSION}-fdroid.apk"
           FDROID_CHECKSUM_NAME="${FDROID_APK_NAME}.sha256"
 
-          gh release view "v${VERSION}" --repo "${GITHUB_REPOSITORY}" >/dev/null
           git fetch --tags --force "https://github.com/${GITHUB_REPOSITORY}.git"
+          CANONICAL_TAG="v${VERSION}"
+          gh release view "${CANONICAL_TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null
+          SOURCE_SHA="$(git rev-parse "refs/tags/${CANONICAL_TAG}^{commit}")"
+          CANONICAL_TARGET="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${CANONICAL_TAG}" --jq '.target_commitish')"
+          test "${CANONICAL_TARGET}" = "${SOURCE_SHA}"
+
+          SOURCE_VERSION="$(git show "${SOURCE_SHA}:gradle.properties" | grep -E '^levyraVersionName=' | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs)"
+          SOURCE_VERSION_CODE="$(git show "${SOURCE_SHA}:gradle.properties" | grep -E '^levyraVersionCode=' | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs)"
+          test "${SOURCE_VERSION}" = "${VERSION}"
+          test "${SOURCE_VERSION_CODE}" = "${VERSION_CODE}"
 
           RELEASE_EXISTS=false
           TAG_EXISTS=false
@@ -485,10 +491,10 @@ jobs:
           if [[ "${RELEASE_EXISTS}" == "true" ]]; then
             TAG_SHA="$(git rev-parse "refs/tags/${FDROID_TAG}^{commit}")"
             RELEASE_TARGET="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${FDROID_TAG}" --jq '.target_commitish')"
-            test "${TAG_SHA}" = "${GITHUB_SHA}"
-            test "${RELEASE_TARGET}" = "${GITHUB_SHA}"
+            test "${TAG_SHA}" = "${SOURCE_SHA}"
+            test "${RELEASE_TARGET}" = "${SOURCE_SHA}"
             PUBLISH_FDROID=false
-            echo "F-Droid release ${FDROID_TAG} already targets ${GITHUB_SHA}; it will be verified without overwrite."
+            echo "F-Droid release ${FDROID_TAG} already targets ${SOURCE_SHA}; it will be verified without overwrite."
           else
             PUBLISH_FDROID=true
           fi
@@ -499,8 +505,23 @@ jobs:
             echo "FDROID_TAG=${FDROID_TAG}"
             echo "FDROID_APK_NAME=${FDROID_APK_NAME}"
             echo "FDROID_CHECKSUM_NAME=${FDROID_CHECKSUM_NAME}"
+            echo "FDROID_SOURCE_SHA=${SOURCE_SHA}"
           } >> "${GITHUB_ENV}"
           echo "publish=${PUBLISH_FDROID}" >> "${GITHUB_OUTPUT}"
+          echo "source_sha=${SOURCE_SHA}" >> "${GITHUB_OUTPUT}"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+
+      - name: Checkout Canonical F-Droid Source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.fdroid.outputs.source_sha }}
+          path: fdroid-source
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validate F-Droid Review Contract
+        working-directory: fdroid-source
+        run: python3 scripts/validate_fdroid_review_contract.py
 
       - name: Setup Java
         uses: actions/setup-java@v6
@@ -525,6 +546,7 @@ jobs:
 
       - name: Prepare Levyra Signing Key
         shell: bash
+        working-directory: fdroid-source
         env:
           LEVYRA_KEYSTORE_BASE64: ${{ secrets.LEVYRA_KEYSTORE_BASE64 }}
           LEVYRA_KEYSTORE_FILE: app/levyra-release.jks
@@ -548,6 +570,7 @@ jobs:
 
       - name: Build Signed F-Droid APK
         shell: bash
+        working-directory: fdroid-source
         env:
           LEVYRA_KEYSTORE_FILE: app/levyra-release.jks
           LEVYRA_KEYSTORE_PASSWORD: ${{ secrets.LEVYRA_KEYSTORE_PASSWORD }}
@@ -567,6 +590,7 @@ jobs:
       - name: Remove Levyra Signing Key
         if: always()
         shell: bash
+        working-directory: fdroid-source
         run: rm -f app/levyra-release.jks
 
       - name: Verify F-Droid APK
@@ -574,7 +598,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p fdroid-assets
-          SOURCE_APK="app/build/outputs/apk/release/app-release.apk"
+          SOURCE_APK="fdroid-source/app/build/outputs/apk/release/app-release.apk"
           FDROID_APK_PATH="fdroid-assets/${FDROID_APK_NAME}"
           FDROID_CHECKSUM_PATH="fdroid-assets/${FDROID_CHECKSUM_NAME}"
           test -f "${SOURCE_APK}"
@@ -586,6 +610,9 @@ jobs:
           printf '%s\n' "${CERTS}"
           SIGNER_SHA256="$(printf '%s\n' "${CERTS}" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | tr '[:upper:]' '[:lower:]')"
           test "${SIGNER_SHA256}" = "${LEVYRA_SIGNING_CERT_SHA256}"
+          python3 scripts/verify_apk_source_revision.py \
+            --apk "${SOURCE_APK}" \
+            --expected-revision "${FDROID_SOURCE_SHA}"
 
           cp "${SOURCE_APK}" "${FDROID_APK_PATH}"
           (
@@ -623,9 +650,9 @@ jobs:
           gh release create "${FDROID_TAG}" \
             "${FDROID_APK_PATH}#Reproducible F-Droid APK" \
             "${FDROID_CHECKSUM_PATH}#F-Droid APK SHA-256 checksum" \
-            --target "${GITHUB_SHA}" \
+            --target "${FDROID_SOURCE_SHA}" \
             --title "Levyra ${VERSION} for F-Droid" \
-            --notes "Upstream-signed F-Droid variant built from commit ${GITHUB_SHA}. F-Droid must reproduce this APK before publishing it." \
+            --notes "Upstream-signed F-Droid variant built from commit ${FDROID_SOURCE_SHA}. F-Droid must reproduce this APK before publishing it." \
             --prerelease \
             --repo "${GITHUB_REPOSITORY}"
 
@@ -654,12 +681,14 @@ jobs:
           set -euo pipefail
           python3 -m unittest discover -s scripts/tests -p 'test_fdroid_metadata.py'
           python3 scripts/render_fdroid_metadata.py \
-            --commit "${GITHUB_SHA}" \
+            --properties "fdroid-source/gradle.properties" \
+            --template "fdroid-source/fdroid/metadata/com.luc4n3x.levyra.yml.in" \
+            --commit "${FDROID_SOURCE_SHA}" \
             --output "fdroid-submission/metadata/com.luc4n3x.levyra.yml"
 
       - name: Upload F-Droid Metadata Submission
         uses: actions/upload-artifact@v7
         with:
-          name: fdroid-metadata-${{ steps.fdroid.outputs.version }}-${{ github.sha }}
+          name: fdroid-metadata-${{ steps.fdroid.outputs.version }}-${{ steps.fdroid.outputs.source_sha }}
           path: fdroid-submission/metadata/com.luc4n3x.levyra.yml
           if-no-files-found: error
