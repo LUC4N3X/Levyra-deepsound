@@ -1293,11 +1293,11 @@ private fun ExpressiveSpotlight(
     val morph = rememberLevyraPlayMorphShape(playing = playing, animated = animationsEnabled, spinWhilePlaying = !resolving)
     val spin = rememberSpotlightMotion(animationsEnabled && playing, 0f, 360f, 44_000, reverse = false)
     val breathe = rememberSpotlightMotion(animationsEnabled, 0.18f, 0.72f, 6_800, reverse = true)
-    val outerShape = MaterialShapes.Cookie12Sided.toShape()
-    val innerShape = MaterialShapes.Clover8Leaf.toShape()
-    val sunnyShape = MaterialShapes.Sunny.toShape()
+    val sleeveShape = RoundedCornerShape(topStart = 96.dp, topEnd = 26.dp, bottomEnd = 92.dp, bottomStart = 28.dp)
+    val backingShape = RoundedCornerShape(topStart = 76.dp, topEnd = 46.dp, bottomEnd = 104.dp, bottomStart = 34.dp)
     val stampShape = MaterialShapes.Cookie6Sided.toShape()
-    val portraitShape = MaterialShapes.Cookie9Sided.toShape()
+    val radioShape = MaterialShapes.Sunny.toShape()
+
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
@@ -1308,84 +1308,47 @@ private fun ExpressiveSpotlight(
                 pressedScale = 1f
             )
     ) {
-        val heroHeight = (maxWidth * 1.06f).coerceIn(376.dp, 428.dp)
-        val artSpan = (maxWidth * 0.94f).coerceAtMost(392.dp)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(heroHeight)
-        ) {
+        val coverSize = (maxWidth * 0.90f).coerceAtMost(380.dp)
+        Column(modifier = Modifier.fillMaxWidth()) {
             Box(
                 modifier = Modifier
-                    .matchParentSize()
-                    .drawBehind {
-                        val primaryCenter = Offset(size.width * 0.74f, size.height * 0.40f)
-                        val secondaryCenter = Offset(size.width * 0.28f, size.height * 0.68f)
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    seed.copy(alpha = if (isLight) 0.30f else 0.48f),
-                                    secondarySeed.copy(alpha = if (isLight) 0.12f else 0.20f),
-                                    Color.Transparent
-                                ),
-                                center = primaryCenter,
-                                radius = size.width * 0.72f
-                            ),
-                            center = primaryCenter,
-                            radius = size.width * 0.72f
-                        )
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    scheme.tertiary.copy(alpha = if (isLight) 0.14f else 0.22f),
-                                    Color.Transparent
-                                ),
-                                center = secondaryCenter,
-                                radius = size.width * 0.56f
-                            ),
-                            center = secondaryCenter,
-                            radius = size.width * 0.56f
-                        )
-                    }
-            )
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                    .drawWithContent {
-                        drawContent()
-                        drawRect(
-                            brush = Brush.verticalGradient(
-                                0.0f to Color.Transparent,
-                                0.10f to Color.Black.copy(alpha = 0.92f),
-                                0.66f to Color.Black,
-                                0.86f to Color.Black.copy(alpha = 0.46f),
-                                1.0f to Color.Transparent
-                            ),
-                            blendMode = BlendMode.DstIn
-                        )
-                        drawRect(
-                            brush = Brush.horizontalGradient(
-                                0.0f to Color.Black.copy(alpha = 0.22f),
-                                0.28f to Color.Black.copy(alpha = 0.68f),
-                                0.56f to Color.Black
-                            ),
-                            blendMode = BlendMode.DstIn
-                        )
-                    }
+                    .fillMaxWidth()
+                    .height(coverSize + 28.dp)
             ) {
                 Box(
                     modifier = Modifier
+                        .matchParentSize()
+                        .drawBehind {
+                            val focus = Offset(size.width * 0.78f, size.height * 0.44f)
+                            drawCircle(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        seed.copy(alpha = if (isLight) 0.24f else 0.34f),
+                                        secondarySeed.copy(alpha = if (isLight) 0.10f else 0.16f),
+                                        Color.Transparent
+                                    ),
+                                    center = focus,
+                                    radius = size.width * 0.82f
+                                ),
+                                center = focus,
+                                radius = size.width * 0.82f
+                            )
+                        }
+                )
+                // A single off-axis sleeve peeks out behind the artwork, rather than spinning decorative bursts.
+                Box(
+                    modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .offset(x = artSpan * 0.22f, y = -artSpan * 0.04f)
-                        .size(artSpan * 1.04f)
-                        .graphicsLayer { rotationZ = spin.value }
-                        .clip(outerShape)
+                        .offset(x = 3.dp, y = 14.dp)
+                        .size(coverSize)
+                        .graphicsLayer { rotationZ = -5f + spin.value * 0.012f }
+                        .clip(backingShape)
                         .background(
                             Brush.linearGradient(
                                 listOf(
-                                    seed.copy(alpha = if (isLight) 0.24f else 0.34f),
-                                    secondarySeed.copy(alpha = if (isLight) 0.10f else 0.16f)
+                                    scheme.primaryContainer.copy(alpha = 0.70f),
+                                    secondarySeed.copy(alpha = if (isLight) 0.24f else 0.34f),
+                                    scheme.tertiaryContainer.copy(alpha = 0.46f)
                                 )
                             )
                         )
@@ -1393,121 +1356,72 @@ private fun ExpressiveSpotlight(
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .offset(x = artSpan * 0.14f, y = artSpan * 0.04f)
-                        .size(artSpan * 0.90f)
-                        .graphicsLayer { rotationZ = -spin.value * 1.35f }
-                        .clip(innerShape)
-                        .background(scheme.tertiaryContainer.copy(alpha = if (isLight) 0.38f else 0.26f))
-                )
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(x = artSpan * 0.10f, y = artSpan * 0.01f)
-                        .size(artSpan * 0.96f)
-                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                        .drawWithContent {
-                            drawContent()
-                            drawRect(
-                                brush = Brush.radialGradient(
-                                    0.0f to Color.Black,
-                                    0.58f to Color.Black.copy(alpha = 0.96f),
-                                    0.82f to Color.Black.copy(alpha = 0.52f),
-                                    1.0f to Color.Transparent,
-                                    center = Offset(size.width * 0.54f, size.height * 0.44f),
-                                    radius = size.minDimension * 0.56f
-                                ),
-                                blendMode = BlendMode.DstIn
-                            )
-                            drawRect(
-                                brush = Brush.horizontalGradient(
-                                    0.0f to Color.Transparent,
-                                    0.22f to Color.Black.copy(alpha = 0.62f),
-                                    0.50f to Color.Black
-                                ),
-                                blendMode = BlendMode.DstIn
-                            )
-                            drawRect(
-                                brush = Brush.verticalGradient(
-                                    0.0f to Color.Black.copy(alpha = 0.94f),
-                                    0.60f to Color.Black,
-                                    0.85f to Color.Black.copy(alpha = 0.38f),
-                                    1.0f to Color.Transparent
-                                ),
-                                blendMode = BlendMode.DstIn
-                            )
-                        }
+                        .offset(x = 16.dp, y = 4.dp)
+                        .size(coverSize)
+                        .clip(sleeveShape)
                 ) {
+                    if (artistArtworkUrl.isNotBlank()) {
+                        StudioRemoteArtwork(artistArtworkUrl, track.artist, Modifier.fillMaxSize(), true)
+                    } else {
+                        CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true)
+                    }
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(artSpan * 0.04f)
-                            .graphicsLayer { rotationZ = -3f + 6f * breathe.value }
-                            .clip(portraitShape)
-                    ) {
-                        if (artistArtworkUrl.isNotBlank()) {
-                            StudioRemoteArtwork(artistArtworkUrl, track.artist, Modifier.fillMaxSize(), true)
-                        } else {
-                            CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true)
-                        }
-                    }
-                }
-                Canvas(modifier = Modifier.matchParentSize()) {
-                    val arcCenter = Offset(size.width * 0.68f, size.height * 0.42f)
-                    val ringRadius = artSpan.toPx() * 0.45f
-                    val dash = PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 10.dp.toPx()))
-                    drawCircle(
-                        color = seed.copy(alpha = if (isLight) 0.28f else 0.36f),
-                        radius = ringRadius,
-                        center = arcCenter,
-                        style = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round, pathEffect = dash)
+                            .matchParentSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    0.0f to Color.Transparent,
+                                    0.56f to Color.Transparent,
+                                    0.80f to canvas.copy(alpha = if (isLight) 0.30f else 0.40f),
+                                    1.0f to canvas.copy(alpha = if (isLight) 0.76f else 0.84f)
+                                )
+                            )
                     )
-                    drawCircle(
-                        color = Color.White.copy(alpha = if (isLight) 0.32f else 0.14f),
-                        radius = ringRadius * 1.13f,
-                        center = arcCenter,
-                        style = Stroke(width = 1.dp.toPx())
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .border(
+                                1.dp,
+                                scheme.primary.copy(alpha = if (isLight) 0.25f else 0.38f),
+                                sleeveShape
+                            )
                     )
                 }
+                // The copy sits over a soft tonal fade, but the cover stays crisp and fully readable.
                 Box(
                     modifier = Modifier
-                        .matchParentSize()
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(154.dp)
                         .background(
                             Brush.verticalGradient(
                                 0.0f to Color.Transparent,
-                                0.46f to Color.Transparent,
-                                0.74f to canvas.copy(alpha = if (isLight) 0.62f else 0.70f),
-                                1.0f to canvas.copy(alpha = if (isLight) 0.80f else 0.88f)
+                                0.44f to canvas.copy(alpha = if (isLight) 0.46f else 0.56f),
+                                1.0f to canvas.copy(alpha = if (isLight) 0.94f else 0.96f)
                             )
                         )
                 )
-            }
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .fillMaxWidth()
-                    .padding(start = spec.inset, end = spec.inset, bottom = 14.dp),
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
                 Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .padding(start = spec.inset, end = spec.inset, bottom = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(9.dp)
                 ) {
                     Surface(
-                        color = scheme.tertiaryContainer.copy(alpha = 0.90f),
+                        color = scheme.tertiaryContainer.copy(alpha = 0.94f),
                         contentColor = scheme.onTertiaryContainer,
                         shape = CircleShape
                     ) {
                         Row(
-                            modifier = Modifier.padding(start = 7.dp, end = 12.dp, top = 5.dp, bottom = 5.dp),
+                            modifier = Modifier.padding(start = 8.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(7.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(14.dp)
-                                    .graphicsLayer { rotationZ = spin.value * 2f }
-                                    .clip(sunnyShape)
+                                    .size(13.dp)
+                                    .clip(radioShape)
                                     .background(scheme.tertiary)
                             )
                             Text(
@@ -1523,54 +1437,51 @@ private fun ExpressiveSpotlight(
                     }
                     Text(
                         text = label,
-                        style = MaterialTheme.typography.displaySmallEmphasized.copy(
-                            fontWeight = FontWeight.Black
-                        ),
-                        color = LevyraText,
+                        style = MaterialTheme.typography.displaySmallEmphasized.copy(fontWeight = FontWeight.Black),
+                        color = if (isLight) LevyraText else Color.White,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(46.dp)
-                                .graphicsLayer { rotationZ = -6f + 12f * breathe.value }
-                                .clip(stampShape)
-                                .background(scheme.primaryContainer)
-                                .padding(2.5.dp)
-                                .clip(stampShape)
-                        ) {
-                            CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = false)
-                        }
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Text(
-                                text = track.title,
-                                style = MaterialTheme.typography.titleMediumEmphasized.copy(
-                                    fontWeight = FontWeight.ExtraBold
-                                ),
-                                color = if (isLight) LevyraText else Color.White,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.levyraMarquee()
-                            )
-                            Text(
-                                text = lead.ifBlank { track.artist },
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    fontWeight = FontWeight.Medium
-                                ),
-                                color = if (isLight) LevyraMuted else Color.White.copy(alpha = 0.78f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.levyraMarquee()
-                            )
-                        }
-                    }
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = spec.inset, end = spec.inset, top = 12.dp, bottom = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .graphicsLayer { rotationZ = -6f + 12f * breathe.value }
+                        .clip(stampShape)
+                        .background(scheme.primaryContainer)
+                        .padding(2.5.dp)
+                        .clip(stampShape)
+                ) {
+                    CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = false)
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    Text(
+                        text = track.title,
+                        style = MaterialTheme.typography.titleMediumEmphasized.copy(fontWeight = FontWeight.ExtraBold),
+                        color = if (isLight) LevyraText else Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.levyraMarquee()
+                    )
+                    Text(
+                        text = lead.ifBlank { track.artist },
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                        color = if (isLight) LevyraMuted else Color.White.copy(alpha = 0.78f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.levyraMarquee()
+                    )
                 }
                 Box(
                     modifier = Modifier
