@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.border
 import com.luc4n3x.levyra.ui.components.LevyraMorphShape
 import androidx.graphics.shapes.Morph
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -3337,8 +3338,9 @@ private fun MxBleedHero(
     val spin = rememberSpotlightMotion(hero.animationsEnabled && playing, 0f, 360f, 46_000, reverse = false)
     val breathe = rememberSpotlightMotion(hero.animationsEnabled, 0.16f, 0.84f, 7_200, reverse = true)
     val heroHeight = 540.dp
-    val sunnyShape = MaterialShapes.Sunny.toShape()
-    val cookieShape = MaterialShapes.Cookie9Sided.toShape()
+    val portraitShape = MaterialShapes.Cookie9Sided.toShape()
+    val orbitShape = MaterialShapes.Cookie12Sided.toShape()
+    val bloomShape = MaterialShapes.Clover8Leaf.toShape()
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
@@ -3351,8 +3353,8 @@ private fun MxBleedHero(
             )
     ) {
         val totalHeight = heroHeight + topBleed
-        val cutSize = maxWidth * 1.20f
-        val haloSize = cutSize * 1.12f
+        val portraitSize = maxWidth * 1.28f
+        val orbitSize = portraitSize * 1.10f
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -3364,8 +3366,8 @@ private fun MxBleedHero(
                     drawRect(
                         brush = Brush.verticalGradient(
                             0.0f to Color.Black,
-                            0.62f to Color.Black,
-                            0.86f to Color.Black.copy(alpha = 0.46f),
+                            0.68f to Color.Black,
+                            0.88f to Color.Black.copy(alpha = 0.48f),
                             1.0f to Color.Transparent
                         ),
                         blendMode = BlendMode.DstIn
@@ -3377,39 +3379,42 @@ private fun MxBleedHero(
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            0.0f to seed.copy(alpha = if (isLight) 0.34f else 0.54f),
-                            0.46f to secondarySeed.copy(alpha = if (isLight) 0.16f else 0.26f),
-                            1.0f to canvas.copy(alpha = 0f)
+                            0.0f to seed.copy(alpha = if (isLight) 0.16f else 0.26f),
+                            0.52f to secondarySeed.copy(alpha = if (isLight) 0.09f else 0.14f),
+                            1.0f to Color.Transparent
                         )
                     )
                     .drawBehind {
+                        val center = Offset(size.width * 0.74f, size.height * 0.38f)
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    seed.copy(alpha = if (isLight) 0.42f else 0.62f),
-                                    scheme.tertiary.copy(alpha = if (isLight) 0.18f else 0.28f),
+                                    seed.copy(alpha = if (isLight) 0.26f else 0.34f),
+                                    scheme.tertiary.copy(alpha = if (isLight) 0.10f else 0.16f),
                                     Color.Transparent
                                 ),
-                                center = Offset(size.width * 0.78f, size.height * 0.40f),
-                                radius = size.width * 0.92f
+                                center = center,
+                                radius = size.width * 0.86f
                             ),
-                            center = Offset(size.width * 0.78f, size.height * 0.40f),
-                            radius = size.width * 0.92f
+                            center = center,
+                            radius = size.width * 0.86f
                         )
                     }
             )
+            // Soft expressive layers frame the cover without hiding the artwork.
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .offset(x = haloSize * 0.22f, y = topBleed - 8.dp)
-                    .size(haloSize)
-                    .graphicsLayer { rotationZ = spin.value }
-                    .clip(sunnyShape)
+                    .offset(x = portraitSize * 0.10f, y = topBleed + 32.dp)
+                    .size(portraitSize * 1.04f)
+                    .graphicsLayer { rotationZ = -3f + breathe.value * 2f }
+                    .clip(bloomShape)
                     .background(
                         Brush.linearGradient(
                             listOf(
-                                scheme.tertiary.copy(alpha = if (isLight) 0.80f else 0.70f),
-                                seed.copy(alpha = if (isLight) 0.62f else 0.58f)
+                                seed.copy(alpha = if (isLight) 0.16f else 0.22f),
+                                scheme.tertiary.copy(alpha = if (isLight) 0.08f else 0.14f),
+                                Color.Transparent
                             )
                         )
                     )
@@ -3417,9 +3422,32 @@ private fun MxBleedHero(
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .offset(x = cutSize * 0.17f, y = topBleed + 44.dp)
-                    .size(cutSize)
-                    .clip(cookieShape)
+                    .offset(x = orbitSize * 0.12f, y = topBleed + 20.dp)
+                    .size(orbitSize)
+                    .graphicsLayer { rotationZ = spin.value * 0.035f }
+                    .border(
+                        width = 1.dp,
+                        brush = Brush.linearGradient(
+                            listOf(
+                                scheme.primary.copy(alpha = if (isLight) 0.32f else 0.40f),
+                                scheme.tertiary.copy(alpha = 0.22f),
+                                scheme.primary.copy(alpha = 0.08f)
+                            )
+                        ),
+                        shape = orbitShape
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = portraitSize * 0.14f, y = topBleed + 38.dp)
+                    .size(portraitSize)
+                    .clip(portraitShape)
+                    .border(
+                        width = 1.dp,
+                        color = scheme.primary.copy(alpha = if (isLight) 0.20f else 0.28f),
+                        shape = portraitShape
+                    )
             ) {
                 if (hero.artistArtworkUrl.isNotBlank()) {
                     StudioRemoteArtwork(
@@ -3441,10 +3469,10 @@ private fun MxBleedHero(
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            0.0f to Color.Black.copy(alpha = if (isLight) 0.06f else 0.26f),
-                            0.20f to Color.Transparent,
-                            0.56f to canvas.copy(alpha = if (isLight) 0.22f else 0.30f),
-                            0.82f to canvas.copy(alpha = if (isLight) 0.82f else 0.88f),
+                            0.0f to Color.Black.copy(alpha = if (isLight) 0.05f else 0.18f),
+                            0.26f to Color.Transparent,
+                            0.52f to canvas.copy(alpha = if (isLight) 0.12f else 0.18f),
+                            0.78f to canvas.copy(alpha = if (isLight) 0.78f else 0.84f),
                             1.0f to canvas
                         )
                     )
@@ -3454,8 +3482,8 @@ private fun MxBleedHero(
                     .fillMaxSize()
                     .background(
                         Brush.horizontalGradient(
-                            0.0f to canvas.copy(alpha = if (isLight) 0.50f else 0.58f),
-                            0.40f to canvas.copy(alpha = if (isLight) 0.14f else 0.18f),
+                            0.0f to canvas.copy(alpha = if (isLight) 0.52f else 0.60f),
+                            0.40f to canvas.copy(alpha = if (isLight) 0.10f else 0.16f),
                             0.76f to Color.Transparent
                         )
                     )
@@ -3662,9 +3690,9 @@ private fun MxBleedTitle(
             modifier = Modifier.padding(start = 4.dp)
         )
         Surface(
-            color = scheme.tertiaryContainer.copy(alpha = 0.94f),
-            contentColor = scheme.onTertiaryContainer,
-            shape = RoundedCornerShape(topStart = 40.dp, topEnd = 14.dp, bottomEnd = 40.dp, bottomStart = 14.dp),
+            color = scheme.surfaceContainerHigh.copy(alpha = if (isLight) 0.92f else 0.84f),
+            contentColor = scheme.onSurface,
+            shape = RoundedCornerShape(topStart = 32.dp, topEnd = 20.dp, bottomEnd = 32.dp, bottomStart = 20.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
@@ -3701,7 +3729,7 @@ private fun MxBleedTitle(
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontWeight = FontWeight.Medium
                         ),
-                        color = scheme.onTertiaryContainer.copy(alpha = 0.78f),
+                        color = scheme.onSurfaceVariant.copy(alpha = 0.92f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.levyraMarquee()
