@@ -237,7 +237,7 @@ private fun TrackCreditsContent(
                 releaseRows.forEach { (label, value) -> TrackCreditsFact(label = label, value = value) }
             }
         }
-        if (credits.isEmpty) {
+        if (credits.isEmpty || !credits.remoteResolved) {
             TrackCreditsNotice(
                 remoteResolved = credits.remoteResolved,
                 copy = copy,

@@ -102,7 +102,9 @@ internal object TrackCreditsParser {
     }
 
     fun merge(remote: TrackCredits, local: TrackCredits): TrackCredits {
-        val sections = remote.sections.ifEmpty { local.sections }
+        val remoteGroups = remote.sections.map { it.group }.toSet()
+        val sections = (remote.sections + local.sections.filter { it.group !in remoteGroups })
+            .sortedBy { it.group.ordinal }
         val r = remote.release
         val l = local.release
         return remote.copy(

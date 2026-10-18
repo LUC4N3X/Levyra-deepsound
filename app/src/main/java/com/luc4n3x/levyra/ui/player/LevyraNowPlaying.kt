@@ -285,7 +285,7 @@ fun LevyraNowPlaying(
     var showTechnicalAudioInfo by remember(track?.id) { mutableStateOf(false) }
     var showTrackCredits by remember(track?.id) { mutableStateOf(false) }
     var creditWriters by remember { mutableStateOf<Pair<String, List<String>>?>(null) }
-    LaunchedEffect(track?.id, liveRadio) {
+    LaunchedEffect(track?.id, track?.composer, liveRadio) {
         val current = track
         if (current == null || liveRadio) return@LaunchedEffect
         delay(CreditsPrefetchDelayMs)

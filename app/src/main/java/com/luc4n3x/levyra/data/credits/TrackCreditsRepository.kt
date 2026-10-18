@@ -32,31 +32,35 @@ class TrackCreditsRepository private constructor(context: Context) {
         val lock = keyLocks[(key.hashCode() and Int.MAX_VALUE) % keyLocks.size]
         val remote = lock.withLock {
             val now = System.currentTimeMillis()
-            readMemory(key, now)?.takeUnless { retry && it.credits == null }?.let { return@withLock it.credits }
+            readMemory(key, now)?.takeUnless { retry && !it.complete }?.let { return@withLock it.credits }
             readDisk(key, now)?.let { cached ->
-                writeMemory(key, CachedCredits(cached, now + REMOTE_TTL_MS))
+                writeMemory(key, CachedCredits(cached, now + REMOTE_TTL_MS, complete = true))
                 return@withLock cached
             }
             val resolved = withTimeoutOrNull(REMOTE_TIMEOUT_MS) { resolveRemote(track) }
             when {
-                resolved != null -> {
-                    writeMemory(key, CachedCredits(resolved, now + REMOTE_TTL_MS))
-                    writeDisk(key, resolved)
+                resolved == null -> writeMemory(key, CachedCredits(null, now + MISS_TTL_MS, complete = false))
+                resolved.complete -> {
+                    writeMemory(key, CachedCredits(resolved.credits, now + REMOTE_TTL_MS, complete = true))
+                    writeDisk(key, resolved.credits)
                 }
-                else -> writeMemory(key, CachedCredits(null, now + MISS_TTL_MS))
+                else -> writeMemory(key, CachedCredits(resolved.credits, now + MISS_TTL_MS, complete = false))
             }
-            resolved
+            resolved?.credits
         }
         if (remote == null) local else TrackCreditsParser.merge(remote, local)
     }
 
-    private suspend fun resolveRemote(track: Track): TrackCredits? = try {
+    private suspend fun resolveRemote(track: Track): RemoteCredits? = try {
         val match = enricher.matchMetadata(track, timeoutMs = MATCH_TIMEOUT_MS)
         val payload = match?.songId?.takeIf(String::isNotBlank)?.let { enricher.fetchSongCredits(it) }
         if (match == null || payload == null) {
             null
         } else {
-            TrackCreditsParser.parseApple(payload.song, payload.credits, match.isReleaseMatch)
+            RemoteCredits(
+                credits = TrackCreditsParser.parseApple(payload.song, payload.credits, match.isReleaseMatch),
+                complete = payload.song != null && payload.credits != null
+            )
         }
     } catch (error: CancellationException) {
         throw error
@@ -186,7 +190,9 @@ class TrackCreditsRepository private constructor(context: Context) {
         return digest.joinToString("") { "%02x".format(it) } + CACHE_EXTENSION
     }
 
-    private class CachedCredits(val credits: TrackCredits?, val expiresAt: Long)
+    private class CachedCredits(val credits: TrackCredits?, val expiresAt: Long, val complete: Boolean = true)
+
+    private class RemoteCredits(val credits: TrackCredits, val complete: Boolean)
 
     companion object {
         private const val CACHE_DIRECTORY = "track-credits"
