@@ -24,6 +24,50 @@
     <string name="car_connecting_player">플레이어에 연결 중</string>
     <string name="car_now_playing">재생 중</string>
     <string name="car_queue">재생 대기열</string>
+
+    <!-- Android Auto browse tree -->
+    <string name="car_root_title">Levyra</string>
+    <string name="car_root_subtitle">Android Auto에 최적화된 음악</string>
+    <string name="car_home_title">홈</string>
+    <string name="car_home_subtitle">빠른 믹스, 오프라인, 차트</string>
+    <string name="car_queue_title">재생 대기열</string>
+    <string name="car_queue_subtitle">Levyra와 공유되는 영구 대기열</string>
+    <string name="car_recommended_title">추천</string>
+    <string name="car_recommended_subtitle">음악 프로필, 즐겨찾기, 최근 재생</string>
+    <string name="car_albums_title">앨범</string>
+    <string name="car_albums_subtitle">로컬 앨범 및 추천</string>
+    <string name="car_artists_title">아티스트</string>
+    <string name="car_artists_subtitle">가장 많이 재생되고 팔로우된 아티스트</string>
+    <string name="car_flow_title">Flow</string>
+    <string name="car_flow_subtitle">개인 Levyra 라디오</string>
+    <string name="car_favorites_title">즐겨찾기</string>
+    <string name="car_favorites_subtitle">저장한 곡</string>
+    <string name="car_downloads_title">다운로드</string>
+    <string name="car_downloads_subtitle">오프라인에서 사용 가능한 음악</string>
+    <string name="car_playlists_title">플레이리스트</string>
+    <string name="car_playlists_subtitle">앱에서 만든 컬렉션</string>
+    <string name="car_recents_title">최근 재생</string>
+    <string name="car_recents_subtitle">최근에 찾은 곡</string>
+    <string name="car_home_recommended_title">당신을 위한 추천</string>
+    <string name="car_home_recommended_subtitle">음악 프로필 기반 추천</string>
+    <string name="car_home_driver_title">운전용</string>
+    <string name="car_home_driver_subtitle">즐겨찾기, 최근 곡, 고에너지 트랙</string>
+    <string name="car_home_offline_title">오프라인 준비</string>
+    <string name="car_home_offline_subtitle">네트워크 없이 재생 가능한 다운로드</string>
+    <string name="car_home_top_local_title">로컬 인기</string>
+    <string name="car_home_top_local_subtitle">선택한 언어의 최신 음악 차트</string>
+    <string name="car_home_flow_title">Flow Levyra</string>
+    <string name="car_home_flow_subtitle">지속적인 개인 믹스</string>
+    <string name="car_playlist_unavailable">플레이리스트를 사용할 수 없음</string>
+    <string name="car_album_unavailable">앨범을 사용할 수 없음</string>
+    <string name="car_artist_unavailable">아티스트를 사용할 수 없음</string>
+    <string name="car_item_unavailable">항목을 사용할 수 없음</string>
+
+    <!-- Android Auto dynamic strings -->
+    <plurals name="car_tracks_count">
+        <item quantity="other">%1$d곡</item>
+    </plurals>
+    <string name="car_artist_folder_subtitle">곡, 즐겨찾기, 추천</string>
     <string name="notification_favorite_add">즐겨찾기에 추가</string>
     <string name="notification_favorite_remove">즐겨찾기에서 삭제</string>
     <string name="notification_shuffle_enable">셔플 켜기</string>

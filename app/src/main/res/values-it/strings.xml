@@ -24,6 +24,51 @@
     <string name="car_connecting_player">Connessione al lettore</string>
     <string name="car_now_playing">In riproduzione</string>
     <string name="car_queue">Coda</string>
+
+    <!-- Android Auto browse tree -->
+    <string name="car_root_title">Levyra</string>
+    <string name="car_root_subtitle">Musica ottimizzata per Android Auto</string>
+    <string name="car_home_title">Home</string>
+    <string name="car_home_subtitle">Mix veloci, offline e classifiche</string>
+    <string name="car_queue_title">Coda attuale</string>
+    <string name="car_queue_subtitle">Coda persistente condivisa con Levyra</string>
+    <string name="car_recommended_title">Consigliati</string>
+    <string name="car_recommended_subtitle">Profilo musicale, preferiti e ascolti recenti</string>
+    <string name="car_albums_title">Album</string>
+    <string name="car_albums_subtitle">Album veri, playlist offline e raccolte locali</string>
+    <string name="car_artists_title">Artisti</string>
+    <string name="car_artists_subtitle">Artisti più ascoltati e seguiti</string>
+    <string name="car_flow_title">Flow</string>
+    <string name="car_flow_subtitle">Radio personale Levyra</string>
+    <string name="car_favorites_title">Preferiti</string>
+    <string name="car_favorites_subtitle">Brani salvati</string>
+    <string name="car_downloads_title">Download</string>
+    <string name="car_downloads_subtitle">Musica disponibile offline</string>
+    <string name="car_playlists_title">Playlist</string>
+    <string name="car_playlists_subtitle">Raccolte create nell\'app</string>
+    <string name="car_recents_title">Ultimi ascolti</string>
+    <string name="car_recents_subtitle">Brani trovati di recente</string>
+    <string name="car_home_recommended_title">Per te</string>
+    <string name="car_home_recommended_subtitle">Consigli dal profilo musicale</string>
+    <string name="car_home_driver_title">Per la guida</string>
+    <string name="car_home_driver_subtitle">Preferiti, recenti e brani ad alta energia</string>
+    <string name="car_home_offline_title">Offline pronto</string>
+    <string name="car_home_offline_subtitle">Download riproducibili senza rete</string>
+    <string name="car_home_top_local_title">Top locali</string>
+    <string name="car_home_top_local_subtitle">Classifica musicale aggiornata per la lingua scelta</string>
+    <string name="car_home_flow_title">Flow Levyra</string>
+    <string name="car_home_flow_subtitle">Mix personale continuo</string>
+    <string name="car_playlist_unavailable">Playlist non disponibile</string>
+    <string name="car_album_unavailable">Album non disponibile</string>
+    <string name="car_artist_unavailable">Artista non disponibile</string>
+    <string name="car_item_unavailable">Elemento non disponibile</string>
+
+    <!-- Android Auto dynamic strings -->
+    <plurals name="car_tracks_count">
+        <item quantity="one">%1$d brano</item>
+        <item quantity="other">%1$d brani</item>
+    </plurals>
+    <string name="car_artist_folder_subtitle">Brani, preferiti e suggerimenti</string>
     <string name="notification_favorite_add">Aggiungi ai preferiti</string>
     <string name="notification_favorite_remove">Rimuovi dai preferiti</string>
     <string name="notification_shuffle_enable">Attiva riproduzione casuale</string>

@@ -24,6 +24,53 @@
     <string name="car_connecting_player">Подключение к плееру</string>
     <string name="car_now_playing">Сейчас играет</string>
     <string name="car_queue">Очередь</string>
+
+    <!-- Android Auto browse tree -->
+    <string name="car_root_title">Levyra</string>
+    <string name="car_root_subtitle">Музыка, оптимизированная для Android Auto</string>
+    <string name="car_home_title">Главная</string>
+    <string name="car_home_subtitle">Быстрые миксы, офлайн и чарты</string>
+    <string name="car_queue_title">Очередь</string>
+    <string name="car_queue_subtitle">Постоянная очередь, общая с Levyra</string>
+    <string name="car_recommended_title">Рекомендуемые</string>
+    <string name="car_recommended_subtitle">Музыкальный профиль, избранное и недавние прослушивания</string>
+    <string name="car_albums_title">Альбомы</string>
+    <string name="car_albums_subtitle">Локальные альбомы и предложения</string>
+    <string name="car_artists_title">Исполнители</string>
+    <string name="car_artists_subtitle">Самые слушаемые и отслеживаемые исполнители</string>
+    <string name="car_flow_title">Flow</string>
+    <string name="car_flow_subtitle">Персональное радио Levyra</string>
+    <string name="car_favorites_title">Избранное</string>
+    <string name="car_favorites_subtitle">Сохраненные треки</string>
+    <string name="car_downloads_title">Загрузки</string>
+    <string name="car_downloads_subtitle">Музыка, доступная офлайн</string>
+    <string name="car_playlists_title">Плейлисты</string>
+    <string name="car_playlists_subtitle">Коллекции, созданные в приложении</string>
+    <string name="car_recents_title">Недавние прослушивания</string>
+    <string name="car_recents_subtitle">Недавно найденные треки</string>
+    <string name="car_home_recommended_title">Для вас</string>
+    <string name="car_home_recommended_subtitle">Рекомендации из музыкального профиля</string>
+    <string name="car_home_driver_title">Для вождения</string>
+    <string name="car_home_driver_subtitle">Избранное, недавние и энергичные треки</string>
+    <string name="car_home_offline_title">Готово к офлайн</string>
+    <string name="car_home_offline_subtitle">Загрузки, воспроизводимые без сети</string>
+    <string name="car_home_top_local_title">Топ локальный</string>
+    <string name="car_home_top_local_subtitle">Обновленный музыкальный чарт для выбранного языка</string>
+    <string name="car_home_flow_title">Flow Levyra</string>
+    <string name="car_home_flow_subtitle">Непрерывный персональный микс</string>
+    <string name="car_playlist_unavailable">Плейлист недоступен</string>
+    <string name="car_album_unavailable">Альбом недоступен</string>
+    <string name="car_artist_unavailable">Исполнитель недоступен</string>
+    <string name="car_item_unavailable">Элемент недоступен</string>
+
+    <!-- Android Auto dynamic strings -->
+    <plurals name="car_tracks_count">
+        <item quantity="one">%1$d трек</item>
+        <item quantity="few">%1$d трека</item>
+        <item quantity="many">%1$d треков</item>
+        <item quantity="other">%1$d трека</item>
+    </plurals>
+    <string name="car_artist_folder_subtitle">Треки, избранное и предложения</string>
     <string name="notification_favorite_add">Добавить в избранное</string>
     <string name="notification_favorite_remove">Удалить из избранного</string>
     <string name="notification_shuffle_enable">Включить перемешивание</string>

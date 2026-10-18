@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import com.luc4n3x.levyra.R
 import com.luc4n3x.levyra.data.ChartsRepository
 import com.luc4n3x.levyra.data.locallibrary.mediaSessionArtworkUri
 import com.luc4n3x.levyra.data.FavoritesStore
@@ -87,7 +88,11 @@ class AndroidAutoLibrary(context: Context) {
     private val searchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val searchInFlight = ConcurrentHashMap<String, Deferred<List<Track>>>()
 
-    fun root(): MediaItem = folder(ID_ROOT, "Levyra", "Musica ottimizzata per Android Auto")
+    fun root(): MediaItem = folder(
+        ID_ROOT,
+        appContext.getString(R.string.car_root_title),
+        appContext.getString(R.string.car_root_subtitle)
+    )
 
     suspend fun children(parentId: String, page: Int = 0, pageSize: Int = 0): List<MediaItem> = withContext(Dispatchers.IO) {
         val window = AndroidAutoPageWindow.of(page, pageSize, MAX_PAGE_ITEMS)
@@ -102,6 +107,8 @@ class AndroidAutoLibrary(context: Context) {
             ID_HOME_TOP_IT -> topLocal().androidAutoWindow(window).map { trackItem(it) }
             ID_HOME_OFFLINE -> downloads(window).map { trackItem(it) }
             ID_FLOW -> flowTracks().androidAutoWindow(window).map { trackItem(it) }
+            ID_AUTO_HOME_RECOMMENDED -> smartRecommended().androidAutoWindow(window).map { trackItem(it) }
+            ID_AUTO_HOME_FLOW -> flowTracks().androidAutoWindow(window).map { trackItem(it) }
             ID_FAVORITES -> favorites(window).map { trackItem(it) }
             ID_DOWNLOADS -> downloads(window).map { trackItem(it) }
             ID_RECENTS -> recents(window).map { trackItem(it) }
@@ -119,23 +126,89 @@ class AndroidAutoLibrary(context: Context) {
     suspend fun item(mediaId: String): MediaItem = withContext(Dispatchers.IO) {
         folders[mediaId] ?: catalog[mediaId]?.let { trackItem(it, mediaId) } ?: when {
             mediaId == ID_ROOT -> root()
-            mediaId == ID_HOME -> folder(ID_HOME, "Home", "Mix veloci, offline e classifiche")
-            mediaId == ID_QUEUE -> folder(ID_QUEUE, "Coda attuale", "Coda persistente condivisa con Levyra")
-            mediaId == ID_RECOMMENDED -> folder(ID_RECOMMENDED, "Consigliati", "Profilo musicale, preferiti e ascolti recenti")
-            mediaId == ID_ALBUMS -> folder(ID_ALBUMS, "Album", "Album locali e suggeriti")
-            mediaId == ID_ARTISTS -> folder(ID_ARTISTS, "Artisti", "Artisti più ascoltati e seguiti")
-            mediaId == ID_FLOW -> folder(ID_FLOW, "Flow", "Radio personale Levyra")
-            mediaId == ID_FAVORITES -> folder(ID_FAVORITES, "Preferiti", "Brani salvati")
-            mediaId == ID_DOWNLOADS -> folder(ID_DOWNLOADS, "Download", "Musica disponibile offline")
-            mediaId == ID_PLAYLISTS -> folder(ID_PLAYLISTS, "Playlist", "Raccolte create nell'app")
-            mediaId == ID_RECENTS -> folder(ID_RECENTS, "Ultimi ascolti", "Brani trovati di recente")
+            mediaId == ID_HOME -> folder(
+                ID_HOME,
+                appContext.getString(R.string.car_home_title),
+                appContext.getString(R.string.car_home_subtitle)
+            )
+            mediaId == ID_QUEUE -> folder(
+                ID_QUEUE,
+                appContext.getString(R.string.car_queue_title),
+                appContext.getString(R.string.car_queue_subtitle)
+            )
+            mediaId == ID_RECOMMENDED -> folder(
+                ID_RECOMMENDED,
+                appContext.getString(R.string.car_recommended_title),
+                appContext.getString(R.string.car_recommended_subtitle)
+            )
+            mediaId == ID_ALBUMS -> folder(
+                ID_ALBUMS,
+                appContext.getString(R.string.car_albums_title),
+                appContext.getString(R.string.car_albums_subtitle)
+            )
+            mediaId == ID_ARTISTS -> folder(
+                ID_ARTISTS,
+                appContext.getString(R.string.car_artists_title),
+                appContext.getString(R.string.car_artists_subtitle)
+            )
+            mediaId == ID_FLOW -> folder(
+                ID_FLOW,
+                appContext.getString(R.string.car_flow_title),
+                appContext.getString(R.string.car_flow_subtitle)
+            )
+            mediaId == ID_AUTO_HOME_RECOMMENDED -> folder(
+                ID_AUTO_HOME_RECOMMENDED,
+                appContext.getString(R.string.car_home_recommended_title),
+                appContext.getString(R.string.car_home_recommended_subtitle)
+            )
+            mediaId == ID_AUTO_HOME_FLOW -> folder(
+                ID_AUTO_HOME_FLOW,
+                appContext.getString(R.string.car_home_flow_title),
+                appContext.getString(R.string.car_home_flow_subtitle)
+            )
+            mediaId == ID_FAVORITES -> folder(
+                ID_FAVORITES,
+                appContext.getString(R.string.car_favorites_title),
+                appContext.getString(R.string.car_favorites_subtitle)
+            )
+            mediaId == ID_DOWNLOADS -> folder(
+                ID_DOWNLOADS,
+                appContext.getString(R.string.car_downloads_title),
+                appContext.getString(R.string.car_downloads_subtitle)
+            )
+            mediaId == ID_PLAYLISTS -> folder(
+                ID_PLAYLISTS,
+                appContext.getString(R.string.car_playlists_title),
+                appContext.getString(R.string.car_playlists_subtitle)
+            )
+            mediaId == ID_RECENTS -> folder(
+                ID_RECENTS,
+                appContext.getString(R.string.car_recents_title),
+                appContext.getString(R.string.car_recents_subtitle)
+            )
             mediaId.startsWith(ID_PLAYLIST_PREFIX) -> playlistStore.load(mediaId.removePrefix(ID_PLAYLIST_PREFIX))?.let { playlistFolder(it) }
-                ?: folder(mediaId, "Playlist", "Playlist non disponibile")
+                ?: folder(
+                    mediaId,
+                    appContext.getString(R.string.car_playlists_title),
+                    appContext.getString(R.string.car_playlist_unavailable)
+                )
             mediaId.startsWith(ID_ALBUM_PREFIX) -> albumFolders[mediaId]?.let { pair -> folder(mediaId, pair.first, pair.second) }
-                ?: folder(mediaId, "Album", "Album non disponibile")
-            mediaId.startsWith(ID_ARTIST_PREFIX) -> artistFolders[mediaId]?.let { artist -> folder(mediaId, artist, "Brani e album dell'artista") }
-                ?: folder(mediaId, "Artista", "Artista non disponibile")
-            else -> folder(mediaId, "Levyra", "Elemento non disponibile")
+                ?: folder(
+                    mediaId,
+                    appContext.getString(R.string.car_albums_title),
+                    appContext.getString(R.string.car_album_unavailable)
+                )
+            mediaId.startsWith(ID_ARTIST_PREFIX) -> artistFolders[mediaId]?.let { artist -> folder(mediaId, artist, appContext.getString(R.string.car_artist_folder_subtitle)) }
+                ?: folder(
+                    mediaId,
+                    appContext.getString(R.string.car_artists_title),
+                    appContext.getString(R.string.car_artist_unavailable)
+                )
+            else -> folder(
+                mediaId,
+                appContext.getString(R.string.car_root_title),
+                appContext.getString(R.string.car_item_unavailable)
+            )
         }
     }
 
@@ -189,24 +262,84 @@ class AndroidAutoLibrary(context: Context) {
     }
 
     private fun rootChildren(): List<MediaItem> = listOf(
-        folder(ID_HOME, "Home", "Mix veloci, offline e classifiche"),
-        folder(ID_QUEUE, "Coda attuale", "Riprendi e controlla la coda persistente"),
-        folder(ID_RECOMMENDED, "Consigliati", "Profilo musicale intelligente"),
-        folder(ID_ALBUMS, "Album", "Album veri, playlist offline e raccolte locali"),
-        folder(ID_ARTISTS, "Artisti", "Artisti più ascoltati e seguiti"),
-        folder(ID_FLOW, "Flow", "Radio personale Levyra"),
-        folder(ID_FAVORITES, "Preferiti", "Brani salvati"),
-        folder(ID_DOWNLOADS, "Download", "Musica disponibile offline"),
-        folder(ID_PLAYLISTS, "Playlist", "Raccolte create nell'app"),
-        folder(ID_RECENTS, "Ultimi ascolti", "Brani trovati di recente")
+        folder(
+            ID_HOME,
+            appContext.getString(R.string.car_home_title),
+            appContext.getString(R.string.car_home_subtitle)
+        ),
+        folder(
+            ID_QUEUE,
+            appContext.getString(R.string.car_queue_title),
+            appContext.getString(R.string.car_queue_subtitle)
+        ),
+        folder(
+            ID_RECOMMENDED,
+            appContext.getString(R.string.car_recommended_title),
+            appContext.getString(R.string.car_recommended_subtitle)
+        ),
+        folder(
+            ID_ALBUMS,
+            appContext.getString(R.string.car_albums_title),
+            appContext.getString(R.string.car_albums_subtitle)
+        ),
+        folder(
+            ID_ARTISTS,
+            appContext.getString(R.string.car_artists_title),
+            appContext.getString(R.string.car_artists_subtitle)
+        ),
+        folder(
+            ID_FLOW,
+            appContext.getString(R.string.car_flow_title),
+            appContext.getString(R.string.car_flow_subtitle)
+        ),
+        folder(
+            ID_FAVORITES,
+            appContext.getString(R.string.car_favorites_title),
+            appContext.getString(R.string.car_favorites_subtitle)
+        ),
+        folder(
+            ID_DOWNLOADS,
+            appContext.getString(R.string.car_downloads_title),
+            appContext.getString(R.string.car_downloads_subtitle)
+        ),
+        folder(
+            ID_PLAYLISTS,
+            appContext.getString(R.string.car_playlists_title),
+            appContext.getString(R.string.car_playlists_subtitle)
+        ),
+        folder(
+            ID_RECENTS,
+            appContext.getString(R.string.car_recents_title),
+            appContext.getString(R.string.car_recents_subtitle)
+        )
     )
 
     private fun homeChildren(): List<MediaItem> = listOf(
-        folder(ID_RECOMMENDED, "Per te", "Consigli dal profilo musicale"),
-        folder(ID_HOME_DRIVER, "Per la guida", "Preferiti, recenti e brani ad alta energia"),
-        folder(ID_HOME_OFFLINE, "Offline pronto", "Download riproducibili senza rete"),
-        folder(ID_HOME_TOP_IT, "Top locali", "Classifica musicale aggiornata per la lingua scelta"),
-        folder(ID_FLOW, "Flow Levyra", "Mix personale continuo")
+        folder(
+            ID_AUTO_HOME_RECOMMENDED,
+            appContext.getString(R.string.car_home_recommended_title),
+            appContext.getString(R.string.car_home_recommended_subtitle)
+        ),
+        folder(
+            ID_HOME_DRIVER,
+            appContext.getString(R.string.car_home_driver_title),
+            appContext.getString(R.string.car_home_driver_subtitle)
+        ),
+        folder(
+            ID_HOME_OFFLINE,
+            appContext.getString(R.string.car_home_offline_title),
+            appContext.getString(R.string.car_home_offline_subtitle)
+        ),
+        folder(
+            ID_HOME_TOP_IT,
+            appContext.getString(R.string.car_home_top_local_title),
+            appContext.getString(R.string.car_home_top_local_subtitle)
+        ),
+        folder(
+            ID_AUTO_HOME_FLOW,
+            appContext.getString(R.string.car_home_flow_title),
+            appContext.getString(R.string.car_home_flow_subtitle)
+        )
     )
 
     private fun folder(id: String, title: String, subtitle: String): MediaItem {
@@ -228,7 +361,11 @@ class AndroidAutoLibrary(context: Context) {
 
     private fun playlistFolder(playlist: Playlist): MediaItem {
         val id = ID_PLAYLIST_PREFIX + playlist.id
-        return folder(id, playlist.name, "${playlist.size} brani")
+        return folder(
+            id,
+            playlist.name,
+            appContext.resources.getQuantityString(R.plurals.car_tracks_count, playlist.size, playlist.size)
+        )
     }
 
     private fun trackItem(track: Track, forcedMediaId: String? = null): MediaItem {
@@ -496,11 +633,18 @@ class AndroidAutoLibrary(context: Context) {
             .take(36)
         grouped.map { entry ->
             val parts = entry.key.split("|", limit = 2)
-            val title = parts.getOrElse(0) { "Album" }
+            val title = parts.getOrElse(0) { appContext.getString(R.string.car_album_unavailable) }
             val artist = parts.getOrElse(1) { "" }
             val id = ID_ALBUM_PREFIX + entry.key.sha256().take(22)
             albumFolders[id] = title to artist
-            folder(id, title, listOf(artist, "${entry.value.size} brani").filter { it.isNotBlank() }.joinToString(" · "))
+            folder(
+                id,
+                title,
+                listOf(
+                    artist,
+                    appContext.resources.getQuantityString(R.plurals.car_tracks_count, entry.value.size, entry.value.size)
+                ).filter { it.isNotBlank() }.joinToString(" · ")
+            )
         }
     }
 
@@ -515,7 +659,7 @@ class AndroidAutoLibrary(context: Context) {
         localArtists.map { artist ->
             val id = ID_ARTIST_PREFIX + artist.sha256().take(22)
             artistFolders[id] = artist
-            folder(id, artist, "Brani, preferiti e suggerimenti")
+            folder(id, artist, appContext.getString(R.string.car_artist_folder_subtitle))
         }
     }
 
@@ -642,6 +786,8 @@ class AndroidAutoLibrary(context: Context) {
         const val ID_ALBUMS = "levyra:auto:albums"
         const val ID_ARTISTS = "levyra:auto:artists"
         const val ID_FLOW = "levyra:auto:flow"
+        const val ID_AUTO_HOME_RECOMMENDED = "levyra:auto:home:recommended"
+        const val ID_AUTO_HOME_FLOW = "levyra:auto:home:flow"
         const val ID_FAVORITES = "levyra:auto:favorites"
         const val ID_DOWNLOADS = "levyra:auto:downloads"
         const val ID_PLAYLISTS = "levyra:auto:playlists"

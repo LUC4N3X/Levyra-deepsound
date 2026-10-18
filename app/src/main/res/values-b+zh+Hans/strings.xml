@@ -24,6 +24,50 @@
     <string name="car_connecting_player">正在连接播放器</string>
     <string name="car_now_playing">正在播放</string>
     <string name="car_queue">播放队列</string>
+
+    <!-- Android Auto browse tree -->
+    <string name="car_root_title">Levyra</string>
+    <string name="car_root_subtitle">为 Android Auto 优化的音乐</string>
+    <string name="car_home_title">首页</string>
+    <string name="car_home_subtitle">快速混合、离线和排行榜</string>
+    <string name="car_queue_title">播放队列</string>
+    <string name="car_queue_subtitle">与 Levyra 共享的持久队列</string>
+    <string name="car_recommended_title">推荐</string>
+    <string name="car_recommended_subtitle">音乐档案、收藏和最近播放</string>
+    <string name="car_albums_title">专辑</string>
+    <string name="car_albums_subtitle">本地专辑和推荐</string>
+    <string name="car_artists_title">歌手</string>
+    <string name="car_artists_subtitle">播放最多和关注的歌手</string>
+    <string name="car_flow_title">Flow</string>
+    <string name="car_flow_subtitle">个人 Levyra 电台</string>
+    <string name="car_favorites_title">收藏</string>
+    <string name="car_favorites_subtitle">已保存的歌曲</string>
+    <string name="car_downloads_title">下载内容</string>
+    <string name="car_downloads_subtitle">可离线播放的音乐</string>
+    <string name="car_playlists_title">播放列表</string>
+    <string name="car_playlists_subtitle">应用中创建的收藏集</string>
+    <string name="car_recents_title">最近播放</string>
+    <string name="car_recents_subtitle">最近发现的歌曲</string>
+    <string name="car_home_recommended_title">为你推荐</string>
+    <string name="car_home_recommended_subtitle">来自音乐档案的推荐</string>
+    <string name="car_home_driver_title">驾驶模式</string>
+    <string name="car_home_driver_subtitle">收藏、最近播放和高能量曲目</string>
+    <string name="car_home_offline_title">离线就绪</string>
+    <string name="car_home_offline_subtitle">无网络可播放的下载内容</string>
+    <string name="car_home_top_local_title">本地热门</string>
+    <string name="car_home_top_local_subtitle">所选语言的最新音乐排行榜</string>
+    <string name="car_home_flow_title">Flow Levyra</string>
+    <string name="car_home_flow_subtitle">持续的个人混音</string>
+    <string name="car_playlist_unavailable">播放列表不可用</string>
+    <string name="car_album_unavailable">专辑不可用</string>
+    <string name="car_artist_unavailable">歌手不可用</string>
+    <string name="car_item_unavailable">项目不可用</string>
+
+    <!-- Android Auto dynamic strings -->
+    <plurals name="car_tracks_count">
+        <item quantity="other">%1$d 首歌曲</item>
+    </plurals>
+    <string name="car_artist_folder_subtitle">歌曲、收藏和推荐</string>
     <string name="notification_favorite_add">添加到收藏</string>
     <string name="notification_favorite_remove">从收藏中移除</string>
     <string name="notification_shuffle_enable">开启随机播放</string>

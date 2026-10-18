@@ -24,6 +24,50 @@
     <string name="car_connecting_player">プレーヤーに接続中</string>
     <string name="car_now_playing">再生中</string>
     <string name="car_queue">再生キュー</string>
+
+    <!-- Android Auto browse tree -->
+    <string name="car_root_title">Levyra</string>
+    <string name="car_root_subtitle">Android Auto向けに最適化された音楽</string>
+    <string name="car_home_title">ホーム</string>
+    <string name="car_home_subtitle">クイックミックス、オフライン、チャート</string>
+    <string name="car_queue_title">再生キュー</string>
+    <string name="car_queue_subtitle">Levyraと共有される持続的なキュー</string>
+    <string name="car_recommended_title">おすすめ</string>
+    <string name="car_recommended_subtitle">ミュージックプロフィール、お気に入り、最近の再生履歴</string>
+    <string name="car_albums_title">アルバム</string>
+    <string name="car_albums_subtitle">ローカルアルバムとおすすめ</string>
+    <string name="car_artists_title">アーティスト</string>
+    <string name="car_artists_subtitle">最も再生され、フォローされているアーティスト</string>
+    <string name="car_flow_title">Flow</string>
+    <string name="car_flow_subtitle">パーソナルLevyraラジオ</string>
+    <string name="car_favorites_title">お気に入り</string>
+    <string name="car_favorites_subtitle">保存した曲</string>
+    <string name="car_downloads_title">ダウンロード</string>
+    <string name="car_downloads_subtitle">オフラインで利用可能な音楽</string>
+    <string name="car_playlists_title">プレイリスト</string>
+    <string name="car_playlists_subtitle">アプリで作成されたコレクション</string>
+    <string name="car_recents_title">最近再生した曲</string>
+    <string name="car_recents_subtitle">最近見つけた曲</string>
+    <string name="car_home_recommended_title">あなたへのおすすめ</string>
+    <string name="car_home_recommended_subtitle">ミュージックプロフィールからのおすすめ</string>
+    <string name="car_home_driver_title">ドライブ用</string>
+    <string name="car_home_driver_subtitle">お気に入り、最近の曲、ハイエナジーな曲</string>
+    <string name="car_home_offline_title">オフライン準備完了</string>
+    <string name="car_home_offline_subtitle">ネットワークなしで再生可能なダウンロード</string>
+    <string name="car_home_top_local_title">ローカルトップ</string>
+    <string name="car_home_top_local_subtitle">選択した言語の最新音楽チャート</string>
+    <string name="car_home_flow_title">Flow Levyra</string>
+    <string name="car_home_flow_subtitle">継続的なパーソナルミックス</string>
+    <string name="car_playlist_unavailable">プレイリストを利用できません</string>
+    <string name="car_album_unavailable">アルバムを利用できません</string>
+    <string name="car_artist_unavailable">アーティストを利用できません</string>
+    <string name="car_item_unavailable">アイテムを利用できません</string>
+
+    <!-- Android Auto dynamic strings -->
+    <plurals name="car_tracks_count">
+        <item quantity="other">%1$d曲</item>
+    </plurals>
+    <string name="car_artist_folder_subtitle">曲、お気に入り、おすすめ</string>
     <string name="notification_favorite_add">お気に入りに追加</string>
     <string name="notification_favorite_remove">お気に入りから削除</string>
     <string name="notification_shuffle_enable">シャッフルをオン</string>
