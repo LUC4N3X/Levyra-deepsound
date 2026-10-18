@@ -34,7 +34,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.FastRewind
 import androidx.compose.material.icons.rounded.Favorite
@@ -83,7 +82,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -138,6 +143,8 @@ private const val NightPausedPlayCorner = 34
 private const val NightPlayWidePlaying = 1.62f
 private const val NightPlayWideResting = 1.3f
 private val NightChipHeight = LevyraPlayerDesign.MinimumTouchTarget
+private const val NightTransportSideUnits = 4.24f
+private val NightTransportMinHeight = 36.dp
 private val NightTileHeight = 64.dp
 private val NightSpecStyle = TextStyle(fontFeatureSettings = "tnum, case")
 private val NightFavoriteTint = Color(0xFFFF6B8B)
@@ -454,6 +461,7 @@ private fun NightStage(
                 stepDirection = stepDirection,
                 onArtistClick = onArtistClick,
                 onToggleFavorite = onToggleFavorite,
+                creditsEyebrow = slots.creditsEyebrow,
                 modifier = headlineModifier
                     .fillMaxWidth()
                     .padding(
@@ -488,6 +496,7 @@ private fun NightHeadline(
     stepDirection: Int,
     onArtistClick: (Int) -> Unit,
     onToggleFavorite: () -> Unit,
+    creditsEyebrow: PlayerCreditsEyebrow?,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
@@ -502,6 +511,10 @@ private fun NightHeadline(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            if (creditsEyebrow != null && creditsEyebrow.trackId == shown.id) {
+                NightCreditsEyebrow(creditsEyebrow)
+                Spacer(Modifier.height(LevyraPlayerDesign.SpaceXs))
+            }
             val titleSize = flowTitleSize(shown.title, compact)
             Text(
                 text = shown.title,
@@ -545,6 +558,46 @@ private fun NightHeadline(
         }
     }
 }
+
+@Composable
+private fun NightCreditsEyebrow(eyebrow: PlayerCreditsEyebrow) {
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        val available = constraints.maxWidth - with(density) { (NightEyebrowPadding * 2).roundToPx() }
+        val heading = eyebrow.heading.uppercase()
+        val line = remember(heading, eyebrow.names, available) {
+            playerCreditsLine(eyebrow.names) { names ->
+                measurer.measure("$heading  ${names.uppercase()}", NightEyebrowStyle).size.width <= available
+            }
+        }
+        Text(
+            text = buildAnnotatedString {
+                withStyle(SpanStyle(color = Color.White.copy(alpha = 0.56f))) { append(heading) }
+                append("  ")
+                withStyle(SpanStyle(color = Color.White.copy(alpha = 0.9f))) { append(line.uppercase()) }
+            },
+            style = NightEyebrowStyle,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            modifier = Modifier
+                .clip(CircleShape)
+                .levyraPressable(onClick = eyebrow.onClick, role = Role.Button)
+                .semantics {
+                    contentDescription = "${eyebrow.contentDescription}: ${eyebrow.names.joinToString(", ")}"
+                }
+                .padding(horizontal = NightEyebrowPadding, vertical = 6.dp)
+        )
+    }
+}
+
+private val NightEyebrowPadding = 10.dp
+private val NightEyebrowStyle = TextStyle(
+    fontSize = 11.sp,
+    fontWeight = FontWeight.Bold,
+    letterSpacing = 1.8.sp,
+    shadow = Shadow(Color.Black.copy(alpha = 0.4f), blurRadius = 8f)
+)
 
 @Composable
 private fun NightFavoriteButton(
@@ -674,23 +727,22 @@ private fun NightTransport(
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween()),
         label = "player-night-hero-content"
     )
-    val height = if (compact) 52.dp else 60.dp
+    val baseHeight = if (compact) 52.dp else 60.dp
     val seconds = (seekStepMs / 1_000L).coerceAtLeast(1L)
-    val playWidth by animateDpAsState(
-        targetValue = height * if (isPlaying) NightPlayWidePlaying else NightPlayWideResting,
-        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.expressiveSpring()),
-        label = "player-night-play-width"
-    )
-    val scrollState = rememberScrollState()
     BoxWithConstraints(
         modifier = Modifier.fillMaxWidth().nightHorizontalBleed(gutter),
         contentAlignment = Alignment.Center
     ) {
-        val requiredWidth = height * 4.24f + playWidth +
-            LevyraPlayerDesign.SpaceSm * 2 + LevyraPlayerDesign.SpaceXs * 4
+        val chrome = gutter * 2 + LevyraPlayerDesign.SpaceSm * 2 + LevyraPlayerDesign.SpaceXs * 4
+        val widestPlay = maxOf(NightPlayWidePlaying, NightPlayWideResting)
+        val height = minOf(baseHeight, (maxWidth - chrome) / (NightTransportSideUnits + widestPlay)).coerceAtLeast(NightTransportMinHeight)
+        val playWidth by animateDpAsState(
+            targetValue = height * if (isPlaying) NightPlayWidePlaying else NightPlayWideResting,
+            animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.expressiveSpring()),
+            label = "player-night-play-width"
+        )
         Row(
             modifier = Modifier
-                .then(if (requiredWidth > maxWidth) Modifier.horizontalScroll(scrollState) else Modifier)
                 .padding(horizontal = gutter)
                 .clip(RoundedCornerShape(percent = NightPillCorner))
                 .background(surfaces.controlQuiet)
@@ -868,19 +920,31 @@ private fun NightActions(
         dockActions.filter { it.key == NightActionQueue || it.key == NightActionDeck }
     }
     val extras = dockActions.filter { it.key != NightActionLyrics && it !in tiles }
+    val textMeasurer = rememberTextMeasurer()
+    val density = LocalDensity.current
     BoxWithConstraints(modifier = Modifier.fillMaxWidth().nightHorizontalBleed(gutter)) {
+        val labelsFit = remember(labels.shuffle, labels.repeat, lyrics?.label, extras.size, maxWidth, gutter, density) {
+            nightChipLabelsFit(
+                labeled = listOfNotNull(labels.shuffle, lyrics?.label, labels.repeat),
+                iconOnlyCount = extras.size,
+                available = maxWidth - gutter * 2,
+                measure = { textMeasurer.measure(it, NightChipLabelStyle).size.width },
+                density = density
+            )
+        }
         Row(
             modifier = Modifier
-                .horizontalScroll(rememberScrollState())
-                .widthIn(min = maxWidth)
+                .fillMaxWidth()
                 .padding(horizontal = gutter),
             horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val chipModifier = if (labelsFit) Modifier else Modifier.weight(1f)
             NightChip(
+                modifier = chipModifier,
                 icon = Icons.Rounded.Shuffle,
                 label = labels.shuffle,
-                showLabel = true,
+                showLabel = labelsFit,
                 active = shuffleOn,
                 toggle = true,
                 surfaces = surfaces,
@@ -889,9 +953,10 @@ private fun NightActions(
             )
             lyrics?.let { action ->
                 NightChip(
+                    modifier = chipModifier,
                     icon = action.icon,
                     label = action.label,
-                    showLabel = true,
+                    showLabel = labelsFit,
                     active = action.active,
                     toggle = action.toggle,
                     surfaces = surfaces,
@@ -901,9 +966,10 @@ private fun NightActions(
                 )
             }
             NightChip(
+                modifier = chipModifier,
                 icon = if (repeatMode == RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
                 label = labels.repeat,
-                showLabel = true,
+                showLabel = labelsFit,
                 active = repeatMode != RepeatMode.Off,
                 toggle = true,
                 surfaces = surfaces,
@@ -912,6 +978,7 @@ private fun NightActions(
             )
             extras.forEach { action ->
                 NightChip(
+                    modifier = chipModifier,
                     icon = action.icon,
                     label = action.label,
                     showLabel = false,
@@ -963,6 +1030,7 @@ private fun NightChip(
     surfaces: PlayerSurfaceTokens,
     animated: Boolean,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
     enabled: Boolean = true,
     stateDescription: String? = null
 ) {
@@ -977,7 +1045,7 @@ private fun NightChip(
         label = "player-night-chip-content"
     )
     Row(
-        modifier = Modifier
+        modifier = modifier
             .heightIn(min = NightChipHeight)
             .clip(RoundedCornerShape(percent = NightPillCorner))
             .background(if (enabled) container else container.copy(alpha = container.alpha * 0.5f))
@@ -995,15 +1063,14 @@ private fun NightChip(
             }
             .padding(horizontal = LevyraPlayerDesign.SpaceMd),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
+        horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm, Alignment.CenterHorizontally)
     ) {
         PlayerIcon(icon, content, Modifier.size(20.dp))
         if (showLabel) {
             Text(
                 text = label,
                 color = content,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = NightChipLabelStyle,
                 maxLines = 1,
                 modifier = Modifier.clearAndSetSemantics { }
             )
@@ -1059,8 +1126,24 @@ private fun NightTile(
                 )
             }
         }
-        PlayerIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, surfaces.contentFaint, Modifier.size(18.dp))
     }
+}
+
+private val NightChipLabelStyle = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+
+private fun nightChipLabelsFit(
+    labeled: List<String>,
+    iconOnlyCount: Int,
+    available: Dp,
+    measure: (String) -> Int,
+    density: Density
+): Boolean = with(density) {
+    val iconChip = 20.dp.toPx() + LevyraPlayerDesign.SpaceMd.toPx() * 2
+    val labeledChrome = iconChip + LevyraPlayerDesign.SpaceSm.toPx()
+    val chips = labeled.size + iconOnlyCount
+    val gaps = LevyraPlayerDesign.SpaceSm.toPx() * (chips - 1).coerceAtLeast(0)
+    val needed = labeled.sumOf(measure) + labeledChrome * labeled.size + iconChip * iconOnlyCount + gaps
+    needed <= available.toPx()
 }
 
 @Composable

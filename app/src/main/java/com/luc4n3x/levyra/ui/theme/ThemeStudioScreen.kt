@@ -90,8 +90,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.luc4n3x.levyra.domain.LevyraCustomTheme
 import com.luc4n3x.levyra.domain.LevyraCustomThemes
+import com.luc4n3x.levyra.ui.LevyraGlassStyle
 import com.luc4n3x.levyra.ui.i18n.ThemeLibraryCopy
 import com.luc4n3x.levyra.ui.i18n.ThemeLibraryText
+import com.luc4n3x.levyra.ui.i18n.glassStudioCopy
 import com.luc4n3x.levyra.ui.i18n.themeLibraryCopy
 import kotlin.math.roundToInt
 
@@ -120,7 +122,10 @@ internal fun LevyraThemeStudioOverlay(
     onSaveCustomTheme: (LevyraCustomTheme, Boolean) -> Unit = { _, _ -> },
     onDuplicateCustomTheme: (String, String) -> Unit = { _, _ -> },
     onDeleteCustomTheme: (String) -> Unit = {},
-    onRestoreDefault: () -> Unit = {}
+    onRestoreDefault: () -> Unit = {},
+    glassEnabled: Boolean = false,
+    glassStyle: LevyraGlassStyle = LevyraGlassStyle(),
+    onGlassStyleChange: (LevyraGlassStyle) -> Unit = {}
 ) {
     val strings = LocalLevyraStrings.current
     val library = strings.themeLibraryCopy
@@ -323,6 +328,15 @@ internal fun LevyraThemeStudioOverlay(
                         onSelect = onSelectAccent
                     )
                 }
+            }
+
+            item(contentType = "studio-glass") {
+                ThemeStudioGlassSection(
+                    copy = strings.glassStudioCopy(),
+                    enabled = glassEnabled,
+                    style = glassStyle,
+                    onStyleChange = onGlassStyleChange
+                )
             }
         }
     }

@@ -497,6 +497,7 @@ private fun Modifier.navLiquidGlass(
         glassFrost(
             state = glass,
             blurRadius = 32.dp,
+            refractionShape = shape,
             onDrawFrosted = {
                 drawRect(frosted)
                 drawRect(sheen)

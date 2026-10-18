@@ -1,5 +1,16 @@
 package com.luc4n3x.levyra.ui.player
 
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -38,8 +49,77 @@ import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 private const val PlayerArtistAvatarLimit = 2
 private val PlayerTopArtistAvatarSize = 46.dp
 private val PlayerTopArtistAvatarStep = 34.dp
+private val PlayerCreditsCaptionMaxWidth = 190.dp
+private val PlayerCreditsCaptionShadow = Shadow(Color.Black.copy(alpha = 0.45f), blurRadius = 10f)
+private val PlayerCreditsCaptionHeadingStyle = TextStyle(
+    fontSize = 10.sp,
+    fontWeight = FontWeight.Bold,
+    letterSpacing = 1.6.sp,
+    shadow = PlayerCreditsCaptionShadow
+)
+private val PlayerCreditsCaptionNameStyle = TextStyle(
+    fontSize = 13.sp,
+    lineHeight = 17.sp,
+    fontWeight = FontWeight.SemiBold,
+    shadow = PlayerCreditsCaptionShadow
+)
+
+internal fun playerCreditsLine(names: List<String>, fits: (String) -> Boolean): String {
+    for (count in names.size downTo 1) {
+        val rest = names.size - count
+        val candidate = names.take(count).joinToString(", ") + if (rest > 0) " +$rest" else ""
+        if (fits(candidate)) return candidate
+    }
+    val first = names.firstOrNull().orEmpty()
+    return if (names.size > 1) "$first +${names.size - 1}" else first
+}
 private val PlayerArtistPickerAvatar = 78.dp
 private val PlayerArtistPickerCardWidth = 118.dp
+
+@Composable
+internal fun PlayerCreditsCaption(
+    heading: String,
+    names: List<String>,
+    contentDescription: String,
+    surfaces: PlayerSurfaceTokens,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val measurer = rememberTextMeasurer()
+    val maxWidthPx = with(LocalDensity.current) { (PlayerCreditsCaptionMaxWidth - 12.dp).roundToPx() }
+    val line = remember(names, maxWidthPx) {
+        playerCreditsLine(names) { candidate ->
+            measurer.measure(candidate, PlayerCreditsCaptionNameStyle).size.width <= maxWidthPx
+        }
+    }
+    Column(
+        modifier = modifier
+            .widthIn(max = PlayerCreditsCaptionMaxWidth)
+            .heightIn(min = PlayerTopArtistAvatarSize)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(role = Role.Button, onClickLabel = contentDescription, onClick = onClick)
+            .semantics(mergeDescendants = true) {
+                this.contentDescription = "$contentDescription: ${names.joinToString(", ")}"
+            }
+            .padding(horizontal = 6.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = heading.uppercase(),
+            color = surfaces.content.copy(alpha = 0.72f),
+            style = PlayerCreditsCaptionHeadingStyle,
+            maxLines = 1
+        )
+        Text(
+            text = line,
+            color = surfaces.content,
+            style = PlayerCreditsCaptionNameStyle,
+            textAlign = TextAlign.End,
+            maxLines = 1
+        )
+    }
+}
 
 @Composable
 internal fun PlayerTopArtistCluster(
