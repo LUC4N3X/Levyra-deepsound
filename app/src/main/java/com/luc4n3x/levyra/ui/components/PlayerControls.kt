@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.ui.LocalGlassBackdrop
+import com.luc4n3x.levyra.ui.LocalLevyraGlassStyle
 import com.luc4n3x.levyra.ui.playerMix
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 
@@ -108,7 +109,8 @@ fun Modifier.playerGlass(
         fallbackBorderColor = fallbackBorder,
         intensity = LevyraGlassIntensity.Standard,
         artworkTint = null,
-        borderWidth = LevyraPlayerDesign.Hairline
+        borderWidth = LevyraPlayerDesign.Hairline,
+        style = LocalLevyraGlassStyle.current
     )
 }
 

@@ -57,6 +57,8 @@ import com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter
 import com.luc4n3x.levyra.feature.recognition.MusicRecognitionService
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.ui.LevyraApp
+import com.luc4n3x.levyra.ui.LevyraGlassStyle
+import com.luc4n3x.levyra.ui.LocalLevyraGlassStyle
 import com.luc4n3x.levyra.ui.components.LocalLevyraLiquidGlassEnabled
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.support.RemoteAnnouncementGate
@@ -87,6 +89,7 @@ private data class MainActivityUiSlice(
     val fontPreset: LevyraFontPreset,
     val animationsEnabled: Boolean,
     val liquidGlassEnabled: Boolean,
+    val glassStyle: LevyraGlassStyle,
     val isPlaying: Boolean,
     val showSettings: Boolean,
     val showOnboarding: Boolean,
@@ -100,6 +103,12 @@ private fun LevyraUiState.toMainActivityUiSlice(): MainActivityUiSlice = MainAct
     fontPreset = interfaceSettings.fontPreset,
     animationsEnabled = animationsEnabled,
     liquidGlassEnabled = interfaceSettings.liquidGlassEnabled,
+    glassStyle = LevyraGlassStyle(
+        blur = interfaceSettings.glassBlur,
+        transparency = interfaceSettings.glassTransparency,
+        tint = interfaceSettings.glassTint,
+        refraction = interfaceSettings.glassRefraction
+    ),
     isPlaying = isPlaying,
     showSettings = showSettings,
     showOnboarding = showOnboarding,
@@ -193,7 +202,8 @@ class MainActivity : ComponentActivity() {
                 }
 
                 CompositionLocalProvider(
-                    LocalLevyraLiquidGlassEnabled provides activityUiState.liquidGlassEnabled
+                    LocalLevyraLiquidGlassEnabled provides activityUiState.liquidGlassEnabled,
+                    LocalLevyraGlassStyle provides activityUiState.glassStyle
                 ) {
                     LevyraApp(
                         viewModel = viewModel,
