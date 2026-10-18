@@ -24,7 +24,8 @@ import okhttp3.Response
 class PlaylistImportException(
     val kind: PlaylistImportFailureKind,
     message: String,
-    cause: Throwable? = null
+    cause: Throwable? = null,
+    val retryAfterMs: Long? = null
 ) : IOException(message, cause)
 
 data class PlaylistFetchRequest(
@@ -32,7 +33,8 @@ data class PlaylistFetchRequest(
     val allowedHosts: Set<String>,
     val acceptedMimeTypes: Set<String>,
     val maxBytes: Long,
-    val accept: String = acceptedMimeTypes.joinToString(",")
+    val accept: String = acceptedMimeTypes.joinToString(","),
+    val bearerToken: String? = null
 )
 
 data class PlaylistFetchResponse(
@@ -86,10 +88,11 @@ class PlaylistImportFetcher(baseClient: OkHttpClient) {
             } catch (error: PlaylistImportException) {
                 val transient = error.kind == PlaylistImportFailureKind.RATE_LIMITED || error.kind == PlaylistImportFailureKind.NETWORK
                 if (!transient || attempt >= MAX_RETRIES) throw error
+                delay(error.retryAfterMs?.coerceAtMost(MAX_RETRY_DELAY_MS) ?: (BACKOFF_MS shl attempt))
             } catch (error: IOException) {
                 if (attempt >= MAX_RETRIES) throw PlaylistImportException(PlaylistImportFailureKind.NETWORK, "Import request failed", error)
+                delay(BACKOFF_MS shl attempt)
             }
-            delay(BACKOFF_MS shl attempt)
             attempt++
         }
     }
@@ -104,6 +107,7 @@ class PlaylistImportFetcher(baseClient: OkHttpClient) {
                 .header("User-Agent", USER_AGENT)
                 .header("Accept", request.accept)
                 .header("Accept-Language", "en-US,en;q=0.8")
+                .apply { request.bearerToken?.takeIf(String::isNotBlank)?.let { header("Authorization", "Bearer $it") } }
                 .get()
                 .build()
             val response = execute(call)
@@ -125,7 +129,14 @@ class PlaylistImportFetcher(baseClient: OkHttpClient) {
                     response.code == 401 -> throw PlaylistImportException(PlaylistImportFailureKind.AUTH_REQUIRED, "Authentication required")
                     response.code == 403 || response.code == 404 || response.code == 410 ->
                         throw PlaylistImportException(PlaylistImportFailureKind.NOT_AVAILABLE, "Playlist unavailable")
-                    response.code == 429 -> throw PlaylistImportException(PlaylistImportFailureKind.RATE_LIMITED, "Rate limited")
+                    response.code == 429 -> throw PlaylistImportException(
+                        PlaylistImportFailureKind.RATE_LIMITED,
+                        "Rate limited",
+                        retryAfterMs = response.header("Retry-After")
+                            ?.toLongOrNull()
+                            ?.coerceIn(0L, MAX_RETRY_DELAY_MS / 1000L)
+                            ?.times(1000L)
+                    )
                     response.code >= 500 -> throw PlaylistImportException(PlaylistImportFailureKind.NETWORK, "Provider unavailable")
                     !response.isSuccessful -> throw PlaylistImportException(PlaylistImportFailureKind.PROVIDER_CHANGED, "Unexpected ${response.code}")
                 }
@@ -166,6 +177,7 @@ class PlaylistImportFetcher(baseClient: OkHttpClient) {
     companion object {
         const val MAX_RETRIES = 2
         private const val BACKOFF_MS = 800L
+        private const val MAX_RETRY_DELAY_MS = 30_000L
         private const val MAX_REDIRECTS = 4
         private const val USER_AGENT = "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/126 Mobile Safari/537.36"
         private val REDIRECT_CODES = setOf(301, 302, 303, 307, 308)

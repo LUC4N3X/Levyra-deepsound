@@ -316,14 +316,33 @@ class PlaylistImportHealerTest {
 class RemotePlaylistPayloadsTest {
     @Test
     fun parsesSpotifyEmbed() {
-        val html = """<html><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"state":{"data":{"entity":{"name":"Hits","subtitle":"Spotify","coverArt":{"sources":[{"url":"https://i.scdn.co/a"}]},"trackList":[{"uri":"spotify:track:70cHKK8bHAfJrOGVnfRG9J","title":"Nicole Kidman","subtitle":"ADÉLA, Guest","duration":181270,"isExplicit":true}]}}}}}}</script></html>"""
-        val page = RemotePlaylistPayloads.spotifyEmbed(html)
+        val html = """<html><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"state":{"session":{"accessToken":"guest-token"},"data":{"entity":{"name":"Hits","subtitle":"Spotify","coverArt":{"sources":[{"url":"https://i.scdn.co/a"}]},"trackList":[{"uri":"spotify:track:70cHKK8bHAfJrOGVnfRG9J","title":"Nicole Kidman","subtitle":"ADÉLA, Guest","duration":181270,"isExplicit":true}]}}}}}}</script></html>"""
+        val payload = RemotePlaylistPayloads.spotifyEmbedPayload(html)
+        val page = payload.page
         assertEquals("Hits", page.title)
+        assertEquals("guest-token", payload.accessToken)
         val track = page.tracks.single()
         assertEquals(listOf("ADÉLA", "Guest"), track.artists)
         assertEquals(181_270L, track.durationMs)
         assertEquals(true, track.explicit)
         assertEquals("70cHKK8bHAfJrOGVnfRG9J", track.sourceTrackId)
+    }
+
+    @Test
+    fun parsesSpotifyTrackPageWithoutRemovingIntentionalDuplicates() {
+        val json = """{"items":[
+            {"track":{"id":"same","name":"Repeat","duration_ms":180000,"explicit":false,"track_number":1,"disc_number":1,"artists":[{"name":"Artist"}],"album":{"name":"Album","release_date":"2024-01-01","images":[{"url":"https://i.scdn.co/cover"}]},"external_ids":{"isrc":"USAAA2400001"},"external_urls":{"spotify":"https://open.spotify.com/track/same"}}},
+            {"item":{"type":"track","id":"same","name":"Repeat","duration_ms":180000,"explicit":false,"track_number":1,"disc_number":1,"artists":[{"name":"Artist"}],"album":{"name":"Album","release_date":"2024-01-01","images":[]},"external_ids":{"isrc":"USAAA2400001"},"external_urls":{"spotify":"https://open.spotify.com/track/same"}}},
+            {"track":null}
+        ],"next":"https://api.spotify.com/v1/playlists/x/tracks?offset=3","offset":0,"total":203}"""
+        val page = RemotePlaylistPayloads.spotifyTracks(json)
+        assertEquals(203, page.total)
+        assertEquals(3, page.itemCount)
+        assertTrue(page.hasNext)
+        assertEquals(listOf(0, 1), page.tracks.map { it.position })
+        assertEquals(listOf("same", "same"), page.tracks.map { it.sourceTrackId })
+        assertEquals("USAAA2400001", page.tracks.first().isrc)
+        assertEquals(2024, page.tracks.first().releaseYear)
     }
 
     @Test
