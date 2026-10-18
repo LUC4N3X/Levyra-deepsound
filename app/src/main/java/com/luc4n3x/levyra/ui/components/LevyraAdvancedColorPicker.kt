@@ -8,7 +8,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -42,19 +41,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Palette
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
@@ -107,11 +109,10 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private const val HexAllowedChars = "0123456789abcdefABCDEF"
-private val PickerDialogShape = RoundedCornerShape(32.dp)
-private val PickerStageShape = RoundedCornerShape(26.dp)
-private val WorkspaceCardShape = RoundedCornerShape(26.dp)
-private val PaletteFieldShape = RoundedCornerShape(20.dp)
-private val HueBarShape = RoundedCornerShape(21.dp)
+private val PickerDialogShape = RoundedCornerShape(28.dp)
+private val WorkspaceCardShape = RoundedCornerShape(24.dp)
+private val PaletteFieldShape = RoundedCornerShape(18.dp)
+private val HueBarShape = RoundedCornerShape(18.dp)
 private val PaletteThumbInset = 14.dp
 private val HueBarThumbInset = 12.dp
 
@@ -267,6 +268,7 @@ internal fun hueBarIndicatorCenterY(
     return safeInsetY + fraction * usableHeight
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun LevyraColorInputAndPickerRow(
     color: Int,
@@ -276,12 +278,12 @@ internal fun LevyraColorInputAndPickerRow(
     onOpenPicker: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val scheme = MaterialTheme.colorScheme
     val pickerCopy = LocalLevyraStrings.current.colorPickerCopy
     val parsed = parseLevyraHexColor(hexText)
     val activeArgb = parsed ?: color
     val displayColor = Color(activeArgb)
     val onDisplayColor = if (displayColor.luminance() > 0.52f) Color.Black else Color.White
+    val swatchShape = MaterialShapes.Cookie9Sided.toShape()
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -294,14 +296,9 @@ internal fun LevyraColorInputAndPickerRow(
         ) {
             Box(
                 modifier = Modifier
-                    .size(54.dp)
-                    .clip(RoundedCornerShape(18.dp))
+                    .size(52.dp)
+                    .clip(swatchShape)
                     .background(displayColor)
-                    .border(
-                        width = 1.5.dp,
-                        color = scheme.outlineVariant.copy(alpha = 0.65f),
-                        shape = RoundedCornerShape(18.dp)
-                    )
                     .levyraPressable(
                         onClick = onOpenPicker,
                         onClickLabel = pickerCopy[ColorPickerText.OpenPicker],
@@ -317,7 +314,7 @@ internal fun LevyraColorInputAndPickerRow(
                     modifier = Modifier
                         .size(28.dp)
                         .clip(CircleShape)
-                        .background(onDisplayColor.copy(alpha = 0.22f)),
+                        .background(onDisplayColor.copy(alpha = 0.20f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -346,21 +343,21 @@ internal fun LevyraColorInputAndPickerRow(
 
             FilledTonalButton(
                 onClick = onOpenPicker,
-                shape = CircleShape,
+                shapes = ButtonDefaults.shapes(),
                 contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
                 modifier = Modifier.heightIn(min = 52.dp)
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Palette,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(ButtonDefaults.IconSize)
                 )
-                Spacer(modifier = Modifier.width(6.dp))
+                Spacer(modifier = Modifier.size(ButtonDefaults.IconSpacing))
                 Text(
                     text = pickerCopy[ColorPickerText.OpenPicker],
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
                 )
             }
         }
@@ -428,15 +425,30 @@ internal fun LevyraAdvancedColorPickerDialog(
             dismissOnClickOutside = false
         )
     ) {
-        ColorPickerDialogContainer(accentColor = animatedPrimary) {
-            ColorPickerHeader(
-                title = title ?: copy[ColorPickerText.Title],
-                subtitle = copy[ColorPickerText.Subtitle],
-                accentColor = animatedPrimary,
-                selectedHex = "#${formatLevyraHexColor(selectedArgb)}",
-                cancelLabel = copy[ColorPickerText.Cancel],
-                onClose = { latestOnDismiss() }
-            )
+        ColorPickerDialogContainer(
+            header = {
+                ColorPickerHeader(
+                    title = title ?: copy[ColorPickerText.Title],
+                    subtitle = copy[ColorPickerText.Subtitle],
+                    accentColor = animatedPrimary,
+                    selectedHex = "#${formatLevyraHexColor(selectedArgb)}",
+                    cancelLabel = copy[ColorPickerText.Cancel],
+                    onClose = { latestOnDismiss() }
+                )
+            },
+            footer = {
+                ColorPickerActionFooter(
+                    cancelLabel = copy[ColorPickerText.Cancel],
+                    applyLabel = copy[ColorPickerText.Apply],
+                    onCancel = { latestOnDismiss() },
+                    onApply = {
+                        val finalArgb = hexParsed ?: selectedArgb
+                        haptics.perform(LevyraHapticAction.Confirm)
+                        latestOnConfirmColor(finalArgb)
+                    }
+                )
+            }
+        ) {
             ColorPickerLiveStage(
                 savedArgb = normalizedInitial,
                 selectedArgb = selectedArgb,
@@ -497,23 +509,14 @@ internal fun LevyraAdvancedColorPickerDialog(
                     onHsvChange = updateFromHsv
                 )
             }
-            ColorPickerActionFooter(
-                cancelLabel = copy[ColorPickerText.Cancel],
-                applyLabel = copy[ColorPickerText.Apply],
-                onCancel = { latestOnDismiss() },
-                onApply = {
-                    val finalArgb = hexParsed ?: selectedArgb
-                    haptics.perform(LevyraHapticAction.Confirm)
-                    latestOnConfirmColor(finalArgb)
-                }
-            )
         }
     }
 }
 
 @Composable
 private fun ColorPickerDialogContainer(
-    accentColor: Color,
+    header: @Composable () -> Unit,
+    footer: @Composable () -> Unit,
     content: @Composable () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -522,47 +525,34 @@ private fun ColorPickerDialogContainer(
         color = scheme.surfaceContainerLow,
         contentColor = scheme.onSurface,
         tonalElevation = 6.dp,
-        border = BorderStroke(
-            width = 1.dp,
-            brush = Brush.verticalGradient(
-                colors = listOf(
-                    accentColor.copy(alpha = 0.42f),
-                    scheme.outlineVariant.copy(alpha = 0.24f)
-                )
-            )
-        ),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
             .widthIn(max = 432.dp)
             .imePadding()
     ) {
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            accentColor.copy(alpha = 0.14f),
-                            scheme.surfaceContainerLow.copy(alpha = 0.0f)
-                        ),
-                        endY = 420f
-                    )
-                )
+                .padding(horizontal = 20.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            header()
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 18.dp, vertical = 18.dp),
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 content()
             }
+            footer()
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ColorPickerHexAndTuneRow(
     hexInput: String,
@@ -575,10 +565,10 @@ private fun ColorPickerHexAndTuneRow(
     onDoneIme: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
-    val animated = LocalAnimationsEnabled.current
-    val slidersToggleCorner by animateDpAsState(
-        targetValue = if (showSliders) 16.dp else 26.dp,
-        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.snappySpring()),
+    val slidersToggleCorner = levyraExpressiveToggleCorner(
+        checked = showSliders,
+        unchecked = 26.dp,
+        checkedCorner = 16.dp,
         label = "sliders-toggle-corner"
     )
     val supportingContent: (@Composable () -> Unit)? = if (isHexError) {
@@ -612,27 +602,23 @@ private fun ColorPickerHexAndTuneRow(
             shape = RoundedCornerShape(slidersToggleCorner),
             color = if (showSliders) scheme.secondaryContainer else scheme.surfaceContainerHigh,
             contentColor = if (showSliders) scheme.onSecondaryContainer else scheme.onSurface,
-            border = BorderStroke(
-                width = 1.dp,
-                color = if (showSliders) accentColor.copy(alpha = 0.55f) else scheme.outlineVariant.copy(alpha = 0.35f)
-            ),
             modifier = Modifier
-                .height(56.dp)
+                .heightIn(min = 56.dp)
                 .semantics {
                     selected = showSliders
                     contentDescription = copy[ColorPickerText.FineTune]
                 }
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 14.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(7.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Tune,
                     contentDescription = null,
                     tint = if (showSliders) accentColor else scheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(ButtonDefaults.IconSize)
                 )
                 Text(
                     text = copy[ColorPickerText.FineTune],
@@ -644,6 +630,7 @@ private fun ColorPickerHexAndTuneRow(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ColorPickerActionFooter(
     cancelLabel: String,
@@ -655,44 +642,48 @@ private fun ColorPickerActionFooter(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 2.dp),
+            .padding(top = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         FilledTonalButton(
             onClick = onCancel,
-            shape = CircleShape,
+            shapes = ButtonDefaults.shapes(),
             colors = ButtonDefaults.filledTonalButtonColors(
                 containerColor = scheme.surfaceContainerHigh,
                 contentColor = scheme.onSurface
             ),
             modifier = Modifier
                 .weight(1f)
-                .height(52.dp)
+                .heightIn(min = 54.dp)
         ) {
             Text(
                 text = cancelLabel,
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
         Button(
             onClick = onApply,
-            shape = CircleShape,
+            shapes = ButtonDefaults.shapes(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = scheme.primary,
+                contentColor = scheme.onPrimary
+            ),
             modifier = Modifier
-                .weight(1.35f)
-                .height(52.dp)
+                .weight(1.3f)
+                .heightIn(min = 54.dp)
         ) {
             Icon(
                 imageVector = Icons.Rounded.Check,
                 contentDescription = null,
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(ButtonDefaults.IconSize)
             )
-            Spacer(modifier = Modifier.width(6.dp))
+            Spacer(modifier = Modifier.size(ButtonDefaults.IconSpacing))
             Text(
                 text = applyLabel,
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -700,6 +691,7 @@ private fun ColorPickerActionFooter(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ColorPickerHeader(
     title: String,
@@ -710,9 +702,10 @@ private fun ColorPickerHeader(
     onClose: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
+    val headerIconShape = MaterialShapes.Cookie9Sided.toShape()
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -721,10 +714,9 @@ private fun ColorPickerHeader(
         ) {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(accentColor.copy(alpha = 0.22f))
-                    .border(1.2.dp, accentColor.copy(alpha = 0.55f), RoundedCornerShape(16.dp)),
+                    .size(46.dp)
+                    .clip(headerIconShape)
+                    .background(accentColor.copy(alpha = 0.18f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -734,79 +726,70 @@ private fun ColorPickerHeader(
                     modifier = Modifier.size(22.dp)
                 )
             }
-            Row(
+            Column(
                 modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontSize = 22.sp,
-                        lineHeight = 26.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = (-0.4).sp
-                    ),
-                    color = scheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .weight(1f, fill = false)
-                        .semantics { heading() }
-                )
-                Surface(
-                    shape = CircleShape,
-                    color = accentColor.copy(alpha = 0.16f),
-                    border = BorderStroke(1.dp, accentColor.copy(alpha = 0.42f))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = selectedHex,
-                        fontFamily = FontFamily.Monospace,
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
+                        text = title,
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.3).sp
+                        ),
                         color = scheme.onSurface,
                         maxLines = 1,
-                        softWrap = false,
-                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .semantics { heading() }
                     )
+                    Surface(
+                        shape = CircleShape,
+                        color = scheme.surfaceContainerHigh
+                    ) {
+                        Text(
+                            text = selectedHex,
+                            fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = accentColor,
+                            maxLines = 1,
+                            softWrap = false,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        )
+                    }
                 }
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = scheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(scheme.surfaceContainerHigh)
-                    .levyraPressable(
-                        onClick = onClose,
-                        onClickLabel = cancelLabel,
-                        role = Role.Button
-                    )
-                    .semantics { contentDescription = cancelLabel },
-                contentAlignment = Alignment.Center
+            IconButton(
+                onClick = onClose,
+                shapes = IconButtonDefaults.shapes(),
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = scheme.surfaceContainerHigh,
+                    contentColor = scheme.onSurfaceVariant
+                ),
+                modifier = Modifier.size(44.dp)
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Close,
-                    contentDescription = null,
-                    tint = scheme.onSurfaceVariant,
-                    modifier = Modifier.size(19.dp)
+                    contentDescription = cancelLabel,
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
-
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
-                fontWeight = FontWeight.Medium
-            ),
-            color = scheme.onSurfaceVariant,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 2.dp)
-        )
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ColorPickerLiveStage(
     savedArgb: Int,
@@ -815,7 +798,6 @@ private fun ColorPickerLiveStage(
     copy: ColorPickerCopy,
     onResetToSaved: () -> Unit
 ) {
-    val scheme = MaterialTheme.colorScheme
     val animated = LocalAnimationsEnabled.current
     val selectedColor = Color(selectedArgb)
     val accentPair = remember(selectedArgb) { playerAccentsFromSeed(selectedColor) }
@@ -824,267 +806,166 @@ private fun ColorPickerLiveStage(
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(160)),
         label = "picker-stage-primary"
     )
-    val animatedSecondary by animateColorAsState(
-        targetValue = accentPair.secondary,
-        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(160)),
-        label = "picker-stage-secondary"
-    )
-    val onSelected = if (selectedColor.luminance() > 0.52f) Color.Black else Color.White
     val (r, g, b) = rgbChannelsOf(selectedArgb)
     val hDeg = hsv.hue.roundToInt().coerceIn(0, 360)
     val sPct = (hsv.saturation * 100f).roundToInt().coerceIn(0, 100)
     val vPct = (hsv.value * 100f).roundToInt().coerceIn(0, 100)
 
-    Surface(
-        color = scheme.surfaceContainer,
-        shape = PickerStageShape,
-        border = BorderStroke(1.dp, scheme.outlineVariant.copy(alpha = 0.30f)),
-        modifier = Modifier.fillMaxWidth()
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ColorPickerComparisonSwatches(
+            savedArgb = savedArgb,
+            selectedArgb = selectedArgb,
+            accentColor = animatedPrimary,
+            copy = copy,
+            onResetToSaved = onResetToSaved
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                ColorPickerComparisonSwatches(
-                    savedArgb = savedArgb,
-                    selectedArgb = selectedArgb,
-                    copy = copy,
-                    onResetToSaved = onResetToSaved
-                )
-                ColorPickerStageMiniCard(
-                    animatedPrimary = animatedPrimary,
-                    animatedSecondary = animatedSecondary,
-                    onSelected = onSelected,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(54.dp)
-                )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                ColorMetricPill(
-                    badge = "H",
-                    valueText = "${hDeg}°",
-                    accentColor = animatedPrimary
-                )
-                ColorMetricPill(
-                    badge = "S",
-                    valueText = "$sPct%",
-                    accentColor = animatedPrimary
-                )
-                ColorMetricPill(
-                    badge = "V",
-                    valueText = "$vPct%",
-                    accentColor = animatedPrimary
-                )
-                ColorMetricPill(
-                    badge = "RGB",
-                    valueText = "$r · $g · $b",
-                    accentColor = animatedPrimary,
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            ColorMetricPill(
+                badge = "HSV",
+                valueText = "${hDeg}° $sPct% $vPct%",
+                accentColor = animatedPrimary,
+                shape = RoundedCornerShape(
+                    topStart = 6.dp,
+                    bottomStart = 22.dp,
+                    topEnd = 6.dp,
+                    bottomEnd = 6.dp
+                ),
+                modifier = Modifier.weight(1f)
+            )
+            ColorMetricPill(
+                badge = "RGB",
+                valueText = "$r, $g, $b",
+                accentColor = animatedPrimary,
+                shape = RoundedCornerShape(
+                    topStart = 6.dp,
+                    bottomStart = 6.dp,
+                    topEnd = 6.dp,
+                    bottomEnd = 22.dp
+                ),
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ColorPickerComparisonSwatches(
     savedArgb: Int,
     selectedArgb: Int,
+    accentColor: Color,
     copy: ColorPickerCopy,
     onResetToSaved: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
-    val animated = LocalAnimationsEnabled.current
     val savedColor = Color(savedArgb)
     val selectedColor = Color(selectedArgb)
-    val hasChanged = selectedArgb != savedArgb
-    val newSwatchCorner by animateDpAsState(
-        targetValue = if (hasChanged) 14.dp else 18.dp,
-        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.snappySpring()),
-        label = "new-swatch-corner"
-    )
-    val onSaved = if (savedColor.luminance() > 0.52f) Color.Black else Color.White
-    val onSelected = if (selectedColor.luminance() > 0.52f) Color.Black else Color.White
+    val savedHex = "#${formatLevyraHexColor(savedArgb)}"
+    val selectedHex = "#${formatLevyraHexColor(selectedArgb)}"
+    val activeSwatchShape = MaterialShapes.Cookie9Sided.toShape()
 
     Row(
-        modifier = Modifier
-            .height(54.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(scheme.surfaceContainerHigh)
-            .padding(4.dp),
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
+        Surface(
+            onClick = onResetToSaved,
+            shape = RoundedCornerShape(
+                topStart = 22.dp,
+                bottomStart = 6.dp,
+                topEnd = 6.dp,
+                bottomEnd = 6.dp
+            ),
+            color = scheme.surfaceContainerHigh,
             modifier = Modifier
-                .width(58.dp)
-                .fillMaxHeight()
-                .clip(RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp, topEnd = 8.dp, bottomEnd = 8.dp))
-                .background(savedColor)
-                .levyraPressable(
-                    onClick = onResetToSaved,
-                    onClickLabel = copy[ColorPickerText.SavedColor],
-                    role = Role.Button
-                )
+                .weight(1f)
+                .heightIn(min = 56.dp)
                 .semantics {
-                    contentDescription = "${copy[ColorPickerText.SavedColor]} #${formatLevyraHexColor(savedArgb)}"
-                },
-            contentAlignment = Alignment.BottomCenter
+                    contentDescription = "${copy[ColorPickerText.SavedColor]} $savedHex"
+                }
         ) {
-            ColorSwatchBadge(label = copy[ColorPickerText.SavedColor], swatchColor = savedColor, textColor = onSaved)
-        }
-        val selectedShape = RoundedCornerShape(
-            topStart = 8.dp,
-            bottomStart = 8.dp,
-            topEnd = newSwatchCorner,
-            bottomEnd = newSwatchCorner
-        )
-        Box(
-            modifier = Modifier
-                .width(58.dp)
-                .fillMaxHeight()
-                .clip(selectedShape)
-                .background(selectedColor)
-                .then(
-                    if (hasChanged) {
-                        Modifier.border(
-                            width = 1.5.dp,
-                            color = onSelected.copy(alpha = 0.65f),
-                            shape = selectedShape
-                        )
-                    } else {
-                        Modifier
-                    }
-                )
-                .semantics {
-                    contentDescription = "${copy[ColorPickerText.SelectedColor]} #${formatLevyraHexColor(selectedArgb)}"
-                },
-            contentAlignment = Alignment.BottomCenter
-        ) {
-            ColorSwatchBadge(label = copy[ColorPickerText.SelectedColor], swatchColor = selectedColor, textColor = onSelected)
-        }
-    }
-}
-
-@Composable
-private fun ColorSwatchBadge(
-    label: String,
-    swatchColor: Color,
-    textColor: Color
-) {
-    Box(
-        modifier = Modifier
-            .padding(horizontal = 3.dp, vertical = 4.dp)
-            .clip(CircleShape)
-            .background(Color.Black.copy(alpha = if (swatchColor.luminance() > 0.52f) 0.18f else 0.42f))
-            .padding(horizontal = 6.dp, vertical = 1.5.dp)
-    ) {
-        Text(
-            text = label,
-            fontSize = 8.5.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = textColor,
-            maxLines = 1,
-            softWrap = false
-        )
-    }
-}
-
-@Composable
-private fun ColorPickerStageMiniCard(
-    animatedPrimary: Color,
-    animatedSecondary: Color,
-    onSelected: Color,
-    modifier: Modifier = Modifier
-) {
-    val scheme = MaterialTheme.colorScheme
-    Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = scheme.surfaceContainerHigh,
-        border = BorderStroke(1.dp, animatedPrimary.copy(alpha = 0.34f)),
-        modifier = modifier
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Brush.linearGradient(listOf(animatedPrimary, animatedSecondary))),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Palette,
-                    contentDescription = null,
-                    tint = onSelected.copy(alpha = 0.92f),
-                    modifier = Modifier.size(17.dp)
-                )
-            }
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(0.76f)
-                        .height(7.dp)
+                        .size(34.dp)
                         .clip(CircleShape)
-                        .background(scheme.onSurface.copy(alpha = 0.82f))
+                        .background(savedColor)
+                        .border(1.dp, scheme.outlineVariant.copy(alpha = 0.45f), CircleShape)
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .weight(0.66f)
-                            .height(5.dp)
-                            .clip(CircleShape)
-                            .background(
-                                Brush.horizontalGradient(listOf(animatedPrimary, animatedSecondary))
-                            )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = copy[ColorPickerText.SavedColor],
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = scheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                    Box(
-                        modifier = Modifier
-                            .weight(0.34f)
-                            .height(5.dp)
-                            .clip(CircleShape)
-                            .background(scheme.onSurfaceVariant.copy(alpha = 0.24f))
+                    Text(
+                        text = savedHex,
+                        fontFamily = FontFamily.Monospace,
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = scheme.onSurface,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(RoundedCornerShape(11.dp))
-                    .background(animatedPrimary),
-                contentAlignment = Alignment.Center
+        }
+        Surface(
+            shape = RoundedCornerShape(
+                topStart = 6.dp,
+                bottomStart = 6.dp,
+                topEnd = 22.dp,
+                bottomEnd = 6.dp
+            ),
+            color = scheme.surfaceContainerHigh,
+            modifier = Modifier
+                .weight(1f)
+                .heightIn(min = 56.dp)
+                .semantics {
+                    contentDescription = "${copy[ColorPickerText.SelectedColor]} $selectedHex"
+                }
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.PlayArrow,
-                    contentDescription = null,
-                    tint = onSelected,
-                    modifier = Modifier.size(18.dp)
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(activeSwatchShape)
+                        .background(selectedColor)
                 )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = copy[ColorPickerText.SelectedColor],
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = accentColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = selectedHex,
+                        fontFamily = FontFamily.Monospace,
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
+                        color = scheme.onSurface,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
             }
         }
     }
@@ -1095,23 +976,23 @@ private fun ColorMetricPill(
     badge: String,
     valueText: String,
     accentColor: Color,
+    shape: RoundedCornerShape,
     modifier: Modifier = Modifier
 ) {
     val scheme = MaterialTheme.colorScheme
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(13.dp))
+            .clip(shape)
             .background(scheme.surfaceContainerHigh)
-            .padding(horizontal = 8.dp, vertical = 5.dp)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
             .semantics(mergeDescendants = true) {},
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp)
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
             text = badge,
             fontFamily = FontFamily.Monospace,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Black,
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black),
             color = accentColor,
             maxLines = 1,
             softWrap = false
@@ -1119,8 +1000,7 @@ private fun ColorMetricPill(
         Text(
             text = valueText,
             fontFamily = FontFamily.Monospace,
-            fontSize = 10.5.sp,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
             color = scheme.onSurface,
             maxLines = 1,
             softWrap = false
@@ -1137,16 +1017,15 @@ private fun ColorPickerHsvWorkspace(
 ) {
     val scheme = MaterialTheme.colorScheme
     Surface(
-        color = scheme.surfaceContainer,
+        color = scheme.surfaceContainerHigh,
         shape = WorkspaceCardShape,
-        border = BorderStroke(1.dp, scheme.outlineVariant.copy(alpha = 0.30f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(10.dp)
-                .height(210.dp),
+                .height(196.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1435,6 +1314,7 @@ private fun VerticalHueSpectrumBar(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ColorPickerPresetsRow(
     presets: List<Int>,
@@ -1444,15 +1324,17 @@ private fun ColorPickerPresetsRow(
 ) {
     val scheme = MaterialTheme.colorScheme
     val animated = LocalAnimationsEnabled.current
-    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+    val activeCookieShape = MaterialShapes.Cookie9Sided.toShape()
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
             text = copy[ColorPickerText.PresetsLabel],
             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
             color = scheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 2.dp)
+            modifier = Modifier.padding(start = 4.dp)
         )
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
             items(presets, key = { it }) { swatch ->
@@ -1461,17 +1343,12 @@ private fun ColorPickerPresetsRow(
                 val swatchColor = Color(opaqueSwatch)
                 val hex = "#" + formatLevyraHexColor(opaqueSwatch)
                 val checkTint = if (swatchColor.luminance() > 0.52f) Color.Black else Color.White
-                val cornerRadius by animateDpAsState(
-                    targetValue = if (active) 13.dp else 21.dp,
-                    animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.snappySpring()),
-                    label = "preset-swatch-corner"
-                )
                 val swatchSize by animateDpAsState(
-                    targetValue = if (active) 42.dp else 36.dp,
+                    targetValue = if (active) 42.dp else 34.dp,
                     animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.snappySpring()),
                     label = "preset-swatch-size"
                 )
-                val shape = RoundedCornerShape(cornerRadius)
+                val shape = if (active) activeCookieShape else CircleShape
 
                 Box(
                     modifier = Modifier
@@ -1492,10 +1369,16 @@ private fun ColorPickerPresetsRow(
                             .size(swatchSize)
                             .clip(shape)
                             .background(swatchColor)
-                            .border(
-                                width = if (active) 2.5.dp else 1.dp,
-                                color = if (active) scheme.onSurface else scheme.outlineVariant.copy(alpha = 0.45f),
-                                shape = shape
+                            .then(
+                                if (!active) {
+                                    Modifier.border(
+                                        width = 1.dp,
+                                        color = scheme.outlineVariant.copy(alpha = 0.45f),
+                                        shape = shape
+                                    )
+                                } else {
+                                    Modifier
+                                }
                             ),
                         contentAlignment = Alignment.Center
                     ) {
@@ -1522,16 +1405,15 @@ private fun ColorPickerPrecisionSliders(
 ) {
     val scheme = MaterialTheme.colorScheme
     Surface(
-        color = scheme.surfaceContainer,
-        shape = RoundedCornerShape(22.dp),
-        border = BorderStroke(1.dp, scheme.outlineVariant.copy(alpha = 0.30f)),
+        color = scheme.surfaceContainerHigh,
+        shape = WorkspaceCardShape,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             ColorChannelSlider(
                 label = copy[ColorPickerText.HueLabel],
