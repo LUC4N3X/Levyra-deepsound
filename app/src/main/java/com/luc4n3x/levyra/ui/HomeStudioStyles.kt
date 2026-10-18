@@ -1314,26 +1314,8 @@ private fun ExpressiveSpotlight(
                     .fillMaxWidth()
                     .height(artworkHeight)
             ) {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .drawBehind {
-                            val focus = Offset(size.width * 0.66f, size.height * 0.48f)
-                            drawCircle(
-                                brush = Brush.radialGradient(
-                                    colors = listOf(
-                                        seed.copy(alpha = if (isLight) 0.17f else 0.27f),
-                                        secondarySeed.copy(alpha = if (isLight) 0.07f else 0.12f),
-                                        Color.Transparent
-                                    ),
-                                    center = focus,
-                                    radius = size.width * 0.80f
-                                ),
-                                center = focus,
-                                radius = size.width * 0.80f
-                            )
-                        }
-                )
+                // The portrait and its tonal aura share a single alpha mask.
+                // At both edges they reveal StudioHomeBackdrop, not a second opaque canvas.
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -1341,57 +1323,80 @@ private fun ExpressiveSpotlight(
                         .drawWithContent {
                             drawContent()
                             drawRect(
-                                brush = Brush.horizontalGradient(
-                                    0.0f to Color.Black.copy(alpha = 0.45f),
-                                    0.18f to Color.Black.copy(alpha = 0.92f),
-                                    0.64f to Color.Black,
-                                    1.0f to Color.Black
+                                brush = Brush.verticalGradient(
+                                    0.0f to Color.Transparent,
+                                    0.12f to Color.Black.copy(alpha = 0.88f),
+                                    0.27f to Color.Black,
+                                    0.62f to Color.Black,
+                                    0.78f to Color.Black.copy(alpha = 0.74f),
+                                    0.91f to Color.Black.copy(alpha = 0.22f),
+                                    1.0f to Color.Transparent
                                 ),
                                 blendMode = BlendMode.DstIn
                             )
                             drawRect(
-                                brush = Brush.verticalGradient(
-                                    0.0f to Color.Transparent,
-                                    0.12f to Color.Black,
-                                    0.58f to Color.Black,
-                                    0.82f to Color.Black.copy(alpha = 0.66f),
-                                    1.0f to Color.Transparent
+                                brush = Brush.horizontalGradient(
+                                    0.0f to Color.Black.copy(alpha = 0.62f),
+                                    0.18f to Color.Black.copy(alpha = 0.92f),
+                                    0.48f to Color.Black,
+                                    1.0f to Color.Black
                                 ),
                                 blendMode = BlendMode.DstIn
                             )
                         }
                 ) {
-                    if (artistArtworkUrl.isNotBlank()) {
-                        StudioRemoteArtwork(artistArtworkUrl, track.artist, Modifier.fillMaxSize(), true)
-                    } else {
-                        CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true)
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .drawBehind {
+                                val focus = Offset(size.width * 0.66f, size.height * 0.48f)
+                                drawCircle(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(
+                                            seed.copy(alpha = if (isLight) 0.13f else 0.22f),
+                                            secondarySeed.copy(alpha = if (isLight) 0.05f else 0.10f),
+                                            Color.Transparent
+                                        ),
+                                        center = focus,
+                                        radius = size.width * 0.80f
+                                    ),
+                                    center = focus,
+                                    radius = size.width * 0.80f
+                                )
+                            }
+                    )
+                    Box(modifier = Modifier.matchParentSize()) {
+                        if (artistArtworkUrl.isNotBlank()) {
+                            StudioRemoteArtwork(artistArtworkUrl, track.artist, Modifier.fillMaxSize(), true)
+                        } else {
+                            CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true)
+                        }
                     }
+                    // Gentle scrims protect the title without creating a rectangular card.
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    0.0f to canvas.copy(alpha = if (isLight) 0.14f else 0.20f),
+                                    0.24f to Color.Transparent,
+                                    0.54f to Color.Transparent,
+                                    0.80f to canvas.copy(alpha = if (isLight) 0.18f else 0.24f),
+                                    1.0f to canvas.copy(alpha = 0.54f)
+                                )
+                            )
+                    )
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(
+                                Brush.horizontalGradient(
+                                    0.0f to canvas.copy(alpha = if (isLight) 0.10f else 0.16f),
+                                    0.44f to Color.Transparent
+                                )
+                            )
+                    )
                 }
-                // Unlike a floating cover tile, this fade reaches the exact Home canvas color.
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(
-                            Brush.verticalGradient(
-                                0.0f to canvas.copy(alpha = if (isLight) 0.58f else 0.48f),
-                                0.15f to canvas.copy(alpha = 0.06f),
-                                0.44f to Color.Transparent,
-                                0.68f to canvas.copy(alpha = if (isLight) 0.12f else 0.18f),
-                                0.84f to canvas.copy(alpha = 0.76f),
-                                1.0f to canvas
-                            )
-                        )
-                )
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(
-                            Brush.horizontalGradient(
-                                0.0f to canvas.copy(alpha = if (isLight) 0.22f else 0.30f),
-                                0.40f to Color.Transparent
-                            )
-                        )
-                )
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
