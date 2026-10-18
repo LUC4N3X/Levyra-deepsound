@@ -855,13 +855,15 @@ internal fun LevyraLibraryScreen(
                         )
                     }
                     item(key = "playlist-import-action") {
-                        if (showImportPlaylistCard) {
-                            LibraryImportPlaylistCard(
-                                onClick = { viewModel.openPlaylistImport() },
-                                onDismiss = { showImportPlaylistCard = false }
-                            )
-                        } else {
-                            LibraryImportPlaylistCompactAction(onClick = { viewModel.openPlaylistImport() })
+                        Box(Modifier.padding(top = 12.dp)) {
+                            if (showImportPlaylistCard) {
+                                LibraryImportPlaylistCard(
+                                    onClick = { viewModel.openPlaylistImport() },
+                                    onDismiss = { showImportPlaylistCard = false }
+                                )
+                            } else {
+                                LibraryImportPlaylistCompactAction(onClick = { viewModel.openPlaylistImport() })
+                            }
                         }
                     }
                     if (visiblePlaylists.isEmpty()) {
