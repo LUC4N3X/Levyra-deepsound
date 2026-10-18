@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.luc4n3x.levyra.data.credits.TrackCredits
 import com.luc4n3x.levyra.data.HomeContentAvailability
 import com.luc4n3x.levyra.data.HomeOfflineContent
 import com.luc4n3x.levyra.data.HomeOfflineContentBuilder
@@ -482,6 +483,8 @@ class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::pla
     fun next() = root.next()
     suspend fun playerArtistHits(track: Track, resolveArtwork: Boolean = true): List<ArtistHit> =
         root.playerArtistHits(track, resolveArtwork)
+
+    suspend fun trackCredits(track: Track, retry: Boolean): TrackCredits = root.trackCredits(track, retry)
     fun openArtist(track: Track, artistIndex: Int = 0) {
         val reference = artistReferenceOf(track, artistIndex) ?: return
         root.openArtistFromPlayer(

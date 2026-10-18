@@ -5,6 +5,8 @@ import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
@@ -53,32 +55,53 @@ class AppleMetadataEnricher(private val context: Context) {
     private val keyLocks = Array(32) { Mutex() }
     private val searchSlots = Semaphore(4)
 
-    suspend fun enrich(track: Track, country: String? = null, timeoutMs: Long = DEFAULT_ENRICH_TIMEOUT_MS): Track? {
+    suspend fun enrich(track: Track, country: String? = null, timeoutMs: Long = DEFAULT_ENRICH_TIMEOUT_MS): Track? =
+        matchMetadata(track, country, timeoutMs)?.let { mergeWithAppleMetadata(track, it) }
+
+    suspend fun matchMetadata(
+        track: Track,
+        country: String? = null,
+        timeoutMs: Long = DEFAULT_ENRICH_TIMEOUT_MS
+    ): AppleTrackMetadata? {
         if (track.title.isBlank() || track.artist.isBlank()) return null
         return withTimeoutOrNull(timeoutMs) {
-            enrichInternal(track, country)
+            matchInternal(track, resolveCountry(country))
         }
     }
 
-    private suspend fun enrichInternal(track: Track, country: String?): Track? {
-        val targetCountry = country?.trim()?.uppercase(Locale.ROOT)?.takeIf { it.length == 2 }
+    suspend fun fetchSongCredits(songId: String, country: String? = null): AppleSongCreditsPayload? {
+        if (songId.isBlank() || !songId.all(Char::isDigit)) return null
+        val storefront = resolveCountry(country).lowercase(Locale.ROOT)
+        val token = tokenProvider.getDeveloperToken() ?: return null
+        return withContext(Dispatchers.IO) {
+            coroutineScope {
+                val song = async { fetchAmpSongDetail(songId, storefront, token) }
+                val credits = async { fetchAmpJson("$AMP_BASE_URL/v1/catalog/$storefront/songs/$songId/credits", token) }
+                AppleSongCreditsPayload(song = song.await(), credits = credits.await())
+            }
+        }.takeIf { it.song != null || it.credits != null }
+    }
+
+    private fun resolveCountry(country: String?): String =
+        country?.trim()?.uppercase(Locale.ROOT)?.takeIf { it.length == 2 }
             ?: Locale.getDefault().country.takeIf { it.length == 2 }
             ?: "IT"
 
+    private suspend fun matchInternal(track: Track, targetCountry: String): AppleTrackMetadata? {
         val key = cacheKey(track, targetCountry)
-        readCache(key)?.let { return mergeWithAppleMetadata(track, it) }
+        readCache(key)?.let { return it }
 
         val now = System.currentTimeMillis()
         if (hasFreshMiss(key, now)) return null
 
         val lock = keyLocks[(key.hashCode() and Int.MAX_VALUE) % keyLocks.size]
         return lock.withLock {
-            readCache(key)?.let { return@withLock mergeWithAppleMetadata(track, it) }
+            readCache(key)?.let { return@withLock it }
             if (hasFreshMiss(key, System.currentTimeMillis())) return@withLock null
 
             val outcome = searchSlots.withPermit { searchAndEnrich(track, targetCountry) }
             writeOutcome(key, outcome)
-            outcome?.let { mergeWithAppleMetadata(track, it) }
+            outcome
         }
     }
 
@@ -186,8 +209,10 @@ class AppleMetadataEnricher(private val context: Context) {
         return base
     }
 
-    private suspend fun fetchAmpSongDetail(songId: String, storefront: String, token: String): JSONObject? {
-        val url = "$AMP_BASE_URL/v1/catalog/$storefront/songs/$songId?include=albums"
+    private suspend fun fetchAmpSongDetail(songId: String, storefront: String, token: String): JSONObject? =
+        fetchAmpJson("$AMP_BASE_URL/v1/catalog/$storefront/songs/$songId?include=albums", token)
+
+    private suspend fun fetchAmpJson(url: String, token: String): JSONObject? {
         val request = Request.Builder()
             .url(url)
             .header("Authorization", "Bearer $token")

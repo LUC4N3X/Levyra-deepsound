@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.data.apple
 
+import org.json.JSONObject
+
 data class AppleTrackMetadata(
     val songId: String = "",
     val albumId: String = "",
@@ -25,4 +27,9 @@ data class AppleTrackMetadata(
     val durationMs: Long = 0L,
     val confidence: Int = 0,
     val isReleaseMatch: Boolean = false
+)
+
+data class AppleSongCreditsPayload(
+    val song: JSONObject?,
+    val credits: JSONObject?
 )

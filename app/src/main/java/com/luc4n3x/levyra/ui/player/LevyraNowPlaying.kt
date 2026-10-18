@@ -59,6 +59,7 @@ import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.BlurOn
 import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
@@ -145,6 +146,7 @@ import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.systemPlayerCopy
 import com.luc4n3x.levyra.ui.i18n.technicalAudioInfoCopy
+import com.luc4n3x.levyra.ui.i18n.trackCreditsCopy
 import com.luc4n3x.levyra.ui.isLevyraCompactLandscape
 import com.luc4n3x.levyra.ui.levyraCompactLandscapeVideoPaneWeight
 import com.luc4n3x.levyra.ui.levyraContentMaxWidthDp
@@ -279,6 +281,7 @@ fun LevyraNowPlaying(
     }
     var showActions by remember { mutableStateOf(false) }
     var showTechnicalAudioInfo by remember(track?.id) { mutableStateOf(false) }
+    var showTrackCredits by remember(track?.id) { mutableStateOf(false) }
     var showAudioRouteCenter by rememberSaveable { mutableStateOf(false) }
     var showDeck by rememberSaveable { mutableStateOf(false) }
     var downloadRemovalTrackId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -1594,6 +1597,10 @@ fun LevyraNowPlaying(
                     showActions = false
                     showTechnicalAudioInfo = true
                 },
+                onTrackCredits = {
+                    showActions = false
+                    showTrackCredits = true
+                },
                 onRefreshMotionArtwork = {
                     showActions = false
                     viewModel.refreshCurrentMotionArtwork()
@@ -1656,6 +1663,21 @@ fun LevyraNowPlaying(
                 audioSettings = state.audioSettings,
                 audioNormalization = state.audioNormalization,
                 onDismiss = { showTechnicalAudioInfo = false }
+            )
+        }
+
+        if (showTrackCredits && track != null && !track.isLiveRadio()) {
+            TrackCreditsSheet(
+                track = track,
+                artworkUrl = artworkUrl,
+                artists = playerArtistHits,
+                animated = animated,
+                loadCredits = viewModel::trackCredits,
+                onOpenArtist = { hit ->
+                    showTrackCredits = false
+                    viewModel.openArtist(hit)
+                },
+                onDismiss = { showTrackCredits = false }
             )
         }
 
@@ -1947,6 +1969,7 @@ private fun playerSheetActions(
     onAudioOutput: () -> Unit,
     onAudioSettings: () -> Unit,
     onTechnicalAudioInfo: () -> Unit,
+    onTrackCredits: () -> Unit,
     onRefreshMotionArtwork: () -> Unit,
     onAmbient: () -> Unit,
     onOpenArtist: () -> Unit
@@ -2065,6 +2088,12 @@ private fun playerSheetActions(
         ),
         audioOutputAction,
         audioAction,
+        PlayerSheetAction(
+            key = "track-credits",
+            icon = Icons.Rounded.Groups,
+            label = strings.trackCreditsCopy().title,
+            onClick = onTrackCredits
+        ),
         technicalAudioAction,
         refreshMotionArtworkAction,
         ambientAction,
