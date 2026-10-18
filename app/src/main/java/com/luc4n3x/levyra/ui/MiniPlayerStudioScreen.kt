@@ -55,6 +55,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -183,6 +184,7 @@ internal fun MiniPlayerStudioOverlay(
         previewModel.copy(animated = false, progress = 0.42f)
     }
     val previewTuning: (MiniPlayerTuning) -> Unit = { next -> draft = next.normalized(style) }
+    val cancelPreview: () -> Unit = { draft = null }
     val commitTuning: (MiniPlayerTuning) -> Unit = { next ->
         val current = latestSettings
         onUpdate(current.updateTuning(current.style) { next })
@@ -212,6 +214,7 @@ internal fun MiniPlayerStudioOverlay(
                     thumbnailModel = thumbnailModel,
                     onSelectStyle = selectStyle,
                     onPreview = previewTuning,
+                    onCancelPreview = cancelPreview,
                     onCommit = commitTuning,
                     onResetStyle = {
                         draft = null
@@ -472,6 +475,7 @@ private fun LazyListScope.miniStudioItems(
     thumbnailModel: MiniPlayerModel,
     onSelectStyle: (MiniPlayerStyle) -> Unit,
     onPreview: (MiniPlayerTuning) -> Unit,
+    onCancelPreview: () -> Unit,
     onCommit: (MiniPlayerTuning) -> Unit,
     onResetStyle: () -> Unit
 ) {
@@ -527,7 +531,7 @@ private fun LazyListScope.miniStudioItems(
     miniStudioDepthItems(spec, tuning, copy, onPreview, onCommit)
     miniStudioProgressItems(spec, tuning, copy, onPreview, onCommit)
     miniStudioControlsItems(spec, tuning, copy, onPreview, onCommit)
-    miniStudioAppearanceItems(spec, tuning, copy, onPreview, onCommit)
+    miniStudioAppearanceItems(spec, tuning, copy, onPreview, onCancelPreview, onCommit)
     item(key = "mini-reset-style", contentType = "actions") {
         OutlinedButton(
             onClick = onResetStyle,
@@ -745,6 +749,7 @@ private fun LazyListScope.miniStudioAppearanceItems(
     tuning: MiniPlayerTuning,
     copy: MiniPlayerStudioCopy,
     onPreview: (MiniPlayerTuning) -> Unit,
+    onCancelPreview: () -> Unit,
     onCommit: (MiniPlayerTuning) -> Unit
 ) {
     val options = spec.options
@@ -770,7 +775,7 @@ private fun LazyListScope.miniStudioAppearanceItems(
                             color = tuning.customColor,
                             copy = copy,
                             onPreviewColor = { onPreview(tuning.copy(customColor = it)) },
-                            onCancelPreview = { onPreview(tuning) },
+                            onCancelPreview = onCancelPreview,
                             onColor = { onCommit(tuning.copy(customColor = it)) }
                         )
                     }
@@ -1168,8 +1173,14 @@ internal fun MiniColorEditor(
     onCancelPreview: (() -> Unit)? = null
 ) {
     val scheme = MaterialTheme.colorScheme
-    var text by remember(color) { mutableStateOf(formatMiniHexColor(color)) }
+    var text by remember { mutableStateOf(formatMiniHexColor(color)) }
     var showPicker by remember { mutableStateOf(false) }
+    var pickerInitialColor by remember { mutableStateOf(color) }
+    LaunchedEffect(color, showPicker) {
+        if (!showPicker) {
+            text = formatMiniHexColor(color)
+        }
+    }
     val parsed = parseMiniHexColor(text)
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         FlowRow(
@@ -1219,12 +1230,15 @@ internal fun MiniColorEditor(
                 text = cleaned
                 parseMiniHexColor(cleaned)?.let(onColor)
             },
-            onOpenPicker = { showPicker = true }
+            onOpenPicker = {
+                pickerInitialColor = color
+                showPicker = true
+            }
         )
     }
     if (showPicker) {
         com.luc4n3x.levyra.ui.components.LevyraAdvancedColorPickerDialog(
-            initialColor = parsed ?: color,
+            initialColor = pickerInitialColor,
             presets = MiniCustomSwatches,
             onPreviewColor = onPreviewColor,
             onConfirmColor = { chosen ->
@@ -1234,6 +1248,7 @@ internal fun MiniColorEditor(
             },
             onDismiss = {
                 showPicker = false
+                text = formatMiniHexColor(pickerInitialColor)
                 onCancelPreview?.invoke()
             }
         )

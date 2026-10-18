@@ -285,7 +285,7 @@ private val colorPickerCopies: Map<String, Map<ColorPickerText, String>> = mapOf
     ),
     "sr" to colorPicker(
         "Палета боја",
-        "бирач боје",
+        "Бирач боје",
         "Додирните палету или превуците да подесите нијансу, засићеност и осветљеност",
         "Палета засићености и осветљености",
         "Нијанса",
@@ -592,9 +592,9 @@ private val colorPickerCopies: Map<String, Map<ColorPickerText, String>> = mapOf
     "hi" to colorPicker(
         "रंग पैलेट",
         "रंग चयनकर्ता",
-        "ह्यू, सैचुरेशन और ब्राइटनेस बदलने के लिए पैलेट को छुएँ या खींचें",
+        "रंगत, सैचुरेशन और ब्राइटनेस बदलने के लिए पैलेट को छुएँ या खींचें",
         "सैचुरेशन और ब्राइटनेस पैलेट",
-        "रंगत (Hue)",
+        "रंगत",
         "सैचुरेशन",
         "ब्राइटनेस",
         "प्रीसेट",
@@ -694,13 +694,13 @@ private val colorPickerCopies: Map<String, Map<ColorPickerText, String>> = mapOf
     "fil" to colorPicker(
         "Palette ng kulay",
         "Tagapili ng kulay",
-        "Pindutin ang palette o i-drag para baguhin ang hue, saturation at liwanag",
-        "Palette ng saturation at liwanag",
-        "Hue",
-        "Saturation",
+        "Pindutin ang palette o i-drag para baguhin ang tono, tingkad at liwanag",
+        "Palette ng tingkad at liwanag",
+        "Tono",
+        "Tingkad",
         "Liwanag",
         "Mga preset",
-        "HEX code",
+        "Kodigong HEX",
         "Maglagay ng 6 na hexadecimal digit",
         "Naka-save",
         "Bago",
@@ -736,5 +736,28 @@ private val colorPickerCopyObjects: Map<String, ColorPickerCopy> by lazy {
     colorPickerCopies.mapValues { (_, texts) -> ColorPickerCopy(texts) }
 }
 
+private fun normalizeColorPickerLocaleCode(rawCode: String): String {
+    val cleaned = rawCode.trim().replace('_', '-')
+    if (cleaned in colorPickerCopies) return cleaned
+    val lower = cleaned.lowercase()
+    return when {
+        lower == "zh-hans" || lower == "zh-cn" || lower == "zh-sg" -> "zh"
+        lower == "zh-hant" || lower == "zh-tw" || lower == "zh-hk" || lower == "zh-mo" -> "zh-Hant"
+        lower == "iw" || lower.startsWith("iw-") -> "he"
+        lower == "in" || lower.startsWith("in-") -> "id"
+        lower == "tl" || lower.startsWith("tl-") -> "fil"
+        lower == "no" || lower.startsWith("no-") || lower == "nn" || lower.startsWith("nn-") -> "nb"
+        else -> {
+            val base = lower.substringBefore('-')
+            if (base in colorPickerCopies) base else "en"
+        }
+    }
+}
+
+internal fun colorPickerCopyForCode(rawCode: String): ColorPickerCopy {
+    val resolved = normalizeColorPickerLocaleCode(rawCode)
+    return colorPickerCopyObjects[resolved] ?: colorPickerCopyObjects.getValue("en")
+}
+
 internal val LevyraStrings.colorPickerCopy: ColorPickerCopy
-    get() = colorPickerCopyObjects[code] ?: colorPickerCopyObjects.getValue("en")
+    get() = colorPickerCopyForCode(code)

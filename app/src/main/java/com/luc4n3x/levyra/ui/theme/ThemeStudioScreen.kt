@@ -79,6 +79,7 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderState
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.toArgb
@@ -131,7 +132,9 @@ internal fun LevyraThemeStudioOverlay(
 ) {
     val strings = LocalLevyraStrings.current
     val library = strings.themeLibraryCopy
-    val preview = rememberThemeStudioPreview(selectedPresetId, accent, pureBlack, customThemes)
+    var previewAccent by remember(selectedPresetId, accent) { mutableStateOf<Int?>(null) }
+    val basePreview = rememberThemeStudioPreview(selectedPresetId, accent, pureBlack, customThemes)
+    val preview = rememberThemeStudioPreview(selectedPresetId, previewAccent ?: accent, pureBlack, customThemes)
     val presetRows = remember { themeStudioRows() }
     val defaultPresetId = LevyraThemes.defaultPresetId
     val dialogs = remember { ThemeStudioDialogState() }
@@ -326,8 +329,12 @@ internal fun LevyraThemeStudioOverlay(
                             strings.themeAccentPurple,
                             strings.themeAccentYellow
                         ),
-                        presetAccent = preview.accent,
-                        onSelect = onSelectAccent
+                        presetAccent = basePreview.accent,
+                        onPreviewAccent = { previewAccent = it },
+                        onSelect = {
+                            previewAccent = null
+                            onSelectAccent(it)
+                        }
                     )
                 }
             }
@@ -689,9 +696,14 @@ private fun ThemeRoleEditor(
     onColor: (Int) -> Unit
 ) {
     val current = draft.colorOf(role)
-    var hex by remember(role, current) { mutableStateOf(formatThemeHex(current)) }
+    var hex by remember(role) { mutableStateOf(formatThemeHex(current)) }
     var showPicker by remember(role) { mutableStateOf(false) }
     var savedBeforePicker by remember(role) { mutableStateOf(current) }
+    LaunchedEffect(role, current, showPicker) {
+        if (!showPicker) {
+            hex = formatThemeHex(current)
+        }
+    }
     val parsed = parseThemeHex(hex)
     val swatches = themeRoleSwatches(role, draft.isLight)
     Column(verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)) {
@@ -758,7 +770,7 @@ private fun ThemeRoleEditor(
                 parseThemeHex(cleaned)?.let(onColor)
             },
             onOpenPicker = {
-                savedBeforePicker = parsed ?: current
+                savedBeforePicker = current
                 showPicker = true
             }
         )
@@ -1124,6 +1136,7 @@ private fun ThemeAccentPicker(
     fromPresetLabel: String,
     accentLabels: List<String>,
     presetAccent: Color,
+    onPreviewAccent: (Int?) -> Unit = {},
     onSelect: (Int) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -1132,6 +1145,7 @@ private fun ThemeAccentPicker(
     val isCustomSelected = selected != 0 && selected !in LevyraThemeAccents
     val activeArgb = if (selected != 0) selected else presetAccent.toArgb()
     val activeColor = Color(activeArgb)
+    var pickerInitialColor by remember { mutableStateOf(activeArgb) }
 
     Column(verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)) {
         FlowRow(
@@ -1161,13 +1175,19 @@ private fun ThemeAccentPicker(
                     selected = true,
                     label = "#" + formatThemeHex(selected),
                     outlined = true,
-                    onClick = { showCustomPicker = true }
+                    onClick = {
+                        pickerInitialColor = activeArgb
+                        showCustomPicker = true
+                    }
                 )
             }
         }
 
         Surface(
-            onClick = { showCustomPicker = true },
+            onClick = {
+                pickerInitialColor = activeArgb
+                showCustomPicker = true
+            },
             shape = RoundedCornerShape(22.dp),
             color = LevyraPanel,
             border = BorderStroke(
@@ -1241,16 +1261,20 @@ private fun ThemeAccentPicker(
     }
 
     if (showCustomPicker) {
-        val initial = if (selected != 0) selected else presetAccent.toArgb()
         com.luc4n3x.levyra.ui.components.LevyraAdvancedColorPickerDialog(
-            initialColor = initial,
+            initialColor = pickerInitialColor,
             presets = LevyraThemeAccents,
             title = strings.themeAccent,
+            onPreviewColor = { preview -> onPreviewAccent(preview) },
             onConfirmColor = { chosen ->
                 showCustomPicker = false
+                onPreviewAccent(null)
                 onSelect(chosen)
             },
-            onDismiss = { showCustomPicker = false }
+            onDismiss = {
+                showCustomPicker = false
+                onPreviewAccent(null)
+            }
         )
     }
 }

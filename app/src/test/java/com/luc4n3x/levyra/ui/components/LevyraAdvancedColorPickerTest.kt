@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.ui.components
 
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.unit.IntSize
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.PlayerColorMode
 import com.luc4n3x.levyra.ui.i18n.ColorPickerText
@@ -103,6 +106,63 @@ class LevyraAdvancedColorPickerTest {
     }
 
     @Test
+    fun touchAndIndicatorCoordinatesMatchExactlyAcrossPaletteAndHueBar() {
+        val paletteIntSize = IntSize(300, 220)
+        val paletteCanvasSize = Size(300f, 220f)
+        val paletteInsetPx = 28f
+        val baseHsv = LevyraHsvColor(hue = 195f, saturation = 0.5f, value = 0.5f)
+
+        val interiorPoints = listOf(
+            Offset(28f, 28f),
+            Offset(92.5f, 64.25f),
+            Offset(150f, 110f),
+            Offset(241.75f, 178.5f),
+            Offset(272f, 192f)
+        )
+        for (finger in interiorPoints) {
+            val (normX, normY) = paletteNormalizedPoint(finger, paletteIntSize, paletteInsetPx)
+            val updated = baseHsv.withPalettePoint(normX, normY)
+            val indicatorCenter = paletteIndicatorCenter(updated, paletteCanvasSize, paletteInsetPx)
+            assertEquals(finger.x, indicatorCenter.x, 0.01f)
+            assertEquals(finger.y, indicatorCenter.y, 0.01f)
+        }
+
+        val (topLeftX, topLeftY) = paletteNormalizedPoint(Offset(0f, 0f), paletteIntSize, paletteInsetPx)
+        assertEquals(0f, topLeftX, 0.0001f)
+        assertEquals(0f, topLeftY, 0.0001f)
+        val topLeftCenter = paletteIndicatorCenter(
+            baseHsv.withPalettePoint(topLeftX, topLeftY),
+            paletteCanvasSize,
+            paletteInsetPx
+        )
+        assertEquals(paletteInsetPx, topLeftCenter.x, 0.01f)
+        assertEquals(paletteInsetPx, topLeftCenter.y, 0.01f)
+
+        val (bottomRightX, bottomRightY) = paletteNormalizedPoint(Offset(300f, 220f), paletteIntSize, paletteInsetPx)
+        assertEquals(1f, bottomRightX, 0.0001f)
+        assertEquals(1f, bottomRightY, 0.0001f)
+        val bottomRightCenter = paletteIndicatorCenter(
+            baseHsv.withPalettePoint(bottomRightX, bottomRightY),
+            paletteCanvasSize,
+            paletteInsetPx
+        )
+        assertEquals(300f - paletteInsetPx, bottomRightCenter.x, 0.01f)
+        assertEquals(220f - paletteInsetPx, bottomRightCenter.y, 0.01f)
+
+        val hueHeight = 220
+        val hueInsetYPx = 24f
+        val interiorHueYs = listOf(24f, 68.5f, 110f, 163.25f, 196f)
+        for (fingerY in interiorHueYs) {
+            val fraction = hueBarNormalizedFraction(fingerY, hueHeight, hueInsetYPx)
+            val updated = baseHsv.withHueFraction(fraction)
+            val centerY = hueBarIndicatorCenterY(updated, hueHeight.toFloat(), hueInsetYPx)
+            assertEquals(fingerY, centerY, 0.01f)
+        }
+        assertEquals(0f, hueBarNormalizedFraction(0f, hueHeight, hueInsetYPx), 0.0001f)
+        assertEquals(1f, hueBarNormalizedFraction(220f, hueHeight, hueInsetYPx), 0.0001f)
+    }
+
+    @Test
     fun hexValidationAndSanitizationHandleIncompleteAndInvalidInputSafely() {
         assertEquals("7C8CFF", sanitizeHexInput("#7c8cff"))
         assertEquals("7C8", sanitizeHexInput("#7c8-g!z"))
@@ -123,6 +183,7 @@ class LevyraAdvancedColorPickerTest {
         val expected = LevyraLanguageCatalog.languages.map { it.code }.toSet()
         assertEquals(expected, colorPickerLocalizationCodes())
         assertEquals(expected, colorPickerCompleteLocalizationCodes())
+        assertEquals(expected, com.luc4n3x.levyra.ui.i18n.playerColorLocalizationCodes())
 
         for (language in LevyraLanguageCatalog.languages) {
             val copy = LevyraStrings.forCode(language.code).colorPickerCopy
@@ -132,5 +193,11 @@ class LevyraAdvancedColorPickerTest {
                 assertTrue("Blank $key for ${language.code}", value.isNotBlank())
             }
         }
+
+        assertEquals("调色板", com.luc4n3x.levyra.ui.i18n.colorPickerCopyForCode("zh-Hans")[ColorPickerText.OpenPicker])
+        assertEquals("לוח צבעים", com.luc4n3x.levyra.ui.i18n.colorPickerCopyForCode("iw")[ColorPickerText.OpenPicker])
+        assertEquals("Palet warna", com.luc4n3x.levyra.ui.i18n.colorPickerCopyForCode("in")[ColorPickerText.OpenPicker])
+        assertEquals("Palette ng kulay", com.luc4n3x.levyra.ui.i18n.colorPickerCopyForCode("tl")[ColorPickerText.OpenPicker])
+        assertEquals("Fargepalett", com.luc4n3x.levyra.ui.i18n.colorPickerCopyForCode("no")[ColorPickerText.OpenPicker])
     }
 }
