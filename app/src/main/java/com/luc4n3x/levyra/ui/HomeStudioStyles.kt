@@ -699,78 +699,116 @@ private fun StudioLargeRow(
     modifier: Modifier
 ) {
     val roundItems = items.first().round
-    val overlay = style == HomeStyle.Immersive || roundItems
     val aspect = if (roundItems) 0.78f else spec.largeAspect
-    val marquee = style == HomeStyle.ExpressiveMax
     LazyRow(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         contentPadding = PaddingValues(horizontal = spec.inset)
     ) {
         itemsIndexed(items, key = { _, item -> item.key }, contentType = { _, _ -> "studio-large-card" }) { _, item ->
-            Column(
-                modifier = Modifier
-                    .width(spec.largeCardWidth)
-                    .studioPress(item, LevyraPressScale.Surface),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(aspect)
-                        .clip(RoundedCornerShape(spec.artworkCorner))
-                ) {
-                    item.artwork(Modifier.fillMaxSize(), true)
-                    if (overlay) {
-                        Box(modifier = Modifier.fillMaxSize().background(StudioCaptionScrim))
-                        Column(modifier = Modifier.align(Alignment.BottomStart).padding(16.dp)) {
-                            Text(
-                                text = item.title,
-                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                                color = Color.White,
-                                maxLines = if (marquee) 1 else 2,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = if (marquee) Modifier.basicMarquee() else Modifier
-                            )
-                            if (item.subtitle.isNotBlank()) {
-                                Text(
-                                    text = item.subtitle,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.White.copy(alpha = 0.8f),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-                    }
-                    StudioCurrentBadge(item, isPlaying, Modifier.align(Alignment.TopEnd))
-                }
-                if (!overlay) {
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(
-                            text = item.title,
-                            style = if (style == HomeStyle.Editorial) {
-                                MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Serif)
-                            } else {
-                                MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
-                            },
-                            color = studioTitleColor(item),
-                            maxLines = if (marquee) 1 else 2,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = if (marquee) Modifier.basicMarquee() else Modifier
-                        )
-                        if (item.subtitle.isNotBlank()) {
-                            Text(
-                                text = item.subtitle,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = LevyraMuted,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-                }
+            StudioLargeCard(
+                item = item,
+                style = style,
+                spec = spec,
+                aspect = aspect,
+                roundItems = roundItems,
+                isPlaying = isPlaying
+            )
+        }
+    }
+}
+
+@Composable
+private fun StudioLargeCard(
+    item: StudioShelfItem,
+    style: HomeStyle,
+    spec: HomeStyleSpec,
+    aspect: Float,
+    roundItems: Boolean,
+    isPlaying: Boolean
+) {
+    val overlay = style == HomeStyle.Immersive || roundItems
+    val marquee = style == HomeStyle.ExpressiveMax
+    Column(
+        modifier = Modifier
+            .width(spec.largeCardWidth)
+            .studioPress(item, LevyraPressScale.Surface),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(aspect)
+                .clip(RoundedCornerShape(spec.artworkCorner))
+        ) {
+            item.artwork(Modifier.fillMaxSize(), true)
+            if (overlay) {
+                StudioLargeOverlayCaption(item, marquee, Modifier.align(Alignment.BottomStart))
             }
+            StudioCurrentBadge(item, isPlaying, Modifier.align(Alignment.TopEnd))
+        }
+        if (!overlay) {
+            StudioLargeExternalCaption(item, style, marquee)
+        }
+    }
+}
+
+@Composable
+private fun StudioLargeOverlayCaption(
+    item: StudioShelfItem,
+    marquee: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Box(modifier = Modifier.fillMaxSize().background(StudioCaptionScrim))
+    Column(modifier = modifier.padding(16.dp)) {
+        Text(
+            text = item.title,
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            color = Color.White,
+            maxLines = if (marquee) 1 else 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = if (marquee) Modifier.basicMarquee() else Modifier
+        )
+        if (item.subtitle.isNotBlank()) {
+            Text(
+                text = item.subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.8f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun StudioLargeExternalCaption(
+    item: StudioShelfItem,
+    style: HomeStyle,
+    marquee: Boolean
+) {
+    val titleStyle = if (style == HomeStyle.Editorial) {
+        MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Serif)
+    } else {
+        MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            text = item.title,
+            style = titleStyle,
+            color = studioTitleColor(item),
+            maxLines = if (marquee) 1 else 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = if (marquee) Modifier.basicMarquee() else Modifier
+        )
+        if (item.subtitle.isNotBlank()) {
+            Text(
+                text = item.subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = LevyraMuted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -1254,10 +1292,11 @@ private fun ExpressiveSpotlight(
     val morph = rememberLevyraPlayMorphShape(playing = playing, animated = animationsEnabled, spinWhilePlaying = !resolving)
     val spin = rememberSpotlightMotion(animationsEnabled && playing, 0f, 360f, 44_000, reverse = false)
     val breathe = rememberSpotlightMotion(animationsEnabled, 0.18f, 0.72f, 6_800, reverse = true)
-    val outerShape = remember { MaterialShapes.Cookie12Sided.toShape() }
-    val innerShape = remember { MaterialShapes.Clover8Leaf.toShape() }
-    val stampShape = remember { MaterialShapes.Cookie6Sided.toShape() }
-    val portraitShape = remember { MaterialShapes.Cookie9Sided.toShape() }
+    val outerShape = MaterialShapes.Cookie12Sided.toShape()
+    val innerShape = MaterialShapes.Clover8Leaf.toShape()
+    val sunnyShape = MaterialShapes.Sunny.toShape()
+    val stampShape = MaterialShapes.Cookie6Sided.toShape()
+    val portraitShape = MaterialShapes.Cookie9Sided.toShape()
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
@@ -3298,8 +3337,8 @@ private fun MxBleedHero(
     val spin = rememberSpotlightMotion(hero.animationsEnabled && playing, 0f, 360f, 46_000, reverse = false)
     val breathe = rememberSpotlightMotion(hero.animationsEnabled, 0.16f, 0.84f, 7_200, reverse = true)
     val heroHeight = 540.dp
-    val sunnyShape = remember { MaterialShapes.Sunny.toShape() }
-    val cookieShape = remember { MaterialShapes.Cookie9Sided.toShape() }
+    val sunnyShape = MaterialShapes.Sunny.toShape()
+    val cookieShape = MaterialShapes.Cookie9Sided.toShape()
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
@@ -3545,16 +3584,13 @@ private fun MxBleedTitle(
     val scheme = MaterialTheme.colorScheme
     val isLight = LevyraIsLight
     val canvas = homeCanvasColor(isLight)
-    val badgeShape = remember { MaterialShapes.Sunny.toShape() }
-    val coverStampShape = remember { MaterialShapes.Cookie9Sided.toShape() }
-    val companionShapes = remember {
-        listOf(
-            MaterialShapes.Cookie9Sided.toShape(),
-            MaterialShapes.Clover4Leaf.toShape(),
-            MaterialShapes.Sunny.toShape()
-        )
-    }
-    val companions = remember(hero.companionArtworkUrls) { hero.companionArtworkUrls.take(3) }
+    val badgeShape = MaterialShapes.Sunny.toShape()
+    val coverStampShape = MaterialShapes.Cookie9Sided.toShape()
+    val companionShape1 = MaterialShapes.Cookie9Sided.toShape()
+    val companionShape2 = MaterialShapes.Clover4Leaf.toShape()
+    val companionShape3 = MaterialShapes.Sunny.toShape()
+    val companionShapes = listOf(companionShape1, companionShape2, companionShape3)
+    val companions = hero.companionArtworkUrls.take(3)
     Column(
         modifier = modifier
             .fillMaxWidth()
