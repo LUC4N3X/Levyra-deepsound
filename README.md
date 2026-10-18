@@ -216,30 +216,25 @@ Contributions and bug reports are welcome. Technical documentation and architect
 
 ## ✦ Author & credits
 
-<table align="center" width="100%">
-  <tr>
-    <td align="center" valign="middle" width="35%">
-      <a href="https://luc4n3x.pages.dev/">
-        <img src="docs/assets/levyra-signature.png?v=lounge-neon" width="160" alt="LUC4N3X — Creator &amp; Maintainer">
-      </a>
-    </td>
-    <td valign="middle" width="65%">
-      <h3>LUC4N3X</h3>
-      <p><b>Creator &amp; Maintainer</b></p>
-      <p>
-        I created Levyra and actively build and maintain the project for Android and Windows.<br>
-        I review community pull requests, fix bugs, and publish each release.
-      </p>
-      <p>
-        <a href="https://github.com/LUC4N3X"><b>GitHub</b></a>
-        &nbsp;•&nbsp;
-        <a href="https://luc4n3x.pages.dev/"><b>Website</b></a>
-      </p>
-    </td>
-  </tr>
-</table>
-
 <div align="center">
+
+<a href="https://luc4n3x.pages.dev/">
+  <img src="docs/assets/levyra-signature.png?v=lounge-neon" width="275" alt="LUC4N3X — Creator &amp; Maintainer">
+</a>
+
+### LUC4N3X
+<p><b>Creator &amp; Maintainer</b></p>
+
+<p>
+  I created Levyra and actively build and maintain the project for Android and Windows.<br>
+  I review community pull requests, fix bugs, and publish each release.
+</p>
+
+<p>
+  <a href="https://github.com/LUC4N3X"><b>GitHub</b></a>
+  &nbsp;•&nbsp;
+  <a href="https://luc4n3x.pages.dev/"><b>Website</b></a>
+</p>
 
 <p>
   <a href="https://www.codefactor.io/repository/github/luc4n3x/levyra-deepsound"><img src="https://www.codefactor.io/repository/github/luc4n3x/levyra-deepsound/badge" alt="CodeFactor"></a>
