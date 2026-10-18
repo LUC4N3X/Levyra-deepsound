@@ -23362,6 +23362,8 @@ private fun PlayerColorModeSetting(
 ) {
     val strings = LocalLevyraStrings.current
     val mode = settings.playerColorMode
+    var previewAccent by remember(settings.playerColorAccent) { mutableStateOf<Int?>(null) }
+    val effectiveAccent = previewAccent ?: settings.playerColorAccent
     SettingsTile {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -23372,7 +23374,7 @@ private fun PlayerColorModeSetting(
                     modifier = Modifier.weight(1f)
                 )
             }
-            PlayerColorModePreview(mode = mode, customAccent = settings.playerColorAccent)
+            PlayerColorModePreview(mode = mode, customAccent = effectiveAccent)
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -23402,7 +23404,12 @@ private fun PlayerColorModeSetting(
                 MiniColorEditor(
                     color = settings.playerColorAccent,
                     copy = strings.miniPlayerStudioCopy,
-                    onColor = { onSettings(settings.copy(playerColorAccent = it)) }
+                    onPreviewColor = { previewAccent = it },
+                    onCancelPreview = { previewAccent = null },
+                    onColor = {
+                        previewAccent = null
+                        onSettings(settings.copy(playerColorAccent = it))
+                    }
                 )
             }
         }
@@ -23868,6 +23875,11 @@ private fun GreetingBar(
     val dayPart = remember(strings, greetingHour) { strings.greetingDayPart(greetingHour) }
     val name = remember(strings, userName) { strings.greetingName(userName) }
     val greeting = remember(userName, strings, greetingHour) { strings.formatGreeting(userName, greetingHour) }
+    val today = remember(strings.code, greetingHour) {
+        val locale = Locale.forLanguageTag(strings.code)
+        android.icu.text.DateFormat.getInstanceForSkeleton("EEEEMMMMd", locale).format(java.util.Date())
+            .replaceFirstChar { it.titlecase(locale) }
+    }
 
     Row(
         modifier = Modifier
@@ -23886,6 +23898,7 @@ private fun GreetingBar(
             HomeGreeting(
                 dayPart = dayPart,
                 name = name,
+                today = today,
                 greeting = greeting,
                 animationsEnabled = animationsEnabled,
                 modifier = Modifier.weight(1f)
@@ -23911,6 +23924,7 @@ private fun GreetingBar(
 private fun HomeGreeting(
     dayPart: String,
     name: String,
+    today: String,
     greeting: String,
     animationsEnabled: Boolean,
     modifier: Modifier = Modifier
@@ -23937,16 +23951,40 @@ private fun HomeGreeting(
             heading()
         }
     ) {
-        HomeGreetingDayPart(
-            dayPart = dayPart,
-            prominent = name.isBlank(),
-            animationsEnabled = animationsEnabled,
-            reveal = { dayPartReveal.value }
-        )
         if (name.isNotBlank()) {
+            HomeGreetingDayPart(
+                dayPart = dayPart,
+                prominent = false,
+                animationsEnabled = animationsEnabled,
+                reveal = { dayPartReveal.value }
+            )
             HomeGreetingName(name = name, reveal = { nameReveal.value })
+        } else {
+            HomeGreetingCaption(text = today, reveal = { dayPartReveal.value })
+            HomeGreetingDayPart(
+                dayPart = dayPart,
+                prominent = true,
+                animationsEnabled = animationsEnabled,
+                reveal = { nameReveal.value }
+            )
         }
     }
+}
+
+@Composable
+private fun HomeGreetingCaption(text: String, reveal: () -> Float) {
+    Text(
+        text = text,
+        color = if (LevyraIsLight) LevyraMuted else Color.White.copy(alpha = 0.72f),
+        style = LevyraType.metadata.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.1.sp),
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.graphicsLayer {
+            val value = reveal()
+            alpha = value
+            translationY = (1f - value) * GREETING_RISE.toPx()
+        }
+    )
 }
 
 @Composable
@@ -23963,7 +24001,12 @@ private fun HomeGreetingDayPart(
         else -> Color.White.copy(alpha = 0.72f)
     }
     val style = if (prominent) {
-        LevyraType.screenTitle.copy(fontSize = 24.sp, lineHeight = 28.sp, letterSpacing = (-0.6).sp)
+        LevyraType.screenTitle.copy(
+            fontSize = GREETING_TITLE_MAX_SIZE,
+            lineHeight = 29.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = (-0.9).sp
+        )
     } else {
         LevyraType.metadata.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.1.sp)
     }
@@ -23978,10 +24021,15 @@ private fun HomeGreetingDayPart(
             style = style,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+            autoSize = if (prominent) {
+                TextAutoSize.StepBased(minFontSize = GREETING_TITLE_MIN_SIZE, maxFontSize = GREETING_TITLE_MAX_SIZE)
+            } else {
+                null
+            },
             modifier = Modifier.graphicsLayer {
                 val value = reveal()
                 alpha = value
-                translationY = (1f - value) * GREETING_RISE.toPx()
+                translationY = (1f - value) * GREETING_RISE.toPx() * if (prominent) 1.6f else 1f
             }
         )
     }
@@ -23993,12 +24041,14 @@ private fun HomeGreetingName(name: String, reveal: () -> Float) {
         text = name,
         color = if (LevyraIsLight) LevyraText else Color.White,
         style = LevyraType.screenTitle.copy(
-            fontSize = 26.sp,
+            fontSize = GREETING_TITLE_MAX_SIZE,
             lineHeight = 29.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = (-0.9).sp
         ),
-        softWrap = true,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        autoSize = TextAutoSize.StepBased(minFontSize = GREETING_TITLE_MIN_SIZE, maxFontSize = GREETING_TITLE_MAX_SIZE),
         modifier = Modifier
             .fillMaxWidth()
             .graphicsLayer {
@@ -24015,6 +24065,8 @@ private fun HomeGreetingName(name: String, reveal: () -> Float) {
 
 private const val GREETING_NAME_STAGGER_MS = 90L
 private val GREETING_RISE = 14.dp
+private val GREETING_TITLE_MAX_SIZE = 26.sp
+private val GREETING_TITLE_MIN_SIZE = 17.sp
 
 @Composable
 internal fun rememberCurrentGreetingHour() = produceState(

@@ -11,6 +11,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -39,6 +42,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -64,14 +68,17 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DriveFileRenameOutline
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -79,6 +86,8 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderState
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.toShape
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.toArgb
@@ -91,8 +100,10 @@ import androidx.compose.ui.window.DialogProperties
 import com.luc4n3x.levyra.domain.LevyraCustomTheme
 import com.luc4n3x.levyra.domain.LevyraCustomThemes
 import com.luc4n3x.levyra.ui.LevyraGlassStyle
+import com.luc4n3x.levyra.ui.i18n.ColorPickerText
 import com.luc4n3x.levyra.ui.i18n.ThemeLibraryCopy
 import com.luc4n3x.levyra.ui.i18n.ThemeLibraryText
+import com.luc4n3x.levyra.ui.i18n.colorPickerCopy
 import com.luc4n3x.levyra.ui.i18n.glassStudioCopy
 import com.luc4n3x.levyra.ui.i18n.themeLibraryCopy
 import kotlin.math.roundToInt
@@ -129,10 +140,14 @@ internal fun LevyraThemeStudioOverlay(
 ) {
     val strings = LocalLevyraStrings.current
     val library = strings.themeLibraryCopy
-    val preview = rememberThemeStudioPreview(selectedPresetId, accent, pureBlack, customThemes)
+    var previewAccent by remember(selectedPresetId, accent) { mutableStateOf<Int?>(null) }
+    val basePreview = rememberThemeStudioPreview(selectedPresetId, accent, pureBlack, customThemes)
+    val preview = rememberThemeStudioPreview(selectedPresetId, previewAccent ?: accent, pureBlack, customThemes)
     val presetRows = remember { themeStudioRows() }
     val defaultPresetId = LevyraThemes.defaultPresetId
     val dialogs = remember { ThemeStudioDialogState() }
+
+    val navigationBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     Box(modifier = Modifier.fillMaxSize().background(LevyraInk)) {
         LazyColumn(
@@ -141,7 +156,7 @@ internal fun LevyraThemeStudioOverlay(
                 start = LevyraPlayerDesign.GutterCompact,
                 end = LevyraPlayerDesign.GutterCompact,
                 top = LevyraPlayerDesign.SpaceMd,
-                bottom = 140.dp
+                bottom = navigationBarBottom + LevyraPlayerDesign.SpaceXl
             ),
             verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceLg)
         ) {
@@ -324,8 +339,12 @@ internal fun LevyraThemeStudioOverlay(
                             strings.themeAccentPurple,
                             strings.themeAccentYellow
                         ),
-                        presetAccent = preview.accent,
-                        onSelect = onSelectAccent
+                        presetAccent = basePreview.accent,
+                        onPreviewAccent = { previewAccent = it },
+                        onSelect = {
+                            previewAccent = null
+                            onSelectAccent(it)
+                        }
                     )
                 }
             }
@@ -540,13 +559,11 @@ private fun CustomThemeRole.label(copy: ThemeLibraryCopy): String = when (this) 
     CustomThemeRole.Accent -> copy[ThemeLibraryText.Accent]
 }
 
-internal fun parseThemeHex(raw: String): Int? {
-    val digits = raw.trim().removePrefix("#")
-    if (digits.length != 6 || digits.any { it !in "0123456789abcdefABCDEF" }) return null
-    return (0xFF000000 or digits.toLong(16)).toInt()
-}
+internal fun parseThemeHex(raw: String): Int? =
+    com.luc4n3x.levyra.ui.components.parseLevyraHexColor(raw)
 
-internal fun formatThemeHex(color: Int): String = "%06X".format(color and 0xFFFFFF)
+internal fun formatThemeHex(color: Int): String =
+    com.luc4n3x.levyra.ui.components.formatLevyraHexColor(color)
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -689,8 +706,16 @@ private fun ThemeRoleEditor(
     onColor: (Int) -> Unit
 ) {
     val current = draft.colorOf(role)
-    var hex by remember(role, current) { mutableStateOf(formatThemeHex(current)) }
+    var hex by remember(role) { mutableStateOf(formatThemeHex(current)) }
+    var showPicker by remember(role) { mutableStateOf(false) }
+    var savedBeforePicker by remember(role) { mutableStateOf(current) }
+    LaunchedEffect(role, current, showPicker) {
+        if (!showPicker) {
+            hex = formatThemeHex(current)
+        }
+    }
     val parsed = parseThemeHex(hex)
+    val swatches = themeRoleSwatches(role, draft.isLight)
     Column(verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)) {
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm),
@@ -732,39 +757,51 @@ private fun ThemeRoleEditor(
             horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs),
             verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs)
         ) {
-            themeRoleSwatches(role, draft.isLight).forEach { swatch ->
+            swatches.forEach { swatch ->
                 ThemeAccentDot(
                     color = Color(swatch),
                     selected = swatch == current,
                     label = "#" + formatThemeHex(swatch),
                     outlined = true,
-                    onClick = { onColor(swatch) }
+                    onClick = {
+                        hex = formatThemeHex(swatch)
+                        onColor(swatch)
+                    }
                 )
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(LevyraPlayerDesign.ShapeXs)
-                    .background(Color(parsed ?: current))
-                    .border(1.dp, LevyraMuted.copy(alpha = 0.4f), LevyraPlayerDesign.ShapeXs)
-            )
-            OutlinedTextField(
-                value = hex,
-                onValueChange = { raw ->
-                    val cleaned = raw.removePrefix("#").filter { it in "0123456789abcdefABCDEF" }.take(6).uppercase()
-                    hex = cleaned
-                    parseThemeHex(cleaned)?.let(onColor)
-                },
-                singleLine = true,
-                isError = parsed == null,
-                prefix = { Text("#") },
-                label = { Text("${role.label(copy)} · ${copy[ThemeLibraryText.Hex]}") },
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Done),
-                modifier = Modifier.weight(1f)
-            )
-        }
+        com.luc4n3x.levyra.ui.components.LevyraColorInputAndPickerRow(
+            color = parsed ?: current,
+            hexText = hex,
+            hexLabel = "${role.label(copy)} · ${copy[ThemeLibraryText.Hex]}",
+            onHexTextChange = { raw ->
+                val cleaned = com.luc4n3x.levyra.ui.components.sanitizeHexInput(raw)
+                hex = cleaned
+                parseThemeHex(cleaned)?.let(onColor)
+            },
+            onOpenPicker = {
+                savedBeforePicker = current
+                showPicker = true
+            }
+        )
+    }
+    if (showPicker) {
+        com.luc4n3x.levyra.ui.components.LevyraAdvancedColorPickerDialog(
+            initialColor = savedBeforePicker,
+            presets = swatches,
+            title = role.label(copy),
+            onPreviewColor = onColor,
+            onConfirmColor = { chosen ->
+                showPicker = false
+                hex = formatThemeHex(chosen)
+                onColor(chosen)
+            },
+            onDismiss = {
+                showPicker = false
+                hex = formatThemeHex(savedBeforePicker)
+                onColor(savedBeforePicker)
+            }
+        )
     }
 }
 
@@ -1102,47 +1139,198 @@ private fun ThemePresetTile(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ThemeAccentPicker(
     selected: Int,
     fromPresetLabel: String,
     accentLabels: List<String>,
     presetAccent: Color,
+    onPreviewAccent: (Int?) -> Unit = {},
     onSelect: (Int) -> Unit
 ) {
-    FlowRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm),
-        verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs)
-    ) {
-        ThemeAccentDot(
-            color = presetAccent,
-            selected = selected == 0,
-            label = fromPresetLabel,
-            outlined = true,
-            onClick = { onSelect(0) }
-        )
-        LevyraThemeAccents.forEachIndexed { index, value ->
-            ThemeAccentDot(
-                color = Color(value),
-                selected = selected == value,
-                label = accentLabels[index],
-                outlined = false,
-                onClick = { onSelect(value) }
-            )
+    val strings = LocalLevyraStrings.current
+    val pickerCopy = strings.colorPickerCopy
+    var showCustomPicker by remember { mutableStateOf(false) }
+    val isCustomSelected = selected != 0 && selected !in LevyraThemeAccents
+    val activeArgb = if (selected != 0) selected else presetAccent.toArgb()
+    val activeColor = Color(activeArgb)
+    var pickerInitialColor by remember { mutableStateOf(activeArgb) }
+    val badgeShape = MaterialShapes.Cookie9Sided.toShape()
+
+    Column(verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)) {
+        val openPicker = {
+            pickerInitialColor = activeArgb
+            showCustomPicker = true
         }
+        val accentSlots: List<@Composable () -> Unit> = buildList {
+            add {
+                ThemeAccentDot(
+                    color = presetAccent,
+                    selected = selected == 0,
+                    label = fromPresetLabel,
+                    outlined = true,
+                    onClick = { onSelect(0) }
+                )
+            }
+            LevyraThemeAccents.forEachIndexed { index, value ->
+                add {
+                    ThemeAccentDot(
+                        color = Color(value),
+                        selected = selected == value,
+                        label = accentLabels[index],
+                        outlined = false,
+                        onClick = { onSelect(value) }
+                    )
+                }
+            }
+            add {
+                if (isCustomSelected) {
+                    ThemeAccentDot(
+                        color = Color(selected),
+                        selected = true,
+                        label = "#" + formatThemeHex(selected),
+                        outlined = true,
+                        onClick = openPicker
+                    )
+                } else {
+                    ThemeAccentDot(
+                        color = LevyraPanel,
+                        selected = false,
+                        label = pickerCopy[ColorPickerText.OpenPicker],
+                        outlined = true,
+                        icon = Icons.Rounded.Palette,
+                        onClick = openPicker
+                    )
+                }
+            }
+        }
+        val columns = (accentSlots.size + 1) / 2
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs)
+        ) {
+            accentSlots.chunked(columns).forEach { rowSlots ->
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    rowSlots.forEach { slot ->
+                        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                            slot()
+                        }
+                    }
+                    repeat(columns - rowSlots.size) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+
+        Surface(
+            onClick = {
+                pickerInitialColor = activeArgb
+                showCustomPicker = true
+            },
+            shape = RoundedCornerShape(24.dp),
+            color = LevyraPanel,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(badgeShape)
+                        .background(activeColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Palette,
+                        contentDescription = null,
+                        tint = LevyraOnAccent,
+                        modifier = Modifier.size(21.dp)
+                    )
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = pickerCopy[ColorPickerText.OpenPicker],
+                            color = LevyraText,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Black,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(activeColor.copy(alpha = 0.20f))
+                                .padding(horizontal = 9.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = "#${formatThemeHex(activeArgb)}",
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = LevyraText,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+                    }
+                    Text(
+                        text = pickerCopy[ColorPickerText.Subtitle],
+                        color = LevyraMuted,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp
+                    )
+                }
+            }
+        }
+    }
+
+    if (showCustomPicker) {
+        com.luc4n3x.levyra.ui.components.LevyraAdvancedColorPickerDialog(
+            initialColor = pickerInitialColor,
+            presets = LevyraThemeAccents,
+            title = strings.themeAccent,
+            onPreviewColor = { preview -> onPreviewAccent(preview) },
+            onConfirmColor = { chosen ->
+                showCustomPicker = false
+                onPreviewAccent(null)
+                val unchangedPresetAccent = selected == 0 && chosen == pickerInitialColor or 0xFF000000.toInt()
+                if (!unchangedPresetAccent) onSelect(chosen)
+            },
+            onDismiss = {
+                showCustomPicker = false
+                onPreviewAccent(null)
+            }
+        )
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ThemeAccentDot(
     color: Color,
     selected: Boolean,
     label: String,
     outlined: Boolean,
+    icon: ImageVector? = null,
     onClick: () -> Unit
 ) {
+    val activeShape = MaterialShapes.Cookie9Sided.toShape()
+    val shape = if (selected) activeShape else CircleShape
     Box(
         modifier = Modifier
             .size(LevyraPlayerDesign.MinimumTouchTarget)
@@ -1157,13 +1345,13 @@ private fun ThemeAccentDot(
     ) {
         Surface(
             color = color,
-            shape = CircleShape,
-            border = if (outlined || selected) {
-                BorderStroke(2.dp, if (selected) LevyraText else LevyraMuted.copy(alpha = 0.4f))
+            shape = shape,
+            border = if (outlined && !selected) {
+                BorderStroke(1.5.dp, LevyraMuted.copy(alpha = 0.4f))
             } else {
                 null
             },
-            modifier = Modifier.size(30.dp)
+            modifier = Modifier.size(if (selected) 36.dp else 30.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 if (selected) {
@@ -1171,7 +1359,14 @@ private fun ThemeAccentDot(
                         Icons.Rounded.Check,
                         contentDescription = null,
                         tint = LevyraOnAccent,
-                        modifier = Modifier.size(15.dp)
+                        modifier = Modifier.size(16.dp)
+                    )
+                } else if (icon != null) {
+                    Icon(
+                        icon,
+                        contentDescription = null,
+                        tint = LevyraText,
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
