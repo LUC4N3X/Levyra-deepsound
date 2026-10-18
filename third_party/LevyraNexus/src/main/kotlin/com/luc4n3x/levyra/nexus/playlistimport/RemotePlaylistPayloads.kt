@@ -149,8 +149,8 @@ object RemotePlaylistPayloads {
                 artists = track["artists"].jsonObject()?.get("items").jsonArray().orEmpty()
                     .mapNotNull { it.jsonObject()?.get("profile").jsonObject()?.string("name")?.takeIf(String::isNotBlank) },
                 album = album?.string("name").orEmpty(),
-                durationMs = (track["trackDuration"].jsonObject() ?: track["duration"].jsonObject())
-                    ?.long("totalMilliseconds")
+                durationMs = (track["trackDuration"].jsonObject()?.long("totalMilliseconds")
+                    ?: track["duration"].jsonObject()?.long("totalMilliseconds"))
                     ?.coerceAtLeast(0L)
                     ?: 0L,
                 isrc = track["externalIds"].jsonObject()?.string("isrc").orEmpty(),
