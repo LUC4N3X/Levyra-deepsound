@@ -45,4 +45,41 @@
     <string name="widget_studio_immersive_desc">Okładka, kolejka, teksty i więcej</string>
     <string name="widget_studio_vinyl_desc">Odtwarzacz z okładką w stylu winylu</string>
     <string name="widget_studio_quick_desc">Flow, ulubione, pobrane i więcej</string>
+    <!-- Android Auto browse tree -->
+    <string name="car_root_subtitle">Muzyka zoptymalizowana dla Android Auto</string>
+    <string name="car_home_subtitle">Szybkie miksy, offline i listy przebojów</string>
+    <string name="car_queue_title">Kolejka</string>
+    <string name="car_queue_subtitle">Trwała kolejka wspólna z Levyra</string>
+    <string name="car_recommended_title">Polecane</string>
+    <string name="car_recommended_subtitle">Profil muzyczny, ulubione i ostatnio słuchane</string>
+    <string name="car_albums_title">Albumy</string>
+    <string name="car_albums_subtitle">Lokalne i proponowane albumy</string>
+    <string name="car_artists_title">Wykonawcy</string>
+    <string name="car_artists_subtitle">Najczęściej słuchani i obserwowani wykonawcy</string>
+    <string name="car_flow_subtitle">Osobiste radio Levyra</string>
+    <string name="car_favorites_subtitle">Zapisane utwory</string>
+    <string name="car_downloads_subtitle">Muzyka dostępna offline</string>
+    <string name="car_playlists_subtitle">Kolekcje utworzone w aplikacji</string>
+    <string name="car_recents_title">Ostatnio słuchane</string>
+    <string name="car_recents_subtitle">Ostatnio znalezione utwory</string>
+    <string name="car_home_recommended_title">Dla ciebie</string>
+    <string name="car_home_recommended_subtitle">Rekomendacje z profilu muzycznego</string>
+    <string name="car_home_driver_title">Do jazdy</string>
+    <string name="car_home_driver_subtitle">Ulubione, ostatnie i energetyczne utwory</string>
+    <string name="car_home_offline_title">Gotowe offline</string>
+    <string name="car_home_offline_subtitle">Pobrane utwory odtwarzane bez sieci</string>
+    <string name="car_home_top_local_title">Lokalny top</string>
+    <string name="car_home_top_local_subtitle">Aktualna lista przebojów dla wybranego języka</string>
+    <string name="car_home_flow_subtitle">Ciągły osobisty miks</string>
+    <string name="car_playlist_unavailable">Playlista niedostępna</string>
+    <string name="car_album_unavailable">Album niedostępny</string>
+    <string name="car_artist_unavailable">Wykonawca niedostępny</string>
+    <string name="car_item_unavailable">Element niedostępny</string>
+    <string name="car_artist_folder_subtitle">Utwory, ulubione i sugestie</string>
+    <plurals name="car_tracks_count">
+        <item quantity="one">%1$d utwór</item>
+        <item quantity="few">%1$d utwory</item>
+        <item quantity="many">%1$d utworów</item>
+        <item quantity="other">%1$d utworu</item>
+    </plurals>
 </resources>

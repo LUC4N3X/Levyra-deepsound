@@ -45,4 +45,40 @@
     <string name="widget_studio_immersive_desc">עטיפה, תור, מילים ועוד</string>
     <string name="widget_studio_vinyl_desc">נגן עם עטיפה בסגנון תקליט</string>
     <string name="widget_studio_quick_desc">Flow, מועדפים, הורדות ועוד</string>
+    <!-- Android Auto browse tree -->
+    <string name="car_root_subtitle">מוזיקה מותאמת ל-Android Auto</string>
+    <string name="car_home_subtitle">מיקסים מהירים, אופליין ומצעדים</string>
+    <string name="car_queue_title">תור</string>
+    <string name="car_queue_subtitle">תור קבוע המשותף עם Levyra</string>
+    <string name="car_recommended_title">מומלצים</string>
+    <string name="car_recommended_subtitle">פרופיל מוזיקלי, מועדפים והאזנות אחרונות</string>
+    <string name="car_albums_title">אלבומים</string>
+    <string name="car_albums_subtitle">אלבומים מקומיים ומוצעים</string>
+    <string name="car_artists_title">אמנים</string>
+    <string name="car_artists_subtitle">האמנים הכי מושמעים ונעקבים</string>
+    <string name="car_flow_subtitle">רדיו אישי של Levyra</string>
+    <string name="car_favorites_subtitle">שירים שמורים</string>
+    <string name="car_downloads_subtitle">מוזיקה זמינה אופליין</string>
+    <string name="car_playlists_subtitle">אוספים שנוצרו באפליקציה</string>
+    <string name="car_recents_title">האזנות אחרונות</string>
+    <string name="car_recents_subtitle">שירים שנמצאו לאחרונה</string>
+    <string name="car_home_recommended_title">בשבילך</string>
+    <string name="car_home_recommended_subtitle">המלצות מהפרופיל המוזיקלי</string>
+    <string name="car_home_driver_title">לנהיגה</string>
+    <string name="car_home_driver_subtitle">מועדפים, אחרונים ושירים אנרגטיים</string>
+    <string name="car_home_offline_title">מוכן לאופליין</string>
+    <string name="car_home_offline_subtitle">הורדות שמתנגנות בלי רשת</string>
+    <string name="car_home_top_local_title">הכי מושמעים מקומית</string>
+    <string name="car_home_top_local_subtitle">מצעד מוזיקה מעודכן לשפה שנבחרה</string>
+    <string name="car_home_flow_subtitle">מיקס אישי רציף</string>
+    <string name="car_playlist_unavailable">הפלייליסט לא זמין</string>
+    <string name="car_album_unavailable">האלבום לא זמין</string>
+    <string name="car_artist_unavailable">האמן לא זמין</string>
+    <string name="car_item_unavailable">הפריט לא זמין</string>
+    <string name="car_artist_folder_subtitle">שירים, מועדפים והצעות</string>
+    <plurals name="car_tracks_count">
+        <item quantity="one">%1$d שיר</item>
+        <item quantity="two">%1$d שירים</item>
+        <item quantity="other">%1$d שירים</item>
+    </plurals>
 </resources>

@@ -45,4 +45,38 @@
     <string name="widget_studio_immersive_desc">Ảnh bìa, hàng đợi, lời bài hát và hơn thế</string>
     <string name="widget_studio_vinyl_desc">Trình phát có ảnh bìa kiểu đĩa than</string>
     <string name="widget_studio_quick_desc">Flow, yêu thích, tải xuống và hơn thế</string>
+    <!-- Android Auto browse tree -->
+    <string name="car_root_subtitle">Nhạc được tối ưu cho Android Auto</string>
+    <string name="car_home_subtitle">Mix nhanh, ngoại tuyến và bảng xếp hạng</string>
+    <string name="car_queue_title">Hàng đợi</string>
+    <string name="car_queue_subtitle">Hàng đợi lâu dài dùng chung với Levyra</string>
+    <string name="car_recommended_title">Đề xuất</string>
+    <string name="car_recommended_subtitle">Hồ sơ âm nhạc, yêu thích và nghe gần đây</string>
+    <string name="car_albums_title">Album</string>
+    <string name="car_albums_subtitle">Album trên máy và được gợi ý</string>
+    <string name="car_artists_title">Nghệ sĩ</string>
+    <string name="car_artists_subtitle">Nghệ sĩ được nghe và theo dõi nhiều nhất</string>
+    <string name="car_flow_subtitle">Radio cá nhân Levyra</string>
+    <string name="car_favorites_subtitle">Bài hát đã lưu</string>
+    <string name="car_downloads_subtitle">Nhạc có sẵn ngoại tuyến</string>
+    <string name="car_playlists_subtitle">Bộ sưu tập tạo trong ứng dụng</string>
+    <string name="car_recents_title">Nghe gần đây</string>
+    <string name="car_recents_subtitle">Bài hát tìm thấy gần đây</string>
+    <string name="car_home_recommended_title">Dành cho bạn</string>
+    <string name="car_home_recommended_subtitle">Gợi ý từ hồ sơ âm nhạc</string>
+    <string name="car_home_driver_title">Khi lái xe</string>
+    <string name="car_home_driver_subtitle">Yêu thích, gần đây và bài hát sôi động</string>
+    <string name="car_home_offline_title">Sẵn sàng ngoại tuyến</string>
+    <string name="car_home_offline_subtitle">Bản tải xuống phát được khi không có mạng</string>
+    <string name="car_home_top_local_title">Top địa phương</string>
+    <string name="car_home_top_local_subtitle">Bảng xếp hạng cập nhật cho ngôn ngữ đã chọn</string>
+    <string name="car_home_flow_subtitle">Mix cá nhân liên tục</string>
+    <string name="car_playlist_unavailable">Danh sách phát không khả dụng</string>
+    <string name="car_album_unavailable">Album không khả dụng</string>
+    <string name="car_artist_unavailable">Nghệ sĩ không khả dụng</string>
+    <string name="car_item_unavailable">Mục không khả dụng</string>
+    <string name="car_artist_folder_subtitle">Bài hát, yêu thích và gợi ý</string>
+    <plurals name="car_tracks_count">
+        <item quantity="other">%1$d bài hát</item>
+    </plurals>
 </resources>

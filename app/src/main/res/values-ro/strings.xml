@@ -45,4 +45,40 @@
     <string name="widget_studio_immersive_desc">Copertă, coadă, versuri și altele</string>
     <string name="widget_studio_vinyl_desc">Player cu copertă în stil vinil</string>
     <string name="widget_studio_quick_desc">Flow, favorite, descărcări și altele</string>
+    <!-- Android Auto browse tree -->
+    <string name="car_root_subtitle">Muzică optimizată pentru Android Auto</string>
+    <string name="car_home_subtitle">Mixuri rapide, offline și topuri</string>
+    <string name="car_queue_title">Coadă</string>
+    <string name="car_queue_subtitle">Coadă persistentă partajată cu Levyra</string>
+    <string name="car_recommended_title">Recomandate</string>
+    <string name="car_recommended_subtitle">Profil muzical, favorite și ascultări recente</string>
+    <string name="car_albums_title">Albume</string>
+    <string name="car_albums_subtitle">Albume locale și sugerate</string>
+    <string name="car_artists_title">Artiști</string>
+    <string name="car_artists_subtitle">Cei mai ascultați și urmăriți artiști</string>
+    <string name="car_flow_subtitle">Radio personal Levyra</string>
+    <string name="car_favorites_subtitle">Piese salvate</string>
+    <string name="car_downloads_subtitle">Muzică disponibilă offline</string>
+    <string name="car_playlists_subtitle">Colecții create în aplicație</string>
+    <string name="car_recents_title">Ascultate recent</string>
+    <string name="car_recents_subtitle">Piese găsite recent</string>
+    <string name="car_home_recommended_title">Pentru tine</string>
+    <string name="car_home_recommended_subtitle">Recomandări din profilul muzical</string>
+    <string name="car_home_driver_title">Pentru condus</string>
+    <string name="car_home_driver_subtitle">Favorite, recente și piese energice</string>
+    <string name="car_home_offline_title">Gata offline</string>
+    <string name="car_home_offline_subtitle">Descărcări redate fără rețea</string>
+    <string name="car_home_top_local_title">Top local</string>
+    <string name="car_home_top_local_subtitle">Top actualizat pentru limba aleasă</string>
+    <string name="car_home_flow_subtitle">Mix personal continuu</string>
+    <string name="car_playlist_unavailable">Playlist indisponibil</string>
+    <string name="car_album_unavailable">Album indisponibil</string>
+    <string name="car_artist_unavailable">Artist indisponibil</string>
+    <string name="car_item_unavailable">Element indisponibil</string>
+    <string name="car_artist_folder_subtitle">Piese, favorite și sugestii</string>
+    <plurals name="car_tracks_count">
+        <item quantity="one">%1$d piesă</item>
+        <item quantity="few">%1$d piese</item>
+        <item quantity="other">%1$d de piese</item>
+    </plurals>
 </resources>

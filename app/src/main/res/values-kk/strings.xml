@@ -45,4 +45,39 @@
     <string name="widget_studio_immersive_desc">Мұқаба, кезек, мәтіндер және т.б.</string>
     <string name="widget_studio_vinyl_desc">Винил стиліндегі мұқабалы ойнатқыш</string>
     <string name="widget_studio_quick_desc">Flow, таңдаулылар, жүктеулер және т.б.</string>
+    <!-- Android Auto browse tree -->
+    <string name="car_root_subtitle">Android Auto үшін оңтайландырылған музыка</string>
+    <string name="car_home_subtitle">Жылдам микстер, офлайн және чарттар</string>
+    <string name="car_queue_title">Кезек</string>
+    <string name="car_queue_subtitle">Levyra-мен ортақ тұрақты кезек</string>
+    <string name="car_recommended_title">Ұсынылғандар</string>
+    <string name="car_recommended_subtitle">Музыкалық профиль, таңдаулылар және соңғы тыңдалғандар</string>
+    <string name="car_albums_title">Альбомдар</string>
+    <string name="car_albums_subtitle">Жергілікті және ұсынылған альбомдар</string>
+    <string name="car_artists_title">Орындаушылар</string>
+    <string name="car_artists_subtitle">Ең көп тыңдалған және жазылған орындаушылар</string>
+    <string name="car_flow_subtitle">Levyra жеке радиосы</string>
+    <string name="car_favorites_subtitle">Сақталған әндер</string>
+    <string name="car_downloads_subtitle">Офлайн қолжетімді музыка</string>
+    <string name="car_playlists_subtitle">Қолданбада жасалған жинақтар</string>
+    <string name="car_recents_title">Соңғы тыңдалғандар</string>
+    <string name="car_recents_subtitle">Жақында табылған әндер</string>
+    <string name="car_home_recommended_title">Сіз үшін</string>
+    <string name="car_home_recommended_subtitle">Музыкалық профильден ұсыныстар</string>
+    <string name="car_home_driver_title">Жүргізуге</string>
+    <string name="car_home_driver_subtitle">Таңдаулылар, соңғылар және серпінді әндер</string>
+    <string name="car_home_offline_title">Офлайнға дайын</string>
+    <string name="car_home_offline_subtitle">Желісіз ойнатылатын жүктеулер</string>
+    <string name="car_home_top_local_title">Жергілікті топ</string>
+    <string name="car_home_top_local_subtitle">Таңдалған тілге арналған жаңартылған чарт</string>
+    <string name="car_home_flow_subtitle">Үздіксіз жеке микс</string>
+    <string name="car_playlist_unavailable">Ойнату тізімі қолжетімсіз</string>
+    <string name="car_album_unavailable">Альбом қолжетімсіз</string>
+    <string name="car_artist_unavailable">Орындаушы қолжетімсіз</string>
+    <string name="car_item_unavailable">Элемент қолжетімсіз</string>
+    <string name="car_artist_folder_subtitle">Әндер, таңдаулылар және ұсыныстар</string>
+    <plurals name="car_tracks_count">
+        <item quantity="one">%1$d ән</item>
+        <item quantity="other">%1$d ән</item>
+    </plurals>
 </resources>

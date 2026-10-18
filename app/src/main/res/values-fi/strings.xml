@@ -45,4 +45,39 @@
     <string name="widget_studio_immersive_desc">Kansikuva, jono, sanoitukset ja muuta</string>
     <string name="widget_studio_vinyl_desc">Vinyylityylinen soitin kansikuvalla</string>
     <string name="widget_studio_quick_desc">Flow, suosikit, lataukset ja muuta</string>
+    <!-- Android Auto browse tree -->
+    <string name="car_root_subtitle">Android Autolle optimoitua musiikkia</string>
+    <string name="car_home_subtitle">Pikamiksit, offline ja listat</string>
+    <string name="car_queue_title">Jono</string>
+    <string name="car_queue_subtitle">Pysyvä jono jaettuna Levyran kanssa</string>
+    <string name="car_recommended_title">Suositellut</string>
+    <string name="car_recommended_subtitle">Musiikkiprofiili, suosikit ja viimeaikaiset kuuntelut</string>
+    <string name="car_albums_title">Albumit</string>
+    <string name="car_albums_subtitle">Paikalliset ja ehdotetut albumit</string>
+    <string name="car_artists_title">Artistit</string>
+    <string name="car_artists_subtitle">Kuunnelluimmat ja seuratut artistit</string>
+    <string name="car_flow_subtitle">Henkilökohtainen Levyra-radio</string>
+    <string name="car_favorites_subtitle">Tallennetut kappaleet</string>
+    <string name="car_downloads_subtitle">Offline-käytössä oleva musiikki</string>
+    <string name="car_playlists_subtitle">Sovelluksessa luodut kokoelmat</string>
+    <string name="car_recents_title">Viimeksi kuunnellut</string>
+    <string name="car_recents_subtitle">Äskettäin löydetyt kappaleet</string>
+    <string name="car_home_recommended_title">Sinulle</string>
+    <string name="car_home_recommended_subtitle">Suositukset musiikkiprofiilista</string>
+    <string name="car_home_driver_title">Ajamiseen</string>
+    <string name="car_home_driver_subtitle">Suosikit, viimeisimmät ja energiset kappaleet</string>
+    <string name="car_home_offline_title">Valmis offline-käyttöön</string>
+    <string name="car_home_offline_subtitle">Lataukset, jotka toimivat ilman verkkoa</string>
+    <string name="car_home_top_local_title">Paikallinen top</string>
+    <string name="car_home_top_local_subtitle">Päivitetty lista valitulle kielelle</string>
+    <string name="car_home_flow_subtitle">Jatkuva henkilökohtainen miksi</string>
+    <string name="car_playlist_unavailable">Soittolista ei ole saatavilla</string>
+    <string name="car_album_unavailable">Albumi ei ole saatavilla</string>
+    <string name="car_artist_unavailable">Artisti ei ole saatavilla</string>
+    <string name="car_item_unavailable">Kohde ei ole saatavilla</string>
+    <string name="car_artist_folder_subtitle">Kappaleet, suosikit ja ehdotukset</string>
+    <plurals name="car_tracks_count">
+        <item quantity="one">%1$d kappale</item>
+        <item quantity="other">%1$d kappaletta</item>
+    </plurals>
 </resources>

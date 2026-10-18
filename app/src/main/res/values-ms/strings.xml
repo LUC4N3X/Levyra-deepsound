@@ -45,4 +45,38 @@
     <string name="widget_studio_immersive_desc">Kulit album, baris gilir, lirik dan banyak lagi</string>
     <string name="widget_studio_vinyl_desc">Pemain dengan kulit album gaya piring hitam</string>
     <string name="widget_studio_quick_desc">Flow, kegemaran, muat turun dan banyak lagi</string>
+    <!-- Android Auto browse tree -->
+    <string name="car_root_subtitle">Muzik dioptimumkan untuk Android Auto</string>
+    <string name="car_home_subtitle">Campuran pantas, luar talian dan carta</string>
+    <string name="car_queue_title">Baris gilir</string>
+    <string name="car_queue_subtitle">Baris gilir kekal dikongsi dengan Levyra</string>
+    <string name="car_recommended_title">Disyorkan</string>
+    <string name="car_recommended_subtitle">Profil muzik, kegemaran dan dengaran terkini</string>
+    <string name="car_albums_title">Album</string>
+    <string name="car_albums_subtitle">Album tempatan dan dicadangkan</string>
+    <string name="car_artists_title">Artis</string>
+    <string name="car_artists_subtitle">Artis paling kerap didengar dan diikuti</string>
+    <string name="car_flow_subtitle">Radio peribadi Levyra</string>
+    <string name="car_favorites_subtitle">Lagu disimpan</string>
+    <string name="car_downloads_subtitle">Muzik tersedia di luar talian</string>
+    <string name="car_playlists_subtitle">Koleksi yang dibuat dalam apl</string>
+    <string name="car_recents_title">Dengaran terkini</string>
+    <string name="car_recents_subtitle">Lagu yang ditemui baru-baru ini</string>
+    <string name="car_home_recommended_title">Untuk anda</string>
+    <string name="car_home_recommended_subtitle">Cadangan daripada profil muzik</string>
+    <string name="car_home_driver_title">Untuk memandu</string>
+    <string name="car_home_driver_subtitle">Kegemaran, terkini dan lagu bertenaga</string>
+    <string name="car_home_offline_title">Sedia luar talian</string>
+    <string name="car_home_offline_subtitle">Muat turun yang boleh dimainkan tanpa rangkaian</string>
+    <string name="car_home_top_local_title">Top tempatan</string>
+    <string name="car_home_top_local_subtitle">Carta muzik dikemas kini untuk bahasa pilihan</string>
+    <string name="car_home_flow_subtitle">Campuran peribadi berterusan</string>
+    <string name="car_playlist_unavailable">Senarai main tidak tersedia</string>
+    <string name="car_album_unavailable">Album tidak tersedia</string>
+    <string name="car_artist_unavailable">Artis tidak tersedia</string>
+    <string name="car_item_unavailable">Item tidak tersedia</string>
+    <string name="car_artist_folder_subtitle">Lagu, kegemaran dan cadangan</string>
+    <plurals name="car_tracks_count">
+        <item quantity="other">%1$d lagu</item>
+    </plurals>
 </resources>

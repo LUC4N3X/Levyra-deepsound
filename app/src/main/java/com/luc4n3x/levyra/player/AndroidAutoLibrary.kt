@@ -73,6 +73,8 @@ class AndroidAutoLibrary(context: Context) {
     private val queueEngine = PersistentQueueEngine.get(appContext)
     private val catalog = ConcurrentHashMap<String, Track>()
     private val folders = ConcurrentHashMap<String, MediaItem>()
+    @Volatile
+    private var foldersLocale: Locale? = null
     private val albumFolders = ConcurrentHashMap<String, Pair<String, String>>()
     private val artistFolders = ConcurrentHashMap<String, String>()
     private val searchCacheLock = Any()
@@ -124,7 +126,7 @@ class AndroidAutoLibrary(context: Context) {
     }
 
     suspend fun item(mediaId: String): MediaItem = withContext(Dispatchers.IO) {
-        folders[mediaId] ?: catalog[mediaId]?.let { trackItem(it, mediaId) } ?: when {
+        localizedFolders()[mediaId] ?: catalog[mediaId]?.let { trackItem(it, mediaId) } ?: when {
             mediaId == ID_ROOT -> root()
             mediaId == ID_HOME -> folder(
                 ID_HOME,
@@ -166,6 +168,8 @@ class AndroidAutoLibrary(context: Context) {
                 appContext.getString(R.string.car_home_flow_title),
                 appContext.getString(R.string.car_home_flow_subtitle)
             )
+            mediaId == ID_HOME_DRIVER || mediaId == ID_HOME_OFFLINE || mediaId == ID_HOME_TOP_IT ->
+                homeChildren().first { it.mediaId == mediaId }
             mediaId == ID_FAVORITES -> folder(
                 ID_FAVORITES,
                 appContext.getString(R.string.car_favorites),
@@ -342,8 +346,17 @@ class AndroidAutoLibrary(context: Context) {
         )
     )
 
+    private fun localizedFolders(): ConcurrentHashMap<String, MediaItem> {
+        val locale = appContext.resources.configuration.locales[0]
+        if (locale != foldersLocale) {
+            folders.clear()
+            foldersLocale = locale
+        }
+        return folders
+    }
+
     private fun folder(id: String, title: String, subtitle: String): MediaItem {
-        return folders.getOrPut(id) {
+        return localizedFolders().getOrPut(id) {
             MediaItem.Builder()
                 .setMediaId(id)
                 .setMediaMetadata(
@@ -632,9 +645,9 @@ class AndroidAutoLibrary(context: Context) {
             .sortedByDescending { entry -> entry.value.sumOf { smartWeight(it, profile) } + entry.value.size * 20 }
             .take(36)
         grouped.map { entry ->
-            val parts = entry.key.split("|", limit = 2)
-            val title = parts.getOrElse(0) { appContext.getString(R.string.car_album_unavailable) }
-            val artist = parts.getOrElse(1) { "" }
+            val first = entry.value.first()
+            val title = first.album.trim()
+            val artist = first.artist.trim()
             val id = ID_ALBUM_PREFIX + entry.key.sha256().take(22)
             albumFolders[id] = title to artist
             folder(

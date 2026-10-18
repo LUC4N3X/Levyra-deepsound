@@ -45,4 +45,39 @@
     <string name="widget_studio_immersive_desc">Omslag, kö, låttexter och mer</string>
     <string name="widget_studio_vinyl_desc">Spelare med omslag i vinylstil</string>
     <string name="widget_studio_quick_desc">Flow, favoriter, nedladdningar och mer</string>
+    <!-- Android Auto browse tree -->
+    <string name="car_root_subtitle">Musik optimerad för Android Auto</string>
+    <string name="car_home_subtitle">Snabba mixar, offline och topplistor</string>
+    <string name="car_queue_title">Kö</string>
+    <string name="car_queue_subtitle">Beständig kö delad med Levyra</string>
+    <string name="car_recommended_title">Rekommenderat</string>
+    <string name="car_recommended_subtitle">Musikprofil, favoriter och senaste lyssningar</string>
+    <string name="car_albums_title">Album</string>
+    <string name="car_albums_subtitle">Lokala och föreslagna album</string>
+    <string name="car_artists_title">Artister</string>
+    <string name="car_artists_subtitle">Mest lyssnade och följda artister</string>
+    <string name="car_flow_subtitle">Personlig Levyra-radio</string>
+    <string name="car_favorites_subtitle">Sparade låtar</string>
+    <string name="car_downloads_subtitle">Musik tillgänglig offline</string>
+    <string name="car_playlists_subtitle">Samlingar skapade i appen</string>
+    <string name="car_recents_title">Senast lyssnat</string>
+    <string name="car_recents_subtitle">Nyligen hittade låtar</string>
+    <string name="car_home_recommended_title">För dig</string>
+    <string name="car_home_recommended_subtitle">Rekommendationer från musikprofilen</string>
+    <string name="car_home_driver_title">För bilkörning</string>
+    <string name="car_home_driver_subtitle">Favoriter, senaste och energiska låtar</string>
+    <string name="car_home_offline_title">Redo offline</string>
+    <string name="car_home_offline_subtitle">Nedladdningar som spelas utan nätverk</string>
+    <string name="car_home_top_local_title">Lokal topp</string>
+    <string name="car_home_top_local_subtitle">Uppdaterad topplista för valt språk</string>
+    <string name="car_home_flow_subtitle">Kontinuerlig personlig mix</string>
+    <string name="car_playlist_unavailable">Spellistan är inte tillgänglig</string>
+    <string name="car_album_unavailable">Albumet är inte tillgängligt</string>
+    <string name="car_artist_unavailable">Artisten är inte tillgänglig</string>
+    <string name="car_item_unavailable">Objektet är inte tillgängligt</string>
+    <string name="car_artist_folder_subtitle">Låtar, favoriter och förslag</string>
+    <plurals name="car_tracks_count">
+        <item quantity="one">%1$d låt</item>
+        <item quantity="other">%1$d låtar</item>
+    </plurals>
 </resources>
