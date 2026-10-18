@@ -59,6 +59,7 @@ import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.BlurOn
 import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
@@ -145,6 +146,7 @@ import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.systemPlayerCopy
 import com.luc4n3x.levyra.ui.i18n.technicalAudioInfoCopy
+import com.luc4n3x.levyra.ui.i18n.trackCreditsCopy
 import com.luc4n3x.levyra.ui.isLevyraCompactLandscape
 import com.luc4n3x.levyra.ui.levyraCompactLandscapeVideoPaneWeight
 import com.luc4n3x.levyra.ui.levyraContentMaxWidthDp
@@ -168,6 +170,8 @@ import com.luc4n3x.levyra.viewmodel.PlayerViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
+private const val CreditsPrefetchDelayMs = 1_200L
+private const val CreditsCaptionRevealMs = 360
 private val MinimumFittedPlayerHeight = 600.dp
 private val ScrollingArtworkMax = 260.dp
 private val HeaderSideReserve = 108.dp
@@ -279,6 +283,15 @@ fun LevyraNowPlaying(
     }
     var showActions by remember { mutableStateOf(false) }
     var showTechnicalAudioInfo by remember(track?.id) { mutableStateOf(false) }
+    var showTrackCredits by remember(track?.id) { mutableStateOf(false) }
+    var creditWriters by remember { mutableStateOf<Pair<String, List<String>>?>(null) }
+    LaunchedEffect(track?.id, track?.composer, liveRadio) {
+        val current = track
+        if (current == null || liveRadio) return@LaunchedEffect
+        delay(CreditsPrefetchDelayMs)
+        val writers = viewModel.trackCredits(current, false).writers
+        creditWriters = current.id to writers
+    }
     var showAudioRouteCenter by rememberSaveable { mutableStateOf(false) }
     var showDeck by rememberSaveable { mutableStateOf(false) }
     var downloadRemovalTrackId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -1105,7 +1118,16 @@ fun LevyraNowPlaying(
                 errorContent?.invoke()
             },
             dock = dockBlock,
-            dockActions = dockActionsFor
+            dockActions = dockActionsFor,
+            creditsEyebrow = creditWriters?.takeIf { it.second.isNotEmpty() }?.let { (id, writers) ->
+                PlayerCreditsEyebrow(
+                    trackId = id,
+                    heading = strings.trackCreditsCopy().writtenBy,
+                    names = writers,
+                    contentDescription = strings.trackCreditsCopy().title,
+                    onClick = { showTrackCredits = true }
+                )
+            }
         )
         val deckModifier = rootModifier
             .widthIn(max = detailMaxWidth)
@@ -1553,6 +1575,31 @@ fun LevyraNowPlaying(
             }
         }
 
+        val captionWriters = creditWriters?.takeIf { it.first == track?.id }?.second.orEmpty()
+        AnimatedVisibility(
+            visible = captionWriters.isNotEmpty() && !liveRadio &&
+                !state.isVideoMode && playerPane != LevyraPlayerPane.SideBySide &&
+                deckLayout != PlayerDeckLayout.Aura && deckLayout != PlayerDeckLayout.Pulse,
+            enter = fadeIn(tween(if (animated) CreditsCaptionRevealMs else 0)),
+            exit = fadeOut(tween(if (animated) CreditsCaptionRevealMs / 2 else 0)),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
+                .padding(
+                    end = gutter,
+                    top = LevyraPlayerDesign.MinimumTouchTarget + LevyraPlayerDesign.SpaceLg
+                )
+                .zIndex(24f)
+        ) {
+            PlayerCreditsCaption(
+                heading = strings.trackCreditsCopy().writtenBy,
+                names = captionWriters,
+                contentDescription = strings.trackCreditsCopy().title,
+                surfaces = surfaces,
+                onClick = { showTrackCredits = true }
+            )
+        }
+
         if (showTopArtistCluster) {
             PlayerTopArtistCluster(
                 artists = playerArtistHits,
@@ -1593,6 +1640,10 @@ fun LevyraNowPlaying(
                 onTechnicalAudioInfo = {
                     showActions = false
                     showTechnicalAudioInfo = true
+                },
+                onTrackCredits = {
+                    showActions = false
+                    showTrackCredits = true
                 },
                 onRefreshMotionArtwork = {
                     showActions = false
@@ -1656,6 +1707,22 @@ fun LevyraNowPlaying(
                 audioSettings = state.audioSettings,
                 audioNormalization = state.audioNormalization,
                 onDismiss = { showTechnicalAudioInfo = false }
+            )
+        }
+
+        if (showTrackCredits && track != null && !track.isLiveRadio()) {
+            TrackCreditsSheet(
+                track = track,
+                artworkUrl = artworkUrl,
+                artists = playerArtistHits,
+                animated = animated,
+                loadCredits = viewModel::trackCredits,
+                onOpenArtist = { artistIndex ->
+                    showTrackCredits = false
+                    playerArtistHits.getOrNull(artistIndex)?.let(viewModel::openArtist)
+                        ?: viewModel.openArtist(track, artistIndex)
+                },
+                onDismiss = { showTrackCredits = false }
             )
         }
 
@@ -1947,6 +2014,7 @@ private fun playerSheetActions(
     onAudioOutput: () -> Unit,
     onAudioSettings: () -> Unit,
     onTechnicalAudioInfo: () -> Unit,
+    onTrackCredits: () -> Unit,
     onRefreshMotionArtwork: () -> Unit,
     onAmbient: () -> Unit,
     onOpenArtist: () -> Unit
@@ -2065,6 +2133,12 @@ private fun playerSheetActions(
         ),
         audioOutputAction,
         audioAction,
+        PlayerSheetAction(
+            key = "track-credits",
+            icon = Icons.Rounded.Groups,
+            label = strings.trackCreditsCopy().title,
+            onClick = onTrackCredits
+        ),
         technicalAudioAction,
         refreshMotionArtworkAction,
         ambientAction,

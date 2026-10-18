@@ -402,7 +402,7 @@ internal fun StyledMiniPlayer(
                             .clip(containerShape)
                     }
                 )
-                .miniBackground(style, tuning, palette, glass)
+                .miniBackground(style, tuning, palette, glass, containerShape)
                 .miniOutline(style, palette, containerShape)
                 .then(interaction)
         ) {
@@ -783,7 +783,8 @@ private fun Modifier.miniBackground(
     style: MiniPlayerStyle,
     tuning: MiniPlayerTuning,
     palette: MiniPlayerPalette,
-    glass: GlassBackdropState?
+    glass: GlassBackdropState?,
+    shape: Shape
 ): Modifier = when (style) {
     MiniPlayerStyle.LiquidGlass -> {
         val tint = palette.surface.playerMix(palette.accent, 0.10f)
@@ -794,6 +795,7 @@ private fun Modifier.miniBackground(
             glassFrost(
                 state = glass,
                 blurRadius = 24.dp,
+                refractionShape = shape,
                 onDrawFrosted = {
                     drawRect(tint.copy(alpha = alpha))
                     drawRect(sheen)

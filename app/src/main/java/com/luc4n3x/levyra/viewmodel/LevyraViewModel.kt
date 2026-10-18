@@ -60,6 +60,8 @@ import com.luc4n3x.levyra.data.SmartOrbitStore
 import com.luc4n3x.levyra.data.ArtworkPaletteCache
 import com.luc4n3x.levyra.data.ListeningPulseStore
 import com.luc4n3x.levyra.data.OfficialArtworkRepository
+import com.luc4n3x.levyra.data.credits.TrackCredits
+import com.luc4n3x.levyra.data.credits.TrackCreditsRepository
 import com.luc4n3x.levyra.data.LyricsRepository
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.NewPipeRuntime
@@ -859,6 +861,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val chartsRepository = ChartsRepository(application.applicationContext)
     private val editorialChartsRepository = EditorialChartsRepository.get(application.applicationContext)
     private val officialArtworkRepository = OfficialArtworkRepository(application.applicationContext)
+    private val trackCreditsRepository by lazy { TrackCreditsRepository.get(application.applicationContext) }
     private val motionArtworkEngine = MotionArtworkEngine(application.applicationContext)
     private val database = LevyraDatabase.get(application.applicationContext)
     private val downloadedTracksDao = database.downloadedTracksDao()
@@ -7605,6 +7608,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val reference = artistReferenceOf(track) ?: return
         openArtistReference(name = reference.name, browseId = reference.browseId)
     }
+
+    suspend fun trackCredits(track: Track, retry: Boolean = false): TrackCredits =
+        trackCreditsRepository.load(track, retry)
 
     suspend fun playerArtistHits(track: Track, resolveArtwork: Boolean): List<ArtistHit> {
         if (track.isLiveRadio()) return emptyList()

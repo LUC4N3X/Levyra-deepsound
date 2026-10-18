@@ -3269,7 +3269,24 @@ fun LevyraApp(
                     onSaveCustomTheme = viewModel::saveCustomTheme,
                     onDuplicateCustomTheme = viewModel::duplicateCustomTheme,
                     onDeleteCustomTheme = viewModel::deleteCustomTheme,
-                    onRestoreDefault = viewModel::restoreDefaultTheme
+                    onRestoreDefault = viewModel::restoreDefaultTheme,
+                    glassEnabled = state.interfaceSettings.liquidGlassEnabled,
+                    glassStyle = LevyraGlassStyle(
+                        blur = state.interfaceSettings.glassBlur,
+                        transparency = state.interfaceSettings.glassTransparency,
+                        tint = state.interfaceSettings.glassTint,
+                        refraction = state.interfaceSettings.glassRefraction
+                    ),
+                    onGlassStyleChange = { glass ->
+                        viewModel.setInterfaceSettings(
+                            state.interfaceSettings.copy(
+                                glassBlur = glass.blur,
+                                glassTransparency = glass.transparency,
+                                glassTint = glass.tint,
+                                glassRefraction = glass.refraction
+                            )
+                        )
+                    }
                 )
             }
 

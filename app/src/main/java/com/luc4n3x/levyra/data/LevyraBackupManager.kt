@@ -1810,6 +1810,10 @@ internal fun backupInterfaceSettingsToJson(value: LevyraInterfaceSettings): JSON
     .put("canvasSource", value.canvasSource.name)
     .put("visualPerformance", value.visualPerformance.name)
     .put("liquidGlassEnabled", value.liquidGlassEnabled)
+    .put("glassBlur", value.glassBlur)
+    .put("glassTransparency", value.glassTransparency)
+    .put("glassTint", value.glassTint)
+    .put("glassRefraction", value.glassRefraction)
     .put("motionArtworkWifiOnly", value.motionArtworkWifiOnly)
     .put("enhanceVideoMetadata", value.enhanceVideoMetadata)
     .put("pureBlack", value.pureBlack)
@@ -1857,6 +1861,10 @@ internal fun backupInterfaceSettingsFromJson(
         canvasSource = LevyraCanvasSource.from(json.optString("canvasSource")),
         visualPerformance = LevyraVisualPerformance.from(json.optString("visualPerformance")),
         liquidGlassEnabled = json.optBoolean("liquidGlassEnabled", true),
+        glassBlur = json.optInt("glassBlur", LevyraInterfaceSettings.DEFAULT_GLASS_LEVEL),
+        glassTransparency = json.optInt("glassTransparency", LevyraInterfaceSettings.DEFAULT_GLASS_LEVEL),
+        glassTint = json.optInt("glassTint", LevyraInterfaceSettings.DEFAULT_GLASS_LEVEL),
+        glassRefraction = json.optBoolean("glassRefraction", true),
         motionArtworkWifiOnly = json.optBoolean("motionArtworkWifiOnly", false),
         enhanceVideoMetadata = json.optBoolean("enhanceVideoMetadata", false),
         pureBlack = json.optBoolean("pureBlack", false),
