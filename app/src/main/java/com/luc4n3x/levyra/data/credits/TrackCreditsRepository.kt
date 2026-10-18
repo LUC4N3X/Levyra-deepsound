@@ -53,7 +53,11 @@ class TrackCreditsRepository private constructor(context: Context) {
     private suspend fun resolveRemote(track: Track): TrackCredits? = try {
         val match = enricher.matchMetadata(track, timeoutMs = MATCH_TIMEOUT_MS)
         val payload = match?.songId?.takeIf(String::isNotBlank)?.let { enricher.fetchSongCredits(it) }
-        payload?.let { TrackCreditsParser.parseApple(it.song, it.credits, match.isReleaseMatch) }
+        if (match == null || payload == null) {
+            null
+        } else {
+            TrackCreditsParser.parseApple(payload.song, payload.credits, match.isReleaseMatch)
+        }
     } catch (error: CancellationException) {
         throw error
     } catch (error: Exception) {

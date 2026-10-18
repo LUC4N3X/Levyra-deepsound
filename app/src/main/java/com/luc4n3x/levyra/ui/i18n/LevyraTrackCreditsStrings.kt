@@ -48,7 +48,7 @@ internal fun LevyraStrings.trackCreditsCopy(): TrackCreditsCopy = when (code) {
         emptyTitle = "Nessun credito verificato",
         emptyBody = "Le fonti collegate non riportano crediti per questa registrazione.",
         unavailableTitle = "Crediti non disponibili",
-        unavailableBody = "Non è stato possibile verificare i crediti. Controlla la connessione e riprova.",
+        unavailableBody = "Non è stato possibile trovare o verificare i crediti di questa registrazione.",
         retry = "Riprova",
         openArtist = "Apri artista"
     )
@@ -72,7 +72,7 @@ internal fun LevyraStrings.trackCreditsCopy(): TrackCreditsCopy = when (code) {
         emptyTitle = "Sin créditos verificados",
         emptyBody = "Las fuentes conectadas no indican créditos para esta grabación.",
         unavailableTitle = "Créditos no disponibles",
-        unavailableBody = "No se pudieron verificar los créditos. Revisa la conexión e inténtalo de nuevo.",
+        unavailableBody = "No se pudieron encontrar ni verificar los créditos de esta grabación.",
         retry = "Reintentar",
         openArtist = "Abrir artista"
     )
@@ -96,7 +96,7 @@ internal fun LevyraStrings.trackCreditsCopy(): TrackCreditsCopy = when (code) {
         emptyTitle = "Aucun crédit vérifié",
         emptyBody = "Les sources connectées n'indiquent aucun crédit pour cet enregistrement.",
         unavailableTitle = "Crédits indisponibles",
-        unavailableBody = "Impossible de vérifier les crédits. Vérifiez la connexion et réessayez.",
+        unavailableBody = "Impossible de trouver ou de vérifier les crédits de cet enregistrement.",
         retry = "Réessayer",
         openArtist = "Ouvrir l'artiste"
     )
@@ -120,7 +120,7 @@ internal fun LevyraStrings.trackCreditsCopy(): TrackCreditsCopy = when (code) {
         emptyTitle = "Keine verifizierten Credits",
         emptyBody = "Die verbundenen Quellen nennen keine Credits für diese Aufnahme.",
         unavailableTitle = "Credits nicht verfügbar",
-        unavailableBody = "Die Credits konnten nicht geprüft werden. Prüfe die Verbindung und versuche es erneut.",
+        unavailableBody = "Für diese Aufnahme konnten keine Credits gefunden oder geprüft werden.",
         retry = "Erneut versuchen",
         openArtist = "Künstler öffnen"
     )
@@ -144,7 +144,7 @@ internal fun LevyraStrings.trackCreditsCopy(): TrackCreditsCopy = when (code) {
         emptyTitle = "Sem créditos verificados",
         emptyBody = "As fontes ligadas não indicam créditos para esta gravação.",
         unavailableTitle = "Créditos indisponíveis",
-        unavailableBody = "Não foi possível verificar os créditos. Verifica a ligação e tenta novamente.",
+        unavailableBody = "Não foi possível encontrar nem verificar os créditos desta gravação.",
         retry = "Tentar novamente",
         openArtist = "Abrir artista"
     )
@@ -168,7 +168,7 @@ internal fun LevyraStrings.trackCreditsCopy(): TrackCreditsCopy = when (code) {
         emptyTitle = "確認済みのクレジットはありません",
         emptyBody = "接続済みのソースにこの録音のクレジットはありません。",
         unavailableTitle = "クレジットを取得できません",
-        unavailableBody = "クレジットを確認できませんでした。接続を確認して再試行してください。",
+        unavailableBody = "この録音のクレジットを見つけられないか、確認できませんでした。",
         retry = "再試行",
         openArtist = "アーティストを開く"
     )
@@ -192,7 +192,7 @@ internal fun LevyraStrings.trackCreditsCopy(): TrackCreditsCopy = when (code) {
         emptyTitle = "Ei vahvistettuja tekijätietoja",
         emptyBody = "Yhdistetyt lähteet eivät ilmoita tekijöitä tälle äänitteelle.",
         unavailableTitle = "Tekijätiedot eivät ole saatavilla",
-        unavailableBody = "Tekijätietoja ei voitu vahvistaa. Tarkista yhteys ja yritä uudelleen.",
+        unavailableBody = "Tämän äänitteen tekijätietoja ei löytynyt tai niitä ei voitu vahvistaa.",
         retry = "Yritä uudelleen",
         openArtist = "Avaa artisti"
     )
@@ -216,7 +216,7 @@ internal fun LevyraStrings.trackCreditsCopy(): TrackCreditsCopy = when (code) {
         emptyTitle = "Kinnitatud tegijaid pole",
         emptyBody = "Ühendatud allikad ei märgi selle salvestuse tegijaid.",
         unavailableTitle = "Tegijad pole saadaval",
-        unavailableBody = "Tegijaid ei õnnestunud kontrollida. Kontrolli ühendust ja proovi uuesti.",
+        unavailableBody = "Selle salvestuse tegijaid ei leitud või neid ei õnnestunud kontrollida.",
         retry = "Proovi uuesti",
         openArtist = "Ava artist"
     )
@@ -240,7 +240,7 @@ internal fun LevyraStrings.trackCreditsCopy(): TrackCreditsCopy = when (code) {
         emptyTitle = "No verified credits",
         emptyBody = "Connected sources list no credits for this recording.",
         unavailableTitle = "Credits unavailable",
-        unavailableBody = "Credits could not be verified. Check your connection and try again.",
+        unavailableBody = "Credits for this recording could not be found or verified.",
         retry = "Try again",
         openArtist = "Open artist"
     )

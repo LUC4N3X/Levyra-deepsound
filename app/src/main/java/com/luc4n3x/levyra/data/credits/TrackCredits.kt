@@ -119,7 +119,8 @@ internal object TrackCreditsParser {
         val sections = credits.sections.mapNotNull { section ->
             val people = section.people
                 .filterNot { person ->
-                    normalizeName(person.name) in artistIndex &&
+                    section.group == TrackCreditGroup.Performance &&
+                        normalizeName(person.name) in artistIndex &&
                         person.roles.all { it.trim().lowercase(Locale.ROOT) in primaryArtistRoles }
                 }
                 .map { person -> person.copy(linkedArtistIndex = artistIndex[normalizeName(person.name)]) }

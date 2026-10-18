@@ -229,9 +229,10 @@ private fun TrackCreditsContent(
             TrackCreditsSectionCard(
                 section = section,
                 copy = copy,
-                onPersonClick = { person: TrackCreditPerson ->
+                onPersonClick = if (artists.isEmpty()) null else { person: TrackCreditPerson ->
                     person.linkedArtistIndex?.let(artists::getOrNull)?.let(onOpenArtist)
-                }.takeIf { artists.isNotEmpty() }
+                    Unit
+                }
             )
         }
         if (releaseRows.isNotEmpty()) {
