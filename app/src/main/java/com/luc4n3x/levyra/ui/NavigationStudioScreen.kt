@@ -171,6 +171,7 @@ internal fun NavigationStudioOverlay(
         draft = null
     }
     val preview: (NavTuning) -> Unit = { next -> draft = next.normalized(style) }
+    val cancelPreview: () -> Unit = { draft = null }
 
     var dragging by remember { mutableStateOf<LevyraTab?>(null) }
     var dragOffset by remember { mutableFloatStateOf(0f) }
@@ -343,7 +344,7 @@ internal fun NavigationStudioOverlay(
                         onVisible = { shown -> commit(tuning.withVisibility(tab, shown)) }
                     )
                 }
-                navOptionItems(tuning, spec, copy, preview, commit)
+                navOptionItems(tuning, spec, copy, preview, cancelPreview, commit)
                 item(key = "nav-reset-style", contentType = "actions") {
                     OutlinedButton(
                         onClick = {
@@ -389,6 +390,7 @@ private fun LazyListScope.navOptionItems(
     spec: NavStyleSpec,
     copy: NavigationStudioCopy,
     preview: (NavTuning) -> Unit,
+    cancelPreview: () -> Unit,
     commit: (NavTuning) -> Unit
 ) {
     item(key = "nav-indicator", contentType = "group") {
@@ -484,6 +486,8 @@ private fun LazyListScope.navOptionItems(
                 MiniColorEditor(
                     color = tuning.accent,
                     copy = strings.miniPlayerStudioCopy,
+                    onPreviewColor = { preview(tuning.copy(accent = it)) },
+                    onCancelPreview = cancelPreview,
                     onColor = { commit(tuning.copy(accent = it)) }
                 )
             }
