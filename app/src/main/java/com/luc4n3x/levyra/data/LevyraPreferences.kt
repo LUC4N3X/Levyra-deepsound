@@ -241,6 +241,10 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_UI_CANVAS_SOURCE] = normalizedInterface.canvasSource.name
             mutable[KEY_UI_VISUAL_PERFORMANCE] = normalizedInterface.visualPerformance.name
             mutable[KEY_UI_LIQUID_GLASS] = normalizedInterface.liquidGlassEnabled
+            mutable[KEY_UI_GLASS_BLUR] = normalizedInterface.glassBlur
+            mutable[KEY_UI_GLASS_TRANSPARENCY] = normalizedInterface.glassTransparency
+            mutable[KEY_UI_GLASS_TINT] = normalizedInterface.glassTint
+            mutable[KEY_UI_GLASS_REFRACTION] = normalizedInterface.glassRefraction
             mutable[KEY_UI_MOTION_ARTWORK_WIFI_ONLY] = normalizedInterface.motionArtworkWifiOnly
             mutable[KEY_UI_ENHANCE_VIDEO_METADATA] = normalizedInterface.enhanceVideoMetadata
             mutable[KEY_UI_PURE_BLACK] = normalizedInterface.pureBlack
@@ -411,6 +415,10 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_UI_CANVAS_SOURCE] = normalized.canvasSource.name
             it[KEY_UI_VISUAL_PERFORMANCE] = normalized.visualPerformance.name
             it[KEY_UI_LIQUID_GLASS] = normalized.liquidGlassEnabled
+            it[KEY_UI_GLASS_BLUR] = normalized.glassBlur
+            it[KEY_UI_GLASS_TRANSPARENCY] = normalized.glassTransparency
+            it[KEY_UI_GLASS_TINT] = normalized.glassTint
+            it[KEY_UI_GLASS_REFRACTION] = normalized.glassRefraction
             it[KEY_UI_MOTION_ARTWORK_WIFI_ONLY] = normalized.motionArtworkWifiOnly
             it[KEY_UI_ENHANCE_VIDEO_METADATA] = normalized.enhanceVideoMetadata
             it[KEY_UI_PURE_BLACK] = normalized.pureBlack
@@ -847,6 +855,10 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             canvasSource = LevyraCanvasSource.from(preferences[KEY_UI_CANVAS_SOURCE].orEmpty()),
             visualPerformance = LevyraVisualPerformance.from(preferences[KEY_UI_VISUAL_PERFORMANCE].orEmpty()),
             liquidGlassEnabled = preferences[KEY_UI_LIQUID_GLASS] ?: true,
+            glassBlur = preferences[KEY_UI_GLASS_BLUR] ?: LevyraInterfaceSettings.DEFAULT_GLASS_LEVEL,
+            glassTransparency = preferences[KEY_UI_GLASS_TRANSPARENCY] ?: LevyraInterfaceSettings.DEFAULT_GLASS_LEVEL,
+            glassTint = preferences[KEY_UI_GLASS_TINT] ?: LevyraInterfaceSettings.DEFAULT_GLASS_LEVEL,
+            glassRefraction = preferences[KEY_UI_GLASS_REFRACTION] ?: true,
             motionArtworkWifiOnly = preferences[KEY_UI_MOTION_ARTWORK_WIFI_ONLY] ?: false,
             enhanceVideoMetadata = preferences[KEY_UI_ENHANCE_VIDEO_METADATA] ?: false,
             pureBlack = preferences[KEY_UI_PURE_BLACK] ?: false,
@@ -1335,6 +1347,10 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_UI_CANVAS_SOURCE = stringPreferencesKey("ui_canvas_source")
         val KEY_UI_VISUAL_PERFORMANCE = stringPreferencesKey("ui_visual_performance")
         val KEY_UI_LIQUID_GLASS = booleanPreferencesKey("ui_liquid_glass")
+        val KEY_UI_GLASS_BLUR = intPreferencesKey("ui_glass_blur")
+        val KEY_UI_GLASS_TRANSPARENCY = intPreferencesKey("ui_glass_transparency")
+        val KEY_UI_GLASS_TINT = intPreferencesKey("ui_glass_tint")
+        val KEY_UI_GLASS_REFRACTION = booleanPreferencesKey("ui_glass_refraction")
         val KEY_UI_MOTION_ARTWORK_WIFI_ONLY = booleanPreferencesKey("ui_motion_artwork_wifi_only")
         val KEY_UI_ENHANCE_VIDEO_METADATA = booleanPreferencesKey("ui_enhance_video_metadata")
         val KEY_UI_PLAYER_VISUAL_MODE = stringPreferencesKey("ui_player_visual_mode")

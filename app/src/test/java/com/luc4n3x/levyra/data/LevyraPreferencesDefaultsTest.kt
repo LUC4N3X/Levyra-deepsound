@@ -46,6 +46,28 @@ class LevyraPreferencesDefaultsTest {
     }
 
     @Test
+    fun expressiveGlassStyleDefaultsAndBackupRoundTrip() {
+        val defaults = backupInterfaceSettingsFromJson(JSONObject())
+        assertEquals(LevyraInterfaceSettings.DEFAULT_GLASS_LEVEL, defaults.glassBlur)
+        assertEquals(LevyraInterfaceSettings.DEFAULT_GLASS_LEVEL, defaults.glassTransparency)
+        assertEquals(LevyraInterfaceSettings.DEFAULT_GLASS_LEVEL, defaults.glassTint)
+        assertTrue(defaults.glassRefraction)
+
+        val custom = LevyraInterfaceSettings(
+            glassBlur = 80,
+            glassTransparency = 20,
+            glassTint = 65,
+            glassRefraction = false
+        )
+        val restored = backupInterfaceSettingsFromJson(backupInterfaceSettingsToJson(custom))
+        assertEquals(80, restored.glassBlur)
+        assertEquals(20, restored.glassTransparency)
+        assertEquals(65, restored.glassTint)
+        assertFalse(restored.glassRefraction)
+        assertEquals(100, LevyraInterfaceSettings(glassBlur = 140).normalized().glassBlur)
+    }
+
+    @Test
     fun backupRoundTripPreservesPreampAndLimiterSettings() {
         val restored = backupAudioSettingsFromJson(
             backupAudioSettingsToJson(
