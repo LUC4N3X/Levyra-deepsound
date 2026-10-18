@@ -283,7 +283,7 @@ fun LevyraNowPlaying(
     var showActions by remember { mutableStateOf(false) }
     var showTechnicalAudioInfo by remember(track?.id) { mutableStateOf(false) }
     var showTrackCredits by remember(track?.id) { mutableStateOf(false) }
-    val openTrackCredits: () -> Unit = remember { { showTrackCredits = true } }
+    val openTrackCredits: () -> Unit = remember(track?.id) { { showTrackCredits = true } }
     val trackCreditsCopy = strings.trackCreditsCopy()
     var linerNotes by remember { mutableStateOf<PlayerLinerNotesState?>(null) }
     LaunchedEffect(track?.id, liveRadio) {
