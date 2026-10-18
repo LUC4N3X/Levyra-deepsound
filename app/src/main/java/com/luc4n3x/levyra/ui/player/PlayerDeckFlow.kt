@@ -225,6 +225,7 @@ internal fun PlayerFlowDeck(
                 .padding(vertical = metrics.stagePadding)
         )
         FlowHeadline(
+            linerNotes = slots.linerNotes,
             track = track,
             surfaces = surfaces,
             isFavorite = isFavorite,
@@ -367,6 +368,7 @@ private fun flowDeckMetrics(compact: Boolean): FlowDeckMetrics =
 
 @Composable
 private fun FlowHeadline(
+    linerNotes: PlayerLinerNotesState?,
     track: Track,
     surfaces: PlayerSurfaceTokens,
     isFavorite: Boolean,
@@ -427,6 +429,7 @@ private fun FlowHeadline(
                     onArtistClick = onArtistClick,
                     enabled = shown.id == track.id
                 )
+                PlayerLinerNotes(notes = linerNotes, track = shown, color = surfaces.content.copy(alpha = FlowArtistAlpha))
             }
         }
         PlayerFavoriteButton(

@@ -104,7 +104,7 @@ internal fun TrackCreditsSheet(
     artists: List<ArtistHit>,
     animated: Boolean,
     loadCredits: suspend (Track, Boolean) -> TrackCredits,
-    onOpenArtist: (ArtistHit) -> Unit,
+    onOpenArtist: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
     val copy = LocalLevyraStrings.current.trackCreditsCopy()
@@ -216,7 +216,7 @@ private fun TrackCreditsContent(
     artists: List<ArtistHit>,
     copy: TrackCreditsCopy,
     languageCode: String,
-    onOpenArtist: (ArtistHit) -> Unit,
+    onOpenArtist: (Int) -> Unit,
     onRetry: () -> Unit
 ) {
     val artistNames = remember(artists, track.artist) {
@@ -229,10 +229,7 @@ private fun TrackCreditsContent(
             TrackCreditsSectionCard(
                 section = section,
                 copy = copy,
-                onPersonClick = if (artists.isEmpty()) null else { person: TrackCreditPerson ->
-                    person.linkedArtistIndex?.let(artists::getOrNull)?.let(onOpenArtist)
-                    Unit
-                }
+                onPersonClick = { person -> person.linkedArtistIndex?.let(onOpenArtist) }
             )
         }
         if (releaseRows.isNotEmpty()) {
@@ -262,7 +259,7 @@ private fun TrackCreditsContent(
 private fun TrackCreditsSectionCard(
     section: TrackCreditSection,
     copy: TrackCreditsCopy,
-    onPersonClick: ((TrackCreditPerson) -> Unit)?
+    onPersonClick: (TrackCreditPerson) -> Unit
 ) {
     val (icon, title) = when (section.group) {
         TrackCreditGroup.Artists -> Icons.Rounded.Groups to copy.artists
@@ -282,7 +279,11 @@ private fun TrackCreditsSectionCard(
                 person = person,
                 roles = roles,
                 openLabel = copy.openArtist,
-                onClick = onPersonClick?.takeIf { person.linkedArtistIndex != null }?.let { click -> { click(person) } }
+                onClick = if (person.linkedArtistIndex != null) {
+                    { onPersonClick(person) }
+                } else {
+                    null
+                }
             )
         }
     }

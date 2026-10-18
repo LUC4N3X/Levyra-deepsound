@@ -139,6 +139,7 @@ internal fun PlayerHaloDeck(
             slots.gestures(track, Modifier.matchParentSize())
         }
         HaloHeadline(
+            linerNotes = slots.linerNotes,
             track = track,
             surfaces = surfaces,
             isFavorite = isFavorite,
@@ -188,6 +189,7 @@ private fun HaloQueueIndex(position: PlayerDeckQueuePosition, surfaces: PlayerSu
 
 @Composable
 private fun HaloHeadline(
+    linerNotes: PlayerLinerNotesState?,
     track: Track,
     surfaces: PlayerSurfaceTokens,
     isFavorite: Boolean,
@@ -246,6 +248,7 @@ private fun HaloHeadline(
                     onArtistClick = onArtistClick,
                     enabled = shown.id == track.id
                 )
+                PlayerLinerNotes(notes = linerNotes, track = shown, color = surfaces.contentMuted)
             }
         }
         PlayerFavoriteButton(

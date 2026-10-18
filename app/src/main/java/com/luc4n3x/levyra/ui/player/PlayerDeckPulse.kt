@@ -447,6 +447,7 @@ private fun NightStage(
             )
             slots.gestures(track, Modifier.matchParentSize())
             NightHeadline(
+                linerNotes = slots.linerNotes,
                 track = track,
                 isFavorite = isFavorite,
                 animated = animated,
@@ -481,6 +482,7 @@ private class NightSignalLevel {
 
 @Composable
 private fun NightHeadline(
+    linerNotes: PlayerLinerNotesState?,
     track: Track,
     isFavorite: Boolean,
     animated: Boolean,
@@ -528,6 +530,7 @@ private fun NightHeadline(
                 onArtistClick = onArtistClick,
                 enabled = shown.id == track.id
             )
+            PlayerLinerNotes(notes = linerNotes, track = shown, color = Color.White.copy(alpha = 0.8f))
             Spacer(Modifier.height(LevyraPlayerDesign.SpaceSm))
             Row(
                 verticalAlignment = Alignment.CenterVertically,

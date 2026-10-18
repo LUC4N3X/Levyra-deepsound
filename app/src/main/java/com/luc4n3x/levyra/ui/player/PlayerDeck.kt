@@ -175,7 +175,8 @@ internal class PlayerDeckSlots(
     val engagement: @Composable (Track) -> Unit,
     val progress: @Composable (style: PlayerProgressStyle) -> Unit,
     val dock: @Composable (Track) -> Unit,
-    val dockActions: @Composable (Track) -> List<PlayerDockAction>
+    val dockActions: @Composable (Track) -> List<PlayerDockAction>,
+    val linerNotes: PlayerLinerNotesState? = null
 )
 
 internal val DefaultPlayerVisualMode: PlayerVisualMode = LevyraInterfaceSettings().playerVisualMode

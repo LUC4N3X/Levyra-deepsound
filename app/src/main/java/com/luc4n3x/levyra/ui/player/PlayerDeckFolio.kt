@@ -161,6 +161,7 @@ internal fun PlayerFolioDeck(
             slots.gestures(track, Modifier.matchParentSize())
         }
         FolioHeadline(
+            linerNotes = slots.linerNotes,
             track = track,
             ink = ink,
             animated = animated,
@@ -285,6 +286,7 @@ private fun folioDeckMetrics(compact: Boolean): FolioDeckMetrics =
 
 @Composable
 private fun FolioHeadline(
+    linerNotes: PlayerLinerNotesState?,
     track: Track,
     ink: Color,
     animated: Boolean,
@@ -328,6 +330,7 @@ private fun FolioHeadline(
                 onArtistClick = onArtistClick,
                 enabled = shown.id == track.id
             )
+            PlayerLinerNotes(notes = linerNotes, track = shown, color = ink.copy(alpha = FolioArtistAlpha))
         }
     }
 }

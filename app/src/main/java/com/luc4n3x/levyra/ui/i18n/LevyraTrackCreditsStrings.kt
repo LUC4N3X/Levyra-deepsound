@@ -24,7 +24,9 @@ internal data class TrackCreditsCopy(
     val unavailableTitle: String,
     val unavailableBody: String,
     val retry: String,
-    val openArtist: String
+    val openArtist: String,
+    val producedBy: String,
+    val writtenBy: String
 )
 
 internal fun LevyraStrings.trackCreditsCopy(): TrackCreditsCopy = when (code) {
@@ -50,7 +52,9 @@ internal fun LevyraStrings.trackCreditsCopy(): TrackCreditsCopy = when (code) {
         unavailableTitle = "Crediti non disponibili",
         unavailableBody = "Non è stato possibile trovare o verificare i crediti di questa registrazione.",
         retry = "Riprova",
-        openArtist = "Apri artista"
+        openArtist = "Apri artista",
+        producedBy = "Prodotta da",
+        writtenBy = "Scritta da"
     )
     "es" -> TrackCreditsCopy(
         title = "Créditos de la canción",
@@ -74,7 +78,9 @@ internal fun LevyraStrings.trackCreditsCopy(): TrackCreditsCopy = when (code) {
         unavailableTitle = "Créditos no disponibles",
         unavailableBody = "No se pudieron encontrar ni verificar los créditos de esta grabación.",
         retry = "Reintentar",
-        openArtist = "Abrir artista"
+        openArtist = "Abrir artista",
+        producedBy = "Producida por",
+        writtenBy = "Escrita por"
     )
     "fr" -> TrackCreditsCopy(
         title = "Crédits du titre",
@@ -98,7 +104,9 @@ internal fun LevyraStrings.trackCreditsCopy(): TrackCreditsCopy = when (code) {
         unavailableTitle = "Crédits indisponibles",
         unavailableBody = "Impossible de trouver ou de vérifier les crédits de cet enregistrement.",
         retry = "Réessayer",
-        openArtist = "Ouvrir l'artiste"
+        openArtist = "Ouvrir l'artiste",
+        producedBy = "Produit par",
+        writtenBy = "Écrit par"
     )
     "de" -> TrackCreditsCopy(
         title = "Song-Credits",
@@ -122,7 +130,9 @@ internal fun LevyraStrings.trackCreditsCopy(): TrackCreditsCopy = when (code) {
         unavailableTitle = "Credits nicht verfügbar",
         unavailableBody = "Für diese Aufnahme konnten keine Credits gefunden oder geprüft werden.",
         retry = "Erneut versuchen",
-        openArtist = "Künstler öffnen"
+        openArtist = "Künstler öffnen",
+        producedBy = "Produziert von",
+        writtenBy = "Geschrieben von"
     )
     "pt" -> TrackCreditsCopy(
         title = "Créditos da faixa",
@@ -146,7 +156,9 @@ internal fun LevyraStrings.trackCreditsCopy(): TrackCreditsCopy = when (code) {
         unavailableTitle = "Créditos indisponíveis",
         unavailableBody = "Não foi possível encontrar nem verificar os créditos desta gravação.",
         retry = "Tentar novamente",
-        openArtist = "Abrir artista"
+        openArtist = "Abrir artista",
+        producedBy = "Produzida por",
+        writtenBy = "Escrita por"
     )
     "ja" -> TrackCreditsCopy(
         title = "楽曲クレジット",
@@ -170,7 +182,9 @@ internal fun LevyraStrings.trackCreditsCopy(): TrackCreditsCopy = when (code) {
         unavailableTitle = "クレジットを取得できません",
         unavailableBody = "この録音のクレジットを見つけられないか、確認できませんでした。",
         retry = "再試行",
-        openArtist = "アーティストを開く"
+        openArtist = "アーティストを開く",
+        producedBy = "プロデュース",
+        writtenBy = "作詞・作曲"
     )
     "fi" -> TrackCreditsCopy(
         title = "Kappaleen tekijät",
@@ -194,7 +208,9 @@ internal fun LevyraStrings.trackCreditsCopy(): TrackCreditsCopy = when (code) {
         unavailableTitle = "Tekijätiedot eivät ole saatavilla",
         unavailableBody = "Tämän äänitteen tekijätietoja ei löytynyt tai niitä ei voitu vahvistaa.",
         retry = "Yritä uudelleen",
-        openArtist = "Avaa artisti"
+        openArtist = "Avaa artisti",
+        producedBy = "Tuottaja",
+        writtenBy = "Tekijä"
     )
     "et" -> TrackCreditsCopy(
         title = "Loo tegijad",
@@ -218,7 +234,9 @@ internal fun LevyraStrings.trackCreditsCopy(): TrackCreditsCopy = when (code) {
         unavailableTitle = "Tegijad pole saadaval",
         unavailableBody = "Selle salvestuse tegijaid ei leitud või neid ei õnnestunud kontrollida.",
         retry = "Proovi uuesti",
-        openArtist = "Ava artist"
+        openArtist = "Ava artist",
+        producedBy = "Produtsent",
+        writtenBy = "Autor"
     )
     else -> TrackCreditsCopy(
         title = "Song credits",
@@ -242,6 +260,8 @@ internal fun LevyraStrings.trackCreditsCopy(): TrackCreditsCopy = when (code) {
         unavailableTitle = "Credits unavailable",
         unavailableBody = "Credits for this recording could not be found or verified.",
         retry = "Try again",
-        openArtist = "Open artist"
+        openArtist = "Open artist",
+        producedBy = "Produced by",
+        writtenBy = "Written by"
     )
 }

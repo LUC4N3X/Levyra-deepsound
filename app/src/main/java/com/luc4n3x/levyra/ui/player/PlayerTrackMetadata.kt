@@ -59,6 +59,7 @@ internal fun PlayerTrackMetadata(
     favoritesLabel: String,
     onArtistClick: (Int) -> Unit,
     onToggleFavorite: () -> Unit,
+    linerNotes: PlayerLinerNotesState? = null,
     modifier: Modifier = Modifier
 ) {
     val titleSize = if (compact) 23.sp else 27.sp
@@ -105,6 +106,7 @@ internal fun PlayerTrackMetadata(
                     onArtistClick = onArtistClick,
                     enabled = isCurrent
                 )
+                PlayerLinerNotes(notes = linerNotes, track = shown, color = surfaces.contentMuted)
             }
         }
         Spacer(modifier = Modifier.width(LevyraPlayerDesign.SpaceMd))

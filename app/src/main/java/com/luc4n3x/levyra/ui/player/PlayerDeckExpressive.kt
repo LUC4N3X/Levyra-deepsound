@@ -128,6 +128,7 @@ internal fun PlayerExpressiveDeck(
             slots.gestures(track, Modifier.matchParentSize())
         }
         ExpressiveHeadline(
+            linerNotes = slots.linerNotes,
             track = track,
             surfaces = surfaces,
             isFavorite = isFavorite,
@@ -297,6 +298,7 @@ private fun ExpressiveModeRow(
 
 @Composable
 private fun ExpressiveHeadline(
+    linerNotes: PlayerLinerNotesState?,
     track: Track,
     surfaces: PlayerSurfaceTokens,
     isFavorite: Boolean,
@@ -350,6 +352,7 @@ private fun ExpressiveHeadline(
                     onArtistClick = onArtistClick,
                     enabled = isCurrent
                 )
+                PlayerLinerNotes(notes = linerNotes, track = shown, color = surfaces.contentMuted)
             }
             if (isCurrent) {
                 PlayerFavoriteButton(

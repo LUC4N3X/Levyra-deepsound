@@ -170,6 +170,7 @@ import com.luc4n3x.levyra.viewmodel.PlayerViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
+private const val LinerNotesPrefetchDelayMs = 1_200L
 private val MinimumFittedPlayerHeight = 600.dp
 private val ScrollingArtworkMax = 260.dp
 private val HeaderSideReserve = 108.dp
@@ -282,6 +283,23 @@ fun LevyraNowPlaying(
     var showActions by remember { mutableStateOf(false) }
     var showTechnicalAudioInfo by remember(track?.id) { mutableStateOf(false) }
     var showTrackCredits by remember(track?.id) { mutableStateOf(false) }
+    val openTrackCredits: () -> Unit = remember { { showTrackCredits = true } }
+    val trackCreditsCopy = strings.trackCreditsCopy()
+    var linerNotes by remember { mutableStateOf<PlayerLinerNotesState?>(null) }
+    LaunchedEffect(track?.id, liveRadio) {
+        val current = track
+        if (current == null || liveRadio) {
+            linerNotes = null
+            return@LaunchedEffect
+        }
+        delay(LinerNotesPrefetchDelayMs)
+        val credits = viewModel.trackCredits(current, false)
+        linerNotes = PlayerLinerNotesState(
+            trackId = current.id,
+            text = playerLinerNotesText(credits, trackCreditsCopy),
+            onClick = openTrackCredits
+        )
+    }
     var showAudioRouteCenter by rememberSaveable { mutableStateOf(false) }
     var showDeck by rememberSaveable { mutableStateOf(false) }
     var downloadRemovalTrackId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -952,6 +970,7 @@ fun LevyraNowPlaying(
                             ?: viewModel.openArtist(activeTrack, artistIndex)
                     },
                     onToggleFavorite = { viewModel.toggleFavorite(activeTrack) },
+                    linerNotes = linerNotes,
                     modifier = lyricsFlipSwipeModifier
                 )
             }
@@ -1108,7 +1127,8 @@ fun LevyraNowPlaying(
                 errorContent?.invoke()
             },
             dock = dockBlock,
-            dockActions = dockActionsFor
+            dockActions = dockActionsFor,
+            linerNotes = linerNotes
         )
         val deckModifier = rootModifier
             .widthIn(max = detailMaxWidth)
@@ -1673,9 +1693,10 @@ fun LevyraNowPlaying(
                 artists = playerArtistHits,
                 animated = animated,
                 loadCredits = viewModel::trackCredits,
-                onOpenArtist = { hit ->
+                onOpenArtist = { artistIndex ->
                     showTrackCredits = false
-                    viewModel.openArtist(hit)
+                    playerArtistHits.getOrNull(artistIndex)?.let(viewModel::openArtist)
+                        ?: viewModel.openArtist(track, artistIndex)
                 },
                 onDismiss = { showTrackCredits = false }
             )
