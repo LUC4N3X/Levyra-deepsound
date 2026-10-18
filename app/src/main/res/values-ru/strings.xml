@@ -26,9 +26,7 @@
     <string name="car_queue">Очередь</string>
 
     <!-- Android Auto browse tree -->
-    <string name="car_root_title">Levyra</string>
     <string name="car_root_subtitle">Музыка, оптимизированная для Android Auto</string>
-    <string name="car_home_title">Главная</string>
     <string name="car_home_subtitle">Быстрые миксы, офлайн и чарты</string>
     <string name="car_queue_title">Очередь</string>
     <string name="car_queue_subtitle">Постоянная очередь, общая с Levyra</string>
@@ -40,11 +38,8 @@
     <string name="car_artists_subtitle">Самые слушаемые и отслеживаемые исполнители</string>
     <string name="car_flow_title">Flow</string>
     <string name="car_flow_subtitle">Персональное радио Levyra</string>
-    <string name="car_favorites_title">Избранное</string>
     <string name="car_favorites_subtitle">Сохраненные треки</string>
-    <string name="car_downloads_title">Загрузки</string>
     <string name="car_downloads_subtitle">Музыка, доступная офлайн</string>
-    <string name="car_playlists_title">Плейлисты</string>
     <string name="car_playlists_subtitle">Коллекции, созданные в приложении</string>
     <string name="car_recents_title">Недавние прослушивания</string>
     <string name="car_recents_subtitle">Недавно найденные треки</string>

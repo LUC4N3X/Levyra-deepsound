@@ -28,9 +28,8 @@
     <string name="car_queue">Queue</string>
 
     <!-- Android Auto browse tree -->
-    <string name="car_root_title">Levyra</string>
+    <string name="car_root_title" translatable="false">Levyra</string>
     <string name="car_root_subtitle">Music optimized for Android Auto</string>
-    <string name="car_home_title">Home</string>
     <string name="car_home_subtitle">Quick mixes, offline and charts</string>
     <string name="car_queue_title">Queue</string>
     <string name="car_queue_subtitle">Persistent queue shared with Levyra</string>
@@ -42,11 +41,8 @@
     <string name="car_artists_subtitle">Most listened and followed artists</string>
     <string name="car_flow_title">Flow</string>
     <string name="car_flow_subtitle">Personal Levyra radio</string>
-    <string name="car_favorites_title">Favorites</string>
     <string name="car_favorites_subtitle">Saved tracks</string>
-    <string name="car_downloads_title">Downloads</string>
     <string name="car_downloads_subtitle">Music available offline</string>
-    <string name="car_playlists_title">Playlists</string>
     <string name="car_playlists_subtitle">Collections created in the app</string>
     <string name="car_recents_title">Recent listens</string>
     <string name="car_recents_subtitle">Recently found tracks</string>

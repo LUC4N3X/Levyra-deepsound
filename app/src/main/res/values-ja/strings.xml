@@ -26,9 +26,7 @@
     <string name="car_queue">再生キュー</string>
 
     <!-- Android Auto browse tree -->
-    <string name="car_root_title">Levyra</string>
     <string name="car_root_subtitle">Android Auto向けに最適化された音楽</string>
-    <string name="car_home_title">ホーム</string>
     <string name="car_home_subtitle">クイックミックス、オフライン、チャート</string>
     <string name="car_queue_title">再生キュー</string>
     <string name="car_queue_subtitle">Levyraと共有される持続的なキュー</string>
@@ -40,11 +38,8 @@
     <string name="car_artists_subtitle">最も再生され、フォローされているアーティスト</string>
     <string name="car_flow_title">Flow</string>
     <string name="car_flow_subtitle">パーソナルLevyraラジオ</string>
-    <string name="car_favorites_title">お気に入り</string>
     <string name="car_favorites_subtitle">保存した曲</string>
-    <string name="car_downloads_title">ダウンロード</string>
     <string name="car_downloads_subtitle">オフラインで利用可能な音楽</string>
-    <string name="car_playlists_title">プレイリスト</string>
     <string name="car_playlists_subtitle">アプリで作成されたコレクション</string>
     <string name="car_recents_title">最近再生した曲</string>
     <string name="car_recents_subtitle">最近見つけた曲</string>

@@ -26,9 +26,7 @@
     <string name="car_queue">播放队列</string>
 
     <!-- Android Auto browse tree -->
-    <string name="car_root_title">Levyra</string>
     <string name="car_root_subtitle">为 Android Auto 优化的音乐</string>
-    <string name="car_home_title">首页</string>
     <string name="car_home_subtitle">快速混合、离线和排行榜</string>
     <string name="car_queue_title">播放队列</string>
     <string name="car_queue_subtitle">与 Levyra 共享的持久队列</string>
@@ -40,11 +38,8 @@
     <string name="car_artists_subtitle">播放最多和关注的歌手</string>
     <string name="car_flow_title">Flow</string>
     <string name="car_flow_subtitle">个人 Levyra 电台</string>
-    <string name="car_favorites_title">收藏</string>
     <string name="car_favorites_subtitle">已保存的歌曲</string>
-    <string name="car_downloads_title">下载内容</string>
     <string name="car_downloads_subtitle">可离线播放的音乐</string>
-    <string name="car_playlists_title">播放列表</string>
     <string name="car_playlists_subtitle">应用中创建的收藏集</string>
     <string name="car_recents_title">最近播放</string>
     <string name="car_recents_subtitle">最近发现的歌曲</string>

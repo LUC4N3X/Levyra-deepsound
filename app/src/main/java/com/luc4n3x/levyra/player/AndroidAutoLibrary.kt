@@ -128,7 +128,7 @@ class AndroidAutoLibrary(context: Context) {
             mediaId == ID_ROOT -> root()
             mediaId == ID_HOME -> folder(
                 ID_HOME,
-                appContext.getString(R.string.car_home_title),
+                appContext.getString(R.string.car_home),
                 appContext.getString(R.string.car_home_subtitle)
             )
             mediaId == ID_QUEUE -> folder(
@@ -168,17 +168,17 @@ class AndroidAutoLibrary(context: Context) {
             )
             mediaId == ID_FAVORITES -> folder(
                 ID_FAVORITES,
-                appContext.getString(R.string.car_favorites_title),
+                appContext.getString(R.string.car_favorites),
                 appContext.getString(R.string.car_favorites_subtitle)
             )
             mediaId == ID_DOWNLOADS -> folder(
                 ID_DOWNLOADS,
-                appContext.getString(R.string.car_downloads_title),
+                appContext.getString(R.string.car_downloads),
                 appContext.getString(R.string.car_downloads_subtitle)
             )
             mediaId == ID_PLAYLISTS -> folder(
                 ID_PLAYLISTS,
-                appContext.getString(R.string.car_playlists_title),
+                appContext.getString(R.string.car_playlists),
                 appContext.getString(R.string.car_playlists_subtitle)
             )
             mediaId == ID_RECENTS -> folder(
@@ -189,7 +189,7 @@ class AndroidAutoLibrary(context: Context) {
             mediaId.startsWith(ID_PLAYLIST_PREFIX) -> playlistStore.load(mediaId.removePrefix(ID_PLAYLIST_PREFIX))?.let { playlistFolder(it) }
                 ?: folder(
                     mediaId,
-                    appContext.getString(R.string.car_playlists_title),
+                    appContext.getString(R.string.car_playlists),
                     appContext.getString(R.string.car_playlist_unavailable)
                 )
             mediaId.startsWith(ID_ALBUM_PREFIX) -> albumFolders[mediaId]?.let { pair -> folder(mediaId, pair.first, pair.second) }
@@ -264,7 +264,7 @@ class AndroidAutoLibrary(context: Context) {
     private fun rootChildren(): List<MediaItem> = listOf(
         folder(
             ID_HOME,
-            appContext.getString(R.string.car_home_title),
+            appContext.getString(R.string.car_home),
             appContext.getString(R.string.car_home_subtitle)
         ),
         folder(
@@ -294,17 +294,17 @@ class AndroidAutoLibrary(context: Context) {
         ),
         folder(
             ID_FAVORITES,
-            appContext.getString(R.string.car_favorites_title),
+            appContext.getString(R.string.car_favorites),
             appContext.getString(R.string.car_favorites_subtitle)
         ),
         folder(
             ID_DOWNLOADS,
-            appContext.getString(R.string.car_downloads_title),
+            appContext.getString(R.string.car_downloads),
             appContext.getString(R.string.car_downloads_subtitle)
         ),
         folder(
             ID_PLAYLISTS,
-            appContext.getString(R.string.car_playlists_title),
+            appContext.getString(R.string.car_playlists),
             appContext.getString(R.string.car_playlists_subtitle)
         ),
         folder(

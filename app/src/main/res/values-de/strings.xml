@@ -26,9 +26,7 @@
     <string name="car_queue">Warteschlange</string>
 
     <!-- Android Auto browse tree -->
-    <string name="car_root_title">Levyra</string>
     <string name="car_root_subtitle">Für Android Auto optimierte Musik</string>
-    <string name="car_home_title">Start</string>
     <string name="car_home_subtitle">Schnelle Mixe, Offline und Charts</string>
     <string name="car_queue_title">Warteschlange</string>
     <string name="car_queue_subtitle">Persistente Warteschlange, geteilt mit Levyra</string>
@@ -40,11 +38,8 @@
     <string name="car_artists_subtitle">Meistgehörte und verfolgte Künstler</string>
     <string name="car_flow_title">Flow</string>
     <string name="car_flow_subtitle">Persönliches Levyra Radio</string>
-    <string name="car_favorites_title">Favoriten</string>
     <string name="car_favorites_subtitle">Gespeicherte Titel</string>
-    <string name="car_downloads_title">Downloads</string>
     <string name="car_downloads_subtitle">Offline verfügbare Musik</string>
-    <string name="car_playlists_title">Playlists</string>
     <string name="car_playlists_subtitle">In der App erstellte Sammlungen</string>
     <string name="car_recents_title">Zuletzt gehört</string>
     <string name="car_recents_subtitle">Kürzlich entdeckte Titel</string>

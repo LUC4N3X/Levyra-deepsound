@@ -26,9 +26,7 @@
     <string name="car_queue">재생 대기열</string>
 
     <!-- Android Auto browse tree -->
-    <string name="car_root_title">Levyra</string>
     <string name="car_root_subtitle">Android Auto에 최적화된 음악</string>
-    <string name="car_home_title">홈</string>
     <string name="car_home_subtitle">빠른 믹스, 오프라인, 차트</string>
     <string name="car_queue_title">재생 대기열</string>
     <string name="car_queue_subtitle">Levyra와 공유되는 영구 대기열</string>
@@ -40,11 +38,8 @@
     <string name="car_artists_subtitle">가장 많이 재생되고 팔로우된 아티스트</string>
     <string name="car_flow_title">Flow</string>
     <string name="car_flow_subtitle">개인 Levyra 라디오</string>
-    <string name="car_favorites_title">즐겨찾기</string>
     <string name="car_favorites_subtitle">저장한 곡</string>
-    <string name="car_downloads_title">다운로드</string>
     <string name="car_downloads_subtitle">오프라인에서 사용 가능한 음악</string>
-    <string name="car_playlists_title">플레이리스트</string>
     <string name="car_playlists_subtitle">앱에서 만든 컬렉션</string>
     <string name="car_recents_title">최근 재생</string>
     <string name="car_recents_subtitle">최근에 찾은 곡</string>
