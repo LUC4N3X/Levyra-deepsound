@@ -216,39 +216,37 @@ Contributions and bug reports are welcome. Technical documentation and architect
 
 ## ✦ Author & credits
 
-<table align="center" width="100%">
-  <tr>
-    <td align="center" valign="middle" width="38%">
-      <a href="https://luc4n3x.pages.dev/">
-        <img src="docs/assets/levyra-signature.png?v=lounge-neon" width="240" alt="LUC4N3X — Creator &amp; Lead Maintainer">
-      </a>
-    </td>
-    <td valign="middle" width="62%">
-      <h3>LUC4N3X</h3>
-      <p><b>Creator &amp; Lead Maintainer</b></p>
-      <p>
-        I created Levyra and actively build and maintain the project for Android and Windows.<br>
-        I review community pull requests, work on new playback features, and publish each release.
-      </p>
-      <p>
-        <a href="https://github.com/LUC4N3X"><b>GitHub Profile</b></a>
-        &nbsp;•&nbsp;
-        <a href="https://luc4n3x.pages.dev/"><b>Personal Website</b></a>
-      </p>
-      <p>
-        <a href="https://www.codefactor.io/repository/github/luc4n3x/levyra-deepsound"><img src="https://www.codefactor.io/repository/github/luc4n3x/levyra-deepsound/badge" alt="CodeFactor"></a>
-        &nbsp;
-        <a href="https://www.bestpractices.dev/projects/14606"><img src="https://www.bestpractices.dev/projects/14606/badge" alt="OpenSSF Best Practices"></a>
-        &nbsp;
-        <a href="https://api.reuse.software/info/github.com/LUC4N3X/Levyra-deepsound"><img src="https://api.reuse.software/badge/github.com/LUC4N3X/Levyra-deepsound" alt="REUSE compliant"></a>
-        &nbsp;
-        <a href="https://www.saashub.com/levyra-deepsound?utm_source=badge&utm_campaign=badge&utm_content=levyra-deepsound&badge_variant=color&badge_kind=approved"><img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" height="20"></a>
-      </p>
-    </td>
-  </tr>
-</table>
-
 <div align="center">
+
+<a href="https://luc4n3x.pages.dev/">
+  <img src="docs/assets/levyra-signature.png?v=lounge-neon" width="220" alt="LUC4N3X — Creator &amp; Lead Maintainer">
+</a>
+
+<h3>LUC4N3X</h3>
+<p><b>Creator &amp; Lead Maintainer</b></p>
+
+<p>
+  I created Levyra and actively build and maintain the project for Android and Windows.<br>
+  I review community pull requests, work on new playback features, and publish each release.
+</p>
+
+<p>
+  <a href="https://github.com/LUC4N3X"><img src="https://img.shields.io/badge/GitHub-LUC4N3X-181717?style=for-the-badge&logo=github" alt="GitHub Profile" height="28"></a>
+  &nbsp;
+  <a href="https://luc4n3x.pages.dev/"><img src="https://img.shields.io/badge/Website-luc4n3x.pages.dev-0052CC?style=for-the-badge&logo=safari&logoColor=white" alt="Personal Website" height="28"></a>
+</p>
+
+<p>
+  <a href="https://www.codefactor.io/repository/github/luc4n3x/levyra-deepsound"><img src="https://www.codefactor.io/repository/github/luc4n3x/levyra-deepsound/badge" alt="CodeFactor"></a>
+  &nbsp;
+  <a href="https://www.bestpractices.dev/projects/14606"><img src="https://www.bestpractices.dev/projects/14606/badge" alt="OpenSSF Best Practices"></a>
+  &nbsp;
+  <a href="https://api.reuse.software/info/github.com/LUC4N3X/Levyra-deepsound"><img src="https://api.reuse.software/badge/github.com/LUC4N3X/Levyra-deepsound" alt="REUSE compliant"></a>
+  &nbsp;
+  <a href="https://www.saashub.com/levyra-deepsound?utm_source=badge&utm_campaign=badge&utm_content=levyra-deepsound&badge_variant=color&badge_kind=approved"><img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" height="20"></a>
+</p>
+
+<br>
 
 <p>
   <b>Featured in tech media & open-source spotlights</b>
