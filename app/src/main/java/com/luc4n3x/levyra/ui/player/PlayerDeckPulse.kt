@@ -144,6 +144,7 @@ private const val NightPlayWidePlaying = 1.62f
 private const val NightPlayWideResting = 1.3f
 private val NightChipHeight = LevyraPlayerDesign.MinimumTouchTarget
 private const val NightTransportSideUnits = 4.24f
+private val NightTransportMinHeight = 36.dp
 private val NightTileHeight = 64.dp
 private val NightSpecStyle = TextStyle(fontFeatureSettings = "tnum, case")
 private val NightFavoriteTint = Color(0xFFFF6B8B)
@@ -734,7 +735,7 @@ private fun NightTransport(
     ) {
         val chrome = gutter * 2 + LevyraPlayerDesign.SpaceSm * 2 + LevyraPlayerDesign.SpaceXs * 4
         val widestPlay = maxOf(NightPlayWidePlaying, NightPlayWideResting)
-        val height = minOf(baseHeight, (maxWidth - chrome) / (NightTransportSideUnits + widestPlay))
+        val height = minOf(baseHeight, (maxWidth - chrome) / (NightTransportSideUnits + widestPlay)).coerceAtLeast(NightTransportMinHeight)
         val playWidth by animateDpAsState(
             targetValue = height * if (isPlaying) NightPlayWidePlaying else NightPlayWideResting,
             animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.expressiveSpring()),
