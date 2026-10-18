@@ -45,4 +45,39 @@
     <string name="widget_studio_immersive_desc">Kaanepilt, järjekord, laulusõnad ja muu</string>
     <string name="widget_studio_vinyl_desc">Vinüülistiilis kaanepildiga mängija</string>
     <string name="widget_studio_quick_desc">Flow, lemmikud, allalaadimised ja muu</string>
+    <!-- Android Auto browse tree -->
+    <string name="car_root_subtitle">Android Auto jaoks optimeeritud muusika</string>
+    <string name="car_home_subtitle">Kiired miksid, võrguühenduseta ja edetabelid</string>
+    <string name="car_queue_title">Esitusjärjekord</string>
+    <string name="car_queue_subtitle">Püsiv järjekord, jagatud Levyraga</string>
+    <string name="car_recommended_title">Soovitatud</string>
+    <string name="car_recommended_subtitle">Muusikaprofiil, lemmikud ja hiljutised kuulamised</string>
+    <string name="car_albums_title">Albumid</string>
+    <string name="car_albums_subtitle">Kohalikud ja soovitatud albumid</string>
+    <string name="car_artists_title">Esitajad</string>
+    <string name="car_artists_subtitle">Enim kuulatud ja jälgitud esitajad</string>
+    <string name="car_flow_subtitle">Isiklik Levyra raadio</string>
+    <string name="car_favorites_subtitle">Salvestatud lood</string>
+    <string name="car_downloads_subtitle">Võrguühenduseta saadaval muusika</string>
+    <string name="car_playlists_subtitle">Rakenduses loodud kogud</string>
+    <string name="car_recents_title">Hiljuti kuulatud</string>
+    <string name="car_recents_subtitle">Hiljuti leitud lood</string>
+    <string name="car_home_recommended_title">Sulle</string>
+    <string name="car_home_recommended_subtitle">Soovitused muusikaprofiilist</string>
+    <string name="car_home_driver_title">Sõitmiseks</string>
+    <string name="car_home_driver_subtitle">Lemmikud, hiljutised ja energilised lood</string>
+    <string name="car_home_offline_title">Valmis võrguühenduseta</string>
+    <string name="car_home_offline_subtitle">Allalaadimised, mis mängivad ilma võrguta</string>
+    <string name="car_home_top_local_title">Kohalik top</string>
+    <string name="car_home_top_local_subtitle">Uuendatud edetabel valitud keele jaoks</string>
+    <string name="car_home_flow_subtitle">Pidev isiklik miks</string>
+    <string name="car_playlist_unavailable">Esitusloend pole saadaval</string>
+    <string name="car_album_unavailable">Album pole saadaval</string>
+    <string name="car_artist_unavailable">Esitaja pole saadaval</string>
+    <string name="car_item_unavailable">Üksus pole saadaval</string>
+    <string name="car_artist_folder_subtitle">Lood, lemmikud ja soovitused</string>
+    <plurals name="car_tracks_count">
+        <item quantity="one">%1$d lugu</item>
+        <item quantity="other">%1$d lugu</item>
+    </plurals>
 </resources>

@@ -45,4 +45,39 @@
     <string name="widget_studio_immersive_desc">Omslag, kø, sangtekster og mer</string>
     <string name="widget_studio_vinyl_desc">Spiller med omslag i vinylstil</string>
     <string name="widget_studio_quick_desc">Flow, favoritter, nedlastinger og mer</string>
+    <!-- Android Auto browse tree -->
+    <string name="car_root_subtitle">Musikk optimalisert for Android Auto</string>
+    <string name="car_home_subtitle">Raske mikser, frakoblet og topplister</string>
+    <string name="car_queue_title">Kø</string>
+    <string name="car_queue_subtitle">Varig kø delt med Levyra</string>
+    <string name="car_recommended_title">Anbefalt</string>
+    <string name="car_recommended_subtitle">Musikkprofil, favoritter og nylige avspillinger</string>
+    <string name="car_albums_title">Album</string>
+    <string name="car_albums_subtitle">Lokale og foreslåtte album</string>
+    <string name="car_artists_title">Artister</string>
+    <string name="car_artists_subtitle">Mest lyttede og fulgte artister</string>
+    <string name="car_flow_subtitle">Personlig Levyra-radio</string>
+    <string name="car_favorites_subtitle">Lagrede spor</string>
+    <string name="car_downloads_subtitle">Musikk tilgjengelig frakoblet</string>
+    <string name="car_playlists_subtitle">Samlinger laget i appen</string>
+    <string name="car_recents_title">Nylig lyttet</string>
+    <string name="car_recents_subtitle">Nylig funnede spor</string>
+    <string name="car_home_recommended_title">For deg</string>
+    <string name="car_home_recommended_subtitle">Anbefalinger fra musikkprofilen</string>
+    <string name="car_home_driver_title">For kjøring</string>
+    <string name="car_home_driver_subtitle">Favoritter, nylige og energiske spor</string>
+    <string name="car_home_offline_title">Klar frakoblet</string>
+    <string name="car_home_offline_subtitle">Nedlastinger som spilles uten nettverk</string>
+    <string name="car_home_top_local_title">Lokal topp</string>
+    <string name="car_home_top_local_subtitle">Oppdatert toppliste for valgt språk</string>
+    <string name="car_home_flow_subtitle">Kontinuerlig personlig miks</string>
+    <string name="car_playlist_unavailable">Spillelisten er ikke tilgjengelig</string>
+    <string name="car_album_unavailable">Albumet er ikke tilgjengelig</string>
+    <string name="car_artist_unavailable">Artisten er ikke tilgjengelig</string>
+    <string name="car_item_unavailable">Elementet er ikke tilgjengelig</string>
+    <string name="car_artist_folder_subtitle">Spor, favoritter og forslag</string>
+    <plurals name="car_tracks_count">
+        <item quantity="one">%1$d spor</item>
+        <item quantity="other">%1$d spor</item>
+    </plurals>
 </resources>

@@ -45,4 +45,38 @@
     <string name="widget_studio_immersive_desc">Sampul, antrean, lirik, dan lainnya</string>
     <string name="widget_studio_vinyl_desc">Pemutar dengan sampul gaya piringan hitam</string>
     <string name="widget_studio_quick_desc">Flow, favorit, unduhan, dan lainnya</string>
+    <!-- Android Auto browse tree -->
+    <string name="car_root_subtitle">Musik yang dioptimalkan untuk Android Auto</string>
+    <string name="car_home_subtitle">Mix cepat, offline, dan tangga lagu</string>
+    <string name="car_queue_title">Antrean</string>
+    <string name="car_queue_subtitle">Antrean tersimpan yang dibagikan dengan Levyra</string>
+    <string name="car_recommended_title">Rekomendasi</string>
+    <string name="car_recommended_subtitle">Profil musik, favorit, dan yang baru diputar</string>
+    <string name="car_albums_title">Album</string>
+    <string name="car_albums_subtitle">Album lokal dan saran</string>
+    <string name="car_artists_title">Artis</string>
+    <string name="car_artists_subtitle">Artis yang paling sering didengar dan diikuti</string>
+    <string name="car_flow_subtitle">Radio pribadi Levyra</string>
+    <string name="car_favorites_subtitle">Lagu tersimpan</string>
+    <string name="car_downloads_subtitle">Musik tersedia offline</string>
+    <string name="car_playlists_subtitle">Koleksi yang dibuat di aplikasi</string>
+    <string name="car_recents_title">Baru diputar</string>
+    <string name="car_recents_subtitle">Lagu yang baru ditemukan</string>
+    <string name="car_home_recommended_title">Untukmu</string>
+    <string name="car_home_recommended_subtitle">Rekomendasi dari profil musik</string>
+    <string name="car_home_driver_title">Untuk berkendara</string>
+    <string name="car_home_driver_subtitle">Favorit, terbaru, dan lagu berenergi tinggi</string>
+    <string name="car_home_offline_title">Siap offline</string>
+    <string name="car_home_offline_subtitle">Unduhan yang bisa diputar tanpa jaringan</string>
+    <string name="car_home_top_local_title">Top lokal</string>
+    <string name="car_home_top_local_subtitle">Tangga lagu terbaru untuk bahasa pilihan</string>
+    <string name="car_home_flow_subtitle">Mix pribadi berkelanjutan</string>
+    <string name="car_playlist_unavailable">Playlist tidak tersedia</string>
+    <string name="car_album_unavailable">Album tidak tersedia</string>
+    <string name="car_artist_unavailable">Artis tidak tersedia</string>
+    <string name="car_item_unavailable">Item tidak tersedia</string>
+    <string name="car_artist_folder_subtitle">Lagu, favorit, dan saran</string>
+    <plurals name="car_tracks_count">
+        <item quantity="other">%1$d lagu</item>
+    </plurals>
 </resources>

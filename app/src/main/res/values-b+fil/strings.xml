@@ -45,4 +45,39 @@
     <string name="widget_studio_immersive_desc">Cover, queue, lyrics at iba pa</string>
     <string name="widget_studio_vinyl_desc">Player na may cover na istilong vinyl</string>
     <string name="widget_studio_quick_desc">Flow, mga paborito, download at iba pa</string>
+    <!-- Android Auto browse tree -->
+    <string name="car_root_subtitle">Musikang inayos para sa Android Auto</string>
+    <string name="car_home_subtitle">Mabilisang mix, offline at chart</string>
+    <string name="car_queue_title">Pila ng kanta</string>
+    <string name="car_queue_subtitle">Pila na nakaimbak at kasabay ng Levyra</string>
+    <string name="car_recommended_title">Inirerekomenda</string>
+    <string name="car_recommended_subtitle">Music profile, paborito at mga kamakailang pinakinggan</string>
+    <string name="car_albums_title">Mga album</string>
+    <string name="car_albums_subtitle">Mga lokal at iminungkahing album</string>
+    <string name="car_artists_title">Mga artist</string>
+    <string name="car_artists_subtitle">Mga pinakapinakikinggan at sinusundang artist</string>
+    <string name="car_flow_subtitle">Personal na radyo ng Levyra</string>
+    <string name="car_favorites_subtitle">Mga naka-save na kanta</string>
+    <string name="car_downloads_subtitle">Musikang available offline</string>
+    <string name="car_playlists_subtitle">Mga koleksyong ginawa sa app</string>
+    <string name="car_recents_title">Kamakailang pinakinggan</string>
+    <string name="car_recents_subtitle">Mga kantang nahanap kamakailan</string>
+    <string name="car_home_recommended_title">Para sa iyo</string>
+    <string name="car_home_recommended_subtitle">Mga rekomendasyon mula sa music profile</string>
+    <string name="car_home_driver_title">Para sa pagmamaneho</string>
+    <string name="car_home_driver_subtitle">Paborito, kamakailan at masisiglang kanta</string>
+    <string name="car_home_offline_title">Handa offline</string>
+    <string name="car_home_offline_subtitle">Mga download na tumutugtog nang walang network</string>
+    <string name="car_home_top_local_title">Top lokal</string>
+    <string name="car_home_top_local_subtitle">Na-update na music chart para sa napiling wika</string>
+    <string name="car_home_flow_subtitle">Tuloy-tuloy na personal na mix</string>
+    <string name="car_playlist_unavailable">Hindi available ang playlist</string>
+    <string name="car_album_unavailable">Hindi available ang album</string>
+    <string name="car_artist_unavailable">Hindi available ang artist</string>
+    <string name="car_item_unavailable">Hindi available ang item</string>
+    <string name="car_artist_folder_subtitle">Mga kanta, paborito at mungkahi</string>
+    <plurals name="car_tracks_count">
+        <item quantity="one">%1$d kanta</item>
+        <item quantity="other">%1$d kanta</item>
+    </plurals>
 </resources>

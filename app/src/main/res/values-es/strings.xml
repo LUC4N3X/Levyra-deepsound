@@ -24,6 +24,44 @@
     <string name="car_connecting_player">Conectando con el reproductor</string>
     <string name="car_now_playing">En reproducción</string>
     <string name="car_queue">Cola</string>
+
+    <!-- Android Auto browse tree -->
+    <string name="car_root_subtitle">Música optimizada para Android Auto</string>
+    <string name="car_home_subtitle">Mixes rápidos, sin conexión y listas</string>
+    <string name="car_queue_title">Cola</string>
+    <string name="car_queue_subtitle">Cola persistente compartida con Levyra</string>
+    <string name="car_recommended_title">Recomendados</string>
+    <string name="car_recommended_subtitle">Perfil musical, favoritos y escuchas recientes</string>
+    <string name="car_albums_title">Álbumes</string>
+    <string name="car_albums_subtitle">Álbumes locales y sugeridos</string>
+    <string name="car_artists_title">Artistas</string>
+    <string name="car_artists_subtitle">Artistas más escuchados y seguidos</string>
+    <string name="car_flow_subtitle">Radio personal Levyra</string>
+    <string name="car_favorites_subtitle">Canciones guardadas</string>
+    <string name="car_downloads_subtitle">Música disponible sin conexión</string>
+    <string name="car_playlists_subtitle">Colecciones creadas en la app</string>
+    <string name="car_recents_title">Escuchas recientes</string>
+    <string name="car_recents_subtitle">Canciones encontradas recientemente</string>
+    <string name="car_home_recommended_title">Para ti</string>
+    <string name="car_home_recommended_subtitle">Recomendaciones del perfil musical</string>
+    <string name="car_home_driver_title">Para conducir</string>
+    <string name="car_home_driver_subtitle">Favoritos, recientes y canciones de alta energía</string>
+    <string name="car_home_offline_title">Listo sin conexión</string>
+    <string name="car_home_offline_subtitle">Descargas reproducibles sin red</string>
+    <string name="car_home_top_local_title">Top local</string>
+    <string name="car_home_top_local_subtitle">Lista musical actualizada para el idioma elegido</string>
+    <string name="car_home_flow_subtitle">Mix personal continuo</string>
+    <string name="car_playlist_unavailable">Lista no disponible</string>
+    <string name="car_album_unavailable">Álbum no disponible</string>
+    <string name="car_artist_unavailable">Artista no disponible</string>
+    <string name="car_item_unavailable">Elemento no disponible</string>
+
+    <!-- Android Auto dynamic strings -->
+    <plurals name="car_tracks_count">
+        <item quantity="one">%1$d canción</item>
+        <item quantity="other">%1$d canciones</item>
+    </plurals>
+    <string name="car_artist_folder_subtitle">Canciones, favoritos y sugerencias</string>
     <string name="notification_favorite_add">Añadir a favoritos</string>
     <string name="notification_favorite_remove">Quitar de favoritos</string>
     <string name="notification_shuffle_enable">Activar aleatorio</string>
