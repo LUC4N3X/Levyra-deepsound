@@ -17,7 +17,9 @@ import okhttp3.Callback
 import okhttp3.Dns
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Request
 import okhttp3.Response
 
@@ -34,7 +36,9 @@ data class PlaylistFetchRequest(
     val acceptedMimeTypes: Set<String>,
     val maxBytes: Long,
     val accept: String = acceptedMimeTypes.joinToString(","),
-    val bearerToken: String? = null
+    val bearerToken: String? = null,
+    val headers: Map<String, String> = emptyMap(),
+    val jsonBody: String? = null
 )
 
 data class PlaylistFetchResponse(
@@ -102,14 +106,18 @@ class PlaylistImportFetcher(baseClient: OkHttpClient) {
             ?: throw PlaylistImportException(PlaylistImportFailureKind.INVALID_INPUT, "Import URL not allowed")
         var redirects = 0
         while (true) {
-            val call = Request.Builder()
+            val builder = Request.Builder()
                 .url(current)
                 .header("User-Agent", USER_AGENT)
                 .header("Accept", request.accept)
                 .header("Accept-Language", "en-US,en;q=0.8")
                 .apply { request.bearerToken?.takeIf(String::isNotBlank)?.let { header("Authorization", "Bearer $it") } }
-                .get()
-                .build()
+                .apply { request.headers.forEach { (name, value) -> header(name, value) } }
+            val call = if (request.jsonBody == null) {
+                builder.get().build()
+            } else {
+                builder.post(request.jsonBody.toRequestBody(JSON_MEDIA_TYPE)).build()
+            }
             val response = execute(call)
             try {
                 if (response.code in REDIRECT_CODES) {
@@ -180,6 +188,7 @@ class PlaylistImportFetcher(baseClient: OkHttpClient) {
         private const val MAX_RETRY_DELAY_MS = 30_000L
         private const val MAX_REDIRECTS = 4
         private const val USER_AGENT = "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/126 Mobile Safari/537.36"
+        private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
         private val REDIRECT_CODES = setOf(301, 302, 303, 307, 308)
         val HTML = setOf("text/html", "application/xhtml+xml")
         val JSON = setOf("application/json", "text/json", "text/javascript", "text/plain", "text/html")

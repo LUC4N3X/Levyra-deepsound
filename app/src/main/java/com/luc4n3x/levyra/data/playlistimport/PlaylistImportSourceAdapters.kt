@@ -217,7 +217,6 @@ class SpotifyPlaylistAdapter(private val fetcher: PlaylistImportFetcher) : Playl
         }
         val embed = embedPayload.page
         if (embed.tracks.isEmpty()) throw PlaylistImportException(PlaylistImportFailureKind.NOT_AVAILABLE, "Spotify playlist empty")
-        progress.onRead(embed.tracks.size, null)
         val page = try {
             parseSpotifyPlaylistPage(spotifyHeadOnly(fetcher.fetch(html("https://open.spotify.com/playlist/$id", 1024L * 1024)).body))
         } catch (error: CancellationException) {
@@ -264,30 +263,30 @@ class SpotifyPlaylistAdapter(private val fetcher: PlaylistImportFetcher) : Playl
         var offset = 0
         var total: Int? = null
         var complete = false
-        var endpoint = SpotifyItemsEndpoint.LEGACY
         while (offset < MAX_PLAYLIST_IMPORT_TRACKS) {
-            val pageSize = minOf(endpoint.maxPageSize, MAX_PLAYLIST_IMPORT_TRACKS - offset)
+            val pageSize = minOf(SPOTIFY_PATHFINDER_PAGE_SIZE, MAX_PLAYLIST_IMPORT_TRACKS - offset)
             val page = try {
-                RemotePlaylistPayloads.spotifyTracks(
+                RemotePlaylistPayloads.spotifyPathfinderTracks(
                     fetcher.fetch(
                         PlaylistFetchRequest(
-                            url = "https://api.spotify.com/v1/playlists/$id/${endpoint.path}?limit=$pageSize&offset=$offset&fields=$SPOTIFY_API_FIELDS",
-                            allowedHosts = SPOTIFY_API_HOSTS,
+                            url = SPOTIFY_PATHFINDER_URL,
+                            allowedHosts = SPOTIFY_PATHFINDER_HOSTS,
                             acceptedMimeTypes = PlaylistImportFetcher.JSON,
                             maxBytes = SPOTIFY_API_PAGE_BYTES,
-                            bearerToken = accessToken
+                            bearerToken = accessToken,
+                            headers = mapOf(
+                                "app-platform" to "WebPlayer",
+                                "Origin" to "https://open.spotify.com",
+                                "Referer" to "https://open.spotify.com/"
+                            ),
+                            jsonBody = spotifyPathfinderBody(id, offset, pageSize)
                         )
-                    ).body
+                    ).body,
+                    requestedOffset = offset
                 )
             } catch (error: CancellationException) {
                 throw error
             } catch (error: PlaylistImportException) {
-                if (offset == 0 && endpoint == SpotifyItemsEndpoint.LEGACY &&
-                    error.kind in setOf(PlaylistImportFailureKind.NOT_AVAILABLE, PlaylistImportFailureKind.PROVIDER_CHANGED)
-                ) {
-                    endpoint = SpotifyItemsEndpoint.CURRENT
-                    continue
-                }
                 break
             } catch (_: Exception) {
                 break
@@ -296,7 +295,9 @@ class SpotifyPlaylistAdapter(private val fetcher: PlaylistImportFetcher) : Playl
             total = page.total
             tracks += page.tracks
             offset += page.itemCount
-            progress.onRead(tracks.size, total)
+            if (tracks.size > SPOTIFY_EMBED_PAGE || !page.hasNext) {
+                progress.onRead(tracks.size, total)
+            }
             if (!page.hasNext) {
                 complete = offset >= page.total
                 break
@@ -312,6 +313,9 @@ class SpotifyPlaylistAdapter(private val fetcher: PlaylistImportFetcher) : Playl
         )
     }
 
+    private fun spotifyPathfinderBody(id: String, offset: Int, limit: Int): String =
+        """{"variables":{"uri":"spotify:playlist:$id","offset":$offset,"limit":$limit,"enableWatchFeedEntrypoint":false},"operationName":"fetchPlaylist","extensions":{"persistedQuery":{"version":1,"sha256Hash":"$SPOTIFY_FETCH_PLAYLIST_HASH"}}}"""
+
     private suspend fun resolveShortLink(url: String): String {
         val final = fetcher.fetch(html(url, 1024L * 1024)).finalUrl.toString()
         val resolved = PlaylistInputDetector.detectUrl(final) as? DetectedPlaylistInput.RemotePlaylist
@@ -324,9 +328,11 @@ class SpotifyPlaylistAdapter(private val fetcher: PlaylistImportFetcher) : Playl
     companion object {
         const val SPOTIFY_EMBED_PAGE = 100
         private const val SPOTIFY_API_PAGE_BYTES = 2L * 1024 * 1024
-        private const val SPOTIFY_API_FIELDS = "items(track(type,id,name,duration_ms,explicit,track_number,disc_number,artists(name),album(name,release_date,images(url)),external_ids(isrc),external_urls(spotify)),item(type,id,name,duration_ms,explicit,track_number,disc_number,artists(name),album(name,release_date,images(url)),external_ids(isrc),external_urls(spotify))),next,offset,total"
+        private const val SPOTIFY_PATHFINDER_PAGE_SIZE = 100
+        private const val SPOTIFY_PATHFINDER_URL = "https://api-partner.spotify.com/pathfinder/v2/query"
+        private const val SPOTIFY_FETCH_PLAYLIST_HASH = "346811f856fb0b7e4f6c59f8ebea78dd081c6e2fb01b77c954b26259d5fc6763"
         private val SPOTIFY_HOSTS = setOf("open.spotify.com", "spotify.link", "spotify.app.link", "www.spotify.com", "spotify.com")
-        private val SPOTIFY_API_HOSTS = setOf("api.spotify.com")
+        private val SPOTIFY_PATHFINDER_HOSTS = setOf("api-partner.spotify.com")
         private val SPOTIFY_PLAYLIST_ID = Regex("^[A-Za-z0-9]{22}$")
     }
 }
@@ -337,11 +343,6 @@ private data class SpotifyPaginationResult(
     val processed: Int,
     val complete: Boolean
 )
-
-private enum class SpotifyItemsEndpoint(val path: String, val maxPageSize: Int) {
-    LEGACY("tracks", 100),
-    CURRENT("items", 50)
-}
 
 class DeezerPlaylistAdapter(private val fetcher: PlaylistImportFetcher) : PlaylistImportSourceAdapter {
     override val sources = setOf(PlaylistImportSource.DEEZER)
