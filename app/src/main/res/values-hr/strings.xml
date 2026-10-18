@@ -45,4 +45,40 @@
     <string name="widget_studio_immersive_desc">Omot, red, stihovi i više</string>
     <string name="widget_studio_vinyl_desc">Player s omotom u stilu vinila</string>
     <string name="widget_studio_quick_desc">Flow, favoriti, preuzimanja i više</string>
+    <!-- Android Auto browse tree -->
+    <string name="car_root_subtitle">Glazba optimizirana za Android Auto</string>
+    <string name="car_home_subtitle">Brzi miksevi, izvanmrežno i ljestvice</string>
+    <string name="car_queue_title">Red čekanja</string>
+    <string name="car_queue_subtitle">Trajni red čekanja dijeljen s Levyrom</string>
+    <string name="car_recommended_title">Preporučeno</string>
+    <string name="car_recommended_subtitle">Glazbeni profil, favoriti i nedavna slušanja</string>
+    <string name="car_albums_title">Albumi</string>
+    <string name="car_albums_subtitle">Lokalni i predloženi albumi</string>
+    <string name="car_artists_title">Izvođači</string>
+    <string name="car_artists_subtitle">Najslušaniji i praćeni izvođači</string>
+    <string name="car_flow_subtitle">Osobni Levyra radio</string>
+    <string name="car_favorites_subtitle">Spremljene pjesme</string>
+    <string name="car_downloads_subtitle">Glazba dostupna izvanmrežno</string>
+    <string name="car_playlists_subtitle">Zbirke stvorene u aplikaciji</string>
+    <string name="car_recents_title">Nedavno slušano</string>
+    <string name="car_recents_subtitle">Nedavno pronađene pjesme</string>
+    <string name="car_home_recommended_title">Za tebe</string>
+    <string name="car_home_recommended_subtitle">Preporuke iz glazbenog profila</string>
+    <string name="car_home_driver_title">Za vožnju</string>
+    <string name="car_home_driver_subtitle">Favoriti, nedavne i energične pjesme</string>
+    <string name="car_home_offline_title">Spremno izvanmrežno</string>
+    <string name="car_home_offline_subtitle">Preuzimanja koja rade bez mreže</string>
+    <string name="car_home_top_local_title">Lokalni top</string>
+    <string name="car_home_top_local_subtitle">Ažurirana ljestvica za odabrani jezik</string>
+    <string name="car_home_flow_subtitle">Neprekidni osobni miks</string>
+    <string name="car_playlist_unavailable">Popis za reprodukciju nije dostupan</string>
+    <string name="car_album_unavailable">Album nije dostupan</string>
+    <string name="car_artist_unavailable">Izvođač nije dostupan</string>
+    <string name="car_item_unavailable">Stavka nije dostupna</string>
+    <string name="car_artist_folder_subtitle">Pjesme, favoriti i prijedlozi</string>
+    <plurals name="car_tracks_count">
+        <item quantity="one">%1$d pjesma</item>
+        <item quantity="few">%1$d pjesme</item>
+        <item quantity="other">%1$d pjesama</item>
+    </plurals>
 </resources>

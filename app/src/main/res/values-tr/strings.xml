@@ -45,4 +45,39 @@
     <string name="widget_studio_immersive_desc">Kapak, sıra, şarkı sözleri ve dahası</string>
     <string name="widget_studio_vinyl_desc">Plak tarzı kapaklı oynatıcı</string>
     <string name="widget_studio_quick_desc">Flow, favoriler, indirmeler ve dahası</string>
+    <!-- Android Auto browse tree -->
+    <string name="car_root_subtitle">Android Auto için optimize edilmiş müzik</string>
+    <string name="car_home_subtitle">Hızlı mixler, çevrimdışı ve listeler</string>
+    <string name="car_queue_title">Sıra</string>
+    <string name="car_queue_subtitle">Levyra ile paylaşılan kalıcı sıra</string>
+    <string name="car_recommended_title">Önerilenler</string>
+    <string name="car_recommended_subtitle">Müzik profili, favoriler ve son dinlenenler</string>
+    <string name="car_albums_title">Albümler</string>
+    <string name="car_albums_subtitle">Yerel ve önerilen albümler</string>
+    <string name="car_artists_title">Sanatçılar</string>
+    <string name="car_artists_subtitle">En çok dinlenen ve takip edilen sanatçılar</string>
+    <string name="car_flow_subtitle">Kişisel Levyra radyosu</string>
+    <string name="car_favorites_subtitle">Kaydedilen parçalar</string>
+    <string name="car_downloads_subtitle">Çevrimdışı kullanılabilir müzik</string>
+    <string name="car_playlists_subtitle">Uygulamada oluşturulan koleksiyonlar</string>
+    <string name="car_recents_title">Son dinlenenler</string>
+    <string name="car_recents_subtitle">Yakın zamanda bulunan parçalar</string>
+    <string name="car_home_recommended_title">Senin için</string>
+    <string name="car_home_recommended_subtitle">Müzik profilinden öneriler</string>
+    <string name="car_home_driver_title">Sürüş için</string>
+    <string name="car_home_driver_subtitle">Favoriler, son dinlenenler ve enerjik parçalar</string>
+    <string name="car_home_offline_title">Çevrimdışı hazır</string>
+    <string name="car_home_offline_subtitle">Ağ olmadan çalınabilen indirmeler</string>
+    <string name="car_home_top_local_title">Yerel top</string>
+    <string name="car_home_top_local_subtitle">Seçilen dil için güncel liste</string>
+    <string name="car_home_flow_subtitle">Kesintisiz kişisel mix</string>
+    <string name="car_playlist_unavailable">Çalma listesi kullanılamıyor</string>
+    <string name="car_album_unavailable">Albüm kullanılamıyor</string>
+    <string name="car_artist_unavailable">Sanatçı kullanılamıyor</string>
+    <string name="car_item_unavailable">Öğe kullanılamıyor</string>
+    <string name="car_artist_folder_subtitle">Parçalar, favoriler ve öneriler</string>
+    <plurals name="car_tracks_count">
+        <item quantity="one">%1$d parça</item>
+        <item quantity="other">%1$d parça</item>
+    </plurals>
 </resources>

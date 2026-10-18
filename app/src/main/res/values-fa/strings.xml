@@ -45,4 +45,39 @@
     <string name="widget_studio_immersive_desc">کاور، صف، متن آهنگ و بیشتر</string>
     <string name="widget_studio_vinyl_desc">پخش‌کننده با کاور به سبک صفحه گرامافون</string>
     <string name="widget_studio_quick_desc">Flow، علاقه‌مندی‌ها، دانلودها و بیشتر</string>
+    <!-- Android Auto browse tree -->
+    <string name="car_root_subtitle">موسیقی بهینه‌شده برای Android Auto</string>
+    <string name="car_home_subtitle">میکس‌های سریع، آفلاین و جدول‌ها</string>
+    <string name="car_queue_title">صف پخش</string>
+    <string name="car_queue_subtitle">صف دائمی مشترک با Levyra</string>
+    <string name="car_recommended_title">پیشنهادی</string>
+    <string name="car_recommended_subtitle">نمایه موسیقی، علاقه‌مندی‌ها و شنیده‌های اخیر</string>
+    <string name="car_albums_title">آلبوم‌ها</string>
+    <string name="car_albums_subtitle">آلبوم‌های محلی و پیشنهادی</string>
+    <string name="car_artists_title">هنرمندان</string>
+    <string name="car_artists_subtitle">پرشنونده‌ترین و دنبال‌شده‌ترین هنرمندان</string>
+    <string name="car_flow_subtitle">رادیوی شخصی Levyra</string>
+    <string name="car_favorites_subtitle">آهنگ‌های ذخیره‌شده</string>
+    <string name="car_downloads_subtitle">موسیقی در دسترس به‌صورت آفلاین</string>
+    <string name="car_playlists_subtitle">مجموعه‌های ساخته‌شده در برنامه</string>
+    <string name="car_recents_title">شنیده‌های اخیر</string>
+    <string name="car_recents_subtitle">آهنگ‌هایی که اخیراً پیدا شده‌اند</string>
+    <string name="car_home_recommended_title">برای تو</string>
+    <string name="car_home_recommended_subtitle">پیشنهادها از نمایه موسیقی</string>
+    <string name="car_home_driver_title">برای رانندگی</string>
+    <string name="car_home_driver_subtitle">علاقه‌مندی‌ها، اخیر و آهنگ‌های پرانرژی</string>
+    <string name="car_home_offline_title">آماده آفلاین</string>
+    <string name="car_home_offline_subtitle">دانلودهای قابل پخش بدون شبکه</string>
+    <string name="car_home_top_local_title">برترین‌های محلی</string>
+    <string name="car_home_top_local_subtitle">جدول موسیقی به‌روز برای زبان انتخاب‌شده</string>
+    <string name="car_home_flow_subtitle">میکس شخصی پیوسته</string>
+    <string name="car_playlist_unavailable">فهرست پخش در دسترس نیست</string>
+    <string name="car_album_unavailable">آلبوم در دسترس نیست</string>
+    <string name="car_artist_unavailable">هنرمند در دسترس نیست</string>
+    <string name="car_item_unavailable">مورد در دسترس نیست</string>
+    <string name="car_artist_folder_subtitle">آهنگ‌ها، علاقه‌مندی‌ها و پیشنهادها</string>
+    <plurals name="car_tracks_count">
+        <item quantity="one">%1$d آهنگ</item>
+        <item quantity="other">%1$d آهنگ</item>
+    </plurals>
 </resources>

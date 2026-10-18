@@ -45,4 +45,39 @@
     <string name="widget_studio_immersive_desc">Εξώφυλλο, ουρά, στίχοι και άλλα</string>
     <string name="widget_studio_vinyl_desc">Αναπαραγωγή με εξώφυλλο σε στιλ βινυλίου</string>
     <string name="widget_studio_quick_desc">Flow, αγαπημένα, λήψεις και άλλα</string>
+    <!-- Android Auto browse tree -->
+    <string name="car_root_subtitle">Μουσική βελτιστοποιημένη για Android Auto</string>
+    <string name="car_home_subtitle">Γρήγορα μίξ, εκτός σύνδεσης και τσαρτ</string>
+    <string name="car_queue_title">Ουρά</string>
+    <string name="car_queue_subtitle">Μόνιμη ουρά κοινή με το Levyra</string>
+    <string name="car_recommended_title">Προτεινόμενα</string>
+    <string name="car_recommended_subtitle">Μουσικό προφίλ, αγαπημένα και πρόσφατες ακροάσεις</string>
+    <string name="car_albums_title">Άλμπουμ</string>
+    <string name="car_albums_subtitle">Τοπικά και προτεινόμενα άλμπουμ</string>
+    <string name="car_artists_title">Καλλιτέχνες</string>
+    <string name="car_artists_subtitle">Οι πιο ακουσμένοι και ακολουθούμενοι καλλιτέχνες</string>
+    <string name="car_flow_subtitle">Προσωπικό ραδιόφωνο Levyra</string>
+    <string name="car_favorites_subtitle">Αποθηκευμένα κομμάτια</string>
+    <string name="car_downloads_subtitle">Μουσική διαθέσιμη εκτός σύνδεσης</string>
+    <string name="car_playlists_subtitle">Συλλογές που δημιουργήθηκαν στην εφαρμογή</string>
+    <string name="car_recents_title">Πρόσφατες ακροάσεις</string>
+    <string name="car_recents_subtitle">Κομμάτια που βρέθηκαν πρόσφατα</string>
+    <string name="car_home_recommended_title">Για εσένα</string>
+    <string name="car_home_recommended_subtitle">Προτάσεις από το μουσικό προφίλ</string>
+    <string name="car_home_driver_title">Για οδήγηση</string>
+    <string name="car_home_driver_subtitle">Αγαπημένα, πρόσφατα και ενεργητικά κομμάτια</string>
+    <string name="car_home_offline_title">Έτοιμο εκτός σύνδεσης</string>
+    <string name="car_home_offline_subtitle">Λήψεις που παίζουν χωρίς δίκτυο</string>
+    <string name="car_home_top_local_title">Τοπικό top</string>
+    <string name="car_home_top_local_subtitle">Ενημερωμένο τσαρτ για την επιλεγμένη γλώσσα</string>
+    <string name="car_home_flow_subtitle">Συνεχές προσωπικό μίξ</string>
+    <string name="car_playlist_unavailable">Η λίστα αναπαραγωγής δεν είναι διαθέσιμη</string>
+    <string name="car_album_unavailable">Το άλμπουμ δεν είναι διαθέσιμο</string>
+    <string name="car_artist_unavailable">Ο καλλιτέχνης δεν είναι διαθέσιμος</string>
+    <string name="car_item_unavailable">Το στοιχείο δεν είναι διαθέσιμο</string>
+    <string name="car_artist_folder_subtitle">Κομμάτια, αγαπημένα και προτάσεις</string>
+    <plurals name="car_tracks_count">
+        <item quantity="one">%1$d κομμάτι</item>
+        <item quantity="other">%1$d κομμάτια</item>
+    </plurals>
 </resources>

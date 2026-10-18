@@ -45,4 +45,41 @@
     <string name="widget_studio_immersive_desc">Obal, poradie, texty a ďalšie</string>
     <string name="widget_studio_vinyl_desc">Prehrávač s obalom v štýle vinylu</string>
     <string name="widget_studio_quick_desc">Flow, obľúbené, stiahnuté a ďalšie</string>
+    <!-- Android Auto browse tree -->
+    <string name="car_root_subtitle">Hudba optimalizovaná pre Android Auto</string>
+    <string name="car_home_subtitle">Rýchle mixy, offline a rebríčky</string>
+    <string name="car_queue_title">Poradie</string>
+    <string name="car_queue_subtitle">Trvalé poradie zdieľané s Levyra</string>
+    <string name="car_recommended_title">Odporúčané</string>
+    <string name="car_recommended_subtitle">Hudobný profil, obľúbené a nedávne počúvanie</string>
+    <string name="car_albums_title">Albumy</string>
+    <string name="car_albums_subtitle">Miestne a navrhnuté albumy</string>
+    <string name="car_artists_title">Interpreti</string>
+    <string name="car_artists_subtitle">Najpočúvanejší a sledovaní interpreti</string>
+    <string name="car_flow_subtitle">Osobné rádio Levyra</string>
+    <string name="car_favorites_subtitle">Uložené skladby</string>
+    <string name="car_downloads_subtitle">Hudba dostupná offline</string>
+    <string name="car_playlists_subtitle">Zbierky vytvorené v aplikácii</string>
+    <string name="car_recents_title">Nedávno počúvané</string>
+    <string name="car_recents_subtitle">Nedávno nájdené skladby</string>
+    <string name="car_home_recommended_title">Pre vás</string>
+    <string name="car_home_recommended_subtitle">Odporúčania z hudobného profilu</string>
+    <string name="car_home_driver_title">Na šoférovanie</string>
+    <string name="car_home_driver_subtitle">Obľúbené, nedávne a energické skladby</string>
+    <string name="car_home_offline_title">Pripravené offline</string>
+    <string name="car_home_offline_subtitle">Stiahnuté skladby hrateľné bez siete</string>
+    <string name="car_home_top_local_title">Miestny top</string>
+    <string name="car_home_top_local_subtitle">Aktuálny rebríček pre zvolený jazyk</string>
+    <string name="car_home_flow_subtitle">Nepretržitý osobný mix</string>
+    <string name="car_playlist_unavailable">Playlist nie je dostupný</string>
+    <string name="car_album_unavailable">Album nie je dostupný</string>
+    <string name="car_artist_unavailable">Interpret nie je dostupný</string>
+    <string name="car_item_unavailable">Položka nie je dostupná</string>
+    <string name="car_artist_folder_subtitle">Skladby, obľúbené a návrhy</string>
+    <plurals name="car_tracks_count">
+        <item quantity="one">%1$d skladba</item>
+        <item quantity="few">%1$d skladby</item>
+        <item quantity="many">%1$d skladby</item>
+        <item quantity="other">%1$d skladieb</item>
+    </plurals>
 </resources>

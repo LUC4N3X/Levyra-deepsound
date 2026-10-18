@@ -45,4 +45,39 @@
     <string name="widget_studio_immersive_desc">Borító, sor, dalszöveg és más</string>
     <string name="widget_studio_vinyl_desc">Bakelit stílusú lejátszó borítóval</string>
     <string name="widget_studio_quick_desc">Flow, kedvencek, letöltések és más</string>
+    <!-- Android Auto browse tree -->
+    <string name="car_root_subtitle">Android Autóra optimalizált zene</string>
+    <string name="car_home_subtitle">Gyors mixek, offline és toplisták</string>
+    <string name="car_queue_title">Lejátszási sor</string>
+    <string name="car_queue_subtitle">Tartós lejátszási sor a Levyrával megosztva</string>
+    <string name="car_recommended_title">Ajánlott</string>
+    <string name="car_recommended_subtitle">Zenei profil, kedvencek és legutóbbi hallgatások</string>
+    <string name="car_albums_title">Albumok</string>
+    <string name="car_albums_subtitle">Helyi és javasolt albumok</string>
+    <string name="car_artists_title">Előadók</string>
+    <string name="car_artists_subtitle">Legtöbbet hallgatott és követett előadók</string>
+    <string name="car_flow_subtitle">Személyes Levyra rádió</string>
+    <string name="car_favorites_subtitle">Mentett számok</string>
+    <string name="car_downloads_subtitle">Offline elérhető zene</string>
+    <string name="car_playlists_subtitle">Az alkalmazásban létrehozott gyűjtemények</string>
+    <string name="car_recents_title">Legutóbb hallgatott</string>
+    <string name="car_recents_subtitle">Nemrég talált számok</string>
+    <string name="car_home_recommended_title">Neked</string>
+    <string name="car_home_recommended_subtitle">Ajánlások a zenei profilból</string>
+    <string name="car_home_driver_title">Vezetéshez</string>
+    <string name="car_home_driver_subtitle">Kedvencek, legutóbbiak és energikus számok</string>
+    <string name="car_home_offline_title">Offline kész</string>
+    <string name="car_home_offline_subtitle">Hálózat nélkül játszható letöltések</string>
+    <string name="car_home_top_local_title">Helyi top</string>
+    <string name="car_home_top_local_subtitle">Frissített toplista a választott nyelvhez</string>
+    <string name="car_home_flow_subtitle">Folyamatos személyes mix</string>
+    <string name="car_playlist_unavailable">A lejátszási lista nem érhető el</string>
+    <string name="car_album_unavailable">Az album nem érhető el</string>
+    <string name="car_artist_unavailable">Az előadó nem érhető el</string>
+    <string name="car_item_unavailable">Az elem nem érhető el</string>
+    <string name="car_artist_folder_subtitle">Számok, kedvencek és javaslatok</string>
+    <plurals name="car_tracks_count">
+        <item quantity="one">%1$d szám</item>
+        <item quantity="other">%1$d szám</item>
+    </plurals>
 </resources>
