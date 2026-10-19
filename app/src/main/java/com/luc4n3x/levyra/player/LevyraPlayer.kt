@@ -24,6 +24,7 @@ import com.luc4n3x.levyra.domain.classifyVideoStall
 import com.luc4n3x.levyra.domain.hasVideoPlaybackPayload
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
+import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -389,6 +390,10 @@ class LevyraPlayer(context: Context) {
                 mediaItemCount = active.mediaItemCount
             )
         }
+
+    fun positionForTrack(track: Track): Long? = loadedTrack
+        ?.takeIf { playbackQueueIdentity(it) == playbackQueueIdentity(track) }
+        ?.let { positionMs }
 
     val bufferedPositionMs: Long
         get() = controller?.bufferedPosition?.coerceAtLeast(0L) ?: 0L

@@ -21,6 +21,19 @@ internal class RadioStore(context: Context) {
         decode(preferences.getString(KEY_RECENT, null)).sortedByDescending(RadioStation::lastPlayedAt).take(MAX_RECENT)
     }
 
+    suspend fun playbackStation(): RadioStation? = withContext(Dispatchers.IO) {
+        decode(preferences.getString(KEY_PLAYBACK_STATION, null)).firstOrNull()
+    }
+
+    suspend fun savePlaybackStation(station: RadioStation?) = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            preferences.edit().apply {
+                if (station == null) remove(KEY_PLAYBACK_STATION)
+                else putString(KEY_PLAYBACK_STATION, encode(listOf(station)))
+            }.commit()
+        }
+    }
+
     suspend fun setFavorite(station: RadioStation, favorite: Boolean): List<RadioStation> = withContext(Dispatchers.IO) {
         mutex.withLock {
             val current = decode(preferences.getString(KEY_FAVORITES, null)).toMutableList()
@@ -127,6 +140,7 @@ internal class RadioStore(context: Context) {
         const val PREFERENCES = "levyra_live_radio"
         const val KEY_FAVORITES = "favorites"
         const val KEY_RECENT = "recent"
+        const val KEY_PLAYBACK_STATION = "playback_station"
         const val KEY_CATALOG_PREFIX = "catalog_"
         const val KEY_CATALOG_TIME_PREFIX = "catalog_time_"
         const val MAX_FAVORITES = 200

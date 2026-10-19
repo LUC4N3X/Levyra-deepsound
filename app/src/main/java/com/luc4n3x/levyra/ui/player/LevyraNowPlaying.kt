@@ -120,6 +120,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
 import com.luc4n3x.levyra.data.ArtworkPalette
 import com.luc4n3x.levyra.data.ArtworkPaletteCache
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
@@ -130,6 +132,8 @@ import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.cast.CastRouteButton
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
+import com.luc4n3x.levyra.feature.radio.LiveRadioViewModel
+import com.luc4n3x.levyra.feature.radio.RadioStation
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.ui.LevyraLayoutMode
 import com.luc4n3x.levyra.ui.LevyraPlayerPane
@@ -934,6 +938,8 @@ fun LevyraNowPlaying(
             if (activeTrack.isLiveRadio()) {
                 PlayerLiveRadioMetadata(
                     track = activeTrack,
+                    station = state.liveRadioStation,
+                    animated = animated,
                     nowPlaying = when {
                         state.isResolving && state.liveRadioReconnectAttempt > 0 -> LevyraLiveRadioCatalog.reconnecting(strings.code)
                         else -> state.playerError ?: state.liveRadioNowPlaying
@@ -1811,26 +1817,48 @@ private fun PlayerSourceEyebrow(
 @Composable
 private fun PlayerLiveRadioMetadata(
     track: Track,
+    station: RadioStation?,
+    animated: Boolean,
     nowPlaying: String,
     liveLabel: String,
     details: String,
     surfaces: PlayerSurfaceTokens,
     compact: Boolean
 ) {
+    val context = LocalContext.current
+    val factory = remember(context.applicationContext) { LiveRadioViewModel.factory(context.applicationContext) }
+    val radioViewModel: LiveRadioViewModel = composeViewModel(key = "levyra-live-radio", factory = factory)
+    val radioState by radioViewModel.state.collectAsStateWithLifecycle()
+    val strings = LocalLevyraStrings.current
+    LaunchedEffect(station?.uuid) { radioViewModel.refreshFavorites() }
     val titleSize = if (compact) 22.sp else 26.sp
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs)
     ) {
-        Text(
-            text = track.title,
-            color = surfaces.content,
-            fontSize = titleSize,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = (-0.6).sp,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = track.title,
+                color = surfaces.content,
+                fontSize = titleSize,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.6).sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            if (station != null) {
+                val favorite = radioState.favorites.any { it.uuid.equals(station.uuid, ignoreCase = true) }
+                PlayerFavoriteButton(
+                    trackId = track.id,
+                    isFavorite = favorite,
+                    surfaces = surfaces,
+                    label = if (favorite) strings.removeFromFavorites else strings.addToFavorites,
+                    animated = animated,
+                    onToggle = { radioViewModel.toggleFavorite(station) }
+                )
+            }
+        }
         Text(
             text = nowPlaying.ifBlank { liveLabel },
             color = if (nowPlaying.isBlank()) surfaces.activeContent else surfaces.contentMuted,

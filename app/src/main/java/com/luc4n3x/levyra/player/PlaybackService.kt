@@ -153,6 +153,7 @@ class PlaybackService : MediaLibraryService() {
     private val adaptivePlaybackPolicy by lazy { AdaptivePlaybackPolicy(this) }
     private val playbackWarmup by lazy { PlaybackWarmup(this) }
     private var queueSkipJob: Job? = null
+    private var appExitRequested = false
     private var servicePrefetchJob: Job? = null
     private var servicePrefetchTargetIdentity: String? = null
     private var servicePrefetchRequestToken = 0L
@@ -392,6 +393,23 @@ class PlaybackService : MediaLibraryService() {
 
         fun setUiRecoveryAvailable(available: Boolean) {
             uiRecoveryAvailable = available
+        }
+
+        suspend fun stopForAppExit() {
+            val service = activeService ?: return
+            service.appExitRequested = true
+            service.queueSkipJob?.cancel()
+            service.serviceRecoveryJob?.cancel()
+            service.stickyRestoreJob?.cancel()
+            service.cancelQueueTransition()
+            service.cancelServicePrefetch()
+            service.clearPreparedQueueNextInternal()
+            service.markPlaybackExpected(false, force = true)
+            withContext(Dispatchers.IO) {
+                service.playbackStateStore.edit().putBoolean(KEY_PLAYBACK_EXPECTED, false).commit()
+            }
+            service.mediaSession?.player?.clearMediaItems()
+            service.pauseAllPlayersAndStopSelf()
         }
 
         fun requestQueueNext(): Boolean {
@@ -2565,7 +2583,7 @@ class PlaybackService : MediaLibraryService() {
         _sleepTimerStateFlow.value = PlaybackSleepTimerState.Disabled
         _liveRadioMetadataFlow.value = LiveRadioStreamMetadata()
         _remotePlaybackStateFlow.value = RemotePlaybackState()
-        mediaSession?.player?.let { queueEngine.updatePosition(it.currentPosition) }
+        if (!appExitRequested) mediaSession?.player?.let { queueEngine.updatePosition(it.currentPosition) }
         releasePlaybackWakeLock()
         synchronized(premiumAudioSettingsLock) {
             if (activeService === this) activeService = null

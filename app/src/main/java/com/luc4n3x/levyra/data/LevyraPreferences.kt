@@ -618,6 +618,8 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
 
     fun lastPositionMs(): Long = read { it[KEY_LAST_POSITION] ?: 0L }
 
+    suspend fun flush() = store.commit { }
+
     fun listeningLifetimeBackfillVersion(): Int = read { it[KEY_LISTENING_LIFETIME_BACKFILL] ?: 0 }
 
     fun setListeningLifetimeBackfillVersion(value: Int) {

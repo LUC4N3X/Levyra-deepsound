@@ -53,3 +53,30 @@ internal fun settingsFooterLegalInformation(code: String): String =
 
 internal fun settingsFooterLocalizationCodes(): Set<String> =
     settingsFooterLegalInformationLabels.keys
+
+private val settingsFooterExitApplicationLabels = mapOf(
+        "en" to "Exit application", "it" to "Esci dall’app",
+        "es" to "Salir de la aplicación", "fr" to "Quitter l’application",
+        "de" to "App beenden", "pt" to "Sair da aplicação",
+        "nl" to "App afsluiten", "pl" to "Zamknij aplikację",
+        "ro" to "Închide aplicația", "el" to "Έξοδος από την εφαρμογή",
+        "sv" to "Avsluta appen", "da" to "Afslut appen",
+        "cs" to "Ukončit aplikaci", "sk" to "Ukončiť aplikáciu",
+        "bn" to "অ্যাপ থেকে বের হন", "kk" to "Қолданбадан шығу",
+        "sr" to "Изађи из апликације", "sq" to "Dil nga aplikacioni",
+        "hr" to "Izađi iz aplikacije", "bg" to "Изход от приложението",
+        "hu" to "Kilépés az alkalmazásból", "fi" to "Sulje sovellus",
+        "et" to "Välju rakendusest", "nb" to "Avslutt appen",
+        "ca" to "Surt de l’aplicació", "uk" to "Вийти з програми",
+        "ru" to "Выйти из приложения", "tr" to "Uygulamadan çık",
+        "ar" to "الخروج من التطبيق", "fa" to "خروج از برنامه",
+        "zh" to "退出应用", "zh-Hant" to "結束應用程式",
+        "ja" to "アプリを終了", "ko" to "앱 종료",
+        "hi" to "ऐप से बाहर निकलें", "id" to "Keluar dari aplikasi",
+        "ms" to "Keluar aplikasi", "vi" to "Thoát ứng dụng",
+        "th" to "ออกจากแอป", "fil" to "Lumabas sa app",
+        "he" to "יציאה מהאפליקציה"
+)
+
+internal fun settingsFooterExitApplication(code: String): String =
+    localizedValueOrEnglish(settingsFooterExitApplicationLabels, code)
