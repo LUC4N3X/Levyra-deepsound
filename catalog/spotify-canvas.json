@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-19T04:47:08Z",
+  "generatedAt": "2026-10-19T13:25:14Z",
   "items": [
     {
       "song": "NON SEI PIÙ TU (feat. Lazza)",
@@ -299,7 +299,7 @@
     {
       "song": "Man I Need",
       "artist": "Olivia Dean",
-      "album": "Man I Need",
+      "album": "The Art of Loving",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
@@ -1788,6 +1788,13 @@
       "scope": "track"
     },
     {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "Man I Need",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Magnetic",
       "artist": "The Bausa",
       "album": "Magnetic / Addicted To Your Love",
@@ -2355,13 +2362,6 @@
       "scope": "track"
     },
     {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "The Art of Loving",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Midnight Sun",
       "artist": "Zara Larsson",
       "album": "Midnight Sun",
@@ -2435,7 +2435,7 @@
       "song": "mommy’s boy",
       "artist": "Benjamin Ingrosso",
       "album": "mommy’s boy",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/11bd355c03a24cf1b7c30faec74263e3.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/ef07f2ca7707407090fd8db136786657.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4665,6 +4665,13 @@
       "scope": "track"
     },
     {
+      "song": "Guardia del corpo",
+      "artist": "Giuse The Lizia",
+      "album": "Guardia del corpo",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/bddffb98b76944fab2c15011180308e0.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Before You Know It",
       "artist": "Kygo, Ava Max",
       "album": "Before You Know It",
@@ -4773,7 +4780,7 @@
       "song": "600K",
       "artist": "Heuss L'enfoiré, PLK",
       "album": "APRÈS LA SAISIE",
-      "url": "https://canvaz.scdn.co/upload/artist/3YwqjMyrRfuixi2pbgTGCE/video/f071780bd1ae488ea87f1ebf843d15bd.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/845df9f24e2a41c3bf47b0dce39aba97.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4833,9 +4840,9 @@
       "scope": "track"
     },
     {
-      "song": "Warum",
+      "song": "WARUM",
       "artist": "Helene Fischer",
-      "album": "Warum",
+      "album": "WARUM",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/07c82d8af80b4230a2ba83c05ff85ce8.cnvs.mp4",
       "scope": "track"
     },
@@ -5243,6 +5250,13 @@
       "artist": "zeyne, Manal",
       "album": "Kentili",
       "url": "https://canvaz.scdn.co/upload/artist/4yuZxu7joQOFtplpMAsxlf/video/81465b52026c4545a24bab444d236373.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "شتت",
+      "artist": "Dafencii",
+      "album": "شتت",
+      "url": "https://canvaz.scdn.co/upload/licensor/2ihNpZNPbbQ6eQ6usuTcMm/video/f7968a8c6c2e44d0ba1f4e23fa3cd3be.cnvs.mp4",
       "scope": "track"
     },
     {
