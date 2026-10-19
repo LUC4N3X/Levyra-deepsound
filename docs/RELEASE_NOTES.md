@@ -1,151 +1,90 @@
-# Levyra 2.6.9
+# Levyra 2.6.10
 
 ## Highlights
 
-I've spent a lot of time on the parts of Levyra people see and touch every day: the home screen widgets, the navigation bar, the player and the little details that make the app feel like yours. There is also a new way to look back at what you've been listening to.
+This release is mostly about making Levyra feel better in everyday use. I've spent a lot of time on the player, the library and the small things that can get in your way when you just want to listen to music.
 
-But this update isn't only about appearance. Several fixes came directly from reports on GitHub and 4PDA. Some were small annoyances; others, like radio stations going silent or preloaded tracks not being available after a restart, needed a closer look. Thanks to everyone who took the time to explain what was happening.
+There's a new player style, more freedom to customise the colours, and a new background that reacts gently to your music. But I also wanted to give some attention to what happens behind the scenes: keeping queues intact, getting radio right and making searches and imports more reliable.
 
-## ✦ Seven new home screen widgets
+A lot of these changes started with your reports and suggestions. Thank you for taking the time to send them.
 
-Widget Studio is here. Alongside the original widget, you can choose from seven new designs: Mini, Slim, Expressive, Artwork Hero, Immersive, Vinyl and Quick Actions.
+## The player feels a little more alive
 
-The idea is to give you something useful whether you have a small space left on your home screen or want the artwork to take centre stage. Widgets adapt to their available size, including larger layouts and landscape. You can adjust their look with artwork-based colours, your Levyra theme, Material You where supported, light or dark colours, or a custom choice.
+Levyra Flow is the new default player style for people who haven't chosen one yet. Its artwork changes shape as music plays, with softer motion and a layout built around the cover. If you've already picked a player style, that choice stays yours.
 
-Widget Studio lets you preview the result before saving it. Playback controls use the same player session as Levyra itself, including supported favourite, shuffle and repeat actions. The progress display can refresh in Battery saver (30 seconds, the default), Balanced (10 seconds) or Smooth (1 second) mode, so you can decide how much updating you want.
+The previous default is still here as Sleeve, now with its own vinyl-inspired look. Late Night has been refreshed too, and Velvet keeps its simpler play/pause button in both song and video mode. Cover swipes work more consistently across the different player designs, including round and moving artwork.
 
-The existing widget hasn't been replaced or redesigned. It is still available as Original (default).
+There's also a video decoder fallback to help when Android's decoder stops working during playback. It won't fix every unsupported video, but it gives Levyra another way to recover.
 
-## ✦ A navigation bar you can really make your own
+## Meet Reactive Aura
 
-Navigation Studio has grown quite a bit. Liquid Glass Dock adds a translucent treatment with a solid fallback when blur isn't available. Split Floating Dock gives Search its own button, which separates from the tab capsule as you open it. Connected Dock joins the navigation bar and the Connected mini player into a single changing shape.
+Reactive Aura is a new optional player background that uses colours from the current cover and moves gently with the music. You can choose Calm, Flow or Pulse and adjust the intensity.
 
-There is also a paired YouTube Music-inspired navigation and mini-player style. Choosing either half selects its matching partner. If you switch away, Levyra returns the other half to Original instead of leaving a mismatched pair behind.
+I've tried to keep it subtle enough that it doesn't compete with the lyrics or controls. It also respects pause, silence, animation settings and the app lifecycle. Dynamic remains the default background, so nothing changes unless you turn Reactive Aura on.
 
-The editor now has more control over indicators, labels, corner shapes, spacing, motion, surface tones and colour sources. You can follow the Levyra theme, Material You, your own accent or the current song artwork. Artwork colours change smoothly instead of flashing back to the theme while the next cover loads.
+## More ways to make Levyra yours
 
-Expanding labels are now the default for the customisable navigation styles: the selected destination makes room for its name while the other tabs settle back. Existing saved choices are respected. Levyra Original keeps its familiar rendering and remains the default for anyone who hasn't customised it.
+The advanced colour picker now lets you choose a shade visually instead of guessing a HEX code. You can still enter an exact colour or pick a preset, and the new picker works across the supported theme, player and navigation customisation screens.
 
-## ✦ A steadier player palette, if that's what you prefer
+Expressive Glass has had another pass too, with cleaner surfaces and more control over blur, transparency, tint and refraction.
 
-A few people wanted to keep one colour scheme instead of having the player change with every song. You can now choose between Dynamic, Theme colours and Custom under Settings > Player. Dynamic remains the default.
+Home now gives its different styles a more distinct My Soundtrack section, while Explore has neater layouts and better artwork fallbacks for Moods and genres. The Library has a clearer section overview, a more useful search across your music and a weekly listening card that looks at a consistent seven-day period. I've also fixed some clipped text, awkward spacing and navigation issues in the studios and settings.
 
-Fixed colours apply to the player surfaces, controls, progress bar and supported backdrops. You can still use Canvas, and the Adaptive backdrop can still show blurred artwork without changing your chosen palette. The Original mini player follows the same colour choice.
+## Song credits you can actually explore
 
-The first-run setup now offers light and dark appearance previews. Settings has also been reorganised into clearer groups, with a shelf for the different studios. The studio cards can scroll properly to the screen edges instead of being cut off.
+Where the information can be reliably matched to the recording, Levyra now shows song credits in the player. Tap the short credit line or open the player menu to see performers, composers, producers and available release details.
 
-## ✦ Your listening, in a receipt
+The important part is that it doesn't pretend to know credits it can't verify. If the information isn't available or can't be matched confidently, Levyra won't fill in the gaps with guesses.
 
-Listening Insights now has a Listening Receipt you can actually save or share. It turns the listening information Levyra already keeps on your device into a 1080 × 1350 image with your listening activity, top tracks, top artist and artwork.
+## Playback, queues and radio fixes
 
-You can choose Aurora, Noir or Paper, see the preview in Levyra and then share the PNG through Android's share sheet or save it to Pictures/Levyra. It uses the existing local listening data rather than introducing a separate tracking service.
+Several reports pointed to problems with resuming music. A paused queue could lose the information it needed to move to the next track, and resuming after a restart could sometimes switch to Your Orbit instead of returning to the original queue. Both paths have been corrected.
 
-There is also Year in Music, a short story through your listening year: minutes, artists, tracks and listening rhythm, ending with a receipt for the year. You can tap through it yourself; automatic progression follows your animation preference. Comparisons to the previous year use the listening history actually available on the device.
+Start Radio is more varied now. It works from the original song instead of drifting into repeated copies or tracks from the same artist, and it handles YouTube Music watch-radio responses more reliably. Live radio also remembers the selected station separately from your music queue and makes the existing favourite action accessible in the player.
 
-## ✦ Playback that handles interruptions better
+There's an orderly exit option in Settings, and the Search back button now behaves properly when the search field is empty.
 
-Losing a connection for a moment shouldn't mean starting the song again. The playback recovery path now handles temporary network loss and changes between networks more carefully. Instead of repeatedly rebuilding an online player while the device is offline, it waits for connectivity and uses the existing bounded retry and resume behaviour.
+## Better discovery and imports
 
-When a track keeps buffering, the automatic stability profile can react during that same track rather than waiting until the next one. If you've selected a custom buffer profile, Levyra respects it. Crossfade also avoids an unnecessary resync seek when the outgoing player is still buffering.
+Spotify playlist imports can now continue beyond the first roughly 100 tracks when Spotify makes more pages available. Song order and intentional duplicates are preserved, and Levyra tells you when an import is incomplete rather than silently claiming everything was imported.
 
-These are improvements to recovery, not a promise that every unavailable stream or long outage can be hidden. Source availability and the network still matter.
+JioSaavn searches can look a little deeper when the first results miss the right recording. Matching is also more careful with soundtrack credits and different spellings of song titles.
 
-## ✦ Preloading that follows the playlist
+YouTube search continuation, channel releases and some SABR connection recovery cases have been updated. Explore can also look beyond Spotify for genre-card artwork, using Apple Music, YouTube Music, Deezer and Tidal as fallbacks when needed. These changes improve the chances of finding available content; they don't guarantee that every source will work all the time.
 
-I also revisited advanced track preloading after reports that tracks from the current queue weren't reliably available offline after restarting the app.
+## Android Auto, audio output and smaller improvements
 
-Fully cached tracks now keep a persistent cache hint even if they haven't been played yet, and the hint store has more room for larger preload windows. Automatic radio and YouTube Music queues can fill the selected 5, 10 or 15-track window instead of remaining shorter than the chosen setting.
+Android Auto browsing now uses translated labels instead of fixed Italian text, including appropriate track-count plurals. Its Home folders also have separate identifiers so their labels don't get mixed up in the cache.
 
-You'll now find preloading under Settings > Offline downloads, below Smart Offline, where it makes more sense. There's an optional Use mobile data switch, off by default. Android Data Saver is still respected. The choices are saved with your preferences and backups.
+The audio output panel has a new expandable device card and a clearer Material 3 volume slider. You can see alternative outputs without losing sight of the device you're using. This is a visual change: the existing audio routing and its feedback are preserved. Settings categories and Studio cards also have more room to show their descriptions without cutting them off.
 
-Preloading remains optional, and cached material is still subject to cache limits and source availability. It isn't a replacement for an explicitly saved download.
-
-## ✦ Live radio should tell you when something is wrong
-
-Some listeners found radio stations that would sit there silently without explaining why. Live radio now detects a stalled stream instead of waiting indefinitely, shows a reconnecting state, and gives a readable message when a station can't be played.
-
-It can refresh the station URL and, when available, try a small number of alternative streams belonging to that same broadcaster. It won't quietly switch you to a different station. PLS and M3U playlist-style station links are supported too, within bounded resolution limits.
-
-A failed station can be restarted cleanly, and repeated attempts have limits. This work was prompted in particular by reports about Tamil and Telugu radio streams.
-
-## ✦ Better results for regional music
-
-Search has also been adjusted for Tamil and Telugu music. Some characters and vowel marks were being lost in the matching keys, which could make different songs look identical to the search engine. Those distinctions are now preserved.
-
-For a sparse Tamil or Telugu search, Levyra can make one additional bounded lookup using a romanised form of the query. This gives less common titles another chance to appear without turning the search into an endless series of requests. It doesn't create new playable audio sources, but it improves how existing results are found and distinguished.
-
-## ✦ Lyrics translation with clearer answers
-
-Lyrics translation now keeps each translated line attached to the correct original line. It also handles an occasional line that can't be translated without shifting the rest of the song out of place.
-
-More importantly, Levyra now explains what's happening. You can see when a translation is in progress, when the language model still needs to be downloaded, when the feature isn't supported on the device, or when something failed. On supported phones, the model status can take you to the system Live Translate settings; returning to Levyra retries the translation.
-
-This matters especially on phones whose Android translation service is missing or doesn't provide the required language model. Levyra can explain the limitation, but it cannot manufacture a missing system translation service. The lyric option chips are also easier to read in light mode.
-
-## ✦ YouTube Music and discovery fixes
-
-If you've connected a YouTube Music account, tracks played in Levyra can now be registered in your YouTube Music listening history through the existing playback tracking path. Your Orbit can show recently played Levyra tracks first and use cached account recommendations to fill out the second page. Without a connected account, this behaviour is unchanged.
-
-Tapping anywhere on a song result now starts that song; the artist subtitle no longer unexpectedly opens the artist page.
-
-Release Radar has been corrected too. When an album has a real release identifier, tapping it opens the album rather than taking you to a search for its name. A search remains the fallback if the release identifier is unavailable.
-
-## ✦ Better gestures and Canvas across player styles
-
-Cover swipes now work across the player styles that were giving people trouble, including Velvet and Late Night. The gesture area is no longer tied to a spinning record or limited by the shape of a small cover. Switching styles also avoids carrying over an upside-down, hidden lyric face.
-
-Velvet's play/pause symbol no longer morphs between shapes, and its landscape controls remain aligned with the portrait design.
-
-The artist page now looks for its Canvas sooner and checks the available candidates in parallel instead of one after another. Gallery can show moving Canvas artwork too, rather than always stopping at a static cover. These changes still depend on whether suitable motion artwork is available.
-
-## ✦ More thoughtful integration with your phone
-
-There is a new Device integration panel in Settings > Integrations. Levyra detects supported device and ROM capabilities and uses the appropriate system media integration when those capabilities are available.
-
-On supported Xiaomi, Redmi and POCO phones running the right HyperOS version, that includes Super Island with lyrics. Supported vivo and iQOO devices can use OriginOS Atomic Island. The existing OPPO, OnePlus and realme lyrics integration is preserved. Samsung, Pixel, Honor and other devices continue using the standard Android media session when a specialised island isn't available.
-
-These integrations depend on the manufacturer's software and the features actually exposed by the ROM; simply owning a phone from one of these brands doesn't guarantee that a particular island will appear. The panel helps show what's detected and active, and there are shortcuts to relevant background-playback settings.
-
-## ✦ Small fixes from your reports
-
-Some details deserve a mention because they were genuinely annoying:
-
-- The in-app update download banner now has a solid, readable surface instead of letting Home show through its text and progress bar.
-- Cancelling an update no longer lets an older download's state interfere with a newer request.
-- Download progress units and decimal separators now read naturally in Russian.
-- Changes to Home Studio's Original layout, including section visibility and ordering, are actually applied. Resetting it returns to the classic Home.
-- Navigation and studio layouts have had extra attention around scrolling, space and touch behaviour.
-- The README showcase and project imagery have been refreshed, with more consistent device previews and clearer translation coverage.
-
-Several of these corrections started as detailed community reports. Keep them coming; being able to reproduce an issue makes it much easier to fix properly.
+I've also made a number of smaller UI, extractor and dependency fixes, plus some updates to the project's screenshots and presentation.
 
 ## Validation
 
-The changes described here were merged into `main` after the Android `v2.6.8` release. The product changes include PRs #951, #954, #956, #958, #959, #960, #962, #964, #965, #966, #970 and #972. Documentation and showcase updates were also merged during this period. This summary was prepared against `main` through commit `b76c1e74360381edc43f188776f9923d15a77e5b`.
+This release gathers Android changes merged after 2.6.9, including PRs #973, #975, #978, #979, #982, #986, #987, #988, #989, #991, #993, #995, #999, #1002, #1003 and #1005. Supporting extractor, dependency, documentation and release-pipeline changes are included too.
 
-The individual PRs include focused test changes and, for some reported problems, emulator reproduction or verification described in their PR discussions. Those checks are not evidence that the final signed 2.6.9 APK has been built or passed a complete end-to-end test.
+Individual PRs contain their own reviews and focused test evidence. In particular, PR #1005 reports a successful debug build and Pixel 8 API 37 emulator checks. Those checks do not, by themselves, verify the final signed 2.6.10 APK.
 
-No local Gradle build, complete emulator regression, physical-device playback test, Android Auto check or final APK signing verification was performed as part of preparing this version bump. These remain unverified for the finished 2.6.9 artifact at this stage.
-
-The existing GitHub release workflow must still pass Android lint, build and sign the APK, verify the version and signing certificate, produce the SHA-256 checksum, publish `v2.6.9` and verify the downloadable assets. These are required publication gates, not checks claimed as already completed here.
+The release version bump is being published directly to main. A complete local release build, physical-device regression run and final signing verification have not been performed as part of writing these notes. The existing GitHub release workflow must still pass release lint, build and sign the Android APK, check the version and certificate, generate the SHA-256 checksum and verify the published files.
 
 ## Versioning
 
-- Version name: `2.6.9`
-- Version code: `2060900`
+- Version name: `2.6.10`
+- Version code: `2061000`
 
-This is an Android release. Levyra Desktop remains separately versioned at `1.2.2`; its release and Windows installer are not changed by this update.
+This is an Android release. The separately versioned Windows app is not being updated here.
 
 ## Upgrade notes
 
-No manual data migration is expected for the version change. Existing music, playlists, downloads, listening history and saved appearance choices continue to use their normal storage paths. The Original widget and navigation style remain available, and the new designs are optional.
+You shouldn't need to do anything special when updating. Your existing library, downloads, listening history, playlists and saved appearance settings continue to use their normal storage.
 
-Dynamic player colours remain the default, and mobile-data preloading stays off unless you enable it. Some features depend on a connected YouTube Music account, a compatible Android translation service or manufacturer-specific phone software, as described above.
+Previously selected player styles stay selected. Reactive Aura is optional and the existing Dynamic background remains the default. Some search, video, credits and music-provider features still depend on the availability of external services and the capabilities of your device.
 
-The signed GitHub APK and its checksum will be available from the release page after the release workflow succeeds. F-Droid and other distribution channels follow their own publication process and may not update at the same time.
+The signed APK and checksum will appear on the GitHub release page once the publishing workflow succeeds. F-Droid and other distribution channels may update on a different schedule.
 
 ## Final note
 
-This update is a mix of things I've wanted Levyra to do for a while and things you've told me needed fixing. I like that the app can be more personal without forcing a new design on everyone, and I care just as much about a song continuing to play, a radio station giving you a useful error, or a setting doing what it says.
+I know some of you come to Levyra for the design, and others just want it to play the next song without a fuss. I want both. There's still plenty I want to improve, but every report, translation, contribution and bit of feedback helps me decide what to work on next.
 
-Thanks for listening, testing and reporting the rough edges. That's how Levyra keeps getting better.
+Thanks for sticking with Levyra and helping it grow.
