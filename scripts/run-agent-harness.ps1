@@ -5,7 +5,7 @@ param(
 
 $root = Split-Path -Parent $PSScriptRoot
 $script = Join-Path $root "scripts\agent_harness.py"
-$argsToPass = $HarnessArgs
+[string[]]$argsToPass = $HarnessArgs
 
 if ($HarnessArgs.Count -gt 0 -and $HarnessArgs[0] -eq "checkpoint") {
     $script = Join-Path $root "scripts\agent_checkpoint.py"

@@ -46,6 +46,7 @@ import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.domain.LyricsProviderOrdering
 import com.luc4n3x.levyra.domain.VideoQualityTarget
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
+import com.luc4n3x.levyra.domain.ReactiveAuraPreset
 import com.luc4n3x.levyra.domain.PlayerColorMode
 import com.luc4n3x.levyra.domain.PlayerDoubleTapAction
 import com.luc4n3x.levyra.domain.PlayerLongPressAction
@@ -251,6 +252,8 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_UI_HAPTIC_FEEDBACK] = normalizedInterface.hapticFeedback
             mutable[KEY_UI_PLAYER_VISUAL_MODE] = normalizedInterface.playerVisualMode.name
             mutable[KEY_UI_PLAYER_BACKGROUND] = normalizedInterface.playerBackground.name
+            mutable[KEY_UI_REACTIVE_AURA_PRESET] = normalizedInterface.reactiveAuraPreset.name
+            mutable[KEY_UI_REACTIVE_AURA_INTENSITY] = normalizedInterface.reactiveAuraIntensity
             mutable[KEY_UI_PLAYER_COLOR_MODE] = normalizedInterface.playerColorMode.name
             mutable[KEY_UI_PLAYER_COLOR_ACCENT] = normalizedInterface.playerColorAccent
             mutable[KEY_UI_LIBRARY_SORT] = normalizedInterface.librarySort.name
@@ -425,6 +428,8 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_UI_HAPTIC_FEEDBACK] = normalized.hapticFeedback
             it[KEY_UI_PLAYER_VISUAL_MODE] = normalized.playerVisualMode.name
             it[KEY_UI_PLAYER_BACKGROUND] = normalized.playerBackground.name
+            it[KEY_UI_REACTIVE_AURA_PRESET] = normalized.reactiveAuraPreset.name
+            it[KEY_UI_REACTIVE_AURA_INTENSITY] = normalized.reactiveAuraIntensity
             it[KEY_UI_PLAYER_COLOR_MODE] = normalized.playerColorMode.name
             it[KEY_UI_PLAYER_COLOR_ACCENT] = normalized.playerColorAccent
             it[KEY_UI_LIBRARY_SORT] = normalized.librarySort.name
@@ -867,6 +872,9 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             hapticFeedback = preferences[KEY_UI_HAPTIC_FEEDBACK] ?: true,
             playerVisualMode = visualMode,
             playerBackground = background,
+            reactiveAuraPreset = ReactiveAuraPreset.from(preferences[KEY_UI_REACTIVE_AURA_PRESET].orEmpty()),
+            reactiveAuraIntensity = preferences[KEY_UI_REACTIVE_AURA_INTENSITY]
+                ?: LevyraInterfaceSettings.DEFAULT_REACTIVE_AURA_INTENSITY,
             playerColorMode = PlayerColorMode.from(preferences[KEY_UI_PLAYER_COLOR_MODE].orEmpty()),
             playerColorAccent = preferences[KEY_UI_PLAYER_COLOR_ACCENT] ?: PlayerColorMode.DEFAULT_ACCENT,
             librarySort = librarySort,
@@ -1357,6 +1365,8 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_UI_ENHANCE_VIDEO_METADATA = booleanPreferencesKey("ui_enhance_video_metadata")
         val KEY_UI_PLAYER_VISUAL_MODE = stringPreferencesKey("ui_player_visual_mode")
         val KEY_UI_PLAYER_BACKGROUND = stringPreferencesKey("ui_player_background")
+        val KEY_UI_REACTIVE_AURA_PRESET = stringPreferencesKey("ui_reactive_aura_preset")
+        val KEY_UI_REACTIVE_AURA_INTENSITY = intPreferencesKey("ui_reactive_aura_intensity")
         val KEY_UI_PLAYER_COLOR_MODE = stringPreferencesKey("ui_player_color_mode")
         val KEY_UI_PLAYER_COLOR_ACCENT = intPreferencesKey("ui_player_color_accent")
         val KEY_UI_LIBRARY_SORT = stringPreferencesKey("ui_library_sort")

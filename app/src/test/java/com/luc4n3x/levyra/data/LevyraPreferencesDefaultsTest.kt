@@ -11,6 +11,7 @@ import com.luc4n3x.levyra.domain.PlayerDoubleTapAction
 import com.luc4n3x.levyra.domain.PlayerLongPressAction
 import com.luc4n3x.levyra.domain.PlayerVerticalSwipeAction
 import com.luc4n3x.levyra.domain.PlayerVisualMode
+import com.luc4n3x.levyra.domain.ReactiveAuraPreset
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -178,6 +179,28 @@ class LevyraPreferencesDefaultsTest {
     fun legacyPureBlackMapsToPureBlackBackgroundWhenUnset() {
         val restored = backupInterfaceSettingsFromJson(JSONObject().put("pureBlack", true))
         assertEquals(PlayerBackgroundMode.PureBlack, restored.playerBackground)
+    }
+
+    @Test
+    fun backupRoundTripPreservesReactiveAuraSettings() {
+        val original = LevyraInterfaceSettings(
+            playerBackground = PlayerBackgroundMode.ReactiveAura,
+            reactiveAuraPreset = ReactiveAuraPreset.Pulse,
+            reactiveAuraIntensity = 75
+        )
+
+        val restored = backupInterfaceSettingsFromJson(backupInterfaceSettingsToJson(original))
+
+        assertEquals(PlayerBackgroundMode.ReactiveAura, restored.playerBackground)
+        assertEquals(ReactiveAuraPreset.Pulse, restored.reactiveAuraPreset)
+        assertEquals(75, restored.reactiveAuraIntensity)
+    }
+
+    @Test
+    fun defaultReactiveAuraSettingsAreFlowAnd50() {
+        val defaults = backupInterfaceSettingsFromJson(JSONObject())
+        assertEquals(ReactiveAuraPreset.Flow, defaults.reactiveAuraPreset)
+        assertEquals(50, defaults.reactiveAuraIntensity)
     }
 
     @Test

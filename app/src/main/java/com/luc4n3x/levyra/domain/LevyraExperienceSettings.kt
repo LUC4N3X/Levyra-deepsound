@@ -109,7 +109,8 @@ enum class PlayerBackgroundMode {
     Dark,
     PureBlack,
     Aurora,
-    Gradient;
+    Gradient,
+    ReactiveAura;
 
     companion object {
         fun from(value: String): PlayerBackgroundMode =
@@ -119,8 +120,22 @@ enum class PlayerBackgroundMode {
                     "blur" -> Blur
                     "dark" -> Dark
                     "pure_black", "pureblack", "black" -> PureBlack
+                    "reactive_aura", "reactive-aura" -> ReactiveAura
                     else -> Dynamic
                 }
+    }
+}
+
+enum class ReactiveAuraPreset {
+    Calm,
+    Flow,
+    Pulse;
+
+    companion object {
+        val Recommended: ReactiveAuraPreset = Flow
+
+        fun from(value: String): ReactiveAuraPreset =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: Recommended
     }
 }
 
@@ -191,6 +206,8 @@ data class LevyraInterfaceSettings(
     val hapticFeedback: Boolean = true,
     val playerVisualMode: PlayerVisualMode = PlayerVisualMode.Flow,
     val playerBackground: PlayerBackgroundMode = PlayerBackgroundMode.Dynamic,
+    val reactiveAuraPreset: ReactiveAuraPreset = ReactiveAuraPreset.Recommended,
+    val reactiveAuraIntensity: Int = DEFAULT_REACTIVE_AURA_INTENSITY,
     val playerColorMode: PlayerColorMode = PlayerColorMode.Dynamic,
     val playerColorAccent: Int = PlayerColorMode.DEFAULT_ACCENT,
     val librarySort: LibrarySort = LibrarySort.Recent,
@@ -202,11 +219,13 @@ data class LevyraInterfaceSettings(
         glassBlur = glassBlur.coerceIn(0, 100),
         glassTransparency = glassTransparency.coerceIn(0, 100),
         glassTint = glassTint.coerceIn(0, 100),
+        reactiveAuraIntensity = reactiveAuraIntensity.coerceIn(0, 100),
         playerColorAccent = playerColorAccent or 0xFF000000.toInt()
     )
 
     companion object {
         const val DEFAULT_GLASS_LEVEL = 50
+        const val DEFAULT_REACTIVE_AURA_INTENSITY = 50
     }
 }
 

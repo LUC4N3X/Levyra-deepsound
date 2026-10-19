@@ -221,6 +221,15 @@ fun LevyraNowPlaying(
         }
     }
     val animated = state.animationsEnabled
+    val reactiveAuraStyle = remember(
+        state.interfaceSettings.reactiveAuraPreset,
+        state.interfaceSettings.reactiveAuraIntensity
+    ) {
+        ReactiveAuraStyle(
+            preset = state.interfaceSettings.reactiveAuraPreset,
+            intensity = state.interfaceSettings.reactiveAuraIntensity
+        )
+    }
 
     val fallbackPalette = remember(track?.accentStart, track?.accentEnd) {
         ArtworkPalette(track?.accentStart ?: LevyraCyan.toArgb(), track?.accentEnd ?: LevyraViolet.toArgb())
@@ -494,6 +503,7 @@ fun LevyraNowPlaying(
             isPlaying = state.isPlaying,
             fixedColors = fixedAccents != null,
             backdropFocus = backdropFocus,
+            reactiveAura = reactiveAuraStyle,
             modifier = Modifier.fillMaxSize()
         )
 
@@ -1778,7 +1788,16 @@ fun LevyraNowPlaying(
                         hapticFeedback.perform(LevyraHapticAction.Confirm)
                     }
                 },
-                onDismiss = { showDeck = false }
+                onDismiss = { showDeck = false },
+                reactiveAuraPreset = state.interfaceSettings.reactiveAuraPreset,
+                reactiveAuraIntensity = state.interfaceSettings.reactiveAuraIntensity,
+                onSelectReactiveAuraPreset = { preset ->
+                    if (preset != state.interfaceSettings.reactiveAuraPreset) {
+                        viewModel.setReactiveAuraPreset(preset)
+                        hapticFeedback.perform(LevyraHapticAction.Confirm)
+                    }
+                },
+                onSelectReactiveAuraIntensity = viewModel::setReactiveAuraIntensity
             )
         }
 
