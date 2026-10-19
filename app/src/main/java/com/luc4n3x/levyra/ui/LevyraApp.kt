@@ -156,6 +156,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.player.*
 import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
+import com.luc4n3x.levyra.domain.ReactiveAuraPreset
 import com.luc4n3x.levyra.domain.PlayerColorMode
 import com.luc4n3x.levyra.domain.PlayerDoubleTapAction
 import com.luc4n3x.levyra.domain.PlayerLongPressAction
@@ -2121,7 +2122,9 @@ fun LevyraApp(
             viewModel.clearBackupMessage()
         }
     }
-    val rootOverlayOpen = showYoutubeMusic || showLanguageRestartDialog || state.youtubeEngagement.comments.visible || state.showRecognition || state.showJam || state.showThemeStudio || state.showLyricsStudio || state.showHomeStudio || miniPlayerStudio.visible || navigationStudio.visible || state.showYourSound || state.showListeningInsights || state.showListeningRecap || state.sharedMediaPreview != null || showDownloadsFolder || state.playlistHitPreview != null || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel
+    val otherRootOverlayOpen = showYoutubeMusic || showLanguageRestartDialog || state.youtubeEngagement.comments.visible || state.showRecognition || state.showJam || state.showThemeStudio || state.showLyricsStudio || state.showHomeStudio || miniPlayerStudio.visible || navigationStudio.visible || state.showYourSound || state.showListeningInsights || state.showListeningRecap || state.sharedMediaPreview != null || showDownloadsFolder || state.playlistHitPreview != null || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showAudioQualityPanel
+    val rootOverlayOpen = otherRootOverlayOpen || state.showSettings
+    val settingsDockVisible = state.showSettings && !otherRootOverlayOpen
     BackHandler(enabled = rootOverlayOpen || state.selectedTab != LevyraTab.Home) {
         if (showYoutubeMusic) {
             if (youtubeMusicState.showLogin) youtubeMusicViewModel.cancelLogin()
@@ -2297,6 +2300,9 @@ fun LevyraApp(
                     if (state.selectedTab == LevyraTab.Player) viewModel.selectTab(backgroundTab)
                 }
             }
+            BackHandler(enabled = settingsDockVisible && state.selectedTab == LevyraTab.Player) {
+                collapsePlayer()
+            }
             val playerPredictiveBackEnabled = state.animationsEnabled &&
                 state.selectedTab == LevyraTab.Player &&
                 !state.showQueue &&
@@ -2431,6 +2437,7 @@ fun LevyraApp(
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
+                        .zIndex(if (settingsDockVisible) 1f else 0f)
                         .fillMaxWidth()
                         .windowInsetsPadding(LevyraHorizontalSafeInsets)
                         .graphicsLayer { alpha = playerChromeAlpha(expansionProvider()) },
@@ -2525,6 +2532,10 @@ fun LevyraApp(
                         }
                     }
                     val bottomTabsSlot: @Composable () -> Unit = {
+                        val selectDockTab: (LevyraTab) -> Unit = { tab ->
+                            if (state.showSettings) viewModel.closeSettings()
+                            viewModel.selectTab(tab)
+                        }
                         Box(
                             modifier = if (miniMaxWidth.isFinite()) {
                                 Modifier.widthIn(max = miniMaxWidth.dp)
@@ -2537,7 +2548,7 @@ fun LevyraApp(
                                 BottomTabs(
                                     selected = backgroundTab,
                                     compaction = compactionProvider,
-                                    onSelect = viewModel::selectTab
+                                    onSelect = selectDockTab
                                 )
                             } else {
                                 StyledBottomTabs(
@@ -2545,7 +2556,7 @@ fun LevyraApp(
                                     tuning = navStudio.activeTuning(),
                                     selected = backgroundTab,
                                     compaction = compactionProvider,
-                                    onSelect = viewModel::selectTab,
+                                    onSelect = selectDockTab,
                                     glass = dockGlass,
                                     link = dockLink.takeIf { navStudio.style == NavStyle.ConnectedDock }
                                 )
@@ -2596,7 +2607,7 @@ fun LevyraApp(
                 val playerAboveDetail = detailUnderPlayer && (state.showAlbum || state.showArtist || state.openPlaylist != null || state.playlistHitPreview != null)
                 Box(
                     modifier = Modifier
-                        .then(if (playerAboveDetail) Modifier.zIndex(41f) else Modifier)
+                        .zIndex(if (playerAboveDetail) 41f else if (settingsDockVisible) 1f else 0f)
                         .fillMaxSize()
                         .graphicsLayer {
                             val expansion = expansionProvider()
@@ -2744,8 +2755,9 @@ fun LevyraApp(
             AnimatedVisibility(visible = state.showSettings, enter = overlayEnter, exit = overlayExit) {
                 SettingsOverlay(
                     onExitApplication = onExitApplication,
-                    backEnabled = !(state.showJam || state.showThemeStudio || state.showLyricsStudio ||
+                    backEnabled = !playerVisible && !(state.showJam || state.showThemeStudio || state.showLyricsStudio ||
                         state.showHomeStudio || miniPlayerStudio.visible || navigationStudio.visible),
+                    miniPlayerVisible = state.currentTrack != null && !state.isSamplesOpen,
                     animationsEnabled = state.animationsEnabled,
                     motionArtworkEnabled = state.motionArtworkEnabled,
                     dynamicColor = state.dynamicColor,
@@ -21140,6 +21152,7 @@ private fun LanguageSelector(selectedCode: String, onSelect: (String) -> Unit, m
 private fun SettingsOverlay(
     onExitApplication: () -> Unit,
     backEnabled: Boolean,
+    miniPlayerVisible: Boolean,
     animationsEnabled: Boolean,
     motionArtworkEnabled: Boolean,
     dynamicColor: Boolean,
@@ -21316,6 +21329,8 @@ private fun SettingsOverlay(
         ) { current ->
             val meta = categories.firstOrNull { it.id == current }
             val settingsListState = remember(current) { LazyListState() }
+            val bottomContentInset = tabBarBottomContentInset(miniPlayerVisible, animationsEnabled) -
+                WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
             CompositionLocalProvider(LocalSettingsAccent provides meta?.accent) {
             LazyColumn(
                 state = settingsListState,
@@ -21323,7 +21338,7 @@ private fun SettingsOverlay(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding(),
-                contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 40.dp),
+                contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 18.dp, bottom = maxOf(40.dp, bottomContentInset)),
                 verticalArrangement = Arrangement.spacedBy(if (current == null) 0.dp else SettingsGroupGap)
             ) {
                 if (current == null) {
@@ -21823,6 +21838,7 @@ private fun SettingsOverlay(
                                     subtitle = strings.playerBackgroundSubtitle,
                                     options = listOf(
                                         PlayerBackgroundMode.Dynamic.name to strings.playerBackgroundDynamic,
+                                        PlayerBackgroundMode.ReactiveAura.name to strings.playerBackgroundReactiveAura,
                                         PlayerBackgroundMode.Blur.name to strings.playerBackgroundBlur,
                                         PlayerBackgroundMode.Dark.name to strings.playerBackgroundDark,
                                         PlayerBackgroundMode.PureBlack.name to strings.playerBackgroundPureBlack,
@@ -21836,6 +21852,24 @@ private fun SettingsOverlay(
                                         )
                                     }
                                 )
+                            }
+                            if (interfaceSettings.playerBackground == PlayerBackgroundMode.ReactiveAura) {
+                                item {
+                                    SettingsChoiceRow(
+                                        icon = Icons.Rounded.AutoAwesome,
+                                        title = strings.playerBackgroundReactiveAura,
+                                        subtitle = "${reactiveAuraPresetLabel(ReactiveAuraPreset.Recommended, strings)} · ${strings.reactiveAuraRecommended}",
+                                        options = ReactiveAuraPreset.entries.map { preset ->
+                                            preset.name to reactiveAuraPresetLabel(preset, strings)
+                                        },
+                                        selected = interfaceSettings.reactiveAuraPreset.name,
+                                        onSelect = { value ->
+                                            onInterfaceSettings(
+                                                interfaceSettings.copy(reactiveAuraPreset = ReactiveAuraPreset.from(value))
+                                            )
+                                        }
+                                    )
+                                }
                             }
                             item {
                                 PlayerColorModeSetting(

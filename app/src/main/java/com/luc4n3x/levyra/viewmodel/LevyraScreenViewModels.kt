@@ -36,6 +36,7 @@ import com.luc4n3x.levyra.domain.LibrarySort
 import com.luc4n3x.levyra.domain.LibrarySortDirection
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
 import com.luc4n3x.levyra.domain.PlayerVisualMode
+import com.luc4n3x.levyra.domain.ReactiveAuraPreset
 import com.luc4n3x.levyra.domain.LevyraMixKind
 import com.luc4n3x.levyra.domain.ListeningPulse
 import com.luc4n3x.levyra.domain.LyricLine
@@ -526,6 +527,8 @@ class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::pla
     fun setTemporaryPlaybackSpeed(value: Float) = root.setTemporaryPlaybackSpeed(value)
     fun setPlayerVisualMode(mode: PlayerVisualMode) = root.setPlayerVisualMode(mode)
     fun setPlayerBackground(mode: PlayerBackgroundMode) = root.setPlayerBackground(mode)
+    fun setReactiveAuraPreset(preset: ReactiveAuraPreset) = root.setReactiveAuraPreset(preset)
+    fun setReactiveAuraIntensity(intensity: Int) = root.setReactiveAuraIntensity(intensity)
 }
 
 class LevyraScreenViewModelFactory internal constructor(
