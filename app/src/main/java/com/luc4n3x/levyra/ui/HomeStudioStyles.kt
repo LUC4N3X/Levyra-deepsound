@@ -1846,7 +1846,7 @@ private fun StudioExpressiveMaxBackdrop(
                             radius = size.width * 0.68f
                         )
                     }
-    
+
             ) {
                 if (showExpressivePortrait && (expressivePortraitUrl.isNotBlank() || heroTrack != null)) {
                     // One cinematic layer behind both greeting and soundtrack, avoiding the old seam.
