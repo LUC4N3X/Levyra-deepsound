@@ -119,6 +119,7 @@ private fun LevyraUiState.toMainActivityUiSlice(): MainActivityUiSlice = MainAct
 )
 
 class MainActivity : ComponentActivity() {
+    private var exitApplicationRequested = false
     private val pipMode = mutableStateOf(false)
     private val viewModel: LevyraViewModel by viewModels()
     private val updatePhase = mutableStateOf<LevyraUpdatePhase>(LevyraUpdatePhase.Idle)
@@ -207,6 +208,12 @@ class MainActivity : ComponentActivity() {
                 ) {
                     LevyraApp(
                         viewModel = viewModel,
+                        onExitApplication = {
+                            viewModel.exitApplication { terminateProcess ->
+                                exitApplicationRequested = terminateProcess
+                                finishAndRemoveTask()
+                            }
+                        },
                         isInPictureInPicture = pipMode.value,
                         onRetryPreUpdateBackup = ::retryPreUpdateBackup,
                         onContinueUpdateWithoutBackup = ::continueUpdateWithoutBackup
@@ -336,6 +343,7 @@ class MainActivity : ComponentActivity() {
         updateJob?.cancel()
         LevyraPipBridge.unbind()
         super.onDestroy()
+        if (exitApplicationRequested) android.os.Process.killProcess(android.os.Process.myPid())
     }
 
     private fun beginInAppUpdate(skipBackup: Boolean = false) {
