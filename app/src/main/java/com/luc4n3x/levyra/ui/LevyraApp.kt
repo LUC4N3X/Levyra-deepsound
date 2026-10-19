@@ -21425,12 +21425,12 @@ private fun SettingsOverlay(
                             title = strings.settingsHubCopy[SettingsHubText.Studios],
                             subtitle = strings.settingsHubCopy[SettingsHubText.StudiosHint],
                             entries = listOf(
-                                SettingsStudioEntry("theme", strings.themeStudio, LevyraThemes.byId(themePreset).label, Icons.Rounded.Palette, LevyraViolet, MaterialShapes.Cookie9Sided, onOpenThemeStudio),
-                                SettingsStudioEntry("home", strings.homeStudioCopy.title, homeStyleName(homeStudioStyle), Icons.Rounded.Home, LevyraCyan, MaterialShapes.Clover4Leaf, onOpenHomeStudio),
-                                SettingsStudioEntry("mini_player", strings.miniPlayerStudioCopy[MiniStudioText.Title], miniPlayerStyleName(miniPlayerStyle), Icons.Rounded.SmartDisplay, LevyraPink, MaterialShapes.Sunny, onOpenMiniPlayerStudio),
-                                SettingsStudioEntry("navigation", strings.navigationStudioCopy[NavStudioText.Title], navigationStyleName(navigationStyle), Icons.Rounded.Dashboard, LevyraBlue, MaterialShapes.Pill, onOpenNavigationStudio),
-                                SettingsStudioEntry("lyrics", strings.lyricsStudio, strings.lyricsStudioSubtitle, Icons.Rounded.AutoAwesome, LevyraOrange, MaterialShapes.SoftBurst, onOpenLyricsStudio),
-                                SettingsStudioEntry("widget", strings.widgetStudioCopy[WidgetStudioText.Title], strings.widgetStudioCopy[WidgetStudioText.Subtitle], Icons.Rounded.Widgets, LevyraCyan, MaterialShapes.Gem) {
+                                SettingsStudioEntry("theme", strings.themeStudio, Icons.Rounded.Palette, LevyraViolet, MaterialShapes.Cookie9Sided, onOpenThemeStudio),
+                                SettingsStudioEntry("home", strings.homeStudioCopy.title, Icons.Rounded.Home, LevyraCyan, MaterialShapes.Clover4Leaf, onOpenHomeStudio),
+                                SettingsStudioEntry("mini_player", strings.miniPlayerStudioCopy[MiniStudioText.Title], Icons.Rounded.SmartDisplay, LevyraPink, MaterialShapes.Sunny, onOpenMiniPlayerStudio),
+                                SettingsStudioEntry("navigation", strings.navigationStudioCopy[NavStudioText.Title], Icons.Rounded.Dashboard, LevyraBlue, MaterialShapes.Pill, onOpenNavigationStudio),
+                                SettingsStudioEntry("lyrics", strings.lyricsStudio, Icons.Rounded.AutoAwesome, LevyraOrange, MaterialShapes.SoftBurst, onOpenLyricsStudio),
+                                SettingsStudioEntry("widget", strings.widgetStudioCopy[WidgetStudioText.Title], Icons.Rounded.Widgets, LevyraCyan, MaterialShapes.Gem) {
                                     studioContext.startActivity(WidgetStudioActivity.intent(studioContext))
                                 }
                             )
@@ -22909,7 +22909,6 @@ private fun settingsHubGroupTitle(group: SettingsHubGroup, strings: LevyraString
 private class SettingsStudioEntry(
     val id: String,
     val title: String,
-    val subtitle: String,
     val icon: ImageVector,
     val accent: Color,
     val shape: RoundedPolygon,
@@ -22958,41 +22957,33 @@ private fun SettingsStudioShelf(title: String, subtitle: String, entries: List<S
             items(entries, key = { it.id }) { entry ->
                 Surface(
                     onClick = entry.onClick,
-                    shape = RoundedCornerShape(28.dp),
-                    color = entry.accent.copy(alpha = 0.14f),
-                    modifier = Modifier.width(184.dp)
+                    shape = RoundedCornerShape(22.dp),
+                    color = entry.accent.copy(alpha = 0.12f),
+                    modifier = Modifier.width(180.dp).heightIn(min = 80.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(52.dp)
+                                .size(42.dp)
                                 .clip(entry.shape.toShape())
                                 .background(entry.accent),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(entry.icon, null, tint = LevyraBlack, modifier = Modifier.size(26.dp))
+                            Icon(entry.icon, null, tint = LevyraBlack, modifier = Modifier.size(22.dp))
                         }
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(
-                                entry.title,
-                                color = LevyraText,
-                                fontSize = 15.sp,
-                                lineHeight = 19.sp,
-                                fontWeight = FontWeight.Bold,
-                                minLines = 2
-                            )
-                            Text(
-                                entry.subtitle,
-                                color = LevyraMuted,
-                                fontSize = 12.sp,
-                                lineHeight = 16.sp,
-                                fontWeight = FontWeight.Medium,
-                                minLines = 3
-                            )
-                        }
+                        Text(
+                            text = entry.title,
+                            color = LevyraText,
+                            fontSize = 14.sp,
+                            lineHeight = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            softWrap = true,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                 }
             }
