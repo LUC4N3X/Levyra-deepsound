@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.VolumeDown
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.AddCircleOutline
 import androidx.compose.material.icons.rounded.CheckCircle
@@ -38,9 +37,14 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.rememberSliderState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -89,6 +93,7 @@ import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LevyraMotion
+import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.draw.drawWithContent
@@ -202,7 +207,7 @@ internal fun PlayerAuraDeck(
                 onNext = onNext
             )
             Spacer(Modifier.height(10.dp))
-            AuraVolume()
+            PlayerOutputVolume()
             Spacer(Modifier.height(8.dp))
             AuraUtilityRow(actions = slots.dockActions(track))
             Spacer(Modifier.height(6.dp))
@@ -521,8 +526,16 @@ private fun AuraTransportButton(icon: ImageVector, label: String, glyph: Dp, onC
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AuraVolume() {
+internal fun PlayerOutputVolume(
+    contentColor: Color = AuraInk,
+    mutedColor: Color = AuraInkSoft,
+    activeColor: Color = AuraInk,
+    trackColor: Color = AuraBadge,
+    modifier: Modifier = Modifier
+) {
+    val label = LocalLevyraStrings.current.volume
     val context = LocalContext.current
     val audio = remember(context) { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     val max = remember(audio) { audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1) }
@@ -540,16 +553,47 @@ private fun AuraVolume() {
         level = fraction
         audio.setStreamVolume(AudioManager.STREAM_MUSIC, (fraction * max).toInt().coerceIn(0, max), 0)
     }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Icon(Icons.AutoMirrored.Rounded.VolumeDown, contentDescription = null, tint = AuraInkSoft, modifier = Modifier.size(18.dp))
-        Box(modifier = Modifier.weight(1f)) {
-            AuraLine(fraction = level, enabled = true, onCommit = apply, onLive = apply)
+    val sliderColors = SliderDefaults.colors(
+        thumbColor = activeColor,
+        activeTrackColor = activeColor,
+        inactiveTrackColor = trackColor
+    )
+    val sliderState = rememberSliderState(value = level.coerceIn(0f, 1f), trackRange = 0f..1f)
+    LaunchedEffect(level) {
+        sliderState.value = level.coerceIn(0f, 1f)
+    }
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(Icons.AutoMirrored.Rounded.VolumeUp, contentDescription = null, tint = mutedColor, modifier = Modifier.size(20.dp))
+            Text(label, color = contentColor, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Text("${(level * 100).toInt()}%", color = mutedColor, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
         }
-        Icon(Icons.AutoMirrored.Rounded.VolumeUp, contentDescription = null, tint = AuraInkSoft, modifier = Modifier.size(18.dp))
+        Slider(
+            state = sliderState,
+            onValueChange = { value ->
+                sliderState.value = value
+                apply(value)
+            },
+            colors = sliderColors,
+            thumb = {
+                Box(Modifier.size(width = 4.dp, height = 40.dp).background(activeColor, CircleShape))
+            },
+            track = { state ->
+                SliderDefaults.Track(
+                    sliderState = state,
+                    colors = sliderColors,
+                    modifier = Modifier.height(32.dp),
+                    drawStopIndicator = null,
+                    thumbTrackGapSize = 4.dp,
+                    trackInsideCornerSize = 4.dp
+                )
+            },
+            modifier = Modifier.fillMaxWidth().height(LevyraPlayerDesign.MinimumTouchTarget)
+                .semantics { contentDescription = label }
+        )
     }
 }
 

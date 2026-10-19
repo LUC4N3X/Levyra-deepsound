@@ -22960,11 +22960,11 @@ private fun SettingsStudioShelf(title: String, subtitle: String, entries: List<S
                     onClick = entry.onClick,
                     shape = RoundedCornerShape(28.dp),
                     color = entry.accent.copy(alpha = 0.14f),
-                    modifier = Modifier.width(148.dp)
+                    modifier = Modifier.width(184.dp)
                 ) {
                     Column(
-                        modifier = Modifier.padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Box(
                             modifier = Modifier
@@ -22982,17 +22982,15 @@ private fun SettingsStudioShelf(title: String, subtitle: String, entries: List<S
                                 fontSize = 15.sp,
                                 lineHeight = 19.sp,
                                 fontWeight = FontWeight.Bold,
-                                maxLines = 2,
-                                minLines = 2,
-                                overflow = TextOverflow.Ellipsis
+                                minLines = 2
                             )
                             Text(
                                 entry.subtitle,
                                 color = LevyraMuted,
                                 fontSize = 12.sp,
+                                lineHeight = 16.sp,
                                 fontWeight = FontWeight.Medium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                minLines = 3
                             )
                         }
                     }
@@ -23017,7 +23015,13 @@ private fun SettingsCategoryCard(meta: SettingsCategoryMeta, index: Int, count: 
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             SettingsTileIcon(icon = meta.icon, accent = meta.accent, shape = MaterialShapes.Cookie4Sided.toShape())
-            SettingsTileText(title = meta.title, subtitle = meta.summary, modifier = Modifier.weight(1f), singleLine = true)
+            SettingsTileText(
+                title = meta.title,
+                subtitle = meta.summary,
+                modifier = Modifier.weight(1f),
+                maxTitleLines = Int.MAX_VALUE,
+                maxSubtitleLines = Int.MAX_VALUE
+            )
             Icon(
                 Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                 null,
@@ -23095,14 +23099,20 @@ private fun SettingsTileIcon(icon: ImageVector, accent: Color, shape: Shape = Ma
 }
 
 @Composable
-private fun SettingsTileText(title: String, subtitle: String, modifier: Modifier = Modifier, singleLine: Boolean = false) {
+private fun SettingsTileText(
+    title: String,
+    subtitle: String,
+    modifier: Modifier = Modifier,
+    maxTitleLines: Int = 2,
+    maxSubtitleLines: Int = 3
+) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Text(
             title,
             color = LevyraText,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
-            maxLines = if (singleLine) 1 else 2,
+            maxLines = maxTitleLines,
             overflow = TextOverflow.Ellipsis
         )
         if (subtitle.isNotBlank()) {
@@ -23112,7 +23122,7 @@ private fun SettingsTileText(title: String, subtitle: String, modifier: Modifier
                 fontSize = 13.sp,
                 lineHeight = 18.sp,
                 fontWeight = FontWeight.Medium,
-                maxLines = if (singleLine) 1 else 3,
+                maxLines = maxSubtitleLines,
                 overflow = TextOverflow.Ellipsis
             )
         }
