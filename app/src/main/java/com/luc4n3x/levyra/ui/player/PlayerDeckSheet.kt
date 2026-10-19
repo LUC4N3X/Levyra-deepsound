@@ -76,6 +76,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
+import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.ReactiveAuraPreset
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 
@@ -98,7 +100,11 @@ internal fun PlayerDeckSheet(
     background: PlayerBackgroundMode,
     onSelect: (PlayerVisualMode) -> Unit,
     onSelectBackground: (PlayerBackgroundMode) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    reactiveAuraPreset: ReactiveAuraPreset = ReactiveAuraPreset.Recommended,
+    reactiveAuraIntensity: Int = LevyraInterfaceSettings.DEFAULT_REACTIVE_AURA_INTENSITY,
+    onSelectReactiveAuraPreset: (ReactiveAuraPreset) -> Unit = {},
+    onSelectReactiveAuraIntensity: (Int) -> Unit = {}
 ) {
     val strings = LocalLevyraStrings.current
     PlayerSheetFrame(
@@ -160,6 +166,17 @@ internal fun PlayerDeckSheet(
                 surfaces = surfaces,
                 onSelect = onSelectBackground
             )
+            if (background == PlayerBackgroundMode.ReactiveAura) {
+                ReactiveAuraControls(
+                    preset = reactiveAuraPreset,
+                    intensity = reactiveAuraIntensity,
+                    accent = accent,
+                    surfaces = surfaces,
+                    animated = animated,
+                    onPreset = onSelectReactiveAuraPreset,
+                    onIntensity = onSelectReactiveAuraIntensity
+                )
+            }
             Text(
                 text = strings.playerDeckLandscapeNote,
                 color = surfaces.contentFaint,
@@ -754,6 +771,7 @@ private fun PlayerBackgroundPicker(
     val strings = LocalLevyraStrings.current
     val options = listOf(
         PlayerBackgroundMode.Dynamic to strings.playerBackgroundDynamic,
+        PlayerBackgroundMode.ReactiveAura to strings.playerBackgroundReactiveAura,
         PlayerBackgroundMode.Aurora to strings.playerBackgroundAurora,
         PlayerBackgroundMode.Gradient to strings.playerBackgroundGradient,
         PlayerBackgroundMode.Blur to strings.playerBackgroundBlur,
@@ -877,6 +895,27 @@ private fun DrawScope.drawBackgroundPreview(mode: PlayerBackgroundMode, accent: 
                     center = center
                 )
             }
+        }
+        PlayerBackgroundMode.ReactiveAura -> {
+            drawRect(deep)
+            listOf(
+                accent to Offset(0.22f, 0.26f),
+                lerp(accent, Color(0xFF7C4DFF), 0.45f) to Offset(0.84f, 0.56f),
+                lerp(accent, Color(0xFF7C4DFF), 0.2f) to Offset(0.36f, 0.86f)
+            ).forEach { (color, anchor) ->
+                val center = Offset(size.width * anchor.x, size.height * anchor.y)
+                val reach = size.width * 0.62f
+                drawCircle(
+                    Brush.radialGradient(
+                        listOf(color.copy(alpha = 0.5f), color.copy(alpha = 0f)),
+                        center,
+                        reach
+                    ),
+                    radius = reach,
+                    center = center
+                )
+            }
+            drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f))))
         }
         PlayerBackgroundMode.Dynamic -> {
             drawRect(deep)

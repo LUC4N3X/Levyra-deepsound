@@ -156,6 +156,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.player.*
 import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
+import com.luc4n3x.levyra.domain.ReactiveAuraPreset
 import com.luc4n3x.levyra.domain.PlayerColorMode
 import com.luc4n3x.levyra.domain.PlayerDoubleTapAction
 import com.luc4n3x.levyra.domain.PlayerLongPressAction
@@ -21823,6 +21824,7 @@ private fun SettingsOverlay(
                                     subtitle = strings.playerBackgroundSubtitle,
                                     options = listOf(
                                         PlayerBackgroundMode.Dynamic.name to strings.playerBackgroundDynamic,
+                                        PlayerBackgroundMode.ReactiveAura.name to strings.playerBackgroundReactiveAura,
                                         PlayerBackgroundMode.Blur.name to strings.playerBackgroundBlur,
                                         PlayerBackgroundMode.Dark.name to strings.playerBackgroundDark,
                                         PlayerBackgroundMode.PureBlack.name to strings.playerBackgroundPureBlack,
@@ -21836,6 +21838,24 @@ private fun SettingsOverlay(
                                         )
                                     }
                                 )
+                            }
+                            if (interfaceSettings.playerBackground == PlayerBackgroundMode.ReactiveAura) {
+                                item {
+                                    SettingsChoiceRow(
+                                        icon = Icons.Rounded.AutoAwesome,
+                                        title = strings.playerBackgroundReactiveAura,
+                                        subtitle = "${reactiveAuraPresetLabel(ReactiveAuraPreset.Recommended, strings)} · ${strings.reactiveAuraRecommended}",
+                                        options = ReactiveAuraPreset.entries.map { preset ->
+                                            preset.name to reactiveAuraPresetLabel(preset, strings)
+                                        },
+                                        selected = interfaceSettings.reactiveAuraPreset.name,
+                                        onSelect = { value ->
+                                            onInterfaceSettings(
+                                                interfaceSettings.copy(reactiveAuraPreset = ReactiveAuraPreset.from(value))
+                                            )
+                                        }
+                                    )
+                                }
                             }
                             item {
                                 PlayerColorModeSetting(

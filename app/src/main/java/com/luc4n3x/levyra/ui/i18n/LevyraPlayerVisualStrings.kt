@@ -14,6 +14,12 @@ internal val playerVisualKeys = setOf(
     "playerBackgroundPureBlack",
     "playerBackgroundAurora",
     "playerBackgroundGradient",
+    "playerBackgroundReactiveAura",
+    "reactiveAuraPresetCalm",
+    "reactiveAuraPresetFlow",
+    "reactiveAuraPresetPulse",
+    "reactiveAuraIntensity",
+    "reactiveAuraRecommended",
     "enterImmersive",
     "exitImmersive"
 ) + liveChatKeys + diagnosticsKeys + playerColorKeys
@@ -76,7 +82,20 @@ private val playerVisualBundles: Map<String, Map<String, String>> = mapOf(
     "fil" to playerVisual("Visual mode", "Piliin kung paano ipapakita ang artwork at motion Canvas", "Gallery", "Sleeve", "Velvet", "Background ng player", "Estilo ng background sa likod ng player", "Adaptive", "Blur", "Madilim", "Purong itim", "Pumasok sa immersive", "Lumabas sa immersive"),
     "he" to playerVisual("מצב חזותי", "בחר כיצד יוצגו העטיפה וה-Canvas המונפש", "Gallery", "Sleeve", "Velvet", "רקע הנגן", "סגנון הרקע מאחורי הנגן", "אדפטיבי", "טשטוש", "כהה", "שחור מוחלט", "כניסה למצב סוחף", "יציאה ממצב סוחף"),
     "fi" to playerVisual("Visuaalinen tila", "Valitse, miten kansikuva ja liikkuva Canvas näkyvät", "Gallery", "Sleeve", "Velvet", "Soittimen tausta", "Taustatyyli soittimen takana", "Mukautuva", "Sumeus", "Tumma", "Puhdas musta", "Siirry immersiiviseen tilaan", "Poistu immersiivisestä tilasta"),
-    "et" to playerVisual("Visuaalne režiim", "Vali, kuidas kaanepilt ja liikuv Canvas ilmuvad", "Gallery", "Sleeve", "Velvet", "Mängija taust", "Taustastiil mängija taga", "Kohanduv", "Hägu", "Tume", "Puhas must", "Ava kaasahaarav režiim", "Välju kaasahaaravast režiimist")
+    "et" to playerVisual("Visuaalne režiim", "Vali, kuidas kaanepilt ja liikuv Canvas ilmuvad", "Gallery", "Sleeve", "Velvet", "Mängija taust", "Taustastiil mängija taga", "Kohanduv", "Hägu", "Tume", "Puhas must", "Ava kaasahaarav režiim", "Välju kaasahaaravast režiimist"),
+    "sk" to playerVisual("Vizuálny režim", "Zvoľ si, ako sa zobrazuje obal a pohyblivý Canvas", "Gallery", "Sleeve", "Velvet", "Pozadie prehrávača", "Štýl pozadia za prehrávačom", "Adaptívne", "Rozostrenie", "Tmavé", "Čistá čierna", "Spustiť imerzívny režim", "Ukončiť imerzívny režim"),
+    "hr" to playerVisual("Vizualni način", "Odaberite način prikaza omota i animiranog Canvasa", "Gallery", "Sleeve", "Velvet", "Pozadina playera", "Stil pozadine iza playera", "Prilagodljivo", "Zamućenje", "Tamno", "Čista crna", "Uđi u imerzivni način", "Izađi iz imerzivnog načina"),
+    "sr" to playerVisual("Визуелни режим", "Изаберите начин приказа омота и анимираног Canvas-а", "Gallery", "Sleeve", "Velvet", "Позадина плејера", "Стил позадине иза плејера", "Прилагодљиво", "Замућење", "Тамно", "Чиста црна", "Уђи у имерзивни режим", "Изађи из имерзивног режима"),
+    "sq" to playerVisual("Modaliteti vizual", "Zgjidhni mënyrën se si shfaqen kopertina dhe Canvas i animuar", "Gallery", "Sleeve", "Velvet", "Sfondi i luajtësit", "Stili i sfondit pas luajtësit", "Përshtatës", "Turbullim", "E errët", "E zezë e pastër", "Hyr në modalitetin imersiv", "Dil nga modaliteti imersiv"),
+    "bg" to playerVisual("Визуален режим", "Изберете как да се показват обложката и анимираният Canvas", "Gallery", "Sleeve", "Velvet", "Фон на плейъра", "Стил на фона зад плейъра", "Адаптивен", "Размазване", "Тъмен", "Чисто черно", "Влез в потапящ режим", "Излез от потапящ режим"),
+    "hu" to playerVisual("Vizuális mód", "Válaszd ki a borító és a mozgó Canvas megjelenítését", "Gallery", "Sleeve", "Velvet", "Lejátszó háttere", "Háttérstílus a lejátszó mögött", "Alkalmazkodó", "Elmosás", "Sötét", "Tiszta fekete", "Belépés az elmélyülő módba", "Kilépés az elmélyülő módból"),
+    "nb" to playerVisual("Visuell modus", "Velg hvordan omslag og animert Canvas vises", "Gallery", "Sleeve", "Velvet", "Spillerbakgrunn", "Bakgrunnsstil bak spilleren", "Tilpasset", "Uklarhet", "Mørk", "Helt svart", "Åpne immersiv modus", "Avslutt immersiv modus"),
+    "ca" to playerVisual("Mode visual", "Tria com es mostren la portada i el Canvas animat", "Gallery", "Sleeve", "Velvet", "Fons del reproductor", "Estil de fons darrere del reproductor", "Adaptatiu", "Desenfocament", "Fosc", "Negre pur", "Entra en mode immersiu", "Surt del mode immersiu"),
+    "kk" to playerVisual("Көрнекі режим", "Мұқаба мен қозғалыстағы Canvas көрінісін таңдаңыз", "Gallery", "Sleeve", "Velvet", "Ойнатқыш фоны", "Ойнатқыш артындағы фон стилі", "Бейімделгіш", "Бұлыңғырлық", "Күңгірт", "Таза қара", "Иммерсивті режимге кіру", "Иммерсивті режимнен шығу"),
+    "fa" to playerVisual("حالت بصری", "نحوه نمایش کاور و Canvas متحرک را انتخاب کنید", "Gallery", "Sleeve", "Velvet", "پس‌زمینه پخش‌کننده", "سبک پس‌زمینه پشت پخش‌کننده", "انطباقی", "محو", "تاریک", "سیاه خالص", "ورود به حالت فراگیر", "خروج از حالت فراگیر"),
+    "zh-Hant" to playerVisual("視覺模式", "選擇封面與動態 Canvas 的呈現方式", "Gallery", "Sleeve", "Velvet", "播放器背景", "播放器背後的背景樣式", "自適應", "模糊", "深色", "純黑", "進入沉浸模式", "退出沉浸模式"),
+    "bn" to playerVisual("ভিজ্যুয়াল মোড", "অ্যালবাম আর্ট এবং গতিশীল Canvas কীভাবে প্রদর্শিত হবে তা চয়ন করুন", "Gallery", "Sleeve", "Velvet", "প্লেয়ার ব্যাকগ্রাউন্ড", "প্লেয়ারের পেছনের ব্যাকগ্রাউন্ড শৈলী", "অভিযোজিত", "ব্লার", "অন্ধকার", "খাঁটি কালো", "ইমার্সিভ মোডে প্রবেশ", "ইমার্সিভ মোড ত্যাগ"),
+    "ms" to playerVisual("Mod visual", "Pilih cara paparan seni album dan Canvas bergerak", "Gallery", "Sleeve", "Velvet", "Latar belakang pemain", "Gaya latar belakang di belakang pemain", "Adaptif", "Kabur", "Gelap", "Hitam tulen", "Masuk mod imersif", "Keluar dari mod imersif")
 )
 
 private val playerBackgroundExtraLabels: Map<String, Pair<String, String>> = mapOf(
@@ -107,15 +126,89 @@ private val playerBackgroundExtraLabels: Map<String, Pair<String, String>> = map
     "fil" to ("Liwanag ng aurora" to "Paglipat ng kulay"),
     "he" to ("זוהר הקוטב" to "מעבר צבעים"),
     "fi" to ("Revontulet" to "Liukuväri"),
-    "et" to ("Virmalised" to "Värviüleminek")
+    "et" to ("Virmalised" to "Värviüleminek"),
+    "sk" to ("Polárna žiara" to "Prechod"),
+    "hr" to ("Polarna svjetlost" to "Gradijent"),
+    "sr" to ("Поларна светлост" to "Градијент"),
+    "sq" to ("Dritat polare" to "Gradient"),
+    "bg" to ("Полярно сияние" to "Градиент"),
+    "hu" to ("Sarki fény" to "Színátmenet"),
+    "nb" to ("Nordlys" to "Fargeovergang"),
+    "ca" to ("Aurora" to "Degradat"),
+    "kk" to ("Поляр шұғыласы" to "Градиент"),
+    "fa" to ("شفق قطبی" to "گرادیان"),
+    "zh-Hant" to ("極光" to "漸變"),
+    "bn" to ("অরোরা" to "গ্রেডিয়েন্ট"),
+    "ms" to ("Aurora" to "Gradien")
 )
+
+private class ReactiveAuraLabels(
+    val calm: String,
+    val pulse: String,
+    val intensity: String,
+    val recommended: String
+)
+
+private val reactiveAuraLabels: Map<String, ReactiveAuraLabels> = mapOf(
+    "en" to ReactiveAuraLabels("Calm", "Pulse", "Intensity", "Recommended"),
+    "it" to ReactiveAuraLabels("Calmo", "Pulse", "Intensità", "Consigliato"),
+    "es" to ReactiveAuraLabels("Calma", "Pulse", "Intensidad", "Recomendado"),
+    "fr" to ReactiveAuraLabels("Calme", "Pulse", "Intensité", "Recommandé"),
+    "de" to ReactiveAuraLabels("Ruhig", "Pulse", "Intensität", "Empfohlen"),
+    "pt" to ReactiveAuraLabels("Calmo", "Pulse", "Intensidade", "Recomendado"),
+    "nl" to ReactiveAuraLabels("Rustig", "Pulse", "Intensiteit", "Aanbevolen"),
+    "pl" to ReactiveAuraLabels("Spokój", "Puls", "Intensywność", "Polecane"),
+    "ro" to ReactiveAuraLabels("Calm", "Puls", "Intensitate", "Recomandat"),
+    "el" to ReactiveAuraLabels("Ηρεμία", "Παλμός", "Ένταση", "Προτείνεται"),
+    "sv" to ReactiveAuraLabels("Lugn", "Puls", "Intensitet", "Rekommenderas"),
+    "da" to ReactiveAuraLabels("Rolig", "Puls", "Intensitet", "Anbefalet"),
+    "cs" to ReactiveAuraLabels("Klid", "Puls", "Intenzita", "Doporučeno"),
+    "uk" to ReactiveAuraLabels("Спокій", "Пульс", "Інтенсивність", "Рекомендовано"),
+    "ru" to ReactiveAuraLabels("Спокойно", "Пульс", "Интенсивность", "Рекомендуется"),
+    "tr" to ReactiveAuraLabels("Sakin", "Nabız", "Yoğunluk", "Önerilen"),
+    "ar" to ReactiveAuraLabels("هادئ", "نبض", "الشدة", "موصى به"),
+    "zh" to ReactiveAuraLabels("平静", "脉动", "强度", "推荐"),
+    "ja" to ReactiveAuraLabels("カーム", "パルス", "強さ", "おすすめ"),
+    "ko" to ReactiveAuraLabels("차분함", "펄스", "강도", "추천"),
+    "hi" to ReactiveAuraLabels("शांत", "पल्स", "तीव्रता", "अनुशंसित"),
+    "id" to ReactiveAuraLabels("Tenang", "Pulse", "Intensitas", "Disarankan"),
+    "vi" to ReactiveAuraLabels("Êm dịu", "Xung nhịp", "Cường độ", "Đề xuất"),
+    "th" to ReactiveAuraLabels("นุ่มนวล", "พัลส์", "ความเข้ม", "แนะนำ"),
+    "fil" to ReactiveAuraLabels("Kalmado", "Pulse", "Tindi", "Inirerekomenda"),
+    "he" to ReactiveAuraLabels("רגוע", "דופק", "עוצמה", "מומלץ"),
+    "fi" to ReactiveAuraLabels("Rauhallinen", "Pulssi", "Voimakkuus", "Suositeltu"),
+    "et" to ReactiveAuraLabels("Rahulik", "Puls", "Tugevus", "Soovitatud"),
+    "sk" to ReactiveAuraLabels("Kľud", "Pulz", "Intenzita", "Odporúčané"),
+    "hr" to ReactiveAuraLabels("Miran", "Puls", "Intenzitet", "Preporučeno"),
+    "sr" to ReactiveAuraLabels("Миран", "Пулс", "Интензитет", "Препоручено"),
+    "sq" to ReactiveAuraLabels("E qetë", "Puls", "Intensiteti", "Rekomandohet"),
+    "bg" to ReactiveAuraLabels("Спокоен", "Пулс", "Интензитет", "Препоръчително"),
+    "hu" to ReactiveAuraLabels("Nyugodt", "Pulzus", "Intenzitás", "Ajánlott"),
+    "nb" to ReactiveAuraLabels("Rolig", "Puls", "Intensitet", "Anbefalt"),
+    "ca" to ReactiveAuraLabels("Calma", "Puls", "Intensitat", "Recomanat"),
+    "kk" to ReactiveAuraLabels("Тыныш", "Пульс", "Қарқындылық", "Ұсынылады"),
+    "fa" to ReactiveAuraLabels("آرام", "پالس", "شدت", "توصیه‌شده"),
+    "zh-Hant" to ReactiveAuraLabels("平靜", "脈動", "強度", "推薦"),
+    "bn" to ReactiveAuraLabels("শান্ত", "পালস", "তীব্রতা", "প্রস্তাবিত"),
+    "ms" to ReactiveAuraLabels("Tenang", "Puls", "Keamatan", "Disyorkan")
+)
+
+private const val ReactiveAuraName = "Reactive Aura"
+private const val ReactiveAuraFlowName = "Flow"
 
 internal fun playerVisualLocalizationEntries(code: String): Map<String, String> {
     val extra = playerBackgroundExtraLabels[code] ?: playerBackgroundExtraLabels.getValue("en")
+    val aura = reactiveAuraLabels[code] ?: reactiveAuraLabels.getValue("en")
     return localizedBundleOrEnglish(playerVisualBundles, code) + liveChatLocalizationEntries(code) +
         diagnosticsLocalizationEntries(code) + playerColorLocalizationEntries(code) + mapOf(
             "playerBackgroundAurora" to extra.first,
-            "playerBackgroundGradient" to extra.second
+            "playerBackgroundGradient" to extra.second,
+            "playerBackgroundReactiveAura" to ReactiveAuraName,
+            "reactiveAuraPresetCalm" to aura.calm,
+            "reactiveAuraPresetFlow" to ReactiveAuraFlowName,
+            "reactiveAuraPresetPulse" to aura.pulse,
+            "reactiveAuraIntensity" to aura.intensity,
+            "reactiveAuraRecommended" to aura.recommended
         )
 }
 

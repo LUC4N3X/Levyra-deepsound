@@ -78,7 +78,8 @@ internal fun PlayerBackdrop(
     animationsEnabled: Boolean,
     modifier: Modifier = Modifier,
     fixedColors: Boolean = false,
-    focusY: Float = 0.34f
+    focusY: Float = 0.34f,
+    reactiveAura: ReactiveAuraStyle = ReactiveAuraStyle.Default
 ) {
     val colorSpec = LevyraPlayerDesign.motion(
         animationsEnabled,
@@ -193,6 +194,19 @@ internal fun PlayerBackdrop(
                         .drawBehind { drawAura(primary, secondary, base, glowStrength.value, focusY) }
                 )
             }
+        }
+        PlayerBackgroundMode.ReactiveAura -> {
+            val base = animateColorAsState(ambience.base, colorSpec, label = "player-backdrop-aura-base")
+            ReactiveAuraBackdrop(
+                primary = primary,
+                secondary = secondary,
+                base = base,
+                isPlaying = isPlaying,
+                animationsEnabled = animationsEnabled,
+                style = reactiveAura,
+                focusY = focusY,
+                modifier = modifier
+            )
         }
     }
 }

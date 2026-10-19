@@ -60,6 +60,7 @@ import com.luc4n3x.levyra.domain.LevyraNavigationStudioSettings
 import com.luc4n3x.levyra.domain.LevyraLyricsStudioSettings
 import com.luc4n3x.levyra.domain.LyricsProviderOrdering
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
+import com.luc4n3x.levyra.domain.ReactiveAuraPreset
 import com.luc4n3x.levyra.domain.PlayerColorMode
 import com.luc4n3x.levyra.domain.PlayerDoubleTapAction
 import com.luc4n3x.levyra.domain.PlayerLongPressAction
@@ -1820,6 +1821,8 @@ internal fun backupInterfaceSettingsToJson(value: LevyraInterfaceSettings): JSON
     .put("hapticFeedback", value.hapticFeedback)
     .put("playerVisualMode", value.playerVisualMode.name)
     .put("playerBackground", value.playerBackground.name)
+    .put("reactiveAuraPreset", value.reactiveAuraPreset.name)
+    .put("reactiveAuraIntensity", value.reactiveAuraIntensity)
     .put("playerColorMode", value.playerColorMode.name)
     .put("playerColorAccent", value.playerColorAccent)
 
@@ -1871,6 +1874,11 @@ internal fun backupInterfaceSettingsFromJson(
         hapticFeedback = json.optBoolean("hapticFeedback", true),
         playerVisualMode = visualMode,
         playerBackground = backgroundMode,
+        reactiveAuraPreset = ReactiveAuraPreset.from(json.optString("reactiveAuraPreset")),
+        reactiveAuraIntensity = json.optInt(
+            "reactiveAuraIntensity",
+            LevyraInterfaceSettings.DEFAULT_REACTIVE_AURA_INTENSITY
+        ),
         playerColorMode = PlayerColorMode.from(json.optString("playerColorMode")),
         playerColorAccent = json.optInt("playerColorAccent", PlayerColorMode.DEFAULT_ACCENT)
     ).normalized()

@@ -16,7 +16,8 @@ internal fun PlayerVisualHost(
     isPlaying: Boolean,
     modifier: Modifier = Modifier,
     fixedColors: Boolean = false,
-    backdropFocus: Float = 0.34f
+    backdropFocus: Float = 0.34f,
+    reactiveAura: ReactiveAuraStyle = ReactiveAuraStyle.Default
 ) {
     Box(modifier = modifier) {
         PlayerBackdrop(
@@ -27,6 +28,7 @@ internal fun PlayerVisualHost(
             animationsEnabled = animationsEnabled,
             fixedColors = fixedColors,
             focusY = backdropFocus,
+            reactiveAura = reactiveAura,
             modifier = Modifier.fillMaxSize()
         )
     }

@@ -119,10 +119,39 @@ class LevyraStringsTest {
             assertTrue(strings.subtitlesLabel.isNotBlank())
             assertTrue(strings.playerVisualMode.isNotBlank())
             assertTrue(strings.playerBackground.isNotBlank())
+            assertTrue(strings.playerBackgroundReactiveAura.isNotBlank())
+            assertTrue(strings.reactiveAuraPresetCalm.isNotBlank())
+            assertTrue(strings.reactiveAuraPresetFlow.isNotBlank())
+            assertTrue(strings.reactiveAuraPresetPulse.isNotBlank())
+            assertTrue(strings.reactiveAuraIntensity.isNotBlank())
+            assertTrue(strings.reactiveAuraRecommended.isNotBlank())
             assertTrue(strings.enterImmersive.isNotBlank())
             assertTrue(strings.exitImmersive.isNotBlank())
             assertTrue(strings.legalInformation.isNotBlank())
         }
+    }
+
+    @Test
+    fun reactiveAuraStringsLocalizedAcrossLanguages() {
+        val english = LevyraStrings.forCode("en")
+        assertEquals("Reactive Aura", english.playerBackgroundReactiveAura)
+        assertEquals("Calm", english.reactiveAuraPresetCalm)
+        assertEquals("Flow", english.reactiveAuraPresetFlow)
+        assertEquals("Pulse", english.reactiveAuraPresetPulse)
+        assertEquals("Intensity", english.reactiveAuraIntensity)
+        assertEquals("Recommended", english.reactiveAuraRecommended)
+
+        val italian = LevyraStrings.forCode("it")
+        assertEquals("Calmo", italian.reactiveAuraPresetCalm)
+        assertEquals("Pulse", italian.reactiveAuraPresetPulse)
+        assertEquals("Intensità", italian.reactiveAuraIntensity)
+        assertEquals("Consigliato", italian.reactiveAuraRecommended)
+
+        val japanese = LevyraStrings.forCode("ja")
+        assertEquals("カーム", japanese.reactiveAuraPresetCalm)
+        assertEquals("パルス", japanese.reactiveAuraPresetPulse)
+        assertEquals("強さ", japanese.reactiveAuraIntensity)
+        assertEquals("おすすめ", japanese.reactiveAuraRecommended)
     }
 
 
