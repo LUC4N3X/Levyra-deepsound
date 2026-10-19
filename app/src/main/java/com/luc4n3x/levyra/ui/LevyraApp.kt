@@ -2343,7 +2343,9 @@ fun LevyraApp(
 
             LaunchedEffect(backgroundTab) { dockState.expand() }
             LaunchedEffect(state.currentTrack == null) { dockState.expand() }
-            LaunchedEffect(chromeVisible) { if (!chromeVisible) dockState.expand() }
+            LaunchedEffect(chromeVisible, state.showSettings) {
+                if (!chromeVisible || state.showSettings) dockState.expand()
+            }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -2444,13 +2446,13 @@ fun LevyraApp(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
-                    BottomTabsScrim()
+                    if (!state.showSettings) BottomTabsScrim()
                     val dockCompaction = dockState.animatedCompaction(state.animationsEnabled)
                     val compactionProvider: () -> Float = { dockCompaction.value }
                     val miniPlayerVisible = state.currentTrack != null && !state.isSamplesOpen
                     val dockLink = rememberConnectedDockLink(
                         navigation = navigationStudio.settings,
-                        attached = miniPlayerVisible && !dockSideBySide,
+                        attached = miniPlayerVisible && !dockSideBySide && !state.showSettings,
                         compaction = dockCompaction,
                         animated = state.animationsEnabled
                     )
@@ -2524,7 +2526,7 @@ fun LevyraApp(
                                             playbackActions = miniPlaybackActions,
                                             expansionActions = miniExpansionActions,
                                             glass = dockGlass,
-                                            link = dockLink.takeIf { miniStudio.style == MiniPlayerStyle.Connected }
+                                            link = dockLink.takeIf { miniStudio.style == MiniPlayerStyle.Connected && !state.showSettings }
                                         )
                                     }
                                 }
@@ -2563,37 +2565,42 @@ fun LevyraApp(
                             }
                         }
                     }
-                    if (!dockSideBySide) {
+                    if (state.showSettings) {
                         miniPlayerSlot()
-                    }
-                    val dockModifier = if (miniMaxWidth.isFinite()) {
-                        Modifier.widthIn(max = miniMaxWidth.dp)
+                        Spacer(modifier = Modifier.navigationBarsPadding())
                     } else {
-                        Modifier.fillMaxWidth()
-                    }
-                    val dockContent: @Composable ColumnScope.() -> Unit = {
-                        if (dockSideBySide && miniPlayerVisible) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.Top
-                            ) {
-                                Box(modifier = Modifier.weight(LevyraLandscapeDockMiniWeight)) { miniPlayerSlot() }
-                                Box(modifier = Modifier.weight(1f)) { bottomTabsSlot() }
-                            }
-                        } else {
-                            bottomTabsSlot()
+                        if (!dockSideBySide) {
+                            miniPlayerSlot()
                         }
-                    }
-                    if (navigationStudio.settings.style == NavStyle.Original) {
-                        LevyraAdaptiveDockSurface(glass = dockGlass, modifier = dockModifier, content = dockContent)
-                    } else {
-                        StyledDockSurface(
-                            style = navigationStudio.settings.style,
-                            tuning = navigationStudio.settings.activeTuning(),
-                            glass = dockGlass,
-                            modifier = dockModifier,
-                            content = dockContent
-                        )
+                        val dockModifier = if (miniMaxWidth.isFinite()) {
+                            Modifier.widthIn(max = miniMaxWidth.dp)
+                        } else {
+                            Modifier.fillMaxWidth()
+                        }
+                        val dockContent: @Composable ColumnScope.() -> Unit = {
+                            if (dockSideBySide && miniPlayerVisible) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Box(modifier = Modifier.weight(LevyraLandscapeDockMiniWeight)) { miniPlayerSlot() }
+                                    Box(modifier = Modifier.weight(1f)) { bottomTabsSlot() }
+                                }
+                            } else {
+                                bottomTabsSlot()
+                            }
+                        }
+                        if (navigationStudio.settings.style == NavStyle.Original) {
+                            LevyraAdaptiveDockSurface(glass = dockGlass, modifier = dockModifier, content = dockContent)
+                        } else {
+                            StyledDockSurface(
+                                style = navigationStudio.settings.style,
+                                tuning = navigationStudio.settings.activeTuning(),
+                                glass = dockGlass,
+                                modifier = dockModifier,
+                                content = dockContent
+                            )
+                        }
                     }
                 }
             }
@@ -21329,8 +21336,12 @@ private fun SettingsOverlay(
         ) { current ->
             val meta = categories.firstOrNull { it.id == current }
             val settingsListState = remember(current) { LazyListState() }
-            val bottomContentInset = tabBarBottomContentInset(miniPlayerVisible, animationsEnabled) -
-                WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+            val bottomContentInset = animatedBottomContentInset(
+                collapsed = LevyraBottomContentGap,
+                expanded = LevyraMiniPlayerHeight + LevyraBottomContentGap,
+                miniPlayerVisible = miniPlayerVisible,
+                animationsEnabled = animationsEnabled
+            )
             CompositionLocalProvider(LocalSettingsAccent provides meta?.accent) {
             LazyColumn(
                 state = settingsListState,
