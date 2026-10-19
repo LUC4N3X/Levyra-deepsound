@@ -1806,6 +1806,137 @@ private val StudioImmersiveHeroScrim = Brush.verticalGradient(
 )
 
 @Composable
+private fun StudioExpressiveMaxBackdrop(
+    accent: Color,
+    heroTrack: Track?,
+    listState: LazyListState,
+    modifier: Modifier,
+    expressivePortraitUrl: String,
+    showExpressivePortrait: Boolean
+) {
+    val scheme = MaterialTheme.colorScheme
+    val isLight = LevyraIsLight
+    val canvas = homeCanvasColor(isLight)
+    Box(
+                modifier = modifier
+                    .fillMaxSize()
+                    .background(canvas)
+                    .drawBehind {
+                        val primaryCenter = Offset(size.width * 0.12f, size.height * 0.08f)
+                        val secondaryCenter = Offset(size.width * 0.92f, size.height * 0.26f)
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(accent.copy(alpha = 0.24f), Color.Transparent),
+                                center = primaryCenter,
+                                radius = size.width * 0.92f
+                            ),
+                            center = primaryCenter,
+                            radius = size.width * 0.92f
+                        )
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    scheme.tertiary.copy(alpha = 0.12f),
+                                    Color.Transparent
+                                ),
+                                center = secondaryCenter,
+                                radius = size.width * 0.68f
+                            ),
+                            center = secondaryCenter,
+                            radius = size.width * 0.68f
+                        )
+                    }
+    
+            ) {
+                if (showExpressivePortrait && (expressivePortraitUrl.isNotBlank() || heroTrack != null)) {
+                    // One cinematic layer behind both greeting and soundtrack, avoiding the old seam.
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(650.dp)
+                            .clipToBounds()
+                            .graphicsLayer {
+                                val scroll = if (listState.firstVisibleItemIndex > 0) {
+                                    size.height
+                                } else {
+                                    listState.firstVisibleItemScrollOffset.toFloat()
+                                }
+                                translationY = -scroll * 0.22f
+                                alpha = (1f - scroll / (size.height * 0.85f)).coerceIn(0f, 1f)
+                            }
+                            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                            .drawWithContent {
+                                drawContent()
+                                drawRect(
+                                    brush = Brush.verticalGradient(
+                                        0f to Color.Transparent,
+                                        0.18f to Color.Black.copy(alpha = 0.12f),
+                                        0.32f to Color.Black.copy(alpha = 0.94f),
+                                        0.57f to Color.Black,
+                                        0.72f to Color.Black.copy(alpha = 0.78f),
+                                        0.87f to Color.Black.copy(alpha = 0.22f),
+                                        1f to Color.Transparent
+                                    ),
+                                    blendMode = BlendMode.DstIn
+                                )
+                                drawRect(
+                                    brush = Brush.horizontalGradient(
+                                        0f to Color.Black.copy(alpha = 0.60f),
+                                        0.30f to Color.Black.copy(alpha = 0.88f),
+                                        0.65f to Color.Black,
+                                        1f to Color.Black
+                                    ),
+                                    blendMode = BlendMode.DstIn
+                                )
+                            }
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(530.dp)
+                                .offset(y = 105.dp)
+                        ) {
+                            if (expressivePortraitUrl.isNotBlank()) {
+                                StudioRemoteArtwork(
+                                    expressivePortraitUrl,
+                                    heroTrack?.artist.orEmpty(),
+                                    Modifier.fillMaxSize(),
+                                    true
+                                )
+                            } else if (heroTrack != null) {
+                                CoverImage(track = heroTrack, modifier = Modifier.fillMaxSize(), highRes = true)
+                            }
+                        }
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .background(
+                                    Brush.verticalGradient(
+                                        0f to canvas.copy(alpha = 0.92f),
+                                        0.19f to canvas.copy(alpha = 0.56f),
+                                        0.37f to canvas.copy(alpha = 0.04f),
+                                        0.60f to Color.Transparent,
+                                        0.79f to canvas.copy(alpha = 0.30f),
+                                        1f to canvas.copy(alpha = 0.90f)
+                                    )
+                                )
+                        )
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .background(
+                                    Brush.horizontalGradient(
+                                        0f to canvas.copy(alpha = if (isLight) 0.12f else 0.22f),
+                                        0.48f to Color.Transparent
+                                    )
+                                )
+                        )
+                    }
+                }
+            }
+}
+
+@Composable
 internal fun StudioHomeBackdrop(
     style: HomeStyle,
     accent: Color,
@@ -1820,123 +1951,14 @@ internal fun StudioHomeBackdrop(
     val scheme = MaterialTheme.colorScheme
     when (style) {
         HomeStyle.Original -> LevyraHomeAtmosphere(isLight = isLight, accent = accent, modifier = modifier)
-        HomeStyle.ExpressiveMax -> Box(
-            modifier = modifier
-                .fillMaxSize()
-                .background(canvas)
-                .drawBehind {
-                    val primaryCenter = Offset(size.width * 0.12f, size.height * 0.08f)
-                    val secondaryCenter = Offset(size.width * 0.92f, size.height * 0.26f)
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            colors = listOf(accent.copy(alpha = 0.24f), Color.Transparent),
-                            center = primaryCenter,
-                            radius = size.width * 0.92f
-                        ),
-                        center = primaryCenter,
-                        radius = size.width * 0.92f
-                    )
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                scheme.tertiary.copy(alpha = 0.12f),
-                                Color.Transparent
-                            ),
-                            center = secondaryCenter,
-                            radius = size.width * 0.68f
-                        ),
-                        center = secondaryCenter,
-                        radius = size.width * 0.68f
-                    )
-                }
-
-        ) {
-            if (showExpressivePortrait && (expressivePortraitUrl.isNotBlank() || heroTrack != null)) {
-                // One cinematic layer behind both greeting and soundtrack, avoiding the old seam.
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(650.dp)
-                        .clipToBounds()
-                        .graphicsLayer {
-                            val scroll = if (listState.firstVisibleItemIndex > 0) {
-                                size.height
-                            } else {
-                                listState.firstVisibleItemScrollOffset.toFloat()
-                            }
-                            translationY = -scroll * 0.22f
-                            alpha = (1f - scroll / (size.height * 0.85f)).coerceIn(0f, 1f)
-                        }
-                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                        .drawWithContent {
-                            drawContent()
-                            drawRect(
-                                brush = Brush.verticalGradient(
-                                    0f to Color.Transparent,
-                                    0.18f to Color.Black.copy(alpha = 0.12f),
-                                    0.32f to Color.Black.copy(alpha = 0.94f),
-                                    0.57f to Color.Black,
-                                    0.72f to Color.Black.copy(alpha = 0.78f),
-                                    0.87f to Color.Black.copy(alpha = 0.22f),
-                                    1f to Color.Transparent
-                                ),
-                                blendMode = BlendMode.DstIn
-                            )
-                            drawRect(
-                                brush = Brush.horizontalGradient(
-                                    0f to Color.Black.copy(alpha = 0.60f),
-                                    0.30f to Color.Black.copy(alpha = 0.88f),
-                                    0.65f to Color.Black,
-                                    1f to Color.Black
-                                ),
-                                blendMode = BlendMode.DstIn
-                            )
-                        }
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(530.dp)
-                            .offset(y = 105.dp)
-                    ) {
-                        if (expressivePortraitUrl.isNotBlank()) {
-                            StudioRemoteArtwork(
-                                expressivePortraitUrl,
-                                heroTrack?.artist.orEmpty(),
-                                Modifier.fillMaxSize(),
-                                true
-                            )
-                        } else if (heroTrack != null) {
-                            CoverImage(track = heroTrack, modifier = Modifier.fillMaxSize(), highRes = true)
-                        }
-                    }
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    0f to canvas.copy(alpha = 0.92f),
-                                    0.19f to canvas.copy(alpha = 0.56f),
-                                    0.37f to canvas.copy(alpha = 0.04f),
-                                    0.60f to Color.Transparent,
-                                    0.79f to canvas.copy(alpha = 0.30f),
-                                    1f to canvas.copy(alpha = 0.90f)
-                                )
-                            )
-                    )
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .background(
-                                Brush.horizontalGradient(
-                                    0f to canvas.copy(alpha = if (isLight) 0.12f else 0.22f),
-                                    0.48f to Color.Transparent
-                                )
-                            )
-                    )
-                }
-            }
-        }
+        HomeStyle.ExpressiveMax -> StudioExpressiveMaxBackdrop(
+            accent = accent,
+            heroTrack = heroTrack,
+            listState = listState,
+            modifier = modifier,
+            expressivePortraitUrl = expressivePortraitUrl,
+            showExpressivePortrait = showExpressivePortrait
+        )
         HomeStyle.Minimal -> Box(modifier = modifier.fillMaxSize().background(canvas))
         HomeStyle.MaterialExpressive -> {
             val tint = if (accent == LevyraCyan) MaterialTheme.colorScheme.primaryContainer else accent

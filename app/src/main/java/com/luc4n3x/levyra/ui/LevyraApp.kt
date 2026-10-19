@@ -11192,87 +11192,8 @@ private fun StudioHomeContent(
                     ),
                     verticalArrangement = Arrangement.spacedBy(homeSectionGap)
                 ) {
-                    if (homeStyle == HomeStyle.Original) {
-                        item(key = "home-top", contentType = "home-header") {
-                            val homeHeader: @Composable () -> Unit = {
-                                HomeSectionInset {
-                                    GreetingBar(
-                                        userName = state.userName,
-                                        isResolving = state.isResolving,
-                                        animationsEnabled = homeAnimationsEnabled,
-                                        onSearch = viewModel::openSearch,
-                                        onSettings = viewModel::openSettings
-                                    )
-                                }
-                            }
-                            if (stagedSpotlight != null) {
-                                SpotlightHeroSlot(homeHeader, statusBarTop + homeTopPadding)
-                            } else {
-                                homeHeader()
-                            }
-                        }
-                    } else {
-                        item(key = "home-top", contentType = "home-studio-header") {
-                            Column(verticalArrangement = Arrangement.spacedBy(styleSpec.sectionGap)) {
-                                StudioHomeHeader(
-                                    style = homeStyle,
-                                    spec = styleSpec,
-                                    userName = state.userName,
-                                    isResolving = state.isResolving,
-                                    onSearch = viewModel::openSearch,
-                                    onSettings = viewModel::openSettings,
-                                    hero = mergedStudioHero(),
-                                    topBleed = statusBarTop + homeTopPadding
-                                )
-                                if (homeStyle == HomeStyle.Flow && flowShortcutTracks.isNotEmpty()) {
-                                    StudioFlowShortcuts(
-                                        spec = styleSpec,
-                                        title = strings.offlineHomeRecent,
-                                        tracks = flowShortcutTracks,
-                                        currentId = state.currentTrack?.id,
-                                        isPlaying = state.isPlaying,
-                                        onPlay = { track -> viewModel.playFrom(flowShortcutTracks, track) },
-                                        onActions = onTrackActions
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    var offlineEmitted = false
-                    homeRenderOrder.forEach { sectionId ->
-                        if (!offlineEmitted && sectionId !in HomeSectionId.QuickAccess) {
-                            homeStudioOfflineSection(c)
-                            offlineEmitted = true
-                        }
-                        if (studioLayout.isHidden(sectionId)) return@forEach
-                        when (sectionId) {
-                            HomeSectionId.GenreChips -> homeStudioSectionGenreChips(c)
-                            HomeSectionId.SpeedDial -> homeStudioSectionSpeedDial(c)
-                            HomeSectionId.Spotlight -> homeStudioSectionSpotlight(c)
-                            HomeSectionId.PersonalOrbit -> homeStudioSectionPersonalOrbit(c)
-                            HomeSectionId.EditorialCollections -> homeStudioSectionEditorialCollections(c)
-                            HomeSectionId.QuickPicks -> homeStudioSectionQuickPicks(c)
-                            HomeSectionId.ForgottenFavorites -> homeStudioSectionForgottenFavorites(c)
-                            HomeSectionId.AlbumsForYou -> homeStudioSectionAlbumsForYou(c)
-                            HomeSectionId.TrendingArtists -> homeStudioSectionTrendingArtists(c)
-                            HomeSectionId.NewReleases -> homeStudioSectionNewReleases(c)
-                            HomeSectionId.MusicVideos -> homeStudioSectionMusicVideos(c)
-                            HomeSectionId.ReleaseRadar -> homeStudioSectionReleaseRadar(c)
-                            HomeSectionId.SimilarArtists -> homeStudioSectionSimilarArtists(c)
-                            HomeSectionId.MoreSections -> homeStudioSectionMoreSections(c)
-                            HomeSectionId.Resonance -> homeStudioSectionResonance(c)
-                            HomeSectionId.Charts -> homeStudioSectionCharts(c)
-                        }
-                    }
-                    if (!offlineEmitted) homeStudioOfflineSection(c)
-
-                    if (state.homeError != null || state.playerError != null) {
-                        item(key = "home-status", contentType = "home-card") {
-                            HomeSectionLead(compactHome) {
-                                HomeSectionInset { StatusBlock(state) }
-                            }
-                        }
-                    }
+                    studioHomeHeaderItems(c, flowShortcutTracks, statusBarTop, homeTopPadding)
+                    studioHomeSections(c, homeRenderOrder)
                 }
                 PullToRefreshDefaults.LoadingIndicator(
                     state = homePullState,
@@ -11292,6 +11213,106 @@ private fun StudioHomeContent(
         }
     }
 }
+
+private fun LazyListScope.studioHomeHeaderItems(
+    c: StudioHomeContext,
+    flowShortcutTracks: List<Track>,
+    statusBarTop: Dp,
+    homeTopPadding: Dp
+) {
+    with(c) {
+        if (homeStyle == HomeStyle.Original) {
+            item(key = "home-top", contentType = "home-header") {
+                val homeHeader: @Composable () -> Unit = {
+                    HomeSectionInset {
+                        GreetingBar(
+                            userName = state.userName,
+                            isResolving = state.isResolving,
+                            animationsEnabled = homeAnimationsEnabled,
+                            onSearch = viewModel::openSearch,
+                            onSettings = viewModel::openSettings
+                        )
+                    }
+                }
+                if (stagedSpotlight != null) {
+                    SpotlightHeroSlot(homeHeader, statusBarTop + homeTopPadding)
+                } else {
+                    homeHeader()
+                }
+            }
+        } else {
+            item(key = "home-top", contentType = "home-studio-header") {
+                Column(verticalArrangement = Arrangement.spacedBy(styleSpec.sectionGap)) {
+                    StudioHomeHeader(
+                        style = homeStyle,
+                        spec = styleSpec,
+                        userName = state.userName,
+                        isResolving = state.isResolving,
+                        onSearch = viewModel::openSearch,
+                        onSettings = viewModel::openSettings,
+                        hero = mergedStudioHero(),
+                        topBleed = statusBarTop + homeTopPadding
+                    )
+                    if (homeStyle == HomeStyle.Flow && flowShortcutTracks.isNotEmpty()) {
+                        StudioFlowShortcuts(
+                            spec = styleSpec,
+                            title = strings.offlineHomeRecent,
+                            tracks = flowShortcutTracks,
+                            currentId = state.currentTrack?.id,
+                            isPlaying = state.isPlaying,
+                            onPlay = { track -> viewModel.playFrom(flowShortcutTracks, track) },
+                            onActions = onTrackActions
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun LazyListScope.studioHomeSections(
+    c: StudioHomeContext,
+    homeRenderOrder: List<HomeSectionId>
+) {
+    with(c) {
+        var offlineEmitted = false
+        homeRenderOrder.forEach { sectionId ->
+            if (!offlineEmitted && sectionId !in HomeSectionId.QuickAccess) {
+                homeStudioOfflineSection(c)
+                offlineEmitted = true
+            }
+            if (studioLayout.isHidden(sectionId)) return@forEach
+            when (sectionId) {
+                HomeSectionId.GenreChips -> homeStudioSectionGenreChips(c)
+                HomeSectionId.SpeedDial -> homeStudioSectionSpeedDial(c)
+                HomeSectionId.Spotlight -> homeStudioSectionSpotlight(c)
+                HomeSectionId.PersonalOrbit -> homeStudioSectionPersonalOrbit(c)
+                HomeSectionId.EditorialCollections -> homeStudioSectionEditorialCollections(c)
+                HomeSectionId.QuickPicks -> homeStudioSectionQuickPicks(c)
+                HomeSectionId.ForgottenFavorites -> homeStudioSectionForgottenFavorites(c)
+                HomeSectionId.AlbumsForYou -> homeStudioSectionAlbumsForYou(c)
+                HomeSectionId.TrendingArtists -> homeStudioSectionTrendingArtists(c)
+                HomeSectionId.NewReleases -> homeStudioSectionNewReleases(c)
+                HomeSectionId.MusicVideos -> homeStudioSectionMusicVideos(c)
+                HomeSectionId.ReleaseRadar -> homeStudioSectionReleaseRadar(c)
+                HomeSectionId.SimilarArtists -> homeStudioSectionSimilarArtists(c)
+                HomeSectionId.MoreSections -> homeStudioSectionMoreSections(c)
+                HomeSectionId.Resonance -> homeStudioSectionResonance(c)
+                HomeSectionId.Charts -> homeStudioSectionCharts(c)
+            }
+        }
+        if (!offlineEmitted) homeStudioOfflineSection(c)
+
+        if (state.homeError != null || state.playerError != null) {
+            item(key = "home-status", contentType = "home-card") {
+                HomeSectionLead(compactHome) {
+                    HomeSectionInset { StatusBlock(state) }
+                }
+            }
+        }
+    }
+}
+
 
 @Composable
 private fun StudioHomeOverlays(c: StudioHomeContext, homeBottomInset: Dp) {
