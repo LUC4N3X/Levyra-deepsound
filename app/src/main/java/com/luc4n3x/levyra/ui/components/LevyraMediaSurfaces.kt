@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
+import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
@@ -37,6 +39,10 @@ import com.luc4n3x.levyra.ui.theme.LevyraPink
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraType
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
+
+@Composable
+internal fun Modifier.levyraMarquee(enabled: Boolean = true): Modifier =
+    if (enabled && LocalAnimationsEnabled.current) basicMarquee() else this
 
 @Composable
 internal fun Modifier.levyraDockSurface(): Modifier {
@@ -82,12 +88,14 @@ internal fun LevyraCardCaption(
     titleColor: Color = LevyraText,
     subtitleColor: Color = LevyraMuted,
     titleLines: Int = 2,
-    reserveTitleLines: Boolean = true
+    reserveTitleLines: Boolean = true,
+    marqueeTitle: Boolean = false
 ) {
+    val effectiveLines = if (marqueeTitle) 1 else titleLines
     val titleStyle = LevyraType.cardTitle
     val subtitleStyle = LevyraType.caption
     val minHeight = if (reserveTitleLines) {
-        levyraCaptionHeight(titleLines)
+        levyraCaptionHeight(effectiveLines)
     } else {
         0.dp
     }
@@ -99,8 +107,9 @@ internal fun LevyraCardCaption(
             text = title,
             color = titleColor,
             style = titleStyle,
-            maxLines = titleLines,
-            overflow = TextOverflow.Ellipsis
+            maxLines = effectiveLines,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.levyraMarquee(enabled = marqueeTitle)
         )
         if (subtitle.isNotBlank()) {
             Text(

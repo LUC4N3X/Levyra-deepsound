@@ -112,8 +112,8 @@ class HomeCollectionsLayoutContractTest {
         assertTrue(card.contains(".width(textWidth)"))
         assertTrue(card.contains(".align(Alignment.TopStart)"))
         assertTrue(card.contains("Arrangement.spacedBy(LevyraHomeDesign.EditorialPadding)"))
-        assertTrue(text.contains("softWrap = true"))
-        assertFalse(text.contains("TextOverflow.Ellipsis"))
-        assertFalse(text.contains("maxLines"))
+        assertTrue(text.contains("maxLines = 2"))
+        assertTrue(text.contains("maxLines = 1"))
+        assertTrue(text.contains("TextOverflow.Ellipsis"))
     }
 }

@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.recap
 
+import com.luc4n3x.levyra.ui.overlayScreenBottomPadding
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -138,7 +139,7 @@ fun LevyraListeningRecapOverlay(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding(),
-            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 140.dp),
+            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 12.dp, bottom = overlayScreenBottomPadding()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item(contentType = "recap-header") {
