@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.insights
 
+import com.luc4n3x.levyra.ui.overlayScreenBottomPadding
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -184,7 +185,7 @@ internal fun ListeningInsightsScreen(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
-            contentPadding = PaddingValues(bottom = 144.dp)
+            contentPadding = PaddingValues(bottom = overlayScreenBottomPadding())
         ) {
             item(key = "insights-header", contentType = "header") {
                 InsightsHeader(

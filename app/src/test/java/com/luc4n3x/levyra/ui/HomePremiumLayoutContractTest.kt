@@ -35,16 +35,25 @@ class HomePremiumLayoutContractTest {
     @Test
     fun `orbit tiles keep playback actions and a single line title`() {
         val tile = functionBlock("private fun StudioPersonalOrbitTile(")
+        val artwork = functionBlock("private fun StudioPersonalOrbitArtwork(")
 
-        assertTrue(tile.contains(".aspectRatio("))
-        assertTrue(tile.contains("style == HomeStyle.Editorial) 1.18f"))
-        assertTrue(tile.contains("style == HomeStyle.Immersive) 0.86f"))
-        assertTrue(tile.contains("else 1f)"))
+        assertTrue(artwork.contains(".aspectRatio(ratio)"))
+        assertTrue(artwork.contains("val ratio = when (style) {"))
+        val ratioBranches = artwork.substringAfter("val ratio = when (style) {").substringBefore("}")
+        assertTrue(ratioBranches.contains("HomeStyle.Editorial -> 1.18f"))
+        assertTrue(ratioBranches.contains("HomeStyle.Immersive -> 0.86f"))
+        assertTrue(ratioBranches.contains("else -> 1f"))
         assertTrue(tile.contains("levyraPressable("))
+        assertTrue(tile.contains("onClick = onPlay"))
         assertTrue(tile.contains("onLongClick = onActions"))
         assertTrue(tile.contains("strings.songOptions"))
+        assertTrue(tile.contains("if (style == HomeStyle.ExpressiveMax) {"))
+        val expressiveMax = tile.substringAfter("if (style == HomeStyle.ExpressiveMax) {").substringBefore("} else {")
+        val otherStyles = tile.substringAfter("} else {")
+        assertTrue(expressiveMax.contains("titleInside = false"))
+        assertTrue(otherStyles.contains("titleInside = true"))
         assertTrue(tile.contains("maxLines = 1"))
-        assertTrue(tile.contains("LevyraNowPlayingBadge("))
+        assertTrue(artwork.contains("LevyraNowPlayingBadge("))
     }
 
     @Test
