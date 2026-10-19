@@ -10,6 +10,49 @@ import org.junit.Test
 class ReactiveAuraMotionTest {
 
     @Test
+    fun clockStaysStillWithoutAudioAndResumesWithSignal() {
+        val clock = ReactiveAuraClock()
+        val tuning = ReactiveAuraTuning.of(ReactiveAuraStyle(ReactiveAuraPreset.Pulse, 100))
+        val silence = FloatArray(60)
+        repeat(120) { clock.step(1f / 30f, tuning, silence, advancePhase = true) }
+        assertEquals(0f, clock.phase, 0f)
+
+        val loud = FloatArray(60) { 0.5f }
+        repeat(30) { clock.step(1f / 30f, tuning, loud, advancePhase = true) }
+        assertTrue(clock.phase > 0f)
+        assertTrue(clock.loudness > 0f)
+        assertTrue(clock.onset > 0f)
+
+        repeat(300) { clock.step(1f / 30f, tuning, silence, advancePhase = true) }
+        assertTrue(clock.settled)
+        val silentPhase = clock.phase
+        repeat(60) { clock.step(1f / 30f, tuning, silence, advancePhase = true) }
+        assertEquals(silentPhase, clock.phase, 0f)
+        assertEquals(0f, clock.loudness, 0f)
+        assertEquals(0f, clock.onset, 0f)
+
+        clock.step(1f / 30f, tuning, loud, advancePhase = true)
+        assertTrue(clock.phase > silentPhase)
+        val playingPhase = clock.phase
+        repeat(300) { clock.step(1f / 30f, tuning, floatArrayOf(), advancePhase = false) }
+        assertEquals(playingPhase, clock.phase, 0f)
+        assertTrue(clock.settled)
+    }
+
+    @Test
+    fun maximumPulseIntensityPreservesLoudnessAndTransientResponse() {
+        val tuning = ReactiveAuraTuning.of(ReactiveAuraStyle(ReactiveAuraPreset.Pulse, 100))
+        val steady = auraGlow(tuning, tuning.nearAlpha, 0.6f, 0f, 1f)
+        val louder = auraGlow(tuning, tuning.nearAlpha, 0.9f, 0f, 1f)
+        val attack = auraGlow(tuning, tuning.nearAlpha, 0.9f, 0.8f, 1f)
+
+        assertTrue(louder > steady)
+        assertTrue(attack > louder)
+        assertTrue(attack < 0.62f)
+        assertEquals(0f, auraGlow(tuning, tuning.nearAlpha, 1f, 1f, 0f), 0f)
+    }
+
+    @Test
     fun tuningRespectsPresetCharacteristicsAndIntensityScaling() {
         val calmDefault = ReactiveAuraTuning.of(ReactiveAuraStyle(ReactiveAuraPreset.Calm, 50))
         val flowDefault = ReactiveAuraTuning.of(ReactiveAuraStyle(ReactiveAuraPreset.Flow, 50))

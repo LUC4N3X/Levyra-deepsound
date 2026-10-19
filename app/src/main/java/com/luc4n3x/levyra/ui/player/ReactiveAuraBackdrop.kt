@@ -27,6 +27,7 @@ import androidx.lifecycle.compose.currentStateAsState
 import com.luc4n3x.levyra.player.VisualizerAudioProcessor
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
+import kotlinx.coroutines.delay
 
 private const val PresenceActive = 1f
 private const val PresencePaused = 0.72f
@@ -36,6 +37,7 @@ private const val SheenAlpha = 0.07f
 private const val FarLobeReach = 0.34f
 private const val BreathingTempoRise = 0.6f
 private const val BreathingTempoFall = 0.35f
+private const val SilentPollMillis = 100L
 private val NoSignal = FloatArray(0)
 
 @Stable
@@ -62,7 +64,7 @@ internal class ReactiveAuraClock {
         signal.advance(samples, dt)
         val target = auraTempoTarget(tuning, signal.loudness)
         tempo = followToward(tempo, target, if (target > tempo) BreathingTempoRise else BreathingTempoFall, dt)
-        if (advancePhase) phase = advanceAuraPhase(phase, dt, tuning.cycleSeconds, tempo)
+        if (advancePhase && !signal.settled) phase = advanceAuraPhase(phase, dt, tuning.cycleSeconds, tempo)
         loudness = signal.loudness
         onset = signal.onset
     }
@@ -86,7 +88,7 @@ internal fun ReactiveAuraBackdrop(
     val animate = animationsEnabled && decorative && lifecycleState.isAtLeast(Lifecycle.State.STARTED)
     val presence = animateFloatAsState(
         targetValue = if (isPlaying) PresenceActive else PresencePaused,
-        animationSpec = LevyraPlayerDesign.motion(animationsEnabled, LevyraPlayerDesign.emphasizedTween(PresenceMillis)),
+        animationSpec = LevyraPlayerDesign.motion(animationsEnabled && decorative, LevyraPlayerDesign.emphasizedTween(PresenceMillis)),
         label = "player-aura-presence"
     )
 
@@ -107,6 +109,7 @@ internal fun ReactiveAuraBackdrop(
                 lastNanos = now
             }
             if (!isPlaying && clock.settled) break
+            if (clock.settled) delay(SilentPollMillis)
         }
     }
 

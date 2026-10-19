@@ -127,6 +127,10 @@ internal class ReactiveAuraSignal {
         slow = followToward(slow, level, SlowRate, dtSeconds)
         val lift = if (hasSignal) ((fast - slow) / (slow + OnsetFloor) * OnsetScale).coerceIn(0f, 1f) else 0f
         onset = followToward(onset, lift, if (lift > onset) OnsetRise else OnsetFall, dtSeconds)
+        if (level == 0f && settled) {
+            loudness = 0f
+            onset = 0f
+        }
     }
 
     fun reset() {
@@ -221,9 +225,11 @@ internal fun auraBreath(onset: Float, tuning: ReactiveAuraTuning): Float =
     1f + 0.05f * tuning.onsetGain * onset.coerceIn(0f, 1f)
 
 internal fun auraGlow(tuning: ReactiveAuraTuning, base: Float, loudness: Float, onset: Float, presence: Float): Float {
-    val lifted = base * (1f + tuning.loudnessGain * loudness.coerceIn(0f, 1f) +
+    val lift = base * (tuning.loudnessGain * loudness.coerceIn(0f, 1f) +
         0.28f * tuning.onsetGain * onset.coerceIn(0f, 1f))
-    return (lifted * presence).coerceIn(0f, 0.62f)
+    val headroom = (AuraMaxGlowAlpha - base).coerceAtLeast(0f)
+    val lifted = if (headroom > 0f) base + headroom * lift / (headroom + lift) else base
+    return (lifted * presence).coerceIn(0f, AuraMaxGlowAlpha)
 }
 
 internal fun auraTone(color: Color): Color {
@@ -248,5 +254,6 @@ internal fun auraTone(color: Color): Color {
 }
 
 private const val AuraMaxSaturation = 0.62f
+private const val AuraMaxGlowAlpha = 0.62f
 private const val AuraMinValue = 0.42f
 private const val AuraMaxValue = 0.80f

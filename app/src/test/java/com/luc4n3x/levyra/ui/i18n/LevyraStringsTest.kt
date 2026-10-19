@@ -134,6 +134,15 @@ class LevyraStringsTest {
     @Test
     fun reactiveAuraStringsLocalizedAcrossLanguages() {
         val english = LevyraStrings.forCode("en")
+        val languages = LevyraStrings.all()
+        assertEquals(41, languages.size)
+        languages.filter { it.code != "en" }.forEach { strings ->
+            if (strings.code != "ro") {
+                assertFalse("Calm falls back to English for ${strings.code}", strings.reactiveAuraPresetCalm == english.reactiveAuraPresetCalm)
+            }
+            assertFalse("Intensity falls back to English for ${strings.code}", strings.reactiveAuraIntensity == english.reactiveAuraIntensity)
+            assertFalse("Recommendation falls back to English for ${strings.code}", strings.reactiveAuraRecommended == english.reactiveAuraRecommended)
+        }
         assertEquals("Reactive Aura", english.playerBackgroundReactiveAura)
         assertEquals("Calm", english.reactiveAuraPresetCalm)
         assertEquals("Flow", english.reactiveAuraPresetFlow)

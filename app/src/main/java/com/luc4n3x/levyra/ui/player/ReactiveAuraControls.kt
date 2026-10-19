@@ -1,44 +1,56 @@
 package com.luc4n3x.levyra.ui.player
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Air
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.Waves
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.ReactiveAuraPreset
-import com.luc4n3x.levyra.ui.components.levyraExpressiveToggleCorner
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
+import kotlin.math.roundToInt
 
-private const val IntensitySteps = 3
 private const val IntensityMax = 100f
 
 internal fun reactiveAuraPresetLabel(preset: ReactiveAuraPreset, strings: LevyraStrings): String = when (preset) {
@@ -59,141 +71,143 @@ internal fun ReactiveAuraControls(
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
+    var previewIntensity by remember(intensity) { mutableFloatStateOf(intensity.toFloat()) }
+    val largeText = LocalDensity.current.fontScale >= 1.6f
     Column(
         modifier = modifier
+            .padding(horizontal = LevyraPlayerDesign.Gutter)
             .fillMaxWidth()
-            .padding(horizontal = LevyraPlayerDesign.Gutter),
-        verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
+            .clip(LevyraPlayerDesign.ShapeLg)
+            .background(surfaces.controlQuiet)
+            .padding(LevyraPlayerDesign.SpaceLg),
+        verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceLg)
     ) {
-        Text(
-            text = strings.playerBackgroundReactiveAura,
-            color = surfaces.content,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.semantics { heading() }
-        )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .selectableGroup(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            ReactiveAuraPreset.entries.forEach { entry ->
-                ReactiveAuraPresetTile(
-                    label = reactiveAuraPresetLabel(entry, strings),
-                    recommended = entry == ReactiveAuraPreset.Recommended,
-                    recommendedLabel = strings.reactiveAuraRecommended,
-                    selected = entry == preset,
-                    accent = accent,
-                    surfaces = surfaces,
-                    animated = animated,
-                    onClick = { onPreset(entry) },
-                    modifier = Modifier.weight(1f)
-                )
+        Column(verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs)) {
+            Text(
+                text = strings.playerBackgroundReactiveAura,
+                color = surfaces.content,
+                fontSize = 20.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(20.sp),
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.semantics { heading() }
+            )
+            Text(
+                text = "${strings.reactiveAuraRecommended} · ${reactiveAuraPresetLabel(ReactiveAuraPreset.Recommended, strings)}",
+                color = surfaces.contentMuted,
+                fontSize = 12.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(12.sp)
+            )
+        }
+        if (largeText) {
+            Column(
+                modifier = Modifier.fillMaxWidth().selectableGroup(),
+                verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
+            ) {
+                ReactiveAuraPreset.entries.forEach { entry ->
+                    ReactiveAuraPresetButton(entry, entry == preset, accent, surfaces, animated,
+                        onClick = { onPreset(entry) }, modifier = Modifier.fillMaxWidth(), compact = true)
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).selectableGroup(),
+                horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
+            ) {
+                ReactiveAuraPreset.entries.forEach { entry ->
+                    ReactiveAuraPresetButton(entry, entry == preset, accent, surfaces, animated,
+                        onClick = { onPreset(entry) }, modifier = Modifier.weight(1f).fillMaxHeight())
+                }
             }
         }
-        val intensityLabel = strings.reactiveAuraIntensity
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = intensityLabel,
-                color = surfaces.contentMuted,
-                fontSize = 13.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(13.sp),
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                modifier = Modifier.weight(1f)
+        Column(verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
+            ) {
+                Text(
+                    text = strings.reactiveAuraIntensity,
+                    color = surfaces.contentMuted,
+                    fontSize = 14.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(14.sp),
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = "${previewIntensity.roundToInt()}%",
+                    color = surfaces.content,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Slider(
+                value = previewIntensity,
+                onValueChange = { previewIntensity = it },
+                onValueChangeFinished = { onIntensity(previewIntensity.roundToInt()) },
+                valueRange = 0f..IntensityMax,
+                colors = SliderDefaults.colors(
+                    thumbColor = accent,
+                    activeTrackColor = accent,
+                    inactiveTrackColor = surfaces.contentFaint.copy(alpha = 0.22f)
+                ),
+                modifier = Modifier.fillMaxWidth().semantics {
+                    contentDescription = strings.reactiveAuraIntensity
+                }
             )
-            Text(
-                text = "$intensity%",
-                color = surfaces.content,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("0%", color = surfaces.contentMuted, fontSize = 11.sp)
+                Text("100%", color = surfaces.contentMuted, fontSize = 11.sp)
+            }
         }
-        Slider(
-            value = intensity.toFloat(),
-            onValueChange = { onIntensity(it.toInt()) },
-            valueRange = 0f..IntensityMax,
-            steps = IntensitySteps,
-            colors = SliderDefaults.colors(
-                thumbColor = accent,
-                activeTrackColor = accent,
-                inactiveTrackColor = surfaces.contentFaint.copy(alpha = 0.35f),
-                activeTickColor = surfaces.heroContent.copy(alpha = 0.6f),
-                inactiveTickColor = surfaces.contentFaint.copy(alpha = 0.6f)
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics { contentDescription = "$intensityLabel $intensity%" }
-        )
     }
 }
 
 @Composable
-private fun ReactiveAuraPresetTile(
-    label: String,
-    recommended: Boolean,
-    recommendedLabel: String,
+private fun ReactiveAuraPresetButton(
+    preset: ReactiveAuraPreset,
     selected: Boolean,
     accent: Color,
     surfaces: PlayerSurfaceTokens,
     animated: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    compact: Boolean = false
 ) {
-    val corner = levyraExpressiveToggleCorner(
-        checked = selected,
-        unchecked = 16.dp,
-        checkedCorner = 28.dp,
+    val corner by animateDpAsState(
+        targetValue = if (selected) LevyraPlayerDesign.CornerLg else LevyraPlayerDesign.CornerSm,
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.expressiveSpring()),
         label = "player-aura-preset-corner"
     )
-    val shape = RoundedCornerShape(corner)
     val fill by animateColorAsState(
-        targetValue = if (selected) accent.copy(alpha = 0.24f) else surfaces.controlQuiet,
-        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(220)),
+        targetValue = if (selected) accent else surfaces.controlQuiet,
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween()),
         label = "player-aura-preset-fill"
     )
-    Column(
-        modifier = modifier
-            .heightIn(min = 56.dp)
-            .clip(shape)
-            .background(fill)
-            .border(
-                width = if (selected) 2.dp else 1.dp,
-                color = if (selected) accent else surfaces.contentFaint.copy(alpha = 0.25f),
-                shape = shape
-            )
-            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+    val ink = if (selected) surfaces.heroContent else surfaces.content
+    val icon = if (selected) Icons.Rounded.Check else when (preset) {
+        ReactiveAuraPreset.Calm -> Icons.Rounded.Air
+        ReactiveAuraPreset.Flow -> Icons.Rounded.Waves
+        ReactiveAuraPreset.Pulse -> Icons.Rounded.GraphicEq
+    }
+    FilledTonalButton(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = if (compact) 56.dp else 88.dp).semantics { this.selected = selected },
+        shape = RoundedCornerShape(corner),
+        colors = ButtonDefaults.filledTonalButtonColors(containerColor = fill, contentColor = ink),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(LevyraPlayerDesign.SpaceSm)
     ) {
-        Text(
-            text = label,
-            color = if (selected) surfaces.content else surfaces.contentMuted,
-            fontSize = 14.sp,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-            textAlign = TextAlign.Center,
-            maxLines = 1
-        )
-        if (recommended) {
-            Box(
-                modifier = Modifier
-                    .padding(top = 4.dp)
-                    .clip(CircleShape)
-                    .background(accent.copy(alpha = 0.32f))
-                    .padding(horizontal = 6.dp, vertical = 1.dp)
-            ) {
-                Text(
-                    text = recommendedLabel,
-                    color = surfaces.content,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1
-                )
+        if (compact) {
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)) {
+                Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp))
+                Text(reactiveAuraPresetLabel(preset, LocalLevyraStrings.current), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            }
+        } else {
+            Column(horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)) {
+                Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp))
+                Text(reactiveAuraPresetLabel(preset, LocalLevyraStrings.current), fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
             }
         }
     }
