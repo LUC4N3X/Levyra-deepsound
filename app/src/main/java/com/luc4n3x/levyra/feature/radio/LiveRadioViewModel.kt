@@ -196,6 +196,13 @@ internal class LiveRadioViewModel(
         }
     }
 
+    fun refreshFavorites() {
+        viewModelScope.launch {
+            val favorites = repository.favorites()
+            _state.update { it.copy(favorites = favorites) }
+        }
+    }
+
     fun toggleFavorite(station: RadioStation) {
         viewModelScope.launch {
             val favorite = station.uuid.lowercase(Locale.ROOT) !in _state.value.favoriteIds

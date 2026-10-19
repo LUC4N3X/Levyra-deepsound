@@ -145,6 +145,10 @@ internal class RadioRepository(
 
     suspend fun recent(): List<RadioStation> = store.recent()
 
+    suspend fun playbackStation(): RadioStation? = store.playbackStation()
+
+    suspend fun savePlaybackStation(station: RadioStation?) = store.savePlaybackStation(station)
+
     suspend fun setFavorite(station: RadioStation, favorite: Boolean): List<RadioStation> = store.setFavorite(station, favorite)
 
     suspend fun recordRecent(station: RadioStation): List<RadioStation> = store.recordRecent(station, now())

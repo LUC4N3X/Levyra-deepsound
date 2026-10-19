@@ -1882,6 +1882,7 @@ private fun Modifier.consumeOverlayTouches(): Modifier = pointerInput(Unit) {
 @Composable
 fun LevyraApp(
     viewModel: LevyraViewModel,
+    onExitApplication: () -> Unit = {},
     isInPictureInPicture: Boolean = false,
     onRetryPreUpdateBackup: () -> Unit = {},
     onContinueUpdateWithoutBackup: () -> Unit = {}
@@ -2742,6 +2743,7 @@ fun LevyraApp(
 
             AnimatedVisibility(visible = state.showSettings, enter = overlayEnter, exit = overlayExit) {
                 SettingsOverlay(
+                    onExitApplication = onExitApplication,
                     backEnabled = !(state.showJam || state.showThemeStudio || state.showLyricsStudio ||
                         state.showHomeStudio || miniPlayerStudio.visible || navigationStudio.visible),
                     animationsEnabled = state.animationsEnabled,
@@ -21136,6 +21138,7 @@ private fun LanguageSelector(selectedCode: String, onSelect: (String) -> Unit, m
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SettingsOverlay(
+    onExitApplication: () -> Unit,
     backEnabled: Boolean,
     animationsEnabled: Boolean,
     motionArtworkEnabled: Boolean,
@@ -21438,7 +21441,7 @@ private fun SettingsOverlay(
                             }
                         }
                     }
-                    item { SettingsHubFooter() }
+                    item { SettingsHubFooter(onExitApplication) }
                     }
                 } else {
                     item {
@@ -22611,7 +22614,7 @@ private fun SettingsOverlay(
                                     )
                                 }
                             }
-                            standaloneItem { SettingsHubFooter() }
+                            standaloneItem { SettingsHubFooter(onExitApplication) }
                         }
                     } }
                 }
@@ -22753,7 +22756,7 @@ private fun IntegrationSettingsPanel(
 }
 
 @Composable
-private fun SettingsHubFooter() {
+private fun SettingsHubFooter(onExitApplication: () -> Unit) {
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
     val footerVersion = BuildConfig.VERSION_NAME.removeSuffix("-pr-diagnostics")
@@ -22763,6 +22766,9 @@ private fun SettingsHubFooter() {
             .padding(top = 24.dp, bottom = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        TextButton(onClick = onExitApplication) {
+            Text(com.luc4n3x.levyra.ui.i18n.settingsFooterExitApplication(strings.code))
+        }
         Box(
             modifier = Modifier
                 .fillMaxWidth()

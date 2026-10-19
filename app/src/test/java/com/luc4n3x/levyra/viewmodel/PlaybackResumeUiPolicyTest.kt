@@ -3,10 +3,71 @@ package com.luc4n3x.levyra.viewmodel
 import com.luc4n3x.levyra.domain.Track
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PlaybackResumeUiPolicyTest {
+    @Test
+    fun pausedQueuePublicationRetainsResolvedPlaybackPayload() {
+        val playing = track("video123456").copy(videoStreamUrl = "https://rr.example.test/video")
+        val stored = playing.copy(streamUrl = "", videoStreamUrl = "")
+
+        val synchronized = playbackTrackAfterQueueSync(playing, stored)
+
+        assertSame(playing, synchronized)
+        assertEquals(playing.streamUrl, synchronized?.streamUrl)
+        assertEquals(playing.videoStreamUrl, synchronized?.videoStreamUrl)
+    }
+
+    @Test
+    fun restoredQueueKeepsItsSelectedTrackWithoutAStreamUrl() {
+        val restored = track("video123456").copy(streamUrl = "")
+
+        assertSame(restored, playbackTrackAfterQueueSync(null, restored))
+    }
+
+    @Test
+    fun queueSelectionChangeDoesNotReusePreviousTrackStream() {
+        val previous = track("video123456")
+        val selected = track("other123456").copy(streamUrl = "")
+
+        assertSame(selected, playbackTrackAfterQueueSync(previous, selected))
+    }
+
+    @Test
+    fun sameMetadataWithDifferentIdsDoesNotReusePreviousStream() {
+        val previous = track("first").copy(videoUrl = "")
+        val selected = track("second").copy(videoUrl = "", streamUrl = "")
+
+        assertSame(selected, playbackTrackAfterQueueSync(previous, selected))
+    }
+
+    @Test
+    fun exitBeforePlaybackPreservesRestoredPosition() {
+        assertEquals(122_342L, playbackPositionForExit(0L, 122_342L))
+    }
+
+    @Test
+    fun exitAfterPlaybackUsesActualPlayerPosition() {
+        assertEquals(130_000L, playbackPositionForExit(130_000L, 122_342L))
+        assertEquals(0L, playbackPositionForExit(0L, 0L))
+    }
+
+    @Test
+    fun unresolvedTrackAcceptsFreshQueueMetadata() {
+        val unresolved = track("video123456").copy(streamUrl = "")
+        val updated = unresolved.copy(title = "Updated song")
+
+        assertSame(updated, playbackTrackAfterQueueSync(unresolved, updated))
+    }
+
+    @Test
+    fun clearedQueueDoesNotKeepThePreviousPlayingTrack() {
+        assertNull(playbackTrackAfterQueueSync(track("video123456"), null))
+    }
+
     @Test
     fun sameTrackResolutionKeepsKnownTimelineWithoutOverridingPlayState() {
         val track = track("video123456")
