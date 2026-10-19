@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 internal data class LiveRadioUiState(
     val levyraLanguageCode: String = "en",
@@ -44,6 +46,7 @@ internal class LiveRadioViewModel(
     private var searchJob: Job? = null
     private var activationJob: Job? = null
     private var activatedLanguage = ""
+    private val favoritesMutex = Mutex()
 
     fun activate(levyraLanguageCode: String) {
         val preference = RadioLanguagePreferences.forLevyraLanguage(levyraLanguageCode)
@@ -66,13 +69,15 @@ internal class LiveRadioViewModel(
         }
         viewModelScope.launch { refreshDirectories() }
         activationJob = viewModelScope.launch {
-            val favorites = repository.favorites()
+            favoritesMutex.withLock {
+                val favorites = repository.favorites()
+                _state.update { it.copy(favorites = favorites) }
+            }
             val recent = repository.recent()
             val cached = repository.cachedCatalog(preference.levyraCode)
             if (activatedLanguage != preference.levyraCode) return@launch
             _state.update {
                 it.copy(
-                    favorites = favorites,
                     recent = recent,
                     stations = cached?.stations.orEmpty(),
                     showingCachedCatalog = cached != null
@@ -198,16 +203,20 @@ internal class LiveRadioViewModel(
 
     fun refreshFavorites() {
         viewModelScope.launch {
-            val favorites = repository.favorites()
-            _state.update { it.copy(favorites = favorites) }
+            favoritesMutex.withLock {
+                val favorites = repository.favorites()
+                _state.update { it.copy(favorites = favorites) }
+            }
         }
     }
 
     fun toggleFavorite(station: RadioStation) {
         viewModelScope.launch {
-            val favorite = station.uuid.lowercase(Locale.ROOT) !in _state.value.favoriteIds
-            val favorites = repository.setFavorite(station, favorite)
-            _state.update { it.copy(favorites = favorites) }
+            favoritesMutex.withLock {
+                val favorite = station.uuid.lowercase(Locale.ROOT) !in _state.value.favoriteIds
+                val favorites = repository.setFavorite(station, favorite)
+                _state.update { it.copy(favorites = favorites) }
+            }
         }
     }
 

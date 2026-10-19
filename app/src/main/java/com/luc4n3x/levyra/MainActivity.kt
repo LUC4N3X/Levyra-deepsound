@@ -209,8 +209,8 @@ class MainActivity : ComponentActivity() {
                     LevyraApp(
                         viewModel = viewModel,
                         onExitApplication = {
-                            viewModel.exitApplication {
-                                exitApplicationRequested = true
+                            viewModel.exitApplication { terminateProcess ->
+                                exitApplicationRequested = terminateProcess
                                 finishAndRemoveTask()
                             }
                         },

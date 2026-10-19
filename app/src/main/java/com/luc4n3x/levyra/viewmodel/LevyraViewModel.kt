@@ -12957,7 +12957,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         updateWidget()
     }
 
-    fun exitApplication(onReady: () -> Unit) {
+    fun exitApplication(onReady: (terminateProcess: Boolean) -> Unit) {
         if (exitingApplication) return
         exitingApplication = true
         playJob?.cancel()
@@ -12967,7 +12967,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         resumeShortcutJob?.cancel()
         pause()
         val current = _state.value.currentTrack
-        val positionMs = playbackPositionForExit(player.positionMs, pendingSeekMs)
+        val positionMs = playbackPositionForExit(
+            playerPositionMs = current?.let(player::positionForTrack),
+            pendingSeekMs = pendingSeekMs,
+            selectedPositionMs = queueEngine.state.value.positionMs,
+            isResolving = _state.value.isResolving
+        )
         recognitionController.cancel()
         if (jamControllerDelegate.isInitialized()) jamController.close()
         viewModelScope.launch {
@@ -12982,7 +12987,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 preferences.flush()
             }
             PlaybackService.stopForAppExit()
-            onReady()
+            val terminateProcess = withContext(Dispatchers.IO) {
+                runCatchingPreservingCancellation {
+                    val work = WorkManager.getInstance(getApplication<Application>())
+                        .getWorkInfosByTag("levyra_offline_export")
+                        .get(5L, java.util.concurrent.TimeUnit.SECONDS)
+                    canTerminateProcessForExit(work.map { it.state })
+                }.getOrDefault(false)
+            }
+            onReady(terminateProcess)
         }
     }
 
@@ -14210,8 +14223,19 @@ internal fun playbackTrackAfterQueueSync(current: Track?, queued: Track?): Track
     } ?: queued
 }
 
-internal fun playbackPositionForExit(playerPositionMs: Long, pendingSeekMs: Long): Long =
-    playerPositionMs.takeIf { it > 0L } ?: pendingSeekMs.coerceAtLeast(0L)
+internal fun playbackPositionForExit(
+    playerPositionMs: Long?,
+    pendingSeekMs: Long,
+    selectedPositionMs: Long = 0L,
+    isResolving: Boolean = false
+): Long = when {
+    isResolving || playerPositionMs == null ->
+        pendingSeekMs.takeIf { it > 0L } ?: selectedPositionMs.coerceAtLeast(0L)
+    else -> playerPositionMs.takeIf { it > 0L } ?: pendingSeekMs.coerceAtLeast(0L)
+}
+
+internal fun canTerminateProcessForExit(downloadStates: List<WorkInfo.State>): Boolean =
+    downloadStates.all { it.isFinished }
 
 private val YOUTUBE_PLAYABLE_VIDEO_ID = Regex("^[A-Za-z0-9_-]{11}$")
 

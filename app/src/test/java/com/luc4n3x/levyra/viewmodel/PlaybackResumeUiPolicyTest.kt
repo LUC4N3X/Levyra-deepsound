@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.viewmodel
 
 import com.luc4n3x.levyra.domain.Track
+import androidx.work.WorkInfo
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -53,6 +54,22 @@ class PlaybackResumeUiPolicyTest {
     fun exitAfterPlaybackUsesActualPlayerPosition() {
         assertEquals(130_000L, playbackPositionForExit(130_000L, 122_342L))
         assertEquals(0L, playbackPositionForExit(0L, 0L))
+    }
+
+    @Test
+    fun exitDuringResolutionDoesNotSavePreviousPlayerPosition() {
+        assertEquals(0L, playbackPositionForExit(130_000L, 0L, 0L, isResolving = true))
+        assertEquals(42_000L, playbackPositionForExit(130_000L, 42_000L, 0L, isResolving = true))
+        assertEquals(42_000L, playbackPositionForExit(null, 0L, 42_000L))
+    }
+
+    @Test
+    fun exitKeepsUnfinishedDownloadsAlive() {
+        for (state in listOf(WorkInfo.State.RUNNING, WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED)) {
+            assertFalse(canTerminateProcessForExit(listOf(WorkInfo.State.SUCCEEDED, state)))
+        }
+        assertTrue(canTerminateProcessForExit(emptyList()))
+        assertTrue(canTerminateProcessForExit(listOf(WorkInfo.State.SUCCEEDED, WorkInfo.State.FAILED, WorkInfo.State.CANCELLED)))
     }
 
     @Test
