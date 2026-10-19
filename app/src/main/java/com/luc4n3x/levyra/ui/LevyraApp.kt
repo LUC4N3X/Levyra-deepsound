@@ -11175,7 +11175,11 @@ private fun StudioHomeContent(
                     accent = homeAccent,
                     heroTrack = spotlightCandidate?.track ?: state.currentTrack,
                     listState = homeListState,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    expressivePortraitUrl = spotlightHeroData?.artistArtworkUrl.orEmpty(),
+                    showExpressivePortrait = homeStyle == HomeStyle.ExpressiveMax &&
+                        spotlightHeroData != null &&
+                        !studioLayout.isHidden(HomeSectionId.Spotlight)
                 )
                 LazyColumn(
                     state = homeListState,
