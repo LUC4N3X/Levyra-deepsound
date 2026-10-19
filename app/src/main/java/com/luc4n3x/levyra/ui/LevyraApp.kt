@@ -868,7 +868,7 @@ private val SimilarSongsPeekSize = 32.dp
 private val SimilarSongsPeekOverlap = 22.dp
 private val SimilarSongsUnderlineWidth = 52.dp
 private const val SIMILAR_SONGS_PEEK_COUNT = 3
-private const val HOME_ARTIST_SHELF_SIZE = 13
+private const val HOME_ARTIST_SHELF_SIZE = 15
 private const val HOME_FLOW_SHORTCUT_LIMIT = 6
 private const val HOME_DEFERRED_SECTION_REVEAL_MS = 180L
 private const val HOME_HORIZONTAL_ROW_CONTENT_TYPE = "home-horizontal-row"
@@ -9744,17 +9744,21 @@ private fun HomeScreen(
         state.tracks,
         state.languageCode
     ) {
-        buildPersonalizedHomeAlbumShelf(
-            primaryAlbums = state.homeAlbums,
-            personalTracks = state.personalOrbitTracks,
-            recentTracks = state.recentListens,
-            favoriteTracks = state.favorites,
-            quickPickTracks = quickPicks?.tracks.orEmpty(),
-            localizedReleaseTracks = newReleases?.tracks.orEmpty(),
-            localizedSections = state.homeSections,
-            chartTracks = state.charts,
-            fallbackTracks = state.tracks
-        )
+        if (state.homeAlbums.isNotEmpty()) {
+            state.homeAlbums
+        } else {
+            buildPersonalizedHomeAlbumShelf(
+                primaryAlbums = state.homeAlbums,
+                personalTracks = state.personalOrbitTracks,
+                recentTracks = state.recentListens,
+                favoriteTracks = state.favorites,
+                quickPickTracks = quickPicks?.tracks.orEmpty(),
+                localizedReleaseTracks = newReleases?.tracks.orEmpty(),
+                localizedSections = state.homeSections,
+                chartTracks = state.charts,
+                fallbackTracks = state.tracks
+            )
+        }
     }
     val rawOtherSections = homeDerivedState.otherSections
     val freshHomeVideoTracks = remember(state.exploreVideos, rawOtherSections, state.charts, strings.exploreNewVideos) {
@@ -10662,17 +10666,21 @@ private fun StudioHomeScreen(
         state.tracks,
         state.languageCode
     ) {
-        buildPersonalizedHomeAlbumShelf(
-            primaryAlbums = state.homeAlbums,
-            personalTracks = state.personalOrbitTracks,
-            recentTracks = state.recentListens,
-            favoriteTracks = state.favorites,
-            quickPickTracks = quickPicks?.tracks.orEmpty(),
-            localizedReleaseTracks = newReleases?.tracks.orEmpty(),
-            localizedSections = state.homeSections,
-            chartTracks = state.charts,
-            fallbackTracks = state.tracks
-        )
+        if (state.homeAlbums.isNotEmpty()) {
+            state.homeAlbums
+        } else {
+            buildPersonalizedHomeAlbumShelf(
+                primaryAlbums = state.homeAlbums,
+                personalTracks = state.personalOrbitTracks,
+                recentTracks = state.recentListens,
+                favoriteTracks = state.favorites,
+                quickPickTracks = quickPicks?.tracks.orEmpty(),
+                localizedReleaseTracks = newReleases?.tracks.orEmpty(),
+                localizedSections = state.homeSections,
+                chartTracks = state.charts,
+                fallbackTracks = state.tracks
+            )
+        }
     }
     val rawOtherSections = homeDerivedState.otherSections
     val (homeVideoTracks, otherSections) = rememberStudioHomeVideo(state, rawOtherSections, strings)
@@ -13716,7 +13724,7 @@ private fun TrendingArtistsShelf(
     val strings = LocalLevyraStrings.current
     Column(verticalArrangement = Arrangement.spacedBy(homeHeaderContentGap())) {
         HomeSectionHeader(
-            title = strings.artists,
+            title = strings.trendingArtists,
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
         )
         LazyRow(

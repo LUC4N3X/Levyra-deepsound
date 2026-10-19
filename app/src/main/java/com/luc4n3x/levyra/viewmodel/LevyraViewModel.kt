@@ -1616,16 +1616,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             settings.languageCode
         )
         val startupHomeTracks = startupHomeSections.flatMap { it.tracks }.distinctBy { it.id }
-        val startupHomeArtists = instantSnapshot?.homeArtists
-            .orEmpty()
-            .filter { artist ->
-                artist.name.isNotBlank() &&
-                    artist.browseId.isNotBlank() &&
-                    artist.thumbnailUrl.isNotBlank() &&
-                    artist.officialArtwork
-            }
-            .distinctBy { it.browseId.lowercase() }
-            .take(HOME_ARTIST_SHELF_SIZE)
+        val startupCountry = startupChartRegion.country
+        val cachedTrendingArtists = chartsRepository.cachedTrendingArtists(startupCountry, HOME_ARTIST_SHELF_SIZE)
+        val startupHomeArtists = cachedTrendingArtists.ifEmpty {
+            instantSnapshot?.homeArtists
+                .orEmpty()
+                .filter { artist ->
+                    artist.name.isNotBlank() &&
+                        artist.browseId.isNotBlank() &&
+                        artist.thumbnailUrl.isNotBlank() &&
+                        artist.officialArtwork
+                }
+                .distinctBy { it.browseId.lowercase() }
+                .take(HOME_ARTIST_SHELF_SIZE)
+        }
         val snapshotCharts = instantSnapshot
             ?.takeIf { it.chartRegionId == startupChartRegion.id }
             ?.charts
@@ -1675,12 +1679,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             tracks = initialTracks,
             smartProfile = startupSmartProfile
         )
-        val startupAlbums = rankAlbumRecommendations(
-            remote = preferences.loadHomeAlbums(settings.languageCode),
-            instant = startupInstantAlbums,
-            state = startupAlbumState,
-            limit = HOME_ALBUM_RECOMMENDATION_LIMIT
-        ).ifEmpty { startupInstantAlbums }
+        val cachedTrendingAlbums = chartsRepository.cachedTrendingAlbums(startupCountry, 20)
+        val startupAlbums = cachedTrendingAlbums.ifEmpty {
+            rankAlbumRecommendations(
+                remote = preferences.loadHomeAlbums(settings.languageCode),
+                instant = startupInstantAlbums,
+                state = startupAlbumState,
+                limit = HOME_ALBUM_RECOMMENDATION_LIMIT
+            ).ifEmpty { startupInstantAlbums }
+        }
         val initialQueue = moodEngine.buildQueue(startupMoods.firstOrNull(), initialTracks)
         val restoredTrack = settings.lastTrack
             ?.copy(streamUrl = "", videoStreamUrl = "")
@@ -2385,7 +2392,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             now - state.homeResonanceUpdatedAt < HOME_RESONANCE_REFRESH_INTERVAL_MS
     }
 
-    fun refreshHomeArtists() {
+    fun refreshHomeArtists(force: Boolean = false) {
         if (!HomeOfflinePolicy.shouldAttemptRemoteRefresh(_state.value.isDeviceOffline)) {
             homeArtistsJob?.cancel()
             _state.update { current ->
@@ -2401,12 +2408,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val visibleArtists = visibleHomeArtists(startupSnapshot, plan)
             val fingerprint = homeArtistFingerprint(plan.languageCode, plan.orderedCandidates)
 
-            if (fingerprint == homeArtistsFingerprint && visibleArtists.size >= HOME_ARTIST_SHELF_SIZE) {
+            if (!force && fingerprint == homeArtistsFingerprint && visibleArtists.size >= HOME_ARTIST_SHELF_SIZE) {
                 return@launch
             }
             homeArtistsFingerprint = fingerprint
 
-            val freezeVisibleShelf = visibleArtists.size >= HOME_ARTIST_SHELF_SIZE
+            val freezeVisibleShelf = !force && visibleArtists.size >= HOME_ARTIST_SHELF_SIZE
             val startupPlan = homeStartupWorkPlan()
             prepareHomeArtistResolution(
                 languageCode = plan.languageCode,
@@ -2430,6 +2437,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
 
             val finalArtists = resolved.values.take(HOME_ARTIST_SHELF_SIZE)
+            val country = ChartsCatalog.region(startupSnapshot.selectedChartId).country
+            chartsRepository.saveTrendingArtists(country, finalArtists)
+
             if (freezeVisibleShelf) {
                 finishFrozenHomeArtistRefresh(plan.languageCode, finalArtists)
                 return@launch
@@ -2452,63 +2462,40 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private suspend fun buildHomeArtistPlan(startupSnapshot: LevyraUiState): HomeArtistPlan {
         val languageCode = LevyraLanguageCatalog.normalize(startupSnapshot.languageCode)
-        val localizedSeedNames = (
-            LevyraContentLocales.artistSuggestions(languageCode) + GLOBAL_HOME_ARTIST_FALLBACKS
-        ).distinctBy(::artistIdentityKey)
-        val localizedSeedKeys = localizedSeedNames
-            .map(::artistIdentityKey)
-            .filter { it.isNotBlank() }
-            .toSet()
-        val blockedArtistKeys = if (languageCode == "it") {
-            emptySet()
-        } else {
-            LevyraContentLocales.artistSuggestions("it")
-                .map(::artistIdentityKey)
-                .filter { it.isNotBlank() }
-                .toSet()
-        }
+        val country = ChartsCatalog.region(startupSnapshot.selectedChartId).country
+        val trendingCandidates = chartsRepository.trendingArtistCandidates(country, HOME_ARTIST_SHELF_SIZE)
 
         val candidates = LinkedHashMap<String, HomeArtistCandidate>()
         val trustedArtistKeys = LinkedHashSet<String>()
         fun addCandidate(nameValue: String, browseIdValue: String) {
             val browseId = browseIdValue.trim()
             val cleanName = nameValue.trim()
-            val name = if (LevyraContentLocales.isArtistSuggestionForLanguage(cleanName, languageCode)) {
-                cleanName
-            } else {
-                primaryArtistSegment(cleanName).ifBlank { cleanName }
-            }
+            val name = primaryArtistSegment(cleanName).ifBlank { cleanName }
             val identity = artistIdentityKey(name)
             if (name.length < 2 || identity.isBlank() || !isArtistShelfNameEligible(name)) return
-            if (identity in blockedArtistKeys && identity !in localizedSeedKeys) return
             trustedArtistKeys += identity
             val existing = candidates[identity]
-            if (existing == null || existing.browseId.isBlank() && browseId.isNotBlank()) {
+            if (existing == null || (existing.browseId.isBlank() && browseId.isNotBlank())) {
                 candidates[identity] = HomeArtistCandidate(name, browseId)
             }
         }
 
-        localizedSeedNames.forEach { name -> addCandidate(name, "") }
-        listeningPulseStore.personalizedArtists(limit = HOME_ARTIST_HISTORY_LIMIT)
-            .filter { ranked ->
-                LevyraContentLocales.isArtistSuggestionForLanguage(ranked.name, languageCode)
-            }
-            .forEach { ranked -> addCandidate(ranked.name, ranked.browseId) }
-
-        homeArtistFeedTracks(startupSnapshot, languageCode).forEach { track ->
-            addCandidate(track.artist, track.artistBrowseIds.firstOrNull().orEmpty())
+        trendingCandidates.forEach { candidate ->
+            addCandidate(candidate.name, "")
         }
-        if (languageCode != "en") {
-            homeArtistPersonalTracks(startupSnapshot, languageCode).forEach { track ->
-                addCandidate(track.artist, track.artistBrowseIds.firstOrNull().orEmpty())
-            }
+
+        if (candidates.isEmpty()) {
+            val fallbackNames = (
+                LevyraContentLocales.artistSuggestions(languageCode) + GLOBAL_HOME_ARTIST_FALLBACKS
+            ).distinctBy(::artistIdentityKey)
+            fallbackNames.forEach { name -> addCandidate(name, "") }
         }
 
         return HomeArtistPlan(
             languageCode = languageCode,
             orderedCandidates = candidates.values.take(HOME_ARTIST_CANDIDATE_LIMIT),
             trustedArtistKeys = trustedArtistKeys,
-            blockedArtistKeys = blockedArtistKeys
+            blockedArtistKeys = emptySet()
         )
     }
 
@@ -2732,6 +2719,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         languageCode: String,
         finalArtists: List<ArtistHit>
     ) {
+        val country = ChartsCatalog.region(_state.value.selectedChartId).country
+        chartsRepository.saveTrendingArtists(country, finalArtists)
         if (finalArtists.size >= HOME_ARTIST_SHELF_SIZE) {
             deferredHomeArtistsSnapshot.set(finalArtists)
             scheduleDeferredHomeSnapshotApply()
@@ -5303,18 +5292,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         homeAlbumsJob = viewModelScope.launch {
             val initialState = _state.value
             if (initialState.languageCode != languageCode) return@launch
+            val country = ChartsCatalog.region(initialState.selectedChartId).country
 
+            val cached = chartsRepository.cachedTrendingAlbums(country, 20)
             if (initialState.homeAlbums.isEmpty()) {
-                val instantAlbums = instantAlbumRecommendations(initialState)
-                    .take(HOME_ALBUM_RECOMMENDATION_LIMIT)
                 _state.update { current ->
                     if (current.languageCode != languageCode || current.homeAlbums.isNotEmpty()) current
                     else current.copy(
-                        homeAlbums = instantAlbums,
-                        homeAlbumsLoading = instantAlbums.isEmpty()
+                        homeAlbums = cached,
+                        homeAlbumsLoading = cached.isEmpty()
                     )
                 }
-            } else if (initialState.homeAlbumsLoading) {
+            } else if (initialState.homeAlbumsLoading && cached.isNotEmpty()) {
                 _state.update { current ->
                     if (current.languageCode == languageCode) current.copy(homeAlbumsLoading = false) else current
                 }
@@ -5330,30 +5319,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     _state.value.languageCode != languageCode
                 ) return@launch
             }
-            val seeds = albumRecommendationSeeds(_state.value).let { candidates ->
-                if (deferUntilHomeIdle) candidates.take(startupPlan.albumSeedCount) else candidates
-            }
-            val remoteLimit = if (deferUntilHomeIdle) {
-                maxOf(HOME_ALBUM_RECOMMENDATION_LIMIT, startupPlan.albumCandidateCount)
-            } else {
-                HOME_ALBUM_REMOTE_CANDIDATE_LIMIT
-            }
-            val remoteConcurrency = if (deferUntilHomeIdle) {
-                startupPlan.albumConcurrency
-            } else {
-                HOME_ALBUM_REMOTE_CONCURRENCY
-            }
+
             val albums = try {
-                repository.homeAlbums(
-                    languageCode = languageCode,
-                    limit = remoteLimit,
-                    seeds = seeds,
-                    concurrency = remoteConcurrency
-                )
+                chartsRepository.trendingAlbums(country, 20)
             } catch (error: CancellationException) {
                 throw error
-            } catch (error: Exception) {
-                Timber.w(error, "Personalized home albums failed")
+            } catch (error: Throwable) {
+                Timber.w(error, "Trending home albums failed for %s", country)
                 emptyList()
             }
             if (
@@ -5361,6 +5333,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 homeAlbumsRequestGeneration.get() != requestGeneration ||
                 _state.value.languageCode != languageCode
             ) return@launch
+
             if (albums.isEmpty()) {
                 _state.update { current ->
                     if (current.languageCode == languageCode && current.homeAlbumsLoading) {
@@ -5372,31 +5345,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 return@launch
             }
 
-            val latestState = _state.value
-            val latestInstantAlbums = instantAlbumRecommendations(latestState)
-            val rankedAlbums = withContext(Dispatchers.Default) {
-                rankAlbumRecommendations(
-                    remote = albums,
-                    instant = latestInstantAlbums,
-                    state = latestState,
-                    limit = HOME_ALBUM_RECOMMENDATION_LIMIT
-                ).ifEmpty { latestInstantAlbums.take(HOME_ALBUM_RECOMMENDATION_LIMIT) }
-            }
-            if (rankedAlbums.isEmpty()) {
-                _state.update { current ->
-                    if (current.languageCode == languageCode && current.homeAlbumsLoading) {
-                        current.copy(homeAlbumsLoading = false)
-                    } else {
-                        current
-                    }
-                }
-                return@launch
-            }
-
             withContext(Dispatchers.IO) {
-                preferences.saveHomeAlbums(rankedAlbums, languageCode)
+                preferences.saveHomeAlbums(albums, languageCode)
             }
-            if (deferUntilHomeIdle && _state.value.homeAlbums != rankedAlbums) awaitHomeUiIdle()
+            if (deferUntilHomeIdle && _state.value.homeAlbums != albums) awaitHomeUiIdle()
             if (
                 !isActive ||
                 homeAlbumsRequestGeneration.get() != requestGeneration ||
@@ -5405,8 +5357,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
             _state.update { current ->
                 if (current.languageCode != languageCode) current
-                else if (current.homeAlbums == rankedAlbums && !current.homeAlbumsLoading) current
-                else current.copy(homeAlbums = rankedAlbums, homeAlbumsLoading = false)
+                else if (current.homeAlbums == albums && !current.homeAlbumsLoading) current
+                else current.copy(homeAlbums = albums, homeAlbumsLoading = false)
             }
         }
     }
@@ -7105,17 +7057,26 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             )
         ) return
         val languageCode = current.languageCode
+        val country = ChartsCatalog.region(normalizedRegionId).country
         val cached = chartsByRegion[chartsCacheKey(languageCode, normalizedRegionId)].orEmpty()
+        val cachedAlbums = chartsRepository.cachedTrendingAlbums(country, 20)
+        val cachedArtists = chartsRepository.cachedTrendingArtists(country, HOME_ARTIST_SHELF_SIZE)
         _state.update {
             it.copy(
                 selectedChartId = normalizedRegionId,
                 charts = cached,
-                isLoadingCharts = cached.isEmpty()
+                isLoadingCharts = cached.isEmpty(),
+                homeAlbums = cachedAlbums,
+                homeAlbumsLoading = cachedAlbums.isEmpty(),
+                homeArtists = cachedArtists,
+                homeArtistsLoading = cachedArtists.isEmpty()
             )
         }
         loadCharts(normalizedRegionId)
         prefetchChartRegions(normalizedRegionId)
         if (cached.isNotEmpty()) upgradeSelectedChartArtwork(normalizedRegionId)
+        loadHomeAlbums(languageCode)
+        refreshHomeArtists(force = true)
     }
 
     private fun upgradeSelectedChartArtwork(regionId: String) {
@@ -13705,7 +13666,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         private const val CHART_CACHE_FRESH_MS = 60L * 60L * 1000L
         private const val CHART_PRIME_REGION_COUNT = 28
         private const val CHART_ARTWORK_BATCH_SIZE = 10
-        private const val HOME_ARTIST_SHELF_SIZE = 20
+        private const val HOME_ARTIST_SHELF_SIZE = 15
         private const val HOME_ARTIST_HISTORY_LIMIT = 72
         private const val HOME_ARTIST_CANDIDATE_LIMIT = 72
         private const val HOME_ARTIST_RESOLUTION_CONCURRENCY = 4

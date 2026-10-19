@@ -79,7 +79,7 @@ private fun MutableList<SettingsSearchEntry>.appearanceEntries(strings: LevyraSt
     entry("home.voices", strings.voicesSetting, strings.voicesSettingSubtitle, "voices", categories.home)
     entry("home.new_releases", strings.newReleasesSetting, strings.showRecentReleases, "releases", categories.home)
     entry("home.release_radar", strings.releaseRadar, strings.followedArtistsSubtitle, "releases radar notifications artists", categories.home)
-    entry("home.albums_for_you", strings.albumsForYouSetting, strings.showRecommendedAlbums, "albums recommendations", categories.home)
+    entry("home.albums_for_you", strings.albumsForYouSetting, strings.showRecommendedAlbums, "albums trending recommendations", categories.home)
     entry("home.trending_artists", strings.trendingArtists, strings.showDiscoveredArtists, "artists trending", categories.home)
     entry("home.pure_black", strings.pureBlack, strings.pureBlackSubtitle, "amoled oled black dark", categories.home)
     entry("home.top_charts", strings.top50Charts, strings.showChartsCountry, "charts top 50", categories.home)

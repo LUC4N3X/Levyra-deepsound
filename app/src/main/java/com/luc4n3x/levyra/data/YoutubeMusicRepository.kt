@@ -754,8 +754,6 @@ internal fun selectResolvedAlbumCandidate(
             albumArtworkIdentityKey(candidate.thumbnailUrl) == artworkKey &&
             (artistKey.isBlank() || albumRecommendationTextKey(candidate.artist) == artistKey)
     } ?: candidates.firstOrNull { candidate ->
-        artistKey.isNotBlank() && albumRecommendationTextKey(candidate.artist) == artistKey
-    } ?: candidates.firstOrNull { candidate ->
         titleMatches(candidate) &&
             albumArtistCompatibility(album, candidate) != AlbumArtistCompatibility.Conflicting
     }

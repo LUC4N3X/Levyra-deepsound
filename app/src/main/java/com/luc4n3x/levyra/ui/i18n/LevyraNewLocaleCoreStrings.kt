@@ -83,8 +83,37 @@ private fun newLocaleSetupOverrides(code: String): Map<String, String> = when (c
     else -> emptyMap()
 }
 
+private fun trendingCopy(
+    albumsForYou: String,
+    albumsForYouSetting: String,
+    showRecommendedAlbums: String,
+    trendingArtists: String
+): Map<String, String> = mapOf(
+    "albumsForYou" to albumsForYou,
+    "albumsForYouSetting" to albumsForYouSetting,
+    "showRecommendedAlbums" to showRecommendedAlbums,
+    "trendingArtists" to trendingArtists
+)
+
+private fun newLocaleTrendingOverrides(code: String): Map<String, String> = when (code) {
+    "zh-Hant" -> trendingCopy("熱門專輯", "熱門專輯", "在首頁顯示熱門專輯", "熱門歌手")
+    "hu" -> trendingCopy("Felkapott albumok", "Felkapott albumok", "Felkapott albumok megjelenítése a Kezdőlapon", "Felkapott előadók")
+    "bg" -> trendingCopy("Популярни албуми", "Популярни албуми", "Показвай популярни албуми в Начало", "Популярни изпълнители")
+    "nb" -> trendingCopy("Populære album", "Populære album", "Vis populære album på Hjem", "Populære artister")
+    "ca" -> trendingCopy("Àlbums del moment", "Àlbums del moment", "Mostra els àlbums del moment a l'Inici", "Artistes del moment")
+    "bn" -> trendingCopy("জনপ্রিয় অ্যালবাম", "জনপ্রিয় অ্যালবাম", "হোমে জনপ্রিয় অ্যালবাম দেখান", "জনপ্রিয় শিল্পী")
+    "kk" -> trendingCopy("Танымал альбомдар", "Танымал альбомдар", "Басты бетте танымал альбомдарды көрсету", "Танымал орындаушылар")
+    "sr" -> trendingCopy("Популарни албуми", "Популарни албуми", "Прикажи популарне албуме на Почетној", "Популарни извођачи")
+    "sq" -> trendingCopy("Albumet e momentit", "Albumet e momentit", "Shfaq albumet e momentit në Kreu", "Artistët e momentit")
+    "hr" -> trendingCopy("Popularni albumi", "Popularni albumi", "Prikaži popularne albume na Početnoj", "Popularni izvođači")
+    "sk" -> trendingCopy("Populárne albumy", "Populárne albumy", "Zobraziť populárne albumy na Domov", "Populárni interpreti")
+    "ms" -> trendingCopy("Album trending", "Album trending", "Tunjukkan album trending di Laman Utama", "Artis trending")
+    "fa" -> trendingCopy("آلبوم‌های برتر", "آلبوم‌های برتر", "نمایش آلبوم‌های برتر در خانه", "هنرمندان برتر")
+    else -> emptyMap()
+}
+
 internal fun newLocaleCoreOverrides(code: String): Map<String, String> =
-    newLocaleCoreCopy(code) + newLocaleSetupOverrides(code)
+    newLocaleCoreCopy(code) + newLocaleSetupOverrides(code) + newLocaleTrendingOverrides(code)
 
 private fun newLocaleCoreCopy(code: String): Map<String, String> = when (code) {
     "zh-Hant" -> coreCopy("開始吧。", "你的語言？", "你叫什麼名字？", "選擇 3 個或更多你喜歡的音樂類型。", "略過並繼續", "開始聆聽", "設定", "自訂 LEVYRA", "語言", "變更應用程式語言", "首頁", "搜尋", "音樂庫", "播放器", "播放佇列", "歌詞", "播放清單", "離線下載", "收藏", "快速精選", "播放", "搜尋歌曲、藝人等…", "返回", "選擇語言", "重新啟動 LEVYRA？", "語言已儲存。立即重新啟動應用程式，讓所有畫面完整套用新語言。", "立即重新啟動", "稍後")
