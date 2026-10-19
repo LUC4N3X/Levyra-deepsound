@@ -102,11 +102,12 @@ internal fun LevyraMixLauncherPanel(
     onOpenMixLab: () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
-    val panelShape = RoundedCornerShape(32.dp)
+    val panelShape = RoundedCornerShape(28.dp)
     val wash = remember(accent, colors.surfaceContainerHigh) {
-        Brush.verticalGradient(
-            0f to accent.copy(alpha = 0.24f),
-            0.7f to colors.surfaceContainerHigh.copy(alpha = 0f)
+        Brush.linearGradient(
+            0f to accent.copy(alpha = 0.34f),
+            0.55f to accent.copy(alpha = 0.10f),
+            1f to colors.surfaceContainerHigh.copy(alpha = 0f)
         )
     }
 
@@ -114,8 +115,9 @@ internal fun LevyraMixLauncherPanel(
         modifier = modifier
             .fillMaxWidth()
             .clip(panelShape)
-            .background(colors.surfaceContainerHigh)
+            .background(colors.surfaceContainer)
             .background(wash)
+            .border(1.dp, accent.copy(alpha = 0.22f), panelShape)
             .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {

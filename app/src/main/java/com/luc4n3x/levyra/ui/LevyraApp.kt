@@ -1,6 +1,7 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.levyraMarquee
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import com.luc4n3x.levyra.ui.components.levyraShimmerSweep
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
@@ -2741,6 +2742,8 @@ fun LevyraApp(
 
             AnimatedVisibility(visible = state.showSettings, enter = overlayEnter, exit = overlayExit) {
                 SettingsOverlay(
+                    backEnabled = !(state.showJam || state.showThemeStudio || state.showLyricsStudio ||
+                        state.showHomeStudio || miniPlayerStudio.visible || navigationStudio.visible),
                     animationsEnabled = state.animationsEnabled,
                     motionArtworkEnabled = state.motionArtworkEnabled,
                     dynamicColor = state.dynamicColor,
@@ -2780,30 +2783,24 @@ fun LevyraApp(
                     onNetworkSettings = viewModel::updateNetworkSettings,
                     onTestNetwork = viewModel::testNetworkConfiguration,
                     onOpenJam = {
-                        viewModel.closeSettings()
                         viewModel.openJam()
                     },
                     onOpenThemeStudio = {
-                        viewModel.closeSettings()
                         viewModel.openThemeStudio()
                     },
                     onOpenLyricsStudio = {
-                        viewModel.closeSettings()
                         viewModel.openLyricsStudio()
                     },
                     homeStudioStyle = state.homeStudioSettings.style,
                     onOpenHomeStudio = {
-                        viewModel.closeSettings()
                         viewModel.openHomeStudio()
                     },
                     miniPlayerStyle = miniPlayerStudio.settings.style,
                     onOpenMiniPlayerStudio = {
-                        viewModel.closeSettings()
                         viewModel.openMiniPlayerStudio()
                     },
                     navigationStyle = navigationStudio.settings.style,
                     onOpenNavigationStudio = {
-                        viewModel.closeSettings()
                         viewModel.openNavigationStudio()
                     },
                     onOpenAudioSettings = viewModel::openAudioQualityPanel,
@@ -11168,6 +11165,34 @@ private fun StudioHomeContent(
         val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
         val homeTopPadding = 8.dp
         val homeLocalAnimations = LocalAnimationsEnabled.current && studioLayout.motion != HomeMotion.Reduced
+        // One continuous pixel offset survives LazyColumn item changes.
+        // Keep its value out of composition: the portrait reads it in graphicsLayer.
+        val portraitScroll = rememberSaveable {
+            mutableFloatStateOf(
+                if (homeListState.firstVisibleItemIndex == 0) {
+                    homeListState.firstVisibleItemScrollOffset.toFloat()
+                } else {
+                    10_000f
+                }
+            )
+        }
+        val portraitScrollConnection = remember(homeListState, homeStyle) {
+            object : NestedScrollConnection {
+                override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                    if (homeStyle == HomeStyle.ExpressiveMax && consumed.y != 0f) {
+                        portraitScroll.floatValue = (portraitScroll.floatValue - consumed.y).coerceAtLeast(0f)
+                    }
+                    return Offset.Zero
+                }
+            }
+        }
+        LaunchedEffect(homeListState) {
+            snapshotFlow {
+                homeListState.firstVisibleItemIndex == 0 && homeListState.firstVisibleItemScrollOffset == 0
+            }.distinctUntilChanged().collect { atTop ->
+                if (atTop) portraitScroll.floatValue = 0f
+            }
+        }
         CompositionLocalProvider(
             LocalHomeCompactDensity provides compactHome,
             LocalAnimationsEnabled provides homeLocalAnimations
@@ -11178,12 +11203,18 @@ private fun StudioHomeContent(
                     accent = homeAccent,
                     heroTrack = spotlightCandidate?.track ?: state.currentTrack,
                     listState = homeListState,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    expressivePortraitUrl = spotlightHeroData?.artistArtworkUrl.orEmpty(),
+                    showExpressivePortrait = homeStyle == HomeStyle.ExpressiveMax &&
+                        spotlightHeroData != null &&
+                        !studioLayout.isHidden(HomeSectionId.Spotlight),
+                    expressiveScrollPx = { portraitScroll.floatValue }
                 )
                 LazyColumn(
                     state = homeListState,
                     modifier = Modifier
                         .fillMaxSize()
+                        .nestedScroll(portraitScrollConnection)
                         .pullToRefresh(isRefreshing = homeRefreshing, state = homePullState, onRefresh = onPullRefresh),
                     contentPadding = PaddingValues(
                         top = statusBarTop + homeTopPadding,
@@ -11191,87 +11222,8 @@ private fun StudioHomeContent(
                     ),
                     verticalArrangement = Arrangement.spacedBy(homeSectionGap)
                 ) {
-                    if (homeStyle == HomeStyle.Original) {
-                        item(key = "home-top", contentType = "home-header") {
-                            val homeHeader: @Composable () -> Unit = {
-                                HomeSectionInset {
-                                    GreetingBar(
-                                        userName = state.userName,
-                                        isResolving = state.isResolving,
-                                        animationsEnabled = homeAnimationsEnabled,
-                                        onSearch = viewModel::openSearch,
-                                        onSettings = viewModel::openSettings
-                                    )
-                                }
-                            }
-                            if (stagedSpotlight != null) {
-                                SpotlightHeroSlot(homeHeader, statusBarTop + homeTopPadding)
-                            } else {
-                                homeHeader()
-                            }
-                        }
-                    } else {
-                        item(key = "home-top", contentType = "home-studio-header") {
-                            Column(verticalArrangement = Arrangement.spacedBy(styleSpec.sectionGap)) {
-                                StudioHomeHeader(
-                                    style = homeStyle,
-                                    spec = styleSpec,
-                                    userName = state.userName,
-                                    isResolving = state.isResolving,
-                                    onSearch = viewModel::openSearch,
-                                    onSettings = viewModel::openSettings,
-                                    hero = mergedStudioHero(),
-                                    topBleed = statusBarTop + homeTopPadding
-                                )
-                                if (homeStyle == HomeStyle.Flow && flowShortcutTracks.isNotEmpty()) {
-                                    StudioFlowShortcuts(
-                                        spec = styleSpec,
-                                        title = strings.offlineHomeRecent,
-                                        tracks = flowShortcutTracks,
-                                        currentId = state.currentTrack?.id,
-                                        isPlaying = state.isPlaying,
-                                        onPlay = { track -> viewModel.playFrom(flowShortcutTracks, track) },
-                                        onActions = onTrackActions
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    var offlineEmitted = false
-                    homeRenderOrder.forEach { sectionId ->
-                        if (!offlineEmitted && sectionId !in HomeSectionId.QuickAccess) {
-                            homeStudioOfflineSection(c)
-                            offlineEmitted = true
-                        }
-                        if (studioLayout.isHidden(sectionId)) return@forEach
-                        when (sectionId) {
-                            HomeSectionId.GenreChips -> homeStudioSectionGenreChips(c)
-                            HomeSectionId.SpeedDial -> homeStudioSectionSpeedDial(c)
-                            HomeSectionId.Spotlight -> homeStudioSectionSpotlight(c)
-                            HomeSectionId.PersonalOrbit -> homeStudioSectionPersonalOrbit(c)
-                            HomeSectionId.EditorialCollections -> homeStudioSectionEditorialCollections(c)
-                            HomeSectionId.QuickPicks -> homeStudioSectionQuickPicks(c)
-                            HomeSectionId.ForgottenFavorites -> homeStudioSectionForgottenFavorites(c)
-                            HomeSectionId.AlbumsForYou -> homeStudioSectionAlbumsForYou(c)
-                            HomeSectionId.TrendingArtists -> homeStudioSectionTrendingArtists(c)
-                            HomeSectionId.NewReleases -> homeStudioSectionNewReleases(c)
-                            HomeSectionId.MusicVideos -> homeStudioSectionMusicVideos(c)
-                            HomeSectionId.ReleaseRadar -> homeStudioSectionReleaseRadar(c)
-                            HomeSectionId.SimilarArtists -> homeStudioSectionSimilarArtists(c)
-                            HomeSectionId.MoreSections -> homeStudioSectionMoreSections(c)
-                            HomeSectionId.Resonance -> homeStudioSectionResonance(c)
-                            HomeSectionId.Charts -> homeStudioSectionCharts(c)
-                        }
-                    }
-                    if (!offlineEmitted) homeStudioOfflineSection(c)
-
-                    if (state.homeError != null || state.playerError != null) {
-                        item(key = "home-status", contentType = "home-card") {
-                            HomeSectionLead(compactHome) {
-                                HomeSectionInset { StatusBlock(state) }
-                            }
-                        }
-                    }
+                    studioHomeHeaderItems(c, flowShortcutTracks, statusBarTop, homeTopPadding)
+                    studioHomeSections(c, homeRenderOrder)
                 }
                 PullToRefreshDefaults.LoadingIndicator(
                     state = homePullState,
@@ -11291,6 +11243,106 @@ private fun StudioHomeContent(
         }
     }
 }
+
+private fun LazyListScope.studioHomeHeaderItems(
+    c: StudioHomeContext,
+    flowShortcutTracks: List<Track>,
+    statusBarTop: Dp,
+    homeTopPadding: Dp
+) {
+    with(c) {
+        if (homeStyle == HomeStyle.Original) {
+            item(key = "home-top", contentType = "home-header") {
+                val homeHeader: @Composable () -> Unit = {
+                    HomeSectionInset {
+                        GreetingBar(
+                            userName = state.userName,
+                            isResolving = state.isResolving,
+                            animationsEnabled = homeAnimationsEnabled,
+                            onSearch = viewModel::openSearch,
+                            onSettings = viewModel::openSettings
+                        )
+                    }
+                }
+                if (stagedSpotlight != null) {
+                    SpotlightHeroSlot(homeHeader, statusBarTop + homeTopPadding)
+                } else {
+                    homeHeader()
+                }
+            }
+        } else {
+            item(key = "home-top", contentType = "home-studio-header") {
+                Column(verticalArrangement = Arrangement.spacedBy(styleSpec.sectionGap)) {
+                    StudioHomeHeader(
+                        style = homeStyle,
+                        spec = styleSpec,
+                        userName = state.userName,
+                        isResolving = state.isResolving,
+                        onSearch = viewModel::openSearch,
+                        onSettings = viewModel::openSettings,
+                        hero = mergedStudioHero(),
+                        topBleed = statusBarTop + homeTopPadding
+                    )
+                    if (homeStyle == HomeStyle.Flow && flowShortcutTracks.isNotEmpty()) {
+                        StudioFlowShortcuts(
+                            spec = styleSpec,
+                            title = strings.offlineHomeRecent,
+                            tracks = flowShortcutTracks,
+                            currentId = state.currentTrack?.id,
+                            isPlaying = state.isPlaying,
+                            onPlay = { track -> viewModel.playFrom(flowShortcutTracks, track) },
+                            onActions = onTrackActions
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun LazyListScope.studioHomeSections(
+    c: StudioHomeContext,
+    homeRenderOrder: List<HomeSectionId>
+) {
+    with(c) {
+        var offlineEmitted = false
+        homeRenderOrder.forEach { sectionId ->
+            if (!offlineEmitted && sectionId !in HomeSectionId.QuickAccess) {
+                homeStudioOfflineSection(c)
+                offlineEmitted = true
+            }
+            if (studioLayout.isHidden(sectionId)) return@forEach
+            when (sectionId) {
+                HomeSectionId.GenreChips -> homeStudioSectionGenreChips(c)
+                HomeSectionId.SpeedDial -> homeStudioSectionSpeedDial(c)
+                HomeSectionId.Spotlight -> homeStudioSectionSpotlight(c)
+                HomeSectionId.PersonalOrbit -> homeStudioSectionPersonalOrbit(c)
+                HomeSectionId.EditorialCollections -> homeStudioSectionEditorialCollections(c)
+                HomeSectionId.QuickPicks -> homeStudioSectionQuickPicks(c)
+                HomeSectionId.ForgottenFavorites -> homeStudioSectionForgottenFavorites(c)
+                HomeSectionId.AlbumsForYou -> homeStudioSectionAlbumsForYou(c)
+                HomeSectionId.TrendingArtists -> homeStudioSectionTrendingArtists(c)
+                HomeSectionId.NewReleases -> homeStudioSectionNewReleases(c)
+                HomeSectionId.MusicVideos -> homeStudioSectionMusicVideos(c)
+                HomeSectionId.ReleaseRadar -> homeStudioSectionReleaseRadar(c)
+                HomeSectionId.SimilarArtists -> homeStudioSectionSimilarArtists(c)
+                HomeSectionId.MoreSections -> homeStudioSectionMoreSections(c)
+                HomeSectionId.Resonance -> homeStudioSectionResonance(c)
+                HomeSectionId.Charts -> homeStudioSectionCharts(c)
+            }
+        }
+        if (!offlineEmitted) homeStudioOfflineSection(c)
+
+        if (state.homeError != null || state.playerError != null) {
+            item(key = "home-status", contentType = "home-card") {
+                HomeSectionLead(compactHome) {
+                    HomeSectionInset { StatusBlock(state) }
+                }
+            }
+        }
+    }
+}
+
 
 @Composable
 private fun StudioHomeOverlays(c: StudioHomeContext, homeBottomInset: Dp) {
@@ -14703,60 +14755,95 @@ private fun StudioPersonalOrbitTile(
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
+    val pressModifier = Modifier.levyraPressable(
+        onClick = onPlay,
+        pressedScale = LevyraPressScale.Tile,
+        role = Role.Button,
+        onLongClick = onActions,
+        onLongClickLabel = strings.songOptions
+    )
+    if (style == HomeStyle.ExpressiveMax) {
+        Column(
+            modifier = modifier.then(pressModifier),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            StudioPersonalOrbitArtwork(
+                style = style,
+                index = index,
+                shape = shape,
+                track = track,
+                isCurrent = isCurrent,
+                isPlaying = isPlaying,
+                isResolving = isResolving,
+                titleInside = false,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text(
+                text = track.title,
+                color = if (isCurrent) MaterialTheme.colorScheme.primary else LevyraText,
+                fontSize = LevyraHomeDesign.OrbitTileTitleSize,
+                lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitTileTitleSize),
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp).levyraMarquee()
+            )
+        }
+    } else {
+        StudioPersonalOrbitArtwork(
+            style = style,
+            index = index,
+            shape = shape,
+            track = track,
+            isCurrent = isCurrent,
+            isPlaying = isPlaying,
+            isResolving = isResolving,
+            titleInside = true,
+            modifier = modifier,
+            pressModifier = pressModifier
+        )
+    }
+}
 
+@Composable
+private fun StudioPersonalOrbitArtwork(
+    style: HomeStyle,
+    index: Int,
+    shape: Shape,
+    track: Track,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    titleInside: Boolean,
+    modifier: Modifier,
+    pressModifier: Modifier = Modifier
+) {
+    val ratio = when (style) {
+        HomeStyle.Editorial -> 1.18f
+        HomeStyle.Immersive -> 0.86f
+        else -> 1f
+    }
+    val tilt = if (style == HomeStyle.ExpressiveMax) {
+        when (index % 3) { 0 -> -2.5f; 1 -> 2f; else -> 0f }
+    } else 0f
     Box(
         modifier = modifier
-            .aspectRatio(if (style == HomeStyle.Editorial) 1.18f else if (style == HomeStyle.Immersive) 0.86f else 1f)
-            .graphicsLayer {
-                rotationZ = if (style == HomeStyle.ExpressiveMax) {
-                    when (index % 3) { 0 -> -2.5f; 1 -> 2f; else -> 0f }
-                } else 0f
-            }
+            .aspectRatio(ratio)
+            .graphicsLayer { rotationZ = tilt }
             .clip(shape)
             .background(LevyraPanel)
-            .levyraPressable(
-                onClick = onPlay,
-                pressedScale = LevyraPressScale.Tile,
-                role = Role.Button,
-                onLongClick = onActions,
-                onLongClickLabel = strings.songOptions
-            )
+            .then(pressModifier)
     ) {
         CoverImage(
             track = track,
             modifier = Modifier.fillMaxSize(),
             highRes = true
         )
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.45f)
-                .align(Alignment.BottomCenter)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.68f)
-                        )
-                    )
-                )
-        )
-        Text(
-            text = track.title,
-            color = if (isCurrent) LevyraCyan else Color.White,
-            fontSize = LevyraHomeDesign.OrbitTileTitleSize,
-            lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitTileTitleSize),
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(
-                    start = LevyraHomeDesign.OrbitTileTitleInset,
-                    end = LevyraHomeDesign.OrbitTileTitleInset,
-                    bottom = 7.dp
-                )
-        )
+        if (titleInside) {
+            StudioPersonalOrbitOverlayTitle(track = track, isCurrent = isCurrent)
+        }
         if (isCurrent) {
             LevyraNowPlayingBadge(
                 isPlaying = isPlaying,
@@ -14767,6 +14854,40 @@ private fun StudioPersonalOrbitTile(
             )
         }
     }
+}
+
+@Composable
+private fun BoxScope.StudioPersonalOrbitOverlayTitle(track: Track, isCurrent: Boolean) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(0.45f)
+            .align(Alignment.BottomCenter)
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color.Transparent,
+                        Color.Black.copy(alpha = 0.68f)
+                    )
+                )
+            )
+    )
+    Text(
+        text = track.title,
+        color = if (isCurrent) LevyraCyan else Color.White,
+        fontSize = LevyraHomeDesign.OrbitTileTitleSize,
+        lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitTileTitleSize),
+        fontWeight = FontWeight.Bold,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier
+            .align(Alignment.BottomStart)
+            .padding(
+                start = LevyraHomeDesign.OrbitTileTitleInset,
+                end = LevyraHomeDesign.OrbitTileTitleInset,
+                bottom = 7.dp
+            )
+    )
 }
 
 private fun trackAlbumHit(track: Track): AlbumHit = AlbumHit(
@@ -21015,6 +21136,7 @@ private fun LanguageSelector(selectedCode: String, onSelect: (String) -> Unit, m
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SettingsOverlay(
+    backEnabled: Boolean,
     animationsEnabled: Boolean,
     motionArtworkEnabled: Boolean,
     dynamicColor: Boolean,
@@ -21138,7 +21260,7 @@ private fun SettingsOverlay(
         batteryLifecycleOwner.lifecycle.addObserver(observer)
         onDispose { batteryLifecycleOwner.lifecycle.removeObserver(observer) }
     }
-    BackHandler(enabled = activeCategory != null) { activeCategory = null }
+    BackHandler(enabled = backEnabled && activeCategory != null) { activeCategory = null }
     val categoryLocale = remember(strings.code) { Locale.forLanguageTag(strings.code.replace('_', '-')) }
     fun categoryTitle(value: String): String = settingsCategoryTitle(value, categoryLocale)
     val categories = remember(strings.code) {
@@ -27196,10 +27318,9 @@ private fun ExploreContentRow(
             )
         }
         ExploreRow.MixTools -> Column(
-            modifier = Modifier.padding(horizontal = HomeHorizontalInset),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            LevyraSectionHeader(title = strings.levyraMix, subtitle = strings.mixCreate)
+            ExploreSectionHeader(title = strings.levyraMix, subtitle = strings.mixCreate)
             LevyraMixLauncherPanel(
                 familiarity = state.mixFamiliarity,
                 loading = state.mixLoading,
@@ -27207,9 +27328,9 @@ private fun ExploreContentRow(
                 onFamiliarityChange = viewModel::setMixFamiliarity,
                 onStartMix = { kind -> viewModel.startLevyraMix(kind) },
                 onOpenYourSound = viewModel::openYourSound,
-                onOpenMixLab = { viewModel.openMixLab() }
+                onOpenMixLab = { viewModel.openMixLab() },
+                modifier = Modifier.padding(horizontal = HomeHorizontalInset)
             )
-            ExploreLiveRadioEntry(onClick = onOpenRadio)
         }
         is ExploreRow.Header -> ExploreAnchorHeader(
             anchor = row.anchor,
@@ -27304,45 +27425,42 @@ private fun ExploreMoodRailRow(
         val filtered = zones.filter { it.id != ExploreCatalog.NEW_RELEASES_ZONE_ID }
         if (filtered.isNotEmpty()) filtered else zones
     }
-    val pairs = remember(moodZones) { moodZones.chunked(2) }
+    val rows = remember(moodZones) { moodZones.take(ExploreMoodGridLimit).chunked(2) }
 
-    LazyRow(
-        state = rememberLazyListState(),
-        contentPadding = PaddingValues(horizontal = HomeHorizontalInset),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = HomeHorizontalInset),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        items(
-            items = pairs,
-            key = { pair -> "explore-mood-pair-${pair.joinToString("-") { it.id }}" }
-        ) { pair ->
-            Column(
-                modifier = Modifier.width(168.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                pair.forEach { zone ->
-                    val artworkUrl = rememberExploreMoodArtworkUrl(zone)
-                    ExploreDiscoveryCategoryCard(
-                        title = zone.label,
-                        identity = zone.id,
-                        artworkUrl = artworkUrl,
-                        emoji = zone.emoji,
-                        accentColors = Color(zone.accentStart) to Color(zone.accentEnd),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(96.dp),
-                        onLongClick = { onStartZoneMix(zone) },
-                        onClick = { onOpenZone(zone) }
-                    )
+        rows.forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                row.forEach { zone ->
+                    key(zone.id) {
+                        val artworkUrl = rememberExploreMoodArtworkUrl(zone)
+                        ExploreDiscoveryCategoryCard(
+                            title = zone.label,
+                            identity = zone.id,
+                            artworkUrl = artworkUrl,
+                            emoji = zone.emoji,
+                            accentColors = Color(zone.accentStart) to Color(zone.accentEnd),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(100.dp),
+                            onLongClick = { onStartZoneMix(zone) },
+                            onClick = { onOpenZone(zone) }
+                        )
+                    }
                 }
-                if (pair.size == 1) {
+                if (row.size == 1) {
                     ExploreDiscoveryCategoryCard(
                         title = strings.showAll,
                         identity = "all-moods",
                         emoji = "↗",
                         accentColors = Color(0xFF343C48) to Color(0xFF202632),
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(96.dp),
+                            .weight(1f)
+                            .height(100.dp),
                         onClick = onOpenAll
                     )
                 }
@@ -27350,6 +27468,8 @@ private fun ExploreMoodRailRow(
         }
     }
 }
+
+private const val ExploreMoodGridLimit = 8
 
 @Composable
 private fun ExploreOverlays(
@@ -27610,77 +27730,54 @@ private fun ExplorePrimaryShortcuts(
     val strings = LocalLevyraStrings.current
     val radioStrings = com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog.forCode(strings.code)
     val colors = MaterialTheme.colorScheme
-    LazyRow(
-        modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = HomeHorizontalInset),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
+    val entries = buildList {
         if (ExploreAnchor.Fresh in availableAnchors) {
-            item(key = "releases") {
-                ExploreShortcutTile(
-                    icon = Icons.Rounded.AutoAwesome,
-                    label = strings.exploreNewReleases,
-                    polygon = MaterialShapes.Sunny,
-                    container = colors.primaryContainer,
-                    content = colors.onPrimaryContainer,
-                    onClick = { onSelect(ExploreShortcut.NewReleases) }
-                )
-            }
+            add(ExploreShortcutEntry("releases", Icons.Rounded.AutoAwesome, strings.exploreNewReleases, MaterialShapes.Sunny, colors.primaryContainer, colors.onPrimaryContainer) { onSelect(ExploreShortcut.NewReleases) })
         }
-        item(key = "samples") {
-            ExploreShortcutTile(
-                icon = Icons.Rounded.PlayArrow,
-                label = strings.exploreSamples,
-                polygon = MaterialShapes.Cookie4Sided,
-                container = colors.tertiaryContainer,
-                content = colors.onTertiaryContainer,
-                onClick = { onSelect(ExploreShortcut.Samples) }
-            )
-        }
+        add(ExploreShortcutEntry("samples", Icons.Rounded.PlayArrow, strings.exploreSamples, MaterialShapes.Cookie4Sided, colors.tertiaryContainer, colors.onTertiaryContainer) { onSelect(ExploreShortcut.Samples) })
         if (ExploreAnchor.Moods in availableAnchors) {
-            item(key = "moods") {
-                ExploreShortcutTile(
-                    icon = Icons.Rounded.Mood,
-                    label = strings.exploreMoods,
-                    polygon = MaterialShapes.Clover4Leaf,
-                    container = colors.secondaryContainer,
-                    content = colors.onSecondaryContainer,
-                    onClick = { onSelect(ExploreShortcut.Moods) }
-                )
+            add(ExploreShortcutEntry("moods", Icons.Rounded.Mood, strings.exploreMoods, MaterialShapes.Clover4Leaf, colors.secondaryContainer, colors.onSecondaryContainer) { onSelect(ExploreShortcut.Moods) })
+        }
+        add(ExploreShortcutEntry("radio", Icons.Rounded.Radio, radioStrings.title, MaterialShapes.SoftBurst, colors.errorContainer, colors.onErrorContainer, onOpenRadio))
+        add(ExploreShortcutEntry("jam", Icons.Rounded.PersonAdd, strings.jamTitle, MaterialShapes.Cookie9Sided, colors.inversePrimary, colors.onPrimaryContainer, onOpenJam))
+    }
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = HomeHorizontalInset),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        entries.chunked(2).forEach { pair ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                pair.forEach { entry ->
+                    key(entry.key) {
+                        ExploreShortcutTile(entry = entry, modifier = Modifier.weight(1f))
+                    }
+                }
+                if (pair.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
             }
-        }
-        item(key = "radio") {
-            ExploreShortcutTile(
-                icon = Icons.Rounded.Radio,
-                label = radioStrings.title,
-                polygon = MaterialShapes.SoftBurst,
-                container = colors.errorContainer,
-                content = colors.onErrorContainer,
-                onClick = onOpenRadio
-            )
-        }
-        item(key = "jam") {
-            ExploreShortcutTile(
-                icon = Icons.Rounded.PersonAdd,
-                label = strings.jamTitle,
-                polygon = MaterialShapes.Cookie9Sided,
-                container = colors.inversePrimary,
-                content = colors.onPrimaryContainer,
-                onClick = onOpenJam
-            )
         }
     }
 }
 
+@Immutable
+private class ExploreShortcutEntry(
+    val key: String,
+    val icon: ImageVector,
+    val label: String,
+    val polygon: RoundedPolygon,
+    val container: Color,
+    val content: Color,
+    val onClick: () -> Unit
+)
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ExploreShortcutTile(
-    icon: ImageVector,
-    label: String,
-    polygon: RoundedPolygon = MaterialShapes.Cookie9Sided,
-    container: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
-    content: Color = MaterialTheme.colorScheme.onSurface,
-    onClick: () -> Unit
+    entry: ExploreShortcutEntry,
+    modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.colorScheme
     val animationsEnabled = LocalAnimationsEnabled.current
@@ -27691,147 +27788,48 @@ private fun ExploreShortcutTile(
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "explore-shortcut-rotation"
     )
-    val iconShape = polygon.toShape()
-    Column(
-        modifier = Modifier
-            .width(88.dp)
-            .heightIn(min = 104.dp)
-            .clip(RoundedCornerShape(20.dp))
+    val iconShape = entry.polygon.toShape()
+    Row(
+        modifier = modifier
+            .heightIn(min = 68.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(lerp(colors.surfaceContainerHigh, entry.container, 0.32f))
             .levyraPressable(
-                onClick = onClick,
-                onClickLabel = label,
+                onClick = entry.onClick,
+                onClickLabel = entry.label,
                 role = Role.Button,
                 pressedScale = LevyraPressScale.Control,
                 interactionSource = interaction
             )
-            .padding(horizontal = 4.dp, vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .padding(start = 10.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(58.dp)
+                .size(46.dp)
                 .graphicsLayer { rotationZ = rotation }
                 .clip(iconShape)
-                .background(container),
+                .background(entry.container),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = icon,
+                imageVector = entry.icon,
                 contentDescription = null,
-                tint = content,
+                tint = entry.content,
                 modifier = Modifier
-                    .size(24.dp)
+                    .size(22.dp)
                     .graphicsLayer { rotationZ = -rotation }
             )
         }
-        Text(
-            text = label,
-            style = LevyraType.caption.copy(fontWeight = FontWeight.Medium, lineHeight = LevyraTypeRhythm.lineHeight(12.sp), fontSize = 12.sp),
-            color = colors.onSurface.copy(alpha = 0.88f),
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
+        BasicText(
+            text = entry.label,
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = colors.onSurface),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            autoSize = TextAutoSize.StepBased(minFontSize = 11.sp, maxFontSize = 14.sp),
+            modifier = Modifier.weight(1f)
         )
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun ExploreLiveRadioEntry(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val radioStrings = com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog.forCode(LocalLevyraStrings.current.code)
-    val colors = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(28.dp)
-    val iconShape = MaterialShapes.SoftBurst.toShape()
-    val liveRed = Color(0xFFE53935)
-
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = 88.dp)
-            .clip(shape)
-            .background(colors.surfaceContainerHigh)
-            .levyraPressable(
-                onClick = onClick,
-                onClickLabel = radioStrings.title,
-                role = Role.Button,
-                pressedScale = LevyraPressScale.Row
-            )
-            .padding(start = 14.dp, end = 10.dp, top = 14.dp, bottom = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .clip(iconShape)
-                .background(liveRed.copy(alpha = 0.16f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.Rounded.Radio,
-                contentDescription = null,
-                tint = liveRed,
-                modifier = Modifier.size(26.dp)
-            )
-        }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = radioStrings.title,
-                    color = colors.onSurface,
-                    style = LevyraType.contentTitle.copy(fontWeight = FontWeight.Bold),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false)
-                )
-                Row(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(liveRed.copy(alpha = 0.16f))
-                        .padding(horizontal = 8.dp, vertical = 3.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(6.dp)
-                            .clip(CircleShape)
-                            .background(liveRed)
-                    )
-                    Text(
-                        text = radioStrings.live,
-                        color = liveRed,
-                        style = LevyraType.overline.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp),
-                        maxLines = 1
-                    )
-                }
-            }
-            Text(
-                text = radioStrings.exploreSubtitle,
-                color = colors.onSurfaceVariant,
-                style = LevyraType.caption,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(colors.onSurface.copy(alpha = 0.06f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.Rounded.ChevronRight,
-                contentDescription = null,
-                tint = colors.onSurface,
-                modifier = Modifier.size(22.dp)
-            )
-        }
     }
 }
 

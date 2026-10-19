@@ -91,7 +91,7 @@ internal fun LevyraYourSoundOverlay(
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
-            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 140.dp),
+            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 12.dp, bottom = overlayScreenBottomPadding()),
             verticalArrangement = Arrangement.spacedBy(style.gap)
         ) {
             item(contentType = "dna-header") {
