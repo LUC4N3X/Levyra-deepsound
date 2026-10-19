@@ -72,9 +72,6 @@ import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
 import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -140,8 +137,6 @@ import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraText
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.first
 import java.util.Date
 import java.util.Locale
 
@@ -1814,35 +1809,14 @@ private val StudioImmersiveHeroScrim = Brush.verticalGradient(
 private fun StudioExpressiveMaxBackdrop(
     accent: Color,
     heroTrack: Track?,
-    listState: LazyListState,
     modifier: Modifier,
     expressivePortraitUrl: String,
-    showExpressivePortrait: Boolean
+    showExpressivePortrait: Boolean,
+    portraitScrollPx: () -> Float
 ) {
     val scheme = MaterialTheme.colorScheme
     val isLight = LevyraIsLight
     val canvas = homeCanvasColor(isLight)
-    // Capture the portrait's original position relative to the first Home item.
-    // This allows it to move with the actual soundtrack item, not stay fixed
-    // behind later Home sections.
-    var soundtrackStart by remember(listState, expressivePortraitUrl) {
-        androidx.compose.runtime.mutableIntStateOf(Int.MIN_VALUE)
-    }
-    LaunchedEffect(listState, expressivePortraitUrl, showExpressivePortrait) {
-        if (showExpressivePortrait) {
-            soundtrackStart = snapshotFlow {
-                val hero = listState.layoutInfo.visibleItemsInfo
-                    .firstOrNull { it.key == "home-editorial-spotlight-studio" }
-                hero?.let {
-                    if (listState.firstVisibleItemIndex == 0) {
-                        it.offset + listState.firstVisibleItemScrollOffset
-                    } else {
-                        it.offset
-                    }
-                }
-            }.filterNotNull().first()
-        }
-    }
     Box(
                 modifier = modifier
                     .fillMaxSize()
@@ -1882,25 +1856,9 @@ private fun StudioExpressiveMaxBackdrop(
                             .height(650.dp)
                             .clipToBounds()
                             .graphicsLayer {
-                                val visible = listState.layoutInfo.visibleItemsInfo
-                                val headerVisible = visible.any { it.key == "home-top" }
-                                val hero = visible.firstOrNull { it.key == "home-editorial-spotlight-studio" }
-                                val topOffset = when {
-                                    headerVisible -> -listState.firstVisibleItemScrollOffset.toFloat()
-                                    hero != null && soundtrackStart != Int.MIN_VALUE ->
-                                        (hero.offset - soundtrackStart).toFloat()
-                                    else -> -size.height
-                                }
-                                // The artwork scrolls out with the header and soundtrack.
-                                translationY = topOffset.coerceAtMost(0f)
-                                // Fade only as the LAST part of the soundtrack leaves the viewport.
-                                // No portrait remains behind Quick Picks or Your Orbit.
-                                alpha = when {
-                                    headerVisible -> 1f
-                                    hero != null -> ((hero.offset + hero.size) /
-                                        (size.height * 0.22f)).coerceIn(0f, 1f)
-                                    else -> 0f
-                                }
+                                // Translate the cached portrait by the list's actual consumed scroll,
+                                // without switching anchor items or rebuilding the artwork on each frame.
+                                translationY = -portraitScrollPx().coerceAtLeast(0f)
                             }
                             .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                             .drawWithContent {
@@ -1982,7 +1940,8 @@ internal fun StudioHomeBackdrop(
     listState: LazyListState,
     modifier: Modifier = Modifier,
     expressivePortraitUrl: String = "",
-    showExpressivePortrait: Boolean = false
+    showExpressivePortrait: Boolean = false,
+    expressiveScrollPx: () -> Float = { 0f }
 ) {
     val isLight = LevyraIsLight
     val canvas = homeCanvasColor(isLight)
@@ -1992,10 +1951,10 @@ internal fun StudioHomeBackdrop(
         HomeStyle.ExpressiveMax -> StudioExpressiveMaxBackdrop(
             accent = accent,
             heroTrack = heroTrack,
-            listState = listState,
             modifier = modifier,
             expressivePortraitUrl = expressivePortraitUrl,
-            showExpressivePortrait = showExpressivePortrait
+            showExpressivePortrait = showExpressivePortrait,
+            portraitScrollPx = expressiveScrollPx
         )
         HomeStyle.Minimal -> Box(modifier = modifier.fillMaxSize().background(canvas))
         HomeStyle.MaterialExpressive -> {

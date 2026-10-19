@@ -11165,6 +11165,34 @@ private fun StudioHomeContent(
         val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
         val homeTopPadding = 8.dp
         val homeLocalAnimations = LocalAnimationsEnabled.current && studioLayout.motion != HomeMotion.Reduced
+        // One continuous pixel offset survives LazyColumn item changes.
+        // Keep its value out of composition: the portrait reads it in graphicsLayer.
+        val portraitScroll = rememberSaveable {
+            mutableFloatStateOf(
+                if (homeListState.firstVisibleItemIndex == 0) {
+                    homeListState.firstVisibleItemScrollOffset.toFloat()
+                } else {
+                    10_000f
+                }
+            )
+        }
+        val portraitScrollConnection = remember(homeListState, homeStyle) {
+            object : NestedScrollConnection {
+                override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                    if (homeStyle == HomeStyle.ExpressiveMax && consumed.y != 0f) {
+                        portraitScroll.floatValue = (portraitScroll.floatValue - consumed.y).coerceAtLeast(0f)
+                    }
+                    return Offset.Zero
+                }
+            }
+        }
+        LaunchedEffect(homeListState) {
+            snapshotFlow {
+                homeListState.firstVisibleItemIndex == 0 && homeListState.firstVisibleItemScrollOffset == 0
+            }.distinctUntilChanged().collect { atTop ->
+                if (atTop) portraitScroll.floatValue = 0f
+            }
+        }
         CompositionLocalProvider(
             LocalHomeCompactDensity provides compactHome,
             LocalAnimationsEnabled provides homeLocalAnimations
@@ -11179,12 +11207,14 @@ private fun StudioHomeContent(
                     expressivePortraitUrl = spotlightHeroData?.artistArtworkUrl.orEmpty(),
                     showExpressivePortrait = homeStyle == HomeStyle.ExpressiveMax &&
                         spotlightHeroData != null &&
-                        !studioLayout.isHidden(HomeSectionId.Spotlight)
+                        !studioLayout.isHidden(HomeSectionId.Spotlight),
+                    expressiveScrollPx = { portraitScroll.floatValue }
                 )
                 LazyColumn(
                     state = homeListState,
                     modifier = Modifier
                         .fillMaxSize()
+                        .nestedScroll(portraitScrollConnection)
                         .pullToRefresh(isRefreshing = homeRefreshing, state = homePullState, onRefresh = onPullRefresh),
                     contentPadding = PaddingValues(
                         top = statusBarTop + homeTopPadding,
