@@ -1856,13 +1856,15 @@ private fun StudioExpressiveMaxBackdrop(
                             .height(650.dp)
                             .clipToBounds()
                             .graphicsLayer {
-                                val scroll = if (listState.firstVisibleItemIndex > 0) {
-                                    size.height
-                                } else {
+                                // Keep the portrait visible while its hero is still on screen.
+                                // A bounded parallax avoids the abrupt jump at the next list item.
+                                val scroll = if (listState.firstVisibleItemIndex == 0) {
                                     listState.firstVisibleItemScrollOffset.toFloat()
+                                } else {
+                                    size.height * 0.35f
                                 }
-                                translationY = -scroll * 0.22f
-                                alpha = (1f - scroll / (size.height * 0.85f)).coerceIn(0f, 1f)
+                                translationY = -scroll.coerceAtMost(size.height * 0.35f) * 0.12f
+                                alpha = 1f
                             }
                             .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                             .drawWithContent {
