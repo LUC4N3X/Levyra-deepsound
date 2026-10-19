@@ -241,92 +241,142 @@ private fun AudioRouteCard(
     onClick: () -> Unit = {}
 ) {
     val category = routeCategory(route, copy)
-    val details = routeDetails(route, category, copy)
-    val chevronRotation by animateFloatAsState(
-        targetValue = if (expanded == true) 180f else 0f,
-        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.snappySpring()),
-        label = "audioRouteExpansion"
-    )
-    val selectionModifier = if (expanded == null) {
-        Modifier.selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick)
-    } else {
-        Modifier.clickable(role = Role.Button, onClickLabel = copy.chooseOutput, onClick = onClick)
-            .semantics {
-                if (expanded) collapse { onClick(); true } else expand { onClick(); true }
-            }
-    }
+    val cardTint = if (selected) surfaces.active else surfaces.controlQuiet
     LevyraGlassSurface(
         modifier = modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 68.dp)
-            .then(selectionModifier),
+            .then(audioRouteSelectionModifier(selected, enabled, expanded, copy.chooseOutput, onClick)),
         shape = if (selected) LevyraPlayerDesign.ShapeLg else AudioRouteCardShape,
-        baseTint = if (selected) surfaces.active else surfaces.controlQuiet,
-        fallbackColor = if (selected) surfaces.active else surfaces.controlQuiet,
+        baseTint = cardTint,
+        fallbackColor = cardTint,
         fallbackBorderColor = if (selected) surfaces.activeContent.copy(alpha = 0.35f) else surfaces.outline,
         intensity = if (selected) LevyraGlassIntensity.Standard else LevyraGlassIntensity.Subtle,
         contentAlignment = Alignment.CenterStart
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 15.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+        AudioRouteCardContent(
+            route = route,
+            category = category,
+            details = routeDetails(route, category, copy),
+            selected = selected,
+            pending = pending,
+            expanded = expanded,
+            animated = animated,
+            surfaces = surfaces
+        )
+    }
+}
+
+private fun audioRouteSelectionModifier(
+    selected: Boolean,
+    enabled: Boolean,
+    expanded: Boolean?,
+    onClickLabel: String,
+    onClick: () -> Unit
+): Modifier = if (expanded == null) {
+    Modifier.selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick)
+} else {
+    Modifier.clickable(role = Role.Button, onClickLabel = onClickLabel, onClick = onClick)
+        .semantics {
+            if (expanded) collapse { onClick(); true } else expand { onClick(); true }
+        }
+}
+
+@Composable
+private fun AudioRouteCardContent(
+    route: LevyraAudioOutputRoute,
+    category: String,
+    details: String,
+    selected: Boolean,
+    pending: Boolean,
+    expanded: Boolean?,
+    animated: Boolean,
+    surfaces: PlayerSurfaceTokens
+) {
+    Row(
+        modifier = Modifier.padding(horizontal = 15.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = audioRouteIcon(route),
+            contentDescription = null,
+            tint = if (selected) surfaces.activeContent else surfaces.contentMuted,
+            modifier = Modifier.size(22.dp)
+        )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 12.dp)
         ) {
-            Icon(
-                imageVector = when {
-                    route.bluetooth || route.wired -> Icons.Rounded.Headphones
-                    route.external -> Icons.Rounded.Usb
-                    route.speaker -> Icons.Rounded.PhoneAndroid
-                    else -> Icons.AutoMirrored.Rounded.VolumeUp
-                },
-                contentDescription = null,
-                tint = if (selected) surfaces.activeContent else surfaces.contentMuted,
-                modifier = Modifier.size(22.dp)
+            Text(
+                text = route.displayName.ifBlank { category },
+                color = surfaces.content,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 12.dp)
-            ) {
-                Text(
-                    text = route.displayName.ifBlank { category },
-                    color = surfaces.content,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = details,
-                    color = surfaces.contentMuted,
-                    fontSize = 11.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            when {
-                pending -> CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    color = surfaces.activeContent,
-                    strokeWidth = 2.dp
-                )
-                selected -> Icon(
-                    imageVector = Icons.Rounded.Check,
-                    contentDescription = null,
-                    tint = surfaces.activeContent,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-            if (expanded != null) {
-                Icon(
-                    imageVector = Icons.Rounded.ExpandMore,
-                    contentDescription = null,
-                    tint = surfaces.activeContent,
-                    modifier = Modifier.padding(start = 8.dp).size(24.dp)
-                        .graphicsLayer { rotationZ = chevronRotation }
-                )
-            }
+            Text(
+                text = details,
+                color = surfaces.contentMuted,
+                fontSize = 11.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        AudioRouteCardIndicator(pending, selected, surfaces)
+        if (expanded != null) {
+            AudioRouteExpansionIndicator(expanded, animated, surfaces)
         }
     }
+}
+
+private fun audioRouteIcon(route: LevyraAudioOutputRoute) = when {
+    route.bluetooth || route.wired -> Icons.Rounded.Headphones
+    route.external -> Icons.Rounded.Usb
+    route.speaker -> Icons.Rounded.PhoneAndroid
+    else -> Icons.AutoMirrored.Rounded.VolumeUp
+}
+
+@Composable
+private fun AudioRouteCardIndicator(
+    pending: Boolean,
+    selected: Boolean,
+    surfaces: PlayerSurfaceTokens
+) {
+    when {
+        pending -> CircularProgressIndicator(
+            modifier = Modifier.size(20.dp),
+            color = surfaces.activeContent,
+            strokeWidth = 2.dp
+        )
+        selected -> Icon(
+            imageVector = Icons.Rounded.Check,
+            contentDescription = null,
+            tint = surfaces.activeContent,
+            modifier = Modifier.size(22.dp)
+        )
+    }
+}
+
+@Composable
+private fun AudioRouteExpansionIndicator(
+    expanded: Boolean,
+    animated: Boolean,
+    surfaces: PlayerSurfaceTokens
+) {
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.snappySpring()),
+        label = "audioRouteExpansion"
+    )
+    Icon(
+        imageVector = Icons.Rounded.ExpandMore,
+        contentDescription = null,
+        tint = surfaces.activeContent,
+        modifier = Modifier.padding(start = 8.dp).size(24.dp)
+            .graphicsLayer { rotationZ = chevronRotation }
+    )
 }
 
 @Composable
