@@ -157,7 +157,7 @@ M3_MARKETING_COPY = {
     "Screenshot_20261010_132136_LEVYRA.jpg": "Collections shaped around your taste.",
     "Screenshot_20260927_131943_LEVYRA.jpg": "See when and how you listen.",
     "Screenshot_20261012_193022_LEVYRA.jpg": "Your most-played music, always close.",
-    "Screenshot_20261010_132050_LEVYRA.jpg": "Listening insights that stay on-device.",
+    "Screenshot_20261020_142741_LEVYRA.jpg": "Listening insights that stay on-device.",
     "Screenshot_20261010_144048_LEVYRA.jpg": "Essential sets for every artist.",
     "Screenshot_20261010_140700_LEVYRA.jpg": "Design, audio, gestures, and local backups.",
     "Screenshot_20261015_205614_LEVYRA.jpg": "Theme, home, player, and audio in one place.",
@@ -430,7 +430,7 @@ M3_SHOWCASE_SPECS = [
      (105, 45, 195), ["13_your_orbit.webp"]),
 
     # Card 14: Private Listening Stats
-    ("Screenshot_20261010_132050_LEVYRA.jpg", "ON-DEVICE STATS", "Keep it personal.",
+    ("Screenshot_20261020_142741_LEVYRA.jpg", "ON-DEVICE STATS", "Keep it personal.",
      "Private listening stats and charts,\ncomputed strictly on your device.",
      (110, 55, 180), ["14_listening_pulse.webp"]),
 
@@ -590,7 +590,7 @@ README_CARD_SPECS = [
     ("06_built_for_your_taste", "LEVYRA MIX", "Built for\nyour taste.", "A mix shaped around the moment.", "Screenshot_20261015_144159_LEVYRA.jpg"),
     ("07_every_genre", "MOODS", "Every\ngenre.", "Move by mood, place or energy.", "Screenshot_20261015_140910_LEVYRA.jpg"),
     ("08_acoustic_precision", "AUDIO", "Acoustic\nprecision.", "Tune the sound, keep the soul.", "Screenshot_20261010_190726_LEVYRA.jpg"),
-    ("09_keep_it_personal", "LIBRARY", "Keep it\npersonal.", "Your collection stays yours.", "Screenshot_20261010_132050_LEVYRA.jpg"),
+    ("09_keep_it_personal", "LIBRARY", "Keep it\npersonal.", "Your collection stays yours.", "Screenshot_20261020_142741_LEVYRA.jpg"),
     ("10_curated_for_you", "COLLECTIONS", "Curated\nfor you.", "Quick picks, ready when you are.", "Screenshot_20261017_143917_LEVYRA.jpg"),
     ("11_your_rhythm", "INSIGHTS", "Your\nrhythm.", "See the pattern behind the plays.", "Screenshot_20260927_131943_LEVYRA.jpg"),
     ("12_in_your_orbit", "HOME", "In your\norbit.", "Artists and albums close at hand.", "Screenshot_20261010_132103_LEVYRA.jpg"),
