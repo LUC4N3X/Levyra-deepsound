@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+
 import android.os.Build
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.AnimationSpec
@@ -240,6 +242,9 @@ private val NavStaticMotion = NavMotionSpec(snap(), snap(), snap(), snap(), pop 
 @Composable
 internal fun rememberNavColors(style: NavStyle, tuning: NavTuning): NavColors {
     val theme = MaterialTheme.colorScheme
+    if (LevyraIsNocturne) return buildNavColors(theme, style.floating, tuning.copy(
+        colorSource = NavColorSource.Theme, surfaceTone = NavSurfaceTone.Auto
+    ), null)
     val context = LocalContext.current
     val themeLight = LevyraActivePalette.isLight
     val dynamic = remember(tuning.colorSource, themeLight, context) {
@@ -430,6 +435,10 @@ internal fun StyledDockSurface(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    if (LevyraIsNocturne) {
+        Column(modifier = modifier, content = content)
+        return
+    }
     if (style.floating) {
         Column(modifier = modifier, content = content)
         return
@@ -649,6 +658,10 @@ internal fun StyledBottomTabs(
     applySystemInset: Boolean = true,
     link: DockLink? = null
 ) {
+    if (LevyraIsNocturne) {
+        NocturneBottomTabs(tuning, selected, onSelect, applySystemInset)
+        return
+    }
     val allEntries = rememberLevyraTabEntries()
     val visibleEntries = remember(allEntries, tuning.order, tuning.hidden) {
         tuning.visibleOrder().mapNotNull { tab -> allEntries.firstOrNull { it.tab == tab } }

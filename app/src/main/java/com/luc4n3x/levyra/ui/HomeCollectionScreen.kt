@@ -1,5 +1,9 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+import com.luc4n3x.levyra.ui.theme.Nocturne78Design
+import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
+
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
@@ -72,10 +76,10 @@ import com.luc4n3x.levyra.ui.components.levyraGroupedListShape
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun collectionMosaicShape(): Shape = MaterialShapes.Cookie4Sided.toShape()
+private fun collectionMosaicShape(): Shape = if (LevyraIsNocturne) RoundedCornerShape(Nocturne78Design.artworkCorner) else MaterialShapes.Cookie4Sided.toShape()
 private val CollectionActionHeight = 56.dp
 private val CollectionActionGroupGap = 4.dp
-private val CollectionActionOuterCorner = 28.dp
+private val CollectionActionOuterCorner get() = if (LevyraIsNocturne) Nocturne78Design.controlCorner else 28.dp
 private val CollectionActionInnerCorner = 10.dp
 private val CollectionActionChrome = 16.dp * 2 + 22.dp + 8.dp
 private val CollectionActionLabelStyle: TextStyle
@@ -113,7 +117,9 @@ internal fun HomeCollectionScreen(
             .take(3)
             .joinToString(" · ")
     }
-    val backdrop = remember(accentStart, accentEnd) {
+    val nocturne = LevyraIsNocturne
+    val backdrop = remember(accentStart, accentEnd, nocturne) {
+        if (nocturne) Brush.verticalGradient(listOf(Nocturne78Palette.black, Nocturne78Palette.black)) else
         Brush.verticalGradient(
             0f to accentStart.copy(alpha = 0.55f),
             0.45f to accentEnd.copy(alpha = 0.18f),
@@ -164,7 +170,7 @@ internal fun HomeCollectionScreen(
                             tracks = mosaic,
                             accentStart = accentStart,
                             modifier = Modifier
-                                .fillMaxWidth(0.78f)
+                                .fillMaxWidth(if (nocturne) 0.66f else 0.78f)
                                 .aspectRatio(1f)
                         )
                         Text(

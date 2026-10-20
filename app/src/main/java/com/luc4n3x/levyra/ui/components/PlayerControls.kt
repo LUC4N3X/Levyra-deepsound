@@ -23,6 +23,8 @@ import com.luc4n3x.levyra.ui.LocalGlassBackdrop
 import com.luc4n3x.levyra.ui.LocalLevyraGlassStyle
 import com.luc4n3x.levyra.ui.playerMix
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+import com.luc4n3x.levyra.ui.theme.Nocturne78Icons
 
 data class PlayerControlLabels(
     val shuffle: String,
@@ -67,7 +69,8 @@ internal fun PlayerIcon(
     tint: Color,
     modifier: Modifier = Modifier
 ) {
-    val resolved = remember(icon) { ioniconForPlayer(icon) ?: icon }
+    val nocturne = LevyraIsNocturne
+    val resolved = remember(icon, nocturne) { if (nocturne) Nocturne78Icons.resolve(icon) else ioniconForPlayer(icon) ?: icon }
     Icon(
         imageVector = resolved,
         contentDescription = null,

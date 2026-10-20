@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
@@ -41,7 +43,7 @@ internal fun harmonizePlayerAccents(primary: Color, secondary: Color): PlayerAcc
 }
 
 internal fun playerFixedAccents(mode: PlayerColorMode, theme: LevyraPalette, customAccent: Int): PlayerAccentPair? =
-    when (mode) {
+    if (theme.id == Nocturne78Palette.id) PlayerAccentPair(theme.cyan, theme.cyan) else when (mode) {
         PlayerColorMode.Dynamic -> null
         PlayerColorMode.Theme -> playerThemeAccents(theme.blue, theme.pink)
         PlayerColorMode.Custom -> playerAccentsFromSeed(Color(customAccent))

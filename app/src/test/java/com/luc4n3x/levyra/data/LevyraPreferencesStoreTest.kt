@@ -99,6 +99,19 @@ class LevyraPreferencesStoreTest {
     private fun flush(store: LevyraPreferencesStore) = runBlocking { store.commit { } }
 
     @Test
+    fun skinPersistsAcrossStoreRecreationWithoutReplacingDefaultCustomization() {
+        val (store, preferences) = open()
+        preferences.setThemePreset(com.luc4n3x.levyra.ui.theme.LevyraThemes.FROST)
+        preferences.setThemeAccent(0xFF1256AB.toInt())
+        preferences.setInterfaceSettings(LevyraInterfaceSettings(skin = com.luc4n3x.levyra.domain.LevyraSkin.Nocturne78))
+        flush(store)
+        val reopened = reopen()
+        assertEquals(com.luc4n3x.levyra.domain.LevyraSkin.Nocturne78, reopened.interfaceSettings().skin)
+        assertEquals(com.luc4n3x.levyra.ui.theme.LevyraThemes.FROST, reopened.themePreset())
+        assertEquals(0xFF1256AB.toInt(), reopened.themeAccent())
+    }
+
+    @Test
     fun lyricsStudioWriteFailureReportsFailureAndKeepsPersistedSettings() = runBlocking {
         val (_, preferences) = open()
         val original = LevyraLyricsStudioSettings()

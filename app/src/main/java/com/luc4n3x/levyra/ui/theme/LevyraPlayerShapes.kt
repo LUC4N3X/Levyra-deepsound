@@ -24,6 +24,7 @@ object LevyraPlayerShapes {
             .coerceIn(LevyraPlayerDesign.ArtworkCornerMin, LevyraPlayerDesign.ArtworkCornerMax)
 
     fun segment(position: LevyraSegment, innerCorner: Dp): Shape {
+        if (LevyraIsNocturne) return RoundedCornerShape(Nocturne78Design.controlCorner)
         val inner = CornerSize(nonNegativeCornerRadius(innerCorner))
         return when (position) {
             LevyraSegment.Leading -> RoundedCornerShape(

@@ -1,5 +1,12 @@
 package com.luc4n3x.levyra.ui.library
 
+import androidx.compose.material3.HorizontalDivider
+import com.luc4n3x.levyra.ui.theme.Nocturne78Icons
+
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+import com.luc4n3x.levyra.ui.theme.Nocturne78Design
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -16,7 +23,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Album
@@ -85,6 +91,15 @@ internal fun LibrarySectionGrid(
     modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.colorScheme
+    if (LevyraIsNocturne) {
+        Column(modifier) {
+            entries.forEach { entry ->
+                LibrarySectionTile(entry, LibrarySectionTone(colors.surfaceContainerHigh, colors.onSurfaceVariant), RoundedCornerShape(0.dp), onOpen)
+                HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.5f))
+            }
+        }
+        return
+    }
     val rows = entries.chunked(2)
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(LibrarySectionGap)) {
         rows.forEachIndexed { rowIndex, row ->
@@ -143,12 +158,13 @@ private fun LibrarySectionTile(
     val colors = MaterialTheme.colorScheme
     val strings = LocalLevyraStrings.current
     val label = entry.category.libraryLabel(strings)
-    val badgeShape = entry.category.sectionBadgePolygon().toShape()
+    val nocturne = LevyraIsNocturne
+    val badgeShape = if (nocturne) RoundedCornerShape(Nocturne78Design.artworkCorner) else entry.category.sectionBadgePolygon().toShape()
     Row(
         modifier = modifier
-            .heightIn(min = 72.dp)
-            .clip(shape)
-            .background(colors.surfaceContainerHigh.copy(alpha = 0.62f))
+            .heightIn(min = if (nocturne) 64.dp else 72.dp)
+            .clip(if (nocturne) RoundedCornerShape(0.dp) else shape)
+            .background(if (nocturne) Color.Transparent else colors.surfaceContainerHigh.copy(alpha = 0.62f))
             .semantics(mergeDescendants = true) {}
             .levyraPressable(
                 onClick = { onOpen(entry.category) },
@@ -156,14 +172,14 @@ private fun LibrarySectionTile(
                 onClickLabel = label,
                 pressedScale = LevyraPressScale.Tile
             )
-            .padding(horizontal = 12.dp, vertical = 14.dp),
+            .padding(horizontal = 12.dp, vertical = if (nocturne) 10.dp else 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = Modifier.size(LibrarySectionBadge).clip(badgeShape).background(tone.container),
+            modifier = Modifier.size(LibrarySectionBadge).clip(badgeShape).background(if (nocturne) colors.surfaceContainerHigh else tone.container),
             contentAlignment = Alignment.Center
         ) {
-            Icon(entry.category.sectionIcon(), contentDescription = null, tint = tone.content, modifier = Modifier.size(22.dp))
+            Icon(if (nocturne) Nocturne78Icons.resolve(entry.category.sectionIcon()) else entry.category.sectionIcon(), contentDescription = null, tint = if (nocturne) colors.onSurfaceVariant else tone.content, modifier = Modifier.size(22.dp))
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {

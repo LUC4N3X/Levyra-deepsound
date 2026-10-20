@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateColorAsState
@@ -191,6 +193,9 @@ internal fun rememberMiniPlayerPalette(
     animated: Boolean
 ): MiniPlayerPalette {
     val scheme = MaterialTheme.colorScheme
+    if (LevyraIsNocturne) {
+        return MiniPlayerPalette(scheme.primary, scheme.primary, scheme.surfaceContainerHigh, scheme.onSurface, scheme.onSurfaceVariant, true)
+    }
     val artwork = rememberMiniArtworkPalette(track)
     val targets = when (tuning.colorMode) {
         MiniColorMode.Artwork -> remember(artwork) {

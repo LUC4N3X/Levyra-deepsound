@@ -1,5 +1,10 @@
 package com.luc4n3x.levyra.ui.player
 
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+import com.luc4n3x.levyra.ui.theme.Nocturne78Design
+import com.luc4n3x.levyra.ui.theme.Nocturne78Icons
+
 import com.luc4n3x.levyra.ui.components.rememberLevyraPlayMorphShape
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -247,7 +252,8 @@ private fun RowScope.PlayerPlaySegment(
         contentDescription = playDescription(isPlaying, labels),
         animated = animated,
         haptic = LevyraHapticAction.Transport,
-        shapeOverride = morphShape,
+        shapeOverride = if (LevyraIsNocturne) RoundedCornerShape(Nocturne78Design.controlCorner) else morphShape,
+        outline = if (LevyraIsNocturne) surfaces.outline else Color.Transparent,
         onClick = onClick
     ) {
         PlayGlyphContent(
@@ -273,6 +279,13 @@ private fun PlayGlyphContent(
         LevyraLoadingIndicator(
             color = content,
             modifier = Modifier.size(glyph * 1.2f)
+        )
+    } else if (LevyraIsNocturne) {
+        androidx.compose.material3.Icon(
+            imageVector = if (isPlaying) Nocturne78Icons.Pause else Nocturne78Icons.Play,
+            contentDescription = null,
+            tint = content,
+            modifier = Modifier.size(glyph)
         )
     } else {
         LevyraPlayPauseGlyph(

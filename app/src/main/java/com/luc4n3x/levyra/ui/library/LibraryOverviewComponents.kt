@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui.library
 
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.material3.toShape
 import androidx.compose.material3.MaterialShapes
@@ -113,7 +115,7 @@ internal fun LibraryHero(title: String, subtitle: String, onBack: (() -> Unit)? 
         if (onBack != null) {
             LevyraBackButton(onClick = onBack, contentDescription = strings.back, modifier = Modifier.padding(bottom = 4.dp))
         }
-        Text(title, color = colors.onSurface, style = LevyraType.heroTitle, softWrap = true, modifier = Modifier.semantics { heading() })
+        Text(title, color = colors.onSurface, style = if (LevyraIsNocturne) LevyraType.screenTitle else LevyraType.heroTitle, softWrap = true, modifier = Modifier.semantics { heading() })
         if (subtitle.isNotBlank()) {
             Text(subtitle, color = colors.onSurfaceVariant, style = LevyraType.metadata, softWrap = true)
         }

@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.ui.media
 
+import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.animateColorAsState
@@ -100,7 +103,11 @@ internal data class ImmersiveMediaPrimaryAction(
     val onClick: () -> Unit
 )
 
-internal fun immersiveMediaColors(primary: Color, secondary: Color, lightTheme: Boolean): ImmersiveMediaColors {
+internal fun immersiveMediaColors(primary: Color, secondary: Color, lightTheme: Boolean, nocturne: Boolean = false): ImmersiveMediaColors {
+    if (nocturne) {
+        val p = Nocturne78Palette
+        return ImmersiveMediaColors(p.black, p.black, p.ink, p.text, p.muted, p.cyan, p.panelSoft, p.panelSoft, p.cyan, p.panel, p.outline)
+    }
     val accents = harmonizePlayerAccents(primary, secondary)
     val action = playerContrastGradient(accents.primary, accents.secondary, PlayerMinimumContrast)
     val fieldTop: Color

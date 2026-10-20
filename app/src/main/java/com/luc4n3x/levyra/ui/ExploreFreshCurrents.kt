@@ -61,6 +61,9 @@ import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
+import com.luc4n3x.levyra.ui.theme.Nocturne78Design
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.theme.LevyraType
@@ -257,11 +260,12 @@ private fun ExploreFreshSpotlightPage(
     actions: @Composable () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val animationsEnabled = LocalAnimationsEnabled.current
+    val nocturne = LevyraIsNocturne
+    val animationsEnabled = LocalAnimationsEnabled.current && !nocturne
     val card = exploreReleaseCard(track)
-    val accent = remember(track.accentStart) { Color(track.accentStart) }
-    val glowEnd = remember(track.accentEnd) { Color(track.accentEnd) }
-    val ink = remember(accent) { lerp(accent, Color.Black, 0.72f) }
+    val accent = if (nocturne) Nocturne78Palette.cyan else remember(track.accentStart) { Color(track.accentStart) }
+    val glowEnd = if (nocturne) Nocturne78Palette.panel else remember(track.accentEnd) { Color(track.accentEnd) }
+    val ink = remember(accent, nocturne) { if (nocturne) Nocturne78Palette.ink else lerp(accent, Color.Black, 0.72f) }
     val scrim = remember(ink) {
         Brush.verticalGradient(
             0.00f to Color.Black.copy(alpha = 0.34f),
@@ -271,7 +275,7 @@ private fun ExploreFreshSpotlightPage(
             1.00f to ink.copy(alpha = 0.96f)
         )
     }
-    val buttonFill = remember(accent) { lerp(accent, Color.White, 0.72f) }
+    val buttonFill = remember(accent, nocturne) { if (nocturne) accent else lerp(accent, Color.White, 0.72f) }
     val onOpen = if (card.opensAlbum) onOpenAlbum else onPlay
     val playing = isCurrent && isPlaying && !card.opensAlbum
 
@@ -289,9 +293,9 @@ private fun ExploreFreshSpotlightPage(
                 rotationY = offset * FreshCardTiltDegrees
                 rotationZ = offset * FreshCardRollDegrees
                 cameraDistance = FreshCardCameraDistance * density
-                shape = RoundedCornerShape(corner.toPx())
+                shape = RoundedCornerShape(if (nocturne) Nocturne78Design.cardCorner.toPx() else corner.toPx())
                 clip = true
-                shadowElevation = (20.dp * focus).toPx()
+                shadowElevation = if (nocturne) 0f else (20.dp * focus).toPx()
                 ambientShadowColor = accent.copy(alpha = 0.32f)
                 spotShadowColor = glowEnd.copy(alpha = 0.42f)
             }

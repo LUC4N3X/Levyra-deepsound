@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.ui.components
 
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.snap
@@ -21,6 +24,7 @@ private const val NowPlayingAccentMinimumChroma = 16.0
 
 @Composable
 fun rememberNowPlayingAccent(track: Track?, fallback: Color): Color {
+    if (LevyraIsNocturne) return Nocturne78Palette.cyan
     val animationsEnabled = LocalAnimationsEnabled.current
     val target = remember(
         track?.id,

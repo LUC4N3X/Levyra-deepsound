@@ -1,6 +1,8 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -60,7 +62,7 @@ internal fun PlayerProgress(
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        if (style == PlayerProgressStyle.Wavy) {
+        if (style == PlayerProgressStyle.Wavy && !LevyraIsNocturne) {
             LevyraWavySeekbar(
                 positionMs = positionMs,
                 durationMs = durationMs,
@@ -83,11 +85,12 @@ internal fun PlayerProgress(
                     }
                 },
                 activeColor = activeColor,
-                trailingColor = secondaryColor,
+                trailingColor = if (LevyraIsNocturne) activeColor else secondaryColor,
+                thumbColor = if (LevyraIsNocturne) activeColor else Color.White,
                 inactiveColor = LevyraPlayerDesign.TrackInactive,
                 animated = animationsEnabled,
-                motionActive = motionActive,
-                waveform = waveform,
+                motionActive = motionActive && !LevyraIsNocturne,
+                waveform = if (LevyraIsNocturne) null else waveform,
                 interactionKey = mediaId,
                 thumbShape = if (style == PlayerProgressStyle.Expressive) SeekbarThumbShape.Notched else SeekbarThumbShape.Round
             )

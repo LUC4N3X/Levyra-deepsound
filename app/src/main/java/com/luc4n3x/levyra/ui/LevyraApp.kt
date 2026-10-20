@@ -1,6 +1,9 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.theme.nocturneMiniSettings
+import com.luc4n3x.levyra.ui.theme.nocturneNavSettings
+
 import com.luc4n3x.levyra.ui.components.levyraMarquee
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import com.luc4n3x.levyra.ui.components.levyraShimmerSweep
@@ -81,7 +84,6 @@ import com.luc4n3x.levyra.ui.selection.resolveSelected
 import com.luc4n3x.levyra.ui.selection.rememberTrackSelectionState
 import com.luc4n3x.levyra.ui.selection.trackSelectionKey
 import com.luc4n3x.levyra.ui.components.SpringIconButton
-import com.luc4n3x.levyra.ui.components.formatSeekbarMillis
 import com.luc4n3x.levyra.ui.components.playerGlass
 import com.luc4n3x.levyra.ui.artwork.ArtworkPreviewOverlay
 import com.luc4n3x.levyra.ui.artwork.LivingArtworkColors
@@ -180,7 +182,6 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
-import com.luc4n3x.levyra.ui.components.levyraMarquee
 import com.luc4n3x.levyra.ui.components.carouselDepthEnabled
 import com.luc4n3x.levyra.ui.components.levyraCarouselDepth
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -315,6 +316,11 @@ import com.luc4n3x.levyra.domain.LevyraHomeStudioSettings
 import com.luc4n3x.levyra.domain.MiniPlayerStyle
 import com.luc4n3x.levyra.domain.NavColorSource
 import com.luc4n3x.levyra.domain.NavStyle
+import com.luc4n3x.levyra.domain.LevyraSkin
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
+import com.luc4n3x.levyra.ui.theme.Nocturne78Design
+import com.luc4n3x.levyra.ui.theme.SkinSelector
 import com.luc4n3x.levyra.ui.i18n.NavStudioText
 import com.luc4n3x.levyra.ui.i18n.navigationStudioCopy
 import androidx.compose.material.icons.rounded.Public
@@ -550,11 +556,9 @@ import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.foundation.selection.selectable
@@ -897,7 +901,7 @@ private val LevyraTabIndicatorTop = 11.dp
 private val LevyraTabIndicatorHeight = 36.dp
 private val LevyraTabIndicatorShape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 15.dp, bottomEnd = 15.dp)
 private val LevyraTabScrimHeight = 22.dp
-private val LevyraNavigationBlue = Color(0xFF0A84FF)
+private val LevyraNavigationBlue: Color get() = if (LevyraIsNocturne) LevyraCyan else Color(0xFF0A84FF)
 private val LevyraHomeGlowViolet = Color(0xFF6E5CF0)
 
 internal val LevyraIsLight: Boolean get() = LevyraActivePalette.isLight
@@ -905,8 +909,8 @@ private val LevyraReadableOnArtwork: Color get() = Color.White
 private val LevyraReadableMutedOnArtwork: Color get() = Color.White.copy(alpha = 0.78f)
 internal val LevyraAdaptiveHairline: Color get() = if (LevyraIsLight) Color(0x26101322) else Color.White.copy(alpha = 0.105f)
 private val LevyraAdaptiveSoftHairline: Color get() = if (LevyraIsLight) Color(0x16101322) else Color.White.copy(alpha = 0.08f)
-internal val LevyraAdaptiveCard: Color get() = if (LevyraIsLight) Color.White.copy(alpha = 0.74f) else CinematicGlass.copy(alpha = 0.66f)
-internal val LevyraAdaptiveCardDeep: Color get() = if (LevyraIsLight) Color.White.copy(alpha = 0.86f) else CinematicGlassDeep.copy(alpha = 0.74f)
+internal val LevyraAdaptiveCard: Color get() = if (LevyraIsNocturne) LevyraPanel else if (LevyraIsLight) Color.White.copy(alpha = 0.74f) else CinematicGlass.copy(alpha = 0.66f)
+internal val LevyraAdaptiveCardDeep: Color get() = if (LevyraIsNocturne) LevyraPanelSoft else if (LevyraIsLight) Color.White.copy(alpha = 0.86f) else CinematicGlassDeep.copy(alpha = 0.74f)
 internal val LevyraAdaptiveChip: Color get() = if (LevyraIsLight) Color.White.copy(alpha = 0.82f) else Color.White.copy(alpha = 0.06f)
 private val LevyraAdaptiveChipSelected: Color get() = if (LevyraIsLight) Color.White.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.12f)
 internal val LevyraAdaptiveTrack: Color get() = if (LevyraIsLight) Color(0x1A11131F) else Color.White.copy(alpha = 0.08f)
@@ -1073,6 +1077,7 @@ private fun cinematicGlassBrush(
     accentEnd: Color = LevyraViolet,
     intensity: Float = 1f
 ): Brush {
+    if (LevyraIsNocturne) return Brush.linearGradient(listOf(LevyraPanel, LevyraPanel))
     return if (LevyraIsLight) {
         Brush.linearGradient(
             listOf(
@@ -1127,12 +1132,13 @@ internal data class LevyraTabEntry(
 @Composable
 internal fun rememberLevyraTabEntries(): List<LevyraTabEntry> {
     val strings = LocalLevyraStrings.current
-    return remember(strings) {
+    val nocturne = LevyraIsNocturne
+    return remember(strings, nocturne) {
         listOf(
-            LevyraTabEntry(LevyraTab.Home, Icons.Rounded.Home, Icons.Outlined.Home, strings.home),
-            LevyraTabEntry(LevyraTab.Search, Icons.Rounded.Search, Icons.Outlined.Search, strings.search),
-            LevyraTabEntry(LevyraTab.Explore, Icons.Rounded.Explore, Icons.Outlined.Explore, strings.explore),
-            LevyraTabEntry(LevyraTab.Library, Icons.Rounded.LibraryMusic, Icons.Outlined.LibraryMusic, strings.library)
+            LevyraTabEntry(LevyraTab.Home, if (nocturne) Icons.Outlined.Home else Icons.Rounded.Home, Icons.Outlined.Home, strings.home),
+            LevyraTabEntry(LevyraTab.Search, if (nocturne) Icons.Outlined.Search else Icons.Rounded.Search, Icons.Outlined.Search, strings.search),
+            LevyraTabEntry(LevyraTab.Explore, if (nocturne) Icons.Outlined.Explore else Icons.Rounded.Explore, Icons.Outlined.Explore, strings.explore),
+            LevyraTabEntry(LevyraTab.Library, if (nocturne) Icons.Outlined.LibraryMusic else Icons.Rounded.LibraryMusic, Icons.Outlined.LibraryMusic, strings.library)
         )
     }
 }
@@ -2012,6 +2018,7 @@ fun LevyraApp(
     LaunchedEffect(
         state.themePreset,
         state.themeAccent,
+        state.interfaceSettings.skin,
         accentTrack?.accentStart,
         accentTrack?.accentEnd,
         state.selectedMood?.id,
@@ -2025,13 +2032,15 @@ fun LevyraApp(
             state.selectedMood?.accentStart,
             state.selectedMood?.accentEnd,
             pureBlack,
-            state.themeAccent.takeIf { it != 0 }
+            state.themeAccent.takeIf { it != 0 },
+            state.interfaceSettings.skin
         )
     }
     val rootView = LocalView.current
-    LaunchedEffect(state.themePreset, pureBlack, customThemes) {
-        val base = LevyraThemes.byId(state.themePreset)
-        val palette = if (pureBlack) LevyraThemeController.asPureBlack(base) else base
+    LaunchedEffect(state.themePreset, pureBlack, customThemes, state.interfaceSettings.skin) {
+        val nocturne = state.interfaceSettings.skin == LevyraSkin.Nocturne78
+        val base = if (nocturne) Nocturne78Palette else LevyraThemes.byId(state.themePreset)
+        val palette = if (pureBlack && !nocturne) LevyraThemeController.asPureBlack(base) else base
         (rootView.context as? Activity)?.window?.let { window ->
             window.decorView.setBackgroundColor(palette.black.toArgb())
             WindowCompat.getInsetsController(window, rootView).apply {
@@ -2181,7 +2190,8 @@ fun LevyraApp(
         LocalLevyraStrings provides currentStrings,
         LocalLevyraHaptics provides rememberLevyraHaptics(state.interfaceSettings.hapticFeedback),
         LocalLayoutDirection provides layoutDirection,
-        LocalNavDockExtraClearance provides navDockExtraClearance(navigationStudio.settings.style, navigationStudio.settings.activeTuning()),
+        LocalNocturneNavigationHeight provides remember { mutableStateOf(64.dp) },
+        LocalNavDockExtraClearance provides if (LevyraIsNocturne) 0.dp else navDockExtraClearance(navigationStudio.settings.style, navigationStudio.settings.activeTuning()),
         LocalNavArtworkSeed provides navArtworkSeed
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -2193,7 +2203,7 @@ fun LevyraApp(
             val dockState = rememberLevyraDockState()
             val glassBlurAllowed = rememberGlassBlurAllowed()
             val dockGlass = rememberGlassBackdropState(
-                enabled = state.interfaceSettings.liquidGlassEnabled &&
+                enabled = !LevyraIsNocturne && state.interfaceSettings.liquidGlassEnabled &&
                     state.animationsEnabled &&
                     glassBlurAllowed
             )
@@ -2504,7 +2514,7 @@ fun LevyraApp(
                                         drag = onExpansionDrag,
                                         end = { velocity -> settleExpansion(velocity, false) }
                                     )
-                                    val miniStudio = miniPlayerStudio.settings
+                                    val miniStudio = if (LevyraIsNocturne) nocturneMiniSettings(miniPlayerStudio.settings) else miniPlayerStudio.settings
                                     if (miniStudio.style == MiniPlayerStyle.Original) {
                                         MiniPlayer(
                                             model = miniModel,
@@ -2545,7 +2555,7 @@ fun LevyraApp(
                                 Modifier
                             }
                         ) {
-                            val navStudio = navigationStudio.settings
+                            val navStudio = if (LevyraIsNocturne) nocturneNavSettings(navigationStudio.settings) else navigationStudio.settings
                             if (navStudio.style == NavStyle.Original) {
                                 BottomTabs(
                                     selected = backgroundTab,
@@ -2590,12 +2600,12 @@ fun LevyraApp(
                                 bottomTabsSlot()
                             }
                         }
-                        if (navigationStudio.settings.style == NavStyle.Original) {
+                        if (!LevyraIsNocturne && navigationStudio.settings.style == NavStyle.Original) {
                             LevyraAdaptiveDockSurface(glass = dockGlass, modifier = dockModifier, content = dockContent)
                         } else {
                             StyledDockSurface(
-                                style = navigationStudio.settings.style,
-                                tuning = navigationStudio.settings.activeTuning(),
+                                style = if (LevyraIsNocturne) NavStyle.Minimal else navigationStudio.settings.style,
+                                tuning = if (LevyraIsNocturne) nocturneNavSettings(navigationStudio.settings).activeTuning() else navigationStudio.settings.activeTuning(),
                                 glass = dockGlass,
                                 modifier = dockModifier,
                                 content = dockContent
@@ -3775,7 +3785,8 @@ private fun downloadHudBottomPadding(state: LevyraUiState, dockSideBySide: Boole
 @Composable
 private fun tabBarBottomContentInset(miniPlayerVisible: Boolean, animationsEnabled: Boolean): Dp {
     val navigationBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val collapsed = LevyraTabBarCompactHeight + navigationBarInset + LevyraBottomContentGap + LocalNavDockExtraClearance.current
+    val navigationHeight = if (LevyraIsNocturne) (LocalNocturneNavigationHeight.current?.value ?: 64.dp) + 1.dp else LevyraTabBarCompactHeight
+    val collapsed = navigationHeight + navigationBarInset + LevyraBottomContentGap + LocalNavDockExtraClearance.current
     val miniPlayerExtra = if (levyraWindowIsCompactLandscape()) {
         (LevyraMiniPlayerHeight - LevyraTabBarHeight).coerceAtLeast(0.dp)
     } else {
@@ -4325,7 +4336,8 @@ private fun AlbumOverlay(
         fallback = fallbackPalette
     )
     val lightTheme = LevyraIsLight
-    val stageTarget = remember(albumPalette, lightTheme) {
+    val nocturne = LevyraIsNocturne
+    val stageTarget = remember(albumPalette, lightTheme, nocturne) {
         albumStageColors(Color(albumPalette.start), Color(albumPalette.end), lightTheme)
     }
     val stage = animatedImmersiveMediaColors(
@@ -5237,9 +5249,12 @@ private fun ArtistOverlay(
         artworkUrl = heroArtwork,
         fallback = fallbackPalette
     )
-    val atmosphereTargets = remember(artistPalette) {
+    val nocturne = LevyraIsNocturne
+    val atmosphereTargets = remember(artistPalette, nocturne) {
+        if (nocturne) Nocturne78Palette.black to Nocturne78Palette.cyan else {
         val pair = harmonizePlayerAccents(Color(artistPalette.start), Color(artistPalette.end))
         playerAmbienceOf(pair.primary, pair.secondary).tint to playerHighlightOf(pair.primary, pair.secondary)
+        }
     }
     val atmosphere by animateColorAsState(
         targetValue = atmosphereTargets.first,
@@ -9577,6 +9592,10 @@ private fun LyricsSyncStatus(synced: Boolean, syncedLabel: String, unsyncedLabel
 
 @Composable
 private fun LevyraBackground() {
+    if (LevyraIsNocturne) {
+        Box(Modifier.fillMaxSize().background(LevyraBlack))
+        return
+    }
     val isLight = LevyraIsLight
 
     Box(
@@ -10862,10 +10881,11 @@ private class StudioHomeLook(
 
 @Composable
 private fun rememberStudioHomeLook(homeStudio: LevyraHomeStudioSettings, state: LevyraUiState): StudioHomeLook {
-    val homeStyle = homeStudio.style
+    val homeStyle = if (LevyraIsNocturne) HomeStyle.Minimal else homeStudio.style
     val studioLayout = remember(homeStudio) { homeStudio.activeLayout() }
     val homeRenderOrder = remember(studioLayout) { studioLayout.renderOrder() }
-    val styleSpec = remember(homeStyle, studioLayout.density) { homeStyleSpec(homeStyle, studioLayout.density) }
+    val nocturne = LevyraIsNocturne
+    val styleSpec = remember(homeStyle, studioLayout.density, nocturne) { homeStyleSpec(homeStyle, studioLayout.density, nocturne) }
     val homeAnimationsEnabled = state.animationsEnabled && studioLayout.motion != HomeMotion.Reduced
     val studioPlacementSpec = remember(studioLayout.motion) {
         if (studioLayout.motion == HomeMotion.Expressive) {
@@ -11001,12 +11021,16 @@ private class StudioHomeContext(
         if (homeAnimationsEnabled) Modifier.animateItem(placementSpec = studioPlacementSpec) else Modifier
 
     fun studioLayoutOf(id: HomeSectionId): HomeSectionLayout =
-        resolveHomeSectionLayout(homeStyle, id, studioLayout.layoutFor(id))
+        if (LevyraIsNocturne) when (id) {
+            HomeSectionId.QuickPicks, HomeSectionId.ForgottenFavorites, HomeSectionId.NewReleases, HomeSectionId.Resonance -> HomeSectionLayout.Compact
+            HomeSectionId.PersonalOrbit -> HomeSectionLayout.Grid
+            else -> HomeSectionLayout.Carousel
+        } else resolveHomeSectionLayout(homeStyle, id, studioLayout.layoutFor(id))
 
     fun usesStudioLayout(id: HomeSectionId): Boolean = studioLayoutOf(id) != HomeSectionLayout.Auto
 
     fun mergedStudioHero(): StudioHero? = spotlightHeroData
-        ?.takeIf { homeStyle == HomeStyle.MaterialExpressive && !studioLayout.isHidden(HomeSectionId.Spotlight) }
+        ?.takeIf { (homeStyle == HomeStyle.MaterialExpressive || LevyraIsNocturne) && !studioLayout.isHidden(HomeSectionId.Spotlight) }
         ?.let { hero ->
             val heroTrack = hero.candidate.track
             StudioHero(
@@ -11471,7 +11495,7 @@ private fun LazyListScope.homeStudioSectionSpotlight(c: StudioHomeContext) {
     with(c) {
             if (homeStyle != HomeStyle.Original) {
                 val studioHero = spotlightHeroData
-                if (studioHero != null && homeStyle != HomeStyle.MaterialExpressive) {
+                if (studioHero != null && homeStyle != HomeStyle.MaterialExpressive && !LevyraIsNocturne) {
                     item(key = "home-editorial-spotlight-studio", contentType = "home-studio-spotlight") {
                         val heroTrack = studioHero.candidate.track
                         Box(modifier = studioItemModifier()) {
@@ -12314,7 +12338,7 @@ private fun HomeStudioHost(
     onPullRefresh: () -> Unit,
     onTrackActions: (Track) -> Unit
 ) {
-    if (homeStudio.usesClassicOriginalHome()) {
+    if (homeStudio.usesClassicOriginalHome() && !LevyraIsNocturne) {
         HomeScreen(
             viewModel = viewModel,
             renderSnapshot = renderSnapshot,
@@ -13895,11 +13919,13 @@ private fun ResonanceFeaturedCard(
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
-    val shape = ResonanceCardShape
+    val nocturne = LevyraIsNocturne
+    val shape = if (nocturne) RoundedCornerShape(Nocturne78Design.cardCorner) else ResonanceCardShape
+    val quoteShape = if (nocturne) RoundedCornerShape(Nocturne78Design.artworkCorner) else ResonanceBubbleShape
     val colors = MaterialTheme.colorScheme
     val tone = ResonanceBubbleTones[toneIndex.coerceAtLeast(0) % ResonanceBubbleTones.size]
-    val bubbleTint = remember(tone, colors.surfaceContainerHighest) {
-        lerp(colors.surfaceContainerHighest, tone, 0.30f)
+    val bubbleTint = remember(tone, colors.surfaceContainerHighest, nocturne) {
+        if (nocturne) colors.surfaceContainer else lerp(colors.surfaceContainerHighest, tone, 0.30f)
     }
     val commentCount = snippet?.countText
         ?.let(::youtubeCommentCountBadge)
@@ -13911,6 +13937,7 @@ private fun ResonanceFeaturedCard(
             .width(cardWidth)
             .clip(shape)
             .background(colors.surfaceContainerHigh)
+            .then(if (nocturne) Modifier.border(1.dp, colors.outline, shape) else Modifier)
             .then(if (active) Modifier.background(LevyraText.copy(alpha = 0.05f)) else Modifier)
             .padding(8.dp)
     ) {
@@ -13918,7 +13945,7 @@ private fun ResonanceFeaturedCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(ResonanceQuoteHeight)
-                .clip(ResonanceBubbleShape)
+                .clip(quoteShape)
                 .background(bubbleTint)
                 .semantics(mergeDescendants = true) {}
                 .pressable(onClick = onOpenComments)
@@ -13983,7 +14010,7 @@ private fun ResonanceFeaturedCard(
             Box(
                 modifier = Modifier
                     .size(44.dp)
-                    .clip(rememberLevyraPlayMorphShape(playing = active && isPlaying, animated = LocalAnimationsEnabled.current))
+                    .clip(if (nocturne) RoundedCornerShape(Nocturne78Design.controlCorner) else rememberLevyraPlayMorphShape(playing = active && isPlaying, animated = LocalAnimationsEnabled.current))
                     .background(if (active) colors.primaryContainer else LevyraText.copy(alpha = 0.10f)),
                 contentAlignment = Alignment.Center
             ) {
@@ -14078,13 +14105,15 @@ private fun ResonanceQuoteHeader(
 
 @Composable
 private fun ResonanceQuoteText(text: String, muted: Boolean) {
+    val nocturne = LevyraIsNocturne
     val size = if (muted) 13.sp else 16.sp
     Text(
         text = text,
         color = if (muted) LevyraMuted else LevyraText,
         fontSize = size,
         lineHeight = LevyraTypeRhythm.lineHeight(size),
-        fontWeight = if (muted) FontWeight.Medium else FontWeight.SemiBold,
+        fontFamily = if (nocturne && !muted) FontFamily.Serif else null,
+        fontWeight = if (nocturne || muted) FontWeight.Medium else FontWeight.SemiBold,
         maxLines = 3,
         overflow = TextOverflow.Ellipsis
     )
@@ -16295,8 +16324,8 @@ private fun SearchHeader(
     )
     val fieldCorner = levyraExpressiveToggleCorner(
         checked = fieldFocused,
-        unchecked = 28.dp,
-        checkedCorner = 20.dp,
+        unchecked = if (LevyraIsNocturne) Nocturne78Design.cardCorner else 28.dp,
+        checkedCorner = if (LevyraIsNocturne) Nocturne78Design.cardCorner else 20.dp,
         label = "search-field-corner"
     )
 
@@ -21286,7 +21315,7 @@ private fun SettingsOverlay(
     BackHandler(enabled = backEnabled && activeCategory != null) { activeCategory = null }
     val categoryLocale = remember(strings.code) { Locale.forLanguageTag(strings.code.replace('_', '-')) }
     fun categoryTitle(value: String): String = settingsCategoryTitle(value, categoryLocale)
-    val categories = remember(strings.code) {
+    val categories = remember(strings.code, LevyraActivePalette) {
         listOf(
             SettingsCategoryMeta("design", categoryTitle(strings.design), "${strings.theme} · ${strings.animations} · ${strings.dynamicColor}", Icons.Rounded.Palette, LevyraViolet, SettingsHubGroup.Appearance),
             SettingsCategoryMeta("home", categoryTitle(strings.homeInterfaceSection), "${strings.compactHome} · ${strings.newReleases} · ${strings.top50Charts}", Icons.Rounded.Home, LevyraViolet, SettingsHubGroup.Appearance),
@@ -21444,7 +21473,7 @@ private fun SettingsOverlay(
                                 SettingsStudioEntry("widget", strings.widgetStudioCopy[WidgetStudioText.Title], Icons.Rounded.Widgets, LevyraCyan, MaterialShapes.Gem) {
                                     studioContext.startActivity(WidgetStudioActivity.intent(studioContext))
                                 }
-                            )
+                            ).filterNot { LevyraIsNocturne && it.id in setOf("theme", "mini_player", "navigation") }
                         )
                     }
                     SettingsHubGroup.entries.forEach { group ->
@@ -21535,10 +21564,17 @@ private fun SettingsOverlay(
                         }
                         "design" -> {
                             item {
+                                SkinSelector(
+                                    selected = interfaceSettings.skin,
+                                    onSelect = { onInterfaceSettings(interfaceSettings.copy(skin = it)) }
+                                )
+                            }
+                            item {
                                 SettingsButton(
                                     icon = Icons.Rounded.Palette,
                                     title = strings.themeStudio,
                                     subtitle = LevyraThemes.byId(themePreset).label,
+                                    enabled = interfaceSettings.skin == LevyraSkin.Default,
                                     onClick = onOpenThemeStudio
                                 )
                             }
@@ -21554,7 +21590,7 @@ private fun SettingsOverlay(
                                 SettingsButton(
                                     icon = Icons.Rounded.Home,
                                     title = strings.homeStudioCopy.title,
-                                    subtitle = homeStyleName(homeStudioStyle) + " · " + strings.homeStudioCopy.subtitle,
+                                    subtitle = (if (LevyraIsNocturne) Nocturne78Palette.label else homeStyleName(homeStudioStyle)) + " · " + strings.homeStudioCopy.subtitle,
                                     onClick = onOpenHomeStudio
                                 )
                             }
@@ -21563,6 +21599,7 @@ private fun SettingsOverlay(
                                     icon = Icons.Rounded.SmartDisplay,
                                     title = strings.miniPlayerStudioCopy[MiniStudioText.Title],
                                     subtitle = miniPlayerStyleName(miniPlayerStyle) + " · " + strings.miniPlayerStudioCopy[MiniStudioText.Subtitle],
+                                    enabled = interfaceSettings.skin == LevyraSkin.Default,
                                     onClick = onOpenMiniPlayerStudio
                                 )
                             }
@@ -21571,6 +21608,7 @@ private fun SettingsOverlay(
                                     icon = Icons.Rounded.Dashboard,
                                     title = strings.navigationStudioCopy[NavStudioText.Title],
                                     subtitle = navigationStyleName(navigationStyle) + " · " + strings.navigationStudioCopy[NavStudioText.Subtitle],
+                                    enabled = interfaceSettings.skin == LevyraSkin.Default,
                                     onClick = onOpenNavigationStudio
                                 )
                             }
@@ -21583,6 +21621,7 @@ private fun SettingsOverlay(
                                     onClick = { widgetStudioContext.startActivity(WidgetStudioActivity.intent(widgetStudioContext)) }
                                 )
                             }
+                            if (interfaceSettings.skin == LevyraSkin.Default) {
                             item {
                                 SettingsChoiceRow(
                                     icon = Icons.Rounded.TextFields,
@@ -21596,6 +21635,7 @@ private fun SettingsOverlay(
                                         )
                                     }
                                 )
+                            }
                             }
                             item {
                                 SettingsToggle(
@@ -21622,6 +21662,7 @@ private fun SettingsOverlay(
                                     }
                                 )
                             }
+                            if (interfaceSettings.skin == LevyraSkin.Default) {
                             item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.BlurOn,
@@ -21632,6 +21673,7 @@ private fun SettingsOverlay(
                                         onInterfaceSettings(interfaceSettings.copy(liquidGlassEnabled = value))
                                     }
                                 )
+                            }
                             }
                             item {
                                 SettingsToggle(
@@ -21694,6 +21736,7 @@ private fun SettingsOverlay(
                                     )
                                 }
                             }
+                            if (interfaceSettings.skin == LevyraSkin.Default) {
                             item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.Album,
@@ -21703,13 +21746,14 @@ private fun SettingsOverlay(
                                     onCheckedChange = onDynamicColor
                                 )
                             }
+                            }
                         }
                         "home" -> {
                             item {
                                 SettingsButton(
                                     icon = Icons.Rounded.Dashboard,
                                     title = strings.homeStudioCopy.title,
-                                    subtitle = homeStyleName(homeStudioStyle) + " · " + strings.homeStudioCopy.subtitle,
+                                    subtitle = (if (LevyraIsNocturne) Nocturne78Palette.label else homeStyleName(homeStudioStyle)) + " · " + strings.homeStudioCopy.subtitle,
                                     onClick = onOpenHomeStudio
                                 )
                             }
@@ -21778,6 +21822,7 @@ private fun SettingsOverlay(
                                     onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showTrendingArtists = it)) }
                                 )
                             }
+                            if (interfaceSettings.skin == LevyraSkin.Default) {
                             item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.DarkMode,
@@ -21786,6 +21831,7 @@ private fun SettingsOverlay(
                                     checked = interfaceSettings.pureBlack,
                                     onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(pureBlack = it)) }
                                 )
+                            }
                             }
                             item {
                                 SettingsToggle(
@@ -21819,6 +21865,7 @@ private fun SettingsOverlay(
                                     onSelect = { value -> onVideoQualityTarget(VideoQualityTarget.fromStorage(value)) }
                                 )
                             }
+                            if (interfaceSettings.skin == LevyraSkin.Default) {
                             item {
                                 SettingsChoiceRow(
                                     icon = Icons.Rounded.AutoAwesome,
@@ -21887,6 +21934,17 @@ private fun SettingsOverlay(
                                     settings = interfaceSettings,
                                     onSettings = onInterfaceSettings
                                 )
+                            }
+                            } else {
+                                item {
+                                    SettingsTile {
+                                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            Text(strings.playerVisualMode, color = LevyraMuted, style = MaterialTheme.typography.labelLarge)
+                                            Text(Nocturne78Palette.label, color = LevyraText, style = MaterialTheme.typography.titleMedium)
+                                            Text(com.luc4n3x.levyra.ui.i18n.LevyraSkinStrings.forCode(strings.code).nocturneBody, color = LevyraMuted)
+                                        }
+                                    }
+                                }
                             }
                             item {
                                 SettingsToggle(
@@ -23092,8 +23150,8 @@ private fun SettingsTileIcon(icon: ImageVector, accent: Color, shape: Shape = Ma
     Box(
         modifier = Modifier
             .size(44.dp)
-            .clip(shape)
-            .background(accent.copy(alpha = 0.18f)),
+            .clip(if (LevyraIsNocturne) RoundedCornerShape(Nocturne78Design.controlCorner) else shape)
+            .background(if (LevyraIsNocturne) LevyraPanelSoft else accent.copy(alpha = 0.18f)),
         contentAlignment = Alignment.Center
     ) {
         Icon(icon, null, tint = accent, modifier = Modifier.size(22.dp))
@@ -27495,7 +27553,7 @@ private fun ExploreMoodRailRow(
                             identity = zone.id,
                             artworkUrl = artworkUrl,
                             emoji = zone.emoji,
-                            accentColors = Color(zone.accentStart) to Color(zone.accentEnd),
+                            accentColors = if (LevyraIsNocturne) LevyraPanel to LevyraPanelSoft else Color(zone.accentStart) to Color(zone.accentEnd),
                             modifier = Modifier
                                 .weight(1f)
                                 .height(100.dp),
@@ -27840,12 +27898,13 @@ private fun ExploreShortcutTile(
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "explore-shortcut-rotation"
     )
-    val iconShape = entry.polygon.toShape()
+    val nocturne = LevyraIsNocturne
+    val iconShape = if (nocturne) RoundedCornerShape(Nocturne78Design.artworkCorner) else entry.polygon.toShape()
     Row(
         modifier = modifier
             .heightIn(min = 68.dp)
-            .clip(RoundedCornerShape(22.dp))
-            .background(lerp(colors.surfaceContainerHigh, entry.container, 0.32f))
+            .clip(RoundedCornerShape(if (nocturne) Nocturne78Design.cardCorner else 22.dp))
+            .background(if (nocturne) colors.surfaceContainer else lerp(colors.surfaceContainerHigh, entry.container, 0.32f))
             .levyraPressable(
                 onClick = entry.onClick,
                 onClickLabel = entry.label,
@@ -27862,13 +27921,13 @@ private fun ExploreShortcutTile(
                 .size(46.dp)
                 .graphicsLayer { rotationZ = rotation }
                 .clip(iconShape)
-                .background(entry.container),
+                .background(if (nocturne) colors.surfaceContainerHigh else entry.container),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = entry.icon,
                 contentDescription = null,
-                tint = entry.content,
+                tint = if (nocturne) colors.onSurfaceVariant else entry.content,
                 modifier = Modifier
                     .size(22.dp)
                     .graphicsLayer { rotationZ = -rotation }
@@ -27877,7 +27936,7 @@ private fun ExploreShortcutTile(
         BasicText(
             text = entry.label,
             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = colors.onSurface),
-            maxLines = 1,
+            maxLines = if (nocturne) 2 else 1,
             overflow = TextOverflow.Ellipsis,
             autoSize = TextAutoSize.StepBased(minFontSize = 11.sp, maxFontSize = 14.sp),
             modifier = Modifier.weight(1f)

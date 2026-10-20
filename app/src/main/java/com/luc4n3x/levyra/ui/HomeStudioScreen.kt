@@ -1,5 +1,10 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.domain.LevyraSkin
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
+import com.luc4n3x.levyra.ui.theme.SkinManagedNotice
+
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -242,6 +247,12 @@ internal fun HomeStudioOverlay(
                     }
                 }
             }
+            if (LevyraIsNocturne) {
+                item(key = "studio-skin-managed") {
+                    Text(Nocturne78Palette.label, color = LevyraText, style = MaterialTheme.typography.titleMedium)
+                    SkinManagedNotice { onInterfaceSettings(interfaceSettings.copy(skin = LevyraSkin.Default)) }
+                }
+            } else {
             item(key = "studio-style-label", contentType = "studio-label") {
                 HomeStudioLabel(copy.styleSection)
             }
@@ -267,9 +278,10 @@ internal fun HomeStudioOverlay(
                     color = LevyraMuted
                 )
             }
+            }
             item(key = "studio-sections-label", contentType = "studio-label") {
                 Column {
-                    HomeStudioLabel("${copy.sections} · ${homeStyleName(style)}")
+                    HomeStudioLabel("${copy.sections} · ${if (LevyraIsNocturne) Nocturne78Palette.label else homeStyleName(style)}")
                     Text(text = copy.sectionsHint, style = MaterialTheme.typography.bodySmall, color = LevyraMuted)
                     Text(text = copy.featuredHint, style = MaterialTheme.typography.bodySmall, color = LevyraMuted)
                 }
@@ -460,7 +472,7 @@ private fun LazyListScope.homeStudioAdvancedItems(
             onSelect = { motion -> update(settings.updateLayout(style) { it.copy(motion = motion) }) }
         )
     }
-    item(key = "studio-palette", contentType = "studio-switch") {
+    if (!LevyraIsNocturne) item(key = "studio-palette", contentType = "studio-switch") {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -669,7 +681,7 @@ private fun HomeStudioSectionRow(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-            if (id.supportsLayouts) {
+            if (id.supportsLayouts && !LevyraIsNocturne) {
                 Box {
                     TextButton(
                         onClick = { layoutMenu = true },

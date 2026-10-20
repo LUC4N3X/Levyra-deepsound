@@ -54,6 +54,23 @@ internal fun levyraReadableAccent(accent: Color, content: Color): Color {
 }
 
 internal fun levyraColorScheme(palette: LevyraPalette): ColorScheme {
+    if (palette.id == Nocturne78Palette.id) return darkColorScheme(
+        primary = palette.cyan, onPrimary = palette.black,
+        primaryContainer = palette.panelSoft, onPrimaryContainer = palette.cyan,
+        secondary = palette.muted, onSecondary = palette.black,
+        secondaryContainer = palette.panelSoft, onSecondaryContainer = palette.text,
+        tertiary = palette.violet, onTertiary = palette.black,
+        tertiaryContainer = palette.panel, onTertiaryContainer = palette.violet,
+        background = palette.black, onBackground = palette.text,
+        surface = palette.panel, onSurface = palette.text,
+        surfaceVariant = Nocturne78Design.variant, onSurfaceVariant = palette.muted,
+        surfaceTint = Color.Transparent, outline = palette.outline, outlineVariant = palette.outline,
+        surfaceContainerLowest = palette.ink, surfaceContainerLow = palette.panel,
+        surfaceContainer = palette.panel, surfaceContainerHigh = palette.panelSoft,
+        surfaceContainerHighest = Nocturne78Design.variant,
+        surfaceBright = Nocturne78Design.variant, surfaceDim = palette.ink,
+        inverseSurface = palette.text, inverseOnSurface = palette.black, inversePrimary = Color(0xFF704800)
+    )
     val light = palette.isLight
     val primary = levyraTonalRole(palette.cyan, light, AccentContainerChroma)
     val secondary = levyraTonalRole(palette.violet, light, NeutralContainerChroma)

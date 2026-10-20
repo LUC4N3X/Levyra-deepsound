@@ -102,7 +102,7 @@ private data class MainActivityUiSlice(
 private fun LevyraUiState.toMainActivityUiSlice(): MainActivityUiSlice = MainActivityUiSlice(
     fontPreset = interfaceSettings.fontPreset,
     animationsEnabled = animationsEnabled,
-    liquidGlassEnabled = interfaceSettings.liquidGlassEnabled,
+    liquidGlassEnabled = interfaceSettings.liquidGlassEnabled && interfaceSettings.skin == com.luc4n3x.levyra.domain.LevyraSkin.Default,
     glassStyle = LevyraGlassStyle(
         blur = interfaceSettings.glassBlur,
         transparency = interfaceSettings.glassTransparency,
