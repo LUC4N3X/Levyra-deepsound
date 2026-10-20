@@ -1,6 +1,7 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.ui.theme.nocturneMiniSettings
 import com.luc4n3x.levyra.ui.theme.nocturneNavSettings
 
@@ -909,8 +910,8 @@ private val LevyraReadableOnArtwork: Color get() = Color.White
 private val LevyraReadableMutedOnArtwork: Color get() = Color.White.copy(alpha = 0.78f)
 internal val LevyraAdaptiveHairline: Color get() = if (LevyraIsLight) Color(0x26101322) else Color.White.copy(alpha = 0.105f)
 private val LevyraAdaptiveSoftHairline: Color get() = if (LevyraIsLight) Color(0x16101322) else Color.White.copy(alpha = 0.08f)
-internal val LevyraAdaptiveCard: Color get() = if (LevyraIsNocturne) LevyraPanel else if (LevyraIsLight) Color.White.copy(alpha = 0.74f) else CinematicGlass.copy(alpha = 0.66f)
-internal val LevyraAdaptiveCardDeep: Color get() = if (LevyraIsNocturne) LevyraPanelSoft else if (LevyraIsLight) Color.White.copy(alpha = 0.86f) else CinematicGlassDeep.copy(alpha = 0.74f)
+internal val LevyraAdaptiveCard: Color get() = if (LevyraSkinManagesLayout) LevyraPanel else if (LevyraIsLight) Color.White.copy(alpha = 0.74f) else CinematicGlass.copy(alpha = 0.66f)
+internal val LevyraAdaptiveCardDeep: Color get() = if (LevyraSkinManagesLayout) LevyraPanelSoft else if (LevyraIsLight) Color.White.copy(alpha = 0.86f) else CinematicGlassDeep.copy(alpha = 0.74f)
 internal val LevyraAdaptiveChip: Color get() = if (LevyraIsLight) Color.White.copy(alpha = 0.82f) else Color.White.copy(alpha = 0.06f)
 private val LevyraAdaptiveChipSelected: Color get() = if (LevyraIsLight) Color.White.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.12f)
 internal val LevyraAdaptiveTrack: Color get() = if (LevyraIsLight) Color(0x1A11131F) else Color.White.copy(alpha = 0.08f)
@@ -2013,7 +2014,14 @@ fun LevyraApp(
     } else {
         ExitTransition.None
     }
+    val visualCapabilities = rememberLevyraVisualCapabilities(
+        selected = state.interfaceSettings.visualPerformance,
+        animationsEnabled = state.animationsEnabled
+    )
     val accentTrack = state.currentTrack ?: state.tracks.firstOrNull()
+    if (state.interfaceSettings.skin == LevyraSkin.Prism) {
+        PrismThemeEffect(state.interfaceSettings, state.currentTrack, state.animationsEnabled && visualCapabilities.decorativeMotion)
+    }
     val pureBlack = state.interfaceSettings.pureBlack
     LaunchedEffect(
         state.themePreset,
@@ -2025,6 +2033,7 @@ fun LevyraApp(
         pureBlack,
         customThemes
     ) {
+        if (state.interfaceSettings.skin == LevyraSkin.Prism) return@LaunchedEffect
         LevyraThemeController.apply(
             state.themePreset,
             accentTrack?.accentStart,
@@ -2037,10 +2046,14 @@ fun LevyraApp(
         )
     }
     val rootView = LocalView.current
-    LaunchedEffect(state.themePreset, pureBlack, customThemes, state.interfaceSettings.skin) {
+    LaunchedEffect(state.themePreset, pureBlack, customThemes, state.interfaceSettings.skin, LevyraActivePalette.isLight) {
         val nocturne = state.interfaceSettings.skin == LevyraSkin.Nocturne78
-        val base = if (nocturne) Nocturne78Palette else LevyraThemes.byId(state.themePreset)
-        val palette = if (pureBlack && !nocturne) LevyraThemeController.asPureBlack(base) else base
+        val base = when (state.interfaceSettings.skin) {
+            LevyraSkin.Nocturne78 -> Nocturne78Palette
+            LevyraSkin.Prism -> LevyraActivePalette
+            LevyraSkin.Default -> LevyraThemes.byId(state.themePreset)
+        }
+        val palette = if (pureBlack && state.interfaceSettings.skin == LevyraSkin.Default) LevyraThemeController.asPureBlack(base) else base
         (rootView.context as? Activity)?.window?.let { window ->
             window.decorView.setBackgroundColor(palette.black.toArgb())
             WindowCompat.getInsetsController(window, rootView).apply {
@@ -2175,10 +2188,6 @@ fun LevyraApp(
             activity?.finish()
         }
     }
-    val visualCapabilities = rememberLevyraVisualCapabilities(
-        selected = state.interfaceSettings.visualPerformance,
-        animationsEnabled = state.animationsEnabled
-    )
     val navArtworkSeed = rememberNavArtworkSeed(
         track = state.currentTrack,
         enabled = navigationStudio.visible ||
@@ -2191,7 +2200,7 @@ fun LevyraApp(
         LocalLevyraHaptics provides rememberLevyraHaptics(state.interfaceSettings.hapticFeedback),
         LocalLayoutDirection provides layoutDirection,
         LocalNocturneNavigationHeight provides remember { mutableStateOf(64.dp) },
-        LocalNavDockExtraClearance provides if (LevyraIsNocturne) 0.dp else navDockExtraClearance(navigationStudio.settings.style, navigationStudio.settings.activeTuning()),
+        LocalNavDockExtraClearance provides if (LevyraSkinManagesLayout) 0.dp else navDockExtraClearance(navigationStudio.settings.style, navigationStudio.settings.activeTuning()),
         LocalNavArtworkSeed provides navArtworkSeed
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -2203,7 +2212,7 @@ fun LevyraApp(
             val dockState = rememberLevyraDockState()
             val glassBlurAllowed = rememberGlassBlurAllowed()
             val dockGlass = rememberGlassBackdropState(
-                enabled = !LevyraIsNocturne && state.interfaceSettings.liquidGlassEnabled &&
+                enabled = !LevyraSkinManagesLayout && state.interfaceSettings.liquidGlassEnabled &&
                     state.animationsEnabled &&
                     glassBlurAllowed
             )
@@ -2514,7 +2523,11 @@ fun LevyraApp(
                                         drag = onExpansionDrag,
                                         end = { velocity -> settleExpansion(velocity, false) }
                                     )
-                                    val miniStudio = if (LevyraIsNocturne) nocturneMiniSettings(miniPlayerStudio.settings) else miniPlayerStudio.settings
+                                    val miniStudio = when {
+                                        LevyraIsNocturne -> nocturneMiniSettings(miniPlayerStudio.settings)
+                                        LevyraIsPrism -> prismMiniSettings(miniPlayerStudio.settings)
+                                        else -> miniPlayerStudio.settings
+                                    }
                                     if (miniStudio.style == MiniPlayerStyle.Original) {
                                         MiniPlayer(
                                             model = miniModel,
@@ -2555,7 +2568,7 @@ fun LevyraApp(
                                 Modifier
                             }
                         ) {
-                            val navStudio = if (LevyraIsNocturne) nocturneNavSettings(navigationStudio.settings) else navigationStudio.settings
+                            val navStudio = skinNavigationSettings(navigationStudio.settings)
                             if (navStudio.style == NavStyle.Original) {
                                 BottomTabs(
                                     selected = backgroundTab,
@@ -2600,12 +2613,12 @@ fun LevyraApp(
                                 bottomTabsSlot()
                             }
                         }
-                        if (!LevyraIsNocturne && navigationStudio.settings.style == NavStyle.Original) {
+                        if (skinNavigationSettings(navigationStudio.settings).style == NavStyle.Original) {
                             LevyraAdaptiveDockSurface(glass = dockGlass, modifier = dockModifier, content = dockContent)
                         } else {
                             StyledDockSurface(
-                                style = if (LevyraIsNocturne) NavStyle.Minimal else navigationStudio.settings.style,
-                                tuning = if (LevyraIsNocturne) nocturneNavSettings(navigationStudio.settings).activeTuning() else navigationStudio.settings.activeTuning(),
+                                style = skinNavigationSettings(navigationStudio.settings).style,
+                                tuning = skinNavigationSettings(navigationStudio.settings).activeTuning(),
                                 glass = dockGlass,
                                 modifier = dockModifier,
                                 content = dockContent
@@ -3785,9 +3798,15 @@ private fun downloadHudBottomPadding(state: LevyraUiState, dockSideBySide: Boole
 @Composable
 private fun tabBarBottomContentInset(miniPlayerVisible: Boolean, animationsEnabled: Boolean): Dp {
     val navigationBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val navigationHeight = if (LevyraIsNocturne) (LocalNocturneNavigationHeight.current?.value ?: 64.dp) + 1.dp else LevyraTabBarCompactHeight
+    val navigationHeight = when {
+        LevyraIsNocturne -> (LocalNocturneNavigationHeight.current?.value ?: 64.dp) + 1.dp
+        LevyraIsPrism -> LocalNocturneNavigationHeight.current?.value ?: 80.dp
+        else -> LevyraTabBarCompactHeight
+    }
     val collapsed = navigationHeight + navigationBarInset + LevyraBottomContentGap + LocalNavDockExtraClearance.current
-    val miniPlayerExtra = if (levyraWindowIsCompactLandscape()) {
+    val miniPlayerExtra = if (LevyraIsPrism) {
+        84.dp
+    } else if (levyraWindowIsCompactLandscape()) {
         (LevyraMiniPlayerHeight - LevyraTabBarHeight).coerceAtLeast(0.dp)
     } else {
         LevyraMiniPlayerHeight
@@ -10881,8 +10900,15 @@ private class StudioHomeLook(
 
 @Composable
 private fun rememberStudioHomeLook(homeStudio: LevyraHomeStudioSettings, state: LevyraUiState): StudioHomeLook {
-    val homeStyle = if (LevyraIsNocturne) HomeStyle.Minimal else homeStudio.style
-    val studioLayout = remember(homeStudio) { homeStudio.activeLayout() }
+    val homeStyle = when {
+        LevyraIsNocturne -> HomeStyle.Minimal
+        LevyraIsPrism -> HomeStyle.MaterialExpressive
+        else -> homeStudio.style
+    }
+    val prismHome = LevyraIsPrism
+    val studioLayout = remember(homeStudio, prismHome) {
+        homeStudio.activeLayout().let { if (prismHome) it.copy(density = HomeDensity.Balanced, dynamicPalette = false) else it }
+    }
     val homeRenderOrder = remember(studioLayout) { studioLayout.renderOrder() }
     val nocturne = LevyraIsNocturne
     val styleSpec = remember(homeStyle, studioLayout.density, nocturne) { homeStyleSpec(homeStyle, studioLayout.density, nocturne) }
@@ -11021,7 +11047,7 @@ private class StudioHomeContext(
         if (homeAnimationsEnabled) Modifier.animateItem(placementSpec = studioPlacementSpec) else Modifier
 
     fun studioLayoutOf(id: HomeSectionId): HomeSectionLayout =
-        if (LevyraIsNocturne) when (id) {
+        if (LevyraSkinManagesLayout) when (id) {
             HomeSectionId.QuickPicks, HomeSectionId.ForgottenFavorites, HomeSectionId.NewReleases, HomeSectionId.Resonance -> HomeSectionLayout.Compact
             HomeSectionId.PersonalOrbit -> HomeSectionLayout.Grid
             else -> HomeSectionLayout.Carousel
@@ -11030,7 +11056,7 @@ private class StudioHomeContext(
     fun usesStudioLayout(id: HomeSectionId): Boolean = studioLayoutOf(id) != HomeSectionLayout.Auto
 
     fun mergedStudioHero(): StudioHero? = spotlightHeroData
-        ?.takeIf { (homeStyle == HomeStyle.MaterialExpressive || LevyraIsNocturne) && !studioLayout.isHidden(HomeSectionId.Spotlight) }
+        ?.takeIf { (homeStyle == HomeStyle.MaterialExpressive || LevyraSkinManagesLayout) && !studioLayout.isHidden(HomeSectionId.Spotlight) }
         ?.let { hero ->
             val heroTrack = hero.candidate.track
             StudioHero(
@@ -11495,7 +11521,7 @@ private fun LazyListScope.homeStudioSectionSpotlight(c: StudioHomeContext) {
     with(c) {
             if (homeStyle != HomeStyle.Original) {
                 val studioHero = spotlightHeroData
-                if (studioHero != null && homeStyle != HomeStyle.MaterialExpressive && !LevyraIsNocturne) {
+                if (studioHero != null && homeStyle != HomeStyle.MaterialExpressive && !LevyraSkinManagesLayout) {
                     item(key = "home-editorial-spotlight-studio", contentType = "home-studio-spotlight") {
                         val heroTrack = studioHero.candidate.track
                         Box(modifier = studioItemModifier()) {
@@ -12338,7 +12364,7 @@ private fun HomeStudioHost(
     onPullRefresh: () -> Unit,
     onTrackActions: (Track) -> Unit
 ) {
-    if (homeStudio.usesClassicOriginalHome() && !LevyraIsNocturne) {
+    if (homeStudio.usesClassicOriginalHome() && !LevyraSkinManagesLayout) {
         HomeScreen(
             viewModel = viewModel,
             renderSnapshot = renderSnapshot,
@@ -12651,7 +12677,7 @@ private fun PersonalOrbitTile(
         )
         Text(
             text = track.title,
-            color = if (isCurrent) LevyraCyan else Color.White,
+            color = if (isCurrent && !(LevyraIsPrism && LevyraIsLight)) LevyraCyan else Color.White,
             fontSize = LevyraHomeDesign.OrbitTileTitleSize,
             lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitTileTitleSize),
             fontWeight = FontWeight.Bold,
@@ -14941,7 +14967,7 @@ private fun BoxScope.StudioPersonalOrbitOverlayTitle(track: Track, isCurrent: Bo
     )
     Text(
         text = track.title,
-        color = if (isCurrent) LevyraCyan else Color.White,
+        color = if (isCurrent && !(LevyraIsPrism && LevyraIsLight)) LevyraCyan else Color.White,
         fontSize = LevyraHomeDesign.OrbitTileTitleSize,
         lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitTileTitleSize),
         fontWeight = FontWeight.Bold,
@@ -21400,7 +21426,9 @@ private fun SettingsOverlay(
             ) {
                 if (current == null) {
                     item {
-                        Row(
+                        if (LevyraIsPrism) PrismPageHeader(strings.settings, strings.settingsSubtitle) {
+                            IconButton(onClick = onClose, modifier = Modifier.size(48.dp)) { Icon(Icons.Rounded.Close, strings.close, tint = LevyraText) }
+                        } else Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -21585,6 +21613,9 @@ private fun SettingsOverlay(
                                     selected = interfaceSettings.skin,
                                     onSelect = { onInterfaceSettings(interfaceSettings.copy(skin = it)) }
                                 )
+                                if (interfaceSettings.skin == LevyraSkin.Prism) {
+                                    PrismSettingsPanel(interfaceSettings.prism) { onInterfaceSettings(interfaceSettings.copy(prism = it)) }
+                                }
                             }
                             item {
                                 SettingsButton(
@@ -21957,8 +21988,8 @@ private fun SettingsOverlay(
                                     SettingsTile {
                                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                             Text(strings.playerVisualMode, color = LevyraMuted, style = MaterialTheme.typography.labelLarge)
-                                            Text(Nocturne78Palette.label, color = LevyraText, style = MaterialTheme.typography.titleMedium)
-                                            Text(com.luc4n3x.levyra.ui.i18n.LevyraSkinStrings.forCode(strings.code).nocturneBody, color = LevyraMuted)
+                                            Text(LevyraSkinLabel, color = LevyraText, style = MaterialTheme.typography.titleMedium)
+                                            Text(if (LevyraIsPrism) com.luc4n3x.levyra.ui.i18n.LevyraSkinStrings.managedForCode(strings.code, LevyraSkinLabel) else com.luc4n3x.levyra.ui.i18n.LevyraSkinStrings.forCode(strings.code).nocturneBody, color = LevyraMuted)
                                         }
                                     }
                                 }
@@ -23128,15 +23159,15 @@ private fun SettingsTile(
     val count = groupCount ?: slot?.count ?: 1
     val first = index == 0
     val last = index == count - 1
-    val outer = levyraExpressiveCorner(interactionSource, rest = 24.dp, pressed = 14.dp, label = "settingsTileOuter")
-    val inner = levyraExpressiveCorner(interactionSource, rest = 6.dp, pressed = 14.dp, label = "settingsTileInner")
+    val outer = if (LevyraIsPrism) 18.dp else levyraExpressiveCorner(interactionSource, rest = 24.dp, pressed = 14.dp, label = "settingsTileOuter")
+    val inner = if (LevyraIsPrism) 18.dp else levyraExpressiveCorner(interactionSource, rest = 6.dp, pressed = 14.dp, label = "settingsTileInner")
     val shape = RoundedCornerShape(
         topStart = if (first) outer else inner,
         topEnd = if (first) outer else inner,
         bottomEnd = if (last) outer else inner,
         bottomStart = if (last) outer else inner
     )
-    val tileModifier = modifier.fillMaxWidth()
+    val tileModifier = modifier.fillMaxWidth().then(if (LevyraIsPrism) Modifier.padding(vertical = 3.dp).border(1.dp, LevyraGlassBorder, shape) else Modifier)
     when {
         checked != null && onCheckedChange != null -> Surface(
             checked = checked,
@@ -23167,7 +23198,7 @@ private fun SettingsTileIcon(icon: ImageVector, accent: Color, shape: Shape = Ma
     Box(
         modifier = Modifier
             .size(44.dp)
-            .clip(if (LevyraIsNocturne) RoundedCornerShape(Nocturne78Design.controlCorner) else shape)
+            .clip(if (LevyraIsPrism) RoundedCornerShape(14.dp) else if (LevyraIsNocturne) RoundedCornerShape(Nocturne78Design.controlCorner) else shape)
             .background(if (LevyraIsNocturne) LevyraPanelSoft else accent.copy(alpha = 0.18f)),
         contentAlignment = Alignment.Center
     ) {
@@ -23209,6 +23240,13 @@ private fun SettingsTileText(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SettingsDetailHeader(title: String, summary: String, icon: ImageVector, accent: Color, onBack: () -> Unit) {
+    if (LevyraIsPrism) {
+        Column {
+            LevyraBackButton(onClick = onBack, contentDescription = LocalLevyraStrings.current.back)
+            PrismPageHeader(title, summary)
+        }
+        return
+    }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -27824,6 +27862,10 @@ private fun ExplorePageHeader(
     subtitle: String,
     modifier: Modifier = Modifier
 ) {
+    if (LevyraIsPrism) {
+        Box(modifier) { PrismPageHeader(title, subtitle) }
+        return
+    }
     val colors = MaterialTheme.colorScheme
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -28627,7 +28669,7 @@ private fun LazyListScope.skinSettingsItems(
 }
 
 private fun skinHomeStyleLabel(style: HomeStyle): String =
-    if (LevyraIsNocturne) Nocturne78Palette.label else homeStyleName(style)
+    if (LevyraSkinManagesLayout) LevyraSkinLabel else homeStyleName(style)
 
 private fun skinManagesStudio(id: String): Boolean =
-    LevyraIsNocturne && id in setOf("theme", "mini_player", "navigation")
+    LevyraSkinManagesLayout && id in setOf("theme", "mini_player", "navigation")

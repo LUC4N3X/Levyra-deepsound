@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.theme.*
+import com.luc4n3x.levyra.ui.PlayerAccentPair
 import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 
@@ -216,7 +218,7 @@ fun LevyraNowPlaying(
     val rightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl
     val artworkUrl = track?.let(::preferredPlayerArtworkUrl).orEmpty()
     val nocturne = LevyraIsNocturne
-    val visualMode = state.interfaceSettings.playerVisualMode
+    val visualMode = if (LevyraIsPrism) PlayerVisualMode.Artwork else state.interfaceSettings.playerVisualMode
     val backgroundMode = state.interfaceSettings.playerBackground.let { selected ->
         if (nocturne || selected == PlayerBackgroundMode.Dark && state.interfaceSettings.pureBlack) {
             PlayerBackgroundMode.PureBlack
@@ -250,7 +252,7 @@ fun LevyraNowPlaying(
     val paletteArtworkUrl = track?.let { current ->
         artworkUrl.ifBlank { current.largeThumbnailUrl.ifBlank { current.thumbnailUrl } }
     }.orEmpty()
-    val fixedAccents = rememberPlayerFixedAccents(state.interfaceSettings)
+    val fixedAccents = if (LevyraIsPrism) PlayerAccentPair(LevyraCyan, LevyraViolet) else rememberPlayerFixedAccents(state.interfaceSettings)
     val activePalette by rememberArtworkPalette(
         paletteKey = if (fixedAccents == null) paletteKey else "",
         artworkUrl = paletteArtworkUrl,
@@ -279,7 +281,7 @@ fun LevyraNowPlaying(
         label = "player-secondary-color"
     )
     val amoled = backgroundMode == PlayerBackgroundMode.PureBlack
-    val surfaces = remember(primaryTarget, amoled, nocturne) { playerSurfaceTokens(primaryTarget, amoled, nocturne) }
+    val surfaces = if (LevyraIsPrism) prismPlayerSurfaces(LevyraActivePalette) else remember(primaryTarget, amoled, nocturne) { playerSurfaceTokens(primaryTarget, amoled, nocturne) }
     val heroTone by animateColorAsState(
         targetValue = surfaces.hero,
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween()),
@@ -395,7 +397,7 @@ fun LevyraNowPlaying(
             !liveRadio &&
             !state.isVideoMode &&
             playerPane != LevyraPlayerPane.SideBySide
-        val deckLayout = if (nocturne) PlayerDeckLayout.Levyra else resolvePlayerDeckLayout(
+        val deckLayout = if (LevyraSkinManagesLayout) PlayerDeckLayout.Levyra else resolvePlayerDeckLayout(
             mode = visualMode,
             isVideoMode = state.isVideoMode,
             isLiveRadio = liveRadio,
@@ -1154,7 +1156,9 @@ fun LevyraNowPlaying(
             .widthIn(max = detailMaxWidth)
             .align(Alignment.TopCenter)
 
-        if (deckLayout == PlayerDeckLayout.Aura && track != null) {
+        if (LevyraIsPrism && track != null && !state.isVideoMode && !liveRadio && playerPane != LevyraPlayerPane.SideBySide) {
+            PrismPlayerScene(track, deckSlots, artworkCap, metadata = { metadataBlock(track) }, transport = transportBlock, modifier = deckModifier)
+        } else if (deckLayout == PlayerDeckLayout.Aura && track != null) {
             PlayerAuraDeck(
                 track = track,
                 slots = deckSlots,
@@ -1987,8 +1991,8 @@ private fun playerDockActions(
                 PlayerDockAction(
                     key = "visual-mode",
                     icon = visualModeIcon(visualMode),
-                    label = if (LevyraIsNocturne) Nocturne78Palette.label else visualModeLabel(strings),
-                    stateDescription = if (LevyraIsNocturne) Nocturne78Palette.label else visualModeStateDescription(visualMode, strings),
+                    label = if (LevyraSkinManagesLayout) LevyraSkinLabel else visualModeLabel(strings),
+                    stateDescription = if (LevyraSkinManagesLayout) LevyraSkinLabel else visualModeStateDescription(visualMode, strings),
                     active = visualMode != PlayerVisualMode.Artwork,
                     toggle = false,
                     onClick = onOpenDeck

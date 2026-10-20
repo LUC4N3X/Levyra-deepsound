@@ -21,6 +21,20 @@ import org.junit.Test
 
 class LevyraPreferencesDefaultsTest {
     @Test
+    fun prismBackupPreservesVariantsAndOldBackupsUseSafeDefaults() {
+        val prism = com.luc4n3x.levyra.domain.PrismSettings(
+            appearance = com.luc4n3x.levyra.domain.PrismAppearance.Automatic,
+            colors = com.luc4n3x.levyra.domain.PrismColors.Ultraviolet,
+            playerLayout = com.luc4n3x.levyra.domain.PrismPlayerLayout.Focus,
+            translucency = com.luc4n3x.levyra.domain.PrismTranslucency.Reduced
+        )
+        val original = LevyraInterfaceSettings(skin = com.luc4n3x.levyra.domain.LevyraSkin.Prism, prism = prism)
+        assertEquals(original, backupInterfaceSettingsFromJson(backupInterfaceSettingsToJson(original)))
+        assertEquals(com.luc4n3x.levyra.domain.PrismSettings(), backupInterfaceSettingsFromJson(JSONObject()).prism)
+        assertEquals(com.luc4n3x.levyra.domain.PrismSettings(), backupInterfaceSettingsFromJson(JSONObject().put("prismColors", "unknown")).prism)
+    }
+
+    @Test
     fun skinBackupIsBackwardCompatibleAndPreservesPersonalSettings() {
         val original = LevyraInterfaceSettings(
             skin = com.luc4n3x.levyra.domain.LevyraSkin.Nocturne78,

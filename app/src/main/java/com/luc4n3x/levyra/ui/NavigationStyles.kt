@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 
 import android.os.Build
@@ -242,7 +243,7 @@ private val NavStaticMotion = NavMotionSpec(snap(), snap(), snap(), snap(), pop 
 @Composable
 internal fun rememberNavColors(style: NavStyle, tuning: NavTuning): NavColors {
     val theme = MaterialTheme.colorScheme
-    if (LevyraIsNocturne) return buildNavColors(theme, style.floating, tuning.copy(
+    if (LevyraSkinManagesLayout) return buildNavColors(theme, style.floating, tuning.copy(
         colorSource = NavColorSource.Theme, surfaceTone = NavSurfaceTone.Auto
     ), null)
     val context = LocalContext.current
@@ -658,6 +659,10 @@ internal fun StyledBottomTabs(
     applySystemInset: Boolean = true,
     link: DockLink? = null
 ) {
+    if (LevyraIsPrism) {
+        PrismBottomTabs(tuning, selected, onSelect, applySystemInset)
+        return
+    }
     if (LevyraIsNocturne) {
         NocturneBottomTabs(tuning, selected, onSelect, applySystemInset)
         return

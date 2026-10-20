@@ -287,6 +287,10 @@ internal fun RowScope.ExploreMoodCard(
         }
     }
 
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism) {
+        PrismMoodTile(zone.label, portraitUrl, isSelected, onClick, onStartZoneMix, strings.mixStartRadio)
+        return
+    }
     val nocturne = LevyraIsNocturne
     val accentStart = if (nocturne) LevyraPanelSoft else Color(zone.accentStart)
     val accentEnd = if (nocturne) LevyraPanel else Color(zone.accentEnd)

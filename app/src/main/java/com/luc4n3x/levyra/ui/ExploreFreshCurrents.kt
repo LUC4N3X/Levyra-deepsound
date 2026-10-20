@@ -279,6 +279,10 @@ private fun ExploreFreshSpotlightPage(
     val buttonFill = palette.buttonFill
     val onOpen = if (card.opensAlbum) onOpenAlbum else onPlay
     val playing = isCurrent && isPlaying && !card.opensAlbum
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism) {
+        PrismFreshRelease(exploreCoverArtworkTrack(track), card.title, card.subtitle, freshSpotlightActionLabel(card.opensAlbum, playing, strings), !(isResolving && !card.opensAlbum), onOpen, actions)
+        return
+    }
 
     Box(
         modifier = Modifier

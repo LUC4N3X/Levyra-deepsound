@@ -1,7 +1,7 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.domain.LevyraSkin
-import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
 import com.luc4n3x.levyra.ui.theme.SkinManagedNotice
 
@@ -441,7 +441,7 @@ private fun LazyListScope.homeStudioAdvancedItems(
             onSelect = { motion -> update(settings.updateLayout(style) { it.copy(motion = motion) }) }
         )
     }
-    if (!LevyraIsNocturne) item(key = "studio-palette", contentType = "studio-switch") {
+    if (!LevyraSkinManagesLayout) item(key = "studio-palette", contentType = "studio-switch") {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -650,7 +650,7 @@ private fun HomeStudioSectionRow(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-            if (id.supportsLayouts && !LevyraIsNocturne) {
+            if (id.supportsLayouts && !LevyraSkinManagesLayout) {
                 Box {
                     TextButton(
                         onClick = { layoutMenu = true },
@@ -873,7 +873,7 @@ private fun DrawScope.drawExpressiveHero(x: Float, y: Float, width: Float, heigh
 }
 
 private fun homeStudioAppearanceName(style: HomeStyle): String =
-    if (LevyraIsNocturne) Nocturne78Palette.label else homeStyleName(style)
+    if (LevyraSkinManagesLayout) LevyraSkinLabel else homeStyleName(style)
 
 private fun LazyListScope.homeStudioAppearanceItems(
     style: HomeStyle,
@@ -882,9 +882,9 @@ private fun LazyListScope.homeStudioAppearanceItems(
     onInterfaceSettings: (LevyraInterfaceSettings) -> Unit,
     onStyle: (HomeStyle) -> Unit
 ) {
-    if (LevyraIsNocturne) {
+    if (LevyraSkinManagesLayout) {
         item(key = "studio-skin-managed") {
-            Text(Nocturne78Palette.label, color = LevyraText, style = MaterialTheme.typography.titleMedium)
+            Text(LevyraSkinLabel, color = LevyraText, style = MaterialTheme.typography.titleMedium)
             SkinManagedNotice { onInterfaceSettings(interfaceSettings.copy(skin = LevyraSkin.Default)) }
         }
     } else {

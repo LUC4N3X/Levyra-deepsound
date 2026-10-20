@@ -28,28 +28,41 @@ import timber.log.Timber
 internal fun rememberArtworkPalette(
     paletteKey: String,
     artworkUrl: String,
-    fallback: ArtworkPalette
+    fallback: ArtworkPalette,
+    retainPreviousUntilLoaded: Boolean = false
 ): State<ArtworkPalette> {
     val context = LocalContext.current
     val memoryPalette = remember(paletteKey) {
         if (paletteKey.isNotBlank()) ArtworkPaletteCache.peek(paletteKey) else null
     }
-    val paletteState = remember(paletteKey) {
-        mutableStateOf(memoryPalette ?: fallback)
+    val paletteState = if (retainPreviousUntilLoaded) {
+        remember { mutableStateOf(memoryPalette ?: fallback) }
+    } else {
+        remember(paletteKey) { mutableStateOf(memoryPalette ?: fallback) }
     }
     val latestArtworkUrl by rememberUpdatedState(artworkUrl)
     val latestFallback by rememberUpdatedState(fallback)
 
-    LaunchedEffect(paletteKey) {
-        if (paletteKey.isBlank() || memoryPalette != null) return@LaunchedEffect
+    LaunchedEffect(paletteKey, artworkUrl) {
+        if (paletteKey.isBlank() || memoryPalette != null) {
+            if (retainPreviousUntilLoaded) paletteState.value = memoryPalette ?: latestFallback
+            return@LaunchedEffect
+        }
         val persisted = ArtworkPaletteCache.load(context, paletteKey)
         if (persisted != null) {
             paletteState.value = persisted
             return@LaunchedEffect
         }
         val url = latestArtworkUrl
-        if (url.isBlank()) return@LaunchedEffect
-        val extracted = extractArtworkPalette(context, url, latestFallback) ?: return@LaunchedEffect
+        if (url.isBlank()) {
+            if (retainPreviousUntilLoaded) paletteState.value = latestFallback
+            return@LaunchedEffect
+        }
+        val extracted = extractArtworkPalette(context, url, latestFallback)
+        if (extracted == null) {
+            if (retainPreviousUntilLoaded) paletteState.value = latestFallback
+            return@LaunchedEffect
+        }
         paletteState.value = extracted
         ArtworkPaletteCache.store(context, paletteKey, extracted)
     }

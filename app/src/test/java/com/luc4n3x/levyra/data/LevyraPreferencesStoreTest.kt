@@ -99,6 +99,29 @@ class LevyraPreferencesStoreTest {
     private fun flush(store: LevyraPreferencesStore) = runBlocking { store.commit { } }
 
     @Test
+    fun prismConfigurationSurvivesSkinSwitchAndStoreRecreation() {
+        val (store, preferences) = open()
+        val prism = com.luc4n3x.levyra.domain.PrismSettings(
+            appearance = com.luc4n3x.levyra.domain.PrismAppearance.Light,
+            colors = com.luc4n3x.levyra.domain.PrismColors.Glacier,
+            playerLayout = com.luc4n3x.levyra.domain.PrismPlayerLayout.Focus,
+            translucency = com.luc4n3x.levyra.domain.PrismTranslucency.Reduced
+        )
+        val saved = LevyraInterfaceSettings(
+            skin = com.luc4n3x.levyra.domain.LevyraSkin.Prism,
+            prism = prism, playerVisualMode = PlayerVisualMode.Flow, pureBlack = true
+        )
+        preferences.setInterfaceSettings(saved)
+        flush(store)
+        assertEquals(saved, reopen().interfaceSettings())
+        preferences.setInterfaceSettings(saved.copy(skin = com.luc4n3x.levyra.domain.LevyraSkin.Default))
+        flush(store)
+        assertEquals(prism, reopen().interfaceSettings().prism)
+        assertEquals(PlayerVisualMode.Flow, reopen().interfaceSettings().playerVisualMode)
+        assertTrue(reopen().interfaceSettings().pureBlack)
+    }
+
+    @Test
     fun skinPersistsAcrossStoreRecreationWithoutReplacingDefaultCustomization() {
         val (store, preferences) = open()
         preferences.setThemePreset(com.luc4n3x.levyra.ui.theme.LevyraThemes.FROST)

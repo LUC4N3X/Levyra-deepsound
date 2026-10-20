@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.ui.media
 
 import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+import com.luc4n3x.levyra.ui.theme.LevyraIsPrism
 
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.compose.animation.core.AnimationSpec
@@ -219,6 +220,14 @@ internal fun ImmersiveMediaHero(
     modifier: Modifier = Modifier,
     overline: String = ""
 ) {
+    if (LevyraIsPrism && !wide) {
+        Column(modifier.fillMaxWidth().padding(top = topBarHeight, start = 20.dp, end = 20.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            Box(Modifier.align(Alignment.CenterHorizontally).size(min(viewportWidth * 0.62f, 260.dp)).clip(RoundedCornerShape(22.dp))) { artwork() }
+            ImmersiveMediaMetadata(title, overline, subtitle, metadata, colors, false, onSubtitleClick)
+            actions()
+        }
+        return
+    }
     val heroHeight = immersiveHeroHeight(wide, viewportWidth, viewportHeight, topBarHeight)
     val gutter = immersiveMediaGutter(viewportWidth)
     if (wide) {

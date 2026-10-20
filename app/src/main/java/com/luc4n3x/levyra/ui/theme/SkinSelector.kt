@@ -41,7 +41,11 @@ internal fun SkinSelector(selected: LevyraSkin, onSelect: (LevyraSkin) -> Unit) 
         Text(copy.title, style = MaterialTheme.typography.titleLarge, color = LevyraText, modifier = Modifier.semantics { heading() })
         LevyraSkin.entries.forEach { skin ->
             val nocturne = skin == LevyraSkin.Nocturne78
-            val title = if (nocturne) Nocturne78Palette.label else "Levyra Default"
+            val title = when (skin) {
+                LevyraSkin.Default -> "Levyra Default"
+                LevyraSkin.Nocturne78 -> Nocturne78Palette.label
+                LevyraSkin.Prism -> "Levyra Prism"
+            }
             val active = selected == skin
             Surface(
                 modifier = Modifier.fillMaxWidth().selectable(selected = active, role = Role.RadioButton, onClick = { onSelect(skin) }),
@@ -50,13 +54,13 @@ internal fun SkinSelector(selected: LevyraSkin, onSelect: (LevyraSkin) -> Unit) 
                 border = BorderStroke(if (active) 2.dp else 1.dp, if (active) LevyraCyan else LevyraGlassBorder)
             ) {
                 Column(Modifier.padding(PaddingValues(16.dp)), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SkinPreview(nocturne)
+                    SkinPreview(skin)
                     Text(title, style = MaterialTheme.typography.titleMedium, color = LevyraText)
-                    Text(if (nocturne) copy.nocturneBody else copy.defaultBody, style = MaterialTheme.typography.bodyMedium, color = LevyraMuted)
+                    Text(if (skin == LevyraSkin.Prism) com.luc4n3x.levyra.ui.i18n.LevyraPrismStrings.forCode(LocalLevyraStrings.current.code).body else if (nocturne) copy.nocturneBody else copy.defaultBody, style = MaterialTheme.typography.bodyMedium, color = LevyraMuted)
                 }
             }
         }
-        if (selected == LevyraSkin.Nocturne78) {
+        if (selected != LevyraSkin.Default) {
             SkinManagedNotice { onSelect(LevyraSkin.Default) }
         }
     }
@@ -66,7 +70,7 @@ internal fun SkinSelector(selected: LevyraSkin, onSelect: (LevyraSkin) -> Unit) 
 internal fun SkinManagedNotice(onUseDefault: (() -> Unit)? = null) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
-            LevyraSkinStrings.managedForCode(LocalLevyraStrings.current.code),
+            LevyraSkinStrings.managedForCode(LocalLevyraStrings.current.code, LevyraSkinLabel),
             style = MaterialTheme.typography.bodyMedium,
             color = LevyraMuted
         )
@@ -77,11 +81,17 @@ internal fun SkinManagedNotice(onUseDefault: (() -> Unit)? = null) {
 }
 
 @Composable
-private fun SkinPreview(nocturne: Boolean) {
-    val palette = if (nocturne) Nocturne78Palette else LevyraThemes.levyraAura
+private fun SkinPreview(skin: LevyraSkin) {
+    val nocturne = skin == LevyraSkin.Nocturne78
+    val palette = when (skin) {
+        LevyraSkin.Nocturne78 -> Nocturne78Palette
+        LevyraSkin.Prism -> prismPalette()
+        LevyraSkin.Default -> LevyraThemes.levyraAura
+    }
     Canvas(Modifier.fillMaxWidth().height(76.dp)) {
         val radius = if (nocturne) 6.dp.toPx() else 18.dp.toPx()
         drawRoundRect(palette.black, cornerRadius = CornerRadius(radius))
+        if (skin == LevyraSkin.Prism) drawRoundRect(androidx.compose.ui.graphics.Brush.linearGradient(listOf(palette.violet.copy(alpha = 0.22f), palette.cyan.copy(alpha = 0.12f), palette.black)), cornerRadius = CornerRadius(radius))
         val artSize = size.height - 20.dp.toPx()
         val inset = 10.dp.toPx()
         drawRoundRect(palette.panelSoft, Offset(inset, inset), Size(artSize, artSize), CornerRadius(radius))

@@ -51,7 +51,8 @@ internal object LevyraSkinStrings {
 
     fun forCode(code: String): SkinCopy = copies[LevyraLanguageCatalog.normalize(code)] ?: copies.getValue("en")
 
-    fun managedForCode(code: String): String = managed[LevyraLanguageCatalog.normalize(code)] ?: managed.getValue("en")
+    fun managedForCode(code: String, skin: String = "Nocturne 78"): String =
+        (managed[LevyraLanguageCatalog.normalize(code)] ?: managed.getValue("en")).replace("Nocturne 78", skin)
 
     private val managed = mapOf(
         "en" to "Nocturne 78 manages the appearance. Switch to Levyra Default to change it. Your previous choices are saved.",

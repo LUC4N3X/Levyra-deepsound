@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 
 import androidx.compose.animation.AnimatedContent
@@ -195,6 +196,9 @@ internal fun rememberMiniPlayerPalette(
     val scheme = MaterialTheme.colorScheme
     if (LevyraIsNocturne) {
         return MiniPlayerPalette(scheme.primary, scheme.primary, scheme.surfaceContainerHigh, scheme.onSurface, scheme.onSurfaceVariant, true)
+    }
+    if (LevyraIsPrism) {
+        return MiniPlayerPalette(scheme.primary, scheme.tertiary, prismGlassColor(), scheme.onSurface, scheme.onSurfaceVariant, !LevyraActivePalette.isLight)
     }
     val artwork = rememberMiniArtworkPalette(track)
     val targets = when (tuning.colorMode) {

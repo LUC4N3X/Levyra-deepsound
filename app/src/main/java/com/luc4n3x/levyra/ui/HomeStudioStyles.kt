@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 import com.luc4n3x.levyra.ui.theme.Nocturne78Design
 
@@ -350,6 +351,13 @@ internal fun StudioSectionHeader(
     val headerModifier = modifier
         .fillMaxWidth()
         .padding(horizontal = spec.inset)
+    if (LevyraIsPrism) {
+        Row(headerModifier.heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(title, color = LevyraText, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f).semantics { heading() })
+            onPlayAll?.let { action -> TextButton(onClick = action) { Text(strings.playAll, color = LevyraCyan) } }
+        }
+        return
+    }
     when (style) {
         HomeStyle.MaterialExpressive -> MxSectionHeader(spec, title, featured, copy.featured, strings.playAll, onPlayAll, modifier)
         HomeStyle.Original -> LevyraSectionHeader(
@@ -455,6 +463,11 @@ internal fun StudioShelf(
     modifier: Modifier = Modifier
 ) {
     if (items.isEmpty()) return
+    if (LevyraIsPrism) {
+        if (layout == HomeSectionLayout.Compact || layout == HomeSectionLayout.List) PrismCompactShelf(items, isPlaying, spec.inset, modifier)
+        else PrismArtworkShelf(items, isPlaying, spec.inset, modifier)
+        return
+    }
     val roundItems = items.first().round
     if (style == HomeStyle.MaterialExpressive) {
         when (layout) {
@@ -951,6 +964,10 @@ private fun StudioCompact(
     isPlaying: Boolean,
     modifier: Modifier
 ) {
+    if (LevyraIsPrism) {
+        PrismCompactShelf(items, isPlaying, spec.inset, modifier)
+        return
+    }
     if (LevyraIsNocturne) {
         NocturneCompactShelf(items, isPlaying, spec.inset, modifier)
         return
@@ -1069,6 +1086,10 @@ internal fun StudioHomeHeader(
     }
     val topKicker = if (name.isNotBlank()) dayPart else today
     val mainHeading = if (name.isNotBlank()) name else dayPart
+    if (LevyraIsPrism) {
+        PrismHomeHeader(greeting, today.takeIf { name.isBlank() }.orEmpty(), hero, spec.inset, onSearch, onSettings)
+        return
+    }
     if (LevyraIsNocturne) {
         NocturneHomeHeader(greeting, today.takeIf { name.isBlank() }.orEmpty(), hero, spec.inset, onSearch, onSettings)
         return
@@ -1973,6 +1994,10 @@ internal fun StudioHomeBackdrop(
     val isLight = LevyraIsLight
     val canvas = homeCanvasColor(isLight)
     val scheme = MaterialTheme.colorScheme
+    if (LevyraIsPrism) {
+        PrismAtmosphere(modifier)
+        return
+    }
     if (LevyraIsNocturne) {
         Box(modifier.fillMaxSize().background(canvas))
         return
