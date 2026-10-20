@@ -350,6 +350,45 @@ that RTK does not already compact. No model/provider settings are changed.
   command. If an entry has been evicted, do not rerun mutating commands just
   to recover the log.
 
+### Optional bounded command execution
+
+Inspired by [ChrisTitusTech/agent-proxy](https://github.com/ChrisTitusTech/agent-proxy),
+the `run` wrapper supports a **user-selected wall-clock timeout**. When it
+expires, the launched command is stopped, available combined output stays
+visible without filtering, the process is never retried, and the wrapper
+returns exit code **124**. Linux/macOS use an isolated process group; on
+Windows, the wrapper attempts process-tree cleanup with `taskkill /T /F`.
+
+No deadline is imposed by default. Specify one only for a finite command
+whose duration is known; not for an interactive or long-running agent.
+The wrapper still buffers text output in memory and should not handle
+unbounded log streams, binary output, or sensitive data.
+
+```powershell
+python scripts/levyra_context_optimizer.py run --timeout 300 -- .\gradlew.bat testDebugUnitTest
+```
+
+### Read-only agent readiness
+
+Inspired by non-spawning readiness checks in agent-proxy and the portable
+configuration in [ChrisTitusTech/titus-ai](https://github.com/ChrisTitusTech/titus-ai),
+Levyra now includes a toolchain doctor:
+
+```bash
+python scripts/agent_runtime_doctor.py
+python scripts/agent_runtime_doctor.py --json
+python scripts/agent_runtime_doctor.py --strict
+```
+
+It checks tracked repository agent contracts and optional executable names:
+RTK, Claude, Codex, Antigravity, Headroom, and Grok. It **does not** run
+agents, read credentials, verify logins or subscriptions, change models,
+start servers, or install dependencies.
+
+Missing optional tools are informational. `--strict` fails only for missing
+required repository contracts or an unsupported Python version. This is a
+configuration check, **not** live inference readiness.
+
 ### Commands
 
 On Linux/macOS (Bash), for ordinary high-volume text output:
