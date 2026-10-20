@@ -1,5 +1,10 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.domain.LevyraSkin
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
+import com.luc4n3x.levyra.ui.theme.SkinManagedNotice
+
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -242,34 +247,10 @@ internal fun HomeStudioOverlay(
                     }
                 }
             }
-            item(key = "studio-style-label", contentType = "studio-label") {
-                HomeStudioLabel(copy.styleSection)
-            }
-            item(key = "studio-styles", contentType = "studio-styles") {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(horizontal = 0.dp)
-                ) {
-                    items(HomeStyle.entries, key = { it.storageId }) { option ->
-                        HomeStyleCard(
-                            style = option,
-                            selected = option == style,
-                            inUseLabel = copy.inUse,
-                            onClick = { previewStyle = option }
-                        )
-                    }
-                }
-            }
-            item(key = "studio-style-description", contentType = "studio-text") {
-                Text(
-                    text = "${homeStyleName(style)} · ${homeStyleDescription(style, copy)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = LevyraMuted
-                )
-            }
+            homeStudioAppearanceItems(style, copy, interfaceSettings, onInterfaceSettings) { previewStyle = it }
             item(key = "studio-sections-label", contentType = "studio-label") {
                 Column {
-                    HomeStudioLabel("${copy.sections} · ${homeStyleName(style)}")
+                    HomeStudioLabel("${copy.sections} · ${homeStudioAppearanceName(style)}")
                     Text(text = copy.sectionsHint, style = MaterialTheme.typography.bodySmall, color = LevyraMuted)
                     Text(text = copy.featuredHint, style = MaterialTheme.typography.bodySmall, color = LevyraMuted)
                 }
@@ -460,7 +441,7 @@ private fun LazyListScope.homeStudioAdvancedItems(
             onSelect = { motion -> update(settings.updateLayout(style) { it.copy(motion = motion) }) }
         )
     }
-    item(key = "studio-palette", contentType = "studio-switch") {
+    if (!LevyraIsNocturne) item(key = "studio-palette", contentType = "studio-switch") {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -669,7 +650,7 @@ private fun HomeStudioSectionRow(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-            if (id.supportsLayouts) {
+            if (id.supportsLayouts && !LevyraIsNocturne) {
                 Box {
                     TextButton(
                         onClick = { layoutMenu = true },
@@ -889,4 +870,49 @@ private fun DrawScope.drawExpressiveHero(x: Float, y: Float, width: Float, heigh
     drawCircle(accent, height * 0.38f, Offset(x + height * 0.5f, y + height * 0.5f))
     drawRoundRect(accent.copy(alpha = 0.9f), Offset(x + width * 0.55f, y + height * 0.62f), Size(height * 0.28f, height * 0.28f), CornerRadius(height * 0.1f))
     drawRoundRect(Color.White.copy(alpha = 0.7f), Offset(x + width * 0.55f, y + height * 0.2f), Size(width * 0.36f, height * 0.12f), CornerRadius(height * 0.06f))
+}
+
+private fun homeStudioAppearanceName(style: HomeStyle): String =
+    if (LevyraIsNocturne) Nocturne78Palette.label else homeStyleName(style)
+
+private fun LazyListScope.homeStudioAppearanceItems(
+    style: HomeStyle,
+    copy: HomeStudioCopy,
+    interfaceSettings: LevyraInterfaceSettings,
+    onInterfaceSettings: (LevyraInterfaceSettings) -> Unit,
+    onStyle: (HomeStyle) -> Unit
+) {
+    if (LevyraIsNocturne) {
+        item(key = "studio-skin-managed") {
+            Text(Nocturne78Palette.label, color = LevyraText, style = MaterialTheme.typography.titleMedium)
+            SkinManagedNotice { onInterfaceSettings(interfaceSettings.copy(skin = LevyraSkin.Default)) }
+        }
+    } else {
+        item(key = "studio-style-label", contentType = "studio-label") {
+            HomeStudioLabel(copy.styleSection)
+        }
+        item(key = "studio-styles", contentType = "studio-styles") {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(horizontal = 0.dp)
+            ) {
+                items(HomeStyle.entries, key = { it.storageId }) { option ->
+                    HomeStyleCard(
+                        style = option,
+                        selected = option == style,
+                        inUseLabel = copy.inUse,
+                        onClick = { onStyle(option) }
+                    )
+                }
+            }
+        }
+        item(key = "studio-style-description", contentType = "studio-text") {
+            Text(
+                text = "${homeStyleName(style)} · ${homeStyleDescription(style, copy)}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = LevyraMuted
+            )
+        }
+    }
+
 }

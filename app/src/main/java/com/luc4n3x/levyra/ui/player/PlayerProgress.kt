@@ -1,6 +1,8 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -59,8 +61,11 @@ internal fun PlayerProgress(
             ?.bars(if (compact) 72 else 96)
     }
 
+    val appearance = remember(style, activeColor, secondaryColor, motionActive, waveform, LevyraIsNocturne) {
+        playerProgressAppearance(style, activeColor, secondaryColor, motionActive, waveform)
+    }
     Column(modifier = modifier.fillMaxWidth()) {
-        if (style == PlayerProgressStyle.Wavy) {
+        if (appearance.wavy) {
             LevyraWavySeekbar(
                 positionMs = positionMs,
                 durationMs = durationMs,
@@ -83,13 +88,14 @@ internal fun PlayerProgress(
                     }
                 },
                 activeColor = activeColor,
-                trailingColor = secondaryColor,
+                trailingColor = appearance.trailing,
+                thumbColor = appearance.thumb,
                 inactiveColor = LevyraPlayerDesign.TrackInactive,
                 animated = animationsEnabled,
-                motionActive = motionActive,
-                waveform = waveform,
+                motionActive = appearance.motion,
+                waveform = appearance.waveform,
                 interactionKey = mediaId,
-                thumbShape = if (style == PlayerProgressStyle.Expressive) SeekbarThumbShape.Notched else SeekbarThumbShape.Round
+                thumbShape = appearance.thumbShape
             )
         }
         Row(
@@ -122,4 +128,15 @@ private fun PlayerTimeLabel(text: String, color: Color, compact: Boolean) {
         letterSpacing = 0.2.sp,
         style = TabularTimeStyle
     )
+}
+
+private class PlayerProgressAppearance(
+    val wavy: Boolean, val trailing: Color, val thumb: Color, val motion: Boolean,
+    val waveform: FloatArray?, val thumbShape: SeekbarThumbShape
+)
+
+private fun playerProgressAppearance(style: PlayerProgressStyle, active: Color, secondary: Color, motion: Boolean, waveform: FloatArray?): PlayerProgressAppearance {
+    val thumb = if (style == PlayerProgressStyle.Expressive) SeekbarThumbShape.Notched else SeekbarThumbShape.Round
+    return if (LevyraIsNocturne) PlayerProgressAppearance(false, active, active, false, null, thumb)
+    else PlayerProgressAppearance(style == PlayerProgressStyle.Wavy, secondary, Color.White, motion, waveform, thumb)
 }

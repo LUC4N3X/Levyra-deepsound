@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.ui.components
 
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+import com.luc4n3x.levyra.ui.theme.Nocturne78Design
+
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -123,8 +126,8 @@ internal fun LevyraWavyProgress(
     )
 }
 
-internal val LevyraGroupedOuterCorner: Dp = 24.dp
-internal val LevyraGroupedInnerCorner: Dp = 6.dp
+internal val LevyraGroupedOuterCorner: Dp get() = if (LevyraIsNocturne) Nocturne78Design.panelCorner else 24.dp
+internal val LevyraGroupedInnerCorner: Dp get() = if (LevyraIsNocturne) 2.dp else 6.dp
 
 internal fun levyraGroupedListShape(index: Int, count: Int): Shape {
     val first = index == 0

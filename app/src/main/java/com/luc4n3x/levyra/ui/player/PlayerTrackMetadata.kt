@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -61,7 +63,8 @@ internal fun PlayerTrackMetadata(
     onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val titleSize = if (compact) 23.sp else 27.sp
+    val nocturne = LevyraIsNocturne
+    val titleSize = if (nocturne) { if (compact) 22.sp else 25.sp } else if (compact) 23.sp else 27.sp
     val artistSize = if (compact) 15.sp else 16.5.sp
 
     Row(
@@ -82,7 +85,7 @@ internal fun PlayerTrackMetadata(
                     color = surfaces.content,
                     fontSize = titleSize,
                     lineHeight = LevyraTypeRhythm.lineHeight(titleSize),
-                    fontWeight = FontWeight.ExtraBold,
+                    fontWeight = if (nocturne) FontWeight.Medium else FontWeight.ExtraBold,
                     letterSpacing = (-0.8).sp,
                     maxLines = if (animationsEnabled) 1 else 2,
                     overflow = TextOverflow.Ellipsis,

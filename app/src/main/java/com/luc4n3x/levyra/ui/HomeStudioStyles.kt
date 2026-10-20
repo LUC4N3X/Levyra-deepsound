@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+import com.luc4n3x.levyra.ui.theme.Nocturne78Design
+
 import android.icu.text.DateFormat
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
@@ -154,7 +157,7 @@ internal data class HomeStyleSpec(
     val compactLimit: Int
 )
 
-internal fun homeStyleSpec(style: HomeStyle, density: HomeDensity): HomeStyleSpec {
+internal fun homeStyleSpec(style: HomeStyle, density: HomeDensity, nocturne: Boolean = false): HomeStyleSpec {
     val base = when (style) {
         HomeStyle.Original -> HomeStyleSpec(16.dp, 8.dp, 156.dp, 260.dp, 1f, 12.dp, 52.dp, 5, 3, 6)
         HomeStyle.ExpressiveMax -> HomeStyleSpec(16.dp, 20.dp, 168.dp, 304.dp, 1f, 32.dp, 56.dp, 5, 3, 6)
@@ -170,7 +173,8 @@ internal fun homeStyleSpec(style: HomeStyle, density: HomeDensity): HomeStyleSpe
         HomeDensity.Spacious -> 1.12f
     }
     return base.copy(
-        sectionGap = base.sectionGap * scale,
+        sectionGap = (if (nocturne) base.sectionGap.coerceAtMost(16.dp) else base.sectionGap) * scale,
+        artworkCorner = if (nocturne) Nocturne78Design.artworkCorner else base.artworkCorner,
         cardWidth = base.cardWidth * scale,
         largeCardWidth = base.largeCardWidth * scale,
         listLimit = if (density == HomeDensity.Compact) base.listLimit + 1 else base.listLimit
@@ -297,6 +301,8 @@ private fun expressiveArtistShapeFor(index: Int): Shape = when (index % 3) {
 
 @Composable
 private fun studioArtworkShape(style: HomeStyle, spec: HomeStyleSpec, index: Int, round: Boolean): Shape = when {
+    LevyraIsNocturne && !round -> RoundedCornerShape(Nocturne78Design.artworkCorner)
+    LevyraIsNocturne -> CircleShape
     round && style == HomeStyle.Minimal -> RoundedCornerShape(spec.artworkCorner)
     round && style == HomeStyle.ExpressiveMax -> expressiveArtistShapeFor(index)
     round -> CircleShape
@@ -306,7 +312,7 @@ private fun studioArtworkShape(style: HomeStyle, spec: HomeStyleSpec, index: Int
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-internal fun studioOrbitShape(style: HomeStyle, index: Int, fallback: Shape): Shape = when (style) {
+internal fun studioOrbitShape(style: HomeStyle, index: Int, fallback: Shape): Shape = if (LevyraIsNocturne) RoundedCornerShape(Nocturne78Design.artworkCorner) else when (style) {
     HomeStyle.ExpressiveMax -> when (index % 6) {
         0 -> MaterialShapes.SoftBurst.toShape()
         1 -> MaterialShapes.Cookie9Sided.toShape()
@@ -945,6 +951,10 @@ private fun StudioCompact(
     isPlaying: Boolean,
     modifier: Modifier
 ) {
+    if (LevyraIsNocturne) {
+        NocturneCompactShelf(items, isPlaying, spec.inset, modifier)
+        return
+    }
     if (items.first().round) {
         StudioChipRow(spec, items, modifier)
         return
@@ -1059,6 +1069,10 @@ internal fun StudioHomeHeader(
     }
     val topKicker = if (name.isNotBlank()) dayPart else today
     val mainHeading = if (name.isNotBlank()) name else dayPart
+    if (LevyraIsNocturne) {
+        NocturneHomeHeader(greeting, today.takeIf { name.isBlank() }.orEmpty(), hero, spec.inset, onSearch, onSettings)
+        return
+    }
     if (style == HomeStyle.MaterialExpressive && hero != null) {
         MxBleedHero(
             hero = hero,
@@ -1076,33 +1090,7 @@ internal fun StudioHomeHeader(
         return
     }
     val actions: @Composable () -> Unit = {
-        if (style == HomeStyle.ExpressiveMax) {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                FilledTonalIconButton(onClick = onSearch, shapes = IconButtonDefaults.shapes(), modifier = Modifier.size(52.dp)) {
-                    Icon(Icons.Rounded.Search, contentDescription = strings.search)
-                }
-                FilledTonalIconButton(onClick = onSettings, shapes = IconButtonDefaults.shapes(), modifier = Modifier.size(52.dp)) {
-                    if (isResolving) {
-                        LevyraLoadingIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.primary)
-                    } else {
-                        Icon(Icons.Rounded.Settings, contentDescription = strings.settings)
-                    }
-                }
-            }
-        } else {
-            Row {
-                IconButton(onClick = onSearch) {
-                    Icon(Icons.Rounded.Search, contentDescription = strings.search, tint = LevyraText)
-                }
-                IconButton(onClick = onSettings) {
-                    if (isResolving) {
-                        LevyraLoadingIndicator(modifier = Modifier.size(22.dp), color = MaterialTheme.colorScheme.primary)
-                    } else {
-                        Icon(Icons.Rounded.Settings, contentDescription = strings.settings, tint = LevyraText)
-                    }
-                }
-            }
-        }
+        StudioHeaderActions(style, isResolving, onSearch, onSettings)
     }
     val headingModifier = Modifier.clearAndSetSemantics {
         contentDescription = greeting
@@ -1194,6 +1182,41 @@ internal fun StudioHomeHeader(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun StudioHeaderActions(style: HomeStyle, isResolving: Boolean, onSearch: () -> Unit, onSettings: () -> Unit) {
+    val strings = LocalLevyraStrings.current
+    if (style == HomeStyle.ExpressiveMax) {
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            FilledTonalIconButton(onClick = onSearch, shapes = IconButtonDefaults.shapes(), modifier = Modifier.size(52.dp)) {
+                Icon(Icons.Rounded.Search, contentDescription = strings.search)
+            }
+            FilledTonalIconButton(onClick = onSettings, shapes = IconButtonDefaults.shapes(), modifier = Modifier.size(52.dp)) {
+                if (isResolving) {
+                    LevyraLoadingIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.primary)
+                } else {
+                    Icon(Icons.Rounded.Settings, contentDescription = strings.settings)
+                }
+            }
+        }
+    } else {
+        Row {
+            IconButton(onClick = onSearch) {
+                Icon(Icons.Rounded.Search, contentDescription = strings.search, tint = LevyraText)
+            }
+            IconButton(onClick = onSettings) {
+                if (isResolving) {
+                    LevyraLoadingIndicator(modifier = Modifier.size(22.dp), color = MaterialTheme.colorScheme.primary)
+                } else {
+                    Icon(Icons.Rounded.Settings, contentDescription = strings.settings, tint = LevyraText)
+                }
+            }
+        }
+    }
+
+}
+
+
 @Composable
 internal fun StudioFlowShortcuts(
     spec: HomeStyleSpec,
@@ -1239,6 +1262,10 @@ internal fun StudioSpotlight(
     val playing = isCurrent && isPlaying
     val resolving = isCurrent && isResolving
     val playIcon = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow
+    if (LevyraIsNocturne) {
+        CompactSpotlight(HomeStyle.Minimal, spec, track, artistArtworkUrl, label, lead, playLabel, playing, resolving, playIcon, animationsEnabled, onOpen)
+        return
+    }
     when (style) {
         HomeStyle.ExpressiveMax -> ExpressiveSpotlight(spec, track, label, lead, playLabel, playing, resolving, playIcon, animationsEnabled, onOpen)
         HomeStyle.Editorial -> EditorialSpotlight(spec, track, artistArtworkUrl, label, lead, playLabel, resolving, playIcon, onOpen)
@@ -1946,6 +1973,10 @@ internal fun StudioHomeBackdrop(
     val isLight = LevyraIsLight
     val canvas = homeCanvasColor(isLight)
     val scheme = MaterialTheme.colorScheme
+    if (LevyraIsNocturne) {
+        Box(modifier.fillMaxSize().background(canvas))
+        return
+    }
     when (style) {
         HomeStyle.Original -> LevyraHomeAtmosphere(isLight = isLight, accent = accent, modifier = modifier)
         HomeStyle.ExpressiveMax -> StudioExpressiveMaxBackdrop(
@@ -2559,6 +2590,10 @@ private fun StudioMinimalChart(
     spec: HomeStyleSpec,
     onPlay: (Track) -> Unit
 ) {
+    if (LevyraIsNocturne) {
+        NocturneChartShelf(tracks, currentId, isPlaying, onPlay, spec.inset)
+        return
+    }
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = spec.inset)) {
         tracks.take(8).forEachIndexed { index, track ->
             Row(

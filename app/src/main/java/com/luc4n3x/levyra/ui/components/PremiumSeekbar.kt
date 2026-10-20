@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui.components
 
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.LinearEasing
@@ -127,7 +129,8 @@ fun PremiumSeekbar(
 ) {
     val density = LocalDensity.current
     val haptics = LocalLevyraHaptics.current
-    val decorativeMotion = LocalLevyraVisualCapabilities.current.decorativeMotion
+    val nocturne = LevyraIsNocturne
+    val decorativeMotion = LocalLevyraVisualCapabilities.current.decorativeMotion && !nocturne
     val measuredWaveform = waveform?.takeIf { values ->
         values.isNotEmpty() && values.all { it.isFinite() }
     }
@@ -388,7 +391,12 @@ fun PremiumSeekbar(
                 }
             }
 
-            if (measuredWaveform != null) {
+            if (nocturne && handleX > trackStart) {
+                drawRoundRect(
+                    color = activeColor, topLeft = Offset(trackStart, trackTop),
+                    size = Size(handleX - trackStart, trackHeight), cornerRadius = radius
+                )
+            } else if (measuredWaveform != null) {
                 drawMeasuredWaveform(
                     waveform = measuredWaveform,
                     trackStart = trackStart,

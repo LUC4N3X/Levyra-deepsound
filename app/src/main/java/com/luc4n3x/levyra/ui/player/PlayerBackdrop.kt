@@ -81,6 +81,10 @@ internal fun PlayerBackdrop(
     focusY: Float = 0.34f,
     reactiveAura: ReactiveAuraStyle = ReactiveAuraStyle.Default
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsNocturne) {
+        Box(modifier.background(Color.Black))
+        return
+    }
     val colorSpec = LevyraPlayerDesign.motion(
         animationsEnabled,
         tween<Color>(BackdropColorMillis, easing = LevyraPlayerDesign.Decelerate)

@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+import com.luc4n3x.levyra.ui.theme.Nocturne78Design
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -102,11 +105,12 @@ internal fun LevyraMixLauncherPanel(
     onOpenMixLab: () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
-    val panelShape = RoundedCornerShape(28.dp)
-    val wash = remember(accent, colors.surfaceContainerHigh) {
+    val nocturne = LevyraIsNocturne
+    val panelShape = RoundedCornerShape(if (nocturne) Nocturne78Design.panelCorner else 28.dp)
+    val wash = remember(accent, colors.surfaceContainerHigh, nocturne) {
         Brush.linearGradient(
-            0f to accent.copy(alpha = 0.34f),
-            0.55f to accent.copy(alpha = 0.10f),
+            0f to accent.copy(alpha = if (nocturne) 0f else 0.34f),
+            0.55f to accent.copy(alpha = if (nocturne) 0f else 0.10f),
             1f to colors.surfaceContainerHigh.copy(alpha = 0f)
         )
     }

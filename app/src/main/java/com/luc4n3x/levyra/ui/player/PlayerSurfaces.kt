@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
+
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 import com.luc4n3x.levyra.ui.PlayerDarkSurface
@@ -37,7 +39,16 @@ private const val TonalLift = 0.30f
 private const val TonalAlpha = 0.24f
 private const val AmoledTonalDepth = 0.74f
 
-internal fun playerSurfaceTokens(primary: Color, amoled: Boolean): PlayerSurfaceTokens {
+internal fun playerSurfaceTokens(primary: Color, amoled: Boolean, nocturne: Boolean = false): PlayerSurfaceTokens {
+    if (nocturne) {
+        val p = Nocturne78Palette
+        return PlayerSurfaceTokens(
+            amoled = true, control = p.panelSoft, controlQuiet = p.panel, outline = p.outline,
+            active = p.panelSoft, activeContent = p.cyan, tonal = p.panel,
+            hero = p.panelSoft, heroContent = p.cyan, content = p.text,
+            contentMuted = p.muted, contentFaint = p.muted, glow = Color.Transparent
+        )
+    }
     val accent = primary.copy(alpha = 1f)
     val hero = accent.playerMix(Color.White, HeroLift)
     val heroContent = accent.playerMix(PlayerDarkSurface, HeroInkDepth)

@@ -1818,6 +1818,7 @@ internal fun backupInterfaceSettingsToJson(value: LevyraInterfaceSettings): JSON
     .put("motionArtworkWifiOnly", value.motionArtworkWifiOnly)
     .put("enhanceVideoMetadata", value.enhanceVideoMetadata)
     .put("pureBlack", value.pureBlack)
+    .put("skin", value.skin.name)
     .put("hapticFeedback", value.hapticFeedback)
     .put("playerVisualMode", value.playerVisualMode.name)
     .put("playerBackground", value.playerBackground.name)
@@ -1871,6 +1872,7 @@ internal fun backupInterfaceSettingsFromJson(
         motionArtworkWifiOnly = json.optBoolean("motionArtworkWifiOnly", false),
         enhanceVideoMetadata = json.optBoolean("enhanceVideoMetadata", false),
         pureBlack = json.optBoolean("pureBlack", false),
+        skin = com.luc4n3x.levyra.domain.LevyraSkin.from(json.optString("skin")),
         hapticFeedback = json.optBoolean("hapticFeedback", true),
         playerVisualMode = visualMode,
         playerBackground = backgroundMode,

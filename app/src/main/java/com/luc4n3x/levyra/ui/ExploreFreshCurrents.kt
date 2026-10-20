@@ -61,6 +61,9 @@ import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
+import com.luc4n3x.levyra.ui.theme.Nocturne78Design
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.theme.LevyraType
@@ -257,11 +260,13 @@ private fun ExploreFreshSpotlightPage(
     actions: @Composable () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val animationsEnabled = LocalAnimationsEnabled.current
+    val nocturne = LevyraIsNocturne
+    val animationsEnabled = LocalAnimationsEnabled.current && !nocturne
     val card = exploreReleaseCard(track)
-    val accent = remember(track.accentStart) { Color(track.accentStart) }
-    val glowEnd = remember(track.accentEnd) { Color(track.accentEnd) }
-    val ink = remember(accent) { lerp(accent, Color.Black, 0.72f) }
+    val palette = rememberFreshSpotlightPalette(track)
+    val accent = palette.accent
+    val glowEnd = palette.glowEnd
+    val ink = palette.ink
     val scrim = remember(ink) {
         Brush.verticalGradient(
             0.00f to Color.Black.copy(alpha = 0.34f),
@@ -271,7 +276,7 @@ private fun ExploreFreshSpotlightPage(
             1.00f to ink.copy(alpha = 0.96f)
         )
     }
-    val buttonFill = remember(accent) { lerp(accent, Color.White, 0.72f) }
+    val buttonFill = palette.buttonFill
     val onOpen = if (card.opensAlbum) onOpenAlbum else onPlay
     val playing = isCurrent && isPlaying && !card.opensAlbum
 
@@ -289,9 +294,9 @@ private fun ExploreFreshSpotlightPage(
                 rotationY = offset * FreshCardTiltDegrees
                 rotationZ = offset * FreshCardRollDegrees
                 cameraDistance = FreshCardCameraDistance * density
-                shape = RoundedCornerShape(corner.toPx())
+                shape = RoundedCornerShape(if (nocturne) Nocturne78Design.cardCorner.toPx() else corner.toPx())
                 clip = true
-                shadowElevation = (20.dp * focus).toPx()
+                shadowElevation = if (nocturne) 0f else (20.dp * focus).toPx()
                 ambientShadowColor = accent.copy(alpha = 0.32f)
                 spotShadowColor = glowEnd.copy(alpha = 0.42f)
             }
@@ -299,11 +304,7 @@ private fun ExploreFreshSpotlightPage(
             .levyraPressable(
                 onClick = onOpen,
                 enabled = !(isResolving && !card.opensAlbum),
-                onClickLabel = when {
-                    card.opensAlbum -> strings.openAlbum
-                    playing -> strings.pause
-                    else -> strings.play
-                },
+                onClickLabel = freshSpotlightActionLabel(card.opensAlbum, playing, strings),
                 role = Role.Button,
                 pressedScale = LevyraPressScale.Tile
             )
@@ -395,22 +396,7 @@ private fun ExploreFreshSpotlightPage(
                     .background(buttonFill),
                 contentAlignment = Alignment.Center
             ) {
-                when {
-                    isResolving && !card.opensAlbum -> DiscoveryLoadingIndicator(Modifier.size(22.dp), ink)
-                    card.opensAlbum -> Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-                        contentDescription = null,
-                        tint = ink,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    playing -> LevyraPlayingIndicator(playing = true, color = ink)
-                    else -> Icon(
-                        imageVector = Icons.Rounded.PlayArrow,
-                        contentDescription = null,
-                        tint = ink,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
+                FreshSpotlightControl(isResolving, card.opensAlbum, playing, ink)
             }
         }
     }
@@ -610,3 +596,43 @@ internal fun exploreReleaseEyebrow(kind: ExploreReleaseKind, strings: LevyraStri
         ExploreReleaseKind.Single -> strings.newSingle
         ExploreReleaseKind.Release -> strings.newRelease
     }
+
+private data class FreshSpotlightPalette(val accent: Color, val glowEnd: Color, val ink: Color, val buttonFill: Color)
+
+@Composable
+private fun rememberFreshSpotlightPalette(track: Track): FreshSpotlightPalette {
+    val nocturne = LevyraIsNocturne
+    return remember(track.accentStart, track.accentEnd, nocturne) {
+        if (nocturne) FreshSpotlightPalette(Nocturne78Palette.cyan, Nocturne78Palette.panel, Nocturne78Palette.ink, Nocturne78Palette.cyan)
+        else {
+            val accent = Color(track.accentStart)
+            FreshSpotlightPalette(accent, Color(track.accentEnd), lerp(accent, Color.Black, 0.72f), lerp(accent, Color.White, 0.72f))
+        }
+    }
+}
+
+private fun freshSpotlightActionLabel(opensAlbum: Boolean, playing: Boolean, strings: LevyraStrings): String = when {
+    opensAlbum -> strings.openAlbum
+    playing -> strings.pause
+    else -> strings.play
+}
+
+@Composable
+private fun FreshSpotlightControl(isResolving: Boolean, opensAlbum: Boolean, playing: Boolean, ink: Color) {
+    when {
+        isResolving && !opensAlbum -> DiscoveryLoadingIndicator(Modifier.size(22.dp), ink)
+        opensAlbum -> Icon(
+            imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+            contentDescription = null,
+            tint = ink,
+            modifier = Modifier.size(24.dp)
+        )
+        playing -> LevyraPlayingIndicator(playing = true, color = ink)
+        else -> Icon(
+            imageVector = Icons.Rounded.PlayArrow,
+            contentDescription = null,
+            tint = ink,
+            modifier = Modifier.size(28.dp)
+        )
+    }
+}
