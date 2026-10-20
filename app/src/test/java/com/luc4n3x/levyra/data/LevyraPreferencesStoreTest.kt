@@ -103,7 +103,6 @@ class LevyraPreferencesStoreTest {
         val (store, preferences) = open()
         val prism = com.luc4n3x.levyra.domain.PrismSettings(
             appearance = com.luc4n3x.levyra.domain.PrismAppearance.Light,
-            colors = com.luc4n3x.levyra.domain.PrismColors.Glacier,
             playerLayout = com.luc4n3x.levyra.domain.PrismPlayerLayout.Focus,
             translucency = com.luc4n3x.levyra.domain.PrismTranslucency.Reduced
         )

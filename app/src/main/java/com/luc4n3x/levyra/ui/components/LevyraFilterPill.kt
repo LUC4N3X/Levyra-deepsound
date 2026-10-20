@@ -38,6 +38,10 @@ import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
 import com.luc4n3x.levyra.ui.theme.LevyraMotion
 import com.luc4n3x.levyra.ui.theme.LevyraType
+import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
+import com.luc4n3x.levyra.ui.theme.LevyraIsPrism
+import com.luc4n3x.levyra.ui.theme.LevyraIsTorque
+import com.luc4n3x.levyra.ui.theme.PrismAccent
 
 private val FilterPillTouchHeight = 48.dp
 private val FilterPillVisualHeight = 40.dp
@@ -50,12 +54,20 @@ private fun animatedFilterPillColors(selected: Boolean, animationsEnabled: Boole
     val colors = MaterialTheme.colorScheme
     val spec: AnimationSpec<Color> = if (animationsEnabled) LevyraMotion.standard() else snap()
     val container by animateColorAsState(
-        targetValue = if (selected) colors.primaryContainer else colors.surfaceContainerHigh,
+        targetValue = when {
+            LevyraIsTorque -> if (selected) LevyraActivePalette.blue else Color.Transparent
+            LevyraIsPrism -> if (selected) PrismAccent.Tint else colors.surfaceContainer
+            else -> if (selected) colors.primaryContainer else colors.surfaceContainerHigh
+        },
         animationSpec = spec,
         label = "filter-pill-container"
     )
     val content by animateColorAsState(
-        targetValue = if (selected) colors.onPrimaryContainer else colors.onSurfaceVariant,
+        targetValue = when {
+            LevyraIsTorque -> if (selected) Color.White else colors.onSurface
+            LevyraIsPrism -> if (selected) colors.primary else colors.onSurfaceVariant
+            else -> if (selected) colors.onPrimaryContainer else colors.onSurfaceVariant
+        },
         animationSpec = spec,
         label = "filter-pill-content"
     )
@@ -106,7 +118,7 @@ internal fun LevyraFilterPill(
     val corner = levyraExpressiveToggleCorner(
         checked = selected,
         unchecked = FilterPillVisualHeight / 2,
-        checkedCorner = 12.dp,
+        checkedCorner = if (LevyraIsPrism) FilterPillVisualHeight / 2 else 12.dp,
         label = "filter-pill-corner"
     )
     val shape = RoundedCornerShape(corner)

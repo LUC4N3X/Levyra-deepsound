@@ -11,11 +11,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.NavTuning
@@ -27,39 +30,46 @@ internal fun PrismBottomTabs(tuning: NavTuning, selected: LevyraTab, onSelect: (
     val entries = remember(all, tuning.order, tuning.hidden) {
         tuning.visibleOrder().mapNotNull { tab -> all.firstOrNull { it.tab == tab } }
     }
-    val colors = MaterialTheme.colorScheme
     val haptics = LocalLevyraHaptics.current
     val measuredHeight = LocalNocturneNavigationHeight.current
     val density = LocalDensity.current
+    val torque = LevyraIsTorque
     Column(Modifier.fillMaxWidth()) {
         Surface(
             modifier = Modifier.fillMaxWidth().onSizeChanged { size ->
                 measuredHeight?.value = with(density) { size.height.toDp() }
-            }.padding(horizontal = 16.dp, vertical = 6.dp),
-            shape = RoundedCornerShape(12.dp), color = prismGlassColor(),
-            border = BorderStroke(1.dp, colors.outlineVariant)
+            },
+            shape = if (torque) RectangleShape else RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp), color = prismGlassColor(),
+            border = if (LevyraActivePalette.isLight) BorderStroke(PrismDesign.hairline, PrismAccent.Hairline) else null
         ) {
-            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).selectableGroup().padding(horizontal = 6.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column {
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).selectableGroup().padding(horizontal = 6.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 entries.forEach { entry ->
                     val active = entry.tab == selected
+                    val tint = if (active) LevyraCyan else LevyraMuted
                     Column(
-                        Modifier.weight(1f).fillMaxHeight().heightIn(min = 56.dp)
+                        Modifier.weight(1f).fillMaxHeight().heightIn(min = 60.dp).clip(RoundedCornerShape(PrismDesign.controlCorner))
                             .selectable(active, role = Role.Tab, onClick = {
                                 if (!active && tuning.haptics) haptics.perform(LevyraHapticAction.SeekSnap)
                                 onSelect(entry.tab)
-                            }).padding(horizontal = 4.dp, vertical = 8.dp),
+                            }).padding(horizontal = 2.dp, vertical = 6.dp),
                         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
                     ) {
-                        val tint = if (active) colors.primary else colors.onSurfaceVariant
-                        Icon(entry.unselectedIcon, null, tint = tint, modifier = Modifier.size(22.dp))
+                        Box(
+                            Modifier.width(52.dp).height(30.dp).clip(RoundedCornerShape(if (torque) 2.dp else 15.dp))
+                                .background(if (active && !torque) PrismAccent.Tint else Color.Transparent),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(if (active) entry.selectedIcon else entry.unselectedIcon, null, tint = tint, modifier = Modifier.size(22.dp))
+                        }
                         Spacer(Modifier.height(4.dp))
-                        Text(entry.label, color = tint, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
-                        Spacer(Modifier.height(4.dp))
-                        Box(Modifier.width(18.dp).height(2.dp).background(if (active) colors.primary else Color.Transparent))
+                        Text(entry.label, color = if (active) LevyraText else LevyraMuted, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        if (torque) Box(Modifier.padding(top = 4.dp).width(20.dp).height(3.dp).background(if (active) LevyraActivePalette.blue else Color.Transparent))
                     }
                 }
             }
+            if (applySystemInset) Spacer(Modifier.navigationBarsPadding())
+            }
         }
-        if (applySystemInset) Spacer(Modifier.navigationBarsPadding())
     }
 }

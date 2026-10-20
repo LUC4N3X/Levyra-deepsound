@@ -1,14 +1,16 @@
 package com.luc4n3x.levyra.ui.theme
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
 import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.data.ArtworkPalette
@@ -19,99 +21,158 @@ import com.luc4n3x.levyra.ui.preferredPlayerArtworkUrl
 import com.materialkolor.hct.Hct
 
 internal const val PrismPaletteId = "levyra_prism"
-val LevyraIsPrism: Boolean get() = LevyraActivePalette.id == PrismPaletteId
+internal const val TorquePaletteId = "levyra_torque"
+val LevyraIsTorque: Boolean get() = LevyraActivePalette.id == TorquePaletteId
+val LevyraIsPrism: Boolean get() = LevyraActivePalette.id == PrismPaletteId || LevyraIsTorque
 internal val LevyraSkinManagesLayout: Boolean get() = LevyraIsNocturne || LevyraIsPrism
 internal val LevyraSkinLabel: String get() = LevyraActivePalette.label
 internal var activePrismSettings by mutableStateOf(PrismSettings())
     private set
+internal var activeTorqueSettings by mutableStateOf(TorqueSettings())
+    private set
 
 internal object PrismDesign {
-    val artworkCorner = 10.dp
-    val surfaceCorner = 14.dp
-    val controlCorner = 8.dp
-    val gutter = 20.dp
+    val artworkCorner: Dp get() = if (LevyraIsTorque) 0.dp else 18.dp
+    val tileCorner: Dp get() = if (LevyraIsTorque) 2.dp else 12.dp
+    val surfaceCorner: Dp get() = if (LevyraIsTorque) 2.dp else 20.dp
+    val controlCorner: Dp get() = if (LevyraIsTorque) 2.dp else 14.dp
+    val gutter = 24.dp
+    val rowHeight = 64.dp
+    val iconTile = 44.dp
     val hairline = 1.dp
+    val seekbarHeight: Dp get() = if (LevyraIsTorque) 3.dp else 6.dp
+
+    fun cut(corner: Dp): Shape =
+        if (LevyraIsTorque) CutCornerShape(bottomEnd = 12.dp)
+        else RoundedCornerShape(topStart = corner, topEnd = corner, bottomEnd = corner / 3, bottomStart = corner)
 }
 
-internal val PrismShapes = Shapes(
+internal object PrismAccent {
+    private val nightStart = Color(0xFFF03A62)
+    private val nightEnd = Color(0xFFD13FC0)
+    private val lightStart = Color(0xFFC41E4C)
+    private val lightEnd = Color(0xFF9F2594)
+
+    fun gradient(light: Boolean = LevyraActivePalette.isLight): Brush = when {
+        LevyraIsTorque -> SolidColor(LevyraActivePalette.blue)
+        light -> Brush.horizontalGradient(listOf(lightStart, lightEnd))
+        else -> Brush.horizontalGradient(listOf(nightStart, nightEnd))
+    }
+
+    fun wash(light: Boolean): Color = when {
+        LevyraIsTorque -> Color.Transparent
+        light -> lightStart.copy(alpha = 0.07f)
+        else -> nightStart.copy(alpha = 0.16f)
+    }
+
+    val Tint: Color get() = LevyraCyan.copy(alpha = if (LevyraActivePalette.isLight) 0.10f else 0.16f)
+    val Hairline: Color get() = LevyraText.copy(alpha = if (LevyraActivePalette.isLight) 0.10f else 0.08f)
+}
+
+private val PrismRoundShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp), small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(10.dp), large = RoundedCornerShape(14.dp),
-    extraLarge = RoundedCornerShape(18.dp)
+    medium = RoundedCornerShape(14.dp), large = RoundedCornerShape(20.dp),
+    extraLarge = RoundedCornerShape(28.dp)
 )
+
+private val TorqueShapes = Shapes(
+    extraSmall = RoundedCornerShape(2.dp), small = RoundedCornerShape(2.dp),
+    medium = RoundedCornerShape(2.dp), large = RoundedCornerShape(4.dp),
+    extraLarge = RoundedCornerShape(4.dp)
+)
+
+internal val PrismShapes: Shapes get() = if (LevyraIsTorque) TorqueShapes else PrismRoundShapes
 
 internal val PrismTypography = levyraTypographyFor(LevyraFontPreset.Outfit).let { base ->
     base.copy(
-        headlineLarge = base.headlineLarge.copy(letterSpacing = (-1.1).sp),
-        headlineMedium = base.headlineMedium.copy(letterSpacing = (-0.7).sp),
-        titleLarge = base.titleLarge.copy(letterSpacing = (-0.4).sp),
-        labelSmall = base.labelSmall.copy(letterSpacing = 0.8.sp)
+        displaySmall = base.displaySmall.copy(fontWeight = FontWeight.Normal, letterSpacing = (-1.2).sp),
+        headlineLarge = base.headlineLarge.copy(fontWeight = FontWeight.Normal, letterSpacing = (-1.0).sp),
+        headlineMedium = base.headlineMedium.copy(fontWeight = FontWeight.Normal, letterSpacing = (-0.6).sp),
+        headlineSmall = base.headlineSmall.copy(fontWeight = FontWeight.Normal, letterSpacing = (-0.4).sp),
+        titleLarge = base.titleLarge.copy(fontWeight = FontWeight.Medium, letterSpacing = (-0.3).sp),
+        titleMedium = base.titleMedium.copy(fontWeight = FontWeight.Medium),
+        titleSmall = base.titleSmall.copy(fontWeight = FontWeight.Medium),
+        labelSmall = base.labelSmall.copy(letterSpacing = 0.6.sp)
     )
 }
 
-internal fun prismPalette(
-    settings: PrismSettings = PrismSettings(),
-    systemDark: Boolean = true,
-    artworkStart: Int? = null,
-    artworkEnd: Int? = null
-): LevyraPalette {
+internal fun prismPalette(settings: PrismSettings = PrismSettings(), systemDark: Boolean = true): LevyraPalette {
     val light = settings.appearance == PrismAppearance.Light ||
         settings.appearance == PrismAppearance.Automatic && !systemDark
-    val seeds = when (settings.colors) {
-        PrismColors.Adaptive -> (artworkStart ?: 0xFFA18AFF.toInt()) to (artworkEnd ?: 0xFF65DFF4.toInt())
-        PrismColors.Ultraviolet -> 0xFFA18AFF.toInt() to 0xFFEC70C9.toInt()
-        PrismColors.Glacier -> 0xFF638FFF.toInt() to 0xFF65DFF4.toInt()
-    }
-    fun tone(seed: Int, tone: Double, chroma: Double): Color {
-        val source = Hct.fromInt(seed)
-        return Color(Hct.from(source.hue, source.chroma.coerceIn(16.0, chroma), tone).toInt())
-    }
-    val accent = tone(seeds.first, if (light) 40.0 else 78.0, 48.0)
-    val companion = tone(seeds.second, if (light) 40.0 else 80.0, 40.0)
     return LevyraThemes.cosmic.copy(
-        id = PrismPaletteId, label = "Levyra Prism", emoji = "◈", isLight = light,
+        id = PrismPaletteId, label = "Prism", emoji = "◈", isLight = light,
         followsCover = false, followsMood = false,
-        black = if (light) Color(0xFFF5F5FA) else Color(0xFF080A12),
-        ink = if (light) Color.White else Color(0xFF101321),
-        panel = if (light) Color.White else Color(0xFF171B2B),
-        panelSoft = if (light) Color(0xFFE9EBF5) else Color(0xFF22283C),
-        cyan = accent, blue = tone(seeds.first, if (light) 48.0 else 68.0, 48.0),
-        violet = companion, pink = tone(seeds.second, if (light) 45.0 else 72.0, 44.0), orange = companion,
-        text = if (light) Color(0xFF171827) else Color(0xFFF8F9FF),
-        muted = if (light) Color(0xFF62697D) else Color(0xFFADB5CC),
-        outline = if (light) Color(0xFFCDD1E2) else Color(0xFF363E56)
+        black = if (light) Color(0xFFF7F6F8) else Color(0xFF000000),
+        ink = if (light) Color(0xFFFFFFFF) else Color(0xFF0B0B0D),
+        panel = if (light) Color(0xFFFFFFFF) else Color(0xFF131316),
+        panelSoft = if (light) Color(0xFFEEECF0) else Color(0xFF1C1C20),
+        cyan = if (light) Color(0xFFC2185E) else Color(0xFFF2367F),
+        blue = if (light) Color(0xFFC41E4C) else Color(0xFFF03A62),
+        violet = if (light) Color(0xFF9F2594) else Color(0xFFD13FC0),
+        pink = if (light) Color(0xFFB0246E) else Color(0xFFF76AA6),
+        orange = if (light) Color(0xFF9F2594) else Color(0xFFD13FC0),
+        text = if (light) Color(0xFF151418) else Color(0xFFF6F5F7),
+        muted = if (light) Color(0xFF5D5963) else Color(0xFFA7A4AC),
+        outline = if (light) Color(0xFFDAD7DE) else Color(0xFF2B2B31)
+    )
+}
+
+internal const val TorqueRed = 0xFFE8322D.toInt()
+
+internal fun torquePalette(settings: TorqueSettings = TorqueSettings(), coverSeed: Int? = null): LevyraPalette {
+    val seed = if (settings.accent == TorqueAccent.Cover) coverSeed ?: TorqueRed else TorqueRed
+    val source = Hct.fromInt(seed)
+    val chroma = if (seed == TorqueRed) source.chroma else source.chroma.coerceAtLeast(36.0)
+    fun tone(value: Double, maxChroma: Double) = Color(Hct.from(source.hue, chroma.coerceAtMost(maxChroma), value).toInt())
+    val band = if (seed == TorqueRed) Color(TorqueRed) else tone(46.0, 64.0)
+    return LevyraThemes.cosmic.copy(
+        id = TorquePaletteId, label = "Torque", emoji = "◢", isLight = false,
+        followsCover = false, followsMood = false,
+        black = Color(0xFF111111), ink = Color(0xFF161616),
+        panel = Color(0xFF1D1D1D), panelSoft = Color(0xFF272727),
+        cyan = tone(66.0, 72.0), blue = band, violet = tone(34.0, 56.0),
+        pink = tone(74.0, 60.0), orange = band,
+        text = Color(0xFFF4F4F4), muted = Color(0xFFA9A9A9), outline = Color(0xFF333333)
     )
 }
 
 @Composable
-internal fun PrismThemeEffect(settings: LevyraInterfaceSettings, track: Track?, animationsEnabled: Boolean) {
+internal fun PrismThemeEffect(settings: LevyraInterfaceSettings) {
     val prism = settings.prism
     val systemDark = isSystemInDarkTheme()
+    val palette = remember(prism, systemDark) { prismPalette(prism, systemDark) }
+    SideEffect {
+        activePrismSettings = prism
+        LevyraThemeController.applyPrism(palette)
+    }
+}
+
+@Composable
+internal fun TorqueThemeEffect(settings: LevyraInterfaceSettings, track: Track?) {
+    val torque = settings.torque
     val key = remember(track?.id, track?.thumbnailUrl, track?.largeThumbnailUrl) {
         track?.let { ArtworkPaletteCache.key(it.id, it.thumbnailUrl, it.largeThumbnailUrl) }.orEmpty()
     }
-    val fallback = remember { ArtworkPalette(0xFFA18AFF.toInt(), 0xFF65DFF4.toInt()) }
-    val artwork by rememberArtworkPalette(
-        paletteKey = if (prism.colors == PrismColors.Adaptive) key else "",
+    val fallback = remember { ArtworkPalette(TorqueRed, TorqueRed) }
+    val cover by rememberArtworkPalette(
+        paletteKey = if (torque.accent == TorqueAccent.Cover) key else "",
         artworkUrl = track?.let(::preferredPlayerArtworkUrl).orEmpty(),
         fallback = fallback,
         retainPreviousUntilLoaded = true
     )
-    val target = remember(prism, systemDark, artwork) { prismPalette(prism, systemDark, artwork.start, artwork.end) }
-    val motion = animationsEnabled && LocalLevyraVisualCapabilities.current.decorativeMotion
-    val start by animateColorAsState(target.cyan, if (motion) tween(450) else snap(), label = "prism-primary")
-    val end by animateColorAsState(target.violet, if (motion) tween(450) else snap(), label = "prism-companion")
-    val animatedPalette = target.copy(cyan = start, violet = end, blue = start, pink = end)
+    val palette = remember(torque, cover) { torquePalette(torque, cover.start.takeIf { it != TorqueRed }) }
     SideEffect {
-        activePrismSettings = prism
-        LevyraThemeController.applyPrism(animatedPalette)
+        activeTorqueSettings = torque
+        LevyraThemeController.applyPrism(palette)
     }
 }
 
 internal fun prismMiniSettings(saved: LevyraMiniPlayerStudioSettings): LevyraMiniPlayerStudioSettings {
+    val torque = LevyraIsTorque
     val tuning = LevyraMiniPlayerStudioSettings.spec(MiniPlayerStyle.Floating).defaults.copy(
-        cornerDp = 12, heightDp = 60, artworkDp = 44, shadow = 0, glow = 0,
-        artworkShape = MiniArtworkShape.Rounded, progress = MiniProgressStyle.Line,
-        buttons = MiniButtonStyle.Outlined, colorMode = MiniColorMode.Theme,
+        cornerDp = if (torque) 2 else 20, heightDp = 64, artworkDp = 46, shadow = 0, glow = 0,
+        artworkShape = if (torque) MiniArtworkShape.Square else MiniArtworkShape.Rounded, progress = MiniProgressStyle.Line,
+        buttons = if (torque) MiniButtonStyle.Outlined else MiniButtonStyle.Filled, colorMode = MiniColorMode.Theme,
         background = MiniBackground.Solid, motion = MiniMotion.Normal,
         controls = saved.activeTuning().controls, showClose = saved.activeTuning().showClose
     )
@@ -120,10 +181,10 @@ internal fun prismMiniSettings(saved: LevyraMiniPlayerStudioSettings): LevyraMin
 
 internal fun prismNavSettings(saved: LevyraNavigationStudioSettings): LevyraNavigationStudioSettings {
     val tuning = saved.activeTuning().copy(
-        cornerDp = 28, heightDp = 68, indicator = NavIndicator.Pill,
+        cornerDp = if (LevyraIsTorque) 0 else 24, heightDp = 64, indicator = NavIndicator.Pill,
         background = NavBackground.Solid, colorSource = NavColorSource.Theme,
         surfaceTone = NavSurfaceTone.Auto, motion = NavMotion.Minimal,
-        opacity = 94, inactiveAlpha = 100, labels = NavLabelMode.Always
+        opacity = 96, inactiveAlpha = 100, labels = NavLabelMode.Always
     )
     return saved.copy(style = NavStyle.FloatingDock, tunings = saved.tunings + (NavStyle.FloatingDock to tuning))
 }

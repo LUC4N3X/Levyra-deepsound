@@ -98,16 +98,16 @@ private fun RowScope.PlayerDockSegment(
         label = "player-dock-inner"
     )
     val fill by animateColorAsState(
-        targetValue = if (action.active) surfaces.hero else surfaces.tonal,
+        targetValue = if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism) { if (action.active) com.luc4n3x.levyra.ui.theme.PrismAccent.Tint else androidx.compose.ui.graphics.Color.Transparent } else if (action.active) surfaces.hero else surfaces.tonal,
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(220)),
         label = "player-dock-fill"
     )
     val tint by animateColorAsState(
-        targetValue = if (action.active) surfaces.heroContent else surfaces.content,
+        targetValue = if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism) { if (action.active) surfaces.activeContent else surfaces.contentMuted } else if (action.active) surfaces.heroContent else surfaces.content,
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(220)),
         label = "player-dock-tint"
     )
-    val shape = if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism) RoundedCornerShape(8.dp) else dockSegmentShape(first = first, last = last, outer = outer, inner = inner)
+    val shape = if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism) RoundedCornerShape(com.luc4n3x.levyra.ui.theme.PrismDesign.controlCorner) else dockSegmentShape(first = first, last = last, outer = outer, inner = inner)
     Box(
         modifier = Modifier
             .weight(1f)

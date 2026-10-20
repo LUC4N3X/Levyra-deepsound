@@ -1,21 +1,25 @@
 package com.luc4n3x.levyra.ui.i18n
 
 internal data class PrismCopy(
-    val body: String, val appearance: String, val colors: String, val player: String,
+    val body: String, val appearance: String, val player: String,
     val translucency: String, val night: String, val light: String, val automatic: String,
-    val adaptive: String, val reduced: String
+    val reduced: String, val torqueBody: String, val accent: String, val cover: String, val red: String
 )
 
 internal object LevyraPrismStrings {
     private val english = PrismCopy(
-        "Artwork in the spotlight. Refined ambient color, frosted controls and a dedicated player.",
-        "Appearance", "Colors", "Player layout", "Translucent effects", "Night", "Light",
-        "Automatic", "Adaptive", "Reduced"
+        "Deep black, quiet surfaces and a single raspberry accent. Artwork leads, controls stay calm.",
+        "Appearance", "Player layout", "Translucent effects", "Night", "Light",
+        "Automatic", "Reduced",
+        "Graphite slabs, sharp diagonals and a bold band that takes its color from the cover.",
+        "Accent", "From cover", "Red"
     )
     private val italian = PrismCopy(
-        "La musica in primo piano. Colori ambientali, comandi satinati e un player dedicato.",
-        "Aspetto", "Colori", "Layout player", "Effetti traslucidi", "Night", "Light",
-        "Automatico", "Adaptive", "Ridotti"
+        "Nero profondo, superfici quiete e un unico accento raspberry. Le copertine guidano, i comandi restano calmi.",
+        "Aspetto", "Layout player", "Effetti traslucidi", "Night", "Light",
+        "Automatico", "Ridotti",
+        "Lastre grafite, diagonali nette e una banda decisa che prende il colore dalla copertina.",
+        "Accento", "Dalla copertina", "Rosso"
     )
     fun forCode(code: String): PrismCopy = if (code == "it") italian else english
 }

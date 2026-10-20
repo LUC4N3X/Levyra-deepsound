@@ -67,13 +67,13 @@ object LevyraPlayerDesign {
     const val ArtworkPausedScale: Float = 0.92f
     const val ArtworkTrackChangeScale: Float = 0.965f
 
-    val MiniCorner: Dp get() = if (LevyraIsPrism) 24.dp else if (LevyraIsNocturne) 10.dp else 20.dp
+    val MiniCorner: Dp get() = if (LevyraIsTorque) 2.dp else if (LevyraIsPrism) 24.dp else if (LevyraIsNocturne) 10.dp else 20.dp
     val MiniArtwork: Dp = 46.dp
     val MiniArtworkCorner: Dp get() = if (LevyraIsNocturne) 6.dp else 13.dp
     val MiniHeight: Dp = 64.dp
     val MiniHeightCompact: Dp = 50.dp
     val MiniArtworkCompact: Dp = 36.dp
-    val DockTrayCorner: Dp get() = if (LevyraIsPrism) 24.dp else if (LevyraIsNocturne) 14.dp else 28.dp
+    val DockTrayCorner: Dp get() = if (LevyraIsTorque) 2.dp else if (LevyraIsPrism) 24.dp else if (LevyraIsNocturne) 14.dp else 28.dp
 
     val Hairline: Dp = 1.dp
     val TrackHeight: Dp get() = if (LevyraIsNocturne) 2.dp else 5.dp

@@ -82,7 +82,7 @@ internal fun PlayerBackdrop(
     reactiveAura: ReactiveAuraStyle = ReactiveAuraStyle.Default
 ) {
     if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism) {
-        com.luc4n3x.levyra.ui.theme.PrismAtmosphere(modifier)
+        com.luc4n3x.levyra.ui.theme.PrismPlayerAtmosphere(modifier)
         return
     }
     if (com.luc4n3x.levyra.ui.theme.LevyraIsNocturne) {

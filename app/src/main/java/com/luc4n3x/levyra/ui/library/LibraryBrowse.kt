@@ -94,13 +94,9 @@ internal fun LibrarySectionGrid(
 ) {
     val colors = MaterialTheme.colorScheme
     if (LevyraIsPrism) {
-        Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            entries.chunked(2).forEach { row ->
-                Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row.forEachIndexed { index, entry ->
-                        LibrarySectionTile(entry, LibrarySectionTone(colors.surfaceContainer, colors.primary), RoundedCornerShape(20.dp), onOpen, Modifier.weight(if (index == 0) 1.15f else 1f).fillMaxHeight())
-                    }
-                }
+        Column(modifier, verticalArrangement = Arrangement.spacedBy(if (LevyraIsTorque) 2.dp else 0.dp)) {
+            entries.forEach { entry ->
+                LibrarySectionTile(entry, LibrarySectionTone(colors.surfaceContainer, colors.primary), RoundedCornerShape(PrismDesign.controlCorner), onOpen, Modifier.fillMaxWidth())
             }
         }
         return
@@ -174,16 +170,19 @@ private fun LibrarySectionTile(
     val label = entry.category.libraryLabel(strings)
     val appearance = librarySectionAppearance(entry, tone, shape)
     if (LevyraIsPrism) {
-        Column(
-            modifier.clip(shape).background(appearance.background)
+        Row(
+            modifier.heightIn(min = PrismDesign.rowHeight + 8.dp).clip(shape).background(if (LevyraIsTorque) LevyraPanel else Color.Transparent)
                 .levyraPressable(onClick = { onOpen(entry.category) }, onClickLabel = label, role = Role.Button)
-                .padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = if (LevyraIsTorque) 12.dp else 4.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(colors.primaryContainer), contentAlignment = Alignment.Center) {
-                Icon(appearance.icon, null, tint = colors.onPrimaryContainer, modifier = Modifier.size(22.dp))
+            Box(Modifier.size(PrismDesign.iconTile).clip(PrismDesign.cut(PrismDesign.controlCorner)).background(if (LevyraIsTorque) Color.Transparent else PrismAccent.Tint), contentAlignment = Alignment.Center) {
+                Icon(appearance.icon, null, tint = if (LevyraIsTorque) LevyraText else LevyraCyan, modifier = Modifier.size(if (LevyraIsTorque) 26.dp else 22.dp))
             }
-            Text(label, color = colors.onSurface, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            if (entry.summary.isNotBlank()) Text(entry.summary, color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(label, color = LevyraText, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (entry.summary.isNotBlank()) Text(entry.summary, color = LevyraMuted, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
         return
     }

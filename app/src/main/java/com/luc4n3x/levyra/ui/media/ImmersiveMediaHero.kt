@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.ui.media
 import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 import com.luc4n3x.levyra.ui.theme.LevyraIsPrism
+import com.luc4n3x.levyra.ui.theme.LevyraIsTorque
 
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.compose.animation.core.AnimationSpec
@@ -105,6 +106,7 @@ internal data class ImmersiveMediaPrimaryAction(
 )
 
 internal fun immersiveMediaColors(primary: Color, secondary: Color, lightTheme: Boolean, nocturne: Boolean = false): ImmersiveMediaColors {
+    skinMediaColors()?.let { return it }
     if (nocturne) {
         val p = Nocturne78Palette
         return ImmersiveMediaColors(p.black, p.black, p.ink, p.text, p.muted, p.cyan, p.panelSoft, p.panelSoft, p.cyan, p.panel, p.outline)
@@ -220,12 +222,16 @@ internal fun ImmersiveMediaHero(
     modifier: Modifier = Modifier,
     overline: String = ""
 ) {
-    if (LevyraIsPrism && !wide) {
-        Column(modifier.fillMaxWidth().padding(top = topBarHeight, start = 20.dp, end = 20.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            Box(Modifier.align(Alignment.CenterHorizontally).size(min(viewportWidth * 0.62f, 260.dp)).clip(RoundedCornerShape(22.dp))) { artwork() }
-            ImmersiveMediaMetadata(title, overline, subtitle, metadata, colors, false, onSubtitleClick)
-            actions()
-        }
+    if (!wide && LevyraIsTorque) {
+        TorqueMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, onSubtitleClick, actions, artwork, modifier)
+        return
+    }
+    if (!wide && LevyraIsPrism) {
+        PrismMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, topBarHeight, onSubtitleClick, actions, artwork, modifier)
+        return
+    }
+    if (!wide && LevyraIsNocturne) {
+        NocturneMediaHero(title, overline, subtitle, metadata, colors, topBarHeight, onSubtitleClick, actions, artwork, modifier)
         return
     }
     val heroHeight = immersiveHeroHeight(wide, viewportWidth, viewportHeight, topBarHeight)

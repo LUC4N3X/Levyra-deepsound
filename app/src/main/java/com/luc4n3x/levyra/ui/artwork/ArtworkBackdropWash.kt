@@ -43,6 +43,10 @@ internal fun ArtworkBackdropWash(
     blurRadius: Dp = DefaultWashBlur,
     blurAllowed: Boolean = rememberGlassBlurAllowed()
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraSkinManagesLayout) {
+        Box(modifier.drawBehind { drawRect(base) })
+        return
+    }
     val isLight = LevyraActivePalette.isLight
     val pureBlack = LevyraIsPureBlack
     val context = LocalContext.current

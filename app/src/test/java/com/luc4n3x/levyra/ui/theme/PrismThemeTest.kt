@@ -3,6 +3,9 @@ package com.luc4n3x.levyra.ui.theme
 import com.luc4n3x.levyra.domain.*
 import com.luc4n3x.levyra.ui.playerContrastRatio
 import com.luc4n3x.levyra.ui.player.playerSheetColor
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import com.materialkolor.hct.Hct
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Test
@@ -10,31 +13,52 @@ import org.junit.Test
 class PrismThemeTest {
     @After fun restore() { LevyraThemeController.apply(LevyraThemes.LEVYRA_AURA) }
 
-    @Test fun artworkPresetsAndAppearancesHaveReadableContent() {
-        val seeds = listOf(0xFFFF0000, 0xFF00FF00, 0xFF0000FF, 0xFF222222, 0xFFFFFFFF)
-        PrismColors.entries.forEach { preset ->
-            listOf(PrismAppearance.Night, PrismAppearance.Light).forEach { appearance ->
-                seeds.forEach { seed ->
-                    val p = prismPalette(PrismSettings(appearance = appearance, colors = preset), artworkStart = seed.toInt(), artworkEnd = seed.toInt())
-                    listOf(p.black, p.ink, p.panel, p.panelSoft).forEach { surface ->
-                        assertTrue("Text $appearance $preset", playerContrastRatio(p.text, surface) >= 4.5f)
-                        assertTrue("Secondary $appearance $preset", playerContrastRatio(p.muted, surface) >= 4.5f)
-                        assertTrue("Accent $appearance $preset", playerContrastRatio(p.cyan, surface) >= 3f)
-                    }
-                    val scheme = levyraColorScheme(p)
-                    assertTrue(playerContrastRatio(scheme.primary, scheme.onPrimary) >= 4.5f)
-                }
+    @Test fun appearancesHaveReadableContent() {
+        listOf(PrismAppearance.Night, PrismAppearance.Light).forEach { appearance ->
+            val p = prismPalette(PrismSettings(appearance = appearance))
+            listOf(p.black, p.ink, p.panel, p.panelSoft).forEach { surface ->
+                assertTrue("Text $appearance", playerContrastRatio(p.text, surface) >= 4.5f)
+                assertTrue("Secondary $appearance", playerContrastRatio(p.muted, surface) >= 4.5f)
+                assertTrue("Accent $appearance", playerContrastRatio(p.cyan, surface) >= 3f)
+            }
+            val scheme = levyraColorScheme(p)
+            assertTrue(playerContrastRatio(scheme.primary, scheme.onPrimary) >= 4.5f)
+        }
+    }
+
+    @Test fun nightIsDeepBlackWithFixedRaspberryAccentAndNoBlue() {
+        val night = prismPalette()
+        assertEquals(Color.Black, night.black)
+        listOf(PrismAppearance.Night, PrismAppearance.Light).forEach { appearance ->
+            val p = prismPalette(PrismSettings(appearance = appearance))
+            listOf(p.cyan, p.blue, p.violet, p.pink, p.orange).forEach { accent ->
+                val hue = Hct.fromInt(accent.toArgb()).hue
+                assertTrue("Accent hue $hue $appearance", hue !in 180.0..300.0)
+            }
+            assertEquals(p, prismPalette(PrismSettings(appearance = appearance)))
+        }
+    }
+
+    @Test fun torqueBandAndAccentStayReadableForAnyCover() {
+        val covers = listOf(0xFFFFFF00, 0xFF0000FF, 0xFF00FF00, 0xFF222222, 0xFFFFFFFF, 0xFF8B5A2B, 0xFFFF0000)
+        covers.forEach { cover ->
+            val p = torquePalette(TorqueSettings(TorqueAccent.Cover), cover.toInt())
+            assertTrue("Band $cover", playerContrastRatio(Color.White, p.blue) >= 3f)
+            listOf(p.black, p.ink, p.panel, p.panelSoft).forEach { surface ->
+                assertTrue("Accent $cover", playerContrastRatio(p.cyan, surface) >= 3f)
+                assertTrue("Text $cover", playerContrastRatio(p.text, surface) >= 4.5f)
+                assertTrue("Muted $cover", playerContrastRatio(p.muted, surface) >= 4.5f)
             }
         }
     }
 
-    @Test fun fixedPresetsIgnoreArtworkWhileAdaptiveResponds() {
-        PrismColors.entries.forEach { colors ->
-            val settings = PrismSettings(colors = colors)
-            val red = prismPalette(settings, artworkStart = 0xFFFF0000.toInt(), artworkEnd = 0xFFFF5500.toInt())
-            val blue = prismPalette(settings, artworkStart = 0xFF0000FF.toInt(), artworkEnd = 0xFF0088FF.toInt())
-            if (colors == PrismColors.Adaptive) assertNotEquals(red.cyan, blue.cyan) else assertEquals(red, blue)
-        }
+    @Test fun torqueFallsBackToRedAndRedIgnoresCover() {
+        assertEquals(Color(TorqueRed), torquePalette().blue)
+        assertEquals(torquePalette(TorqueSettings(TorqueAccent.Red), 0xFF00FF00.toInt()), torquePalette(TorqueSettings(TorqueAccent.Red)))
+        LevyraThemeController.apply(LevyraThemes.FROST, skin = LevyraSkin.Torque)
+        assertTrue(LevyraIsTorque)
+        assertTrue(LevyraIsPrism)
+        assertTrue(LevyraSkinManagesLayout)
     }
 
     @Test fun playerSheetsKeepReadableContentInBothAppearances() {

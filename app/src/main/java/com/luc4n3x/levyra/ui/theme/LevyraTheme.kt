@@ -451,12 +451,14 @@ object LevyraThemeController {
         accentOverride: Int? = null,
         skin: LevyraSkin = LevyraSkin.Default,
         prism: com.luc4n3x.levyra.domain.PrismSettings = com.luc4n3x.levyra.domain.PrismSettings(),
-        systemDark: Boolean = true
+        systemDark: Boolean = true,
+        torque: com.luc4n3x.levyra.domain.TorqueSettings = com.luc4n3x.levyra.domain.TorqueSettings()
     ) {
         val base = when (skin) {
             LevyraSkin.Default -> LevyraThemes.byId(presetId)
             LevyraSkin.Nocturne78 -> Nocturne78Palette
-            LevyraSkin.Prism -> prismPalette(prism, systemDark, coverAccentStart, coverAccentEnd)
+            LevyraSkin.Prism -> prismPalette(prism, systemDark)
+            LevyraSkin.Torque -> torquePalette(torque, coverAccentStart)
         }
         val tinted = when {
             skin != LevyraSkin.Default -> base
@@ -648,7 +650,8 @@ fun LevyraTheme(
     val cornerScale = activeCornerScaleState.value
     val nocturne = LevyraIsNocturne
     val prism = LevyraIsPrism
-    val shapes = remember(cornerScale, nocturne, prism) {
+    val torque = LevyraIsTorque
+    val shapes = remember(cornerScale, nocturne, prism, torque) {
         if (nocturne) Nocturne78Shapes
         else if (prism) PrismShapes
         else if (cornerScale == 1f) LevyraExpressiveShapes else scaledExpressiveShapes(cornerScale)

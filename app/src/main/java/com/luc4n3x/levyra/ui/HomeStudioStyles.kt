@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -117,6 +118,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.TextUnit
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ExploreZone
@@ -353,8 +355,18 @@ internal fun StudioSectionHeader(
         .padding(horizontal = spec.inset)
     if (LevyraIsPrism) {
         Row(headerModifier.heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(title, color = LevyraText, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f).semantics { heading() })
-            onPlayAll?.let { action -> TextButton(onClick = action) { Text(strings.playAll, color = LevyraCyan) } }
+            Text(
+                if (LevyraIsTorque) title.uppercase() else title, color = LevyraText, style = MaterialTheme.typography.headlineSmall,
+                fontSize = if (LevyraIsTorque) 18.sp else 22.sp, fontWeight = if (LevyraIsTorque) FontWeight.Bold else null,
+                letterSpacing = if (LevyraIsTorque) 2.sp else TextUnit.Unspecified, modifier = Modifier.weight(1f).semantics { heading() }
+            )
+            onPlayAll?.let { action ->
+                Box(
+                    Modifier.size(48.dp).clip(CircleShape).clickable(onClickLabel = strings.playAll, role = Role.Button, onClick = action)
+                        .semantics { contentDescription = strings.playAll },
+                    contentAlignment = Alignment.Center
+                ) { PrismPlayDisc(playing = false, resolving = false, size = 36.dp) }
+            }
         }
         return
     }
@@ -465,7 +477,7 @@ internal fun StudioShelf(
     if (items.isEmpty()) return
     if (LevyraIsPrism) {
         if (layout == HomeSectionLayout.Compact || layout == HomeSectionLayout.List) PrismCompactShelf(items, isPlaying, spec.inset, modifier)
-        else PrismArtworkShelf(items, isPlaying, spec.inset, modifier)
+        else SkinShowcaseShelf(items, isPlaying, spec.inset, modifier)
         return
     }
     val roundItems = items.first().round
@@ -2367,6 +2379,10 @@ internal fun StudioChartSection(
     modifier: Modifier = Modifier
 ) {
     if (tracks.isEmpty()) return
+    if (LevyraIsPrism) {
+        SkinChartSection(title, tracks, currentId, isPlaying, playAllLabel, changeMarketLabel, spec.inset, onPlay, onPlayAll, onChangeMarket, modifier)
+        return
+    }
     if (style == HomeStyle.ExpressiveMax) {
         StudioExpressiveMaxChart(
             title = title,

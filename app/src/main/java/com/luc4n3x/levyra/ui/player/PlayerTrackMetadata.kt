@@ -154,7 +154,7 @@ internal fun PlayerFavoriteButton(
         fill = fill,
         borderTop = outline,
         borderBottom = outline,
-        shape = if (LevyraIsPrism) androidx.compose.foundation.shape.RoundedCornerShape(16.dp) else rememberLevyraFavoriteMorphShape(favorite = isFavorite, animated = animated),
+        shape = if (LevyraIsPrism) androidx.compose.foundation.shape.CircleShape else rememberLevyraFavoriteMorphShape(favorite = isFavorite, animated = animated),
         modifier = Modifier
             .size(LevyraPlayerDesign.MinimumTouchTarget)
             .graphicsLayer {
