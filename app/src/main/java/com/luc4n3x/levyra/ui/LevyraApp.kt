@@ -6326,8 +6326,8 @@ private fun ArtistActionBar(
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .clip(RoundedCornerShape(shuffleCorner))
-                    .background(highlight.copy(alpha = 0.22f))
+                    .clip(if (LevyraSkinManagesLayout) SkinChrome.chipShape else RoundedCornerShape(shuffleCorner))
+                    .background(if (LevyraSkinManagesLayout) LevyraPanel else highlight.copy(alpha = 0.22f))
                     .levyraPressable(
                         onClick = onShuffle,
                         pressedScale = LevyraPressScale.Control,
@@ -6349,7 +6349,14 @@ private fun ArtistActionBar(
             Box(
                 modifier = Modifier
                     .size(62.dp)
-                    .background(playContainer, playShape)
+                    .then(
+                        when {
+                            LevyraIsPrism -> Modifier.clip(CircleShape).background(PrismAccent.gradient())
+                            LevyraIsNocturne -> Modifier.clip(RoundedCornerShape(Nocturne78Design.controlCorner)).background(LevyraPanelSoft)
+                                .border(1.dp, LevyraCyan, RoundedCornerShape(Nocturne78Design.controlCorner))
+                            else -> Modifier.background(playContainer, playShape)
+                        }
+                    )
                     .levyraPressable(
                         onClick = onPlay,
                         pressedScale = LevyraPressScale.Control,
@@ -6361,7 +6368,7 @@ private fun ArtistActionBar(
             ) {
                 LevyraPlayPauseGlyph(
                     playing = false,
-                    color = playContent,
+                    color = if (LevyraIsPrism) Color.White else if (LevyraIsNocturne) LevyraCyan else playContent,
                     contentDescription = strings.play,
                     modifier = Modifier.size(30.dp)
                 )
@@ -6521,9 +6528,9 @@ private fun ArtistBio(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(ArtistBiographyShape)
+            .clip(if (LevyraSkinManagesLayout) RoundedCornerShape(SkinChrome.outerCorner) else ArtistBiographyShape)
             .background(LevyraPanel)
-            .background(accentBrush)
+            .then(if (LevyraSkinManagesLayout) Modifier else Modifier.background(accentBrush))
             .then(
                 if (animationsEnabled) {
                     Modifier.animateContentSize(animationSpec = LevyraMotion.emphasized())
