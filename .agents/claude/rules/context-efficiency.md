@@ -25,6 +25,12 @@ large textual adb command without a dedicated filter. Keep tiny deterministic ad
 queries raw. Never route binary capture/transfer such as `adb exec-out screencap
 -p`, redirected screenshots, or exact device evidence through a text filter.
 
+The RTK hook rewrites standalone commands and `&&` chains, but leaves any
+command that pipes into another one raw. Bound output with the command's own
+flags (`git log -n 20`, `git status --short`, `rtk grep`, `rtk find`) instead of
+`| head`. When a pipe is genuinely needed, prefix the first stage explicitly,
+for example `rtk git log -n 20 --stat | head -40`.
+
 Do not retry the same materially unchanged approach more than twice. After the
 second failure, stop that approach, revisit the evidence and root-cause
 hypothesis, then switch to a materially different strategy or report the

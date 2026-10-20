@@ -56,9 +56,10 @@ RUNTIMES = {
         mappings=(
             Mapping(ROOT / ".agents" / "codex" / "config.toml", Path("config.toml")),
             Mapping(ROOT / ".agents" / "codex" / "hooks.json", Path("hooks.json")),
+            Mapping(ROOT / ".agents" / "codex" / "rules", Path("rules")),
         ),
         owned_files=(Path("config.toml"), Path("hooks.json")),
-        owned_directories=(),
+        owned_directories=(Path("rules"),),
     ),
 }
 

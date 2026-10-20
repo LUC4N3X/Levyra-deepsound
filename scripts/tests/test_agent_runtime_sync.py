@@ -71,6 +71,40 @@ class AgentRuntimeSyncTest(unittest.TestCase):
             encoding="utf-8",
         )
 
+    def test_codex_rules_are_projected_and_local_rules_are_preserved(self) -> None:
+        spec = load_runtime_module().RUNTIMES["codex"]
+        runtime = self.root / ".codex"
+        mappings = tuple(
+            self.module.Mapping(
+                self.root / mapping.source.relative_to(ROOT), mapping.target_relative
+            )
+            for mapping in spec.mappings
+        )
+        for mapping in mappings:
+            if mapping.target_relative == Path("rules"):
+                mapping.source.mkdir(parents=True)
+                (mapping.source / "levyra.rules").write_text("rules-v1\n", encoding="utf-8")
+            else:
+                mapping.source.parent.mkdir(parents=True, exist_ok=True)
+                mapping.source.write_text("config\n", encoding="utf-8")
+        self.module.RUNTIMES["codex"] = self.module.RuntimeSpec(
+            target=runtime, mappings=mappings,
+            owned_files=spec.owned_files, owned_directories=spec.owned_directories,
+        )
+        local = runtime / "rules" / "local.rules"
+        local.parent.mkdir(parents=True)
+        local.write_text("local\n", encoding="utf-8")
+
+        self.module.sync_runtime("codex", quiet=True)
+        projected = runtime / "rules" / "levyra.rules"
+        self.assertEqual(projected.read_text(encoding="utf-8"), "rules-v1\n")
+        self.assertEqual(self.module.check_runtime("codex"), [])
+        projected.write_text("stale\n", encoding="utf-8")
+        self.assertTrue(self.module.check_runtime("codex"))
+        self.module.sync_runtime("codex", quiet=True)
+        self.assertEqual(projected.read_text(encoding="utf-8"), "rules-v1\n")
+        self.assertEqual(local.read_text(encoding="utf-8"), "local\n")
+
     def test_sync_projects_canonical_skills_and_preserves_unknown_local_files(self) -> None:
         self.runtime.mkdir(parents=True)
         unknown = self.runtime / "settings.local.json"
