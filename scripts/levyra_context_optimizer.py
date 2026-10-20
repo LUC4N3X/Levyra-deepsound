@@ -14,6 +14,7 @@ import hashlib
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
 import threading
@@ -652,8 +653,61 @@ def _clean_command_tokens(cmd: list[str]) -> list[str]:
     return cmd
 
 
-def _execute_subprocess(cmd: list[str], silent: bool = False) -> tuple[int, str]:
-    """Execute subprocess, capturing combined stdout/stderr and handling interrupts."""
+def _terminate_process_tree(proc: subprocess.Popen[str], isolated: bool) -> None:
+    """Stop only the launched command tree and wait for a terminal state."""
+    if isolated and os.name == "posix":
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        except OSError:
+            proc.kill()
+    elif isolated and os.name == "nt":
+        try:
+            subprocess.run(
+                ["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=4,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            proc.kill()
+    else:
+        proc.kill()
+
+    try:
+        proc.wait(timeout=4)
+    except subprocess.TimeoutExpired:
+        try:
+            proc.kill()
+        except ProcessLookupError:
+            pass
+        try:
+            proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            pass
+
+
+def _timeout_output_text(value: str | bytes | None) -> str:
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value or ""
+
+
+def _execute_subprocess(
+    cmd: list[str],
+    silent: bool = False,
+    timeout_seconds: float | None = None,
+) -> tuple[int, str]:
+    """Capture output and preserve partial diagnostics on an optional deadline."""
+    isolated = timeout_seconds is not None
+    options: dict[str, object] = {}
+    if isolated and os.name == "posix":
+        options["start_new_session"] = True
+    if isolated and os.name == "nt":
+        options["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+
     try:
         proc = subprocess.Popen(
             cmd,
@@ -662,6 +716,7 @@ def _execute_subprocess(cmd: list[str], silent: bool = False) -> tuple[int, str]
             text=True,
             encoding="utf-8",
             errors="replace",
+            **options,
         )
     except FileNotFoundError:
         if not silent:
@@ -673,21 +728,28 @@ def _execute_subprocess(cmd: list[str], silent: bool = False) -> tuple[int, str]
         return 1, ""
 
     try:
-        raw_output, _ = proc.communicate()
-    except KeyboardInterrupt:
-        proc.terminate()
+        raw, _ = proc.communicate(timeout=timeout_seconds)
+    except subprocess.TimeoutExpired as first_timeout:
+        _terminate_process_tree(proc, isolated)
         try:
-            proc.wait(timeout=2.0)
-        except subprocess.TimeoutExpired:
-            proc.kill()
+            raw, _ = proc.communicate(timeout=1.0)
+        except subprocess.TimeoutExpired as final_timeout:
+            raw = final_timeout.output
+            if raw is None:
+                raw = first_timeout.output
+            if proc.stdout is not None:
+                proc.stdout.close()
+        return 124, _timeout_output_text(raw) + (
+            f"\n[Levyra Context: command timed out after {timeout_seconds:g}s]\n"
+        )
+    except KeyboardInterrupt:
+        _terminate_process_tree(proc, isolated)
         if not silent:
             sys.stderr.write("\n[Command interrupted by user]\n")
         return 130, ""
 
     code = proc.returncode
-    if code < 0:
-        code = 128 + (-code)
-    return code, raw_output
+    return (128 - code if code < 0 else code), raw
 
 
 def _emit_original_output(
@@ -714,15 +776,22 @@ def run_command(
     cache_dir: Path | None = None,
     silent: bool = False,
     no_cache: bool = False,
+    timeout_seconds: float | None = None,
 ) -> int:
     """Run a finite text command, preserving its exit status and error details."""
+    if timeout_seconds is not None and not (0 < timeout_seconds <= 86400):
+        if not silent:
+            sys.stderr.write("Error: --timeout must be between 0 and 86400 seconds.\n")
+        return 2
     cleaned_cmd = _clean_command_tokens(cmd)
     if not cleaned_cmd:
         if not silent:
             sys.stderr.write("Error: no command provided to run.\n")
         return 2
 
-    exit_code, raw_output = _execute_subprocess(cleaned_cmd, silent=silent)
+    exit_code, raw_output = _execute_subprocess(
+        cleaned_cmd, silent=silent, timeout_seconds=timeout_seconds
+    )
     if no_cache or exit_code != 0 or raw_mode or not raw_output:
         _emit_original_output(
             raw_output,
@@ -768,6 +837,12 @@ def _build_parser() -> argparse.ArgumentParser:
         "--no-cache",
         action="store_true",
         help="Print raw output without caching (use for sensitive command output)",
+    )
+    run_parser.add_argument(
+        "--timeout",
+        type=float,
+        metavar="SECONDS",
+        help="Optional wall-clock deadline (status 124), no automatic retries",
     )
     run_parser.add_argument(
         "cmd",
@@ -872,6 +947,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             category=args.category,
             raw_mode=args.raw,
             no_cache=args.no_cache,
+            timeout_seconds=args.timeout,
         )
     if args.command == "retrieve":
         return _retrieve_cached_text(args)
