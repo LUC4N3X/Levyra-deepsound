@@ -62,28 +62,28 @@ object LevyraPlayerDesign {
     const val SegmentPressGrowth: Float = 0.16f
 
     const val ArtworkCornerRatio: Float = 0.075f
-    val ArtworkCornerMin: Dp = 18.dp
-    val ArtworkCornerMax: Dp = 32.dp
+    val ArtworkCornerMin: Dp get() = if (LevyraIsNocturne) 6.dp else 18.dp
+    val ArtworkCornerMax: Dp get() = if (LevyraIsNocturne) 6.dp else 32.dp
     const val ArtworkPausedScale: Float = 0.92f
     const val ArtworkTrackChangeScale: Float = 0.965f
 
-    val MiniCorner: Dp = 20.dp
+    val MiniCorner: Dp get() = if (LevyraIsNocturne) 10.dp else 20.dp
     val MiniArtwork: Dp = 46.dp
-    val MiniArtworkCorner: Dp = 13.dp
+    val MiniArtworkCorner: Dp get() = if (LevyraIsNocturne) 6.dp else 13.dp
     val MiniHeight: Dp = 64.dp
     val MiniHeightCompact: Dp = 50.dp
     val MiniArtworkCompact: Dp = 36.dp
-    val DockTrayCorner: Dp = 28.dp
+    val DockTrayCorner: Dp get() = if (LevyraIsNocturne) 14.dp else 28.dp
 
     val Hairline: Dp = 1.dp
-    val TrackHeight: Dp = 5.dp
-    val TrackHeightActive: Dp = 8.dp
-    val ThumbRadius: Dp = 7.dp
-    val ThumbRadiusActive: Dp = 10.dp
-    val HandleWidth: Dp = 12.dp
-    val HandleWidthActive: Dp = 17.dp
-    val HandleHeight: Dp = 12.dp
-    val HandleHeightActive: Dp = 17.dp
+    val TrackHeight: Dp get() = if (LevyraIsNocturne) 2.dp else 5.dp
+    val TrackHeightActive: Dp get() = if (LevyraIsNocturne) 4.dp else 8.dp
+    val ThumbRadius: Dp get() = if (LevyraIsNocturne) 4.dp else 7.dp
+    val ThumbRadiusActive: Dp get() = if (LevyraIsNocturne) 6.dp else 10.dp
+    val HandleWidth: Dp get() = if (LevyraIsNocturne) 5.dp else 12.dp
+    val HandleWidthActive: Dp get() = if (LevyraIsNocturne) 7.dp else 17.dp
+    val HandleHeight: Dp get() = if (LevyraIsNocturne) 10.dp else 12.dp
+    val HandleHeightActive: Dp get() = if (LevyraIsNocturne) 14.dp else 17.dp
 
     val Emphasized: Easing = LevyraMotion.Easings.Emphasized
     val Standard: Easing = LevyraMotion.Easings.Standard

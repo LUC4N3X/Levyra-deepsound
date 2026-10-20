@@ -249,6 +249,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_UI_MOTION_ARTWORK_WIFI_ONLY] = normalizedInterface.motionArtworkWifiOnly
             mutable[KEY_UI_ENHANCE_VIDEO_METADATA] = normalizedInterface.enhanceVideoMetadata
             mutable[KEY_UI_PURE_BLACK] = normalizedInterface.pureBlack
+            mutable[KEY_UI_SKIN] = normalizedInterface.skin.name
             mutable[KEY_UI_HAPTIC_FEEDBACK] = normalizedInterface.hapticFeedback
             mutable[KEY_UI_PLAYER_VISUAL_MODE] = normalizedInterface.playerVisualMode.name
             mutable[KEY_UI_PLAYER_BACKGROUND] = normalizedInterface.playerBackground.name
@@ -425,6 +426,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_UI_MOTION_ARTWORK_WIFI_ONLY] = normalized.motionArtworkWifiOnly
             it[KEY_UI_ENHANCE_VIDEO_METADATA] = normalized.enhanceVideoMetadata
             it[KEY_UI_PURE_BLACK] = normalized.pureBlack
+            it[KEY_UI_SKIN] = normalized.skin.name
             it[KEY_UI_HAPTIC_FEEDBACK] = normalized.hapticFeedback
             it[KEY_UI_PLAYER_VISUAL_MODE] = normalized.playerVisualMode.name
             it[KEY_UI_PLAYER_BACKGROUND] = normalized.playerBackground.name
@@ -869,6 +871,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             motionArtworkWifiOnly = preferences[KEY_UI_MOTION_ARTWORK_WIFI_ONLY] ?: false,
             enhanceVideoMetadata = preferences[KEY_UI_ENHANCE_VIDEO_METADATA] ?: false,
             pureBlack = preferences[KEY_UI_PURE_BLACK] ?: false,
+            skin = com.luc4n3x.levyra.domain.LevyraSkin.from(preferences[KEY_UI_SKIN].orEmpty()),
             hapticFeedback = preferences[KEY_UI_HAPTIC_FEEDBACK] ?: true,
             playerVisualMode = visualMode,
             playerBackground = background,
@@ -1348,6 +1351,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_UI_SWIPE_TRACK_CHANGE = booleanPreferencesKey("ui_swipe_track_change")
         val KEY_UI_DOUBLE_TAP_ACTION = stringPreferencesKey("ui_double_tap_action")
         val KEY_UI_PURE_BLACK = booleanPreferencesKey("ui_pure_black")
+        val KEY_UI_SKIN = stringPreferencesKey("ui_skin")
         val KEY_UI_HAPTIC_FEEDBACK = booleanPreferencesKey("ui_haptic_feedback")
         val KEY_UI_DOUBLE_TAP_SECONDS = intPreferencesKey("ui_double_tap_seconds")
         val KEY_UI_LONG_PRESS_ACTION = stringPreferencesKey("ui_long_press_action")

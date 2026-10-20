@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -212,9 +215,10 @@ fun LevyraNowPlaying(
     val density = LocalDensity.current
     val rightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl
     val artworkUrl = track?.let(::preferredPlayerArtworkUrl).orEmpty()
+    val nocturne = LevyraIsNocturne
     val visualMode = state.interfaceSettings.playerVisualMode
     val backgroundMode = state.interfaceSettings.playerBackground.let { selected ->
-        if (selected == PlayerBackgroundMode.Dark && state.interfaceSettings.pureBlack) {
+        if (nocturne || selected == PlayerBackgroundMode.Dark && state.interfaceSettings.pureBlack) {
             PlayerBackgroundMode.PureBlack
         } else {
             selected
@@ -275,7 +279,7 @@ fun LevyraNowPlaying(
         label = "player-secondary-color"
     )
     val amoled = backgroundMode == PlayerBackgroundMode.PureBlack
-    val surfaces = remember(primaryTarget, amoled) { playerSurfaceTokens(primaryTarget, amoled) }
+    val surfaces = remember(primaryTarget, amoled, nocturne) { playerSurfaceTokens(primaryTarget, amoled, nocturne) }
     val heroTone by animateColorAsState(
         targetValue = surfaces.hero,
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween()),
@@ -358,7 +362,7 @@ fun LevyraNowPlaying(
         }
     }
 
-    val artworkRestsFullBleed = state.isPlaying ||
+    val artworkRestsFullBleed = nocturne || state.isPlaying ||
         state.interfaceSettings.playerVisualMode == PlayerVisualMode.Artwork ||
         state.interfaceSettings.playerVisualMode == PlayerVisualMode.Folio ||
         state.interfaceSettings.playerVisualMode == PlayerVisualMode.Flow ||
@@ -391,7 +395,7 @@ fun LevyraNowPlaying(
             !liveRadio &&
             !state.isVideoMode &&
             playerPane != LevyraPlayerPane.SideBySide
-        val deckLayout = resolvePlayerDeckLayout(
+        val deckLayout = if (nocturne) PlayerDeckLayout.Levyra else resolvePlayerDeckLayout(
             mode = visualMode,
             isVideoMode = state.isVideoMode,
             isLiveRadio = liveRadio,
@@ -828,7 +832,7 @@ fun LevyraNowPlaying(
                         swipeOffset = swipeOffset,
                         artScale = artScale,
                         artOffset = artOffset,
-                        glowColor = if (deckLayout == PlayerDeckLayout.Levyra || deckLayout == PlayerDeckLayout.Sleeve || deckLayout == PlayerDeckLayout.Pulse || deckLayout == PlayerDeckLayout.Halo) primary else Color.Transparent,
+                        glowColor = if (!nocturne && (deckLayout == PlayerDeckLayout.Levyra || deckLayout == PlayerDeckLayout.Sleeve || deckLayout == PlayerDeckLayout.Pulse || deckLayout == PlayerDeckLayout.Halo)) primary else Color.Transparent,
                         modifier = Modifier
                             .fillMaxSize()
                             .playerLyricsFlipFace(
@@ -1000,7 +1004,7 @@ fun LevyraNowPlaying(
                     positionMs = state.positionMs,
                     bufferedPositionMs = state.bufferedPositionMs,
                     durationMs = state.durationMs,
-                    activeColor = heroTone,
+                    activeColor = if (nocturne) primary else heroTone,
                     secondaryColor = secondary,
                     surfaces = surfaces,
                     isPlaying = state.isPlaying,
@@ -1035,7 +1039,7 @@ fun LevyraNowPlaying(
                     surfaces = surfaces,
                     compact = compactPlayer,
                     animated = animated,
-                    useAuraPlayPause = visualMode.usesAuraPlayPause(),
+                    useAuraPlayPause = !nocturne && visualMode.usesAuraPlayPause(),
                     labels = playerControlLabels,
                     onShuffle = viewModel::toggleShuffle,
                     onPrevious = viewModel::previous,
@@ -1055,6 +1059,7 @@ fun LevyraNowPlaying(
                 state.isOfflineExporting,
                 isDownloaded,
                 visualMode,
+                nocturne,
                 strings,
                 viewModel,
                 hapticFeedback
@@ -1982,8 +1987,8 @@ private fun playerDockActions(
                 PlayerDockAction(
                     key = "visual-mode",
                     icon = visualModeIcon(visualMode),
-                    label = visualModeLabel(strings),
-                    stateDescription = visualModeStateDescription(visualMode, strings),
+                    label = if (LevyraIsNocturne) Nocturne78Palette.label else visualModeLabel(strings),
+                    stateDescription = if (LevyraIsNocturne) Nocturne78Palette.label else visualModeStateDescription(visualMode, strings),
                     active = visualMode != PlayerVisualMode.Artwork,
                     toggle = false,
                     onClick = onOpenDeck

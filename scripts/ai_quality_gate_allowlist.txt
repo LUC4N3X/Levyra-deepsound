@@ -159,3 +159,11 @@ app/src/upstream/jniLibs/x86_64/libbyedpi.so
 # Generated and checksum-pinned by the Gradle 9.8 wrapper upgrade.
 gradle/wrapper/gradle-wrapper.jar
 third_party/LevyraExtractor/gradle/wrapper/gradle-wrapper.jar
+
+docs/assets/nocturne-78/default-home.png
+docs/assets/nocturne-78/home.png
+docs/assets/nocturne-78/library.png
+docs/assets/nocturne-78/player-deck.png
+docs/assets/nocturne-78/player.png
+docs/assets/nocturne-78/skin-selector.png
+docs/assets/nocturne-78/explore.png

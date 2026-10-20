@@ -175,6 +175,15 @@ enum class PlayerVerticalSwipeAction {
     }
 }
 
+enum class LevyraSkin {
+    Default,
+    Nocturne78;
+
+    companion object {
+        fun from(value: String): LevyraSkin = entries.firstOrNull { it.name == value } ?: Default
+    }
+}
+
 data class LevyraInterfaceSettings(
     val compactHome: Boolean = false,
     val showPersonalOrbit: Boolean = true,
@@ -211,7 +220,8 @@ data class LevyraInterfaceSettings(
     val playerColorMode: PlayerColorMode = PlayerColorMode.Dynamic,
     val playerColorAccent: Int = PlayerColorMode.DEFAULT_ACCENT,
     val librarySort: LibrarySort = LibrarySort.Recent,
-    val librarySortDirection: LibrarySortDirection = LibrarySort.Recent.defaultDirection
+    val librarySortDirection: LibrarySortDirection = LibrarySort.Recent.defaultDirection,
+    val skin: LevyraSkin = LevyraSkin.Default
 ) {
     fun normalized(): LevyraInterfaceSettings = copy(
         doubleTapSeekSeconds = doubleTapSeekSeconds.coerceIn(5, 30),

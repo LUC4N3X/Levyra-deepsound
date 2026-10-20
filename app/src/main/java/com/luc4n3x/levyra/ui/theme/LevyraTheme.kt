@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import com.luc4n3x.levyra.domain.LevyraCustomTheme
 import com.luc4n3x.levyra.domain.LevyraFontPreset
+import com.luc4n3x.levyra.domain.LevyraSkin
 
 data class LevyraPalette(
     val id: String,
@@ -442,10 +443,12 @@ object LevyraThemeController {
         moodAccentStart: Int? = null,
         moodAccentEnd: Int? = null,
         pureBlack: Boolean = false,
-        accentOverride: Int? = null
+        accentOverride: Int? = null,
+        skin: LevyraSkin = LevyraSkin.Default
     ) {
-        val base = LevyraThemes.byId(presetId)
+        val base = if (skin == LevyraSkin.Nocturne78) Nocturne78Palette else LevyraThemes.byId(presetId)
         val tinted = when {
+            skin == LevyraSkin.Nocturne78 -> base
             accentOverride != null -> withAccent(base, Color(accentOverride))
             base.followsCover && coverAccentStart != null && coverAccentEnd != null ->
                 tinted(base, Color(coverAccentStart), Color(coverAccentEnd))
@@ -453,13 +456,13 @@ object LevyraThemeController {
                 tinted(base, Color(moodAccentStart), Color(moodAccentEnd))
             else -> base
         }
-        val pureBlackActive = pureBlack && !tinted.isLight
+        val pureBlackActive = pureBlack && !tinted.isLight && skin == LevyraSkin.Default
         val palette = if (pureBlackActive) asPureBlack(tinted) else tinted
 
         if (activePureBlackState.value != pureBlackActive) {
             activePureBlackState.value = pureBlackActive
         }
-        applyCornerScale(presetId)
+        applyCornerScale(if (skin == LevyraSkin.Nocturne78) "" else presetId)
         if (activePaletteState.value != palette) {
             activePaletteState.value = palette
         }
@@ -562,13 +565,16 @@ val LevyraIsPureBlack: Boolean
 
 val LevyraGlass: Color
     get() = when {
+        LevyraIsNocturne -> Nocturne78Palette.panel
         activePaletteState.value.isLight -> Color(0x14101322)
         LevyraIsPureBlack -> Color(0x0AFFFFFF)
         else -> Color(0x0FFFFFFF)
     }
 
 val LevyraGlassBorder: Color
-    get() = if (activePaletteState.value.isLight) {
+    get() = if (LevyraIsNocturne) {
+        Nocturne78Palette.outline
+    } else if (activePaletteState.value.isLight) {
         Color(0x26101322)
     } else {
         Color(0x1AFFFFFF)
@@ -629,8 +635,10 @@ fun LevyraTheme(
     val palette = activePaletteState.value
     val colorScheme = remember(palette) { levyraColorScheme(palette) }
     val cornerScale = activeCornerScaleState.value
-    val shapes = remember(cornerScale) {
-        if (cornerScale == 1f) LevyraExpressiveShapes else scaledExpressiveShapes(cornerScale)
+    val nocturne = LevyraIsNocturne
+    val shapes = remember(cornerScale, nocturne) {
+        if (nocturne) Nocturne78Shapes
+        else if (cornerScale == 1f) LevyraExpressiveShapes else scaledExpressiveShapes(cornerScale)
     }
     val motionScheme = remember(animationsEnabled) {
         if (animationsEnabled) MotionScheme.expressive() else LevyraStaticMotionScheme
@@ -639,7 +647,7 @@ fun LevyraTheme(
         colorScheme = colorScheme,
         motionScheme = motionScheme,
         shapes = shapes,
-        typography = levyraTypographyFor(fontPreset ?: activeFontPresetState.value),
+        typography = if (nocturne) Nocturne78Typography else levyraTypographyFor(fontPreset ?: activeFontPresetState.value),
         content = content
     )
 }

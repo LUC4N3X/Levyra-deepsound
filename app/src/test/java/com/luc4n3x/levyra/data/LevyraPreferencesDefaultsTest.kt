@@ -21,6 +21,19 @@ import org.junit.Test
 
 class LevyraPreferencesDefaultsTest {
     @Test
+    fun skinBackupIsBackwardCompatibleAndPreservesPersonalSettings() {
+        val original = LevyraInterfaceSettings(
+            skin = com.luc4n3x.levyra.domain.LevyraSkin.Nocturne78,
+            pureBlack = true,
+            playerColorMode = PlayerColorMode.Custom,
+            playerColorAccent = 0xFF1256AB.toInt()
+        )
+        assertEquals(original, backupInterfaceSettingsFromJson(backupInterfaceSettingsToJson(original)))
+        assertEquals(com.luc4n3x.levyra.domain.LevyraSkin.Default, backupInterfaceSettingsFromJson(JSONObject()).skin)
+        assertEquals(com.luc4n3x.levyra.domain.LevyraSkin.Default, LevyraInterfaceSettings().skin)
+    }
+
+    @Test
     fun sponsorBlockIsEnabledByDefault() {
         assertTrue(DEFAULT_SPONSORBLOCK_ENABLED)
         assertTrue(LevyraUiState().sponsorBlockEnabled)

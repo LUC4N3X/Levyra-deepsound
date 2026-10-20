@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.ui.library
 
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+import com.luc4n3x.levyra.ui.theme.Nocturne78Design
+
 import androidx.compose.foundation.shape.CircleShape
 import android.Manifest
 import android.app.Activity
@@ -679,7 +682,7 @@ internal fun LevyraLibraryScreen(
                     onValueChange = { query = it },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                     singleLine = true,
-                    shape = CircleShape,
+                    shape = if (LevyraIsNocturne) RoundedCornerShape(Nocturne78Design.controlCorner) else CircleShape,
                     textStyle = MaterialTheme.typography.bodyMedium.copy(
                         color = colors.onSurface,
                         fontWeight = FontWeight.Medium

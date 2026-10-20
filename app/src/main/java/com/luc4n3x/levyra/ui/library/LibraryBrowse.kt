@@ -1,5 +1,12 @@
 package com.luc4n3x.levyra.ui.library
 
+import androidx.compose.material3.HorizontalDivider
+import com.luc4n3x.levyra.ui.theme.Nocturne78Icons
+
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+import com.luc4n3x.levyra.ui.theme.Nocturne78Design
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -16,7 +23,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Album
@@ -85,6 +91,15 @@ internal fun LibrarySectionGrid(
     modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.colorScheme
+    if (LevyraIsNocturne) {
+        Column(modifier) {
+            entries.forEach { entry ->
+                LibrarySectionTile(entry, LibrarySectionTone(colors.surfaceContainerHigh, colors.onSurfaceVariant), RoundedCornerShape(0.dp), onOpen)
+                HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.5f))
+            }
+        }
+        return
+    }
     val rows = entries.chunked(2)
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(LibrarySectionGap)) {
         rows.forEachIndexed { rowIndex, row ->
@@ -143,12 +158,12 @@ private fun LibrarySectionTile(
     val colors = MaterialTheme.colorScheme
     val strings = LocalLevyraStrings.current
     val label = entry.category.libraryLabel(strings)
-    val badgeShape = entry.category.sectionBadgePolygon().toShape()
+    val appearance = librarySectionAppearance(entry, tone, shape)
     Row(
         modifier = modifier
-            .heightIn(min = 72.dp)
-            .clip(shape)
-            .background(colors.surfaceContainerHigh.copy(alpha = 0.62f))
+            .heightIn(min = appearance.height)
+            .clip(appearance.shape)
+            .background(appearance.background)
             .semantics(mergeDescendants = true) {}
             .levyraPressable(
                 onClick = { onOpen(entry.category) },
@@ -156,14 +171,14 @@ private fun LibrarySectionTile(
                 onClickLabel = label,
                 pressedScale = LevyraPressScale.Tile
             )
-            .padding(horizontal = 12.dp, vertical = 14.dp),
+            .padding(horizontal = 12.dp, vertical = appearance.padding),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = Modifier.size(LibrarySectionBadge).clip(badgeShape).background(tone.container),
+            modifier = Modifier.size(LibrarySectionBadge).clip(appearance.badgeShape).background(appearance.badgeBackground),
             contentAlignment = Alignment.Center
         ) {
-            Icon(entry.category.sectionIcon(), contentDescription = null, tint = tone.content, modifier = Modifier.size(22.dp))
+            Icon(appearance.icon, contentDescription = null, tint = appearance.content, modifier = Modifier.size(22.dp))
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -405,5 +420,30 @@ private fun LibrarySearchSectionTitle(
         detail = count.toString(),
         action = if (canExpand) strings.showAll else null,
         onAction = { actions.onShowAll(category) }.takeIf { canExpand }
+    )
+}
+
+private data class LibrarySectionAppearance(
+    val height: androidx.compose.ui.unit.Dp,
+    val padding: androidx.compose.ui.unit.Dp,
+    val shape: Shape,
+    val badgeShape: Shape,
+    val background: Color,
+    val badgeBackground: Color,
+    val content: Color,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector
+)
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun librarySectionAppearance(entry: LibrarySectionEntry, tone: LibrarySectionTone, shape: Shape): LibrarySectionAppearance {
+    val colors = MaterialTheme.colorScheme
+    val icon = entry.category.sectionIcon()
+    return if (LevyraIsNocturne) LibrarySectionAppearance(
+        64.dp, 10.dp, RoundedCornerShape(0.dp), RoundedCornerShape(Nocturne78Design.artworkCorner),
+        Color.Transparent, colors.surfaceContainerHigh, colors.onSurfaceVariant, Nocturne78Icons.resolve(icon)
+    ) else LibrarySectionAppearance(
+        72.dp, 14.dp, shape, entry.category.sectionBadgePolygon().toShape(),
+        colors.surfaceContainerHigh.copy(alpha = 0.62f), tone.container, tone.content, icon
     )
 }

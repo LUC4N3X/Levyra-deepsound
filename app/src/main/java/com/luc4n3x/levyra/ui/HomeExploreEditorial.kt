@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -221,6 +223,10 @@ internal fun DiscoveryEditorialCard(
 ) {
     val colors = MaterialTheme.colorScheme
     val isLight = LevyraIsLight
+    if (LevyraIsNocturne) {
+        NocturneCollectionCard(title, subtitle, artwork, onOpen, modifier)
+        return
+    }
     val tonal = remember(accentStart, isLight) {
         levyraTonalRole(accentStart, isLight, maxChroma = 46.0)
     }

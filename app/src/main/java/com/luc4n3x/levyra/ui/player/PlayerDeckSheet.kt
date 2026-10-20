@@ -77,6 +77,9 @@ import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.playerDeckShortLabels
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
+import com.luc4n3x.levyra.ui.i18n.LevyraSkinStrings
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.foundation.layout.PaddingValues
@@ -114,6 +117,25 @@ internal fun PlayerDeckSheet(
         animated = animated,
         onDismiss = onDismiss
     ) {
+        if (LevyraIsNocturne) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(LevyraPlayerDesign.Gutter),
+                verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
+            ) {
+                Text(strings.playerDeck, color = surfaces.content, fontSize = 22.sp, modifier = Modifier.semantics { heading() })
+                FilledTonalButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = LevyraPlayerDesign.MinimumTouchTarget).semantics { this.selected = true },
+                    colors = ButtonDefaults.filledTonalButtonColors(containerColor = surfaces.control, contentColor = surfaces.activeContent)
+                ) {
+                    Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(Nocturne78Palette.label)
+                }
+                Text(LevyraSkinStrings.managedForCode(strings.code), color = surfaces.contentMuted, fontSize = 14.sp)
+            }
+            return@PlayerSheetFrame
+        }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
