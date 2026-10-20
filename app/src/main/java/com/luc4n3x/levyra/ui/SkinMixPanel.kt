@@ -18,6 +18,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,12 +58,13 @@ internal fun SkinMixPanel(
             Box(
                 Modifier.size(64.dp).clip(playShape).background(accent)
                     .levyraPressable(onClick = { onStartMix(LevyraMixKind.Personalized) }, enabled = !loading,
-                        onClickLabel = strings.mixForYou, role = Role.Button),
+                        onClickLabel = strings.mixForYou, role = Role.Button)
+                    .semantics { contentDescription = strings.mixForYou },
                 contentAlignment = Alignment.Center
             ) {
                 val content = MaterialTheme.colorScheme.onPrimary
                 if (loading) DiscoveryLoadingIndicator(Modifier.size(26.dp), color = content)
-                else Icon(Icons.Rounded.PlayArrow, strings.mixForYou, tint = content, modifier = Modifier.size(32.dp))
+                else Icon(Icons.Rounded.PlayArrow, null, tint = content, modifier = Modifier.size(32.dp))
             }
         }
         MixBalanceSlider(familiarity, !loading, accent, strings.mixFamiliarLabel, strings.mixDiscoveryLabel, onFamiliarityChange)

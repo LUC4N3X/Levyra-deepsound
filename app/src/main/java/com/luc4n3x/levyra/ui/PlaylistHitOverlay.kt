@@ -90,6 +90,7 @@ import com.luc4n3x.levyra.ui.media.immersiveMediaGutter
 import com.luc4n3x.levyra.ui.media.ImmersiveTopBarButtonFill
 import com.luc4n3x.levyra.ui.media.ImmersiveTopBarButtonSize
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
+import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraGlass
@@ -132,7 +133,7 @@ internal fun PlaylistHitOverlay(
     }
     val palette by rememberArtworkPalette(paletteKey, artworkUrl, fallbackPalette)
     val lightTheme = LevyraIsLight
-    val targetColors = remember(palette, lightTheme) {
+    val targetColors = remember(palette, lightTheme, LevyraActivePalette) {
         immersiveMediaColors(Color(palette.start), Color(palette.end), lightTheme)
     }
     val colors = animatedImmersiveMediaColors(targetColors, animated = animationsEnabled, labelPrefix = "playlist-hit")

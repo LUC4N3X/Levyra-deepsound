@@ -81,7 +81,7 @@ private fun TorqueOrbitTracks(
         Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        itemsIndexed(pages, key = { _, page -> LevyraPersonalOrbit.identityKey(page.first().value) }) { _, page ->
+        itemsIndexed(pages, key = { pageIndex, page -> "$pageIndex-${LevyraPersonalOrbit.identityKey(page.first().value)}" }) { _, page ->
             Column(Modifier.width(316.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 page.forEach { (index, track) ->
                     TorqueOrbitRow(index, track, track.id == currentId, playing, resolving, onPlay, onActions)

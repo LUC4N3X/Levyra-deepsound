@@ -1062,6 +1062,8 @@ fun LevyraNowPlaying(
                 isDownloaded,
                 visualMode,
                 nocturne,
+                LevyraSkinManagesLayout,
+                LevyraSkinLabel,
                 strings,
                 viewModel,
                 hapticFeedback

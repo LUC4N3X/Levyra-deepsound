@@ -15,6 +15,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -51,7 +53,7 @@ private fun MediaSubtitle(text: String, color: Color, onClick: (() -> Unit)?, al
         if (uppercase) text.uppercase() else text, color = color, style = MaterialTheme.typography.titleMedium, textAlign = align,
         letterSpacing = if (uppercase) 1.2.sp else MaterialTheme.typography.titleMedium.letterSpacing,
         maxLines = 2, overflow = TextOverflow.Ellipsis,
-        modifier = if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick).padding(vertical = 4.dp) else Modifier
+        modifier = if (onClick != null) Modifier.heightIn(min = LevyraPlayerDesign.MinimumTouchTarget).clickable(role = Role.Button, onClick = onClick).wrapContentHeight().padding(vertical = 4.dp) else Modifier
     )
 }
 
@@ -67,7 +69,7 @@ internal fun PrismMediaHero(
         Box(Modifier.padding(top = 6.dp).width(art * 0.6f).height(2.dp).background(PrismAccent.gradient(), RoundedCornerShape(1.dp)))
         Spacer(Modifier.height(20.dp))
         if (overline.isNotBlank()) Text(overline.uppercase(), color = colors.accent, style = MaterialTheme.typography.labelMedium, letterSpacing = 1.6.sp, maxLines = 1)
-        Text(title, color = colors.content, fontSize = 30.sp, lineHeight = 34.sp, fontWeight = FontWeight.Normal, letterSpacing = (-0.8).sp, textAlign = TextAlign.Center, maxLines = 3, overflow = TextOverflow.Ellipsis)
+        Text(title, color = colors.content, fontSize = 30.sp, lineHeight = 34.sp, fontWeight = FontWeight.Normal, letterSpacing = (-0.8).sp, textAlign = TextAlign.Center, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() })
         MediaSubtitle(subtitle, colors.content.copy(alpha = 0.86f), onSubtitleClick, align = TextAlign.Center)
         if (metadata.isNotBlank()) Text(metadata, color = colors.contentMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.height(18.dp))
@@ -87,7 +89,7 @@ internal fun TorqueMediaHero(
             Box(Modifier.matchParentSize().clip(TorqueMediaBand).background(LevyraActivePalette.blue))
             Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 if (overline.isNotBlank()) Text(overline.uppercase(), color = Color.White.copy(alpha = 0.85f), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 3.sp, maxLines = 1)
-                Text(title.uppercase(), color = Color.White, fontSize = 24.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(title.uppercase(), color = Color.White, fontSize = 24.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() })
                 MediaSubtitle(subtitle, Color.White.copy(alpha = 0.92f), onSubtitleClick, align = TextAlign.Center)
             }
         }
@@ -115,7 +117,7 @@ internal fun NocturneMediaHero(
         ) { artwork() }
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             if (overline.isNotBlank()) Text(overline.uppercase(), color = amber, fontSize = 11.sp, fontWeight = FontWeight.Medium, letterSpacing = 2.4.sp, maxLines = 1)
-            Text(title, color = colors.content, fontSize = 28.sp, lineHeight = 32.sp, fontWeight = FontWeight.Medium, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            Text(title, color = colors.content, fontSize = 28.sp, lineHeight = 32.sp, fontWeight = FontWeight.Medium, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() })
             MediaSubtitle(subtitle, colors.contentMuted, onSubtitleClick, uppercase = true)
         }
         if (metadata.isNotBlank()) {

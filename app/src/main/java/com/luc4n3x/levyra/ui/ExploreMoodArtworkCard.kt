@@ -288,7 +288,17 @@ internal fun RowScope.ExploreMoodCard(
     }
 
     if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism) {
-        PrismMoodTile(zone.label, portraitUrl, isSelected, onClick, onStartZoneMix, strings.mixStartRadio)
+        val activePortraitUrl = portraitUrl
+        PrismMoodTile(zone.label, activePortraitUrl, isSelected, onClick, onStartZoneMix, strings.mixStartRadio) {
+            if (portraitUrl == activePortraitUrl) {
+                if (activePortraitUrl == hardFallbackPortraitUrl) {
+                    portraitUrl = ""
+                } else {
+                    portraitUrl = hardFallbackPortraitUrl
+                    portraitCandidateIndex = (portraitCandidateIndex + 1).coerceAtMost(portraitLookupLimit)
+                }
+            }
+        }
         return
     }
     val nocturne = LevyraIsNocturne

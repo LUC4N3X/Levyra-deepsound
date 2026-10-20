@@ -7,6 +7,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.verticalScroll
@@ -28,7 +29,6 @@ import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
-import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.font.FontWeight
@@ -139,7 +139,7 @@ internal fun TorqueTransport(
 @Composable
 private fun TorqueModeButton(icon: ImageVector, label: String, active: Boolean, onClick: () -> Unit) {
     Box(
-        Modifier.size(48.dp).clip(CircleShape).semantics { selected = active }.clickable(role = Role.Switch, onClick = onClick),
+        Modifier.size(48.dp).clip(CircleShape).toggleable(value = active, role = Role.Switch, onValueChange = { onClick() }),
         contentAlignment = Alignment.Center
     ) {
         Icon(icon, label, tint = if (active) LevyraText else LevyraText.copy(alpha = 0.55f), modifier = Modifier.size(24.dp))

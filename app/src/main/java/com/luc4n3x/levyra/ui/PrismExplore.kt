@@ -26,9 +26,9 @@ import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.domain.Track
 
 @Composable
-internal fun RowScope.PrismMoodTile(label: String, portrait: String, active: Boolean, onClick: () -> Unit, onMix: (() -> Unit)?, mixLabel: String) {
+internal fun RowScope.PrismMoodTile(label: String, portrait: String, active: Boolean, onClick: () -> Unit, onMix: (() -> Unit)?, mixLabel: String, onPortraitError: () -> Unit = {}) {
     if (LevyraIsTorque) {
-        TorqueMoodTile(label, portrait, active, onClick, onMix, mixLabel)
+        TorqueMoodTile(label, portrait, active, onClick, onMix, mixLabel, onPortraitError)
         return
     }
     val shape = PrismDesign.cut(PrismDesign.surfaceCorner)
@@ -41,7 +41,7 @@ internal fun RowScope.PrismMoodTile(label: String, portrait: String, active: Boo
             .levyraPressable(onClick = onClick, onClickLabel = label, role = Role.Button, onLongClick = onMix, onLongClickLabel = if (onMix != null) mixLabel else null)
     ) {
         if (hasPortrait) {
-            AsyncImage(portrait, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            AsyncImage(portrait, contentDescription = null, contentScale = ContentScale.Crop, onError = { onPortraitError() }, modifier = Modifier.fillMaxSize())
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.35f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.82f))))
         } else {
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(PrismAccent.Tint, Color.Transparent))))
@@ -95,14 +95,14 @@ internal fun PrismFreshRelease(track: Track, title: String, subtitle: String, la
 }
 
 @Composable
-private fun RowScope.TorqueMoodTile(label: String, portrait: String, active: Boolean, onClick: () -> Unit, onMix: (() -> Unit)?, mixLabel: String) {
+private fun RowScope.TorqueMoodTile(label: String, portrait: String, active: Boolean, onClick: () -> Unit, onMix: (() -> Unit)?, mixLabel: String, onPortraitError: () -> Unit) {
     Box(
         Modifier.weight(1f).aspectRatio(0.82f).background(LevyraPanel)
             .then(if (active) Modifier.border(2.dp, Color.White) else Modifier)
             .semantics { selected = active }
             .levyraPressable(onClick = onClick, onClickLabel = label, role = Role.Button, onLongClick = onMix, onLongClickLabel = if (onMix != null) mixLabel else null)
     ) {
-        if (portrait.isNotBlank()) AsyncImage(portrait, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+        if (portrait.isNotBlank()) AsyncImage(portrait, contentDescription = null, contentScale = ContentScale.Crop, onError = { onPortraitError() }, modifier = Modifier.fillMaxSize())
         Box(Modifier.fillMaxSize().clip(TorqueRiseShape).background(LevyraActivePalette.blue.copy(alpha = if (active) 1f else 0.9f)))
         Text(
             label.uppercase(), color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp,
