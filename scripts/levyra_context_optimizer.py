@@ -745,12 +745,7 @@ def run_command(
 # CLI Interface
 # ---------------------------------------------------------------------------
 
-def main(argv: Sequence[str] | None = None) -> int:
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    if hasattr(sys.stderr, "reconfigure"):
-        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Levyra RTK Enhanced Context Optimizer")
     subparsers = parser.add_subparsers(dest="command")
 
@@ -815,9 +810,62 @@ def main(argv: Sequence[str] | None = None) -> int:
     # Command: clear
     subparsers.add_parser("clear", help="Clear cached raw outputs")
 
-    args = parser.parse_args(argv)
-    cache = ContextCache()
+    return parser
 
+
+def _retrieve_cached_text(args: argparse.Namespace) -> int:
+    cache = ContextCache()
+    start_line = None
+    end_line = None
+    if args.lines:
+        parts = args.lines.split(":")
+        if len(parts) == 2:
+            try:
+                start_line = int(parts[0]) if parts[0] else None
+                end_line = int(parts[1]) if parts[1] else None
+            except ValueError:
+                sys.stderr.write(f"Invalid lines range: {args.lines}\n")
+                return 1
+    try:
+        sys.stdout.write(cache.retrieve(args.hash, start_line=start_line, end_line=end_line))
+        return 0
+    except KeyError as exc:
+        sys.stderr.write(f"Error: {exc}\n")
+        return 1
+
+
+def _print_cache_stats() -> int:
+    cache = ContextCache()
+    stats = cache.get_stats()
+    print("Levyra Context Optimizer CCR Cache")
+    print("==================================")
+    print(f"Location:           {cache.cache_dir}")
+    print(f"Stored outputs:     {stats['entries']} / {cache.max_entries} max")
+    print(f"Total cached bytes: {stats['total_bytes']:,} B / {cache.max_bytes:,} B max")
+    print(f"Total tokens seen:  {int(stats['total_tokens_cached']):,} tokens")
+    return 0
+
+
+def _process_stdin(args: argparse.Namespace) -> int:
+    raw_input = sys.stdin.read()
+    exit_code = getattr(args, "exit_code", 0)
+    if not raw_input:
+        return exit_code
+    if getattr(args, "no_cache", False):
+        sys.stdout.write(raw_input)
+        return exit_code
+    result = optimize_context(raw_input, category=getattr(args, "category", None))
+    sys.stdout.write(raw_input if getattr(args, "raw", False) else result.content)
+    return exit_code
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
+    args = _build_parser().parse_args(argv)
     if args.command == "run":
         return run_command(
             cmd=args.cmd,
@@ -825,63 +873,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             raw_mode=args.raw,
             no_cache=args.no_cache,
         )
-
-    elif args.command == "retrieve":
-        start_line = None
-        end_line = None
-        if args.lines:
-            parts = args.lines.split(":")
-            if len(parts) == 2:
-                try:
-                    start_line = int(parts[0]) if parts[0] else None
-                    end_line = int(parts[1]) if parts[1] else None
-                except ValueError:
-                    sys.stderr.write(f"Invalid lines range: {args.lines}\n")
-                    return 1
-
-        try:
-            content = cache.retrieve(args.hash, start_line=start_line, end_line=end_line)
-            sys.stdout.write(content)
-            return 0
-        except KeyError as exc:
-            sys.stderr.write(f"Error: {exc}\n")
-            return 1
-
-    elif args.command == "stats":
-        stats = cache.get_stats()
-        print("Levyra Context Optimizer CCR Cache")
-        print("==================================")
-        print(f"Location:           {cache.cache_dir}")
-        print(f"Stored outputs:     {stats['entries']} / {cache.max_entries} max")
-        print(f"Total cached bytes: {stats['total_bytes']:,} B / {cache.max_bytes:,} B max")
-        print(f"Total tokens seen:  {int(stats['total_tokens_cached']):,} tokens")
+    if args.command == "retrieve":
+        return _retrieve_cached_text(args)
+    if args.command == "stats":
+        return _print_cache_stats()
+    if args.command == "clear":
+        print(f"Cleared {ContextCache().clear()} cached items.")
         return 0
-
-    elif args.command == "clear":
-        cleared = cache.clear()
-        print(f"Cleared {cleared} cached items.")
-        return 0
-
-    elif args.command == "process" or args.command is None:
-        raw_input = sys.stdin.read()
-        if not raw_input:
-            return getattr(args, "exit_code", 0)
-
-        if getattr(args, "no_cache", False):
-            sys.stdout.write(raw_input)
-            return getattr(args, "exit_code", 0)
-
-        category = getattr(args, "category", None)
-        result = optimize_context(raw_input, category=category)
-
-        if getattr(args, "raw", False):
-            sys.stdout.write(raw_input)
-        else:
-            sys.stdout.write(result.content)
-
-        return getattr(args, "exit_code", 0)
-
-    return 0
+    return _process_stdin(args)
 
 
 if __name__ == "__main__":
