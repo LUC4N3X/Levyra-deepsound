@@ -318,6 +318,87 @@ hook contract and persistent-memory integration. PowerShell and Bash syntax are
 checked when those files are part of the changed set and the required shell is
 available in the validation environment.
 
+## Levyra RTK Enhanced: reversible output context
+
+`scripts/levyra_context_optimizer.py` provides an **optional**, local text-output
+wrapper alongside RTK. It is **not** automatically inserted into every Claude,
+Codex or Antigravity tool call; use it selectively for lengthy, finite commands
+that RTK does not already compact. No model/provider settings are changed.
+
+### Safety and fidelity
+
+- **RTK first:** use RTK for supported commands. Do not wrap RTK's output again:
+  the optimizer only recognizes its own `#levyra-raw:` or `[Levyra Context:`
+  markers, not every format produced by RTK.
+- **Failures first:** commands with nonzero exit status are printed uncompressed,
+  with the original process exit status. The `run` wrapper combines stdout and
+  stderr in their observed order, and decodes text using UTF-8 with replacement
+  for invalid bytes. Use native commands when byte-level output, separate streams
+  or interactive streaming are required.
+- **Recovery:** successful command output is compressed only if the decoded
+  original is saved in the bounded local cache and the **final** output, including
+  its retrieval marker, saves at least 12% of estimated lexical tokens.
+  Original text can be retrieved while its entry remains in the cache.
+- **Fail open:** when output is too large for the 25 MB cache, storage fails,
+  or savings are insufficient, it is displayed uncompressed. Cache entries
+  are evicted on a least-recently-used basis, up to 150 entries.
+- **Privacy:** cache files under `.levyra-tools/context-cache/` are local,
+  gitignored plaintext. Never cache credentials, `.env` or other sensitive
+  command output. For such commands, do not use the wrapper, or explicitly
+  choose `--no-cache`. No credentials or telemetry are sent to Headroom.
+- **No unsafe retry:** reading cached text does not rerun a state-changing
+  command. If an entry has been evicted, do not rerun mutating commands just
+  to recover the log.
+
+### Commands
+
+On Linux/macOS (Bash), for ordinary high-volume text output:
+
+```bash
+python3 scripts/levyra_context_optimizer.py run -- ./gradlew help
+python3 scripts/levyra_context_optimizer.py run -- git diff HEAD~1
+python3 scripts/levyra_context_optimizer.py run --no-cache -- git status
+```
+
+On Windows (PowerShell), run the same tool with `python` and native Gradle:
+
+```powershell
+python scripts/levyra_context_optimizer.py run -- .\gradlew.bat help
+python scripts/levyra_context_optimizer.py run -- git diff HEAD~1
+```
+
+Retrieve all or part of a cached original output:
+
+```text
+python scripts/levyra_context_optimizer.py retrieve <cache_id>
+python scripts/levyra_context_optimizer.py retrieve <cache_id> --lines 100:200
+```
+
+Inspect and clear the local cache:
+
+```bash
+python scripts/levyra_context_optimizer.py stats
+python scripts/levyra_context_optimizer.py clear
+```
+
+The `process` subcommand accepts already-captured stdin. If it is used in a
+pipeline, explicitly preserve the *actual upstream* exit status; shell `$?`
+or `$LASTEXITCODE` expanded inside a running pipeline is **not** a reliable way
+to do so. Prefer `run -- <command>` for exit-code safety.
+
+### Benchmark interpretation
+
+`scripts/benchmark_context_optimization.py` tests representative scenarios
+plus a few live command/status paths. Reported token counts are **heuristic
+lexical estimates**, not model tokenizer or billed-token measurements; no
+improvement in agent coding quality has been demonstrated by this benchmark.
+
+### Optional Headroom
+
+`scripts/headroom_adapter.py` is an opt-in CLI/tool availability adapter.
+It does not automatically activate Headroom compression, attach a background
+proxy, or register an MCP server. See `docs/ai/HEADROOM.md` for accurate scope.
+
 ## Attribution
 
 The workflow incorporates selected ideas from `ChrisTitusTech/titus-ai`, notably

@@ -5,6 +5,8 @@ DRY_RUN=0
 INSTALL_RTK=0
 INSTALL_PLUGINS=0
 INSTALL_CLAUDE_MEM=0
+ENABLE_HEADROOM=0
+DISABLE_HEADROOM=0
 SKIP_HOOKS=0
 SKIP_MATT_SKILLS=0
 SKIP_EXTERNAL_SKILLS=0
@@ -18,6 +20,8 @@ Options:
   --install-rtk       Install RTK through Cargo when it is missing
   --plugins           Install plugins listed in .agents/config/codex-plugins.txt
   --claude-mem        Explicitly install pinned claude-mem for detected supported runtimes
+  --headroom          Enable optional Headroom context integration
+  --disable-headroom  Disable optional Headroom context integration
   --skip-hooks        Do not initialize RTK instructions/hooks/integrations
   --skip-matt-skills  Do not install Matt Pocock engineering skills for Codex
   --skip-external-skills  Do not install Kotlin footguns / Material 3 skills for Codex
@@ -31,6 +35,8 @@ while [[ $# -gt 0 ]]; do
     --install-rtk) INSTALL_RTK=1 ;;
     --plugins) INSTALL_PLUGINS=1 ;;
     --claude-mem) INSTALL_CLAUDE_MEM=1 ;;
+    --headroom) ENABLE_HEADROOM=1 ;;
+    --disable-headroom) DISABLE_HEADROOM=1 ;;
     --skip-hooks) SKIP_HOOKS=1 ;;
     --skip-matt-skills) SKIP_MATT_SKILLS=1 ;;
     --skip-external-skills) SKIP_EXTERNAL_SKILLS=1 ;;
@@ -193,6 +199,14 @@ if [[ -z "$PYTHON_COMMAND" ]]; then
   echo "[blocked] Python is required to materialize and verify Levyra agent runtime configuration." >&2
   exit 1
 fi
+
+if [[ "$ENABLE_HEADROOM" -eq 1 ]]; then
+  run_step "Enable optional Headroom integration" "$PYTHON_COMMAND" scripts/headroom_adapter.py enable
+elif [[ "$DISABLE_HEADROOM" -eq 1 ]]; then
+  run_step "Disable optional Headroom integration" "$PYTHON_COMMAND" scripts/headroom_adapter.py disable
+fi
+
+run_step "Verify Levyra Context Optimizer" "$PYTHON_COMMAND" scripts/levyra_context_optimizer.py stats
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
   echo "[dry-run] Refresh Claude Code and Codex native runtime projections: (cd '$REPO_ROOT' && $PYTHON_COMMAND scripts/sync_agent_runtime.py --runtime all --quiet)"

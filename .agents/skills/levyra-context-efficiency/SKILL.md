@@ -71,6 +71,27 @@ For ADB, bound noisy textual output first. Keep tiny control queries raw. Never
 wrap binary/payload commands such as `adb exec-out screencap -p` in a text
 compression path.
 
+## Reversible Context Optimization (CCR)
+
+For long, finite **text-only** commands not already compacted by RTK, use
+`python scripts/levyra_context_optimizer.py run -- <command>`.
+Failed output stays raw. Normal exit codes are preserved; signal termination
+uses 128 + signal (137 for signal 9). Successful output
+is compacted only while its original fits a local 150-entry/25 MB cache.
+The wrapper buffers until exit: avoid interactive, binary or timing-sensitive commands.
+
+Retrieve the original while its cache entry remains:
+
+```text
+python scripts/levyra_context_optimizer.py retrieve <cache_id>
+python scripts/levyra_context_optimizer.py retrieve <cache_id> --lines <start>:<end>
+```
+
+Never chain RTK and this wrapper: RTK has no universal output marker.
+Do not re-run stateful commands to recover logs. The cache contains local
+plaintext; never cache credentials, `.env`, cookies, signing data or private
+URLs. Use native commands or `run --no-cache -- <command>` for sensitive output.
+
 ## Cross-session context
 
 Use claude-mem only when earlier-session context materially affects the task and
