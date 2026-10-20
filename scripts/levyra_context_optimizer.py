@@ -703,6 +703,23 @@ def _execute_subprocess(cmd: list[str], silent: bool = False) -> tuple[int, str]
     return code, raw_output
 
 
+def _emit_original_output(
+    text: str,
+    *,
+    cache_dir: Path | None,
+    category: str,
+    silent: bool,
+    cache_enabled: bool,
+) -> None:
+    """Display unmodified diagnostics, optionally retaining a bounded local copy."""
+    if not text:
+        return
+    if cache_enabled:
+        ContextCache(cache_dir=cache_dir).store(text, category=category)
+    if not silent:
+        sys.stdout.write(text)
+
+
 def run_command(
     cmd: list[str],
     category: str | None = None,
@@ -711,7 +728,7 @@ def run_command(
     silent: bool = False,
     no_cache: bool = False,
 ) -> int:
-    """Execute a finite text command, preserving its exit code and diagnostics."""
+    """Run a finite text command, preserving its exit status and error details."""
     cleaned_cmd = _clean_command_tokens(cmd)
     if not cleaned_cmd:
         if not silent:
@@ -719,34 +736,21 @@ def run_command(
         return 2
 
     exit_code, raw_output = _execute_subprocess(cleaned_cmd, silent=silent)
-
-    # Use for commands that could emit credentials or other sensitive content.
-    # No caching or compression is performed in this mode.
-    if no_cache:
-        if raw_output and not silent:
-            sys.stdout.write(raw_output)
-        return exit_code
-
-    # Failure diagnostics are decisive evidence: show them in full, while
-    # retaining a bounded raw copy where possible, never re-running the task.
-    if exit_code != 0:
-        if raw_output:
-            ContextCache(cache_dir=cache_dir).store(raw_output, category=category or "failure")
-            if not silent:
-                sys.stdout.write(raw_output)
-        return exit_code
-
-    if not raw_output or raw_mode:
-        if raw_output:
-            ContextCache(cache_dir=cache_dir).store(raw_output, category=category or "raw")
-            if not silent:
-                sys.stdout.write(raw_output)
+    if no_cache or exit_code != 0 or raw_mode or not raw_output:
+        _emit_original_output(
+            raw_output,
+            cache_dir=cache_dir,
+            category=category or ("failure" if exit_code else "raw"),
+            silent=silent,
+            cache_enabled=not no_cache,
+        )
         return exit_code
 
     result = optimize_context(raw_output, category=category, cache_dir=cache_dir)
     if not silent:
-        sys.stdout.write(result.content if result.content.endswith("\n") else f"{result.content}\n")
-
+        sys.stdout.write(
+            result.content if result.content.endswith("\n") else f"{result.content}\n"
+        )
     return exit_code
 
 
