@@ -75,7 +75,8 @@ compression path.
 
 For long, finite **text-only** commands not already compacted by RTK, use
 `python scripts/levyra_context_optimizer.py run -- <command>`.
-Nonzero exits are reported raw; exit status is preserved. Successful output
+Failed output stays raw. Normal exit codes are preserved; signal termination
+uses 128 + signal (137 for signal 9). Successful output
 is compacted only while its original fits a local 150-entry/25 MB cache.
 The wrapper buffers until exit: avoid interactive, binary or timing-sensitive commands.
 
