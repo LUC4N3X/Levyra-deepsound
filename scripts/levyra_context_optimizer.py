@@ -557,101 +557,88 @@ def apply_optimization(text: str, category: str) -> str:
     return text
 
 
+def _select_context_content(
+    raw_text: str,
+    category: str,
+    raw_hash: str,
+    min_savings_pct: float,
+) -> str:
+    """Return compacted text only when the final agent-visible form saves space."""
+    try:
+        compacted = apply_optimization(raw_text, category)
+    except Exception:
+        return raw_text
+
+    if compacted == raw_text:
+        return raw_text
+
+    short_hash = raw_hash[:12]
+    retrieval_hint = (
+        f"\n[Levyra Context: #levyra-raw:{short_hash}; "
+        f"retrieve: python scripts/levyra_context_optimizer.py retrieve {short_hash}]"
+    )
+    candidate = compacted + retrieval_hint
+    original_tokens = estimate_tokens(raw_text)
+    if (
+        original_tokens > 0
+        and len(candidate.encode("utf-8")) < len(raw_text.encode("utf-8"))
+        and estimate_tokens(candidate) <= original_tokens * (1 - min_savings_pct / 100.0)
+    ):
+        return candidate
+    return raw_text
+
+
+def _context_result(
+    raw_text: str,
+    content: str,
+    category: str,
+    raw_hash: str,
+    cached_path: Path | None,
+) -> OptimizationResult:
+    """Calculate honest, final-form estimates (including retrieval markers)."""
+    original_bytes = len(raw_text.encode("utf-8"))
+    optimized_bytes = len(content.encode("utf-8"))
+    original_tokens = estimate_tokens(raw_text)
+    optimized_tokens = estimate_tokens(content)
+    reduction = (
+        (original_tokens - optimized_tokens) * 100.0 / original_tokens
+        if original_tokens else 0.0
+    )
+    return OptimizationResult(
+        category=category,
+        original_bytes=original_bytes,
+        optimized_bytes=optimized_bytes,
+        original_tokens=original_tokens,
+        optimized_tokens=optimized_tokens,
+        reduction_pct=reduction,
+        raw_hash=raw_hash,
+        cached_path=str(cached_path) if cached_path else None,
+        content=content,
+    )
+
+
 def optimize_context(
     raw_text: str,
     category: str | None = None,
     cache_dir: Path | None = None,
     min_savings_pct: float = 12.0,
 ) -> OptimizationResult:
-    """Optimize raw context with content-addressed reversible caching (CCR).
-
-    If savings < min_savings_pct, returns raw text with cache marker to prevent
-    unnecessary alterations.
-    """
-    cache = ContextCache(cache_dir=cache_dir)
+    """Compact text only with a retrievable raw copy and meaningful net savings."""
     effective_category = category or detect_category(raw_text)
-
-    # 1. Store raw content safely in content-addressed cache (lossless backup)
-    raw_hash, cached_path = cache.store(raw_text, category=effective_category)
-
-    # Compression is safe only when the unmodified evidence is retrievable.
-    # This includes oversized output and a full/unwritable cache.
-    if cached_path is None:
-        raw_bytes = len(raw_text.encode("utf-8"))
-        raw_tokens = estimate_tokens(raw_text)
-        return OptimizationResult(
-            category=effective_category,
-            original_bytes=raw_bytes,
-            optimized_bytes=raw_bytes,
-            original_tokens=raw_tokens,
-            optimized_tokens=raw_tokens,
-            reduction_pct=0.0,
-            raw_hash=raw_hash,
-            cached_path=None,
-            content=raw_text,
-        )
-
-    # 2. Detect only our own cache marker. RTK has no reliable common marker.
-    if "#levyra-raw:" in raw_text or "[Levyra Context:" in raw_text:
-        orig_bytes = len(raw_text.encode("utf-8"))
-        orig_tokens = estimate_tokens(raw_text)
-        return OptimizationResult(
-            category=effective_category,
-            original_bytes=orig_bytes,
-            optimized_bytes=orig_bytes,
-            original_tokens=orig_tokens,
-            optimized_tokens=orig_tokens,
-            reduction_pct=0.0,
-            raw_hash=raw_hash,
-            cached_path=str(cached_path) if cached_path else None,
-            content=raw_text,
-        )
-
-    # 3. Apply context-aware compression
-    try:
-        compressed_text = apply_optimization(raw_text, effective_category)
-    except Exception:
-        # Fail-open: Never fail an agent turn due to compression errors
-        compressed_text = raw_text
-
-    orig_bytes = len(raw_text.encode("utf-8"))
-    orig_tokens = estimate_tokens(raw_text)
-    final_content = raw_text
-
-    if compressed_text != raw_text:
-        short_hash = raw_hash[:12]
-        footer = (
-            f"\n[Levyra Context: #levyra-raw:{short_hash}; "
-            f"retrieve: python scripts/levyra_context_optimizer.py retrieve {short_hash}]"
-        )
-        candidate = compressed_text + footer
-        candidate_bytes = len(candidate.encode("utf-8"))
-        candidate_tokens = estimate_tokens(candidate)
-        if (
-            orig_tokens > 0
-            and candidate_bytes < orig_bytes
-            and candidate_tokens <= orig_tokens * (1 - min_savings_pct / 100.0)
-        ):
-            final_content = candidate
-
-    opt_bytes = len(final_content.encode("utf-8"))
-    opt_tokens = estimate_tokens(final_content)
-    reduction = (
-        (orig_tokens - opt_tokens) / orig_tokens * 100.0
-        if orig_tokens > 0 else 0.0
+    raw_hash, cached_path = ContextCache(cache_dir=cache_dir).store(
+        raw_text, category=effective_category
     )
 
-    return OptimizationResult(
-        category=effective_category,
-        original_bytes=orig_bytes,
-        optimized_bytes=opt_bytes,
-        original_tokens=orig_tokens,
-        optimized_tokens=opt_tokens,
-        reduction_pct=reduction,
-        raw_hash=raw_hash,
-        cached_path=str(cached_path) if cached_path else None,
-        content=final_content,
-    )
+    # Never drop diagnostic evidence when storage is unavailable or the text
+    # already includes our own compression marker.
+    if cached_path is None or "#levyra-raw:" in raw_text or "[Levyra Context:" in raw_text:
+        content = raw_text
+    else:
+        content = _select_context_content(
+            raw_text, effective_category, raw_hash, min_savings_pct
+        )
+
+    return _context_result(raw_text, content, effective_category, raw_hash, cached_path)
 
 
 # ---------------------------------------------------------------------------
