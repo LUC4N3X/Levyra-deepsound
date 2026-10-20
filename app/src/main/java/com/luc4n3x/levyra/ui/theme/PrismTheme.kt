@@ -26,17 +26,17 @@ internal var activePrismSettings by mutableStateOf(PrismSettings())
     private set
 
 internal object PrismDesign {
-    val artworkCorner = 18.dp
-    val surfaceCorner = 24.dp
-    val controlCorner = 18.dp
+    val artworkCorner = 10.dp
+    val surfaceCorner = 14.dp
+    val controlCorner = 8.dp
     val gutter = 20.dp
     val hairline = 1.dp
 }
 
 internal val PrismShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp), small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(18.dp), large = RoundedCornerShape(24.dp),
-    extraLarge = RoundedCornerShape(30.dp)
+    medium = RoundedCornerShape(10.dp), large = RoundedCornerShape(14.dp),
+    extraLarge = RoundedCornerShape(18.dp)
 )
 
 internal val PrismTypography = levyraTypographyFor(LevyraFontPreset.Outfit).let { base ->
@@ -109,7 +109,7 @@ internal fun PrismThemeEffect(settings: LevyraInterfaceSettings, track: Track?, 
 
 internal fun prismMiniSettings(saved: LevyraMiniPlayerStudioSettings): LevyraMiniPlayerStudioSettings {
     val tuning = LevyraMiniPlayerStudioSettings.spec(MiniPlayerStyle.Floating).defaults.copy(
-        cornerDp = 24, heightDp = 68, artworkDp = 48, shadow = 0, glow = 0,
+        cornerDp = 12, heightDp = 60, artworkDp = 44, shadow = 0, glow = 0,
         artworkShape = MiniArtworkShape.Rounded, progress = MiniProgressStyle.Line,
         buttons = MiniButtonStyle.Outlined, colorMode = MiniColorMode.Theme,
         background = MiniBackground.Solid, motion = MiniMotion.Normal,

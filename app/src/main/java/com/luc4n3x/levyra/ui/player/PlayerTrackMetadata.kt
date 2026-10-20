@@ -65,7 +65,7 @@ internal fun PlayerTrackMetadata(
     modifier: Modifier = Modifier
 ) {
     val nocturne = LevyraIsNocturne
-    val titleSize = if (nocturne) { if (compact) 22.sp else 25.sp } else if (compact) 23.sp else 27.sp
+    val titleSize = if (LevyraIsPrism) 23.sp else if (nocturne) { if (compact) 22.sp else 25.sp } else if (compact) 23.sp else 27.sp
     val artistSize = if (compact) 15.sp else 16.5.sp
 
     Row(

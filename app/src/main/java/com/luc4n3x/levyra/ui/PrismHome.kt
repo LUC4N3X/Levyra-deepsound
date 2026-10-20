@@ -38,7 +38,7 @@ import com.luc4n3x.levyra.ui.theme.*
 internal fun PrismPageHeader(title: String, subtitle: String = "", actions: @Composable RowScope.() -> Unit = {}) {
     Column(Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(title, color = LevyraText, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f).semantics { heading() })
+            Text(title, color = LevyraText, fontSize = 26.sp, lineHeight = 30.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f).semantics { heading() })
             actions()
         }
         if (subtitle.isNotBlank()) Text(subtitle, color = LevyraMuted, style = MaterialTheme.typography.bodyMedium)
@@ -57,9 +57,9 @@ internal fun PrismHomeHeader(greeting: String, date: String, hero: StudioHero?, 
         }
         if (hero != null) {
             Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(
                     Brush.linearGradient(listOf(LevyraCyan.copy(alpha = 0.14f), LevyraPanel, LevyraViolet.copy(alpha = 0.10f)))
-                ).border(1.dp, LevyraGlassBorder, RoundedCornerShape(24.dp))
+                ).border(1.dp, LevyraGlassBorder, RoundedCornerShape(14.dp))
                     .levyraPressable(onClick = hero.onOpen, onClickLabel = strings.play, role = Role.Button).padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -111,12 +111,12 @@ internal fun PrismCompactShelf(items: List<StudioShelfItem>, isPlaying: Boolean,
 @Composable
 internal fun PrismCollectionCard(title: String, subtitle: String, artwork: Track?, onOpen: () -> Unit, modifier: Modifier) {
     Row(
-        modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(LevyraPanel)
+        modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).border(1.dp, LevyraGlassBorder, RoundedCornerShape(10.dp)).background(LevyraPanel)
             .levyraPressable(onClick = onOpen, onClickLabel = title, role = Role.Button).padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(title, color = LevyraText, style = MaterialTheme.typography.titleLarge, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            Text(title, color = LevyraText, style = MaterialTheme.typography.titleMedium, maxLines = 3, overflow = TextOverflow.Ellipsis)
             Text(subtitle, color = LevyraMuted, style = MaterialTheme.typography.bodySmall, maxLines = 3, overflow = TextOverflow.Ellipsis)
             Icon(Icons.AutoMirrored.Outlined.ArrowForward, null, tint = LevyraCyan)
         }

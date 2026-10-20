@@ -5,6 +5,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
@@ -82,7 +83,7 @@ internal fun PrismTransport(
             Icon(Icons.Rounded.SkipPrevious, labels.previous, tint = colors.onSurface, modifier = Modifier.size(30.dp))
         }
         FilledIconButton(
-            onClick = onToggle, modifier = Modifier.size(72.dp).semantics { contentDescription = if (playing) labels.pause else labels.play }, shape = RoundedCornerShape(24.dp),
+            onClick = onToggle, modifier = Modifier.size(64.dp).semantics { contentDescription = if (playing) labels.pause else labels.play }, shape = CircleShape,
             colors = IconButtonDefaults.filledIconButtonColors(containerColor = colors.primary, contentColor = colors.onPrimary)
         ) {
             if (resolving) LevyraLoadingIndicator(color = colors.onPrimary, modifier = Modifier.size(28.dp))
@@ -100,10 +101,10 @@ private fun PrismModeButton(icon: ImageVector, label: String, active: Boolean, o
     val colors = MaterialTheme.colorScheme
     OutlinedIconButton(
         onClick = onClick, modifier = Modifier.size(48.dp).semantics { selected = active },
-        shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, if (active) colors.primary else colors.outlineVariant),
+        shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, if (active) colors.primary else colors.outlineVariant),
         colors = IconButtonDefaults.outlinedIconButtonColors(
-            containerColor = if (active) colors.primaryContainer else colors.surfaceContainerLow,
-            contentColor = if (active) colors.onPrimaryContainer else colors.onSurfaceVariant
+            containerColor = androidx.compose.ui.graphics.Color.Transparent,
+            contentColor = if (active) colors.primary else colors.onSurfaceVariant
         )
     ) { Icon(icon, label, modifier = Modifier.size(22.dp)) }
 }

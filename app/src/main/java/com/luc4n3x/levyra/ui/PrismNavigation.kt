@@ -36,25 +36,26 @@ internal fun PrismBottomTabs(tuning: NavTuning, selected: LevyraTab, onSelect: (
             modifier = Modifier.fillMaxWidth().onSizeChanged { size ->
                 measuredHeight?.value = with(density) { size.height.toDp() }
             }.padding(horizontal = 16.dp, vertical = 6.dp),
-            shape = RoundedCornerShape(28.dp), color = prismGlassColor(),
+            shape = RoundedCornerShape(12.dp), color = prismGlassColor(),
             border = BorderStroke(1.dp, colors.outlineVariant)
         ) {
-            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).selectableGroup().padding(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).selectableGroup().padding(horizontal = 6.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                 entries.forEach { entry ->
                     val active = entry.tab == selected
                     Column(
                         Modifier.weight(1f).fillMaxHeight().heightIn(min = 56.dp)
-                            .background(if (active) colors.primaryContainer else Color.Transparent, RoundedCornerShape(22.dp))
                             .selectable(active, role = Role.Tab, onClick = {
                                 if (!active && tuning.haptics) haptics.perform(LevyraHapticAction.SeekSnap)
                                 onSelect(entry.tab)
                             }).padding(horizontal = 4.dp, vertical = 8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
                     ) {
-                        val tint = if (active) colors.onPrimaryContainer else colors.onSurfaceVariant
+                        val tint = if (active) colors.primary else colors.onSurfaceVariant
                         Icon(entry.unselectedIcon, null, tint = tint, modifier = Modifier.size(22.dp))
                         Spacer(Modifier.height(4.dp))
                         Text(entry.label, color = tint, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
+                        Spacer(Modifier.height(4.dp))
+                        Box(Modifier.width(18.dp).height(2.dp).background(if (active) colors.primary else Color.Transparent))
                     }
                 }
             }

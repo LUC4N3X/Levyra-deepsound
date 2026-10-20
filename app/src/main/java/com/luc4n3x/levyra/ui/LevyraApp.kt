@@ -10902,7 +10902,7 @@ private class StudioHomeLook(
 private fun rememberStudioHomeLook(homeStudio: LevyraHomeStudioSettings, state: LevyraUiState): StudioHomeLook {
     val homeStyle = when {
         LevyraIsNocturne -> HomeStyle.Minimal
-        LevyraIsPrism -> HomeStyle.MaterialExpressive
+        LevyraIsPrism -> HomeStyle.Minimal
         else -> homeStudio.style
     }
     val prismHome = LevyraIsPrism

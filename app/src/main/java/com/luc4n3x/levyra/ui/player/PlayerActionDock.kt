@@ -107,7 +107,7 @@ private fun RowScope.PlayerDockSegment(
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(220)),
         label = "player-dock-tint"
     )
-    val shape = dockSegmentShape(first = first, last = last, outer = outer, inner = inner)
+    val shape = if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism) RoundedCornerShape(8.dp) else dockSegmentShape(first = first, last = last, outer = outer, inner = inner)
     Box(
         modifier = Modifier
             .weight(1f)
