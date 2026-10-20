@@ -1,6 +1,7 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 
 import androidx.compose.foundation.layout.Arrangement
@@ -52,6 +53,10 @@ internal fun PlayerProgress(
     modifier: Modifier = Modifier,
     style: PlayerProgressStyle = PlayerProgressStyle.Classic
 ) {
+    if (LevyraIsPrism) {
+        PrismSeekbar(positionMs, bufferedPositionMs, durationMs, onSeek, modifier)
+        return
+    }
     val context = LocalContext.current.applicationContext
     val activePlayer by PlaybackService.activePlayerFlow.collectAsStateWithLifecycle()
     val revision by WaveSeekStore.revision.collectAsStateWithLifecycle()

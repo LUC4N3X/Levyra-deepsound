@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.library
 
+import com.luc4n3x.levyra.ui.theme.*
 import androidx.compose.material3.HorizontalDivider
 import com.luc4n3x.levyra.ui.theme.Nocturne78Icons
 
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -91,6 +93,14 @@ internal fun LibrarySectionGrid(
     modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.colorScheme
+    if (LevyraIsPrism) {
+        Column(modifier, verticalArrangement = Arrangement.spacedBy(if (LevyraIsTorque) 2.dp else 8.dp)) {
+            entries.forEach { entry ->
+                LibrarySectionTile(entry, LibrarySectionTone(colors.surfaceContainer, colors.primary), RoundedCornerShape(PrismDesign.controlCorner), onOpen, Modifier.fillMaxWidth())
+            }
+        }
+        return
+    }
     if (LevyraIsNocturne) {
         Column(modifier) {
             entries.forEach { entry ->
@@ -159,6 +169,23 @@ private fun LibrarySectionTile(
     val strings = LocalLevyraStrings.current
     val label = entry.category.libraryLabel(strings)
     val appearance = librarySectionAppearance(entry, tone, shape)
+    if (LevyraIsPrism) {
+        Row(
+            modifier.heightIn(min = PrismDesign.rowHeight + 8.dp).clip(shape).background(LevyraPanel)
+                .levyraPressable(onClick = { onOpen(entry.category) }, onClickLabel = label, role = Role.Button)
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            Box(Modifier.size(PrismDesign.iconTile).clip(PrismDesign.cut(PrismDesign.controlCorner)).background(if (LevyraIsTorque) Color.Transparent else PrismAccent.Tint), contentAlignment = Alignment.Center) {
+                Icon(appearance.icon, null, tint = if (LevyraIsTorque) LevyraText else LevyraCyan, modifier = Modifier.size(if (LevyraIsTorque) 26.dp else 22.dp))
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(label, color = LevyraText, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (entry.summary.isNotBlank()) Text(entry.summary, color = LevyraMuted, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        return
+    }
     Row(
         modifier = modifier
             .heightIn(min = appearance.height)
@@ -439,7 +466,10 @@ private data class LibrarySectionAppearance(
 private fun librarySectionAppearance(entry: LibrarySectionEntry, tone: LibrarySectionTone, shape: Shape): LibrarySectionAppearance {
     val colors = MaterialTheme.colorScheme
     val icon = entry.category.sectionIcon()
-    return if (LevyraIsNocturne) LibrarySectionAppearance(
+    return if (LevyraIsPrism) LibrarySectionAppearance(
+        104.dp, 14.dp, shape, RoundedCornerShape(14.dp),
+        colors.surfaceContainer, colors.primaryContainer, colors.onPrimaryContainer, icon
+    ) else if (LevyraIsNocturne) LibrarySectionAppearance(
         64.dp, 10.dp, RoundedCornerShape(0.dp), RoundedCornerShape(Nocturne78Design.artworkCorner),
         Color.Transparent, colors.surfaceContainerHigh, colors.onSurfaceVariant, Nocturne78Icons.resolve(icon)
     ) else LibrarySectionAppearance(

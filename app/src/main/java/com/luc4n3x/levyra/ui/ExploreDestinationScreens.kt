@@ -1415,6 +1415,10 @@ internal fun ExploreDiscoveryCategoryCard(
     onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism) {
+        SkinCategoryCard(title, artworkUrl, modifier, onLongClick, onClick)
+        return
+    }
     val (accentStart, accentEnd) = accentColors ?: exploreCategoryPalette(identity)
     val shape = RoundedCornerShape(16.dp)
     val metrics = exploreCategoryCardMetrics(prominent)

@@ -436,6 +436,11 @@ object LevyraTypographyController {
 }
 
 object LevyraThemeController {
+    internal fun applyPrism(palette: LevyraPalette) {
+        activePureBlackState.value = false
+        activeCornerScaleState.value = 1f
+        if (activePaletteState.value != palette) activePaletteState.value = palette
+    }
     fun apply(
         presetId: String,
         coverAccentStart: Int? = null,
@@ -444,11 +449,19 @@ object LevyraThemeController {
         moodAccentEnd: Int? = null,
         pureBlack: Boolean = false,
         accentOverride: Int? = null,
-        skin: LevyraSkin = LevyraSkin.Default
+        skin: LevyraSkin = LevyraSkin.Default,
+        prism: com.luc4n3x.levyra.domain.PrismSettings = com.luc4n3x.levyra.domain.PrismSettings(),
+        systemDark: Boolean = true,
+        torque: com.luc4n3x.levyra.domain.TorqueSettings = com.luc4n3x.levyra.domain.TorqueSettings()
     ) {
-        val base = if (skin == LevyraSkin.Nocturne78) Nocturne78Palette else LevyraThemes.byId(presetId)
+        val base = when (skin) {
+            LevyraSkin.Default -> LevyraThemes.byId(presetId)
+            LevyraSkin.Nocturne78 -> Nocturne78Palette
+            LevyraSkin.Prism -> prismPalette(prism, systemDark)
+            LevyraSkin.Torque -> torquePalette(torque, coverAccentStart)
+        }
         val tinted = when {
-            skin == LevyraSkin.Nocturne78 -> base
+            skin != LevyraSkin.Default -> base
             accentOverride != null -> withAccent(base, Color(accentOverride))
             base.followsCover && coverAccentStart != null && coverAccentEnd != null ->
                 tinted(base, Color(coverAccentStart), Color(coverAccentEnd))
@@ -462,7 +475,7 @@ object LevyraThemeController {
         if (activePureBlackState.value != pureBlackActive) {
             activePureBlackState.value = pureBlackActive
         }
-        applyCornerScale(if (skin == LevyraSkin.Nocturne78) "" else presetId)
+        applyCornerScale(if (skin != LevyraSkin.Default) "" else presetId)
         if (activePaletteState.value != palette) {
             activePaletteState.value = palette
         }
@@ -636,8 +649,11 @@ fun LevyraTheme(
     val colorScheme = remember(palette) { levyraColorScheme(palette) }
     val cornerScale = activeCornerScaleState.value
     val nocturne = LevyraIsNocturne
-    val shapes = remember(cornerScale, nocturne) {
+    val prism = LevyraIsPrism
+    val torque = LevyraIsTorque
+    val shapes = remember(cornerScale, nocturne, prism, torque) {
         if (nocturne) Nocturne78Shapes
+        else if (prism) PrismShapes
         else if (cornerScale == 1f) LevyraExpressiveShapes else scaledExpressiveShapes(cornerScale)
     }
     val motionScheme = remember(animationsEnabled) {
@@ -647,7 +663,7 @@ fun LevyraTheme(
         colorScheme = colorScheme,
         motionScheme = motionScheme,
         shapes = shapes,
-        typography = if (nocturne) Nocturne78Typography else levyraTypographyFor(fontPreset ?: activeFontPresetState.value),
+        typography = if (nocturne) Nocturne78Typography else if (prism) PrismTypography else levyraTypographyFor(fontPreset ?: activeFontPresetState.value),
         content = content
     )
 }

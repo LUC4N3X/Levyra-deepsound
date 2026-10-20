@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui
 
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+import com.luc4n3x.levyra.ui.theme.LevyraIsPrism
 
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -2218,7 +2219,7 @@ private fun AudioLevelSlider(
     val density = LocalDensity.current
     val thumbRadius = with(density) { 9.dp.toPx() }
     val nocturne = LevyraIsNocturne
-    val trackHeight = with(density) { (if (nocturne) 3.dp else 14.dp).toPx() }
+    val trackHeight = with(density) { (if (nocturne || LevyraIsPrism) 3.dp else 14.dp).toPx() }
     val handleWidth = with(density) { 4.dp.toPx() }
     val handleHeight = with(density) { 36.dp.toPx() }
     val handleGap = with(density) { 5.dp.toPx() }

@@ -82,6 +82,10 @@ internal fun LevyraHomeAtmosphere(
     accent: Color,
     modifier: Modifier = Modifier
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism) {
+        com.luc4n3x.levyra.ui.theme.PrismAtmosphere(modifier)
+        return
+    }
     if (com.luc4n3x.levyra.ui.theme.LevyraIsNocturne) {
         Box(modifier.fillMaxSize().background(LevyraBlack))
         return

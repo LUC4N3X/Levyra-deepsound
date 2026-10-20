@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.player
 
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.animation.animateColorAsState
 import com.luc4n3x.levyra.ui.components.levyraExpressiveCorner
@@ -98,16 +99,16 @@ private fun RowScope.PlayerDockSegment(
         label = "player-dock-inner"
     )
     val fill by animateColorAsState(
-        targetValue = if (action.active) surfaces.hero else surfaces.tonal,
+        targetValue = playerDockFill(action.active, surfaces),
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(220)),
         label = "player-dock-fill"
     )
     val tint by animateColorAsState(
-        targetValue = if (action.active) surfaces.heroContent else surfaces.content,
+        targetValue = playerDockTint(action.active, surfaces),
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(220)),
         label = "player-dock-tint"
     )
-    val shape = dockSegmentShape(first = first, last = last, outer = outer, inner = inner)
+    val shape = if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism) RoundedCornerShape(com.luc4n3x.levyra.ui.theme.PrismDesign.controlCorner) else dockSegmentShape(first = first, last = last, outer = outer, inner = inner)
     Box(
         modifier = Modifier
             .weight(1f)
@@ -128,6 +129,16 @@ private fun RowScope.PlayerDockSegment(
         PlayerSegmentGlyph(action.icon, tint, action.busy, LevyraPlayerDesign.DockGlyph)
     }
 }
+
+private fun playerDockFill(active: Boolean, surfaces: PlayerSurfaceTokens): Color =
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism) {
+        if (active) com.luc4n3x.levyra.ui.theme.PrismAccent.Tint else Color.Transparent
+    } else if (active) surfaces.hero else surfaces.tonal
+
+private fun playerDockTint(active: Boolean, surfaces: PlayerSurfaceTokens): Color =
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism) {
+        if (active) surfaces.activeContent else surfaces.contentMuted
+    } else if (active) surfaces.heroContent else surfaces.content
 
 @Composable
 internal fun PlayerToggleControl(

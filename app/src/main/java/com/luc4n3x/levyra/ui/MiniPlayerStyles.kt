@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 
 import androidx.compose.animation.AnimatedContent
@@ -196,6 +197,9 @@ internal fun rememberMiniPlayerPalette(
     if (LevyraIsNocturne) {
         return MiniPlayerPalette(scheme.primary, scheme.primary, scheme.surfaceContainerHigh, scheme.onSurface, scheme.onSurfaceVariant, true)
     }
+    if (LevyraIsPrism) {
+        return MiniPlayerPalette(scheme.primary, scheme.tertiary, prismGlassColor(), scheme.onSurface, scheme.onSurfaceVariant, !LevyraActivePalette.isLight)
+    }
     val artwork = rememberMiniArtworkPalette(track)
     val targets = when (tuning.colorMode) {
         MiniColorMode.Artwork -> remember(artwork) {
@@ -314,7 +318,7 @@ private fun rememberMiniContainerShape(
     return if (style == MiniPlayerStyle.SuperExpressive) {
         RoundedCornerShape(expressiveCorner)
     } else {
-        RoundedCornerShape(tuning.cornerDp.dp)
+        RoundedCornerShape(skinMiniPlayerCorner(tuning))
     }
 }
 
@@ -629,6 +633,8 @@ private fun RowScope.MiniTrackContent(
                 style = style,
                 tuning = tuning,
                 palette = palette,
+                playing = current && model.isPlaying,
+                animated = animated,
                 modifier = Modifier
                     .morphAnchorWhen(current, anchors, PlayerMorphSlot.Mini)
                     .dockLerpSize(compaction, layout.artworkSize, layout.artworkCompact)
@@ -914,8 +920,14 @@ private fun MiniStyledArtwork(
     style: MiniPlayerStyle,
     tuning: MiniPlayerTuning,
     palette: MiniPlayerPalette,
-    modifier: Modifier
+    modifier: Modifier,
+    playing: Boolean = false,
+    animated: Boolean = false
 ) {
+    if (LevyraIsPrism) {
+        SkinSpinningArtwork(track, playing, animated, modifier)
+        return
+    }
     val shape = miniArtworkShape(tuning.artworkShape)
     Box(
         modifier = modifier
@@ -1355,5 +1367,23 @@ internal fun MiniPlayerStylePreview(
                 interactive = false
             )
         }
+    }
+}
+
+@Composable
+private fun SkinSpinningArtwork(track: Track, playing: Boolean, animated: Boolean, modifier: Modifier) {
+    val rotation = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(playing, animated) {
+        if (!playing || !animated) return@LaunchedEffect
+        while (true) {
+            rotation.snapTo(rotation.value % 360f)
+            rotation.animateTo(rotation.value + 360f, tween(14_000, easing = androidx.compose.animation.core.LinearEasing))
+        }
+    }
+    Box(modifier.clip(CircleShape).background(PrismAccent.gradient()).padding(2.dp).clip(CircleShape).background(LevyraBlack).padding(1.dp)) {
+        Box(Modifier.fillMaxSize().graphicsLayer { rotationZ = rotation.value }.clip(CircleShape)) {
+            CoverImage(track, Modifier.fillMaxSize())
+        }
+        Box(Modifier.align(Alignment.Center).size(7.dp).clip(CircleShape).background(LevyraBlack))
     }
 }

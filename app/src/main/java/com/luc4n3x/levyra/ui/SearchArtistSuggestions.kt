@@ -43,7 +43,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.ArtistHit
-import com.luc4n3x.levyra.ui.theme.LevyraType
+import com.luc4n3x.levyra.ui.theme.*
 
 @Composable
 internal fun SearchArtistSuggestions(
@@ -65,7 +65,7 @@ internal fun SearchArtistSuggestions(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(3.dp)
     ) {
-        LevyraSectionHeader(
+        if (LevyraSkinManagesLayout) SkinSectionTitle(title, 0.dp) else LevyraSectionHeader(
             title = title,
             titleColor = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(bottom = 4.dp)
@@ -145,8 +145,8 @@ private fun SearchArtistRow(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = SearchArtistRowHeight)
-            .clip(levyraGroupedListShape(index, count))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.62f))
+            .clip(if (LevyraIsPrism) PrismDesign.cut(PrismDesign.controlCorner) else levyraGroupedListShape(index, count))
+            .background(if (LevyraIsPrism) LevyraPanel else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.62f))
             .levyraPressable(
                 onClick = onClick,
                 role = Role.Button,
@@ -159,7 +159,7 @@ private fun SearchArtistRow(
         Box(
             modifier = Modifier
                 .size(SearchArtistAvatarSize)
-                .clip(avatarShape),
+                .clip(searchArtistAvatarShape(avatarShape)),
         ) {
             avatar()
         }
@@ -195,6 +195,12 @@ private fun SearchArtistRow(
             modifier = Modifier.size(22.dp),
         )
     }
+}
+
+private fun searchArtistAvatarShape(default: androidx.compose.ui.graphics.Shape): androidx.compose.ui.graphics.Shape = when {
+    LevyraIsTorque -> RoundedCornerShape(2.dp)
+    LevyraIsNocturne -> RoundedCornerShape(Nocturne78Design.artworkCorner)
+    else -> default
 }
 
 @Composable

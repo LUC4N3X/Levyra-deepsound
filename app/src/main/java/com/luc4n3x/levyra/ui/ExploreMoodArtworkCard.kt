@@ -287,6 +287,20 @@ internal fun RowScope.ExploreMoodCard(
         }
     }
 
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism) {
+        val activePortraitUrl = portraitUrl
+        PrismMoodTile(zone.label, activePortraitUrl, isSelected, onClick, onStartZoneMix, strings.mixStartRadio) {
+            if (portraitUrl == activePortraitUrl) {
+                if (activePortraitUrl == hardFallbackPortraitUrl) {
+                    portraitUrl = ""
+                } else {
+                    portraitUrl = hardFallbackPortraitUrl
+                    portraitCandidateIndex = (portraitCandidateIndex + 1).coerceAtMost(portraitLookupLimit)
+                }
+            }
+        }
+        return
+    }
     val nocturne = LevyraIsNocturne
     val accentStart = if (nocturne) LevyraPanelSoft else Color(zone.accentStart)
     val accentEnd = if (nocturne) LevyraPanel else Color(zone.accentEnd)
