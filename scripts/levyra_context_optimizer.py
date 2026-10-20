@@ -42,9 +42,10 @@ class OptimizationResult:
 
 
 def estimate_tokens(text: str) -> int:
-    """Subword-accurate token estimation matching typical BPE tokenizers.
+    """Deterministic lexical token proxy; not a model-specific tokenizer.
 
-    Counts word clusters and punctuation symbols separately.
+    Counts word clusters and punctuation separately. Benchmarks must label
+    these figures as estimates, never billed or model-token counts.
     """
     if not text:
         return 0
@@ -573,7 +574,24 @@ def optimize_context(
     # 1. Store raw content safely in content-addressed cache (lossless backup)
     raw_hash, cached_path = cache.store(raw_text, category=effective_category)
 
-    # 2. Check for anti-double-compression: if text already contains RTK or CCR marker
+    # Compression is safe only when the unmodified evidence is retrievable.
+    # This includes oversized output and a full/unwritable cache.
+    if cached_path is None:
+        raw_bytes = len(raw_text.encode("utf-8"))
+        raw_tokens = estimate_tokens(raw_text)
+        return OptimizationResult(
+            category=effective_category,
+            original_bytes=raw_bytes,
+            optimized_bytes=raw_bytes,
+            original_tokens=raw_tokens,
+            optimized_tokens=raw_tokens,
+            reduction_pct=0.0,
+            raw_hash=raw_hash,
+            cached_path=None,
+            content=raw_text,
+        )
+
+    # 2. Detect only our own cache marker. RTK has no reliable common marker.
     if "#levyra-raw:" in raw_text or "[Levyra Context:" in raw_text:
         orig_bytes = len(raw_text.encode("utf-8"))
         orig_tokens = estimate_tokens(raw_text)
@@ -597,32 +615,31 @@ def optimize_context(
         compressed_text = raw_text
 
     orig_bytes = len(raw_text.encode("utf-8"))
-    opt_bytes = len(compressed_text.encode("utf-8"))
     orig_tokens = estimate_tokens(raw_text)
-    opt_tokens = estimate_tokens(compressed_text)
+    final_content = raw_text
 
-    reduction = ((orig_tokens - opt_tokens) / orig_tokens * 100.0) if orig_tokens > 0 else 0.0
-
-    # If compression didn't yield meaningful savings, preserve original
-    if reduction < min_savings_pct or opt_bytes >= orig_bytes:
-        final_content = raw_text
-        opt_bytes = orig_bytes
-        opt_tokens = orig_tokens
-        reduction = 0.0
-    else:
+    if compressed_text != raw_text:
         short_hash = raw_hash[:12]
-        if cached_path is not None:
-            footer = (
-                f"\n[Levyra Context: {orig_tokens:,} tokens -> {opt_tokens:,} tokens "
-                f"(-{reduction:.1f}%). Raw cached: #levyra-raw:{short_hash} | "
-                f"Retrieve (while in LRU cache): python scripts/levyra_context_optimizer.py retrieve {short_hash}]"
-            )
-        else:
-            footer = (
-                f"\n[Levyra Context: {orig_tokens:,} tokens -> {opt_tokens:,} tokens "
-                f"(-{reduction:.1f}%). Raw output exceeded 25MB cache budget.]"
-            )
-        final_content = compressed_text + footer
+        footer = (
+            f"\n[Levyra Context: #levyra-raw:{short_hash}; "
+            f"retrieve: python scripts/levyra_context_optimizer.py retrieve {short_hash}]"
+        )
+        candidate = compressed_text + footer
+        candidate_bytes = len(candidate.encode("utf-8"))
+        candidate_tokens = estimate_tokens(candidate)
+        if (
+            orig_tokens > 0
+            and candidate_bytes < orig_bytes
+            and candidate_tokens <= orig_tokens * (1 - min_savings_pct / 100.0)
+        ):
+            final_content = candidate
+
+    opt_bytes = len(final_content.encode("utf-8"))
+    opt_tokens = estimate_tokens(final_content)
+    reduction = (
+        (orig_tokens - opt_tokens) / orig_tokens * 100.0
+        if orig_tokens > 0 else 0.0
+    )
 
     return OptimizationResult(
         category=effective_category,
@@ -692,8 +709,9 @@ def run_command(
     raw_mode: bool = False,
     cache_dir: Path | None = None,
     silent: bool = False,
+    no_cache: bool = False,
 ) -> int:
-    """Execute command, cache raw output in CCR, optimize context, and preserve exit code."""
+    """Execute a finite text command, preserving its exit code and diagnostics."""
     cleaned_cmd = _clean_command_tokens(cmd)
     if not cleaned_cmd:
         if not silent:
@@ -701,6 +719,23 @@ def run_command(
         return 2
 
     exit_code, raw_output = _execute_subprocess(cleaned_cmd, silent=silent)
+
+    # Use for commands that could emit credentials or other sensitive content.
+    # No caching or compression is performed in this mode.
+    if no_cache:
+        if raw_output and not silent:
+            sys.stdout.write(raw_output)
+        return exit_code
+
+    # Failure diagnostics are decisive evidence: show them in full, while
+    # retaining a bounded raw copy where possible, never re-running the task.
+    if exit_code != 0:
+        if raw_output:
+            ContextCache(cache_dir=cache_dir).store(raw_output, category=category or "failure")
+            if not silent:
+                sys.stdout.write(raw_output)
+        return exit_code
+
     if not raw_output or raw_mode:
         if raw_output:
             ContextCache(cache_dir=cache_dir).store(raw_output, category=category or "raw")
@@ -744,6 +779,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Pass through raw output without compression while still storing in CCR cache",
     )
     run_parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Print raw output without caching (use for sensitive command output)",
+    )
+    run_parser.add_argument(
         "cmd",
         nargs=argparse.REMAINDER,
         help="Command to execute (e.g. run -- ./gradlew assembleDebug)",
@@ -767,6 +807,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=0,
         help="Explicit original process exit code to propagate",
     )
+    proc_parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Pass through input without caching or filtering",
+    )
 
     # Command: retrieve <hash>
     ret_parser = subparsers.add_parser("retrieve", help="Retrieve original raw output from CCR cache")
@@ -787,6 +832,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             cmd=args.cmd,
             category=args.category,
             raw_mode=args.raw,
+            no_cache=args.no_cache,
         )
 
     elif args.command == "retrieve":
@@ -828,6 +874,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     elif args.command == "process" or args.command is None:
         raw_input = sys.stdin.read()
         if not raw_input:
+            return getattr(args, "exit_code", 0)
+
+        if getattr(args, "no_cache", False):
+            sys.stdout.write(raw_input)
             return getattr(args, "exit_code", 0)
 
         category = getattr(args, "category", None)

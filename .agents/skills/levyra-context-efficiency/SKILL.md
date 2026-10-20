@@ -73,23 +73,30 @@ compression path.
 
 ## Reversible Context Optimization (CCR)
 
-When commands are run through scripts/levyra_context_optimizer.py run -- <command>,
-terminal output is contextually compacted and the raw output is cached in
-.levyra-tools/context-cache/<hash>.raw (bounded LRU budget: 150 entries / 25 MB).
-Process exit codes are strictly preserved.
+For large, finite **text-only** commands that RTK does not already compact, use
+`python scripts/levyra_context_optimizer.py run -- <command>` selectively.
+The original output is cached when it fits the local LRU budget (150 entries,
+25 MB) and storage is available. Nonzero exits are shown verbatim; exit codes
+are preserved. This wrapper buffers output until completion, so do not use it
+for interactive, long-running, binary or timing-sensitive commands.
 
-To inspect the raw output of any cached execution without re-running the command:
+Retrieve an output without re-running the command while its cache entry exists:
 
-`	ext
+```text
 python scripts/levyra_context_optimizer.py retrieve <cache_id>
 python scripts/levyra_context_optimizer.py retrieve <cache_id> --lines <start>:<end>
-`
+```
 
-**Non-repeatable command rule**: Never re-run a stateful or mutating command (such
-as code generators, migrations, or destructive git commands) solely to inspect
-uncompressed output. Use the cached raw output via CCR retrieval instead. Do not
-chain
-tk and the optimizer wrapper on the same invocation to prevent double compression.
+**Do not chain RTK and the optimizer** on the same command. RTK has no
+universally reliable output marker; the optimizer only recognizes its own
+`#levyra-raw:` / `[Levyra Context:` markers. Prefer RTK for commands it
+already handles well. Never re-run state-changing commands to recover output.
+If the raw output cannot be cached, the optimizer returns it uncompressed.
+
+**Privacy:** the cache stores local plaintext. Never route commands that may
+print credentials, cookies, `.env`, keystores, signed URLs or private data
+through the cache. Run them natively, or use `run --no-cache -- <command>`
+when a wrapper is specifically needed. Do not upload cache contents.
 
 ## Cross-session context
 

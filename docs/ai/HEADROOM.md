@@ -6,10 +6,10 @@ Levyra includes an optional, zero-daemon adapter for [Headroom](https://github.c
 
 In accordance with Levyra's strict engineering rules:
 - **No background resident daemons**: The integration does not run persistent background proxy servers or services.
-- **Fail-open & Reversible**: Completely optional and disabled by default. If Headroom CLI is unavailable or fails, execution immediately falls back to RTK or raw commands.
+- **Optional and reversible**: Disabled by default. The adapter probes tool availability and can request a structural diff. Existing RTK/native command routes remain independent of Headroom.
 - **Local & Git-clean Configuration**: Configuration state is stored locally in `.levyra-tools/headroom.json` (gitignored). Enabling or disabling Headroom never pollutes the shared Git working tree.
 - **No model or provider tampering**: Does not alter AI models, endpoints, credentials, or sandboxes.
-- **Diagnostic evidence preservation**: Critical errors, stack traces, compiler output, test assertions, security markers, and git diff hunks are never dropped.
+- **Diagnostic evidence preservation**: The Headroom adapter does not rewrite compiler or test output; Levyra's separate optimizer uses conservative filtering with raw-output fallback.
 
 ## Architecture
 
@@ -50,7 +50,7 @@ Headroom's full proxy server (`headroom mcp serve`) by default expects an active
 
 Instead, Levyra adopts:
 1. **Repository-Native CCR**: Implemented in `scripts/levyra_context_optimizer.py` as a fast, stateless local cache that requires no daemon.
-2. **Adapter Interface**: `scripts/headroom_adapter.py` allows agents to invoke Headroom's bundled high-performance CLI tools (`difftastic`, `scc`, `ast-grep`) and generate native MCP configurations on demand.
+2. **Adapter Interface**: `scripts/headroom_adapter.py` probes Headroom CLI capabilities, supports optional structural diffs, and prints a *suggested* MCP configuration; it does not register or start the server. `headroom` itself must be installed separately.
 
 ## Managing the Integration
 

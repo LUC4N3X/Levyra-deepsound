@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import concurrent.futures
+import io
+from contextlib import redirect_stdout
 import sys
 import tempfile
 import unittest
@@ -10,6 +12,7 @@ from unittest.mock import patch
 from scripts.levyra_context_optimizer import (
     ContextCache,
     estimate_tokens,
+    main,
     optimize_context,
     optimize_git_diff_output,
     optimize_gradle_output,
@@ -171,6 +174,43 @@ class LevyraContextOptimizerExecutionTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
 
+    def test_cli_run_dispatch_preserves_failure_status(self) -> None:
+        with patch("scripts.levyra_context_optimizer.DEFAULT_CACHE_DIR", self.cache_dir):
+            self.assertEqual(
+                3,
+                main(["run", "--", sys.executable, "-c", "import sys; sys.exit(3)"]),
+            )
+
+    def test_failure_output_is_never_filtered(self) -> None:
+        raw = (
+            "BUILD FAILED\n"
+            "> Task :app:compileDebugKotlin FAILED\n"
+            "Error: exact failure evidence\n"
+        )
+        code = (
+            "import sys; "
+            f"sys.stdout.write({raw!r}); "
+            "sys.exit(2)"
+        )
+        output = io.StringIO()
+        with redirect_stdout(output):
+            status = run_command([sys.executable, "-c", code], cache_dir=self.cache_dir)
+        self.assertEqual(2, status)
+        self.assertEqual(raw, output.getvalue())
+
+    def test_no_cache_mode_does_not_write_private_output(self) -> None:
+        output = io.StringIO()
+        with patch.object(ContextCache, "store", side_effect=AssertionError("must not cache")):
+            with redirect_stdout(output):
+                status = run_command(
+                    [sys.executable, "-c", "print('private diagnostic')"],
+                    cache_dir=self.cache_dir,
+                    no_cache=True,
+                )
+        self.assertEqual(0, status)
+        self.assertEqual("private diagnostic\n", output.getvalue())
+        self.assertEqual(0, self.cache.get_stats()["entries"])
+
     def test_run_command_exit_code_0(self) -> None:
         code = run_command([sys.executable, "-c", "import sys; print('hello'); sys.exit(0)"], cache_dir=self.cache_dir)
         self.assertEqual(0, code)
@@ -331,6 +371,26 @@ class LevyraContextOptimizerFiltersTest(unittest.TestCase):
         self.assertIn("com.luc4n3x.levyra.MainActivity.onCreate", optimized)
         self.assertIn("Caused by: RootException: actual cause", optimized)
         self.assertIn("com.luc4n3x.levyra.Engine.init", optimized)
+
+    def test_unavailable_cache_always_preserves_entire_output(self) -> None:
+        raw = "BUILD SUCCESSFUL\n" + (
+            "> Task :app:preBuild UP-TO-DATE\n" * 90
+        )
+        with patch.object(ContextCache, "store", return_value=("f" * 64, None)):
+            result = optimize_context(raw, cache_dir=self.cache_dir)
+        self.assertEqual(raw, result.content)
+        self.assertIsNone(result.cached_path)
+        self.assertEqual(0.0, result.reduction_pct)
+
+    def test_token_estimate_counts_final_footer(self) -> None:
+        raw = "BUILD SUCCESSFUL\n" + (
+            "> Task :app:preBuild UP-TO-DATE\n" * 90
+        )
+        result = optimize_context(raw, cache_dir=self.cache_dir)
+        self.assertIn("#levyra-raw:", result.content)
+        self.assertEqual(estimate_tokens(result.content), result.optimized_tokens)
+        self.assertEqual(len(result.content.encode("utf-8")), result.optimized_bytes)
+        self.assertGreater(result.reduction_pct, 12.0)
 
     def test_generic_unrecognized_text_kept_verbatim(self) -> None:
         text = "Hello world, this is a plain message with no special markers.\n"

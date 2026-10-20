@@ -2,7 +2,7 @@
 """Levyra RTK Enhanced — Comprehensive Context Optimization Benchmark.
 
 Runs reproducible benchmarks across synthetic and realistic Levyra scenarios to measure:
-- Real token reduction (using subword-accurate punctuation/word tokenizer)
+- Heuristic lexical token estimate reduction (not model/billed tokens)
 - Total wrapper end-to-end execution time and startup latency
 - Critical diagnostic information preservation (compiler errors, stack traces, tasks, diffs)
 - Content-Addressed Reversible Context Compression (CCR) byte equivalence
@@ -473,7 +473,7 @@ def run_benchmark(verbose: bool = True) -> dict[str, Any]:
         print(f"PROCESS EXIT CODE PRESERVATION:    {'100% PASS (Codes 0, 1, 2, 127 preserved)' if exit_codes_ok else 'FAIL'}")
         print("=" * 90)
         print("DISCLAIMER ON CODING QUALITY:")
-        print("Coding quality was not measured directly via automated token benchmarks.")
+        print("Coding quality was not measured directly; token counts are lexical estimates.")
         print("Automated benchmarks verify token reduction, wrapper runtime overhead, exit status")
         print("preservation, and exact retention of critical diagnostic markers. Real coding quality")
         print("requires controlled developer/agent evaluation on identical tasks.")
@@ -517,7 +517,7 @@ def generate_markdown_report(benchmark_data: dict[str, Any]) -> str:
     lines.append("- **Process Exit Codes**: Exit codes (0, 1, 2, 127) are strictly propagated to ensure failed builds/tests are never masked.")
     lines.append("- **Reversible CCR Cache**: Full uncompressed output is cached by SHA256 in `.levyra-tools/context-cache/` (bounded to 150 entries / 25 MB).")
     lines.append("- **Stateful Safety**: Non-repeatable or mutating commands are never re-executed to retrieve raw logs; logs are read directly from cache.")
-    lines.append("- **Note on Coding Quality**: Coding quality was not measured directly via automated token benchmarks; benchmarks measure token reduction, runtime overhead, and critical diagnostic marker preservation.")
+    lines.append("- **Measurement note**: Token counts use a lexical heuristic, not model-specific tokenization. Coding quality was not measured; benchmarks check wrapper behavior and selected diagnostic markers.")
     return "\n".join(lines)
 
 

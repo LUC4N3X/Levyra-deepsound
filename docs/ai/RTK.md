@@ -318,74 +318,86 @@ hook contract and persistent-memory integration. PowerShell and Bash syntax are
 checked when those files are part of the changed set and the required shell is
 available in the validation environment.
 
-## Levyra RTK Enhanced: Content-Addressed Reversible Cache (CCR)
+## Levyra RTK Enhanced: reversible output context
 
-Inspired by techniques explored in Free Claude Code and Headroom, Levyra introduces a Content-Addressed Reversible Context Cache (CCR) via scripts/levyra_context_optimizer.py.
+`scripts/levyra_context_optimizer.py` provides an **optional**, local text-output
+wrapper alongside RTK. It is **not** automatically inserted into every Claude,
+Codex or Antigravity tool call; use it selectively for lengthy, finite commands
+that RTK does not already compact. No model/provider settings are changed.
 
-### Principles of Levyra RTK Enhanced
+### Safety and fidelity
 
-1. **Coding Quality First**: Optimization must never shallow agent reasoning. Coding quality > correctness/debugging > reliability > performance > token savings.
-2. **Deterministic Information Preservation**:
-   - Compiler errors (e: ...), affected tasks, and root-cause exception chains (Caused by:) are never compressed away.
-   - Test assertion failures (AssertionError, expected vs actual) and project call-sites are preserved verbatim.
-   - Code hunks in git diffs are preserved intact; only huge generated baseline profiles and machine-generated lockfiles are folded.
-   - Critical domain markers (e.g. LevyraAudio, Playback, crashes) are kept.
-3. **Content-Addressed Reversible Cache (CCR)**:
-   - When a command runs through the optimizer, its uncompressed standard output and standard error are hashed (SHA-256) and saved in .levyra-tools/context-cache/<hash>.raw.
-   - The output presents a footer indicating the cache ID and compression ratio:
-     [Levyra Context: X tokens -> Y tokens (-Z%). Raw cached: #levyra-raw:<hash> | Retrieve (while in LRU cache): python scripts/levyra_context_optimizer.py retrieve <hash>]
-   - Agents can retrieve the raw output byte-for-byte on demand as long as it remains in the LRU cache.
-4. **Stateful / Non-Repeatable Command Safety**:
-   - Commands that mutate state (file generation, migrations, builds with side-effects) must never be re-run just to retrieve uncompressed logs. Because CCR caches the raw output from the first execution, agents retrieve the original output directly from cache.
-5. **Bounded Cache Budget**:
-   - The cache enforces a bounded LRU budget (maximum 150 entries, maximum 25 MB) to prevent disk growth. When limits are exceeded, only the oldest necessary entries are progressively pruned.
-6. **Strict Exit Code Preservation**:
-   - The optimizer executes commands and strictly preserves process exit codes (0, 1, 2, 127). A failed build or test will never be masked as a success.
-7. **Anti-Double-Compression**:
-   - Commands already compacted by RTK or previously processed by the optimizer (indicated by `#levyra-raw:` markers or `[Levyra Context:` headers) are passed through without secondary compression to prevent recursive degradation.
+- **RTK first:** use RTK for supported commands. Do not wrap RTK's output again:
+  the optimizer only recognizes its own `#levyra-raw:` or `[Levyra Context:`
+  markers, not every format produced by RTK.
+- **Failures first:** commands with nonzero exit status are printed uncompressed,
+  with the original process exit status. The `run` wrapper combines stdout and
+  stderr in their observed order, and decodes text using UTF-8 with replacement
+  for invalid bytes. Use native commands when byte-level output, separate streams
+  or interactive streaming are required.
+- **Recovery:** successful command output is compressed only if the decoded
+  original is saved in the bounded local cache and the **final** output, including
+  its retrieval marker, saves at least 12% of estimated lexical tokens.
+  Original text can be retrieved while its entry remains in the cache.
+- **Fail open:** when output is too large for the 25 MB cache, storage fails,
+  or savings are insufficient, it is displayed uncompressed. Cache entries
+  are evicted on a least-recently-used basis, up to 150 entries.
+- **Privacy:** cache files under `.levyra-tools/context-cache/` are local,
+  gitignored plaintext. Never cache credentials, `.env` or other sensitive
+  command output. For such commands, do not use the wrapper, or explicitly
+  choose `--no-cache`. No credentials or telemetry are sent to Headroom.
+- **No unsafe retry:** reading cached text does not rerun a state-changing
+  command. If an entry has been evicted, do not rerun mutating commands just
+  to recover the log.
 
-### Using the Context Optimizer
+### Commands
 
-Run any command through the optimizer (the `run` subcommand executes the process directly, ensuring exit codes and raw outputs are strictly preserved; this is strongly recommended over shell pipelines):
+On Linux/macOS (Bash), for ordinary high-volume text output:
 
 ```bash
-python scripts/levyra_context_optimizer.py run -- ./gradlew assembleDebug
-python scripts/levyra_context_optimizer.py run -- ./gradlew testDebugUnitTest
+python3 scripts/levyra_context_optimizer.py run -- ./gradlew help
+python3 scripts/levyra_context_optimizer.py run -- git diff HEAD~1
+python3 scripts/levyra_context_optimizer.py run --no-cache -- git status
+```
+
+On Windows (PowerShell), run the same tool with `python` and native Gradle:
+
+```powershell
+python scripts/levyra_context_optimizer.py run -- .\gradlew.bat help
 python scripts/levyra_context_optimizer.py run -- git diff HEAD~1
 ```
 
-Pipe command output via stdin (note: pipelines require explicitly forwarding the upstream exit code via `--exit-code $?` in POSIX shells or `$LASTEXITCODE` in PowerShell to avoid masking failures):
+Retrieve all or part of a cached original output:
 
-```bash
-# In Bash (with exit code propagation)
-./gradlew testDebugUnitTest | python scripts/levyra_context_optimizer.py process --category unit_test --exit-code $?
-
-# In PowerShell
-./gradlew testDebugUnitTest | python scripts/levyra_context_optimizer.py process --category unit_test --exit-code $LASTEXITCODE
-```
-
-Retrieve uncompressed output or a line range from the LRU cache:
-
-```bash
+```text
 python scripts/levyra_context_optimizer.py retrieve <cache_id>
 python scripts/levyra_context_optimizer.py retrieve <cache_id> --lines 100:200
 ```
 
-Inspect cache statistics:
+Inspect and clear the local cache:
 
 ```bash
 python scripts/levyra_context_optimizer.py stats
-```
-
-Clear cached outputs:
-
-```bash
 python scripts/levyra_context_optimizer.py clear
 ```
 
-### Optional Headroom Integration
+The `process` subcommand accepts already-captured stdin. If it is used in a
+pipeline, explicitly preserve the *actual upstream* exit status; shell `$?`
+or `$LASTEXITCODE` expanded inside a running pipeline is **not** a reliable way
+to do so. Prefer `run -- <command>` for exit-code safety.
 
-Levyra also provides an optional adapter (scripts/headroom_adapter.py) to connect with the Headroom CLI toolchain and bundled AST tools (difftastic, scc, ast-grep). See docs/ai/HEADROOM.md for complete details.
+### Benchmark interpretation
+
+`scripts/benchmark_context_optimization.py` tests representative scenarios
+plus a few live command/status paths. Reported token counts are **heuristic
+lexical estimates**, not model tokenizer or billed-token measurements; no
+improvement in agent coding quality has been demonstrated by this benchmark.
+
+### Optional Headroom
+
+`scripts/headroom_adapter.py` is an opt-in CLI/tool availability adapter.
+It does not automatically activate Headroom compression, attach a background
+proxy, or register an MCP server. See `docs/ai/HEADROOM.md` for accurate scope.
 
 ## Attribution
 
