@@ -73,30 +73,23 @@ compression path.
 
 ## Reversible Context Optimization (CCR)
 
-For large, finite **text-only** commands that RTK does not already compact, use
-`python scripts/levyra_context_optimizer.py run -- <command>` selectively.
-The original output is cached when it fits the local LRU budget (150 entries,
-25 MB) and storage is available. Nonzero exits are shown verbatim; exit codes
-are preserved. This wrapper buffers output until completion, so do not use it
-for interactive, long-running, binary or timing-sensitive commands.
+For long, finite **text-only** commands not already compacted by RTK, use
+`python scripts/levyra_context_optimizer.py run -- <command>`.
+Nonzero exits are reported raw; exit status is preserved. Successful output
+is compacted only while its original fits a local 150-entry/25 MB cache.
+The wrapper buffers until exit: avoid interactive, binary or timing-sensitive commands.
 
-Retrieve an output without re-running the command while its cache entry exists:
+Retrieve the original while its cache entry remains:
 
 ```text
 python scripts/levyra_context_optimizer.py retrieve <cache_id>
 python scripts/levyra_context_optimizer.py retrieve <cache_id> --lines <start>:<end>
 ```
 
-**Do not chain RTK and the optimizer** on the same command. RTK has no
-universally reliable output marker; the optimizer only recognizes its own
-`#levyra-raw:` / `[Levyra Context:` markers. Prefer RTK for commands it
-already handles well. Never re-run state-changing commands to recover output.
-If the raw output cannot be cached, the optimizer returns it uncompressed.
-
-**Privacy:** the cache stores local plaintext. Never route commands that may
-print credentials, cookies, `.env`, keystores, signed URLs or private data
-through the cache. Run them natively, or use `run --no-cache -- <command>`
-when a wrapper is specifically needed. Do not upload cache contents.
+Never chain RTK and this wrapper: RTK has no universal output marker.
+Do not re-run stateful commands to recover logs. The cache contains local
+plaintext; never cache credentials, `.env`, cookies, signing data or private
+URLs. Use native commands or `run --no-cache -- <command>` for sensitive output.
 
 ## Cross-session context
 

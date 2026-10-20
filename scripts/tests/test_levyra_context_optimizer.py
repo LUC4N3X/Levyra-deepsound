@@ -209,7 +209,7 @@ class LevyraContextOptimizerExecutionTest(unittest.TestCase):
                 )
         self.assertEqual(0, status)
         self.assertEqual("private diagnostic\n", output.getvalue())
-        self.assertEqual(0, self.cache.get_stats()["entries"])
+        self.assertEqual(0, ContextCache(cache_dir=self.cache_dir).get_stats()["entries"])
 
     def test_run_command_exit_code_0(self) -> None:
         code = run_command([sys.executable, "-c", "import sys; print('hello'); sys.exit(0)"], cache_dir=self.cache_dir)
