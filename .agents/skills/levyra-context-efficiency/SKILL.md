@@ -71,6 +71,22 @@ For ADB, bound noisy textual output first. Keep tiny control queries raw. Never
 wrap binary/payload commands such as `adb exec-out screencap -p` in a text
 compression path.
 
+## Reversible Context Optimization (CCR)
+
+When commands are run through scripts/levyra_context_optimizer.py, uncompressed
+terminal output is automatically cached under .levyra-tools/context-cache/<hash>.txt.
+
+To inspect the raw output of any cached execution without re-running the command:
+
+`	ext
+python scripts/levyra_context_optimizer.py retrieve <cache_id>
+python scripts/levyra_context_optimizer.py retrieve <cache_id> --lines <start>:<end>
+`
+
+**Non-repeatable command rule**: Never re-run a stateful or mutating command (such
+as code generators, migrations, or destructive git commands) solely to inspect
+uncompressed output. Use the cached raw output via CCR retrieval instead.
+
 ## Cross-session context
 
 Use claude-mem only when earlier-session context materially affects the task and

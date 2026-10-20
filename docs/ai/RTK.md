@@ -318,6 +318,53 @@ hook contract and persistent-memory integration. PowerShell and Bash syntax are
 checked when those files are part of the changed set and the required shell is
 available in the validation environment.
 
+## Levyra RTK Enhanced: Content-Addressed Reversible Cache (CCR)
+
+Inspired by techniques explored in Free Claude Code and Headroom, Levyra introduces a Content-Addressed Reversible Context Cache (CCR) via scripts/levyra_context_optimizer.py.
+
+### Principles of Levyra RTK Enhanced
+
+1. **Coding Quality First**: Optimization must never shallow agent reasoning. Coding quality > correctness/debugging > reliability > performance > token savings.
+2. **Deterministic Information Preservation**:
+   - Compiler errors (e: ...), affected tasks, and root-cause exception chains (Caused by:) are never compressed away.
+   - Test assertion failures (AssertionError, expected vs actual) and project call-sites are preserved verbatim.
+   - Code hunks in git diffs are preserved intact; only huge generated baseline profiles and machine-generated lockfiles are folded.
+   - Critical domain markers (e.g. LevyraAudio, Playback, crashes) are 100% kept.
+3. **Content-Addressed Reversible Cache (CCR)**:
+   - When a command runs through the optimizer, its entire uncompressed standard output and standard error are hashed (SHA256) and saved in .levyra-tools/context-cache/<hash>.txt.
+   - The output presents a header indicating the cache ID and compression ratio:
+     [levyra-context-optimizer] Cached raw output: <hash> (original -> compact)
+     [To inspect full raw output, run: python scripts/levyra_context_optimizer.py retrieve <hash>]
+   - Agents can retrieve the raw output byte-for-byte at any time without re-running the command.
+4. **Stateful / Non-Repeatable Command Safety**:
+   - Commands that mutate state (file generation, migrations, builds with side-effects) must never be re-run just to retrieve uncompressed logs. Because CCR caches the raw output from the first execution, agents retrieve the original output losslessly.
+5. **Bounded Cache Budget**:
+   - The cache enforces a bounded LRU budget (maximum 150 entries, maximum 25 MB) to prevent disk growth.
+
+### Using the Context Optimizer
+
+Run any command through the optimizer:
+`ash
+python scripts/levyra_context_optimizer.py process gradle -- ./gradlew assembleDebug
+python scripts/levyra_context_optimizer.py process test -- ./gradlew testDebugUnitTest
+python scripts/levyra_context_optimizer.py process git-diff -- git diff HEAD~1
+`
+
+Retrieve full uncompressed output or a line range:
+`ash
+python scripts/levyra_context_optimizer.py retrieve <cache_id>
+python scripts/levyra_context_optimizer.py retrieve <cache_id> --lines 100:200
+`
+
+Inspect cache statistics:
+`ash
+python scripts/levyra_context_optimizer.py stats
+`
+
+### Optional Headroom Integration
+
+Levyra also provides an optional adapter (scripts/headroom_adapter.py) to connect with the Headroom CLI toolchain and bundled AST tools (difftastic, scc, st-grep). See docs/ai/HEADROOM.md for complete details.
+
 ## Attribution
 
 The workflow incorporates selected ideas from `ChrisTitusTech/titus-ai`, notably
