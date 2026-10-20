@@ -627,33 +627,15 @@ def optimize_context(
 # Command Execution Wrapper
 # ---------------------------------------------------------------------------
 
-def run_command(
-    cmd: list[str],
-    category: str | None = None,
-    raw_mode: bool = False,
-    cache_dir: Path | None = None,
-    silent: bool = False,
-) -> int:
-    """Execute a command, capture output, store in CCR, optimize context, and preserve exit code.
+def _clean_command_tokens(cmd: list[str]) -> list[str]:
+    """Strip optional '--' delimiter from command tokens."""
+    if cmd and cmd[0] == "--":
+        return cmd[1:]
+    return cmd
 
-    Guarantees:
-    - Exit code is 100% preserved (0, 1, 2, 127, signals).
-    - Failed builds/tests remain failures.
-    - Raw output is preserved in CCR cache for retrieval.
-    """
-    if not cmd:
-        if not silent:
-            sys.stderr.write("Error: no command provided to run.\n")
-        return 2
 
-    # Strip leading '--' delimiter if present
-    if cmd[0] == "--":
-        cmd = cmd[1:]
-    if not cmd:
-        if not silent:
-            sys.stderr.write("Error: empty command after '--'.\n")
-        return 2
-
+def _execute_subprocess(cmd: list[str], silent: bool = False) -> tuple[int, str]:
+    """Execute subprocess, capturing combined stdout/stderr and handling interrupts."""
     try:
         proc = subprocess.Popen(
             cmd,
@@ -666,11 +648,11 @@ def run_command(
     except FileNotFoundError:
         if not silent:
             sys.stderr.write(f"Error: command not found: {cmd[0]}\n")
-        return 127
+        return 127, ""
     except OSError as exc:
         if not silent:
             sys.stderr.write(f"Error executing {cmd[0]}: {exc}\n")
-        return 1
+        return 1, ""
 
     try:
         raw_output, _ = proc.communicate()
@@ -682,27 +664,36 @@ def run_command(
             proc.kill()
         if not silent:
             sys.stderr.write("\n[Command interrupted by user]\n")
-        return 130
+        return 130, ""
 
-    exit_code = proc.returncode
+    return proc.returncode, raw_output
 
-    if raw_mode or not raw_output:
+
+def run_command(
+    cmd: list[str],
+    category: str | None = None,
+    raw_mode: bool = False,
+    cache_dir: Path | None = None,
+    silent: bool = False,
+) -> int:
+    """Execute command, cache raw output in CCR, optimize context, and preserve exit code."""
+    cleaned_cmd = _clean_command_tokens(cmd)
+    if not cleaned_cmd:
+        if not silent:
+            sys.stderr.write("Error: no command provided to run.\n")
+        return 2
+
+    exit_code, raw_output = _execute_subprocess(cleaned_cmd, silent=silent)
+    if not raw_output or raw_mode:
         if raw_output:
-            cache = ContextCache(cache_dir=cache_dir)
-            cache.store(raw_output, category=category or "raw")
+            ContextCache(cache_dir=cache_dir).store(raw_output, category=category or "raw")
             if not silent:
                 sys.stdout.write(raw_output)
         return exit_code
 
-    result = optimize_context(
-        raw_output,
-        category=category,
-        cache_dir=cache_dir,
-    )
+    result = optimize_context(raw_output, category=category, cache_dir=cache_dir)
     if not silent:
-        sys.stdout.write(result.content)
-        if not result.content.endswith("\n"):
-            sys.stdout.write("\n")
+        sys.stdout.write(result.content if result.content.endswith("\n") else f"{result.content}\n")
 
     return exit_code
 
