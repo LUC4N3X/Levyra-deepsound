@@ -342,41 +342,50 @@ Inspired by techniques explored in Free Claude Code and Headroom, Levyra introdu
 6. **Strict Exit Code Preservation**:
    - The optimizer executes commands and strictly preserves process exit codes (0, 1, 2, 127). A failed build or test will never be masked as a success.
 7. **Anti-Double-Compression**:
-   - Commands already compacted by RTK or previously processed by the optimizer are passed through without secondary compression.
+   - Commands already compacted by RTK or previously processed by the optimizer (indicated by `#levyra-raw:` markers or `[Levyra Context:` headers) are passed through without secondary compression to prevent recursive degradation.
 
 ### Using the Context Optimizer
 
-Run any command through the optimizer (exit codes and raw outputs are preserved):
-`ash
+Run any command through the optimizer (the `run` subcommand executes the process directly, ensuring exit codes and raw outputs are strictly preserved; this is strongly recommended over shell pipelines):
+
+```bash
 python scripts/levyra_context_optimizer.py run -- ./gradlew assembleDebug
 python scripts/levyra_context_optimizer.py run -- ./gradlew testDebugUnitTest
 python scripts/levyra_context_optimizer.py run -- git diff HEAD~1
-`
+```
 
-Pipe command output via stdin (with optional exit code propagation):
-`ash
-./gradlew testDebugUnitTest | python scripts/levyra_context_optimizer.py process --category unit_test --exit-code
-`
+Pipe command output via stdin (note: pipelines require explicitly forwarding the upstream exit code via `--exit-code $?` in POSIX shells or `$LASTEXITCODE` in PowerShell to avoid masking failures):
+
+```bash
+# In Bash (with exit code propagation)
+./gradlew testDebugUnitTest | python scripts/levyra_context_optimizer.py process --category unit_test --exit-code $?
+
+# In PowerShell
+./gradlew testDebugUnitTest | python scripts/levyra_context_optimizer.py process --category unit_test --exit-code $LASTEXITCODE
+```
 
 Retrieve uncompressed output or a line range from the LRU cache:
-`ash
+
+```bash
 python scripts/levyra_context_optimizer.py retrieve <cache_id>
 python scripts/levyra_context_optimizer.py retrieve <cache_id> --lines 100:200
-`
+```
 
 Inspect cache statistics:
-`ash
+
+```bash
 python scripts/levyra_context_optimizer.py stats
-`
+```
 
 Clear cached outputs:
-`ash
+
+```bash
 python scripts/levyra_context_optimizer.py clear
-`
+```
 
 ### Optional Headroom Integration
 
-Levyra also provides an optional adapter (scripts/headroom_adapter.py) to connect with the Headroom CLI toolchain and bundled AST tools (difftastic, scc, st-grep). See docs/ai/HEADROOM.md for complete details.
+Levyra also provides an optional adapter (scripts/headroom_adapter.py) to connect with the Headroom CLI toolchain and bundled AST tools (difftastic, scc, ast-grep). See docs/ai/HEADROOM.md for complete details.
 
 ## Attribution
 

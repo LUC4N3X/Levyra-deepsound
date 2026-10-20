@@ -191,6 +191,14 @@ class LevyraContextOptimizerExecutionTest(unittest.TestCase):
         code = run_command([], cache_dir=self.cache_dir)
         self.assertEqual(2, code)
 
+    def test_run_command_signal_exit_code_translation(self) -> None:
+        with patch("scripts.levyra_context_optimizer.subprocess.Popen") as mock_popen:
+            mock_proc = mock_popen.return_value
+            mock_proc.communicate.return_value = ("killed by signal", "")
+            mock_proc.returncode = -9  # SIGKILL (code < 0)
+            code = run_command(["mock_command"], cache_dir=self.cache_dir, silent=True)
+            self.assertEqual(137, code)  # 128 + 9 = 137
+
     def test_run_command_caches_failure_output_in_ccr(self) -> None:
         failed_script = (
             "import sys\n"
@@ -219,6 +227,13 @@ class LevyraContextOptimizerExecutionTest(unittest.TestCase):
 
 
 class LevyraContextOptimizerFiltersTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.cache_dir = Path(self.temp_dir.name)
+
+    def tearDown(self) -> None:
+        self.temp_dir.cleanup()
+
     def test_gradle_failure_preserves_all_compiler_errors(self) -> None:
         build_output = (
             "> Task :app:preBuild UP-TO-DATE\n"
@@ -319,7 +334,7 @@ class LevyraContextOptimizerFiltersTest(unittest.TestCase):
 
     def test_generic_unrecognized_text_kept_verbatim(self) -> None:
         text = "Hello world, this is a plain message with no special markers.\n"
-        res = optimize_context(text)
+        res = optimize_context(text, cache_dir=self.cache_dir)
         self.assertEqual(text, res.content)
 
 

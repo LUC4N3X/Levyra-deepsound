@@ -65,12 +65,21 @@ class ContextCache:
         self.max_entries = max_entries
         self.max_bytes = max_bytes
         self._lock = threading.Lock()
+        self._last_ts_ns = 0
         try:
             self.cache_dir.mkdir(parents=True, exist_ok=True)
         except OSError:
             # Fall back to user home if repo directory is not writable
             self.cache_dir = Path.home() / ".levyra" / "context-cache"
             self.cache_dir.mkdir(parents=True, exist_ok=True)
+
+    def _next_timestamp_ns(self) -> int:
+        """Return a strictly monotonic nanosecond timestamp for LRU mtime precision."""
+        now = time.time_ns()
+        if now <= self._last_ts_ns:
+            now = self._last_ts_ns + 1
+        self._last_ts_ns = now
+        return now
 
     def store(self, raw_text: str, category: str = "generic") -> tuple[str, Path | None]:
         """Store raw text in content-addressed cache, returning (sha256, path_or_None).
@@ -90,24 +99,29 @@ class ContextCache:
 
         with self._lock:
             try:
+                ts_ns = self._next_timestamp_ns()
                 if not raw_file.exists():
-                    tmp_raw = self.cache_dir / f"{raw_hash}.raw.tmp.{os.getpid()}_{time.time_ns()}"
+                    tmp_raw = self.cache_dir / f"{raw_hash}.raw.tmp.{os.getpid()}_{ts_ns}"
                     tmp_raw.write_bytes(content_bytes)
                     os.replace(tmp_raw, raw_file)
+                    try:
+                        os.utime(raw_file, ns=(ts_ns, ts_ns))
+                    except OSError:
+                        pass
 
                     meta = {
                         "hash": raw_hash,
                         "category": category,
                         "bytes": len(content_bytes),
                         "tokens": estimate_tokens(raw_text),
-                        "timestamp": time.time(),
+                        "timestamp": ts_ns / 1_000_000_000.0,
                     }
-                    tmp_meta = self.cache_dir / f"{raw_hash}.json.tmp.{os.getpid()}_{time.time_ns()}"
+                    tmp_meta = self.cache_dir / f"{raw_hash}.json.tmp.{os.getpid()}_{ts_ns}"
                     tmp_meta.write_text(json.dumps(meta), encoding="utf-8")
                     os.replace(tmp_meta, meta_file)
                 else:
                     try:
-                        raw_file.touch()
+                        os.utime(raw_file, ns=(ts_ns, ts_ns))
                     except OSError:
                         pass
 
@@ -208,11 +222,11 @@ class ContextCache:
             except OSError:
                 pass
 
-        entries: list[tuple[Path, int, float]] = []
+        entries: list[tuple[Path, int, int]] = []
         for p in raw_files:
             try:
                 st = p.stat()
-                entries.append((p, st.st_size, st.st_mtime))
+                entries.append((p, st.st_size, st.st_mtime_ns))
             except OSError:
                 continue
 
@@ -222,7 +236,7 @@ class ContextCache:
         if current_count <= self.max_entries and current_bytes <= self.max_bytes:
             return 0
 
-        # Sort oldest first (smallest mtime)
+        # Sort oldest first (smallest mtime_ns)
         entries.sort(key=lambda item: item[2])
 
         evicted = 0
@@ -485,9 +499,9 @@ def optimize_stack_trace_output(text: str) -> str:
         is_cause = stripped.startswith("Caused by:") or "Exception" in stripped or "Error" in stripped
 
         if is_cause:
-            if omitted_frames > 0:
-                kept.append(f"    ... [{omitted_frames} framework frames omitted]")
-                omitted_frames = 0
+            if omitted_frames > 2:
+                kept.append(f"    ... [{omitted_frames - 2} framework frames omitted]")
+            omitted_frames = 0
             kept.append(line)
             continue
 
@@ -514,10 +528,10 @@ def optimize_stack_trace_output(text: str) -> str:
 
 def detect_category(text: str) -> str:
     """Classify output to pick the optimal context-aware filter."""
-    if "BUILD SUCCESSFUL" in text or "BUILD FAILED" in text or "> Task :" in text:
-        return "gradle_build"
     if "testDebugUnitTest" in text or "There were failing tests" in text or "junit.framework" in text:
         return "unit_test"
+    if "BUILD SUCCESSFUL" in text or "BUILD FAILED" in text or "> Task :" in text:
+        return "gradle_build"
     if text.startswith("diff --git") or "\ndiff --git" in text:
         return "git_diff"
     if "--------- beginning of" in text or "AndroidRuntime:" in text:
@@ -666,7 +680,10 @@ def _execute_subprocess(cmd: list[str], silent: bool = False) -> tuple[int, str]
             sys.stderr.write("\n[Command interrupted by user]\n")
         return 130, ""
 
-    return proc.returncode, raw_output
+    code = proc.returncode
+    if code < 0:
+        code = 128 + (-code)
+    return code, raw_output
 
 
 def run_command(
@@ -703,6 +720,11 @@ def run_command(
 # ---------------------------------------------------------------------------
 
 def main(argv: Sequence[str] | None = None) -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
     parser = argparse.ArgumentParser(description="Levyra RTK Enhanced Context Optimizer")
     subparsers = parser.add_subparsers(dest="command")
 

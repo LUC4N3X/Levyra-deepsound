@@ -457,7 +457,8 @@ def run_benchmark(verbose: bool = True) -> dict[str, Any]:
     headroom_stat = probe_headroom_status()
 
     if verbose:
-        print(f"Live validate_agent_config.py:  Exit Code {exit_0} (PASS, {time_exit_0:.1f}ms total process time)")
+        status_label = "PASS" if exit_0 == 0 else "FAIL"
+        print(f"Live validate_agent_config.py:  Exit Code {exit_0} ({status_label}, {time_exit_0:.1f}ms total process time)")
         print(f"Live exit code 1 propagation:   Exit Code {exit_1} ({'PASS' if exit_1 == 1 else 'FAIL'})")
         print(f"Live exit code 2 propagation:   Exit Code {exit_2} ({'PASS' if exit_2 == 2 else 'FAIL'})")
         print(f"Live exit code 127 propagation: Exit Code {exit_127} ({'PASS' if exit_127 == 127 else 'FAIL'})")
