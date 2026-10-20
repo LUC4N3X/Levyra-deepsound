@@ -35,10 +35,23 @@ Before broad reading:
 5. do not reread unchanged evidence already in context;
 6. load only the skills routed for this task.
 
-Use `levyra-context-efficiency` for noisy builds, tests, lint, logs, broad
-searches, dependency listings, Git/GitHub/CI output, or other high-volume
-context. RTK is optional optimization; rerun raw when exact diagnostics,
-security/signing, Perfetto, or R8 evidence matters.
+Use native Glob/Grep for bounded path/text discovery and Read for source ranges.
+Use project jCodeMunch first for symbol ownership and references; expand to
+native tools when the index is unavailable or broader flow matters.
+Batch independent searches and checks in one tool turn. Keep dependent edits,
+validation, and publication sequential. Avoid shell pipelines that truncate
+failure evidence. Use the existing RTK routes for noisy output and rerun raw
+when exact diagnostics, security/signing, Perfetto, or R8 evidence matters.
+Load `levyra-context-efficiency` only when its extended procedure is useful;
+ordinary builds, tests, and searches do not need another skill body.
+
+Before editing, state the intended observable result and the narrowest check
+that proves it. Run that check after the latest material edit. Track the exit
+status of each command; a successful final command does not prove an earlier
+test passed. After compaction, recover the active outcome, changed paths,
+validation state, blocker, and next action, then verify current Git/file state
+before continuing. Keep working on the active deliverable when a new user
+message adds a constraint or asks for status.
 
 ## Deterministic skill loading
 
