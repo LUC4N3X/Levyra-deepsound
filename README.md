@@ -130,23 +130,6 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
 
 </div>
 
----
-
-## ✦ Global skins · A different side of Levyra
-
-I like having a music player that feels like mine, but I don't always want to tweak every screen to get there. That's why I added global skins. They're not just a different set of colors: each one gives Home, Search, Explore, Library, Settings, navigation and both players a look of their own. The music, library and playback features underneath stay the same.
-
-- **Levyra Default** keeps the original interface and all the freedom of Theme Studio. It's still the starting point, and you can always come back to it.
-- **Nocturne 78** has an old-school hi-fi feel, with AMOLED black, graphite, warm amber details, compact layouts and a player that puts the music first.
-- **Prism** goes for a quieter, modern look: deep black, a fixed raspberry accent, clean controls and artwork that gets room to breathe. You can choose between Flow and Focus player layouts, as well as night, light or automatic appearance and reduced visual effects.
-- **Torque** takes a sharper direction, with graphite surfaces, bold diagonal shapes and its own player design. Its accent can follow the current cover or stay a fixed red.
-
-You can find them under **Settings → Design → Skin** on Android. Pick a skin, try it for a while and change it whenever you feel like it. Each one manages the Home and player layout choices it needs, rather than mixing unrelated styles together. Your previous Default customizations are kept, so switching back restores them instead of making you set everything up again.
-
-Global skins are in the Android source code, but were added after **v2.6.10**, so they aren't included in that release yet.
-
----
-
 ## ✦ Features
 
 - **Native playback**: Media3 and ExoPlayer on Android, libVLC through direct C bindings on Windows (no web wrappers).
@@ -159,7 +142,7 @@ Global skins are in the Android source code, but were added after **v2.6.10**, s
 - **Queue Spaces**: keep multiple active listening sessions side by side without losing your current queue.
 - **Synced lyrics**: tap-to-seek, manual timing adjustments, dedicated Bluetooth latency offset, and non-Latin romanization.
 - **Visuals**: motion artwork on the Now Playing screen, falling back to animated album covers.
-- **Global skins (Android)**: switch the look of the whole app with Nocturne 78, Prism or Torque. Levyra Default and your existing Theme Studio choices stay available.
+- **Global skins (Android)**: three complete looks, not just different colors. Nocturne 78 brings vintage hi-fi warmth, Prism pairs deep black with raspberry accents, and Torque adds bold graphite shapes. Each gives Home, Explore, Library, Settings and the player its own style. Find them under Settings → Design → Skin. Levyra Default stays the default, and your customizations are saved when you switch. Added after v2.6.10.
 - **Theme Studio**: sixteen presets, including Midnight, Aurora, Pure Material, Velvet and Editorial. You can also build your own themes: pick background, surface and accent colors from swatches or a HEX code, choose light or dark, set how round the corners are, then save, rename or duplicate them. Levyra Aura stays the default, and one tap brings it back.
 - **Mini player studio**: five alternative mini player designs (Super Expressive, Floating, Liquid Glass, Ultra Compact and Artwork Focus), each with its own size, shape, progress bar and control options, plus a live preview. The original mini player stays the default, so nothing changes until you pick something else.
 - **Navigation studio**: four extra styles for the bottom bar (Super Expressive, Floating Dock, Minimal and Expressive Compact). Drag the buttons into the order you like, hide Explore or Library, choose when labels show, and pick the indicator, icon size, height and background. Home and Search always stay in the bar.
