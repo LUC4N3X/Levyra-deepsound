@@ -396,22 +396,7 @@ private fun ExploreFreshSpotlightPage(
                     .background(buttonFill),
                 contentAlignment = Alignment.Center
             ) {
-                when {
-                    isResolving && !card.opensAlbum -> DiscoveryLoadingIndicator(Modifier.size(22.dp), ink)
-                    card.opensAlbum -> Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-                        contentDescription = null,
-                        tint = ink,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    playing -> LevyraPlayingIndicator(playing = true, color = ink)
-                    else -> Icon(
-                        imageVector = Icons.Rounded.PlayArrow,
-                        contentDescription = null,
-                        tint = ink,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
+                FreshSpotlightControl(isResolving, card.opensAlbum, playing, ink)
             }
         }
     }
@@ -630,4 +615,24 @@ private fun freshSpotlightActionLabel(opensAlbum: Boolean, playing: Boolean, str
     opensAlbum -> strings.openAlbum
     playing -> strings.pause
     else -> strings.play
+}
+
+@Composable
+private fun FreshSpotlightControl(isResolving: Boolean, opensAlbum: Boolean, playing: Boolean, ink: Color) {
+    when {
+        isResolving && !opensAlbum -> DiscoveryLoadingIndicator(Modifier.size(22.dp), ink)
+        opensAlbum -> Icon(
+            imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+            contentDescription = null,
+            tint = ink,
+            modifier = Modifier.size(24.dp)
+        )
+        playing -> LevyraPlayingIndicator(playing = true, color = ink)
+        else -> Icon(
+            imageVector = Icons.Rounded.PlayArrow,
+            contentDescription = null,
+            tint = ink,
+            modifier = Modifier.size(28.dp)
+        )
+    }
 }
