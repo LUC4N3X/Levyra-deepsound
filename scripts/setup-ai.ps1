@@ -4,6 +4,8 @@ param(
     [switch] $InstallRtk,
     [switch] $Plugins,
     [switch] $ClaudeMem,
+    [switch] $Headroom,
+    [switch] $DisableHeadroom,
     [switch] $SkipHooks,
     [switch] $SkipMattSkills,
     [switch] $SkipExternalSkills
@@ -216,6 +218,39 @@ else {
 
 if (-not $pythonCommand) {
     throw 'Validation blocked: Python is required to materialize and verify Levyra agent runtime configuration.'
+}
+
+if ($Headroom) {
+    Invoke-SetupCommand 'Enable optional Headroom integration' {
+        Push-Location $repoRoot
+        try {
+            & $pythonCommand scripts/headroom_adapter.py enable
+        }
+        finally {
+            Pop-Location
+        }
+    }
+}
+elseif ($DisableHeadroom) {
+    Invoke-SetupCommand 'Disable optional Headroom integration' {
+        Push-Location $repoRoot
+        try {
+            & $pythonCommand scripts/headroom_adapter.py disable
+        }
+        finally {
+            Pop-Location
+        }
+    }
+}
+
+Invoke-SetupCommand 'Verify Levyra Context Optimizer' {
+    Push-Location $repoRoot
+    try {
+        & $pythonCommand scripts/levyra_context_optimizer.py stats
+    }
+    finally {
+        Pop-Location
+    }
 }
 
 Invoke-SetupCommand 'Refresh Claude Code and Codex native runtime projections from .agents' {
