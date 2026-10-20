@@ -73,8 +73,10 @@ compression path.
 
 ## Reversible Context Optimization (CCR)
 
-When commands are run through scripts/levyra_context_optimizer.py, uncompressed
-terminal output is automatically cached under .levyra-tools/context-cache/<hash>.txt.
+When commands are run through scripts/levyra_context_optimizer.py run -- <command>,
+terminal output is contextually compacted and the raw output is cached in
+.levyra-tools/context-cache/<hash>.raw (bounded LRU budget: 150 entries / 25 MB).
+Process exit codes are strictly preserved.
 
 To inspect the raw output of any cached execution without re-running the command:
 
@@ -85,7 +87,9 @@ python scripts/levyra_context_optimizer.py retrieve <cache_id> --lines <start>:<
 
 **Non-repeatable command rule**: Never re-run a stateful or mutating command (such
 as code generators, migrations, or destructive git commands) solely to inspect
-uncompressed output. Use the cached raw output via CCR retrieval instead.
+uncompressed output. Use the cached raw output via CCR retrieval instead. Do not
+chain
+tk and the optimizer wrapper on the same invocation to prevent double compression.
 
 ## Cross-session context
 

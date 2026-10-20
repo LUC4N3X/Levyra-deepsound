@@ -33,6 +33,10 @@ class HeadroomAdapterTest(unittest.TestCase):
         headroom_adapter.set_headroom_enabled(False)
         self.assertFalse(headroom_adapter.is_headroom_enabled())
 
+    def test_proxy_listening_socket_probe(self) -> None:
+        # Port 59999 should not be listening
+        self.assertFalse(headroom_adapter.is_proxy_listening("127.0.0.1", 59999, timeout=0.1))
+
     def test_mcp_config_structure(self) -> None:
         config = headroom_adapter.get_mcp_config()
         self.assertIn("mcpServers", config)

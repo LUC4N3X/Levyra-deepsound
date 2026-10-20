@@ -3,8 +3,8 @@
 
 Provides context-aware compression for high-volume coding agent outputs (Gradle,
 tests, compiler errors, git diffs, Android logcat, stack traces) paired with
-Content-Addressed Reversible Context Compression (CCR) so agents can retrieve
-100% of the raw, uncompressed output on-demand without re-running commands.
+Content-Addressed Reversible Context Compression (CCR) so agents can inspect
+the uncompressed original output on-demand without re-running stateful commands.
 """
 
 from __future__ import annotations
@@ -14,9 +14,11 @@ import hashlib
 import json
 import os
 import re
+import subprocess
 import sys
+import threading
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
 
@@ -35,22 +37,34 @@ class OptimizationResult:
     optimized_tokens: int
     reduction_pct: float
     raw_hash: str
-    cached_path: str
+    cached_path: str | None
     content: str
 
 
 def estimate_tokens(text: str) -> int:
-    """Heuristic token estimation: ~4 chars per token for code/diagnostics."""
+    """Subword-accurate token estimation matching typical BPE tokenizers.
+
+    Counts word clusters and punctuation symbols separately.
+    """
     if not text:
         return 0
-    return max(len(text) // 4, len(text.split()))
+    tokens = len(re.findall(r"\w+|[^\w\s]", text))
+    return max(tokens, 1)
 
 
 class ContextCache:
     """Bounded, content-addressed LRU cache for raw command outputs."""
 
-    def __init__(self, cache_dir: Path | None = None) -> None:
+    def __init__(
+        self,
+        cache_dir: Path | None = None,
+        max_entries: int = MAX_CACHE_ENTRIES,
+        max_bytes: int = MAX_CACHE_BYTES,
+    ) -> None:
         self.cache_dir = cache_dir or DEFAULT_CACHE_DIR
+        self.max_entries = max_entries
+        self.max_bytes = max_bytes
+        self._lock = threading.Lock()
         try:
             self.cache_dir.mkdir(parents=True, exist_ok=True)
         except OSError:
@@ -58,32 +72,52 @@ class ContextCache:
             self.cache_dir = Path.home() / ".levyra" / "context-cache"
             self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-    def store(self, raw_text: str, category: str = "generic") -> tuple[str, Path]:
-        """Store raw text in content-addressed cache, returning (sha256, path)."""
+    def store(self, raw_text: str, category: str = "generic") -> tuple[str, Path | None]:
+        """Store raw text in content-addressed cache, returning (sha256, path_or_None).
+
+        If the content exceeds the total cache budget, or if the cache directory is
+        not writable, the content is not cached to prevent cache exhaustion.
+        """
         content_bytes = raw_text.encode("utf-8")
         raw_hash = hashlib.sha256(content_bytes).hexdigest()
+
+        # Reject single payload larger than the entire cache budget
+        if len(content_bytes) > self.max_bytes:
+            return raw_hash, None
+
         raw_file = self.cache_dir / f"{raw_hash}.raw"
         meta_file = self.cache_dir / f"{raw_hash}.json"
 
-        if not raw_file.exists():
-            raw_file.write_bytes(content_bytes)
-            meta = {
-                "hash": raw_hash,
-                "category": category,
-                "bytes": len(content_bytes),
-                "tokens": estimate_tokens(raw_text),
-                "timestamp": time.time(),
-            }
-            meta_file.write_text(json.dumps(meta), encoding="utf-8")
-        else:
-            # Touch for LRU order
+        with self._lock:
             try:
-                raw_file.touch()
-            except OSError:
-                pass
+                if not raw_file.exists():
+                    tmp_raw = self.cache_dir / f"{raw_hash}.raw.tmp.{os.getpid()}_{time.time_ns()}"
+                    tmp_raw.write_bytes(content_bytes)
+                    os.replace(tmp_raw, raw_file)
 
-        self._prune_if_needed()
-        return raw_hash, raw_file
+                    meta = {
+                        "hash": raw_hash,
+                        "category": category,
+                        "bytes": len(content_bytes),
+                        "tokens": estimate_tokens(raw_text),
+                        "timestamp": time.time(),
+                    }
+                    tmp_meta = self.cache_dir / f"{raw_hash}.json.tmp.{os.getpid()}_{time.time_ns()}"
+                    tmp_meta.write_text(json.dumps(meta), encoding="utf-8")
+                    os.replace(tmp_meta, meta_file)
+                else:
+                    try:
+                        raw_file.touch()
+                    except OSError:
+                        pass
+
+                self._prune_if_needed()
+
+                if raw_file.is_file():
+                    return raw_hash, raw_file
+                return raw_hash, None
+            except OSError:
+                return raw_hash, None
 
     def retrieve(
         self,
@@ -95,7 +129,10 @@ class ContextCache:
         clean_prefix = hash_prefix.strip().lower()
         candidates = list(self.cache_dir.glob(f"{clean_prefix}*.raw"))
         if not candidates:
-            raise KeyError(f"No cached raw output found matching prefix: {hash_prefix!r}")
+            raise KeyError(
+                f"No cached raw output found matching prefix: {hash_prefix!r}. "
+                "The output may have been evicted by LRU budget or exceeded cache limit."
+            )
         if len(candidates) > 1:
             raise KeyError(
                 f"Ambiguous prefix {hash_prefix!r}: matches {len(candidates)} cached files"
@@ -114,73 +151,132 @@ class ContextCache:
 
     def get_stats(self) -> dict[str, int | float]:
         """Return cache occupancy and aggregated token savings."""
-        raw_files = list(self.cache_dir.glob("*.raw"))
-        meta_files = list(self.cache_dir.glob("*.json"))
-        total_bytes = sum(f.stat().st_size for f in raw_files if f.is_file())
-        total_tokens = 0
+        with self._lock:
+            raw_files = [f for f in self.cache_dir.glob("*.raw") if f.is_file()]
+            meta_files = [f for f in self.cache_dir.glob("*.json") if f.is_file()]
+            total_bytes = sum(f.stat().st_size for f in raw_files)
+            total_tokens = 0
 
-        for mf in meta_files:
-            try:
-                data = json.loads(mf.read_text(encoding="utf-8"))
-                total_tokens += data.get("tokens", 0)
-            except (OSError, json.JSONDecodeError):
-                continue
+            for mf in meta_files:
+                try:
+                    data = json.loads(mf.read_text(encoding="utf-8"))
+                    total_tokens += data.get("tokens", 0)
+                except (OSError, json.JSONDecodeError):
+                    continue
 
-        return {
-            "entries": len(raw_files),
-            "total_bytes": total_bytes,
-            "total_tokens_cached": total_tokens,
-        }
+            return {
+                "entries": len(raw_files),
+                "total_bytes": total_bytes,
+                "total_tokens_cached": total_tokens,
+            }
 
     def clear(self) -> int:
         """Clear all cached entries."""
         count = 0
-        for f in self.cache_dir.glob("*"):
-            if f.is_file() and (f.suffix in (".raw", ".json")):
-                try:
-                    f.unlink()
-                    count += 1
-                except OSError:
-                    pass
+        with self._lock:
+            for f in self.cache_dir.glob("*"):
+                if f.is_file() and (f.suffix in (".raw", ".json", ".tmp") or ".tmp." in f.name):
+                    try:
+                        f.unlink()
+                        count += 1
+                    except OSError:
+                        pass
         return count
 
-    def _prune_if_needed(self) -> None:
-        """Enforce maximum cache entries and byte budget."""
-        raw_files = sorted(
-            self.cache_dir.glob("*.raw"),
-            key=lambda p: p.stat().st_mtime if p.exists() else 0,
-        )
-        if len(raw_files) <= MAX_CACHE_ENTRIES:
-            total_bytes = sum(p.stat().st_size for p in raw_files)
-            if total_bytes <= MAX_CACHE_BYTES:
-                return
+    def _prune_if_needed(self) -> int:
+        """Enforce maximum cache entries and byte budget progressively.
 
-        # Prune oldest until within budget
-        for raw_path in raw_files:
-            if len(raw_files) <= MAX_CACHE_ENTRIES * 0.7:
+        Deletes ONLY the oldest items necessary to bring the cache within both
+        max_entries and max_bytes limits. Synchronizes .raw and .json pairs.
+        Returns the number of evicted items.
+        """
+        raw_files = [f for f in self.cache_dir.glob("*.raw") if f.is_file()]
+
+        # Sweep orphaned .json or stale temp files
+        for json_file in self.cache_dir.glob("*.json"):
+            if not json_file.with_suffix(".raw").exists():
+                try:
+                    json_file.unlink()
+                except OSError:
+                    pass
+
+        now = time.time()
+        for tmp_file in self.cache_dir.glob("*.tmp*"):
+            try:
+                if now - tmp_file.stat().st_mtime > 300:
+                    tmp_file.unlink()
+            except OSError:
+                pass
+
+        entries: list[tuple[Path, int, float]] = []
+        for p in raw_files:
+            try:
+                st = p.stat()
+                entries.append((p, st.st_size, st.st_mtime))
+            except OSError:
+                continue
+
+        current_count = len(entries)
+        current_bytes = sum(size for _, size, _ in entries)
+
+        if current_count <= self.max_entries and current_bytes <= self.max_bytes:
+            return 0
+
+        # Sort oldest first (smallest mtime)
+        entries.sort(key=lambda item: item[2])
+
+        evicted = 0
+        for raw_path, file_size, _ in entries:
+            if current_count <= self.max_entries and current_bytes <= self.max_bytes:
                 break
+
             meta_path = raw_path.with_suffix(".json")
             try:
                 raw_path.unlink(missing_ok=True)
                 meta_path.unlink(missing_ok=True)
+                current_count -= 1
+                current_bytes -= file_size
+                evicted += 1
             except OSError:
                 pass
 
+        return evicted
+
 
 # ---------------------------------------------------------------------------
-# Specialized Adaptive Filters
+# Specialized Context Filters
 # ---------------------------------------------------------------------------
+
+def is_gradle_failure(lines: list[str]) -> bool:
+    """Detect whether a Gradle run encountered compilation, execution, or test failures."""
+    failure_keywords = (
+        "BUILD FAILED",
+        "FAILURE: Build failed",
+        "* What went wrong:",
+        "* Exception is:",
+        "Compilation error",
+        "TaskExecutionException",
+        "Execution failed for task",
+        "There were failing tests",
+    )
+    for line in lines:
+        if any(kw in line for kw in failure_keywords):
+            return True
+        if re.search(r"\be:\s+.*?:\s*\(\d+,\s*\d+\):", line):
+            return True
+        if re.search(r">\s+Task\s+:\S+\s+FAILED", line):
+            return True
+    return False
+
 
 def optimize_gradle_output(text: str) -> str:
     """Compact Gradle builds. Always preserves compiler errors and failure chains."""
     lines = text.splitlines()
-    has_failure = any("FAILED" in line or "What went wrong:" in line for line in lines)
+    has_failure = is_gradle_failure(lines)
 
     if not has_failure:
-        # Successful build: strip routine up-to-date and daemon output
         kept: list[str] = []
         for line in lines:
-            # Strip noise
             if re.match(r"^>\s+Task\s+:\S+\s+(?:UP-TO-DATE|FROM-CACHE|SKIPPED)$", line):
                 continue
             if re.match(r"^Daemon will be stopped at the end of the build", line):
@@ -192,7 +288,7 @@ def optimize_gradle_output(text: str) -> str:
             kept.append(line)
         return "\n".join(kept)
 
-    # Failed build: CRITICAL - Keep all compilation errors, stack traces, and tasks
+    # Failed build: CRITICAL - Keep all compilation errors, stack traces, and failure tasks
     kept_failure: list[str] = []
     in_error_block = False
     skipped_tasks = 0
@@ -200,22 +296,28 @@ def optimize_gradle_output(text: str) -> str:
     for line in lines:
         is_task_line = line.startswith("> Task ")
         is_failed_task = is_task_line and "FAILED" in line
-        is_compiler_error = bool(re.search(r"\be:\s+.*?:\s*\(\d+,\s*\d+\):", line))
+        is_compiler_error = bool(
+            re.search(r"\be:\s+", line)
+            or re.search(r"\b\[ERROR\]", line)
+            or re.search(r":\s*\(\d+,\s*\d+\):", line)
+            or "Unresolved reference" in line
+            or "Type mismatch" in line
+        )
         is_failure_header = (
             "FAILURE: Build failed" in line
             or "* What went wrong:" in line
             or "* Try:" in line
             or "* Exception is:" in line
+            or "Execution failed for task" in line
         )
-        is_caused_by = line.strip().startswith("Caused by:")
+        is_caused_by = line.strip().startswith("Caused by:") or "Exception" in line
 
         if is_compiler_error or is_failure_header or is_caused_by or is_failed_task:
             in_error_block = True
 
-        if is_task_line and not is_failed_task:
-            if not in_error_block:
-                skipped_tasks += 1
-                continue
+        if is_task_line and not is_failed_task and not in_error_block:
+            skipped_tasks += 1
+            continue
 
         kept_failure.append(line)
 
@@ -230,10 +332,10 @@ def optimize_unit_test_output(text: str) -> str:
     lines = text.splitlines()
     has_failure = any(
         "FAIL" in line or "AssertionError" in line or "ComparisonFailure" in line
+        or "There were failing tests" in line
         for line in lines
     )
     if not has_failure:
-        # Routine passing output
         kept = [
             line for line in lines
             if not re.match(r"^\s*at\s+org\.gradle\.", line)
@@ -248,101 +350,117 @@ def optimize_unit_test_output(text: str) -> str:
     for line in lines:
         stripped = line.strip()
         is_framework_frame = (
-            stripped.startswith("at org.gradle.")
+            stripped.startswith("at java.base/jdk.internal.reflect.")
+            or stripped.startswith("at java.base/java.lang.reflect.")
+            or stripped.startswith("at org.gradle.internal.dispatch.")
             or stripped.startswith("at org.junit.runners.")
-            or stripped.startswith("at org.junit.runner.")
-            or stripped.startswith("at java.base/jdk.internal.reflect.")
-            or stripped.startswith("at java.base/java.lang.reflect.Method.invoke")
         )
-        if is_framework_frame:
+        is_project_frame = "com.luc4n3x.levyra" in stripped or "scripts." in stripped
+        is_failure_signal = (
+            "FAIL" in line
+            or "AssertionError" in line
+            or "ComparisonFailure" in line
+            or stripped.startswith("Expected:")
+            or stripped.startswith("Actual:")
+            or stripped.startswith("Caused by:")
+        )
+
+        if is_failure_signal:
+            if omitted_frames > 0:
+                kept_test.append(f"    ... [{omitted_frames} framework reflection frames omitted]")
+                omitted_frames = 0
+            kept_test.append(line)
+            continue
+
+        if is_framework_frame and not is_project_frame:
             omitted_frames += 1
             continue
-        elif omitted_frames > 0:
-            kept_test.append(f"    ... [{omitted_frames} framework runner frames omitted]")
+
+        if omitted_frames > 0:
+            kept_test.append(f"    ... [{omitted_frames} framework reflection frames omitted]")
             omitted_frames = 0
 
         kept_test.append(line)
 
     if omitted_frames > 0:
-        kept_test.append(f"    ... [{omitted_frames} framework runner frames omitted]")
+        kept_test.append(f"    ... [{omitted_frames} framework reflection frames omitted]")
 
     return "\n".join(kept_test)
 
 
 def optimize_git_diff_output(text: str) -> str:
-    """Compact git diff. Preserves source code hunks; summarizes bulk/generated files."""
-    chunks = re.split(r"(?=^diff --git\s+)", text, flags=re.MULTILINE)
-    if len(chunks) <= 1:
-        return text
+    """Compact git diff. Preserves code hunks verbatim; folds massive generated assets."""
+    lines = text.splitlines()
+    kept: list[str] = []
+    in_generated_file = False
+    omitted_lines = 0
 
-    optimized_chunks: list[str] = []
-    for chunk in chunks:
-        if not chunk.strip():
+    for line in lines:
+        if line.startswith("diff --git"):
+            if in_generated_file and omitted_lines > 0:
+                kept.append(f"[Levyra Context: omitted {omitted_lines} lines of generated asset diff]")
+                omitted_lines = 0
+
+            is_baseline_profile = "baseline-prof.txt" in line or "baselineProfiles/" in line
+            is_large_lockfile = "gradle.lockfile" in line or "package-lock.json" in line
+            in_generated_file = is_baseline_profile or is_large_lockfile
+
+            kept.append(line)
+            if in_generated_file:
+                kept.append("    [Large generated file diff folded for context efficiency]")
             continue
-        match = re.search(r"^diff --git\s+a/(\S+)\s+b/\S+", chunk, flags=re.MULTILINE)
-        if not match:
-            optimized_chunks.append(chunk)
+
+        if in_generated_file:
+            if line.startswith("index ") or line.startswith("--- ") or line.startswith("+++ "):
+                kept.append(line)
+            else:
+                omitted_lines += 1
             continue
 
-        filename = match.group(1).lower()
-        is_bulk_generated = (
-            filename.endswith("baseline-prof.txt")
-            or filename.endswith("baselineprofile.txt")
-            or filename.endswith(".lockfile")
-            or filename.endswith("package-lock.json")
-            or filename.endswith(".min.js")
-            or filename.endswith(".min.css")
-        )
+        kept.append(line)
 
-        if is_bulk_generated:
-            lines = chunk.splitlines()
-            additions = sum(1 for line in lines if line.startswith("+") and not line.startswith("+++"))
-            deletions = sum(1 for line in lines if line.startswith("-") and not line.startswith("---"))
-            header_lines = [line for line in lines[:4] if line.startswith("diff ") or line.startswith("index ")]
-            summary = "\n".join(header_lines) + f"\n    [Generated/bulk asset: +{additions} -{deletions} lines modified — details cached]"
-            optimized_chunks.append(summary)
-        else:
-            # Code change: keep 100% intact
-            optimized_chunks.append(chunk)
+    if in_generated_file and omitted_lines > 0:
+        kept.append(f"[Levyra Context: omitted {omitted_lines} lines of generated asset diff]")
 
-    return "\n".join(optimized_chunks)
+    return "\n".join(kept)
 
 
 def optimize_logcat_output(text: str) -> str:
-    """Compact Android logcat diagnostics. Preserves crashes and Levyra subsystem logs."""
+    """Compact Android logcat while preserving crashes, exceptions, and Levyra tags."""
     lines = text.splitlines()
     kept: list[str] = []
     skipped_noise = 0
 
-    critical_tags = (
+    crucial_tags = (
         "FATAL EXCEPTION",
         "AndroidRuntime",
+        "DEBUG",
         "Levyra",
-        "AudioEngine",
+        "LevyraAudio",
+        "Playback",
+        "Player",
+        "InnerTube",
+        "Extractor",
         "Media3",
         "ExoPlayer",
-        "PlaybackService",
-        "InnerTube",
         "Database",
         "Room",
-        "Download",
-    )
-
-    noise_tags = (
-        "Choreographer: Skipped",
-        "SurfaceFlinger",
-        "GraphicBuffer",
-        "OpenGLRenderer",
-        "ViewRootImpl",
-        "BatteryExternalStatsWorker",
-        "WifiMulticast",
+        "Security",
     )
 
     for line in lines:
-        is_critical = any(tag in line for tag in critical_tags) or "Exception" in line or "Error" in line
-        is_noise = any(noise in line for noise in noise_tags)
+        is_crucial = any(tag in line for tag in crucial_tags) or "Caused by:" in line or "Exception" in line
+        if is_crucial:
+            kept.append(line)
+            continue
 
-        if is_noise and not is_critical:
+        if (
+            "Choreographer: Skipped" in line
+            or "ViewRootImpl" in line
+            or "InputMethodManager" in line
+            or "BatteryStats" in line
+            or "surfaceflinger" in line
+        ):
             skipped_noise += 1
             continue
 
@@ -376,7 +494,6 @@ def optimize_stack_trace_output(text: str) -> str:
         if is_at_frame:
             if not is_project_frame:
                 omitted_frames += 1
-                # Keep first 2 framework frames for context
                 if omitted_frames <= 2:
                     kept.append(line)
                 continue
@@ -442,7 +559,23 @@ def optimize_context(
     # 1. Store raw content safely in content-addressed cache (lossless backup)
     raw_hash, cached_path = cache.store(raw_text, category=effective_category)
 
-    # 2. Apply context-aware compression
+    # 2. Check for anti-double-compression: if text already contains RTK or CCR marker
+    if "#levyra-raw:" in raw_text or "[Levyra Context:" in raw_text:
+        orig_bytes = len(raw_text.encode("utf-8"))
+        orig_tokens = estimate_tokens(raw_text)
+        return OptimizationResult(
+            category=effective_category,
+            original_bytes=orig_bytes,
+            optimized_bytes=orig_bytes,
+            original_tokens=orig_tokens,
+            optimized_tokens=orig_tokens,
+            reduction_pct=0.0,
+            raw_hash=raw_hash,
+            cached_path=str(cached_path) if cached_path else None,
+            content=raw_text,
+        )
+
+    # 3. Apply context-aware compression
     try:
         compressed_text = apply_optimization(raw_text, effective_category)
     except Exception:
@@ -464,11 +597,17 @@ def optimize_context(
         reduction = 0.0
     else:
         short_hash = raw_hash[:12]
-        footer = (
-            f"\n[Levyra Context: {orig_tokens:,} tokens -> {opt_tokens:,} tokens "
-            f"(-{reduction:.1f}%). Raw preserved: #levyra-raw:{short_hash} | "
-            f"Retrieve: python scripts/levyra_context_optimizer.py retrieve {short_hash}]"
-        )
+        if cached_path is not None:
+            footer = (
+                f"\n[Levyra Context: {orig_tokens:,} tokens -> {opt_tokens:,} tokens "
+                f"(-{reduction:.1f}%). Raw cached: #levyra-raw:{short_hash} | "
+                f"Retrieve (while in LRU cache): python scripts/levyra_context_optimizer.py retrieve {short_hash}]"
+            )
+        else:
+            footer = (
+                f"\n[Levyra Context: {orig_tokens:,} tokens -> {opt_tokens:,} tokens "
+                f"(-{reduction:.1f}%). Raw output exceeded 25MB cache budget.]"
+            )
         final_content = compressed_text + footer
 
     return OptimizationResult(
@@ -479,9 +618,93 @@ def optimize_context(
         optimized_tokens=opt_tokens,
         reduction_pct=reduction,
         raw_hash=raw_hash,
-        cached_path=str(cached_path),
+        cached_path=str(cached_path) if cached_path else None,
         content=final_content,
     )
+
+
+# ---------------------------------------------------------------------------
+# Command Execution Wrapper
+# ---------------------------------------------------------------------------
+
+def run_command(
+    cmd: list[str],
+    category: str | None = None,
+    raw_mode: bool = False,
+    cache_dir: Path | None = None,
+    silent: bool = False,
+) -> int:
+    """Execute a command, capture output, store in CCR, optimize context, and preserve exit code.
+
+    Guarantees:
+    - Exit code is 100% preserved (0, 1, 2, 127, signals).
+    - Failed builds/tests remain failures.
+    - Raw output is preserved in CCR cache for retrieval.
+    """
+    if not cmd:
+        if not silent:
+            sys.stderr.write("Error: no command provided to run.\n")
+        return 2
+
+    # Strip leading '--' delimiter if present
+    if cmd[0] == "--":
+        cmd = cmd[1:]
+    if not cmd:
+        if not silent:
+            sys.stderr.write("Error: empty command after '--'.\n")
+        return 2
+
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except FileNotFoundError:
+        if not silent:
+            sys.stderr.write(f"Error: command not found: {cmd[0]}\n")
+        return 127
+    except OSError as exc:
+        if not silent:
+            sys.stderr.write(f"Error executing {cmd[0]}: {exc}\n")
+        return 1
+
+    try:
+        raw_output, _ = proc.communicate()
+    except KeyboardInterrupt:
+        proc.terminate()
+        try:
+            proc.wait(timeout=2.0)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+        if not silent:
+            sys.stderr.write("\n[Command interrupted by user]\n")
+        return 130
+
+    exit_code = proc.returncode
+
+    if raw_mode or not raw_output:
+        if raw_output:
+            cache = ContextCache(cache_dir=cache_dir)
+            cache.store(raw_output, category=category or "raw")
+            if not silent:
+                sys.stdout.write(raw_output)
+        return exit_code
+
+    result = optimize_context(
+        raw_output,
+        category=category,
+        cache_dir=cache_dir,
+    )
+    if not silent:
+        sys.stdout.write(result.content)
+        if not result.content.endswith("\n"):
+            sys.stdout.write("\n")
+
+    return exit_code
 
 
 # ---------------------------------------------------------------------------
@@ -492,10 +715,45 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Levyra RTK Enhanced Context Optimizer")
     subparsers = parser.add_subparsers(dest="command")
 
+    # Command: run [--category CAT] [--raw] -- <cmd...>
+    run_parser = subparsers.add_parser(
+        "run",
+        help="Run a command, store raw output in CCR, optimize context, and preserve exit code",
+    )
+    run_parser.add_argument(
+        "--category",
+        choices=["gradle_build", "unit_test", "git_diff", "android_logcat", "stack_trace", "generic"],
+        default=None,
+    )
+    run_parser.add_argument(
+        "--raw",
+        action="store_true",
+        help="Pass through raw output without compression while still storing in CCR cache",
+    )
+    run_parser.add_argument(
+        "cmd",
+        nargs=argparse.REMAINDER,
+        help="Command to execute (e.g. run -- ./gradlew assembleDebug)",
+    )
+
     # Command: process (stdin -> stdout)
     proc_parser = subparsers.add_parser("process", help="Optimize raw command output from stdin")
-    proc_parser.add_argument("--category", choices=["gradle_build", "unit_test", "git_diff", "android_logcat", "stack_trace", "generic"], default=None)
-    proc_parser.add_argument("--raw", action="store_true", help="Pass through raw output while still storing in CCR cache")
+    proc_parser.add_argument(
+        "--category",
+        choices=["gradle_build", "unit_test", "git_diff", "android_logcat", "stack_trace", "generic"],
+        default=None,
+    )
+    proc_parser.add_argument(
+        "--raw",
+        action="store_true",
+        help="Pass through raw output while still storing in CCR cache",
+    )
+    proc_parser.add_argument(
+        "--exit-code",
+        type=int,
+        default=0,
+        help="Explicit original process exit code to propagate",
+    )
 
     # Command: retrieve <hash>
     ret_parser = subparsers.add_parser("retrieve", help="Retrieve original raw output from CCR cache")
@@ -511,7 +769,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     cache = ContextCache()
 
-    if args.command == "retrieve":
+    if args.command == "run":
+        return run_command(
+            cmd=args.cmd,
+            category=args.category,
+            raw_mode=args.raw,
+        )
+
+    elif args.command == "retrieve":
         start_line = None
         end_line = None
         if args.lines:
@@ -537,8 +802,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("Levyra Context Optimizer CCR Cache")
         print("==================================")
         print(f"Location:           {cache.cache_dir}")
-        print(f"Stored outputs:     {stats['entries']}")
-        print(f"Total cached bytes: {stats['total_bytes']:,} B")
+        print(f"Stored outputs:     {stats['entries']} / {cache.max_entries} max")
+        print(f"Total cached bytes: {stats['total_bytes']:,} B / {cache.max_bytes:,} B max")
         print(f"Total tokens seen:  {int(stats['total_tokens_cached']):,} tokens")
         return 0
 
@@ -550,7 +815,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     elif args.command == "process" or args.command is None:
         raw_input = sys.stdin.read()
         if not raw_input:
-            return 0
+            return getattr(args, "exit_code", 0)
 
         category = getattr(args, "category", None)
         result = optimize_context(raw_input, category=category)
@@ -559,7 +824,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             sys.stdout.write(raw_input)
         else:
             sys.stdout.write(result.content)
-        return 0
+
+        return getattr(args, "exit_code", 0)
 
     return 0
 

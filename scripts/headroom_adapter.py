@@ -3,7 +3,7 @@
 
 Provides non-invasive, opt-in integration with Headroom (headroomlabs-ai/headroom)
 for structural syntax-aware diffs (difftastic), code metrics (scc), and Model
-Context Protocol (MCP) CCR compression without introducing permanent resident
+Context Protocol (MCP) server configuration without introducing permanent resident
 background processes or modifying default model providers.
 """
 
@@ -13,6 +13,7 @@ import argparse
 import json
 import os
 import shutil
+import socket
 import subprocess
 import sys
 from dataclasses import asdict, dataclass
@@ -20,7 +21,10 @@ from pathlib import Path
 from typing import Any, Sequence
 
 ROOT = Path(__file__).resolve().parents[1]
-HEADROOM_CONFIG_PATH = ROOT / ".agents" / "config" / "headroom.json"
+# Local configuration lives in .levyra-tools/ (gitignored) so toggling
+# Headroom does not dirty the shared Git working tree.
+LOCAL_CONFIG_DIR = ROOT / ".levyra-tools"
+HEADROOM_CONFIG_PATH = LOCAL_CONFIG_DIR / "headroom.json"
 
 
 @dataclass
@@ -47,6 +51,9 @@ def get_headroom_executable() -> str | None:
             candidate = Path(local_app) / "Programs" / "Python" / "Python313" / "Scripts" / "headroom.exe"
             if candidate.is_file():
                 return str(candidate)
+            candidate11 = Path(local_app) / "Programs" / "Python" / "Python311" / "Scripts" / "headroom.exe"
+            if candidate11.is_file():
+                return str(candidate11)
     return None
 
 
@@ -66,18 +73,31 @@ def is_headroom_enabled() -> bool:
 
 
 def set_headroom_enabled(enabled: bool) -> None:
-    """Update repository configuration for Headroom."""
-    HEADROOM_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    """Update local repository configuration for Headroom without dirtying Git."""
+    LOCAL_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     config = {
         "enabled": enabled,
         "updated_at": os.environ.get("SOURCE_DATE_EPOCH", ""),
-        "description": "Levyra RTK Enhanced optional Headroom configuration",
+        "description": "Levyra RTK Enhanced local optional Headroom configuration (gitignored)",
     }
     HEADROOM_CONFIG_PATH.write_text(json.dumps(config, indent=2), encoding="utf-8")
 
 
+def is_proxy_listening(host: str = "127.0.0.1", port: int = 8787, timeout: float = 0.3) -> bool:
+    """Check if a local Headroom proxy daemon is actively listening on TCP port.
+
+    Uses raw TCP socket connection instead of HTTP URL requests to avoid
+    Bandit B310 URL audit warnings and eliminate network scheme parsing.
+    """
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except (OSError, TimeoutError):
+        return False
+
+
 def probe_headroom_status(timeout: float = 2.0) -> HeadroomStatus:
-    """Probe Headroom installation, version, bundled tools, and proxy status."""
+    """Probe Headroom installation, version, bundled tools, and real MCP status."""
     exe = get_headroom_executable()
     if not exe:
         return HeadroomStatus(
@@ -129,26 +149,34 @@ def probe_headroom_status(timeout: float = 2.0) -> HeadroomStatus:
     except (OSError, subprocess.TimeoutExpired):
         pass
 
-    # 3. Check quick proxy status without long timeout
-    proxy_running = False
-    proxy_url = "http://127.0.0.1:8787"
+    # 3. Real MCP status probe (verify mcp CLI command exists without network hang)
+    mcp_sdk_installed = False
     try:
-        import urllib.request
-        req = urllib.request.Request(f"{proxy_url}/health", headers={"User-Agent": "Levyra-Probe"})
-        with urllib.request.urlopen(req, timeout=0.5) as resp:
-            if resp.status == 200:
-                proxy_running = True
-    except Exception:
-        proxy_running = False
+        proc_mcp = subprocess.run(
+            [exe, "mcp", "--help"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+            check=False,
+        )
+        if proc_mcp.returncode == 0 and "serve" in proc_mcp.stdout:
+            mcp_sdk_installed = True
+    except (OSError, subprocess.TimeoutExpired):
+        mcp_sdk_installed = False
+
+    # 4. Check proxy status via raw non-blocking socket
+    proxy_running = is_proxy_listening("127.0.0.1", 8787, timeout=0.2)
 
     return HeadroomStatus(
         available=True,
         version=version,
         enabled=is_headroom_enabled(),
         bundled_tools=bundled,
-        mcp_sdk_installed=True,
+        mcp_sdk_installed=mcp_sdk_installed,
         proxy_running=proxy_running,
-        proxy_url=proxy_url,
+        proxy_url="http://127.0.0.1:8787",
     )
 
 
@@ -199,8 +227,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     subparsers = parser.add_subparsers(dest="command")
 
     subparsers.add_parser("status", help="Probe Headroom status and capabilities")
-    subparsers.add_parser("enable", help="Enable optional Headroom integration")
-    subparsers.add_parser("disable", help="Disable optional Headroom integration")
+    subparsers.add_parser("enable", help="Enable optional Headroom integration locally")
+    subparsers.add_parser("disable", help="Disable optional Headroom integration locally")
     subparsers.add_parser("doctor", help="Check Headroom health and dependencies")
     subparsers.add_parser("mcp-config", help="Print MCP server JSON configuration")
 
@@ -208,7 +236,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "enable":
         set_headroom_enabled(True)
-        print("Levyra Headroom integration enabled.")
+        print("Levyra Headroom integration enabled (saved in .levyra-tools/headroom.json).")
         return 0
 
     elif args.command == "disable":
@@ -220,7 +248,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(get_mcp_config(), indent=2))
         return 0
 
-    elif args.command == "doctor" or args.command == "status" or args.command is None:
+    elif args.command in ("doctor", "status") or args.command is None:
         status = probe_headroom_status()
         print("Levyra Headroom Integration Status")
         print("==================================")

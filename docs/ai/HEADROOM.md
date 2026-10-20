@@ -2,13 +2,14 @@
 
 ## Overview
 
-Levyra includes an optional, zero-daemon adapter for [Headroom](https://github.com/headroomlabs-ai/headroom), inspired by solutions explored in Free Claude Code. Headroom specializes in Content-Addressed Reversible Context Compression (CCR), AST-aware diffing, and token-efficient context transformations.
+Levyra includes an optional, zero-daemon adapter for [Headroom](https://github.com/headroomlabs-ai/headroom), inspired by solutions explored in Free Claude Code. Headroom specializes in structural AST-aware diffing, code metrics, and Model Context Protocol (MCP) integrations.
 
 In accordance with Levyra's strict engineering rules:
 - **No background resident daemons**: The integration does not run persistent background proxy servers or services.
 - **Fail-open & Reversible**: Completely optional and disabled by default. If Headroom CLI is unavailable or fails, execution immediately falls back to RTK or raw commands.
+- **Local & Git-clean Configuration**: Configuration state is stored locally in `.levyra-tools/headroom.json` (gitignored). Enabling or disabling Headroom never pollutes the shared Git working tree.
 - **No model or provider tampering**: Does not alter AI models, endpoints, credentials, or sandboxes.
-- **Lossless evidence preservation**: Critical errors, stack traces, compiler output, test assertions, security markers, and git diff hunks are never dropped.
+- **Diagnostic evidence preservation**: Critical errors, stack traces, compiler output, test assertions, security markers, and git diff hunks are never dropped.
 
 ## Architecture
 
@@ -33,7 +34,7 @@ Headroom operates alongside Levyra's native context infrastructure:
                            ▼
             ┌─────────────────────────────┐
             │   Optional Headroom CLI     │
-            │  (.agents/config/headroom)  │
+            │  (.levyra-tools/headroom)   │
             │  - difftastic AST diffing   │
             │  - scc code statistics     │
             │  - ast-grep query engine    │
@@ -44,11 +45,11 @@ Headroom operates alongside Levyra's native context infrastructure:
 
 Headroom's full proxy server (`headroom mcp serve`) by default expects an active HTTP proxy daemon (`http://127.0.0.1:8787`). Forcing a persistent proxy daemon introduces several risks in local agent workflows:
 1. Zombie background processes that survive session termination.
-2. Fragile network routing and localhost port collision.
+2. Fragile network routing and localhost port collisions.
 3. Silent interception of credentials or request payloads.
 
 Instead, Levyra adopts:
-1. **Repository-Native CCR**: Implemented in `scripts/levyra_context_optimizer.py` as a zero-overhead, stateless local cache that requires no daemon.
+1. **Repository-Native CCR**: Implemented in `scripts/levyra_context_optimizer.py` as a fast, stateless local cache that requires no daemon.
 2. **Adapter Interface**: `scripts/headroom_adapter.py` allows agents to invoke Headroom's bundled high-performance CLI tools (`difftastic`, `scc`, `ast-grep`) and generate native MCP configurations on demand.
 
 ## Managing the Integration
@@ -60,9 +61,9 @@ python scripts/headroom_adapter.py status
 python scripts/headroom_adapter.py doctor
 ```
 
-Output details whether Headroom is installed, detected version, configuration status (`.agents/config/headroom.json`), and availability of bundled tools (`difftastic`, `scc`, `ast-grep`).
+Output details whether Headroom is installed, detected version, configuration status (`.levyra-tools/headroom.json`), bundled tools (`difftastic`, `scc`, `ast-grep`), and real MCP availability.
 
-### Enabling Headroom
+### Enabling Headroom Locally
 
 Through PowerShell:
 ```powershell
@@ -79,7 +80,7 @@ Direct CLI:
 python scripts/headroom_adapter.py enable
 ```
 
-### Disabling Headroom
+### Disabling Headroom Locally
 
 Through PowerShell:
 ```powershell

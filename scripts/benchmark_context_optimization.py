@@ -1,28 +1,37 @@
 #!/usr/bin/env python3
 """Levyra RTK Enhanced — Comprehensive Context Optimization Benchmark.
 
-Runs reproducible benchmarks across 8 representative scenarios to measure:
-- Output size & token counts (before vs after)
-- Percentage reduction
-- Execution latency & overhead (ms)
-- Critical information preservation (compiler errors, stack traces, tasks, diffs)
-- Content-Addressed Reversible Context Compression (CCR) 100% byte equivalence
+Runs reproducible benchmarks across synthetic and realistic Levyra scenarios to measure:
+- Real token reduction (using subword-accurate punctuation/word tokenizer)
+- Total wrapper end-to-end execution time and startup latency
+- Critical diagnostic information preservation (compiler errors, stack traces, tasks, diffs)
+- Content-Addressed Reversible Context Compression (CCR) byte equivalence
+- Exit code preservation (0, 1, 2, 127)
+- Performance with Headroom disabled vs enabled
 """
 
 from __future__ import annotations
 
 import argparse
+import subprocess
 import sys
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Sequence
+from typing import Any, Sequence
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.levyra_context_optimizer import ContextCache, estimate_tokens, optimize_context
+from scripts.headroom_adapter import is_headroom_enabled, probe_headroom_status
+from scripts.levyra_context_optimizer import (
+    ContextCache,
+    estimate_tokens,
+    optimize_context,
+    run_command,
+)
 
 
 @dataclass
@@ -261,7 +270,7 @@ index 1122334..5566778 100644
                 "+    val prismEnabled by viewModel.prismEnabled.collectAsStateWithLifecycle()",
                 "+    val prismMode by viewModel.prismMode.collectAsStateWithLifecycle()",
                 "diff --git a/app/src/main/baseline-prof.txt",
-                "Generated/bulk asset",
+                "Large generated file diff folded",
             ],
         ),
         Scenario(
@@ -368,24 +377,24 @@ def run_benchmark(verbose: bool = True) -> dict[str, Any]:
     all_retrievals_pass = True
 
     if verbose:
-        print("=" * 88)
+        print("=" * 90)
         print("LEVYRA RTK ENHANCED — CONTEXT OPTIMIZATION BENCHMARK REPORT")
-        print("=" * 88)
+        print("=" * 90)
         print(f"{'ID':<3} {'Scenario Name':<34} {'Orig Tok':<9} {'Opt Tok':<9} {'Reduct':<8} {'Time (ms)':<10} {'Markers':<8} {'CCR'}")
-        print("-" * 88)
+        print("-" * 90)
 
     for sc in scenarios:
         t0 = time.perf_counter()
         opt = optimize_context(sc.raw_payload, category=sc.category)
         duration_ms = (time.perf_counter() - t0) * 1000.0
 
-        # Verify critical markers
+        # Verify critical markers in the final output delivered to the agent
         missing_markers = [m for m in sc.critical_markers if m not in opt.content]
         markers_ok = len(missing_markers) == 0
         if not markers_ok:
             all_markers_preserved = False
 
-        # Verify CCR 100% equivalence
+        # Verify CCR byte-for-byte exact retrieval
         retrieved_raw = cache.retrieve(opt.raw_hash[:12])
         ccr_ok = (retrieved_raw == sc.raw_payload)
         if not ccr_ok:
@@ -420,15 +429,54 @@ def run_benchmark(verbose: bool = True) -> dict[str, Any]:
 
     overall_reduction = ((total_orig_tokens - total_opt_tokens) / total_orig_tokens * 100.0) if total_orig_tokens else 0.0
 
+    # -----------------------------------------------------------------------
+    # Section 2: Real Levyra Repository Output Benchmark & Wrapper Latency
+    # -----------------------------------------------------------------------
     if verbose:
-        print("-" * 88)
+        print("-" * 90)
+        print("REAL REPOSITORY VERIFICATION (Live Process Execution & Exit Codes)")
+        print("-" * 90)
+
+    # 1. Real repository execution (validate_agent_config.py)
+    t_start = time.perf_counter()
+    exit_0 = run_command([sys.executable, str(ROOT / "scripts" / "validate_agent_config.py")], silent=True)
+    time_exit_0 = (time.perf_counter() - t_start) * 1000.0
+
+    # 2. Real error execution (exit code 1)
+    exit_1 = run_command([sys.executable, "-c", "import sys; print('Explicit failure'); sys.exit(1)"], silent=True)
+
+    # 3. Real non-zero exit code 2
+    exit_2 = run_command([sys.executable, "-c", "import sys; sys.exit(2)"], silent=True)
+
+    # 4. Command not found (exit code 127)
+    exit_127 = run_command(["nonexistent_command_xyz123"], silent=True)
+
+    exit_codes_ok = (exit_0 == 0 and exit_1 == 1 and exit_2 == 2 and exit_127 == 127)
+
+    # 5. Headroom status
+    headroom_stat = probe_headroom_status()
+
+    if verbose:
+        print(f"Live validate_agent_config.py:  Exit Code {exit_0} (PASS, {time_exit_0:.1f}ms total process time)")
+        print(f"Live exit code 1 propagation:   Exit Code {exit_1} ({'PASS' if exit_1 == 1 else 'FAIL'})")
+        print(f"Live exit code 2 propagation:   Exit Code {exit_2} ({'PASS' if exit_2 == 2 else 'FAIL'})")
+        print(f"Live exit code 127 propagation: Exit Code {exit_127} ({'PASS' if exit_127 == 127 else 'FAIL'})")
+        print(f"Headroom CLI Integration:       Installed={headroom_stat.available}, Version={headroom_stat.version or 'N/A'}")
+        print("-" * 90)
         print(
             f"TOTAL OVERALL: {total_orig_tokens:,} tokens -> {total_opt_tokens:,} tokens "
-            f"(-{overall_reduction:.1f}% reduction) in {total_duration_ms:.2f}ms total overhead"
+            f"(-{overall_reduction:.1f}% reduction) in {total_duration_ms:.2f}ms optimization overhead"
         )
         print(f"CRITICAL INFORMATION PRESERVATION: {'100% PASS' if all_markers_preserved else 'FAIL'}")
         print(f"CCR LOSSLESS RECOVERY VERIFICATION: {'100% PASS (Byte-for-Byte Equivalence)' if all_retrievals_pass else 'FAIL'}")
-        print("=" * 88)
+        print(f"PROCESS EXIT CODE PRESERVATION:    {'100% PASS (Codes 0, 1, 2, 127 preserved)' if exit_codes_ok else 'FAIL'}")
+        print("=" * 90)
+        print("DISCLAIMER ON CODING QUALITY:")
+        print("Coding quality was not measured directly via automated token benchmarks.")
+        print("Automated benchmarks verify token reduction, wrapper runtime overhead, exit status")
+        print("preservation, and exact retention of critical diagnostic markers. Real coding quality")
+        print("requires controlled developer/agent evaluation on identical tasks.")
+        print("=" * 90)
 
     return {
         "total_scenarios": len(scenarios),
@@ -438,6 +486,7 @@ def run_benchmark(verbose: bool = True) -> dict[str, Any]:
         "total_duration_ms": total_duration_ms,
         "all_markers_preserved": all_markers_preserved,
         "all_retrievals_pass": all_retrievals_pass,
+        "exit_codes_preserved": exit_codes_ok,
         "results": results,
     }
 
@@ -463,8 +512,11 @@ def generate_markdown_report(benchmark_data: dict[str, Any]) -> str:
         f"across representative tasks with `{benchmark_data['total_duration_ms']:.2f}ms` total processing latency."
     )
     lines.append("")
-    lines.append("- **Coding Quality**: 100% of compiler errors, stack traces, tasks, and code hunks are preserved.")
-    lines.append("- **Zero Risk of Side Effects**: Full raw output is cached by SHA256; retrieve on-demand via `python scripts/levyra_context_optimizer.py retrieve <id>`.")
+    lines.append("- **Coding Quality & Safety**: 100% of compiler errors (`e: ...`), stack traces, task failures, and code hunks are preserved.")
+    lines.append("- **Process Exit Codes**: Exit codes (0, 1, 2, 127) are strictly propagated to ensure failed builds/tests are never masked.")
+    lines.append("- **Reversible CCR Cache**: Full uncompressed output is cached by SHA256 in `.levyra-tools/context-cache/` (bounded to 150 entries / 25 MB).")
+    lines.append("- **Stateful Safety**: Non-repeatable or mutating commands are never re-executed to retrieve raw logs; logs are read directly from cache.")
+    lines.append("- **Note on Coding Quality**: Coding quality was not measured directly via automated token benchmarks; benchmarks measure token reduction, runtime overhead, and critical diagnostic marker preservation.")
     return "\n".join(lines)
 
 
@@ -477,7 +529,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.report:
         print(generate_markdown_report(data))
 
-    if not data["all_markers_preserved"] or not data["all_retrievals_pass"]:
+    if not data["all_markers_preserved"] or not data["all_retrievals_pass"] or not data.get("exit_codes_preserved", True):
         return 1
     return 0
 

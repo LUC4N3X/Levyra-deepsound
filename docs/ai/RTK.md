@@ -329,28 +329,36 @@ Inspired by techniques explored in Free Claude Code and Headroom, Levyra introdu
    - Compiler errors (e: ...), affected tasks, and root-cause exception chains (Caused by:) are never compressed away.
    - Test assertion failures (AssertionError, expected vs actual) and project call-sites are preserved verbatim.
    - Code hunks in git diffs are preserved intact; only huge generated baseline profiles and machine-generated lockfiles are folded.
-   - Critical domain markers (e.g. LevyraAudio, Playback, crashes) are 100% kept.
+   - Critical domain markers (e.g. LevyraAudio, Playback, crashes) are kept.
 3. **Content-Addressed Reversible Cache (CCR)**:
-   - When a command runs through the optimizer, its entire uncompressed standard output and standard error are hashed (SHA256) and saved in .levyra-tools/context-cache/<hash>.txt.
-   - The output presents a header indicating the cache ID and compression ratio:
-     [levyra-context-optimizer] Cached raw output: <hash> (original -> compact)
-     [To inspect full raw output, run: python scripts/levyra_context_optimizer.py retrieve <hash>]
-   - Agents can retrieve the raw output byte-for-byte at any time without re-running the command.
+   - When a command runs through the optimizer, its uncompressed standard output and standard error are hashed (SHA-256) and saved in .levyra-tools/context-cache/<hash>.raw.
+   - The output presents a footer indicating the cache ID and compression ratio:
+     [Levyra Context: X tokens -> Y tokens (-Z%). Raw cached: #levyra-raw:<hash> | Retrieve (while in LRU cache): python scripts/levyra_context_optimizer.py retrieve <hash>]
+   - Agents can retrieve the raw output byte-for-byte on demand as long as it remains in the LRU cache.
 4. **Stateful / Non-Repeatable Command Safety**:
-   - Commands that mutate state (file generation, migrations, builds with side-effects) must never be re-run just to retrieve uncompressed logs. Because CCR caches the raw output from the first execution, agents retrieve the original output losslessly.
+   - Commands that mutate state (file generation, migrations, builds with side-effects) must never be re-run just to retrieve uncompressed logs. Because CCR caches the raw output from the first execution, agents retrieve the original output directly from cache.
 5. **Bounded Cache Budget**:
-   - The cache enforces a bounded LRU budget (maximum 150 entries, maximum 25 MB) to prevent disk growth.
+   - The cache enforces a bounded LRU budget (maximum 150 entries, maximum 25 MB) to prevent disk growth. When limits are exceeded, only the oldest necessary entries are progressively pruned.
+6. **Strict Exit Code Preservation**:
+   - The optimizer executes commands and strictly preserves process exit codes (0, 1, 2, 127). A failed build or test will never be masked as a success.
+7. **Anti-Double-Compression**:
+   - Commands already compacted by RTK or previously processed by the optimizer are passed through without secondary compression.
 
 ### Using the Context Optimizer
 
-Run any command through the optimizer:
+Run any command through the optimizer (exit codes and raw outputs are preserved):
 `ash
-python scripts/levyra_context_optimizer.py process gradle -- ./gradlew assembleDebug
-python scripts/levyra_context_optimizer.py process test -- ./gradlew testDebugUnitTest
-python scripts/levyra_context_optimizer.py process git-diff -- git diff HEAD~1
+python scripts/levyra_context_optimizer.py run -- ./gradlew assembleDebug
+python scripts/levyra_context_optimizer.py run -- ./gradlew testDebugUnitTest
+python scripts/levyra_context_optimizer.py run -- git diff HEAD~1
 `
 
-Retrieve full uncompressed output or a line range:
+Pipe command output via stdin (with optional exit code propagation):
+`ash
+./gradlew testDebugUnitTest | python scripts/levyra_context_optimizer.py process --category unit_test --exit-code
+`
+
+Retrieve uncompressed output or a line range from the LRU cache:
 `ash
 python scripts/levyra_context_optimizer.py retrieve <cache_id>
 python scripts/levyra_context_optimizer.py retrieve <cache_id> --lines 100:200
@@ -359,6 +367,11 @@ python scripts/levyra_context_optimizer.py retrieve <cache_id> --lines 100:200
 Inspect cache statistics:
 `ash
 python scripts/levyra_context_optimizer.py stats
+`
+
+Clear cached outputs:
+`ash
+python scripts/levyra_context_optimizer.py clear
 `
 
 ### Optional Headroom Integration
