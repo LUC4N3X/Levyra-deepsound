@@ -186,17 +186,21 @@ For independent verification, an Apptizo scan of the F-Droid build confirmed zer
 
 ## ✦ Translations
 
-Levyra is available in 41 languages.
+Levyra is available in 41 languages. Help improve a translation or contribute your own.
 
 <div align="center">
   <picture>
-    <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-mobile-light.svg?v=editorial-atlas-v7">
-    <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse-mobile.svg?v=editorial-atlas-v7">
-    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-light.svg?v=editorial-atlas-v7">
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse.svg?v=editorial-atlas-v7">
-    <img src="docs/assets/levyra-translation-pulse.svg?v=editorial-atlas-v7" alt="Levyra translation coverage across 41 languages and five writing systems" width="920">
+    <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-mobile-light.svg?v=editorial-atlas-v8">
+    <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse-mobile.svg?v=editorial-atlas-v8">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-light.svg?v=editorial-atlas-v8">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse.svg?v=editorial-atlas-v8">
+    <img src="docs/assets/levyra-translation-pulse.svg?v=editorial-atlas-v8" alt="Levyra translation coverage across 41 languages and five writing systems" width="920">
   </picture>
 </div>
+
+<p align="center"><a href="https://hosted.weblate.org/engage/levyra/"><img src="https://hosted.weblate.org/widget/levyra/svg-badge.svg" alt="Stato traduzione"></a></p>
+
+<p align="center"><a href="https://hosted.weblate.org/projects/levyra/android/"><b>Help translate Levyra →</b></a></p>
 
 ## ✦ Open-source acknowledgements
 
