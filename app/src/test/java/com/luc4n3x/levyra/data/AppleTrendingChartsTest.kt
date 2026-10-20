@@ -305,4 +305,54 @@ class AppleTrendingChartsTest {
         assertTrue("Artist Nine" in names)
         assertFalse(names.any { it.contains("with") || it.contains("con") || it.contains("vs") })
     }
+    @Test
+    fun splitArtistNamesPreservesKnownCompoundIdentities() {
+        assertEquals(listOf("Tyler, The Creator"), AppleTrendingParser.splitArtistNames("Tyler, The Creator"))
+        assertEquals(listOf("Tyler, The Creator", "Kali Uchis"), AppleTrendingParser.splitArtistNames("Tyler, The Creator feat. Kali Uchis"))
+        assertEquals(listOf("Mumford & Sons"), AppleTrendingParser.splitArtistNames("Mumford & Sons"))
+        assertEquals(listOf("Simon & Garfunkel"), AppleTrendingParser.splitArtistNames("Simon & Garfunkel"))
+        assertEquals(listOf("Earth, Wind & Fire"), AppleTrendingParser.splitArtistNames("Earth, Wind & Fire"))
+    }
+
+    @Test
+    fun extractTrendingArtistCandidatesPreservesKnownCompoundIdentities() {
+        val json = """
+            {
+              "feed": {
+                "results": [
+                  {
+                    "id": "1",
+                    "name": "See You Again",
+                    "artistName": "Tyler, The Creator feat. Kali Uchis"
+                  },
+                  {
+                    "id": "2",
+                    "name": "Little Lion Man",
+                    "artistName": "Mumford & Sons"
+                  },
+                  {
+                    "id": "3",
+                    "name": "September",
+                    "artistName": "Earth, Wind & Fire"
+                  }
+                ]
+              }
+            }
+        """.trimIndent()
+
+        val candidates = AppleTrendingParser.extractTrendingArtistCandidates(json, limit = 10)
+        val names = candidates.map { it.name }.toSet()
+
+        assertTrue("Tyler, The Creator" in names)
+        assertTrue("Kali Uchis" in names)
+        assertTrue("Mumford & Sons" in names)
+        assertTrue("Earth, Wind & Fire" in names)
+
+        assertFalse("Tyler" in names)
+        assertFalse("The Creator" in names)
+        assertFalse("Mumford" in names)
+        assertFalse("Sons" in names)
+        assertFalse("Earth" in names)
+        assertFalse("Wind & Fire" in names)
+    }
 }

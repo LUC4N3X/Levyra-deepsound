@@ -2438,7 +2438,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
             val finalArtists = resolved.values.take(HOME_ARTIST_SHELF_SIZE)
             val country = ChartsCatalog.region(startupSnapshot.selectedChartId).country
-            chartsRepository.saveTrendingArtists(country, finalArtists)
+            if (finalArtists.isNotEmpty()) chartsRepository.saveTrendingArtists(country, finalArtists)
 
             if (freezeVisibleShelf) {
                 finishFrozenHomeArtistRefresh(plan.languageCode, finalArtists)
@@ -2463,7 +2463,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private suspend fun buildHomeArtistPlan(startupSnapshot: LevyraUiState): HomeArtistPlan {
         val languageCode = LevyraLanguageCatalog.normalize(startupSnapshot.languageCode)
         val country = ChartsCatalog.region(startupSnapshot.selectedChartId).country
-        val trendingCandidates = chartsRepository.trendingArtistCandidates(country, HOME_ARTIST_SHELF_SIZE)
+        val trendingCandidates = chartsRepository.trendingArtistCandidates(
+            country,
+            minOf(HOME_ARTIST_CANDIDATE_LIMIT, 50)
+        )
 
         val candidates = LinkedHashMap<String, HomeArtistCandidate>()
         val trustedArtistKeys = LinkedHashSet<String>()
@@ -2719,8 +2722,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         languageCode: String,
         finalArtists: List<ArtistHit>
     ) {
-        val country = ChartsCatalog.region(_state.value.selectedChartId).country
-        chartsRepository.saveTrendingArtists(country, finalArtists)
         if (finalArtists.size >= HOME_ARTIST_SHELF_SIZE) {
             deferredHomeArtistsSnapshot.set(finalArtists)
             scheduleDeferredHomeSnapshotApply()
@@ -6173,6 +6174,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             state = recommendationState,
             limit = HOME_ALBUM_RECOMMENDATION_LIMIT
         ).ifEmpty { localAlbums }
+        val country = selectedChartRegion.country
+        val cachedTrendingAlbums = chartsRepository.cachedTrendingAlbums(country, HOME_ALBUM_RECOMMENDATION_LIMIT)
+        val albumsForHome = cachedTrendingAlbums.ifEmpty { _state.value.homeAlbums.ifEmpty { instantAlbums } }
         exploreCache.clear()
         exploreJob?.cancel()
         exploreJob = null
@@ -6200,7 +6204,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 selectedMood = selectedMood,
                 selectedChartId = selectedChartRegion.id,
                 homeSections = homeSections,
-                homeAlbums = instantAlbums,
+                homeAlbums = albumsForHome,
                 homeArtists = localizedCachedArtists,
                 homeResonanceTracks = localizedSnapshot?.resonanceTracks.orEmpty(),
                 homeResonanceUpdatedAt = localizedSnapshot?.resonanceUpdatedAt ?: 0L,
@@ -6210,7 +6214,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     it.isDeviceOffline
                 ),
                 homeAlbumsLoading = HomeOfflinePolicy.remoteLoading(
-                    instantAlbums.isEmpty() && refreshRemote,
+                    albumsForHome.isEmpty() && refreshRemote,
                     it.isDeviceOffline
                 ),
                 isLoadingHome = HomeOfflinePolicy.remoteLoading(
@@ -13579,21 +13583,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     mostPlayedTracks = mostPlayed,
                     personalOrbitTracks = rankSmartOrbit(current.personalOrbitTracks, current.recommendationFeedback)
                 )
-                val localAlbums = instantAlbumRecommendations(updated, HOME_ALBUM_RECOMMENDATION_LIMIT)
-                val rankedAlbums = rankAlbumRecommendations(
-                    remote = current.homeAlbums,
-                    instant = localAlbums,
-                    state = updated,
-                    limit = HOME_ALBUM_RECOMMENDATION_LIMIT
-                )
-                val hasPersonalSignals = albumRecommendationSeeds(updated).any { it.artist.isNotBlank() || it.album.isNotBlank() }
-                updated.copy(
-                    homeAlbums = when {
-                        rankedAlbums.isNotEmpty() -> rankedAlbums
-                        hasPersonalSignals -> emptyList()
-                        else -> current.homeAlbums
-                    }
-                )
+                updated
             }
         }
     }
@@ -13622,23 +13612,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch(Dispatchers.IO) {
             val profile = runCatching { block() }.getOrNull() ?: return@launch
             _state.update { current ->
-                val personalizedState = current.copy(smartProfile = profile)
-                val localAlbums = instantAlbumRecommendations(personalizedState, HOME_ALBUM_RECOMMENDATION_LIMIT)
-                val boostedAlbums = rankAlbumRecommendations(
-                    remote = current.homeAlbums,
-                    instant = localAlbums,
-                    state = personalizedState,
-                    limit = HOME_ALBUM_RECOMMENDATION_LIMIT
-                )
-                val hasPersonalSignals = albumRecommendationSeeds(personalizedState).any { it.artist.isNotBlank() || it.album.isNotBlank() }
-                current.copy(
-                    smartProfile = profile,
-                    homeAlbums = when {
-                        boostedAlbums.isNotEmpty() -> boostedAlbums
-                        hasPersonalSignals -> emptyList()
-                        else -> current.homeAlbums
-                    }
-                )
+                current.copy(smartProfile = profile)
             }
         }
     }

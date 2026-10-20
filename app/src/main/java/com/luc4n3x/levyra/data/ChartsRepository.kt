@@ -265,151 +265,146 @@ class ChartsRepository(context: Context) {
         bestArtwork.takeIf { bestScore >= 95 }?.let(ChartFeedParser::upgradeArtwork)
     }
 
+    private fun normalizeTrendingCountry(country: String): String =
+        country.trim().lowercase(Locale.ROOT).takeIf { it.length == 2 } ?: "it"
+
+    private fun readCachedAlbums(file: File, limit: Int, checkTtl: Boolean): List<AlbumHit>? {
+        if (!file.exists()) return null
+        if (checkTtl && System.currentTimeMillis() - file.lastModified() >= APPLE_TRENDING_CACHE_TTL_MS) return null
+        val cachedJson = runCatching { file.readText() }.getOrNull()?.takeIf { it.isNotBlank() } ?: return null
+        return AppleTrendingParser.parseAlbums(cachedJson, limit).takeIf { it.isNotEmpty() }
+    }
+
+    private suspend fun fetchAppleTrendingAlbums(country: String, limit: Int, cacheFile: File): List<AlbumHit>? {
+        val primaryUrl = "https://rss.marketingtools.apple.com/api/v2/$country/music/most-played/20/albums.json"
+        val fallbackUrl = "https://rss.applemarketingtools.com/api/v2/$country/music/most-played/20/albums.json"
+        val body = (httpGet(primaryUrl) ?: httpGet(fallbackUrl))?.takeIf { it.isNotBlank() } ?: return null
+        val parsed = AppleTrendingParser.parseAlbums(body, limit)
+        if (parsed.isNotEmpty()) {
+            runCatching { cacheFile.writeText(body) }
+            return parsed
+        }
+        return null
+    }
+
+    private suspend fun fetchFallbackTrendingAlbums(country: String, limit: Int): List<AlbumHit> {
+        val editorialAlbums = newReleaseAlbums(country, limit)
+        if (editorialAlbums.isNotEmpty()) return editorialAlbums
+
+        val deezerBody = httpGet("https://api.deezer.com/chart/0/albums?limit=$limit")
+        if (!deezerBody.isNullOrBlank()) {
+            val deezerAlbums = AppleTrendingParser.parseDeezerAlbums(deezerBody, limit)
+            if (deezerAlbums.isNotEmpty()) return deezerAlbums
+        }
+
+        return fetchYoutubeTrendingAlbums(country, limit)
+    }
+
+    private suspend fun fetchYoutubeTrendingAlbums(country: String, limit: Int): List<AlbumHit> {
+        val ytTracks = fetchYoutubeTopSongs(country, limit * 2)
+        if (ytTracks.isEmpty()) return emptyList()
+        return ytTracks.asSequence()
+            .filter { it.album.isNotBlank() && !it.album.equals(CHART_PLACEHOLDER_ALBUM, ignoreCase = true) }
+            .distinctBy { it.album.trim().lowercase(Locale.ROOT) + "|" + it.artist.trim().lowercase(Locale.ROOT) }
+            .map { track ->
+                AlbumHit(
+                    title = track.album,
+                    artist = track.artist,
+                    year = track.year,
+                    thumbnailUrl = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
+                    query = "${track.artist} ${track.album}".trim(),
+                    browseId = track.albumBrowseId,
+                    artistBrowseId = track.artistBrowseIds.firstOrNull().orEmpty(),
+                    explicit = track.explicit,
+                    releaseDate = track.releaseDate,
+                    metadataProvider = "YouTube Music",
+                    metadataConfidence = 80,
+                    releaseType = ReleaseType.Album
+                )
+            }
+            .take(limit)
+            .toList()
+    }
+
     suspend fun trendingAlbums(country: String, limit: Int = 20): List<AlbumHit> = withContext(Dispatchers.IO) {
-        val normalizedCountry = country.trim().lowercase(Locale.ROOT).takeIf { it.length == 2 } ?: "it"
+        val normalizedCountry = normalizeTrendingCountry(country)
         val safeLimit = limit.coerceIn(1, 50)
         val cacheFile = File(appContext.cacheDir, "apple_albums_$normalizedCountry.json")
-        val now = System.currentTimeMillis()
 
-        if (cacheFile.exists() && now - cacheFile.lastModified() < APPLE_TRENDING_CACHE_TTL_MS) {
-            val cachedJson = runCatching { cacheFile.readText() }.getOrNull()
-            if (!cachedJson.isNullOrBlank()) {
-                val albums = AppleTrendingParser.parseAlbums(cachedJson, safeLimit)
-                if (albums.isNotEmpty()) return@withContext albums
-            }
-        }
-
-        val primaryUrl = "https://rss.marketingtools.apple.com/api/v2/$normalizedCountry/music/most-played/20/albums.json"
-        val fallbackUrl = "https://rss.applemarketingtools.com/api/v2/$normalizedCountry/music/most-played/20/albums.json"
-        val body = httpGet(primaryUrl) ?: httpGet(fallbackUrl)
-
-        if (!body.isNullOrBlank()) {
-            val parsed = AppleTrendingParser.parseAlbums(body, safeLimit)
-            if (parsed.isNotEmpty()) {
-                runCatching { cacheFile.writeText(body) }
-                return@withContext parsed
-            }
-        }
-
-        if (cacheFile.exists()) {
-            val staleJson = runCatching { cacheFile.readText() }.getOrNull()
-            if (!staleJson.isNullOrBlank()) {
-                val stale = AppleTrendingParser.parseAlbums(staleJson, safeLimit)
-                if (stale.isNotEmpty()) return@withContext stale
-            }
-        }
-
-        val editorialAlbums = newReleaseAlbums(normalizedCountry, safeLimit)
-        if (editorialAlbums.isNotEmpty()) return@withContext editorialAlbums
-
-        val deezerBody = httpGet("https://api.deezer.com/chart/0/albums?limit=$safeLimit")
-        if (!deezerBody.isNullOrBlank()) {
-            val deezerAlbums = AppleTrendingParser.parseDeezerAlbums(deezerBody, safeLimit)
-            if (deezerAlbums.isNotEmpty()) return@withContext deezerAlbums
-        }
-
-        val ytTracks = fetchYoutubeTopSongs(normalizedCountry, safeLimit * 2)
-        if (ytTracks.isNotEmpty()) {
-            val ytAlbums = ytTracks.asSequence()
-                .filter { it.album.isNotBlank() && !it.album.equals(CHART_PLACEHOLDER_ALBUM, ignoreCase = true) }
-                .distinctBy { it.album.trim().lowercase(Locale.ROOT) + "|" + it.artist.trim().lowercase(Locale.ROOT) }
-                .map { track ->
-                    AlbumHit(
-                        title = track.album,
-                        artist = track.artist,
-                        year = track.year,
-                        thumbnailUrl = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
-                        query = "${track.artist} ${track.album}".trim(),
-                        browseId = track.albumBrowseId,
-                        artistBrowseId = track.artistBrowseIds.firstOrNull().orEmpty(),
-                        explicit = track.explicit,
-                        releaseDate = track.releaseDate,
-                        metadataProvider = "YouTube Music",
-                        metadataConfidence = 80,
-                        releaseType = ReleaseType.Album
-                    )
-                }
-                .take(safeLimit)
-                .toList()
-            if (ytAlbums.isNotEmpty()) return@withContext ytAlbums
-        }
-
-        emptyList()
+        readCachedAlbums(cacheFile, safeLimit, checkTtl = true)?.let { return@withContext it }
+        fetchAppleTrendingAlbums(normalizedCountry, safeLimit, cacheFile)?.let { return@withContext it }
+        readCachedAlbums(cacheFile, safeLimit, checkTtl = false)?.let { return@withContext it }
+        fetchFallbackTrendingAlbums(normalizedCountry, safeLimit)
     }
 
     fun cachedTrendingAlbums(country: String, limit: Int = 20): List<AlbumHit> {
-        val normalizedCountry = country.trim().lowercase(Locale.ROOT).takeIf { it.length == 2 } ?: "it"
+        val normalizedCountry = normalizeTrendingCountry(country)
         val safeLimit = limit.coerceIn(1, 50)
         val cacheFile = File(appContext.cacheDir, "apple_albums_$normalizedCountry.json")
-        if (!cacheFile.exists()) return emptyList()
-        val text = runCatching { cacheFile.readText() }.getOrNull() ?: return emptyList()
-        return AppleTrendingParser.parseAlbums(text, safeLimit)
+        return readCachedAlbums(cacheFile, safeLimit, checkTtl = false).orEmpty()
     }
 
     fun isTrendingAlbumsFresh(country: String): Boolean {
-        val normalizedCountry = country.trim().lowercase(Locale.ROOT).takeIf { it.length == 2 } ?: "it"
+        val normalizedCountry = normalizeTrendingCountry(country)
         val cacheFile = File(appContext.cacheDir, "apple_albums_$normalizedCountry.json")
         return cacheFile.exists() && System.currentTimeMillis() - cacheFile.lastModified() < APPLE_TRENDING_CACHE_TTL_MS
     }
 
-    suspend fun trendingArtistCandidates(country: String, limit: Int = 15): List<TrendingArtistCandidate> = withContext(Dispatchers.IO) {
-        val normalizedCountry = country.trim().lowercase(Locale.ROOT).takeIf { it.length == 2 } ?: "it"
-        val safeLimit = limit.coerceIn(1, 50)
-        val cacheFile = File(appContext.cacheDir, "apple_songs_$normalizedCountry.json")
-        val now = System.currentTimeMillis()
+    private fun readCachedArtistCandidates(file: File, limit: Int, checkTtl: Boolean): List<TrendingArtistCandidate>? {
+        if (!file.exists()) return null
+        if (checkTtl && System.currentTimeMillis() - file.lastModified() >= APPLE_TRENDING_CACHE_TTL_MS) return null
+        val cachedJson = runCatching { file.readText() }.getOrNull()?.takeIf { it.isNotBlank() } ?: return null
+        return AppleTrendingParser.extractTrendingArtistCandidates(cachedJson, limit).takeIf { it.isNotEmpty() }
+    }
 
-        if (cacheFile.exists() && now - cacheFile.lastModified() < APPLE_TRENDING_CACHE_TTL_MS) {
-            val cachedJson = runCatching { cacheFile.readText() }.getOrNull()
-            if (!cachedJson.isNullOrBlank()) {
-                val candidates = AppleTrendingParser.extractTrendingArtistCandidates(cachedJson, safeLimit)
-                if (candidates.isNotEmpty()) return@withContext candidates
-            }
+    private suspend fun fetchAppleTrendingArtistCandidates(country: String, limit: Int, cacheFile: File): List<TrendingArtistCandidate>? {
+        val primaryUrl = "https://rss.marketingtools.apple.com/api/v2/$country/music/most-played/100/songs.json"
+        val fallbackUrl = "https://rss.applemarketingtools.com/api/v2/$country/music/most-played/100/songs.json"
+        val body = (httpGet(primaryUrl) ?: httpGet(fallbackUrl))?.takeIf { it.isNotBlank() } ?: return null
+        val parsed = AppleTrendingParser.extractTrendingArtistCandidates(body, limit)
+        if (parsed.isNotEmpty()) {
+            runCatching { cacheFile.writeText(body) }
+            return parsed
         }
+        return null
+    }
 
-        val primaryUrl = "https://rss.marketingtools.apple.com/api/v2/$normalizedCountry/music/most-played/100/songs.json"
-        val fallbackUrl = "https://rss.applemarketingtools.com/api/v2/$normalizedCountry/music/most-played/100/songs.json"
-        val body = httpGet(primaryUrl) ?: httpGet(fallbackUrl)
-
-        if (!body.isNullOrBlank()) {
-            val parsed = AppleTrendingParser.extractTrendingArtistCandidates(body, safeLimit)
-            if (parsed.isNotEmpty()) {
-                runCatching { cacheFile.writeText(body) }
-                return@withContext parsed
-            }
-        }
-
-        if (cacheFile.exists()) {
-            val staleJson = runCatching { cacheFile.readText() }.getOrNull()
-            if (!staleJson.isNullOrBlank()) {
-                val stale = AppleTrendingParser.extractTrendingArtistCandidates(staleJson, safeLimit)
-                if (stale.isNotEmpty()) return@withContext stale
-            }
-        }
-
-        val editorialTracks = editorialCharts.cachedTopTracks(normalizedCountry, 100)
-            .ifEmpty { editorialCharts.newReleaseTracks(normalizedCountry, 100) }
+    private suspend fun fetchFallbackTrendingArtistCandidates(country: String, limit: Int): List<TrendingArtistCandidate> {
+        val editorialTracks = editorialCharts.cachedTopTracks(country, 100)
+            .ifEmpty { editorialCharts.newReleaseTracks(country, 100) }
         if (editorialTracks.isNotEmpty()) {
-            val candidates = AppleTrendingParser.extractTrackArtistCandidates(editorialTracks, safeLimit)
-            if (candidates.isNotEmpty()) return@withContext candidates
+            val candidates = AppleTrendingParser.extractTrackArtistCandidates(editorialTracks, limit)
+            if (candidates.isNotEmpty()) return candidates
         }
 
         val deezerBody = httpGet("https://api.deezer.com/chart/0/tracks?limit=100")
         if (!deezerBody.isNullOrBlank()) {
-            val deezerCandidates = AppleTrendingParser.extractDeezerArtistCandidates(deezerBody, safeLimit)
-            if (deezerCandidates.isNotEmpty()) return@withContext deezerCandidates
+            val deezerCandidates = AppleTrendingParser.extractDeezerArtistCandidates(deezerBody, limit)
+            if (deezerCandidates.isNotEmpty()) return deezerCandidates
         }
 
-        val ytTracks = fetchYoutubeTopSongs(normalizedCountry, 100)
+        val ytTracks = fetchYoutubeTopSongs(country, 100)
         if (ytTracks.isNotEmpty()) {
-            val ytCandidates = AppleTrendingParser.extractTrackArtistCandidates(ytTracks, safeLimit)
-            if (ytCandidates.isNotEmpty()) return@withContext ytCandidates
+            val ytCandidates = AppleTrendingParser.extractTrackArtistCandidates(ytTracks, limit)
+            if (ytCandidates.isNotEmpty()) return ytCandidates
         }
 
-        emptyList()
+        return emptyList()
+    }
+
+    suspend fun trendingArtistCandidates(country: String, limit: Int = 15): List<TrendingArtistCandidate> = withContext(Dispatchers.IO) {
+        val normalizedCountry = normalizeTrendingCountry(country)
+        val safeLimit = limit.coerceIn(1, 50)
+        val cacheFile = File(appContext.cacheDir, "apple_songs_$normalizedCountry.json")
+
+        readCachedArtistCandidates(cacheFile, safeLimit, checkTtl = true)?.let { return@withContext it }
+        fetchAppleTrendingArtistCandidates(normalizedCountry, safeLimit, cacheFile)?.let { return@withContext it }
+        readCachedArtistCandidates(cacheFile, safeLimit, checkTtl = false)?.let { return@withContext it }
+        fetchFallbackTrendingArtistCandidates(normalizedCountry, safeLimit)
     }
 
     fun cachedTrendingArtists(country: String, limit: Int = 15): List<ArtistHit> {
-        val normalizedCountry = country.trim().lowercase(Locale.ROOT).takeIf { it.length == 2 } ?: "it"
+        val normalizedCountry = normalizeTrendingCountry(country)
         val safeLimit = limit.coerceIn(1, 50)
         val cacheFile = File(appContext.cacheDir, "apple_artists_$normalizedCountry.json")
         if (!cacheFile.exists()) return emptyList()
@@ -777,6 +772,107 @@ internal object AppleTrendingParser {
         "the", "il", "lo", "la", "i", "gli", "le", "el", "los", "las", "der", "die", "das"
     )
 
+    private val KNOWN_COMPOUND_ARTISTS = setOf(
+        "tyler, the creator",
+        "mumford & sons",
+        "earth, wind & fire",
+        "simon & garfunkel",
+        "kool & the gang",
+        "crosby, stills, nash & young",
+        "crosby, stills & nash",
+        "bob marley & the wailers",
+        "tom petty and the heartbreakers",
+        "huey lewis & the news",
+        "hall & oates",
+        "daryl hall & john oates",
+        "florence + the machine",
+        "florence and the machine",
+        "king gizzard & the lizard wizard",
+        "hootie & the blowfish",
+        "brooks & dunn",
+        "dan + shay",
+        "sleeping with sirens",
+        "we came as romans",
+        "ac/dc"
+    )
+
+    fun splitArtistNames(rawArtist: String): List<String> {
+        val clean = rawArtist.trim()
+        if (clean.isBlank()) return emptyList()
+
+        val normalized = clean.lowercase(Locale.ROOT)
+        if (normalized in KNOWN_COMPOUND_ARTISTS) {
+            return listOf(clean)
+        }
+
+        var protected = clean
+        val replacements = ArrayList<Pair<String, String>>()
+        for ((idx, known) in KNOWN_COMPOUND_ARTISTS.withIndex()) {
+            while (true) {
+                val matchIndex = protected.indexOf(known, ignoreCase = true)
+                if (matchIndex == -1) break
+                val originalSubstring = protected.substring(matchIndex, matchIndex + known.length)
+                val token = "__PRESERVED_ARTIST_${idx}_${replacements.size}__"
+                replacements.add(token to originalSubstring)
+                protected = protected.replaceRange(matchIndex, matchIndex + known.length, token)
+            }
+        }
+
+        return ARTIST_COLLAB_SPLIT.split(protected)
+            .map { segment ->
+                var restored = segment.trim()
+                for ((token, original) in replacements) {
+                    if (restored.contains(token)) {
+                        restored = restored.replace(token, original)
+                    }
+                }
+                restored.trim()
+            }
+            .filter { it.isNotBlank() && isArtistShelfNameEligible(it) }
+    }
+
+    private class ArtistStat(var displayName: String, var appearances: Int, var peakRank: Int)
+
+    private fun rankArtistCandidates(
+        songArtists: Sequence<Pair<Int, String>>,
+        limit: Int
+    ): List<TrendingArtistCandidate> {
+        val statsMap = LinkedHashMap<String, ArtistStat>()
+        for ((songRank, rawArtist) in songArtists) {
+            val segments = splitArtistNames(rawArtist)
+            val songSeenKeys = HashSet<String>()
+            for (artistName in segments) {
+                val key = canonicalArtistKey(artistName)
+                if (key.length < 2 || !songSeenKeys.add(key)) continue
+
+                val stat = statsMap[key]
+                if (stat == null) {
+                    statsMap[key] = ArtistStat(displayName = artistName, appearances = 1, peakRank = songRank)
+                } else {
+                    stat.appearances += 1
+                    if (songRank < stat.peakRank) {
+                        stat.peakRank = songRank
+                    }
+                }
+            }
+        }
+
+        return statsMap.values.asSequence()
+            .sortedWith(
+                compareByDescending<ArtistStat> { it.appearances }
+                    .thenBy { it.peakRank }
+                    .thenBy { it.displayName.lowercase(Locale.ROOT) }
+            )
+            .map { stat ->
+                TrendingArtistCandidate(
+                    name = stat.displayName,
+                    appearances = stat.appearances,
+                    peakRank = stat.peakRank
+                )
+            }
+            .take(limit)
+            .toList()
+    }
     private fun canonicalArtistKey(name: String): String {
         val key = artistIdentityKey(name)
         val article = key.substringBefore(' ')
@@ -855,51 +951,12 @@ internal object AppleTrendingParser {
             JSONObject(body).optJSONObject("feed")?.optJSONArray("results")
         }.getOrNull() ?: return emptyList()
 
-        class ArtistStat(var displayName: String, var appearances: Int, var peakRank: Int)
-        val statsMap = LinkedHashMap<String, ArtistStat>()
-
-        for (i in 0 until results.length()) {
-            val item = results.optJSONObject(i) ?: continue
-            val songRank = i + 1
+        val songArtists = (0 until results.length()).asSequence().mapNotNull { i ->
+            val item = results.optJSONObject(i) ?: return@mapNotNull null
             val rawArtist = item.optString("artistName").trim()
-            if (rawArtist.isBlank()) continue
-
-            val segments = ARTIST_COLLAB_SPLIT.split(rawArtist)
-                .map(String::trim)
-                .filter { it.isNotBlank() && isArtistShelfNameEligible(it) }
-
-            val songSeenKeys = HashSet<String>()
-            for (artistName in segments) {
-                val key = canonicalArtistKey(artistName)
-                if (key.length < 2 || !songSeenKeys.add(key)) continue
-
-                val stat = statsMap[key]
-                if (stat == null) {
-                    statsMap[key] = ArtistStat(displayName = artistName, appearances = 1, peakRank = songRank)
-                } else {
-                    stat.appearances += 1
-                    if (songRank < stat.peakRank) {
-                        stat.peakRank = songRank
-                    }
-                }
-            }
+            if (rawArtist.isBlank()) null else (i + 1) to rawArtist
         }
-
-        return statsMap.values.asSequence()
-            .sortedWith(
-                compareByDescending<ArtistStat> { it.appearances }
-                    .thenBy { it.peakRank }
-                    .thenBy { it.displayName.lowercase(Locale.ROOT) }
-            )
-            .map { stat ->
-                TrendingArtistCandidate(
-                    name = stat.displayName,
-                    appearances = stat.appearances,
-                    peakRank = stat.peakRank
-                )
-            }
-            .take(limit)
-            .toList()
+        return rankArtistCandidates(songArtists, limit)
     }
 
     fun parseDeezerAlbums(body: String, limit: Int = 20): List<AlbumHit> {
@@ -951,99 +1008,19 @@ internal object AppleTrendingParser {
             JSONObject(body).optJSONArray("data")
         }.getOrNull() ?: return emptyList()
 
-        class ArtistStat(var displayName: String, var appearances: Int, var peakRank: Int)
-        val statsMap = LinkedHashMap<String, ArtistStat>()
-
-        for (i in 0 until data.length()) {
-            val item = data.optJSONObject(i) ?: continue
-            val songRank = i + 1
-            val artistObj = item.optJSONObject("artist")
-            val rawArtist = artistObj?.optString("name")?.trim().orEmpty()
-            if (rawArtist.isBlank()) continue
-
-            val segments = ARTIST_COLLAB_SPLIT.split(rawArtist)
-                .map(String::trim)
-                .filter { it.isNotBlank() && isArtistShelfNameEligible(it) }
-
-            val songSeenKeys = HashSet<String>()
-            for (artistName in segments) {
-                val key = canonicalArtistKey(artistName)
-                if (key.length < 2 || !songSeenKeys.add(key)) continue
-
-                val stat = statsMap[key]
-                if (stat == null) {
-                    statsMap[key] = ArtistStat(displayName = artistName, appearances = 1, peakRank = songRank)
-                } else {
-                    stat.appearances += 1
-                    if (songRank < stat.peakRank) {
-                        stat.peakRank = songRank
-                    }
-                }
-            }
+        val songArtists = (0 until data.length()).asSequence().mapNotNull { i ->
+            val item = data.optJSONObject(i) ?: return@mapNotNull null
+            val rawArtist = item.optJSONObject("artist")?.optString("name")?.trim().orEmpty()
+            if (rawArtist.isBlank()) null else (i + 1) to rawArtist
         }
-
-        return statsMap.values.asSequence()
-            .sortedWith(
-                compareByDescending<ArtistStat> { it.appearances }
-                    .thenBy { it.peakRank }
-                    .thenBy { it.displayName.lowercase(Locale.ROOT) }
-            )
-            .map { stat ->
-                TrendingArtistCandidate(
-                    name = stat.displayName,
-                    appearances = stat.appearances,
-                    peakRank = stat.peakRank
-                )
-            }
-            .take(limit)
-            .toList()
+        return rankArtistCandidates(songArtists, limit)
     }
 
     fun extractTrackArtistCandidates(tracks: List<Track>, limit: Int = 15): List<TrendingArtistCandidate> {
-        class ArtistStat(var displayName: String, var appearances: Int, var peakRank: Int)
-        val statsMap = LinkedHashMap<String, ArtistStat>()
-
-        for (i in tracks.indices) {
-            val track = tracks[i]
-            val songRank = i + 1
+        val songArtists = tracks.asSequence().mapIndexedNotNull { i, track ->
             val rawArtist = track.artist.trim()
-            if (rawArtist.isBlank()) continue
-
-            val segments = ARTIST_COLLAB_SPLIT.split(rawArtist)
-                .map(String::trim)
-                .filter { it.isNotBlank() && isArtistShelfNameEligible(it) }
-
-            val songSeenKeys = HashSet<String>()
-            for (artistName in segments) {
-                val key = canonicalArtistKey(artistName)
-                if (key.length < 2 || !songSeenKeys.add(key)) continue
-
-                val stat = statsMap[key]
-                if (stat == null) {
-                    statsMap[key] = ArtistStat(displayName = artistName, appearances = 1, peakRank = songRank)
-                } else {
-                    stat.appearances += 1
-                    if (songRank < stat.peakRank) {
-                        stat.peakRank = songRank
-                    }
-                }
-            }
+            if (rawArtist.isBlank()) null else (i + 1) to rawArtist
         }
-
-        return statsMap.values.asSequence()
-            .sortedWith(
-                compareByDescending<ArtistStat> { it.appearances }
-                    .thenBy { it.peakRank }
-                    .thenBy { it.displayName.lowercase(Locale.ROOT) }
-            )
-            .map { stat ->
-                TrendingArtistCandidate(
-                    name = stat.displayName,
-                    appearances = stat.appearances,
-                    peakRank = stat.peakRank
-                )
-            }
-            .take(limit)
-            .toList()
+        return rankArtistCandidates(songArtists, limit)
     }
 }
