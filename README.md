@@ -188,6 +188,10 @@ For independent verification, an Apptizo scan of the F-Droid build confirmed zer
 
 Levyra is available in 41 languages, thanks to the people who help translate it. If something sounds off or your language is missing, you're welcome to pitch in.
 
+<p align="center">
+  <a href="https://hosted.weblate.org/engage/levyra/"><img src="https://hosted.weblate.org/widget/levyra/svg-badge.svg" alt="Levyra translation status"></a>
+</p>
+
 <div align="center">
   <picture>
     <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-mobile-light.svg?v=editorial-atlas-v8">
@@ -198,11 +202,7 @@ Levyra is available in 41 languages, thanks to the people who help translate it.
   </picture>
 </div>
 
-<p align="center">
-  <a href="https://hosted.weblate.org/projects/levyra/android/"><b>Help translate Levyra →</b></a>
-  &nbsp;&nbsp;·&nbsp;&nbsp;
-  <a href="https://hosted.weblate.org/engage/levyra/"><img src="https://hosted.weblate.org/widget/levyra/svg-badge.svg" alt="Levyra translation status"></a>
-</p>
+<p align="center"><a href="https://hosted.weblate.org/projects/levyra/android/"><b>Help translate Levyra →</b></a></p>
 
 <p align="center">
   <sub>Translation hosting is kindly provided free of charge by <a href="https://weblate.org/">Hosted Weblate</a>. Thank you for supporting Levyra.</sub>
