@@ -679,8 +679,20 @@ def _terminate_process_tree(proc: subprocess.Popen[str], isolated: bool) -> None
     try:
         proc.wait(timeout=4)
     except subprocess.TimeoutExpired:
-        proc.kill()
-        proc.wait()
+        try:
+            proc.kill()
+        except ProcessLookupError:
+            pass
+        try:
+            proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            pass
+
+
+def _timeout_output_text(value: str | bytes | None) -> str:
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value or ""
 
 
 def _execute_subprocess(
@@ -717,10 +729,17 @@ def _execute_subprocess(
 
     try:
         raw, _ = proc.communicate(timeout=timeout_seconds)
-    except subprocess.TimeoutExpired:
+    except subprocess.TimeoutExpired as first_timeout:
         _terminate_process_tree(proc, isolated)
-        raw, _ = proc.communicate()
-        return 124, (raw or "") + (
+        try:
+            raw, _ = proc.communicate(timeout=1.0)
+        except subprocess.TimeoutExpired as final_timeout:
+            raw = final_timeout.output
+            if raw is None:
+                raw = first_timeout.output
+            if proc.stdout is not None:
+                proc.stdout.close()
+        return 124, _timeout_output_text(raw) + (
             f"\n[Levyra Context: command timed out after {timeout_seconds:g}s]\n"
         )
     except KeyboardInterrupt:

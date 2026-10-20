@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import io
+import subprocess
 from contextlib import redirect_stdout
 import sys
 import tempfile
@@ -218,7 +219,7 @@ class LevyraContextOptimizerExecutionTest(unittest.TestCase):
             status = run_command(
                 [sys.executable, "-c", script],
                 cache_dir=self.cache_dir,
-                timeout_seconds=0.15,
+                timeout_seconds=1.5,
             )
         self.assertEqual(124, status)
         self.assertIn("progress", output.getvalue())
@@ -226,6 +227,34 @@ class LevyraContextOptimizerExecutionTest(unittest.TestCase):
         self.assertEqual(
             1, ContextCache(cache_dir=self.cache_dir).get_stats()["entries"]
         )
+
+    def test_timeout_pipe_cleanup_is_bounded(self) -> None:
+        with patch("scripts.levyra_context_optimizer.subprocess.Popen") as launch:
+            with patch("scripts.levyra_context_optimizer._terminate_process_tree"):
+                proc = launch.return_value
+                proc.stdout = io.StringIO()
+                proc.communicate.side_effect = [
+                    subprocess.TimeoutExpired(
+                        cmd=["mock"], timeout=0.2, output=b"progress\\xff\\n"
+                    ),
+                    subprocess.TimeoutExpired(
+                        cmd=["mock"], timeout=1.0,
+                        output=b"progress\\xff\\nlast diagnostics\\n",
+                    ),
+                ]
+                output = io.StringIO()
+                with redirect_stdout(output):
+                    status = run_command(
+                        ["mock"], no_cache=True, cache_dir=self.cache_dir,
+                        timeout_seconds=0.2,
+                    )
+        self.assertEqual(124, status)
+        self.assertIn("progress", output.getvalue())
+        self.assertIn("last diagnostics", output.getvalue())
+        self.assertIn("command timed out", output.getvalue())
+        self.assertTrue(proc.stdout.closed)
+        self.assertEqual(2, proc.communicate.call_count)
+        self.assertEqual(1.0, proc.communicate.call_args_list[-1].kwargs["timeout"])
 
     def test_invalid_deadline_does_not_start_process(self) -> None:
         with patch("scripts.levyra_context_optimizer.subprocess.Popen") as popen:

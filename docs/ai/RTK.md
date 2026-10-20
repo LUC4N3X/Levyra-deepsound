@@ -375,9 +375,9 @@ configuration in [ChrisTitusTech/titus-ai](https://github.com/ChrisTitusTech/tit
 Levyra now includes a toolchain doctor:
 
 ```bash
-python scripts/agent_runtime_doctor.py
-python scripts/agent_runtime_doctor.py --json
-python scripts/agent_runtime_doctor.py --strict
+python3 scripts/agent_runtime_doctor.py
+python3 scripts/agent_runtime_doctor.py --json
+python3 scripts/agent_runtime_doctor.py --strict
 ```
 
 It checks tracked repository agent contracts and optional executable names:
