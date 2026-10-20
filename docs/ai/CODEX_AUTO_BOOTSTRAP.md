@@ -16,6 +16,21 @@ Levyra treats Codex setup as repository infrastructure rather than a manual chec
 
 The MCP is deliberately `required = false`. If Python, networking, installation, indexing, or the MCP handshake fails, Codex continues with its native repository tools. jCodeMunch is a first-pass navigator, not a replacement for full-file reads or native search when broader context is necessary.
 
+## Command rules
+
+`scripts/sync_agent_runtime.py` projects `.agents/codex/rules/levyra.rules`
+to `.codex/rules/levyra.rules`. The rules allow routine Git/GitHub inspection
+and RTK diagnostics. Claude uses the corresponding explicit Bash permissions
+in `.agents/claude/settings.json`. These selected command rules follow the
+approach in [titus-ai](https://github.com/ChrisTitusTech/titus-ai), adapted to
+Levyra's existing runtime projection.
+
+Shells, generic wrappers (`rtk proxy`, `rtk run`), arbitrary `gh api` calls,
+installs, commits, pushes, PR changes, and releases receive no new allow rule.
+Existing sandbox, trust, secret-denial, and owner-authorization requirements
+still apply. Restart the agents after refreshing the projections to load the
+updated configuration.
+
 ## First trust
 
 Codex requires review/trust for non-managed project hooks. That trust decision is intentionally not bypassed. After setup, review and trust the project hooks with `/hooks`, then start a new Codex session so project config and lifecycle hooks are loaded from startup. After that first trust, normal sessions require no manual setup command. Changing the hook may cause Codex to request trust again.

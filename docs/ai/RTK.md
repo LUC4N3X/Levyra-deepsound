@@ -237,6 +237,12 @@ rtk adb -s <serial> logcat -d -t 400
 rtk summary adb shell dumpsys <service>
 ```
 
+The Claude Code hook (`rtk hook claude`) rewrites standalone commands and `&&`
+chains only. A command piped into another one, such as `git log --stat | head`,
+runs raw and is not compressed or tracked. Prefer the command's own bounding
+flags over `| head`, or prefix the first pipeline stage with `rtk` explicitly.
+`rtk hook check '<command>'` shows how the hook would rewrite a command.
+
 Keep commands raw when exact evidence matters:
 
 ```text
