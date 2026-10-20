@@ -354,20 +354,7 @@ internal fun StudioSectionHeader(
         .fillMaxWidth()
         .padding(horizontal = spec.inset)
     if (LevyraIsPrism) {
-        Row(headerModifier.heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(
-                if (LevyraIsTorque) title.uppercase() else title, color = LevyraText, style = MaterialTheme.typography.headlineSmall,
-                fontSize = if (LevyraIsTorque) 18.sp else 22.sp, fontWeight = if (LevyraIsTorque) FontWeight.Bold else null,
-                letterSpacing = if (LevyraIsTorque) 2.sp else TextUnit.Unspecified, modifier = Modifier.weight(1f).semantics { heading() }
-            )
-            onPlayAll?.let { action ->
-                Box(
-                    Modifier.size(48.dp).clip(CircleShape).clickable(onClickLabel = strings.playAll, role = Role.Button, onClick = action)
-                        .semantics { contentDescription = strings.playAll },
-                    contentAlignment = Alignment.Center
-                ) { PrismPlayDisc(playing = false, resolving = false, size = 36.dp) }
-            }
-        }
+        SkinStudioSectionHeader(title, onPlayAll, headerModifier)
         return
     }
     when (style) {
@@ -427,12 +414,7 @@ internal fun StudioSectionHeader(
                 }
                 Text(
                     text = title,
-                    style = when (style) {
-                        HomeStyle.ExpressiveMax -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold)
-                        HomeStyle.Minimal -> MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium)
-                        HomeStyle.Immersive -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black)
-                        else -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-                    },
+                    style = studioSectionTitleStyle(style),
                     color = LevyraText,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -482,21 +464,7 @@ internal fun StudioShelf(
     }
     val roundItems = items.first().round
     if (style == HomeStyle.MaterialExpressive) {
-        when (layout) {
-            HomeSectionLayout.Grid -> MxPagedGrid(spec, items, isPlaying, modifier)
-            HomeSectionLayout.List -> MxSegmentedList(spec, items, isPlaying, actionsLabel, modifier)
-            HomeSectionLayout.Compact -> StudioCompact(style, spec, items, isPlaying, modifier)
-            HomeSectionLayout.Large -> if (roundItems) {
-                MxShapeGallery(spec, items, isPlaying, modifier)
-            } else {
-                MxOrganic(spec, items, isPlaying, modifier)
-            }
-            HomeSectionLayout.Carousel, HomeSectionLayout.Auto -> if (roundItems) {
-                MxShapeGallery(spec, items, isPlaying, modifier)
-            } else {
-                MxMorphCarousel(spec, items, isPlaying, modifier)
-            }
-        }
+        MaterialStudioShelf(spec, layout, items, isPlaying, actionsLabel, modifier)
         return
     }
     when (layout) {
@@ -4229,4 +4197,51 @@ internal fun MxCollectionFan(title: String, collections: List<StudioCollection>,
             }
         }
     }
+}
+
+@Composable
+private fun SkinStudioSectionHeader(title: String, onPlayAll: (() -> Unit)?, headerModifier: Modifier) {
+    val strings = LocalLevyraStrings.current
+    Row(headerModifier.heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            if (LevyraIsTorque) title.uppercase() else title, color = LevyraText, style = MaterialTheme.typography.headlineSmall,
+            fontSize = if (LevyraIsTorque) 18.sp else 22.sp, fontWeight = if (LevyraIsTorque) FontWeight.Bold else null,
+            letterSpacing = if (LevyraIsTorque) 2.sp else TextUnit.Unspecified, modifier = Modifier.weight(1f).semantics { heading() }
+        )
+        onPlayAll?.let { action ->
+            Box(
+                Modifier.size(48.dp).clip(CircleShape).clickable(onClickLabel = strings.playAll, role = Role.Button, onClick = action)
+                    .semantics { contentDescription = strings.playAll },
+                contentAlignment = Alignment.Center
+            ) { PrismPlayDisc(playing = false, resolving = false, size = 36.dp) }
+        }
+    }
+}
+
+@Composable
+private fun MaterialStudioShelf(spec: HomeStyleSpec, layout: HomeSectionLayout, items: List<StudioShelfItem>, isPlaying: Boolean, actionsLabel: String, modifier: Modifier) {
+    val roundItems = items.first().round
+    when (layout) {
+        HomeSectionLayout.Grid -> MxPagedGrid(spec, items, isPlaying, modifier)
+        HomeSectionLayout.List -> MxSegmentedList(spec, items, isPlaying, actionsLabel, modifier)
+        HomeSectionLayout.Compact -> StudioCompact(HomeStyle.MaterialExpressive, spec, items, isPlaying, modifier)
+        HomeSectionLayout.Large -> if (roundItems) {
+            MxShapeGallery(spec, items, isPlaying, modifier)
+        } else {
+            MxOrganic(spec, items, isPlaying, modifier)
+        }
+        HomeSectionLayout.Carousel, HomeSectionLayout.Auto -> if (roundItems) {
+            MxShapeGallery(spec, items, isPlaying, modifier)
+        } else {
+            MxMorphCarousel(spec, items, isPlaying, modifier)
+        }
+    }
+}
+
+@Composable
+private fun studioSectionTitleStyle(style: HomeStyle): androidx.compose.ui.text.TextStyle = when (style) {
+    HomeStyle.ExpressiveMax -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold)
+    HomeStyle.Minimal -> MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium)
+    HomeStyle.Immersive -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black)
+    else -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
 }

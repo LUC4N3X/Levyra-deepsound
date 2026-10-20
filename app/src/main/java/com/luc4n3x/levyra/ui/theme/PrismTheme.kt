@@ -102,20 +102,22 @@ internal fun prismPalette(settings: PrismSettings = PrismSettings(), systemDark:
     return LevyraThemes.cosmic.copy(
         id = PrismPaletteId, label = "Prism", emoji = "◈", isLight = light,
         followsCover = false, followsMood = false,
-        black = if (light) Color(0xFFF7F6F8) else Color(0xFF000000),
-        ink = if (light) Color(0xFFFFFFFF) else Color(0xFF0B0B0D),
-        panel = if (light) Color(0xFFFFFFFF) else Color(0xFF131316),
-        panelSoft = if (light) Color(0xFFEEECF0) else Color(0xFF1C1C20),
-        cyan = if (light) Color(0xFFC2185E) else Color(0xFFF2367F),
-        blue = if (light) Color(0xFFC41E4C) else Color(0xFFF03A62),
-        violet = if (light) Color(0xFF9F2594) else Color(0xFFD13FC0),
-        pink = if (light) Color(0xFFB0246E) else Color(0xFFF76AA6),
-        orange = if (light) Color(0xFF9F2594) else Color(0xFFD13FC0),
-        text = if (light) Color(0xFF151418) else Color(0xFFF6F5F7),
-        muted = if (light) Color(0xFF5D5963) else Color(0xFFA7A4AC),
-        outline = if (light) Color(0xFFDAD7DE) else Color(0xFF2B2B31)
+        black = prismColor(light, 0xFFF7F6F8, 0xFF000000),
+        ink = prismColor(light, 0xFFFFFFFF, 0xFF0B0B0D),
+        panel = prismColor(light, 0xFFFFFFFF, 0xFF131316),
+        panelSoft = prismColor(light, 0xFFEEECF0, 0xFF1C1C20),
+        cyan = prismColor(light, 0xFFC2185E, 0xFFF2367F),
+        blue = prismColor(light, 0xFFC41E4C, 0xFFF03A62),
+        violet = prismColor(light, 0xFF9F2594, 0xFFD13FC0),
+        pink = prismColor(light, 0xFFB0246E, 0xFFF76AA6),
+        orange = prismColor(light, 0xFF9F2594, 0xFFD13FC0),
+        text = prismColor(light, 0xFF151418, 0xFFF6F5F7),
+        muted = prismColor(light, 0xFF5D5963, 0xFFA7A4AC),
+        outline = prismColor(light, 0xFFDAD7DE, 0xFF2B2B31)
     )
 }
+
+private fun prismColor(light: Boolean, day: Long, night: Long): Color = Color(if (light) day else night)
 
 internal const val TorqueRed = 0xFFE8322D.toInt()
 
@@ -178,6 +180,13 @@ internal fun prismMiniSettings(saved: LevyraMiniPlayerStudioSettings): LevyraMin
     )
     return saved.copy(style = MiniPlayerStyle.Floating, tunings = saved.tunings + (MiniPlayerStyle.Floating to tuning))
 }
+
+internal fun skinMiniPlayerCorner(tuning: MiniPlayerTuning): Dp =
+    when {
+        LevyraIsTorque -> 2.dp
+        LevyraIsNocturne -> 10.dp
+        else -> tuning.cornerDp.dp
+    }
 
 internal fun prismNavSettings(saved: LevyraNavigationStudioSettings): LevyraNavigationStudioSettings {
     val tuning = saved.activeTuning().copy(

@@ -318,7 +318,7 @@ private fun rememberMiniContainerShape(
     return if (style == MiniPlayerStyle.SuperExpressive) {
         RoundedCornerShape(expressiveCorner)
     } else {
-        RoundedCornerShape(tuning.cornerDp.dp)
+        RoundedCornerShape(skinMiniPlayerCorner(tuning))
     }
 }
 

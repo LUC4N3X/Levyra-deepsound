@@ -94,7 +94,7 @@ internal fun LibrarySectionGrid(
 ) {
     val colors = MaterialTheme.colorScheme
     if (LevyraIsPrism) {
-        Column(modifier, verticalArrangement = Arrangement.spacedBy(if (LevyraIsTorque) 2.dp else 0.dp)) {
+        Column(modifier, verticalArrangement = Arrangement.spacedBy(if (LevyraIsTorque) 2.dp else 8.dp)) {
             entries.forEach { entry ->
                 LibrarySectionTile(entry, LibrarySectionTone(colors.surfaceContainer, colors.primary), RoundedCornerShape(PrismDesign.controlCorner), onOpen, Modifier.fillMaxWidth())
             }
@@ -171,9 +171,9 @@ private fun LibrarySectionTile(
     val appearance = librarySectionAppearance(entry, tone, shape)
     if (LevyraIsPrism) {
         Row(
-            modifier.heightIn(min = PrismDesign.rowHeight + 8.dp).clip(shape).background(if (LevyraIsTorque) LevyraPanel else Color.Transparent)
+            modifier.heightIn(min = PrismDesign.rowHeight + 8.dp).clip(shape).background(LevyraPanel)
                 .levyraPressable(onClick = { onOpen(entry.category) }, onClickLabel = label, role = Role.Button)
-                .padding(horizontal = if (LevyraIsTorque) 12.dp else 4.dp, vertical = 8.dp),
+                .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             Box(Modifier.size(PrismDesign.iconTile).clip(PrismDesign.cut(PrismDesign.controlCorner)).background(if (LevyraIsTorque) Color.Transparent else PrismAccent.Tint), contentAlignment = Alignment.Center) {

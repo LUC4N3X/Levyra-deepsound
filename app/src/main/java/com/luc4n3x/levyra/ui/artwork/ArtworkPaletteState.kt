@@ -48,25 +48,29 @@ internal fun rememberArtworkPalette(
             if (retainPreviousUntilLoaded) paletteState.value = memoryPalette ?: latestFallback
             return@LaunchedEffect
         }
-        val persisted = ArtworkPaletteCache.load(context, paletteKey)
-        if (persisted != null) {
-            paletteState.value = persisted
-            return@LaunchedEffect
+        val loaded = loadArtworkPalette(context, paletteKey, { latestArtworkUrl }, { latestFallback }) {
+            paletteState.value = it
         }
-        val url = latestArtworkUrl
-        if (url.isBlank()) {
-            if (retainPreviousUntilLoaded) paletteState.value = latestFallback
-            return@LaunchedEffect
-        }
-        val extracted = extractArtworkPalette(context, url, latestFallback)
-        if (extracted == null) {
-            if (retainPreviousUntilLoaded) paletteState.value = latestFallback
-            return@LaunchedEffect
-        }
-        paletteState.value = extracted
-        ArtworkPaletteCache.store(context, paletteKey, extracted)
+        if (loaded != null) paletteState.value = loaded
+        else if (retainPreviousUntilLoaded) paletteState.value = latestFallback
     }
     return paletteState
+}
+
+private suspend fun loadArtworkPalette(
+    context: Context,
+    key: String,
+    artworkUrl: () -> String,
+    fallback: () -> ArtworkPalette,
+    onExtracted: (ArtworkPalette) -> Unit
+): ArtworkPalette? {
+    ArtworkPaletteCache.load(context, key)?.let { return it }
+    val url = artworkUrl()
+    if (url.isBlank()) return null
+    val extracted = extractArtworkPalette(context, url, fallback()) ?: return null
+    onExtracted(extracted)
+    ArtworkPaletteCache.store(context, key, extracted)
+    return extracted
 }
 
 private suspend fun extractArtworkPalette(

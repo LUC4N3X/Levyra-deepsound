@@ -57,7 +57,7 @@ private val TorqueBandShape = GenericShape { size, _ ->
 private const val TorqueDiagonalCenter = 0.67f
 
 @Composable
-internal fun TorquePlayerScene(track: Track, slots: PlayerDeckSlots, transport: @Composable () -> Unit, modifier: Modifier = Modifier) {
+internal fun TorquePlayerScene(track: Track, slots: PlayerDeckSlots, metadata: @Composable () -> Unit, transport: @Composable () -> Unit, modifier: Modifier = Modifier) {
     BoxWithConstraints(modifier.fillMaxSize().background(LevyraBlack)) {
         val coverHeight = minOf(maxWidth, maxHeight * 0.5f)
         val bandHeight = (maxHeight * 0.32f).coerceIn(220.dp, 270.dp)
@@ -75,6 +75,7 @@ internal fun TorquePlayerScene(track: Track, slots: PlayerDeckSlots, transport: 
                     Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
+                    metadata()
                     slots.engagement(track)
                     slots.dock(track)
                 }

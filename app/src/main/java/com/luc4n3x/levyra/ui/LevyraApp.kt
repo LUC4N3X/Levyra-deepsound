@@ -6075,12 +6075,7 @@ private fun ArtistHero(
     val nameRisePx = with(density) { ArtistNameRise.toPx() }
     val scrim = LevyraBlack
     val statusProtection = if (LevyraIsLight) scrim.copy(alpha = 0.62f) else Color.Black.copy(alpha = 0.46f)
-    val nameSize = when {
-        profile.name.length <= 12 -> 48.sp
-        profile.name.length <= 18 -> 40.sp
-        profile.name.length <= 28 -> 34.sp
-        else -> 28.sp
-    }
+    val nameSize = artistHeroNameSize(profile.name)
     val audience = remember(profile.monthlyListeners, profile.subscribers) {
         listOf(profile.monthlyListeners, profile.subscribers)
             .map(String::trim)
@@ -6108,6 +6103,7 @@ private fun ArtistHero(
         Box(
             modifier = Modifier
                 .matchParentSize()
+                .then(artistPortraitFrame())
                 .graphicsLayer {
                     translationY = scroll() * ArtistHeroParallax
                 }
@@ -6197,7 +6193,7 @@ private fun ArtistHero(
         ) {
             Text(
                 text = LocalLevyraStrings.current.artistLabel.uppercase(),
-                color = if (LevyraIsTorque) Color.White.copy(alpha = 0.85f) else if (LevyraSkinManagesLayout) LevyraCyan else LevyraText.copy(alpha = 0.78f),
+                color = artistHeroOverlineColor(),
                 style = LevyraType.overline.copy(letterSpacing = if (LevyraSkinManagesLayout) 2.4.sp else LevyraType.overline.letterSpacing),
                 maxLines = 1
             )
@@ -6207,12 +6203,7 @@ private fun ArtistHero(
                 style = LevyraType.heroTitle.copy(
                     fontSize = nameSize,
                     lineHeight = LevyraType.heroLineHeight(nameSize),
-                    fontWeight = when {
-                        LevyraIsTorque -> FontWeight.Bold
-                        LevyraIsPrism -> FontWeight.Normal
-                        LevyraIsNocturne -> FontWeight.Medium
-                        else -> LevyraType.heroTitle.fontWeight
-                    },
+                    fontWeight = artistHeroNameWeight(),
                     letterSpacing = if (LevyraIsTorque) 2.sp else LevyraType.heroTitle.letterSpacing
                 ),
                 maxLines = 2,
@@ -6350,12 +6341,7 @@ private fun ArtistActionBar(
                 modifier = Modifier
                     .size(62.dp)
                     .then(
-                        when {
-                            LevyraIsPrism -> Modifier.clip(CircleShape).background(PrismAccent.gradient())
-                            LevyraIsNocturne -> Modifier.clip(RoundedCornerShape(Nocturne78Design.controlCorner)).background(LevyraPanelSoft)
-                                .border(1.dp, LevyraCyan, RoundedCornerShape(Nocturne78Design.controlCorner))
-                            else -> Modifier.background(playContainer, playShape)
-                        }
+                        artistPlayBackground(playContainer, playShape)
                     )
                     .levyraPressable(
                         onClick = onPlay,
@@ -6368,7 +6354,7 @@ private fun ArtistActionBar(
             ) {
                 LevyraPlayPauseGlyph(
                     playing = false,
-                    color = if (LevyraIsPrism) Color.White else if (LevyraIsNocturne) LevyraCyan else playContent,
+                    color = artistPlayContent(playContent),
                     contentDescription = strings.play,
                     modifier = Modifier.size(30.dp)
                 )
@@ -6528,9 +6514,7 @@ private fun ArtistBio(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(if (LevyraSkinManagesLayout) RoundedCornerShape(SkinChrome.outerCorner) else ArtistBiographyShape)
-            .background(LevyraPanel)
-            .then(if (LevyraSkinManagesLayout) Modifier else Modifier.background(accentBrush))
+            .then(artistBiographyBackground(accentBrush))
             .then(
                 if (animationsEnabled) {
                     Modifier.animateContentSize(animationSpec = LevyraMotion.emphasized())
@@ -12442,6 +12426,16 @@ private fun PersonalListeningShelf(
     onPlayAll: () -> Unit,
     onTrackActions: (Track) -> Unit
 ) {
+    if (LevyraSkinManagesLayout) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Box(Modifier.padding(horizontal = 20.dp)) {
+                StudioHomeOrbitHeader(userName = userName, profilePhotoPath = profilePhotoPath,
+                    profilePhotoVersion = profilePhotoVersion, accountAvatarUrl = accountAvatarUrl, onPlayAll = onPlayAll)
+            }
+            SkinOrbitTracks(tracks, currentId, isPlaying, isResolving, onPlay, onTrackActions)
+        }
+        return
+    }
     val pages = remember(tracks) { homePersonalOrbitPages(tracks) }
     if (pages.isEmpty()) return
     val pagerState = rememberPagerState(pageCount = { pages.size })
@@ -14594,9 +14588,9 @@ private fun StudioHomeOrbitHeader(
                 )
             }
             Text(
-                text = strings.personalOrbitTitle,
+                text = if (LevyraIsTorque) strings.personalOrbitTitle.uppercase() else strings.personalOrbitTitle,
                 color = LevyraText,
-                style = when (style) {
+                style = if (LevyraIsTorque) MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, letterSpacing = 2.sp) else when (style) {
                     HomeStyle.Editorial -> MaterialTheme.typography.headlineSmall.copy(fontFamily = FontFamily.Serif)
                     HomeStyle.Minimal -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium)
                     HomeStyle.Immersive -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black)
@@ -14739,6 +14733,16 @@ private fun StudioPersonalListeningShelf(
     onPlayAll: () -> Unit,
     onTrackActions: (Track) -> Unit
 ) {
+    if (LevyraSkinManagesLayout) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Box(Modifier.padding(horizontal = 20.dp)) {
+                StudioHomeOrbitHeader(userName = userName, profilePhotoPath = profilePhotoPath,
+                    profilePhotoVersion = profilePhotoVersion, accountAvatarUrl = accountAvatarUrl, onPlayAll = onPlayAll)
+            }
+            SkinOrbitTracks(tracks, currentId, isPlaying, isResolving, onPlay, onTrackActions)
+        }
+        return
+    }
     val columns = when (style) {
         HomeStyle.Editorial, HomeStyle.Immersive -> 2
         else -> HOME_PERSONAL_ORBIT_GRID_COLUMNS
@@ -16377,7 +16381,7 @@ private fun SearchHeader(
     val fieldFocused by fieldInteraction.collectIsFocusedAsState()
     val scheme = MaterialTheme.colorScheme
     val fieldContainer by animateColorAsState(
-        targetValue = if (LevyraIsTorque) Color(0xFFF1F1F1) else if (LevyraIsPrism) { if (fieldFocused) scheme.surfaceContainerHigh else scheme.surfaceContainer } else if (fieldFocused) scheme.surfaceContainerHighest else scheme.surfaceContainerHigh,
+        targetValue = searchFieldContainer(fieldFocused, scheme),
         animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
         label = "search-field-container"
     )
@@ -16392,23 +16396,17 @@ private fun SearchHeader(
         label = "search-field-badge"
     )
     val focusRing = remember(scheme.primary, scheme.tertiary, focusRingAlpha) {
-        if (LevyraIsPrism) SolidColor(scheme.primary.copy(alpha = 0.7f * focusRingAlpha)) else Brush.linearGradient(
-            listOf(
-                scheme.primary.copy(alpha = 0.9f * focusRingAlpha),
-                scheme.tertiary.copy(alpha = 0.75f * focusRingAlpha),
-                scheme.primary.copy(alpha = 0.35f * focusRingAlpha)
-            )
-        )
+        searchFocusRing(scheme, focusRingAlpha)
     }
     val searchIconTint by animateColorAsState(
-        targetValue = if (LevyraIsTorque) Color(0xFF111111) else if (LevyraIsPrism) { if (fieldFocused || query.isNotEmpty()) scheme.primary else scheme.onSurfaceVariant } else if (fieldFocused || query.isNotEmpty()) scheme.onPrimaryContainer else scheme.onSurfaceVariant,
+        targetValue = searchFieldIconTint(fieldFocused || query.isNotEmpty(), scheme),
         animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
         label = "search-field-icon"
     )
     val fieldCorner = levyraExpressiveToggleCorner(
         checked = fieldFocused,
-        unchecked = if (LevyraIsNocturne) Nocturne78Design.cardCorner else if (LevyraIsPrism) PrismDesign.controlCorner else 28.dp,
-        checkedCorner = if (LevyraIsNocturne) Nocturne78Design.cardCorner else if (LevyraIsPrism) PrismDesign.controlCorner else 20.dp,
+        unchecked = searchFieldCorner(28.dp),
+        checkedCorner = searchFieldCorner(20.dp),
         label = "search-field-corner"
     )
 
@@ -21467,25 +21465,7 @@ private fun SettingsOverlay(
             ) {
                 if (current == null) {
                     item {
-                        if (SkinChrome.active) PrismPageHeader(strings.settings, strings.settingsSubtitle) {
-                            IconButton(onClick = onClose, modifier = Modifier.size(48.dp)) { Icon(Icons.Rounded.Close, strings.close, tint = LevyraText) }
-                        } else Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column {
-                                Text(strings.settings, color = LevyraText, fontSize = 28.sp, fontWeight = FontWeight.Black)
-                                Text(strings.settingsSubtitle, color = LevyraMuted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                            }
-                            CircleIconButton(
-                                icon = Icons.Rounded.Close,
-                                tint = LevyraText,
-                                background = Color.White.copy(alpha = 0.08f),
-                                onClick = onClose,
-                                contentDescription = strings.close
-                            )
-                        }
+                        SettingsHubHeader(onClose)
                         Spacer(modifier = Modifier.height(14.dp))
                     }
                     item {
@@ -21651,16 +21631,7 @@ private fun SettingsOverlay(
                         }
                         "skins" -> {
                             item {
-                                SkinSelector(
-                                    selected = interfaceSettings.skin,
-                                    onSelect = { onInterfaceSettings(interfaceSettings.copy(skin = it)) }
-                                )
-                                if (interfaceSettings.skin == LevyraSkin.Prism) {
-                                    PrismSettingsPanel(interfaceSettings.prism) { onInterfaceSettings(interfaceSettings.copy(prism = it)) }
-                                }
-                                if (interfaceSettings.skin == LevyraSkin.Torque) {
-                                    TorqueSettingsPanel(interfaceSettings.torque) { onInterfaceSettings(interfaceSettings.copy(torque = it)) }
-                                }
+                                SettingsSkinSelection(interfaceSettings, onInterfaceSettings)
                             }
                         }
                         "design" -> {
@@ -23207,14 +23178,7 @@ private fun SettingsTile(
     val count = groupCount ?: slot?.count ?: 1
     val first = index == 0
     val last = index == count - 1
-    val outer = if (SkinChrome.active) SkinChrome.outerCorner else levyraExpressiveCorner(interactionSource, rest = 24.dp, pressed = 14.dp, label = "settingsTileOuter")
-    val inner = if (SkinChrome.active) SkinChrome.innerCorner else levyraExpressiveCorner(interactionSource, rest = 6.dp, pressed = 14.dp, label = "settingsTileInner")
-    val shape = RoundedCornerShape(
-        topStart = if (first) outer else inner,
-        topEnd = if (first) outer else inner,
-        bottomEnd = if (last) outer else inner,
-        bottomStart = if (last) outer else inner
-    )
+    val shape = settingsTileShape(interactionSource, first, last)
     val tileModifier = modifier.fillMaxWidth().then(if (SkinChrome.active) Modifier.padding(vertical = 1.dp) else Modifier)
     when {
         checked != null && onCheckedChange != null -> Surface(
@@ -23822,8 +23786,8 @@ private fun SettingsChoiceChip(label: String, active: Boolean, onClick: () -> Un
         selected = active,
         onClick = onClick,
         shape = if (skinned) SkinChrome.chipShape else RoundedCornerShape(corner),
-        color = if (skinned) { if (active) SkinChrome.chipSelectedContainer else Color.Transparent } else if (active) LevyraCyan else Color.White.copy(alpha = 0.06f),
-        contentColor = if (skinned) { if (active) SkinChrome.chipSelectedContent else LevyraText } else if (active) LevyraBlack else LevyraText,
+        color = settingsChoiceContainer(active),
+        contentColor = settingsChoiceContent(active),
         border = if (skinned) BorderStroke(1.dp, if (active) selectedBorder else LevyraAdaptiveHairline) else null
     ) {
         Row(
@@ -28014,7 +27978,7 @@ private fun ExploreShortcutTile(
     Row(
         modifier = modifier
             .heightIn(min = 68.dp)
-            .clip(if (LevyraIsPrism) PrismDesign.cut(PrismDesign.surfaceCorner) else RoundedCornerShape(if (nocturne) Nocturne78Design.cardCorner else 22.dp))
+            .clip(exploreShortcutShape())
             .background(if (skinned) LevyraPanel else lerp(colors.surfaceContainerHigh, entry.container, 0.32f))
             .levyraPressable(
                 onClick = entry.onClick,
@@ -28725,3 +28689,115 @@ private fun skinHomeStyleLabel(style: HomeStyle): String =
 
 private fun skinManagesStudio(id: String): Boolean =
     LevyraSkinManagesLayout && id in setOf("theme", "mini_player", "navigation")
+
+private fun searchFieldContainer(focused: Boolean, scheme: androidx.compose.material3.ColorScheme): Color = when {
+    LevyraIsTorque -> Color(0xFFF1F1F1)
+    LevyraIsPrism -> if (focused) scheme.surfaceContainerHigh else scheme.surfaceContainer
+    else -> if (focused) scheme.surfaceContainerHighest else scheme.surfaceContainerHigh
+}
+
+private fun searchFieldIconTint(active: Boolean, scheme: androidx.compose.material3.ColorScheme): Color = when {
+    LevyraIsTorque -> Color(0xFF111111)
+    LevyraIsPrism -> if (active) scheme.primary else scheme.onSurfaceVariant
+    else -> if (active) scheme.onPrimaryContainer else scheme.onSurfaceVariant
+}
+
+private fun searchFieldCorner(fallback: Dp): Dp = when {
+    LevyraIsNocturne -> Nocturne78Design.cardCorner
+    LevyraIsPrism -> PrismDesign.controlCorner
+    else -> fallback
+}
+
+private fun searchFocusRing(scheme: androidx.compose.material3.ColorScheme, focusRingAlpha: Float): Brush =
+    if (LevyraIsPrism) SolidColor(scheme.primary.copy(alpha = 0.7f * focusRingAlpha)) else Brush.linearGradient(
+        listOf(
+            scheme.primary.copy(alpha = 0.9f * focusRingAlpha),
+            scheme.tertiary.copy(alpha = 0.75f * focusRingAlpha),
+            scheme.primary.copy(alpha = 0.35f * focusRingAlpha)
+        )
+    )
+
+@Composable
+private fun SettingsHubHeader(onClose: () -> Unit) {
+    val strings = LocalLevyraStrings.current
+    if (SkinChrome.active) PrismPageHeader(strings.settings, strings.settingsSubtitle) {
+        IconButton(onClick = onClose, modifier = Modifier.size(48.dp)) { Icon(Icons.Rounded.Close, strings.close, tint = LevyraText) }
+    } else Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column {
+            Text(strings.settings, color = LevyraText, fontSize = 28.sp, fontWeight = FontWeight.Black)
+            Text(strings.settingsSubtitle, color = LevyraMuted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        }
+        CircleIconButton(
+            icon = Icons.Rounded.Close,
+            tint = LevyraText,
+            background = Color.White.copy(alpha = 0.08f),
+            onClick = onClose,
+            contentDescription = strings.close
+        )
+    }
+}
+
+@Composable
+private fun SettingsSkinSelection(interfaceSettings: LevyraInterfaceSettings, onInterfaceSettings: (LevyraInterfaceSettings) -> Unit) {
+    SkinSelector(
+        selected = interfaceSettings.skin,
+        onSelect = { onInterfaceSettings(interfaceSettings.copy(skin = it)) }
+    )
+    if (interfaceSettings.skin == LevyraSkin.Prism) {
+        PrismSettingsPanel(interfaceSettings.prism) { onInterfaceSettings(interfaceSettings.copy(prism = it)) }
+    }
+    if (interfaceSettings.skin == LevyraSkin.Torque) {
+        TorqueSettingsPanel(interfaceSettings.torque) { onInterfaceSettings(interfaceSettings.copy(torque = it)) }
+    }
+}
+
+@Composable
+private fun settingsTileShape(interactionSource: MutableInteractionSource, first: Boolean, last: Boolean): Shape {
+    val outer = if (SkinChrome.active) SkinChrome.outerCorner else levyraExpressiveCorner(interactionSource, rest = 24.dp, pressed = 14.dp, label = "settingsTileOuter")
+    val inner = if (SkinChrome.active) SkinChrome.innerCorner else levyraExpressiveCorner(interactionSource, rest = 6.dp, pressed = 14.dp, label = "settingsTileInner")
+    return RoundedCornerShape(
+        topStart = if (first) outer else inner,
+        topEnd = if (first) outer else inner,
+        bottomEnd = if (last) outer else inner,
+        bottomStart = if (last) outer else inner
+    )
+}
+
+private fun settingsChoiceContainer(active: Boolean): Color =
+    if (SkinChrome.active) {
+        if (active) SkinChrome.chipSelectedContainer else Color.Transparent
+    } else if (active) LevyraCyan else Color.White.copy(alpha = 0.06f)
+
+private fun settingsChoiceContent(active: Boolean): Color =
+    if (SkinChrome.active) {
+        if (active) SkinChrome.chipSelectedContent else LevyraText
+    } else if (active) LevyraBlack else LevyraText
+
+private fun exploreShortcutShape(): Shape = when {
+    LevyraIsPrism -> PrismDesign.cut(PrismDesign.surfaceCorner)
+    LevyraIsNocturne -> RoundedCornerShape(Nocturne78Design.cardCorner)
+    else -> RoundedCornerShape(22.dp)
+}
+
+private fun artistPlayBackground(playContainer: Color, playShape: Shape): Modifier =
+    when {
+        LevyraIsPrism -> Modifier.clip(CircleShape).background(PrismAccent.gradient())
+        LevyraIsNocturne -> Modifier.clip(RoundedCornerShape(Nocturne78Design.controlCorner)).background(LevyraPanelSoft)
+            .border(1.dp, LevyraCyan, RoundedCornerShape(Nocturne78Design.controlCorner))
+        else -> Modifier.background(playContainer, playShape)
+    }
+
+private fun artistPlayContent(fallback: Color): Color = when {
+    LevyraIsPrism -> Color.White
+    LevyraIsNocturne -> LevyraCyan
+    else -> fallback
+}
+
+private fun artistBiographyBackground(accentBrush: Brush): Modifier =
+    Modifier.clip(if (LevyraSkinManagesLayout) RoundedCornerShape(SkinChrome.outerCorner) else ArtistBiographyShape)
+        .background(LevyraPanel)
+        .then(if (LevyraSkinManagesLayout) Modifier else Modifier.background(accentBrush))

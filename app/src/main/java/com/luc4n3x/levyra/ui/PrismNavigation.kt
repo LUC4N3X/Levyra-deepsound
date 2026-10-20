@@ -46,30 +46,36 @@ internal fun PrismBottomTabs(tuning: NavTuning, selected: LevyraTab, onSelect: (
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).selectableGroup().padding(horizontal = 6.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 entries.forEach { entry ->
                     val active = entry.tab == selected
-                    val tint = if (active) LevyraCyan else LevyraMuted
-                    Column(
-                        Modifier.weight(1f).fillMaxHeight().heightIn(min = 60.dp).clip(RoundedCornerShape(PrismDesign.controlCorner))
-                            .selectable(active, role = Role.Tab, onClick = {
-                                if (!active && tuning.haptics) haptics.perform(LevyraHapticAction.SeekSnap)
-                                onSelect(entry.tab)
-                            }).padding(horizontal = 2.dp, vertical = 6.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
-                    ) {
-                        Box(
-                            Modifier.width(52.dp).height(30.dp).clip(RoundedCornerShape(if (torque) 2.dp else 15.dp))
-                                .background(if (active && !torque) PrismAccent.Tint else Color.Transparent),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(if (active) entry.selectedIcon else entry.unselectedIcon, null, tint = tint, modifier = Modifier.size(22.dp))
-                        }
-                        Spacer(Modifier.height(4.dp))
-                        Text(entry.label, color = if (active) LevyraText else LevyraMuted, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        if (torque) Box(Modifier.padding(top = 4.dp).width(20.dp).height(3.dp).background(if (active) LevyraActivePalette.blue else Color.Transparent))
+                    PrismNavigationTab(entry, active) {
+                        if (!active && tuning.haptics) haptics.perform(LevyraHapticAction.SeekSnap)
+                        onSelect(entry.tab)
                     }
                 }
             }
             if (applySystemInset) Spacer(Modifier.navigationBarsPadding())
             }
         }
+    }
+}
+
+@Composable
+private fun RowScope.PrismNavigationTab(entry: LevyraTabEntry, active: Boolean, onClick: () -> Unit) {
+    val torque = LevyraIsTorque
+    val tint = if (active) LevyraCyan else LevyraMuted
+    Column(
+        Modifier.weight(1f).fillMaxHeight().heightIn(min = 60.dp).clip(RoundedCornerShape(PrismDesign.controlCorner))
+            .selectable(active, role = Role.Tab, onClick = onClick).padding(horizontal = 2.dp, vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
+    ) {
+        Box(
+            Modifier.width(52.dp).height(30.dp).clip(RoundedCornerShape(if (torque) 2.dp else 15.dp))
+                .background(if (active && !torque) PrismAccent.Tint else Color.Transparent),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(if (active) entry.selectedIcon else entry.unselectedIcon, null, tint = tint, modifier = Modifier.size(22.dp))
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(entry.label, color = if (active) LevyraText else LevyraMuted, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (torque) Box(Modifier.padding(top = 4.dp).width(20.dp).height(3.dp).background(if (active) LevyraActivePalette.blue else Color.Transparent))
     }
 }

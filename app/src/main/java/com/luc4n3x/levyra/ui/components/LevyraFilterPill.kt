@@ -54,24 +54,28 @@ private fun animatedFilterPillColors(selected: Boolean, animationsEnabled: Boole
     val colors = MaterialTheme.colorScheme
     val spec: AnimationSpec<Color> = if (animationsEnabled) LevyraMotion.standard() else snap()
     val container by animateColorAsState(
-        targetValue = when {
-            LevyraIsTorque -> if (selected) LevyraActivePalette.blue else Color.Transparent
-            LevyraIsPrism -> if (selected) PrismAccent.Tint else colors.surfaceContainer
-            else -> if (selected) colors.primaryContainer else colors.surfaceContainerHigh
-        },
+        targetValue = filterPillContainer(selected, colors),
         animationSpec = spec,
         label = "filter-pill-container"
     )
     val content by animateColorAsState(
-        targetValue = when {
-            LevyraIsTorque -> if (selected) Color.White else colors.onSurface
-            LevyraIsPrism -> if (selected) colors.primary else colors.onSurfaceVariant
-            else -> if (selected) colors.onPrimaryContainer else colors.onSurfaceVariant
-        },
+        targetValue = filterPillContent(selected, colors),
         animationSpec = spec,
         label = "filter-pill-content"
     )
     return FilterPillColors(container, content)
+}
+
+private fun filterPillContainer(selected: Boolean, colors: androidx.compose.material3.ColorScheme): Color = when {
+    LevyraIsTorque -> if (selected) LevyraActivePalette.blue else Color.Transparent
+    LevyraIsPrism -> if (selected) PrismAccent.Tint else colors.surfaceContainer
+    else -> if (selected) colors.primaryContainer else colors.surfaceContainerHigh
+}
+
+private fun filterPillContent(selected: Boolean, colors: androidx.compose.material3.ColorScheme): Color = when {
+    LevyraIsTorque -> if (selected) Color.White else colors.onSurface
+    LevyraIsPrism -> if (selected) colors.primary else colors.onSurfaceVariant
+    else -> if (selected) colors.onPrimaryContainer else colors.onSurfaceVariant
 }
 
 @Composable

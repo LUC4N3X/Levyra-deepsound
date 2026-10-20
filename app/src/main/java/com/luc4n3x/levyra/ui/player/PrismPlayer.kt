@@ -38,7 +38,7 @@ internal fun PrismPlayerScene(
     metadata: @Composable () -> Unit, transport: @Composable () -> Unit, modifier: Modifier = Modifier
 ) {
     if (LevyraIsTorque) {
-        TorquePlayerScene(track, slots, transport, modifier)
+        TorquePlayerScene(track, slots, metadata, transport, modifier)
         return
     }
     val focus = activePrismSettings.playerLayout == PrismPlayerLayout.Focus

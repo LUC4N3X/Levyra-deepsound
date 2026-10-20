@@ -137,12 +137,7 @@ internal fun SkinManagedNotice(onUseDefault: (() -> Unit)? = null) {
 
 @Composable
 private fun SkinPhonePreview(skin: LevyraSkin, corner: Dp, modifier: Modifier) {
-    val palette = when (skin) {
-        LevyraSkin.Nocturne78 -> Nocturne78Palette
-        LevyraSkin.Prism -> prismPalette()
-        LevyraSkin.Torque -> torquePalette()
-        LevyraSkin.Default -> LevyraThemes.levyraAura
-    }
+    val palette = skinPreviewPalette(skin)
     val nocturne = skin == LevyraSkin.Nocturne78
     val prism = skin == LevyraSkin.Prism
     Canvas(modifier) {
@@ -150,22 +145,13 @@ private fun SkinPhonePreview(skin: LevyraSkin, corner: Dp, modifier: Modifier) {
         val h = size.height
         val frame = CornerRadius(corner.toPx())
         drawRoundRect(palette.black, cornerRadius = frame)
-        when (skin) {
-            LevyraSkin.Prism -> drawRoundRect(Brush.verticalGradient(listOf(palette.blue.copy(alpha = 0.22f), palette.black), endY = h * 0.6f), cornerRadius = frame)
-            LevyraSkin.Default -> drawRoundRect(Brush.verticalGradient(listOf(palette.violet.copy(alpha = 0.28f), palette.black), endY = h * 0.7f), cornerRadius = frame)
-            LevyraSkin.Nocturne78, LevyraSkin.Torque -> Unit
-        }
+        drawSkinPreviewWash(skin, palette, frame)
         val pad = w * 0.12f
         val art = w - pad * 2
         val artTop = h * 0.12f
         val torque = skin == LevyraSkin.Torque
         val artRadius = CornerRadius(if (nocturne || torque) 0f else if (prism) 6.dp.toPx() else 10.dp.toPx())
-        val artBrush = when (skin) {
-            LevyraSkin.Nocturne78 -> Brush.linearGradient(listOf(palette.panelSoft, palette.panel))
-            LevyraSkin.Prism -> Brush.linearGradient(listOf(palette.blue, palette.violet))
-            LevyraSkin.Default -> Brush.linearGradient(listOf(palette.cyan, palette.violet))
-            LevyraSkin.Torque -> Brush.linearGradient(listOf(palette.panelSoft, palette.panel))
-        }
+        val artBrush = skinPreviewArtBrush(skin, palette)
         if (torque) {
             torqueBand(palette, w, h)
             return@Canvas
@@ -236,4 +222,26 @@ private fun DrawScope.torqueBand(palette: LevyraPalette, w: Float, h: Float) {
     previewLine(palette.text.copy(alpha = 0.8f), w * 0.36f, h * 0.61f, w * 0.28f, 2.dp.toPx())
     previewPlayButton(LevyraSkin.Torque, palette, Offset(w / 2, h * 0.74f), w * 0.11f)
     previewLine(palette.text, w * 0.12f, h * 0.92f, w * 0.76f, 1.5.dp.toPx())
+}
+
+private fun skinPreviewPalette(skin: LevyraSkin): LevyraPalette = when (skin) {
+    LevyraSkin.Nocturne78 -> Nocturne78Palette
+    LevyraSkin.Prism -> prismPalette()
+    LevyraSkin.Torque -> torquePalette()
+    LevyraSkin.Default -> LevyraThemes.levyraAura
+}
+
+private fun skinPreviewArtBrush(skin: LevyraSkin, palette: LevyraPalette): Brush = when (skin) {
+    LevyraSkin.Nocturne78 -> Brush.linearGradient(listOf(palette.panelSoft, palette.panel))
+    LevyraSkin.Prism -> Brush.linearGradient(listOf(palette.blue, palette.violet))
+    LevyraSkin.Default -> Brush.linearGradient(listOf(palette.cyan, palette.violet))
+    LevyraSkin.Torque -> Brush.linearGradient(listOf(palette.panelSoft, palette.panel))
+}
+
+private fun DrawScope.drawSkinPreviewWash(skin: LevyraSkin, palette: LevyraPalette, frame: CornerRadius) {
+    when (skin) {
+        LevyraSkin.Prism -> drawRoundRect(Brush.verticalGradient(listOf(palette.blue.copy(alpha = 0.22f), palette.black), endY = size.height * 0.6f), cornerRadius = frame)
+        LevyraSkin.Default -> drawRoundRect(Brush.verticalGradient(listOf(palette.violet.copy(alpha = 0.28f), palette.black), endY = size.height * 0.7f), cornerRadius = frame)
+        LevyraSkin.Nocturne78, LevyraSkin.Torque -> Unit
+    }
 }

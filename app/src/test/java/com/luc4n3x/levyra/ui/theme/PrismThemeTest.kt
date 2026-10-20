@@ -100,4 +100,20 @@ class PrismThemeTest {
         assertEquals(LevyraMiniPlayerStudioSettings(), mini)
         assertEquals(LevyraNavigationStudioSettings(), nav)
     }
+
+    @Test fun switchingSkinsUpdatesMiniPlayerCornerAfterDesignerNormalization() {
+        val saved = LevyraMiniPlayerStudioSettings()
+        LevyraThemeController.apply(LevyraThemes.COSMIC, skin = LevyraSkin.Prism)
+        assertEquals(20, skinMiniPlayerCorner(prismMiniSettings(saved).activeTuning()).value.toInt())
+        LevyraThemeController.apply(LevyraThemes.COSMIC, skin = LevyraSkin.Torque)
+        assertEquals(2, skinMiniPlayerCorner(prismMiniSettings(saved).activeTuning()).value.toInt())
+        LevyraThemeController.apply(LevyraThemes.COSMIC, skin = LevyraSkin.Prism)
+        assertEquals(20, skinMiniPlayerCorner(prismMiniSettings(saved).activeTuning()).value.toInt())
+        LevyraThemeController.apply(LevyraThemes.COSMIC, skin = LevyraSkin.Nocturne78)
+        val nocturneTuning = nocturneMiniSettings(saved).activeTuning()
+        assertEquals(10, skinMiniPlayerCorner(nocturneTuning).value.toInt())
+        LevyraThemeController.apply(LevyraThemes.COSMIC, skin = LevyraSkin.Default)
+        assertEquals(saved.activeTuning().cornerDp, skinMiniPlayerCorner(saved.activeTuning()).value.toInt())
+        assertEquals(LevyraMiniPlayerStudioSettings(), saved)
+    }
 }

@@ -288,22 +288,7 @@ private fun ExploreFreshSpotlightPage(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(FreshCardAspect)
-            .graphicsLayer {
-                val offset = if (animationsEnabled) pageOffset() else 0f
-                val focus = 1f - abs(offset)
-                val corner = FreshArtworkCornerResting + (FreshArtworkCorner - FreshArtworkCornerResting) * focus
-                val scale = FreshArtworkRestingScale + (1f - FreshArtworkRestingScale) * focus
-                scaleX = scale
-                scaleY = scale
-                rotationY = offset * FreshCardTiltDegrees
-                rotationZ = offset * FreshCardRollDegrees
-                cameraDistance = FreshCardCameraDistance * density
-                shape = RoundedCornerShape(if (nocturne) Nocturne78Design.cardCorner.toPx() else corner.toPx())
-                clip = true
-                shadowElevation = if (nocturne) 0f else (20.dp * focus).toPx()
-                ambientShadowColor = accent.copy(alpha = 0.32f)
-                spotShadowColor = glowEnd.copy(alpha = 0.42f)
-            }
+            .then(freshSpotlightTransform(pageOffset, animationsEnabled, nocturne, accent, glowEnd))
             .background(ink)
             .levyraPressable(
                 onClick = onOpen,
@@ -640,3 +625,21 @@ private fun FreshSpotlightControl(isResolving: Boolean, opensAlbum: Boolean, pla
         )
     }
 }
+
+private fun freshSpotlightTransform(pageOffset: () -> Float, animationsEnabled: Boolean, nocturne: Boolean, accent: Color, glowEnd: Color): Modifier =
+    Modifier.graphicsLayer {
+        val offset = if (animationsEnabled) pageOffset() else 0f
+        val focus = 1f - abs(offset)
+        val corner = FreshArtworkCornerResting + (FreshArtworkCorner - FreshArtworkCornerResting) * focus
+        val scale = FreshArtworkRestingScale + (1f - FreshArtworkRestingScale) * focus
+        scaleX = scale
+        scaleY = scale
+        rotationY = offset * FreshCardTiltDegrees
+        rotationZ = offset * FreshCardRollDegrees
+        cameraDistance = FreshCardCameraDistance * density
+        shape = RoundedCornerShape(if (nocturne) Nocturne78Design.cardCorner.toPx() else corner.toPx())
+        clip = true
+        shadowElevation = if (nocturne) 0f else (20.dp * focus).toPx()
+        ambientShadowColor = accent.copy(alpha = 0.32f)
+        spotShadowColor = glowEnd.copy(alpha = 0.42f)
+    }

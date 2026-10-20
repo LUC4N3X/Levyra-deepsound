@@ -28,19 +28,7 @@ import com.luc4n3x.levyra.domain.Track
 @Composable
 internal fun RowScope.PrismMoodTile(label: String, portrait: String, active: Boolean, onClick: () -> Unit, onMix: (() -> Unit)?, mixLabel: String) {
     if (LevyraIsTorque) {
-        Box(
-            Modifier.weight(1f).aspectRatio(0.82f).background(LevyraPanel)
-                .then(if (active) Modifier.border(2.dp, Color.White) else Modifier)
-                .semantics { selected = active }
-                .levyraPressable(onClick = onClick, onClickLabel = label, role = Role.Button, onLongClick = onMix, onLongClickLabel = if (onMix != null) mixLabel else null)
-        ) {
-            if (portrait.isNotBlank()) AsyncImage(portrait, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-            Box(Modifier.fillMaxSize().clip(TorqueRiseShape).background(LevyraActivePalette.blue.copy(alpha = if (active) 1f else 0.9f)))
-            Text(
-                label.uppercase(), color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp,
-                maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.align(Alignment.BottomStart).padding(12.dp)
-            )
-        }
+        TorqueMoodTile(label, portrait, active, onClick, onMix, mixLabel)
         return
     }
     val shape = PrismDesign.cut(PrismDesign.surfaceCorner)
@@ -103,5 +91,22 @@ internal fun PrismFreshRelease(track: Track, title: String, subtitle: String, la
             }
             actions()
         }
+    }
+}
+
+@Composable
+private fun RowScope.TorqueMoodTile(label: String, portrait: String, active: Boolean, onClick: () -> Unit, onMix: (() -> Unit)?, mixLabel: String) {
+    Box(
+        Modifier.weight(1f).aspectRatio(0.82f).background(LevyraPanel)
+            .then(if (active) Modifier.border(2.dp, Color.White) else Modifier)
+            .semantics { selected = active }
+            .levyraPressable(onClick = onClick, onClickLabel = label, role = Role.Button, onLongClick = onMix, onLongClickLabel = if (onMix != null) mixLabel else null)
+    ) {
+        if (portrait.isNotBlank()) AsyncImage(portrait, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+        Box(Modifier.fillMaxSize().clip(TorqueRiseShape).background(LevyraActivePalette.blue.copy(alpha = if (active) 1f else 0.9f)))
+        Text(
+            label.uppercase(), color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp,
+            maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.align(Alignment.BottomStart).padding(12.dp)
+        )
     }
 }

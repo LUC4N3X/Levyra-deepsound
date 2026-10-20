@@ -73,31 +73,39 @@ internal fun SkinSwitch(checked: Boolean, modifier: Modifier = Modifier) {
     val accent = if (torque) LevyraActivePalette.blue else LevyraCyan
     val idle = LevyraMuted
     Canvas(modifier.size(width = 52.dp, height = 26.dp)) {
-        val w = size.width
-        val h = size.height
         val stroke = 1.5.dp.toPx()
         val inset = 3.dp.toPx()
-        if (torque) {
-            val slant = h * 0.45f
-            val track = Path().apply {
-                moveTo(slant, 0f); lineTo(w, 0f); lineTo(w - slant, h); lineTo(0f, h); close()
-            }
-            if (checked) drawPath(track, accent.copy(alpha = 0.25f))
-            drawPath(track, if (checked) accent else idle, style = Stroke(stroke))
-            val thumbWidth = w * 0.46f
-            val x = slant * 0.25f + (w - thumbWidth - slant * 0.5f) * travel
-            val thumb = Path().apply {
-                moveTo(x + slant, inset); lineTo(x + thumbWidth, inset)
-                lineTo(x + thumbWidth - slant, h - inset); lineTo(x, h - inset); close()
-            }
-            drawPath(thumb, if (checked) accent else idle)
-        } else {
-            val radius = CornerRadius(3.dp.toPx())
-            if (checked) drawRoundRect(accent.copy(alpha = 0.22f), cornerRadius = radius)
-            drawRoundRect(if (checked) accent else idle, cornerRadius = radius, style = Stroke(stroke))
-            val thumb = h - inset * 2
-            val x = inset + (w - thumb - inset * 2) * travel
-            drawRoundRect(if (checked) accent else idle, Offset(x, inset), Size(thumb, thumb), CornerRadius(2.dp.toPx()))
-        }
+        if (torque) drawTorqueSwitch(checked, travel, accent, idle, stroke, inset)
+        else drawRectangularSwitch(checked, travel, accent, idle, stroke, inset)
     }
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawTorqueSwitch(checked: Boolean, travel: Float, accent: Color, idle: Color, stroke: Float, inset: Float) {
+    val w = size.width
+    val h = size.height
+    val slant = h * 0.45f
+    val track = Path().apply {
+        moveTo(slant, 0f); lineTo(w, 0f); lineTo(w - slant, h); lineTo(0f, h); close()
+    }
+    if (checked) drawPath(track, accent.copy(alpha = 0.25f))
+    drawPath(track, if (checked) accent else idle, style = Stroke(stroke))
+    val thumbWidth = w * 0.46f
+    val x = slant * 0.25f + (w - thumbWidth - slant * 0.5f) * travel
+    val thumb = Path().apply {
+        moveTo(x + slant, inset); lineTo(x + thumbWidth, inset)
+        lineTo(x + thumbWidth - slant, h - inset); lineTo(x, h - inset); close()
+    }
+    drawPath(thumb, if (checked) accent else idle)
+
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawRectangularSwitch(checked: Boolean, travel: Float, accent: Color, idle: Color, stroke: Float, inset: Float) {
+    val w = size.width
+    val h = size.height
+    val radius = CornerRadius(3.dp.toPx())
+    if (checked) drawRoundRect(accent.copy(alpha = 0.22f), cornerRadius = radius)
+    drawRoundRect(if (checked) accent else idle, cornerRadius = radius, style = Stroke(stroke))
+    val thumb = h - inset * 2
+    val x = inset + (w - thumb - inset * 2) * travel
+    drawRoundRect(if (checked) accent else idle, Offset(x, inset), Size(thumb, thumb), CornerRadius(2.dp.toPx()))
 }

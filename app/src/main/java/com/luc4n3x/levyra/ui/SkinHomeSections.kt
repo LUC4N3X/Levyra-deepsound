@@ -54,7 +54,7 @@ internal fun SkinSectionTitle(title: String, inset: Dp, actions: @Composable Row
     Row(Modifier.fillMaxWidth().padding(horizontal = inset).heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         if (torque) Box(Modifier.width(4.dp).height(22.dp).background(LevyraActivePalette.blue))
         Text(
-            if (torque) title.uppercase() else title, color = LevyraText,
+            if (torque) title.uppercase() else title, color = LevyraText, style = MaterialTheme.typography.titleLarge,
             fontSize = if (torque) 18.sp else 22.sp, fontWeight = if (torque) FontWeight.Bold else FontWeight.Normal,
             letterSpacing = if (torque) 2.sp else (-0.4).sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f).semantics { heading() }
@@ -87,8 +87,7 @@ internal fun SkinChartSection(
 ) {
     val torque = LevyraIsTorque
     val ranked = remember(tracks) { tracks.take(50).withIndex().toList() }
-    val podium = !torque && ranked.size >= 3
-    val pages = remember(ranked, podium) { (if (podium) ranked.drop(3) else ranked).chunked(5) }
+    val pages = remember(ranked) { ranked.chunked(5) }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SkinSectionTitle(title, inset) {
             Box(
@@ -99,32 +98,10 @@ internal fun SkinChartSection(
             SkinPlayAll(playAllLabel, onPlayAll)
         }
         LazyRow(contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (podium) item(key = "chart-podium") { PrismChartPodium(ranked.take(3).map { it.value }, currentId, isPlaying, onPlay) }
             itemsIndexed(pages, key = { index, _ -> "chart-page-$index" }) { _, page ->
-                Column(Modifier.width(318.dp), verticalArrangement = Arrangement.spacedBy(if (torque) 2.dp else 4.dp)) {
-                    page.forEach { (index, track) ->
-                        val current = track.id == currentId
-                        Row(
-                            Modifier.fillMaxWidth().heightIn(min = 64.dp).clip(RoundedCornerShape(PrismDesign.controlCorner))
-                                .background(if (torque) { if (current) LevyraPanelSoft else LevyraPanel } else if (current) PrismAccent.Tint else Color.Transparent)
-                                .levyraPressable(onClick = { onPlay(track) }, onClickLabel = track.title, role = Role.Button)
-                                .padding(horizontal = 8.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            if (torque) TorqueRank(index + 1, index < 3)
-                            else Text(
-                                (index + 1).toString(), modifier = Modifier.width(34.dp),
-                                style = TextStyle(brush = if (index < 3) PrismAccent.gradient() else SolidColor(LevyraMuted), fontSize = 26.sp, fontWeight = FontWeight.Light)
-                            )
-                            Box(Modifier.size(52.dp).clip(RoundedCornerShape(PrismDesign.tileCorner))) { CoverImage(track, Modifier.fillMaxSize()) }
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(track.title, color = if (current) LevyraCyan else LevyraText, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(track.artist, color = LevyraMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
-                            if (current) LevyraPlayingIndicator(playing = isPlaying, color = LevyraCyan, size = 12.dp)
-                        }
-                    }
-                }
+                if (torque) Column(Modifier.width(318.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    page.forEach { (index, track) -> SkinChartRow(index, track, currentId, isPlaying, onPlay) }
+                } else PrismChartPage(page, currentId, isPlaying, onPlay)
             }
         }
     }
@@ -350,9 +327,9 @@ private fun TorqueArtistCard(item: StudioShelfItem) {
     ) {
         item.artwork(Modifier.fillMaxSize(), false)
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.5f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.6f))))
-        Box(Modifier.fillMaxSize().clip(TorqueRiseShape).background(LevyraActivePalette.blue.copy(alpha = 0.94f)))
+        Box(Modifier.fillMaxSize().clip(TorqueStripShape).background(LevyraActivePalette.blue))
         Text(
-            item.title.uppercase(), color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp,
+            item.title.uppercase(), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp,
             maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.align(Alignment.BottomStart).padding(12.dp)
         )
     }
@@ -389,43 +366,67 @@ internal fun SkinCategoryCard(title: String, artworkUrl: String, modifier: Modif
 }
 
 @Composable
-private fun PrismRankNumber(rank: Int, size: Int) {
-    Text(rank.toString(), style = TextStyle(brush = PrismAccent.gradient(), fontSize = size.sp, lineHeight = size.sp, fontWeight = FontWeight.Light, letterSpacing = (-2).sp))
+private fun SkinChartRow(index: Int, track: Track, currentId: String?, isPlaying: Boolean, onPlay: (Track) -> Unit) {
+    val torque = LevyraIsTorque
+    val current = track.id == currentId
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 64.dp).clip(RoundedCornerShape(PrismDesign.controlCorner))
+            .background(if (torque) { if (current) LevyraPanelSoft else LevyraPanel } else if (current) PrismAccent.Tint else Color.Transparent)
+            .levyraPressable(onClick = { onPlay(track) }, onClickLabel = track.title, role = Role.Button)
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        if (torque) TorqueRank(index + 1, index < 3)
+        else Text(
+            (index + 1).toString(), modifier = Modifier.width(34.dp),
+            style = TextStyle(brush = if (index < 3) PrismAccent.gradient() else SolidColor(LevyraMuted), fontSize = 26.sp, fontWeight = FontWeight.Light)
+        )
+        Box(Modifier.size(52.dp).clip(RoundedCornerShape(PrismDesign.tileCorner))) { CoverImage(track, Modifier.fillMaxSize()) }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(track.title, color = if (current) LevyraCyan else LevyraText, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(track.artist, color = LevyraMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        if (current) LevyraPlayingIndicator(playing = isPlaying, color = LevyraCyan, size = 12.dp)
+    }
 }
 
 @Composable
-private fun PrismChartPodium(top: List<Track>, currentId: String?, isPlaying: Boolean, onPlay: (Track) -> Unit) {
-    val first = top[0]
-    Column(Modifier.width(318.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Box(
-            Modifier.fillMaxWidth().height(200.dp).clip(PrismDesign.cut(PrismDesign.surfaceCorner)).background(LevyraPanel)
-                .levyraPressable(onClick = { onPlay(first) }, onClickLabel = first.title, role = Role.Button)
-        ) {
-            Box(Modifier.align(Alignment.CenterEnd).fillMaxHeight().aspectRatio(1f)) { CoverImage(first, Modifier.fillMaxSize(), highRes = true) }
-            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0.30f to LevyraPanel, 0.55f to LevyraPanel.copy(alpha = 0.6f), 1f to Color.Transparent)))
-            Column(Modifier.align(Alignment.BottomStart).fillMaxWidth(0.62f).padding(16.dp)) {
-                PrismRankNumber(1, 72)
-                Text(first.title, color = if (first.id == currentId) LevyraCyan else LevyraText, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(first.artist, color = LevyraMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            if (first.id == currentId) Box(Modifier.align(Alignment.TopEnd).padding(10.dp)) { LevyraPlayingIndicator(playing = isPlaying, color = Color.White, size = 14.dp) }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            top.drop(1).forEachIndexed { offset, track ->
-                Row(
-                    Modifier.weight(1f).height(124.dp).clip(RoundedCornerShape(PrismDesign.controlCorner)).background(LevyraPanel)
-                        .levyraPressable(onClick = { onPlay(track) }, onClickLabel = track.title, role = Role.Button).padding(10.dp),
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Box(Modifier.size(56.dp).clip(RoundedCornerShape(PrismDesign.tileCorner))) { CoverImage(track, Modifier.fillMaxSize()) }
-                        Spacer(Modifier.height(6.dp))
-                        Text(track.title, color = if (track.id == currentId) LevyraCyan else LevyraText, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(track.artist, color = LevyraMuted, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                    PrismRankNumber(offset + 2, 44)
-                }
+private fun PrismChartPage(page: List<IndexedValue<Track>>, currentId: String?, playing: Boolean, onPlay: (Track) -> Unit) {
+    Column(
+        Modifier.width(330.dp).clip(PrismDesign.cut(24.dp)).background(LevyraPanel)
+    ) {
+        Box(Modifier.padding(start = 18.dp).width(48.dp).height(2.dp).background(PrismAccent.gradient()))
+        Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+            page.forEach { (index, track) ->
+                PrismChartTrack(index, track, track.id == currentId, playing, onPlay)
             }
         }
+    }
+}
+
+@Composable
+private fun PrismChartTrack(index: Int, track: Track, current: Boolean, playing: Boolean, onPlay: (Track) -> Unit) {
+    val first = index == 0
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(PrismDesign.tileCorner))
+            .background(if (current) PrismAccent.Tint else Color.Transparent)
+            .levyraPressable(onClick = { onPlay(track) }, onClickLabel = track.title, role = Role.Button)
+            .padding(horizontal = 8.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            (index + 1).toString().padStart(2, '0'), color = if (first) LevyraCyan else LevyraMuted,
+            fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.width(24.dp)
+        )
+        Box(Modifier.size(if (first) 72.dp else 48.dp).clip(RoundedCornerShape(PrismDesign.tileCorner))) {
+            CoverImage(track, Modifier.fillMaxSize(), highRes = first)
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(track.title, color = if (current) LevyraCyan else LevyraText,
+                style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(track.artist, color = LevyraMuted, style = MaterialTheme.typography.bodySmall,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        if (current) LevyraPlayingIndicator(playing = playing, color = LevyraCyan, size = 12.dp)
     }
 }
