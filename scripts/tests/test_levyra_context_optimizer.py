@@ -235,11 +235,11 @@ class LevyraContextOptimizerExecutionTest(unittest.TestCase):
                 proc.stdout = io.StringIO()
                 proc.communicate.side_effect = [
                     subprocess.TimeoutExpired(
-                        cmd=["mock"], timeout=0.2, output=b"progress\\xff\\n"
+                        cmd=["mock"], timeout=0.2, output=b"progress\xff\n"
                     ),
                     subprocess.TimeoutExpired(
                         cmd=["mock"], timeout=1.0,
-                        output=b"progress\\xff\\nlast diagnostics\\n",
+                        output=b"progress\xff\nlast diagnostics\n",
                     ),
                 ]
                 output = io.StringIO()
@@ -250,6 +250,7 @@ class LevyraContextOptimizerExecutionTest(unittest.TestCase):
                     )
         self.assertEqual(124, status)
         self.assertIn("progress", output.getvalue())
+        self.assertIn("\ufffd", output.getvalue())
         self.assertIn("last diagnostics", output.getvalue())
         self.assertIn("command timed out", output.getvalue())
         self.assertTrue(proc.stdout.closed)
