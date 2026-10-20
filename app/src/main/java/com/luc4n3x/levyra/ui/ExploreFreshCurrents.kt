@@ -263,9 +263,10 @@ private fun ExploreFreshSpotlightPage(
     val nocturne = LevyraIsNocturne
     val animationsEnabled = LocalAnimationsEnabled.current && !nocturne
     val card = exploreReleaseCard(track)
-    val accent = if (nocturne) Nocturne78Palette.cyan else remember(track.accentStart) { Color(track.accentStart) }
-    val glowEnd = if (nocturne) Nocturne78Palette.panel else remember(track.accentEnd) { Color(track.accentEnd) }
-    val ink = remember(accent, nocturne) { if (nocturne) Nocturne78Palette.ink else lerp(accent, Color.Black, 0.72f) }
+    val palette = rememberFreshSpotlightPalette(track)
+    val accent = palette.accent
+    val glowEnd = palette.glowEnd
+    val ink = palette.ink
     val scrim = remember(ink) {
         Brush.verticalGradient(
             0.00f to Color.Black.copy(alpha = 0.34f),
@@ -275,7 +276,7 @@ private fun ExploreFreshSpotlightPage(
             1.00f to ink.copy(alpha = 0.96f)
         )
     }
-    val buttonFill = remember(accent, nocturne) { if (nocturne) accent else lerp(accent, Color.White, 0.72f) }
+    val buttonFill = palette.buttonFill
     val onOpen = if (card.opensAlbum) onOpenAlbum else onPlay
     val playing = isCurrent && isPlaying && !card.opensAlbum
 
@@ -303,11 +304,7 @@ private fun ExploreFreshSpotlightPage(
             .levyraPressable(
                 onClick = onOpen,
                 enabled = !(isResolving && !card.opensAlbum),
-                onClickLabel = when {
-                    card.opensAlbum -> strings.openAlbum
-                    playing -> strings.pause
-                    else -> strings.play
-                },
+                onClickLabel = freshSpotlightActionLabel(card.opensAlbum, playing, strings),
                 role = Role.Button,
                 pressedScale = LevyraPressScale.Tile
             )
@@ -614,3 +611,23 @@ internal fun exploreReleaseEyebrow(kind: ExploreReleaseKind, strings: LevyraStri
         ExploreReleaseKind.Single -> strings.newSingle
         ExploreReleaseKind.Release -> strings.newRelease
     }
+
+private data class FreshSpotlightPalette(val accent: Color, val glowEnd: Color, val ink: Color, val buttonFill: Color)
+
+@Composable
+private fun rememberFreshSpotlightPalette(track: Track): FreshSpotlightPalette {
+    val nocturne = LevyraIsNocturne
+    return remember(track.accentStart, track.accentEnd, nocturne) {
+        if (nocturne) FreshSpotlightPalette(Nocturne78Palette.cyan, Nocturne78Palette.panel, Nocturne78Palette.ink, Nocturne78Palette.cyan)
+        else {
+            val accent = Color(track.accentStart)
+            FreshSpotlightPalette(accent, Color(track.accentEnd), lerp(accent, Color.Black, 0.72f), lerp(accent, Color.White, 0.72f))
+        }
+    }
+}
+
+private fun freshSpotlightActionLabel(opensAlbum: Boolean, playing: Boolean, strings: LevyraStrings): String = when {
+    opensAlbum -> strings.openAlbum
+    playing -> strings.pause
+    else -> strings.play
+}

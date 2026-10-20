@@ -158,13 +158,12 @@ private fun LibrarySectionTile(
     val colors = MaterialTheme.colorScheme
     val strings = LocalLevyraStrings.current
     val label = entry.category.libraryLabel(strings)
-    val nocturne = LevyraIsNocturne
-    val badgeShape = if (nocturne) RoundedCornerShape(Nocturne78Design.artworkCorner) else entry.category.sectionBadgePolygon().toShape()
+    val appearance = librarySectionAppearance(entry, tone, shape)
     Row(
         modifier = modifier
-            .heightIn(min = if (nocturne) 64.dp else 72.dp)
-            .clip(if (nocturne) RoundedCornerShape(0.dp) else shape)
-            .background(if (nocturne) Color.Transparent else colors.surfaceContainerHigh.copy(alpha = 0.62f))
+            .heightIn(min = appearance.height)
+            .clip(appearance.shape)
+            .background(appearance.background)
             .semantics(mergeDescendants = true) {}
             .levyraPressable(
                 onClick = { onOpen(entry.category) },
@@ -172,14 +171,14 @@ private fun LibrarySectionTile(
                 onClickLabel = label,
                 pressedScale = LevyraPressScale.Tile
             )
-            .padding(horizontal = 12.dp, vertical = if (nocturne) 10.dp else 14.dp),
+            .padding(horizontal = 12.dp, vertical = appearance.padding),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = Modifier.size(LibrarySectionBadge).clip(badgeShape).background(if (nocturne) colors.surfaceContainerHigh else tone.container),
+            modifier = Modifier.size(LibrarySectionBadge).clip(appearance.badgeShape).background(appearance.badgeBackground),
             contentAlignment = Alignment.Center
         ) {
-            Icon(if (nocturne) Nocturne78Icons.resolve(entry.category.sectionIcon()) else entry.category.sectionIcon(), contentDescription = null, tint = if (nocturne) colors.onSurfaceVariant else tone.content, modifier = Modifier.size(22.dp))
+            Icon(appearance.icon, contentDescription = null, tint = appearance.content, modifier = Modifier.size(22.dp))
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -421,5 +420,30 @@ private fun LibrarySearchSectionTitle(
         detail = count.toString(),
         action = if (canExpand) strings.showAll else null,
         onAction = { actions.onShowAll(category) }.takeIf { canExpand }
+    )
+}
+
+private data class LibrarySectionAppearance(
+    val height: androidx.compose.ui.unit.Dp,
+    val padding: androidx.compose.ui.unit.Dp,
+    val shape: Shape,
+    val badgeShape: Shape,
+    val background: Color,
+    val badgeBackground: Color,
+    val content: Color,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector
+)
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun librarySectionAppearance(entry: LibrarySectionEntry, tone: LibrarySectionTone, shape: Shape): LibrarySectionAppearance {
+    val colors = MaterialTheme.colorScheme
+    val icon = entry.category.sectionIcon()
+    return if (LevyraIsNocturne) LibrarySectionAppearance(
+        64.dp, 10.dp, RoundedCornerShape(0.dp), RoundedCornerShape(Nocturne78Design.artworkCorner),
+        Color.Transparent, colors.surfaceContainerHigh, colors.onSurfaceVariant, Nocturne78Icons.resolve(icon)
+    ) else LibrarySectionAppearance(
+        72.dp, 14.dp, shape, entry.category.sectionBadgePolygon().toShape(),
+        colors.surfaceContainerHigh.copy(alpha = 0.62f), tone.container, tone.content, icon
     )
 }

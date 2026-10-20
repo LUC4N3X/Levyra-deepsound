@@ -1090,33 +1090,7 @@ internal fun StudioHomeHeader(
         return
     }
     val actions: @Composable () -> Unit = {
-        if (style == HomeStyle.ExpressiveMax) {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                FilledTonalIconButton(onClick = onSearch, shapes = IconButtonDefaults.shapes(), modifier = Modifier.size(52.dp)) {
-                    Icon(Icons.Rounded.Search, contentDescription = strings.search)
-                }
-                FilledTonalIconButton(onClick = onSettings, shapes = IconButtonDefaults.shapes(), modifier = Modifier.size(52.dp)) {
-                    if (isResolving) {
-                        LevyraLoadingIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.primary)
-                    } else {
-                        Icon(Icons.Rounded.Settings, contentDescription = strings.settings)
-                    }
-                }
-            }
-        } else {
-            Row {
-                IconButton(onClick = onSearch) {
-                    Icon(Icons.Rounded.Search, contentDescription = strings.search, tint = LevyraText)
-                }
-                IconButton(onClick = onSettings) {
-                    if (isResolving) {
-                        LevyraLoadingIndicator(modifier = Modifier.size(22.dp), color = MaterialTheme.colorScheme.primary)
-                    } else {
-                        Icon(Icons.Rounded.Settings, contentDescription = strings.settings, tint = LevyraText)
-                    }
-                }
-            }
-        }
+        StudioHeaderActions(style, isResolving, onSearch, onSettings)
     }
     val headingModifier = Modifier.clearAndSetSemantics {
         contentDescription = greeting
@@ -1207,6 +1181,41 @@ internal fun StudioHomeHeader(
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun StudioHeaderActions(style: HomeStyle, isResolving: Boolean, onSearch: () -> Unit, onSettings: () -> Unit) {
+    val strings = LocalLevyraStrings.current
+    if (style == HomeStyle.ExpressiveMax) {
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            FilledTonalIconButton(onClick = onSearch, shapes = IconButtonDefaults.shapes(), modifier = Modifier.size(52.dp)) {
+                Icon(Icons.Rounded.Search, contentDescription = strings.search)
+            }
+            FilledTonalIconButton(onClick = onSettings, shapes = IconButtonDefaults.shapes(), modifier = Modifier.size(52.dp)) {
+                if (isResolving) {
+                    LevyraLoadingIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.primary)
+                } else {
+                    Icon(Icons.Rounded.Settings, contentDescription = strings.settings)
+                }
+            }
+        }
+    } else {
+        Row {
+            IconButton(onClick = onSearch) {
+                Icon(Icons.Rounded.Search, contentDescription = strings.search, tint = LevyraText)
+            }
+            IconButton(onClick = onSettings) {
+                if (isResolving) {
+                    LevyraLoadingIndicator(modifier = Modifier.size(22.dp), color = MaterialTheme.colorScheme.primary)
+                } else {
+                    Icon(Icons.Rounded.Settings, contentDescription = strings.settings, tint = LevyraText)
+                }
+            }
+        }
+    }
+
+}
+
 
 @Composable
 internal fun StudioFlowShortcuts(

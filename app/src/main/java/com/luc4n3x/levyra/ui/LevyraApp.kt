@@ -13919,14 +13919,11 @@ private fun ResonanceFeaturedCard(
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
-    val nocturne = LevyraIsNocturne
-    val shape = if (nocturne) RoundedCornerShape(Nocturne78Design.cardCorner) else ResonanceCardShape
-    val quoteShape = if (nocturne) RoundedCornerShape(Nocturne78Design.artworkCorner) else ResonanceBubbleShape
+    val appearance = rememberResonanceAppearance(toneIndex)
+    val shape = appearance.shape
+    val quoteShape = appearance.quoteShape
     val colors = MaterialTheme.colorScheme
-    val tone = ResonanceBubbleTones[toneIndex.coerceAtLeast(0) % ResonanceBubbleTones.size]
-    val bubbleTint = remember(tone, colors.surfaceContainerHighest, nocturne) {
-        if (nocturne) colors.surfaceContainer else lerp(colors.surfaceContainerHighest, tone, 0.30f)
-    }
+    val bubbleTint = appearance.bubbleTint
     val commentCount = snippet?.countText
         ?.let(::youtubeCommentCountBadge)
         ?.takeIf(String::isNotBlank)
@@ -13937,7 +13934,7 @@ private fun ResonanceFeaturedCard(
             .width(cardWidth)
             .clip(shape)
             .background(colors.surfaceContainerHigh)
-            .then(if (nocturne) Modifier.border(1.dp, colors.outline, shape) else Modifier)
+            .then(appearance.outline)
             .then(if (active) Modifier.background(LevyraText.copy(alpha = 0.05f)) else Modifier)
             .padding(8.dp)
     ) {
@@ -14010,7 +14007,7 @@ private fun ResonanceFeaturedCard(
             Box(
                 modifier = Modifier
                     .size(44.dp)
-                    .clip(if (nocturne) RoundedCornerShape(Nocturne78Design.controlCorner) else rememberLevyraPlayMorphShape(playing = active && isPlaying, animated = LocalAnimationsEnabled.current))
+                    .clip(resonancePlayShape(active && isPlaying))
                     .background(if (active) colors.primaryContainer else LevyraText.copy(alpha = 0.10f)),
                 contentAlignment = Alignment.Center
             ) {
@@ -14036,6 +14033,26 @@ private fun ResonanceFeaturedCard(
         }
     }
 }
+
+private data class ResonanceAppearance(val shape: Shape, val quoteShape: Shape, val bubbleTint: Color, val outline: Modifier)
+
+@Composable
+private fun rememberResonanceAppearance(toneIndex: Int): ResonanceAppearance {
+    val nocturne = LevyraIsNocturne
+    val colors = MaterialTheme.colorScheme
+    val tone = ResonanceBubbleTones[toneIndex.coerceAtLeast(0) % ResonanceBubbleTones.size]
+    return remember(nocturne, colors, tone) {
+        if (nocturne) {
+            val shape = RoundedCornerShape(Nocturne78Design.cardCorner)
+            ResonanceAppearance(shape, RoundedCornerShape(Nocturne78Design.artworkCorner), colors.surfaceContainer, Modifier.border(1.dp, colors.outline, shape))
+        } else ResonanceAppearance(ResonanceCardShape, ResonanceBubbleShape, lerp(colors.surfaceContainerHighest, tone, 0.30f), Modifier)
+    }
+}
+
+@Composable
+private fun resonancePlayShape(playing: Boolean): Shape =
+    if (LevyraIsNocturne) RoundedCornerShape(Nocturne78Design.controlCorner)
+    else rememberLevyraPlayMorphShape(playing = playing, animated = LocalAnimationsEnabled.current)
 
 @Composable
 private fun ResonanceQuoteHeader(
@@ -21473,7 +21490,7 @@ private fun SettingsOverlay(
                                 SettingsStudioEntry("widget", strings.widgetStudioCopy[WidgetStudioText.Title], Icons.Rounded.Widgets, LevyraCyan, MaterialShapes.Gem) {
                                     studioContext.startActivity(WidgetStudioActivity.intent(studioContext))
                                 }
-                            ).filterNot { LevyraIsNocturne && it.id in setOf("theme", "mini_player", "navigation") }
+                            ).filterNot { skinManagesStudio(it.id) }
                         )
                     }
                     SettingsHubGroup.entries.forEach { group ->
@@ -21590,7 +21607,7 @@ private fun SettingsOverlay(
                                 SettingsButton(
                                     icon = Icons.Rounded.Home,
                                     title = strings.homeStudioCopy.title,
-                                    subtitle = (if (LevyraIsNocturne) Nocturne78Palette.label else homeStyleName(homeStudioStyle)) + " · " + strings.homeStudioCopy.subtitle,
+                                    subtitle = skinHomeStyleLabel(homeStudioStyle) + " · " + strings.homeStudioCopy.subtitle,
                                     onClick = onOpenHomeStudio
                                 )
                             }
@@ -21621,7 +21638,7 @@ private fun SettingsOverlay(
                                     onClick = { widgetStudioContext.startActivity(WidgetStudioActivity.intent(widgetStudioContext)) }
                                 )
                             }
-                            if (interfaceSettings.skin == LevyraSkin.Default) {
+                            skinSettingsItems(interfaceSettings.skin, defaults = {
                             item {
                                 SettingsChoiceRow(
                                     icon = Icons.Rounded.TextFields,
@@ -21636,7 +21653,7 @@ private fun SettingsOverlay(
                                     }
                                 )
                             }
-                            }
+                            })
                             item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.Bolt,
@@ -21662,7 +21679,7 @@ private fun SettingsOverlay(
                                     }
                                 )
                             }
-                            if (interfaceSettings.skin == LevyraSkin.Default) {
+                            skinSettingsItems(interfaceSettings.skin, defaults = {
                             item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.BlurOn,
@@ -21674,7 +21691,7 @@ private fun SettingsOverlay(
                                     }
                                 )
                             }
-                            }
+                            })
                             item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.AutoAwesome,
@@ -21736,7 +21753,7 @@ private fun SettingsOverlay(
                                     )
                                 }
                             }
-                            if (interfaceSettings.skin == LevyraSkin.Default) {
+                            skinSettingsItems(interfaceSettings.skin, defaults = {
                             item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.Album,
@@ -21746,14 +21763,14 @@ private fun SettingsOverlay(
                                     onCheckedChange = onDynamicColor
                                 )
                             }
-                            }
+                            })
                         }
                         "home" -> {
                             item {
                                 SettingsButton(
                                     icon = Icons.Rounded.Dashboard,
                                     title = strings.homeStudioCopy.title,
-                                    subtitle = (if (LevyraIsNocturne) Nocturne78Palette.label else homeStyleName(homeStudioStyle)) + " · " + strings.homeStudioCopy.subtitle,
+                                    subtitle = skinHomeStyleLabel(homeStudioStyle) + " · " + strings.homeStudioCopy.subtitle,
                                     onClick = onOpenHomeStudio
                                 )
                             }
@@ -21822,7 +21839,7 @@ private fun SettingsOverlay(
                                     onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showTrendingArtists = it)) }
                                 )
                             }
-                            if (interfaceSettings.skin == LevyraSkin.Default) {
+                            skinSettingsItems(interfaceSettings.skin, defaults = {
                             item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.DarkMode,
@@ -21832,7 +21849,7 @@ private fun SettingsOverlay(
                                     onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(pureBlack = it)) }
                                 )
                             }
-                            }
+                            })
                             item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.LocalFireDepartment,
@@ -21865,7 +21882,7 @@ private fun SettingsOverlay(
                                     onSelect = { value -> onVideoQualityTarget(VideoQualityTarget.fromStorage(value)) }
                                 )
                             }
-                            if (interfaceSettings.skin == LevyraSkin.Default) {
+                            skinSettingsItems(interfaceSettings.skin, defaults = {
                             item {
                                 SettingsChoiceRow(
                                     icon = Icons.Rounded.AutoAwesome,
@@ -21935,7 +21952,7 @@ private fun SettingsOverlay(
                                     onSettings = onInterfaceSettings
                                 )
                             }
-                            } else {
+                            }, nocturne = {
                                 item {
                                     SettingsTile {
                                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -21945,7 +21962,7 @@ private fun SettingsOverlay(
                                         }
                                     }
                                 }
-                            }
+                            })
                             item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.Vibration,
@@ -28600,3 +28617,17 @@ private fun formatDuration(ms: Long): String {
     val seconds = totalSeconds % 60L
     return "$minutes:${seconds.toString().padStart(2, '0')}"
 }
+
+private fun LazyListScope.skinSettingsItems(
+    skin: LevyraSkin,
+    defaults: LazyListScope.() -> Unit,
+    nocturne: LazyListScope.() -> Unit = {}
+) {
+    if (skin == LevyraSkin.Default) defaults() else nocturne()
+}
+
+private fun skinHomeStyleLabel(style: HomeStyle): String =
+    if (LevyraIsNocturne) Nocturne78Palette.label else homeStyleName(style)
+
+private fun skinManagesStudio(id: String): Boolean =
+    LevyraIsNocturne && id in setOf("theme", "mini_player", "navigation")
