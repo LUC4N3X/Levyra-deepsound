@@ -242,7 +242,7 @@ ${showExamples ? `  <text x="${box.x + 24}" y="${box.y + 66}" class="tile-exampl
   <rect x="578" y="48" width="88" height="40" rx="20" fill="${theme.heroStrong}"/>
   <text x="622" y="73" text-anchor="middle" class="status">${roundedPercent}%</text>
   ${tiles}
-  <text x="28" y="517" class="footer">TRANSLATIONS LIVE IN THE APP · NO CLOUD PROFILE</text>
+  <text x="28" y="517" class="footer">COMMUNITY TRANSLATIONS · EVERY CONTRIBUTION COUNTS</text>
 </svg>`
   }
 
@@ -287,7 +287,7 @@ ${showExamples ? `  <text x="${box.x + 28}" y="${box.y + 68}" class="tile-exampl
   <text x="280" y="311" text-anchor="middle" class="status">${roundedPercent}%</text>
   <text x="280" y="329" text-anchor="middle" class="footer">COMPLETE</text>
   ${tiles}
-  <text x="362" y="378" class="footer">TRANSLATIONS LIVE IN THE APP · NO CLOUD PROFILE</text>
+  <text x="362" y="378" class="footer">COMMUNITY TRANSLATIONS · EVERY CONTRIBUTION COUNTS</text>
 </svg>`
 }
 
