@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.theme.*
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.border
@@ -117,7 +118,7 @@ internal fun PlayerDeckSheet(
         animated = animated,
         onDismiss = onDismiss
     ) {
-        if (LevyraIsNocturne) {
+        if (LevyraSkinManagesLayout) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(LevyraPlayerDesign.Gutter),
                 verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
@@ -130,9 +131,9 @@ internal fun PlayerDeckSheet(
                 ) {
                     Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(Nocturne78Palette.label)
+                    Text(LevyraSkinLabel)
                 }
-                Text(LevyraSkinStrings.managedForCode(strings.code), color = surfaces.contentMuted, fontSize = 14.sp)
+                Text(LevyraSkinStrings.managedForCode(strings.code, LevyraSkinLabel), color = surfaces.contentMuted, fontSize = 14.sp)
             }
             return@PlayerSheetFrame
         }

@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.library
 
+import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 
 import androidx.compose.ui.graphics.Shape
@@ -108,6 +109,13 @@ internal val LibraryPillShape = RoundedCornerShape(999.dp)
 internal fun LibraryHero(title: String, subtitle: String, onBack: (() -> Unit)? = null) {
     val colors = MaterialTheme.colorScheme
     val strings = LocalLevyraStrings.current
+    if (LevyraIsPrism) {
+        Column {
+            if (onBack != null) LevyraBackButton(onClick = onBack, contentDescription = strings.back)
+            com.luc4n3x.levyra.ui.PrismPageHeader(title, subtitle)
+        }
+        return
+    }
     Column(
         modifier = Modifier.fillMaxWidth().padding(top = if (onBack == null) 8.dp else 0.dp, bottom = 6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)

@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 
 import androidx.compose.animation.AnimatedContent
@@ -64,7 +65,7 @@ internal fun PlayerTrackMetadata(
     modifier: Modifier = Modifier
 ) {
     val nocturne = LevyraIsNocturne
-    val titleSize = if (nocturne) { if (compact) 22.sp else 25.sp } else if (compact) 23.sp else 27.sp
+    val titleSize = if (LevyraIsPrism) 23.sp else if (nocturne) { if (compact) 22.sp else 25.sp } else if (compact) 23.sp else 27.sp
     val artistSize = if (compact) 15.sp else 16.5.sp
 
     Row(
@@ -85,7 +86,7 @@ internal fun PlayerTrackMetadata(
                     color = surfaces.content,
                     fontSize = titleSize,
                     lineHeight = LevyraTypeRhythm.lineHeight(titleSize),
-                    fontWeight = if (nocturne) FontWeight.Medium else FontWeight.ExtraBold,
+                    fontWeight = if (nocturne || LevyraIsPrism) FontWeight.Medium else FontWeight.ExtraBold,
                     letterSpacing = (-0.8).sp,
                     maxLines = if (animationsEnabled) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
@@ -153,7 +154,7 @@ internal fun PlayerFavoriteButton(
         fill = fill,
         borderTop = outline,
         borderBottom = outline,
-        shape = rememberLevyraFavoriteMorphShape(favorite = isFavorite, animated = animated),
+        shape = if (LevyraIsPrism) androidx.compose.foundation.shape.CircleShape else rememberLevyraFavoriteMorphShape(favorite = isFavorite, animated = animated),
         modifier = Modifier
             .size(LevyraPlayerDesign.MinimumTouchTarget)
             .graphicsLayer {

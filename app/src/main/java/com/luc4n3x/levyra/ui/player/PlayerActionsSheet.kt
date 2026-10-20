@@ -308,15 +308,17 @@ private fun sheetBodyExit(animated: Boolean): ExitTransition =
         ExitTransition.None
     }
 
-private fun playerSheetColor(surfaces: PlayerSurfaceTokens): Color =
-    if (surfaces.amoled) {
+internal fun playerSheetColor(surfaces: PlayerSurfaceTokens): Color =
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism) {
+        com.luc4n3x.levyra.ui.theme.LevyraPanel
+    } else if (surfaces.amoled) {
         Color.Black
     } else {
         surfaces.glow.playerMix(PlayerDarkSurface, SheetSurfaceTint)
     }
 
 private fun playerSheetOutline(surfaces: PlayerSurfaceTokens): Color =
-    if (surfaces.amoled) surfaces.outline else Color.White.copy(alpha = 0.08f)
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism || surfaces.amoled) surfaces.outline else Color.White.copy(alpha = 0.08f)
 
 internal fun shouldDismissSheetOnDragEnd(
     dragOffsetPx: Float,

@@ -104,6 +104,10 @@ internal fun LevyraMixLauncherPanel(
     onOpenYourSound: () -> Unit,
     onOpenMixLab: () -> Unit
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraSkinManagesLayout) {
+        SkinMixPanel(familiarity, loading, accent, modifier, onFamiliarityChange, onStartMix, onOpenYourSound, onOpenMixLab)
+        return
+    }
     val colors = MaterialTheme.colorScheme
     val nocturne = LevyraIsNocturne
     val panelShape = RoundedCornerShape(if (nocturne) Nocturne78Design.panelCorner else 28.dp)
@@ -407,7 +411,7 @@ private fun MixToolAction(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MixBalanceSlider(
+internal fun MixBalanceSlider(
     familiarity: Float,
     enabled: Boolean,
     accent: Color,

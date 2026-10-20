@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.theme.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 import com.luc4n3x.levyra.ui.theme.Nocturne78Design
@@ -109,6 +110,10 @@ internal fun PlayerTransportBar(
     onRepeat: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    if (LevyraIsPrism) {
+        PrismTransport(isPlaying, isResolving, shuffleOn, repeatMode, labels, onShuffle, onPrevious, onTogglePlay, onNext, onRepeat, modifier)
+        return
+    }
     val height = if (compact) LevyraPlayerDesign.TransportHeightCompact else LevyraPlayerDesign.TransportHeight
     val skipGlyph = if (compact) LevyraPlayerDesign.TransportGlyphCompact else LevyraPlayerDesign.TransportGlyph
 

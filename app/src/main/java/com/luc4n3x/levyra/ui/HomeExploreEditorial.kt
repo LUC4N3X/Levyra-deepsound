@@ -223,6 +223,10 @@ internal fun DiscoveryEditorialCard(
 ) {
     val colors = MaterialTheme.colorScheme
     val isLight = LevyraIsLight
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism) {
+        PrismCollectionCard(title, subtitle, artwork, onOpen, modifier)
+        return
+    }
     if (LevyraIsNocturne) {
         NocturneCollectionCard(title, subtitle, artwork, onOpen, modifier)
         return

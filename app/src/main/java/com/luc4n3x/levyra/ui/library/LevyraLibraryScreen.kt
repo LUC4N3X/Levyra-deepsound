@@ -1496,7 +1496,7 @@ internal fun LevyraPlaylistDetailScreen(
     }
     val palette by rememberArtworkPalette(paletteKey, heroArtworkUrl, fallbackPalette)
     val lightTheme = LevyraActivePalette.isLight
-    val targetColors = remember(palette, lightTheme) {
+    val targetColors = remember(palette, lightTheme, LevyraActivePalette) {
         immersiveMediaColors(Color(palette.start), Color(palette.end), lightTheme)
     }
     val colors = animatedImmersiveMediaColors(targetColors, animated = state.animationsEnabled, labelPrefix = "user-playlist")

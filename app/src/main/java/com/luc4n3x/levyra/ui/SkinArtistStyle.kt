@@ -1,0 +1,47 @@
+package com.luc4n3x.levyra.ui
+
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.luc4n3x.levyra.ui.theme.*
+
+internal fun artistHeroNameSize(name: String) = when {
+    name.length <= 12 -> 48.sp
+    name.length <= 18 -> 40.sp
+    name.length <= 28 -> 34.sp
+    else -> 28.sp
+}
+
+@Composable
+internal fun artistHeroNameWeight(): FontWeight? = when {
+    LevyraIsTorque -> FontWeight.Bold
+    LevyraIsPrism -> FontWeight.Normal
+    LevyraIsNocturne -> FontWeight.Medium
+    else -> LevyraType.heroTitle.fontWeight
+}
+
+internal fun artistHeroOverlineColor(): Color = when {
+    LevyraIsTorque -> Color.White.copy(alpha = 0.85f)
+    LevyraSkinManagesLayout -> LevyraCyan
+    else -> LevyraText.copy(alpha = 0.78f)
+}
+
+@Composable
+internal fun artistPortraitFrame(): Modifier {
+    if (LevyraIsTorque || !LevyraSkinManagesLayout) return Modifier
+    if (LevyraIsNocturne) {
+        val shape = RoundedCornerShape(Nocturne78Design.artworkCorner)
+        return Modifier.statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 144.dp)
+            .border(1.dp, LevyraActivePalette.outline, shape).padding(8.dp).clip(shape)
+    }
+    return Modifier.statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 134.dp)
+        .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp, bottomStart = 28.dp, bottomEnd = 8.dp))
+}
