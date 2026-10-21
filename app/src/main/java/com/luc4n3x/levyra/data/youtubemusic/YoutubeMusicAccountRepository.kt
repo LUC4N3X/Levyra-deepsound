@@ -7,7 +7,10 @@ import com.luc4n3x.levyra.data.YoutubeMusicPlaylistPageParser
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.Track
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.util.UUID
@@ -24,13 +27,21 @@ internal data class YoutubeMusicLibraryEntry(
     val title: String,
     val subtitle: String,
     val thumbnailUrl: String,
-    val collection: YoutubeMusicCollection
+    val collection: YoutubeMusicCollection,
+    val owned: Boolean = false
 )
 
 internal data class YoutubeMusicLibraryPage(
     val entries: List<YoutubeMusicLibraryEntry> = emptyList(),
     val tracks: List<Track> = emptyList(),
     val continuation: String = ""
+)
+
+internal data class YoutubeMusicLibraryShelf(
+    val accountId: String,
+    val languageCode: String,
+    val playlists: List<YoutubeMusicLibraryEntry>,
+    val albums: List<YoutubeMusicLibraryEntry>
 )
 
 internal data class YoutubeMusicHome(
@@ -63,9 +74,15 @@ internal class YoutubeMusicAccountRepository(context: Context) {
             root
         } else YoutubeMusicAccountParser.content(root) ?: throw YoutubeMusicProtocolException()
         val overview = if (trackPage) null else parser.parseSearchOverview(JSONObject().put("contents", content), "library")
+        val owned = if (!trackPage && collection == YoutubeMusicCollection.Playlists) {
+            YoutubeMusicAccountParser.ownedPlaylistBrowseIds(content)
+        } else {
+            emptySet()
+        }
         val entries = when (collection) {
             YoutubeMusicCollection.Playlists -> overview?.playlists.orEmpty().map {
-                YoutubeMusicLibraryEntry(it.browseId.ifBlank { "VL${it.playlistId}" }, it.title, it.author, it.thumbnailUrl, collection)
+                val browseId = it.browseId.ifBlank { "VL${it.playlistId}" }
+                YoutubeMusicLibraryEntry(browseId, it.title, it.author, it.thumbnailUrl, collection, owned = browseId in owned)
             }
             YoutubeMusicCollection.Albums -> overview?.albums.orEmpty().map {
                 YoutubeMusicLibraryEntry(it.browseId, it.title, it.artist, it.thumbnailUrl, collection)
@@ -92,6 +109,24 @@ internal class YoutubeMusicAccountRepository(context: Context) {
             orbit = sections.getOrNull(orbitIndex)?.tracks.orEmpty(),
             sections = sections.filterIndexed { index, _ -> index != orbitIndex },
             albums = parser.parseHomeAlbums(root)
+        )
+    }
+
+    suspend fun libraryShelf(session: YoutubeMusicSession, language: String): YoutubeMusicLibraryShelf = coroutineScope {
+        val playlists = async { runCatching { page(session, YoutubeMusicCollection.Playlists, language) } }
+        val albums = async { runCatching { page(session, YoutubeMusicCollection.Albums, language) } }
+        val playlistPage = playlists.await()
+        val albumPage = albums.await()
+        listOf(playlistPage, albumPage).forEach { result ->
+            val error = result.exceptionOrNull() ?: return@forEach
+            if (error is CancellationException || error is YoutubeMusicSessionExpired) throw error
+        }
+        if (playlistPage.isFailure && albumPage.isFailure) throw requireNotNull(playlistPage.exceptionOrNull())
+        YoutubeMusicLibraryShelf(
+            accountId = session.account.id,
+            languageCode = language,
+            playlists = youtubeMusicShelfPlaylists(playlistPage.getOrNull()?.entries.orEmpty()),
+            albums = albumPage.getOrNull()?.entries.orEmpty().take(YOUTUBE_MUSIC_SHELF_LIMIT)
         )
     }
 
@@ -127,3 +162,12 @@ internal class YoutubeMusicAccountRepository(context: Context) {
     }
 
 }
+
+internal fun youtubeMusicShelfPlaylists(entries: List<YoutubeMusicLibraryEntry>): List<YoutubeMusicLibraryEntry> =
+    entries
+        .filterNot { entry -> entry.browseId in YOUTUBE_MUSIC_SYSTEM_PLAYLISTS }
+        .sortedByDescending(YoutubeMusicLibraryEntry::owned)
+        .take(YOUTUBE_MUSIC_SHELF_LIMIT)
+
+private val YOUTUBE_MUSIC_SYSTEM_PLAYLISTS = setOf("VLLM", "VLSE")
+private const val YOUTUBE_MUSIC_SHELF_LIMIT = 20
