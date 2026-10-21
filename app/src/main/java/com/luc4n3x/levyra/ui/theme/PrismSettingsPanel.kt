@@ -39,6 +39,14 @@ internal fun PrismSettingsPanel(settings: PrismSettings, onSettings: (PrismSetti
 }
 
 @Composable
+internal fun IvorySettingsPanel(settings: IvorySettings, onSettings: (IvorySettings) -> Unit) {
+    val copy = LevyraPrismStrings.forCode(LocalLevyraStrings.current.code)
+    Column(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        PrismChoice(copy.appearance, listOf(IvoryAppearance.Light to copy.light, IvoryAppearance.Dark to copy.dark, IvoryAppearance.Automatic to copy.automatic), settings.appearance) { onSettings(settings.copy(appearance = it)) }
+    }
+}
+
+@Composable
 internal fun TorqueSettingsPanel(settings: TorqueSettings, onSettings: (TorqueSettings) -> Unit) {
     val copy = LevyraPrismStrings.forCode(LocalLevyraStrings.current.code)
     Column(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {

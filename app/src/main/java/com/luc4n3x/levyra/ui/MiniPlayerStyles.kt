@@ -197,6 +197,9 @@ internal fun rememberMiniPlayerPalette(
     if (LevyraIsNocturne) {
         return MiniPlayerPalette(scheme.primary, scheme.primary, scheme.surfaceContainerHigh, scheme.onSurface, scheme.onSurfaceVariant, true)
     }
+    if (LevyraIsIvory) {
+        return MiniPlayerPalette(IvoryDesign.rose, IvoryDesign.ink, LevyraActivePalette.ink, scheme.onSurface, scheme.onSurfaceVariant, !LevyraActivePalette.isLight)
+    }
     if (LevyraIsPrism) {
         return MiniPlayerPalette(scheme.primary, scheme.tertiary, prismGlassColor(), scheme.onSurface, scheme.onSurfaceVariant, !LevyraActivePalette.isLight)
     }
@@ -1281,7 +1284,7 @@ private fun MiniPlayCore(
 }
 
 private fun miniPlayFillColor(buttons: MiniButtonStyle, palette: MiniPlayerPalette): Color = when (buttons) {
-    MiniButtonStyle.Filled -> if (palette.onDark) palette.accent.playerMix(Color.White, 0.62f) else palette.accent
+    MiniButtonStyle.Filled -> if (LevyraIsIvory) IvoryDesign.ink else if (palette.onDark) palette.accent.playerMix(Color.White, 0.62f) else palette.accent
     MiniButtonStyle.Tonal -> palette.accent.copy(alpha = if (palette.onDark) 0.30f else 0.18f)
     else -> Color.Transparent
 }

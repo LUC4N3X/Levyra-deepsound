@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.library
 
+import com.luc4n3x.levyra.ui.levyraTabContentBottomPadding
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
@@ -150,7 +151,7 @@ internal fun PersonalCollectionScreen(
                     start = 16.dp,
                     end = 16.dp,
                     top = 8.dp,
-                    bottom = if (state.currentTrack != null || selection.isActive) 230.dp else 116.dp
+                    bottom = if (selection.isActive) 230.dp else levyraTabContentBottomPadding(state.currentTrack != null)
                 ),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {

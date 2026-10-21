@@ -267,6 +267,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -2028,6 +2029,7 @@ fun LevyraApp(
     when (state.interfaceSettings.skin) {
         LevyraSkin.Prism -> PrismThemeEffect(state.interfaceSettings)
         LevyraSkin.Torque -> TorqueThemeEffect(state.interfaceSettings, state.currentTrack)
+        LevyraSkin.Ivory -> IvoryThemeEffect(state.interfaceSettings)
         else -> Unit
     }
     val pureBlack = state.interfaceSettings.pureBlack
@@ -2041,7 +2043,7 @@ fun LevyraApp(
         pureBlack,
         customThemes
     ) {
-        if (state.interfaceSettings.skin == LevyraSkin.Prism || state.interfaceSettings.skin == LevyraSkin.Torque) return@LaunchedEffect
+        if (state.interfaceSettings.skin == LevyraSkin.Prism || state.interfaceSettings.skin == LevyraSkin.Torque || state.interfaceSettings.skin == LevyraSkin.Ivory) return@LaunchedEffect
         LevyraThemeController.apply(
             state.themePreset,
             accentTrack?.accentStart,
@@ -2058,7 +2060,7 @@ fun LevyraApp(
         val nocturne = state.interfaceSettings.skin == LevyraSkin.Nocturne78
         val base = when (state.interfaceSettings.skin) {
             LevyraSkin.Nocturne78 -> Nocturne78Palette
-            LevyraSkin.Prism, LevyraSkin.Torque -> LevyraActivePalette
+            LevyraSkin.Prism, LevyraSkin.Torque, LevyraSkin.Ivory -> LevyraActivePalette
             LevyraSkin.Default -> LevyraThemes.byId(state.themePreset)
         }
         val palette = if (pureBlack && state.interfaceSettings.skin == LevyraSkin.Default) LevyraThemeController.asPureBlack(base) else base
@@ -3870,6 +3872,10 @@ private fun tabBarBottomContentInset(miniPlayerVisible: Boolean, animationsEnabl
 }
 
 @Composable
+internal fun levyraTabContentBottomPadding(miniPlayerVisible: Boolean): Dp =
+    tabBarBottomContentInset(miniPlayerVisible, LocalAnimationsEnabled.current) + 16.dp
+
+@Composable
 private fun animatedBottomContentInset(
     collapsed: Dp,
     expanded: Dp,
@@ -5376,7 +5382,7 @@ private fun ArtistOverlay(
         LazyColumn(
             state = artistListState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = if (state.currentTrack != null) 200.dp else 110.dp),
+            contentPadding = PaddingValues(bottom = levyraTabContentBottomPadding(state.currentTrack != null)),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             when {
@@ -16030,7 +16036,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
         ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = if (state.currentTrack != null) 188.dp else 100.dp),
+            contentPadding = PaddingValues(bottom = levyraTabContentBottomPadding(state.currentTrack != null)),
             verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
             if (queryClean.isEmpty()) {
@@ -17271,7 +17277,7 @@ private fun DownloadsFolderOverlay(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = if (state.currentTrack != null) 194.dp else 108.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = levyraTabContentBottomPadding(state.currentTrack != null)),
             verticalArrangement = Arrangement.spacedBy(downloadsStyle.gap)
         ) {
             item(contentType = "downloads-header") {
@@ -17344,7 +17350,7 @@ private fun LibraryScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = if (state.currentTrack != null) 194.dp else 108.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = levyraTabContentBottomPadding(state.currentTrack != null)),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             item(key = "lib-header", contentType = "lib-header") {
@@ -18576,7 +18582,7 @@ private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiSta
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = if (state.currentTrack != null) 220.dp else 100.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = levyraTabContentBottomPadding(state.currentTrack != null)),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
@@ -21629,7 +21635,7 @@ private fun SettingsOverlay(
     fun categoryTitle(value: String): String = settingsCategoryTitle(value, categoryLocale)
     val categories = remember(strings.code, LevyraActivePalette) {
         listOf(
-            SettingsCategoryMeta("skins", com.luc4n3x.levyra.ui.i18n.LevyraSkinStrings.forCode(strings.code).title, "Levyra Default · Nocturne 78 · Prism · Torque", Icons.Rounded.Style, LevyraViolet, SettingsHubGroup.Appearance),
+            SettingsCategoryMeta("skins", com.luc4n3x.levyra.ui.i18n.LevyraSkinStrings.forCode(strings.code).title, "Levyra Default · Nocturne 78 · Prism · Torque · Ivory", Icons.Rounded.Style, LevyraViolet, SettingsHubGroup.Appearance),
             SettingsCategoryMeta("design", categoryTitle(strings.design), "${strings.theme} · ${strings.animations} · ${strings.dynamicColor}", Icons.Rounded.Palette, LevyraViolet, SettingsHubGroup.Appearance),
             SettingsCategoryMeta("home", categoryTitle(strings.homeInterfaceSection), "${strings.compactHome} · ${strings.newReleases} · ${strings.top50Charts}", Icons.Rounded.Home, LevyraViolet, SettingsHubGroup.Appearance),
             SettingsCategoryMeta("player", categoryTitle(strings.player), "${strings.advancedGestures} · ${strings.sponsorBlock} · ${strings.skipSilence}", Icons.Rounded.PlayArrow, LevyraPink, SettingsHubGroup.Listening),
@@ -24012,7 +24018,7 @@ private fun PlayerColorModePreview(mode: PlayerColorMode, customAccent: Int) {
 private fun SettingsChoiceChip(label: String, active: Boolean, onClick: () -> Unit) {
     val corner = levyraExpressiveToggleCorner(active, unchecked = 12.dp, checkedCorner = 22.dp, label = "settingsChoiceCorner")
     val skinned = SkinChrome.active
-    val selectedBorder = if (LevyraIsTorque) LevyraActivePalette.blue else SkinChrome.chipSelectedContent
+    val selectedBorder = if (LevyraIsTorque || LevyraIsIvory) LevyraActivePalette.blue else SkinChrome.chipSelectedContent
     Surface(
         selected = active,
         onClick = onClick,
@@ -24089,6 +24095,15 @@ private fun SettingsSectionLabel(text: String) {
             if (character.isLowerCase()) character.titlecase(locale) else character.toString()
         }
     }
+    if (LevyraIsIvory) {
+        Text(
+            title, color = IvoryDesign.onInk, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 18.dp, bottom = 8.dp).fillMaxWidth().heightIn(min = 52.dp)
+                .clip(RoundedCornerShape(PrismDesign.controlCorner)).background(IvoryDesign.ink)
+                .wrapContentHeight(Alignment.CenterVertically).padding(horizontal = 18.dp).semantics { heading() }
+        )
+        return
+    }
     Text(
         SkinChrome.label(title, locale),
         color = if (LevyraIsPrism && !LevyraIsTorque) LevyraMuted else LevyraCyan,
@@ -24111,7 +24126,7 @@ private fun SettingsToggle(icon: ImageVector, title: String, subtitle: String, c
         ) {
             SettingsTileIcon(icon = icon, accent = LocalSettingsAccent.current ?: LevyraCyan)
             SettingsTileText(title = title, subtitle = subtitle, modifier = Modifier.weight(1f))
-            if (LevyraIsNocturne || LevyraIsTorque) SkinSwitch(checked) else Switch(
+            if (LevyraIsNocturne || LevyraIsTorque || LevyraIsIvory) SkinSwitch(checked) else Switch(
                 checked = checked,
                 onCheckedChange = null,
                 thumbContent = if (checked) {
@@ -26635,8 +26650,8 @@ private fun SearchSectionHeader(title: String, showAll: Boolean, onShowAll: () -
             color = LevyraText,
             fontSize = if (LevyraIsTorque || LevyraIsNocturne) 18.sp else 24.sp,
             lineHeight = 28.sp,
-            fontWeight = if (LevyraIsTorque) FontWeight.Bold else if (LevyraSkinManagesLayout) FontWeight.Normal else FontWeight.Black,
-            letterSpacing = if (LevyraIsTorque || LevyraIsNocturne) 1.8.sp else (-0.3).sp,
+            fontWeight = if (LevyraIsTorque) FontWeight.Bold else if (LevyraIsIvory) FontWeight.SemiBold else if (LevyraSkinManagesLayout) FontWeight.Normal else FontWeight.Black,
+            letterSpacing = if (LevyraIsTorque || LevyraIsNocturne) 1.8.sp else if (LevyraIsIvory) 0.2.sp else (-0.3).sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
@@ -28930,12 +28945,14 @@ private fun skinManagesStudio(id: String): Boolean =
 
 private fun searchFieldContainer(focused: Boolean, scheme: androidx.compose.material3.ColorScheme): Color = when {
     LevyraIsTorque -> Color(0xFFF1F1F1)
+    LevyraIsIvory -> LevyraActivePalette.ink
     LevyraIsPrism -> if (focused) scheme.surfaceContainerHigh else scheme.surfaceContainer
     else -> if (focused) scheme.surfaceContainerHighest else scheme.surfaceContainerHigh
 }
 
 private fun searchFieldIconTint(active: Boolean, scheme: androidx.compose.material3.ColorScheme): Color = when {
     LevyraIsTorque -> Color(0xFF111111)
+    LevyraIsIvory -> LevyraText
     LevyraIsPrism -> if (active) scheme.primary else scheme.onSurfaceVariant
     else -> if (active) scheme.onPrimaryContainer else scheme.onSurfaceVariant
 }
@@ -28990,6 +29007,9 @@ private fun SettingsSkinSelection(interfaceSettings: LevyraInterfaceSettings, on
     }
     if (interfaceSettings.skin == LevyraSkin.Torque) {
         TorqueSettingsPanel(interfaceSettings.torque) { onInterfaceSettings(interfaceSettings.copy(torque = it)) }
+    }
+    if (interfaceSettings.skin == LevyraSkin.Ivory) {
+        IvorySettingsPanel(interfaceSettings.ivory) { onInterfaceSettings(interfaceSettings.copy(ivory = it)) }
     }
 }
 

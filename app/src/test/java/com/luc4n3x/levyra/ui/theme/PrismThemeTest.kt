@@ -61,6 +61,24 @@ class PrismThemeTest {
         assertTrue(LevyraSkinManagesLayout)
     }
 
+    @Test fun ivoryDefaultsToLightAndKeepsInkReadableInBothAppearances() {
+        assertTrue(ivoryPalette().isLight)
+        assertFalse(ivoryPalette(IvorySettings(IvoryAppearance.Dark)).isLight)
+        assertTrue(ivoryPalette(IvorySettings(IvoryAppearance.Automatic), systemDark = false).isLight)
+        assertFalse(ivoryPalette(IvorySettings(IvoryAppearance.Automatic), systemDark = true).isLight)
+        IvoryAppearance.entries.forEach { appearance ->
+            val p = ivoryPalette(IvorySettings(appearance), systemDark = true)
+            assertTrue(playerContrastRatio(p.text, p.black) >= 7f)
+            assertTrue(playerContrastRatio(p.muted, p.black) >= 4.5f)
+            assertTrue(playerContrastRatio(p.black, p.blue) >= 7f)
+        }
+        LevyraThemeController.apply(LevyraThemes.FROST, skin = LevyraSkin.Ivory)
+        assertTrue(LevyraIsIvory)
+        assertTrue(LevyraIsPrism)
+        assertFalse(LevyraIsTorque)
+        assertTrue(LevyraSkinManagesLayout)
+    }
+
     @Test fun playerSheetsKeepReadableContentInBothAppearances() {
         listOf(PrismAppearance.Light, PrismAppearance.Night).forEach { appearance ->
             val settings = PrismSettings(appearance = appearance)

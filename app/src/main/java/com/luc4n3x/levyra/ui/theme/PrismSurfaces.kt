@@ -17,6 +17,7 @@ import com.luc4n3x.levyra.ui.player.PlayerSurfaceTokens
 internal fun prismGlassColor(): Color {
     val capabilities = LocalLevyraVisualCapabilities.current
     val opaque = activePrismSettings.translucency == PrismTranslucency.Reduced || !capabilities.heavyBlur
+    if (LevyraIsIvory) return LevyraActivePalette.ink
     return MaterialTheme.colorScheme.surfaceContainer.copy(alpha = if (opaque) 1f else 0.96f)
 }
 
@@ -33,7 +34,7 @@ internal fun PrismAtmosphere(modifier: Modifier = Modifier) {
 @Composable
 internal fun PrismPlayerAtmosphere(modifier: Modifier = Modifier) {
     val palette = LevyraActivePalette
-    if (LevyraIsTorque) {
+    if (LevyraIsTorque || LevyraIsIvory) {
         Box(modifier.fillMaxSize().background(palette.black))
         return
     }
@@ -51,6 +52,6 @@ internal fun PrismPlayerAtmosphere(modifier: Modifier = Modifier) {
 internal fun prismPlayerSurfaces(palette: LevyraPalette): PlayerSurfaceTokens = PlayerSurfaceTokens(
     amoled = false, control = palette.panelSoft, controlQuiet = palette.panel, outline = palette.outline,
     active = palette.panelSoft, activeContent = palette.cyan, tonal = palette.panel,
-    hero = palette.cyan, heroContent = Color.White,
+    hero = palette.cyan, heroContent = if (palette.id == IvoryPaletteId) palette.black else Color.White,
     content = palette.text, contentMuted = palette.muted, contentFaint = palette.muted, glow = Color.Transparent
 )

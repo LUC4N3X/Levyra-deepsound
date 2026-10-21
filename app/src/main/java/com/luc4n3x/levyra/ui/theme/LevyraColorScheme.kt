@@ -54,6 +54,14 @@ internal fun levyraReadableAccent(accent: Color, content: Color): Color {
 }
 
 internal fun levyraColorScheme(palette: LevyraPalette): ColorScheme {
+    if (palette.id == IvoryPaletteId) return levyraColorScheme(palette.copy(id = "")).copy(
+        primary = palette.cyan, onPrimary = palette.black,
+        primaryContainer = palette.panelSoft, onPrimaryContainer = palette.text,
+        secondaryContainer = palette.panel, onSecondaryContainer = palette.text,
+        tertiary = palette.pink, onTertiary = Color.White,
+        tertiaryContainer = palette.panel, onTertiaryContainer = palette.pink,
+        surfaceTint = Color.Transparent
+    )
     if (palette.id == Nocturne78Palette.id) return darkColorScheme(
         primary = palette.cyan, onPrimary = palette.black,
         primaryContainer = palette.panelSoft, onPrimaryContainer = palette.cyan,

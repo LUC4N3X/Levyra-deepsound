@@ -50,19 +50,33 @@ internal fun PrismPageHeader(title: String, subtitle: String = "", actions: @Com
 @Composable
 internal fun PrismPlayDisc(playing: Boolean, resolving: Boolean, size: Dp, modifier: Modifier = Modifier) {
     Box(modifier.size(size).clip(CircleShape).background(PrismAccent.gradient()), contentAlignment = Alignment.Center) {
-        if (resolving) LevyraLoadingIndicator(color = Color.White, modifier = Modifier.size(size * 0.42f))
-        else Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = Color.White, modifier = Modifier.size(size * 0.5f))
+        val glyph = if (LevyraIsIvory) IvoryDesign.onInk else Color.White
+        if (resolving) LevyraLoadingIndicator(color = glyph, modifier = Modifier.size(size * 0.42f))
+        else Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = glyph, modifier = Modifier.size(size * 0.5f))
     }
 }
 
 @Composable
-internal fun PrismHomeHeader(greeting: String, date: String, hero: StudioHero?, inset: Dp, onSearch: () -> Unit, onSettings: () -> Unit) {
+internal fun PrismHomeHeader(
+    greeting: String, date: String, hero: StudioHero?, inset: Dp, onSearch: () -> Unit, onSettings: () -> Unit,
+    dayPart: String = "", name: String = ""
+) {
+    if (LevyraIsIvory) {
+        IvoryHomeHeader(greeting, date, hero, inset, onSearch, onSettings, dayPart, name)
+        return
+    }
     val strings = LocalLevyraStrings.current
     Column(Modifier.fillMaxWidth().padding(horizontal = inset)) {
-        PrismPageHeader(greeting, date) {
+        val actions: @Composable RowScope.() -> Unit = {
             IconButton(onClick = onSearch, modifier = Modifier.size(48.dp)) { Icon(Icons.Outlined.Search, strings.search, tint = LevyraText) }
             IconButton(onClick = onSettings, modifier = Modifier.size(48.dp)) { Icon(Icons.Outlined.Settings, strings.settings, tint = LevyraText) }
         }
+        if (name.isNotBlank()) {
+            Row(Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                SkinNameGreeting(greeting, dayPart, name, Modifier.weight(1f))
+                actions()
+            }
+        } else PrismPageHeader(greeting, date, actions)
         if (hero != null) {
             Spacer(Modifier.height(8.dp))
             if (LevyraIsTorque) TorqueSoundtrackHero(hero, strings.play) else PrismSoundtrackHero(hero, strings.play)
@@ -73,6 +87,10 @@ internal fun PrismHomeHeader(greeting: String, date: String, hero: StudioHero?, 
 
 @Composable
 internal fun PrismCompactShelf(items: List<StudioShelfItem>, isPlaying: Boolean, inset: Dp, modifier: Modifier) {
+    if (LevyraIsIvory) {
+        IvoryCompactShelf(items, isPlaying, inset, modifier)
+        return
+    }
     val pages = remember(items) { items.chunked(3) }
     LazyRow(modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = (inset - 8.dp).coerceAtLeast(0.dp)), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         itemsIndexed(pages, key = { index, page -> "$index:${page.first().key}" }) { _, page ->
@@ -100,25 +118,31 @@ internal fun PrismCompactShelf(items: List<StudioShelfItem>, isPlaying: Boolean,
 
 @Composable
 internal fun PrismCollectionCard(title: String, subtitle: String, artwork: Track?, onOpen: () -> Unit, modifier: Modifier) {
+    val ivory = LevyraIsIvory
+    val content = if (ivory) IvoryDesign.onInk else LevyraText
     Row(
-        modifier.fillMaxWidth().clip(PrismDesign.cut(PrismDesign.surfaceCorner)).background(LevyraPanel)
+        modifier.fillMaxWidth().clip(PrismDesign.cut(PrismDesign.surfaceCorner)).background(if (ivory) IvoryDesign.ink else LevyraPanel)
             .levyraPressable(onClick = onOpen, onClickLabel = title, role = Role.Button).padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(title, color = LevyraText, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(subtitle, color = LevyraMuted, style = MaterialTheme.typography.bodyMedium, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            Text(title, color = content, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(subtitle, color = if (ivory) content.copy(alpha = 0.7f) else LevyraMuted, style = MaterialTheme.typography.bodyMedium, maxLines = 3, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(4.dp))
-            Box(Modifier.size(36.dp).clip(CircleShape).background(PrismAccent.Tint), contentAlignment = Alignment.Center) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
+            Box(Modifier.size(36.dp).clip(CircleShape).background(if (ivory) IvoryDesign.onInk else PrismAccent.Tint), contentAlignment = Alignment.Center) {
+                Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = if (ivory) IvoryDesign.ink else LevyraCyan, modifier = Modifier.size(20.dp))
             }
         }
-        if (artwork != null) Box(Modifier.size(96.dp).clip(RoundedCornerShape(PrismDesign.controlCorner))) { CoverImage(artwork, Modifier.fillMaxSize()) }
+        if (artwork != null) Box(Modifier.size(96.dp).clip(if (ivory) IvoryDesign.coverShape else RoundedCornerShape(PrismDesign.controlCorner))) { CoverImage(artwork, Modifier.fillMaxSize()) }
     }
 }
 
 @Composable
 internal fun PrismArtworkShelf(items: List<StudioShelfItem>, isPlaying: Boolean, inset: Dp, modifier: Modifier) {
+    if (LevyraIsIvory) {
+        IvoryShowcaseShelf(items, isPlaying, inset, modifier)
+        return
+    }
     LazyRow(modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         itemsIndexed(items, key = { _, item -> item.key }) { _, item ->
             Column(
