@@ -454,6 +454,8 @@
     "a0385a48": { "sig": "Le(25,1424,INPUT)", "nClass": "qt", "sts": 20742, "aliases": ["6636507e"] },
     "922b5303": { "sig": "sa(25,1424,INPUT)", "nClass": "ez", "sts": 20742, "aliases": ["81618434"] },
     "050b1fde": { "sig": "Ga(17,5122,INPUT)", "nClass": "Wh", "sts": 20745, "aliases": ["14c04b7e"] },
-    "5cfa1694": { "sig": "zl(17,5122,INPUT)", "nClass": "Gx", "sts": 20745, "aliases": ["fa84a16e"] }
+    "5cfa1694": { "sig": "zl(17,5122,INPUT)", "nClass": "Gx", "sts": 20745, "aliases": ["fa84a16e"] },
+    "108fcbd9": { "sig": "ac(17,1452,INPUT)", "nClass": "hc", "sts": 20746, "aliases": ["8322c252"] },
+    "96be8342": { "sig": "Ka(17,1452,INPUT)", "nClass": "Ja", "sts": 20746, "aliases": ["a7dc8dd0"] }
   }
 }
