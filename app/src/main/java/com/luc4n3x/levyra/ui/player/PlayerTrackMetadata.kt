@@ -18,6 +18,11 @@ import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.AddCircleOutline
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.StarBorder
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -91,7 +96,7 @@ internal fun PlayerTrackMetadata(
                     fontSize = titleSize,
                     lineHeight = LevyraTypeRhythm.lineHeight(titleSize),
                     fontWeight = metadataTitleWeight(),
-                    letterSpacing = if (LevyraIsSpotify) (-0.4).sp else (-0.8).sp,
+                    letterSpacing = if (LevyraIsSpotify) (-0.4).sp else if (LevyraIsAppleMusic) (-0.3).sp else (-0.8).sp,
                     maxLines = if (animationsEnabled) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.levyraMarquee(
@@ -106,7 +111,7 @@ internal fun PlayerTrackMetadata(
                         fontFamily = MaterialTheme.typography.titleMedium.fontFamily,
                         fontSize = artistSize,
                         lineHeight = LevyraTypeRhythm.lineHeight(artistSize),
-                        fontWeight = if (LevyraIsSpotify) FontWeight.Normal else FontWeight.Medium,
+                        fontWeight = if (LevyraIsSpotify || LevyraIsAppleMusic) FontWeight.Normal else FontWeight.Medium,
                         letterSpacing = (-0.1).sp
                     ),
                     onClickLabel = openArtistLabel,
@@ -129,6 +134,7 @@ internal fun PlayerTrackMetadata(
 
 private fun metadataTitleSize(compact: Boolean): TextUnit = when {
     LevyraIsSpotify -> 22.sp
+    LevyraIsAppleMusic -> 20.sp
     LevyraIsPrism -> 23.sp
     LevyraIsNocturne -> if (compact) 22.sp else 25.sp
     compact -> 23.sp
@@ -137,12 +143,14 @@ private fun metadataTitleSize(compact: Boolean): TextUnit = when {
 
 private fun metadataArtistSize(compact: Boolean): TextUnit = when {
     LevyraIsSpotify -> 16.sp
+    LevyraIsAppleMusic -> 20.sp
     compact -> 15.sp
     else -> 16.5.sp
 }
 
 private fun metadataTitleWeight(): FontWeight = when {
     LevyraIsSpotify -> FontWeight.Bold
+    LevyraIsAppleMusic -> FontWeight.Medium
     LevyraIsNocturne || LevyraIsPrism -> FontWeight.Medium
     else -> FontWeight.ExtraBold
 }
@@ -185,6 +193,32 @@ internal fun PlayerFavoriteButton(
                 if (isFavorite) Icons.Rounded.CheckCircle else Icons.Rounded.AddCircleOutline, label,
                 tint = if (isFavorite) SpotifyDesign.green else SpotifyDesign.text, modifier = Modifier.size(28.dp)
             )
+        }
+        return
+    }
+    if (LevyraIsAppleMusic) {
+        IconButton(
+            onClick = {
+                haptics.perform(LevyraHapticAction.Favorite)
+                onToggle()
+            },
+            modifier = Modifier.size(LevyraPlayerDesign.MinimumTouchTarget)
+                .graphicsLayer {
+                    scaleX = pop.value
+                    scaleY = pop.value
+                }
+                .semantics { toggleableState = ToggleableState(isFavorite) }
+        ) {
+            Box(
+                Modifier.size(30.dp).clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(if (isFavorite) AppleMusicVibrant.primary else AppleMusicVibrant.quaternary),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    if (isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder, label,
+                    tint = if (isFavorite) Color.Black.copy(alpha = 0.78f) else AppleMusicVibrant.primary, modifier = Modifier.size(19.dp)
+                )
+            }
         }
         return
     }

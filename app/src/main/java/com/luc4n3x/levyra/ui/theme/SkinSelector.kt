@@ -87,6 +87,7 @@ private fun LevyraSkin.title(): String = when (this) {
     LevyraSkin.Torque -> "Torque"
     LevyraSkin.Ivory -> "Ivory"
     LevyraSkin.SpotifyStyle -> "Spotify Style"
+    LevyraSkin.AppleMusicStyle -> "Apple Music Style"
 }
 
 @Composable
@@ -100,6 +101,7 @@ internal fun SkinSelector(selected: LevyraSkin, onSelect: (LevyraSkin) -> Unit) 
         LevyraSkin.Torque -> LevyraPrismStrings.forCode(code).torqueBody
         LevyraSkin.Ivory -> LevyraPrismStrings.forCode(code).ivoryBody
         LevyraSkin.SpotifyStyle -> LevyraPrismStrings.forCode(code).spotifyBody
+        LevyraSkin.AppleMusicStyle -> LevyraPrismStrings.forCode(code).appleMusicBody
     }
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         SkinStage(selected)
@@ -196,7 +198,7 @@ private fun SkinCarousel(selected: LevyraSkin, onSelect: (LevyraSkin) -> Unit) {
                     .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.78f))))
                     .padding(start = 14.dp, end = 14.dp, top = 28.dp, bottom = 14.dp)
             ) {
-                Text(skin.title(), style = MaterialTheme.typography.titleSmall, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(skin.title(), style = MaterialTheme.typography.titleSmall, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             if (active) {
                 Box(
@@ -220,6 +222,7 @@ private fun skinStagePolygon(skin: LevyraSkin): RoundedPolygon = when (skin) {
     LevyraSkin.Torque -> MaterialShapes.SoftBurst
     LevyraSkin.Ivory -> MaterialShapes.Flower
     LevyraSkin.SpotifyStyle -> MaterialShapes.Cookie12Sided
+    LevyraSkin.AppleMusicStyle -> MaterialShapes.Pill
 }
 
 private fun skinAccent(skin: LevyraSkin, primary: Color): Color =
@@ -252,6 +255,7 @@ private fun SkinPhonePreview(skin: LevyraSkin, corner: Dp, modifier: Modifier) {
             LevyraSkin.Torque -> torqueBand(palette, w, h)
             LevyraSkin.Ivory -> ivoryPreview(palette, w, h)
             LevyraSkin.SpotifyStyle -> spotifyPreview(palette, w, h)
+            LevyraSkin.AppleMusicStyle -> appleMusicPreview(palette, w, h)
             else -> playerPreview(skin, palette, w, h)
         }
     }
@@ -302,6 +306,7 @@ private fun DrawScope.previewPlayButton(skin: LevyraSkin, palette: LevyraPalette
         }
         LevyraSkin.Ivory -> drawRoundRect(palette.blue, center - Offset(radius * 2.4f, radius), Size(radius * 4.8f, radius * 2), CornerRadius(radius))
         LevyraSkin.SpotifyStyle -> drawCircle(palette.cyan, radius, center)
+        LevyraSkin.AppleMusicStyle -> drawCircle(palette.panel, radius, center)
     }
     val glyph = Path().apply {
         moveTo(center.x - radius * 0.32f, center.y - radius * 0.45f)
@@ -316,6 +321,7 @@ private fun DrawScope.previewPlayButton(skin: LevyraSkin, palette: LevyraPalette
         LevyraSkin.Torque -> palette.text
         LevyraSkin.Ivory -> palette.black
         LevyraSkin.SpotifyStyle -> Color.Black
+        LevyraSkin.AppleMusicStyle -> palette.text
     }
     drawPath(glyph, glyphColor, style = if (skin == LevyraSkin.Nocturne78) Stroke(1.2.dp.toPx()) else Fill)
 }
@@ -395,12 +401,42 @@ private fun DrawScope.spotifyPreview(palette: LevyraPalette, w: Float, h: Float)
     }
 }
 
+private fun DrawScope.appleMusicPreview(palette: LevyraPalette, w: Float, h: Float) {
+    val pad = w * 0.07f
+    val gap = w * 0.04f
+    previewLine(palette.text, pad, h * 0.075f, w * 0.34f, 5.dp.toPx())
+    previewLine(palette.outline, pad, h * 0.11f, w - pad * 2, 0.5.dp.toPx())
+    val heroW = w - pad - gap - w * 0.1f
+    previewLine(palette.muted, pad, h * 0.14f, w * 0.2f, 1.5.dp.toPx())
+    previewLine(palette.text, pad, h * 0.165f, w * 0.5f, 2.5.dp.toPx())
+    drawRoundRect(Brush.linearGradient(listOf(palette.cyan, Color(0xFF8E2DE2))), Offset(pad, h * 0.2f), Size(heroW, heroW / 1.5f), CornerRadius(4.dp.toPx()))
+    drawRoundRect(palette.panelSoft, Offset(pad + heroW + gap, h * 0.2f), Size(w, heroW / 1.5f), CornerRadius(4.dp.toPx()))
+    val rowsTop = h * 0.2f + heroW / 1.5f + h * 0.05f
+    previewLine(palette.text, pad, rowsTop, w * 0.42f, 3.dp.toPx())
+    repeat(3) { index ->
+        val y = rowsTop + h * 0.03f + index * h * 0.06f
+        drawRoundRect(palette.panelSoft, Offset(pad, y), Size(h * 0.045f, h * 0.045f), CornerRadius(1.5.dp.toPx()))
+        previewLine(palette.text, pad + h * 0.06f, y + h * 0.014f, w * 0.38f, 1.8.dp.toPx())
+        previewLine(palette.muted, pad + h * 0.06f, y + h * 0.032f, w * 0.26f, 1.2.dp.toPx())
+    }
+    val miniTop = h * 0.79f
+    drawRoundRect(palette.panel, Offset(pad, miniTop), Size(w - pad * 2, h * 0.045f), CornerRadius(h * 0.0225f))
+    drawRoundRect(palette.panelSoft, Offset(pad * 1.6f, miniTop + h * 0.0085f), Size(h * 0.028f, h * 0.028f), CornerRadius(1.dp.toPx()))
+    val navTop = h * 0.85f
+    drawRoundRect(palette.panel, Offset(pad, navTop), Size(w - pad * 2, h * 0.075f), CornerRadius(h * 0.0375f))
+    repeat(5) { index ->
+        val x = pad + (w - pad * 2) * (index + 0.5f) / 5f
+        drawCircle(if (index == 1) palette.cyan else palette.muted, 2.2.dp.toPx(), Offset(x, navTop + h * 0.03f))
+    }
+}
+
 private fun skinPreviewPalette(skin: LevyraSkin): LevyraPalette = when (skin) {
     LevyraSkin.Nocturne78 -> Nocturne78Palette
     LevyraSkin.Prism -> prismPalette()
     LevyraSkin.Torque -> torquePalette()
     LevyraSkin.Ivory -> ivoryPalette()
     LevyraSkin.SpotifyStyle -> spotifyPalette()
+    LevyraSkin.AppleMusicStyle -> appleMusicPalette()
     LevyraSkin.Default -> LevyraThemes.levyraAura
 }
 
@@ -411,12 +447,13 @@ private fun skinPreviewArtBrush(skin: LevyraSkin, palette: LevyraPalette): Brush
     LevyraSkin.Torque -> Brush.linearGradient(listOf(palette.panelSoft, palette.panel))
     LevyraSkin.Ivory -> Brush.linearGradient(listOf(palette.panelSoft, palette.panel))
     LevyraSkin.SpotifyStyle -> Brush.linearGradient(listOf(palette.panelSoft, palette.panel))
+    LevyraSkin.AppleMusicStyle -> Brush.linearGradient(listOf(palette.cyan, palette.panelSoft))
 }
 
 private fun DrawScope.drawSkinPreviewWash(skin: LevyraSkin, palette: LevyraPalette, frame: CornerRadius) {
     when (skin) {
         LevyraSkin.Prism -> drawRoundRect(Brush.verticalGradient(listOf(palette.blue.copy(alpha = 0.22f), palette.black), endY = size.height * 0.6f), cornerRadius = frame)
         LevyraSkin.Default -> drawRoundRect(Brush.verticalGradient(listOf(palette.violet.copy(alpha = 0.28f), palette.black), endY = size.height * 0.7f), cornerRadius = frame)
-        LevyraSkin.Nocturne78, LevyraSkin.Torque, LevyraSkin.Ivory, LevyraSkin.SpotifyStyle -> Unit
+        LevyraSkin.Nocturne78, LevyraSkin.Torque, LevyraSkin.Ivory, LevyraSkin.SpotifyStyle, LevyraSkin.AppleMusicStyle -> Unit
     }
 }

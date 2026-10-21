@@ -1415,6 +1415,13 @@ internal fun ExploreDiscoveryCategoryCard(
     onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic) {
+        AppleMusicCategoryTile(
+            label = title, portrait = artworkUrl, active = false, onClick = onClick, onLongClick = onLongClick,
+            longClickLabel = title, onPortraitError = {}, modifier = modifier, tint = accentColors?.first
+        )
+        return
+    }
     if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism) {
         SkinCategoryCard(title, artworkUrl, modifier, onLongClick, onClick)
         return

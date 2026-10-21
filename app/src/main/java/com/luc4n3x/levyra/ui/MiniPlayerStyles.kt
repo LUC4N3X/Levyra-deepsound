@@ -203,6 +203,9 @@ internal fun rememberMiniPlayerPalette(
         val surface by animateColorAsState(target, if (animated) LevyraPlayerDesign.paletteTween() else snap(), label = "spotify-mini-surface")
         return MiniPlayerPalette(Color.White, Color.White, surface, SpotifyDesign.text, SpotifyDesign.subdued, true)
     }
+    if (LevyraIsAppleMusic) {
+        return MiniPlayerPalette(AppleMusicDesign.label, AppleMusicDesign.label, AppleMusicDesign.chrome, AppleMusicDesign.label, AppleMusicDesign.secondaryLabel, !LevyraActivePalette.isLight)
+    }
     if (LevyraIsIvory) {
         return MiniPlayerPalette(IvoryDesign.rose, IvoryDesign.ink, LevyraActivePalette.ink, scheme.onSurface, scheme.onSurfaceVariant, !LevyraActivePalette.isLight)
     }
@@ -552,7 +555,7 @@ private fun Modifier.connectedSeamBridge(
 }
 
 private fun miniDockCompaction(style: MiniPlayerStyle, compaction: () -> Float): () -> Float =
-    if (style == MiniPlayerStyle.YtMusic) StyledMiniFixedDock else compaction
+    if (style == MiniPlayerStyle.YtMusic || LevyraIsAppleMusic) StyledMiniFixedDock else compaction
 
 private fun miniContentBottom(tuning: MiniPlayerTuning): Dp =
     if (tuning.progress == MiniProgressStyle.Wavy) 4.dp else 0.dp
@@ -885,7 +888,7 @@ private fun Modifier.miniOutline(style: MiniPlayerStyle, palette: MiniPlayerPale
             ),
             shape = shape
         )
-        MiniPlayerStyle.Floating -> if (LevyraIsSpotify) this else border(
+        MiniPlayerStyle.Floating -> if (LevyraIsSpotify) this else if (LevyraIsAppleMusic) border(0.5.dp, AppleMusicDesign.chromeStroke, shape) else border(
             width = LevyraPlayerDesign.Hairline,
             color = palette.content.copy(alpha = 0.08f),
             shape = shape
@@ -935,6 +938,10 @@ private fun MiniStyledArtwork(
 ) {
     if (LevyraIsSpotify) {
         Box(modifier.clip(SpotifyDesign.coverShape).background(SpotifyDesign.placeholder)) { CoverImage(track, Modifier.fillMaxSize()) }
+        return
+    }
+    if (LevyraIsAppleMusic) {
+        Box(modifier.clip(AppleMusicDesign.thumbShape).background(AppleMusicDesign.placeholder)) { CoverImage(track, Modifier.fillMaxSize()) }
         return
     }
     if (LevyraIsPrism) {
@@ -992,7 +999,7 @@ private fun MiniStyledMetadata(
             Text(
                 text = track.title,
                 color = palette.content,
-                style = if (LevyraIsSpotify) MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp, lineHeight = 17.sp) else miniTitleStyle(tuning.typography, compact),
+                style = if (LevyraIsSpotify) MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp, lineHeight = 17.sp) else if (LevyraIsAppleMusic) MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium, lineHeight = 16.sp) else miniTitleStyle(tuning.typography, compact),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.levyraMarquee(enabled = animated, repeatDelayMillis = 3_200)
@@ -1001,7 +1008,7 @@ private fun MiniStyledMetadata(
         Text(
             text = if (editorial) subtitle.uppercase() else subtitle,
             color = palette.contentMuted,
-            style = if (LevyraIsSpotify) MaterialTheme.typography.bodySmall else miniArtistStyle(tuning.typography, compact),
+            style = if (LevyraIsSpotify) MaterialTheme.typography.bodySmall else if (LevyraIsAppleMusic) MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Normal) else miniArtistStyle(tuning.typography, compact),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = if (compact) Modifier else Modifier.dockFoldHeight(compaction)

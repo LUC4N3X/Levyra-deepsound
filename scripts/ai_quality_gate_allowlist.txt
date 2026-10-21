@@ -206,3 +206,13 @@ docs/assets/spotify-style/queue.png
 docs/assets/spotify-style/search.png
 docs/assets/spotify-style/settings.png
 docs/assets/spotify-style/skin-selector.png
+docs/assets/apple-music-style/explore.png
+docs/assets/apple-music-style/home-orbit-playlists.png
+docs/assets/apple-music-style/home-shelves.png
+docs/assets/apple-music-style/home.png
+docs/assets/apple-music-style/library.png
+docs/assets/apple-music-style/player-menu.png
+docs/assets/apple-music-style/player.png
+docs/assets/apple-music-style/search.png
+docs/assets/apple-music-style/settings.png
+docs/assets/apple-music-style/skin-selector.png

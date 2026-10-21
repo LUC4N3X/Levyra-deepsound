@@ -195,6 +195,30 @@ This work may improve the next playback request, but a direct user tap never wai
  
 ---
  
+### 4.6 Apple Music Style editorial shelves
+
+When the Apple Music Style skin is active, Home replaces the studio sections with
+`AppleMusicHomeContent`. Its editorial shelves come from the public
+`music.apple.com/<country>/new` and `/new/top-charts` pages:
+
+```text
+AppleMusicEditorialViewModel.load(country, language)
+├── AppleMusicEditorialRepository: disk/memory cache (6 h fresh, 7 days stale)
+├── single in-flight request per page, HTTP 429 backoff, 6 MiB body cap
+├── every request and redirect hop pinned to https://music.apple.com
+└── AppleCatalogPageParser reads the page's serialized-server-data JSON
+```
+
+The country is the chart market selected in Levyra and the language is the app
+language. No Apple API, token, cookie or account is used. Song items become
+`chart-apple-*` tracks without stream URLs, so playback goes through the normal
+resolver. Albums open through `AlbumHit` search, and playlists (including
+Top 100 and city charts) are read from their public page into the Apple-style
+collection screen. Levyra's own sections (My Soundtrack, Your Orbit, Quick
+Picks, albums, artists, collections and the Top 50) are interleaved with the
+editorial shelves and keep their existing data sources. Home still renders
+when the editorial request fails.
+
 ## 5. Artwork architecture
  
 ### 5.1 Shared image loader

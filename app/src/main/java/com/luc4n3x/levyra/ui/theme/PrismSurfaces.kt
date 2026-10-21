@@ -19,6 +19,7 @@ internal fun prismGlassColor(): Color {
     val opaque = activePrismSettings.translucency == PrismTranslucency.Reduced || !capabilities.heavyBlur
     if (LevyraIsIvory) return LevyraActivePalette.ink
     if (LevyraIsSpotify) return SpotifyDesign.elevated
+    if (LevyraIsAppleMusic) return AppleMusicDesign.chrome
     return MaterialTheme.colorScheme.surfaceContainer.copy(alpha = if (opaque) 1f else 0.96f)
 }
 
@@ -35,8 +36,8 @@ internal fun PrismAtmosphere(modifier: Modifier = Modifier) {
 @Composable
 internal fun PrismPlayerAtmosphere(modifier: Modifier = Modifier) {
     val palette = LevyraActivePalette
-    if (LevyraIsTorque || LevyraIsIvory || LevyraIsSpotify) {
-        Box(modifier.fillMaxSize().background(palette.black))
+    if (LevyraIsTorque || LevyraIsIvory || LevyraIsSpotify || LevyraIsAppleMusic) {
+        Box(modifier.fillMaxSize().background(if (LevyraIsAppleMusic) Color.Black else palette.black))
         return
     }
     val wash = PrismAccent.wash(palette.isLight)
@@ -50,7 +51,12 @@ internal fun PrismPlayerAtmosphere(modifier: Modifier = Modifier) {
     })
 }
 
-internal fun prismPlayerSurfaces(palette: LevyraPalette): PlayerSurfaceTokens = if (palette.id == SpotifyPaletteId) PlayerSurfaceTokens(
+internal fun prismPlayerSurfaces(palette: LevyraPalette): PlayerSurfaceTokens = if (palette.id == AppleMusicPaletteId) PlayerSurfaceTokens(
+    amoled = false, control = AppleMusicVibrant.quaternary, controlQuiet = Color.Transparent, outline = Color.Transparent,
+    active = AppleMusicVibrant.tertiary, activeContent = AppleMusicVibrant.primary, tonal = AppleMusicVibrant.quaternary,
+    hero = AppleMusicVibrant.primary, heroContent = Color.Black,
+    content = AppleMusicVibrant.primary, contentMuted = AppleMusicVibrant.secondary, contentFaint = AppleMusicVibrant.tertiary, glow = Color.Transparent
+) else if (palette.id == SpotifyPaletteId) PlayerSurfaceTokens(
     amoled = false, control = SpotifyDesign.tinted, controlQuiet = Color.Transparent, outline = Color.Transparent,
     active = SpotifyDesign.tintedHighlight, activeContent = SpotifyDesign.green, tonal = SpotifyDesign.tinted,
     hero = Color.White, heroContent = Color.Black,

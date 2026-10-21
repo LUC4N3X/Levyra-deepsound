@@ -39,29 +39,31 @@ internal val TorqueStripShape = androidx.compose.foundation.shape.GenericShape {
 
 internal object SkinChrome {
     val active: Boolean get() = LevyraSkinManagesLayout
-    val outerCorner: Dp get() = if (LevyraIsPrism) PrismDesign.surfaceCorner else Nocturne78Design.cardCorner
-    val innerCorner: Dp get() = if (LevyraIsPrism) PrismDesign.controlCorner.coerceAtMost(6.dp) else 2.dp
+    val outerCorner: Dp get() = if (LevyraIsAppleMusic) AppleMusicDesign.cornerL else if (LevyraIsPrism) PrismDesign.surfaceCorner else Nocturne78Design.cardCorner
+    val innerCorner: Dp get() = if (LevyraIsAppleMusic) 0.dp else if (LevyraIsPrism) PrismDesign.controlCorner.coerceAtMost(6.dp) else 2.dp
     val fieldShape: Shape get() = RoundedCornerShape(if (LevyraIsPrism) PrismDesign.controlCorner else Nocturne78Design.controlCorner)
     val chipShape: Shape get() = when {
         LevyraIsTorque -> RoundedCornerShape(2.dp)
         LevyraIsPrism -> CircleShape
         else -> RoundedCornerShape(Nocturne78Design.controlCorner)
     }
-    val iconShape: Shape get() = if (LevyraIsPrism) PrismDesign.cut(PrismDesign.controlCorner) else RoundedCornerShape(Nocturne78Design.controlCorner)
+    val iconShape: Shape get() = if (LevyraIsAppleMusic) RoundedCornerShape(AppleMusicDesign.cornerM) else if (LevyraIsPrism) PrismDesign.cut(PrismDesign.controlCorner) else RoundedCornerShape(Nocturne78Design.controlCorner)
     val iconBackground: Color get() = when {
+        LevyraIsAppleMusic -> AppleMusicDesign.accent
         LevyraIsTorque || LevyraIsIvory || LevyraIsSpotify -> Color.Transparent
         LevyraIsPrism -> PrismAccent.Tint
         else -> LevyraPanelSoft
     }
-    val iconTint: Color get() = if (LevyraIsTorque || LevyraIsIvory || LevyraIsSpotify) LevyraText else LevyraCyan
+    val iconTint: Color get() = if (LevyraIsAppleMusic) Color.White else if (LevyraIsTorque || LevyraIsIvory || LevyraIsSpotify) LevyraText else LevyraCyan
     val chipSelectedContainer: Color get() = when {
+        LevyraIsAppleMusic -> AppleMusicDesign.accent
         LevyraIsTorque -> LevyraActivePalette.blue
         LevyraIsIvory -> IvoryDesign.ink
         LevyraIsSpotify -> SpotifyDesign.green
         LevyraIsPrism -> PrismAccent.Tint
         else -> Color.Transparent
     }
-    val chipSelectedContent: Color get() = if (LevyraIsTorque) Color.White else if (LevyraIsSpotify) Color.Black else if (LevyraIsIvory) IvoryDesign.onInk else LevyraCyan
+    val chipSelectedContent: Color get() = if (LevyraIsTorque || LevyraIsAppleMusic) Color.White else if (LevyraIsSpotify) Color.Black else if (LevyraIsIvory) IvoryDesign.onInk else LevyraCyan
     val labelsUppercase: Boolean get() = LevyraIsNocturne || LevyraIsTorque
 
     fun label(text: String, locale: Locale): String = if (labelsUppercase) text.uppercase(locale) else text
@@ -74,12 +76,13 @@ internal fun SkinSwitch(checked: Boolean, modifier: Modifier = Modifier) {
     val travel by animateFloatAsState(if (checked) 1f else 0f, MaterialTheme.motionScheme.defaultSpatialSpec(), label = "skin-switch")
     val accent = if (torque) LevyraActivePalette.blue else LevyraCyan
     val idle = LevyraMuted
-    Canvas(modifier.size(width = 52.dp, height = 26.dp)) {
+    Canvas(modifier.size(width = if (LevyraIsAppleMusic) 51.dp else 52.dp, height = if (LevyraIsAppleMusic) 31.dp else 26.dp)) {
         val stroke = 1.5.dp.toPx()
         val inset = 3.dp.toPx()
         if (torque) drawTorqueSwitch(checked, travel, accent, idle, stroke, inset)
         else if (LevyraIsIvory) drawIvorySwitch(travel, IvoryDesign.ink, IvoryDesign.onInk, idle, stroke)
         else if (LevyraIsSpotify) drawSpotifySwitch(travel)
+        else if (LevyraIsAppleMusic) drawAppleMusicSwitch(travel)
         else drawRectangularSwitch(checked, travel, accent, idle, stroke, inset)
     }
 }
@@ -111,6 +114,20 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawIvorySwitch(tra
     val x = size.height / 2 + (size.width - size.height) * travel
     drawCircle(androidx.compose.ui.graphics.lerp(idle, onInk, travel), dot, Offset(x, size.height / 2))
 }
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawAppleMusicSwitch(travel: Float) {
+    val trackHeight = size.height
+    drawRoundRect(
+        androidx.compose.ui.graphics.lerp(AppleMusicDesign.secondaryFill, AppleMusicSystemGreen, travel),
+        cornerRadius = CornerRadius(trackHeight / 2)
+    )
+    val radius = trackHeight / 2 - 2.dp.toPx()
+    val x = trackHeight / 2 + (size.width - trackHeight) * travel
+    drawCircle(Color.Black.copy(alpha = 0.10f), radius + 0.6.dp.toPx(), Offset(x, size.height / 2 + 1.dp.toPx()))
+    drawCircle(Color.White, radius, Offset(x, size.height / 2))
+}
+
+private val AppleMusicSystemGreen = Color(0xFF11D964)
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSpotifySwitch(travel: Float) {
     val trackHeight = size.height * 0.8f
