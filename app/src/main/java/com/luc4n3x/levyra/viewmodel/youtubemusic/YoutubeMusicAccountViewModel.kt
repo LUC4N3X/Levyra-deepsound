@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.luc4n3x.levyra.data.youtubemusic.*
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -140,10 +141,12 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
         libraryJob?.cancel()
         libraryKey = key
         _state.update { it.copy(libraryLoading = true, libraryError = null) }
-        libraryJob = viewModelScope.launch {
+        lateinit var job: Job
+        job = viewModelScope.launch(start = CoroutineStart.LAZY) {
             val shelf = try {
                 repository.libraryShelf(session, languageCode)
             } catch (cancelled: CancellationException) {
+                if (libraryJob === job) _state.update { it.copy(libraryLoading = false) }
                 throw cancelled
             } catch (error: Exception) {
                 if (saved.activeId == session.account.id) {
@@ -156,6 +159,8 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
             fetchedLibraryKey = key
             _state.update { it.copy(library = shelf, libraryLoading = false, libraryError = null) }
         }
+        libraryJob = job
+        job.start()
     }
 
     fun onNetworkRestored(languageCode: String) {

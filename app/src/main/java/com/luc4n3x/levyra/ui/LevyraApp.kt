@@ -26570,8 +26570,8 @@ private fun SearchSectionFooter(
 ) {
     val strings = LocalLevyraStrings.current
     val currentOnLoadMore by rememberUpdatedState(onLoadMore)
-    val autoLoads = canLoadMore && !loading && !failed
-    LaunchedEffect(autoLoads, autoLoadKey) {
+    val autoLoads by rememberUpdatedState(canLoadMore && !loading && !failed)
+    LaunchedEffect(autoLoadKey) {
         if (autoLoads) currentOnLoadMore()
     }
     when {
