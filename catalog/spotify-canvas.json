@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-20T21:40:41Z",
+  "generatedAt": "2026-10-21T04:55:41Z",
   "items": [
     {
       "song": "NON SEI PIÙ TU (feat. Lazza)",
@@ -327,7 +327,7 @@
     {
       "song": "Man I Need",
       "artist": "Olivia Dean",
-      "album": "The Art of Loving",
+      "album": "Man I Need",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
@@ -518,13 +518,6 @@
       "artist": "Jamie Miller",
       "album": "Babydoll",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/2ffb0b9c6b6f4ca898bb73d3602d477f.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "Man I Need",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2338,6 +2331,13 @@
       "artist": "MadMaxCUX",
       "album": "TUFFE LISA",
       "url": "https://canvaz.scdn.co/upload/artist/5jMIlsm85idyC5c2GjWLI7/video/fda454837aec4c2db8e421898f7472bc.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "The Art of Loving",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -5127,6 +5127,48 @@
       "scope": "track"
     },
     {
+      "song": "CHEMIE",
+      "artist": "Sebastian, Ben Cristovao",
+      "album": "CHEMIE",
+      "url": "https://canvaz.scdn.co/upload/artist/1ucovYZ0AOZZ0ZIfjhYFfQ/video/8edf3eaeed5b49ba8680a22aa001d152.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Kolik Dní?",
+      "artist": "Adam Mišík",
+      "album": "Kolik Dní?",
+      "url": "https://canvaz.scdn.co/upload/artist/7jY6bjQW4nkuknuIoeRNeQ/video/3ec963a5a272459e942ef74b70177804.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "wasted",
+      "artist": "Grey256",
+      "album": "wasted",
+      "url": "https://canvaz.scdn.co/upload/artist/66bgEhG3GXDBGNZEJKs8bM/video/629bc00038364d81bd72fc90ea637cbf.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Obavy (feat. Václav NOID Bárta)",
+      "artist": "Tereza Mašková, Václav NOID Bárta",
+      "album": "Obavy (feat. Václav NOID Bárta)",
+      "url": "https://canvaz.scdn.co/upload/artist/4m4vkJiLg3nbmwdxySeIVC/video/66415053f9e843d288f2bd64118a0cdd.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Nejsou všechny holky stejný",
+      "artist": "Poetika",
+      "album": "Nejsou všechny holky stejný",
+      "url": "https://canvaz.scdn.co/upload/artist/7ItHWVJAGQ6in0BHt8uLHm/video/20f8943e37ba471ea4cbb886bc2c0699.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Mango Sticky Rice (feat. Skardu)",
+      "artist": "Hey Yendo, Rainer, Skardu",
+      "album": "Mango Sticky Rice (feat. Skardu)",
+      "url": "https://canvaz.scdn.co/upload/artist/6xNhFRwImR9a0GcpN7V8xG/video/6f01185a7428420aad2555fc3ed5e8fc.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Çok Kez",
       "artist": "Elif Buse Doğan",
       "album": "Çok Kez",
@@ -5309,55 +5351,6 @@
       "scope": "track"
     },
     {
-      "song": "Thầy Dùi",
-      "artist": "Hoàng Thùy Linh",
-      "album": "Thầy Dùi",
-      "url": "https://canvaz.scdn.co/upload/artist/0r63ReVRjxrS4ATbLrdcrL/video/e711343a8c7f4f8ebb5d032ef622f225.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Trong Đôi Mắt Thiếu Nữ",
-      "artist": "RHYDER",
-      "album": "Trong Đôi Mắt Thiếu Nữ",
-      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/812918f269f24abf816ca68fd4856b46.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "THĂNG HOA",
-      "artist": "Anh Trai Vượt Ngàn Chông Gai, Thai VG, Jun Phạm, JGKiD (Da LAB), Hoàng Rob, Đông Hùng, CHARLES., Huỳnh Lập, Toki Thành Thỏ, Hoàng Dũng",
-      "album": "CHUNG KẾT (Anh Trai Vượt Ngàn Chông Gai 2026)",
-      "url": "https://canvaz.scdn.co/upload/artist/1NVwSzuIbuPJEGWhUQRlnv/video/04d6a9da0211438297d2ea3d359ad2b2.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "LÉ DRAMA",
-      "artist": "Gill, B Ray",
-      "album": "LÉ DRAMA",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/0dc57cc8849141afafb19601addd8dd9.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "lemeno",
-      "artist": "GUrbane",
-      "album": "lemeno",
-      "url": "https://canvaz.scdn.co/upload/artist/5SdxHHfstcRfGIxOw1ghSN/video/d0b84bdaa16e4ff6be2db0cded78bad9.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Đừng Để Cô Đơn Cuốn Lấy Em (feat. KIEN)",
-      "artist": "UMIE, KIEN",
-      "album": "Đừng Để Cô Đơn Cuốn Lấy Em",
-      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/8b3594de510e4aa187f2a2e9f41d68e8.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Mừng Cho Anh",
-      "artist": "Huỳnh Tú",
-      "album": "Mừng Cho Anh",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/a5ad643ec8b74ee7bdd830ebc0d13d5e.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "หมอก (just u and i)",
       "artist": "Violette Wautier",
       "album": "หมอก (just u and i)",
@@ -5446,13 +5439,6 @@
       "artist": "Tothapi",
       "album": "Orasan",
       "url": "https://canvaz.scdn.co/upload/artist/2AcrkelR47hApTQirQhv6F/video/e0866912bd384e8c8afba04cd3e936a6.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Rayha",
-      "artist": "El Far3i",
-      "album": "Rayha",
-      "url": "https://canvaz.scdn.co/upload/artist/5DOOqoefvhVdksKzrvA30t/video/c4176c3a6f144d4c8459bed1055f60fc.cnvs.mp4",
       "scope": "track"
     }
   ]
