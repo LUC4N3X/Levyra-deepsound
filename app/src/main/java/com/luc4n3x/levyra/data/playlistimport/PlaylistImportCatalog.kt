@@ -227,16 +227,65 @@ class PlaylistImportCatalog(
     }
 
     private suspend fun resolveAdaptive(identity: ImportedTrackIdentity, preference: ResolutionPreference): CatalogResolution {
-        val language = languageCode()
-        val found = localMatches(MusicIdentityText.title(identity.title).core).map { it.toMatchCandidate() }.toMutableList()
-        var reference = identity
-        var failure: Throwable? = null
-        var succeeded = false
-        val queried = HashSet<String>()
+        val local = localMatches(MusicIdentityText.title(identity.title).core).map { it.toMatchCandidate() }
+        val lookup = ImportLookup(identity, preference, languageCode(), local)
+        if (lookup.reliable() && preference != ResolutionPreference.PREFER_ONLINE) return lookup.result()
+        val originalQuery = "${identity.title} ${identity.primaryArtist}".trim()
+        val primary = MusicIdentityText.artistNames(identity.primaryArtist).firstOrNull().orEmpty()
+        val normalized = "${MusicIdentityText.title(identity.title).core} $primary".trim()
+        val direct = listOf(originalQuery to false, originalQuery to true) +
+            listOfNotNull((normalized to false).takeUnless { normalized.equals(originalQuery, ignoreCase = true) })
+        if (lookup.searchUntilReliable(direct)) return lookup.result()
+        val metadata = safeMetadata(identity)
+        lookup.reference = corroborateImportIdentity(identity, metadata)
+        if (lookup.reliable()) return lookup.result()
+        val fallback = (metadataQueries(identity, metadata) + ImportTransliteration.latinQuery(normalized)).distinct()
+        if (lookup.searchUntilReliable(fallback.map { it to false })) return lookup.result()
+        lookup.search(normalized, true)
+        return lookup.finish()
+    }
+
+    private suspend fun safeMetadata(identity: ImportedTrackIdentity): List<MatchCandidate> = try {
+        metadataSearch(identity).take(30)
+    } catch (error: CancellationException) {
+        throw error
+    } catch (_: Exception) {
+        emptyList()
+    }
+
+    private fun metadataQueries(identity: ImportedTrackIdentity, metadata: List<MatchCandidate>): List<String> =
+        metadata.map { it to PlaylistMatchEngine.evaluate(identity, it) }
+            .filter { it.second.score >= 55 }
+            .sortedByDescending { it.second.score }
+            .map { "${it.first.title} ${it.first.artists.firstOrNull().orEmpty()}".trim() }
+            .distinct().take(2)
+
+    private inner class ImportLookup(
+        var reference: ImportedTrackIdentity,
+        private val preference: ResolutionPreference,
+        private val language: String,
+        local: List<CatalogCandidate>
+    ) {
+        private val found = local.toMutableList()
+        private val queried = HashSet<String>()
+        private var failure: Throwable? = null
+        private var succeeded = false
+
         fun result(): CatalogResolution {
             val unique = found.distinctBy { it.candidate.id }
             return CatalogResolution(unique, PlaylistMatchEngine.select(reference, unique.map { it.candidate }, preference))
         }
+
+        fun reliable(): Boolean = result().outcome.confidence.autoAccepted
+
+        suspend fun searchUntilReliable(queries: List<Pair<String, Boolean>>): Boolean {
+            for ((query, mixed) in queries) {
+                search(query, mixed)
+                if (reliable()) return true
+            }
+            return false
+        }
+
         suspend fun search(query: String, mixed: Boolean) {
             val key = "${if (mixed) "mixed" else "song"}:${query.lowercase(java.util.Locale.ROOT)}"
             if (query.length < 2 || !queried.add(key)) return
@@ -249,42 +298,13 @@ class PlaylistImportCatalog(
             }.onFailure { failure = it }
             if (response.isFailure && !mixed) search(query, true)
         }
-        fun reliable(): Boolean = result().outcome.confidence.autoAccepted
-        if (reliable() && preference != ResolutionPreference.PREFER_ONLINE) return result()
-        val originalQuery = "${identity.title} ${identity.primaryArtist}".trim()
-        search(originalQuery, false)
-        if (reliable()) return result()
-        search(originalQuery, true)
-        if (reliable()) return result()
-        val primary = MusicIdentityText.artistNames(identity.primaryArtist).firstOrNull().orEmpty()
-        val normalized = "${MusicIdentityText.title(identity.title).core} $primary".trim()
-        if (!normalized.equals(originalQuery, ignoreCase = true)) {
-            search(normalized, false)
-            if (reliable()) return result()
+
+        fun finish(): CatalogResolution {
+            val resolved = result()
+            val error = failure
+            if (error != null && !succeeded && resolved.outcome.selected == null) throw IOException("Playlist search incomplete", error)
+            return resolved
         }
-        val metadata = try {
-            metadataSearch(identity).take(30)
-        } catch (error: CancellationException) {
-            throw error
-        } catch (_: Exception) {
-            emptyList()
-        }
-        reference = corroborateImportIdentity(identity, metadata)
-        if (reliable()) return result()
-        val metadataQueries = metadata.map { it to PlaylistMatchEngine.evaluate(identity, it) }
-            .filter { it.second.score >= 55 }
-            .sortedByDescending { it.second.score }
-            .map { "${it.first.title} ${it.first.artists.firstOrNull().orEmpty()}".trim() }
-            .distinct().take(2)
-        val queries = (metadataQueries + ImportTransliteration.latinQuery(normalized)).distinct()
-        for (query in queries) {
-            search(query, false)
-            if (reliable()) return result()
-        }
-        search(normalized, true)
-        val resolved = result()
-        if (failure != null && !succeeded && resolved.outcome.selected == null) throw IOException("Playlist search incomplete", failure)
-        return resolved
     }
 
     private suspend fun <T> retrying(block: suspend () -> List<T>): List<T> {

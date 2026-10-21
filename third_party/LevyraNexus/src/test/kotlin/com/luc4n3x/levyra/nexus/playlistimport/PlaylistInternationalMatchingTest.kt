@@ -56,6 +56,9 @@ class PlaylistInternationalMatchingTest {
         assertEquals(MusicIdentityText.normalize("Björk"), MusicIdentityText.normalize("Bjork"))
         assertEquals(MusicIdentityText.normalize("Алёна"), MusicIdentityText.normalize("Алена"))
         assertNotEquals(MusicIdentityText.normalize("й"), MusicIdentityText.normalize("и"))
+        assertEquals(MusicIdentityText.normalize("ΕΛΛΑΔΑ"), MusicIdentityText.normalize("Ελλάδα"))
+        assertEquals(MusicIdentityText.normalize("نسم علينا الهوى"), MusicIdentityText.normalize("نَسَّم عَلَينا الهَوى"))
+        assertEquals(MusicIdentityText.normalize("שלום"), MusicIdentityText.normalize("שָׁלוֹם"))
         assertNotEquals(MusicIdentityText.normalize("ガ"), MusicIdentityText.normalize("カ"))
         listOf("봄날", "宇多田ヒカル", "周杰倫", "فيروز", "Обійми", "Beyoncé").forEach { text ->
             assertEquals(MusicIdentityText.normalize(text), MusicIdentityText.normalize(java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFD)))

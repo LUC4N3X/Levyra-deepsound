@@ -627,7 +627,7 @@ class PlaylistImportController(
         val outcome = resolution.outcome
         outcome.selected?.candidate?.id?.let { id -> remember(candidates.filter { it.candidate.id == id }) }
         return if (broad && outcome.selected == null && entry.alternatives.isNotEmpty()) {
-            entry.copy(resolved = true)
+            entry.copy(resolved = true, lookupFailed = false)
         } else {
             PlaylistImportReview.applyOutcome(entry, outcome)
         }

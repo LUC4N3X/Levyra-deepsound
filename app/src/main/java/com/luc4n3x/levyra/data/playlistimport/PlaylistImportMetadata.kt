@@ -6,6 +6,7 @@ import com.luc4n3x.levyra.nexus.identity.MusicIdentityText
 import com.luc4n3x.levyra.nexus.playlistimport.CandidateKind
 import com.luc4n3x.levyra.nexus.playlistimport.ImportedTrackIdentity
 import com.luc4n3x.levyra.nexus.playlistimport.MatchCandidate
+import com.luc4n3x.levyra.nexus.playlistimport.MatchEvaluation
 import com.luc4n3x.levyra.nexus.playlistimport.MatchSignal
 import com.luc4n3x.levyra.nexus.playlistimport.PlaylistMatchEngine
 import kotlinx.coroutines.CancellationException
@@ -24,7 +25,7 @@ internal class PlaylistImportMetadata(
         } catch (_: Exception) {
             emptyList()
         }
-        if (corroborateImportIdentity(identity, spotifyTracks) != identity) return spotifyTracks
+        if (corroboratingMetadata(identity, spotifyTracks).isNotEmpty()) return spotifyTracks
         val appleTracks = apple.searchImportMetadata(identity.title, identity.primaryArtist, country()).map { item ->
             MatchCandidate(
                 id = "apple:${item.songId}", title = item.name, artists = listOf(item.artistName),
@@ -37,6 +38,25 @@ internal class PlaylistImportMetadata(
 }
 
 internal fun corroborateImportIdentity(identity: ImportedTrackIdentity, metadata: List<MatchCandidate>): ImportedTrackIdentity {
+    val plausible = corroboratingMetadata(identity, metadata)
+    if (plausible.isEmpty()) return identity
+    val best = plausible.maxBy { it.score }
+    if (best.reasons.any { it.signal == MatchSignal.ISRC_MATCH }) {
+        return identity.copy(
+            title = best.candidate.title,
+            artists = best.candidate.artists,
+            featuredArtists = emptyList(),
+            durationMs = identity.durationMs.takeIf { it > 0 } ?: best.candidate.durationMs,
+            album = identity.album.ifBlank { best.candidate.album }
+        )
+    }
+    return identity.copy(
+        durationMs = identity.durationMs.takeIf { it > 0 } ?: best.candidate.durationMs,
+        album = identity.album.ifBlank { best.candidate.album }
+    )
+}
+
+private fun corroboratingMetadata(identity: ImportedTrackIdentity, metadata: List<MatchCandidate>): List<MatchEvaluation> {
     val evaluations = metadata.filter { it.durationMs > 0L }.map { PlaylistMatchEngine.evaluate(identity, it) }
     val sameIsrc = evaluations.filter { evaluation -> evaluation.reasons.any { it.signal == MatchSignal.ISRC_MATCH } }
     val corroborated = sameIsrc.ifEmpty {
@@ -50,21 +70,7 @@ internal fun corroborateImportIdentity(identity: ImportedTrackIdentity, metadata
     val album = MusicIdentityText.album(identity.album).core
     val plausible = corroborated.filter { album.isNotEmpty() && MusicIdentityText.album(it.candidate.album).core == album }
         .ifEmpty { corroborated }
-    if (plausible.isEmpty()) return identity
+    if (plausible.isEmpty()) return emptyList()
     val durations = plausible.map { it.candidate.durationMs }
-    if (durations.max() - durations.min() > 5_000L) return identity
-    val best = plausible.maxBy { it.score }.candidate
-    if (sameIsrc.isNotEmpty()) {
-        return identity.copy(
-            title = best.title,
-            artists = best.artists,
-            featuredArtists = emptyList(),
-            durationMs = identity.durationMs.takeIf { it > 0 } ?: best.durationMs,
-            album = identity.album.ifBlank { best.album }
-        )
-    }
-    return identity.copy(
-        durationMs = identity.durationMs.takeIf { it > 0 } ?: best.durationMs,
-        album = identity.album.ifBlank { best.album }
-    )
+    return if (durations.max() - durations.min() > 5_000L) emptyList() else plausible
 }

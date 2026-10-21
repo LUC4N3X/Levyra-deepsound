@@ -62,6 +62,12 @@ data class AlbumIdentity(
 
 object MusicIdentityText {
     private val htmlEntity = Regex("&(#[xX][0-9a-fA-F]{1,6}|#[0-9]{1,7}|[a-zA-Z]{2,8});")
+    private val foldedMarkScripts = setOf(
+        Character.UnicodeScript.LATIN,
+        Character.UnicodeScript.GREEK,
+        Character.UnicodeScript.ARABIC,
+        Character.UnicodeScript.HEBREW
+    )
     private val apostrophes = Regex("['`´ʼ’‘]")
     private val nonWord = Regex("[^\\p{L}\\p{M}\\p{N}]+")
     private val whitespace = Regex("\\s+")
@@ -208,12 +214,12 @@ object MusicIdentityText {
 
     fun normalize(value: String): String {
         val lowered = prepare(value).lowercase(Locale.ROOT).replace('ё', 'е')
-        var latinBase = false
+        var foldableBase = false
         val stripped = buildString {
             Normalizer.normalize(lowered, Normalizer.Form.NFD).forEach { char ->
                 val mark = Character.getType(char) == Character.NON_SPACING_MARK.toInt()
-                if (!mark) latinBase = Character.UnicodeScript.of(char.code) == Character.UnicodeScript.LATIN
-                if (!mark || !latinBase) append(char)
+                if (!mark) foldableBase = Character.UnicodeScript.of(char.code) in foldedMarkScripts
+                if (!mark || !foldableBase) append(char)
             }
         }.let { Normalizer.normalize(it, Normalizer.Form.NFC) }
         return stripped
