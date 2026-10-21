@@ -34,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
@@ -146,7 +147,7 @@ private fun SearchArtistRow(
             .fillMaxWidth()
             .heightIn(min = SearchArtistRowHeight)
             .clip(if (LevyraIsPrism) PrismDesign.cut(PrismDesign.controlCorner) else levyraGroupedListShape(index, count))
-            .background(if (LevyraIsPrism) LevyraPanel else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.62f))
+            .background(if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) Color.Transparent else if (LevyraIsPrism) LevyraPanel else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.62f))
             .levyraPressable(
                 onClick = onClick,
                 role = Role.Button,

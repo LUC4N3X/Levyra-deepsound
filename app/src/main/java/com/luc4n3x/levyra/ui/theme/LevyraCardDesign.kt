@@ -7,10 +7,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 object LevyraCardDesign {
-    val ThumbCorner: Dp get() = if (LevyraIsNocturne) 6.dp else 10.dp
-    val ArtworkCorner: Dp get() = if (LevyraIsTorque) 2.dp else if (LevyraIsPrism) 16.dp else if (LevyraIsNocturne) 6.dp else 12.dp
-    val EditorialCorner: Dp get() = if (LevyraIsTorque) 2.dp else if (LevyraIsPrism) 24.dp else if (LevyraIsNocturne) 10.dp else 20.dp
-    val SurfaceCorner: Dp get() = if (LevyraIsNocturne) 14.dp else 24.dp
+    val ThumbCorner: Dp get() = if (LevyraIsSpotify) 4.dp else if (LevyraIsNocturne) 6.dp else 10.dp
+    val ArtworkCorner: Dp get() = if (LevyraIsTorque) 2.dp else if (LevyraIsSpotify) 4.dp else if (LevyraIsPrism) 16.dp else if (LevyraIsNocturne) 6.dp else 12.dp
+    val EditorialCorner: Dp get() = if (LevyraIsTorque) 2.dp else if (LevyraIsSpotify) 8.dp else if (LevyraIsPrism) 24.dp else if (LevyraIsNocturne) 10.dp else 20.dp
+    val SurfaceCorner: Dp get() = if (LevyraIsSpotify) 8.dp else if (LevyraIsNocturne) 14.dp else 24.dp
 
     val ThumbShape: Shape get() = RoundedCornerShape(ThumbCorner)
     val ArtworkShape: Shape get() = RoundedCornerShape(ArtworkCorner)

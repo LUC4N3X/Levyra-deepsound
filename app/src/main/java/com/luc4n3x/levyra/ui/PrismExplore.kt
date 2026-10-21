@@ -27,14 +27,19 @@ import com.luc4n3x.levyra.domain.Track
 
 @Composable
 internal fun RowScope.PrismMoodTile(label: String, portrait: String, active: Boolean, onClick: () -> Unit, onMix: (() -> Unit)?, mixLabel: String, onPortraitError: () -> Unit = {}) {
-    if (LevyraIsTorque) {
-        TorqueMoodTile(label, portrait, active, onClick, onMix, mixLabel, onPortraitError)
-        return
+    when {
+        LevyraIsTorque -> TorqueMoodTile(label, portrait, active, onClick, onMix, mixLabel, onPortraitError)
+        LevyraIsSpotify -> SpotifyBrowseTile(
+            label, portrait, Modifier.weight(1f).height(100.dp), active = active,
+            onLongClick = onMix, onLongClickLabel = mixLabel.takeIf { onMix != null }, onArtworkError = onPortraitError, onClick = onClick
+        )
+        LevyraIsIvory -> IvoryMoodTile(label, portrait, active, onClick, onMix, mixLabel, onPortraitError)
+        else -> PrismFacetMoodTile(label, portrait, active, onClick, onMix, mixLabel, onPortraitError)
     }
-    if (LevyraIsIvory) {
-        IvoryMoodTile(label, portrait, active, onClick, onMix, mixLabel, onPortraitError)
-        return
-    }
+}
+
+@Composable
+private fun RowScope.PrismFacetMoodTile(label: String, portrait: String, active: Boolean, onClick: () -> Unit, onMix: (() -> Unit)?, mixLabel: String, onPortraitError: () -> Unit) {
     val shape = PrismDesign.cut(PrismDesign.surfaceCorner)
     val hasPortrait = portrait.isNotBlank()
     Box(
@@ -60,6 +65,10 @@ internal fun RowScope.PrismMoodTile(label: String, portrait: String, active: Boo
 
 @Composable
 internal fun PrismFreshRelease(track: Track, title: String, subtitle: String, label: String, enabled: Boolean, onOpen: () -> Unit, actions: @Composable () -> Unit) {
+    if (LevyraIsSpotify) {
+        SpotifyReleaseCard(track, title, subtitle, label, enabled, onOpen, actions)
+        return
+    }
     if (LevyraIsIvory) {
         IvoryFreshRelease(track, title, subtitle, label, enabled, onOpen, actions)
         return

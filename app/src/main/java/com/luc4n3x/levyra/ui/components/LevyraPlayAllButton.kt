@@ -44,6 +44,10 @@ internal fun LevyraPlayAllButton(
     enabled: Boolean = true,
     label: String = LocalLevyraStrings.current.playAll
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) {
+        SpotifyTextAction(label, onClick, modifier, enabled)
+        return
+    }
     val colors = MaterialTheme.colorScheme
     val animated = LocalAnimationsEnabled.current
     val interaction = remember { MutableInteractionSource() }

@@ -41,6 +41,10 @@ internal fun PrismPlayerScene(
         TorquePlayerScene(track, slots, metadata, transport, modifier)
         return
     }
+    if (LevyraIsSpotify) {
+        SpotifyPlayerScene(track, slots, artworkCap, metadata, transport, modifier)
+        return
+    }
     if (LevyraIsIvory) {
         IvoryPlayerScene(track, slots, artworkCap, metadata, transport, modifier)
         return
@@ -85,6 +89,10 @@ internal fun PrismTransport(
         TorqueTransport(playing, resolving, shuffle, repeat, labels, onShuffle, onPrevious, onToggle, onNext, onRepeat, modifier)
         return
     }
+    if (LevyraIsSpotify) {
+        SpotifyTransport(playing, resolving, shuffle, repeat, labels, onShuffle, onPrevious, onToggle, onNext, onRepeat, modifier)
+        return
+    }
     if (LevyraIsIvory) {
         IvoryTransport(playing, resolving, shuffle, repeat, labels, onShuffle, onPrevious, onToggle, onNext, onRepeat, modifier)
         return
@@ -122,6 +130,10 @@ private fun PrismModeButton(icon: ImageVector, label: String, active: Boolean, o
 internal fun PrismSeekbar(positionMs: Long, bufferedMs: Long, durationMs: Long, onSeek: (Float) -> Unit, modifier: Modifier = Modifier) {
     if (LevyraIsTorque) {
         TorqueStrip(positionMs, durationMs, onSeek, modifier)
+        return
+    }
+    if (LevyraIsSpotify) {
+        SpotifySeekbar(positionMs, bufferedMs, durationMs, onSeek, modifier)
         return
     }
     if (LevyraIsIvory) {

@@ -23,6 +23,7 @@ internal fun artistHeroNameSize(name: String) = when {
 @Composable
 internal fun artistHeroNameWeight(): FontWeight? = when {
     LevyraIsTorque -> FontWeight.Bold
+    LevyraIsSpotify -> FontWeight.Black
     LevyraIsIvory -> FontWeight.Light
     LevyraIsPrism -> FontWeight.Normal
     LevyraIsNocturne -> FontWeight.Medium
@@ -38,7 +39,7 @@ internal fun artistHeroOverlineColor(): Color = when {
 
 @Composable
 internal fun artistPortraitFrame(): Modifier {
-    if (LevyraIsTorque || !LevyraSkinManagesLayout) return Modifier
+    if (LevyraIsTorque || LevyraIsSpotify || !LevyraSkinManagesLayout) return Modifier
     if (LevyraIsNocturne) {
         val shape = RoundedCornerShape(Nocturne78Design.artworkCorner)
         return Modifier.statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 144.dp)

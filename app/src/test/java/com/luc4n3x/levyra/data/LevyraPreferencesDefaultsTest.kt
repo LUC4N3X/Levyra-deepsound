@@ -29,6 +29,8 @@ class LevyraPreferencesDefaultsTest {
         )
         val original = LevyraInterfaceSettings(skin = com.luc4n3x.levyra.domain.LevyraSkin.Torque, prism = prism, torque = com.luc4n3x.levyra.domain.TorqueSettings(com.luc4n3x.levyra.domain.TorqueAccent.Red), ivory = com.luc4n3x.levyra.domain.IvorySettings(com.luc4n3x.levyra.domain.IvoryAppearance.Dark))
         assertEquals(original, backupInterfaceSettingsFromJson(backupInterfaceSettingsToJson(original)))
+        val spotify = LevyraInterfaceSettings(skin = com.luc4n3x.levyra.domain.LevyraSkin.SpotifyStyle)
+        assertEquals(spotify, backupInterfaceSettingsFromJson(backupInterfaceSettingsToJson(spotify)))
         assertEquals(com.luc4n3x.levyra.domain.PrismSettings(), backupInterfaceSettingsFromJson(JSONObject()).prism)
         assertEquals(com.luc4n3x.levyra.domain.PrismSettings(), backupInterfaceSettingsFromJson(JSONObject().put("prismAppearance", "unknown")).prism)
     }

@@ -196,6 +196,14 @@ internal fun HomeGenreChips(
     modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.colorScheme
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) {
+        LazyRow(modifier = modifier.fillMaxWidth(), contentPadding = contentPadding, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(zones, key = { zone -> "home-chip-${zone.id}" }) { zone ->
+                com.luc4n3x.levyra.ui.components.LevyraFilterPill(label = zone.label, selected = false, onClick = { onSelect(zone) }, role = Role.Button)
+            }
+        }
+        return
+    }
     LazyRow(
         modifier = modifier.fillMaxWidth(),
         contentPadding = contentPadding,
