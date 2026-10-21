@@ -99,6 +99,27 @@ internal class YoutubeMusicAccountRepository(context: Context) {
         YoutubeMusicLibraryPage(entries, tracks, next)
     }
 
+    private fun libraryEntries(content: Any, collection: YoutubeMusicCollection): List<YoutubeMusicLibraryEntry> {
+        val overview = parser.parseSearchOverview(JSONObject().put("contents", content), "library")
+        val entries = when (collection) {
+            YoutubeMusicCollection.Playlists -> {
+                val owned = YoutubeMusicAccountParser.ownedPlaylistBrowseIds(content)
+                overview.playlists.map {
+                    val browseId = it.browseId.ifBlank { "VL${it.playlistId}" }
+                    YoutubeMusicLibraryEntry(browseId, it.title, it.author, it.thumbnailUrl, collection, owned = browseId in owned)
+                }
+            }
+            YoutubeMusicCollection.Albums -> overview.albums.map {
+                YoutubeMusicLibraryEntry(it.browseId, it.title, it.artist, it.thumbnailUrl, collection)
+            }
+            YoutubeMusicCollection.Artists -> overview.artists.map {
+                YoutubeMusicLibraryEntry(it.browseId, it.name, it.subscribers, it.thumbnailUrl, collection)
+            }
+            YoutubeMusicCollection.Likes -> emptyList()
+        }
+        return entries.filter { it.browseId.isNotBlank() }.distinctBy { it.browseId }
+    }
+
     suspend fun home(session: YoutubeMusicSession, language: String): YoutubeMusicHome = withContext(Dispatchers.IO) {
         val root = client.browse(session, "FEmusic_home", language)
         val sections = parser.parseHomeSections(root)
