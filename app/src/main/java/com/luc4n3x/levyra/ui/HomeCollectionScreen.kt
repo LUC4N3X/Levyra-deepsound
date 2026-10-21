@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui
 
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+import com.luc4n3x.levyra.ui.theme.LevyraIsSpotify
 import com.luc4n3x.levyra.ui.theme.Nocturne78Design
 import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
 
@@ -118,7 +119,9 @@ internal fun HomeCollectionScreen(
             .joinToString(" · ")
     }
     val nocturne = LevyraIsNocturne
-    val backdrop = remember(accentStart, accentEnd, nocturne) {
+    val spotify = LevyraIsSpotify
+    val backdrop = remember(accentStart, accentEnd, nocturne, spotify) {
+        if (spotify) Brush.verticalGradient(0f to spotifyRadioPastel(accentStart), 0.5f to spotifyRadioPastel(accentStart).copy(alpha = 0.55f), 1f to Color.Transparent) else
         if (nocturne) Brush.verticalGradient(listOf(Nocturne78Palette.black, Nocturne78Palette.black)) else
         Brush.verticalGradient(
             0f to accentStart.copy(alpha = 0.55f),
@@ -159,7 +162,18 @@ internal fun HomeCollectionScreen(
                         LevyraBackButton(onClick = onDismiss, contentDescription = strings.back)
                     }
                 }
-                item(key = "collection-hero") {
+                if (spotify) item(key = "collection-hero-spotify") {
+                    SpotifyCollectionHero(
+                        title = title,
+                        subtitle = listOf(strings.formatTrackCount(tracks.size), artistLine).filter(String::isNotBlank).joinToString(" • "),
+                        tracks = mosaic,
+                        accent = accentStart,
+                        playLabel = strings.playAll,
+                        shuffleLabel = strings.shuffle,
+                        onPlayAll = onPlayAll,
+                        onShuffle = onShuffle
+                    )
+                } else item(key = "collection-hero") {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -411,6 +425,12 @@ private fun CollectionAction(
     }
 }
 
+private fun collectionRowBackground(active: Boolean, accent: Color, spotify: Boolean): Color = when {
+    spotify -> Color.Transparent
+    active -> accent.copy(alpha = 0.18f)
+    else -> LevyraText.copy(alpha = 0.05f)
+}
+
 @Composable
 private fun CollectionTrackRow(
     rank: Int,
@@ -424,19 +444,20 @@ private fun CollectionTrackRow(
     onActions: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val spotify = LevyraIsSpotify
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 1.dp)
             .heightIn(min = LevyraCardDesign.RowHeight)
             .clip(levyraGroupedListShape(rank - 1, count))
-            .background(if (active) accent.copy(alpha = 0.18f) else LevyraText.copy(alpha = 0.05f))
+            .background(collectionRowBackground(active, accent, spotify))
             .levyraPressable(onClick = onPlay, pressedScale = LevyraPressScale.Row, role = Role.Button)
             .padding(start = 8.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(LevyraCardDesign.RowTextGap)
     ) {
-        Text(
+        if (!spotify) Text(
             text = rank.toString(),
             color = if (active) accent else LevyraText.copy(alpha = 0.72f),
             style = LevyraType.contentTitle.copy(fontWeight = FontWeight.Black, fontFeatureSettings = "tnum"),

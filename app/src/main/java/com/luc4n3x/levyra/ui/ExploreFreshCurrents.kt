@@ -107,6 +107,21 @@ internal fun ExploreFreshScopeRail(
     onSelect: (ExploreFreshScope) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) {
+        Row(
+            modifier = modifier.fillMaxWidth().padding(horizontal = LevyraHomeDesign.HorizontalInset),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            scopes.forEach { scope ->
+                com.luc4n3x.levyra.ui.components.LevyraFilterPill(
+                    label = if (scope == ExploreFreshScope.Local) localLabel else strings.freshScopeWorld,
+                    selected = scope == selected,
+                    onClick = { onSelect(scope) }
+                )
+            }
+        }
+        return
+    }
     Row(
         modifier = modifier
             .fillMaxWidth()

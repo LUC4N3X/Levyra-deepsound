@@ -45,7 +45,7 @@ private fun SoundtrackArt(hero: StudioHero, modifier: Modifier) {
 private fun SoundtrackCompanions(urls: List<String>, ring: Color) {
     Row(horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
         urls.take(3).forEach { url ->
-            AsyncImage(
+            StableRemoteArtwork(
                 url, contentDescription = null, contentScale = ContentScale.Crop,
                 modifier = Modifier.size(30.dp).clip(CircleShape).border(2.dp, ring, CircleShape)
             )

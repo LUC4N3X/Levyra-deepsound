@@ -82,6 +82,8 @@ import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 import com.luc4n3x.levyra.ui.theme.LevyraIsPrism
 import com.luc4n3x.levyra.ui.theme.LevyraIsIvory
+import com.luc4n3x.levyra.ui.theme.LevyraIsSpotify
+import com.luc4n3x.levyra.ui.theme.SpotifyDesign
 import com.luc4n3x.levyra.ui.theme.IvoryDesign
 import com.luc4n3x.levyra.ui.theme.LevyraIsTorque
 import com.luc4n3x.levyra.ui.theme.LevyraMotion
@@ -105,11 +107,12 @@ internal data class SearchCardModel(
 
 internal data class SearchCardAction(val icon: ImageVector, val label: String, val onClick: () -> Unit)
 
-internal enum class SearchCardStyle { Expressive, Prism, Torque, Nocturne, Ivory }
+internal enum class SearchCardStyle { Expressive, Prism, Torque, Nocturne, Ivory, Spotify }
 
 internal val currentSearchCardStyle: SearchCardStyle
     get() = when {
         LevyraIsTorque -> SearchCardStyle.Torque
+        LevyraIsSpotify -> SearchCardStyle.Spotify
         LevyraIsIvory -> SearchCardStyle.Ivory
         LevyraIsPrism -> SearchCardStyle.Prism
         LevyraIsNocturne -> SearchCardStyle.Nocturne
@@ -316,7 +319,11 @@ private fun SearchDiscographyAvatar(artist: ArtistHit, style: SearchCardStyle) {
     }
 }
 
-internal fun searchCardSpacing(): Dp = if (currentSearchCardStyle == SearchCardStyle.Torque) 10.dp else 14.dp
+internal fun searchCardSpacing(): Dp = when (currentSearchCardStyle) {
+    SearchCardStyle.Torque -> 10.dp
+    SearchCardStyle.Spotify -> SpotifyDesign.gutter
+    else -> 14.dp
+}
 
 @Composable
 internal fun SearchCard(
@@ -331,6 +338,7 @@ internal fun SearchCard(
         SearchCardStyle.Torque -> TorqueSearchCard(card, actions, modifier, onClick)
         SearchCardStyle.Nocturne -> NocturneSearchCard(card, actions, modifier, onClick)
         SearchCardStyle.Ivory -> IvorySearchCard(card, actions, modifier, onClick)
+        SearchCardStyle.Spotify -> SpotifySearchCard(card, actions, modifier, onClick)
     }
 }
 
@@ -474,6 +482,21 @@ private fun IvorySearchCard(card: SearchCardModel, actions: List<SearchCardActio
         Spacer(Modifier.height(6.dp))
         SearchCardTitle(card.title, MaterialTheme.typography.titleSmall)
         SearchCardSubtitle(card.subtitle)
+    }
+}
+
+@Composable
+private fun SpotifySearchCard(card: SearchCardModel, actions: List<SearchCardAction>, modifier: Modifier, onClick: () -> Unit) {
+    val round = !card.playlist && card.badge.isBlank() && card.subtitle.isBlank()
+    Column(modifier = modifier.levyraPressable(onClick = onClick, role = Role.Button, onClickLabel = card.title)) {
+        Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(if (round) CircleShape else SpotifyDesign.coverShape)) {
+            SearchCardArtwork(card, Modifier.fillMaxSize())
+            SearchCardActions(actions, Modifier.align(Alignment.TopEnd))
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(card.title, color = SpotifyDesign.text, style = MaterialTheme.typography.labelLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        val detail = listOf(card.badge, card.subtitle).filter { it.isNotBlank() }.joinToString(" • ")
+        if (detail.isNotBlank()) Text(detail, color = SpotifyDesign.subdued, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -643,7 +666,7 @@ internal fun SearchArtistListRow(artist: ArtistHit, onClick: () -> Unit) {
         SearchCardStyle.Prism -> Color.Transparent
         SearchCardStyle.Torque -> LevyraPanel
         SearchCardStyle.Nocturne -> LevyraPanelSoft
-        SearchCardStyle.Ivory -> Color.Transparent
+        SearchCardStyle.Ivory, SearchCardStyle.Spotify -> Color.Transparent
     }
     val rowShape: Shape = when (style) {
         SearchCardStyle.Expressive -> RoundedCornerShape(24.dp)
@@ -651,6 +674,7 @@ internal fun SearchArtistListRow(artist: ArtistHit, onClick: () -> Unit) {
         SearchCardStyle.Torque -> RoundedCornerShape(2.dp)
         SearchCardStyle.Nocturne -> RoundedCornerShape(Nocturne78Design.cardCorner)
         SearchCardStyle.Ivory -> RoundedCornerShape(PrismDesign.surfaceCorner)
+        SearchCardStyle.Spotify -> RoundedCornerShape(SpotifyDesign.cornerSmall)
     }
     val avatarRing = if (style == SearchCardStyle.Prism) {
         Modifier.clip(CircleShape).background(PrismAccent.gradient()).padding(2.dp)

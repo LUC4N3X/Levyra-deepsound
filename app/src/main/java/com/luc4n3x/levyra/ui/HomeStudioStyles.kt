@@ -160,7 +160,7 @@ internal data class HomeStyleSpec(
     val compactLimit: Int
 )
 
-internal fun homeStyleSpec(style: HomeStyle, density: HomeDensity, nocturne: Boolean = false): HomeStyleSpec {
+internal fun homeStyleSpec(style: HomeStyle, density: HomeDensity, nocturne: Boolean = false, spotify: Boolean = false): HomeStyleSpec {
     val base = when (style) {
         HomeStyle.Original -> HomeStyleSpec(16.dp, 8.dp, 156.dp, 260.dp, 1f, 12.dp, 52.dp, 5, 3, 6)
         HomeStyle.ExpressiveMax -> HomeStyleSpec(16.dp, 20.dp, 168.dp, 304.dp, 1f, 32.dp, 56.dp, 5, 3, 6)
@@ -176,8 +176,9 @@ internal fun homeStyleSpec(style: HomeStyle, density: HomeDensity, nocturne: Boo
         HomeDensity.Spacious -> 1.12f
     }
     return base.copy(
-        sectionGap = (if (nocturne) base.sectionGap.coerceAtMost(16.dp) else base.sectionGap) * scale,
-        artworkCorner = if (nocturne) Nocturne78Design.artworkCorner else base.artworkCorner,
+        inset = if (spotify) SpotifyDesign.gutter else base.inset,
+        sectionGap = (if (nocturne) base.sectionGap.coerceAtMost(16.dp) else if (spotify) 24.dp else base.sectionGap) * scale,
+        artworkCorner = if (nocturne) Nocturne78Design.artworkCorner else if (spotify) SpotifyDesign.cornerSmall else base.artworkCorner,
         cardWidth = base.cardWidth * scale,
         largeCardWidth = base.largeCardWidth * scale,
         listLimit = if (density == HomeDensity.Compact) base.listLimit + 1 else base.listLimit
@@ -353,6 +354,14 @@ internal fun StudioSectionHeader(
     val headerModifier = modifier
         .fillMaxWidth()
         .padding(horizontal = spec.inset)
+    if (LevyraIsSpotify) {
+        Box(modifier.fillMaxWidth()) {
+            SpotifySectionTitle(title, spec.inset) {
+                onPlayAll?.let { action -> com.luc4n3x.levyra.ui.components.SpotifyTextAction(strings.playAll, action) }
+            }
+        }
+        return
+    }
     if (LevyraIsIvory) {
         Box(modifier.fillMaxWidth()) {
             IvorySectionTitle(title, spec.inset) {
@@ -1066,7 +1075,8 @@ internal fun StudioHomeHeader(
     onSearch: () -> Unit,
     onSettings: () -> Unit,
     hero: StudioHero? = null,
-    topBleed: Dp = 0.dp
+    topBleed: Dp = 0.dp,
+    onOpenZone: (ExploreZone) -> Unit = {}
 ) {
     val strings = LocalLevyraStrings.current
     val greetingHour by rememberCurrentGreetingHour()
@@ -1081,7 +1091,7 @@ internal fun StudioHomeHeader(
     val topKicker = if (name.isNotBlank()) dayPart else today
     val mainHeading = if (name.isNotBlank()) name else dayPart
     if (LevyraIsPrism) {
-        PrismHomeHeader(greeting, today.takeIf { name.isBlank() }.orEmpty(), hero, spec.inset, onSearch, onSettings, dayPart, name)
+        PrismHomeHeader(greeting, today.takeIf { name.isBlank() }.orEmpty(), hero, spec.inset, onSearch, onSettings, dayPart, name, onOpenZone)
         return
     }
     if (LevyraIsNocturne) {

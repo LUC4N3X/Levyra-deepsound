@@ -54,6 +54,25 @@ internal fun levyraReadableAccent(accent: Color, content: Color): Color {
 }
 
 internal fun levyraColorScheme(palette: LevyraPalette): ColorScheme {
+    if (palette.id == SpotifyPaletteId) return darkColorScheme(
+        primary = SpotifyDesign.green, onPrimary = Color.Black,
+        primaryContainer = SpotifyDesign.highlight, onPrimaryContainer = SpotifyDesign.text,
+        secondary = SpotifyDesign.subdued, onSecondary = Color.Black,
+        secondaryContainer = SpotifyDesign.highlight, onSecondaryContainer = SpotifyDesign.text,
+        tertiary = SpotifyDesign.green, onTertiary = Color.Black,
+        tertiaryContainer = SpotifyDesign.elevated, onTertiaryContainer = SpotifyDesign.green,
+        background = SpotifyDesign.base, onBackground = SpotifyDesign.text,
+        surface = SpotifyDesign.base, onSurface = SpotifyDesign.text,
+        surfaceVariant = SpotifyDesign.highlight, onSurfaceVariant = SpotifyDesign.subdued,
+        surfaceTint = Color.Transparent,
+        inverseSurface = Color.White, inverseOnSurface = Color.Black, inversePrimary = SpotifyDesign.greenPress,
+        error = SpotifyDesign.negativeStrong, onError = Color.White,
+        outline = SpotifyDesign.faint, outlineVariant = SpotifyDesign.decorative,
+        surfaceDim = SpotifyDesign.base, surfaceBright = SpotifyDesign.highlight,
+        surfaceContainerLowest = Color.Black, surfaceContainerLow = SpotifyDesign.card,
+        surfaceContainer = SpotifyDesign.elevated, surfaceContainerHigh = SpotifyDesign.highlight,
+        surfaceContainerHighest = SpotifyDesign.sheet
+    )
     if (palette.id == IvoryPaletteId) return levyraColorScheme(palette.copy(id = "")).copy(
         primary = palette.cyan, onPrimary = palette.black,
         primaryContainer = palette.panelSoft, onPrimaryContainer = palette.text,

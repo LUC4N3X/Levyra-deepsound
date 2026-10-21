@@ -49,18 +49,19 @@ internal object SkinChrome {
     }
     val iconShape: Shape get() = if (LevyraIsPrism) PrismDesign.cut(PrismDesign.controlCorner) else RoundedCornerShape(Nocturne78Design.controlCorner)
     val iconBackground: Color get() = when {
-        LevyraIsTorque || LevyraIsIvory -> Color.Transparent
+        LevyraIsTorque || LevyraIsIvory || LevyraIsSpotify -> Color.Transparent
         LevyraIsPrism -> PrismAccent.Tint
         else -> LevyraPanelSoft
     }
-    val iconTint: Color get() = if (LevyraIsTorque || LevyraIsIvory) LevyraText else LevyraCyan
+    val iconTint: Color get() = if (LevyraIsTorque || LevyraIsIvory || LevyraIsSpotify) LevyraText else LevyraCyan
     val chipSelectedContainer: Color get() = when {
         LevyraIsTorque -> LevyraActivePalette.blue
         LevyraIsIvory -> IvoryDesign.ink
+        LevyraIsSpotify -> SpotifyDesign.green
         LevyraIsPrism -> PrismAccent.Tint
         else -> Color.Transparent
     }
-    val chipSelectedContent: Color get() = if (LevyraIsTorque) Color.White else if (LevyraIsIvory) IvoryDesign.onInk else LevyraCyan
+    val chipSelectedContent: Color get() = if (LevyraIsTorque) Color.White else if (LevyraIsSpotify) Color.Black else if (LevyraIsIvory) IvoryDesign.onInk else LevyraCyan
     val labelsUppercase: Boolean get() = LevyraIsNocturne || LevyraIsTorque
 
     fun label(text: String, locale: Locale): String = if (labelsUppercase) text.uppercase(locale) else text
@@ -78,6 +79,7 @@ internal fun SkinSwitch(checked: Boolean, modifier: Modifier = Modifier) {
         val inset = 3.dp.toPx()
         if (torque) drawTorqueSwitch(checked, travel, accent, idle, stroke, inset)
         else if (LevyraIsIvory) drawIvorySwitch(travel, IvoryDesign.ink, IvoryDesign.onInk, idle, stroke)
+        else if (LevyraIsSpotify) drawSpotifySwitch(travel)
         else drawRectangularSwitch(checked, travel, accent, idle, stroke, inset)
     }
 }
@@ -108,6 +110,18 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawIvorySwitch(tra
     val dot = size.height * 0.16f + size.height * 0.06f * travel
     val x = size.height / 2 + (size.width - size.height) * travel
     drawCircle(androidx.compose.ui.graphics.lerp(idle, onInk, travel), dot, Offset(x, size.height / 2))
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSpotifySwitch(travel: Float) {
+    val trackHeight = size.height * 0.8f
+    val top = (size.height - trackHeight) / 2
+    drawRoundRect(
+        androidx.compose.ui.graphics.lerp(SpotifyDesign.faint, SpotifyDesign.green, travel),
+        Offset(0f, top), androidx.compose.ui.geometry.Size(size.width, trackHeight), CornerRadius(trackHeight / 2)
+    )
+    val radius = trackHeight / 2 - 2.dp.toPx()
+    val x = trackHeight / 2 + (size.width - trackHeight) * travel
+    drawCircle(androidx.compose.ui.graphics.lerp(SpotifyDesign.subdued, Color.White, travel), radius, Offset(x, size.height / 2))
 }
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawRectangularSwitch(checked: Boolean, travel: Float, accent: Color, idle: Color, stroke: Float, inset: Float) {

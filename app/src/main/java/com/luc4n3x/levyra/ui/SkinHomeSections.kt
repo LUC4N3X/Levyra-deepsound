@@ -51,6 +51,10 @@ internal val TorqueTagShape = GenericShape { size, _ ->
 
 @Composable
 internal fun SkinSectionTitle(title: String, inset: Dp, actions: @Composable RowScope.() -> Unit = {}) {
+    if (LevyraIsSpotify) {
+        SpotifySectionTitle(title, inset, actions)
+        return
+    }
     if (LevyraIsIvory) {
         IvorySectionTitle(title, inset, actions)
         return
@@ -102,7 +106,8 @@ internal fun SkinChartSection(
             ) { Icon(Icons.Rounded.Public, null, tint = LevyraMuted) }
             SkinPlayAll(playAllLabel, onPlayAll)
         }
-        if (LevyraIsIvory) IvoryChartShelf(ranked, currentId, isPlaying, inset, onPlay)
+        if (LevyraIsSpotify) SpotifyChartShelf(ranked, currentId, isPlaying, inset, onPlay)
+        else if (LevyraIsIvory) IvoryChartShelf(ranked, currentId, isPlaying, inset, onPlay)
         else LazyRow(contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             itemsIndexed(pages, key = { index, _ -> "chart-page-$index" }) { _, page ->
                 if (torque) Column(Modifier.width(318.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -198,16 +203,17 @@ internal fun distinctCollectionCovers(collections: List<StudioCollection>, perCa
 @Composable
 internal fun SkinCollectionsShelf(title: String, collections: List<StudioCollection>, inset: Dp, onOpen: (String) -> Unit) {
     val torque = LevyraIsTorque
-    val fourUp = torque || LevyraIsIvory
+    val fourUp = torque || LevyraIsIvory || LevyraIsSpotify
     val covers = remember(collections, fourUp) { distinctCollectionCovers(collections, if (fourUp) 4 else 3) }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SkinSectionTitle(title, inset)
-        LazyRow(contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        LazyRow(contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(if (LevyraIsSpotify) SpotifyDesign.gutter else 14.dp)) {
             itemsIndexed(collections, key = { _, collection -> "collection-${collection.id}" }) { _, collection ->
                 val tracks = covers[collection.id].orEmpty()
                 when {
                     torque -> TorqueCollectionCard(collection, tracks, onOpen)
                     LevyraIsIvory -> IvoryCollectionCard(collection, tracks, onOpen)
+                    LevyraIsSpotify -> SpotifyMixCard(collection, tracks, onOpen)
                     else -> PrismCollectionFanCard(collection, tracks, onOpen)
                 }
             }
@@ -260,6 +266,10 @@ private fun TorqueCollectionCard(collection: StudioCollection, tracks: List<Trac
 
 @Composable
 internal fun SkinShowcaseShelf(items: List<StudioShelfItem>, isPlaying: Boolean, inset: Dp, modifier: Modifier) {
+    if (LevyraIsSpotify) {
+        SpotifyCarousel(items, isPlaying, inset, modifier)
+        return
+    }
     if (LevyraIsIvory) {
         IvoryShowcaseShelf(items, isPlaying, inset, modifier)
         return
@@ -353,6 +363,10 @@ private fun TorqueArtistCard(item: StudioShelfItem) {
 
 @Composable
 internal fun SkinCategoryCard(title: String, artworkUrl: String, modifier: Modifier, onLongClick: (() -> Unit)?, onClick: () -> Unit) {
+    if (LevyraIsSpotify) {
+        SpotifyBrowseTile(title, artworkUrl, modifier, onLongClick = onLongClick, onClick = onClick)
+        return
+    }
     if (LevyraIsIvory) {
         IvoryCategoryCard(title, artworkUrl, modifier, onLongClick, onClick)
         return
@@ -455,6 +469,7 @@ private fun PrismChartTrack(index: Int, track: Track, current: Boolean, playing:
 internal fun SkinNameGreeting(greeting: String, dayPart: String, name: String, modifier: Modifier = Modifier) {
     val accessible = Modifier.clearAndSetSemantics { contentDescription = greeting; heading() }
     when {
+        LevyraIsSpotify -> SpotifyNameGreeting(greeting, modifier)
         LevyraIsIvory -> Column(modifier.then(accessible)) {
             Text(dayPart, color = LevyraMuted, style = MaterialTheme.typography.bodyLarge, letterSpacing = 1.2.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.Bottom) {

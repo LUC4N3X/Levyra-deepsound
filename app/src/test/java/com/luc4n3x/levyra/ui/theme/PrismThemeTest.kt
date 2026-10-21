@@ -79,6 +79,32 @@ class PrismThemeTest {
         assertTrue(LevyraSkinManagesLayout)
     }
 
+    @Test fun spotifyStyleIsDarkWithOneGreenAccentAndReadableSurfaces() {
+        val p = spotifyPalette()
+        assertFalse(p.isLight)
+        assertEquals(SpotifyDesign.green, p.cyan)
+        listOf(p.black, p.ink, p.panel, p.panelSoft).forEach { surface ->
+            assertTrue(playerContrastRatio(p.text, surface) >= 7f)
+            assertTrue(playerContrastRatio(p.muted, surface) >= 4.5f)
+        }
+        val scheme = levyraColorScheme(p)
+        assertTrue(playerContrastRatio(scheme.primary, scheme.onPrimary) >= 7f)
+        listOf(Color(0xFFFFE4E1), Color(0xFF101010), Color(0xFF1ED760), Color(0xFF3050F0)).forEach { cover ->
+            listOf(SpotifyDesign.miniSurface(cover), SpotifyDesign.heroSurface(cover)).forEach { surface ->
+                assertTrue(playerContrastRatio(Color.White, surface) >= 4.5f)
+            }
+            val lyrics = SpotifyDesign.lyricsSurface(cover)
+            assertTrue(playerContrastRatio(Color.White, lyrics) >= 3f)
+            assertTrue(playerContrastRatio(Color.Black, lyrics) >= 3f)
+        }
+        LevyraThemeController.apply(LevyraThemes.FROST, skin = LevyraSkin.SpotifyStyle)
+        assertTrue(LevyraIsSpotify)
+        assertTrue(LevyraIsPrism)
+        assertFalse(LevyraIsIvory)
+        assertTrue(LevyraSkinManagesLayout)
+        assertEquals(LevyraSkin.SpotifyStyle, LevyraSkin.from(LevyraSkin.SpotifyStyle.name))
+    }
+
     @Test fun playerSheetsKeepReadableContentInBothAppearances() {
         listOf(PrismAppearance.Light, PrismAppearance.Night).forEach { appearance ->
             val settings = PrismSettings(appearance = appearance)

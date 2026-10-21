@@ -197,6 +197,12 @@ internal fun rememberMiniPlayerPalette(
     if (LevyraIsNocturne) {
         return MiniPlayerPalette(scheme.primary, scheme.primary, scheme.surfaceContainerHigh, scheme.onSurface, scheme.onSurfaceVariant, true)
     }
+    if (LevyraIsSpotify) {
+        val artwork = rememberMiniArtworkPalette(track)
+        val target = remember(artwork) { SpotifyDesign.miniSurface(Color(artwork.start)) }
+        val surface by animateColorAsState(target, if (animated) LevyraPlayerDesign.paletteTween() else snap(), label = "spotify-mini-surface")
+        return MiniPlayerPalette(Color.White, Color.White, surface, SpotifyDesign.text, SpotifyDesign.subdued, true)
+    }
     if (LevyraIsIvory) {
         return MiniPlayerPalette(IvoryDesign.rose, IvoryDesign.ink, LevyraActivePalette.ink, scheme.onSurface, scheme.onSurfaceVariant, !LevyraActivePalette.isLight)
     }
@@ -728,7 +734,7 @@ private fun BoxScope.MiniBottomProgress(
             else -> MiniLineProgress(
                 progress = progress,
                 palette = palette,
-                inset = (tuning.cornerDp.dp * 0.7f).coerceAtLeast(12.dp),
+                inset = if (LevyraIsSpotify) 8.dp else (tuning.cornerDp.dp * 0.7f).coerceAtLeast(12.dp),
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
@@ -879,7 +885,7 @@ private fun Modifier.miniOutline(style: MiniPlayerStyle, palette: MiniPlayerPale
             ),
             shape = shape
         )
-        MiniPlayerStyle.Floating -> border(
+        MiniPlayerStyle.Floating -> if (LevyraIsSpotify) this else border(
             width = LevyraPlayerDesign.Hairline,
             color = palette.content.copy(alpha = 0.08f),
             shape = shape
@@ -927,6 +933,10 @@ private fun MiniStyledArtwork(
     playing: Boolean = false,
     animated: Boolean = false
 ) {
+    if (LevyraIsSpotify) {
+        Box(modifier.clip(SpotifyDesign.coverShape).background(SpotifyDesign.placeholder)) { CoverImage(track, Modifier.fillMaxSize()) }
+        return
+    }
     if (LevyraIsPrism) {
         SkinSpinningArtwork(track, playing, animated, modifier)
         return
@@ -982,7 +992,7 @@ private fun MiniStyledMetadata(
             Text(
                 text = track.title,
                 color = palette.content,
-                style = miniTitleStyle(tuning.typography, compact),
+                style = if (LevyraIsSpotify) MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp, lineHeight = 17.sp) else miniTitleStyle(tuning.typography, compact),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.levyraMarquee(enabled = animated, repeatDelayMillis = 3_200)
@@ -991,7 +1001,7 @@ private fun MiniStyledMetadata(
         Text(
             text = if (editorial) subtitle.uppercase() else subtitle,
             color = palette.contentMuted,
-            style = miniArtistStyle(tuning.typography, compact),
+            style = if (LevyraIsSpotify) MaterialTheme.typography.bodySmall else miniArtistStyle(tuning.typography, compact),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = if (compact) Modifier else Modifier.dockFoldHeight(compaction)
@@ -1059,14 +1069,15 @@ private fun MiniLineProgress(
     modifier: Modifier
 ) {
     val emphasis = if (palette.onDark) Color.White else Color.Black
+    val spotify = LevyraIsSpotify
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = inset, end = inset, bottom = 4.dp)
-            .height(StyledMiniLineHeight)
+            .padding(start = inset, end = inset, bottom = if (spotify) 0.dp else 4.dp)
+            .height(if (spotify) 2.dp else StyledMiniLineHeight)
             .drawBehind {
                 val radius = CornerRadius(size.height / 2f)
-                drawRoundRect(color = palette.content.copy(alpha = 0.14f), cornerRadius = radius)
+                drawRoundRect(color = palette.content.copy(alpha = if (spotify) 0.3f else 0.14f), cornerRadius = radius)
                 val width = size.width * progress().coerceIn(0f, 1f)
                 val start = if (layoutDirection == LayoutDirection.Rtl) size.width - width else 0f
                 drawRoundRect(

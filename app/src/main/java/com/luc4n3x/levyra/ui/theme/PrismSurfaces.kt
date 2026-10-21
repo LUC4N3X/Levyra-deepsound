@@ -18,6 +18,7 @@ internal fun prismGlassColor(): Color {
     val capabilities = LocalLevyraVisualCapabilities.current
     val opaque = activePrismSettings.translucency == PrismTranslucency.Reduced || !capabilities.heavyBlur
     if (LevyraIsIvory) return LevyraActivePalette.ink
+    if (LevyraIsSpotify) return SpotifyDesign.elevated
     return MaterialTheme.colorScheme.surfaceContainer.copy(alpha = if (opaque) 1f else 0.96f)
 }
 
@@ -34,7 +35,7 @@ internal fun PrismAtmosphere(modifier: Modifier = Modifier) {
 @Composable
 internal fun PrismPlayerAtmosphere(modifier: Modifier = Modifier) {
     val palette = LevyraActivePalette
-    if (LevyraIsTorque || LevyraIsIvory) {
+    if (LevyraIsTorque || LevyraIsIvory || LevyraIsSpotify) {
         Box(modifier.fillMaxSize().background(palette.black))
         return
     }
@@ -49,7 +50,12 @@ internal fun PrismPlayerAtmosphere(modifier: Modifier = Modifier) {
     })
 }
 
-internal fun prismPlayerSurfaces(palette: LevyraPalette): PlayerSurfaceTokens = PlayerSurfaceTokens(
+internal fun prismPlayerSurfaces(palette: LevyraPalette): PlayerSurfaceTokens = if (palette.id == SpotifyPaletteId) PlayerSurfaceTokens(
+    amoled = false, control = SpotifyDesign.tinted, controlQuiet = Color.Transparent, outline = Color.Transparent,
+    active = SpotifyDesign.tintedHighlight, activeContent = SpotifyDesign.green, tonal = SpotifyDesign.tinted,
+    hero = Color.White, heroContent = Color.Black,
+    content = SpotifyDesign.text, contentMuted = SpotifyDesign.subdued, contentFaint = SpotifyDesign.faint, glow = Color.Transparent
+) else PlayerSurfaceTokens(
     amoled = false, control = palette.panelSoft, controlQuiet = palette.panel, outline = palette.outline,
     active = palette.panelSoft, activeContent = palette.cyan, tonal = palette.panel,
     hero = palette.cyan, heroContent = if (palette.id == IvoryPaletteId) palette.black else Color.White,

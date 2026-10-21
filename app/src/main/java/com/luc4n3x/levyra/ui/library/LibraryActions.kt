@@ -1077,6 +1077,10 @@ internal fun LibraryNowPlayingDock(
     nextLabel: String = ""
 ) {
     val strings = LocalLevyraStrings.current
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) {
+        com.luc4n3x.levyra.ui.SpotifyNowPlayingBar(track, isPlaying, false, -1f, onToggle, onOpen, modifier, onNext, nextEnabled, nextLabel)
+        return
+    }
     Row(
         modifier = modifier
             .fillMaxWidth()

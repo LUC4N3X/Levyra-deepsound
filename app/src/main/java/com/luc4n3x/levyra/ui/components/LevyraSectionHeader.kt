@@ -124,6 +124,10 @@ internal fun LevyraSectionAction(
     compact: Boolean = false,
     tonal: Boolean = false
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) {
+        SpotifyTextAction(label, onClick, modifier)
+        return
+    }
     val palette = sectionActionPalette(tonal)
     val interaction = remember { MutableInteractionSource() }
     val corner = levyraExpressiveCorner(

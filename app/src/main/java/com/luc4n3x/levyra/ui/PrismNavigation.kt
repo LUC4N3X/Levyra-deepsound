@@ -34,6 +34,13 @@ internal fun PrismBottomTabs(tuning: NavTuning, selected: LevyraTab, onSelect: (
     val measuredHeight = LocalNocturneNavigationHeight.current
     val density = LocalDensity.current
     val torque = LevyraIsTorque
+    if (LevyraIsSpotify) {
+        SpotifyBottomTabs(entries, selected, applySystemInset, Modifier.onSizeChanged { size -> measuredHeight?.value = with(density) { size.height.toDp() } }) { entry, active ->
+            if (!active && tuning.haptics) haptics.perform(LevyraHapticAction.SeekSnap)
+            onSelect(entry.tab)
+        }
+        return
+    }
     if (LevyraIsIvory) {
         IvoryBottomTabs(entries, selected, applySystemInset, Modifier.onSizeChanged { size -> measuredHeight?.value = with(density) { size.height.toDp() } }) { entry, active ->
             if (!active && tuning.haptics) haptics.perform(LevyraHapticAction.SeekSnap)

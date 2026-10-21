@@ -168,7 +168,7 @@ private fun IvorySoundtrackStage(hero: StudioHero, playLabel: String, inset: Dp)
                 Text(hero.label, color = onInk, style = MaterialTheme.typography.labelLarge, letterSpacing = 1.4.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (hero.companionArtworkUrls.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy((-8).dp)) {
                     hero.companionArtworkUrls.take(3).forEach { url ->
-                        AsyncImage(url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(24.dp).clip(CircleShape).border(1.5.dp, ink, CircleShape))
+                        StableRemoteArtwork(url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(24.dp).clip(CircleShape).border(1.5.dp, ink, CircleShape))
                     }
                 }
             }
