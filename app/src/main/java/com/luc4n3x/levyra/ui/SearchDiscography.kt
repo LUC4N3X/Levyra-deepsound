@@ -53,6 +53,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -228,8 +229,9 @@ private fun SearchDiscographyShelf.label(featuredOn: String, albums: String, sin
         SearchDiscographyShelf.Playlists -> featuredOn
     }
 
+@Composable
 private fun searchSkinLabel(text: String): String =
-    if (LevyraIsTorque || LevyraIsNocturne) text.uppercase(Locale.getDefault()) else text
+    if (LevyraIsTorque || LevyraIsNocturne) text.uppercase(LocalLocale.current.platformLocale) else text
 
 @Composable
 private fun SearchDiscographyHeader(artist: ArtistHit, overline: String, onOpenArtist: () -> Unit) {
@@ -257,7 +259,7 @@ private fun SearchDiscographyHeader(artist: ArtistHit, overline: String, onOpenA
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = if (style == SearchCardStyle.Torque) artist.name.uppercase(Locale.getDefault()) else artist.name,
+                text = if (style == SearchCardStyle.Torque) artist.name.uppercase(LocalLocale.current.platformLocale) else artist.name,
                 color = LevyraText,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = when (style) {
@@ -457,7 +459,7 @@ private fun TorqueSearchCard(card: SearchCardModel, actions: List<SearchCardActi
             SearchCardActions(actions, Modifier.align(Alignment.TopEnd))
             if (card.badge.isNotBlank()) {
                 Text(
-                    text = card.badge.uppercase(Locale.getDefault()),
+                    text = card.badge.uppercase(LocalLocale.current.platformLocale),
                     color = Color.White,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
@@ -475,7 +477,7 @@ private fun TorqueSearchCard(card: SearchCardModel, actions: List<SearchCardActi
         Box(Modifier.fillMaxWidth().height(3.dp).background(LevyraActivePalette.blue))
         Column(Modifier.padding(horizontal = 10.dp, vertical = 10.dp)) {
             Text(
-                card.title.uppercase(Locale.getDefault()),
+                card.title.uppercase(LocalLocale.current.platformLocale),
                 color = LevyraText,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
@@ -508,7 +510,7 @@ private fun NocturneSearchCard(card: SearchCardModel, actions: List<SearchCardAc
         Spacer(Modifier.height(6.dp))
         if (card.badge.isNotBlank()) {
             Text(
-                text = card.badge.uppercase(Locale.getDefault()),
+                text = card.badge.uppercase(LocalLocale.current.platformLocale),
                 color = LevyraCyan,
                 style = MaterialTheme.typography.labelSmall,
                 maxLines = 1
@@ -652,7 +654,7 @@ internal fun SearchArtistListRow(artist: ArtistHit, onClick: () -> Unit) {
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
-                text = if (style == SearchCardStyle.Torque) artist.name.uppercase(Locale.getDefault()) else artist.name,
+                text = if (style == SearchCardStyle.Torque) artist.name.uppercase(LocalLocale.current.platformLocale) else artist.name,
                 color = LevyraText,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = if (style == SearchCardStyle.Expressive || style == SearchCardStyle.Torque) FontWeight.Bold else FontWeight.Normal,

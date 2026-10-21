@@ -637,6 +637,7 @@ import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchAlbumKind
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.availableSearchAlbumKinds
+import com.luc4n3x.levyra.ui.youtubemusic.entryFor
 import com.luc4n3x.levyra.domain.SmartMusicProfile
 import com.luc4n3x.levyra.domain.LevyraCanvasQuality
 import com.luc4n3x.levyra.domain.LevyraVisualPerformance
@@ -2411,12 +2412,54 @@ fun LevyraApp(
                                 LocalHomeCompactDensity provides
                                     renderSnapshot.state.interfaceSettings.compactHome
                             ) {
+                                val youtubeMusicLibrary = youtubeMusicState.library
+                                val youtubeMusicCreatedLabel = com.luc4n3x.levyra.ui.i18n.youtubeMusicHomeCopy(state.languageCode).createdByYou
+                                val youtubeMusicShelf = remember(youtubeMusicLibrary, youtubeMusicCreatedLabel) {
+                                    youtubeMusicLibrary?.let { library ->
+                                        com.luc4n3x.levyra.ui.youtubemusic.youtubeMusicShelfAlbums(library, youtubeMusicCreatedLabel)
+                                    }.orEmpty()
+                                }
+                                LaunchedEffect(youtubeMusicState.active?.id, state.languageCode, youtubeMusicState.restoring) {
+                                    youtubeMusicViewModel.loadLibraryShelf(state.languageCode)
+                                }
+                                val youtubeMusicHome = youtubeMusicState.active?.let { account ->
+                                    com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi(
+                                        accountName = account.name,
+                                        avatarUrl = account.avatarUrl,
+                                        albums = youtubeMusicShelf,
+                                        loading = youtubeMusicState.libraryLoading,
+                                        error = youtubeMusicState.libraryError,
+                                        onOpen = { album ->
+                                            val entry = youtubeMusicLibrary?.entryFor(album)
+                                            if (entry != null) {
+                                                if (entry.collection == com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicCollection.Albums) {
+                                                    viewModel.openAlbum(album)
+                                                } else {
+                                                    youtubeMusicViewModel.open(state.languageCode)
+                                                    youtubeMusicViewModel.openDetail(entry)
+                                                    showYoutubeMusic = true
+                                                }
+                                            }
+                                        },
+                                        onRefresh = { youtubeMusicViewModel.loadLibraryShelf(state.languageCode, force = true) },
+                                        onShowAll = {
+                                            youtubeMusicViewModel.open(state.languageCode)
+                                            showYoutubeMusic = true
+                                        },
+                                        onReconnect = {
+                                            showYoutubeMusic = true
+                                            youtubeMusicViewModel.open(state.languageCode)
+                                            youtubeMusicViewModel.beginLogin()
+                                        }
+                                    )
+                                }?.takeIf { it.albums.isNotEmpty() || it.loading || it.error != null }
                                 HomeStudioHost(
                                     viewModel = homeViewModel,
                                     renderSnapshot = renderSnapshot,
                                     homeListState = homeListState,
                                     deferredSectionsRevealed = homeDeferredSectionsRevealed,
                                     accountAvatarUrl = youtubeMusicState.active?.avatarUrl.orEmpty(),
+                                    youtubeMusicHome = youtubeMusicHome,
                                     homeStudio = state.homeStudioSettings,
                                     onPullRefresh = {
                                         homeViewModel.refreshHome { youtubeMusicViewModel.refreshHomeAndAwait(state.languageCode) }
@@ -9750,6 +9793,7 @@ private fun HomeScreen(
     homeListState: LazyListState,
     deferredSectionsRevealed: MutableState<Boolean>,
     accountAvatarUrl: String,
+    youtubeMusicHome: com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi?,
     onPullRefresh: () -> Unit,
     onTrackActions: (Track) -> Unit
 ) {
@@ -10205,6 +10249,31 @@ private fun HomeScreen(
                             onPlayAll = { viewModel.playAll(visiblePersonalTracks) },
                             onTrackActions = onTrackActions
                         )
+                    }
+                }
+            }
+
+            youtubeMusicHome?.let { yourMusic ->
+                item(key = "home-your-music-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
+                    HomeSectionLead(compactHome) {
+                        HomeSectionInset {
+                            HomeSectionHeader(com.luc4n3x.levyra.ui.i18n.youtubeMusicHomeCopy(state.languageCode).title)
+                        }
+                    }
+                }
+                item(key = "home-your-music-row", contentType = "home-your-music") {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (yourMusic.albums.isNotEmpty()) {
+                            HomeAlbumHitRow(
+                                albums = yourMusic.albums,
+                                animationsEnabled = state.animationsEnabled,
+                                onOpen = yourMusic.onOpen
+                            )
+                        } else if (yourMusic.loading) {
+                            HomeAlbumLoadingRow()
+                        }
+                        com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeNotice(yourMusic, HomeHorizontalInset)
+                        com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeFooter(yourMusic, HomeHorizontalInset)
                     }
                 }
             }
@@ -10668,6 +10737,7 @@ private fun StudioHomeScreen(
     homeListState: LazyListState,
     deferredSectionsRevealed: MutableState<Boolean>,
     accountAvatarUrl: String,
+    youtubeMusicHome: com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi?,
     homeStudio: LevyraHomeStudioSettings,
     onPullRefresh: () -> Unit,
     onTrackActions: (Track) -> Unit
@@ -10800,6 +10870,7 @@ private fun StudioHomeScreen(
         homeBottomInset = homeBottomInset,
         homeRefreshing = homeRefreshing,
         homePullState = homePullState,
+        youtubeMusicHome = youtubeMusicHome,
         onPullRefresh = onPullRefresh
     )
 
@@ -11240,6 +11311,7 @@ private fun StudioHomeContent(
     homeBottomInset: Dp,
     homeRefreshing: Boolean,
     homePullState: androidx.compose.material3.pulltorefresh.PullToRefreshState,
+    youtubeMusicHome: com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi?,
     onPullRefresh: () -> Unit
 ) {
     with(c) {
@@ -11304,7 +11376,7 @@ private fun StudioHomeContent(
                     verticalArrangement = Arrangement.spacedBy(homeSectionGap)
                 ) {
                     studioHomeHeaderItems(c, flowShortcutTracks, statusBarTop, homeTopPadding)
-                    studioHomeSections(c, homeRenderOrder)
+                    studioHomeSections(c, homeRenderOrder, youtubeMusicHome)
                 }
                 PullToRefreshDefaults.LoadingIndicator(
                     state = homePullState,
@@ -11383,14 +11455,20 @@ private fun LazyListScope.studioHomeHeaderItems(
 
 private fun LazyListScope.studioHomeSections(
     c: StudioHomeContext,
-    homeRenderOrder: List<HomeSectionId>
+    homeRenderOrder: List<HomeSectionId>,
+    youtubeMusicHome: com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi?
 ) {
     with(c) {
         var offlineEmitted = false
+        var yourMusicEmitted = youtubeMusicHome == null
         homeRenderOrder.forEach { sectionId ->
             if (!offlineEmitted && sectionId !in HomeSectionId.QuickAccess) {
                 homeStudioOfflineSection(c)
                 offlineEmitted = true
+            }
+            if (!yourMusicEmitted && offlineEmitted && sectionId != HomeSectionId.Spotlight && youtubeMusicHome != null) {
+                homeStudioSectionYourMusic(c, youtubeMusicHome)
+                yourMusicEmitted = true
             }
             if (studioLayout.isHidden(sectionId)) return@forEach
             when (sectionId) {
@@ -11413,6 +11491,7 @@ private fun LazyListScope.studioHomeSections(
             }
         }
         if (!offlineEmitted) homeStudioOfflineSection(c)
+        if (!yourMusicEmitted && youtubeMusicHome != null) homeStudioSectionYourMusic(c, youtubeMusicHome)
 
         if (state.homeError != null || state.playerError != null) {
             item(key = "home-status", contentType = "home-card") {
@@ -11725,6 +11804,35 @@ private fun LazyListScope.homeStudioSectionForgottenFavorites(c: StudioHomeConte
                     }
                 }
             }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionYourMusic(
+    c: StudioHomeContext,
+    yourMusic: com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi
+) {
+    with(c) {
+        item(key = "home-your-music-studio", contentType = "home-your-music") {
+            val title = com.luc4n3x.levyra.ui.i18n.youtubeMusicHomeCopy(state.languageCode).title
+            Column(modifier = studioItemModifier(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (yourMusic.albums.isNotEmpty()) {
+                    StudioAlbumSection(
+                        style = homeStyle,
+                        spec = styleSpec,
+                        layout = HomeSectionLayout.Carousel,
+                        title = title,
+                        featured = false,
+                        albums = yourMusic.albums,
+                        onOpen = yourMusic.onOpen
+                    )
+                } else {
+                    StudioSectionHeader(homeStyle, styleSpec, title, false, null)
+                    if (yourMusic.loading) HomeAlbumLoadingRow()
+                }
+                com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeNotice(yourMusic, styleSpec.inset)
+                com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeFooter(yourMusic, styleSpec.inset)
+            }
+        }
     }
 }
 
@@ -12388,6 +12496,7 @@ private fun HomeStudioHost(
     homeListState: LazyListState,
     deferredSectionsRevealed: MutableState<Boolean>,
     accountAvatarUrl: String,
+    youtubeMusicHome: com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi?,
     homeStudio: LevyraHomeStudioSettings,
     onPullRefresh: () -> Unit,
     onTrackActions: (Track) -> Unit
@@ -12399,6 +12508,7 @@ private fun HomeStudioHost(
             homeListState = homeListState,
             deferredSectionsRevealed = deferredSectionsRevealed,
             accountAvatarUrl = accountAvatarUrl,
+            youtubeMusicHome = youtubeMusicHome,
             onPullRefresh = onPullRefresh,
             onTrackActions = onTrackActions
         )
@@ -12409,6 +12519,7 @@ private fun HomeStudioHost(
             homeListState = homeListState,
             deferredSectionsRevealed = deferredSectionsRevealed,
             accountAvatarUrl = accountAvatarUrl,
+            youtubeMusicHome = youtubeMusicHome,
             homeStudio = homeStudio,
             onPullRefresh = onPullRefresh,
             onTrackActions = onTrackActions
@@ -16867,7 +16978,7 @@ internal fun Modifier.recentSearchesBleed(gutter: Dp): Modifier = layout { measu
 
 private const val SEARCH_TASTE_HINT_LIMIT = 10
 internal val RecentSearchGutter = 18.dp
-private val SettingsStudioGutter = 18.dp
+internal val SettingsStudioGutter = 18.dp
 private val RecentSearchCardWidth = 148.dp
 private val RecentSearchCardShape = RoundedCornerShape(32.dp)
 private val RecentSearchPlayBadge = 44.dp
