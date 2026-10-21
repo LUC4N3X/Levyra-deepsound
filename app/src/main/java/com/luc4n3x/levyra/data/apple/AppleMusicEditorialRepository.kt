@@ -254,7 +254,7 @@ internal class AppleCatalogBackoff(
     fun onRateLimited(now: Long, retryAfter: String?) {
         strikes = (strikes + 1).coerceAtMost(4)
         val requested = retryAfter?.trim()?.toLongOrNull()?.takeIf { it > 0 }?.times(1000L)
-        val delay = (requested ?: (defaultDelayMs shl (strikes - 1))).coerceAtMost(maxDelayMs)
+        val delay = (requested ?: (defaultDelayMs shl strikes - 1)).coerceAtMost(maxDelayMs)
         blockedUntil = now + delay
     }
 

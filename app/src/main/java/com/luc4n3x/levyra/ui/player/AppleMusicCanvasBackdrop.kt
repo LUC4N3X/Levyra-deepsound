@@ -202,7 +202,7 @@ internal object AppleCanvasReflections {
                     b += pixel and 0xFF
                 }
                 val count = radius * 2 + 1
-                buffer[index] = ((a / count) shl 24) or ((r / count) shl 16) or ((g / count) shl 8) or (b / count)
+                buffer[index] = (a / count shl 24) or (r / count shl 16) or (g / count shl 8) or b / count
             }
             for (index in 0 until length) {
                 if (horizontal) pixels[line * width + index] = buffer[index] else pixels[index * width + line] = buffer[index]
@@ -221,8 +221,8 @@ private fun legibilityPaint(height: Float): Paint {
 
 private fun reflectionPaint(strip: Bitmap, width: Float, height: Float, overlap: Float): Paint {
     val half = overlap * 0.5f
-    val inner = (width.pow(2) / 8f) / half + half / 2f
-    val radius = (overlap - half) + inner
+    val inner = width.pow(2) / 8f / half + half / 2f
+    val radius = overlap - half + inner
     val mask = RadialGradient(width / 2f, height - half + inner, radius, intArrayOf(0, 0, -1), floatArrayOf(0f, inner / radius, 1f), Shader.TileMode.CLAMP)
     val bitmapShader = BitmapShader(strip, Shader.TileMode.CLAMP, Shader.TileMode.MIRROR).apply {
         if (Build.VERSION.SDK_INT >= 33) filterMode = BitmapShader.FILTER_MODE_LINEAR

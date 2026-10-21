@@ -379,8 +379,8 @@ internal fun AppleMusicChartCard(card: AppleMusicChartCardModel, modifier: Modif
                 val cell = Size(size.width / columns, size.height / rows)
                 for (row in 0 until rows) {
                     for (column in 0 until columns) {
-                        val noise = ((seed shr ((row * columns + column) % 24)) and 0x7) / 7f
-                        val fade = (column.toFloat() / (columns - 1)) * 0.7f
+                        val noise = ((seed shr (row * columns + column) % 24) and 0x7) / 7f
+                        val fade = column.toFloat() / (columns - 1) * 0.7f
                         val alpha = (1f - fade - noise * 0.18f + row * 0.03f).coerceIn(0.12f, 1f)
                         drawRect(
                             accent.copy(alpha = alpha),

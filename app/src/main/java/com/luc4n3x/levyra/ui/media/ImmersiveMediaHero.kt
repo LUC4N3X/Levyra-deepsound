@@ -224,30 +224,7 @@ internal fun ImmersiveMediaHero(
     modifier: Modifier = Modifier,
     overline: String = ""
 ) {
-    if (!wide && LevyraIsTorque) {
-        TorqueMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, onSubtitleClick, actions, artwork, modifier)
-        return
-    }
-    if (!wide && com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic) {
-        AppleMusicMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, topBarHeight, onSubtitleClick, actions, artwork, modifier)
-        return
-    }
-    if (!wide && LevyraIsSpotify) {
-        SpotifyMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, topBarHeight, onSubtitleClick, actions, artwork, modifier)
-        return
-    }
-    if (!wide && LevyraIsIvory) {
-        IvoryMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, topBarHeight, onSubtitleClick, actions, artwork, modifier)
-        return
-    }
-    if (!wide && LevyraIsPrism) {
-        PrismMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, topBarHeight, onSubtitleClick, actions, artwork, modifier)
-        return
-    }
-    if (!wide && LevyraIsNocturne) {
-        NocturneMediaHero(title, overline, subtitle, metadata, colors, topBarHeight, onSubtitleClick, actions, artwork, modifier)
-        return
-    }
+    if (!wide && SkinMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, topBarHeight, onSubtitleClick, actions, artwork, modifier)) return
     val heroHeight = immersiveHeroHeight(wide, viewportWidth, viewportHeight, topBarHeight)
     val gutter = immersiveMediaGutter(viewportWidth)
     if (wide) {
@@ -707,3 +684,29 @@ internal fun ImmersiveMediaTopBar(
 
 internal val ImmersiveTopBarButtonSize: Dp = 40.dp
 internal val ImmersiveTopBarButtonFill: Color = Color.Black.copy(alpha = 0.30f)
+
+@Composable
+private fun SkinMediaHero(
+    title: String,
+    overline: String,
+    subtitle: String,
+    metadata: String,
+    colors: ImmersiveMediaColors,
+    viewportWidth: Dp,
+    topBarHeight: Dp,
+    onSubtitleClick: (() -> Unit)?,
+    actions: @Composable () -> Unit,
+    artwork: @Composable BoxScope.() -> Unit,
+    modifier: Modifier
+): Boolean {
+    when {
+        LevyraIsTorque -> TorqueMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, onSubtitleClick, actions, artwork, modifier)
+        com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic -> AppleMusicMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, topBarHeight, onSubtitleClick, actions, artwork, modifier)
+        LevyraIsSpotify -> SpotifyMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, topBarHeight, onSubtitleClick, actions, artwork, modifier)
+        LevyraIsIvory -> IvoryMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, topBarHeight, onSubtitleClick, actions, artwork, modifier)
+        LevyraIsPrism -> PrismMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, topBarHeight, onSubtitleClick, actions, artwork, modifier)
+        LevyraIsNocturne -> NocturneMediaHero(title, overline, subtitle, metadata, colors, topBarHeight, onSubtitleClick, actions, artwork, modifier)
+        else -> return false
+    }
+    return true
+}

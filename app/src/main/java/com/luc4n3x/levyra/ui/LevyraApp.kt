@@ -6196,8 +6196,8 @@ private fun ArtistHero(
     val heroContext = LocalContext.current
     val density = LocalDensity.current
     val nameRisePx = with(density) { ArtistNameRise.toPx() }
-    val appleMusic = LevyraIsAppleMusic
-    val scrim = if (appleMusic) Color.Black else LevyraBlack
+    val heroScrim = artistHeroScrim()
+    val scrim = heroScrim.color
     val statusProtection = if (LevyraIsLight) scrim.copy(alpha = 0.62f) else Color.Black.copy(alpha = 0.46f)
     val nameSize = artistHeroNameSize(profile.name)
     val audience = remember(profile.monthlyListeners, profile.subscribers) {
@@ -6284,9 +6284,9 @@ private fun ArtistHero(
                                 0f to statusProtection,
                                 0.18f to Color.Transparent,
                                 0.46f to Color.Transparent,
-                                0.68f to scrim.copy(alpha = if (appleMusic) 0.18f else 0.55f),
-                                0.88f to scrim.copy(alpha = if (appleMusic) 0.42f else 0.94f),
-                                1f to scrim.copy(alpha = if (appleMusic) 0.55f else 1f)
+                                0.68f to scrim.copy(alpha = heroScrim.middle),
+                                0.88f to scrim.copy(alpha = heroScrim.deep),
+                                1f to scrim.copy(alpha = heroScrim.end)
                             )
                         )
                     )
@@ -6315,7 +6315,7 @@ private fun ArtistHero(
                 },
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            if (!LevyraIsSpotify && !appleMusic) Text(
+            if (artistHeroShowsOverline()) Text(
                 text = LocalLevyraStrings.current.artistLabel.uppercase(),
                 color = artistHeroOverlineColor(),
                 style = LevyraType.overline.copy(letterSpacing = if (LevyraSkinManagesLayout) 2.4.sp else LevyraType.overline.letterSpacing),
@@ -6323,13 +6323,8 @@ private fun ArtistHero(
             )
             Text(
                 text = if (LevyraIsTorque) profile.name.uppercase() else profile.name,
-                color = if (LevyraIsTorque || appleMusic) Color.White else LevyraText,
-                style = if (appleMusic) MaterialTheme.typography.headlineLarge else LevyraType.heroTitle.copy(
-                    fontSize = nameSize,
-                    lineHeight = LevyraType.heroLineHeight(nameSize),
-                    fontWeight = artistHeroNameWeight(),
-                    letterSpacing = artistHeroNameSpacing()
-                ),
+                color = artistHeroNameColor(),
+                style = artistHeroNameStyle(nameSize),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() }
@@ -6337,7 +6332,7 @@ private fun ArtistHero(
             if (audience.isNotBlank()) {
                 Text(
                     text = audience,
-                    color = if (appleMusic) Color.White.copy(alpha = 0.72f) else LevyraText.copy(alpha = 0.72f),
+                    color = artistHeroAudienceColor(),
                     style = LevyraType.metadata,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -28828,7 +28823,7 @@ private fun albumTrackShowsArtist(trackArtist: String, albumArtist: String, spot
     trackArtist.isNotBlank() && (spotify || !trackArtist.trim().equals(albumArtist.trim(), ignoreCase = true))
 
 @Composable
-private fun artistHeroNameSpacing(): TextUnit = when {
+internal fun artistHeroNameSpacing(): TextUnit = when {
     LevyraIsTorque -> 2.sp
     LevyraIsSpotify -> (-1.4).sp
     else -> LevyraType.heroTitle.letterSpacing
