@@ -5,6 +5,8 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
+import com.luc4n3x.levyra.ui.SettingsStudioGutter
+import com.luc4n3x.levyra.ui.recentSearchesBleed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -76,7 +78,14 @@ internal fun SkinSelector(selected: LevyraSkin, onSelect: (LevyraSkin) -> Unit) 
     }
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(copy.title, style = MaterialTheme.typography.titleLarge, color = LevyraText, modifier = Modifier.semantics { heading() })
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).selectableGroup(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            Modifier
+                .recentSearchesBleed(SettingsStudioGutter)
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = SettingsStudioGutter)
+                .selectableGroup(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
             LevyraSkin.entries.forEach { skin ->
                 SkinOption(skin, selected == skin, { onSelect(skin) }, Modifier.width(112.dp))
             }

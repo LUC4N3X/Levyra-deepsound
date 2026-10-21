@@ -6,6 +6,7 @@ import com.luc4n3x.levyra.data.nextSearchContinuation
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.PlaylistHit
+import com.luc4n3x.levyra.domain.SearchArtistDiscography
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.SearchSuggestionBundle
@@ -60,7 +61,7 @@ internal interface SearchBackend {
     suspend fun section(filter: SearchFilter, query: String, languageCode: String, continuation: String): SearchSectionPage
     suspend fun exactArtist(query: String): ArtistHit?
     suspend fun officialArtists(candidates: List<ArtistHit>): List<ArtistHit>
-    suspend fun officialAlbums(artist: ArtistHit): List<AlbumHit>
+    suspend fun officialDiscography(artist: ArtistHit): SearchArtistDiscography?
     fun overviewHedgeDelayMs(): Long
 }
 
@@ -474,7 +475,7 @@ internal class LevyraSearchEngine(
         val resolvedArtists = official ?: raw.artists
         val artistsFailed = official == null && raw.artists.isEmpty()
         publish(session) { it.withVerifiedArtists(query, resolvedArtists, artistsFailed) }
-        val refinement = refineSearchAlbums(query, resolvedArtists, remote::officialAlbums)
+        val refinement = refineSearchAlbums(query, resolvedArtists, remote::officialDiscography)
         val verified = publish(session) { it.withAlbumRefinement(refinement) } ?: return
         session.trace.mark(SearchLatencyMark.VERIFIED)
         if (!verified.results.isEmpty) resultCache.put(session.request.cacheKey, verified.results)
