@@ -1,11 +1,18 @@
 package com.luc4n3x.levyra.feature.search
 
+import com.luc4n3x.levyra.domain.AlbumHit
+import com.luc4n3x.levyra.domain.ArtistProfile
+import com.luc4n3x.levyra.domain.ArtistRelease
+import com.luc4n3x.levyra.domain.PlaylistHit
+import com.luc4n3x.levyra.domain.ReleaseType
+import com.luc4n3x.levyra.domain.SearchArtistDiscography
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.SearchSuggestionBundle
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
@@ -152,7 +159,7 @@ class SearchProgressiveMergeTest {
     fun `official albums replace homonymous albums for an exact artist query`() = runBlocking {
         val impostor = searchTestAlbum("25", "Other Band", "MPRE_other")
         val official = searchTestAlbum("25", "Adele", "MPRE_official")
-        val refinement = refineSearchAlbums("adele", listOf(searchTestArtist("Adele", "UCadele"))) { listOf(official) }
+        val refinement = refineSearchAlbums("adele", listOf(searchTestArtist("Adele", "UCadele"))) { adeleDiscography(albums = listOf(official)) }
         val snapshot = session("adele").copy(results = SearchResults(albums = listOf(impostor)))
 
         val refined = snapshot.withAlbumRefinement(refinement)
@@ -165,7 +172,7 @@ class SearchProgressiveMergeTest {
     fun `official albums keep already paged albums`() = runBlocking {
         val paged = searchTestAlbum("Live", "Adele", "MPRE_live")
         val official = searchTestAlbum("25", "Adele", "MPRE_official")
-        val refinement = refineSearchAlbums("adele", listOf(searchTestArtist("Adele", "UCadele"))) { listOf(official) }
+        val refinement = refineSearchAlbums("adele", listOf(searchTestArtist("Adele", "UCadele"))) { adeleDiscography(albums = listOf(official)) }
         val snapshot = session("adele").copy(
             results = SearchResults(albums = listOf(paged)),
             sectionContinuations = mapOf(SearchFilter.Albums to "tok")
@@ -201,9 +208,114 @@ class SearchProgressiveMergeTest {
             )
         )
 
-        assertEquals(SearchAlbumRefinement.DropSongTitleEchoes, refinement)
+        assertEquals(SearchAlbumRefinement.DropSongTitleEchoes(), refinement)
         assertEquals(listOf("MPRE_25"), snapshot.withAlbumRefinement(refinement).results.albums.map { it.browseId })
     }
+
+    @Test
+    fun `verified artist discography exposes singles and featured playlists beside official albums`() = runBlocking {
+        val album = searchTestAlbum("25", "Adele", "MPRE_25")
+        val single = searchTestAlbum("Easy On Me", "Adele", "MPRE_easy").copy(releaseType = ReleaseType.Single)
+        val playlist = PlaylistHit(title = "This Is Adele", author = "YouTube Music", thumbnailUrl = "", playlistId = "RDadele")
+        val refinement = refineSearchAlbums("adele", listOf(searchTestArtist("Adele", "UCadele"))) {
+            adeleDiscography(albums = listOf(album), singles = listOf(single), playlists = listOf(playlist))
+        }
+
+        val refined = session("adele").withAlbumRefinement(refinement)
+
+        assertEquals(listOf("MPRE_25"), refined.results.albums.map { it.browseId })
+        val discography = requireNotNull(refined.results.discography)
+        assertEquals(listOf("MPRE_easy"), discography.singles.map { it.browseId })
+        assertEquals(listOf("RDadele"), discography.playlists.map { it.playlistId })
+    }
+
+    @Test
+    fun `singles only discography keeps search albums and still offers the discography`() = runBlocking {
+        val single = searchTestAlbum("Easy On Me", "Adele", "MPRE_easy").copy(releaseType = ReleaseType.Single)
+        val refinement = refineSearchAlbums("adele", listOf(searchTestArtist("Adele", "UCadele"))) {
+            adeleDiscography(singles = listOf(single))
+        }
+        val searchAlbum = searchTestAlbum("30", "Adele", "MPRE_30")
+        val refined = session("adele").copy(results = SearchResults(albums = listOf(searchAlbum))).withAlbumRefinement(refinement)
+
+        assertTrue(refinement is SearchAlbumRefinement.DropSongTitleEchoes)
+        assertEquals(listOf("MPRE_30"), refined.results.albums.map { it.browseId })
+        assertEquals(listOf("MPRE_easy"), refined.results.discography?.singles?.map { it.browseId })
+    }
+
+    @Test
+    fun `empty discography is not published`() = runBlocking {
+        val refinement = refineSearchAlbums("adele", listOf(searchTestArtist("Adele", "UCadele"))) { adeleDiscography() }
+
+        assertNull(session("adele").withAlbumRefinement(refinement).results.discography)
+    }
+
+    @Test
+    fun `profile discography maps every release shelf and drops unbrowsable releases`() {
+        val profile = ArtistProfile(
+            browseId = "UCadele",
+            name = "Adele",
+            subscribers = "",
+            monthlyListeners = "",
+            thumbnailUrl = "https://example.com/adele.jpg",
+            bannerUrl = "",
+            topSongs = emptyList(),
+            albums = listOf(searchTestRelease("25", "MPRE_25", ReleaseType.Album), searchTestRelease("Ghost", "", ReleaseType.Album)),
+            singles = listOf(searchTestRelease("Easy On Me", "MPRE_easy", ReleaseType.Single), searchTestRelease("Skyfall", "MPRE_sky", ReleaseType.Ep)),
+            accentStart = 0,
+            accentEnd = 0,
+            compilations = listOf(searchTestRelease("Best Of", "MPRE_best", ReleaseType.Compilation)),
+            featuredPlaylists = listOf(PlaylistHit(title = "Pop Hits", author = "YouTube Music", thumbnailUrl = "", playlistId = "PLpop"))
+        )
+
+        val discography = requireNotNull(officialSearchDiscography(profile, searchTestArtist("adele", "").copy(thumbnailUrl = "")))
+
+        assertEquals("Adele", discography.artist.name)
+        assertEquals("UCadele", discography.artist.browseId)
+        assertEquals("https://example.com/adele.jpg", discography.artist.thumbnailUrl)
+        assertEquals(listOf("MPRE_25"), discography.albums.map { it.browseId })
+        assertEquals(listOf(ReleaseType.Single, ReleaseType.Ep), discography.singles.map { it.releaseType })
+        assertEquals(listOf("MPRE_best"), discography.compilations.map { it.browseId })
+        assertEquals(listOf("PLpop"), discography.playlists.map { it.playlistId })
+        assertEquals("UCadele", discography.albums.single().artistBrowseId)
+    }
+
+    @Test
+    fun `missing profile yields no discography`() {
+        assertNull(officialSearchDiscography(null, searchTestArtist("Adele", "UCadele")))
+    }
+
+    @Test
+    fun `late overview merges keep the verified discography`() {
+        val discography = adeleDiscography(albums = listOf(searchTestAlbum("25", "Adele", "MPRE_25")))
+        val merged = mergeFastSearchResults(
+            SearchResults(discography = discography),
+            SearchResults(songs = listOf(searchTestTrack("s1", "Hello", "Adele"))),
+            "adele"
+        )
+
+        assertEquals(discography, merged.discography)
+    }
+
+    private fun adeleDiscography(
+        albums: List<AlbumHit> = emptyList(),
+        singles: List<AlbumHit> = emptyList(),
+        playlists: List<PlaylistHit> = emptyList()
+    ) = SearchArtistDiscography(
+        artist = searchTestArtist("Adele", "UCadele"),
+        albums = albums,
+        singles = singles,
+        playlists = playlists
+    )
+
+    private fun searchTestRelease(title: String, browseId: String, type: ReleaseType) = ArtistRelease(
+        title = title,
+        subtitle = "",
+        year = "2015",
+        thumbnailUrl = "",
+        browseId = browseId,
+        releaseType = type
+    )
 
     @Test
     fun `fast and verified copies of the same song collapse into the richer one`() {

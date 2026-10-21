@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.feature.search
 
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
+import com.luc4n3x.levyra.domain.SearchArtistDiscography
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.SearchSuggestionBundle
@@ -336,7 +337,7 @@ class LevyraSearchEngineTest {
     @Test
     fun `homonymous albums are replaced by the verified artist discography`() = runBlocking {
         backend.exactArtist = { searchTestArtist("Adele", "UCadele", officialArtwork = true) }
-        backend.officialAlbums = { listOf(searchTestAlbum("25", "Adele", "MPRE_real")) }
+        backend.officialDiscography = { artist -> SearchArtistDiscography(artist, albums = listOf(searchTestAlbum("25", "Adele", "MPRE_real"))) }
         backend.overview("adele").complete(
             SearchResults(
                 songs = listOf(searchTestTrack("a1", "Hello", "Adele")),
@@ -349,6 +350,57 @@ class LevyraSearchEngineTest {
         val verified = engine.awaitState { it.verified && it.settled }
 
         assertEquals(listOf("MPRE_real"), verified.results.albums.map { it.browseId })
+        assertEquals(listOf("MPRE_real"), verified.results.discography?.albums?.map { it.browseId })
+    }
+
+    @Test
+    fun `albums filter pages search albums beyond the verified discography`() = runBlocking {
+        backend.exactArtist = { searchTestArtist("Coldplay", "UCcold", officialArtwork = true) }
+        backend.officialDiscography = { artist ->
+            SearchArtistDiscography(artist, albums = listOf(searchTestAlbum("Moon Music", "Coldplay", "MPRE_moon")))
+        }
+        backend.section = { filter, _, continuation ->
+            when {
+                filter != SearchFilter.Albums -> SearchSectionPage()
+                continuation.isBlank() -> SearchSectionPage(
+                    albums = listOf(searchTestAlbum("Parachutes", "Coldplay", "MPRE_para")),
+                    continuation = "page2"
+                )
+                else -> SearchSectionPage(albums = listOf(searchTestAlbum("X&Y", "Coldplay", "MPRE_xy")))
+            }
+        }
+        backend.overview("coldplay").complete(SearchResults(songs = listOf(searchTestTrack("c1", "Yellow", "Coldplay"))))
+        val engine = engine()
+        engine.submit("coldplay", "it")
+        engine.awaitState { it.verified && it.settled }
+
+        engine.selectFilter(SearchFilter.Albums)
+        val first = engine.awaitState { snapshot -> snapshot.results.albums.any { it.browseId == "MPRE_para" } }
+        assertEquals("page2", first.sectionContinuations[SearchFilter.Albums])
+        engine.awaitState { SearchFilter.Albums !in it.sectionLoading }
+        engine.loadMore(SearchFilter.Albums)
+        val second = engine.awaitState { snapshot -> snapshot.results.albums.any { it.browseId == "MPRE_xy" } }
+
+        assertEquals(listOf("MPRE_moon", "MPRE_para", "MPRE_xy"), second.results.albums.map { it.browseId })
+        assertEquals("", second.sectionContinuations[SearchFilter.Albums])
+    }
+
+    @Test
+    fun `discography of a previous artist never leaks into a new query`() = runBlocking {
+        backend.exactArtist = { query ->
+            if (query == "adele") searchTestArtist("Adele", "UCadele", officialArtwork = true) else null
+        }
+        backend.officialDiscography = { artist -> SearchArtistDiscography(artist, albums = listOf(searchTestAlbum("25", "Adele", "MPRE_real"))) }
+        backend.overview("adele").complete(SearchResults(songs = listOf(searchTestTrack("a1", "Hello", "Adele"))))
+        backend.overview("bohemian rhapsody").complete(SearchResults(songs = listOf(searchTestTrack("q1", "Bohemian Rhapsody", "Queen"))))
+        val engine = engine()
+        engine.submit("adele", "it")
+        engine.awaitState { it.verified && it.settled && it.results.discography != null }
+
+        engine.submit("bohemian rhapsody", "it")
+        val next = engine.awaitState { it.queryKey == searchQueryKey("bohemian rhapsody") && it.settled }
+
+        assertEquals(null, next.results.discography)
     }
 
     @Test
@@ -584,7 +636,7 @@ private class FakeSearchBackend : SearchBackend {
     var exactArtist: suspend (String) -> ArtistHit? = { null }
 
     @Volatile
-    var officialAlbums: suspend (ArtistHit) -> List<AlbumHit> = { emptyList() }
+    var officialDiscography: suspend (ArtistHit) -> SearchArtistDiscography? = { null }
 
     val overviewCalls = CopyOnWriteArrayList<String>()
     val suggestionCalls = CopyOnWriteArrayList<String>()
@@ -626,7 +678,7 @@ private class FakeSearchBackend : SearchBackend {
 
     override suspend fun officialArtists(candidates: List<ArtistHit>): List<ArtistHit> = candidates
 
-    override suspend fun officialAlbums(artist: ArtistHit): List<AlbumHit> = officialAlbums.invoke(artist)
+    override suspend fun officialDiscography(artist: ArtistHit): SearchArtistDiscography? = officialDiscography.invoke(artist)
 
     override fun overviewHedgeDelayMs(): Long = 60_000L
 }

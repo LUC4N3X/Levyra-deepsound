@@ -329,6 +329,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         const val MAX_RELEASES_PER_SECTION = 200
         const val MAX_RELEASES_PER_SHELF = 100
         const val MAX_RELEASE_POINTERS = 2
+        const val MAX_FEATURED_PLAYLISTS = 12
         const val MAX_ARTIST_VERIFICATIONS = 6
         const val ARTIST_SEARCH_PARAMS = "EgWKAQIgAWoMEAMQBBAJEAoQBRAV"
         val RELEASE_YEAR_REGEX = Regex("\\b(19|20)\\d{2}\\b")
@@ -789,7 +790,8 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             singlesParams = singlePointer?.params.orEmpty(),
             videosBrowseId = videoPointer?.browseId.orEmpty(),
             videosParams = videoPointer?.params.orEmpty(),
-            compilations = compilations
+            compilations = compilations,
+            featuredPlaylists = music.parseSearchOverview(root, name).playlists.take(MAX_FEATURED_PLAYLISTS)
         )
     }
 

@@ -3,8 +3,8 @@ package com.luc4n3x.levyra.feature.search
 import com.luc4n3x.levyra.data.ArtistRepository
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.data.spotify.SpotifySearchClient
-import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
+import com.luc4n3x.levyra.domain.SearchArtistDiscography
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.SearchSuggestionBundle
@@ -69,8 +69,8 @@ internal class YoutubeMusicSearchBackend(
     override suspend fun officialArtists(candidates: List<ArtistHit>): List<ArtistHit> =
         artistRepository.officialArtistHits(candidates)
 
-    override suspend fun officialAlbums(artist: ArtistHit): List<AlbumHit> =
-        officialSearchAlbums(artistRepository.profile(artist.browseId, artist.name), artist)
+    override suspend fun officialDiscography(artist: ArtistHit): SearchArtistDiscography? =
+        officialSearchDiscography(artistRepository.profile(artist.browseId, artist.name), artist)
 
     override fun overviewHedgeDelayMs(): Long {
         val averageLatencyMs = providerRouter.health()
