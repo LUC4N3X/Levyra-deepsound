@@ -24,7 +24,6 @@
     <string name="car_connecting_player">Connessione al lettore</string>
     <string name="car_now_playing">In riproduzione</string>
     <string name="car_queue">Coda</string>
-
     <!-- Android Auto browse tree -->
     <string name="car_root_subtitle">Musica ottimizzata per Android Auto</string>
     <string name="car_home_subtitle">Mix veloci, offline e classifiche</string>
@@ -55,10 +54,10 @@
     <string name="car_album_unavailable">Album non disponibile</string>
     <string name="car_artist_unavailable">Artista non disponibile</string>
     <string name="car_item_unavailable">Elemento non disponibile</string>
-
     <!-- Android Auto dynamic strings -->
     <plurals name="car_tracks_count">
         <item quantity="one">%1$d brano</item>
+        <item quantity="many">%1$d brani</item>
         <item quantity="other">%1$d brani</item>
     </plurals>
     <string name="car_artist_folder_subtitle">Brani, preferiti e suggerimenti</string>
