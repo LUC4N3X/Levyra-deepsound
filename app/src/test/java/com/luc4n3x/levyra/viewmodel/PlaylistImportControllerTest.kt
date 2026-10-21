@@ -60,6 +60,57 @@ class PlaylistImportControllerTest {
     }
 
     @Test
+    fun `large imports preserve every position and separate retriable errors`() = runBlocking {
+        for (size in listOf(10, 50, 100, 500, 1083)) {
+            val calls = java.util.concurrent.atomic.AtomicInteger()
+            val active = java.util.concurrent.atomic.AtomicInteger()
+            val peak = java.util.concurrent.atomic.AtomicInteger()
+            var offline = true
+            val adapter = object : PlaylistImportSourceAdapter {
+                override val sources = setOf(PlaylistImportSource.SPOTIFY)
+                override suspend fun read(input: PlaylistImportInput, detected: DetectedPlaylistInput, progress: PlaylistReadProgress): PlaylistSourceResult {
+                    val rows = List(size) { ImportedTrackIdentity(it, "Song $it", listOf("Artist"), durationMs = 200_000) }
+                    return PlaylistSourceResult(ParsedPlaylist(ImportedPlaylistDescriptor(PlaylistImportSource.SPOTIFY, title = "Load $size"), rows, PlaylistImportCompleteness.Complete))
+                }
+            }
+            val catalog = object : PlaylistCandidateProvider {
+                override suspend fun candidates(identity: ImportedTrackIdentity, broad: Boolean): List<CatalogCandidate> {
+                    calls.incrementAndGet()
+                    val current = active.incrementAndGet()
+                    peak.updateAndGet { maxOf(it, current) }
+                    try {
+                        kotlinx.coroutines.delay(1)
+                        if (offline && identity.position % 10 == 0) throw java.io.IOException("Offline")
+                        val id = "track-${identity.position}"
+                        return listOf(CatalogCandidate(MatchCandidate(id, identity.title, identity.artists, durationMs = 200_000, kind = CandidateKind.SONG), track(id, identity.title)))
+                    } finally {
+                        active.decrementAndGet()
+                    }
+                }
+                override suspend fun search(query: String, origin: CandidateOrigin) = emptyList<CatalogCandidate>()
+            }
+            val subject = PlaylistImportController(scope, listOf(adapter), catalog, PlaylistImportSessionStore(folder.newFolder("load-$size")), gateway)
+            val started = System.nanoTime()
+            withContext(main) { subject.open(); subject.updateInput(PLAYLIST_A); subject.start() }
+            val review = withTimeout(30_000) { subject.state.first { it.step == PlaylistImportStep.REVIEW } }
+            assertEquals(size, review.entries.size)
+            assertEquals((0 until size).toList(), review.entries.map { it.identity.position })
+            assertEquals((size + 9) / 10, review.counts.errors)
+            assertEquals(0, review.counts.missing)
+            assertEquals(size, calls.get())
+            assertTrue(peak.get() <= PlaylistImportController.RESOLUTION_WORKERS)
+            offline = false
+            withContext(main) { subject.retryUnresolved() }
+            val recovered = withTimeout(30_000) { subject.state.first { it.step == PlaylistImportStep.REVIEW } }
+            assertEquals(size, recovered.counts.matched)
+            assertEquals(0, recovered.counts.errors)
+            assertEquals(size + review.counts.errors, calls.get())
+            println("IMPORT_LOAD size=$size calls=${calls.get()} peak=${peak.get()} elapsedMs=${(System.nanoTime() - started) / 1_000_000}")
+            withContext(main) { subject.finish() }
+        }
+    }
+
+    @Test
     fun `reopening after a completed import shows a clean input and the next import is independent`() {
         act { open() }
         val reviewA = importToReview(PLAYLIST_A)

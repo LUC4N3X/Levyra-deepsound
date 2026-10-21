@@ -66,7 +66,8 @@ data class PlaylistImportSummary(
     val needsReview: Int,
     val manual: Int,
     val mergedRepeats: Int,
-    val appended: Boolean
+    val appended: Boolean,
+    val errors: Int = 0
 )
 
 @Immutable
@@ -75,7 +76,8 @@ data class PlaylistManualSearchState(
     val query: String,
     val origin: CandidateOrigin,
     val loading: Boolean = false,
-    val results: List<MatchEvaluation> = emptyList()
+    val results: List<MatchEvaluation> = emptyList(),
+    val failed: Boolean = false
 )
 
 @Immutable
@@ -331,6 +333,7 @@ class PlaylistImportController(
         searchJob?.cancel()
         _state.update { it.copy(manualSearch = PlaylistManualSearchState(position, query, origin, loading = true)) }
         searchJob = scope.launch {
+            var failed = false
             val results = try {
                 withContext(ioDispatcher) {
                     val found = catalog.search(query, origin)
@@ -341,11 +344,12 @@ class PlaylistImportController(
                 throw error
             } catch (error: Exception) {
                 Timber.w(error, "Manual playlist import search failed")
+                failed = true
                 emptyList()
             }
             _state.update { current ->
                 if (current.manualSearch?.position != position) current
-                else current.copy(manualSearch = PlaylistManualSearchState(position, query, origin, loading = false, results = results))
+                else current.copy(manualSearch = PlaylistManualSearchState(position, query, origin, loading = false, results = results, failed = failed))
             }
         }
     }
@@ -390,6 +394,7 @@ class PlaylistImportController(
                             imported = selection.size,
                             skipped = counts.skipped,
                             unresolved = counts.missing,
+                            errors = counts.errors,
                             needsReview = counts.review,
                             manual = counts.manual,
                             mergedRepeats = counts.mergedRepeats,
@@ -420,12 +425,12 @@ class PlaylistImportController(
 
     fun fixMissing() {
         if (_state.value.step != PlaylistImportStep.SUMMARY) return
-        _state.update { it.copy(step = PlaylistImportStep.REVIEW, filter = ImportReviewFilter.MISSING, summary = null) }
+        _state.update { it.copy(step = PlaylistImportStep.REVIEW, filter = ImportReviewFilter.ALL, summary = null) }
     }
 
     fun retryUnresolved() {
         if (working.isEmpty()) return
-        val positions = working.indices.filter { working[it].status == ImportEntryStatus.MISSING }
+        val positions = working.indices.filter { working[it].status in setOf(ImportEntryStatus.MISSING, ImportEntryStatus.ERROR) }
         if (positions.isEmpty()) return
         val runGeneration = ++generation
         _state.update { it.copy(step = PlaylistImportStep.MATCHING, activity = PlaylistImportActivity.CHECKING, summary = null) }
@@ -434,7 +439,7 @@ class PlaylistImportController(
                 resolvePositions(positions, broad = true, runGeneration = runGeneration)
                 if (runGeneration != generation) return@launch
                 heal()
-                enterReview(ImportReviewFilter.MISSING)
+                enterReview(ImportReviewFilter.ALL)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
@@ -444,7 +449,7 @@ class PlaylistImportController(
     }
 
     fun unresolvedReport(): String = working
-        .filter { it.status == ImportEntryStatus.MISSING || it.status == ImportEntryStatus.SKIPPED || it.status == ImportEntryStatus.REVIEW }
+        .filter { it.status in setOf(ImportEntryStatus.MISSING, ImportEntryStatus.SKIPPED, ImportEntryStatus.REVIEW, ImportEntryStatus.ERROR) }
         .joinToString("\n") { "${it.identity.position + 1}. ${it.identity.label}" }
 
     fun finish() {
@@ -602,17 +607,24 @@ class PlaylistImportController(
 
     private suspend fun resolveEntry(entry: ImportEntry, broad: Boolean, preference: ResolutionPreference): ImportEntry {
         val identity = entry.identity
-        val candidates = try {
+        val resolution = try {
             val direct = identity.directTrack(synchronized(trackCache) { trackCache[identity.directCatalogId] })
-            val found = if (direct == null || broad) catalog.candidates(identity, broad) else emptyList()
-            listOfNotNull(direct?.toMatchCandidate()) + found
+            if (direct == null || broad) {
+                catalog.resolve(identity, broad, preference)
+            } else {
+                val candidates = listOf(direct.toMatchCandidate())
+                com.luc4n3x.levyra.data.playlistimport.CatalogResolution(
+                    candidates, PlaylistMatchEngine.select(identity, candidates.map { it.candidate }, preference)
+                )
+            }
         } catch (error: CancellationException) {
             throw error
-        } catch (error: IOException) {
+        } catch (error: Exception) {
             Timber.d(error, "Candidate lookup failed for import entry %d", identity.position)
-            emptyList<CatalogCandidate>()
+            return entry.copy(resolved = true, lookupFailed = true)
         }
-        val outcome = PlaylistMatchEngine.select(identity, candidates.map { it.candidate }, preference)
+        val candidates = resolution.candidates
+        val outcome = resolution.outcome
         outcome.selected?.candidate?.id?.let { id -> remember(candidates.filter { it.candidate.id == id }) }
         return if (broad && outcome.selected == null && entry.alternatives.isNotEmpty()) {
             entry.copy(resolved = true)

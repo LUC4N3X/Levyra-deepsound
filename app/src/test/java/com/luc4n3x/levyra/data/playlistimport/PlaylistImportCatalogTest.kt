@@ -7,6 +7,7 @@ import com.luc4n3x.levyra.nexus.playlistimport.CandidateKind
 import com.luc4n3x.levyra.nexus.playlistimport.CandidateOrigin
 import com.luc4n3x.levyra.nexus.playlistimport.ImportedTrackIdentity
 import com.luc4n3x.levyra.nexus.playlistimport.PlaylistMatchEngine
+import com.luc4n3x.levyra.nexus.playlistimport.ResolutionPreference
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.runBlocking
@@ -63,7 +64,7 @@ class PlaylistImportCatalogTest {
             return SearchPage(items = songsHandler(query), continuation = "")
         }
 
-        override suspend fun search(query: String, limit: Int, languageCode: String): List<Track> {
+        override suspend fun searchForImport(query: String, limit: Int, languageCode: String): List<Track> {
             searchQueries.add(query)
             return searchHandler(query, limit)
         }
@@ -210,7 +211,7 @@ class PlaylistImportCatalogTest {
                 return SearchPage(items = listOf(expectedTrack), continuation = "")
             }
 
-            override suspend fun search(query: String, limit: Int, languageCode: String): List<Track> {
+            override suspend fun searchForImport(query: String, limit: Int, languageCode: String): List<Track> {
                 return emptyList()
             }
         }
@@ -227,12 +228,44 @@ class PlaylistImportCatalogTest {
                 continuation: String
             ): SearchPage<Track> = throw IOException("Network down")
 
-            override suspend fun search(query: String, limit: Int, languageCode: String): List<Track> =
+            override suspend fun searchForImport(query: String, limit: Int, languageCode: String): List<Track> =
                 throw IOException("Network down")
         }
         val failingCatalog = PlaylistImportCatalog(persistentFailingRepo, localTracks = { emptyList() }, languageCode = { "en" })
-        val emptyResults = failingCatalog.search("Any query", CandidateOrigin.ONLINE)
-        assertTrue("Permanent failure should return empty list gracefully", emptyResults.isEmpty())
+        val failure = runCatching { failingCatalog.search("Any query", CandidateOrigin.ONLINE) }.exceptionOrNull()
+        assertTrue("Permanent failure must remain distinguishable from an empty catalog", failure is IOException)
+    }
+
+    @Test
+    fun test6b_failedSongBranchKeepsCandidatesFromWorkingSearch() = runBlocking {
+        val identity = ImportedTrackIdentity(0, "Группа крови", listOf("Кино"))
+        val mixedQueries = mutableListOf<String>()
+        val songsDown = object : YoutubeMusicRepository(null) {
+            override suspend fun searchSongsPage(query: String, languageCode: String, continuation: String): SearchPage<Track> =
+                SearchPage(failed = true)
+
+            override suspend fun searchForImport(query: String, limit: Int, languageCode: String): List<Track> {
+                mixedQueries += query
+                return listOf(testTrack("album", "Группа крови", "Кино").copy(durationMs = 285_000), testTrack("single", "Группа крови", "Кино").copy(durationMs = 236_000))
+            }
+        }
+        val resolution = PlaylistImportCatalog(songsDown, localTracks = { emptyList() }, languageCode = { "en" })
+            .resolve(identity, false, ResolutionPreference.SMART)
+        assertNotNull(resolution.outcome.selected)
+        assertTrue(mixedQueries.isNotEmpty())
+
+        val allDown = object : YoutubeMusicRepository(null) {
+            override suspend fun searchSongsPage(query: String, languageCode: String, continuation: String): SearchPage<Track> =
+                SearchPage(failed = true)
+
+            override suspend fun searchForImport(query: String, limit: Int, languageCode: String): List<Track> =
+                throw IOException("Network down")
+        }
+        val failure = runCatching {
+            PlaylistImportCatalog(allDown, localTracks = { emptyList() }, languageCode = { "en" })
+                .resolve(identity, false, ResolutionPreference.SMART)
+        }.exceptionOrNull()
+        assertTrue(failure is IOException)
     }
 
     @Test

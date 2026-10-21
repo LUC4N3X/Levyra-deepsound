@@ -54,6 +54,16 @@ class AppleMetadataEnricher(private val context: Context) {
     private var missSweepCounter = 0
     private val keyLocks = Array(32) { Mutex() }
     private val searchSlots = Semaphore(4)
+    private val importSearchLock = Mutex()
+    private var nextImportSearchNanos = 0L
+
+    suspend fun searchImportMetadata(title: String, artist: String, country: String? = null): List<AppleTrackMetadata> =
+        importSearchLock.withLock {
+            val remainingMs = (nextImportSearchNanos - System.nanoTime()) / 1_000_000L
+            if (remainingMs > 0) kotlinx.coroutines.delay(remainingMs)
+            nextImportSearchNanos = System.nanoTime() + 3_100_000_000L
+            searchAppleCatalog("$title $artist".trim(), resolveCountry(country))
+        }
 
     suspend fun enrich(track: Track, country: String? = null, timeoutMs: Long = DEFAULT_ENRICH_TIMEOUT_MS): Track? =
         matchMetadata(track, country, timeoutMs)?.let { mergeWithAppleMetadata(track, it) }
@@ -107,7 +117,7 @@ class AppleMetadataEnricher(private val context: Context) {
 
     private suspend fun searchAndEnrich(track: Track, country: String): AppleTrackMetadata? = withContext(Dispatchers.IO) {
         try {
-            val candidates = searchAppleCatalog(track, country)
+            val candidates = searchAppleCatalog(buildSearchQuery(track), country)
             if (candidates.isEmpty()) return@withContext null
 
             val evaluated = candidates.map { candidate ->
@@ -132,8 +142,7 @@ class AppleMetadataEnricher(private val context: Context) {
         }
     }
 
-    private suspend fun searchAppleCatalog(track: Track, country: String): List<AppleTrackMetadata> {
-        val query = buildSearchQuery(track)
+    private suspend fun searchAppleCatalog(query: String, country: String): List<AppleTrackMetadata> {
         val url = APPLE_SEARCH_URL.toHttpUrl().newBuilder()
             .addQueryParameter("term", query)
             .addQueryParameter("media", "music")

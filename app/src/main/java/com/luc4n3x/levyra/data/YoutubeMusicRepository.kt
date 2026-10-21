@@ -803,6 +803,23 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
     private val resilienceClient = YoutubeMusicResilienceClient(context, apiKey, clientVersion)
     private val albumDescriptionRepository = AlbumDescriptionRepository(context)
 
+    open suspend fun searchForImport(query: String, limit: Int, languageCode: String): List<Track> = withContext(Dispatchers.IO) {
+        try {
+            searchInnerTube(query, limit, languageCode, strict = true)
+                .ifEmpty { searchYoutubeExtractor(query, limit) }.also(::rememberSearchTracks)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            try {
+                searchYoutubeExtractor(query, limit).also(::rememberSearchTracks)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (fallbackError: Exception) {
+                throw java.io.IOException("Import search unavailable", fallbackError)
+            }
+        }
+    }
+
     open suspend fun search(query: String, limit: Int = 36, languageCode: String = LevyraLanguageCatalog.deviceDefault()): List<Track> = withContext(Dispatchers.IO) {
         val cleanQuery = query.trim()
         if (cleanQuery.length < 2) return@withContext emptyList()
@@ -942,7 +959,9 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         continuation: String
     ): SearchPage<Track> = withContext(Dispatchers.IO) {
         val cleanQuery = query.trim()
-        val root = searchSectionRoot(cleanQuery, languageCode, params, continuation) ?: return@withContext SearchPage()
+        if (cleanQuery.length < 2) return@withContext SearchPage()
+        val root = searchSectionRoot(cleanQuery, languageCode, params, continuation)
+            ?: return@withContext SearchPage(failed = true)
         val parsed = parseSearchOverview(root, cleanQuery)
         val tracks = mergeSearchSongs(parsed.songs, parsed.videos).ifEmpty {
             parseLegacyVideoRenderers(root, cleanQuery)
@@ -3058,8 +3077,9 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         )
     }
 
-    private fun searchInnerTube(query: String, limit: Int, languageCode: String): List<Track> {
-    val root = searchInnerTubeRaw(query, languageCode) ?: return emptyList()
+    private fun searchInnerTube(query: String, limit: Int, languageCode: String, strict: Boolean = false): List<Track> {
+    val root = searchInnerTubeRaw(query, languageCode)
+        ?: if (strict) throw java.io.IOException("Import search unavailable") else return emptyList()
     val renderers = mutableListOf<JSONObject>()
     collectObjectsByKey(root, "musicResponsiveListItemRenderer", renderers)
     val tracks = LinkedHashMap<String, Track>()
