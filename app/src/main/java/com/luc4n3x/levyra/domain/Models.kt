@@ -402,7 +402,8 @@ data class ArtistProfile(
     val singlesParams: String = "",
     val videosBrowseId: String = "",
     val videosParams: String = "",
-    val compilations: List<ArtistRelease> = emptyList()
+    val compilations: List<ArtistRelease> = emptyList(),
+    val featuredPlaylists: List<PlaylistHit> = emptyList()
 ) {
     val bio: String
         get() = biography?.text.orEmpty()
@@ -554,7 +555,8 @@ data class SearchResults(
     val albums: List<AlbumHit> = emptyList(),
     val playlists: List<PlaylistHit> = emptyList(),
     val videos: List<Track> = emptyList(),
-    val failedSections: Set<SearchFilter> = emptySet()
+    val failedSections: Set<SearchFilter> = emptySet(),
+    val discography: SearchArtistDiscography? = null
 ) {
     val isEmpty: Boolean
         get() = topTrack == null &&
@@ -563,6 +565,57 @@ data class SearchResults(
             albums.isEmpty() &&
             playlists.isEmpty() &&
             videos.isEmpty()
+}
+
+enum class SearchDiscographyShelf {
+    Albums,
+    Singles,
+    Compilations,
+    Playlists
+}
+
+data class SearchArtistDiscography(
+    val artist: ArtistHit,
+    val albums: List<AlbumHit> = emptyList(),
+    val singles: List<AlbumHit> = emptyList(),
+    val compilations: List<AlbumHit> = emptyList(),
+    val playlists: List<PlaylistHit> = emptyList()
+) {
+    val shelves: List<SearchDiscographyShelf>
+        get() = buildList {
+            if (albums.isNotEmpty()) add(SearchDiscographyShelf.Albums)
+            if (singles.isNotEmpty()) add(SearchDiscographyShelf.Singles)
+            if (compilations.isNotEmpty()) add(SearchDiscographyShelf.Compilations)
+            if (playlists.isNotEmpty()) add(SearchDiscographyShelf.Playlists)
+        }
+
+    val isEmpty: Boolean
+        get() = albums.isEmpty() && singles.isEmpty() && compilations.isEmpty() && playlists.isEmpty()
+
+    fun releases(shelf: SearchDiscographyShelf): List<AlbumHit> = when (shelf) {
+        SearchDiscographyShelf.Albums -> albums
+        SearchDiscographyShelf.Singles -> singles
+        SearchDiscographyShelf.Compilations -> compilations
+        SearchDiscographyShelf.Playlists -> emptyList()
+    }
+}
+
+enum class SearchAlbumKind {
+    All,
+    Albums,
+    Singles;
+
+    fun accepts(type: ReleaseType): Boolean = when (this) {
+        All -> true
+        Albums -> type == ReleaseType.Album || type == ReleaseType.Compilation
+        Singles -> type.isSingleLike
+    }
+}
+
+fun availableSearchAlbumKinds(albums: List<AlbumHit>): List<SearchAlbumKind> {
+    val hasAlbums = albums.any { SearchAlbumKind.Albums.accepts(it.releaseType) }
+    val hasSingles = albums.any { SearchAlbumKind.Singles.accepts(it.releaseType) }
+    return if (hasAlbums && hasSingles) SearchAlbumKind.entries else emptyList()
 }
 
 enum class SearchFilter {

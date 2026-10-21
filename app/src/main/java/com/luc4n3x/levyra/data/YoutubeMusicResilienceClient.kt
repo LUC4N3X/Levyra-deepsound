@@ -226,10 +226,11 @@ internal class YoutubeMusicResilienceClient(
         val deadline = monotonicClock() + TOTAL_REQUEST_BUDGET_MS
         val affectsProfileHealth = kind != YoutubeMusicRequestKind.SEARCH_SUGGESTIONS
         val orderedProfiles = orderedProfiles(clock()).let { candidates ->
-            if (kind == YoutubeMusicRequestKind.SEARCH_SUGGESTIONS) {
-                candidates.filter { it.id == "web-remix" }
-            } else {
-                candidates
+            when {
+                kind == YoutubeMusicRequestKind.SEARCH_SUGGESTIONS -> candidates.filter { it.id == "web-remix" }
+                kind == YoutubeMusicRequestKind.SEARCH && params.isNotBlank() ->
+                    candidates.filter { it.clientName in MUSIC_CATALOG_CLIENTS }
+                else -> candidates
             }
         }
         val deferredDenials = mutableListOf<YoutubeMusicDeferredFailure>()
@@ -557,6 +558,7 @@ internal class YoutubeMusicResilienceClient(
         const val LONG_BLOCK_MS = 2L * 60L * 1_000L
         const val HARD_BLOCK_MS = 10L * 60L * 1_000L
         const val DEFAULT_PROFILE_SCORE = 50.0
+        val MUSIC_CATALOG_CLIENTS = setOf("WEB_REMIX", "ANDROID_MUSIC")
         const val WEB_USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
         const val ANDROID_MUSIC_USER_AGENT =

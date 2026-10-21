@@ -34,6 +34,40 @@ class YoutubeMusicResilienceClientTest {
     }
 
     @Test
+    fun filteredSearchNeverFallsBackToGenericYoutubeClients() {
+        val calls = mutableListOf<String>()
+        val client = client { request ->
+            calls += request.profile.id
+            if (request.profile.id == "web-remix" || request.profile.id == "android-music") {
+                YoutubeMusicTransportResponse(200, "{}", 20L)
+            } else {
+                YoutubeMusicTransportResponse(200, validSearch(), 30L)
+            }
+        }
+
+        val result = client.search("radiohead", "it", params = "EgWKAQIYAWoKEAkQChAFEAMQBA%3D%3D")
+
+        assertNull(result)
+        assertEquals(listOf("web-remix", "android-music"), calls)
+    }
+
+    @Test
+    fun unfilteredSearchKeepsTheFullFallbackChain() {
+        val calls = mutableListOf<String>()
+        val client = client { request ->
+            calls += request.profile.id
+            if (request.profile.id == "web-remix" || request.profile.id == "android-music") {
+                YoutubeMusicTransportResponse(200, "{}", 20L)
+            } else {
+                YoutubeMusicTransportResponse(200, validSearch(), 30L)
+            }
+        }
+
+        assertNotNull(client.search("radiohead", "it"))
+        assertTrue(calls.size > 2)
+    }
+
+    @Test
     fun rateLimitTemporarilyRemovesPrimaryFromTheChain() {
         var now = 1_700_000_000_000L
         val calls = mutableListOf<String>()

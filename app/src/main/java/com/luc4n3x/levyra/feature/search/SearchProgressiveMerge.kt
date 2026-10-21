@@ -11,6 +11,8 @@ import com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistProfile
+import com.luc4n3x.levyra.domain.ArtistRelease
+import com.luc4n3x.levyra.domain.SearchArtistDiscography
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.SearchSuggestionBundle
@@ -75,7 +77,8 @@ internal fun mergeFastSearchResults(
         artists = provisionalSearchArtists(query, mergeSearchArtists(existing.artists, incoming.artists)),
         albums = mergeSearchAlbums(existing.albums, incoming.albums),
         playlists = mergeSearchPlaylists(existing.playlists, incoming.playlists),
-        failedSections = existing.failedSections + incoming.failedSections
+        failedSections = existing.failedSections + incoming.failedSections,
+        discography = existing.discography ?: incoming.discography
     )
 }
 
@@ -243,41 +246,57 @@ internal fun SearchSessionSnapshot.withFailedSection(filter: SearchFilter): Sear
     }
 
 internal sealed interface SearchAlbumRefinement {
+    val discography: SearchArtistDiscography?
+        get() = null
+
     data object Keep : SearchAlbumRefinement
-    data object DropSongTitleEchoes : SearchAlbumRefinement
-    data class Official(val albums: List<AlbumHit>) : SearchAlbumRefinement
+    data class DropSongTitleEchoes(override val discography: SearchArtistDiscography? = null) : SearchAlbumRefinement
+    data class Official(
+        val albums: List<AlbumHit>,
+        override val discography: SearchArtistDiscography? = null
+    ) : SearchAlbumRefinement
 }
 
 internal suspend fun refineSearchAlbums(
     query: String,
     artists: List<ArtistHit>,
-    officialAlbums: suspend (ArtistHit) -> List<AlbumHit>
+    officialDiscography: suspend (ArtistHit) -> SearchArtistDiscography?
 ): SearchAlbumRefinement {
     val queryKey = artistIdentityKey(query)
     val exactArtist = artists.firstOrNull { artistIdentityKey(it.name) == queryKey }
         ?: return SearchAlbumRefinement.Keep
-    val official = searchCatching { officialAlbums(exactArtist) }
-        .getOrDefault(emptyList())
+    val discography = searchCatching { officialDiscography(exactArtist) }
+        .getOrNull()
+        ?.takeUnless(SearchArtistDiscography::isEmpty)
+    val official = discography?.albums.orEmpty()
         .asSequence()
         .filter { album -> album.title.isNotBlank() && album.browseId.isNotBlank() }
         .distinctBy(::searchAlbumTextKey)
         .take(SEARCH_ALBUM_LIMIT)
         .toList()
-    return if (official.isNotEmpty()) SearchAlbumRefinement.Official(official) else SearchAlbumRefinement.DropSongTitleEchoes
+    return if (official.isNotEmpty()) {
+        SearchAlbumRefinement.Official(official, discography)
+    } else {
+        SearchAlbumRefinement.DropSongTitleEchoes(discography)
+    }
 }
 
 internal fun SearchSessionSnapshot.withAlbumRefinement(refinement: SearchAlbumRefinement): SearchSessionSnapshot {
     val base = freshResults
     val albums = when (refinement) {
         SearchAlbumRefinement.Keep -> base.albums
-        SearchAlbumRefinement.DropSongTitleEchoes -> albumsWithoutSongTitleEchoes(base.albums, base.songs)
+        is SearchAlbumRefinement.DropSongTitleEchoes -> albumsWithoutSongTitleEchoes(base.albums, base.songs)
         is SearchAlbumRefinement.Official -> if (SearchFilter.Albums in sectionContinuations) {
             mergeSearchAlbums(refinement.albums, base.albums)
         } else {
             refinement.albums
         }
     }
-    return copy(results = base.copy(albums = albums), carriedOver = false, verified = true)
+    return copy(
+        results = base.copy(albums = albums, discography = refinement.discography),
+        carriedOver = false,
+        verified = true
+    )
 }
 
 internal fun albumsWithoutSongTitleEchoes(albums: List<AlbumHit>, songs: List<Track>): List<AlbumHit> {
@@ -294,12 +313,11 @@ internal fun albumsWithoutSongTitleEchoes(albums: List<AlbumHit>, songs: List<Tr
 internal fun searchAlbumTextKey(album: AlbumHit): String =
     "${albumRecommendationTextKey(album.title)}|${albumRecommendationTextKey(album.artist)}"
 
-internal fun officialSearchAlbums(profile: ArtistProfile?, artist: ArtistHit): List<AlbumHit> {
-    profile ?: return emptyList()
+internal fun officialSearchDiscography(profile: ArtistProfile?, artist: ArtistHit): SearchArtistDiscography? {
+    profile ?: return null
     val artistName = profile.name.ifBlank { artist.name }
     val artistBrowseId = profile.browseId.ifBlank { artist.browseId }
-    return profile.albums
-        .asSequence()
+    fun List<ArtistRelease>.asSearchAlbums(): List<AlbumHit> = asSequence()
         .filter { release -> release.title.isNotBlank() && release.browseId.isNotBlank() }
         .map { release ->
             AlbumHit(
@@ -315,7 +333,19 @@ internal fun officialSearchAlbums(profile: ArtistProfile?, artist: ArtistHit): L
                 releaseType = release.releaseType
             )
         }
+        .distinctBy(::searchAlbumTextKey)
         .toList()
+    return SearchArtistDiscography(
+        artist = artist.copy(
+            name = artistName,
+            browseId = artistBrowseId,
+            thumbnailUrl = artist.thumbnailUrl.ifBlank { profile.thumbnailUrl }
+        ),
+        albums = profile.albums.asSearchAlbums(),
+        singles = profile.singles.asSearchAlbums(),
+        compilations = profile.compilations.asSearchAlbums(),
+        playlists = profile.featuredPlaylists
+    ).takeUnless(SearchArtistDiscography::isEmpty)
 }
 
 private const val ENTITY_KEY_SONG_LIMIT = 8

@@ -39,7 +39,7 @@ import com.luc4n3x.levyra.ui.components.LevyraPlayingIndicator
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.theme.*
 
-private val TorqueTagShape = GenericShape { size, _ ->
+internal val TorqueTagShape = GenericShape { size, _ ->
     val slant = size.height * 0.35f
     moveTo(slant, 0f)
     lineTo(size.width, 0f)
