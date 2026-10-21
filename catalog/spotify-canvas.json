@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-21T04:55:41Z",
+  "generatedAt": "2026-10-21T11:56:24Z",
   "items": [
     {
       "song": "NON SEI PIÙ TU (feat. Lazza)",
@@ -327,7 +327,7 @@
     {
       "song": "Man I Need",
       "artist": "Olivia Dean",
-      "album": "Man I Need",
+      "album": "The Art of Loving",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
@@ -518,6 +518,13 @@
       "artist": "Jamie Miller",
       "album": "Babydoll",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/2ffb0b9c6b6f4ca898bb73d3602d477f.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "Man I Need",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1092,6 +1099,13 @@
       "artist": "Jul",
       "album": "Parfum quartier",
       "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/624af7d60e444aa4a8b5e56044f57197.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Verschwommen",
+      "artist": "Ski Aggu, Ericson",
+      "album": "Ski Aggu Musik",
+      "url": "https://canvaz.scdn.co/upload/artist/6CP5wWvO8oIxedESJNCN4H/video/9c7af2ceec2843f386d1f07cc118628a.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2334,13 +2348,6 @@
       "scope": "track"
     },
     {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "The Art of Loving",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Dancing On My Own",
       "artist": "Robyn",
       "album": "Body Talk",
@@ -3317,7 +3324,7 @@
       "song": "Touch",
       "artist": "MAZZEL",
       "album": "Touch",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/1982bbb032c0420e8bc860d61b87f6f5.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/dc7c3ef82b544c66b27146072ac61492.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -5348,6 +5355,55 @@
       "artist": "Marbles",
       "album": "MARBLES",
       "url": "https://canvaz.scdn.co/upload/artist/5f5BQHYqjKGpSrgawqYWHQ/video/df88028bfc4a40c298b1ac59be83d368.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Thầy Dùi",
+      "artist": "Hoàng Thùy Linh",
+      "album": "Thầy Dùi",
+      "url": "https://canvaz.scdn.co/upload/artist/0r63ReVRjxrS4ATbLrdcrL/video/e711343a8c7f4f8ebb5d032ef622f225.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Trong Đôi Mắt Thiếu Nữ",
+      "artist": "RHYDER",
+      "album": "Trong Đôi Mắt Thiếu Nữ",
+      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/812918f269f24abf816ca68fd4856b46.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "THĂNG HOA",
+      "artist": "Anh Trai Vượt Ngàn Chông Gai, Thai VG, Jun Phạm, JGKiD (Da LAB), Hoàng Rob, Đông Hùng, CHARLES., Huỳnh Lập, Toki Thành Thỏ, Hoàng Dũng",
+      "album": "CHUNG KẾT (Anh Trai Vượt Ngàn Chông Gai 2026)",
+      "url": "https://canvaz.scdn.co/upload/artist/1NVwSzuIbuPJEGWhUQRlnv/video/04d6a9da0211438297d2ea3d359ad2b2.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "LÉ DRAMA",
+      "artist": "Gill, B Ray",
+      "album": "LÉ DRAMA",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/0dc57cc8849141afafb19601addd8dd9.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "lemeno",
+      "artist": "GUrbane",
+      "album": "lemeno",
+      "url": "https://canvaz.scdn.co/upload/artist/5SdxHHfstcRfGIxOw1ghSN/video/d0b84bdaa16e4ff6be2db0cded78bad9.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Đừng Để Cô Đơn Cuốn Lấy Em (feat. KIEN)",
+      "artist": "UMIE, KIEN",
+      "album": "Đừng Để Cô Đơn Cuốn Lấy Em",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/8b3594de510e4aa187f2a2e9f41d68e8.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Mừng Cho Anh",
+      "artist": "Huỳnh Tú",
+      "album": "Mừng Cho Anh",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/a5ad643ec8b74ee7bdd830ebc0d13d5e.cnvs.mp4",
       "scope": "track"
     },
     {
