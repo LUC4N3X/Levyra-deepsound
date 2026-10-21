@@ -62,7 +62,7 @@ internal fun PrismHomeHeader(
     dayPart: String = "", name: String = ""
 ) {
     if (LevyraIsSpotify) {
-        SpotifyHomeHeader(greeting, hero, inset, onSearch, onSettings, name)
+        SpotifyHomeHeader(dayPart.ifBlank { greeting }, hero, inset, onSearch, onSettings, name)
         return
     }
     if (LevyraIsIvory) {

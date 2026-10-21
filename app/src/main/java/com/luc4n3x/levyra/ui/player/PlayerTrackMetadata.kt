@@ -39,6 +39,7 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.Track
@@ -68,10 +69,8 @@ internal fun PlayerTrackMetadata(
     onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val nocturne = LevyraIsNocturne
-    val spotify = LevyraIsSpotify
-    val titleSize = if (spotify) 22.sp else if (LevyraIsPrism) 23.sp else if (nocturne) { if (compact) 22.sp else 25.sp } else if (compact) 23.sp else 27.sp
-    val artistSize = if (spotify) 16.sp else if (compact) 15.sp else 16.5.sp
+    val titleSize = metadataTitleSize(compact)
+    val artistSize = metadataArtistSize(compact)
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -91,8 +90,8 @@ internal fun PlayerTrackMetadata(
                     color = surfaces.content,
                     fontSize = titleSize,
                     lineHeight = LevyraTypeRhythm.lineHeight(titleSize),
-                    fontWeight = if (spotify) FontWeight.Bold else if (nocturne || LevyraIsPrism) FontWeight.Medium else FontWeight.ExtraBold,
-                    letterSpacing = if (spotify) (-0.4).sp else (-0.8).sp,
+                    fontWeight = metadataTitleWeight(),
+                    letterSpacing = if (LevyraIsSpotify) (-0.4).sp else (-0.8).sp,
                     maxLines = if (animationsEnabled) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.levyraMarquee(
@@ -107,7 +106,7 @@ internal fun PlayerTrackMetadata(
                         fontFamily = MaterialTheme.typography.titleMedium.fontFamily,
                         fontSize = artistSize,
                         lineHeight = LevyraTypeRhythm.lineHeight(artistSize),
-                        fontWeight = if (spotify) FontWeight.Normal else FontWeight.Medium,
+                        fontWeight = if (LevyraIsSpotify) FontWeight.Normal else FontWeight.Medium,
                         letterSpacing = (-0.1).sp
                     ),
                     onClickLabel = openArtistLabel,
@@ -126,6 +125,26 @@ internal fun PlayerTrackMetadata(
             onToggle = onToggleFavorite
         )
     }
+}
+
+private fun metadataTitleSize(compact: Boolean): TextUnit = when {
+    LevyraIsSpotify -> 22.sp
+    LevyraIsPrism -> 23.sp
+    LevyraIsNocturne -> if (compact) 22.sp else 25.sp
+    compact -> 23.sp
+    else -> 27.sp
+}
+
+private fun metadataArtistSize(compact: Boolean): TextUnit = when {
+    LevyraIsSpotify -> 16.sp
+    compact -> 15.sp
+    else -> 16.5.sp
+}
+
+private fun metadataTitleWeight(): FontWeight = when {
+    LevyraIsSpotify -> FontWeight.Bold
+    LevyraIsNocturne || LevyraIsPrism -> FontWeight.Medium
+    else -> FontWeight.ExtraBold
 }
 
 @Composable

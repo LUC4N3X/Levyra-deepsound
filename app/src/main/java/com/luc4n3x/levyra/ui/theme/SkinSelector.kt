@@ -151,51 +151,47 @@ internal fun SkinManagedNotice(onUseDefault: (() -> Unit)? = null) {
 @Composable
 private fun SkinPhonePreview(skin: LevyraSkin, corner: Dp, modifier: Modifier) {
     val palette = skinPreviewPalette(skin)
-    val nocturne = skin == LevyraSkin.Nocturne78
-    val prism = skin == LevyraSkin.Prism
     Canvas(modifier) {
         val w = size.width
         val h = size.height
         val frame = CornerRadius(corner.toPx())
         drawRoundRect(palette.black, cornerRadius = frame)
         drawSkinPreviewWash(skin, palette, frame)
-        val pad = w * 0.12f
-        val art = w - pad * 2
-        val artTop = h * 0.12f
-        val torque = skin == LevyraSkin.Torque
-        val artRadius = CornerRadius(if (nocturne || torque) 0f else if (prism) 6.dp.toPx() else 10.dp.toPx())
-        val artBrush = skinPreviewArtBrush(skin, palette)
-        if (torque) {
-            torqueBand(palette, w, h)
-            return@Canvas
+        when (skin) {
+            LevyraSkin.Torque -> torqueBand(palette, w, h)
+            LevyraSkin.Ivory -> ivoryPreview(palette, w, h)
+            LevyraSkin.SpotifyStyle -> spotifyPreview(palette, w, h)
+            else -> playerPreview(skin, palette, w, h)
         }
-        if (skin == LevyraSkin.Ivory) {
-            ivoryPreview(palette, w, h)
-            return@Canvas
-        }
-        if (skin == LevyraSkin.SpotifyStyle) {
-            spotifyPreview(palette, w, h)
-            return@Canvas
-        }
-        drawRoundRect(artBrush, Offset(pad, artTop), Size(art, art), artRadius)
-        if (nocturne) drawCircle(palette.cyan, art * 0.18f, Offset(w / 2, artTop + art / 2), style = Stroke(1.5.dp.toPx()))
-        val textTop = artTop + art + h * 0.06f
-        previewLine(palette.text, pad, textTop, art * 0.7f, 3.dp.toPx())
-        previewLine(palette.muted, pad, textTop + h * 0.045f, art * 0.45f, 2.dp.toPx())
-        val seekY = textTop + h * 0.11f
-        previewLine(palette.panelSoft, pad, seekY, art, 2.5.dp.toPx())
-        if (prism) drawLine(
-            Brush.horizontalGradient(listOf(palette.blue, palette.violet), pad, pad + art * 0.55f),
-            Offset(pad, seekY), Offset(pad + art * 0.55f, seekY), 2.5.dp.toPx(), cap = StrokeCap.Round
-        ) else previewLine(palette.cyan, pad, seekY, art * 0.55f, 2.5.dp.toPx())
-        previewPlayButton(skin, palette, Offset(w / 2, seekY + h * 0.1f), w * 0.11f)
-        val navTop = h * 0.9f
-        val navWidth = w - pad * 1.2f
-        drawRoundRect(palette.panel, Offset(pad * 0.6f, navTop), Size(navWidth, h * 0.065f), CornerRadius(if (nocturne) 2.dp.toPx() else h * 0.033f))
-        repeat(4) { index ->
-            val x = pad * 0.6f + navWidth * (index + 0.5f) / 4f
-            drawCircle(if (index == 0) palette.cyan else palette.muted.copy(alpha = 0.6f), 1.8.dp.toPx(), Offset(x, navTop + h * 0.0325f))
-        }
+    }
+}
+
+private fun DrawScope.playerPreview(skin: LevyraSkin, palette: LevyraPalette, w: Float, h: Float) {
+    val nocturne = skin == LevyraSkin.Nocturne78
+    val prism = skin == LevyraSkin.Prism
+    val pad = w * 0.12f
+    val art = w - pad * 2
+    val artTop = h * 0.12f
+    val artRadius = CornerRadius(if (nocturne) 0f else if (prism) 6.dp.toPx() else 10.dp.toPx())
+    val artBrush = skinPreviewArtBrush(skin, palette)
+    drawRoundRect(artBrush, Offset(pad, artTop), Size(art, art), artRadius)
+    if (nocturne) drawCircle(palette.cyan, art * 0.18f, Offset(w / 2, artTop + art / 2), style = Stroke(1.5.dp.toPx()))
+    val textTop = artTop + art + h * 0.06f
+    previewLine(palette.text, pad, textTop, art * 0.7f, 3.dp.toPx())
+    previewLine(palette.muted, pad, textTop + h * 0.045f, art * 0.45f, 2.dp.toPx())
+    val seekY = textTop + h * 0.11f
+    previewLine(palette.panelSoft, pad, seekY, art, 2.5.dp.toPx())
+    if (prism) drawLine(
+        Brush.horizontalGradient(listOf(palette.blue, palette.violet), pad, pad + art * 0.55f),
+        Offset(pad, seekY), Offset(pad + art * 0.55f, seekY), 2.5.dp.toPx(), cap = StrokeCap.Round
+    ) else previewLine(palette.cyan, pad, seekY, art * 0.55f, 2.5.dp.toPx())
+    previewPlayButton(skin, palette, Offset(w / 2, seekY + h * 0.1f), w * 0.11f)
+    val navTop = h * 0.9f
+    val navWidth = w - pad * 1.2f
+    drawRoundRect(palette.panel, Offset(pad * 0.6f, navTop), Size(navWidth, h * 0.065f), CornerRadius(if (nocturne) 2.dp.toPx() else h * 0.033f))
+    repeat(4) { index ->
+        val x = pad * 0.6f + navWidth * (index + 0.5f) / 4f
+        drawCircle(if (index == 0) palette.cyan else palette.muted.copy(alpha = 0.6f), 1.8.dp.toPx(), Offset(x, navTop + h * 0.0325f))
     }
 }
 
@@ -285,8 +281,8 @@ private fun DrawScope.spotifyPreview(palette: LevyraPalette, w: Float, h: Float)
     val tileW = (w - pad * 2 - gap) / 2
     val tileH = h * 0.06f
     repeat(6) { index ->
-        val x = pad + (index % 2) * (tileW + gap)
-        val y = h * 0.14f + (index / 2) * (tileH + gap * 0.6f)
+        val x = pad + index % 2 * (tileW + gap)
+        val y = h * 0.14f + index / 2 * (tileH + gap * 0.6f)
         drawRoundRect(Color.White.copy(alpha = 0.1f), Offset(x, y), Size(tileW, tileH), CornerRadius(2.dp.toPx()))
         drawRect(Brush.linearGradient(listOf(palette.panelSoft, Color(0xFF535353))), Offset(x, y), Size(tileH, tileH))
     }

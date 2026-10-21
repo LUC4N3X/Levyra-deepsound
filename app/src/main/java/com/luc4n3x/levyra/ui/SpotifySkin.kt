@@ -160,7 +160,7 @@ private fun SpotifyPickedCard(hero: StudioHero, playLabel: String, inset: Dp) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 if (hero.companionArtworkUrls.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy((-6).dp)) {
                     hero.companionArtworkUrls.take(3).forEach { url ->
-                        AsyncImage(url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(22.dp).clip(CircleShape).border(1.5.dp, SpotifyDesign.highlight, CircleShape))
+                        StableRemoteArtwork(url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(22.dp).clip(CircleShape).border(1.5.dp, SpotifyDesign.highlight, CircleShape))
                     }
                 }
                 Spacer(Modifier.weight(1f))

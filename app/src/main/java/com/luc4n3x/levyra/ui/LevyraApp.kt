@@ -501,6 +501,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.snapshotFlow
@@ -2386,6 +2387,7 @@ fun LevyraApp(
                 isLight = LevyraIsLight,
                 accent = yourSoundAccent
             )
+            val homeSaveableState = rememberSaveableStateHolder()
             AnimatedContent(
                 targetState = backgroundTab,
                 modifier = Modifier
@@ -2411,67 +2413,69 @@ fun LevyraApp(
                         LevyraTab.Home -> {
                             val homeViewModel: HomeViewModel = composeViewModel(key = "levyra-home", factory = screenViewModelFactory)
                             val renderSnapshot by homeViewModel.renderState.collectAsStateWithLifecycle()
-                            CompositionLocalProvider(
-                                LocalHomeCompactDensity provides
-                                    renderSnapshot.state.interfaceSettings.compactHome
-                            ) {
-                                val youtubeMusicLibrary = youtubeMusicState.library
-                                val youtubeMusicCreatedLabel = com.luc4n3x.levyra.ui.i18n.youtubeMusicHomeCopy(state.languageCode).createdByYou
-                                val youtubeMusicShelf = remember(youtubeMusicLibrary, youtubeMusicCreatedLabel) {
-                                    youtubeMusicLibrary?.let { library ->
-                                        com.luc4n3x.levyra.ui.youtubemusic.youtubeMusicShelfAlbums(library, youtubeMusicCreatedLabel)
-                                    }.orEmpty()
-                                }
-                                LaunchedEffect(youtubeMusicState.active?.id, state.languageCode, youtubeMusicState.restoring) {
-                                    youtubeMusicViewModel.loadLibraryShelf(state.languageCode)
-                                }
-                                val youtubeMusicHome = youtubeMusicState.active?.let { account ->
-                                    com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi(
-                                        accountName = account.name,
-                                        avatarUrl = account.avatarUrl,
-                                        albums = youtubeMusicShelf,
-                                        loading = youtubeMusicState.libraryLoading,
-                                        error = youtubeMusicState.libraryError,
-                                        onOpen = { album ->
-                                            val entry = youtubeMusicLibrary?.entryFor(album)
-                                            if (entry != null) {
-                                                if (entry.collection == com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicCollection.Albums) {
-                                                    viewModel.openAlbum(album)
-                                                } else {
-                                                    youtubeMusicViewModel.open(state.languageCode)
-                                                    youtubeMusicViewModel.openDetail(entry)
-                                                    showYoutubeMusic = true
+                            homeSaveableState.SaveableStateProvider("levyra-home") {
+                                CompositionLocalProvider(
+                                    LocalHomeCompactDensity provides
+                                        renderSnapshot.state.interfaceSettings.compactHome
+                                ) {
+                                    val youtubeMusicLibrary = youtubeMusicState.library
+                                    val youtubeMusicCreatedLabel = com.luc4n3x.levyra.ui.i18n.youtubeMusicHomeCopy(state.languageCode).createdByYou
+                                    val youtubeMusicShelf = remember(youtubeMusicLibrary, youtubeMusicCreatedLabel) {
+                                        youtubeMusicLibrary?.let { library ->
+                                            com.luc4n3x.levyra.ui.youtubemusic.youtubeMusicShelfAlbums(library, youtubeMusicCreatedLabel)
+                                        }.orEmpty()
+                                    }
+                                    LaunchedEffect(youtubeMusicState.active?.id, state.languageCode, youtubeMusicState.restoring) {
+                                        youtubeMusicViewModel.loadLibraryShelf(state.languageCode)
+                                    }
+                                    val youtubeMusicHome = youtubeMusicState.active?.let { account ->
+                                        com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi(
+                                            accountName = account.name,
+                                            avatarUrl = account.avatarUrl,
+                                            albums = youtubeMusicShelf,
+                                            loading = youtubeMusicState.libraryLoading,
+                                            error = youtubeMusicState.libraryError,
+                                            onOpen = { album ->
+                                                val entry = youtubeMusicLibrary?.entryFor(album)
+                                                if (entry != null) {
+                                                    if (entry.collection == com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicCollection.Albums) {
+                                                        viewModel.openAlbum(album)
+                                                    } else {
+                                                        youtubeMusicViewModel.open(state.languageCode)
+                                                        youtubeMusicViewModel.openDetail(entry)
+                                                        showYoutubeMusic = true
+                                                    }
                                                 }
+                                            },
+                                            onRefresh = { youtubeMusicViewModel.loadLibraryShelf(state.languageCode, force = true) },
+                                            onShowAll = {
+                                                youtubeMusicViewModel.open(state.languageCode)
+                                                showYoutubeMusic = true
+                                            },
+                                            onReconnect = {
+                                                showYoutubeMusic = true
+                                                youtubeMusicViewModel.open(state.languageCode)
+                                                youtubeMusicViewModel.beginLogin()
                                             }
+                                        )
+                                    }?.takeIf { it.albums.isNotEmpty() || it.loading || it.error != null }
+                                    HomeStudioHost(
+                                        viewModel = homeViewModel,
+                                        renderSnapshot = renderSnapshot,
+                                        homeListState = homeListState,
+                                        deferredSectionsRevealed = homeDeferredSectionsRevealed,
+                                        accountAvatarUrl = youtubeMusicState.active?.avatarUrl.orEmpty(),
+                                        youtubeMusicHome = youtubeMusicHome,
+                                        homeStudio = state.homeStudioSettings,
+                                        onPullRefresh = {
+                                            homeViewModel.refreshHome { youtubeMusicViewModel.refreshHomeAndAwait(state.languageCode) }
                                         },
-                                        onRefresh = { youtubeMusicViewModel.loadLibraryShelf(state.languageCode, force = true) },
-                                        onShowAll = {
-                                            youtubeMusicViewModel.open(state.languageCode)
-                                            showYoutubeMusic = true
-                                        },
-                                        onReconnect = {
-                                            showYoutubeMusic = true
-                                            youtubeMusicViewModel.open(state.languageCode)
-                                            youtubeMusicViewModel.beginLogin()
+                                        onTrackActions = { track ->
+                                            queueRemovalTarget = null
+                                            trackActionTarget = track
                                         }
                                     )
-                                }?.takeIf { it.albums.isNotEmpty() || it.loading || it.error != null }
-                                HomeStudioHost(
-                                    viewModel = homeViewModel,
-                                    renderSnapshot = renderSnapshot,
-                                    homeListState = homeListState,
-                                    deferredSectionsRevealed = homeDeferredSectionsRevealed,
-                                    accountAvatarUrl = youtubeMusicState.active?.avatarUrl.orEmpty(),
-                                    youtubeMusicHome = youtubeMusicHome,
-                                    homeStudio = state.homeStudioSettings,
-                                    onPullRefresh = {
-                                        homeViewModel.refreshHome { youtubeMusicViewModel.refreshHomeAndAwait(state.languageCode) }
-                                    },
-                                    onTrackActions = { track ->
-                                        queueRemovalTarget = null
-                                        trackActionTarget = track
-                                    }
-                                )
+                                }
                             }
                         }
                         LevyraTab.Search -> {
@@ -5028,9 +5032,7 @@ private fun AlbumTrackRow(
 ) {
     val strings = LocalLevyraStrings.current
     val spotify = LevyraIsSpotify
-    val showArtist = remember(track.artist, albumArtist, spotify) {
-        track.artist.isNotBlank() && (spotify || !track.artist.trim().equals(albumArtist.trim(), ignoreCase = true))
-    }
+    val showArtist = remember(track.artist, albumArtist, spotify) { albumTrackShowsArtist(track.artist, albumArtist, spotify) }
     val status = if (presentation.isDownloading && !presentation.isDownloaded) {
         strings.formatDownloadProgress(presentation.downloadProgress ?: 1)
     } else {
@@ -6268,7 +6270,7 @@ private fun ArtistHero(
                     fontSize = nameSize,
                     lineHeight = LevyraType.heroLineHeight(nameSize),
                     fontWeight = artistHeroNameWeight(),
-                    letterSpacing = if (LevyraIsTorque) 2.sp else if (LevyraIsSpotify) (-1.4).sp else LevyraType.heroTitle.letterSpacing
+                    letterSpacing = artistHeroNameSpacing()
                 ),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -6382,7 +6384,7 @@ private fun ArtistActionBar(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(if (LevyraSkinManagesLayout) SkinChrome.chipShape else RoundedCornerShape(shuffleCorner))
-                    .background(if (LevyraIsSpotify) Color.Transparent else if (LevyraSkinManagesLayout) LevyraPanel else highlight.copy(alpha = 0.22f))
+                    .background(artistShuffleBackground(highlight))
                     .levyraPressable(
                         onClick = onShuffle,
                         pressedScale = LevyraPressScale.Control,
@@ -6395,15 +6397,15 @@ private fun ArtistActionBar(
                 Icon(
                     imageVector = Icons.Rounded.Shuffle,
                     contentDescription = strings.shuffle,
-                    tint = if (LevyraIsSpotify) SpotifyDesign.subdued else LevyraText,
-                    modifier = Modifier.size(if (LevyraIsSpotify) 28.dp else 22.dp)
+                    tint = artistShuffleTint(),
+                    modifier = Modifier.size(artistShuffleIconSize())
                 )
             }
         }
         if (onPlay != null) {
             Box(
                 modifier = Modifier
-                    .size(if (LevyraIsSpotify) SpotifyDesign.playButton else 62.dp)
+                    .size(artistPlaySize())
                     .then(
                         artistPlayBackground(playContainer, playShape)
                     )
@@ -26270,8 +26272,8 @@ private fun SearchSectionHeader(title: String, showAll: Boolean, onShowAll: () -
             color = LevyraText,
             fontSize = if (LevyraIsTorque || LevyraIsNocturne) 18.sp else 24.sp,
             lineHeight = 28.sp,
-            fontWeight = if (LevyraIsTorque || LevyraIsSpotify) FontWeight.Bold else if (LevyraIsIvory) FontWeight.SemiBold else if (LevyraSkinManagesLayout) FontWeight.Normal else FontWeight.Black,
-            letterSpacing = if (LevyraIsTorque || LevyraIsNocturne) 1.8.sp else if (LevyraIsIvory) 0.2.sp else if (LevyraIsSpotify) (-0.4).sp else (-0.3).sp,
+            fontWeight = searchSectionTitleWeight(),
+            letterSpacing = searchSectionTitleSpacing(),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
@@ -27838,8 +27840,17 @@ private fun ExploreShortcutTile(
 ) {
     if (LevyraIsSpotify) {
         SpotifyExploreTile(entry.label, entry.icon, modifier, entry.onClick)
-        return
+    } else {
+        LevyraExploreShortcutTile(entry, modifier)
     }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun LevyraExploreShortcutTile(
+    entry: ExploreShortcutEntry,
+    modifier: Modifier
+) {
     val colors = MaterialTheme.colorScheme
     val animationsEnabled = LocalAnimationsEnabled.current
     val interaction = remember { MutableInteractionSource() }
@@ -28675,6 +28686,42 @@ private fun artistPlayBackground(playContainer: Color, playShape: Shape): Modifi
             .border(1.dp, LevyraCyan, RoundedCornerShape(Nocturne78Design.controlCorner))
         else -> Modifier.background(playContainer, playShape)
     }
+
+private fun albumTrackShowsArtist(trackArtist: String, albumArtist: String, spotify: Boolean): Boolean =
+    trackArtist.isNotBlank() && (spotify || !trackArtist.trim().equals(albumArtist.trim(), ignoreCase = true))
+
+@Composable
+private fun artistHeroNameSpacing(): TextUnit = when {
+    LevyraIsTorque -> 2.sp
+    LevyraIsSpotify -> (-1.4).sp
+    else -> LevyraType.heroTitle.letterSpacing
+}
+
+private fun artistShuffleBackground(highlight: Color): Color = when {
+    LevyraIsSpotify -> Color.Transparent
+    LevyraSkinManagesLayout -> LevyraPanel
+    else -> highlight.copy(alpha = 0.22f)
+}
+
+private fun artistShuffleTint(): Color = if (LevyraIsSpotify) SpotifyDesign.subdued else LevyraText
+
+private fun artistShuffleIconSize(): Dp = if (LevyraIsSpotify) 28.dp else 22.dp
+
+private fun artistPlaySize(): Dp = if (LevyraIsSpotify) SpotifyDesign.playButton else 62.dp
+
+private fun searchSectionTitleWeight(): FontWeight = when {
+    LevyraIsTorque || LevyraIsSpotify -> FontWeight.Bold
+    LevyraIsIvory -> FontWeight.SemiBold
+    LevyraSkinManagesLayout -> FontWeight.Normal
+    else -> FontWeight.Black
+}
+
+private fun searchSectionTitleSpacing(): TextUnit = when {
+    LevyraIsTorque || LevyraIsNocturne -> 1.8.sp
+    LevyraIsIvory -> 0.2.sp
+    LevyraIsSpotify -> (-0.4).sp
+    else -> (-0.3).sp
+}
 
 private fun artistPlayContent(fallback: Color): Color = when {
     LevyraIsSpotify -> Color.Black
