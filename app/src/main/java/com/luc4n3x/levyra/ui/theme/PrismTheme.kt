@@ -23,7 +23,7 @@ import com.materialkolor.hct.Hct
 internal const val PrismPaletteId = "levyra_prism"
 internal const val TorquePaletteId = "levyra_torque"
 val LevyraIsTorque: Boolean get() = LevyraActivePalette.id == TorquePaletteId
-val LevyraIsPrism: Boolean get() = LevyraActivePalette.id == PrismPaletteId || LevyraIsTorque || LevyraIsIvory || LevyraIsSpotify
+val LevyraIsPrism: Boolean get() = LevyraActivePalette.id == PrismPaletteId || LevyraIsTorque || LevyraIsIvory || LevyraIsSpotify || LevyraIsAppleMusic
 internal val LevyraSkinManagesLayout: Boolean get() = LevyraIsNocturne || LevyraIsPrism
 internal val LevyraSkinLabel: String get() = LevyraActivePalette.label
 internal var activePrismSettings by mutableStateOf(PrismSettings())
@@ -32,19 +32,19 @@ internal var activeTorqueSettings by mutableStateOf(TorqueSettings())
     private set
 
 internal object PrismDesign {
-    val artworkCorner: Dp get() = if (LevyraIsTorque) 0.dp else if (LevyraIsSpotify) SpotifyDesign.cornerSmall else if (LevyraIsIvory) IvoryDesign.coverCorner else 18.dp
-    val tileCorner: Dp get() = if (LevyraIsTorque) 2.dp else if (LevyraIsSpotify) SpotifyDesign.cornerSmall else if (LevyraIsIvory) IvoryDesign.tileCorner else 12.dp
-    val surfaceCorner: Dp get() = if (LevyraIsTorque) 2.dp else if (LevyraIsSpotify) SpotifyDesign.cornerLarge else if (LevyraIsIvory) IvoryDesign.surfaceCorner else 20.dp
-    val controlCorner: Dp get() = if (LevyraIsTorque) 2.dp else if (LevyraIsSpotify) SpotifyDesign.corner else if (LevyraIsIvory) IvoryDesign.controlCorner else 14.dp
+    val artworkCorner: Dp get() = if (LevyraIsTorque) 0.dp else if (LevyraIsAppleMusic) AppleMusicDesign.cornerL else if (LevyraIsSpotify) SpotifyDesign.cornerSmall else if (LevyraIsIvory) IvoryDesign.coverCorner else 18.dp
+    val tileCorner: Dp get() = if (LevyraIsTorque) 2.dp else if (LevyraIsAppleMusic) AppleMusicDesign.cornerL else if (LevyraIsSpotify) SpotifyDesign.cornerSmall else if (LevyraIsIvory) IvoryDesign.tileCorner else 12.dp
+    val surfaceCorner: Dp get() = if (LevyraIsTorque) 2.dp else if (LevyraIsAppleMusic) AppleMusicDesign.cornerXl else if (LevyraIsSpotify) SpotifyDesign.cornerLarge else if (LevyraIsIvory) IvoryDesign.surfaceCorner else 20.dp
+    val controlCorner: Dp get() = if (LevyraIsTorque) 2.dp else if (LevyraIsAppleMusic) AppleMusicDesign.cornerL else if (LevyraIsSpotify) SpotifyDesign.corner else if (LevyraIsIvory) IvoryDesign.controlCorner else 14.dp
     val gutter = 24.dp
     val rowHeight = 64.dp
     val iconTile = 44.dp
     val hairline = 1.dp
-    val seekbarHeight: Dp get() = if (LevyraIsTorque) 3.dp else if (LevyraIsIvory || LevyraIsSpotify) 4.dp else 6.dp
+    val seekbarHeight: Dp get() = if (LevyraIsTorque) 3.dp else if (LevyraIsIvory || LevyraIsSpotify || LevyraIsAppleMusic) 4.dp else 6.dp
 
     fun cut(corner: Dp): Shape =
         if (LevyraIsTorque) CutCornerShape(bottomEnd = 12.dp)
-        else if (LevyraIsIvory || LevyraIsSpotify) RoundedCornerShape(corner)
+        else if (LevyraIsIvory || LevyraIsSpotify || LevyraIsAppleMusic) RoundedCornerShape(corner)
         else RoundedCornerShape(topStart = corner, topEnd = corner, bottomEnd = corner / 3, bottomStart = corner)
 }
 
@@ -55,14 +55,14 @@ internal object PrismAccent {
     private val lightEnd = Color(0xFF9F2594)
 
     fun gradient(light: Boolean = LevyraActivePalette.isLight): Brush = when {
-        LevyraIsTorque || LevyraIsSpotify -> SolidColor(LevyraActivePalette.blue)
+        LevyraIsTorque || LevyraIsSpotify || LevyraIsAppleMusic -> SolidColor(LevyraActivePalette.blue)
         LevyraIsIvory -> SolidColor(IvoryDesign.ink)
         light -> Brush.horizontalGradient(listOf(lightStart, lightEnd))
         else -> Brush.horizontalGradient(listOf(nightStart, nightEnd))
     }
 
     fun wash(light: Boolean): Color = when {
-        LevyraIsTorque || LevyraIsIvory || LevyraIsSpotify -> Color.Transparent
+        LevyraIsTorque || LevyraIsIvory || LevyraIsSpotify || LevyraIsAppleMusic -> Color.Transparent
         light -> lightStart.copy(alpha = 0.07f)
         else -> nightStart.copy(alpha = 0.16f)
     }
@@ -83,7 +83,7 @@ private val TorqueShapes = Shapes(
     extraLarge = RoundedCornerShape(4.dp)
 )
 
-internal val PrismShapes: Shapes get() = if (LevyraIsTorque) TorqueShapes else if (LevyraIsSpotify) SpotifyShapes else if (LevyraIsIvory) IvoryShapes else PrismRoundShapes
+internal val PrismShapes: Shapes get() = if (LevyraIsTorque) TorqueShapes else if (LevyraIsSpotify) SpotifyShapes else if (LevyraIsAppleMusic) AppleMusicShapes else if (LevyraIsIvory) IvoryShapes else PrismRoundShapes
 
 internal val PrismTypography = levyraTypographyFor(LevyraFontPreset.Outfit).let { base ->
     base.copy(
@@ -173,6 +173,7 @@ internal fun TorqueThemeEffect(settings: LevyraInterfaceSettings, track: Track?)
 
 internal fun prismMiniSettings(saved: LevyraMiniPlayerStudioSettings): LevyraMiniPlayerStudioSettings {
     if (LevyraIsSpotify) return spotifyMiniSettings(saved)
+    if (LevyraIsAppleMusic) return appleMusicMiniSettings(saved)
     val torque = LevyraIsTorque
     val tuning = LevyraMiniPlayerStudioSettings.spec(MiniPlayerStyle.Floating).defaults.copy(
         cornerDp = if (torque) 2 else if (LevyraIsIvory) 26 else 20, heightDp = 64, artworkDp = 46, shadow = 0, glow = 0,
@@ -195,11 +196,23 @@ private fun spotifyMiniSettings(saved: LevyraMiniPlayerStudioSettings): LevyraMi
     return saved.copy(style = MiniPlayerStyle.Floating, tunings = saved.tunings + (MiniPlayerStyle.Floating to tuning))
 }
 
+private fun appleMusicMiniSettings(saved: LevyraMiniPlayerStudioSettings): LevyraMiniPlayerStudioSettings {
+    val tuning = LevyraMiniPlayerStudioSettings.spec(MiniPlayerStyle.Floating).defaults.copy(
+        cornerDp = 24, heightDp = 48, insetDp = 20, artworkDp = 30, shadow = 0, glow = 0,
+        artworkShape = MiniArtworkShape.Rounded, progress = MiniProgressStyle.Hidden,
+        buttons = MiniButtonStyle.Plain, colorMode = MiniColorMode.Theme,
+        background = MiniBackground.Solid, motion = MiniMotion.Normal,
+        controls = saved.activeTuning().controls, showClose = saved.activeTuning().showClose
+    )
+    return saved.copy(style = MiniPlayerStyle.Floating, tunings = saved.tunings + (MiniPlayerStyle.Floating to tuning))
+}
+
 internal fun skinMiniPlayerCorner(tuning: MiniPlayerTuning): Dp =
     when {
         LevyraIsTorque -> 2.dp
         LevyraIsIvory -> 26.dp
         LevyraIsSpotify -> SpotifyDesign.corner
+        LevyraIsAppleMusic -> AppleMusicDesign.miniHeight / 2
         LevyraIsNocturne -> 10.dp
         else -> tuning.cornerDp.dp
     }

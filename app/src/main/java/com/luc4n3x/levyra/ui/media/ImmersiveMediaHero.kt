@@ -228,6 +228,10 @@ internal fun ImmersiveMediaHero(
         TorqueMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, onSubtitleClick, actions, artwork, modifier)
         return
     }
+    if (!wide && com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic) {
+        AppleMusicMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, topBarHeight, onSubtitleClick, actions, artwork, modifier)
+        return
+    }
     if (!wide && LevyraIsSpotify) {
         SpotifyMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, topBarHeight, onSubtitleClick, actions, artwork, modifier)
         return
@@ -445,6 +449,10 @@ internal fun ImmersiveMediaActionRow(
     modifier: Modifier = Modifier,
     secondary: @Composable RowScope.() -> Unit = {}
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic) {
+        AppleMusicMediaActionRow(primary, shuffleLabel, downloadLabel, shuffleEnabled, downloadEnabled, onShuffle, onDownload, modifier, secondary)
+        return
+    }
     if (LevyraIsSpotify) {
         SpotifyMediaActionRow(primary, shuffleLabel, downloadLabel, colors, shuffleEnabled, downloadEnabled, onShuffle, onDownload, modifier, secondary)
         return

@@ -309,7 +309,9 @@ private fun sheetBodyExit(animated: Boolean): ExitTransition =
     }
 
 internal fun playerSheetColor(surfaces: PlayerSurfaceTokens): Color =
-    if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic) {
+        Color(0xFF2C2C2E)
+    } else if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism) {
         com.luc4n3x.levyra.ui.theme.LevyraPanel
     } else if (surfaces.amoled) {
         Color.Black
@@ -532,6 +534,10 @@ private fun PlayerSheetGrid(
     animated: Boolean,
     onPerform: (PlayerSheetAction) -> Unit
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic) {
+        AppleMusicPlayerMenu(actions, onPerform)
+        return
+    }
     val outline = if (surfaces.amoled) surfaces.outline else Color.Transparent
     val rows = remember(actions) { actions.chunked(SheetColumns) }
     Column(verticalArrangement = Arrangement.spacedBy(SheetTileGap)) {

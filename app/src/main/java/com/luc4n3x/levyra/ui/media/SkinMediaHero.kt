@@ -46,6 +46,7 @@ private val TorqueMediaBand = GenericShape { size, _ ->
 internal fun skinMediaColors(cover: Color = Color.Unspecified): ImmersiveMediaColors? {
     if (!LevyraIsPrism) return null
     val p = LevyraActivePalette
+    if (LevyraIsAppleMusic) return appleMusicMediaColors()
     if (LevyraIsSpotify) {
         val field = if (cover.isSpecified) SpotifyDesign.heroSurface(cover) else SpotifyDesign.highlight
         return ImmersiveMediaColors(

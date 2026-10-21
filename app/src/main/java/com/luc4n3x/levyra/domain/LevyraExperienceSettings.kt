@@ -181,7 +181,8 @@ enum class LevyraSkin {
     Prism,
     Torque,
     Ivory,
-    SpotifyStyle;
+    SpotifyStyle,
+    AppleMusicStyle;
 
     companion object {
         fun from(value: String): LevyraSkin = entries.firstOrNull { it.name == value } ?: Default
