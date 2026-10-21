@@ -889,10 +889,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         )
     }
     private val playlistImportCatalog by lazy {
+        val metadata = com.luc4n3x.levyra.data.playlistimport.PlaylistImportMetadata(
+            com.luc4n3x.levyra.data.apple.AppleMetadataEnricher(getApplication<Application>()),
+            { query -> spotifySearchClient.search(query, 12).songs },
+            { ChartsCatalog.defaultRegionForLanguage(_state.value.languageCode).country }
+        )
         com.luc4n3x.levyra.data.playlistimport.PlaylistImportCatalog(
             repository = repository,
             localTracks = { localLibrary.availableMedia.first().map { it.toLocalTrack() } },
-            languageCode = { _state.value.languageCode }
+            languageCode = { _state.value.languageCode },
+            metadataSearch = metadata::search
         )
     }
     val playlistImport: PlaylistImportController by lazy {
@@ -1089,16 +1095,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             exploreCategoryArtwork = startupExploreDiscovery?.artwork.orEmpty()
         )
     )
+    private val spotifySearchClient by lazy {
+        com.luc4n3x.levyra.data.spotify.SpotifySearchClient(
+            catalogSearch = editorialChartsRepository::searchSpotifyMetadata,
+            countryProvider = { ChartsCatalog.defaultRegionForLanguage(_state.value.languageCode).country }
+        )
+    }
     private val searchEngine = LevyraSearchEngine(
         scope = viewModelScope,
         backend = YoutubeMusicSearchBackend(
             repository = repository,
             artistRepository = artistRepository,
             providerRouter = providerRouter,
-            spotifyClient = com.luc4n3x.levyra.data.spotify.SpotifySearchClient(
-                catalogSearch = editorialChartsRepository::searchSpotifyMetadata,
-                countryProvider = { ChartsCatalog.defaultRegionForLanguage(_state.value.languageCode).country }
-            ),
+            spotifyClient = spotifySearchClient,
             localCandidateSource = ::localSearchCandidates,
             playableTrack = { track -> youtubePlayableTrack(track) != null }
         ),

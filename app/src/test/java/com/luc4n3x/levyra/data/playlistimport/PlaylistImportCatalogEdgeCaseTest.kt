@@ -58,7 +58,7 @@ class PlaylistImportCatalogEdgeCaseTest {
                 return SearchPage(items = results, continuation = "")
             }
 
-            override suspend fun search(query: String, limit: Int, languageCode: String): List<Track> =
+            override suspend fun searchForImport(query: String, limit: Int, languageCode: String): List<Track> =
                 if (query.contains("Live") || query.contains("Remastered")) wrong else listOf(correct)
         }
 
@@ -92,7 +92,7 @@ class PlaylistImportCatalogEdgeCaseTest {
                 continuation: String
             ): SearchPage<Track> = SearchPage(items = wrong + correct, continuation = "")
 
-            override suspend fun search(query: String, limit: Int, languageCode: String): List<Track> = emptyList()
+            override suspend fun searchForImport(query: String, limit: Int, languageCode: String): List<Track> = emptyList()
         }
 
         val catalog = PlaylistImportCatalog(repository, localTracks = { emptyList() }, languageCode = { "en" })
@@ -121,7 +121,7 @@ class PlaylistImportCatalogEdgeCaseTest {
                 continuation: String
             ): SearchPage<Track> = throw IllegalStateException("Malformed Songs response")
 
-            override suspend fun search(query: String, limit: Int, languageCode: String): List<Track> = listOf(mixedTrack)
+            override suspend fun searchForImport(query: String, limit: Int, languageCode: String): List<Track> = listOf(mixedTrack)
         }
         val catalog = PlaylistImportCatalog(repository, localTracks = { emptyList() }, languageCode = { "en" })
 
@@ -140,7 +140,7 @@ class PlaylistImportCatalogEdgeCaseTest {
                 continuation: String
             ): SearchPage<Track> = SearchPage(items = listOf(songTrack), continuation = "")
 
-            override suspend fun search(query: String, limit: Int, languageCode: String): List<Track> =
+            override suspend fun searchForImport(query: String, limit: Int, languageCode: String): List<Track> =
                 throw IllegalArgumentException("Malformed mixed response")
         }
         val catalog = PlaylistImportCatalog(repository, localTracks = { emptyList() }, languageCode = { "en" })
@@ -159,7 +159,7 @@ class PlaylistImportCatalogEdgeCaseTest {
                 continuation: String
             ): SearchPage<Track> = throw CancellationException("cancelled")
 
-            override suspend fun search(query: String, limit: Int, languageCode: String): List<Track> = emptyList()
+            override suspend fun searchForImport(query: String, limit: Int, languageCode: String): List<Track> = emptyList()
         }
         val catalog = PlaylistImportCatalog(repository, localTracks = { emptyList() }, languageCode = { "en" })
         var propagated = false

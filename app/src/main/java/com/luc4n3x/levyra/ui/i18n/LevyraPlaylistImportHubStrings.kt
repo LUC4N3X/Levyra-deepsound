@@ -17,7 +17,7 @@ internal val playlistImportHubKeys = listOf(
     "summaryTitle", "summaryUpdated", "summaryImported", "summarySkipped", "summaryUnresolved", "summaryReview",
     "summaryManual", "viewPlaylist", "fixMissing", "retryUnresolved", "copyReport", "reportCopied", "done",
     "failureTitle", "retry", "back", "fUnsupported", "fAuth", "fNotPlaylist", "fRateLimited", "fMalformed",
-    "fNoTracks", "changeMatch", "changeMatchConflict", "statusDescription", "importAnother"
+    "fNoTracks", "changeMatch", "changeMatchConflict", "statusDescription", "importAnother", "statusError"
 )
 
 private val playlistImportHubBundles: Map<String, String> = mapOf(
@@ -54,8 +54,26 @@ internal fun playlistImportHubLocalizationCodes(): Set<String> = playlistImportH
 internal fun playlistImportHubLocalizationEntries(code: String): Map<String, String> {
     val raw = localizedValueOrEnglish(playlistImportHubBundles, code)
     val values = raw.split('|')
-    return playlistImportHubKeys.withIndex().associate { (index, key) -> key to values.getOrElse(index) { "" } }
+    return playlistImportHubKeys.withIndex().associate { (index, key) -> key to values.getOrElse(index) { "" } } +
+        ("statusError" to localizedValueOrEnglish(playlistImportSearchErrors, code))
 }
+
+private val playlistImportSearchErrors = mapOf(
+    "en" to "Search unavailable", "it" to "Ricerca non disponibile", "ru" to "Поиск недоступен",
+    "uk" to "Пошук недоступний", "es" to "Búsqueda no disponible", "fr" to "Recherche indisponible",
+    "de" to "Suche nicht verfügbar", "pt" to "Pesquisa indisponível", "nl" to "Zoeken niet beschikbaar",
+    "pl" to "Wyszukiwanie niedostępne", "ro" to "Căutare indisponibilă", "el" to "Η αναζήτηση δεν είναι διαθέσιμη",
+    "sv" to "Sökning ej tillgänglig", "da" to "Søgning utilgængelig", "cs" to "Vyhledávání není dostupné",
+    "tr" to "Arama kullanılamıyor", "ar" to "البحث غير متاح", "zh" to "搜索暂不可用",
+    "ja" to "検索できません", "ko" to "검색을 사용할 수 없음", "hi" to "खोज उपलब्ध नहीं है",
+    "id" to "Pencarian tidak tersedia", "vi" to "Tìm kiếm không khả dụng", "th" to "ไม่สามารถค้นหาได้",
+    "fil" to "Hindi magagamit ang paghahanap", "he" to "החיפוש אינו זמין", "fa" to "جستجو در دسترس نیست",
+    "bn" to "অনুসন্ধান উপলব্ধ নয়", "ur" to "تلاش دستیاب نہیں", "ms" to "Carian tidak tersedia",
+    "no" to "Søk utilgjengelig", "fi" to "Haku ei ole käytettävissä", "hu" to "A keresés nem érhető el",
+    "sk" to "Vyhľadávanie nie je dostupné", "bg" to "Търсенето е недостъпно", "hr" to "Pretraživanje nije dostupno",
+    "sr" to "Претрага није доступна", "lt" to "Paieška nepasiekiama", "lv" to "Meklēšana nav pieejama",
+    "et" to "Otsing pole saadaval", "ca" to "Cerca no disponible"
+)
 
 class PlaylistImportHubCopy internal constructor(private val entries: Map<String, String>) {
     operator fun get(key: String): String = entries[key].orEmpty()

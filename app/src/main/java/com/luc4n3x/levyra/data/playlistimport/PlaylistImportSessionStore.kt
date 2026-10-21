@@ -316,6 +316,7 @@ internal object PlaylistImportSessionCodec {
     private fun encodeEntry(value: ImportEntry) = JSONObject()
         .put("i", encodeIdentity(value.identity))
         .put("res", value.resolved)
+        .put("lookupFailed", value.lookupFailed)
         .put("alt", JSONArray().apply { value.alternatives.forEach { put(encodeEvaluation(it)) } })
         .put("sel", value.selected?.let(::encodeEvaluation) ?: JSONObject.NULL)
         .put("conf", value.confidence.name)
@@ -331,6 +332,7 @@ internal object PlaylistImportSessionCodec {
         return ImportEntry(
             identity = decodeIdentity(json.getJSONObject("i")),
             resolved = json.optBoolean("res"),
+            lookupFailed = json.optBoolean("lookupFailed"),
             alternatives = List(alternatives.length()) { decodeEvaluation(alternatives.getJSONObject(it)) },
             selected = if (json.isNull("sel")) null else decodeEvaluation(json.getJSONObject("sel")),
             confidence = MatchConfidence.valueOf(json.getString("conf")),

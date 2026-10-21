@@ -81,7 +81,7 @@ class AlternativeTrackTextTest {
         assertEquals(listOf("dua lipa", "dababy"), AlternativeTrackText.artistNames("Dua Lipa feat. DaBaby"))
         assertEquals(listOf("weeknd"), AlternativeTrackText.artistNames("The Weeknd"))
         assertEquals(listOf("кино"), AlternativeTrackText.artistNames("группа Кино"))
-        assertEquals(listOf("виктор цои", "кино"), AlternativeTrackText.artistNames("Виктор Цой & Группа Кино"))
+        assertEquals(listOf("виктор цой", "кино"), AlternativeTrackText.artistNames("Виктор Цой & Группа Кино"))
         assertEquals(listOf("lil nas x"), AlternativeTrackText.artistNames("Lil Nas X"))
         assertEquals("beyonce", AlternativeTrackText.artistCredit("Beyoncé, JAY-Z").primary)
     }

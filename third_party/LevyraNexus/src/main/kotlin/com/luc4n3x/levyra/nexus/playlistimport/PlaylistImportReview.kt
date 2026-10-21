@@ -2,13 +2,13 @@ package com.luc4n3x.levyra.nexus.playlistimport
 
 import kotlin.math.abs
 
-enum class ImportEntryStatus { PENDING, MATCHED, REVIEW, MISSING, SKIPPED }
+enum class ImportEntryStatus { PENDING, MATCHED, REVIEW, MISSING, SKIPPED, ERROR }
 
 enum class ImportChoiceOrigin { AUTOMATIC, USER }
 
 enum class ImportFlag { DUPLICATE_SOURCE, COLLISION, SUSPICIOUS_DURATION, AMBIGUOUS, UNAVAILABLE, HEALED }
 
-enum class ImportReviewFilter { ALL, MATCHED, REVIEW, MISSING, DUPLICATES }
+enum class ImportReviewFilter { ALL, MATCHED, REVIEW, MISSING, DUPLICATES, ERRORS }
 
 data class ImportEntry(
     val identity: ImportedTrackIdentity,
@@ -21,12 +21,14 @@ data class ImportEntry(
     val origin: ImportChoiceOrigin = ImportChoiceOrigin.AUTOMATIC,
     val skipped: Boolean = false,
     val flags: Set<ImportFlag> = emptySet(),
-    val duplicateGroup: Int = -1
+    val duplicateGroup: Int = -1,
+    val lookupFailed: Boolean = false
 ) {
     val status: ImportEntryStatus
         get() = when {
             skipped -> ImportEntryStatus.SKIPPED
             !resolved -> ImportEntryStatus.PENDING
+            lookupFailed -> ImportEntryStatus.ERROR
             selected == null -> ImportEntryStatus.MISSING
             origin == ImportChoiceOrigin.USER -> ImportEntryStatus.MATCHED
             !confidence.autoAccepted || flags.any { it in ATTENTION_FLAGS } -> ImportEntryStatus.REVIEW
@@ -50,7 +52,8 @@ data class ImportReviewCounts(
     val local: Int = 0,
     val online: Int = 0,
     val ready: Int = 0,
-    val mergedRepeats: Int = 0
+    val mergedRepeats: Int = 0,
+    val errors: Int = 0
 ) {
     val matchPercent: Int
         get() = if (total == 0) 0 else (matched + review) * 100 / total
@@ -64,6 +67,7 @@ object PlaylistImportReview {
         val flags = entry.flags - ImportFlag.AMBIGUOUS + if (outcome.ambiguous) setOf(ImportFlag.AMBIGUOUS) else emptySet()
         return entry.copy(
             resolved = true,
+            lookupFailed = false,
             alternatives = outcome.alternatives,
             selected = outcome.selected,
             confidence = outcome.confidence,
@@ -75,7 +79,7 @@ object PlaylistImportReview {
 
     fun choose(entry: ImportEntry, candidateId: String): ImportEntry {
         val evaluation = entry.alternatives.firstOrNull { it.candidate.id == candidateId } ?: return entry
-        return entry.copy(selected = evaluation, confidence = evaluation.confidence, origin = ImportChoiceOrigin.USER, skipped = false)
+        return entry.copy(selected = evaluation, confidence = evaluation.confidence, origin = ImportChoiceOrigin.USER, skipped = false, lookupFailed = false)
     }
 
     fun chooseManual(entry: ImportEntry, candidate: MatchCandidate): ImportEntry {
@@ -83,6 +87,7 @@ object PlaylistImportReview {
         val alternatives = listOf(evaluation) + entry.alternatives.filter { it.candidate.id != candidate.id }
         return entry.copy(
             resolved = true,
+            lookupFailed = false,
             alternatives = alternatives.take(PlaylistMatchEngine.MAX_ALTERNATIVES + 1),
             selected = evaluation,
             confidence = evaluation.confidence,
@@ -115,6 +120,7 @@ object PlaylistImportReview {
         ImportReviewFilter.REVIEW -> entry.status == ImportEntryStatus.REVIEW
         ImportReviewFilter.MISSING -> entry.status == ImportEntryStatus.MISSING || entry.status == ImportEntryStatus.SKIPPED
         ImportReviewFilter.DUPLICATES -> ImportFlag.DUPLICATE_SOURCE in entry.flags || ImportFlag.COLLISION in entry.flags
+        ImportReviewFilter.ERRORS -> entry.status == ImportEntryStatus.ERROR
     }
 
     fun counts(entries: List<ImportEntry>): ImportReviewCounts {
@@ -127,6 +133,7 @@ object PlaylistImportReview {
         var manual = 0
         var local = 0
         var online = 0
+        var errors = 0
         entries.forEach { entry ->
             when (entry.status) {
                 ImportEntryStatus.MATCHED -> {
@@ -137,6 +144,7 @@ object PlaylistImportReview {
                 ImportEntryStatus.MISSING -> missing++
                 ImportEntryStatus.SKIPPED -> skipped++
                 ImportEntryStatus.PENDING -> pending++
+                ImportEntryStatus.ERROR -> errors++
             }
             if (ImportFlag.DUPLICATE_SOURCE in entry.flags) duplicates++
             if (entry.origin == ImportChoiceOrigin.USER && !entry.skipped && entry.selected?.candidate?.id != entry.automaticId) manual++
@@ -154,7 +162,8 @@ object PlaylistImportReview {
             local = local,
             online = online,
             ready = ready,
-            mergedRepeats = 0
+            mergedRepeats = 0,
+            errors = errors
         )
     }
 
@@ -245,7 +254,7 @@ object PlaylistImportHealer {
 
         val reSearch = entries.indices.filterTo(HashSet()) { index ->
             val entry = entries[index]
-            entry.resolved && !entry.skipped && entry.selected == null && entry.origin == ImportChoiceOrigin.AUTOMATIC &&
+            entry.resolved && !entry.lookupFailed && !entry.skipped && entry.selected == null && entry.origin == ImportChoiceOrigin.AUTOMATIC &&
                 entry.alternatives.none { it.confidence != MatchConfidence.UNRESOLVED }
         }
         return PlaylistHealResult(entries, reSearch, healed)

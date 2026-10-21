@@ -592,6 +592,7 @@ private fun ImportSummaryScreen(state: PlaylistImportUiState, copy: PlaylistImpo
                     if (summary.mergedRepeats > 0) SummaryLine(copy.format("mergedNote", "count" to summary.mergedRepeats), LevyraMuted)
                     if (summary.skipped > 0) SummaryLine(copy.format("summarySkipped", "count" to summary.skipped), LevyraMuted)
                     if (summary.unresolved > 0) SummaryLine(copy.format("summaryUnresolved", "count" to summary.unresolved), LevyraMuted)
+                    if (summary.errors > 0) SummaryLine("${copy["statusError"]}: ${summary.errors}", LevyraMuted)
                     if (summary.needsReview > 0) SummaryLine(copy.format("summaryReview", "count" to summary.needsReview), LevyraMuted)
                     if (summary.manual > 0) SummaryLine(copy.format("summaryManual", "count" to summary.manual), LevyraMuted)
                 }
@@ -602,7 +603,7 @@ private fun ImportSummaryScreen(state: PlaylistImportUiState, copy: PlaylistImpo
                 colors = ButtonDefaults.buttonColors(containerColor = LevyraCyan, contentColor = LevyraOnAccent),
                 shape = ImportShape
             ) { Text(copy["viewPlaylist"], fontWeight = FontWeight.SemiBold) }
-            val unresolved = summary.unresolved + summary.needsReview + summary.skipped
+            val unresolved = summary.unresolved + summary.needsReview + summary.skipped + summary.errors
             if (unresolved > 0) {
                 OutlinedButton(onClick = controller::fixMissing, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = ImportShape) {
                     Text(copy["fixMissing"])
