@@ -54,6 +54,15 @@ internal fun corroborateImportIdentity(identity: ImportedTrackIdentity, metadata
     val durations = plausible.map { it.candidate.durationMs }
     if (durations.max() - durations.min() > 5_000L) return identity
     val best = plausible.maxBy { it.score }.candidate
+    if (sameIsrc.isNotEmpty()) {
+        return identity.copy(
+            title = best.title,
+            artists = best.artists,
+            featuredArtists = emptyList(),
+            durationMs = identity.durationMs.takeIf { it > 0 } ?: best.durationMs,
+            album = identity.album.ifBlank { best.album }
+        )
+    }
     return identity.copy(
         durationMs = identity.durationMs.takeIf { it > 0 } ?: best.durationMs,
         album = identity.album.ifBlank { best.album }

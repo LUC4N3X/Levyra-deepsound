@@ -190,8 +190,8 @@ object PlaylistMatchEngine {
                 45.also { reasons += MatchReason(MatchSignal.TITLE_EXACT) }
             ImportTransliteration.related(sourceTitle.core, candidateTitle.core) -> {
                 reasons += MatchReason(MatchSignal.TITLE_CLOSE, detail = "transliteration")
-                limit(79)
-                38
+                limit(84)
+                42
             }
             similarity >= 0.85 && !short -> 32.also { reasons += MatchReason(MatchSignal.TITLE_CLOSE) }
             similarity >= 0.6 && !short -> {
@@ -242,7 +242,7 @@ object PlaylistMatchEngine {
             .sortedWith(compareByDescending<MatchEvaluation> { it.score }.thenBy { kindRank(it.candidate.kind) })
         if (evaluations.isEmpty()) return MatchOutcome(null, MatchConfidence.UNRESOLVED, emptyList(), false)
         val preferred = applyPreference(evaluations, preference)
-        val ambiguous = isAmbiguous(preferred, evaluations)
+        val ambiguous = isAmbiguous(source, preferred, evaluations)
         val raw = preferred.confidence
         val confidence = when {
             raw == MatchConfidence.UNRESOLVED -> MatchConfidence.UNRESOLVED
@@ -302,14 +302,27 @@ object PlaylistMatchEngine {
         }
     }
 
-    private fun isAmbiguous(selected: MatchEvaluation, evaluations: List<MatchEvaluation>): Boolean {
+    private fun isAmbiguous(source: ImportedTrackIdentity, selected: MatchEvaluation, evaluations: List<MatchEvaluation>): Boolean {
         if (selected.confidence == MatchConfidence.EXACT) return false
         return evaluations.any { other ->
             other.candidate.id != selected.candidate.id &&
                 other.score >= selected.score - AMBIGUITY_MARGIN &&
                 other.score >= MatchConfidence.AUTO_ACCEPT_SCORE &&
-                !sameRecording(selected.candidate, other.candidate)
+                !sameRecording(selected.candidate, other.candidate) &&
+                !(source.durationMs <= 0L && sameWork(selected.candidate, other.candidate))
         }
+    }
+
+    private fun sameWork(left: MatchCandidate, right: MatchCandidate): Boolean {
+        val a = MusicIdentityText.title(left.title)
+        val b = MusicIdentityText.title(right.title)
+        val longer = max(left.durationMs, right.durationMs)
+        val comparableLength = left.durationMs <= 0L || right.durationMs <= 0L ||
+            abs(left.durationMs - right.durationMs) * 4 <= longer
+        return comparableLength && a.core == b.core &&
+            versionIdentity(a) == versionIdentity(b) &&
+            a.featuredArtists == b.featuredArtists &&
+            normalizedArtists(left.artists).toSet() == normalizedArtists(right.artists).toSet()
     }
 
     private fun scoreArtists(
@@ -334,7 +347,7 @@ object PlaylistMatchEngine {
         return when {
             primary in candidatePrimary -> {
                 val exact = candidatePrimary.firstOrNull() == primary &&
-                    candidatePrimary.all { it in expected } && expected.all { it in candidateAll }
+                    candidateAll.all { it in expected } && expected.all { it in candidateAll }
                 if (!exact) limit(79)
                 reasons += MatchReason(if (exact) MatchSignal.ARTIST_EXACT else MatchSignal.ARTIST_PRIMARY)
                 if (exact) 32 else 27
@@ -343,6 +356,11 @@ object PlaylistMatchEngine {
                 reasons += MatchReason(MatchSignal.ARTIST_FEATURED_ONLY)
                 limit(70)
                 10
+            }
+            candidatePrimary.firstOrNull()?.let { ImportTransliteration.related(primary, it) } == true -> {
+                reasons += MatchReason(MatchSignal.ARTIST_PARTIAL, detail = "transliteration")
+                limit(84)
+                30
             }
             candidatePrimary.any { ImportTransliteration.related(primary, it) } -> {
                 reasons += MatchReason(MatchSignal.ARTIST_PARTIAL, detail = "transliteration")

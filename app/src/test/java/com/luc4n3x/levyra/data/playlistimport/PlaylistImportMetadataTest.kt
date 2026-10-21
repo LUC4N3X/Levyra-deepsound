@@ -30,6 +30,17 @@ class PlaylistImportMetadataTest {
     }
 
     @Test
+    fun isrcProvenMetadataSuppliesCanonicalNamesForAliasedArtists() {
+        val korean = ImportedTrackIdentity(0, "봄날", listOf("방탄소년단"), isrc = "KRA381700117")
+        val canonical = MatchCandidate("spotify:1", "Spring Day", listOf("BTS"), durationMs = 274_000, isrc = "KRA381700117", kind = CandidateKind.SONG)
+        val enriched = corroborateImportIdentity(korean, listOf(canonical))
+        assertEquals("Spring Day", enriched.title)
+        assertEquals(listOf("BTS"), enriched.artists)
+        assertEquals(274_000L, enriched.durationMs)
+        assertEquals(korean, corroborateImportIdentity(korean, listOf(canonical.copy(isrc = ""))))
+    }
+
+    @Test
     fun conflictingDurationsAndWrongArtistsDoNotEnrich() {
         assertEquals(source, corroborateImportIdentity(source, listOf(metadata, metadata.copy(id = "other", durationMs = 300_000))))
         assertEquals(source, corroborateImportIdentity(source, listOf(metadata.copy(artists = listOf("Cover band")))))
