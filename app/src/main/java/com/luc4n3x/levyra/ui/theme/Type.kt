@@ -30,6 +30,12 @@ private val MontserratFont: FontFamily = googleFontFamily("Montserrat")
 private val NunitoFont: FontFamily = googleFontFamily("Nunito")
 private val RobotoFont: FontFamily = googleFontFamily("Roboto")
 
+internal val SpotifyFont: FontFamily = FontFamily(
+    listOf(FontWeight.Normal, FontWeight.Medium, FontWeight.Bold, FontWeight.Black).map { weight ->
+        Font(googleFont = GoogleFont("Figtree"), fontProvider = googleFontsProvider, weight = weight)
+    }
+)
+
 private val defaultTypography = Typography()
 
 private val LevyraLineHeightStyle = LineHeightStyle(
@@ -57,7 +63,7 @@ private fun TextStyle.levyraRhythm(
     platformStyle = LevyraPlatformTextStyle
 )
 
-private fun typographyForFamily(fontFamily: FontFamily): Typography = Typography(
+internal fun typographyForFamily(fontFamily: FontFamily): Typography = Typography(
     displayLarge = defaultTypography.displayLarge.levyraRhythm(fontFamily, FontWeight.Bold, (-0.25).sp, retuneLineHeight = false),
     displayMedium = defaultTypography.displayMedium.levyraRhythm(fontFamily, FontWeight.Bold, (-0.2).sp, retuneLineHeight = false),
     displaySmall = defaultTypography.displaySmall.levyraRhythm(fontFamily, FontWeight.Bold, (-0.15).sp, retuneLineHeight = false),

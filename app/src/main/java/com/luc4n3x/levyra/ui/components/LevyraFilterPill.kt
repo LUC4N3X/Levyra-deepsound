@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.ui.components
 
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.Immutable
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -42,6 +43,8 @@ import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraIsPrism
 import com.luc4n3x.levyra.ui.theme.LevyraIsTorque
 import com.luc4n3x.levyra.ui.theme.LevyraIsIvory
+import com.luc4n3x.levyra.ui.theme.LevyraIsSpotify
+import com.luc4n3x.levyra.ui.theme.SpotifyDesign
 import com.luc4n3x.levyra.ui.theme.IvoryDesign
 import com.luc4n3x.levyra.ui.theme.PrismAccent
 
@@ -71,6 +74,7 @@ private fun animatedFilterPillColors(selected: Boolean, animationsEnabled: Boole
 private fun filterPillContainer(selected: Boolean, colors: androidx.compose.material3.ColorScheme): Color = when {
     LevyraIsTorque -> if (selected) LevyraActivePalette.blue else Color.Transparent
     LevyraIsIvory -> if (selected) IvoryDesign.ink else LevyraActivePalette.panel
+    LevyraIsSpotify -> if (selected) SpotifyDesign.green else SpotifyDesign.highlight
     LevyraIsPrism -> if (selected) PrismAccent.Tint else colors.surfaceContainer
     else -> if (selected) colors.primaryContainer else colors.surfaceContainerHigh
 }
@@ -78,6 +82,7 @@ private fun filterPillContainer(selected: Boolean, colors: androidx.compose.mate
 private fun filterPillContent(selected: Boolean, colors: androidx.compose.material3.ColorScheme): Color = when {
     LevyraIsTorque -> if (selected) Color.White else colors.onSurface
     LevyraIsIvory -> if (selected) IvoryDesign.onInk else colors.onSurface
+    LevyraIsSpotify -> if (selected) Color.Black else SpotifyDesign.text
     LevyraIsPrism -> if (selected) colors.primary else colors.onSurfaceVariant
     else -> if (selected) colors.onPrimaryContainer else colors.onSurfaceVariant
 }
@@ -89,6 +94,7 @@ private fun FilterPillLeading(
     tint: Color,
     animationsEnabled: Boolean
 ) {
+    if (LevyraIsSpotify && leadingIcon == null) return
     if (leadingIcon != null) {
         Icon(
             imageVector = leadingIcon,
@@ -142,18 +148,19 @@ internal fun LevyraFilterPill(
             ),
         contentAlignment = Alignment.Center
     ) {
+        val spotify = LevyraIsSpotify
         Row(
             modifier = Modifier
-                .height(FilterPillVisualHeight)
-                .clip(shape)
+                .height(if (spotify) SpotifyDesign.chipHeight else FilterPillVisualHeight)
+                .clip(if (spotify) SpotifyDesign.chipShape else shape)
                 .background(pillColors.container)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = if (spotify) 14.dp else 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             FilterPillLeading(leadingIcon, selected, pillColors.content, animationsEnabled)
             Text(
                 text = label,
-                style = LevyraType.cardTitle.copy(
+                style = if (spotify) MaterialTheme.typography.labelMedium.copy(fontSize = 14.sp) else LevyraType.cardTitle.copy(
                     fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
                 ),
                 color = pillColors.content,

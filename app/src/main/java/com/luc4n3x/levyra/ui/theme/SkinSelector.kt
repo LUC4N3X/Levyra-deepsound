@@ -65,6 +65,7 @@ private fun LevyraSkin.title(): String = when (this) {
     LevyraSkin.Prism -> "Prism"
     LevyraSkin.Torque -> "Torque"
     LevyraSkin.Ivory -> "Ivory"
+    LevyraSkin.SpotifyStyle -> "Spotify Style"
 }
 
 @Composable
@@ -77,6 +78,7 @@ internal fun SkinSelector(selected: LevyraSkin, onSelect: (LevyraSkin) -> Unit) 
         LevyraSkin.Prism -> LevyraPrismStrings.forCode(code).body
         LevyraSkin.Torque -> LevyraPrismStrings.forCode(code).torqueBody
         LevyraSkin.Ivory -> LevyraPrismStrings.forCode(code).ivoryBody
+        LevyraSkin.SpotifyStyle -> LevyraPrismStrings.forCode(code).spotifyBody
     }
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(copy.title, style = MaterialTheme.typography.titleLarge, color = LevyraText, modifier = Modifier.semantics { heading() })
@@ -171,6 +173,10 @@ private fun SkinPhonePreview(skin: LevyraSkin, corner: Dp, modifier: Modifier) {
             ivoryPreview(palette, w, h)
             return@Canvas
         }
+        if (skin == LevyraSkin.SpotifyStyle) {
+            spotifyPreview(palette, w, h)
+            return@Canvas
+        }
         drawRoundRect(artBrush, Offset(pad, artTop), Size(art, art), artRadius)
         if (nocturne) drawCircle(palette.cyan, art * 0.18f, Offset(w / 2, artTop + art / 2), style = Stroke(1.5.dp.toPx()))
         val textTop = artTop + art + h * 0.06f
@@ -206,6 +212,7 @@ private fun DrawScope.previewPlayButton(skin: LevyraSkin, palette: LevyraPalette
             drawCircle(palette.blue, radius, center, style = Stroke(radius * 0.22f))
         }
         LevyraSkin.Ivory -> drawRoundRect(palette.blue, center - Offset(radius * 2.4f, radius), Size(radius * 4.8f, radius * 2), CornerRadius(radius))
+        LevyraSkin.SpotifyStyle -> drawCircle(palette.cyan, radius, center)
     }
     val glyph = Path().apply {
         moveTo(center.x - radius * 0.32f, center.y - radius * 0.45f)
@@ -219,6 +226,7 @@ private fun DrawScope.previewPlayButton(skin: LevyraSkin, palette: LevyraPalette
         LevyraSkin.Default -> palette.black
         LevyraSkin.Torque -> palette.text
         LevyraSkin.Ivory -> palette.black
+        LevyraSkin.SpotifyStyle -> Color.Black
     }
     drawPath(glyph, glyphColor, style = if (skin == LevyraSkin.Nocturne78) Stroke(1.2.dp.toPx()) else Fill)
 }
@@ -266,11 +274,44 @@ private fun DrawScope.ivoryPreview(palette: LevyraPalette, w: Float, h: Float) {
     drawPath(bump, palette.blue)
 }
 
+private fun DrawScope.spotifyPreview(palette: LevyraPalette, w: Float, h: Float) {
+    val pad = w * 0.08f
+    val gap = w * 0.04f
+    drawRect(Brush.verticalGradient(listOf(Color(0xFF3A2A58), palette.black), endY = h * 0.42f), Offset.Zero, Size(w, h * 0.42f))
+    repeat(3) { index ->
+        val x = pad + index * (w * 0.22f + gap * 0.5f)
+        drawRoundRect(if (index == 0) palette.cyan else palette.panelSoft, Offset(x, h * 0.07f), Size(w * 0.22f, h * 0.035f), CornerRadius(h * 0.0175f))
+    }
+    val tileW = (w - pad * 2 - gap) / 2
+    val tileH = h * 0.06f
+    repeat(6) { index ->
+        val x = pad + (index % 2) * (tileW + gap)
+        val y = h * 0.14f + (index / 2) * (tileH + gap * 0.6f)
+        drawRoundRect(Color.White.copy(alpha = 0.1f), Offset(x, y), Size(tileW, tileH), CornerRadius(2.dp.toPx()))
+        drawRect(Brush.linearGradient(listOf(palette.panelSoft, Color(0xFF535353))), Offset(x, y), Size(tileH, tileH))
+    }
+    previewLine(palette.text, pad, h * 0.44f, w * 0.5f, 3.dp.toPx())
+    val card = (w - pad * 2 - gap) / 2.2f
+    repeat(3) { index ->
+        drawRoundRect(Brush.linearGradient(listOf(palette.panelSoft, palette.panel)), Offset(pad + index * (card + gap), h * 0.48f), Size(card, card), CornerRadius(2.dp.toPx()))
+    }
+    previewLine(palette.muted, pad, h * 0.48f + card + h * 0.035f, card * 0.8f, 2.dp.toPx())
+    drawRoundRect(Color(0xFF3B2D4F), Offset(pad * 0.5f, h * 0.8f), Size(w - pad, h * 0.065f), CornerRadius(3.dp.toPx()))
+    drawRoundRect(palette.panelSoft, Offset(pad, h * 0.81f), Size(h * 0.045f, h * 0.045f), CornerRadius(1.dp.toPx()))
+    previewLine(palette.text, pad * 1.4f + h * 0.045f, h * 0.825f, w * 0.34f, 2.dp.toPx())
+    previewLine(palette.text, pad * 0.9f, h * 0.862f, w * 0.42f, 1.dp.toPx())
+    drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color.Black), startY = h * 0.86f, endY = h), Offset(0f, h * 0.86f), Size(w, h * 0.14f))
+    repeat(4) { index ->
+        drawCircle(if (index == 0) palette.text else palette.muted.copy(alpha = 0.7f), 2.dp.toPx(), Offset(w * (index + 0.5f) / 4f, h * 0.935f))
+    }
+}
+
 private fun skinPreviewPalette(skin: LevyraSkin): LevyraPalette = when (skin) {
     LevyraSkin.Nocturne78 -> Nocturne78Palette
     LevyraSkin.Prism -> prismPalette()
     LevyraSkin.Torque -> torquePalette()
     LevyraSkin.Ivory -> ivoryPalette()
+    LevyraSkin.SpotifyStyle -> spotifyPalette()
     LevyraSkin.Default -> LevyraThemes.levyraAura
 }
 
@@ -280,12 +321,13 @@ private fun skinPreviewArtBrush(skin: LevyraSkin, palette: LevyraPalette): Brush
     LevyraSkin.Default -> Brush.linearGradient(listOf(palette.cyan, palette.violet))
     LevyraSkin.Torque -> Brush.linearGradient(listOf(palette.panelSoft, palette.panel))
     LevyraSkin.Ivory -> Brush.linearGradient(listOf(palette.panelSoft, palette.panel))
+    LevyraSkin.SpotifyStyle -> Brush.linearGradient(listOf(palette.panelSoft, palette.panel))
 }
 
 private fun DrawScope.drawSkinPreviewWash(skin: LevyraSkin, palette: LevyraPalette, frame: CornerRadius) {
     when (skin) {
         LevyraSkin.Prism -> drawRoundRect(Brush.verticalGradient(listOf(palette.blue.copy(alpha = 0.22f), palette.black), endY = size.height * 0.6f), cornerRadius = frame)
         LevyraSkin.Default -> drawRoundRect(Brush.verticalGradient(listOf(palette.violet.copy(alpha = 0.28f), palette.black), endY = size.height * 0.7f), cornerRadius = frame)
-        LevyraSkin.Nocturne78, LevyraSkin.Torque, LevyraSkin.Ivory -> Unit
+        LevyraSkin.Nocturne78, LevyraSkin.Torque, LevyraSkin.Ivory, LevyraSkin.SpotifyStyle -> Unit
     }
 }

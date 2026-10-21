@@ -56,6 +56,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
@@ -97,6 +98,12 @@ internal fun LibrarySectionGrid(
     modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.colorScheme
+    if (LevyraIsSpotify) {
+        Column(modifier) {
+            entries.forEach { entry -> SpotifyLibraryRow(entry, onOpen) }
+        }
+        return
+    }
     if (LevyraIsIvory) {
         Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
             entries.chunked(2).forEachIndexed { rowIndex, row ->
@@ -171,6 +178,44 @@ private fun IvoryLibraryTile(entry: LibrarySectionEntry, featured: Boolean, onOp
             Icon(entry.category.sectionIcon(), null, tint = glyph, modifier = Modifier.size(24.dp))
         }
     }
+}
+
+@Composable
+private fun SpotifyLibraryRow(entry: LibrarySectionEntry, onOpen: (LibraryCategory) -> Unit) {
+    val strings = LocalLevyraStrings.current
+    val label = entry.category.libraryLabel(strings)
+    val round = entry.category == LibraryCategory.Artists
+    val shape = if (round) CircleShape else RoundedCornerShape(SpotifyDesign.cornerSmall)
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 72.dp)
+            .levyraPressable(onClick = { onOpen(entry.category) }, onClickLabel = label, role = Role.Button, pressedScale = LevyraPressScale.Row)
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(Modifier.size(SpotifyDesign.libraryCover).clip(shape).background(entry.category.spotifyTileBrush()), contentAlignment = Alignment.Center) {
+            Icon(
+                if (entry.category == LibraryCategory.Songs) Icons.Rounded.Favorite else entry.category.sectionIcon(), null,
+                tint = if (entry.category.spotifyTileBrush() == SpotifyNeutralTile) SpotifyDesign.subdued else Color.White,
+                modifier = Modifier.size(28.dp)
+            )
+        }
+        Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(label, color = SpotifyDesign.text, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (entry.summary.isNotBlank()) Text(entry.summary, color = SpotifyDesign.subdued, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+private val SpotifyNeutralTile = SolidColor(SpotifyDesign.highlight)
+private val SpotifyLikedTile = Brush.linearGradient(listOf(Color(0xFF450AF5), Color(0xFF8E8EE5), Color(0xFFC4EFD9)))
+private val SpotifyOfflineTile = SolidColor(Color(0xFF006450))
+private val SpotifyCollectionsTile = Brush.linearGradient(listOf(Color(0xFF5038A0), Color(0xFF1E3264)))
+
+private fun LibraryCategory.spotifyTileBrush(): Brush = when (this) {
+    LibraryCategory.Songs -> SpotifyLikedTile
+    LibraryCategory.Offline -> SpotifyOfflineTile
+    LibraryCategory.Collections -> SpotifyCollectionsTile
+    else -> SpotifyNeutralTile
 }
 
 private fun librarySectionTone(colors: ColorScheme, row: Int, column: Int): LibrarySectionTone =

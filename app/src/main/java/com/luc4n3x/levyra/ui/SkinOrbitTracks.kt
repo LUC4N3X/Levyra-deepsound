@@ -36,6 +36,10 @@ internal fun SkinOrbitTracks(
         TorqueOrbitTracks(tracks, currentId, playing, resolving, onPlay, onActions)
         return
     }
+    if (LevyraIsSpotify) {
+        SpotifyTrackCarousel(tracks, currentId, playing, resolving, onPlay, onActions)
+        return
+    }
     if (LevyraIsIvory) {
         IvoryOrbitShelf(tracks, currentId, playing, resolving, onPlay, onActions)
         return

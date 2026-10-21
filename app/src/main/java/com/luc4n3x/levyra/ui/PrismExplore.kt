@@ -31,6 +31,13 @@ internal fun RowScope.PrismMoodTile(label: String, portrait: String, active: Boo
         TorqueMoodTile(label, portrait, active, onClick, onMix, mixLabel, onPortraitError)
         return
     }
+    if (LevyraIsSpotify) {
+        SpotifyBrowseTile(
+            label, portrait, Modifier.weight(1f).height(100.dp), active = active,
+            onLongClick = onMix, onLongClickLabel = if (onMix != null) mixLabel else null, onArtworkError = onPortraitError, onClick = onClick
+        )
+        return
+    }
     if (LevyraIsIvory) {
         IvoryMoodTile(label, portrait, active, onClick, onMix, mixLabel, onPortraitError)
         return
@@ -60,6 +67,10 @@ internal fun RowScope.PrismMoodTile(label: String, portrait: String, active: Boo
 
 @Composable
 internal fun PrismFreshRelease(track: Track, title: String, subtitle: String, label: String, enabled: Boolean, onOpen: () -> Unit, actions: @Composable () -> Unit) {
+    if (LevyraIsSpotify) {
+        SpotifyReleaseCard(track, title, subtitle, label, enabled, onOpen, actions)
+        return
+    }
     if (LevyraIsIvory) {
         IvoryFreshRelease(track, title, subtitle, label, enabled, onOpen, actions)
         return

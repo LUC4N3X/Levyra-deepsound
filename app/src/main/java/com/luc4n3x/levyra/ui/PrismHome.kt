@@ -38,7 +38,7 @@ internal fun PrismPageHeader(title: String, subtitle: String = "", actions: @Com
     Column(Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                title, color = LevyraText, style = MaterialTheme.typography.headlineLarge, fontSize = 32.sp, lineHeight = 38.sp,
+                title, color = LevyraText, style = if (LevyraIsSpotify) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineLarge.copy(fontSize = 32.sp, lineHeight = 38.sp),
                 maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).semantics { heading() }
             )
             actions()
@@ -50,7 +50,7 @@ internal fun PrismPageHeader(title: String, subtitle: String = "", actions: @Com
 @Composable
 internal fun PrismPlayDisc(playing: Boolean, resolving: Boolean, size: Dp, modifier: Modifier = Modifier) {
     Box(modifier.size(size).clip(CircleShape).background(PrismAccent.gradient()), contentAlignment = Alignment.Center) {
-        val glyph = if (LevyraIsIvory) IvoryDesign.onInk else Color.White
+        val glyph = if (LevyraIsIvory) IvoryDesign.onInk else if (LevyraIsSpotify) Color.Black else Color.White
         if (resolving) LevyraLoadingIndicator(color = glyph, modifier = Modifier.size(size * 0.42f))
         else Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = glyph, modifier = Modifier.size(size * 0.5f))
     }
@@ -61,6 +61,10 @@ internal fun PrismHomeHeader(
     greeting: String, date: String, hero: StudioHero?, inset: Dp, onSearch: () -> Unit, onSettings: () -> Unit,
     dayPart: String = "", name: String = ""
 ) {
+    if (LevyraIsSpotify) {
+        SpotifyHomeHeader(greeting, hero, inset, onSearch, onSettings, name)
+        return
+    }
     if (LevyraIsIvory) {
         IvoryHomeHeader(greeting, date, hero, inset, onSearch, onSettings, dayPart, name)
         return
@@ -87,6 +91,10 @@ internal fun PrismHomeHeader(
 
 @Composable
 internal fun PrismCompactShelf(items: List<StudioShelfItem>, isPlaying: Boolean, inset: Dp, modifier: Modifier) {
+    if (LevyraIsSpotify) {
+        SpotifyShortcutGrid(items, isPlaying, inset, modifier)
+        return
+    }
     if (LevyraIsIvory) {
         IvoryCompactShelf(items, isPlaying, inset, modifier)
         return
@@ -139,6 +147,10 @@ internal fun PrismCollectionCard(title: String, subtitle: String, artwork: Track
 
 @Composable
 internal fun PrismArtworkShelf(items: List<StudioShelfItem>, isPlaying: Boolean, inset: Dp, modifier: Modifier) {
+    if (LevyraIsSpotify) {
+        SpotifyCarousel(items, isPlaying, inset, modifier)
+        return
+    }
     if (LevyraIsIvory) {
         IvoryShowcaseShelf(items, isPlaying, inset, modifier)
         return

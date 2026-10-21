@@ -114,7 +114,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 
 private const val TrackActionSheetExitMs = 210
 private const val TrackActionSheetEnterMs = 260
-private val TrackActionSheetShape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
+private val TrackActionSheetShape get() = if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp) else RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
 private val TrackActionSheetDismissDistance = 108.dp
 
 private val trackActionSheetSurface: Color
@@ -443,7 +443,7 @@ internal fun LevyraTrackActionSheet(
                                 isDownloaded -> TrackActionRow(
                                     icon = Icons.Rounded.Delete,
                                     label = strings.deleteDownload,
-                                    tint = LevyraPink,
+                                    tint = if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) LevyraText else LevyraPink,
                                     trailing = {
                                         Icon(
                                             imageVector = Icons.Rounded.DownloadDone,
@@ -478,7 +478,7 @@ internal fun LevyraTrackActionSheet(
                                 TrackActionRow(
                                     icon = Icons.Rounded.History,
                                     label = strings.removeFromRecentSearches,
-                                    tint = LevyraPink,
+                                    tint = if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) LevyraText else LevyraPink,
                                     onClick = { perform(onRemoveFromHistory) }
                                 )
                             }
@@ -515,7 +515,7 @@ internal fun LevyraTrackActionSheet(
                                         Icons.Rounded.DoNotDisturbOn
                                     },
                                     label = if (isArtistExcluded) strings.includeArtist else strings.excludeArtist,
-                                    tint = if (isArtistExcluded) LevyraCyan else LevyraPink,
+                                    tint = if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) LevyraText else if (isArtistExcluded) LevyraCyan else LevyraPink,
                                     onClick = { perform(onToggleExcludeArtist) }
                                 )
                             }
@@ -630,7 +630,7 @@ private fun TrackActionDivider() {
             .fillMaxWidth()
             .height(1.dp)
             .background(
-                Brush.horizontalGradient(
+                if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) androidx.compose.ui.graphics.SolidColor(com.luc4n3x.levyra.ui.theme.SpotifyDesign.highlight) else Brush.horizontalGradient(
                     listOf(
                         Color.Transparent,
                         LevyraCyan.copy(alpha = 0.26f),

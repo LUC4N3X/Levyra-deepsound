@@ -16,6 +16,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.AddCircleOutline
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -65,8 +69,9 @@ internal fun PlayerTrackMetadata(
     modifier: Modifier = Modifier
 ) {
     val nocturne = LevyraIsNocturne
-    val titleSize = if (LevyraIsPrism) 23.sp else if (nocturne) { if (compact) 22.sp else 25.sp } else if (compact) 23.sp else 27.sp
-    val artistSize = if (compact) 15.sp else 16.5.sp
+    val spotify = LevyraIsSpotify
+    val titleSize = if (spotify) 22.sp else if (LevyraIsPrism) 23.sp else if (nocturne) { if (compact) 22.sp else 25.sp } else if (compact) 23.sp else 27.sp
+    val artistSize = if (spotify) 16.sp else if (compact) 15.sp else 16.5.sp
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -86,8 +91,8 @@ internal fun PlayerTrackMetadata(
                     color = surfaces.content,
                     fontSize = titleSize,
                     lineHeight = LevyraTypeRhythm.lineHeight(titleSize),
-                    fontWeight = if (nocturne || LevyraIsPrism) FontWeight.Medium else FontWeight.ExtraBold,
-                    letterSpacing = (-0.8).sp,
+                    fontWeight = if (spotify) FontWeight.Bold else if (nocturne || LevyraIsPrism) FontWeight.Medium else FontWeight.ExtraBold,
+                    letterSpacing = if (spotify) (-0.4).sp else (-0.8).sp,
                     maxLines = if (animationsEnabled) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.levyraMarquee(
@@ -102,7 +107,7 @@ internal fun PlayerTrackMetadata(
                         fontFamily = MaterialTheme.typography.titleMedium.fontFamily,
                         fontSize = artistSize,
                         lineHeight = LevyraTypeRhythm.lineHeight(artistSize),
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = if (spotify) FontWeight.Normal else FontWeight.Medium,
                         letterSpacing = (-0.1).sp
                     ),
                     onClickLabel = openArtistLabel,
@@ -144,6 +149,26 @@ internal fun PlayerFavoriteButton(
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(200)),
         label = "player-favorite-fill"
     )
+    if (LevyraIsSpotify) {
+        IconButton(
+            onClick = {
+                haptics.perform(LevyraHapticAction.Favorite)
+                onToggle()
+            },
+            modifier = Modifier.size(LevyraPlayerDesign.MinimumTouchTarget)
+                .graphicsLayer {
+                    scaleX = pop.value
+                    scaleY = pop.value
+                }
+                .semantics { toggleableState = ToggleableState(isFavorite) }
+        ) {
+            Icon(
+                if (isFavorite) Icons.Rounded.CheckCircle else Icons.Rounded.AddCircleOutline, label,
+                tint = if (isFavorite) SpotifyDesign.green else SpotifyDesign.text, modifier = Modifier.size(28.dp)
+            )
+        }
+        return
+    }
     val outline = surfaces.segmentOutline
     PlayerGlassIconButton(
         icon = favoriteIcon(isFavorite),

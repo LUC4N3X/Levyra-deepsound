@@ -1859,7 +1859,7 @@ private fun EmptyState(text: String) {
     }
 }
 @Composable
-private fun Modifier.pressable(
+internal fun Modifier.pressable(
     enabled: Boolean = true,
     interactionSource: MutableInteractionSource? = null,
     pressedScale: Float = LevyraPressScale.Control,
@@ -2061,6 +2061,7 @@ fun LevyraApp(
         val base = when (state.interfaceSettings.skin) {
             LevyraSkin.Nocturne78 -> Nocturne78Palette
             LevyraSkin.Prism, LevyraSkin.Torque, LevyraSkin.Ivory -> LevyraActivePalette
+            LevyraSkin.SpotifyStyle -> spotifyPalette()
             LevyraSkin.Default -> LevyraThemes.byId(state.themePreset)
         }
         val palette = if (pureBlack && state.interfaceSettings.skin == LevyraSkin.Default) LevyraThemeController.asPureBlack(base) else base
@@ -4943,6 +4944,10 @@ private fun AlbumNowPlayingDock(
     onOpenPlayer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    if (LevyraIsSpotify) {
+        SpotifyNowPlayingBar(track, isPlaying, isResolving, progress, onToggle, onOpenPlayer, modifier)
+        return
+    }
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -5022,8 +5027,9 @@ private fun AlbumTrackRow(
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
-    val showArtist = remember(track.artist, albumArtist) {
-        track.artist.isNotBlank() && !track.artist.trim().equals(albumArtist.trim(), ignoreCase = true)
+    val spotify = LevyraIsSpotify
+    val showArtist = remember(track.artist, albumArtist, spotify) {
+        track.artist.isNotBlank() && (spotify || !track.artist.trim().equals(albumArtist.trim(), ignoreCase = true))
     }
     val status = if (presentation.isDownloading && !presentation.isDownloaded) {
         strings.formatDownloadProgress(presentation.downloadProgress ?: 1)
@@ -5033,7 +5039,7 @@ private fun AlbumTrackRow(
     val subtitle = listOf(if (showArtist) track.artist else "", status)
         .filter { it.isNotBlank() }
         .joinToString(" · ")
-    val duration = formatDuration(track.durationMs).takeIf { it != "--:--" }.orEmpty()
+    val duration = if (spotify) "" else formatDuration(track.durationMs).takeIf { it != "--:--" }.orEmpty()
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -5043,6 +5049,7 @@ private fun AlbumTrackRow(
             .background(
                 when {
                     presentation.selected -> stage.accent.copy(alpha = 0.26f)
+                    spotify -> Color.Transparent
                     presentation.isCurrent -> stage.accent.copy(alpha = 0.16f)
                     else -> stage.content.copy(alpha = 0.055f)
                 }
@@ -5053,7 +5060,7 @@ private fun AlbumTrackRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
     ) {
-        AlbumTrackIndex(
+        if (!spotify || presentation.isCurrent) AlbumTrackIndex(
             index = index,
             isCurrent = presentation.isCurrent,
             isPlaying = presentation.isPlaying,
@@ -6019,6 +6026,10 @@ private val ArtistNameRise = 14.dp
 @Composable
 private fun ArtistFollowButton(isFollowed: Boolean, onClick: () -> Unit) {
     val strings = LocalLevyraStrings.current
+    if (LevyraIsSpotify) {
+        SpotifyFollowPill(isFollowed, strings.followArtist, strings.followingArtist, onClick)
+        return
+    }
     val animated = LocalAnimationsEnabled.current
     val followProgress by animateFloatAsState(
         targetValue = if (isFollowed) 1f else 0f,
@@ -6244,7 +6255,7 @@ private fun ArtistHero(
                 },
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text(
+            if (!LevyraIsSpotify) Text(
                 text = LocalLevyraStrings.current.artistLabel.uppercase(),
                 color = artistHeroOverlineColor(),
                 style = LevyraType.overline.copy(letterSpacing = if (LevyraSkinManagesLayout) 2.4.sp else LevyraType.overline.letterSpacing),
@@ -6257,7 +6268,7 @@ private fun ArtistHero(
                     fontSize = nameSize,
                     lineHeight = LevyraType.heroLineHeight(nameSize),
                     fontWeight = artistHeroNameWeight(),
-                    letterSpacing = if (LevyraIsTorque) 2.sp else LevyraType.heroTitle.letterSpacing
+                    letterSpacing = if (LevyraIsTorque) 2.sp else if (LevyraIsSpotify) (-1.4).sp else LevyraType.heroTitle.letterSpacing
                 ),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -6371,7 +6382,7 @@ private fun ArtistActionBar(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(if (LevyraSkinManagesLayout) SkinChrome.chipShape else RoundedCornerShape(shuffleCorner))
-                    .background(if (LevyraSkinManagesLayout) LevyraPanel else highlight.copy(alpha = 0.22f))
+                    .background(if (LevyraIsSpotify) Color.Transparent else if (LevyraSkinManagesLayout) LevyraPanel else highlight.copy(alpha = 0.22f))
                     .levyraPressable(
                         onClick = onShuffle,
                         pressedScale = LevyraPressScale.Control,
@@ -6384,15 +6395,15 @@ private fun ArtistActionBar(
                 Icon(
                     imageVector = Icons.Rounded.Shuffle,
                     contentDescription = strings.shuffle,
-                    tint = LevyraText,
-                    modifier = Modifier.size(22.dp)
+                    tint = if (LevyraIsSpotify) SpotifyDesign.subdued else LevyraText,
+                    modifier = Modifier.size(if (LevyraIsSpotify) 28.dp else 22.dp)
                 )
             }
         }
         if (onPlay != null) {
             Box(
                 modifier = Modifier
-                    .size(62.dp)
+                    .size(if (LevyraIsSpotify) SpotifyDesign.playButton else 62.dp)
                     .then(
                         artistPlayBackground(playContainer, playShape)
                     )
@@ -7705,7 +7716,7 @@ private fun SmartMusicProfileCard(profile: SmartMusicProfile, onPlayFlow: () -> 
     }
 }
 
-private enum class LyricsViewMode {
+internal enum class LyricsViewMode {
     PAGE,
     CINEMA,
     COMPACT
@@ -8059,7 +8070,9 @@ private fun LyricsOverlay(
             .consumeOverlayTouches()
     ) {
         val studioSettings = state.lyricsStudioSettings
-        if (landscapeLayout && studioSettings.backgroundMode !in setOf(
+        if (studioSettings.spotifyLyricsApplies()) {
+            SpotifyLyricsBackdrop(track)
+        } else if (landscapeLayout && studioSettings.backgroundMode !in setOf(
                 LyricsBackgroundMode.AMOLED, LyricsBackgroundMode.SOLID, LyricsBackgroundMode.GRADIENT
             )) {
             LyricsLandscapeBackdrop(
@@ -8967,404 +8980,6 @@ private fun LyricsControlChip(
 }
 
 @Composable
-private fun KaraokeLyricLine(
-    line: LyricLine,
-    positionProvider: () -> Long,
-    instrumentalGap: LyricsInstrumentalGap?,
-    isActive: Boolean,
-    isPrimaryActive: Boolean,
-    synced: Boolean,
-    viewMode: LyricsViewMode,
-    distanceFromActive: Int,
-    focusMode: Boolean,
-    layoutWidthDp: Int?,
-    blurEnabled: Boolean,
-    animationsEnabled: Boolean,
-    sectionLabel: String?,
-    showRomanization: Boolean,
-    showTranslation: Boolean,
-    accentEnd: Color,
-    selectionMode: Boolean,
-    selected: Boolean,
-    selectable: Boolean,
-    studioSettings: LevyraLyricsStudioSettings = LevyraLyricsStudioSettings(),
-    onClick: () -> Unit,
-    onLongClick: () -> Unit
-) {
-    val cinema = viewMode == LyricsViewMode.CINEMA
-    val compact = viewMode == LyricsViewMode.COMPACT
-    val strings = LocalLevyraStrings.current
-    val currentLongClick by rememberUpdatedState(onLongClick)
-    val selectionIndicator = rememberVectorPainter(Icons.Rounded.CheckCircle)
-    val lineAccessibilityActions = remember(strings.shareLyrics, selectable) {
-        if (selectable) {
-            listOf(
-                CustomAccessibilityAction(strings.shareLyrics) {
-                    currentLongClick()
-                    true
-                }
-            )
-        } else {
-            emptyList()
-        }
-    }
-    val sectionLocale = remember(strings.code) { Locale.forLanguageTag(strings.code.replace('_', '-')) }
-    val defaultAlignment = when (studioSettings.alignment) {
-        LyricsAlignment.START -> Alignment.Start
-        LyricsAlignment.CENTER -> Alignment.CenterHorizontally
-        LyricsAlignment.END -> Alignment.End
-    }
-    val defaultTextAlign = studioSettings.alignment.textAlign
-    val lyricLayoutDirection = LocalLayoutDirection.current
-    val alignment = when (line.role) {
-        LyricVocalRole.DUET_RIGHT -> Alignment.End
-        LyricVocalRole.BACKGROUND -> Alignment.CenterHorizontally
-        else -> defaultAlignment
-    }
-    val textAlign = when (line.role) {
-        LyricVocalRole.DUET_RIGHT -> TextAlign.End
-        LyricVocalRole.BACKGROUND -> TextAlign.Center
-        else -> defaultTextAlign
-    }
-    val roleScale = when (line.role) {
-        LyricVocalRole.BACKGROUND -> if (compact) 0.86f else 0.80f
-        LyricVocalRole.DUET_LEFT, LyricVocalRole.DUET_RIGHT -> 0.92f
-        LyricVocalRole.MAIN -> 1f
-    }
-    val maxActiveScale = if (compact) LYRICS_COMPACT_ACTIVE_LINE_SCALE else LYRICS_ACTIVE_LINE_SCALE
-    val activeScale by animateFloatAsState(
-        targetValue = when {
-            isPrimaryActive && compact -> LYRICS_COMPACT_ACTIVE_LINE_SCALE
-            isPrimaryActive -> LYRICS_ACTIVE_LINE_SCALE
-            else -> studioSettings.inactiveScale
-        },
-        animationSpec = LevyraMotion.physics(animationsEnabled, LevyraMotion.spatial),
-        label = "lyrics-line-scale"
-    )
-    val targetAlpha = lyricsFocusAlpha(
-        distance = distanceFromActive,
-        focusMode = focusMode,
-        compact = compact,
-        synced = synced
-    )
-    val lineAlpha by animateFloatAsState(
-        targetValue = targetAlpha,
-        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
-        label = "lyrics-line-alpha"
-    )
-    val lineBlur by animateDpAsState(
-        targetValue = lyricsFocusBlurDp(distanceFromActive, focusMode, synced, blurEnabled).dp,
-        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short + 20, easing = LevyraMotion.Easings.Standard)),
-        label = "lyrics-line-blur"
-    )
-    val baseFontSizeSp = when {
-        compact && isPrimaryActive -> 22f
-        compact -> 17f
-        cinema && isPrimaryActive -> 29f
-        cinema -> 24f
-        isPrimaryActive -> 26f
-        else -> 21f
-    } * roleScale * studioSettings.textSize.scale
-    val configuration = LocalConfiguration.current
-    val fontScale = LocalDensity.current.fontScale
-    val lineWidthDp = layoutWidthDp ?: configuration.screenWidthDp
-    val resolvedFontSizeSp = remember(
-        baseFontSizeSp,
-        line.text,
-        lineWidthDp,
-        configuration.screenHeightDp,
-        fontScale
-    ) {
-        adaptiveLyricFontSizeSp(
-            baseSizeSp = baseFontSizeSp,
-            characterCount = line.text.length,
-            availableWidthDp = (lineWidthDp - LYRICS_HORIZONTAL_GUTTER_DP).toFloat(),
-            availableHeightDp = configuration.screenHeightDp.toFloat(),
-            fontScale = fontScale
-        )
-    }
-    val resolvedFontSize = resolvedFontSizeSp.sp
-    val lineHeight = LevyraTypeRhythm.lineHeight(resolvedFontSizeSp)
-    val inactiveColor = when {
-        isActive -> Color.White.copy(alpha = 0.76f)
-        synced -> Color.White.copy(
-            alpha = when {
-                compact -> (studioSettings.inactiveOpacity + 0.10f).coerceAtMost(0.90f)
-                else -> studioSettings.inactiveOpacity
-            }
-        )
-        else -> Color.White.copy(alpha = 0.88f)
-    }
-    val activeTextColor = when (studioSettings.activeColorMode) {
-        LyricsActiveColorMode.WHITE -> Color.White
-        LyricsActiveColorMode.AUTOMATIC -> accentEnd
-        LyricsActiveColorMode.CUSTOM -> Color(studioSettings.customAccentColor)
-    }
-    val animatedMainColor by animateColorAsState(
-        targetValue = if (isActive || isPrimaryActive) activeTextColor else inactiveColor,
-        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
-        label = "lyrics-main-text-color"
-    )
-    val animatedInactiveColor by animateColorAsState(
-        targetValue = inactiveColor,
-        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
-        label = "lyrics-inactive-color"
-    )
-    val animatedSectionColor by animateColorAsState(
-        targetValue = accentEnd.copy(alpha = if (isPrimaryActive) 0.92f else 0.56f),
-        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
-        label = "lyrics-section-color"
-    )
-    val animatedRomanizationColor by animateColorAsState(
-        targetValue = if (isActive) Color.White.copy(alpha = 0.76f) else Color.White.copy(alpha = 0.40f),
-        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
-        label = "lyrics-romanization-color"
-    )
-    val animatedTranslationColor by animateColorAsState(
-        targetValue = if (isActive) accentEnd.copy(alpha = 0.88f) else Color.White.copy(alpha = 0.44f),
-        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
-        label = "lyrics-translation-color"
-    )
-    val horizontalPadding = when (line.role) {
-        LyricVocalRole.BACKGROUND -> if (compact) 16.dp else 24.dp
-        LyricVocalRole.DUET_LEFT, LyricVocalRole.DUET_RIGHT -> 10.dp
-        LyricVocalRole.MAIN -> 0.dp
-    }
-    val resolvedRomanization = line.romanized.ifBlank {
-        line.words.joinToString("") { word -> word.romanized }.trim()
-    }
-    val studioFontFamily = remember(studioSettings.fontPreset) {
-        levyraFontFamilyFor(studioSettings.fontPreset)
-    }
-    val activeFontWeight = studioSettings.fontWeight.weight
-    val inactiveFontWeight = when (studioSettings.fontWeight) {
-        LyricsFontWeightPreset.BLACK, LyricsFontWeightPreset.EXTRA_BOLD -> FontWeight.Bold
-        LyricsFontWeightPreset.BOLD -> FontWeight.SemiBold
-        else -> FontWeight.Medium
-    }
-    val resolvedFontWeight = if (isPrimaryActive) activeFontWeight else inactiveFontWeight
-
-    val glowShadow = when (studioSettings.glowEffect) {
-        LyricsGlowEffect.OFF -> null
-        LyricsGlowEffect.SUBTLE -> Shadow(
-            color = activeTextColor.copy(alpha = 0.55f),
-            blurRadius = 14f,
-            offset = Offset.Zero
-        )
-        LyricsGlowEffect.VIBRANT -> Shadow(
-            color = activeTextColor.copy(alpha = 0.85f),
-            blurRadius = 26f,
-            offset = Offset.Zero
-        )
-    }
-    val activeWordColor = activeTextColor
-    val completedWordColor = activeTextColor
-    val pendingWordColor = Color.White.copy(alpha = if (compact) 0.50f else 0.58f)
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(
-                if (selected || selectionMode) {
-                    Modifier
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(if (selected) accentEnd.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.035f))
-                } else {
-                    Modifier
-                }
-            )
-            .padding(horizontal = horizontalPadding, vertical = if (compact) 2.dp else 0.dp)
-            .padding(horizontal = if (selectionMode) 10.dp else 0.dp, vertical = if (selectionMode) 7.dp else 0.dp)
-            .then(if (lineBlur > 0.dp) Modifier.blur(lineBlur, BlurredEdgeTreatment.Unbounded) else Modifier)
-            .layout { measurable, constraints ->
-                if (!constraints.hasBoundedWidth) {
-                    val placeable = measurable.measure(constraints)
-                    return@layout layout(placeable.width, placeable.height) { placeable.place(0, 0) }
-                }
-                val contentWidth = lyricLineScaleSafeWidthPx(constraints.maxWidth, maxActiveScale)
-                val placeable = measurable.measure(
-                    constraints.copy(
-                        minWidth = minOf(constraints.minWidth, contentWidth),
-                        maxWidth = contentWidth
-                    )
-                )
-                val width = maxOf(constraints.minWidth, placeable.width)
-                layout(width, placeable.height) {
-                    val x = when (line.role) {
-                        LyricVocalRole.DUET_RIGHT -> width - placeable.width
-                        LyricVocalRole.BACKGROUND -> (width - placeable.width) / 2
-                        else -> when (studioSettings.alignment) {
-                            LyricsAlignment.START -> 0
-                            LyricsAlignment.CENTER -> (width - placeable.width) / 2
-                            LyricsAlignment.END -> width - placeable.width
-                        }
-                    }
-                    placeable.placeRelative(x, 0)
-                }
-            }
-            .graphicsLayer {
-                scaleX = activeScale
-                scaleY = activeScale
-                alpha = lineAlpha
-                transformOrigin = when (line.role) {
-                    LyricVocalRole.DUET_RIGHT -> TransformOrigin(if (lyricLayoutDirection == LayoutDirection.Rtl) 0f else 1f, 0.5f)
-                    LyricVocalRole.BACKGROUND -> TransformOrigin.Center
-                    else -> when (studioSettings.alignment) {
-                        LyricsAlignment.START -> TransformOrigin(if (lyricLayoutDirection == LayoutDirection.Rtl) 1f else 0f, 0.5f)
-                        LyricsAlignment.CENTER -> TransformOrigin.Center
-                        LyricsAlignment.END -> TransformOrigin(if (lyricLayoutDirection == LayoutDirection.Rtl) 0f else 1f, 0.5f)
-                    }
-                }
-            }
-            .drawWithContent {
-                drawContent()
-                if (selected) {
-                    val indicator = 20.dp.toPx()
-                    val inset = 8.dp.toPx()
-                    val left = if (layoutDirection == LayoutDirection.Rtl) inset else size.width - indicator - inset
-                    translate(left = left, top = inset) {
-                        with(selectionIndicator) {
-                            draw(Size(indicator, indicator), colorFilter = ColorFilter.tint(Color.White))
-                        }
-                    }
-                }
-            }
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = if (selectable) onLongClick else null,
-                onLongClickLabel = if (selectable) strings.shareLyrics else null
-            )
-            .semantics {
-                if (selectionMode && selectable) {
-                    this.selected = selected
-                    stateDescription = if (selected) strings.shareLyricsLineSelected else strings.shareLyricsLineNotSelected
-                }
-                customActions = lineAccessibilityActions
-            },
-        horizontalAlignment = alignment,
-        verticalArrangement = Arrangement.spacedBy(if (compact) 2.dp else 4.dp)
-    ) {
-        if (!sectionLabel.isNullOrBlank()) {
-            Text(
-                text = sectionLabel.uppercase(sectionLocale),
-                color = animatedSectionColor,
-                fontSize = if (compact) 9.sp else 10.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(if (compact) 9.sp else 10.sp),
-                fontWeight = FontWeight.Black,
-                letterSpacing = 0.9.sp,
-                textAlign = textAlign,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        if (instrumentalGap != null) {
-            LyricsInstrumentalPulse(
-                gap = instrumentalGap,
-                positionProvider = positionProvider,
-                accent = accentEnd,
-                compact = compact,
-                alignment = alignment
-            )
-        }
-        if (line.words.isNotEmpty() && synced && studioSettings.progressiveKaraokeEnabled) {
-            KaraokeWordTimedText(
-                lineText = line.text,
-                words = line.words,
-                positionProvider = positionProvider,
-                isActive = isActive,
-                fontSize = resolvedFontSize,
-                lineHeight = lineHeight,
-                textAlign = textAlign,
-                inactiveColor = animatedInactiveColor,
-                completedColor = completedWordColor,
-                activeColor = activeWordColor,
-                pendingColor = pendingWordColor,
-                fontWeight = resolvedFontWeight,
-                fontFamily = studioFontFamily,
-                shadow = if (isPrimaryActive) glowShadow else null
-            )
-        } else {
-            Text(
-                text = if (line.isInstrumental) "♪" else line.text,
-                color = animatedMainColor,
-                fontFamily = studioFontFamily,
-                fontSize = resolvedFontSize,
-                lineHeight = lineHeight,
-                fontWeight = resolvedFontWeight,
-                textAlign = textAlign,
-                style = TextStyle(shadow = if (isPrimaryActive) glowShadow else null),
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        if (showRomanization && resolvedRomanization.isNotBlank()) {
-            Text(
-                text = resolvedRomanization,
-                color = animatedRomanizationColor,
-                fontSize = when {
-                    compact -> 11.sp
-                    cinema && isPrimaryActive -> 15.sp
-                    else -> 13.sp
-                },
-                lineHeight = if (compact) 15.sp else 18.sp,
-                fontWeight = FontWeight.Medium,
-                textAlign = textAlign,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        if (showTranslation && line.translated.isNotBlank()) {
-            Text(
-                text = line.translated,
-                color = animatedTranslationColor,
-                fontSize = when {
-                    compact -> 12.sp
-                    cinema && isPrimaryActive -> 16.sp
-                    else -> 14.sp
-                },
-                lineHeight = if (compact) 16.sp else 20.sp,
-                fontWeight = FontWeight.Medium,
-                textAlign = textAlign,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-    }
-}
-
-@Composable
-private fun LyricsInstrumentalPulse(
-    gap: LyricsInstrumentalGap,
-    positionProvider: () -> Long,
-    accent: Color,
-    compact: Boolean,
-    alignment: Alignment.Horizontal
-) {
-    val dotSize = if (compact) 7.dp else 9.dp
-    val spacing = if (compact) 5.dp else 7.dp
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = if (compact) 4.dp else 8.dp)
-            .clearAndSetSemantics { },
-        horizontalArrangement = Arrangement.spacedBy(spacing, alignment),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        repeat(LYRICS_INSTRUMENTAL_DOT_COUNT) { index ->
-            Box(
-                modifier = Modifier
-                    .size(dotSize)
-                    .drawBehind {
-                        val progress = lyricsInstrumentalProgress(positionProvider(), gap)
-                        val intensity = lyricsInstrumentalDotIntensity(progress, index)
-                        drawCircle(
-                            color = accent,
-                            radius = size.minDimension / 2f * (0.55f + 0.45f * intensity),
-                            alpha = 0.30f + 0.60f * intensity
-                        )
-                    }
-            )
-        }
-    }
-}
-
-@Composable
 internal fun KaraokeWordTimedText(
     lineText: String,
     words: List<com.luc4n3x.levyra.domain.LyricWord>,
@@ -9446,9 +9061,9 @@ internal fun KaraokeWordTimedText(
 }
 
 private const val INLINE_LYRICS_AUTOSCROLL_RESUME_MS = 3_500L
-private const val LYRICS_HORIZONTAL_GUTTER_DP = 48
-private const val LYRICS_ACTIVE_LINE_SCALE = 1.025f
-private const val LYRICS_COMPACT_ACTIVE_LINE_SCALE = 1.018f
+internal const val LYRICS_HORIZONTAL_GUTTER_DP = 48
+internal const val LYRICS_ACTIVE_LINE_SCALE = 1.025f
+internal const val LYRICS_COMPACT_ACTIVE_LINE_SCALE = 1.018f
 
 private fun buildKaraokeGlyphPath(
     path: Path,
@@ -10998,7 +10613,8 @@ private fun rememberStudioHomeLook(homeStudio: LevyraHomeStudioSettings, state: 
     }
     val homeRenderOrder = remember(studioLayout) { studioLayout.renderOrder() }
     val nocturne = LevyraIsNocturne
-    val styleSpec = remember(homeStyle, studioLayout.density, nocturne) { homeStyleSpec(homeStyle, studioLayout.density, nocturne) }
+    val spotifyHome = LevyraIsSpotify
+    val styleSpec = remember(homeStyle, studioLayout.density, nocturne, spotifyHome) { homeStyleSpec(homeStyle, studioLayout.density, nocturne, spotifyHome) }
     val homeAnimationsEnabled = state.animationsEnabled && studioLayout.motion != HomeMotion.Reduced
     val studioPlacementSpec = remember(studioLayout.motion) {
         if (studioLayout.motion == HomeMotion.Expressive) {
@@ -16665,7 +16281,7 @@ private fun SearchHeader(
 
         Surface(
             color = fieldContainer,
-            border = BorderStroke(if (LevyraIsPrism) 1.5.dp else 2.dp, focusRing),
+            border = if (LevyraIsSpotify) null else BorderStroke(if (LevyraIsPrism) 1.5.dp else 2.dp, focusRing),
             shape = RoundedCornerShape(fieldCorner),
             modifier = Modifier
                 .weight(1f)
@@ -16699,12 +16315,12 @@ private fun SearchHeader(
                     interactionSource = fieldInteraction,
                     singleLine = true,
                     textStyle = TextStyle(
-                        color = if (LevyraIsTorque) Color(0xFF111111) else LevyraText,
+                        color = if (LevyraIsTorque) Color(0xFF111111) else if (LevyraIsSpotify) SpotifyDesign.searchFieldText else LevyraText,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 16.sp,
                         letterSpacing = (-0.1).sp
                     ),
-                    cursorBrush = SolidColor(if (LevyraIsTorque) LevyraActivePalette.blue else LevyraCyan),
+                    cursorBrush = SolidColor(if (LevyraIsTorque) LevyraActivePalette.blue else if (LevyraIsSpotify) SpotifyDesign.greenPress else LevyraCyan),
                     decorationBox = { innerTextField ->
                         Box(contentAlignment = Alignment.CenterStart) {
                             if (query.isEmpty()) {
@@ -16716,7 +16332,7 @@ private fun SearchHeader(
                                     BasicText(
                                         text = text,
                                         style = TextStyle(
-                                            color = if (LevyraIsTorque) Color(0xFF5A5A5A) else LevyraMuted.copy(alpha = 0.82f),
+                                            color = if (LevyraIsTorque || LevyraIsSpotify) Color(0xFF5A5A5A) else LevyraMuted.copy(alpha = 0.82f),
                                             fontWeight = FontWeight.Medium,
                                             fontSize = 15.sp
                                         ),
@@ -21635,7 +21251,7 @@ private fun SettingsOverlay(
     fun categoryTitle(value: String): String = settingsCategoryTitle(value, categoryLocale)
     val categories = remember(strings.code, LevyraActivePalette) {
         listOf(
-            SettingsCategoryMeta("skins", com.luc4n3x.levyra.ui.i18n.LevyraSkinStrings.forCode(strings.code).title, "Levyra Default · Nocturne 78 · Prism · Torque · Ivory", Icons.Rounded.Style, LevyraViolet, SettingsHubGroup.Appearance),
+            SettingsCategoryMeta("skins", com.luc4n3x.levyra.ui.i18n.LevyraSkinStrings.forCode(strings.code).title, "Levyra Default · Nocturne 78 · Prism · Torque · Ivory · Spotify Style", Icons.Rounded.Style, LevyraViolet, SettingsHubGroup.Appearance),
             SettingsCategoryMeta("design", categoryTitle(strings.design), "${strings.theme} · ${strings.animations} · ${strings.dynamicColor}", Icons.Rounded.Palette, LevyraViolet, SettingsHubGroup.Appearance),
             SettingsCategoryMeta("home", categoryTitle(strings.homeInterfaceSection), "${strings.compactHome} · ${strings.newReleases} · ${strings.top50Charts}", Icons.Rounded.Home, LevyraViolet, SettingsHubGroup.Appearance),
             SettingsCategoryMeta("player", categoryTitle(strings.player), "${strings.advancedGestures} · ${strings.sponsorBlock} · ${strings.skipSilence}", Icons.Rounded.PlayArrow, LevyraPink, SettingsHubGroup.Listening),
@@ -23406,7 +23022,7 @@ private fun SettingsTile(
     enabled: Boolean = true,
     groupIndex: Int? = null,
     groupCount: Int? = null,
-    color: Color = LevyraAdaptiveCard,
+    color: Color = if (LevyraIsSpotify) Color.Transparent else LevyraAdaptiveCard,
     content: @Composable () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -24104,6 +23720,10 @@ private fun SettingsSectionLabel(text: String) {
         )
         return
     }
+    if (LevyraIsSpotify) {
+        SpotifySettingsHeading(title)
+        return
+    }
     Text(
         SkinChrome.label(title, locale),
         color = if (LevyraIsPrism && !LevyraIsTorque) LevyraMuted else LevyraCyan,
@@ -24126,7 +23746,7 @@ private fun SettingsToggle(icon: ImageVector, title: String, subtitle: String, c
         ) {
             SettingsTileIcon(icon = icon, accent = LocalSettingsAccent.current ?: LevyraCyan)
             SettingsTileText(title = title, subtitle = subtitle, modifier = Modifier.weight(1f))
-            if (LevyraIsNocturne || LevyraIsTorque || LevyraIsIvory) SkinSwitch(checked) else Switch(
+            if (LevyraIsNocturne || LevyraIsTorque || LevyraIsIvory || LevyraIsSpotify) SkinSwitch(checked) else Switch(
                 checked = checked,
                 onCheckedChange = null,
                 thumbContent = if (checked) {
@@ -26650,8 +26270,8 @@ private fun SearchSectionHeader(title: String, showAll: Boolean, onShowAll: () -
             color = LevyraText,
             fontSize = if (LevyraIsTorque || LevyraIsNocturne) 18.sp else 24.sp,
             lineHeight = 28.sp,
-            fontWeight = if (LevyraIsTorque) FontWeight.Bold else if (LevyraIsIvory) FontWeight.SemiBold else if (LevyraSkinManagesLayout) FontWeight.Normal else FontWeight.Black,
-            letterSpacing = if (LevyraIsTorque || LevyraIsNocturne) 1.8.sp else if (LevyraIsIvory) 0.2.sp else (-0.3).sp,
+            fontWeight = if (LevyraIsTorque || LevyraIsSpotify) FontWeight.Bold else if (LevyraIsIvory) FontWeight.SemiBold else if (LevyraSkinManagesLayout) FontWeight.Normal else FontWeight.Black,
+            letterSpacing = if (LevyraIsTorque || LevyraIsNocturne) 1.8.sp else if (LevyraIsIvory) 0.2.sp else if (LevyraIsSpotify) (-0.4).sp else (-0.3).sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
@@ -28216,6 +27836,10 @@ private fun ExploreShortcutTile(
     entry: ExploreShortcutEntry,
     modifier: Modifier = Modifier
 ) {
+    if (LevyraIsSpotify) {
+        SpotifyExploreTile(entry.label, entry.icon, modifier, entry.onClick)
+        return
+    }
     val colors = MaterialTheme.colorScheme
     val animationsEnabled = LocalAnimationsEnabled.current
     val interaction = remember { MutableInteractionSource() }
@@ -28945,6 +28569,7 @@ private fun skinManagesStudio(id: String): Boolean =
 
 private fun searchFieldContainer(focused: Boolean, scheme: androidx.compose.material3.ColorScheme): Color = when {
     LevyraIsTorque -> Color(0xFFF1F1F1)
+    LevyraIsSpotify -> SpotifyDesign.searchField
     LevyraIsIvory -> LevyraActivePalette.ink
     LevyraIsPrism -> if (focused) scheme.surfaceContainerHigh else scheme.surfaceContainer
     else -> if (focused) scheme.surfaceContainerHighest else scheme.surfaceContainerHigh
@@ -28952,6 +28577,7 @@ private fun searchFieldContainer(focused: Boolean, scheme: androidx.compose.mate
 
 private fun searchFieldIconTint(active: Boolean, scheme: androidx.compose.material3.ColorScheme): Color = when {
     LevyraIsTorque -> Color(0xFF111111)
+    LevyraIsSpotify -> SpotifyDesign.searchFieldText
     LevyraIsIvory -> LevyraText
     LevyraIsPrism -> if (active) scheme.primary else scheme.onSurfaceVariant
     else -> if (active) scheme.onPrimaryContainer else scheme.onSurfaceVariant
@@ -28959,6 +28585,7 @@ private fun searchFieldIconTint(active: Boolean, scheme: androidx.compose.materi
 
 private fun searchFieldCorner(fallback: Dp): Dp = when {
     LevyraIsNocturne -> Nocturne78Design.cardCorner
+    LevyraIsSpotify -> SpotifyDesign.corner
     LevyraIsPrism -> PrismDesign.controlCorner
     else -> fallback
 }
@@ -29050,6 +28677,7 @@ private fun artistPlayBackground(playContainer: Color, playShape: Shape): Modifi
     }
 
 private fun artistPlayContent(fallback: Color): Color = when {
+    LevyraIsSpotify -> Color.Black
     LevyraIsPrism -> Color.White
     LevyraIsNocturne -> LevyraCyan
     else -> fallback
