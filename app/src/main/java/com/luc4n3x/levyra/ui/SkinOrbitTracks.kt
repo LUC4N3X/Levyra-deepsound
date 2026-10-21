@@ -36,6 +36,10 @@ internal fun SkinOrbitTracks(
         TorqueOrbitTracks(tracks, currentId, playing, resolving, onPlay, onActions)
         return
     }
+    if (LevyraIsIvory) {
+        IvoryOrbitShelf(tracks, currentId, playing, resolving, onPlay, onActions)
+        return
+    }
     val strings = LocalLevyraStrings.current
     val corner = if (LevyraIsNocturne) Nocturne78Design.artworkCorner else PrismDesign.artworkCorner
     LazyRow(

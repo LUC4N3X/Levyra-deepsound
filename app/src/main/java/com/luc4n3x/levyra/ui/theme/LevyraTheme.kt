@@ -452,13 +452,15 @@ object LevyraThemeController {
         skin: LevyraSkin = LevyraSkin.Default,
         prism: com.luc4n3x.levyra.domain.PrismSettings = com.luc4n3x.levyra.domain.PrismSettings(),
         systemDark: Boolean = true,
-        torque: com.luc4n3x.levyra.domain.TorqueSettings = com.luc4n3x.levyra.domain.TorqueSettings()
+        torque: com.luc4n3x.levyra.domain.TorqueSettings = com.luc4n3x.levyra.domain.TorqueSettings(),
+        ivory: com.luc4n3x.levyra.domain.IvorySettings = com.luc4n3x.levyra.domain.IvorySettings()
     ) {
         val base = when (skin) {
             LevyraSkin.Default -> LevyraThemes.byId(presetId)
             LevyraSkin.Nocturne78 -> Nocturne78Palette
             LevyraSkin.Prism -> prismPalette(prism, systemDark)
             LevyraSkin.Torque -> torquePalette(torque, coverAccentStart)
+            LevyraSkin.Ivory -> ivoryPalette(ivory, systemDark)
         }
         val tinted = when {
             skin != LevyraSkin.Default -> base
@@ -651,7 +653,8 @@ fun LevyraTheme(
     val nocturne = LevyraIsNocturne
     val prism = LevyraIsPrism
     val torque = LevyraIsTorque
-    val shapes = remember(cornerScale, nocturne, prism, torque) {
+    val ivory = LevyraIsIvory
+    val shapes = remember(cornerScale, nocturne, prism, torque, ivory) {
         if (nocturne) Nocturne78Shapes
         else if (prism) PrismShapes
         else if (cornerScale == 1f) LevyraExpressiveShapes else scaledExpressiveShapes(cornerScale)
@@ -663,7 +666,7 @@ fun LevyraTheme(
         colorScheme = colorScheme,
         motionScheme = motionScheme,
         shapes = shapes,
-        typography = if (nocturne) Nocturne78Typography else if (prism) PrismTypography else levyraTypographyFor(fontPreset ?: activeFontPresetState.value),
+        typography = if (nocturne) Nocturne78Typography else if (ivory) IvoryTypography else if (prism) PrismTypography else levyraTypographyFor(fontPreset ?: activeFontPresetState.value),
         content = content
     )
 }

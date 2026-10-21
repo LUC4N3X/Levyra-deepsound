@@ -23,7 +23,7 @@ import com.materialkolor.hct.Hct
 internal const val PrismPaletteId = "levyra_prism"
 internal const val TorquePaletteId = "levyra_torque"
 val LevyraIsTorque: Boolean get() = LevyraActivePalette.id == TorquePaletteId
-val LevyraIsPrism: Boolean get() = LevyraActivePalette.id == PrismPaletteId || LevyraIsTorque
+val LevyraIsPrism: Boolean get() = LevyraActivePalette.id == PrismPaletteId || LevyraIsTorque || LevyraIsIvory
 internal val LevyraSkinManagesLayout: Boolean get() = LevyraIsNocturne || LevyraIsPrism
 internal val LevyraSkinLabel: String get() = LevyraActivePalette.label
 internal var activePrismSettings by mutableStateOf(PrismSettings())
@@ -32,18 +32,19 @@ internal var activeTorqueSettings by mutableStateOf(TorqueSettings())
     private set
 
 internal object PrismDesign {
-    val artworkCorner: Dp get() = if (LevyraIsTorque) 0.dp else 18.dp
-    val tileCorner: Dp get() = if (LevyraIsTorque) 2.dp else 12.dp
-    val surfaceCorner: Dp get() = if (LevyraIsTorque) 2.dp else 20.dp
-    val controlCorner: Dp get() = if (LevyraIsTorque) 2.dp else 14.dp
+    val artworkCorner: Dp get() = if (LevyraIsTorque) 0.dp else if (LevyraIsIvory) IvoryDesign.coverCorner else 18.dp
+    val tileCorner: Dp get() = if (LevyraIsTorque) 2.dp else if (LevyraIsIvory) IvoryDesign.tileCorner else 12.dp
+    val surfaceCorner: Dp get() = if (LevyraIsTorque) 2.dp else if (LevyraIsIvory) IvoryDesign.surfaceCorner else 20.dp
+    val controlCorner: Dp get() = if (LevyraIsTorque) 2.dp else if (LevyraIsIvory) IvoryDesign.controlCorner else 14.dp
     val gutter = 24.dp
     val rowHeight = 64.dp
     val iconTile = 44.dp
     val hairline = 1.dp
-    val seekbarHeight: Dp get() = if (LevyraIsTorque) 3.dp else 6.dp
+    val seekbarHeight: Dp get() = if (LevyraIsTorque) 3.dp else if (LevyraIsIvory) 4.dp else 6.dp
 
     fun cut(corner: Dp): Shape =
         if (LevyraIsTorque) CutCornerShape(bottomEnd = 12.dp)
+        else if (LevyraIsIvory) RoundedCornerShape(corner)
         else RoundedCornerShape(topStart = corner, topEnd = corner, bottomEnd = corner / 3, bottomStart = corner)
 }
 
@@ -55,12 +56,13 @@ internal object PrismAccent {
 
     fun gradient(light: Boolean = LevyraActivePalette.isLight): Brush = when {
         LevyraIsTorque -> SolidColor(LevyraActivePalette.blue)
+        LevyraIsIvory -> SolidColor(IvoryDesign.ink)
         light -> Brush.horizontalGradient(listOf(lightStart, lightEnd))
         else -> Brush.horizontalGradient(listOf(nightStart, nightEnd))
     }
 
     fun wash(light: Boolean): Color = when {
-        LevyraIsTorque -> Color.Transparent
+        LevyraIsTorque || LevyraIsIvory -> Color.Transparent
         light -> lightStart.copy(alpha = 0.07f)
         else -> nightStart.copy(alpha = 0.16f)
     }
@@ -81,7 +83,7 @@ private val TorqueShapes = Shapes(
     extraLarge = RoundedCornerShape(4.dp)
 )
 
-internal val PrismShapes: Shapes get() = if (LevyraIsTorque) TorqueShapes else PrismRoundShapes
+internal val PrismShapes: Shapes get() = if (LevyraIsTorque) TorqueShapes else if (LevyraIsIvory) IvoryShapes else PrismRoundShapes
 
 internal val PrismTypography = levyraTypographyFor(LevyraFontPreset.Outfit).let { base ->
     base.copy(
@@ -172,7 +174,7 @@ internal fun TorqueThemeEffect(settings: LevyraInterfaceSettings, track: Track?)
 internal fun prismMiniSettings(saved: LevyraMiniPlayerStudioSettings): LevyraMiniPlayerStudioSettings {
     val torque = LevyraIsTorque
     val tuning = LevyraMiniPlayerStudioSettings.spec(MiniPlayerStyle.Floating).defaults.copy(
-        cornerDp = if (torque) 2 else 20, heightDp = 64, artworkDp = 46, shadow = 0, glow = 0,
+        cornerDp = if (torque) 2 else if (LevyraIsIvory) 26 else 20, heightDp = 64, artworkDp = 46, shadow = 0, glow = 0,
         artworkShape = if (torque) MiniArtworkShape.Square else MiniArtworkShape.Rounded, progress = MiniProgressStyle.Line,
         buttons = if (torque) MiniButtonStyle.Outlined else MiniButtonStyle.Filled, colorMode = MiniColorMode.Theme,
         background = MiniBackground.Solid, motion = MiniMotion.Normal,
@@ -184,6 +186,7 @@ internal fun prismMiniSettings(saved: LevyraMiniPlayerStudioSettings): LevyraMin
 internal fun skinMiniPlayerCorner(tuning: MiniPlayerTuning): Dp =
     when {
         LevyraIsTorque -> 2.dp
+        LevyraIsIvory -> 26.dp
         LevyraIsNocturne -> 10.dp
         else -> tuning.cornerDp.dp
     }

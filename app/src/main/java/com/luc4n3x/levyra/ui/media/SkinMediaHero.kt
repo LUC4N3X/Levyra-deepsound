@@ -41,7 +41,7 @@ internal fun skinMediaColors(): ImmersiveMediaColors? {
     return ImmersiveMediaColors(
         fieldTop = p.black, fieldMid = p.black, base = p.black,
         content = p.text, contentMuted = p.muted, accent = p.cyan,
-        actionStart = p.blue, actionEnd = if (LevyraIsTorque) p.blue else p.violet, actionContent = Color.White,
+        actionStart = p.blue, actionEnd = if (LevyraIsTorque || LevyraIsIvory) p.blue else p.violet, actionContent = if (LevyraIsIvory) IvoryDesign.onInk else Color.White,
         secondaryFill = p.panel, hairline = p.outline
     )
 }
@@ -74,6 +74,35 @@ internal fun PrismMediaHero(
         if (metadata.isNotBlank()) Text(metadata, color = colors.contentMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.height(18.dp))
         actions()
+    }
+}
+
+@Composable
+internal fun IvoryMediaHero(
+    title: String, overline: String, subtitle: String, metadata: String, colors: ImmersiveMediaColors,
+    viewportWidth: Dp, topBarHeight: Dp, onSubtitleClick: (() -> Unit)?, actions: @Composable () -> Unit,
+    artwork: @Composable BoxScope.() -> Unit, modifier: Modifier
+) {
+    val ink = IvoryDesign.ink
+    val onInk = IvoryDesign.onInk
+    val art = min(viewportWidth * 0.7f, 296.dp)
+    Column(modifier.fillMaxWidth().padding(top = topBarHeight + 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+            Box(Modifier.matchParentSize().padding(top = art * 0.62f, start = 14.dp, end = 14.dp).clip(RoundedCornerShape(36.dp)).background(ink))
+            Column(Modifier.padding(bottom = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.size(art).clip(IvoryDesign.coverShape)) { artwork() }
+                Spacer(Modifier.height(18.dp))
+                Column(Modifier.fillMaxWidth().padding(horizontal = 40.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    if (overline.isNotBlank()) Text(overline, color = IvoryDesign.rose, style = MaterialTheme.typography.labelLarge, letterSpacing = 1.4.sp, maxLines = 1)
+                    Text(title, color = onInk, fontSize = 28.sp, lineHeight = 32.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.2.sp, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() })
+                    MediaSubtitle(subtitle, onInk.copy(alpha = 0.78f), onSubtitleClick, align = TextAlign.Center)
+                    if (metadata.isNotBlank()) Text(metadata, color = onInk.copy(alpha = 0.55f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+        Spacer(Modifier.height(20.dp))
+        Box(Modifier.padding(horizontal = 24.dp)) { actions() }
+        Spacer(Modifier.height(12.dp))
     }
 }
 

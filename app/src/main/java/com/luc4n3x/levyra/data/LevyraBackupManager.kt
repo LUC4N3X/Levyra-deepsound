@@ -1823,6 +1823,7 @@ internal fun backupInterfaceSettingsToJson(value: LevyraInterfaceSettings): JSON
     .put("prismPlayerLayout", value.prism.playerLayout.name)
     .put("prismTranslucency", value.prism.translucency.name)
     .put("torqueAccent", value.torque.accent.name)
+    .put("ivoryAppearance", value.ivory.appearance.name)
     .put("hapticFeedback", value.hapticFeedback)
     .put("playerVisualMode", value.playerVisualMode.name)
     .put("playerBackground", value.playerBackground.name)
@@ -1883,6 +1884,7 @@ internal fun backupInterfaceSettingsFromJson(
             json.optString("prismTranslucency")
         ),
         torque = com.luc4n3x.levyra.domain.TorqueSettings.from(json.optString("torqueAccent")),
+        ivory = com.luc4n3x.levyra.domain.IvorySettings.from(json.optString("ivoryAppearance")),
         hapticFeedback = json.optBoolean("hapticFeedback", true),
         playerVisualMode = visualMode,
         playerBackground = backgroundMode,

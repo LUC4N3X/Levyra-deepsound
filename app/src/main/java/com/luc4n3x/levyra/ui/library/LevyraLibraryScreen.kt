@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.library
 
+import com.luc4n3x.levyra.ui.levyraTabContentBottomPadding
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 import com.luc4n3x.levyra.ui.theme.Nocturne78Design
 
@@ -654,7 +655,7 @@ internal fun LevyraLibraryScreen(
                 start = 16.dp,
                 end = 16.dp,
                 top = 12.dp,
-                bottom = if (state.currentTrack != null || selectionActive) 230.dp else 116.dp
+                bottom = if (selectionActive) 230.dp else levyraTabContentBottomPadding(state.currentTrack != null)
             ),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
@@ -1539,7 +1540,7 @@ internal fun LevyraPlaylistDetailScreen(
             state = playlistListState,
             modifier = Modifier.fillMaxSize().then(if (searchActive) Modifier.imePadding() else Modifier),
             contentPadding = PaddingValues(
-                bottom = if (state.currentTrack != null || selectionActive) 220.dp else 110.dp
+                bottom = if (selectionActive) 220.dp else levyraTabContentBottomPadding(state.currentTrack != null)
             )
         ) {
             if (reorderMode) {

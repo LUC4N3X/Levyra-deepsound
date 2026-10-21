@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -50,6 +51,10 @@ internal val TorqueTagShape = GenericShape { size, _ ->
 
 @Composable
 internal fun SkinSectionTitle(title: String, inset: Dp, actions: @Composable RowScope.() -> Unit = {}) {
+    if (LevyraIsIvory) {
+        IvorySectionTitle(title, inset, actions)
+        return
+    }
     val torque = LevyraIsTorque
     Row(Modifier.fillMaxWidth().padding(horizontal = inset).heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         if (torque) Box(Modifier.width(4.dp).height(22.dp).background(LevyraActivePalette.blue))
@@ -97,11 +102,13 @@ internal fun SkinChartSection(
             ) { Icon(Icons.Rounded.Public, null, tint = LevyraMuted) }
             SkinPlayAll(playAllLabel, onPlayAll)
         }
-        LazyRow(contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (LevyraIsIvory) IvoryChartShelf(ranked, currentId, isPlaying, inset, onPlay)
+        else LazyRow(contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             itemsIndexed(pages, key = { index, _ -> "chart-page-$index" }) { _, page ->
                 if (torque) Column(Modifier.width(318.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     page.forEach { (index, track) -> SkinChartRow(index, track, currentId, isPlaying, onPlay) }
-                } else PrismChartPage(page, currentId, isPlaying, onPlay)
+                } else if (LevyraIsIvory) IvoryChartPage(page, currentId, isPlaying, onPlay)
+                else PrismChartPage(page, currentId, isPlaying, onPlay)
             }
         }
     }
@@ -191,13 +198,18 @@ internal fun distinctCollectionCovers(collections: List<StudioCollection>, perCa
 @Composable
 internal fun SkinCollectionsShelf(title: String, collections: List<StudioCollection>, inset: Dp, onOpen: (String) -> Unit) {
     val torque = LevyraIsTorque
-    val covers = remember(collections, torque) { distinctCollectionCovers(collections, if (torque) 4 else 3) }
+    val fourUp = torque || LevyraIsIvory
+    val covers = remember(collections, fourUp) { distinctCollectionCovers(collections, if (fourUp) 4 else 3) }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SkinSectionTitle(title, inset)
         LazyRow(contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             itemsIndexed(collections, key = { _, collection -> "collection-${collection.id}" }) { _, collection ->
                 val tracks = covers[collection.id].orEmpty()
-                if (torque) TorqueCollectionCard(collection, tracks, onOpen) else PrismCollectionFanCard(collection, tracks, onOpen)
+                when {
+                    torque -> TorqueCollectionCard(collection, tracks, onOpen)
+                    LevyraIsIvory -> IvoryCollectionCard(collection, tracks, onOpen)
+                    else -> PrismCollectionFanCard(collection, tracks, onOpen)
+                }
             }
         }
     }
@@ -248,6 +260,10 @@ private fun TorqueCollectionCard(collection: StudioCollection, tracks: List<Trac
 
 @Composable
 internal fun SkinShowcaseShelf(items: List<StudioShelfItem>, isPlaying: Boolean, inset: Dp, modifier: Modifier) {
+    if (LevyraIsIvory) {
+        IvoryShowcaseShelf(items, isPlaying, inset, modifier)
+        return
+    }
     val torque = LevyraIsTorque
     LazyRow(modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(if (torque) 10.dp else 16.dp)) {
         itemsIndexed(items, key = { _, item -> item.key }) { index, item ->
@@ -337,6 +353,10 @@ private fun TorqueArtistCard(item: StudioShelfItem) {
 
 @Composable
 internal fun SkinCategoryCard(title: String, artworkUrl: String, modifier: Modifier, onLongClick: (() -> Unit)?, onClick: () -> Unit) {
+    if (LevyraIsIvory) {
+        IvoryCategoryCard(title, artworkUrl, modifier, onLongClick, onClick)
+        return
+    }
     val torque = LevyraIsTorque
     Box(
         modifier.clip(if (torque) RoundedCornerShape(2.dp) else PrismDesign.cut(PrismDesign.surfaceCorner)).background(LevyraPanel)
@@ -428,5 +448,35 @@ private fun PrismChartTrack(index: Int, track: Track, current: Boolean, playing:
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (current) LevyraPlayingIndicator(playing = playing, color = LevyraCyan, size = 12.dp)
+    }
+}
+
+@Composable
+internal fun SkinNameGreeting(greeting: String, dayPart: String, name: String, modifier: Modifier = Modifier) {
+    val accessible = Modifier.clearAndSetSemantics { contentDescription = greeting; heading() }
+    when {
+        LevyraIsIvory -> Column(modifier.then(accessible)) {
+            Text(dayPart, color = LevyraMuted, style = MaterialTheme.typography.bodyLarge, letterSpacing = 1.2.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(name, color = LevyraText, fontSize = 46.sp, lineHeight = 50.sp, fontWeight = FontWeight.Light, letterSpacing = (-1.2).sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Box(Modifier.padding(start = 4.dp, bottom = 12.dp).size(10.dp).clip(CircleShape).background(IvoryDesign.rose))
+            }
+        }
+        LevyraIsTorque -> Column(modifier.then(accessible), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(dayPart.uppercase(), color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 3.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(name.uppercase(), color = LevyraText, fontSize = 34.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Box(Modifier.width(48.dp).height(4.dp).clip(TorqueTagShape).background(LevyraActivePalette.blue))
+        }
+        LevyraIsPrism -> Column(modifier.then(accessible)) {
+            Text(dayPart, color = LevyraMuted, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                name, style = TextStyle(brush = Brush.horizontalGradient(listOf(LevyraText, LevyraText, LevyraPink))),
+                fontSize = 44.sp, lineHeight = 48.sp, fontWeight = FontWeight.Normal, letterSpacing = (-1.4).sp, maxLines = 1, overflow = TextOverflow.Ellipsis
+            )
+        }
+        else -> Column(modifier.then(accessible), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(dayPart.uppercase(), color = LevyraCyan, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontSize = 12.sp, letterSpacing = 2.4.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(name, color = LevyraText, fontFamily = androidx.compose.ui.text.font.FontFamily.Serif, fontSize = 34.sp, lineHeight = 40.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
     }
 }

@@ -27,6 +27,9 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.CollectionsBookmark
 import androidx.compose.material.icons.rounded.DownloadDone
@@ -85,6 +88,7 @@ private val LibrarySectionGap = 3.dp
 private val LibrarySectionBadge = 44.dp
 private val LibraryFanCoverSize = 66.dp
 private val LibraryFanStep = 16.dp
+private val LibraryIvoryTileHeight = 132.dp
 
 @Composable
 internal fun LibrarySectionGrid(
@@ -93,6 +97,18 @@ internal fun LibrarySectionGrid(
     modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.colorScheme
+    if (LevyraIsIvory) {
+        Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            entries.chunked(2).forEachIndexed { rowIndex, row ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    row.forEachIndexed { columnIndex, entry ->
+                        IvoryLibraryTile(entry, rowIndex == 0 && columnIndex == 0, onOpen, Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+        return
+    }
     if (LevyraIsPrism) {
         Column(modifier, verticalArrangement = Arrangement.spacedBy(if (LevyraIsTorque) 2.dp else 8.dp)) {
             entries.forEach { entry ->
@@ -124,6 +140,35 @@ internal fun LibrarySectionGrid(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun IvoryLibraryTile(entry: LibrarySectionEntry, featured: Boolean, onOpen: (LibraryCategory) -> Unit, modifier: Modifier) {
+    val strings = LocalLevyraStrings.current
+    val label = entry.category.libraryLabel(strings)
+    val surface = if (featured) IvoryDesign.ink else LevyraActivePalette.panel
+    val content = if (featured) IvoryDesign.onInk else LevyraText
+    val button = if (featured) IvoryDesign.onInk else IvoryDesign.ink
+    val glyph = if (featured) IvoryDesign.ink else IvoryDesign.onInk
+    val inset = LibraryIvoryTileHeight * IvoryPocketInset
+    val badge = LibraryIvoryTileHeight * 0.21f
+    Box(modifier.height(LibraryIvoryTileHeight)) {
+        Column(
+            Modifier.fillMaxSize().clip(IvoryPocketShape).background(surface)
+                .levyraPressable(onClick = { onOpen(entry.category) }, onClickLabel = label, role = Role.Button, pressedScale = LevyraPressScale.Tile)
+                .padding(start = 18.dp, end = 14.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.Bottom
+        ) {
+            Text(label, color = content, style = MaterialTheme.typography.titleMedium, fontSize = 18.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (entry.summary.isNotBlank()) Text(entry.summary, color = content.copy(alpha = 0.62f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Box(
+            Modifier.align(Alignment.TopEnd).padding(top = inset - badge, end = inset - badge).size(badge * 2).clip(CircleShape).background(button),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(entry.category.sectionIcon(), null, tint = glyph, modifier = Modifier.size(24.dp))
         }
     }
 }

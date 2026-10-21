@@ -41,6 +41,8 @@ import com.luc4n3x.levyra.ui.theme.LevyraType
 import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraIsPrism
 import com.luc4n3x.levyra.ui.theme.LevyraIsTorque
+import com.luc4n3x.levyra.ui.theme.LevyraIsIvory
+import com.luc4n3x.levyra.ui.theme.IvoryDesign
 import com.luc4n3x.levyra.ui.theme.PrismAccent
 
 private val FilterPillTouchHeight = 48.dp
@@ -68,12 +70,14 @@ private fun animatedFilterPillColors(selected: Boolean, animationsEnabled: Boole
 
 private fun filterPillContainer(selected: Boolean, colors: androidx.compose.material3.ColorScheme): Color = when {
     LevyraIsTorque -> if (selected) LevyraActivePalette.blue else Color.Transparent
+    LevyraIsIvory -> if (selected) IvoryDesign.ink else LevyraActivePalette.panel
     LevyraIsPrism -> if (selected) PrismAccent.Tint else colors.surfaceContainer
     else -> if (selected) colors.primaryContainer else colors.surfaceContainerHigh
 }
 
 private fun filterPillContent(selected: Boolean, colors: androidx.compose.material3.ColorScheme): Color = when {
     LevyraIsTorque -> if (selected) Color.White else colors.onSurface
+    LevyraIsIvory -> if (selected) IvoryDesign.onInk else colors.onSurface
     LevyraIsPrism -> if (selected) colors.primary else colors.onSurfaceVariant
     else -> if (selected) colors.onPrimaryContainer else colors.onSurfaceVariant
 }
