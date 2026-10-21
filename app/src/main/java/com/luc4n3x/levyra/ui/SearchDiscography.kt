@@ -30,6 +30,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material.icons.rounded.Album
@@ -80,6 +81,8 @@ import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 import com.luc4n3x.levyra.ui.theme.LevyraIsPrism
+import com.luc4n3x.levyra.ui.theme.LevyraIsIvory
+import com.luc4n3x.levyra.ui.theme.IvoryDesign
 import com.luc4n3x.levyra.ui.theme.LevyraIsTorque
 import com.luc4n3x.levyra.ui.theme.LevyraMotion
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
@@ -102,11 +105,12 @@ internal data class SearchCardModel(
 
 internal data class SearchCardAction(val icon: ImageVector, val label: String, val onClick: () -> Unit)
 
-internal enum class SearchCardStyle { Expressive, Prism, Torque, Nocturne }
+internal enum class SearchCardStyle { Expressive, Prism, Torque, Nocturne, Ivory }
 
 internal val currentSearchCardStyle: SearchCardStyle
     get() = when {
         LevyraIsTorque -> SearchCardStyle.Torque
+        LevyraIsIvory -> SearchCardStyle.Ivory
         LevyraIsPrism -> SearchCardStyle.Prism
         LevyraIsNocturne -> SearchCardStyle.Nocturne
         else -> SearchCardStyle.Expressive
@@ -326,6 +330,7 @@ internal fun SearchCard(
         SearchCardStyle.Prism -> PrismSearchCard(card, actions, modifier, onClick)
         SearchCardStyle.Torque -> TorqueSearchCard(card, actions, modifier, onClick)
         SearchCardStyle.Nocturne -> NocturneSearchCard(card, actions, modifier, onClick)
+        SearchCardStyle.Ivory -> IvorySearchCard(card, actions, modifier, onClick)
     }
 }
 
@@ -439,6 +444,31 @@ private fun PrismSearchCard(card: SearchCardModel, actions: List<SearchCardActio
                         .background(PrismAccent.gradient())
                         .padding(horizontal = 9.dp, vertical = 3.dp)
                 )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        SearchCardTitle(card.title, MaterialTheme.typography.titleSmall)
+        SearchCardSubtitle(card.subtitle)
+    }
+}
+
+@Composable
+private fun IvorySearchCard(card: SearchCardModel, actions: List<SearchCardAction>, modifier: Modifier, onClick: () -> Unit) {
+    Column(
+        modifier = modifier.levyraPressable(onClick = onClick, role = Role.Button, onClickLabel = card.title),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(IvoryDesign.coverShape)) {
+            SearchCardArtwork(card, Modifier.fillMaxSize())
+            SearchCardActions(actions, Modifier.align(Alignment.TopEnd))
+            if (card.badge.isNotBlank()) {
+                Text(
+                    text = card.badge, color = IvoryDesign.onInk, style = MaterialTheme.typography.labelSmall, maxLines = 1,
+                    modifier = Modifier.align(Alignment.TopStart).padding(10.dp).clip(CircleShape).background(IvoryDesign.ink).padding(horizontal = 10.dp, vertical = 4.dp)
+                )
+            }
+            IvoryCornerBadge(48.dp, Modifier.align(Alignment.BottomEnd)) {
+                Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = IvoryDesign.onInk, modifier = Modifier.size(20.dp))
             }
         }
         Spacer(Modifier.height(6.dp))
@@ -613,12 +643,14 @@ internal fun SearchArtistListRow(artist: ArtistHit, onClick: () -> Unit) {
         SearchCardStyle.Prism -> Color.Transparent
         SearchCardStyle.Torque -> LevyraPanel
         SearchCardStyle.Nocturne -> LevyraPanelSoft
+        SearchCardStyle.Ivory -> Color.Transparent
     }
     val rowShape: Shape = when (style) {
         SearchCardStyle.Expressive -> RoundedCornerShape(24.dp)
         SearchCardStyle.Prism -> RoundedCornerShape(PrismDesign.surfaceCorner)
         SearchCardStyle.Torque -> RoundedCornerShape(2.dp)
         SearchCardStyle.Nocturne -> RoundedCornerShape(Nocturne78Design.cardCorner)
+        SearchCardStyle.Ivory -> RoundedCornerShape(PrismDesign.surfaceCorner)
     }
     val avatarRing = if (style == SearchCardStyle.Prism) {
         Modifier.clip(CircleShape).background(PrismAccent.gradient()).padding(2.dp)

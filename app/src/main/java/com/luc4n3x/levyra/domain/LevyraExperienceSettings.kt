@@ -179,7 +179,8 @@ enum class LevyraSkin {
     Default,
     Nocturne78,
     Prism,
-    Torque;
+    Torque,
+    Ivory;
 
     companion object {
         fun from(value: String): LevyraSkin = entries.firstOrNull { it.name == value } ?: Default
@@ -225,7 +226,8 @@ data class LevyraInterfaceSettings(
     val librarySortDirection: LibrarySortDirection = LibrarySort.Recent.defaultDirection,
     val skin: LevyraSkin = LevyraSkin.Default,
     val prism: PrismSettings = PrismSettings(),
-    val torque: TorqueSettings = TorqueSettings()
+    val torque: TorqueSettings = TorqueSettings(),
+    val ivory: IvorySettings = IvorySettings()
 ) {
     fun normalized(): LevyraInterfaceSettings = copy(
         doubleTapSeekSeconds = doubleTapSeekSeconds.coerceIn(5, 30),

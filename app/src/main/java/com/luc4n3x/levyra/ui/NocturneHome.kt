@@ -44,7 +44,9 @@ internal fun NocturneHomeHeader(
     hero: StudioHero?,
     inset: Dp,
     onSearch: () -> Unit,
-    onSettings: () -> Unit
+    onSettings: () -> Unit,
+    dayPart: String = "",
+    name: String = ""
 ) {
     val strings = LocalLevyraStrings.current
     val p = Nocturne78Palette
@@ -73,7 +75,8 @@ internal fun NocturneHomeHeader(
                 Spacer(Modifier.height(8.dp))
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
+                if (name.isNotBlank()) SkinNameGreeting(greeting, dayPart, name, Modifier.weight(1f))
+                else Text(
                     greeting, color = p.text, fontFamily = FontFamily.Serif, fontWeight = FontWeight.Normal,
                     fontSize = 27.sp, lineHeight = 32.sp, modifier = Modifier.weight(1f).semantics { heading() }
                 )

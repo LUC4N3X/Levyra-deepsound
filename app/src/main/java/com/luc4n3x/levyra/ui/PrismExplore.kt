@@ -31,6 +31,10 @@ internal fun RowScope.PrismMoodTile(label: String, portrait: String, active: Boo
         TorqueMoodTile(label, portrait, active, onClick, onMix, mixLabel, onPortraitError)
         return
     }
+    if (LevyraIsIvory) {
+        IvoryMoodTile(label, portrait, active, onClick, onMix, mixLabel, onPortraitError)
+        return
+    }
     val shape = PrismDesign.cut(PrismDesign.surfaceCorner)
     val hasPortrait = portrait.isNotBlank()
     Box(
@@ -56,6 +60,10 @@ internal fun RowScope.PrismMoodTile(label: String, portrait: String, active: Boo
 
 @Composable
 internal fun PrismFreshRelease(track: Track, title: String, subtitle: String, label: String, enabled: Boolean, onOpen: () -> Unit, actions: @Composable () -> Unit) {
+    if (LevyraIsIvory) {
+        IvoryFreshRelease(track, title, subtitle, label, enabled, onOpen, actions)
+        return
+    }
     if (LevyraIsTorque) {
         Column(Modifier.fillMaxWidth().background(LevyraPanel).levyraPressable(onClick = onOpen, enabled = enabled, onClickLabel = label, role = Role.Button)) {
             Box(Modifier.fillMaxWidth().aspectRatio(1f)) {

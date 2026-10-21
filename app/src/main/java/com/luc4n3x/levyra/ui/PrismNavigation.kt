@@ -34,6 +34,13 @@ internal fun PrismBottomTabs(tuning: NavTuning, selected: LevyraTab, onSelect: (
     val measuredHeight = LocalNocturneNavigationHeight.current
     val density = LocalDensity.current
     val torque = LevyraIsTorque
+    if (LevyraIsIvory) {
+        IvoryBottomTabs(entries, selected, applySystemInset, Modifier.onSizeChanged { size -> measuredHeight?.value = with(density) { size.height.toDp() } }) { entry, active ->
+            if (!active && tuning.haptics) haptics.perform(LevyraHapticAction.SeekSnap)
+            onSelect(entry.tab)
+        }
+        return
+    }
     Column(Modifier.fillMaxWidth()) {
         Surface(
             modifier = Modifier.fillMaxWidth().onSizeChanged { size ->
@@ -77,5 +84,41 @@ private fun RowScope.PrismNavigationTab(entry: LevyraTabEntry, active: Boolean, 
         Spacer(Modifier.height(4.dp))
         Text(entry.label, color = if (active) LevyraText else LevyraMuted, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
         if (torque) Box(Modifier.padding(top = 4.dp).width(20.dp).height(3.dp).background(if (active) LevyraActivePalette.blue else Color.Transparent))
+    }
+}
+
+@Composable
+private fun IvoryBottomTabs(
+    entries: List<LevyraTabEntry>, selected: LevyraTab, applySystemInset: Boolean, modifier: Modifier,
+    onSelect: (LevyraTabEntry, Boolean) -> Unit
+) {
+    Column(modifier.fillMaxWidth().background(LevyraActivePalette.ink)) {
+        Box(Modifier.fillMaxWidth().height(PrismDesign.hairline).background(LevyraActivePalette.outline))
+        Row(Modifier.fillMaxWidth().height(66.dp).selectableGroup().padding(horizontal = 4.dp), verticalAlignment = Alignment.Bottom) {
+            entries.forEach { entry ->
+                val active = entry.tab == selected
+                Box(
+                    Modifier.weight(1f).fillMaxHeight().selectable(active, role = Role.Tab, onClick = { onSelect(entry, active) }),
+                    contentAlignment = Alignment.BottomCenter
+                ) {
+                    if (active) Box(Modifier.fillMaxWidth().fillMaxHeight(0.92f).clip(IvoryNotchShape).background(IvoryDesign.ink))
+                    Column(
+                        Modifier.fillMaxSize().padding(top = 10.dp, bottom = 6.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            if (active) entry.selectedIcon else entry.unselectedIcon, null,
+                            tint = if (active) IvoryDesign.onInk else LevyraText, modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(Modifier.height(3.dp))
+                        Text(
+                            entry.label, color = if (active) IvoryDesign.onInk else LevyraMuted, style = MaterialTheme.typography.labelSmall,
+                            textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 10.dp)
+                        )
+                    }
+                }
+            }
+        }
+        if (applySystemInset) Spacer(Modifier.navigationBarsPadding())
     }
 }

@@ -18,6 +18,14 @@ data class PrismSettings(
     }
 }
 
+enum class IvoryAppearance { Light, Dark, Automatic }
+
+data class IvorySettings(val appearance: IvoryAppearance = IvoryAppearance.Light) {
+    companion object {
+        fun from(appearance: String) = IvorySettings(IvoryAppearance.entries.firstOrNull { it.name == appearance } ?: IvoryAppearance.Light)
+    }
+}
+
 enum class TorqueAccent { Cover, Red }
 
 data class TorqueSettings(val accent: TorqueAccent = TorqueAccent.Cover) {

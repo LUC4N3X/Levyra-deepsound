@@ -241,7 +241,7 @@ private fun PlaylistHitList(
     LazyColumn(
         state = state,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = if (currentTrack != null) 220.dp else 110.dp)
+        contentPadding = PaddingValues(bottom = levyraTabContentBottomPadding(currentTrack != null))
     ) {
         item(key = "playlist-hit-hero", contentType = "playlist-hit-hero") {
             ImmersiveMediaHero(

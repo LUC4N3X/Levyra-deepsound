@@ -353,6 +353,20 @@ internal fun StudioSectionHeader(
     val headerModifier = modifier
         .fillMaxWidth()
         .padding(horizontal = spec.inset)
+    if (LevyraIsIvory) {
+        Box(modifier.fillMaxWidth()) {
+            IvorySectionTitle(title, spec.inset) {
+                onPlayAll?.let { action ->
+                    Box(
+                        Modifier.size(48.dp).clip(CircleShape).clickable(onClickLabel = strings.playAll, role = Role.Button, onClick = action)
+                            .semantics { contentDescription = strings.playAll },
+                        contentAlignment = Alignment.Center
+                    ) { PrismPlayDisc(playing = false, resolving = false, size = 36.dp) }
+                }
+            }
+        }
+        return
+    }
     if (LevyraIsPrism) {
         SkinStudioSectionHeader(title, onPlayAll, headerModifier)
         return
@@ -1067,11 +1081,11 @@ internal fun StudioHomeHeader(
     val topKicker = if (name.isNotBlank()) dayPart else today
     val mainHeading = if (name.isNotBlank()) name else dayPart
     if (LevyraIsPrism) {
-        PrismHomeHeader(greeting, today.takeIf { name.isBlank() }.orEmpty(), hero, spec.inset, onSearch, onSettings)
+        PrismHomeHeader(greeting, today.takeIf { name.isBlank() }.orEmpty(), hero, spec.inset, onSearch, onSettings, dayPart, name)
         return
     }
     if (LevyraIsNocturne) {
-        NocturneHomeHeader(greeting, today.takeIf { name.isBlank() }.orEmpty(), hero, spec.inset, onSearch, onSettings)
+        NocturneHomeHeader(greeting, today.takeIf { name.isBlank() }.orEmpty(), hero, spec.inset, onSearch, onSettings, dayPart, name)
         return
     }
     if (style == HomeStyle.MaterialExpressive && hero != null) {
@@ -1133,7 +1147,7 @@ internal fun StudioHomeHeader(
             HomeStyle.Editorial -> {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = today.uppercase(Locale.forLanguageTag(strings.code)),
+                        text = topKicker.uppercase(Locale.forLanguageTag(strings.code)),
                         style = MaterialTheme.typography.labelLarge,
                         color = LevyraMuted,
                         modifier = Modifier.weight(1f),
@@ -1143,7 +1157,7 @@ internal fun StudioHomeHeader(
                     actions()
                 }
                 Text(
-                    text = greeting,
+                    text = mainHeading,
                     style = MaterialTheme.typography.headlineLarge.copy(fontFamily = FontFamily.Serif),
                     color = LevyraText,
                     modifier = headingModifier.padding(top = 6.dp, bottom = 4.dp)

@@ -23,6 +23,7 @@ internal fun artistHeroNameSize(name: String) = when {
 @Composable
 internal fun artistHeroNameWeight(): FontWeight? = when {
     LevyraIsTorque -> FontWeight.Bold
+    LevyraIsIvory -> FontWeight.Light
     LevyraIsPrism -> FontWeight.Normal
     LevyraIsNocturne -> FontWeight.Medium
     else -> LevyraType.heroTitle.fontWeight
@@ -30,6 +31,7 @@ internal fun artistHeroNameWeight(): FontWeight? = when {
 
 internal fun artistHeroOverlineColor(): Color = when {
     LevyraIsTorque -> Color.White.copy(alpha = 0.85f)
+    LevyraIsIvory -> IvoryDesign.rose
     LevyraSkinManagesLayout -> LevyraCyan
     else -> LevyraText.copy(alpha = 0.78f)
 }
@@ -42,6 +44,7 @@ internal fun artistPortraitFrame(): Modifier {
         return Modifier.statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 144.dp)
             .border(1.dp, LevyraActivePalette.outline, shape).padding(8.dp).clip(shape)
     }
+    if (LevyraIsIvory) return Modifier.statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 48.dp, bottom = 134.dp).clip(RoundedCornerShape(40.dp))
     return Modifier.statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 134.dp)
         .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp, bottomStart = 28.dp, bottomEnd = 8.dp))
 }

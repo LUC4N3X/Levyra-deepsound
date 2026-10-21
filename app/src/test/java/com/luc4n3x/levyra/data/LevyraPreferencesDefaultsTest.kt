@@ -27,7 +27,7 @@ class LevyraPreferencesDefaultsTest {
             playerLayout = com.luc4n3x.levyra.domain.PrismPlayerLayout.Focus,
             translucency = com.luc4n3x.levyra.domain.PrismTranslucency.Reduced
         )
-        val original = LevyraInterfaceSettings(skin = com.luc4n3x.levyra.domain.LevyraSkin.Torque, prism = prism, torque = com.luc4n3x.levyra.domain.TorqueSettings(com.luc4n3x.levyra.domain.TorqueAccent.Red))
+        val original = LevyraInterfaceSettings(skin = com.luc4n3x.levyra.domain.LevyraSkin.Torque, prism = prism, torque = com.luc4n3x.levyra.domain.TorqueSettings(com.luc4n3x.levyra.domain.TorqueAccent.Red), ivory = com.luc4n3x.levyra.domain.IvorySettings(com.luc4n3x.levyra.domain.IvoryAppearance.Dark))
         assertEquals(original, backupInterfaceSettingsFromJson(backupInterfaceSettingsToJson(original)))
         assertEquals(com.luc4n3x.levyra.domain.PrismSettings(), backupInterfaceSettingsFromJson(JSONObject()).prism)
         assertEquals(com.luc4n3x.levyra.domain.PrismSettings(), backupInterfaceSettingsFromJson(JSONObject().put("prismAppearance", "unknown")).prism)

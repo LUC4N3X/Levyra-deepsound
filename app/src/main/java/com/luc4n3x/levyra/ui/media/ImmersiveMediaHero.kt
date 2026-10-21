@@ -4,6 +4,7 @@ import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 import com.luc4n3x.levyra.ui.theme.LevyraIsPrism
 import com.luc4n3x.levyra.ui.theme.LevyraIsTorque
+import com.luc4n3x.levyra.ui.theme.LevyraIsIvory
 
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.compose.animation.core.AnimationSpec
@@ -224,6 +225,10 @@ internal fun ImmersiveMediaHero(
 ) {
     if (!wide && LevyraIsTorque) {
         TorqueMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, onSubtitleClick, actions, artwork, modifier)
+        return
+    }
+    if (!wide && LevyraIsIvory) {
+        IvoryMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, topBarHeight, onSubtitleClick, actions, artwork, modifier)
         return
     }
     if (!wide && LevyraIsPrism) {

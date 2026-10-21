@@ -254,6 +254,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_PRISM_PLAYER_LAYOUT] = normalizedInterface.prism.playerLayout.name
             mutable[KEY_PRISM_TRANSLUCENCY] = normalizedInterface.prism.translucency.name
             mutable[KEY_TORQUE_ACCENT] = normalizedInterface.torque.accent.name
+            mutable[KEY_IVORY_APPEARANCE] = normalizedInterface.ivory.appearance.name
             mutable[KEY_UI_HAPTIC_FEEDBACK] = normalizedInterface.hapticFeedback
             mutable[KEY_UI_PLAYER_VISUAL_MODE] = normalizedInterface.playerVisualMode.name
             mutable[KEY_UI_PLAYER_BACKGROUND] = normalizedInterface.playerBackground.name
@@ -435,6 +436,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_PRISM_PLAYER_LAYOUT] = normalized.prism.playerLayout.name
             it[KEY_PRISM_TRANSLUCENCY] = normalized.prism.translucency.name
             it[KEY_TORQUE_ACCENT] = normalized.torque.accent.name
+            it[KEY_IVORY_APPEARANCE] = normalized.ivory.appearance.name
             it[KEY_UI_HAPTIC_FEEDBACK] = normalized.hapticFeedback
             it[KEY_UI_PLAYER_VISUAL_MODE] = normalized.playerVisualMode.name
             it[KEY_UI_PLAYER_BACKGROUND] = normalized.playerBackground.name
@@ -886,6 +888,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
                 preferences[KEY_PRISM_TRANSLUCENCY].orEmpty()
             ),
             torque = com.luc4n3x.levyra.domain.TorqueSettings.from(preferences[KEY_TORQUE_ACCENT].orEmpty()),
+            ivory = com.luc4n3x.levyra.domain.IvorySettings.from(preferences[KEY_IVORY_APPEARANCE].orEmpty()),
             hapticFeedback = preferences[KEY_UI_HAPTIC_FEEDBACK] ?: true,
             playerVisualMode = visualMode,
             playerBackground = background,
@@ -1370,6 +1373,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_PRISM_PLAYER_LAYOUT = stringPreferencesKey("prism_player_layout")
         val KEY_PRISM_TRANSLUCENCY = stringPreferencesKey("prism_translucency")
         val KEY_TORQUE_ACCENT = stringPreferencesKey("torque_accent")
+        val KEY_IVORY_APPEARANCE = stringPreferencesKey("ivory_appearance")
         val KEY_UI_HAPTIC_FEEDBACK = booleanPreferencesKey("ui_haptic_feedback")
         val KEY_UI_DOUBLE_TAP_SECONDS = intPreferencesKey("ui_double_tap_seconds")
         val KEY_UI_LONG_PRESS_ACTION = stringPreferencesKey("ui_long_press_action")
