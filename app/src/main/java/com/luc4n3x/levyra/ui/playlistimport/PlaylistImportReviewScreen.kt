@@ -180,7 +180,8 @@ private fun ReviewList(
                         ImportReviewFilter.MATCHED to "${copy["filterMatched"]} ${counts.matched}",
                         ImportReviewFilter.REVIEW to "${copy["filterReview"]} ${counts.review}",
                         ImportReviewFilter.MISSING to "${copy["filterMissing"]} ${counts.missing + counts.skipped}",
-                        ImportReviewFilter.DUPLICATES to "${copy["filterRepeats"]} ${counts.duplicates}"
+                        ImportReviewFilter.DUPLICATES to "${copy["filterRepeats"]} ${counts.duplicates}",
+                        ImportReviewFilter.ERRORS to "${copy["statusError"]} ${counts.errors}"
                     ).forEach { (filter, label) ->
                         FilterChip(
                             selected = state.filter == filter,
@@ -203,13 +204,20 @@ private fun ReviewList(
                     }
                 }
             }
+            if (counts.errors > 0) {
+                item(key = "retry-errors") {
+                    TextButton(onClick = controller::retryUnresolved, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(copy["retryUnresolved"], color = LevyraCyan)
+                    }
+                }
+            }
             items(visible, key = { state.entries[it].identity.position }) { position ->
                 ReviewRow(state.entries[position], copy) { controller.openEntry(position) }
             }
         }
         ReviewBottomBar(
             ready = counts.ready,
-            attention = counts.review + counts.missing,
+            attention = counts.review + counts.missing + counts.errors,
             merged = counts.mergedRepeats,
             saving = saving,
             failure = state.failure,
@@ -272,6 +280,7 @@ private fun statusVisual(entry: ImportEntry): StatusVisual = when (entry.status)
     ImportEntryStatus.REVIEW -> StatusVisual(Icons.AutoMirrored.Rounded.HelpOutline, LevyraOrange, "statusReview")
     ImportEntryStatus.MISSING -> StatusVisual(Icons.Rounded.RemoveCircleOutline, LevyraPink, "statusMissing")
     ImportEntryStatus.SKIPPED -> StatusVisual(Icons.Rounded.Block, LevyraMuted, "statusSkipped")
+    ImportEntryStatus.ERROR -> StatusVisual(Icons.AutoMirrored.Rounded.HelpOutline, LevyraOrange, "statusError")
 }
 
 internal fun durationLabel(ms: Long): String {
@@ -489,6 +498,8 @@ internal fun TrackReviewContent(
                         CircularProgressIndicator(color = LevyraCyan, modifier = Modifier.size(28.dp))
                     }
                 }
+            } else if (manual.failed) {
+                item(key = "manual-error") { Text(copy["statusError"], color = LevyraMuted, fontSize = 13.sp) }
             } else if (manual.results.isEmpty()) {
                 item(key = "manual-empty") { Text(copy["noResults"], color = LevyraMuted, fontSize = 13.sp) }
             } else {

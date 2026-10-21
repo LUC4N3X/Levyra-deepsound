@@ -62,9 +62,14 @@ data class AlbumIdentity(
 
 object MusicIdentityText {
     private val htmlEntity = Regex("&(#[xX][0-9a-fA-F]{1,6}|#[0-9]{1,7}|[a-zA-Z]{2,8});")
-    private val combiningMarks = Regex("\\p{Mn}+")
+    private val foldedMarkScripts = setOf(
+        Character.UnicodeScript.LATIN,
+        Character.UnicodeScript.GREEK,
+        Character.UnicodeScript.ARABIC,
+        Character.UnicodeScript.HEBREW
+    )
     private val apostrophes = Regex("['`´ʼ’‘]")
-    private val nonWord = Regex("[^\\p{L}\\p{N}]+")
+    private val nonWord = Regex("[^\\p{L}\\p{M}\\p{N}]+")
     private val whitespace = Regex("\\s+")
     private val bracketed = Regex("[(\\[{]([^)\\]}]*)[)\\]}]")
     private val dashSeparator = Regex("\\s[-–—]\\s")
@@ -102,17 +107,17 @@ object MusicIdentityText {
         MarkerRule("sped up|speed up|spedup|nightcore", setOf(TrackVersionMarker.SPED_UP)),
         MarkerRule("slowed|slowed down", setOf(TrackVersionMarker.SLOWED)),
         MarkerRule("reverb|reverbed", setOf(TrackVersionMarker.REVERB)),
-        MarkerRule("karaoke|in the style of|originally performed by", setOf(TrackVersionMarker.KARAOKE)),
+        MarkerRule("karaoke|караоке|in the style of|originally performed by", setOf(TrackVersionMarker.KARAOKE)),
         MarkerRule("instrumental|backing track", setOf(TrackVersionMarker.INSTRUMENTAL)),
         MarkerRule("remix|remixed|mashup|bootleg|rework|lofi|lo fi", setOf(TrackVersionMarker.REMIX)),
         MarkerRule("8d|8d audio", setOf(TrackVersionMarker.VERSION))
     )
 
     private val descriptorMarkerRules = standaloneMarkerRules + listOf(
-        MarkerRule("live|live at|live from|in concert|live session|session|sessions", setOf(TrackVersionMarker.LIVE)),
+        MarkerRule("live|live at|live from|in concert|live session|session|sessions|концерт|концертная версия|живой звук", setOf(TrackVersionMarker.LIVE)),
         MarkerRule("unplugged", setOf(TrackVersionMarker.LIVE, TrackVersionMarker.ACOUSTIC)),
         MarkerRule("acoustic", setOf(TrackVersionMarker.ACOUSTIC)),
-        MarkerRule("cover|tribute", setOf(TrackVersionMarker.COVER)),
+        MarkerRule("cover|tribute|кавер", setOf(TrackVersionMarker.COVER)),
         MarkerRule("radio edit|radio version|single edit|radio mix", setOf(TrackVersionMarker.RADIO_EDIT, TrackVersionMarker.EDIT)),
         MarkerRule("edit|edited", setOf(TrackVersionMarker.EDIT)),
         MarkerRule("extended|club mix", setOf(TrackVersionMarker.EXTENDED)),
@@ -208,8 +213,15 @@ object MusicIdentityText {
         Normalizer.normalize(decodeHtmlEntities(value), Normalizer.Form.NFKC).trim()
 
     fun normalize(value: String): String {
-        val lowered = prepare(value).lowercase(Locale.ROOT)
-        val stripped = Normalizer.normalize(lowered, Normalizer.Form.NFD).replace(combiningMarks, "")
+        val lowered = prepare(value).lowercase(Locale.ROOT).replace('ё', 'е')
+        var foldableBase = false
+        val stripped = buildString {
+            Normalizer.normalize(lowered, Normalizer.Form.NFD).forEach { char ->
+                val mark = Character.getType(char) == Character.NON_SPACING_MARK.toInt()
+                if (!mark) foldableBase = Character.UnicodeScript.of(char.code) in foldedMarkScripts
+                if (!mark || !foldableBase) append(char)
+            }
+        }.let { Normalizer.normalize(it, Normalizer.Form.NFC) }
         return stripped
             .replace(apostrophes, "")
             .replace("&", " and ")
@@ -295,7 +307,12 @@ object MusicIdentityText {
         descriptorMarkerRules.forEach { rule ->
             if (rule.phrase.containsMatchIn(reduced)) markers += rule.markers
         }
-        if (markers.isNotEmpty()) return Descriptor.Version(markers, null)
+        if (markers.isNotEmpty()) {
+            val label = reduced.takeIf {
+                TrackVersionMarker.REMIX in markers && it !in setOf("remix", "mix", "remixed")
+            }
+            return Descriptor.Version(markers, label)
+        }
         if (versionWord.containsMatchIn(reduced)) return Descriptor.Version(setOf(TrackVersionMarker.VERSION), reduced)
         return Descriptor.Core
     }

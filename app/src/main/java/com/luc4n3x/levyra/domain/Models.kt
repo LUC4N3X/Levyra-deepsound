@@ -629,7 +629,8 @@ enum class SearchFilter {
 
 data class SearchPage<T>(
     val items: List<T> = emptyList(),
-    val continuation: String = ""
+    val continuation: String = "",
+    val failed: Boolean = false
 )
 
 enum class PlaylistCoverMode {

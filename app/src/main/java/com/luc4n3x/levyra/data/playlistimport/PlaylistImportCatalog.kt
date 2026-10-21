@@ -8,11 +8,16 @@ import com.luc4n3x.levyra.nexus.playlistimport.CandidateOrigin
 import com.luc4n3x.levyra.nexus.playlistimport.ImportedTrackIdentity
 import com.luc4n3x.levyra.nexus.playlistimport.MatchCandidate
 import com.luc4n3x.levyra.nexus.playlistimport.PlaylistMatchEngine
+import com.luc4n3x.levyra.nexus.playlistimport.ImportTransliteration
+import com.luc4n3x.levyra.nexus.playlistimport.MatchOutcome
+import com.luc4n3x.levyra.nexus.playlistimport.MatchSignal
+import com.luc4n3x.levyra.nexus.playlistimport.ResolutionPreference
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
@@ -22,12 +27,19 @@ data class CatalogCandidate(
     val track: Track
 )
 
+data class CatalogResolution(val candidates: List<CatalogCandidate>, val outcome: MatchOutcome)
+
 interface PlaylistCandidateProvider {
     suspend fun candidates(identity: ImportedTrackIdentity, broad: Boolean): List<CatalogCandidate>
 
     suspend fun search(query: String, origin: CandidateOrigin): List<CatalogCandidate>
 
     suspend fun refreshLocal() = Unit
+
+    suspend fun resolve(identity: ImportedTrackIdentity, broad: Boolean, preference: ResolutionPreference): CatalogResolution {
+        val found = candidates(identity, broad)
+        return CatalogResolution(found, PlaylistMatchEngine.select(identity, found.map { it.candidate }, preference))
+    }
 }
 
 internal const val LOCAL_TRACK_PREFIX = "local:"
@@ -136,50 +148,49 @@ internal fun ImportedTrackIdentity.directTrack(known: Track?): Track? {
 class PlaylistImportCatalog(
     private val repository: YoutubeMusicRepository,
     private val localTracks: suspend () -> List<Track>,
-    private val languageCode: () -> String
+    private val languageCode: () -> String,
+    private val metadataSearch: suspend (ImportedTrackIdentity) -> List<MatchCandidate> = { emptyList() }
 ) : PlaylistCandidateProvider {
     private val localMutex = Mutex()
     private var localIndex: Map<String, List<Track>>? = null
     private var localAll: List<Track> = emptyList()
+    private val lookupLocks = Array(16) { Mutex() }
+    private val lookupCache = object : LinkedHashMap<ImportedTrackIdentity, CatalogResolution>(256, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<ImportedTrackIdentity, CatalogResolution>): Boolean = size > 256
+    }
 
     override suspend fun refreshLocal() {
         localMutex.withLock {
             localIndex = null
             localAll = emptyList()
         }
+        synchronized(lookupCache) { lookupCache.clear() }
     }
 
     override suspend fun candidates(identity: ImportedTrackIdentity, broad: Boolean): List<CatalogCandidate> {
-        val title = MusicIdentityText.title(identity.title)
-        val cleanTitle = title.core
-        val cleanPrimary = identity.primaryArtist.substringBefore(',').trim()
-        val local = localMatches(cleanTitle)
+        return resolve(identity, broad, ResolutionPreference.SMART).candidates
+    }
 
-        val online = if (broad) {
-            val query = listOf(cleanTitle, cleanPrimary).filter(String::isNotBlank).joinToString(" ")
-                .takeIf { it.length >= 2 && it != identity.title } ?: cleanTitle
-            if (query.length >= 2) onlineSearch(query, 12) else emptyList()
-        } else {
-            resolveCandidatesAdaptive(identity, cleanTitle, cleanPrimary)
+    override suspend fun resolve(identity: ImportedTrackIdentity, broad: Boolean, preference: ResolutionPreference): CatalogResolution {
+        val key = identity.copy(position = 0)
+        return lookupLocks[(key.hashCode() and Int.MAX_VALUE) % lookupLocks.size].withLock {
+            if (!broad && preference == ResolutionPreference.SMART) {
+                synchronized(lookupCache) { lookupCache[key] }?.let { return@withLock it }
+            }
+            val result = withTimeoutOrNull(45_000L) { resolveAdaptive(identity, preference) }
+                ?: throw IOException("Playlist candidate lookup timed out")
+            if (preference == ResolutionPreference.SMART) synchronized(lookupCache) { lookupCache[key] = result }
+            result
         }
-
-        return (local + online).distinctBy { it.id }.map { it.toMatchCandidate() }
     }
 
     override suspend fun search(query: String, origin: CandidateOrigin): List<CatalogCandidate> {
         val clean = query.trim()
         if (clean.length < 2) return emptyList()
-        return try {
-            when (origin) {
-                CandidateOrigin.ONLINE -> onlineSearch(clean, 16)
-                CandidateOrigin.LOCAL -> localSearch(clean)
-            }.distinctBy { it.id }.map { it.toMatchCandidate() }
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Exception) {
-            Timber.w(error, "Playlist replacement search failed")
-            emptyList()
-        }
+        return when (origin) {
+            CandidateOrigin.ONLINE -> onlineSearch(clean, 16)
+            CandidateOrigin.LOCAL -> localSearch(clean)
+        }.distinctBy { it.id }.map { it.toMatchCandidate() }
     }
 
     internal suspend fun onlineSearch(query: String, limit: Int): List<Track> {
@@ -188,65 +199,116 @@ class PlaylistImportCatalog(
         val language = languageCode()
         return coroutineScope {
             val songsDeferred = async {
-                isolatedOnlineSearch { retrying { repository.searchSongsPage(cleanQuery, language).items } }
+                runSearch { retrying { songs(cleanQuery, language) } }
             }
             val mixedDeferred = async {
-                isolatedOnlineSearch { retrying { repository.search(cleanQuery, limit, language) } }
+                runSearch { retrying { repository.searchForImport(cleanQuery, limit, language) } }
             }
             val songs = songsDeferred.await()
             val mixed = mixedDeferred.await()
-            combineOnlineSearchResults(songs, mixed, limit)
+            if (songs.isFailure && mixed.isFailure) throw IOException("Playlist search unavailable", songs.exceptionOrNull())
+            combineOnlineSearchResults(songs.getOrDefault(emptyList()), mixed.getOrDefault(emptyList()), limit)
         }
     }
 
-    private suspend fun <T> isolatedOnlineSearch(block: suspend () -> List<T>): List<T> = try {
-        block()
+    private suspend fun <T> runSearch(block: suspend () -> List<T>): Result<List<T>> = try {
+        Result.success(block())
     } catch (error: CancellationException) {
         throw error
     } catch (error: Exception) {
         Timber.w(error, "Playlist import online search branch failed")
+        Result.failure(error)
+    }
+
+    private suspend fun songs(query: String, language: String): List<Track> {
+        val page = repository.searchSongsPage(query, language)
+        if (page.failed) throw IOException("Music search unavailable")
+        return page.items
+    }
+
+    private suspend fun resolveAdaptive(identity: ImportedTrackIdentity, preference: ResolutionPreference): CatalogResolution {
+        val local = localMatches(MusicIdentityText.title(identity.title).core).map { it.toMatchCandidate() }
+        val lookup = ImportLookup(identity, preference, languageCode(), local)
+        if (lookup.reliable() && preference != ResolutionPreference.PREFER_ONLINE) return lookup.result()
+        val originalQuery = "${identity.title} ${identity.primaryArtist}".trim()
+        val primary = MusicIdentityText.artistNames(identity.primaryArtist).firstOrNull().orEmpty()
+        val normalized = "${MusicIdentityText.title(identity.title).core} $primary".trim()
+        val direct = listOf(originalQuery to false, originalQuery to true) +
+            listOfNotNull((normalized to false).takeUnless { normalized.equals(originalQuery, ignoreCase = true) })
+        if (lookup.searchUntilReliable(direct)) return lookup.result()
+        val metadata = safeMetadata(identity)
+        lookup.reference = corroborateImportIdentity(identity, metadata)
+        if (lookup.reliable()) return lookup.result()
+        val fallback = (metadataQueries(identity, metadata) + ImportTransliteration.latinQuery(normalized)).distinct()
+        if (lookup.searchUntilReliable(fallback.map { it to false })) return lookup.result()
+        lookup.search(normalized, true)
+        return lookup.finish()
+    }
+
+    private suspend fun safeMetadata(identity: ImportedTrackIdentity): List<MatchCandidate> = try {
+        metadataSearch(identity).take(30)
+    } catch (error: CancellationException) {
+        throw error
+    } catch (_: Exception) {
         emptyList()
     }
 
-    private suspend fun resolveCandidatesAdaptive(
-        identity: ImportedTrackIdentity,
-        cleanTitle: String,
-        cleanPrimary: String
-    ): List<Track> {
-        val language = languageCode()
-        val primary = identity.primaryArtist
-        val preciseQuery = listOf(identity.title, primary).filter(String::isNotBlank).joinToString(" ")
-        if (preciseQuery.length < 2) return emptyList()
+    private fun metadataQueries(identity: ImportedTrackIdentity, metadata: List<MatchCandidate>): List<String> =
+        metadata.map { it to PlaylistMatchEngine.evaluate(identity, it) }
+            .filter { it.second.score >= 55 }
+            .sortedByDescending { it.second.score }
+            .map { "${it.first.title} ${it.first.artists.firstOrNull().orEmpty()}".trim() }
+            .distinct().take(2)
 
-        val songs = retrying { repository.searchSongsPage(preciseQuery, language).items }
-        val hasGoodSongMatch = songs.any { track ->
-            PlaylistMatchEngine.evaluate(identity, track.toMatchCandidate().candidate).confidence.autoAccepted
-        }
-        if (hasGoodSongMatch) {
-            return songs.distinctBy { it.id }
-        }
+    private inner class ImportLookup(
+        var reference: ImportedTrackIdentity,
+        private val preference: ResolutionPreference,
+        private val language: String,
+        local: List<CatalogCandidate>
+    ) {
+        private val found = local.toMutableList()
+        private val queried = HashSet<String>()
+        private var failure: Throwable? = null
+        private var succeeded = false
 
-        val mixed = retrying { repository.search(preciseQuery, 8, language) }
-        val hasGoodMixedMatch = mixed.any { track ->
-            PlaylistMatchEngine.evaluate(identity, track.toMatchCandidate().candidate).confidence.autoAccepted
-        }
-        val firstPassCandidates = (songs + mixed).distinctBy { it.id }
-        if (hasGoodMixedMatch) {
-            return firstPassCandidates
+        fun result(): CatalogResolution {
+            val unique = found.distinctBy { it.candidate.id }
+            return CatalogResolution(unique, PlaylistMatchEngine.select(reference, unique.map { it.candidate }, preference))
         }
 
-        val cleanQuery = listOf(cleanTitle, cleanPrimary).filter(String::isNotBlank).joinToString(" ")
-            .takeIf { it.length >= 2 && it != preciseQuery }
-        if (cleanQuery != null) {
-            val fallbackResults = onlineSearch(cleanQuery, 8)
-            return (firstPassCandidates + fallbackResults).distinctBy { it.id }
+        fun reliable(): Boolean = result().outcome.confidence.autoAccepted
+
+        suspend fun searchUntilReliable(queries: List<Pair<String, Boolean>>): Boolean {
+            for ((query, mixed) in queries) {
+                search(query, mixed)
+                if (reliable()) return true
+            }
+            return false
         }
 
-        return firstPassCandidates
+        suspend fun search(query: String, mixed: Boolean) {
+            val key = "${if (mixed) "mixed" else "song"}:${query.lowercase(java.util.Locale.ROOT)}"
+            if (query.length < 2 || !queried.add(key)) return
+            val response = runSearch {
+                retrying { if (mixed) repository.searchForImport(query, 12, language) else songs(query, language) }
+            }
+            response.onSuccess {
+                succeeded = true
+                found += it.take(20).map(Track::toMatchCandidate)
+            }.onFailure { failure = it }
+            if (response.isFailure && !mixed) search(query, true)
+        }
+
+        fun finish(): CatalogResolution {
+            val resolved = result()
+            val error = failure
+            if (error != null && !succeeded && resolved.outcome.selected == null) throw IOException("Playlist search incomplete", error)
+            return resolved
+        }
     }
 
     private suspend fun <T> retrying(block: suspend () -> List<T>): List<T> {
-        repeat(2) { attempt ->
+        repeat(1) { attempt ->
             try {
                 return block()
             } catch (error: CancellationException) {
@@ -259,8 +321,6 @@ class PlaylistImportCatalog(
             block()
         } catch (error: CancellationException) {
             throw error
-        } catch (_: IOException) {
-            emptyList()
         }
     }
 
