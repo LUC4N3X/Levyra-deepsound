@@ -1159,7 +1159,15 @@ fun LevyraNowPlaying(
             .align(Alignment.TopCenter)
 
         if (LevyraIsPrism && track != null && !state.isVideoMode && !liveRadio && playerPane != LevyraPlayerPane.SideBySide) {
-            PrismPlayerScene(track, deckSlots, artworkCap, metadata = { metadataBlock(track) }, transport = transportBlock, modifier = deckModifier)
+            if (LevyraIsAppleMusic) {
+                AppleMusicPlayerScene(
+                    track, deckSlots, artworkCap, state.isPlaying,
+                    metadata = { metadataBlock(track) }, transport = transportBlock, modifier = deckModifier,
+                    canvas = AppleMusicCanvas(state.motionArtwork, motionEnabled && !lyricsFlip.lyricsSettled, state.interfaceSettings.canvasQuality, livingArtwork)
+                )
+            } else {
+                PrismPlayerScene(track, deckSlots, artworkCap, metadata = { metadataBlock(track) }, transport = transportBlock, modifier = deckModifier, playing = state.isPlaying)
+            }
         } else if (deckLayout == PlayerDeckLayout.Aura && track != null) {
             PlayerAuraDeck(
                 track = track,

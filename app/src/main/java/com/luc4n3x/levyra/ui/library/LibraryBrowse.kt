@@ -66,6 +66,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.automirrored.rounded.ArrowForwardIos
 import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.Track
@@ -101,6 +102,35 @@ internal fun LibrarySectionGrid(
     if (LevyraIsSpotify) {
         Column(modifier) {
             entries.forEach { entry -> SpotifyLibraryRow(entry, onOpen) }
+        }
+        return
+    }
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic) {
+        val strings = LocalLevyraStrings.current
+        Column(modifier) {
+            entries.forEach { entry ->
+                val label = entry.category.libraryLabel(strings)
+                Box(Modifier.fillMaxWidth().heightIn(min = 52.dp).then(Modifier.levyraPressable(onClick = { onOpen(entry.category) }, onClickLabel = label, role = Role.Button, pressedScale = LevyraPressScale.Control))) {
+                    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(entry.category.sectionIcon(), null, tint = com.luc4n3x.levyra.ui.theme.AppleMusicDesign.accent, modifier = Modifier.size(26.dp))
+                        Text(
+                            label, color = com.luc4n3x.levyra.ui.theme.AppleMusicDesign.accent, style = MaterialTheme.typography.titleLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Normal),
+                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 14.dp)
+                        )
+                        if (entry.summary.isNotBlank()) {
+                            Text(entry.summary, color = com.luc4n3x.levyra.ui.theme.AppleMusicDesign.secondaryLabel, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+                        }
+                        Icon(
+                            androidx.compose.material.icons.Icons.AutoMirrored.Rounded.ArrowForwardIos, null,
+                            tint = com.luc4n3x.levyra.ui.theme.AppleMusicDesign.tertiaryLabel, modifier = Modifier.padding(start = 4.dp).size(22.dp)
+                        )
+                    }
+                    HorizontalDivider(
+                        Modifier.align(Alignment.BottomEnd).padding(start = 40.dp),
+                        thickness = 0.5.dp, color = com.luc4n3x.levyra.ui.theme.AppleMusicDesign.separator
+                    )
+                }
+            }
         }
         return
     }

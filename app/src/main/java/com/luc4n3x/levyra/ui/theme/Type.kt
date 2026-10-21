@@ -36,6 +36,12 @@ internal val SpotifyFont: FontFamily = FontFamily(
     }
 )
 
+internal val AppleMusicFont: FontFamily = FontFamily(
+    listOf(FontWeight.Normal, FontWeight.Medium, FontWeight.SemiBold, FontWeight.Bold).map { weight ->
+        Font(googleFont = GoogleFont("Inter"), fontProvider = googleFontsProvider, weight = weight)
+    }
+)
+
 private val defaultTypography = Typography()
 
 private val LevyraLineHeightStyle = LineHeightStyle(

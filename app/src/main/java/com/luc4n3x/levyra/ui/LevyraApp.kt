@@ -2032,6 +2032,7 @@ fun LevyraApp(
         LevyraSkin.Prism -> PrismThemeEffect(state.interfaceSettings)
         LevyraSkin.Torque -> TorqueThemeEffect(state.interfaceSettings, state.currentTrack)
         LevyraSkin.Ivory -> IvoryThemeEffect(state.interfaceSettings)
+        LevyraSkin.AppleMusicStyle -> AppleMusicThemeEffect()
         else -> Unit
     }
     val pureBlack = state.interfaceSettings.pureBlack
@@ -2045,7 +2046,7 @@ fun LevyraApp(
         pureBlack,
         customThemes
     ) {
-        if (state.interfaceSettings.skin == LevyraSkin.Prism || state.interfaceSettings.skin == LevyraSkin.Torque || state.interfaceSettings.skin == LevyraSkin.Ivory) return@LaunchedEffect
+        if (state.interfaceSettings.skin == LevyraSkin.Prism || state.interfaceSettings.skin == LevyraSkin.Torque || state.interfaceSettings.skin == LevyraSkin.Ivory || state.interfaceSettings.skin == LevyraSkin.AppleMusicStyle) return@LaunchedEffect
         LevyraThemeController.apply(
             state.themePreset,
             accentTrack?.accentStart,
@@ -2062,7 +2063,7 @@ fun LevyraApp(
         val nocturne = state.interfaceSettings.skin == LevyraSkin.Nocturne78
         val base = when (state.interfaceSettings.skin) {
             LevyraSkin.Nocturne78 -> Nocturne78Palette
-            LevyraSkin.Prism, LevyraSkin.Torque, LevyraSkin.Ivory -> LevyraActivePalette
+            LevyraSkin.Prism, LevyraSkin.Torque, LevyraSkin.Ivory, LevyraSkin.AppleMusicStyle -> LevyraActivePalette
             LevyraSkin.SpotifyStyle -> spotifyPalette()
             LevyraSkin.Default -> LevyraThemes.byId(state.themePreset)
         }
@@ -5031,6 +5032,21 @@ private fun AlbumTrackRow(
     actions: AlbumTrackRowActions,
     modifier: Modifier = Modifier
 ) {
+    if (LevyraIsAppleMusic) {
+        AppleMusicAlbumTrackRow(
+            index = index,
+            last = index == count - 1,
+            title = track.title,
+            subtitle = track.artist.takeIf { albumTrackShowsArtist(track.artist, albumArtist, true) }.orEmpty(),
+            explicit = track.explicit,
+            current = presentation.isCurrent,
+            selected = presentation.selected,
+            onPlay = actions.onPlay,
+            onMore = actions.onLongClick,
+            modifier = modifier
+        )
+        return
+    }
     val strings = LocalLevyraStrings.current
     val spotify = LevyraIsSpotify
     val showArtist = remember(track.artist, albumArtist, spotify) { albumTrackShowsArtist(track.artist, albumArtist, spotify) }
@@ -5358,7 +5374,7 @@ private fun ArtistOverlay(
     ) {
         val density = LocalDensity.current
         val heroCap = minOf(ArtistHeroMaxHeight, maxHeight * ArtistHeroViewportShare)
-        val heroHeight = (maxWidth * ArtistHeroAspect).coerceAtMost(heroCap).coerceAtLeast(minOf(ArtistHeroMinHeight, heroCap))
+        val heroHeight = if (LevyraIsAppleMusic) (maxWidth / AppleMusicDesign.artistHeroAspect).coerceAtMost(heroCap) else (maxWidth * ArtistHeroAspect).coerceAtMost(heroCap).coerceAtLeast(minOf(ArtistHeroMinHeight, heroCap))
         val heroHeightPx = with(density) { heroHeight.toPx() }
         val topBarPx = with(density) { (WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + ArtistTopBarHeight).toPx() }
         val heroScroll: () -> Float = {
@@ -5742,6 +5758,17 @@ private fun ArtistPopularTracksShelf(
         .coerceAtMost(rankedTracks.size)
     val visibleTracks = remember(rankedTracks, shownCount) { rankedTracks.take(shownCount) }
     val animationsEnabled = LocalAnimationsEnabled.current
+    if (LevyraIsAppleMusic) {
+        Column(Modifier.fillMaxWidth()) {
+            AppleMusicSectionHeader(strings.popularTracks, onSeeAll = { onPlayAll(distinctTracks) })
+            AppleMusicSongColumns(
+                rankedTracks, 4, currentId, com.luc4n3x.levyra.ui.i18n.LevyraAppleMusicStrings.forCode(strings.code).explicit,
+                { track -> if (selection.isActive) selection.toggle(trackSelectionKey(track)) else onPlay(track) },
+                { track -> selection.start(trackSelectionKey(track)) }
+            )
+        }
+        return
+    }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -6169,7 +6196,8 @@ private fun ArtistHero(
     val heroContext = LocalContext.current
     val density = LocalDensity.current
     val nameRisePx = with(density) { ArtistNameRise.toPx() }
-    val scrim = LevyraBlack
+    val heroScrim = artistHeroScrim()
+    val scrim = heroScrim.color
     val statusProtection = if (LevyraIsLight) scrim.copy(alpha = 0.62f) else Color.Black.copy(alpha = 0.46f)
     val nameSize = artistHeroNameSize(profile.name)
     val audience = remember(profile.monthlyListeners, profile.subscribers) {
@@ -6256,9 +6284,9 @@ private fun ArtistHero(
                                 0f to statusProtection,
                                 0.18f to Color.Transparent,
                                 0.46f to Color.Transparent,
-                                0.68f to scrim.copy(alpha = 0.55f),
-                                0.88f to scrim.copy(alpha = 0.94f),
-                                1f to scrim
+                                0.68f to scrim.copy(alpha = heroScrim.middle),
+                                0.88f to scrim.copy(alpha = heroScrim.deep),
+                                1f to scrim.copy(alpha = heroScrim.end)
                             )
                         )
                     )
@@ -6287,7 +6315,7 @@ private fun ArtistHero(
                 },
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            if (!LevyraIsSpotify) Text(
+            if (artistHeroShowsOverline()) Text(
                 text = LocalLevyraStrings.current.artistLabel.uppercase(),
                 color = artistHeroOverlineColor(),
                 style = LevyraType.overline.copy(letterSpacing = if (LevyraSkinManagesLayout) 2.4.sp else LevyraType.overline.letterSpacing),
@@ -6295,13 +6323,8 @@ private fun ArtistHero(
             )
             Text(
                 text = if (LevyraIsTorque) profile.name.uppercase() else profile.name,
-                color = if (LevyraIsTorque) Color.White else LevyraText,
-                style = LevyraType.heroTitle.copy(
-                    fontSize = nameSize,
-                    lineHeight = LevyraType.heroLineHeight(nameSize),
-                    fontWeight = artistHeroNameWeight(),
-                    letterSpacing = artistHeroNameSpacing()
-                ),
+                color = artistHeroNameColor(),
+                style = artistHeroNameStyle(nameSize),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() }
@@ -6309,7 +6332,7 @@ private fun ArtistHero(
             if (audience.isNotBlank()) {
                 Text(
                     text = audience,
-                    color = LevyraText.copy(alpha = 0.72f),
+                    color = artistHeroAudienceColor(),
                     style = LevyraType.metadata,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -10512,6 +10535,48 @@ private fun StudioHomeScreen(
         stableSpotlightIdState = stableSpotlightIdState,
         addTargetState = addTargetState
     )
+    if (LevyraIsAppleMusic) {
+        AppleMusicHomeContent(
+            data = with(homeContext) {
+                AppleMusicHomeData(
+                    selectedChartId = state.selectedChartId,
+                    currentId = state.currentTrack?.id,
+                    soundtrack = mergedStudioHero(),
+                    personalTracks = visiblePersonalTracks,
+                    showPersonal = state.interfaceSettings.showPersonalOrbit,
+                    quickPicks = quickPicks,
+                    albums = homeAlbums,
+                    showAlbums = state.interfaceSettings.showAlbumsForYou,
+                    collections = visibleEditorialCollections.map { AppleMusicHomeCollection(it.id, homeCollectionTitle(strings, it), it.tracks) },
+                    artists = state.homeArtists.take(HOME_ARTIST_SHELF_SIZE),
+                    showArtists = state.interfaceSettings.showTrendingArtists,
+                    forgottenFavorites = forgottenFavorites,
+                    countryLabel = state.chartRegions.firstOrNull { it.id == state.selectedChartId }
+                        ?.let { region -> "${region.emoji} ${ChartMarketDirectory.displayName(region, state.languageCode)}" }.orEmpty(),
+                    charts = if (state.interfaceSettings.showCharts) state.charts else emptyList(),
+                    chartsTitle = strings.chartMarketTitle(state.charts.size.coerceAtMost(50), state.chartRegions.firstOrNull { it.id == state.selectedChartId }?.let { ChartMarketDirectory.displayName(it, state.languageCode) }.orEmpty())
+                )
+            },
+            actions = AppleMusicHomeActions(
+                playFrom = { tracks, track -> homeContext.viewModel.playFrom(tracks, track) },
+                playAll = { tracks -> homeContext.viewModel.playAll(tracks) },
+                openAlbum = homeContext.viewModel::openAlbum,
+                openArtist = homeContext.viewModel::openArtistFromHit,
+                openArtistByName = homeContext.viewModel::openArtistByName,
+                openCollection = { id -> homeContext.selectedHomeCollectionId = id },
+                openSettings = homeContext.viewModel::openSettings,
+                pickCountry = { homeContext.chartMarketSheetOpen = true },
+                onTrackActions = homeContext.onTrackActions
+            ),
+            homeListState = homeListState,
+            homeBottomInset = homeBottomInset,
+            homeRefreshing = homeRefreshing,
+            homePullState = homePullState,
+            onPullRefresh = onPullRefresh
+        )
+        StudioHomeOverlays(homeContext, homeBottomInset)
+        return
+    }
     StudioHomeContent(
         c = homeContext,
         homeListState = homeListState,
@@ -19078,16 +19143,19 @@ private fun PlayerYoutubeEngagementRow(
     val commentBadge = youtubeCommentCountBadge(comments.countText)
     val canOpenComments = engagement.videoId.isNotBlank()
     val visible = hasLikes || hasDislikeEstimate || engagement.dislikeEstimateLoading || canOpenComments
-    val baseContent = if (LevyraIsLight) Color(0xFF1A1B20) else Color.White
-    val accent = if (LevyraSkinManagesLayout) LevyraCyan else Color(track.accentStart).playerMix(baseContent, if (LevyraIsLight) 0.34f else 0.26f)
-    val quietContent = baseContent.copy(alpha = 0.66f)
+    val appleMusic = LevyraIsAppleMusic
+    val baseContent = if (LevyraIsLight && !appleMusic) Color(0xFF1A1B20) else Color.White
+    val accent = if (appleMusic) Color.White else if (LevyraSkinManagesLayout) LevyraCyan else Color(track.accentStart).playerMix(baseContent, if (LevyraIsLight) 0.34f else 0.26f)
+    val quietContent = baseContent.copy(alpha = if (appleMusic) 0.6f else 0.66f)
     val strongContent = baseContent.copy(alpha = 0.90f)
-    val surface = if (LevyraIsLight) {
+    val surface = if (appleMusic) {
+        AppleMusicVibrant.quaternary
+    } else if (LevyraIsLight) {
         LevyraAdaptiveChip
     } else {
         Color.White.copy(alpha = 0.10f)
     }
-    val rowHeight = if (compact) 36.dp else 40.dp
+    val rowHeight = if (appleMusic) 32.dp else if (compact) 36.dp else 40.dp
 
     AnimatedVisibility(
         visible = visible,
@@ -21285,7 +21353,7 @@ private fun SettingsOverlay(
     fun categoryTitle(value: String): String = settingsCategoryTitle(value, categoryLocale)
     val categories = remember(strings.code, LevyraActivePalette) {
         listOf(
-            SettingsCategoryMeta("skins", com.luc4n3x.levyra.ui.i18n.LevyraSkinStrings.forCode(strings.code).title, "Levyra Default · Nocturne 78 · Prism · Torque · Ivory · Spotify Style", Icons.Rounded.Style, LevyraViolet, SettingsHubGroup.Appearance),
+            SettingsCategoryMeta("skins", com.luc4n3x.levyra.ui.i18n.LevyraSkinStrings.forCode(strings.code).title, "Levyra Default · Nocturne 78 · Prism · Torque · Ivory · Spotify Style · Apple Music Style", Icons.Rounded.Style, LevyraViolet, SettingsHubGroup.Appearance),
             SettingsCategoryMeta("design", categoryTitle(strings.design), "${strings.theme} · ${strings.animations} · ${strings.dynamicColor}", Icons.Rounded.Palette, LevyraViolet, SettingsHubGroup.Appearance),
             SettingsCategoryMeta("home", categoryTitle(strings.homeInterfaceSection), "${strings.compactHome} · ${strings.newReleases} · ${strings.top50Charts}", Icons.Rounded.Home, LevyraViolet, SettingsHubGroup.Appearance),
             SettingsCategoryMeta("player", categoryTitle(strings.player), "${strings.advancedGestures} · ${strings.sponsorBlock} · ${strings.skipSilence}", Icons.Rounded.PlayArrow, LevyraPink, SettingsHubGroup.Listening),
@@ -23056,7 +23124,7 @@ private fun SettingsTile(
     enabled: Boolean = true,
     groupIndex: Int? = null,
     groupCount: Int? = null,
-    color: Color = if (LevyraIsSpotify) Color.Transparent else LevyraAdaptiveCard,
+    color: Color = if (LevyraIsSpotify) Color.Transparent else if (LevyraIsAppleMusic) AppleMusicDesign.groupedBackground else LevyraAdaptiveCard,
     content: @Composable () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -23096,12 +23164,12 @@ private fun SettingsTile(
 private fun SettingsTileIcon(icon: ImageVector, accent: Color, shape: Shape = MaterialShapes.Cookie4Sided.toShape()) {
     Box(
         modifier = Modifier
-            .size(44.dp)
+            .size(if (LevyraIsAppleMusic) 30.dp else 44.dp)
             .clip(if (SkinChrome.active) SkinChrome.iconShape else shape)
             .background(if (SkinChrome.active) SkinChrome.iconBackground else accent.copy(alpha = 0.18f)),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, null, tint = if (SkinChrome.active) SkinChrome.iconTint else accent, modifier = Modifier.size(22.dp))
+        Icon(icon, null, tint = if (SkinChrome.active) SkinChrome.iconTint else accent, modifier = Modifier.size(if (LevyraIsAppleMusic) 19.dp else 22.dp))
     }
 }
 
@@ -23117,8 +23185,8 @@ private fun SettingsTileText(
         Text(
             title,
             color = LevyraText,
-            fontSize = 16.sp,
-            fontWeight = if (SkinChrome.active) FontWeight.Medium else FontWeight.Bold,
+            fontSize = if (LevyraIsAppleMusic) 17.sp else 16.sp,
+            fontWeight = if (LevyraIsAppleMusic) FontWeight.Normal else if (SkinChrome.active) FontWeight.Medium else FontWeight.Bold,
             maxLines = maxTitleLines,
             overflow = TextOverflow.Ellipsis
         )
@@ -23758,6 +23826,13 @@ private fun SettingsSectionLabel(text: String) {
         SpotifySettingsHeading(title)
         return
     }
+    if (LevyraIsAppleMusic) {
+        Text(
+            title.uppercase(locale), color = AppleMusicDesign.secondaryLabel, style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(start = 16.dp, top = 22.dp, bottom = 6.dp).semantics { heading() }
+        )
+        return
+    }
     Text(
         SkinChrome.label(title, locale),
         color = if (LevyraIsPrism && !LevyraIsTorque) LevyraMuted else LevyraCyan,
@@ -23780,7 +23855,7 @@ private fun SettingsToggle(icon: ImageVector, title: String, subtitle: String, c
         ) {
             SettingsTileIcon(icon = icon, accent = LocalSettingsAccent.current ?: LevyraCyan)
             SettingsTileText(title = title, subtitle = subtitle, modifier = Modifier.weight(1f))
-            if (LevyraIsNocturne || LevyraIsTorque || LevyraIsIvory || LevyraIsSpotify) SkinSwitch(checked) else Switch(
+            if (LevyraIsNocturne || LevyraIsTorque || LevyraIsIvory || LevyraIsSpotify || LevyraIsAppleMusic) SkinSwitch(checked) else Switch(
                 checked = checked,
                 onCheckedChange = null,
                 thumbContent = if (checked) {
@@ -27836,16 +27911,16 @@ private fun ExplorePrimaryShortcuts(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = HomeHorizontalInset),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(if (LevyraIsAppleMusic) 0.dp else 10.dp)
     ) {
-        entries.chunked(2).forEach { pair ->
+        entries.chunked(if (LevyraIsAppleMusic) 1 else 2).forEach { pair ->
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 pair.forEach { entry ->
                     key(entry.key) {
                         ExploreShortcutTile(entry = entry, modifier = Modifier.weight(1f))
                     }
                 }
-                if (pair.size == 1) {
+                if (pair.size == 1 && !LevyraIsAppleMusic) {
                     Spacer(modifier = Modifier.weight(1f))
                 }
             }
@@ -27872,6 +27947,8 @@ private fun ExploreShortcutTile(
 ) {
     if (LevyraIsSpotify) {
         SpotifyExploreTile(entry.label, entry.icon, modifier, entry.onClick)
+    } else if (LevyraIsAppleMusic) {
+        AppleMusicLinkRow(entry.label, entry.icon, modifier, entry.onClick)
     } else {
         LevyraExploreShortcutTile(entry, modifier)
     }
@@ -28613,6 +28690,7 @@ private fun skinManagesStudio(id: String): Boolean =
 private fun searchFieldContainer(focused: Boolean, scheme: androidx.compose.material3.ColorScheme): Color = when {
     LevyraIsTorque -> Color(0xFFF1F1F1)
     LevyraIsSpotify -> SpotifyDesign.searchField
+    LevyraIsAppleMusic -> AppleMusicDesign.fill
     LevyraIsIvory -> LevyraActivePalette.ink
     LevyraIsPrism -> if (focused) scheme.surfaceContainerHigh else scheme.surfaceContainer
     else -> if (focused) scheme.surfaceContainerHighest else scheme.surfaceContainerHigh
@@ -28621,6 +28699,7 @@ private fun searchFieldContainer(focused: Boolean, scheme: androidx.compose.mate
 private fun searchFieldIconTint(active: Boolean, scheme: androidx.compose.material3.ColorScheme): Color = when {
     LevyraIsTorque -> Color(0xFF111111)
     LevyraIsSpotify -> SpotifyDesign.searchFieldText
+    LevyraIsAppleMusic -> AppleMusicDesign.secondaryLabel
     LevyraIsIvory -> LevyraText
     LevyraIsPrism -> if (active) scheme.primary else scheme.onSurfaceVariant
     else -> if (active) scheme.onPrimaryContainer else scheme.onSurfaceVariant
@@ -28629,6 +28708,7 @@ private fun searchFieldIconTint(active: Boolean, scheme: androidx.compose.materi
 private fun searchFieldCorner(fallback: Dp): Dp = when {
     LevyraIsNocturne -> Nocturne78Design.cardCorner
     LevyraIsSpotify -> SpotifyDesign.corner
+    LevyraIsAppleMusic -> AppleMusicDesign.cornerL
     LevyraIsPrism -> PrismDesign.controlCorner
     else -> fallback
 }
@@ -28743,7 +28823,7 @@ private fun albumTrackShowsArtist(trackArtist: String, albumArtist: String, spot
     trackArtist.isNotBlank() && (spotify || !trackArtist.trim().equals(albumArtist.trim(), ignoreCase = true))
 
 @Composable
-private fun artistHeroNameSpacing(): TextUnit = when {
+internal fun artistHeroNameSpacing(): TextUnit = when {
     LevyraIsTorque -> 2.sp
     LevyraIsSpotify -> (-1.4).sp
     else -> LevyraType.heroTitle.letterSpacing

@@ -49,3 +49,24 @@ internal fun artistPortraitFrame(): Modifier {
     return Modifier.statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 134.dp)
         .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp, bottomStart = 28.dp, bottomEnd = 8.dp))
 }
+
+internal class ArtistHeroScrim(val color: Color, val middle: Float, val deep: Float, val end: Float)
+
+internal fun artistHeroScrim(): ArtistHeroScrim =
+    if (LevyraIsAppleMusic) ArtistHeroScrim(Color.Black, 0.18f, 0.42f, 0.55f) else ArtistHeroScrim(LevyraBlack, 0.55f, 0.94f, 1f)
+
+internal fun artistHeroShowsOverline(): Boolean = !LevyraIsSpotify && !LevyraIsAppleMusic
+
+internal fun artistHeroNameColor(): Color = if (LevyraIsTorque || LevyraIsAppleMusic) Color.White else LevyraText
+
+internal fun artistHeroAudienceColor(): Color = (if (LevyraIsAppleMusic) Color.White else LevyraText).copy(alpha = 0.72f)
+
+@Composable
+internal fun artistHeroNameStyle(nameSize: androidx.compose.ui.unit.TextUnit): androidx.compose.ui.text.TextStyle =
+    if (LevyraIsAppleMusic) androidx.compose.material3.MaterialTheme.typography.headlineLarge
+    else LevyraType.heroTitle.copy(
+        fontSize = nameSize,
+        lineHeight = LevyraType.heroLineHeight(nameSize),
+        fontWeight = artistHeroNameWeight(),
+        letterSpacing = artistHeroNameSpacing()
+    )

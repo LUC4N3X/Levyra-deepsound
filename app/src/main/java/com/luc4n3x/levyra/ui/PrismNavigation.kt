@@ -34,20 +34,12 @@ internal fun PrismBottomTabs(tuning: NavTuning, selected: LevyraTab, onSelect: (
     val measuredHeight = LocalNocturneNavigationHeight.current
     val density = LocalDensity.current
     val torque = LevyraIsTorque
-    if (LevyraIsSpotify) {
-        SpotifyBottomTabs(entries, selected, applySystemInset, Modifier.onSizeChanged { size -> measuredHeight?.value = with(density) { size.height.toDp() } }) { entry, active ->
-            if (!active && tuning.haptics) haptics.perform(LevyraHapticAction.SeekSnap)
-            onSelect(entry.tab)
-        }
-        return
+    val skinModifier = Modifier.onSizeChanged { size -> measuredHeight?.value = with(density) { size.height.toDp() } }
+    val skinSelect: (LevyraTabEntry, Boolean) -> Unit = { entry, active ->
+        if (!active && tuning.haptics) haptics.perform(LevyraHapticAction.SeekSnap)
+        onSelect(entry.tab)
     }
-    if (LevyraIsIvory) {
-        IvoryBottomTabs(entries, selected, applySystemInset, Modifier.onSizeChanged { size -> measuredHeight?.value = with(density) { size.height.toDp() } }) { entry, active ->
-            if (!active && tuning.haptics) haptics.perform(LevyraHapticAction.SeekSnap)
-            onSelect(entry.tab)
-        }
-        return
-    }
+    if (SkinBottomTabs(entries, selected, applySystemInset, skinModifier, skinSelect)) return
     Column(Modifier.fillMaxWidth()) {
         Surface(
             modifier = Modifier.fillMaxWidth().onSizeChanged { size ->
@@ -70,6 +62,20 @@ internal fun PrismBottomTabs(tuning: NavTuning, selected: LevyraTab, onSelect: (
             }
         }
     }
+}
+
+@Composable
+private fun SkinBottomTabs(
+    entries: List<LevyraTabEntry>, selected: LevyraTab, applySystemInset: Boolean, modifier: Modifier,
+    onSelect: (LevyraTabEntry, Boolean) -> Unit
+): Boolean {
+    when {
+        LevyraIsSpotify -> SpotifyBottomTabs(entries, selected, applySystemInset, modifier, onSelect)
+        LevyraIsAppleMusic -> AppleMusicBottomTabs(entries, selected, applySystemInset, modifier, onSelect)
+        LevyraIsIvory -> IvoryBottomTabs(entries, selected, applySystemInset, modifier, onSelect)
+        else -> return false
+    }
+    return true
 }
 
 @Composable
