@@ -1,7 +1,7 @@
 package com.luc4n3x.levyra.feature.search
 
-import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
+import com.luc4n3x.levyra.domain.SearchArtistDiscography
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.SearchSuggestionBundle
@@ -45,7 +45,7 @@ internal class DetachedSearchCalls(
     private val sectionCalls = SearchRequestPool<SearchSectionPage>(scope)
     private val exactArtistCalls = SearchRequestPool<ArtistHit?>(scope)
     private val officialArtistCalls = SearchRequestPool<List<ArtistHit>>(scope)
-    private val officialAlbumCalls = SearchRequestPool<List<AlbumHit>>(scope)
+    private val officialDiscographyCalls = SearchRequestPool<SearchArtistDiscography?>(scope)
 
     suspend fun suggestions(query: String, languageCode: String, cacheKey: String): SearchSuggestionBundle =
         suggestionCalls.await(cacheKey, cached = { suggestionCache.get(cacheKey) }) {
@@ -77,8 +77,8 @@ internal class DetachedSearchCalls(
             backend.officialArtists(candidates)
         }
 
-    suspend fun officialAlbums(artist: ArtistHit): List<AlbumHit> =
-        officialAlbumCalls.await(artistRequestKey(artist)) { backend.officialAlbums(artist) }
+    suspend fun officialDiscography(artist: ArtistHit): SearchArtistDiscography? =
+        officialDiscographyCalls.await(artistRequestKey(artist)) { backend.officialDiscography(artist) }
 
     private fun artistRequestKey(artist: ArtistHit): String =
         "${artist.browseId.trim().lowercase(Locale.ROOT)}:${searchQueryKey(artist.name)}"

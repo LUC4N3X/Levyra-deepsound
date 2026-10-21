@@ -634,6 +634,10 @@ import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.SearchFilter
+import com.luc4n3x.levyra.domain.SearchAlbumKind
+import com.luc4n3x.levyra.domain.SearchResults
+import com.luc4n3x.levyra.domain.availableSearchAlbumKinds
+import com.luc4n3x.levyra.ui.youtubemusic.entryFor
 import com.luc4n3x.levyra.domain.SmartMusicProfile
 import com.luc4n3x.levyra.domain.LevyraCanvasQuality
 import com.luc4n3x.levyra.domain.LevyraVisualPerformance
@@ -757,6 +761,7 @@ import androidx.compose.ui.window.DialogProperties
 
 import com.luc4n3x.levyra.ui.theme.glassmorphism
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.searchDiscographyCopy
 import com.luc4n3x.levyra.ui.i18n.BulkLinkCaptureCopy
 import com.luc4n3x.levyra.ui.i18n.bulkLinkCaptureCopy
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
@@ -2407,12 +2412,54 @@ fun LevyraApp(
                                 LocalHomeCompactDensity provides
                                     renderSnapshot.state.interfaceSettings.compactHome
                             ) {
+                                val youtubeMusicLibrary = youtubeMusicState.library
+                                val youtubeMusicCreatedLabel = com.luc4n3x.levyra.ui.i18n.youtubeMusicHomeCopy(state.languageCode).createdByYou
+                                val youtubeMusicShelf = remember(youtubeMusicLibrary, youtubeMusicCreatedLabel) {
+                                    youtubeMusicLibrary?.let { library ->
+                                        com.luc4n3x.levyra.ui.youtubemusic.youtubeMusicShelfAlbums(library, youtubeMusicCreatedLabel)
+                                    }.orEmpty()
+                                }
+                                LaunchedEffect(youtubeMusicState.active?.id, state.languageCode, youtubeMusicState.restoring) {
+                                    youtubeMusicViewModel.loadLibraryShelf(state.languageCode)
+                                }
+                                val youtubeMusicHome = youtubeMusicState.active?.let { account ->
+                                    com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi(
+                                        accountName = account.name,
+                                        avatarUrl = account.avatarUrl,
+                                        albums = youtubeMusicShelf,
+                                        loading = youtubeMusicState.libraryLoading,
+                                        error = youtubeMusicState.libraryError,
+                                        onOpen = { album ->
+                                            val entry = youtubeMusicLibrary?.entryFor(album)
+                                            if (entry != null) {
+                                                if (entry.collection == com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicCollection.Albums) {
+                                                    viewModel.openAlbum(album)
+                                                } else {
+                                                    youtubeMusicViewModel.open(state.languageCode)
+                                                    youtubeMusicViewModel.openDetail(entry)
+                                                    showYoutubeMusic = true
+                                                }
+                                            }
+                                        },
+                                        onRefresh = { youtubeMusicViewModel.loadLibraryShelf(state.languageCode, force = true) },
+                                        onShowAll = {
+                                            youtubeMusicViewModel.open(state.languageCode)
+                                            showYoutubeMusic = true
+                                        },
+                                        onReconnect = {
+                                            showYoutubeMusic = true
+                                            youtubeMusicViewModel.open(state.languageCode)
+                                            youtubeMusicViewModel.beginLogin()
+                                        }
+                                    )
+                                }?.takeIf { it.albums.isNotEmpty() || it.loading || it.error != null }
                                 HomeStudioHost(
                                     viewModel = homeViewModel,
                                     renderSnapshot = renderSnapshot,
                                     homeListState = homeListState,
                                     deferredSectionsRevealed = homeDeferredSectionsRevealed,
                                     accountAvatarUrl = youtubeMusicState.active?.avatarUrl.orEmpty(),
+                                    youtubeMusicHome = youtubeMusicHome,
                                     homeStudio = state.homeStudioSettings,
                                     onPullRefresh = {
                                         homeViewModel.refreshHome { youtubeMusicViewModel.refreshHomeAndAwait(state.languageCode) }
@@ -9746,6 +9793,7 @@ private fun HomeScreen(
     homeListState: LazyListState,
     deferredSectionsRevealed: MutableState<Boolean>,
     accountAvatarUrl: String,
+    youtubeMusicHome: com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi?,
     onPullRefresh: () -> Unit,
     onTrackActions: (Track) -> Unit
 ) {
@@ -10201,6 +10249,31 @@ private fun HomeScreen(
                             onPlayAll = { viewModel.playAll(visiblePersonalTracks) },
                             onTrackActions = onTrackActions
                         )
+                    }
+                }
+            }
+
+            youtubeMusicHome?.let { yourMusic ->
+                item(key = "home-your-music-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
+                    HomeSectionLead(compactHome) {
+                        HomeSectionInset {
+                            HomeSectionHeader(com.luc4n3x.levyra.ui.i18n.youtubeMusicHomeCopy(state.languageCode).title)
+                        }
+                    }
+                }
+                item(key = "home-your-music-row", contentType = "home-your-music") {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (yourMusic.albums.isNotEmpty()) {
+                            HomeAlbumHitRow(
+                                albums = yourMusic.albums,
+                                animationsEnabled = state.animationsEnabled,
+                                onOpen = yourMusic.onOpen
+                            )
+                        } else if (yourMusic.loading) {
+                            HomeAlbumLoadingRow()
+                        }
+                        com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeNotice(yourMusic, HomeHorizontalInset)
+                        com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeFooter(yourMusic, HomeHorizontalInset)
                     }
                 }
             }
@@ -10664,6 +10737,7 @@ private fun StudioHomeScreen(
     homeListState: LazyListState,
     deferredSectionsRevealed: MutableState<Boolean>,
     accountAvatarUrl: String,
+    youtubeMusicHome: com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi?,
     homeStudio: LevyraHomeStudioSettings,
     onPullRefresh: () -> Unit,
     onTrackActions: (Track) -> Unit
@@ -10796,6 +10870,7 @@ private fun StudioHomeScreen(
         homeBottomInset = homeBottomInset,
         homeRefreshing = homeRefreshing,
         homePullState = homePullState,
+        youtubeMusicHome = youtubeMusicHome,
         onPullRefresh = onPullRefresh
     )
 
@@ -11236,6 +11311,7 @@ private fun StudioHomeContent(
     homeBottomInset: Dp,
     homeRefreshing: Boolean,
     homePullState: androidx.compose.material3.pulltorefresh.PullToRefreshState,
+    youtubeMusicHome: com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi?,
     onPullRefresh: () -> Unit
 ) {
     with(c) {
@@ -11300,7 +11376,7 @@ private fun StudioHomeContent(
                     verticalArrangement = Arrangement.spacedBy(homeSectionGap)
                 ) {
                     studioHomeHeaderItems(c, flowShortcutTracks, statusBarTop, homeTopPadding)
-                    studioHomeSections(c, homeRenderOrder)
+                    studioHomeSections(c, homeRenderOrder, youtubeMusicHome)
                 }
                 PullToRefreshDefaults.LoadingIndicator(
                     state = homePullState,
@@ -11379,14 +11455,20 @@ private fun LazyListScope.studioHomeHeaderItems(
 
 private fun LazyListScope.studioHomeSections(
     c: StudioHomeContext,
-    homeRenderOrder: List<HomeSectionId>
+    homeRenderOrder: List<HomeSectionId>,
+    youtubeMusicHome: com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi?
 ) {
     with(c) {
         var offlineEmitted = false
+        var yourMusicEmitted = youtubeMusicHome == null
         homeRenderOrder.forEach { sectionId ->
             if (!offlineEmitted && sectionId !in HomeSectionId.QuickAccess) {
                 homeStudioOfflineSection(c)
                 offlineEmitted = true
+            }
+            if (!yourMusicEmitted && offlineEmitted && sectionId != HomeSectionId.Spotlight && youtubeMusicHome != null) {
+                homeStudioSectionYourMusic(c, youtubeMusicHome)
+                yourMusicEmitted = true
             }
             if (studioLayout.isHidden(sectionId)) return@forEach
             when (sectionId) {
@@ -11409,6 +11491,7 @@ private fun LazyListScope.studioHomeSections(
             }
         }
         if (!offlineEmitted) homeStudioOfflineSection(c)
+        if (!yourMusicEmitted && youtubeMusicHome != null) homeStudioSectionYourMusic(c, youtubeMusicHome)
 
         if (state.homeError != null || state.playerError != null) {
             item(key = "home-status", contentType = "home-card") {
@@ -11721,6 +11804,35 @@ private fun LazyListScope.homeStudioSectionForgottenFavorites(c: StudioHomeConte
                     }
                 }
             }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionYourMusic(
+    c: StudioHomeContext,
+    yourMusic: com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi
+) {
+    with(c) {
+        item(key = "home-your-music-studio", contentType = "home-your-music") {
+            val title = com.luc4n3x.levyra.ui.i18n.youtubeMusicHomeCopy(state.languageCode).title
+            Column(modifier = studioItemModifier(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (yourMusic.albums.isNotEmpty()) {
+                    StudioAlbumSection(
+                        style = homeStyle,
+                        spec = styleSpec,
+                        layout = HomeSectionLayout.Carousel,
+                        title = title,
+                        featured = false,
+                        albums = yourMusic.albums,
+                        onOpen = yourMusic.onOpen
+                    )
+                } else {
+                    StudioSectionHeader(homeStyle, styleSpec, title, false, null)
+                    if (yourMusic.loading) HomeAlbumLoadingRow()
+                }
+                com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeNotice(yourMusic, styleSpec.inset)
+                com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeFooter(yourMusic, styleSpec.inset)
+            }
+        }
     }
 }
 
@@ -12384,6 +12496,7 @@ private fun HomeStudioHost(
     homeListState: LazyListState,
     deferredSectionsRevealed: MutableState<Boolean>,
     accountAvatarUrl: String,
+    youtubeMusicHome: com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi?,
     homeStudio: LevyraHomeStudioSettings,
     onPullRefresh: () -> Unit,
     onTrackActions: (Track) -> Unit
@@ -12395,6 +12508,7 @@ private fun HomeStudioHost(
             homeListState = homeListState,
             deferredSectionsRevealed = deferredSectionsRevealed,
             accountAvatarUrl = accountAvatarUrl,
+            youtubeMusicHome = youtubeMusicHome,
             onPullRefresh = onPullRefresh,
             onTrackActions = onTrackActions
         )
@@ -12405,6 +12519,7 @@ private fun HomeStudioHost(
             homeListState = homeListState,
             deferredSectionsRevealed = deferredSectionsRevealed,
             accountAvatarUrl = accountAvatarUrl,
+            youtubeMusicHome = youtubeMusicHome,
             homeStudio = homeStudio,
             onPullRefresh = onPullRefresh,
             onTrackActions = onTrackActions
@@ -15886,6 +16001,14 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
         val visibleSongs = remember(data.songs, topResultTracks, filter) {
             if (filter == SearchFilter.All) filterSearchSongsExcludingTopResult(data.songs, topResultTracks) else data.songs
         }
+        val discographyCopy = searchDiscographyCopy(strings.code)
+        var albumKind by rememberSaveable(queryClean) { mutableStateOf(SearchAlbumKind.All) }
+        val albumKinds = remember(data.albums) { availableSearchAlbumKinds(data.albums) }
+        val effectiveAlbumKind = if (albumKind in albumKinds) albumKind else SearchAlbumKind.All
+        val visibleAlbums = remember(data.albums, effectiveAlbumKind) {
+            data.albums.filter { effectiveAlbumKind.accepts(it.releaseType) }
+        }
+        val searchGridColumnCount = searchGridColumns(LocalConfiguration.current.screenWidthDp - 36)
         val selectableTracks = remember(topResultTracks, visibleSongs, data.videos, filter) {
             buildList {
                 if (filter == SearchFilter.All) addAll(topResultTracks.take(3))
@@ -16058,6 +16181,30 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                 )
                             }
                         }
+                        val discography = data.discography
+                        if (filter == SearchFilter.All && discography != null) {
+                            item(key = "search-discography", contentType = "search-discography") {
+                                SearchSectionGap()
+                                SearchDiscographySection(
+                                    discography = discography,
+                                    onOpenRelease = { album ->
+                                        focusManager.clearFocus()
+                                        keyboardController?.hide()
+                                        viewModel.openAlbum(album)
+                                    },
+                                    onOpenPlaylist = { playlist ->
+                                        focusManager.clearFocus()
+                                        keyboardController?.hide()
+                                        viewModel.openPlaylistHit(playlist)
+                                    },
+                                    onOpenArtist = { hit ->
+                                        focusManager.clearFocus()
+                                        keyboardController?.hide()
+                                        viewModel.openArtistFromHit(hit)
+                                    }
+                                )
+                            }
+                        }
                         if ((filter == SearchFilter.All || filter == SearchFilter.Artists) && data.artists.isNotEmpty()) {
                             item(key = "search-artists-header", contentType = "search-section-header") {
                                 SearchSectionGap()
@@ -16067,24 +16214,118 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                     onShowAll = { viewModel.setSearchFilter(SearchFilter.Artists) }
                                 )
                             }
-                            item(key = "search-artists", contentType = "search-artists") {
-                                SearchSectionGap()
-                                ArtistHitRow(
-                                    artists = data.artists,
-                                    onClick = { hit ->
-                                        focusManager.clearFocus()
-                                        keyboardController?.hide()
-                                        viewModel.openArtistFromHit(hit)
+                            val openArtistHit: (ArtistHit) -> Unit = { hit ->
+                                focusManager.clearFocus()
+                                keyboardController?.hide()
+                                viewModel.openArtistFromHit(hit)
+                            }
+                            if (filter == SearchFilter.Artists) {
+                                itemsIndexed(
+                                    data.artists,
+                                    key = { index, hit -> "search-artist-row-$index-${hit.browseId.ifBlank { hit.name.trim().lowercase(Locale.ROOT) }}" },
+                                    contentType = { _, _ -> "search-artist-row" }
+                                ) { _, hit ->
+                                    Box(modifier = Modifier.padding(vertical = 3.dp)) {
+                                        SearchArtistListRow(artist = hit, onClick = { openArtistHit(hit) })
                                     }
-                                )
+                                }
+                            } else {
+                                item(key = "search-artists", contentType = "search-artists") {
+                                    SearchSectionGap()
+                                    ArtistHitRow(artists = data.artists, onClick = openArtistHit)
+                                }
                             }
                         }
-                        if ((filter == SearchFilter.All || filter == SearchFilter.Albums) && data.albums.isNotEmpty()) {
+                        if (filter == SearchFilter.Albums && data.albums.isNotEmpty()) {
+                            item(key = "search-albums-grid-header", contentType = "search-section-header") {
+                                Column {
+                                    SearchSectionGap()
+                                    SearchSectionHeader(title = strings.albumsPlain, showAll = false, onShowAll = {})
+                                    if (albumKinds.isNotEmpty()) {
+                                        Spacer(Modifier.height(4.dp))
+                                        SearchAlbumKindChips(kinds = albumKinds, selected = effectiveAlbumKind, onSelect = { albumKind = it })
+                                        Spacer(Modifier.height(12.dp))
+                                    }
+                                }
+                            }
+                            val albumRows = visibleAlbums
+                                .map { it.searchCardModel(discographyCopy.album, discographyCopy.single) }
+                                .chunked(searchGridColumnCount)
+                            itemsIndexed(
+                                albumRows,
+                                key = { rowIndex, row -> "search-album-grid-${effectiveAlbumKind.name}-$rowIndex-${row.first().key}" },
+                                contentType = { _, _ -> "search-card-grid" }
+                            ) { rowIndex, row ->
+                                Box(modifier = Modifier.padding(vertical = 8.dp)) {
+                                    SearchCardGridRow(
+                                        cards = row,
+                                        firstIndex = rowIndex * searchGridColumnCount,
+                                        columns = searchGridColumnCount,
+                                        actionsFor = { index ->
+                                            visibleAlbums.getOrNull(index)?.let { album ->
+                                                listOf(SearchCardAction(Icons.Rounded.Download, strings.download) { viewModel.exportAlbumHit(album) })
+                                            }.orEmpty()
+                                        },
+                                        onClick = { index ->
+                                            visibleAlbums.getOrNull(index)?.let { album ->
+                                                focusManager.clearFocus()
+                                                keyboardController?.hide()
+                                                viewModel.openAlbum(album)
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                        if (filter == SearchFilter.Playlists && data.playlists.isNotEmpty()) {
+                            item(key = "search-playlists-grid-header", contentType = "search-section-header") {
+                                Column {
+                                    SearchSectionGap()
+                                    SearchSectionHeader(title = strings.playlistsPlain, showAll = false, onShowAll = {})
+                                }
+                            }
+                            val playlistRows = data.playlists.map { it.searchCardModel() }.chunked(searchGridColumnCount)
+                            itemsIndexed(
+                                playlistRows,
+                                key = { rowIndex, row -> "search-playlist-grid-$rowIndex-${row.first().key}" },
+                                contentType = { _, _ -> "search-card-grid" }
+                            ) { rowIndex, row ->
+                                Box(modifier = Modifier.padding(vertical = 8.dp)) {
+                                    SearchCardGridRow(
+                                        cards = row,
+                                        firstIndex = rowIndex * searchGridColumnCount,
+                                        columns = searchGridColumnCount,
+                                        actionsFor = { index ->
+                                            data.playlists.getOrNull(index)?.let { playlist ->
+                                                listOf(
+                                                    SearchCardAction(Icons.Rounded.PlayArrow, strings.play) {
+                                                        focusManager.clearFocus()
+                                                        keyboardController?.hide()
+                                                        viewModel.playPlaylistHit(playlist)
+                                                    },
+                                                    SearchCardAction(Icons.Rounded.Download, strings.downloadPlaylist) {
+                                                        viewModel.exportPlaylistHit(playlist)
+                                                    }
+                                                )
+                                            }.orEmpty()
+                                        },
+                                        onClick = { index ->
+                                            data.playlists.getOrNull(index)?.let { playlist ->
+                                                focusManager.clearFocus()
+                                                keyboardController?.hide()
+                                                viewModel.openPlaylistHit(playlist)
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                        if (filter == SearchFilter.All && discography == null && data.albums.isNotEmpty()) {
                             item(key = "search-albums-header", contentType = "search-section-header") {
                                 SearchSectionGap()
                                 SearchSectionHeader(
                                     title = strings.albumsPlain,
-                                    showAll = filter == SearchFilter.All,
+                                    showAll = true,
                                     onShowAll = { viewModel.setSearchFilter(SearchFilter.Albums) }
                                 )
                             }
@@ -16101,12 +16342,12 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                 )
                             }
                         }
-                        if ((filter == SearchFilter.All || filter == SearchFilter.Playlists) && data.playlists.isNotEmpty()) {
+                        if (filter == SearchFilter.All && data.playlists.isNotEmpty()) {
                             item(key = "search-playlists-header", contentType = "search-section-header") {
                                 SearchSectionGap()
                                 SearchSectionHeader(
                                     title = strings.playlistsPlain,
-                                    showAll = filter == SearchFilter.All,
+                                    showAll = true,
                                     onShowAll = { viewModel.setSearchFilter(SearchFilter.Playlists) }
                                 )
                             }
@@ -16124,17 +16365,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                         keyboardController?.hide()
                                         viewModel.playPlaylistHit(playlist)
                                     },
-                                    onDownload = { playlist -> viewModel.exportPlaylistHit(playlist) },
-                                    loadingMore = filter in state.searchSectionLoading,
-                                    onEndReached = if (
-                                        filter == SearchFilter.Playlists &&
-                                        state.searchSectionContinuations[filter].orEmpty().isNotBlank() &&
-                                        filter !in data.failedSections
-                                    ) {
-                                        { viewModel.loadMoreSearchSection(SearchFilter.Playlists) }
-                                    } else {
-                                        null
-                                    }
+                                    onDownload = { playlist -> viewModel.exportPlaylistHit(playlist) }
                                 )
                             }
                         }
@@ -16225,8 +16456,8 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                 SearchSectionFooter(
                                     loading = filter in state.searchSectionLoading,
                                     failed = filter in data.failedSections,
-                                    canLoadMore = filter != SearchFilter.Playlists &&
-                                        state.searchSectionContinuations[filter].orEmpty().isNotBlank(),
+                                    canLoadMore = state.searchSectionContinuations[filter].orEmpty().isNotBlank(),
+                                    autoLoadKey = data.sectionSize(filter),
                                     onLoadMore = { viewModel.loadMoreSearchSection(filter) }
                                 )
                             }
@@ -16736,7 +16967,7 @@ private fun recentSearchArtworkShapes(): List<Shape> {
     }
 }
 
-private fun Modifier.recentSearchesBleed(gutter: Dp): Modifier = layout { measurable, constraints ->
+internal fun Modifier.recentSearchesBleed(gutter: Dp): Modifier = layout { measurable, constraints ->
     val gutterPx = gutter.roundToPx()
     val width = constraints.maxWidth + gutterPx * 2
     val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
@@ -16746,8 +16977,8 @@ private fun Modifier.recentSearchesBleed(gutter: Dp): Modifier = layout { measur
 }
 
 private const val SEARCH_TASTE_HINT_LIMIT = 10
-private val RecentSearchGutter = 18.dp
-private val SettingsStudioGutter = 18.dp
+internal val RecentSearchGutter = 18.dp
+internal val SettingsStudioGutter = 18.dp
 private val RecentSearchCardWidth = 148.dp
 private val RecentSearchCardShape = RoundedCornerShape(32.dp)
 private val RecentSearchPlayBadge = 44.dp
@@ -25490,7 +25721,10 @@ private fun SearchFilterChips(
         if (hasVideos) add(SearchFilter.Videos to strings.video)
     }
     Row(
-        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        modifier = Modifier
+            .recentSearchesBleed(RecentSearchGutter)
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = RecentSearchGutter),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         chips.forEach { (filter, label) ->
@@ -26180,22 +26414,11 @@ private fun PlaylistHitRow(
     playlists: List<PlaylistHit>,
     onOpen: (PlaylistHit) -> Unit,
     onPlay: (PlaylistHit) -> Unit,
-    onDownload: (PlaylistHit) -> Unit,
-    loadingMore: Boolean = false,
-    onEndReached: (() -> Unit)? = null
+    onDownload: (PlaylistHit) -> Unit
 ) {
     val context = LocalContext.current
     val strings = LocalLevyraStrings.current
-    val listState = rememberLazyListState()
-    val currentOnEndReached by rememberUpdatedState(onEndReached)
-    val loadsMore = onEndReached != null
-    LaunchedEffect(listState, playlists.size, loadsMore, loadingMore) {
-        if (!loadsMore || loadingMore) return@LaunchedEffect
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
-            .first { lastVisible -> lastVisible >= playlists.lastIndex - 1 }
-        currentOnEndReached?.invoke()
-    }
-    LazyRow(state = listState, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         itemsIndexed(
             items = playlists,
             key = { index, playlist ->
@@ -26342,9 +26565,15 @@ private fun SearchSectionFooter(
     loading: Boolean,
     failed: Boolean,
     canLoadMore: Boolean,
+    autoLoadKey: Int,
     onLoadMore: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val currentOnLoadMore by rememberUpdatedState(onLoadMore)
+    val autoLoads by rememberUpdatedState(canLoadMore && !loading && !failed)
+    LaunchedEffect(autoLoadKey) {
+        if (autoLoads) currentOnLoadMore()
+    }
     when {
         loading -> Box(
             modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
@@ -26362,6 +26591,15 @@ private fun SearchSectionFooter(
             }
         }
     }
+}
+
+private fun SearchResults.sectionSize(filter: SearchFilter): Int = when (filter) {
+    SearchFilter.Songs -> songs.size
+    SearchFilter.Videos -> videos.size
+    SearchFilter.Albums -> albums.size
+    SearchFilter.Artists -> artists.size
+    SearchFilter.Playlists -> playlists.size
+    SearchFilter.All -> 0
 }
 
 @Composable

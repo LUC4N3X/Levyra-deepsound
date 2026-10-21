@@ -16,6 +16,9 @@ internal data class YoutubeMusicAccount(
 
 internal object YoutubeMusicAccountParser {
     private val authUserPattern = Regex("[?&]authuser=(\\d+)")
+    private const val EDIT_ICON = "EDIT"
+    private const val LIBRARY_ICON_PREFIX = "LIBRARY_"
+    private val MENU_ICON_KEYS = listOf("icon", "defaultIcon", "toggledIcon")
 
     fun accounts(root: JSONObject): List<YoutubeMusicAccount> {
         if (root.optString("code") != "SUCCESS" || root.optJSONObject("data") == null) {
@@ -65,6 +68,23 @@ internal object YoutubeMusicAccountParser {
             return (renderers.firstOrNull { it.optBoolean("selected") } ?: renderers.firstOrNull())?.optJSONObject("content")
         }
         return contents
+    }
+
+    fun ownedPlaylistBrowseIds(content: Any?): Set<String> = buildSet {
+        listOf("musicTwoRowItemRenderer", "musicResponsiveListItemRenderer").forEach { rendererKey ->
+            objects(content, rendererKey).forEach { renderer ->
+                val menu = renderer.optJSONObject("menu") ?: return@forEach
+                val browseId = objects(renderer, "browseEndpoint")
+                    .map { endpoint -> endpoint.optString("browseId") }
+                    .firstOrNull { id -> id.startsWith("VL") }
+                    ?: return@forEach
+                val icons = MENU_ICON_KEYS.flatMap { key -> objects(menu, key) }.map { icon -> icon.optString("iconType") }
+                val editable = EDIT_ICON in icons
+                val libraryToggle = icons.any { icon -> icon.startsWith(LIBRARY_ICON_PREFIX) }
+                val linkedAuthor = objects(renderer.optJSONObject("subtitle"), "browseEndpoint").isNotEmpty()
+                if (editable || (!libraryToggle && !linkedAuthor)) add(browseId)
+            }
+        }
     }
 
     fun continuation(root: JSONObject): String {

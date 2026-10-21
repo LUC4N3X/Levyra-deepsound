@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.luc4n3x.levyra.data.youtubemusic.*
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -41,7 +42,10 @@ internal data class YoutubeMusicAccountUiState(
     val error: YoutubeMusicAccountError? = null,
     val notice: YoutubeMusicAccountNotice? = null,
     val home: YoutubeMusicHome? = null,
-    val homeFailed: Boolean = false
+    val homeFailed: Boolean = false,
+    val library: YoutubeMusicLibraryShelf? = null,
+    val libraryLoading: Boolean = false,
+    val libraryError: YoutubeMusicAccountError? = null
 ) {
     val currentPage: YoutubeMusicLibraryPage? get() = if (detail != null) detailPage else pages[collection]
     val homeSource: YoutubeMusicHomeSource get() = youtubeMusicHomeSource(restoring, active?.id, home, homeFailed)
@@ -65,6 +69,9 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
     private var homeJob: Job? = null
     private var homeKey: String? = null
     private var fetchedHomeKey: String? = null
+    private var libraryJob: Job? = null
+    private var libraryKey: String? = null
+    private var fetchedLibraryKey: String? = null
 
     init {
         viewModelScope.launch {
@@ -117,12 +124,48 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
     suspend fun refreshHomeAndAwait(languageCode: String) {
         if (saved.active == null) return
         fetchedHomeKey = null
+        fetchedLibraryKey = null
         loadHome(languageCode)
+        loadLibraryShelf(languageCode)
         homeJob?.join()
+        libraryJob?.join()
+    }
+
+    fun loadLibraryShelf(languageCode: String, force: Boolean = false) {
+        val session = saved.active ?: return
+        if (state.value.restoring) return
+        val key = youtubeMusicHomeKey(session.account.id, languageCode)
+        if (force) fetchedLibraryKey = null
+        val inFlight = libraryKey.takeIf { libraryJob?.isActive == true }
+        if (!youtubeMusicHomeNeedsFetch(session.account.id, languageCode, fetchedLibraryKey, inFlight)) return
+        libraryJob?.cancel()
+        libraryKey = key
+        _state.update { it.copy(libraryLoading = true, libraryError = null) }
+        lateinit var job: Job
+        job = viewModelScope.launch(start = CoroutineStart.LAZY) {
+            val shelf = try {
+                repository.libraryShelf(session, languageCode)
+            } catch (cancelled: CancellationException) {
+                if (libraryJob === job) _state.update { it.copy(libraryLoading = false) }
+                throw cancelled
+            } catch (error: Exception) {
+                if (saved.activeId == session.account.id) {
+                    val kind = if (error is YoutubeMusicSessionExpired) YoutubeMusicAccountError.SignIn else YoutubeMusicAccountError.Network
+                    _state.update { it.copy(libraryLoading = false, libraryError = kind) }
+                }
+                return@launch
+            }
+            if (saved.activeId != shelf.accountId) return@launch
+            fetchedLibraryKey = key
+            _state.update { it.copy(library = shelf, libraryLoading = false, libraryError = null) }
+        }
+        libraryJob = job
+        job.start()
     }
 
     fun onNetworkRestored(languageCode: String) {
         loadHome(languageCode)
+        if (state.value.libraryError == YoutubeMusicAccountError.Network) loadLibraryShelf(languageCode)
         if (state.value.error == YoutubeMusicAccountError.Network && !state.value.busy && !state.value.showLogin) retry()
     }
 
@@ -339,7 +382,11 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
                 val accountChanged = previousId != next.activeId
                 if (accountChanged) runCatching { homeCache.clear() }
                 withContext(Dispatchers.Main.immediate) {
-                    if (accountChanged) fetchedHomeKey = null
+                    if (accountChanged) {
+                        fetchedHomeKey = null
+                        fetchedLibraryKey = null
+                        libraryJob?.cancel()
+                    }
                     publishSession(clearLibrary = accountChanged)
                 }
             }
@@ -352,6 +399,9 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
             accounts = saved.sessions.map { it.account }, active = saved.active?.account,
             home = it.home?.takeIf { home -> home.accountId == saved.activeId },
             homeFailed = it.homeFailed && it.active?.id == saved.activeId,
+            library = it.library?.takeIf { library -> library.accountId == saved.activeId },
+            libraryLoading = it.libraryLoading && it.active?.id == saved.activeId,
+            libraryError = it.libraryError.takeIf { _ -> it.active?.id == saved.activeId },
             pages = if (clearLibrary) emptyMap() else it.pages,
             detail = if (clearLibrary) null else it.detail, detailPage = if (clearLibrary) null else it.detailPage,
             error = null, notice = null
