@@ -135,6 +135,9 @@ object PlaylistMatchEngine {
     private val untrustedAlbums = setOf("", "levyra", "youtube", "youtube music", "unknown", "unknown album", "single", "singles")
 
     fun evaluate(source: ImportedTrackIdentity, candidate: MatchCandidate): MatchEvaluation {
+        if (!candidate.available) {
+            return MatchEvaluation(candidate, 0, listOf(MatchReason(MatchSignal.UNAVAILABLE)))
+        }
         if (source.directCatalogId.isNotBlank() && source.directCatalogId == candidate.id) {
             return MatchEvaluation(candidate, 100, listOf(MatchReason(MatchSignal.DIRECT_ID)))
         }
@@ -185,6 +188,11 @@ object PlaylistMatchEngine {
         return when {
             sourceTitle.core.isNotEmpty() && sourceTitle.core == candidateTitle.core ->
                 45.also { reasons += MatchReason(MatchSignal.TITLE_EXACT) }
+            ImportTransliteration.related(sourceTitle.core, candidateTitle.core) -> {
+                reasons += MatchReason(MatchSignal.TITLE_CLOSE, detail = "transliteration")
+                limit(79)
+                38
+            }
             similarity >= 0.85 && !short -> 32.also { reasons += MatchReason(MatchSignal.TITLE_CLOSE) }
             similarity >= 0.6 && !short -> {
                 reasons += MatchReason(MatchSignal.TITLE_WEAK)
@@ -272,7 +280,7 @@ object PlaylistMatchEngine {
         val title = MusicIdentityText.title(identity.title)
         val artist = normalizedArtists(identity.artists).firstOrNull().orEmpty()
         val signature = title.versionSignature.sorted().joinToString("+")
-        return "meta:${title.core}|$artist|$signature"
+        return "meta:${title.core}|$artist|$signature|${MusicIdentityText.album(identity.album).core}|${identity.durationMs}"
     }
 
     fun normalizeIsrc(value: String): String =
@@ -325,7 +333,9 @@ object PlaylistMatchEngine {
         val expected = sourceNames.toSet() + sourceFeatured
         return when {
             primary in candidatePrimary -> {
-                val exact = candidatePrimary.all { it in expected } && sourceNames.all { it in candidateAll }
+                val exact = candidatePrimary.firstOrNull() == primary &&
+                    candidatePrimary.all { it in expected } && expected.all { it in candidateAll }
+                if (!exact) limit(79)
                 reasons += MatchReason(if (exact) MatchSignal.ARTIST_EXACT else MatchSignal.ARTIST_PRIMARY)
                 if (exact) 32 else 27
             }
@@ -333,6 +343,11 @@ object PlaylistMatchEngine {
                 reasons += MatchReason(MatchSignal.ARTIST_FEATURED_ONLY)
                 limit(70)
                 10
+            }
+            candidatePrimary.any { ImportTransliteration.related(primary, it) } -> {
+                reasons += MatchReason(MatchSignal.ARTIST_PARTIAL, detail = "transliteration")
+                limit(79)
+                26
             }
             candidateAll.any { tokenSimilarity(primary, it) >= 0.75 || compactEquals(primary, it) } -> {
                 reasons += MatchReason(MatchSignal.ARTIST_PARTIAL)
