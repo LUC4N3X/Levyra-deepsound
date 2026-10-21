@@ -88,232 +88,286 @@ internal fun AppleMusicHomeContent(
     val copy = remember(strings.code) { LevyraAppleMusicStrings.forCode(strings.code) }
     val shelves = remember(editorial.newMusic) { AppleMusicHomeShelves.select(editorial.newMusic) }
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val currentId = data.currentId
-    val openItem: (AppleCatalogItem, List<Track>) -> Unit = { item, siblings ->
-        when (item.kind) {
-            AppleCatalogItemKind.Album -> actions.openAlbum(
-                AlbumHit(
-                    title = item.title, artist = item.subtitle, year = "", thumbnailUrl = item.coverUrl(600),
-                    query = "${item.title} ${item.subtitle}".trim(), explicit = item.explicit
-                )
-            )
-            AppleCatalogItemKind.Playlist -> editorialViewModel.openCollection(item)
-            AppleCatalogItemKind.Artist -> actions.openArtistByName(item.title)
-            AppleCatalogItemKind.Song -> AppleCatalogTracks.fromItem(item)?.let { track ->
-                actions.playFrom(siblings.ifEmpty { listOf(track) }, siblings.firstOrNull { it.id == track.id } ?: track)
-            }
-            else -> Unit
-        }
-    }
+    val openItem = remember(actions, editorialViewModel) { appleMusicItemOpener(actions, editorialViewModel::openCollection) }
     var levyraChartOpen by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
-    val allLevyraBlocks = appleMusicLevyraBlocks(data, actions, copy.explicit, copy.songs, strings) { levyraChartOpen = true }
-    val top50Block = allLevyraBlocks.firstOrNull { it.first == "levyra-top50" }
-    val chartsShelfIndex = remember(shelves) { shelves.indexOfFirst { it.role == AppleHomeShelfRole.Charts } }
-    val levyraBlocks = if (chartsShelfIndex >= 0) allLevyraBlocks.filter { it.first != "levyra-top50" } else allLevyraBlocks
     var seeAllShelfId by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf<String?>(null) }
-    val seeAllShelf = remember(seeAllShelfId, shelves) { shelves.firstOrNull { it.shelf.id == seeAllShelfId } }
-    val levyraAfter = remember(shelves.size) { if (shelves.isEmpty()) emptyList() else listOf(1, 3, 5, 7, 8, 9, 10).map { it.coerceAtMost(shelves.lastIndex) } }
+    val plan = AppleMusicHomePlan.of(shelves, appleMusicLevyraBlocks(data, actions, copy, strings) { levyraChartOpen = true })
+    val reload = { editorialViewModel.load(storefront, strings.code, force = true) }
     Box(Modifier.fillMaxSize().background(AppleMusicDesign.background)) {
         LazyColumn(
             state = homeListState,
             modifier = Modifier.fillMaxSize().pullToRefresh(isRefreshing = homeRefreshing, state = homePullState, onRefresh = {
                 onPullRefresh()
-                editorialViewModel.load(storefront, strings.code, force = true)
+                reload()
             }),
             contentPadding = PaddingValues(top = statusBarTop + 8.dp, bottom = homeBottomInset),
             verticalArrangement = Arrangement.spacedBy(AppleMusicDesign.sectionGap)
         ) {
             item(key = "apple-home-title", contentType = "apple-home-title") {
-                Column {
-                    AppleMusicLargeTitle(strings.home, copy.more, actions.openSettings)
-                    if (data.countryLabel.isNotBlank()) AppleMusicCountryChip(data.countryLabel, actions.pickCountry)
-                }
+                AppleMusicHomeTitle(strings.home, copy.more, data.countryLabel, actions)
             }
-            if (shelves.isEmpty()) {
-                if (editorial.failed) {
-                    item(key = "apple-home-unavailable", contentType = "apple-notice") {
-                        AppleMusicNotice(copy.editorialUnavailable, copy.editorialRetry) { editorialViewModel.load(storefront, strings.code, force = true) }
-                    }
-                }
-                levyraBlocks.forEach { (key, block) -> item(key = key, contentType = key) { block() } }
-            } else {
-                if (editorial.stale) {
-                    item(key = "apple-home-stale", contentType = "apple-notice") { AppleMusicNotice(copy.editorialOffline, null, null) }
-                }
-                var levyraIndex = 0
-                shelves.forEachIndexed { index, homeShelf ->
-                    if (index == chartsShelfIndex && top50Block != null) {
-                        item(key = top50Block.first, contentType = top50Block.first) { top50Block.second() }
-                    }
-                    item(key = "apple-shelf-${homeShelf.shelf.id}-$index", contentType = "apple-${homeShelf.role}") {
-                        AppleMusicEditorialShelf(homeShelf, currentId, copy.explicit, openItem, actions.onTrackActions) { seeAllShelfId = homeShelf.shelf.id }
-                    }
-                    while (levyraIndex < levyraBlocks.size && levyraIndex < levyraAfter.size && levyraAfter[levyraIndex] == index) {
-                        val (key, block) = levyraBlocks[levyraIndex]
-                        item(key = key, contentType = key) { block() }
-                        levyraIndex++
-                    }
-                }
-                levyraBlocks.drop(levyraIndex).forEach { (key, block) -> item(key = key, contentType = key) { block() } }
+            appleMusicHomeNotices(editorial, shelves.isEmpty(), copy, reload)
+            appleMusicHomeSections(plan) { homeShelf ->
+                AppleMusicEditorialShelf(homeShelf, data.currentId, copy.explicit, openItem, actions.onTrackActions) { seeAllShelfId = homeShelf.shelf.id }
             }
         }
-        Box(
-            Modifier.fillMaxWidth().height(statusBarTop + 12.dp)
-                .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(AppleMusicDesign.background, AppleMusicDesign.background.copy(alpha = 0.92f), Color.Transparent)))
-        )
-        PullToRefreshDefaults.LoadingIndicator(
-            state = homePullState,
-            isRefreshing = homeRefreshing,
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = statusBarTop + 16.dp)
-        )
+        AppleMusicHomeTopChrome(statusBarTop, homeRefreshing, homePullState)
         if (levyraChartOpen && data.charts.isNotEmpty()) {
-            AppleMusicCollectionScreen(
-                title = data.chartsTitle, curator = "Levyra", caption = data.countryLabel, description = "",
-                artworkUrl = "", artworkTrack = data.charts.firstOrNull(), tracks = data.charts, currentId = currentId,
-                loading = false, failed = false, bottomInset = homeBottomInset,
-                onDismiss = { levyraChartOpen = false },
-                onPlay = { track -> actions.playFrom(data.charts, track) },
-                onPlayAll = { actions.playAll(data.charts) },
-                onShuffle = {
-                    val shuffled = data.charts.shuffled()
-                    shuffled.firstOrNull()?.let { first -> actions.playFrom(shuffled, first) }
-                },
-                onTrackActions = actions.onTrackActions,
-                ranked = true
-            )
+            AppleMusicTrackListScreen(
+                title = data.chartsTitle, curator = "Levyra", caption = data.countryLabel, tracks = data.charts,
+                currentId = data.currentId, bottomInset = homeBottomInset, actions = actions, ranked = true
+            ) { levyraChartOpen = false }
         }
-        seeAllShelf?.let { homeShelf ->
-            AppleMusicShelfScreen(homeShelf, currentId, copy.explicit, homeBottomInset, openItem, actions.onTrackActions) { seeAllShelfId = null }
+        plan.shelf(seeAllShelfId)?.let { homeShelf ->
+            AppleMusicShelfScreen(homeShelf, data.currentId, copy.explicit, homeBottomInset, openItem, actions.onTrackActions) { seeAllShelfId = null }
         }
         editorial.collection?.let { collection ->
-            AppleMusicCollectionScreen(
-                title = collection.title,
-                curator = collection.curator,
-                caption = "",
-                description = collection.description,
-                artworkUrl = collection.artworkUrl,
-                artworkTrack = collection.tracks.firstOrNull(),
-                tracks = collection.tracks,
-                currentId = currentId,
-                loading = collection.loading,
-                failed = collection.failed,
-                bottomInset = homeBottomInset,
-                onDismiss = editorialViewModel::closeCollection,
-                onPlay = { track -> actions.playFrom(collection.tracks, track) },
-                onPlayAll = { actions.playAll(collection.tracks) },
-                onShuffle = {
-                    val shuffled = collection.tracks.shuffled()
-                    shuffled.firstOrNull()?.let { first -> actions.playFrom(shuffled, first) }
-                },
-                onTrackActions = actions.onTrackActions,
-                onRetry = editorialViewModel::retryCollection,
-                ranked = AppleMusicHomeShelves.chartParts(collection.title) != null
-            )
+            AppleMusicEditorialCollectionOverlay(collection, data.currentId, homeBottomInset, actions, editorialViewModel)
         }
     }
+}
+
+private class AppleMusicHomePlan(
+    val shelves: List<AppleHomeShelf>,
+    val leading: List<AppleHomeBlock>,
+    val chartBlock: AppleHomeBlock?,
+    val chartIndex: Int
+) {
+    fun shelf(id: String?): AppleHomeShelf? = id?.let { wanted -> shelves.firstOrNull { it.shelf.id == wanted } }
+
+    fun blocksAfter(index: Int): List<AppleHomeBlock> {
+        val slot = SLOTS.indexOfFirst { it.coerceAtMost(shelves.lastIndex) == index }
+        if (slot < 0) return emptyList()
+        val last = SLOTS.indexOfLast { it.coerceAtMost(shelves.lastIndex) == index }
+        return leading.subList(slot.coerceAtMost(leading.size), (last + 1).coerceAtMost(leading.size))
+    }
+
+    fun trailing(): List<AppleHomeBlock> = leading.drop(SLOTS.size)
+
+    companion object {
+        private val SLOTS = listOf(1, 3, 5, 7, 8, 9, 10)
+
+        fun of(shelves: List<AppleHomeShelf>, blocks: List<AppleHomeBlock>): AppleMusicHomePlan {
+            val chartIndex = shelves.indexOfFirst { it.role == AppleHomeShelfRole.Charts }
+            val chartBlock = blocks.firstOrNull { it.first == TOP50_KEY }?.takeIf { chartIndex >= 0 }
+            val leading = if (chartBlock != null) blocks.filter { it.first != TOP50_KEY } else blocks
+            return AppleMusicHomePlan(shelves, leading, chartBlock, chartIndex)
+        }
+    }
+}
+
+private typealias AppleHomeBlock = Pair<String, @Composable () -> Unit>
+
+private const val TOP50_KEY = "levyra-top50"
+
+private fun androidx.compose.foundation.lazy.LazyListScope.appleMusicHomeNotices(
+    editorial: com.luc4n3x.levyra.viewmodel.AppleMusicEditorialUiState,
+    noShelves: Boolean,
+    copy: com.luc4n3x.levyra.ui.i18n.AppleMusicSkinCopy,
+    reload: () -> Unit
+) {
+    if (noShelves && editorial.failed) {
+        item(key = "apple-home-unavailable", contentType = "apple-notice") { AppleMusicNotice(copy.editorialUnavailable, copy.editorialRetry, reload) }
+    }
+    if (!noShelves && editorial.stale) {
+        item(key = "apple-home-stale", contentType = "apple-notice") { AppleMusicNotice(copy.editorialOffline, null, null) }
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.appleMusicHomeSections(
+    plan: AppleMusicHomePlan,
+    shelfContent: @Composable (AppleHomeShelf) -> Unit
+) {
+    if (plan.shelves.isEmpty()) {
+        appleMusicHomeBlocks(plan.leading)
+        return
+    }
+    plan.shelves.forEachIndexed { index, homeShelf ->
+        if (index == plan.chartIndex) plan.chartBlock?.let { appleMusicHomeBlocks(listOf(it)) }
+        item(key = "apple-shelf-${homeShelf.shelf.id}-$index", contentType = "apple-${homeShelf.role}") { shelfContent(homeShelf) }
+        appleMusicHomeBlocks(plan.blocksAfter(index))
+    }
+    appleMusicHomeBlocks(plan.trailing())
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.appleMusicHomeBlocks(blocks: List<AppleHomeBlock>) {
+    blocks.forEach { (key, block) -> item(key = key, contentType = key) { block() } }
+}
+
+private fun appleMusicItemOpener(
+    actions: AppleMusicHomeActions,
+    openCollection: (AppleCatalogItem) -> Unit
+): (AppleCatalogItem, List<Track>) -> Unit = { item, siblings ->
+    when (item.kind) {
+        AppleCatalogItemKind.Album -> actions.openAlbum(item.toAlbumHit())
+        AppleCatalogItemKind.Playlist -> openCollection(item)
+        AppleCatalogItemKind.Artist -> actions.openArtistByName(item.title)
+        AppleCatalogItemKind.Song -> AppleCatalogTracks.fromItem(item)?.let { track -> actions.playFrom(siblings.ifEmpty { listOf(track) }, track) }
+        else -> Unit
+    }
+}
+
+private fun AppleCatalogItem.toAlbumHit(): AlbumHit = AlbumHit(
+    title = title, artist = subtitle, year = "", thumbnailUrl = coverUrl(600),
+    query = "$title $subtitle".trim(), explicit = explicit
+)
+
+private fun AppleMusicHomeActions.playShuffled(tracks: List<Track>) {
+    val shuffled = tracks.shuffled()
+    shuffled.firstOrNull()?.let { first -> playFrom(shuffled, first) }
+}
+
+@Composable
+private fun AppleMusicHomeTitle(title: String, moreLabel: String, countryLabel: String, actions: AppleMusicHomeActions) {
+    Column {
+        AppleMusicLargeTitle(title, moreLabel, actions.openSettings)
+        if (countryLabel.isNotBlank()) AppleMusicCountryChip(countryLabel, actions.pickCountry)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun androidx.compose.foundation.layout.BoxScope.AppleMusicHomeTopChrome(statusBarTop: Dp, refreshing: Boolean, pullState: PullToRefreshState) {
+    Box(
+        Modifier.fillMaxWidth().height(statusBarTop + 12.dp)
+            .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(AppleMusicDesign.background, AppleMusicDesign.background.copy(alpha = 0.92f), Color.Transparent)))
+    )
+    PullToRefreshDefaults.LoadingIndicator(
+        state = pullState,
+        isRefreshing = refreshing,
+        modifier = Modifier.align(Alignment.TopCenter).padding(top = statusBarTop + 16.dp)
+    )
+}
+
+@Composable
+private fun AppleMusicTrackListScreen(
+    title: String,
+    curator: String,
+    caption: String,
+    tracks: List<Track>,
+    currentId: String?,
+    bottomInset: Dp,
+    actions: AppleMusicHomeActions,
+    ranked: Boolean,
+    onDismiss: () -> Unit
+) {
+    AppleMusicCollectionScreen(
+        title = title, curator = curator, caption = caption, description = "",
+        artworkUrl = "", artworkTrack = tracks.firstOrNull(), tracks = tracks, currentId = currentId,
+        loading = false, failed = false, bottomInset = bottomInset, onDismiss = onDismiss,
+        onPlay = { track -> actions.playFrom(tracks, track) },
+        onPlayAll = { actions.playAll(tracks) },
+        onShuffle = { actions.playShuffled(tracks) },
+        onTrackActions = actions.onTrackActions,
+        ranked = ranked
+    )
+}
+
+@Composable
+private fun AppleMusicEditorialCollectionOverlay(
+    collection: com.luc4n3x.levyra.viewmodel.AppleMusicCollectionUiState,
+    currentId: String?,
+    bottomInset: Dp,
+    actions: AppleMusicHomeActions,
+    editorialViewModel: AppleMusicEditorialViewModel
+) {
+    AppleMusicCollectionScreen(
+        title = collection.title,
+        curator = collection.curator,
+        caption = "",
+        description = collection.description,
+        artworkUrl = collection.artworkUrl,
+        artworkTrack = collection.tracks.firstOrNull(),
+        tracks = collection.tracks,
+        currentId = currentId,
+        loading = collection.loading,
+        failed = collection.failed,
+        bottomInset = bottomInset,
+        onDismiss = editorialViewModel::closeCollection,
+        onPlay = { track -> actions.playFrom(collection.tracks, track) },
+        onPlayAll = { actions.playAll(collection.tracks) },
+        onShuffle = { actions.playShuffled(collection.tracks) },
+        onTrackActions = actions.onTrackActions,
+        onRetry = editorialViewModel::retryCollection,
+        ranked = AppleMusicHomeShelves.chartParts(collection.title) != null
+    )
 }
 
 private fun appleMusicLevyraBlocks(
     data: AppleMusicHomeData,
     actions: AppleMusicHomeActions,
-    explicitLabel: String,
-    songs: (Int) -> String,
+    copy: com.luc4n3x.levyra.ui.i18n.AppleMusicSkinCopy,
     strings: com.luc4n3x.levyra.ui.i18n.LevyraStrings,
     openCharts: () -> Unit
-): List<Pair<String, @Composable () -> Unit>> = buildList {
-    val currentId = data.currentId
-    if (data.charts.isNotEmpty()) {
-        add("levyra-top50" to @Composable {
-            Column {
-                AppleMusicSectionHeader(data.chartsTitle, openCharts)
-                AppleMusicSongColumns(data.charts.take(20), 4, currentId, explicitLabel, { track -> actions.playFrom(data.charts, track) }, actions.onTrackActions)
-            }
-        })
-    }
-    data.soundtrack?.let { hero ->
-        add("levyra-soundtrack" to @Composable {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                AppleMusicSectionHeader(hero.label)
-                Box(Modifier.padding(horizontal = AppleMusicDesign.gutter)) {
-                    AppleMusicHeroCard(
-                        AppleMusicHeroModel(
-                            key = "soundtrack-${hero.track.id}", heading = "", title = hero.track.artist, subtitle = hero.track.title,
-                            description = hero.lead, imageUrl = hero.artistArtworkUrl,
-                            coverUrl = hero.track.largeThumbnailUrl.ifBlank { hero.track.thumbnailUrl },
-                            backgroundColor = Color(hero.track.accentStart), onClick = hero.onOpen
-                        )
-                    )
-                }
-            }
-        })
-    }
-    if (data.showPersonal && data.personalTracks.isNotEmpty()) {
-        add("levyra-orbit" to @Composable {
-            Column {
-                AppleMusicSectionHeader(strings.personalOrbitTitle)
-                AppleMusicSongColumns(data.personalTracks, 4, currentId, explicitLabel, { track -> actions.playFrom(data.personalTracks, track) }, actions.onTrackActions)
-            }
-        })
-    }
-    data.quickPicks?.takeIf { it.tracks.isNotEmpty() }?.let { section ->
-        add("levyra-quick-picks" to @Composable {
-            Column {
-                AppleMusicSectionHeader(section.title.ifBlank { strings.quickPicks })
-                AppleMusicSongColumns(section.tracks, 4, currentId, explicitLabel, { track -> actions.playFrom(section.tracks, track) }, actions.onTrackActions)
-            }
-        })
-    }
-    if (data.showAlbums && data.albums.isNotEmpty()) {
-        add("levyra-albums" to @Composable {
-            Column {
-                AppleMusicSectionHeader(strings.albumsForYou)
-                AppleMusicCardCarousel(
-                    data.albums.map { album ->
-                        AppleMusicCardModel("album-${album.title}-${album.artist}", album.title, album.artist, album.thumbnailUrl, album.explicit) { actions.openAlbum(album) }
-                    },
-                    explicitLabel = explicitLabel
-                )
-            }
-        })
-    }
-    if (data.collections.isNotEmpty()) {
-        add("levyra-collections" to @Composable {
-            Column {
-                AppleMusicSectionHeader("Levyra")
-                AppleMusicCardCarousel(
-                    data.collections.map { collection ->
-                        val cover = collection.tracks.firstOrNull()
-                        AppleMusicCardModel(
-                            "collection-${collection.id}", collection.title, songs(collection.tracks.size),
-                            cover?.largeThumbnailUrl?.ifBlank { cover.thumbnailUrl }.orEmpty()
-                        ) { actions.openCollection(collection.id) }
-                    }
-                )
-            }
-        })
-    }
-    if (data.showArtists && data.artists.isNotEmpty()) {
-        add("levyra-artists" to @Composable {
-            Column {
-                AppleMusicSectionHeader(strings.trendingArtists)
-                AppleMusicCardCarousel(
-                    data.artists.map { artist ->
-                        AppleMusicCardModel("artist-${artist.browseId.ifBlank { artist.name }}", artist.name, "", artist.thumbnailUrl, circular = true) { actions.openArtist(artist) }
-                    }
-                )
-            }
-        })
-    }
-    if (data.forgottenFavorites.isNotEmpty()) {
-        add("levyra-forgotten" to @Composable {
-            Column {
-                AppleMusicSectionHeader(strings.forgottenFavorites)
-                AppleMusicSongColumns(data.forgottenFavorites, 4, currentId, explicitLabel, { track -> actions.playFrom(data.forgottenFavorites, track) }, actions.onTrackActions)
-            }
-        })
+): List<AppleHomeBlock> = listOfNotNull(
+    songsBlock(TOP50_KEY, data.chartsTitle, data.charts, data, actions, copy.explicit, openCharts, limit = 20),
+    soundtrackBlock(data.soundtrack),
+    songsBlock("levyra-orbit", strings.personalOrbitTitle, data.personalTracks.takeIf { data.showPersonal }.orEmpty(), data, actions, copy.explicit),
+    data.quickPicks?.let { section -> songsBlock("levyra-quick-picks", section.title.ifBlank { strings.quickPicks }, section.tracks, data, actions, copy.explicit) },
+    cardsBlock("levyra-albums", strings.albumsForYou, data.albums.takeIf { data.showAlbums }.orEmpty().map { album ->
+        AppleMusicCardModel("album-${album.title}-${album.artist}", album.title, album.artist, album.thumbnailUrl, album.explicit) { actions.openAlbum(album) }
+    }, copy.explicit),
+    cardsBlock("levyra-collections", "Levyra", data.collections.map { collection -> collection.toCard(copy.songs, actions) }, copy.explicit),
+    cardsBlock("levyra-artists", strings.trendingArtists, data.artists.takeIf { data.showArtists }.orEmpty().map { artist ->
+        AppleMusicCardModel("artist-${artist.browseId.ifBlank { artist.name }}", artist.name, "", artist.thumbnailUrl, circular = true) { actions.openArtist(artist) }
+    }, copy.explicit),
+    songsBlock("levyra-forgotten", strings.forgottenFavorites, data.forgottenFavorites, data, actions, copy.explicit)
+)
+
+private fun AppleMusicHomeCollection.toCard(songs: (Int) -> String, actions: AppleMusicHomeActions): AppleMusicCardModel {
+    val cover = tracks.firstOrNull()
+    return AppleMusicCardModel(
+        "collection-$id", title, songs(tracks.size), cover?.largeThumbnailUrl?.ifBlank { cover.thumbnailUrl }.orEmpty()
+    ) { actions.openCollection(id) }
+}
+
+private fun songsBlock(
+    key: String,
+    title: String,
+    tracks: List<Track>,
+    data: AppleMusicHomeData,
+    actions: AppleMusicHomeActions,
+    explicitLabel: String,
+    onSeeAll: (() -> Unit)? = null,
+    limit: Int = tracks.size
+): AppleHomeBlock? {
+    if (tracks.isEmpty()) return null
+    return key to @Composable {
+        Column {
+            AppleMusicSectionHeader(title, onSeeAll)
+            AppleMusicSongColumns(tracks.take(limit), 4, data.currentId, explicitLabel, { track -> actions.playFrom(tracks, track) }, actions.onTrackActions)
+        }
     }
 }
 
+private fun cardsBlock(key: String, title: String, cards: List<AppleMusicCardModel>, explicitLabel: String): AppleHomeBlock? {
+    if (cards.isEmpty()) return null
+    return key to @Composable {
+        Column {
+            AppleMusicSectionHeader(title)
+            AppleMusicCardCarousel(cards, explicitLabel = explicitLabel)
+        }
+    }
+}
+
+private fun soundtrackBlock(hero: StudioHero?): AppleHomeBlock? {
+    hero ?: return null
+    return "levyra-soundtrack" to @Composable {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            AppleMusicSectionHeader(hero.label)
+            Box(Modifier.padding(horizontal = AppleMusicDesign.gutter)) {
+                AppleMusicHeroCard(
+                    AppleMusicHeroModel(
+                        key = "soundtrack-${hero.track.id}", heading = "", title = hero.track.artist, subtitle = hero.track.title,
+                        description = hero.lead, imageUrl = hero.artistArtworkUrl,
+                        coverUrl = hero.track.largeThumbnailUrl.ifBlank { hero.track.thumbnailUrl },
+                        backgroundColor = Color(hero.track.accentStart), onClick = hero.onOpen
+                    )
+                )
+            }
+        }
+    }
+}
 @Composable
 private fun AppleMusicEditorialShelf(
     homeShelf: AppleHomeShelf,

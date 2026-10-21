@@ -73,6 +73,30 @@ internal fun AppleMusicPlayerScene(
 ) {
     val field by rememberSpotifyCoverTone(track, AppleMusicDesign::playerField)
     val deep by rememberSpotifyCoverTone(track, AppleMusicDesign::playerFieldDeep)
+    BoxWithConstraints(modifier.fillMaxSize().background(Brush.verticalGradient(0f to field, 0.55f to lerpField(field, deep), 1f to deep))) {
+        val landscape = maxWidth > maxHeight
+        val immersive = !landscape && canvas?.immersive == true
+        val canvasAlpha by animateFloatAsState(if (immersive) 1f else 0f, label = "apple-player-canvas-alpha")
+        if (canvas != null && canvasAlpha > 0f) {
+            Box(Modifier.fillMaxSize().graphicsLayer { alpha = canvasAlpha }) {
+                AppleMusicCanvasBackdrop(track, canvas, playing)
+            }
+        }
+        val artwork: @Composable (Dp) -> Unit = { size ->
+            AppleMusicPlayerArtwork(track, slots, size, playing, { canvasAlpha }, showStage = !immersive)
+        }
+        if (landscape) {
+            AppleMusicLandscapeDeck(track, slots, minOf(maxHeight - 34.dp, artworkCap), artwork, metadata, transport)
+        } else {
+            AppleMusicPortraitDeck(track, slots, artworkCap, artwork, metadata, transport)
+        }
+    }
+}
+
+@Composable
+private fun AppleMusicPlayerArtwork(
+    track: Track, slots: PlayerDeckSlots, size: Dp, playing: Boolean, canvasAlpha: () -> Float, showStage: Boolean
+) {
     val animations = LocalAnimationsEnabled.current
     val artScale by animateFloatAsState(
         if (playing) 1f else PausedArtworkScale,
@@ -80,77 +104,70 @@ internal fun AppleMusicPlayerScene(
         label = "apple-player-artwork-scale"
     )
     val artElevation by animateDpAsState(if (playing) 15.dp else 8.dp, label = "apple-player-artwork-elevation")
-    BoxWithConstraints(modifier.fillMaxSize().background(Brush.verticalGradient(0f to field, 0.55f to lerpField(field, deep), 1f to deep))) {
-        val landscape = maxWidth > maxHeight
-        val immersive = !landscape && canvas?.immersive == true
-        val canvasAlpha by animateFloatAsState(if (immersive) 1f else 0f, label = "apple-player-canvas-alpha")
-        if (canvas != null && (immersive || canvasAlpha > 0f)) {
-            Box(Modifier.fillMaxSize().graphicsLayer { alpha = canvasAlpha }) {
-                AppleMusicCanvasBackdrop(track, canvas, playing)
+    Box(
+        Modifier.size(size)
+            .graphicsLayer {
+                scaleX = artScale
+                scaleY = artScale
+                alpha = 1f - canvasAlpha()
             }
+            .shadow(artElevation, RoundedCornerShape(AppleMusicDesign.cornerL), clip = false,
+                ambientColor = Color.Black.copy(alpha = 0.35f), spotColor = Color.Black.copy(alpha = 0.45f))
+    ) {
+        if (showStage) slots.stage(track, Modifier.fillMaxSize(), AppleMusicDesign.cornerL)
+    }
+}
+
+@Composable
+private fun AppleMusicGrabber() {
+    Box(Modifier.fillMaxWidth().padding(top = 8.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.width(36.dp).height(5.dp).clip(CircleShape).background(AppleMusicVibrant.secondary))
+    }
+}
+
+@Composable
+private fun AppleMusicPortraitDeck(
+    track: Track, slots: PlayerDeckSlots, artworkCap: Dp, artwork: @Composable (Dp) -> Unit,
+    metadata: @Composable () -> Unit, transport: @Composable () -> Unit
+) {
+    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
+        AppleMusicGrabber()
+        Box(Modifier.padding(horizontal = 4.dp)) { slots.header() }
+        BoxWithConstraints(
+            Modifier.fillMaxWidth().weight(1f).padding(horizontal = AppleMusicDesign.playerArtworkInset, vertical = 8.dp),
+            contentAlignment = Alignment.Center
+        ) { artwork(minOf(maxWidth, maxHeight, artworkCap)) }
+        Box(Modifier.padding(horizontal = AppleMusicDesign.playerMetadataInset - 16.dp).clipToBounds()) { metadata() }
+        Box(Modifier.padding(horizontal = AppleMusicDesign.playerMetadataInset - 16.dp)) { slots.engagement(track) }
+        Box(Modifier.padding(horizontal = AppleMusicDesign.playerSeekbarInset)) { slots.progress(PlayerProgressStyle.Classic) }
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            Box(Modifier.padding(horizontal = 16.dp)) { transport() }
         }
-        val artwork: @Composable (Dp) -> Unit = { size ->
-            Box(
-                Modifier.size(size)
-                    .graphicsLayer {
-                        scaleX = artScale
-                        scaleY = artScale
-                        alpha = 1f - canvasAlpha
-                    }
-                    .shadow(artElevation, RoundedCornerShape(AppleMusicDesign.cornerL), clip = false,
-                        ambientColor = Color.Black.copy(alpha = 0.35f), spotColor = Color.Black.copy(alpha = 0.45f))
+        Box(Modifier.fillMaxWidth().padding(bottom = AppleMusicDesign.playerActionBottom)) { AppleMusicDockRow(slots.dockActions(track)) }
+    }
+}
+
+@Composable
+private fun AppleMusicLandscapeDeck(
+    track: Track, slots: PlayerDeckSlots, artworkSize: Dp, artwork: @Composable (Dp) -> Unit,
+    metadata: @Composable () -> Unit, transport: @Composable () -> Unit
+) {
+    Box(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().displayCutoutPadding()) {
+        AppleMusicGrabber()
+        Row(Modifier.fillMaxSize().padding(start = 24.dp, end = 24.dp, top = 22.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.fillMaxHeight().aspectRatio(1f, matchHeightConstraintsFirst = true), contentAlignment = Alignment.Center) {
+                artwork(artworkSize)
+            }
+            Spacer(Modifier.width(24.dp))
+            Column(
+                Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                if (!immersive) slots.stage(track, Modifier.fillMaxSize(), AppleMusicDesign.cornerL)
-            }
-        }
-        val grabber: @Composable () -> Unit = {
-            Box(Modifier.fillMaxWidth().padding(top = 8.dp), contentAlignment = Alignment.Center) {
-                Box(Modifier.width(36.dp).height(5.dp).clip(CircleShape).background(AppleMusicVibrant.secondary))
-            }
-        }
-        if (landscape) {
-            Box(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().displayCutoutPadding()) {
-                grabber()
-                Row(Modifier.fillMaxSize().padding(start = 24.dp, end = 24.dp, top = 22.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.fillMaxHeight().aspectRatio(1f, matchHeightConstraintsFirst = true), contentAlignment = Alignment.Center) {
-                        artwork(minOf(this@BoxWithConstraints.maxHeight - 34.dp, artworkCap))
-                    }
-                    Spacer(Modifier.width(24.dp))
-                    Column(
-                        Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Box(Modifier.padding(horizontal = 4.dp)) { slots.header() }
-                        metadata()
-                        slots.progress(PlayerProgressStyle.Classic)
-                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) { transport() }
-                        AppleMusicDockRow(slots.dockActions(track))
-                    }
-                }
-            }
-            return@BoxWithConstraints
-        }
-        Box(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
-            Column(Modifier.fillMaxSize()) {
-                Column(Modifier.fillMaxSize()) {
-                    Column(Modifier.fillMaxWidth()) {
-                        grabber()
-                        Box(Modifier.padding(horizontal = 4.dp)) { slots.header() }
-                    }
-                    BoxWithConstraints(
-                        Modifier.fillMaxWidth().weight(1f).padding(horizontal = AppleMusicDesign.playerArtworkInset, vertical = 8.dp),
-                        contentAlignment = Alignment.Center
-                    ) { artwork(minOf(maxWidth, maxHeight, artworkCap)) }
-                    Column(Modifier.fillMaxWidth()) {
-                        Box(Modifier.padding(horizontal = AppleMusicDesign.playerMetadataInset - 16.dp).clipToBounds()) { metadata() }
-                        Box(Modifier.padding(horizontal = AppleMusicDesign.playerMetadataInset - 16.dp)) { slots.engagement(track) }
-                        Box(Modifier.padding(horizontal = AppleMusicDesign.playerSeekbarInset)) { slots.progress(PlayerProgressStyle.Classic) }
-                    }
-                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                        Box(Modifier.padding(horizontal = 16.dp)) { transport() }
-                    }
-                    Box(Modifier.fillMaxWidth().padding(bottom = AppleMusicDesign.playerActionBottom)) { AppleMusicDockRow(slots.dockActions(track)) }
-                }
+                Box(Modifier.padding(horizontal = 4.dp)) { slots.header() }
+                metadata()
+                slots.progress(PlayerProgressStyle.Classic)
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) { transport() }
+                AppleMusicDockRow(slots.dockActions(track))
             }
         }
     }

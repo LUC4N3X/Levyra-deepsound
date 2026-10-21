@@ -120,14 +120,7 @@ object AppleCatalogPageParser {
         val title = item.optJSONArray("titleLinks")?.firstTitle().orEmpty().ifBlank { item.optString("title") }.trim()
         if (title.isBlank()) return null
         val descriptor = descriptorOf(item)
-        val kind = when (descriptor?.optString("kind")) {
-            "album" -> AppleCatalogItemKind.Album
-            "playlist" -> AppleCatalogItemKind.Playlist
-            "song" -> AppleCatalogItemKind.Song
-            "artist" -> AppleCatalogItemKind.Artist
-            "musicVideo", "uploadedVideo" -> AppleCatalogItemKind.Video
-            else -> AppleCatalogItemKind.Other
-        }
+        val kind = kindOf(descriptor?.optString("kind"))
         val id = descriptor?.optJSONObject("identifiers")?.optString("storeAdamID").orEmpty()
             .ifBlank { item.optString("id") }
         val artwork = item.optJSONObject("artwork")?.optJSONObject("dictionary")
@@ -136,11 +129,11 @@ object AppleCatalogPageParser {
             id = id,
             kind = kind,
             title = title,
-            subtitle = item.optJSONArray("subtitleLinks")?.joinedTitles().orEmpty().ifBlank { item.optString("subtitle") }.trim(),
+            subtitle = subtitleOf(item),
             heading = item.optString("heading").trim(),
             description = item.optString("description").trim(),
-            artworkTemplate = artwork?.optString("url").orEmpty().takeIf { it.startsWith("https://") }.orEmpty(),
-            coverArtworkTemplate = cover?.optString("url").orEmpty().takeIf { it.startsWith("https://") }.orEmpty(),
+            artworkTemplate = httpsUrl(artwork),
+            coverArtworkTemplate = httpsUrl(cover),
             backgroundColor = (cover ?: artwork)?.optString("bgColor")?.let(::parseColor),
             url = descriptor?.optString("url").orEmpty().takeIf { it.startsWith("https://music.apple.com/") }.orEmpty(),
             explicit = item.optBoolean("showExplicitBadge", false),
@@ -148,6 +141,21 @@ object AppleCatalogPageParser {
             album = item.optJSONArray("tertiaryLinks")?.firstTitle().orEmpty().trim()
         )
     }
+
+    private fun kindOf(value: String?): AppleCatalogItemKind = when (value) {
+        "album" -> AppleCatalogItemKind.Album
+        "playlist" -> AppleCatalogItemKind.Playlist
+        "song" -> AppleCatalogItemKind.Song
+        "artist" -> AppleCatalogItemKind.Artist
+        "musicVideo", "uploadedVideo" -> AppleCatalogItemKind.Video
+        else -> AppleCatalogItemKind.Other
+    }
+
+    private fun subtitleOf(item: JSONObject): String =
+        item.optJSONArray("subtitleLinks")?.joinedTitles().orEmpty().ifBlank { item.optString("subtitle") }.trim()
+
+    private fun httpsUrl(dictionary: JSONObject?): String =
+        dictionary?.optString("url").orEmpty().takeIf { it.startsWith("https://") }.orEmpty()
 
     private fun descriptorOf(item: JSONObject): JSONObject? =
         item.optJSONObject("contentDescriptor")

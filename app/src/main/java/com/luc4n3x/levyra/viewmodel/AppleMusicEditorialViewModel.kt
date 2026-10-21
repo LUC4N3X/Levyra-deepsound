@@ -8,6 +8,7 @@ import com.luc4n3x.levyra.data.apple.AppleCatalogFreshness
 import com.luc4n3x.levyra.data.apple.AppleCatalogIds
 import com.luc4n3x.levyra.data.apple.AppleCatalogItem
 import com.luc4n3x.levyra.data.apple.AppleCatalogPage
+import com.luc4n3x.levyra.data.apple.AppleCatalogResult
 import com.luc4n3x.levyra.data.apple.AppleMusicEditorialRepository
 import com.luc4n3x.levyra.data.apple.AppleStorefronts
 import com.luc4n3x.levyra.domain.Track
@@ -54,41 +55,22 @@ class AppleMusicEditorialViewModel(application: Application) : AndroidViewModel(
     fun load(storefront: String, language: String, force: Boolean = false) {
         val front = AppleStorefronts.normalize(storefront)
         val lang = AppleStorefronts.language(language)
-        val current = _state.value
-        if (!force && current.storefront == front && current.language == lang && (current.loading || current.newMusic != null)) return
+        if (!force && _state.value.isLoadedFor(front, lang)) return
         pageJob?.cancel()
-        _state.update {
-            if (it.storefront == front && it.language == lang) it.copy(loading = true, failed = false)
-            else AppleMusicEditorialUiState(storefront = front, language = lang, loading = true, collection = it.collection)
-        }
+        _state.update { it.startLoading(front, lang) }
         pageJob = viewModelScope.launch {
             val cachedNew = repository.cachedNewMusic(front, lang)
             val cachedCharts = repository.cachedTopCharts(front, lang)
-            if (cachedNew != null || cachedCharts != null) {
-                _state.update { state ->
-                    if (state.storefront != front || state.language != lang) state
-                    else state.copy(
-                        newMusic = cachedNew?.page ?: state.newMusic,
-                        charts = cachedCharts?.page ?: state.charts,
-                        stale = cachedNew?.freshness == AppleCatalogFreshness.Stale
-                    )
-                }
-            }
+            updateFor(front, lang) { it.withCached(cachedNew, cachedCharts) }
             val fresh = repository.newMusic(front, lang)
             val charts = repository.topCharts(front, lang)
-            _state.update { state ->
-                if (state.storefront != front || state.language != lang) state
-                else state.copy(
-                    newMusic = fresh?.page ?: state.newMusic,
-                    charts = charts?.page ?: state.charts,
-                    stale = fresh?.freshness == AppleCatalogFreshness.Stale || (fresh == null && state.newMusic != null),
-                    loading = false,
-                    failed = fresh == null && state.newMusic == null
-                )
-            }
+            updateFor(front, lang) { it.withFresh(fresh, charts) }
         }
     }
 
+    private fun updateFor(front: String, lang: String, transform: (AppleMusicEditorialUiState) -> AppleMusicEditorialUiState) {
+        _state.update { state -> if (state.storefront == front && state.language == lang) transform(state) else state }
+    }
     fun openCollection(item: AppleCatalogItem) {
         val id = AppleCatalogIds.playlist(item.id) ?: AppleCatalogIds.playlistIdFromUrl(item.url) ?: return
         val front = _state.value.storefront.ifBlank { "us" }
@@ -141,3 +123,27 @@ class AppleMusicEditorialViewModel(application: Application) : AndroidViewModel(
         const val COLLECTION_ARTWORK_SIZE = 600
     }
 }
+
+private fun AppleMusicEditorialUiState.isLoadedFor(front: String, lang: String): Boolean =
+    storefront == front && language == lang && (loading || newMusic != null)
+
+private fun AppleMusicEditorialUiState.startLoading(front: String, lang: String): AppleMusicEditorialUiState =
+    if (storefront == front && language == lang) copy(loading = true, failed = false)
+    else AppleMusicEditorialUiState(storefront = front, language = lang, loading = true, collection = collection)
+
+private fun AppleMusicEditorialUiState.withCached(news: AppleCatalogResult?, charts: AppleCatalogResult?): AppleMusicEditorialUiState {
+    if (news == null && charts == null) return this
+    return copy(
+        newMusic = news?.page ?: newMusic,
+        charts = charts?.page ?: this.charts,
+        stale = news?.freshness == AppleCatalogFreshness.Stale
+    )
+}
+
+private fun AppleMusicEditorialUiState.withFresh(news: AppleCatalogResult?, charts: AppleCatalogResult?): AppleMusicEditorialUiState = copy(
+    newMusic = news?.page ?: newMusic,
+    charts = charts?.page ?: this.charts,
+    stale = news?.freshness == AppleCatalogFreshness.Stale || (news == null && newMusic != null),
+    loading = false,
+    failed = news == null && newMusic == null
+)

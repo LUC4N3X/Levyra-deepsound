@@ -58,8 +58,7 @@ internal fun AppleMusicCollectionScreen(
     onShuffle: () -> Unit,
     onTrackActions: (Track) -> Unit,
     onRetry: (() -> Unit)? = null,
-    ranked: Boolean = false,
-    onCurator: (() -> Unit)? = null
+    ranked: Boolean = false
 ) {
     BackHandler(onBack = onDismiss)
     val strings = LocalLevyraStrings.current
@@ -73,47 +72,7 @@ internal fun AppleMusicCollectionScreen(
             contentPadding = PaddingValues(top = 0.dp, bottom = bottomInset + 24.dp)
         ) {
             item(key = "apple-collection-header", contentType = "apple-collection-header") {
-                Column(Modifier.fillMaxWidth().statusBarsPadding().padding(top = 52.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(
-                        Modifier.padding(horizontal = AppleMusicDesign.collectionArtworkInset).padding(top = 10.dp).fillMaxWidth().aspectRatio(1f)
-                            .shadow(18.dp, AppleMusicDesign.artworkShape, ambientColor = Color.Black.copy(alpha = 0.18f), spotColor = Color.Black.copy(alpha = 0.26f))
-                            .clip(AppleMusicDesign.artworkShape).background(AppleMusicDesign.placeholder)
-                            .border(0.5.dp, AppleMusicDesign.artworkStroke, AppleMusicDesign.artworkShape)
-                    ) {
-                        when {
-                            artworkUrl.isNotBlank() -> StableRemoteArtwork(artworkUrl, title, Modifier.fillMaxSize(), ContentScale.Crop, highRes = true)
-                            artworkTrack != null -> CoverImage(artworkTrack, Modifier.fillMaxSize(), highRes = true)
-                        }
-                    }
-                    Text(
-                        title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium), color = AppleMusicDesign.label,
-                        textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 15.dp).semantics { heading() }
-                    )
-                    if (curator.isNotBlank()) {
-                        Text(
-                            curator, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Normal), color = AppleMusicDesign.accent,
-                            textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                                .then(if (onCurator != null) Modifier.clickable(role = Role.Button, onClick = onCurator) else Modifier)
-                        )
-                    }
-                    if (caption.isNotBlank()) {
-                        Text(
-                            caption.uppercase(), style = MaterialTheme.typography.labelSmall, color = AppleMusicDesign.secondaryLabel,
-                            textAlign = TextAlign.Center, maxLines = 1, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp)
-                        )
-                    }
-                    if (description.isNotBlank()) {
-                        Text(
-                            description, style = MaterialTheme.typography.bodyMedium, color = AppleMusicDesign.secondaryLabel,
-                            maxLines = 2, overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp)
-                        )
-                    }
-                    AppleMusicPillButtons(strings.playAll, strings.shuffle, tracks.isNotEmpty(), onPlayAll, onShuffle)
-                    HorizontalDivider(Modifier.padding(start = 16.dp), thickness = 0.5.dp, color = AppleMusicDesign.separator)
-                }
+                AppleMusicCollectionHeader(title, curator, caption, description, artworkUrl, artworkTrack, tracks.isNotEmpty(), onPlayAll, onShuffle)
             }
             when {
                 tracks.isNotEmpty() -> {
@@ -190,4 +149,59 @@ internal fun AppleMusicNavigationBar(title: String, collapsed: Boolean, onBack: 
         }
         if (collapsed) HorizontalDivider(thickness = 0.5.dp, color = AppleMusicDesign.separator)
     }
+}
+
+@Composable
+private fun AppleMusicCollectionHeader(
+    title: String,
+    curator: String,
+    caption: String,
+    description: String,
+    artworkUrl: String,
+    artworkTrack: Track?,
+    playable: Boolean,
+    onPlayAll: () -> Unit,
+    onShuffle: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    Column(Modifier.fillMaxWidth().statusBarsPadding().padding(top = 52.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        AppleMusicCollectionArtwork(title, artworkUrl, artworkTrack)
+        Text(
+            title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium), color = AppleMusicDesign.label,
+            textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 15.dp).semantics { heading() }
+        )
+        AppleMusicHeaderLine(curator, MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Normal), AppleMusicDesign.accent, Modifier.padding(horizontal = 16.dp))
+        AppleMusicHeaderLine(caption.uppercase(), MaterialTheme.typography.labelSmall, AppleMusicDesign.secondaryLabel, Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp))
+        if (description.isNotBlank()) {
+            Text(
+                description, style = MaterialTheme.typography.bodyMedium, color = AppleMusicDesign.secondaryLabel,
+                maxLines = 2, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp)
+            )
+        }
+        AppleMusicPillButtons(strings.playAll, strings.shuffle, playable, onPlayAll, onShuffle)
+        HorizontalDivider(Modifier.padding(start = 16.dp), thickness = 0.5.dp, color = AppleMusicDesign.separator)
+    }
+}
+
+@Composable
+private fun AppleMusicCollectionArtwork(title: String, artworkUrl: String, artworkTrack: Track?) {
+    Box(
+        Modifier.padding(horizontal = AppleMusicDesign.collectionArtworkInset).padding(top = 10.dp).fillMaxWidth().aspectRatio(1f)
+            .shadow(18.dp, AppleMusicDesign.artworkShape, ambientColor = Color.Black.copy(alpha = 0.18f), spotColor = Color.Black.copy(alpha = 0.26f))
+            .clip(AppleMusicDesign.artworkShape).background(AppleMusicDesign.placeholder)
+            .border(0.5.dp, AppleMusicDesign.artworkStroke, AppleMusicDesign.artworkShape)
+    ) {
+        when {
+            artworkUrl.isNotBlank() -> StableRemoteArtwork(artworkUrl, title, Modifier.fillMaxSize(), ContentScale.Crop, highRes = true)
+            artworkTrack != null -> CoverImage(artworkTrack, Modifier.fillMaxSize(), highRes = true)
+        }
+    }
+}
+
+@Composable
+private fun AppleMusicHeaderLine(text: String, style: androidx.compose.ui.text.TextStyle, color: Color, modifier: Modifier) {
+    if (text.isBlank()) return
+    Text(text, style = style, color = color, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = modifier)
 }
