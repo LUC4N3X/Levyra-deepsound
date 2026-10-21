@@ -73,25 +73,7 @@ internal class YoutubeMusicAccountRepository(context: Context) {
                 !root.has("onResponseReceivedActions") && !root.has("onResponseReceivedEndpoints")) throw YoutubeMusicProtocolException()
             root
         } else YoutubeMusicAccountParser.content(root) ?: throw YoutubeMusicProtocolException()
-        val overview = if (trackPage) null else parser.parseSearchOverview(JSONObject().put("contents", content), "library")
-        val owned = if (!trackPage && collection == YoutubeMusicCollection.Playlists) {
-            YoutubeMusicAccountParser.ownedPlaylistBrowseIds(content)
-        } else {
-            emptySet()
-        }
-        val entries = when (collection) {
-            YoutubeMusicCollection.Playlists -> overview?.playlists.orEmpty().map {
-                val browseId = it.browseId.ifBlank { "VL${it.playlistId}" }
-                YoutubeMusicLibraryEntry(browseId, it.title, it.author, it.thumbnailUrl, collection, owned = browseId in owned)
-            }
-            YoutubeMusicCollection.Albums -> overview?.albums.orEmpty().map {
-                YoutubeMusicLibraryEntry(it.browseId, it.title, it.artist, it.thumbnailUrl, collection)
-            }
-            YoutubeMusicCollection.Artists -> overview?.artists.orEmpty().map {
-                YoutubeMusicLibraryEntry(it.browseId, it.name, it.subscribers, it.thumbnailUrl, collection)
-            }
-            YoutubeMusicCollection.Likes -> emptyList()
-        }.filter { it.browseId.isNotBlank() }.distinctBy { it.browseId }
+        val entries = if (trackPage) emptyList() else libraryEntries(content, collection)
         val tracks = if (trackPage) {
             parser.parsePlaylistTracks(root, browseId).map { track -> if (album == null) track else withAlbum(track, album) }
         } else emptyList()
