@@ -1,13 +1,37 @@
 package com.luc4n3x.levyra.ui.theme
 
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableFloatStateOf
+import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
+import androidx.graphics.shapes.RoundedPolygon
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.shadow
+import androidx.compose.material3.carousel.rememberCarouselState
+import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
+import androidx.compose.material3.toShape
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
-import com.luc4n3x.levyra.ui.SettingsStudioGutter
-import com.luc4n3x.levyra.ui.recentSearchesBleed
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,9 +72,6 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -80,26 +101,17 @@ internal fun SkinSelector(selected: LevyraSkin, onSelect: (LevyraSkin) -> Unit) 
         LevyraSkin.Ivory -> LevyraPrismStrings.forCode(code).ivoryBody
         LevyraSkin.SpotifyStyle -> LevyraPrismStrings.forCode(code).spotifyBody
     }
-    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(copy.title, style = MaterialTheme.typography.titleLarge, color = LevyraText, modifier = Modifier.semantics { heading() })
-        Row(
-            Modifier
-                .recentSearchesBleed(SettingsStudioGutter)
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = SettingsStudioGutter)
-                .selectableGroup(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            LevyraSkin.entries.forEach { skin ->
-                SkinOption(skin, selected == skin, { onSelect(skin) }, Modifier.width(112.dp))
-            }
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        SkinStage(selected)
+        Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                selected.title(), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black,
+                color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.semantics { heading() }
+            )
+            Text(body, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerHigh, modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(selected.title(), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-                Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
+        SkinCarousel(selected, onSelect)
         if (selected != LevyraSkin.Default) {
             SkinManagedNotice { onSelect(LevyraSkin.Default) }
         }
@@ -108,31 +120,110 @@ internal fun SkinSelector(selected: LevyraSkin, onSelect: (LevyraSkin) -> Unit) 
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SkinOption(skin: LevyraSkin, active: Boolean, onClick: () -> Unit, modifier: Modifier) {
+private fun SkinStage(skin: LevyraSkin) {
     val scheme = MaterialTheme.colorScheme
-    val corner by animateDpAsState(if (active) 28.dp else 18.dp, MaterialTheme.motionScheme.defaultSpatialSpec(), label = "skin-option-corner")
-    val container by animateColorAsState(if (active) scheme.primaryContainer else scheme.surfaceContainerHigh, MaterialTheme.motionScheme.defaultEffectsSpec(), label = "skin-option-container")
-    val content = if (active) scheme.onPrimaryContainer else scheme.onSurface
-    Column(
-        modifier.clip(RoundedCornerShape(corner)).background(container)
-            .selectable(selected = active, role = Role.RadioButton, onClick = onClick)
-            .padding(8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(Modifier.fillMaxWidth().aspectRatio(0.62f)) {
-            SkinPhonePreview(skin, (corner - 8.dp).coerceAtLeast(10.dp), Modifier.fillMaxSize())
-            if (active) Box(
-                Modifier.align(Alignment.TopEnd).padding(6.dp).size(26.dp).clip(CircleShape).background(scheme.primary),
-                contentAlignment = Alignment.Center
-            ) { Icon(Icons.Rounded.Check, null, tint = scheme.onPrimary, modifier = Modifier.size(16.dp)) }
-        }
-        Spacer(Modifier.height(10.dp))
-        Text(
-            skin.title(), style = MaterialTheme.typography.labelLarge, color = content, textAlign = TextAlign.Center,
-            maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(2.dp)
+    val motion = MaterialTheme.motionScheme
+    val animations = LocalAnimationsEnabled.current
+    val spin = if (animations) {
+        rememberInfiniteTransition(label = "skin-stage-spin").animateFloat(
+            initialValue = 0f, targetValue = 360f,
+            animationSpec = infiniteRepeatable(tween(SKIN_STAGE_SPIN_MS, easing = LinearEasing)),
+            label = "skin-stage-rotation"
         )
+    } else {
+        remember { mutableFloatStateOf(0f) }
+    }
+    Box(
+        Modifier.fillMaxWidth().height(340.dp).clip(RoundedCornerShape(40.dp)).background(scheme.surfaceContainerHigh),
+        contentAlignment = Alignment.Center
+    ) {
+        AnimatedContent(
+            targetState = skin,
+            transitionSpec = {
+                (fadeIn(motion.defaultEffectsSpec()) + scaleIn(motion.defaultSpatialSpec(), initialScale = 0.72f)) togetherWith
+                    (fadeOut(motion.fastEffectsSpec()) + scaleOut(motion.fastSpatialSpec(), targetScale = 1.12f))
+            },
+            label = "skin-stage"
+        ) { shown ->
+            val accent = skinAccent(shown, scheme.primary)
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(
+                    Modifier.size(300.dp)
+                        .graphicsLayer { rotationZ = spin.value }
+                        .background(accent.copy(alpha = 0.92f), skinStagePolygon(shown).toShape())
+                )
+                Box(
+                    Modifier.align(Alignment.TopStart).padding(22.dp).size(44.dp)
+                        .graphicsLayer { rotationZ = -spin.value * 2f }
+                        .background(scheme.tertiaryContainer, MaterialShapes.Clover4Leaf.toShape())
+                )
+                Box(
+                    Modifier.align(Alignment.BottomEnd).padding(26.dp).size(30.dp)
+                        .background(scheme.secondaryContainer, MaterialShapes.Cookie4Sided.toShape())
+                )
+                SkinPhonePreview(
+                    shown, 20.dp,
+                    Modifier.width(150.dp).aspectRatio(0.56f)
+                        .graphicsLayer { rotationZ = -6f }
+                        .shadow(28.dp, RoundedCornerShape(20.dp), clip = false)
+                )
+            }
+        }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SkinCarousel(selected: LevyraSkin, onSelect: (LevyraSkin) -> Unit) {
+    val skins = LevyraSkin.entries
+    val scheme = MaterialTheme.colorScheme
+    val state = rememberCarouselState(initialItem = skins.indexOf(selected).coerceAtLeast(0)) { skins.size }
+    HorizontalMultiBrowseCarousel(
+        state = state,
+        preferredItemWidth = 136.dp,
+        itemSpacing = 8.dp,
+        modifier = Modifier.fillMaxWidth().height(210.dp).selectableGroup()
+    ) { index ->
+        val skin = skins[index]
+        val active = skin == selected
+        Box(
+            Modifier.fillMaxSize().maskClip(MaterialTheme.shapes.extraLarge)
+                .selectable(selected = active, role = Role.RadioButton, onClick = { onSelect(skin) })
+        ) {
+            SkinPhonePreview(skin, 0.dp, Modifier.fillMaxSize())
+            Box(
+                Modifier.align(Alignment.BottomStart).fillMaxWidth()
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.78f))))
+                    .padding(start = 14.dp, end = 14.dp, top = 28.dp, bottom = 14.dp)
+            ) {
+                Text(skin.title(), style = MaterialTheme.typography.titleSmall, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            if (active) {
+                Box(
+                    Modifier.align(Alignment.TopEnd).padding(10.dp).size(32.dp).background(scheme.primary, MaterialShapes.Cookie9Sided.toShape()),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Rounded.Check, null, tint = scheme.onPrimary, modifier = Modifier.size(18.dp))
+                }
+            }
+        }
+    }
+}
+
+private const val SKIN_STAGE_SPIN_MS = 36_000
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private fun skinStagePolygon(skin: LevyraSkin): RoundedPolygon = when (skin) {
+    LevyraSkin.Default -> MaterialShapes.Cookie9Sided
+    LevyraSkin.Nocturne78 -> MaterialShapes.Sunny
+    LevyraSkin.Prism -> MaterialShapes.Gem
+    LevyraSkin.Torque -> MaterialShapes.SoftBurst
+    LevyraSkin.Ivory -> MaterialShapes.Flower
+    LevyraSkin.SpotifyStyle -> MaterialShapes.Cookie12Sided
+}
+
+private fun skinAccent(skin: LevyraSkin, primary: Color): Color =
+    if (skin == LevyraSkin.Default) primary else skinPreviewPalette(skin).cyan
 
 @Composable
 internal fun SkinManagedNotice(onUseDefault: (() -> Unit)? = null) {
@@ -170,22 +261,24 @@ private fun DrawScope.playerPreview(skin: LevyraSkin, palette: LevyraPalette, w:
     val nocturne = skin == LevyraSkin.Nocturne78
     val prism = skin == LevyraSkin.Prism
     val pad = w * 0.12f
-    val art = w - pad * 2
-    val artTop = h * 0.12f
+    val line = w - pad * 2
+    val art = minOf(line, h * 0.44f)
+    val artTop = h * 0.08f
     val artRadius = CornerRadius(if (nocturne) 0f else if (prism) 6.dp.toPx() else 10.dp.toPx())
     val artBrush = skinPreviewArtBrush(skin, palette)
-    drawRoundRect(artBrush, Offset(pad, artTop), Size(art, art), artRadius)
+    drawRoundRect(artBrush, Offset((w - art) / 2, artTop), Size(art, art), artRadius)
     if (nocturne) drawCircle(palette.cyan, art * 0.18f, Offset(w / 2, artTop + art / 2), style = Stroke(1.5.dp.toPx()))
-    val textTop = artTop + art + h * 0.06f
-    previewLine(palette.text, pad, textTop, art * 0.7f, 3.dp.toPx())
-    previewLine(palette.muted, pad, textTop + h * 0.045f, art * 0.45f, 2.dp.toPx())
-    val seekY = textTop + h * 0.11f
-    previewLine(palette.panelSoft, pad, seekY, art, 2.5.dp.toPx())
+    val textTop = artTop + art + h * 0.05f
+    previewLine(palette.text, pad, textTop, line * 0.7f, 3.dp.toPx())
+    previewLine(palette.muted, pad, textTop + h * 0.04f, line * 0.45f, 2.dp.toPx())
+    val seekY = textTop + h * 0.095f
+    previewLine(palette.panelSoft, pad, seekY, line, 2.5.dp.toPx())
     if (prism) drawLine(
-        Brush.horizontalGradient(listOf(palette.blue, palette.violet), pad, pad + art * 0.55f),
-        Offset(pad, seekY), Offset(pad + art * 0.55f, seekY), 2.5.dp.toPx(), cap = StrokeCap.Round
-    ) else previewLine(palette.cyan, pad, seekY, art * 0.55f, 2.5.dp.toPx())
-    previewPlayButton(skin, palette, Offset(w / 2, seekY + h * 0.1f), w * 0.11f)
+        Brush.horizontalGradient(listOf(palette.blue, palette.violet), pad, pad + line * 0.55f),
+        Offset(pad, seekY), Offset(pad + line * 0.55f, seekY), 2.5.dp.toPx(), cap = StrokeCap.Round
+    ) else previewLine(palette.cyan, pad, seekY, line * 0.55f, 2.5.dp.toPx())
+    val playRadius = minOf(w * 0.11f, h * 0.065f)
+    previewPlayButton(skin, palette, Offset(w / 2, seekY + h * 0.035f + playRadius), playRadius)
     val navTop = h * 0.9f
     val navWidth = w - pad * 1.2f
     drawRoundRect(palette.panel, Offset(pad * 0.6f, navTop), Size(navWidth, h * 0.065f), CornerRadius(if (nocturne) 2.dp.toPx() else h * 0.033f))

@@ -756,6 +756,7 @@ import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 import com.luc4n3x.levyra.ui.theme.rememberLevyraHaptics
 import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
 import com.luc4n3x.levyra.ui.theme.rememberLevyraVisualCapabilities
+import com.luc4n3x.levyra.ui.i18n.LevyraSpotifySkinStrings
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.window.Dialog
@@ -2522,7 +2523,7 @@ fun LevyraApp(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
-                    if (!state.showSettings) BottomTabsScrim()
+                    if (!state.showSettings && !LevyraIsSpotify) BottomTabsScrim()
                     val dockCompaction = dockState.animatedCompaction(state.animationsEnabled)
                     val compactionProvider: () -> Float = { dockCompaction.value }
                     val miniPlayerVisible = state.currentTrack != null && !state.isSamplesOpen
@@ -5033,29 +5034,15 @@ private fun AlbumTrackRow(
     val strings = LocalLevyraStrings.current
     val spotify = LevyraIsSpotify
     val showArtist = remember(track.artist, albumArtist, spotify) { albumTrackShowsArtist(track.artist, albumArtist, spotify) }
-    val status = if (presentation.isDownloading && !presentation.isDownloaded) {
-        strings.formatDownloadProgress(presentation.downloadProgress ?: 1)
-    } else {
-        ""
-    }
-    val subtitle = listOf(if (showArtist) track.artist else "", status)
-        .filter { it.isNotBlank() }
-        .joinToString(" · ")
-    val duration = if (spotify) "" else formatDuration(track.durationMs).takeIf { it != "--:--" }.orEmpty()
+    val subtitle = albumTrackSubtitle(track.artist.takeIf { showArtist }.orEmpty(), albumTrackDownloadStatus(presentation, strings))
+    val duration = albumTrackDuration(track, spotify)
     Row(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 1.dp)
             .heightIn(min = ALBUM_TRACK_ROW_HEIGHT)
             .clip(levyraGroupedListShape(index, count))
-            .background(
-                when {
-                    presentation.selected -> stage.accent.copy(alpha = 0.26f)
-                    spotify -> Color.Transparent
-                    presentation.isCurrent -> stage.accent.copy(alpha = 0.16f)
-                    else -> stage.content.copy(alpha = 0.055f)
-                }
-            )
+            .background(albumTrackRowBackground(presentation, stage, spotify))
             .semantics { this.selected = presentation.selected }
             .combinedClickable(onClick = actions.onPlay, onLongClick = actions.onLongClick)
             .padding(start = LevyraCardDesign.RowHorizontalPadding, top = 8.dp, bottom = 8.dp),
@@ -5444,7 +5431,7 @@ private fun ArtistOverlay(
                                 homePinsFull = homePinsFull,
                                 onTogglePinToHome = { onTogglePinToHome(artist) }
                             )
-                            if (artist.hasBio) {
+                            if (artist.hasBio && !LevyraIsSpotify) {
                                 ArtistBio(
                                     biography = requireNotNull(artist.biography),
                                     accentStart = accentStart,
@@ -5499,26 +5486,7 @@ private fun ArtistOverlay(
                             )
                         }
                     }
-                    if (artist.albums.isNotEmpty()) {
-                        item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.albumsPlain) } }
-                        item { Box(modifier = Modifier.padding(start = 20.dp)) { ArtistReleaseRow(artist.albums, artist.name, onOpenRelease) } }
-                    }
-                    if (artist.singles.isNotEmpty()) {
-                        item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.singlesAndEps) } }
-                        item { Box(modifier = Modifier.padding(start = 20.dp)) { ArtistReleaseRow(artist.singles, artist.name, onOpenRelease) } }
-                    }
-                    if (artist.compilations.isNotEmpty()) {
-                        item {
-                            Box(modifier = Modifier.padding(horizontal = 20.dp)) {
-                                ArtistSectionTitle(strings.compilations)
-                            }
-                        }
-                        item {
-                            Box(modifier = Modifier.padding(start = 20.dp)) {
-                                ArtistReleaseRow(artist.compilations, artist.name, onOpenRelease)
-                            }
-                        }
-                    }
+                    artistReleaseItems(artist, strings, onOpenRelease)
                     if (artist.videos.isNotEmpty()) {
                         item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.video) } }
                         item {
@@ -5538,10 +5506,7 @@ private fun ArtistOverlay(
                             }
                         }
                     }
-                    if (artist.relatedArtists.isNotEmpty()) {
-                        item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.similarArtists) } }
-                        item { Box(modifier = Modifier.padding(start = 20.dp)) { ArtistHitRow(artist.relatedArtists, onClick = onOpenArtist) } }
-                    }
+                    artistClosingItems(artist, heroArtwork, strings, onOpenArtist)
                 }
             }
         }
@@ -5630,6 +5595,45 @@ private fun ArtistOverlay(
             onClose = onClose,
             modifier = Modifier.align(Alignment.TopCenter)
         )
+    }
+}
+
+private fun LazyListScope.artistReleaseItems(artist: ArtistProfile, strings: LevyraStrings, onOpenRelease: (ArtistRelease, String) -> Unit) {
+    if (LevyraIsSpotify) {
+        item(key = "spotify-artist-releases", contentType = "spotify-artist-releases") {
+            SpotifyArtistReleases(artist.albums + artist.compilations, artist.singles, artist.name, onOpenRelease, Modifier.padding(top = 12.dp))
+        }
+        return
+    }
+    listOf(
+        strings.albumsPlain to artist.albums,
+        strings.singlesAndEps to artist.singles,
+        strings.compilations to artist.compilations
+    ).filter { (_, releases) -> releases.isNotEmpty() }.forEach { (title, releases) ->
+        item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(title) } }
+        item { Box(modifier = Modifier.padding(start = 20.dp)) { ArtistReleaseRow(releases, artist.name, onOpenRelease) } }
+    }
+}
+
+private fun LazyListScope.artistClosingItems(artist: ArtistProfile, heroArtwork: String, strings: LevyraStrings, onOpenArtist: (ArtistHit) -> Unit) {
+    if (LevyraIsSpotify) {
+        item(key = "spotify-artist-about", contentType = "spotify-artist-about") {
+            SpotifyArtistAbout(
+                imageUrl = heroArtwork,
+                name = artist.name,
+                audience = artist.monthlyListeners.ifBlank { artist.subscribers },
+                biography = artist.biography?.text.orEmpty(),
+                modifier = Modifier.padding(top = 12.dp)
+            )
+        }
+        item(key = "spotify-artist-fans", contentType = "spotify-artist-fans") {
+            SpotifyFansAlsoLike(artist.relatedArtists, onOpenArtist, Modifier.padding(top = 12.dp))
+        }
+        return
+    }
+    if (artist.relatedArtists.isNotEmpty()) {
+        item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.similarArtists) } }
+        item { Box(modifier = Modifier.padding(start = 20.dp)) { ArtistHitRow(artist.relatedArtists, onClick = onOpenArtist) } }
     }
 }
 
@@ -5747,15 +5751,7 @@ private fun ArtistPopularTracksShelf(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = strings.popularTracks,
-                color = LevyraText,
-                style = LevyraType.sectionTitle,
-                modifier = Modifier
-                    .weight(1f)
-                    .semantics { heading() }
-            )
-            LevyraPlayAllButton(onClick = { onPlayAll(distinctTracks) })
+            ArtistPopularHeader(strings, onPlayAll = { onPlayAll(distinctTracks) })
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -5793,7 +5789,7 @@ private fun ArtistPopularTracksShelf(
 
         if (rankedTracks.size > ARTIST_POPULAR_COLLAPSED_COUNT) {
             Spacer(modifier = Modifier.height(12.dp))
-            ArtistPopularRevealBar(
+            ArtistPopularReveal(
                 shown = shownCount,
                 total = rankedTracks.size,
                 onShowMore = {
@@ -5805,6 +5801,31 @@ private fun ArtistPopularTracksShelf(
             )
         }
     }
+}
+
+@Composable
+private fun RowScope.ArtistPopularHeader(strings: LevyraStrings, onPlayAll: () -> Unit) {
+    val spotify = LevyraIsSpotify
+    Text(
+        text = if (spotify) LevyraSpotifySkinStrings.forCode(strings.code).popular else strings.popularTracks,
+        color = LevyraText,
+        style = LevyraType.sectionTitle,
+        modifier = Modifier
+            .weight(1f)
+            .semantics { heading() }
+    )
+    if (!spotify) LevyraPlayAllButton(onClick = onPlayAll)
+}
+
+@Composable
+private fun ArtistPopularReveal(shown: Int, total: Int, onShowMore: () -> Unit, onShowLess: () -> Unit) {
+    if (!LevyraIsSpotify) {
+        ArtistPopularRevealBar(shown, total, onShowMore, onShowLess)
+        return
+    }
+    val strings = LocalLevyraStrings.current
+    val more = shown < total
+    SpotifyOutlinePill(if (more) strings.showMore else strings.showLess, onClick = if (more) onShowMore else onShowLess)
 }
 
 @Composable
@@ -5931,13 +5952,7 @@ private fun ArtistPopularTrackRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(LevyraCardDesign.ArtworkShape)
-            .then(
-                when {
-                    selected -> Modifier.background(LevyraCyan.copy(alpha = 0.16f))
-                    isCurrent -> Modifier.background(LevyraText.copy(alpha = 0.06f))
-                    else -> Modifier
-                }
-            )
+            .background(artistPopularRowBackground(selected, isCurrent))
             .semantics { this.selected = selected }
             .heightIn(min = LevyraCardDesign.RowHeight)
             .combinedClickable(onClick = onPlay, onLongClick = onLongClick)
@@ -5945,20 +5960,7 @@ private fun ArtistPopularTrackRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(LevyraCardDesign.RowTextGap)
     ) {
-        Text(
-            text = rank.toString(),
-            color = if (isCurrent) LevyraCyan else LevyraText.copy(alpha = 0.86f),
-            style = LevyraType.sectionTitle.copy(
-                fontSize = 21.sp,
-                lineHeight = 23.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = (-0.8).sp,
-                fontFeatureSettings = "tnum"
-            ),
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            modifier = Modifier.width(30.dp)
-        )
+        ArtistPopularRank(rank, isCurrent)
 
         Box(
             modifier = Modifier
@@ -6004,6 +6006,34 @@ private fun ArtistPopularTrackRow(
             }
         }
     }
+}
+
+@Composable
+private fun ArtistPopularRank(rank: Int, isCurrent: Boolean) {
+    if (LevyraIsSpotify) {
+        SpotifyArtistRank(rank, isCurrent)
+        return
+    }
+    Text(
+        text = rank.toString(),
+        color = if (isCurrent) LevyraCyan else LevyraText.copy(alpha = 0.86f),
+        style = LevyraType.sectionTitle.copy(
+            fontSize = 21.sp,
+            lineHeight = 23.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = (-0.8).sp,
+            fontFeatureSettings = "tnum"
+        ),
+        textAlign = TextAlign.Center,
+        maxLines = 1,
+        modifier = Modifier.width(30.dp)
+    )
+}
+
+private fun artistPopularRowBackground(selected: Boolean, isCurrent: Boolean): Color = when {
+    selected -> LevyraCyan.copy(alpha = 0.16f)
+    isCurrent && !LevyraIsSpotify -> LevyraText.copy(alpha = 0.06f)
+    else -> Color.Transparent
 }
 
 @Composable
@@ -11058,7 +11088,8 @@ private fun LazyListScope.studioHomeHeaderItems(
                         onSearch = viewModel::openSearch,
                         onSettings = viewModel::openSettings,
                         hero = mergedStudioHero(),
-                        topBleed = statusBarTop + homeTopPadding
+                        topBleed = statusBarTop + homeTopPadding,
+                        onOpenZone = viewModel::openExploreZone
                     )
                     if (homeStyle == HomeStyle.Flow && flowShortcutTracks.isNotEmpty()) {
                         StudioFlowShortcuts(
@@ -11189,6 +11220,7 @@ private fun StudioHomeOverlays(c: StudioHomeContext, homeBottomInset: Dp) {
 
 private fun LazyListScope.homeStudioSectionGenreChips(c: StudioHomeContext) {
     with(c) {
+            if (LevyraIsSpotify && homeStyle != HomeStyle.Original) return
             item(key = "home-genre-chips", contentType = "home-genre-chips") {
                 val chipZones = remember(strings) { ExploreCatalog.getZones(strings) }
                 if (homeStyle == HomeStyle.MaterialExpressive) {
@@ -28686,6 +28718,26 @@ private fun artistPlayBackground(playContainer: Color, playShape: Shape): Modifi
             .border(1.dp, LevyraCyan, RoundedCornerShape(Nocturne78Design.controlCorner))
         else -> Modifier.background(playContainer, playShape)
     }
+
+private fun albumTrackDownloadStatus(presentation: AlbumTrackRowPresentation, strings: LevyraStrings): String =
+    if (presentation.isDownloading && !presentation.isDownloaded) {
+        strings.formatDownloadProgress(presentation.downloadProgress ?: 1)
+    } else {
+        ""
+    }
+
+private fun albumTrackSubtitle(artist: String, status: String): String =
+    listOf(artist, status).filter { it.isNotBlank() }.joinToString(" · ")
+
+private fun albumTrackDuration(track: Track, spotify: Boolean): String =
+    if (spotify) "" else formatDuration(track.durationMs).takeIf { it != "--:--" }.orEmpty()
+
+private fun albumTrackRowBackground(presentation: AlbumTrackRowPresentation, stage: AlbumStageColors, spotify: Boolean): Color = when {
+    presentation.selected -> stage.accent.copy(alpha = 0.26f)
+    spotify -> Color.Transparent
+    presentation.isCurrent -> stage.accent.copy(alpha = 0.16f)
+    else -> stage.content.copy(alpha = 0.055f)
+}
 
 private fun albumTrackShowsArtist(trackArtist: String, albumArtist: String, spotify: Boolean): Boolean =
     trackArtist.isNotBlank() && (spotify || !trackArtist.trim().equals(albumArtist.trim(), ignoreCase = true))

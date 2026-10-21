@@ -58,6 +58,8 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
@@ -115,29 +117,16 @@ internal fun KaraokeLyricLine(
     val currentLongClick by rememberUpdatedState(onLongClick)
     val selectionIndicator = rememberVectorPainter(Icons.Rounded.CheckCircle)
     val lineAccessibilityActions = remember(strings.shareLyrics, selectable) {
-        if (selectable) {
-            listOf(
-                CustomAccessibilityAction(strings.shareLyrics) {
-                    currentLongClick()
-                    true
-                }
-            )
-        } else {
-            emptyList()
-        }
+        lyricShareActions(strings.shareLyrics, selectable) { currentLongClick() }
     }
     val sectionLocale = remember(strings.code) { Locale.forLanguageTag(strings.code.replace('_', '-')) }
     val lyricLayoutDirection = LocalLayoutDirection.current
     val alignment = lyricLineAlignment(line.role, studioSettings.alignment)
     val textAlign = lyricLineTextAlign(line.role, studioSettings.alignment)
     val roleScale = lyricRoleScale(line.role, compact)
-    val maxActiveScale = if (compact) LYRICS_COMPACT_ACTIVE_LINE_SCALE else LYRICS_ACTIVE_LINE_SCALE
+    val maxActiveScale = lyricMaxActiveScale(compact)
     val activeScale by animateFloatAsState(
-        targetValue = when {
-            isPrimaryActive && compact -> LYRICS_COMPACT_ACTIVE_LINE_SCALE
-            isPrimaryActive -> LYRICS_ACTIVE_LINE_SCALE
-            else -> studioSettings.inactiveScale
-        },
+        targetValue = lyricActiveScale(isPrimaryActive, compact, studioSettings.inactiveScale),
         animationSpec = LevyraMotion.physics(animationsEnabled, LevyraMotion.spatial),
         label = "lyrics-line-scale"
     )
@@ -176,128 +165,74 @@ internal fun KaraokeLyricLine(
             fontScale = fontScale
         )
     }
-    val resolvedFontSize = resolvedFontSizeSp.sp
-    val lineHeight = LevyraTypeRhythm.lineHeight(resolvedFontSizeSp)
     val spotifyLyrics = studioSettings.spotifyLyricsApplies()
     val inactiveColor = lyricInactiveColor(spotifyLyrics, isActive, synced, compact, studioSettings.inactiveOpacity)
     val activeTextColor = lyricActiveTextColor(spotifyLyrics, studioSettings, accentEnd)
+    val colorSpec = LevyraMotion.spec(animationsEnabled, tween<Color>(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate))
     val animatedMainColor by animateColorAsState(
-        targetValue = if (isActive || isPrimaryActive) activeTextColor else inactiveColor,
-        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
+        targetValue = lyricMainColor(isActive, isPrimaryActive, activeTextColor, inactiveColor),
+        animationSpec = colorSpec,
         label = "lyrics-main-text-color"
     )
     val animatedInactiveColor by animateColorAsState(
         targetValue = inactiveColor,
-        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
+        animationSpec = colorSpec,
         label = "lyrics-inactive-color"
     )
     val animatedSectionColor by animateColorAsState(
-        targetValue = (if (spotifyLyrics) Color.White else accentEnd).copy(alpha = if (isPrimaryActive) 0.92f else 0.56f),
-        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
+        targetValue = lyricSectionColor(spotifyLyrics, accentEnd, isPrimaryActive),
+        animationSpec = colorSpec,
         label = "lyrics-section-color"
     )
     val animatedRomanizationColor by animateColorAsState(
-        targetValue = if (isActive) Color.White.copy(alpha = 0.76f) else Color.White.copy(alpha = 0.40f),
-        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
+        targetValue = lyricRomanizationColor(isActive),
+        animationSpec = colorSpec,
         label = "lyrics-romanization-color"
     )
     val animatedTranslationColor by animateColorAsState(
-        targetValue = if (isActive) accentEnd.copy(alpha = 0.88f) else Color.White.copy(alpha = 0.44f),
-        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
+        targetValue = lyricTranslationColor(isActive, accentEnd),
+        animationSpec = colorSpec,
         label = "lyrics-translation-color"
     )
-    val horizontalPadding = lyricRolePadding(line.role, compact)
     val resolvedRomanization = line.romanized.ifBlank {
         line.words.joinToString("") { word -> word.romanized }.trim()
     }
-    val studioFontFamily = remember(studioSettings.fontPreset, spotifyLyrics) {
-        if (spotifyLyrics) SpotifyFont else levyraFontFamilyFor(studioSettings.fontPreset)
-    }
-    val resolvedFontWeight = lyricFontWeight(spotifyLyrics, isPrimaryActive, studioSettings.fontWeight)
-
-    val glowShadow = lyricGlowShadow(studioSettings.glowEffect, activeTextColor)
-    val activeWordColor = activeTextColor
-    val completedWordColor = activeTextColor
-    val pendingWordColor = if (spotifyLyrics) SpotifyLyricsPending else Color.White.copy(alpha = if (compact) 0.50f else 0.58f)
+    val studioFontFamily = remember(studioSettings.fontPreset, spotifyLyrics) { lyricFontFamily(spotifyLyrics, studioSettings) }
+    val typography = LyricLineTypography(
+        fontSize = resolvedFontSizeSp.sp,
+        lineHeight = LevyraTypeRhythm.lineHeight(resolvedFontSizeSp),
+        fontWeight = lyricFontWeight(spotifyLyrics, isPrimaryActive, studioSettings.fontWeight),
+        fontFamily = studioFontFamily,
+        textAlign = textAlign,
+        shadow = lyricGlowShadow(studioSettings.glowEffect, activeTextColor).takeIf { isPrimaryActive }
+    )
+    val cinemaPrimary = cinema && isPrimaryActive
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .then(
-                if (selected || selectionMode) {
-                    Modifier
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(if (selected) accentEnd.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.035f))
-                } else {
-                    Modifier
-                }
-            )
-            .padding(horizontal = horizontalPadding, vertical = if (compact) 2.dp else 0.dp)
-            .padding(horizontal = if (selectionMode) 10.dp else 0.dp, vertical = if (selectionMode) 7.dp else 0.dp)
-            .then(if (lineBlur > 0.dp) Modifier.blur(lineBlur, BlurredEdgeTreatment.Unbounded) else Modifier)
-            .layout { measurable, constraints ->
-                if (!constraints.hasBoundedWidth) {
-                    val placeable = measurable.measure(constraints)
-                    return@layout layout(placeable.width, placeable.height) { placeable.place(0, 0) }
-                }
-                val contentWidth = lyricLineScaleSafeWidthPx(constraints.maxWidth, maxActiveScale)
-                val placeable = measurable.measure(
-                    constraints.copy(
-                        minWidth = minOf(constraints.minWidth, contentWidth),
-                        maxWidth = contentWidth
-                    )
-                )
-                val width = maxOf(constraints.minWidth, placeable.width)
-                layout(width, placeable.height) {
-                    placeable.placeRelative(lyricLineOffsetX(line.role, studioSettings.alignment, width - placeable.width), 0)
-                }
-            }
+            .lyricSelectionSurface(selected, selectionMode, accentEnd)
+            .lyricLinePadding(lyricRolePadding(line.role, compact), compact, selectionMode)
+            .lyricLineBlur(lineBlur)
+            .lyricScaleSafeLayout(line.role, studioSettings.alignment, maxActiveScale)
             .graphicsLayer {
                 scaleX = activeScale
                 scaleY = activeScale
                 alpha = lineAlpha
                 transformOrigin = lyricLineTransformOrigin(line.role, studioSettings.alignment, lyricLayoutDirection == LayoutDirection.Rtl)
             }
-            .drawWithContent {
-                drawContent()
-                if (selected) {
-                    val indicator = 20.dp.toPx()
-                    val inset = 8.dp.toPx()
-                    val left = if (layoutDirection == LayoutDirection.Rtl) inset else size.width - indicator - inset
-                    translate(left = left, top = inset) {
-                        with(selectionIndicator) {
-                            draw(Size(indicator, indicator), colorFilter = ColorFilter.tint(Color.White))
-                        }
-                    }
-                }
-            }
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = if (selectable) onLongClick else null,
-                onLongClickLabel = if (selectable) strings.shareLyrics else null
-            )
-            .semantics {
-                if (selectionMode && selectable) {
-                    this.selected = selected
-                    stateDescription = if (selected) strings.shareLyricsLineSelected else strings.shareLyricsLineNotSelected
-                }
-                customActions = lineAccessibilityActions
-            },
+            .lyricSelectionIndicator(selected, selectionIndicator)
+            .lyricLineInteraction(
+                LyricLineSelection(selectionMode, selectable, selected),
+                LyricLineLabels(strings.shareLyrics, strings.shareLyricsLineSelected, strings.shareLyricsLineNotSelected),
+                lineAccessibilityActions,
+                onClick,
+                onLongClick
+            ),
         horizontalAlignment = alignment,
-        verticalArrangement = Arrangement.spacedBy(if (compact) 2.dp else 4.dp)
+        verticalArrangement = Arrangement.spacedBy(lyricLineGap(compact))
     ) {
-        if (!sectionLabel.isNullOrBlank()) {
-            Text(
-                text = sectionLabel.uppercase(sectionLocale),
-                color = animatedSectionColor,
-                fontSize = if (compact) 9.sp else 10.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(if (compact) 9.sp else 10.sp),
-                fontWeight = FontWeight.Black,
-                letterSpacing = 0.9.sp,
-                textAlign = textAlign,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+        LyricLineSectionLabel(sectionLabel, sectionLocale, animatedSectionColor, compact, textAlign)
         if (instrumentalGap != null) {
             LyricsInstrumentalPulse(
                 gap = instrumentalGap,
@@ -307,60 +242,229 @@ internal fun KaraokeLyricLine(
                 alignment = alignment
             )
         }
-        if (line.words.isNotEmpty() && synced && studioSettings.progressiveKaraokeEnabled) {
-            KaraokeWordTimedText(
-                lineText = line.text,
-                words = line.words,
-                positionProvider = positionProvider,
-                isActive = isActive,
-                fontSize = resolvedFontSize,
-                lineHeight = lineHeight,
-                textAlign = textAlign,
-                inactiveColor = animatedInactiveColor,
-                completedColor = completedWordColor,
-                activeColor = activeWordColor,
-                pendingColor = pendingWordColor,
-                fontWeight = resolvedFontWeight,
-                fontFamily = studioFontFamily,
-                shadow = if (isPrimaryActive) glowShadow else null
+        LyricLineMainText(
+            line = line,
+            wordTimed = lyricUsesWordTiming(line, synced, studioSettings.progressiveKaraokeEnabled),
+            positionProvider = positionProvider,
+            isActive = isActive,
+            typography = typography,
+            colors = LyricLineColors(
+                main = animatedMainColor,
+                inactive = animatedInactiveColor,
+                active = activeTextColor,
+                pending = lyricPendingWordColor(spotifyLyrics, compact)
             )
-        } else {
-            Text(
-                text = if (line.isInstrumental) "♪" else line.text,
-                color = animatedMainColor,
-                fontFamily = studioFontFamily,
-                fontSize = resolvedFontSize,
-                lineHeight = lineHeight,
-                fontWeight = resolvedFontWeight,
-                textAlign = textAlign,
-                style = TextStyle(shadow = if (isPrimaryActive) glowShadow else null),
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        if (showRomanization && resolvedRomanization.isNotBlank()) {
-            Text(
-                text = resolvedRomanization,
-                color = animatedRomanizationColor,
-                fontSize = lyricSecondarySize(compact, cinema && isPrimaryActive, 11.sp, 15.sp, 13.sp),
-                lineHeight = if (compact) 15.sp else 18.sp,
-                fontWeight = FontWeight.Medium,
-                textAlign = textAlign,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        if (showTranslation && line.translated.isNotBlank()) {
-            Text(
-                text = line.translated,
-                color = animatedTranslationColor,
-                fontSize = lyricSecondarySize(compact, cinema && isPrimaryActive, 12.sp, 16.sp, 14.sp),
-                lineHeight = if (compact) 16.sp else 20.sp,
-                fontWeight = FontWeight.Medium,
-                textAlign = textAlign,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+        )
+        LyricLineSecondaryText(
+            text = resolvedRomanization.takeIf { showRomanization }.orEmpty(),
+            color = animatedRomanizationColor,
+            fontSize = lyricSecondarySize(compact, cinemaPrimary, 11.sp, 15.sp, 13.sp),
+            lineHeight = lyricSecondarySize(compact, false, 15.sp, 18.sp, 18.sp),
+            textAlign = textAlign
+        )
+        LyricLineSecondaryText(
+            text = line.translated.takeIf { showTranslation }.orEmpty(),
+            color = animatedTranslationColor,
+            fontSize = lyricSecondarySize(compact, cinemaPrimary, 12.sp, 16.sp, 14.sp),
+            lineHeight = lyricSecondarySize(compact, false, 16.sp, 20.sp, 20.sp),
+            textAlign = textAlign
+        )
     }
 }
+
+private class LyricLineTypography(
+    val fontSize: TextUnit,
+    val lineHeight: TextUnit,
+    val fontWeight: FontWeight,
+    val fontFamily: FontFamily,
+    val textAlign: TextAlign,
+    val shadow: Shadow?
+)
+
+private class LyricLineColors(val main: Color, val inactive: Color, val active: Color, val pending: Color)
+
+private class LyricLineSelection(val selectionMode: Boolean, val selectable: Boolean, val selected: Boolean)
+
+private class LyricLineLabels(val share: String, val selected: String, val notSelected: String)
+
+@Composable
+private fun LyricLineSectionLabel(label: String?, locale: Locale, color: Color, compact: Boolean, textAlign: TextAlign) {
+    if (label.isNullOrBlank()) return
+    val size = if (compact) 9.sp else 10.sp
+    Text(
+        text = label.uppercase(locale),
+        color = color,
+        fontSize = size,
+        lineHeight = LevyraTypeRhythm.lineHeight(size),
+        fontWeight = FontWeight.Black,
+        letterSpacing = 0.9.sp,
+        textAlign = textAlign,
+        modifier = Modifier.fillMaxWidth()
+    )
+}
+
+@Composable
+private fun LyricLineMainText(
+    line: LyricLine,
+    wordTimed: Boolean,
+    positionProvider: () -> Long,
+    isActive: Boolean,
+    typography: LyricLineTypography,
+    colors: LyricLineColors
+) {
+    if (wordTimed) {
+        KaraokeWordTimedText(
+            lineText = line.text,
+            words = line.words,
+            positionProvider = positionProvider,
+            isActive = isActive,
+            fontSize = typography.fontSize,
+            lineHeight = typography.lineHeight,
+            textAlign = typography.textAlign,
+            inactiveColor = colors.inactive,
+            completedColor = colors.active,
+            activeColor = colors.active,
+            pendingColor = colors.pending,
+            fontWeight = typography.fontWeight,
+            fontFamily = typography.fontFamily,
+            shadow = typography.shadow
+        )
+    } else {
+        Text(
+            text = if (line.isInstrumental) "♪" else line.text,
+            color = colors.main,
+            fontFamily = typography.fontFamily,
+            fontSize = typography.fontSize,
+            lineHeight = typography.lineHeight,
+            fontWeight = typography.fontWeight,
+            textAlign = typography.textAlign,
+            style = TextStyle(shadow = typography.shadow),
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+private fun LyricLineSecondaryText(text: String, color: Color, fontSize: TextUnit, lineHeight: TextUnit, textAlign: TextAlign) {
+    if (text.isBlank()) return
+    Text(
+        text = text,
+        color = color,
+        fontSize = fontSize,
+        lineHeight = lineHeight,
+        fontWeight = FontWeight.Medium,
+        textAlign = textAlign,
+        modifier = Modifier.fillMaxWidth()
+    )
+}
+
+private fun Modifier.lyricSelectionSurface(selected: Boolean, selectionMode: Boolean, accent: Color): Modifier =
+    if (selected || selectionMode) {
+        clip(RoundedCornerShape(16.dp))
+            .background(if (selected) accent.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.035f))
+    } else {
+        this
+    }
+
+private fun Modifier.lyricLinePadding(horizontal: Dp, compact: Boolean, selectionMode: Boolean): Modifier =
+    padding(horizontal = horizontal, vertical = if (compact) 2.dp else 0.dp)
+        .padding(horizontal = if (selectionMode) 10.dp else 0.dp, vertical = if (selectionMode) 7.dp else 0.dp)
+
+private fun Modifier.lyricLineBlur(radius: Dp): Modifier =
+    if (radius > 0.dp) blur(radius, BlurredEdgeTreatment.Unbounded) else this
+
+private fun Modifier.lyricScaleSafeLayout(role: LyricVocalRole, alignment: LyricsAlignment, maxScale: Float): Modifier =
+    layout { measurable, constraints ->
+        if (!constraints.hasBoundedWidth) {
+            val placeable = measurable.measure(constraints)
+            return@layout layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+        }
+        val contentWidth = lyricLineScaleSafeWidthPx(constraints.maxWidth, maxScale)
+        val placeable = measurable.measure(
+            constraints.copy(
+                minWidth = minOf(constraints.minWidth, contentWidth),
+                maxWidth = contentWidth
+            )
+        )
+        val width = maxOf(constraints.minWidth, placeable.width)
+        layout(width, placeable.height) {
+            placeable.placeRelative(lyricLineOffsetX(role, alignment, width - placeable.width), 0)
+        }
+    }
+
+private fun Modifier.lyricSelectionIndicator(selected: Boolean, indicator: Painter): Modifier =
+    drawWithContent {
+        drawContent()
+        if (selected) {
+            val indicatorSize = 20.dp.toPx()
+            val inset = 8.dp.toPx()
+            val left = if (layoutDirection == LayoutDirection.Rtl) inset else size.width - indicatorSize - inset
+            translate(left = left, top = inset) {
+                with(indicator) {
+                    draw(Size(indicatorSize, indicatorSize), colorFilter = ColorFilter.tint(Color.White))
+                }
+            }
+        }
+    }
+
+private fun Modifier.lyricLineInteraction(
+    selection: LyricLineSelection,
+    labels: LyricLineLabels,
+    actions: List<CustomAccessibilityAction>,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
+): Modifier = combinedClickable(
+    onClick = onClick,
+    onLongClick = onLongClick.takeIf { selection.selectable },
+    onLongClickLabel = labels.share.takeIf { selection.selectable }
+).semantics {
+    if (selection.selectionMode && selection.selectable) {
+        this.selected = selection.selected
+        stateDescription = if (selection.selected) labels.selected else labels.notSelected
+    }
+    customActions = actions
+}
+
+private fun lyricShareActions(label: String, selectable: Boolean, onShare: () -> Unit): List<CustomAccessibilityAction> =
+    if (selectable) {
+        listOf(
+            CustomAccessibilityAction(label) {
+                onShare()
+                true
+            }
+        )
+    } else {
+        emptyList()
+    }
+
+private fun lyricMaxActiveScale(compact: Boolean): Float =
+    if (compact) LYRICS_COMPACT_ACTIVE_LINE_SCALE else LYRICS_ACTIVE_LINE_SCALE
+
+private fun lyricActiveScale(primary: Boolean, compact: Boolean, inactiveScale: Float): Float =
+    if (primary) lyricMaxActiveScale(compact) else inactiveScale
+
+private fun lyricMainColor(active: Boolean, primary: Boolean, activeColor: Color, inactiveColor: Color): Color =
+    if (active || primary) activeColor else inactiveColor
+
+private fun lyricSectionColor(spotify: Boolean, accent: Color, primary: Boolean): Color =
+    (if (spotify) Color.White else accent).copy(alpha = if (primary) 0.92f else 0.56f)
+
+private fun lyricRomanizationColor(active: Boolean): Color =
+    Color.White.copy(alpha = if (active) 0.76f else 0.40f)
+
+private fun lyricTranslationColor(active: Boolean, accent: Color): Color =
+    if (active) accent.copy(alpha = 0.88f) else Color.White.copy(alpha = 0.44f)
+
+private fun lyricFontFamily(spotify: Boolean, settings: LevyraLyricsStudioSettings): FontFamily =
+    if (spotify) SpotifyFont else levyraFontFamilyFor(settings.fontPreset)
+
+private fun lyricPendingWordColor(spotify: Boolean, compact: Boolean): Color =
+    if (spotify) SpotifyLyricsPending else Color.White.copy(alpha = if (compact) 0.50f else 0.58f)
+
+private fun lyricLineGap(compact: Boolean): Dp = if (compact) 2.dp else 4.dp
+
+private fun lyricUsesWordTiming(line: LyricLine, synced: Boolean, progressive: Boolean): Boolean =
+    line.words.isNotEmpty() && synced && progressive
 
 private fun lyricLineAlignment(role: LyricVocalRole, alignment: LyricsAlignment): Alignment.Horizontal = when (role) {
     LyricVocalRole.DUET_RIGHT -> Alignment.End

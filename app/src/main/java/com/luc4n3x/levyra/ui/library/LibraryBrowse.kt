@@ -207,7 +207,7 @@ private fun SpotifyLibraryRow(entry: LibrarySectionEntry, onOpen: (LibraryCatego
 }
 
 private val SpotifyNeutralTile = SolidColor(SpotifyDesign.highlight)
-private val SpotifyLikedTile = Brush.linearGradient(listOf(Color(0xFF450AF5), Color(0xFF8E8EE5), Color(0xFFC4EFD9)))
+private val SpotifyLikedTile = Brush.linearGradient(listOf(Color(0xFF450AF5), Color(0xFF5B4FC8), Color(0xFF3E7F6E)))
 private val SpotifyOfflineTile = SolidColor(Color(0xFF006450))
 private val SpotifyCollectionsTile = Brush.linearGradient(listOf(Color(0xFF5038A0), Color(0xFF1E3264)))
 

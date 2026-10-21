@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.domain.ExploreZone
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -59,10 +60,10 @@ internal fun PrismPlayDisc(playing: Boolean, resolving: Boolean, size: Dp, modif
 @Composable
 internal fun PrismHomeHeader(
     greeting: String, date: String, hero: StudioHero?, inset: Dp, onSearch: () -> Unit, onSettings: () -> Unit,
-    dayPart: String = "", name: String = ""
+    dayPart: String = "", name: String = "", onOpenZone: (ExploreZone) -> Unit = {}
 ) {
     if (LevyraIsSpotify) {
-        SpotifyHomeHeader(dayPart.ifBlank { greeting }, hero, inset, onSearch, onSettings, name)
+        SpotifyHomeHeader(hero, inset, onSettings, name, onOpenZone)
         return
     }
     if (LevyraIsIvory) {

@@ -66,7 +66,7 @@ internal fun levyraColorScheme(palette: LevyraPalette): ColorScheme {
         surfaceVariant = SpotifyDesign.highlight, onSurfaceVariant = SpotifyDesign.subdued,
         surfaceTint = Color.Transparent,
         inverseSurface = Color.White, inverseOnSurface = Color.Black, inversePrimary = SpotifyDesign.greenPress,
-        error = SpotifyDesign.negative, onError = Color.White,
+        error = SpotifyDesign.negativeStrong, onError = Color.White,
         outline = SpotifyDesign.faint, outlineVariant = SpotifyDesign.decorative,
         surfaceDim = SpotifyDesign.base, surfaceBright = SpotifyDesign.highlight,
         surfaceContainerLowest = Color.Black, surfaceContainerLow = SpotifyDesign.card,

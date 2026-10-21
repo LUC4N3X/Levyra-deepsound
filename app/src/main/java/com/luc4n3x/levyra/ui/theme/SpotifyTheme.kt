@@ -33,6 +33,7 @@ internal object SpotifyDesign {
     val greenPress = Color(0xFF1ABC54)
     val greenText = Color(0xFF1ED760)
     val negative = Color(0xFFED2C3F)
+    val negativeStrong = Color(0xFFD71E33)
     val sheet = Color(0xFF282828)
     val placeholder = Color(0xFF282828)
     val searchField = Color(0xFFFFFFFF)
@@ -43,6 +44,7 @@ internal object SpotifyDesign {
     val corner = 6.dp
     val cornerLarge = 8.dp
     val cardSize = 150.dp
+    val radioCard = 172.dp
     val shortcutHeight = 56.dp
     val chipHeight = 32.dp
     val rowCover = 48.dp
@@ -51,6 +53,7 @@ internal object SpotifyDesign {
     val heroArtwork = 248.dp
     val miniHeight = 56.dp
     val navHeight = 64.dp
+    val dockGap = 12.dp
 
     val coverShape: Shape = RoundedCornerShape(cornerSmall)
     val tileShape: Shape = RoundedCornerShape(corner)
