@@ -424,65 +424,7 @@ private fun YoutubeCommentCard(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                YoutubeCommentAvatar(
-                    url = comment.authorAvatarUrl,
-                    author = comment.author,
-                    tint = primary,
-                    modifier = Modifier.size(38.dp)
-                )
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        Text(
-                            text = comment.author,
-                            color = Color.White.copy(alpha = 0.94f),
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
-                        )
-                        if (comment.verifiedAuthor) {
-                            Icon(
-                                imageVector = Icons.Rounded.Verified,
-                                contentDescription = null,
-                                tint = primary.playerMix(Color.White, 0.44f),
-                                modifier = Modifier.size(13.dp)
-                            )
-                        }
-                        if (comment.pinned) {
-                            Icon(
-                                imageVector = Icons.Rounded.PushPin,
-                                contentDescription = null,
-                                tint = Color.White.copy(alpha = 0.46f),
-                                modifier = Modifier.size(12.dp)
-                            )
-                        }
-                    }
-                    if (comment.publishedText.isNotBlank()) {
-                        Text(
-                            text = comment.publishedText,
-                            color = Color.White.copy(alpha = 0.46f),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-                if (comment.heartedByUploader) {
-                    Icon(
-                        imageVector = Icons.Rounded.Favorite,
-                        contentDescription = null,
-                        tint = Color(0xFFFF5B72),
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
+            YoutubeCommentHeader(comment, primary)
 
             Text(
                 text = comment.text,
@@ -492,115 +434,194 @@ private fun YoutubeCommentCard(
                 fontWeight = FontWeight.Normal
             )
 
+            YoutubeCommentActions(comment, secondary, onToggleReplies)
+
+            YoutubeCommentReplies(comment, primary, moreLabel, onToggleReplies, onLoadMoreReplies)
+        }
+    }
+}
+
+@Composable
+private fun YoutubeCommentHeader(comment: YoutubeComment, primary: Color) {
+    Row(
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        YoutubeCommentAvatar(
+            url = comment.authorAvatarUrl,
+            author = comment.author,
+            tint = primary,
+            modifier = Modifier.size(38.dp)
+        )
+        Column(modifier = Modifier.weight(1f)) {
             Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                Text(
+                    text = comment.author,
+                    color = Color.White.copy(alpha = 0.94f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                if (comment.verifiedAuthor) {
+                    Icon(
+                        imageVector = Icons.Rounded.Verified,
+                        contentDescription = null,
+                        tint = primary.playerMix(Color.White, 0.44f),
+                        modifier = Modifier.size(13.dp)
+                    )
+                }
+                if (comment.pinned) {
+                    Icon(
+                        imageVector = Icons.Rounded.PushPin,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.46f),
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
+            }
+            if (comment.publishedText.isNotBlank()) {
+                Text(
+                    text = comment.publishedText,
+                    color = Color.White.copy(alpha = 0.46f),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+        if (comment.heartedByUploader) {
+            Icon(
+                imageVector = Icons.Rounded.Favorite,
+                contentDescription = null,
+                tint = Color(0xFFFF5B72),
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun YoutubeCommentActions(comment: YoutubeComment, secondary: Color, onToggleReplies: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        if (comment.likeCountText.isNotBlank()) {
+            Row(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.07f))
+                    .padding(horizontal = 12.dp, vertical = 7.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                if (comment.likeCountText.isNotBlank()) {
-                    Row(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.07f))
-                            .padding(horizontal = 12.dp, vertical = 7.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.ThumbUp,
-                            contentDescription = null,
-                            tint = Color.White.copy(alpha = 0.62f),
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Text(
-                            text = comment.likeCountText,
-                            color = Color.White.copy(alpha = 0.72f),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
-                if (comment.replyCount > 0 && comment.replyToken.isNotBlank()) {
-                    val replyPressSource = remember { MutableInteractionSource() }
-                    val replyPressed by replyPressSource.collectIsPressedAsState()
-                    val replyCorner by animateDpAsState(
-                        targetValue = if (replyPressed || comment.repliesExpanded) 10.dp else 18.dp,
-                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-                        label = "comment-reply-corner"
-                    )
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(replyCorner))
-                            .background(secondary.copy(alpha = if (comment.repliesExpanded) 0.34f else 0.20f))
-                            .clickable(
-                                interactionSource = replyPressSource,
-                                indication = LocalIndication.current,
-                                onClick = onToggleReplies
-                            )
-                            .padding(horizontal = 12.dp, vertical = 7.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.Reply,
-                            contentDescription = null,
-                            tint = secondary.playerMix(Color.White, 0.66f),
-                            modifier = Modifier.size(15.dp)
-                        )
-                        Text(
-                            text = comment.replyCount.toString(),
-                            color = secondary.playerMix(Color.White, 0.66f),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
+                Icon(
+                    imageVector = Icons.Rounded.ThumbUp,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.62f),
+                    modifier = Modifier.size(14.dp)
+                )
+                Text(
+                    text = comment.likeCountText,
+                    color = Color.White.copy(alpha = 0.72f),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
+        }
 
-            AnimatedVisibility(
-                visible = comment.repliesExpanded,
-                enter = fadeIn(tween(160)) + slideInVertically(initialOffsetY = { -it / 5 }),
-                exit = fadeOut(tween(120))
+        if (comment.replyCount > 0 && comment.replyToken.isNotBlank()) {
+            val replyPressSource = remember { MutableInteractionSource() }
+            val replyPressed by replyPressSource.collectIsPressedAsState()
+            val replyCorner by animateDpAsState(
+                targetValue = if (replyPressed || comment.repliesExpanded) 10.dp else 18.dp,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+                label = "comment-reply-corner"
+            )
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(replyCorner))
+                    .background(secondary.copy(alpha = if (comment.repliesExpanded) 0.34f else 0.20f))
+                    .clickable(
+                        interactionSource = replyPressSource,
+                        indication = LocalIndication.current,
+                        onClick = onToggleReplies
+                    )
+                    .padding(horizontal = 12.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 24.dp, top = 2.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(Color.Black.copy(alpha = 0.22f))
-                        .padding(horizontal = 12.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    comment.replies.forEach { reply ->
-                        YoutubeCommentReply(reply = reply, primary = primary)
-                    }
-                    if (comment.repliesLoading) {
-                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                strokeWidth = 2.dp,
-                                color = primary.playerMix(Color.White, 0.52f)
-                            )
-                        }
-                    } else if (comment.repliesError != null && comment.replies.isEmpty()) {
-                        TextButton(onClick = onToggleReplies, modifier = Modifier.fillMaxWidth()) {
-                            Icon(
-                                imageVector = Icons.Rounded.Refresh,
-                                contentDescription = null,
-                                tint = primary.playerMix(Color.White, 0.52f),
-                                modifier = Modifier.size(15.dp)
-                            )
-                        }
-                    } else if (comment.repliesNextToken.isNotBlank()) {
-                        TextButton(onClick = onLoadMoreReplies, modifier = Modifier.fillMaxWidth()) {
-                            Text(
-                                text = moreLabel,
-                                color = primary.playerMix(Color.White, 0.52f),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.Reply,
+                    contentDescription = null,
+                    tint = secondary.playerMix(Color.White, 0.66f),
+                    modifier = Modifier.size(15.dp)
+                )
+                Text(
+                    text = comment.replyCount.toString(),
+                    color = secondary.playerMix(Color.White, 0.66f),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun YoutubeCommentReplies(
+    comment: YoutubeComment,
+    primary: Color,
+    moreLabel: String,
+    onToggleReplies: () -> Unit,
+    onLoadMoreReplies: () -> Unit
+) {
+    AnimatedVisibility(
+        visible = comment.repliesExpanded,
+        enter = fadeIn(tween(160)) + slideInVertically(initialOffsetY = { -it / 5 }),
+        exit = fadeOut(tween(120))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 24.dp, top = 2.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(Color.Black.copy(alpha = 0.22f))
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            comment.replies.forEach { reply ->
+                YoutubeCommentReply(reply = reply, primary = primary)
+            }
+            if (comment.repliesLoading) {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = primary.playerMix(Color.White, 0.52f)
+                    )
+                }
+            } else if (comment.repliesError != null && comment.replies.isEmpty()) {
+                TextButton(onClick = onToggleReplies, modifier = Modifier.fillMaxWidth()) {
+                    Icon(
+                        imageVector = Icons.Rounded.Refresh,
+                        contentDescription = null,
+                        tint = primary.playerMix(Color.White, 0.52f),
+                        modifier = Modifier.size(15.dp)
+                    )
+                }
+            } else if (comment.repliesNextToken.isNotBlank()) {
+                TextButton(onClick = onLoadMoreReplies, modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = moreLabel,
+                        color = primary.playerMix(Color.White, 0.52f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }

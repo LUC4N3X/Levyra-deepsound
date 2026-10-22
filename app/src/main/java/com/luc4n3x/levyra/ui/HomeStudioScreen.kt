@@ -214,8 +214,7 @@ internal fun HomeStudioOverlay(
 
     fun moveBy(id: HomeSectionId, delta: Int): Boolean {
         val index = workingOrder.indexOf(id)
-        val skipsDiscovery = LevyraSkinManagesLayout && workingOrder.getOrNull(index + delta) == HomeSectionId.Discovery
-        val target = index + delta + if (skipsDiscovery) delta else 0
+        val target = homeStudioMoveTarget(workingOrder, index, delta, LevyraSkinManagesLayout)
         if (index < 0 || target !in workingOrder.indices) return false
         val next = workingOrder.toMutableList().apply { add(target, removeAt(index)) }
         workingOrder = next
@@ -236,20 +235,7 @@ internal fun HomeStudioOverlay(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            item(key = "studio-top", contentType = "studio-top") {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    LevyraBackButton(onClick = onClose, contentDescription = strings.back)
-                    Column(modifier = Modifier.weight(1f).padding(start = 4.dp)) {
-                        Text(
-                            text = copy.title,
-                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black),
-                            color = LevyraText,
-                            modifier = Modifier.semantics { heading() }
-                        )
-                        Text(text = copy.subtitle, style = MaterialTheme.typography.bodyMedium, color = LevyraMuted)
-                    }
-                }
-            }
+            homeStudioTopItem(copy, strings.back, onClose)
             homeStudioAppearanceItems(style, copy, interfaceSettings, onInterfaceSettings) { previewStyle = it }
             item(key = "studio-sections-label", contentType = "studio-label") {
                 Column {
@@ -347,24 +333,7 @@ internal fun HomeStudioOverlay(
                 )
             }
             homeStudioAdvancedItems(settings, style, layout, copy, update)
-            item(key = "studio-reset", contentType = "studio-actions") {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = { update(settings.resetStyle(style)) },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    ) {
-                        Icon(Icons.Rounded.RestartAlt, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(copy.resetStyle)
-                    }
-                    FilledTonalButton(
-                        onClick = { confirmResetAll = true },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    ) {
-                        Text(copy.resetAll)
-                    }
-                }
-            }
+            homeStudioResetItem(copy, onResetStyle = { update(settings.resetStyle(style)) }, onResetAll = { confirmResetAll = true })
         }
     }
 
@@ -384,21 +353,70 @@ internal fun HomeStudioOverlay(
     }
 
     if (confirmResetAll) {
-        AlertDialog(
-            onDismissRequest = { confirmResetAll = false },
-            title = { Text(copy.resetAll) },
-            text = { Text(copy.resetAllConfirm) },
-            confirmButton = {
-                TextButton(onClick = {
-                    update(LevyraHomeStudioSettings())
-                    confirmResetAll = false
-                }) { Text(copy.reset) }
+        HomeStudioResetAllDialog(
+            copy = copy,
+            cancelLabel = strings.cancel,
+            onConfirm = {
+                update(LevyraHomeStudioSettings())
+                confirmResetAll = false
             },
-            dismissButton = {
-                TextButton(onClick = { confirmResetAll = false }) { Text(strings.cancel) }
-            }
+            onDismiss = { confirmResetAll = false }
         )
     }
+}
+
+private fun LazyListScope.homeStudioTopItem(copy: HomeStudioCopy, backLabel: String, onClose: () -> Unit) {
+    item(key = "studio-top", contentType = "studio-top") {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            LevyraBackButton(onClick = onClose, contentDescription = backLabel)
+            Column(modifier = Modifier.weight(1f).padding(start = 4.dp)) {
+                Text(
+                    text = copy.title,
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black),
+                    color = LevyraText,
+                    modifier = Modifier.semantics { heading() }
+                )
+                Text(text = copy.subtitle, style = MaterialTheme.typography.bodyMedium, color = LevyraMuted)
+            }
+        }
+    }
+}
+
+private fun LazyListScope.homeStudioResetItem(copy: HomeStudioCopy, onResetStyle: () -> Unit, onResetAll: () -> Unit) {
+    item(key = "studio-reset", contentType = "studio-actions") {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = onResetStyle,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            ) {
+                Icon(Icons.Rounded.RestartAlt, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(copy.resetStyle)
+            }
+            FilledTonalButton(
+                onClick = onResetAll,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            ) {
+                Text(copy.resetAll)
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeStudioResetAllDialog(copy: HomeStudioCopy, cancelLabel: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(copy.resetAll) },
+        text = { Text(copy.resetAllConfirm) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(copy.reset) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(cancelLabel) } }
+    )
+}
+
+internal fun homeStudioMoveTarget(order: List<HomeSectionId>, index: Int, delta: Int, skipHiddenDiscovery: Boolean): Int {
+    val skips = skipHiddenDiscovery && order.getOrNull(index + delta) == HomeSectionId.Discovery
+    return index + delta + if (skips) delta else 0
 }
 
 private fun LazyListScope.homeStudioAdvancedItems(

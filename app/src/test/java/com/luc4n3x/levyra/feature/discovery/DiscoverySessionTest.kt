@@ -6,6 +6,7 @@ import com.luc4n3x.levyra.domain.LevyraHomeStudioSettings
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.SponsorSegment
 import com.luc4n3x.levyra.feature.radio.MemoryRadioPreferences
+import com.luc4n3x.levyra.ui.homeStudioMoveTarget
 import com.luc4n3x.levyra.ui.i18n.discoveryCopy
 import com.luc4n3x.levyra.ui.i18n.discoveryCopyLanguages
 import java.time.LocalDate
@@ -129,6 +130,14 @@ class DiscoverySessionTest {
             val hidden = LevyraHomeStudioSettings(style = style).updateLayout(style) { it.withVisibility(HomeSectionId.Discovery, false) }
             assertTrue(LevyraHomeStudioSettings.decode(hidden.encode()).activeLayout().isHidden(HomeSectionId.Discovery))
         }
+    }
+
+    @Test
+    fun homeStudioMovesSkipHiddenDiscoveryOnlyWhenTheSkinHidesIt() {
+        val order = listOf(HomeSectionId.Spotlight, HomeSectionId.Discovery, HomeSectionId.PersonalOrbit)
+        assertEquals(2, homeStudioMoveTarget(order, 0, 1, skipHiddenDiscovery = true))
+        assertEquals(1, homeStudioMoveTarget(order, 0, 1, skipHiddenDiscovery = false))
+        assertEquals(0, homeStudioMoveTarget(order, 2, -1, skipHiddenDiscovery = true))
     }
 
     @Test
