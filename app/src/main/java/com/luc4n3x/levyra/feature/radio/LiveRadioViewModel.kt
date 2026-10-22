@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import java.util.Locale
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -21,6 +23,10 @@ internal data class LiveRadioUiState(
     val preference: RadioLanguagePreference = RadioLanguagePreferences.forLevyraLanguage("en"),
     val stations: List<RadioStation> = emptyList(),
     val favorites: List<RadioStation> = emptyList(),
+    val customStations: List<RadioStation> = emptyList(),
+    val savingCustom: Boolean = false,
+    val searchLimitReached: Boolean = false,
+    val customError: CustomRadioError? = null,
     val recent: List<RadioStation> = emptyList(),
     val countries: List<RadioDirectoryEntry> = emptyList(),
     val languages: List<RadioDirectoryEntry> = emptyList(),
@@ -47,6 +53,13 @@ internal class LiveRadioViewModel(
     private var activationJob: Job? = null
     private var activatedLanguage = ""
     private val favoritesMutex = Mutex()
+    private var searchCursor: List<RadioSearchRequest>? = null
+
+    init {
+        viewModelScope.launch { repository.observeFavorites().collect { favorites -> _state.update { it.copy(favorites = favorites) } } }
+        viewModelScope.launch { repository.observeCustomStations().collect { stations -> _state.update { it.copy(customStations = stations) } } }
+        viewModelScope.launch { repository.observeRecent().collect { stations -> _state.update { it.copy(recent = stations) } } }
+    }
 
     fun activate(levyraLanguageCode: String) {
         val preference = RadioLanguagePreferences.forLevyraLanguage(levyraLanguageCode)
@@ -89,7 +102,9 @@ internal class LiveRadioViewModel(
 
     fun setQuery(value: String) {
         val clean = value.take(MAX_QUERY_LENGTH)
-        _state.update { it.copy(query = clean, error = null) }
+        activationJob?.cancel()
+        searchCursor = null
+        _state.update { it.copy(query = clean, stations = emptyList(), loading = clean.trim().length >= 2, loadingMore = false, canLoadMore = false, searchLimitReached = false, error = null) }
         searchJob?.cancel()
         browseJob?.cancel()
         searchJob = viewModelScope.launch {
@@ -103,27 +118,35 @@ internal class LiveRadioViewModel(
                 return@launch
             }
             delay(SEARCH_DEBOUNCE_MS)
-            _state.update { it.copy(loading = true, error = null) }
-            runCatching { repository.search(clean) }
-                .onSuccess { stations ->
-                    if (_state.value.query == clean) {
-                        _state.update {
-                            it.copy(
-                                stations = stations,
-                                loading = false,
-                                canLoadMore = false,
-                                showingCachedCatalog = false,
-                                error = null
-                            )
-                        }
-                    }
-                }
-                .onFailure { error -> publishFailure(error) }
+            loadSearchPage(clean, append = false)
+        }
+    }
+
+    private suspend fun loadSearchPage(query: String, append: Boolean) {
+        try {
+            val page = repository.search(query, if (append) searchCursor else null)
+            val previous = if (append) _state.value.stations else emptyList()
+            val ranked = withContext(Dispatchers.Default) {
+                filterAndRankRadioSearchResults(previous + page.stations, query, requireLocalMatch = false)
+            }
+            if (_state.value.query != query) return
+            searchCursor = page.next
+            _state.update {
+                val limited = ranked.size >= MAX_SEARCH_STATIONS
+                it.copy(stations = ranked.take(MAX_SEARCH_STATIONS), loading = false, loadingMore = false, canLoadMore = page.next.isNotEmpty() && !limited,
+                    searchLimitReached = limited,
+                    showingCachedCatalog = false, error = if (page.partialFailure) "partial" else null)
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            publishFailure(error)
         }
     }
 
     fun selectCategory(category: RadioCategory) {
         if (_state.value.category == category && _state.value.query.isBlank()) return
+        activationJob?.cancel()
         searchJob?.cancel()
         _state.update {
             it.copy(
@@ -137,6 +160,7 @@ internal class LiveRadioViewModel(
     }
 
     fun selectCountry(countryCode: String?) {
+        activationJob?.cancel()
         searchJob?.cancel()
         _state.update {
             it.copy(
@@ -150,6 +174,7 @@ internal class LiveRadioViewModel(
     }
 
     fun selectLanguage(language: String?) {
+        activationJob?.cancel()
         searchJob?.cancel()
         _state.update {
             it.copy(
@@ -168,8 +193,13 @@ internal class LiveRadioViewModel(
 
     fun loadMore() {
         val snapshot = _state.value
-        if (snapshot.loading || snapshot.loadingMore || !snapshot.canLoadMore || snapshot.query.isNotBlank()) return
+        if (snapshot.loading || snapshot.loadingMore || !snapshot.canLoadMore) return
         _state.update { it.copy(loadingMore = true) }
+        if (snapshot.query.isNotBlank()) {
+            searchJob?.cancel()
+            searchJob = viewModelScope.launch { loadSearchPage(snapshot.query, append = true) }
+            return
+        }
         browseJob?.cancel()
         val filter = currentFilter(offset = snapshot.stations.size)
         browseJob = viewModelScope.launch {
@@ -211,21 +241,52 @@ internal class LiveRadioViewModel(
     }
 
     fun toggleFavorite(station: RadioStation) {
+        clearCustomError()
         viewModelScope.launch {
             favoritesMutex.withLock {
-                val favorite = station.uuid.lowercase(Locale.ROOT) !in _state.value.favoriteIds
-                val favorites = repository.setFavorite(station, favorite)
-                _state.update { it.copy(favorites = favorites) }
+                try {
+                    val favorite = repository.favorites().none { it.uuid.equals(station.uuid, true) }
+                    val favorites = repository.setFavorite(station, favorite)
+                    _state.update { it.copy(favorites = favorites) }
+                } catch (cancelled: CancellationException) { throw cancelled
+                } catch (error: Exception) { publishCustomFailure(error) }
             }
         }
     }
 
-    fun recordPlayed(station: RadioStation) {
+    fun clearCustomError() { _state.update { it.copy(customError = null) } }
+
+    private fun publishCustomFailure(error: Exception) {
+        _state.update { it.copy(customError = (error as? CustomRadioException)?.reason ?: CustomRadioError.Storage) }
+    }
+
+    fun saveCustom(name: String, url: String, image: String, existing: RadioStation?, onSaved: () -> Unit) {
+        if (_state.value.savingCustom) return
+        _state.update { it.copy(savingCustom = true, customError = null) }
         viewModelScope.launch {
-            val recent = repository.recordRecent(station)
-            _state.update { it.copy(recent = recent) }
+            try {
+                repository.saveCustom(customRadioStation(name, url, image, existing))
+                val recent = repository.recent()
+                _state.update { it.copy(savingCustom = false, recent = recent) }
+                onSaved()
+            } catch (cancelled: CancellationException) { throw cancelled
+            } catch (error: Exception) {
+                _state.update { it.copy(savingCustom = false, customError = (error as? CustomRadioException)?.reason ?: CustomRadioError.Storage) }
+            }
         }
-        viewModelScope.launch { repository.recordClick(station.uuid) }
+    }
+
+    fun deleteCustom(station: RadioStation, onDeleted: () -> Unit) {
+        clearCustomError()
+        viewModelScope.launch {
+            try {
+                repository.deleteCustom(station)
+                val recent = repository.recent()
+                _state.update { it.copy(recent = recent, stations = it.stations.filterNot { item -> item.uuid == station.uuid }) }
+                onDeleted()
+            } catch (cancelled: CancellationException) { throw cancelled
+            } catch (error: Exception) { publishCustomFailure(error) }
+        }
     }
 
     private fun loadFirstPage(localeBoost: Boolean) {
@@ -292,6 +353,7 @@ internal class LiveRadioViewModel(
     companion object {
         private const val PAGE_SIZE = 32
         private const val MAX_VISIBLE_STATIONS = 256
+        private const val MAX_SEARCH_STATIONS = 10_000
         private const val MAX_QUERY_LENGTH = 80
         private const val SEARCH_DEBOUNCE_MS = 450L
 

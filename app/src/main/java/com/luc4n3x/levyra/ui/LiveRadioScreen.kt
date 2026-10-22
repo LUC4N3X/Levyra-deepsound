@@ -40,12 +40,19 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -70,9 +77,11 @@ import com.luc4n3x.levyra.feature.radio.LiveRadioViewModel
 import com.luc4n3x.levyra.feature.radio.RadioCategory
 import com.luc4n3x.levyra.feature.radio.RadioDirectoryEntry
 import com.luc4n3x.levyra.feature.radio.RadioStation
+import com.luc4n3x.levyra.feature.radio.liveRadioArtworkHomepage
 import com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog
 import com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.radioLibraryCopy
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
@@ -80,6 +89,8 @@ import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
+import com.luc4n3x.levyra.ui.theme.LevyraSkinManagesLayout
+import com.luc4n3x.levyra.ui.theme.PrismDesign
 import java.util.Locale
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -124,11 +135,15 @@ internal fun LiveRadioScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val strings = LocalLevyraStrings.current
     val radioStrings = remember(languageCode) { LevyraLiveRadioCatalog.forCode(languageCode) }
+    val libraryCopy = remember(languageCode) { radioLibraryCopy(languageCode) }
     val favoriteIds = remember(state.favorites) {
         state.favorites.mapTo(hashSetOf()) { it.uuid.lowercase(Locale.ROOT) }
     }
     var countryPickerOpen by remember { mutableStateOf(false) }
     var languagePickerOpen by remember { mutableStateOf(false) }
+    var editorOpen by rememberSaveable { mutableStateOf(false) }
+    var editingId by rememberSaveable { mutableStateOf<String?>(null) }
+    var deletingId by rememberSaveable { mutableStateOf<String?>(null) }
 
     LaunchedEffect(languageCode) { viewModel.activate(languageCode) }
 
@@ -148,6 +163,32 @@ internal fun LiveRadioScreen(
                     searchHint = radioStrings.searchHint,
                     onQueryChange = viewModel::setQuery
                 )
+                FilledTonalButton(
+                    onClick = { editingId = null; viewModel.clearCustomError(); editorOpen = true },
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp).fillMaxWidth().heightIn(min = 56.dp)
+                ) { Icon(Icons.Rounded.Add, null); Text(libraryCopy.add, modifier = Modifier.padding(start = 8.dp)) }
+            }
+
+            if (!editorOpen) state.customError?.let { reason ->
+                item(key = "live-radio-storage-error") { RadioNotice(libraryCopy.error(reason), Icons.Rounded.Podcasts) }
+            }
+
+            if (state.query.isBlank() && state.customStations.isNotEmpty()) {
+                item(key = "live-radio-custom-title") { RadioSectionTitle(libraryCopy.custom) }
+                items(state.customStations, key = { "custom-${it.uuid}" }) { station ->
+                    var menuOpen by remember { mutableStateOf(false) }
+                    RadioStationRow(0, 1, station, station.uuid in favoriteIds, currentStationId == station.uuid && isPlaying,
+                        radioStrings.live, strings.play, strings.addToFavorites, strings.removeFromFavorites,
+                        onPlay = { onPlay(station) }, onFavorite = { viewModel.toggleFavorite(station) }, actions = {
+                        Box {
+                            IconButton(onClick = { menuOpen = true }) { Icon(Icons.Rounded.MoreVert, libraryCopy.edit, tint = LevyraText) }
+                            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                                DropdownMenuItem(text = { Text(libraryCopy.edit) }, onClick = { menuOpen = false; editingId = station.uuid; viewModel.clearCustomError(); editorOpen = true })
+                                DropdownMenuItem(text = { Text(strings.delete) }, onClick = { menuOpen = false; deletingId = station.uuid })
+                            }
+                        }
+                    })
+                }
             }
 
             item(key = "live-radio-categories-label") {
@@ -201,7 +242,6 @@ internal fun LiveRadioScreen(
                         addFavoriteLabel = strings.addToFavorites,
                         removeFavoriteLabel = strings.removeFromFavorites,
                         onPlay = { station ->
-                            viewModel.recordPlayed(station)
                             onPlay(station)
                         },
                         onFavorite = viewModel::toggleFavorite
@@ -222,7 +262,6 @@ internal fun LiveRadioScreen(
                         addFavoriteLabel = strings.addToFavorites,
                         removeFavoriteLabel = strings.removeFromFavorites,
                         onPlay = { station ->
-                            viewModel.recordPlayed(station)
                             onPlay(station)
                         },
                         onFavorite = viewModel::toggleFavorite
@@ -252,7 +291,6 @@ internal fun LiveRadioScreen(
                         addFavoriteLabel = strings.addToFavorites,
                         removeFavoriteLabel = strings.removeFromFavorites,
                         onPlay = {
-                            viewModel.recordPlayed(featured)
                             onPlay(featured)
                         },
                         onFavorite = { viewModel.toggleFavorite(featured) }
@@ -277,7 +315,6 @@ internal fun LiveRadioScreen(
                     addFavoriteLabel = strings.addToFavorites,
                     removeFavoriteLabel = strings.removeFromFavorites,
                     onPlay = {
-                        viewModel.recordPlayed(station)
                         onPlay(station)
                     },
                     onFavorite = { viewModel.toggleFavorite(station) }
@@ -295,14 +332,24 @@ internal fun LiveRadioScreen(
                 item(key = "live-radio-empty") {
                     RadioEmptyState(
                         title = radioStrings.noStations,
-                        detail = state.error?.let { radioStrings.internetRequired },
+                        detail = if (state.error != null) radioStrings.internetRequired else libraryCopy.noResultsHelp,
                         retry = strings.exploreSamplesRetry,
                         onRetry = viewModel::retry
                     )
+                    TextButton(onClick = { editingId = null; viewModel.clearCustomError(); editorOpen = true }, modifier = Modifier.fillMaxWidth()) { Text(libraryCopy.add) }
                 }
             }
 
-            if (state.canLoadMore && state.query.isBlank() && state.stations.isNotEmpty()) {
+            if (state.error != null && state.stations.isNotEmpty()) {
+                item(key = "live-radio-page-error") {
+                    RadioNotice(if (state.query.isNotBlank()) libraryCopy.partialSearch else radioStrings.internetRequired, Icons.Rounded.Public)
+                    if (!state.canLoadMore) TextButton(onClick = viewModel::retry, modifier = Modifier.fillMaxWidth()) { Text(strings.exploreSamplesRetry) }
+                }
+            }
+            if (state.searchLimitReached) {
+                item(key = "live-radio-search-limit") { RadioNotice(libraryCopy.error(com.luc4n3x.levyra.feature.radio.CustomRadioError.Limit), Icons.Rounded.Search) }
+            }
+            if (state.canLoadMore && !state.loading) {
                 item(key = "live-radio-load-more") {
                     Box(
                         modifier = Modifier
@@ -325,6 +372,17 @@ internal fun LiveRadioScreen(
             onBack = onBack,
             modifier = Modifier.align(Alignment.TopCenter)
         )
+    }
+
+    if (editorOpen) CustomRadioDialog(
+        station = state.customStations.firstOrNull { it.uuid == editingId }, saving = state.savingCustom, error = state.customError,
+        onDismiss = { editorOpen = false }, onChanged = viewModel::clearCustomError,
+        onSave = { name, url, image -> viewModel.saveCustom(name, url, image, state.customStations.firstOrNull { it.uuid == editingId }) { editorOpen = false } }
+    )
+    state.customStations.firstOrNull { it.uuid == deletingId }?.let { station ->
+        AlertDialog(onDismissRequest = { deletingId = null }, title = { Text(station.name) }, text = { Text(libraryCopy.deleteConfirmation) },
+            confirmButton = { TextButton(onClick = { viewModel.deleteCustom(station) { deletingId = null } }) { Text(strings.delete) } },
+            dismissButton = { TextButton(onClick = { deletingId = null }) { Text(strings.cancel) } })
     }
 
     if (countryPickerOpen) {
@@ -807,21 +865,22 @@ private fun RadioStationRow(
     addFavoriteLabel: String,
     removeFavoriteLabel: String,
     onPlay: () -> Unit,
-    onFavorite: () -> Unit
+    onFavorite: () -> Unit,
+    actions: (@Composable () -> Unit)? = null
 ) {
     val colors = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 1.dp)
-            .clip(levyraGroupedListShape(index, count))
+            .clip(if (LevyraSkinManagesLayout) PrismDesign.cut(PrismDesign.surfaceCorner) else levyraGroupedListShape(index, count))
             .background(if (playing) lerp(colors.surfaceContainer, colors.primaryContainer, 0.55f) else colors.surfaceContainer)
             .levyraPressable(onClick = onPlay, role = Role.Button, pressedScale = LevyraPressScale.Surface)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        RadioArtwork(station, 60.dp, RoundedCornerShape(18.dp))
+        RadioArtwork(station, 60.dp, if (LevyraSkinManagesLayout) PrismDesign.cut(PrismDesign.artworkCorner) else RoundedCornerShape(18.dp))
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 station.name,
@@ -844,10 +903,10 @@ private fun RadioStationRow(
             favorite = favorite,
             addLabel = addFavoriteLabel,
             removeLabel = removeFavoriteLabel,
-            size = 44.dp,
+            size = 48.dp,
             onClick = onFavorite
         )
-        Box(
+        if (actions != null) actions() else Box(
             modifier = Modifier
                 .size(48.dp)
                 .clip(rememberLevyraPlayMorphShape(playing = playing, animated = LocalAnimationsEnabled.current, spinWhilePlaying = true))
@@ -973,17 +1032,18 @@ private fun RadioStationRail(
 }
 
 @Composable
-private fun RadioArtwork(station: RadioStation, size: androidx.compose.ui.unit.Dp, shape: Shape) {
+internal fun RadioArtwork(station: RadioStation, size: androidx.compose.ui.unit.Dp, shape: Shape) {
     val colors = MaterialTheme.colorScheme
     val context = androidx.compose.ui.platform.LocalContext.current
     val imageLoader = remember(context.applicationContext) { LiveRadioArtworkLoader.get(context.applicationContext) }
     val safeFavicon = remember(station.faviconUrl) { station.safeFaviconUrl }
+    val artworkHomepage = remember(station.homepageUrl, station.streamUrl) { liveRadioArtworkHomepage(station) }
     var faviconFailed by remember(safeFavicon) { mutableStateOf(false) }
     val needsFallback = safeFavicon.isBlank() || faviconFailed
-    var fallbackArtwork by remember(station.homepageUrl) { mutableStateOf<String?>(null) }
+    var fallbackArtwork by remember(artworkHomepage) { mutableStateOf<String?>(null) }
     var fallbackFailed by remember(fallbackArtwork) { mutableStateOf(false) }
-    LaunchedEffect(needsFallback, station.homepageUrl) {
-        if (needsFallback) fallbackArtwork = LiveRadioArtworkResolver.resolve(station.homepageUrl)
+    LaunchedEffect(needsFallback, artworkHomepage) {
+        if (needsFallback) fallbackArtwork = LiveRadioArtworkResolver.resolve(artworkHomepage)
     }
     val artwork = when {
         !needsFallback -> safeFavicon

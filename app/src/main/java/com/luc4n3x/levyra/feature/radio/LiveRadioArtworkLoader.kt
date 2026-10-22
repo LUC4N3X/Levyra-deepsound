@@ -15,8 +15,9 @@ internal object LiveRadioArtworkLoader {
     val client: OkHttpClient by lazy {
         LevyraHttpClientFactory.externalIntegrations().newBuilder()
             .dns(RadioUrlPolicy.publicDns)
-            .followRedirects(true)
-            .followSslRedirects(true)
+            .followRedirects(false)
+            .followSslRedirects(false)
+            .addInterceptor(RadioRedirectInterceptor())
             .addNetworkInterceptor { chain ->
                 if (!RadioUrlPolicy.isAllowed(chain.request().url.toString())) {
                     throw IOException("Blocked unsafe live radio artwork URL")

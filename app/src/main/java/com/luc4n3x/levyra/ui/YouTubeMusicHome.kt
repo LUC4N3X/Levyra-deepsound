@@ -55,6 +55,7 @@ internal fun YouTubeMusicHomeContent(
     homePullState: PullToRefreshState,
     onPullRefresh: () -> Unit
 ) {
+    val homeRadio = LocalHomeRadio.current
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraYouTubeMusicSkinStrings.forCode(strings.code) }
     val homeViewModel = viewModel<YouTubeMusicHomeViewModel>()
@@ -98,7 +99,7 @@ internal fun YouTubeMusicHomeContent(
             )
             youTubeMusicHomeContentItems(
                 data, actions, copy, strings.personalOrbitTitle, feed.failed, feed.shelves.isNotEmpty(),
-                allShelves, levyraBlocks, previews, homeViewModel::requestPreview
+                allShelves, levyraBlocks, previews, homeViewModel::requestPreview, homeRadio
             ) { homeViewModel.load(strings.code, force = true) }
         }
         YouTubeMusicStatusBarScrim(homeListState, statusBarTop, feed.chips.isNotEmpty())
@@ -165,6 +166,7 @@ private fun LazyListScope.youTubeMusicHomeContentItems(
     levyraBlocks: List<YouTubeMusicHomeBlock>,
     previews: Map<String, List<Track>>,
     onRequestPreview: (String) -> Unit,
+    homeRadio: HomeRadioState,
     onRetry: () -> Unit
 ) {
     if (!hasShelves && feedFailed) {
@@ -182,6 +184,7 @@ private fun LazyListScope.youTubeMusicHomeContentItems(
             )
         }
     }
+    favoriteRadioSection(homeRadio)
     youTubeMusicHomeSections(allShelves, levyraBlocks) { shelf ->
         YouTubeMusicFeedShelf(shelf, data.currentId, copy, actions, previews, onRequestPreview)
     }

@@ -38,7 +38,7 @@ class RadioModelsTest {
     @Test
     fun streamPolicyAllowsPublicHttpAndRejectsLocalTargets() {
         assertTrue(RadioUrlPolicy.isAllowed("https://stream.example.org/live.mp3"))
-        assertTrue(RadioUrlPolicy.isAllowed("http://203.0.113.8:8000/radio"))
+        assertTrue(RadioUrlPolicy.isAllowed("http://93.184.216.34:8000/radio"))
         assertFalse(RadioUrlPolicy.isAllowed("file:///data/local/tmp/audio"))
         assertFalse(RadioUrlPolicy.isAllowed("http://localhost:8000/live"))
         assertFalse(RadioUrlPolicy.isAllowed("http://127.0.0.1/live"))

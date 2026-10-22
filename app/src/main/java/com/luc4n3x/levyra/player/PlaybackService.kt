@@ -819,6 +819,9 @@ class PlaybackService : MediaLibraryService() {
             )
         val upstreamFactory = LevyraYoutubeDataSource.Factory(baseHttpFactory)
         val liveRadioHttpClient = LevyraHttpClientFactory.streaming(this).newBuilder()
+            .followRedirects(false)
+            .followSslRedirects(false)
+            .addInterceptor(com.luc4n3x.levyra.feature.radio.RadioRedirectInterceptor())
             .addNetworkInterceptor { chain ->
                 val request = chain.request()
                 if (!RadioUrlPolicy.isAllowed(request.url.toString())) {
