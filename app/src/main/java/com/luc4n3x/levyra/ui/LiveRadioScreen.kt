@@ -881,24 +881,7 @@ private fun RadioStationRow(
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         RadioArtwork(station, 60.dp, if (LevyraSkinManagesLayout) PrismDesign.cut(PrismDesign.artworkCorner) else RoundedCornerShape(18.dp))
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                station.name,
-                color = colors.onSurface,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            if (playing) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    RadioEqualizer(color = colors.primary)
-                    Text(live, color = colors.primary, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
-                }
-            } else {
-                RadioStationDetail(station)
-            }
-        }
+        RadioStationRowInfo(station, playing, live, Modifier.weight(1f))
         RadioFavoriteButton(
             favorite = favorite,
             addLabel = addFavoriteLabel,
@@ -906,20 +889,53 @@ private fun RadioStationRow(
             size = 48.dp,
             onClick = onFavorite
         )
-        if (actions != null) actions() else Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(rememberLevyraPlayMorphShape(playing = playing, animated = LocalAnimationsEnabled.current, spinWhilePlaying = true))
-                .background(if (playing) colors.primary else colors.secondaryContainer),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                if (playing) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow,
-                playLabel,
-                tint = if (playing) colors.onPrimary else colors.onSecondaryContainer,
-                modifier = Modifier.size(24.dp)
-            )
+        if (actions != null) {
+            actions()
+        } else {
+            RadioStationPlayIndicator(playing, playLabel)
         }
+    }
+}
+
+@Composable
+private fun RadioStationRowInfo(station: RadioStation, playing: Boolean, live: String, modifier: Modifier = Modifier) {
+    val colors = MaterialTheme.colorScheme
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            station.name,
+            color = colors.onSurface,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        if (playing) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                RadioEqualizer(color = colors.primary)
+                Text(live, color = colors.primary, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+            }
+        } else {
+            RadioStationDetail(station)
+        }
+    }
+}
+
+@Composable
+private fun RadioStationPlayIndicator(playing: Boolean, playLabel: String) {
+    val colors = MaterialTheme.colorScheme
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(rememberLevyraPlayMorphShape(playing = playing, animated = LocalAnimationsEnabled.current, spinWhilePlaying = true))
+            .background(if (playing) colors.primary else colors.secondaryContainer),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            if (playing) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow,
+            playLabel,
+            tint = if (playing) colors.onPrimary else colors.onSecondaryContainer,
+            modifier = Modifier.size(24.dp)
+        )
     }
 }
 
