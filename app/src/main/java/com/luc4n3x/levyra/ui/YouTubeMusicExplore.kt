@@ -228,9 +228,9 @@ private class YouTubeMusicMixCard(val key: String, val title: String, val icon: 
 @Composable
 private fun YouTubeMusicLevyraMix(viewModel: com.luc4n3x.levyra.viewmodel.ExploreViewModel) {
     val strings = LocalLevyraStrings.current
-    val mix by remember(viewModel) {
-        viewModel.state.map { it.mixFamiliarity to it.mixLoading }.distinctUntilChanged()
-    }.collectAsStateWithLifecycle(viewModel.state.value.mixFamiliarity to viewModel.state.value.mixLoading)
+    val mixFlow = remember(viewModel) { viewModel.state.map { it.mixFamiliarity to it.mixLoading }.distinctUntilChanged() }
+    val initialMix = remember(viewModel) { viewModel.state.value.let { it.mixFamiliarity to it.mixLoading } }
+    val mix by mixFlow.collectAsStateWithLifecycle(initialMix)
     val (familiarity, loading) = mix
     val cards = remember(strings, viewModel) {
         listOf(

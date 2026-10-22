@@ -552,6 +552,7 @@ class LevyraScreenViewModelFactory internal constructor(
             modelClass.isAssignableFrom(ExploreViewModel::class.java) -> ExploreViewModel(root)
             modelClass.isAssignableFrom(LibraryViewModel::class.java) -> LibraryViewModel(root)
             modelClass.isAssignableFrom(PlayerViewModel::class.java) -> PlayerViewModel(root)
+            modelClass.isAssignableFrom(DiscoveryViewModel::class.java) -> DiscoveryViewModel(root)
             else -> throw IllegalArgumentException("Unsupported screen ViewModel: ${modelClass.name}")
         } as T
     }

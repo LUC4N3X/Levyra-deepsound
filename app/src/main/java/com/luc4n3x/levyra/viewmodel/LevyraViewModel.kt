@@ -428,6 +428,16 @@ private const val SIMILAR_SONGS_DEBOUNCE_MS = 400L
 private const val RELATED_CANDIDATE_CACHE_SEEDS = 6
 private const val JAM_SIMILAR_SONG_SELECT_TIMEOUT_MS = 5_000L
 
+private const val DISCOVERY_PLAYLIST_SIGNAL_LIMIT = 300
+private const val DISCOVERY_SOURCE_LIMIT = 16
+private const val DISCOVERY_REGIONAL_LIMIT = 30
+private const val DISCOVERY_RELEASE_RADAR_LIMIT = 5
+private const val DISCOVERY_ARTIST_LIMIT = 8
+private const val DISCOVERY_RESOLVE_TIMEOUT_MS = 12_000L
+private const val DISCOVERY_MATCH_SEARCH_LIMIT = 8
+private const val DISCOVERY_MATCH_DURATION_TOLERANCE_MS = 20_000L
+private const val DISCOVERY_MATCH_MIN_SCORE = 160
+
 private const val REMOTE_PLAYLIST_TRACK_LIMIT = 150
 private const val REMOTE_PLAYLIST_PREVIEW_TRACK_LIMIT = 300
 private val ACTIVE_DOWNLOAD_STATES = setOf("QUEUED", "RUNNING", "PAUSED", "RETRYING")
@@ -9867,6 +9877,136 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (list.isEmpty()) return
         _state.update { current -> current.withExplicitPlaybackMode(videoMode = false) }
         playFrom(list, track, loopOnCompletion)
+    }
+
+    internal fun discoveryProfile(): com.luc4n3x.levyra.feature.discovery.DiscoveryTasteProfile {
+        val snapshot = _state.value
+        val market = com.luc4n3x.levyra.domain.LevyraContentLocales.forLanguage(snapshot.languageCode).chartCountry
+        return com.luc4n3x.levyra.feature.discovery.DiscoveryTasteProfile.from(
+            languageCode = snapshot.languageCode,
+            market = market,
+            recentListens = snapshot.recentListens,
+            favorites = snapshot.favorites,
+            playlistTracks = snapshot.playlists.asSequence().flatMap { it.tracks.asSequence() }.take(DISCOVERY_PLAYLIST_SIGNAL_LIMIT).toList(),
+            followedArtists = snapshot.followedArtists.map { it.name },
+            excludedArtists = snapshot.excludedArtists.map { it.name },
+            similarArtists = snapshot.similarArtists.map { it.name }
+        )
+    }
+
+    internal fun discoverySources(): com.luc4n3x.levyra.feature.discovery.DiscoverySources =
+        com.luc4n3x.levyra.feature.discovery.DiscoverySources(
+            similarToTrack = { seed -> repository.radio(seed, _state.value.languageCode, limit = DISCOVERY_SOURCE_LIMIT, diversify = true) },
+            newMusic = { market, language -> discoveryNewMusic(market, language) },
+            followedReleases = { discoveryFollowedReleases() },
+            similarArtistTracks = { artist -> discoveryArtistTracks(artist) },
+            regional = { market -> chartsRepository.topSongs(market, DISCOVERY_REGIONAL_LIMIT) },
+            editorial = { language ->
+                com.luc4n3x.levyra.domain.LevyraContentLocales.forLanguage(language).homeQueries.take(2)
+                    .flatMap { query -> repository.search(query, DISCOVERY_SOURCE_LIMIT, language) }
+            }
+        )
+
+    private suspend fun discoveryNewMusic(market: String, language: String): List<Track> = coroutineScope {
+        val apple = async {
+            runCatchingPreservingCancellation {
+                com.luc4n3x.levyra.data.apple.AppleMusicEditorialRepository.get(getApplication<Application>())
+                    .newMusic(market, language)?.page?.shelves.orEmpty()
+                    .filter { it.kind == com.luc4n3x.levyra.data.apple.AppleCatalogShelfKind.Songs }
+                    .flatMap { shelf -> shelf.items.mapNotNull(com.luc4n3x.levyra.data.apple.AppleCatalogTracks::fromItem) }
+            }.getOrDefault(emptyList())
+        }
+        val fresh = async {
+            runCatchingPreservingCancellation { chartsRepository.freshCurrentTracks(country = market, limit = DISCOVERY_SOURCE_LIMIT) }
+                .getOrDefault(emptyList())
+        }
+        val tracks = fresh.await() + apple.await()
+        if (tracks.isEmpty()) throw IllegalStateException("No new music available")
+        tracks
+    }
+
+    private suspend fun discoveryFollowedReleases(): List<Track> {
+        val snapshot = _state.value
+        val entries = snapshot.releaseRadar.sortedByDescending { it.isFresh }.take(DISCOVERY_RELEASE_RADAR_LIMIT)
+        if (entries.isEmpty()) return emptyList()
+        return coroutineScope {
+            entries.map { entry ->
+                async {
+                    val artistKey = com.luc4n3x.levyra.feature.discovery.discoveryPrimaryArtistKey(entry.artistName)
+                    runCatchingPreservingCancellation {
+                        repository.search(releaseRadarSearchQuery(entry), 4, snapshot.languageCode)
+                            .firstOrNull { candidate ->
+                                artistKey.isNotBlank() && com.luc4n3x.levyra.feature.discovery.discoveryArtistKeys(candidate.artist).contains(artistKey)
+                            }
+                    }.getOrNull()
+                }
+            }.mapNotNull { it.await() }
+        }
+    }
+
+    private suspend fun discoveryArtistTracks(artist: String): List<Track> {
+        val artistKey = com.luc4n3x.levyra.feature.discovery.discoveryPrimaryArtistKey(artist)
+        if (artistKey.isBlank()) return emptyList()
+        return repository.search(artist, DISCOVERY_ARTIST_LIMIT, _state.value.languageCode)
+            .filter { com.luc4n3x.levyra.feature.discovery.discoveryArtistKeys(it.artist).contains(artistKey) }
+    }
+
+    internal suspend fun resolveDiscoveryAudio(track: Track): Track? = withTimeoutOrNull(DISCOVERY_RESOLVE_TIMEOUT_MS) {
+        try {
+            val matched = youtubePlayableTrack(track) ?: matchDiscoveryCandidate(track) ?: return@withTimeoutOrNull null
+            val resolved = providerRouter.resolve(matched.copy(streamUrl = ""), false)
+            if (resolved.id != matched.id || resolved.streamUrl.isBlank()) null
+            else preserveEditorialArtwork(track, resolved)
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (error: Throwable) {
+            Timber.d(error, "Discovery preview resolution failed")
+            null
+        }
+    }
+
+    private suspend fun matchDiscoveryCandidate(track: Track): Track? {
+        val query = "${track.title} ${track.artist}".trim()
+        if (query.length < 2) return null
+        return repository.search(query, DISCOVERY_MATCH_SEARCH_LIMIT, _state.value.languageCode)
+            .asSequence()
+            .filter { isPlaybackCandidateCompatible(track, it) && youtubePlayableTrack(it) != null }
+            .filter { candidate ->
+                track.durationMs <= 0L || candidate.durationMs <= 0L ||
+                    kotlin.math.abs(candidate.durationMs - track.durationMs) <= DISCOVERY_MATCH_DURATION_TOLERANCE_MS
+            }
+            .map { it to playbackCandidateScore(track, it) }
+            .filter { it.second >= DISCOVERY_MATCH_MIN_SCORE }
+            .maxByOrNull { it.second }
+            ?.first
+            ?.let { LevyraPersonalOrbit.preferAlbumArtwork(youtubePlayableTrack(it) ?: it, track) }
+    }
+
+    internal fun pauseMainPlaybackForDiscovery(): String? {
+        val snapshot = _state.value
+        val current = snapshot.currentTrack ?: return null
+        if (!snapshot.isPlaying && pendingResumeJob?.isActive != true) return null
+        pause()
+        return playbackIdentity(current)
+    }
+
+    internal fun resumeMainPlaybackAfterDiscovery(token: String) {
+        val snapshot = _state.value
+        val current = snapshot.currentTrack ?: return
+        if (snapshot.isPlaying || snapshot.isResolving || playbackIdentity(current) != token) return
+        togglePlay()
+    }
+
+    internal suspend fun saveDiscoveryTrack(playlistId: String, playlistName: String, track: Track): Boolean {
+        val added = playlistStore.appendToStablePlaylist(playlistId, playlistName, track.copy(streamUrl = ""))
+        loadPlaylists()
+        return added
+    }
+
+    internal suspend fun removeDiscoveryTrack(playlistId: String, trackId: String) {
+        playlistStore.removeTrack(playlistId, trackId)
+        loadPlaylists()
+        refreshOpenPlaylist(playlistId)
     }
 
     fun playVideoFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) {
