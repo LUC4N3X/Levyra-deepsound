@@ -44,6 +44,8 @@ interface PlaylistCandidateProvider {
 
 internal const val LOCAL_TRACK_PREFIX = "local:"
 private val youtubeVideoId = Regex("^[A-Za-z0-9_-]{11}$")
+private val artistTitleSeparator = Regex("\\s+(?:--|-|–|—)\\s+")
+private val channelSuffix = Regex("\\s*(?:-\\s*topic|vevo)$", RegexOption.IGNORE_CASE)
 
 internal fun trackKindRank(track: Track): Int {
     val type = track.videoType.uppercase()
@@ -104,11 +106,19 @@ internal fun Track.toMatchCandidate(): CatalogCandidate {
         "UGC" in type -> CandidateKind.USER_VIDEO
         else -> CandidateKind.UNKNOWN
     }
+    val separator = artistTitleSeparator.find(title).takeIf { source == "LevyraExtractor Search" }
+    val titleArtist = separator?.let { title.substring(0, it.range.first).trim() }.orEmpty()
+    val channelArtist = MusicIdentityText.normalizeArtist(artist.replace(channelSuffix, ""))
+    val artistPrefixMatchesChannel = channelArtist.isNotBlank() &&
+        (MusicIdentityText.normalizeArtist(titleArtist) == channelArtist ||
+            MusicIdentityText.artistNames(titleArtist).firstOrNull() == channelArtist)
+    val recordingTitle = if (artistPrefixMatchesChannel) title.substring(requireNotNull(separator).range.last + 1).trim() else title
+    val recordingArtist = if (artistPrefixMatchesChannel) titleArtist else artist
     return CatalogCandidate(
         MatchCandidate(
             id = id,
-            title = title,
-            artists = listOf(artist).filter(String::isNotBlank),
+            title = recordingTitle,
+            artists = listOf(recordingArtist).filter(String::isNotBlank),
             album = album,
             durationMs = durationMs,
             isrc = isrc,
@@ -117,7 +127,7 @@ internal fun Track.toMatchCandidate(): CatalogCandidate {
             kind = kind,
             artworkUrl = thumbnailUrl.ifBlank { largeThumbnailUrl }
         ),
-        this
+        if (artistPrefixMatchesChannel) copy(title = recordingTitle, artist = recordingArtist) else this
     )
 }
 
@@ -149,7 +159,8 @@ class PlaylistImportCatalog(
     private val repository: YoutubeMusicRepository,
     private val localTracks: suspend () -> List<Track>,
     private val languageCode: () -> String,
-    private val metadataSearch: suspend (ImportedTrackIdentity) -> List<MatchCandidate> = { emptyList() }
+    private val metadataSearch: suspend (ImportedTrackIdentity) -> List<MatchCandidate> = { emptyList() },
+    private val youtubeSearch: (suspend (String) -> List<Track>)? = null
 ) : PlaylistCandidateProvider {
     private val localMutex = Mutex()
     private var localIndex: Map<String, List<Track>>? = null
@@ -231,17 +242,25 @@ class PlaylistImportCatalog(
         val lookup = ImportLookup(identity, preference, languageCode(), local)
         if (lookup.reliable() && preference != ResolutionPreference.PREFER_ONLINE) return lookup.result()
         val originalQuery = "${identity.title} ${identity.primaryArtist}".trim()
-        val primary = MusicIdentityText.artistNames(identity.primaryArtist).firstOrNull().orEmpty()
+        val primary = MusicIdentityText.normalizeArtist(identity.primaryArtist)
         val normalized = "${MusicIdentityText.title(identity.title).core} $primary".trim()
+        val credits = (identity.artists + identity.featuredArtists).filter(String::isNotBlank).distinct()
+        val creditedQuery = "${identity.title} - ${credits.joinToString(" ")}".takeIf { credits.size > 1 }
         val direct = listOf(originalQuery to false, originalQuery to true) +
+            listOfNotNull(creditedQuery?.let { it to false }) +
             listOfNotNull((normalized to false).takeUnless { normalized.equals(originalQuery, ignoreCase = true) })
         if (lookup.searchUntilReliable(direct)) return lookup.result()
+        if (identity.durationMs > 0L && identity.album.isNotBlank()) {
+            lookup.searchYoutube(originalQuery)
+            if (lookup.reliable()) return lookup.result()
+        }
         val metadata = safeMetadata(identity)
         lookup.reference = corroborateImportIdentity(identity, metadata)
         if (lookup.reliable()) return lookup.result()
         val fallback = (metadataQueries(identity, metadata) + ImportTransliteration.latinQuery(normalized)).distinct()
         if (lookup.searchUntilReliable(fallback.map { it to false })) return lookup.result()
         lookup.search(normalized, true)
+        if (!lookup.reliable()) lookup.searchYoutube(originalQuery)
         return lookup.finish()
     }
 
@@ -269,7 +288,6 @@ class PlaylistImportCatalog(
         private val found = local.toMutableList()
         private val queried = HashSet<String>()
         private var failure: Throwable? = null
-        private var succeeded = false
 
         fun result(): CatalogResolution {
             val unique = found.distinctBy { it.candidate.id }
@@ -293,16 +311,38 @@ class PlaylistImportCatalog(
                 retrying { if (mixed) repository.searchForImport(query, 12, language) else songs(query, language) }
             }
             response.onSuccess {
-                succeeded = true
                 found += it.take(20).map(Track::toMatchCandidate)
             }.onFailure { failure = it }
             if (response.isFailure && !mixed) search(query, true)
         }
 
+        suspend fun searchYoutube(query: String) {
+            val search = youtubeSearch ?: return
+            if (!queried.add("youtube:${query.lowercase(java.util.Locale.ROOT)}")) return
+            val response = runSearch { search(query) }
+            response.onSuccess {
+                it.take(16).map(Track::toMatchCandidate).forEach { candidate ->
+                    val index = found.indexOfFirst { previous -> previous.candidate.id == candidate.candidate.id }
+                    if (index < 0) {
+                        found += candidate
+                    } else {
+                        val previous = found[index].candidate
+                        val knownArtists = previous.artists.flatMap(MusicIdentityText::artistNames).toSet()
+                        val fallbackArtists = candidate.candidate.artists.flatMap(MusicIdentityText::artistNames).toSet()
+                        if (fallbackArtists.containsAll(knownArtists) &&
+                            PlaylistMatchEngine.evaluate(reference, candidate.candidate).score >
+                            PlaylistMatchEngine.evaluate(reference, previous).score) {
+                            found[index] = candidate
+                        }
+                    }
+                }
+            }.onFailure { failure = it }
+        }
+
         fun finish(): CatalogResolution {
             val resolved = result()
             val error = failure
-            if (error != null && !succeeded && resolved.outcome.selected == null) throw IOException("Playlist search incomplete", error)
+            if (error != null && resolved.outcome.selected == null) throw IOException("Playlist search incomplete", error)
             return resolved
         }
     }

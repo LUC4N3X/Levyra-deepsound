@@ -132,6 +132,7 @@ object PlaylistMatchEngine {
     private val mediumMarkers = setOf(TrackVersionMarker.RADIO_EDIT, TrackVersionMarker.EDIT, TrackVersionMarker.VERSION)
     private val softMarkers = setOf(TrackVersionMarker.REMASTER, TrackVersionMarker.MONO, TrackVersionMarker.STEREO)
     private val channelSuffix = Regex("\\s*(?:-\\s*topic|vevo)$", RegexOption.IGNORE_CASE)
+    private val remixCreditSuffix = Regex("\\s+(?:(?:extended|club|radio|original|dub)\\s+)*(?:remix|mix|remixed|rework|bootleg|mashup)$")
     private val untrustedAlbums = setOf("", "levyra", "youtube", "youtube music", "unknown", "unknown album", "single", "singles")
 
     fun evaluate(source: ImportedTrackIdentity, candidate: MatchCandidate): MatchEvaluation {
@@ -342,12 +343,13 @@ object PlaylistMatchEngine {
         val sourceFeatured = source.featuredArtists.flatMap(MusicIdentityText::artistNames).toSet() + sourceTitle.featuredArtists
         val primary = sourceNames.first()
         val candidatePrimary = normalizedArtists(candidate.artists)
-        val candidateAll = candidatePrimary.toSet() + candidateTitle.featuredArtists
-        val expected = sourceNames.toSet() + sourceFeatured
+        val versionCredits = matchingRemixerCredits(sourceNames, sourceFeatured, sourceTitle, candidatePrimary, candidateTitle)
+        val candidateAll = candidatePrimary.toSet() + candidateTitle.featuredArtists + versionCredits
+        val expected = sourceNames.toSet() + sourceFeatured + versionCredits
         return when {
             primary in candidatePrimary -> {
                 val exact = candidatePrimary.firstOrNull() == primary &&
-                    candidateAll.all { it in expected } && expected.all { it in candidateAll }
+                    sameArtistCredits(candidateAll, expected)
                 if (!exact) limit(79)
                 reasons += MatchReason(if (exact) MatchSignal.ARTIST_EXACT else MatchSignal.ARTIST_PRIMARY)
                 if (exact) 32 else 27
@@ -380,6 +382,28 @@ object PlaylistMatchEngine {
         }
     }
 
+    private fun matchingRemixerCredits(
+        sourceNames: List<String>,
+        sourceFeatured: Set<String>,
+        sourceTitle: TitleIdentity,
+        candidateNames: List<String>,
+        candidateTitle: TitleIdentity
+    ): Set<String> = if (
+        sourceTitle.markers == candidateTitle.markers && versionLabels(sourceTitle) == versionLabels(candidateTitle) &&
+        TrackVersionMarker.REMIX in sourceTitle.markers
+    ) {
+        val remixers = versionLabels(sourceTitle).mapNotNull { label ->
+            remixCreditSuffix.find(label)?.let { MusicIdentityText.normalizeArtist(label.substring(0, it.range.first)) }
+        }.toSet()
+        (sourceNames.drop(1) + candidateNames.drop(1)).filter { name ->
+            name !in sourceFeatured && name !in candidateTitle.featuredArtists && name in remixers
+        }.toSet()
+    } else emptySet()
+
+    private fun sameArtistCredits(left: Set<String>, right: Set<String>): Boolean =
+        left.all { name -> right.any { it == name || compactEquals(it, name) } } &&
+            right.all { name -> left.any { it == name || compactEquals(it, name) } }
+
     private fun scoreVersion(
         sourceTitle: TitleIdentity,
         candidateTitle: TitleIdentity,
@@ -390,7 +414,7 @@ object PlaylistMatchEngine {
         val hard = difference.filter { it in hardMarkers }
         val medium = difference.filter { it in mediumMarkers }
         val soft = difference.filter { it in softMarkers }
-        val labelsDiffer = sourceTitle.versionLabels != candidateTitle.versionLabels
+        val labelsDiffer = versionLabels(sourceTitle) != versionLabels(candidateTitle)
         var score = 0
         if (hard.isNotEmpty()) {
             reasons += MatchReason(MatchSignal.VERSION_CONFLICT, detail = versionDetail(hard, candidateTitle.markers))
@@ -476,7 +500,14 @@ object PlaylistMatchEngine {
             .distinct()
 
     private fun versionIdentity(title: TitleIdentity): Set<String> =
-        title.markers.filter { it in hardMarkers || it in mediumMarkers }.map { it.name }.toSet() + title.versionLabels
+        title.markers.filter { it in hardMarkers || it in mediumMarkers }.map { it.name }.toSet() + versionLabels(title)
+
+    private fun versionLabels(title: TitleIdentity): Set<String> =
+        if (TrackVersionMarker.REMIX in title.markers) {
+            title.versionLabels.map { label ->
+                if (label.endsWith(" mix")) label.removeSuffix(" mix") + " remix" else label
+            }.toSet()
+        } else title.versionLabels
 
     private fun titleSimilarity(a: TitleIdentity, b: TitleIdentity): Double {
         if (a.core.isEmpty() || b.core.isEmpty()) return 0.0
