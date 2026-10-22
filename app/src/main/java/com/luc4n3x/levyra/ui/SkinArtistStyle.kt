@@ -39,7 +39,7 @@ internal fun artistHeroOverlineColor(): Color = when {
 
 @Composable
 internal fun artistPortraitFrame(): Modifier {
-    if (LevyraIsTorque || LevyraIsSpotify || !LevyraSkinManagesLayout) return Modifier
+    if (LevyraIsTorque || LevyraIsSpotify || LevyraIsYouTubeMusic || !LevyraSkinManagesLayout) return Modifier
     if (LevyraIsNocturne) {
         val shape = RoundedCornerShape(Nocturne78Design.artworkCorner)
         return Modifier.statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 144.dp)
@@ -53,17 +53,19 @@ internal fun artistPortraitFrame(): Modifier {
 internal class ArtistHeroScrim(val color: Color, val middle: Float, val deep: Float, val end: Float)
 
 internal fun artistHeroScrim(): ArtistHeroScrim =
-    if (LevyraIsAppleMusic) ArtistHeroScrim(Color.Black, 0.18f, 0.42f, 0.55f) else ArtistHeroScrim(LevyraBlack, 0.55f, 0.94f, 1f)
+    if (LevyraIsAppleMusic) ArtistHeroScrim(Color.Black, 0.18f, 0.42f, 0.55f)
+    else if (LevyraIsYouTubeMusic) ArtistHeroScrim(Color.Black, 0.2f, 0.78f, 1f) else ArtistHeroScrim(LevyraBlack, 0.55f, 0.94f, 1f)
 
-internal fun artistHeroShowsOverline(): Boolean = !LevyraIsSpotify && !LevyraIsAppleMusic
+internal fun artistHeroShowsOverline(): Boolean = !LevyraIsSpotify && !LevyraIsAppleMusic && !LevyraIsYouTubeMusic
 
-internal fun artistHeroNameColor(): Color = if (LevyraIsTorque || LevyraIsAppleMusic) Color.White else LevyraText
+internal fun artistHeroNameColor(): Color = if (LevyraIsTorque || LevyraIsAppleMusic || LevyraIsYouTubeMusic) Color.White else LevyraText
 
-internal fun artistHeroAudienceColor(): Color = (if (LevyraIsAppleMusic) Color.White else LevyraText).copy(alpha = 0.72f)
+internal fun artistHeroAudienceColor(): Color = (if (LevyraIsAppleMusic || LevyraIsYouTubeMusic) Color.White else LevyraText).copy(alpha = 0.72f)
 
 @Composable
 internal fun artistHeroNameStyle(nameSize: androidx.compose.ui.unit.TextUnit): androidx.compose.ui.text.TextStyle =
     if (LevyraIsAppleMusic) androidx.compose.material3.MaterialTheme.typography.headlineLarge
+    else if (LevyraIsYouTubeMusic) androidx.compose.material3.MaterialTheme.typography.displayLarge
     else LevyraType.heroTitle.copy(
         fontSize = nameSize,
         lineHeight = LevyraType.heroLineHeight(nameSize),

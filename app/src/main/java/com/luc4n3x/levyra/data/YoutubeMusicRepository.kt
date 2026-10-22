@@ -24,6 +24,13 @@ import com.luc4n3x.levyra.domain.SearchSuggestionBundle
 import com.luc4n3x.levyra.domain.ReleaseType
 import com.luc4n3x.levyra.domain.releaseTypeFromProviderLabel
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.YoutubeMusicHomeButton
+import com.luc4n3x.levyra.domain.YoutubeMusicHomeChip
+import com.luc4n3x.levyra.domain.YoutubeMusicHomeFeed
+import com.luc4n3x.levyra.domain.YoutubeMusicHomeItem
+import com.luc4n3x.levyra.domain.YoutubeMusicHomeItemKind
+import com.luc4n3x.levyra.domain.YoutubeMusicHomeShelf
+import com.luc4n3x.levyra.domain.YoutubeMusicHomeShelfStyle
 import com.luc4n3x.levyra.domain.artistIdentityKey
 import com.luc4n3x.levyra.domain.isArtistShelfNameEligible
 import com.luc4n3x.levyra.domain.primaryArtistSegment
@@ -2229,6 +2236,136 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         return sections.take(10)
     }
 
+    suspend fun youtubeMusicHomeFeed(
+        languageCode: String = LevyraLanguageCatalog.deviceDefault(),
+        params: String = "",
+        continuation: String = "",
+        browseId: String = "FEmusic_home"
+    ): YoutubeMusicHomeFeed = withContext(Dispatchers.IO) {
+        val root = requestMusicBrowseRoot(languageCode, if (continuation.isBlank()) browseId else "", params, continuation) ?: return@withContext YoutubeMusicHomeFeed()
+        val feed = parseHomeFeed(root)
+        feed.shelves.forEach { shelf -> shelf.tracks.forEach { memory[it.id] = it } }
+        feed
+    }
+
+    internal fun parseHomeFeed(root: JSONObject): YoutubeMusicHomeFeed {
+        val chipRenderers = mutableListOf<JSONObject>()
+        collectObjectsByKey(root, "chipCloudChipRenderer", chipRenderers)
+        val chips = chipRenderers.mapNotNull { chip ->
+            val title = chip.optJSONObject("text")?.optJSONArray("runs")?.joinText().orEmpty().trim()
+            val params = chip.optJSONObject("navigationEndpoint")?.optJSONObject("browseEndpoint")?.optString("params").orEmpty()
+            YoutubeMusicHomeChip(title, params).takeIf { title.isNotBlank() && params.isNotBlank() }
+        }.distinctBy { it.title }
+        val shelfRenderers = mutableListOf<JSONObject>()
+        collectObjectsByKey(root, "musicCarouselShelfRenderer", shelfRenderers)
+        val shelves = shelfRenderers.mapIndexedNotNull { index, shelf -> parseHomeShelf(shelf, index) }
+        return YoutubeMusicHomeFeed(chips, shelves, findSearchContinuation(root))
+    }
+
+    private fun parseHomeShelf(shelf: JSONObject, index: Int): YoutubeMusicHomeShelf? {
+        val header = shelf.optJSONObject("header")?.optJSONObject("musicCarouselShelfBasicHeaderRenderer")
+        val title = header?.optJSONObject("title")?.optJSONArray("runs")?.joinText().orEmpty().trim()
+        if (title.isBlank()) return null
+        val strapline = header?.optJSONObject("strapline")?.optJSONArray("runs")?.joinText().orEmpty().trim()
+        val headerThumbnail = header?.optJSONObject("thumbnail")?.let { findBestThumbnail(it) }.orEmpty()
+        val contents = shelf.optJSONArray("contents") ?: return null
+        val items = LinkedHashMap<String, YoutubeMusicHomeItem>()
+        val buttons = mutableListOf<YoutubeMusicHomeButton>()
+        var listRows = 0
+        for (i in 0 until contents.length()) {
+            val content = contents.optJSONObject(i) ?: continue
+            content.optJSONObject("musicNavigationButtonRenderer")?.let { button ->
+                parseHomeButton(button)?.let(buttons::add)
+                continue
+            }
+            if (content.has("musicResponsiveListItemRenderer")) listRows++
+            val item = parseHomeItem(content) ?: continue
+            items.putIfAbsent(item.key, item)
+        }
+        if (items.isEmpty() && buttons.isEmpty()) return null
+        val values = items.values.take(MAX_HOME_SHELF_ITEMS)
+        val style = when {
+            values.isEmpty() -> YoutubeMusicHomeShelfStyle.Buttons
+            listRows > 0 -> YoutubeMusicHomeShelfStyle.ListColumns
+            values.all { it.kind == YoutubeMusicHomeItemKind.Artist } -> YoutubeMusicHomeShelfStyle.Artists
+            values.all { it.kind == YoutubeMusicHomeItemKind.Video } -> YoutubeMusicHomeShelfStyle.Videos
+            else -> YoutubeMusicHomeShelfStyle.Cards
+        }
+        return YoutubeMusicHomeShelf(
+            key = "shelf-$index-${title.lowercase(Locale.ROOT).hashCode()}",
+            title = title,
+            strapline = strapline,
+            thumbnailUrl = headerThumbnail.takeIf { it.isNotBlank() }?.let(::upgradeThumbnail).orEmpty(),
+            style = style,
+            items = values,
+            headerBrowseId = header?.optJSONObject("title")?.optJSONArray("runs")?.optJSONObject(0)
+                ?.optJSONObject("navigationEndpoint")?.optJSONObject("browseEndpoint")?.optString("browseId").orEmpty(),
+            buttons = buttons.take(MAX_HOME_SHELF_ITEMS * 2)
+        )
+    }
+
+    private fun parseHomeButton(button: JSONObject): YoutubeMusicHomeButton? {
+        val title = button.optJSONObject("buttonText")?.optJSONArray("runs")?.joinText().orEmpty().trim()
+        val endpoint = button.optJSONObject("clickCommand")?.optJSONObject("browseEndpoint") ?: return null
+        val params = endpoint.optString("params")
+        if (title.isBlank() || params.isBlank()) return null
+        val stripe = button.optJSONObject("solid")?.optLong("leftStripeColor") ?: 0L
+        return YoutubeMusicHomeButton(title, stripe, endpoint.optString("browseId"), params)
+    }
+
+    private fun parseHomeItem(content: JSONObject): YoutubeMusicHomeItem? {
+        content.optJSONObject("musicResponsiveListItemRenderer")?.let { renderer ->
+            val track = parseMusicRenderer(renderer, "home") ?: return null
+            val subtitle = extractFlexLines(renderer).drop(1).filter(String::isNotBlank).joinToString(" • ")
+            return trackHomeItem(track, subtitle.ifBlank { track.artist }, isMusicVideoResult(track.videoType))
+        }
+        val card = content.optJSONObject("musicTwoRowItemRenderer") ?: return nestedHomeItem(content)
+        val title = card.optJSONObject("title")?.optJSONArray("runs")?.joinText().orEmpty().trim()
+        if (title.isBlank()) return null
+        val subtitle = card.optJSONObject("subtitle")?.optJSONArray("runs")?.joinText().orEmpty().trim()
+        val thumbnail = upgradeThumbnail(findBestThumbnail(card))
+        return when (searchEntityKind(card)) {
+            SearchEntityKind.Album -> parseAlbumFromExploreItem(content)?.let { album ->
+                YoutubeMusicHomeItem("album-${album.browseId}", YoutubeMusicHomeItemKind.Album, album.title, subtitle, album.thumbnailUrl.ifBlank { thumbnail }, album = album)
+            }
+            SearchEntityKind.Playlist -> parseSearchPlaylistHit(card)?.let { playlist ->
+                YoutubeMusicHomeItem(
+                    "playlist-${playlist.browseId.ifBlank { playlist.playlistId }}", YoutubeMusicHomeItemKind.Playlist,
+                    playlist.title, subtitle, playlist.thumbnailUrl.ifBlank { thumbnail }, playlist = playlist
+                )
+            }
+            SearchEntityKind.Artist -> parseSearchArtistHit(card)?.let { artist ->
+                YoutubeMusicHomeItem(
+                    "artist-${artist.browseId.ifBlank { artist.name }}", YoutubeMusicHomeItemKind.Artist,
+                    artist.name, subtitle, artist.thumbnailUrl.ifBlank { thumbnail }, artist = artist
+                )
+            }
+            SearchEntityKind.Track -> parseCarouselItem(content)?.let { track ->
+                val wide = card.optString("aspectRatio").contains("16_9")
+                trackHomeItem(track, subtitle.ifBlank { track.artist }, wide || isMusicVideoResult(track.videoType))
+            }
+        }
+    }
+
+    private fun nestedHomeItem(content: JSONObject): YoutubeMusicHomeItem? {
+        listOf("musicTwoRowItemRenderer", "musicResponsiveListItemRenderer").forEach { key ->
+            val nested = mutableListOf<JSONObject>()
+            collectObjectsByKey(content, key, nested)
+            nested.firstOrNull()?.let { renderer -> return parseHomeItem(JSONObject().put(key, renderer)) }
+        }
+        val track = parseMusicRenderer(content.optJSONObject(content.keys().asSequence().firstOrNull().orEmpty()) ?: return null, "home") ?: return null
+        return trackHomeItem(track, track.artist, isMusicVideoResult(track.videoType))
+    }
+
+    private fun trackHomeItem(track: Track, subtitle: String, video: Boolean): YoutubeMusicHomeItem = YoutubeMusicHomeItem(
+        key = "track-${track.id}",
+        kind = if (video) YoutubeMusicHomeItemKind.Video else YoutubeMusicHomeItemKind.Song,
+        title = track.title,
+        subtitle = subtitle,
+        thumbnailUrl = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
+        track = track
+    )
+
     private fun homeAlbumFeedInnerTube(languageCode: String): List<AlbumHit> {
         val root = requestMusicHomeRoot(languageCode) ?: return emptyList()
         return parseHomeAlbums(root)
@@ -2263,6 +2400,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
 
     private companion object {
         const val MAX_BROWSE_CONTINUATIONS = 8
+        const val MAX_HOME_SHELF_ITEMS = 24
     }
 
     private val excludedTypes = setOf(

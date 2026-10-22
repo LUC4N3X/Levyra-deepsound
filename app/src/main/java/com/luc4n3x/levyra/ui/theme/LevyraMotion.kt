@@ -184,7 +184,9 @@ object LevyraMotion {
         }
 
     fun pageEnter(enabled: Boolean): EnterTransition =
-        if (enabled) {
+        if (enabled && LevyraIsYouTubeMusic) {
+            fadeIn(tween(YouTubeMusicDesign.fadeInMillis, easing = YouTubeMusicDesign.decelerateQuad))
+        } else if (enabled) {
             scaleIn(tween(Durations.Medium + 60, easing = Easings.Emphasized), initialScale = PageEnterScale) +
                 fadeIn(tween(Durations.Short + 20, easing = Easings.Decelerate))
         } else {
@@ -192,7 +194,9 @@ object LevyraMotion {
         }
 
     fun pageExit(enabled: Boolean): ExitTransition =
-        if (enabled) {
+        if (enabled && LevyraIsYouTubeMusic) {
+            fadeOut(tween(YouTubeMusicDesign.fadeOutMillis, easing = YouTubeMusicDesign.accelerateQuad))
+        } else if (enabled) {
             scaleOut(tween(Durations.Short, easing = Easings.Accelerate), targetScale = PageExitScale) +
                 fadeOut(tween(Durations.Short - 20, easing = Easings.Standard))
         } else {

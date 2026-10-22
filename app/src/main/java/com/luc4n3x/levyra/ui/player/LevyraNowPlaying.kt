@@ -1159,7 +1159,13 @@ fun LevyraNowPlaying(
             .align(Alignment.TopCenter)
 
         if (LevyraIsPrism && track != null && !state.isVideoMode && !liveRadio && playerPane != LevyraPlayerPane.SideBySide) {
-            if (LevyraIsAppleMusic) {
+            if (LevyraIsYouTubeMusic) {
+                YouTubeMusicPlayerScene(
+                    track, deckSlots, artworkCap, state.isPlaying,
+                    metadata = { metadataBlock(track) }, transport = transportBlock, modifier = deckModifier,
+                    canvas = AppleMusicCanvas(state.motionArtwork, motionEnabled && !lyricsFlip.lyricsSettled, state.interfaceSettings.canvasQuality, livingArtwork)
+                )
+            } else             if (LevyraIsAppleMusic) {
                 AppleMusicPlayerScene(
                     track, deckSlots, artworkCap, state.isPlaying,
                     metadata = { metadataBlock(track) }, transport = transportBlock, modifier = deckModifier,
