@@ -102,7 +102,7 @@ internal fun PrismTransport(
         YouTubeMusicTransport(playing, resolving, shuffle, repeat, labels, onShuffle, onPrevious, onToggle, onNext, onRepeat, modifier)
         return
     }
-    if (LevyraIsAppleMusic) {
+    if (PlayerAppleMusicStyle) {
         AppleMusicTransport(playing, resolving, shuffle, repeat, labels, onShuffle, onPrevious, onToggle, onNext, onRepeat, modifier)
         return
     }
@@ -153,7 +153,7 @@ internal fun PrismSeekbar(positionMs: Long, bufferedMs: Long, durationMs: Long, 
         YouTubeMusicSeekbar(positionMs, bufferedMs, durationMs, onSeek, modifier)
         return
     }
-    if (LevyraIsAppleMusic) {
+    if (PlayerAppleMusicStyle) {
         AppleMusicSeekbar(positionMs, bufferedMs, durationMs, onSeek, modifier)
         return
     }
