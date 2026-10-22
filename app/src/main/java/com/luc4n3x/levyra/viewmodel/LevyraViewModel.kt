@@ -908,7 +908,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             repository = repository,
             localTracks = { localLibrary.availableMedia.first().map { it.toLocalTrack() } },
             languageCode = { _state.value.languageCode },
-            metadataSearch = metadata::search
+            metadataSearch = metadata::search,
+            youtubeSearch = { query -> repository.searchYoutubeForImport(query, 12) }
         )
     }
     val playlistImport: PlaylistImportController by lazy {

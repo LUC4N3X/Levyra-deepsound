@@ -60,6 +60,16 @@ class HighQualityPlaybackCoordinatorTest {
     }
 
     @Test
+    fun importedPlaylistTracksCanUseTheVerifiedJioSaavnStream() {
+        val requested = playbackTrack().copy(source = "Imported playlist", streamUrl = "")
+        val result = coordinator(exactProvider()).play(requested)
+        assertEquals("https://aac.saavncdn.com/820/pW-kkdqr_320.mp4", result.streamUrl)
+        assertEquals(requested.id, result.id)
+        assertEquals(requested.videoUrl, result.videoUrl)
+        assertEquals(320, result.playbackManifest?.alternativeSource?.bitrateKbps)
+    }
+
+    @Test
     fun verifiedAlternativeKeepsTheOriginalTrackIdentity() {
         val requested = playbackTrack()
         val result = coordinator(exactProvider()).play(requested)

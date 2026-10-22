@@ -6,6 +6,16 @@ import org.junit.Test
 
 class PlaylistInternationalMatchingTest {
     @Test
+    fun hyphenatedRemasterSpellingDoesNotChangeTheSongTitle() {
+        val source = ImportedTrackIdentity(0, "Magic Fly - 2009 Re-master", listOf("Space"), durationMs = 262_060)
+        val candidate = MatchCandidate("recording", "Magic Fly (2009 Remastered Version)", listOf("Space"),
+            durationMs = 263_000, kind = CandidateKind.SONG)
+        assertEquals("magic fly", MusicIdentityText.title(source.title).core)
+        assertTrue(PlaylistMatchEngine.evaluate(source, candidate).confidence.autoAccepted)
+        assertFalse(PlaylistMatchEngine.evaluate(source, candidate.copy(title = "Magic Fly (Live)")).confidence.autoAccepted)
+    }
+
+    @Test
     fun transliteratedCatalogEntriesMatchButAreNeverExact() {
         listOf(
             "Кино" to "Kino", "Виктор Цой" to "Viktor Tsoi", "Виктор Цой" to "Victor Tsoy",
