@@ -1,7 +1,7 @@
 package com.luc4n3x.levyra.ui.discovery
 
-import android.app.Activity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -80,7 +80,6 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -195,7 +194,7 @@ internal fun DiscoveryScreen(
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { discoveryCopy(strings.code) }
     val look = rememberDiscoveryLook(style)
-    val activity = LocalContext.current as? Activity
+    val activity = LocalActivity.current
     val lifecycleOwner = LocalLifecycleOwner.current
     BackHandler(enabled = backEnabled, onBack = onDismiss)
     DisposableEffect(viewModel) {
