@@ -536,7 +536,7 @@ private fun MinimalDiscoveryTeaser(model: DiscoveryTeaserModel, spec: HomeStyleS
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Box(Modifier.size(width = 88.dp, height = 52.dp)) {
-            (2 downTo 0).forEach { index ->
+            for (index in 2 downTo 0) {
                 DiscoveryArtwork(
                     model.card(index),
                     Modifier.align(Alignment.CenterStart).offset(x = 18.dp * index).size(52.dp).clip(shape).border(1.5.dp, scheme.surface, shape)

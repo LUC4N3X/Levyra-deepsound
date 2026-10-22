@@ -117,7 +117,7 @@ object DiscoveryRanker {
         return quality
     }
 
-    private fun jitter(key: String, rotation: Long): Int = ((key.hashCode().toLong() * 31L + rotation).hashCode().absoluteValue % 9)
+    private fun jitter(key: String, rotation: Long): Int = (key.hashCode().toLong() * 31L + rotation).hashCode().absoluteValue % 9
 
     private fun diversify(
         scored: List<Pair<DiscoveryCandidate, Int>>,
