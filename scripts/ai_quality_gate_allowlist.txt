@@ -224,3 +224,9 @@ docs/assets/youtube-music-style/home.png
 docs/assets/youtube-music-style/library.png
 docs/assets/youtube-music-style/player.png
 docs/assets/youtube-music-style/skin-selector.png
+app/src/main/res/mipmap-hdpi/ic_launcher_background.png
+app/src/main/res/mipmap-mdpi/ic_launcher_background.png
+app/src/main/res/mipmap-xhdpi/ic_launcher_background.png
+app/src/main/res/mipmap-xxhdpi/ic_launcher_background.png
+app/src/main/res/mipmap-xxxhdpi/ic_launcher_background.png
+docs/branding/launcher-icon-before-after.png
