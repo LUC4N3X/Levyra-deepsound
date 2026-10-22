@@ -201,6 +201,8 @@ class HomeViewModel internal constructor(
     fun reorderSpeedDial(orderedKeys: List<String>) = root.reorderSpeedDial(orderedKeys)
     fun openYoutubeCommentsFor(track: Track) = root.openYoutubeCommentsFor(track)
     fun playAll(tracks: List<Track>) = root.playAll(tracks)
+    fun playLiveRadio(station: RadioStation) = root.playLiveRadio(station)
+    internal val favoriteRadioStations = root.favoriteRadioStations
     fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) {
         val current = root.state.value
         if (!current.isVideoMode && current.currentTrack?.id == track.id) {

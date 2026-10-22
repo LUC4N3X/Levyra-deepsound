@@ -8,6 +8,15 @@ import org.junit.Test
 
 class LiveRadioArtworkResolverTest {
     @Test
+    fun customPlaylistArtworkUsesBroadcasterPageWithoutStreamQuery() {
+        val station = customRadioStation("SomaFM Groove Salad", "https://somafm.com/groovesalad.pls?source=synthetic", "")
+        assertEquals("https://somafm.com/groovesalad/", liveRadioArtworkHomepage(station))
+        assertEquals("http://relay.example:8000/", liveRadioArtworkHomepage(station.copy(streamUrl = "http://relay.example:8000/live")))
+        assertEquals("https://station.example/about", liveRadioArtworkHomepage(station.copy(homepageUrl = "https://station.example/about")))
+        assertEquals("", liveRadioArtworkHomepage(station.copy(streamUrl = "http://127.0.0.1/live")))
+    }
+
+    @Test
     fun candidatesPreferTouchIconsThenLargeIconsThenOpenGraphThenSmallIcons() {
         val html = """
             <head>

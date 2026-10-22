@@ -86,7 +86,7 @@ internal object LiveRadioArtworkResolver {
         if (favicon.isNotBlank()) {
             withContext(Dispatchers.IO) { storeArtwork(appContext, favicon) }?.let { return it }
         }
-        val discovered = resolve(station.homepageUrl)?.takeIf { it != favicon } ?: return null
+        val discovered = resolve(liveRadioArtworkHomepage(station))?.takeIf { it != favicon } ?: return null
         return withContext(Dispatchers.IO) { storeArtwork(appContext, discovered) }
     }
 
@@ -211,6 +211,15 @@ internal object LiveRadioArtworkResolver {
     }
 
     private class HtmlDocument(val url: HttpUrl, val html: String)
+}
+
+internal fun liveRadioArtworkHomepage(station: RadioStation): String {
+    station.homepageUrl.takeIf(RadioUrlPolicy::isAllowed)?.let { return it }
+    val stream = station.streamUrl.toHttpUrlOrNull()?.takeIf { RadioUrlPolicy.isAllowed(it.toString()) } ?: return ""
+    val builder = stream.newBuilder().query(null).fragment(null)
+    val path = stream.encodedPath
+    val extension = listOf(".pls", ".m3u").firstOrNull { path.endsWith(it, ignoreCase = true) }
+    return builder.encodedPath(if (extension != null) path.dropLast(extension.length).trimEnd('/') + "/" else "/").build().toString()
 }
 
 private val htmlLinkTagPattern = Regex("<link\\b[^>]*>", RegexOption.IGNORE_CASE)

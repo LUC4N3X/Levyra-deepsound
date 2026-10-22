@@ -74,8 +74,7 @@ internal class LiveRadioPlaylistDataSource(private val upstream: DataSource) : D
             val length = upstream.open(spec)
             val url = upstream.uri?.toString() ?: spec.uri.toString()
             if (!isLiveRadioPlaylistResponse(url, contentTypeOf(upstream.responseHeaders))) return length
-            val body = readBounded()
-            upstream.close()
+            val body = try { readBounded() } finally { upstream.close() }
             val next = liveRadioPlaylistStreamUrl(body, url)
                 ?: throw IOException("Live radio playlist has no playable entry")
             spec = spec.buildUpon()
@@ -104,6 +103,9 @@ internal class LiveRadioPlaylistDataSource(private val upstream: DataSource) : D
             val read = upstream.read(buffer, total, buffer.size - total)
             if (read == C.RESULT_END_OF_INPUT) break
             total += read
+        }
+        if (total == buffer.size && upstream.read(ByteArray(1), 0, 1) != C.RESULT_END_OF_INPUT) {
+            throw IOException("Live radio playlist too large")
         }
         return String(buffer, 0, total, Charsets.UTF_8)
     }
