@@ -30,6 +30,8 @@ data class RadioStation(
     val lastCheckOk: Boolean,
     val lastPlayedAt: Long = 0L
 ) {
+    val isCustom: Boolean get() = uuid.startsWith("custom:")
+
     val preferredStreamUrl: String
         get() = resolvedStreamUrl.takeIf(RadioUrlPolicy::isAllowed)
             ?: streamUrl.takeIf(RadioUrlPolicy::isAllowed)
@@ -247,10 +249,13 @@ internal object RadioUrlPolicy {
         val uri = runCatching { URI(value.trim()) }.getOrNull() ?: return false
         if (uri.scheme?.lowercase(Locale.ROOT) !in setOf("http", "https")) return false
         if (!uri.userInfo.isNullOrBlank() || uri.host.isNullOrBlank()) return false
+        if (uri.port != -1 && uri.port !in 1..65535) return false
         val host = uri.host.lowercase(Locale.ROOT).removePrefix("[").removeSuffix("]")
+        if (host.all(Char::isDigit)) return false
         if (host == "localhost" || host.endsWith(".localhost") || host == "0.0.0.0" || host == "::1") return false
         if (privateIpv4Ranges.any { it.containsMatchIn(host) }) return false
-        if (host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80:")) return false
+        if (host.endsWith(".local") || host.endsWith(".internal") || host.endsWith(".localhost")) return false
+        if (!SafeImageUrlPolicy.isPublicLiteralHost(host)) return false
         return true
     }
 }
@@ -285,7 +290,8 @@ internal fun radioSearchRequestTokens(value: String): List<String> =
         .sortedByDescending(String::length)
 
 internal fun radioStationMatchesSearch(station: RadioStation, query: String): Boolean {
-    val tokens = radioSearchTokens(query)
+    val allTokens = radioSearchTokens(query)
+    val tokens = allTokens.filterNot(genericRadioSearchTokens::contains).ifEmpty { allTokens }
     if (tokens.isEmpty()) return false
     val searchable = normalizeRadioName(
         listOf(
@@ -327,15 +333,16 @@ internal fun filterAndRankRadioStations(stations: List<RadioStation>): List<Radi
 
 internal fun filterAndRankRadioSearchResults(
     stations: List<RadioStation>,
-    query: String
+    query: String,
+    requireLocalMatch: Boolean = true
 ): List<RadioStation> {
     val normalizedQuery = normalizeRadioName(query)
     val tokens = radioSearchTokens(query)
     return distinctRadioStations(
         stations.asSequence()
-            .filter { it.uuid.isNotBlank() && it.name.trim().length in 2..160 }
+            .filter { it.uuid.isNotBlank() && it.name.isNotBlank() }
             .filter { it.preferredStreamUrl.isNotBlank() }
-            .filter { radioStationMatchesSearch(it, query) }
+            .filter { !requireLocalMatch || radioStationMatchesSearch(it, query) }
             .map { it to radioSearchScore(it, normalizedQuery, tokens) }
             .sortedByDescending { it.second }
             .map { it.first }
@@ -345,7 +352,7 @@ internal fun filterAndRankRadioSearchResults(
 
 private fun radioSearchScore(station: RadioStation, normalizedQuery: String, tokens: List<String>): Long {
     val name = normalizeRadioName(station.name)
-    val health = if (station.lastCheckOk) 100_000_000L else 0L
+    val health = if (station.lastCheckOk) 1_000_000L else 0L
     val relevance = when {
         name == normalizedQuery -> 30_000_000L
         name.startsWith(normalizedQuery) -> 20_000_000L

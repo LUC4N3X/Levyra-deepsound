@@ -138,6 +138,7 @@ internal fun homeSectionTitle(id: HomeSectionId, strings: LevyraStrings): String
         HomeSectionId.SpeedDial -> strings.speedDialCopy().title
         HomeSectionId.Spotlight -> copy.sectionSpotlight
         HomeSectionId.PersonalOrbit -> strings.yourOrbitSetting
+        HomeSectionId.FavoriteRadio -> com.luc4n3x.levyra.ui.i18n.radioLibraryCopy(strings.code).favorites
         HomeSectionId.EditorialCollections -> copy.sectionCollections
         HomeSectionId.QuickPicks -> strings.quickPicks
         HomeSectionId.ForgottenFavorites -> strings.forgottenFavorites

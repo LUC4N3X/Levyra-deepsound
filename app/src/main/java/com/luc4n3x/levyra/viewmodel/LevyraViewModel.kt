@@ -1317,6 +1317,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var liveRadioTriedStreams: Set<String> = emptySet()
     private var liveRadioSiblingStreams: List<String>? = null
     private val liveRadioRepository by lazy { RadioRepository(getApplication()) }
+    internal val favoriteRadioStations by lazy { liveRadioRepository.observeFavorites() }
     private var liveRadioArtworkJob: Job? = null
     private var liveRadioPlaybackSaveJob: Job? = null
     private var liveRadioArtwork = ""
@@ -9546,7 +9547,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         startResolve(snapshot.tracks[index])
     }
 
-    fun playLiveRadio(station: RadioStation) = selectLiveRadioStation(station, playWhenReady = true)
+    fun playLiveRadio(station: RadioStation) {
+        selectLiveRadioStation(station, playWhenReady = true)
+        if (_state.value.liveRadioStation?.uuid != station.uuid) return
+        viewModelScope.launch {
+            runCatchingPreservingCancellation { liveRadioRepository.recordRecent(station) }
+            if (!station.isCustom) runCatchingPreservingCancellation { liveRadioRepository.recordClick(station.uuid) }
+        }
+    }
 
     private fun selectLiveRadioStation(station: RadioStation, playWhenReady: Boolean) {
         if (jamController.rejectGuestLocalMutation()) return

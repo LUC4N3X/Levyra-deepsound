@@ -42,51 +42,44 @@ internal class RadioBrowserApi(
         return stationRequest("json/stations/search", params)
     }
 
-    suspend fun search(query: String, limit: Int = 24): List<RadioStation> {
+    suspend fun search(query: String, cursor: List<RadioSearchRequest>? = null, limit: Int = 32): RadioSearchPage = coroutineScope {
         val clean = query.trim().take(MAX_QUERY_LENGTH)
-        if (clean.length < 2) return emptyList()
-        val boundedLimit = limit.coerceIn(1, MAX_STATION_LIMIT)
-        val requests = buildList {
-            listOf("name", "country", "language", "tag").forEach { field ->
-                add(SearchRequest(field, clean, boundedLimit))
-            }
-            radioSearchRequestTokens(clean).take(MAX_TOKEN_SEARCHES).forEach { token ->
-                if (!token.equals(clean, ignoreCase = true)) {
-                    add(SearchRequest("name", token, MAX_STATION_LIMIT))
+        if (clean.length < 2) return@coroutineScope RadioSearchPage(emptyList(), emptyList())
+        val size = limit.coerceIn(1, MAX_STATION_LIMIT)
+        val requests = cursor ?: radioSearchRequests(clean)
+        val results = requests.map { request ->
+            async {
+                try {
+                    Result.success(
+                        stationPage("json/stations/search", mapOf(
+                            request.field to request.value,
+                            "order" to "votes",
+                            "reverse" to "true",
+                            "hidebroken" to "false",
+                            "offset" to request.offset.toString(),
+                            "limit" to size.toString()
+                        ))
+                    )
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    Result.failure(error)
                 }
             }
-        }.distinctBy { it.field to it.value.lowercase(Locale.ROOT) }
-
-        return coroutineScope {
-            val deferreds = requests.map { request ->
-                async {
-                    try {
-                        Result.success(
-                            stationRequest(
-                                path = "json/stations/search",
-                                params = mapOf(
-                                    request.field to request.value,
-                                    "order" to "votes",
-                                    "reverse" to "true",
-                                    "hidebroken" to "false",
-                                    "limit" to request.limit.toString()
-                                )
-                            )
-                        )
-                    } catch (cancelled: CancellationException) {
-                        throw cancelled
-                    } catch (error: Throwable) {
-                        Result.failure(error)
-                    }
-                }
+        }.awaitAll()
+        if (results.isNotEmpty() && results.none { it.isSuccess }) throw results.first().exceptionOrNull()!!
+        val next = mutableListOf<RadioSearchRequest>()
+        val stations = mutableListOf<RadioStation>()
+        requests.zip(results).forEach { (request, result) ->
+            val page = result.getOrNull()
+            if (page == null) {
+                next.add(request)
+            } else {
+                stations.addAll(if (request.tokenFallback) page.stations.filter { radioStationMatchesSearch(it, clean) } else page.stations)
+                if (page.rawCount >= size) next.add(request.copy(offset = request.offset + page.rawCount))
             }
-            val results = deferreds.awaitAll()
-            val (successes, failures) = results.partition { it.isSuccess }
-            if (successes.isEmpty() && failures.isNotEmpty()) {
-                throw failures.first().exceptionOrNull() ?: IllegalStateException("Radio Browser search failed")
-            }
-            successes.flatMap { it.getOrDefault(emptyList()) }
         }
+        RadioSearchPage(stations, next, partialFailure = results.any { it.isFailure })
     }
 
     suspend fun stationByUuid(stationUuid: String): RadioStation? {
@@ -137,13 +130,18 @@ internal class RadioBrowserApi(
     }
 
     private suspend fun stationRequest(path: String, params: Map<String, String>): List<RadioStation> {
+        return stationPage(path, params).stations
+    }
+
+    private suspend fun stationPage(path: String, params: Map<String, String>): RadioStationPage {
         val body = execute(path, params, MAX_RESPONSE_BYTES)
         val array = JSONArray(body)
-        return buildList(array.length().coerceAtMost(MAX_PARSED_STATIONS)) {
+        val stations = buildList(array.length().coerceAtMost(MAX_PARSED_STATIONS)) {
             for (index in 0 until minOf(array.length(), MAX_PARSED_STATIONS)) {
                 array.optJSONObject(index)?.toRadioStation()?.let(::add)
             }
         }
+        return RadioStationPage(stations, array.length())
     }
 
     private suspend fun directoryRequest(
@@ -219,12 +217,9 @@ internal class RadioBrowserApi(
         )
     }
 
-    private data class SearchRequest(val field: String, val value: String, val limit: Int)
-
     private companion object {
         val USER_AGENT = "Levyra/${BuildConfig.VERSION_NAME} (Android; Live Radio)"
         const val MAX_QUERY_LENGTH = 80
-        const val MAX_TOKEN_SEARCHES = 4
         const val MAX_STATION_LIMIT = 64
         const val SIBLING_STATION_LIMIT = 20
         const val MAX_PARSED_STATIONS = 256

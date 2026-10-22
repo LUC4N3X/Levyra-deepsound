@@ -83,6 +83,7 @@ internal fun AppleMusicHomeContent(
     homePullState: PullToRefreshState,
     onPullRefresh: () -> Unit
 ) {
+    val homeRadio = LocalHomeRadio.current
     val strings = LocalLevyraStrings.current
     val editorialViewModel = viewModel<AppleMusicEditorialViewModel>()
     val editorial by editorialViewModel.state.collectAsStateWithLifecycle()
@@ -110,6 +111,7 @@ internal fun AppleMusicHomeContent(
                 AppleMusicHomeTitle(strings.home, copy.more, data.countryLabel, actions)
             }
             appleMusicHomeNotices(editorial, shelves.isEmpty(), copy, reload)
+            favoriteRadioSection(homeRadio)
             appleMusicHomeSections(plan) { homeShelf ->
                 AppleMusicEditorialShelf(homeShelf, data.currentId, copy.explicit, openItem, actions.onTrackActions) { seeAllShelfId = homeShelf.shelf.id }
             }

@@ -111,11 +111,21 @@ internal class RadioRepository(
         successes.flatMap { it.getOrDefault(emptyList()) }
     }
 
-    suspend fun search(query: String): List<RadioStation> = withContext(Dispatchers.IO) {
-        filterAndRankRadioSearchResults(api.search(query), query).take(64)
+    suspend fun search(query: String, cursor: List<RadioSearchRequest>? = null): RadioSearchPage = withContext(Dispatchers.IO) {
+        val local = if (cursor == null) (store.customStations() + store.favorites()).filter { radioStationMatchesSearch(it, query) } else emptyList()
+        val page = try {
+            api.search(query, cursor)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            if (local.isEmpty()) throw error
+            RadioSearchPage(emptyList(), radioSearchRequests(query), partialFailure = true)
+        }
+        page.copy(stations = filterAndRankRadioSearchResults(local + page.stations, query, requireLocalMatch = false))
     }
 
     suspend fun siblingStreams(station: RadioStation): List<String> = withContext(Dispatchers.IO) {
+        if (station.isCustom) return@withContext emptyList()
         val fresh = async { optionalRadioLookup { api.stationByUuid(station.uuid) } }
         val named = async { optionalRadioLookup { api.stationsNamed(station.name) }.orEmpty() }
         liveRadioRecoveryStreamUrls(station, fresh.await(), named.await())
@@ -142,6 +152,18 @@ internal class RadioRepository(
     }
 
     suspend fun favorites(): List<RadioStation> = store.favorites()
+
+    fun observeFavorites() = store.observeFavorites()
+
+    fun observeCustomStations() = store.observeCustomStations()
+
+    fun observeRecent() = store.observeRecent()
+
+    suspend fun customStations(): List<RadioStation> = store.customStations()
+
+    suspend fun saveCustom(station: RadioStation) = store.saveCustom(station)
+
+    suspend fun deleteCustom(station: RadioStation) = store.deleteCustom(station)
 
     suspend fun recent(): List<RadioStation> = store.recent()
 

@@ -9403,6 +9403,7 @@ private fun HomeScreen(
     onPullRefresh: () -> Unit,
     onTrackActions: (Track) -> Unit
 ) {
+    val homeRadio = LocalHomeRadio.current
     val state = renderSnapshot.state
     val homeDerivedState = renderSnapshot.derived
     val homeRefreshing by viewModel.homeRefreshing.collectAsStateWithLifecycle()
@@ -9859,6 +9860,7 @@ private fun HomeScreen(
                 }
             }
 
+            favoriteRadioSection(homeRadio)
             youtubeMusicHome?.let { yourMusic ->
                 item(key = "home-your-music-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
                     HomeSectionLead(compactHome) {
@@ -10982,6 +10984,7 @@ private fun StudioHomeContent(
     youtubeMusicHome: com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi?,
     onPullRefresh: () -> Unit
 ) {
+    val homeRadio = LocalHomeRadio.current
     with(c) {
         val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
         val homeTopPadding = 8.dp
@@ -11044,7 +11047,7 @@ private fun StudioHomeContent(
                     verticalArrangement = Arrangement.spacedBy(homeSectionGap)
                 ) {
                     studioHomeHeaderItems(c, flowShortcutTracks, statusBarTop, homeTopPadding)
-                    studioHomeSections(c, homeRenderOrder, youtubeMusicHome)
+                    studioHomeSections(c, homeRenderOrder, youtubeMusicHome, homeRadio)
                 }
                 PullToRefreshDefaults.LoadingIndicator(
                     state = homePullState,
@@ -11125,7 +11128,8 @@ private fun LazyListScope.studioHomeHeaderItems(
 private fun LazyListScope.studioHomeSections(
     c: StudioHomeContext,
     homeRenderOrder: List<HomeSectionId>,
-    youtubeMusicHome: com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi?
+    youtubeMusicHome: com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi?,
+    homeRadio: HomeRadioState
 ) {
     with(c) {
         var offlineEmitted = false
@@ -11145,6 +11149,7 @@ private fun LazyListScope.studioHomeSections(
                 HomeSectionId.SpeedDial -> homeStudioSectionSpeedDial(c)
                 HomeSectionId.Spotlight -> homeStudioSectionSpotlight(c)
                 HomeSectionId.PersonalOrbit -> homeStudioSectionPersonalOrbit(c)
+                HomeSectionId.FavoriteRadio -> favoriteRadioSection(homeRadio)
                 HomeSectionId.EditorialCollections -> homeStudioSectionEditorialCollections(c)
                 HomeSectionId.QuickPicks -> homeStudioSectionQuickPicks(c)
                 HomeSectionId.ForgottenFavorites -> homeStudioSectionForgottenFavorites(c)
@@ -12171,29 +12176,34 @@ private fun HomeStudioHost(
     onPullRefresh: () -> Unit,
     onTrackActions: (Track) -> Unit
 ) {
-    if (homeStudio.usesClassicOriginalHome() && !LevyraSkinManagesLayout) {
-        HomeScreen(
-            viewModel = viewModel,
-            renderSnapshot = renderSnapshot,
-            homeListState = homeListState,
-            deferredSectionsRevealed = deferredSectionsRevealed,
-            accountAvatarUrl = accountAvatarUrl,
-            youtubeMusicHome = youtubeMusicHome,
-            onPullRefresh = onPullRefresh,
-            onTrackActions = onTrackActions
-        )
-    } else {
-        StudioHomeScreen(
-            viewModel = viewModel,
-            renderSnapshot = renderSnapshot,
-            homeListState = homeListState,
-            deferredSectionsRevealed = deferredSectionsRevealed,
-            accountAvatarUrl = accountAvatarUrl,
-            youtubeMusicHome = youtubeMusicHome,
-            homeStudio = homeStudio,
-            onPullRefresh = onPullRefresh,
-            onTrackActions = onTrackActions
-        )
+    val radioStations by viewModel.favoriteRadioStations.collectAsStateWithLifecycle(initialValue = emptyList())
+    val homeRadio = HomeRadioState(radioStations, renderSnapshot.state.liveRadioStation?.uuid, renderSnapshot.state.isPlaying,
+        !homeStudio.activeLayout().isHidden(HomeSectionId.FavoriteRadio), viewModel::playLiveRadio)
+    CompositionLocalProvider(LocalHomeRadio provides homeRadio) {
+        if (homeStudio.usesClassicOriginalHome() && !LevyraSkinManagesLayout) {
+            HomeScreen(
+                viewModel = viewModel,
+                renderSnapshot = renderSnapshot,
+                homeListState = homeListState,
+                deferredSectionsRevealed = deferredSectionsRevealed,
+                accountAvatarUrl = accountAvatarUrl,
+                youtubeMusicHome = youtubeMusicHome,
+                onPullRefresh = onPullRefresh,
+                onTrackActions = onTrackActions
+            )
+        } else {
+            StudioHomeScreen(
+                viewModel = viewModel,
+                renderSnapshot = renderSnapshot,
+                homeListState = homeListState,
+                deferredSectionsRevealed = deferredSectionsRevealed,
+                accountAvatarUrl = accountAvatarUrl,
+                youtubeMusicHome = youtubeMusicHome,
+                homeStudio = homeStudio,
+                onPullRefresh = onPullRefresh,
+                onTrackActions = onTrackActions
+            )
+        }
     }
 }
 
