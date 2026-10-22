@@ -47,10 +47,19 @@ InnerTube renderers mapped by `YoutubeMusicRepository.parseHomeFeed`: `chipCloud
 
 ## What the skin changes
 
-- Home: InnerTube home (public, or the optional signed-in account), mood chips, Quick picks columns,
-  community playlist cards with live previews, discovery cards, artist shelves, 16:9 videos, Explore shelves,
-  plus Levyra Top 50 with country picker, My Soundtrack, Orbit, albums and artists.
-- Explore: top bar, Levyra shortcuts as tiles, new releases, moods & genres stripe grid, ranked trending, videos.
+- Home: Your Orbit as a paged 3x3 quick-selection grid with the listener avatar or initial, then the InnerTube
+  home (public, or the optional signed-in account): mood chips, Quick picks columns, community playlist cards
+  with live previews, daily discovery cards, artist shelves, 16:9 videos, Explore shelves, plus Levyra Top 50
+  with country picker, albums and artists.
+- Explore: top bar, Levyra shortcuts as tiles, Levyra Mix cards with Familiar/Discovery chips, new releases,
+  moods & genres stripe grid, ranked trending and the `FEmusic_charts` video chart in place of the new music
+  videos shelf that Home already shows.
+- Artist: full-bleed hero, Subscribe pill with subscriber count, shuffle and play, pinned Music tab with a
+  collapsing title bar, latest release card, popular track columns, albums, singles, videos, liked tracks,
+  playlists, related artists and an expandable About section.
+- Motion: detail pages fade in over 200 ms (`decelerate_quad`) and out over 100 ms (`accelerate_quad`), from
+  `anim/fade_in_elements.xml` and `anim/fragment_fade_out.xml`; cards use a ripple without press scaling.
+- Copy: skin strings and skin selector descriptions are localized in all 41 Levyra languages.
 - Library: category chips, liked/playlist/album/artist rows, New pill.
 - Player, mini player, detail dock, bottom bar, album/playlist/artist headers and album track rows.
 
