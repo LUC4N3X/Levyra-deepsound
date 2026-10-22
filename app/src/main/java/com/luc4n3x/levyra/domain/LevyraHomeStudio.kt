@@ -29,6 +29,7 @@ enum class HomeSectionId(val storageId: String, val kind: HomeSectionKind) {
     GenreChips("genre_chips", HomeSectionKind.Fixed),
     SpeedDial("speed_dial", HomeSectionKind.Fixed),
     Spotlight("spotlight", HomeSectionKind.Fixed),
+    Discovery("discovery", HomeSectionKind.Fixed),
     PersonalOrbit("personal_orbit", HomeSectionKind.Fixed),
     FavoriteRadio("favorite_radio", HomeSectionKind.Fixed),
     EditorialCollections("editorial_collections", HomeSectionKind.Fixed),
@@ -230,6 +231,7 @@ data class LevyraHomeStudioSettings(
             HomeSectionId.GenreChips,
             HomeSectionId.SpeedDial,
             HomeSectionId.Spotlight,
+            HomeSectionId.Discovery,
             HomeSectionId.PersonalOrbit,
             HomeSectionId.FavoriteRadio,
             HomeSectionId.EditorialCollections,
@@ -251,6 +253,7 @@ data class LevyraHomeStudioSettings(
             HomeStyle.ExpressiveMax -> HomeStyleLayout(
                 order = listOf(
                     HomeSectionId.Spotlight,
+                    HomeSectionId.Discovery,
                     HomeSectionId.SpeedDial,
                     HomeSectionId.QuickPicks,
                     HomeSectionId.PersonalOrbit,
@@ -297,6 +300,7 @@ data class LevyraHomeStudioSettings(
                     HomeSectionId.ReleaseRadar,
                     HomeSectionId.SimilarArtists,
                     HomeSectionId.Spotlight,
+                    HomeSectionId.Discovery,
                     HomeSectionId.Resonance
                 ),
                 layouts = mapOf(
@@ -313,6 +317,7 @@ data class LevyraHomeStudioSettings(
             HomeStyle.Editorial -> HomeStyleLayout(
                 order = listOf(
                     HomeSectionId.Spotlight,
+                    HomeSectionId.Discovery,
                     HomeSectionId.EditorialCollections,
                     HomeSectionId.NewReleases,
                     HomeSectionId.PersonalOrbit,
@@ -345,6 +350,7 @@ data class LevyraHomeStudioSettings(
                 order = listOf(
                     HomeSectionId.SpeedDial,
                     HomeSectionId.QuickPicks,
+                    HomeSectionId.Discovery,
                     HomeSectionId.PersonalOrbit,
                     HomeSectionId.FavoriteRadio,
                     HomeSectionId.AlbumsForYou,
@@ -376,6 +382,7 @@ data class LevyraHomeStudioSettings(
             )
             HomeStyle.MaterialExpressive -> HomeStyleLayout(
                 order = listOf(
+                    HomeSectionId.Discovery,
                     HomeSectionId.QuickPicks,
                     HomeSectionId.SpeedDial,
                     HomeSectionId.GenreChips,
@@ -408,6 +415,7 @@ data class LevyraHomeStudioSettings(
             HomeStyle.Immersive -> HomeStyleLayout(
                 order = listOf(
                     HomeSectionId.Spotlight,
+                    HomeSectionId.Discovery,
                     HomeSectionId.PersonalOrbit,
                     HomeSectionId.FavoriteRadio,
                     HomeSectionId.QuickPicks,

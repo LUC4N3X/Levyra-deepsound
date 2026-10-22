@@ -137,6 +137,7 @@ internal fun homeSectionTitle(id: HomeSectionId, strings: LevyraStrings): String
         HomeSectionId.GenreChips -> copy.sectionGenres
         HomeSectionId.SpeedDial -> strings.speedDialCopy().title
         HomeSectionId.Spotlight -> copy.sectionSpotlight
+        HomeSectionId.Discovery -> com.luc4n3x.levyra.ui.i18n.discoveryCopy(strings.code).title
         HomeSectionId.PersonalOrbit -> strings.yourOrbitSetting
         HomeSectionId.FavoriteRadio -> com.luc4n3x.levyra.ui.i18n.radioLibraryCopy(strings.code).favorites
         HomeSectionId.EditorialCollections -> copy.sectionCollections
@@ -213,7 +214,8 @@ internal fun HomeStudioOverlay(
 
     fun moveBy(id: HomeSectionId, delta: Int): Boolean {
         val index = workingOrder.indexOf(id)
-        val target = index + delta
+        val skipsDiscovery = LevyraSkinManagesLayout && workingOrder.getOrNull(index + delta) == HomeSectionId.Discovery
+        val target = index + delta + if (skipsDiscovery) delta else 0
         if (index < 0 || target !in workingOrder.indices) return false
         val next = workingOrder.toMutableList().apply { add(target, removeAt(index)) }
         workingOrder = next
@@ -256,10 +258,11 @@ internal fun HomeStudioOverlay(
                     Text(text = copy.featuredHint, style = MaterialTheme.typography.bodySmall, color = LevyraMuted)
                 }
             }
-            items(workingOrder, key = { "section-${it.storageId}" }, contentType = { "studio-section-row" }) { id ->
+            val shownOrder = workingOrder.filterNot { LevyraSkinManagesLayout && it == HomeSectionId.Discovery }
+            items(shownOrder, key = { "section-${it.storageId}" }, contentType = { "studio-section-row" }) { id ->
                 val isDragging = dragging == id
                 val visible = !layout.isHidden(id) && homeSectionGloballyEnabled(id, interfaceSettings)
-                val index = workingOrder.indexOf(id)
+                val index = shownOrder.indexOf(id)
                 HomeStudioSectionRow(
                     title = homeSectionTitle(id, strings),
                     id = id,
@@ -294,7 +297,7 @@ internal fun HomeStudioOverlay(
                                 CustomAccessibilityAction(strings.speedDialCopy().moveEarlier) { moveBy(id, -1) }
                                     .takeIf { index > 0 },
                                 CustomAccessibilityAction(strings.speedDialCopy().moveLater) { moveBy(id, 1) }
-                                    .takeIf { index < workingOrder.lastIndex }
+                                    .takeIf { index < shownOrder.lastIndex }
                             )
                         },
                     dragHandleModifier = Modifier.pointerInput(id) {
@@ -317,7 +320,8 @@ internal fun HomeStudioOverlay(
                             onDrag = { change, amount ->
                                 change.consume()
                                 dragOffset += amount.y
-                                reorderStep(workingOrder, id, dragOffset, rowHeights)?.let { (order, offset) ->
+                                val heights = if (LevyraSkinManagesLayout) rowHeights + (HomeSectionId.Discovery to 0) else rowHeights
+                                reorderStep(workingOrder, id, dragOffset, heights)?.let { (order, offset) ->
                                     workingOrder = order
                                     dragOffset = offset
                                     haptics.perform(LevyraHapticAction.Reorder)

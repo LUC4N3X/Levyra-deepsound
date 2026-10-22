@@ -34,6 +34,7 @@ class PlaylistStore(context: Context) {
     private val tagsDao = database.playlistTagsDao()
     private val coverStore = PlaylistCoverStore(context.applicationContext)
     private val coverMutationLocks = mutableMapOf<String, Mutex>()
+    private val stablePlaylistMutex = Mutex()
 
     private fun coverMutationLock(playlistId: String): Mutex = synchronized(coverMutationLocks) {
         coverMutationLocks.getOrPut(playlistId) { Mutex() }
@@ -238,6 +239,27 @@ class PlaylistStore(context: Context) {
         dao.insertTracks(listOf(track.toPlaylistTrackEntity(playlistId, nextPos, now)))
         val cover = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }
         if (cover.isNotBlank()) dao.updateAutomaticCover(playlistId, cover, now) else dao.touch(playlistId, now)
+    }
+
+    suspend fun appendToStablePlaylist(playlistId: String, name: String, track: Track): Boolean = withContext(Dispatchers.IO) {
+        require(playlistId.isNotBlank())
+        if (track.id.isBlank() || track.title.isBlank()) return@withContext false
+        stablePlaylistMutex.withLock {
+            val now = System.currentTimeMillis()
+            val cover = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }
+            if (dao.playlist(playlistId) == null) {
+                dao.createPlaylistWithTracks(
+                    PlaylistEntity(playlistId, name.trim().ifBlank { "Playlist" }, cover, now, now),
+                    listOf(track.toPlaylistTrackEntity(playlistId, 0, now))
+                )
+                return@withLock true
+            }
+            if (dao.tracksOf(playlistId).any { it.trackId == track.id }) return@withLock false
+            val nextPos = (dao.maxPosition(playlistId) ?: -1) + 1
+            dao.insertTracks(listOf(track.toPlaylistTrackEntity(playlistId, nextPos, now)))
+            if (cover.isNotBlank()) dao.updateAutomaticCover(playlistId, cover, now) else dao.touch(playlistId, now)
+            true
+        }
     }
 
     suspend fun addTracks(playlistId: String, tracks: List<Track>) = withContext(Dispatchers.IO) {
