@@ -122,7 +122,7 @@ object MusicIdentityText {
         MarkerRule("edit|edited", setOf(TrackVersionMarker.EDIT)),
         MarkerRule("extended|club mix", setOf(TrackVersionMarker.EXTENDED)),
         MarkerRule("demo", setOf(TrackVersionMarker.DEMO)),
-        MarkerRule("remaster|remastered|remastering", setOf(TrackVersionMarker.REMASTER)),
+        MarkerRule("remaster|remastered|remastering|re master|re mastered|re mastering", setOf(TrackVersionMarker.REMASTER)),
         MarkerRule("mono", setOf(TrackVersionMarker.MONO)),
         MarkerRule("stereo", setOf(TrackVersionMarker.STEREO)),
         MarkerRule("mix|dub|vip", setOf(TrackVersionMarker.REMIX))

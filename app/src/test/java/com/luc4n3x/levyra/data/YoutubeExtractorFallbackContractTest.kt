@@ -15,6 +15,23 @@ import org.junit.Test
 
 class YoutubeExtractorFallbackContractTest {
     @Test
+    fun playlistFallbackCanSearchYoutubeOutsideTheMusicCatalog() {
+        val repository = YoutubeMusicRepository(null)
+        val handler = repository.extractorSearchHandler("Hurricane Bob Dylan", musicOnly = false)
+        assertTrue(handler.url.startsWith("https://www.youtube.com/results?"))
+        assertEquals("videos", handler.contentFilters.single().name)
+    }
+
+    @Test
+    fun musicExtractorKeepsItsSongFilterAfterAGeneralSearch() {
+        val repository = YoutubeMusicRepository(null)
+        repository.extractorSearchHandler("Hurricane Bob Dylan", musicOnly = false)
+        val handler = repository.extractorSearchHandler("Hurricane Bob Dylan", musicOnly = true)
+        assertTrue(handler.url.startsWith("https://music.youtube.com/"))
+        assertEquals("music_songs", handler.contentFilters.single().name)
+    }
+
+    @Test
     fun visionOsIdentityMatchesUpstreamWatchMobileProfile() {
         val client = applyVisionOsClientIdentity(JSONObject())
 

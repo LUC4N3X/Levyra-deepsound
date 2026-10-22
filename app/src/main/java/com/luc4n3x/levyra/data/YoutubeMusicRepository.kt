@@ -827,6 +827,12 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         }
     }
 
+    open suspend fun searchYoutubeForImport(query: String, limit: Int = 12): List<Track> = withContext(Dispatchers.IO) {
+        val clean = query.trim()
+        if (clean.length < 2) return@withContext emptyList()
+        searchYoutubeExtractor(clean, limit.coerceIn(1, 16), musicOnly = false).also(::rememberSearchTracks)
+    }
+
     open suspend fun search(query: String, limit: Int = 36, languageCode: String = LevyraLanguageCatalog.deviceDefault()): List<Track> = withContext(Dispatchers.IO) {
         val cleanQuery = query.trim()
         if (cleanQuery.length < 2) return@withContext emptyList()
@@ -3236,23 +3242,10 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
     return tracks.values.take(limit)
 }
 
-    private fun searchYoutubeExtractor(query: String, limit: Int): List<Track> {
+    private fun searchYoutubeExtractor(query: String, limit: Int, musicOnly: Boolean = true): List<Track> {
         NewPipeRuntime.ensure()
         val service = org.schabi.newpipe.extractor.ServiceList.YouTube
-        val factory = service.searchQHFactory
-        val musicSongsFilter = findExtractorFilterItem(
-            factory.getAvailableContentFilter(),
-            org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQueryHandlerFactory.MUSIC_SONGS
-        )
-        val handler = if (musicSongsFilter != null) {
-            factory.fromQuery(
-                query,
-                mutableListOf(musicSongsFilter),
-                mutableListOf<org.schabi.newpipe.extractor.search.filter.FilterItem>()
-            )
-        } else {
-            factory.fromQuery(query)
-        }
+        val handler = extractorSearchHandler(query, musicOnly)
         val info = org.schabi.newpipe.extractor.search.SearchInfo.getInfo(service, handler)
         return info.relatedItems
             .filterIsInstance<org.schabi.newpipe.extractor.stream.StreamInfoItem>()
@@ -3276,6 +3269,23 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             }
             .distinctBy { it.id }
             .take(limit)
+    }
+
+    internal fun extractorSearchHandler(query: String, musicOnly: Boolean): org.schabi.newpipe.extractor.linkhandler.SearchQueryHandler {
+        val service = org.schabi.newpipe.extractor.ServiceList.YouTube
+        val factory = service.searchQHFactory
+        return synchronized(factory) {
+            val filter = requireNotNull(findExtractorFilterItem(
+                factory.getAvailableContentFilter(),
+                if (musicOnly) org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQueryHandlerFactory.MUSIC_SONGS
+                else org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQueryHandlerFactory.VIDEOS
+            ))
+            factory.fromQuery(
+                query,
+                mutableListOf(filter),
+                mutableListOf<org.schabi.newpipe.extractor.search.filter.FilterItem>()
+            )
+        }
     }
 
     private fun findExtractorFilterItem(

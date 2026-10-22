@@ -305,6 +305,144 @@ class PlaylistImportCatalogTest {
     }
 
     @Test
+    fun sameVideoFallbackCannotRemoveAKnownDuetPartner() = runBlocking {
+        val video = testTrack("duet", "Song", "Artist, Guest", videoType = "")
+        val repository = FakeYoutubeRepository(searchHandler = { _, _ -> listOf(video) })
+        val identity = ImportedTrackIdentity(0, "Song", listOf("Artist"), durationMs = 210_000)
+        val resolution = PlaylistImportCatalog(repository, { emptyList() }, { "en" }, youtubeSearch = {
+            listOf(video.copy(title = "Artist - Song", artist = "Artist", source = "LevyraExtractor Search"))
+        }).resolve(identity, false, ResolutionPreference.SMART)
+        assertFalse(resolution.outcome.confidence.autoAccepted)
+        assertTrue(resolution.candidates.single { it.candidate.id == "duet" }.track.artist.contains("Guest"))
+    }
+
+    @Test
+    fun normalizedYoutubeFallbackReplacesEarlierMetadataForTheSameVideo() = runBlocking {
+        val video = testTrack("official", "Bob Dylan - Hurricane (Official Audio)", "Bob Dylan",
+            durationMs = 515_000, videoType = "")
+        val repository = FakeYoutubeRepository(searchHandler = { _, _ -> listOf(video.copy(source = "YouTube Music")) })
+        val identity = ImportedTrackIdentity(0, "Hurricane", listOf("Bob Dylan"), durationMs = 512_609)
+        val resolution = PlaylistImportCatalog(repository, { emptyList() }, { "en" }, youtubeSearch = {
+            listOf(video.copy(source = "LevyraExtractor Search"))
+        }).resolve(identity, false, ResolutionPreference.SMART)
+        assertTrue(resolution.outcome.confidence.autoAccepted)
+        assertEquals("official", resolution.outcome.selected?.candidate?.id)
+        val saved = resolution.candidates.single { it.candidate.id == "official" }.track
+        assertEquals("Hurricane (Official Audio)", saved.title)
+        assertEquals("Bob Dylan", saved.artist)
+        assertEquals(video.videoUrl, saved.videoUrl)
+    }
+
+    @Test
+    fun failedYoutubeFallbackIsAnErrorAndDoesNotCacheAMissingResult() = runBlocking {
+        var attempts = 0
+        val catalog = PlaylistImportCatalog(FakeYoutubeRepository(), { emptyList() }, { "en" }, youtubeSearch = {
+            attempts++
+            throw IOException("Provider unavailable")
+        })
+        val identity = ImportedTrackIdentity(0, "Unknown recording", listOf("Artist"), durationMs = 210_000)
+        repeat(2) {
+            val failure = runCatching { catalog.resolve(identity, false, ResolutionPreference.SMART) }.exceptionOrNull()
+            assertTrue("An incomplete search must not become Missing", failure is IOException)
+        }
+        assertEquals(2, attempts)
+    }
+
+    @Test
+    fun extractorArtistPrefixSupportsBandNamesAndChannelSuffixes() {
+        listOf(" - ", " – ", " — ").forEach { separator ->
+            listOf("Ricchi E Poveri", "Ricchi E Poveri - Topic", "Ricchi E PoveriVEVO").forEach { channel ->
+                val track = testTrack("band", "Ricchi E Poveri${separator}Cosa Sei", channel)
+                    .copy(source = "LevyraExtractor Search")
+                val candidate = track.toMatchCandidate().candidate
+                assertEquals("Cosa Sei", candidate.title)
+                assertEquals(listOf("Ricchi E Poveri"), candidate.artists)
+            }
+        }
+    }
+
+    @Test
+    fun officialChannelArtistPrefixDoesNotHideTheRecordingTitle() {
+        val identity = ImportedTrackIdentity(0, "Hurricane", listOf("Bob Dylan"), durationMs = 512_609)
+        val track = testTrack("official", "Bob Dylan - Hurricane (Official Audio)", "Bob Dylan",
+            durationMs = 515_000, videoType = "").copy(source = "LevyraExtractor Search")
+        val candidate = track.toMatchCandidate().candidate
+        assertEquals("Hurricane (Official Audio)", candidate.title)
+        assertTrue(PlaylistMatchEngine.evaluate(identity, candidate).confidence.autoAccepted)
+        assertFalse(PlaylistMatchEngine.evaluate(identity, track.copy(title = "Bob Dylan - Hurricane (Official Live Audio)")
+            .toMatchCandidate().candidate).confidence.autoAccepted)
+        assertFalse(PlaylistMatchEngine.evaluate(identity, track.copy(artist = "Cover Artist")
+            .toMatchCandidate().candidate).confidence.autoAccepted)
+        assertFalse(PlaylistMatchEngine.evaluate(identity, track.copy(title = "Bob Dylan, Guest - Hurricane (Official Audio)")
+            .toMatchCandidate().candidate).confidence.autoAccepted)
+    }
+
+    @Test
+    fun irrelevantMusicResultsDoNotPreventYoutubeFallback() = runBlocking {
+        val repository = FakeYoutubeRepository(songsHandler = { listOf(testTrack("wrong", "Hurricane", "Cover Artist")) })
+        val queries = mutableListOf<String>()
+        val identity = ImportedTrackIdentity(0, "Hurricane", listOf("Bob Dylan"), durationMs = 512_609)
+        val outcome = PlaylistImportCatalog(repository, { emptyList() }, { "en" }, youtubeSearch = { query ->
+            queries += query
+            listOf(testTrack("official", "Hurricane (Official Audio)", "Bob Dylan", durationMs = 512_000))
+        }).resolve(identity, false, ResolutionPreference.SMART).outcome
+        assertEquals("official", outcome.selected?.candidate?.id)
+        assertTrue(outcome.confidence.autoAccepted)
+        assertEquals(listOf("Hurricane Bob Dylan"), queries)
+    }
+
+    @Test
+    fun normalizedFallbackKeepsTheWholeBandName() = runBlocking {
+        val repository = FakeYoutubeRepository(songsHandler = { query ->
+            if (query == "cosa sei ricchi e poveri") listOf(testTrack("correct", "Cosa Sei", "Ricchi E Poveri")) else emptyList()
+        })
+        val identity = ImportedTrackIdentity(0, "Cosa Sei (Official Audio)", listOf("Ricchi E Poveri"), durationMs = 210_000)
+        val outcome = PlaylistImportCatalog(repository, { emptyList() }, { "en" })
+            .resolve(identity, false, ResolutionPreference.SMART).outcome
+        assertEquals("correct", outcome.selected?.candidate?.id)
+        assertTrue(outcome.confidence.autoAccepted)
+        assertFalse(repository.songsQueries.contains("cosa sei ricchi"))
+    }
+
+    @Test
+    fun missingRemixCanBeFoundUsingEveryCreditedArtistBeforeMetadata() = runBlocking {
+        val identity = ImportedTrackIdentity(0, "The Dead Dance - Blake Lewis remix",
+            listOf("Ariana Savalas", "Blake Lewis"), durationMs = 147_167)
+        val query = "${identity.title} - Ariana Savalas Blake Lewis"
+        val repository = FakeYoutubeRepository(songsHandler = { requested ->
+            if (requested == query) listOf(testTrack("correct", "The Dead Dance (Blake Lewis Remix)", "Ariana Savalas", durationMs = 147_000)) else emptyList()
+        })
+        var metadataCalls = 0
+        val outcome = PlaylistImportCatalog(repository, { emptyList() }, { "en" }, metadataSearch = {
+            metadataCalls++
+            emptyList()
+        }).resolve(identity, false, ResolutionPreference.SMART).outcome
+        assertEquals("correct", outcome.selected?.candidate?.id)
+        assertTrue(outcome.confidence.autoAccepted)
+        assertEquals(0, metadataCalls)
+        assertEquals(1, repository.songsQueries.count { it == query })
+    }
+
+    @Test
+    fun reliableFirstSearchDoesNotRunAdditionalVariantsOrMetadata() = runBlocking {
+        val repository = FakeYoutubeRepository(songsHandler = { listOf(testTrack("correct", "Song", "Artist One, Artist Two")) })
+        var metadataCalls = 0
+        var youtubeCalls = 0
+        val outcome = PlaylistImportCatalog(repository, { emptyList() }, { "en" }, metadataSearch = {
+            metadataCalls++
+            emptyList()
+        }, youtubeSearch = {
+            youtubeCalls++
+            emptyList()
+        }).resolve(ImportedTrackIdentity(0, "Song", listOf("Artist One", "Artist Two"), durationMs = 210_000), false, ResolutionPreference.SMART).outcome
+        assertTrue(outcome.confidence.autoAccepted)
+        assertEquals(1, repository.songsQueries.size)
+        assertTrue(repository.searchQueries.isEmpty())
+        assertEquals(0, metadataCalls)
+        assertEquals(0, youtubeCalls)
+    }
+
+    @Test
     fun test9_metadataPreservedInToMatchCandidate() {
         val original = testTrack(
             id = "track_meta_1",
