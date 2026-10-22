@@ -171,6 +171,90 @@ internal fun PlayerFavoriteButton(
 ) {
     val haptics = LocalLevyraHaptics.current
     val pop = rememberFavoritePop(trackId, isFavorite, animated)
+    val handleToggle = {
+        haptics.perform(LevyraHapticAction.Favorite)
+        onToggle()
+    }
+    when {
+        LevyraIsSpotify -> SpotifyPlayerFavoriteButton(isFavorite, label, pop.value, handleToggle)
+        LevyraIsYouTubeMusic -> YouTubeMusicPlayerFavoriteButton(isFavorite, label, pop.value, handleToggle)
+        LevyraIsAppleMusic -> AppleMusicPlayerFavoriteButton(isFavorite, label, pop.value, handleToggle)
+        else -> DefaultPlayerFavoriteButton(isFavorite, surfaces, label, animated, pop.value, handleToggle)
+    }
+}
+
+@Composable
+private fun SpotifyPlayerFavoriteButton(
+    isFavorite: Boolean,
+    label: String,
+    scale: Float,
+    onToggle: () -> Unit
+) {
+    IconButton(
+        onClick = onToggle,
+        modifier = Modifier.size(LevyraPlayerDesign.MinimumTouchTarget)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .semantics { toggleableState = ToggleableState(isFavorite) }
+    ) {
+        Icon(
+            if (isFavorite) Icons.Rounded.CheckCircle else Icons.Rounded.AddCircleOutline, label,
+            tint = if (isFavorite) SpotifyDesign.green else SpotifyDesign.text, modifier = Modifier.size(28.dp)
+        )
+    }
+}
+
+@Composable
+private fun YouTubeMusicPlayerFavoriteButton(
+    isFavorite: Boolean,
+    label: String,
+    scale: Float,
+    onToggle: () -> Unit
+) {
+    IconButton(
+        onClick = onToggle,
+        modifier = Modifier.size(LevyraPlayerDesign.MinimumTouchTarget)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .semantics { toggleableState = ToggleableState(isFavorite) }
+    ) {
+        Icon(if (isFavorite) Icons.Rounded.ThumbUp else Icons.Outlined.OutlinedThumbUp, label, tint = Color.White, modifier = Modifier.size(24.dp))
+    }
+}
+
+@Composable
+private fun AppleMusicPlayerFavoriteButton(
+    isFavorite: Boolean,
+    label: String,
+    scale: Float,
+    onToggle: () -> Unit
+) {
+    IconButton(
+        onClick = onToggle,
+        modifier = Modifier.size(LevyraPlayerDesign.MinimumTouchTarget)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .semantics { toggleableState = ToggleableState(isFavorite) }
+    ) {
+        Box(
+            Modifier.size(30.dp).clip(androidx.compose.foundation.shape.CircleShape)
+                .background(if (isFavorite) AppleMusicVibrant.primary else AppleMusicVibrant.quaternary),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                if (isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder, label,
+                tint = if (isFavorite) Color.Black.copy(alpha = 0.78f) else AppleMusicVibrant.primary, modifier = Modifier.size(19.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun DefaultPlayerFavoriteButton(
+    isFavorite: Boolean,
+    surfaces: PlayerSurfaceTokens,
+    label: String,
+    animated: Boolean,
+    scale: Float,
+    onToggle: () -> Unit
+) {
     val tint by animateColorAsState(
         targetValue = surfaces.tintFor(isFavorite, surfaces.content),
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(200)),
@@ -181,69 +265,6 @@ internal fun PlayerFavoriteButton(
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(200)),
         label = "player-favorite-fill"
     )
-    if (LevyraIsSpotify) {
-        IconButton(
-            onClick = {
-                haptics.perform(LevyraHapticAction.Favorite)
-                onToggle()
-            },
-            modifier = Modifier.size(LevyraPlayerDesign.MinimumTouchTarget)
-                .graphicsLayer {
-                    scaleX = pop.value
-                    scaleY = pop.value
-                }
-                .semantics { toggleableState = ToggleableState(isFavorite) }
-        ) {
-            Icon(
-                if (isFavorite) Icons.Rounded.CheckCircle else Icons.Rounded.AddCircleOutline, label,
-                tint = if (isFavorite) SpotifyDesign.green else SpotifyDesign.text, modifier = Modifier.size(28.dp)
-            )
-        }
-        return
-    }
-    if (LevyraIsYouTubeMusic) {
-        IconButton(
-            onClick = {
-                haptics.perform(LevyraHapticAction.Favorite)
-                onToggle()
-            },
-            modifier = Modifier.size(LevyraPlayerDesign.MinimumTouchTarget)
-                .graphicsLayer {
-                    scaleX = pop.value
-                    scaleY = pop.value
-                }
-                .semantics { toggleableState = ToggleableState(isFavorite) }
-        ) {
-            Icon(if (isFavorite) Icons.Rounded.ThumbUp else Icons.Outlined.OutlinedThumbUp, label, tint = Color.White, modifier = Modifier.size(24.dp))
-        }
-        return
-    }
-    if (LevyraIsAppleMusic) {
-        IconButton(
-            onClick = {
-                haptics.perform(LevyraHapticAction.Favorite)
-                onToggle()
-            },
-            modifier = Modifier.size(LevyraPlayerDesign.MinimumTouchTarget)
-                .graphicsLayer {
-                    scaleX = pop.value
-                    scaleY = pop.value
-                }
-                .semantics { toggleableState = ToggleableState(isFavorite) }
-        ) {
-            Box(
-                Modifier.size(30.dp).clip(androidx.compose.foundation.shape.CircleShape)
-                    .background(if (isFavorite) AppleMusicVibrant.primary else AppleMusicVibrant.quaternary),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    if (isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder, label,
-                    tint = if (isFavorite) Color.Black.copy(alpha = 0.78f) else AppleMusicVibrant.primary, modifier = Modifier.size(19.dp)
-                )
-            }
-        }
-        return
-    }
     val outline = surfaces.segmentOutline
     PlayerGlassIconButton(
         icon = favoriteIcon(isFavorite),
@@ -258,14 +279,11 @@ internal fun PlayerFavoriteButton(
         modifier = Modifier
             .size(LevyraPlayerDesign.MinimumTouchTarget)
             .graphicsLayer {
-                scaleX = pop.value
-                scaleY = pop.value
+                scaleX = scale
+                scaleY = scale
             }
             .semantics { toggleableState = ToggleableState(isFavorite) },
-        onClick = {
-            haptics.perform(LevyraHapticAction.Favorite)
-            onToggle()
-        }
+        onClick = onToggle
     )
 }
 

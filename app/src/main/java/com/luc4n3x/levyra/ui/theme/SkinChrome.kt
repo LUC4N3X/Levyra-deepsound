@@ -78,16 +78,33 @@ internal fun SkinSwitch(checked: Boolean, modifier: Modifier = Modifier) {
     val torque = LevyraIsTorque
     val travel by animateFloatAsState(if (checked) 1f else 0f, MaterialTheme.motionScheme.defaultSpatialSpec(), label = "skin-switch")
     val accent = if (torque) LevyraActivePalette.blue else LevyraCyan
-    val idle = LevyraMuted
-    Canvas(modifier.size(width = if (LevyraIsAppleMusic) 51.dp else if (LevyraIsYouTubeMusic) 40.dp else 52.dp, height = if (LevyraIsAppleMusic) 31.dp else if (LevyraIsYouTubeMusic) 24.dp else 26.dp)) {
-        val stroke = 1.5.dp.toPx()
-        val inset = 3.dp.toPx()
-        if (torque) drawTorqueSwitch(checked, travel, accent, idle, stroke, inset)
-        else if (LevyraIsIvory) drawIvorySwitch(travel, IvoryDesign.ink, IvoryDesign.onInk, idle, stroke)
-        else if (LevyraIsSpotify) drawSpotifySwitch(travel)
-        else if (LevyraIsAppleMusic) drawAppleMusicSwitch(travel)
-        else if (LevyraIsYouTubeMusic) drawYouTubeMusicSwitch(travel)
-        else drawRectangularSwitch(checked, travel, accent, idle, stroke, inset)
+    val (width, height) = skinSwitchDimensions()
+    Canvas(modifier.size(width = width, height = height)) {
+        drawSkinSwitch(checked, travel, accent, LevyraMuted)
+    }
+}
+
+private fun skinSwitchDimensions(): Pair<Dp, Dp> = when {
+    LevyraIsAppleMusic -> 51.dp to 31.dp
+    LevyraIsYouTubeMusic -> 40.dp to 24.dp
+    else -> 52.dp to 26.dp
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSkinSwitch(
+    checked: Boolean,
+    travel: Float,
+    accent: Color,
+    idle: Color
+) {
+    val stroke = 1.5.dp.toPx()
+    val inset = 3.dp.toPx()
+    when {
+        LevyraIsTorque -> drawTorqueSwitch(checked, travel, accent, idle, stroke, inset)
+        LevyraIsIvory -> drawIvorySwitch(travel, IvoryDesign.ink, IvoryDesign.onInk, idle, stroke)
+        LevyraIsSpotify -> drawSpotifySwitch(travel)
+        LevyraIsAppleMusic -> drawAppleMusicSwitch(travel)
+        LevyraIsYouTubeMusic -> drawYouTubeMusicSwitch(travel)
+        else -> drawRectangularSwitch(checked, travel, accent, idle, stroke, inset)
     }
 }
 

@@ -95,7 +95,8 @@ class HomePremiumLayoutContractTest {
 
     @Test
     fun `orbit avatar prefers the profile photo over the initial`() {
-        val avatar = functionBlock("private fun HomeOrbitAvatar(")
+        val signature = if (source.contains("internal fun HomeOrbitAvatar(")) "internal fun HomeOrbitAvatar(" else "private fun HomeOrbitAvatar("
+        val avatar = functionBlock(signature)
 
         assertTrue(avatar.contains("photoPath.takeIf(String::isNotBlank)"))
         assertTrue(avatar.contains("AsyncImage("))

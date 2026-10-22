@@ -193,6 +193,13 @@ internal fun rememberMiniPlayerPalette(
     track: Track,
     animated: Boolean
 ): MiniPlayerPalette {
+    val skinPalette = rememberSkinMiniPlayerPalette(track, animated)
+    if (skinPalette != null) return skinPalette
+    return rememberTunedMiniPlayerPalette(style, tuning, track, animated)
+}
+
+@Composable
+private fun rememberSkinMiniPlayerPalette(track: Track, animated: Boolean): MiniPlayerPalette? {
     val scheme = MaterialTheme.colorScheme
     if (LevyraIsNocturne) {
         return MiniPlayerPalette(scheme.primary, scheme.primary, scheme.surfaceContainerHigh, scheme.onSurface, scheme.onSurfaceVariant, true)
@@ -215,6 +222,17 @@ internal fun rememberMiniPlayerPalette(
     if (LevyraIsPrism) {
         return MiniPlayerPalette(scheme.primary, scheme.tertiary, prismGlassColor(), scheme.onSurface, scheme.onSurfaceVariant, !LevyraActivePalette.isLight)
     }
+    return null
+}
+
+@Composable
+private fun rememberTunedMiniPlayerPalette(
+    style: MiniPlayerStyle,
+    tuning: MiniPlayerTuning,
+    track: Track,
+    animated: Boolean
+): MiniPlayerPalette {
+    val scheme = MaterialTheme.colorScheme
     val artwork = rememberMiniArtworkPalette(track)
     val targets = when (tuning.colorMode) {
         MiniColorMode.Artwork -> remember(artwork) {

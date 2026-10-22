@@ -92,55 +92,106 @@ internal fun YouTubeMusicHomeContent(
             contentPadding = PaddingValues(top = statusBarTop, bottom = homeBottomInset + 16.dp),
             verticalArrangement = Arrangement.spacedBy(YouTubeMusicDesign.sectionGap)
         ) {
-            item(key = "ytm-home-bar", contentType = "ytm-bar") {
-                YouTubeMusicTopBar(
-                    title = "Levyra", searchLabel = copy.search, settingsLabel = copy.settings,
-                    onSearch = actions.openSearch, onSettings = actions.home.openSettings
-                )
-            }
-            if (feed.chips.isNotEmpty()) {
-                stickyHeader(key = "ytm-home-chips", contentType = "ytm-chips") {
-                    val labels = remember(feed.chips) { feed.chips.map { it.title } }
-                    val pinned by remember(homeListState) { derivedStateOf { homeListState.firstVisibleItemIndex >= 1 } }
-                    Box(
-                        Modifier.fillMaxWidth()
-                            .background(if (pinned) YouTubeMusicDesign.background else Color.Transparent)
-                            .padding(top = if (pinned) statusBarTop else 0.dp, bottom = 8.dp)
-                    ) {
-                        YouTubeMusicChipRow(labels, feed.chips.indexOfFirst { it.params == feed.selectedChip }, onSelect = { index ->
-                            feed.chips.getOrNull(index)?.let { homeViewModel.selectChip(it.params) }
-                        })
-                    }
-                }
-            }
-            if (feed.shelves.isEmpty() && feed.failed) {
-                item(key = "ytm-home-failed", contentType = "ytm-notice") {
-                    YouTubeMusicNotice(copy.homeUnavailable, copy.retry) { homeViewModel.load(strings.code, force = true) }
-                }
-            }
-            val orbit = data.personalTracks.takeIf { data.showPersonal }.orEmpty()
-            if (orbit.isNotEmpty()) {
-                item(key = "levyra-orbit", contentType = "ytm-speed-grid") {
-                    YouTubeMusicSpeedGrid(
-                        strings.personalOrbitTitle, data.listener, orbit, data.currentId,
-                        onPlay = { track -> actions.home.playFrom(orbit, track) },
-                        onTrackActions = actions.home.onTrackActions
-                    )
-                }
-            }
-            youTubeMusicHomeSections(allShelves, levyraBlocks) { shelf ->
-                YouTubeMusicFeedShelf(shelf, data.currentId, copy, actions, previews, homeViewModel::requestPreview)
-            }
+            youTubeMusicHomeHeaders(
+                copy, actions, feed.chips, feed.selectedChip, homeListState, statusBarTop,
+                homeViewModel::selectChip
+            )
+            youTubeMusicHomeContentItems(
+                data, actions, copy, strings.personalOrbitTitle, feed.failed, feed.shelves.isNotEmpty(),
+                allShelves, levyraBlocks, previews, homeViewModel::requestPreview
+            ) { homeViewModel.load(strings.code, force = true) }
         }
-        val scrolled by remember(homeListState) { derivedStateOf { homeListState.firstVisibleItemIndex > 0 || homeListState.firstVisibleItemScrollOffset > 0 } }
-        if (scrolled && feed.chips.isEmpty()) {
-            Box(Modifier.fillMaxWidth().height(statusBarTop).background(YouTubeMusicDesign.background))
-        }
+        YouTubeMusicStatusBarScrim(homeListState, statusBarTop, feed.chips.isNotEmpty())
         PullToRefreshDefaults.LoadingIndicator(
             state = homePullState,
             isRefreshing = homeRefreshing,
             modifier = Modifier.align(Alignment.TopCenter).padding(top = statusBarTop + 16.dp)
         )
+    }
+}
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+private fun LazyListScope.youTubeMusicHomeHeaders(
+    copy: YouTubeMusicSkinCopy,
+    actions: YouTubeMusicHomeActions,
+    chips: List<com.luc4n3x.levyra.domain.YoutubeMusicHomeChip>,
+    selectedChip: String,
+    homeListState: LazyListState,
+    statusBarTop: Dp,
+    onSelectChip: (String) -> Unit
+) {
+    item(key = "ytm-home-bar", contentType = "ytm-bar") {
+        YouTubeMusicTopBar(
+            title = "Levyra", searchLabel = copy.search, settingsLabel = copy.settings,
+            onSearch = actions.openSearch, onSettings = actions.home.openSettings
+        )
+    }
+    if (chips.isNotEmpty()) {
+        stickyHeader(key = "ytm-home-chips", contentType = "ytm-chips") {
+            YouTubeMusicChipsStickyHeader(chips, selectedChip, homeListState, statusBarTop, onSelectChip)
+        }
+    }
+}
+
+@Composable
+private fun YouTubeMusicChipsStickyHeader(
+    chips: List<com.luc4n3x.levyra.domain.YoutubeMusicHomeChip>,
+    selectedChip: String,
+    homeListState: LazyListState,
+    statusBarTop: Dp,
+    onSelectChip: (String) -> Unit
+) {
+    val labels = remember(chips) { chips.map { it.title } }
+    val pinned by remember(homeListState) { derivedStateOf { homeListState.firstVisibleItemIndex >= 1 } }
+    Box(
+        Modifier.fillMaxWidth()
+            .background(if (pinned) YouTubeMusicDesign.background else Color.Transparent)
+            .padding(top = if (pinned) statusBarTop else 0.dp, bottom = 8.dp)
+    ) {
+        YouTubeMusicChipRow(labels, chips.indexOfFirst { it.params == selectedChip }, onSelect = { index ->
+            chips.getOrNull(index)?.let { onSelectChip(it.params) }
+        })
+    }
+}
+
+private fun LazyListScope.youTubeMusicHomeContentItems(
+    data: AppleMusicHomeData,
+    actions: YouTubeMusicHomeActions,
+    copy: YouTubeMusicSkinCopy,
+    orbitTitle: String,
+    feedFailed: Boolean,
+    hasShelves: Boolean,
+    allShelves: List<YoutubeMusicHomeShelf>,
+    levyraBlocks: List<YouTubeMusicHomeBlock>,
+    previews: Map<String, List<Track>>,
+    onRequestPreview: (String) -> Unit,
+    onRetry: () -> Unit
+) {
+    if (!hasShelves && feedFailed) {
+        item(key = "ytm-home-failed", contentType = "ytm-notice") {
+            YouTubeMusicNotice(copy.homeUnavailable, copy.retry, onRetry)
+        }
+    }
+    val orbit = data.personalTracks.takeIf { data.showPersonal }.orEmpty()
+    if (orbit.isNotEmpty()) {
+        item(key = "levyra-orbit", contentType = "ytm-speed-grid") {
+            YouTubeMusicSpeedGrid(
+                orbitTitle, data.listener, orbit, data.currentId,
+                onPlay = { track -> actions.home.playFrom(orbit, track) },
+                onTrackActions = actions.home.onTrackActions
+            )
+        }
+    }
+    youTubeMusicHomeSections(allShelves, levyraBlocks) { shelf ->
+        YouTubeMusicFeedShelf(shelf, data.currentId, copy, actions, previews, onRequestPreview)
+    }
+}
+
+@Composable
+private fun YouTubeMusicStatusBarScrim(homeListState: LazyListState, statusBarTop: Dp, hasChips: Boolean) {
+    val scrolled by remember(homeListState) { derivedStateOf { homeListState.firstVisibleItemIndex > 0 || homeListState.firstVisibleItemScrollOffset > 0 } }
+    if (scrolled && !hasChips) {
+        Box(Modifier.fillMaxWidth().height(statusBarTop).background(YouTubeMusicDesign.background))
     }
 }
 
