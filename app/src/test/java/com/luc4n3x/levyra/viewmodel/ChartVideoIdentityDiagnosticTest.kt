@@ -154,6 +154,35 @@ class ChartVideoIdentitySelectionTest {
     }
 
     @Test
+    fun officialVideoBeatsMorePopularFanSubtitledUpload() {
+        val target = track(
+            id = "ddddddddddd",
+            title = "Take On Me (MTV Unplugged)",
+            artist = "a-ha",
+            videoType = "MUSIC_VIDEO_TYPE_ATV"
+        )
+        val fanUpload = track(
+            id = "eeeeeeeeeee",
+            title = "a-ha - Take On Me (MTV Unplugged) Legendado Tradução",
+            artist = "a-ha",
+            videoUrl = "https://www.youtube.com/watch?v=eeeeeeeeeee",
+            videoType = "MUSIC_VIDEO_TYPE_UGC"
+        ).copy(youtubeViewCount = 90_000_000L)
+        val official = track(
+            id = "fffffffffff",
+            title = "Take On Me (MTV Unplugged)",
+            artist = "a-ha",
+            videoUrl = "https://www.youtube.com/watch?v=fffffffffff",
+            videoType = "MUSIC_VIDEO_TYPE_UGC"
+        ).copy(youtubeViewCount = 4_000_000L)
+
+        assertEquals(
+            "fffffffffff",
+            selectPreferredVideoPlaybackCandidate(target, listOf(fanUpload, official))?.let(::videoCandidateId)
+        )
+    }
+
+    @Test
     fun unverifiedChartIdentityStaysOutOfVideoMode() {
         assertNull(youtubePlayableTrack(chartTarget(), preferVideo = true))
     }

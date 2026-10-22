@@ -110,7 +110,7 @@ internal fun PlayerTransportBar(
     onRepeat: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    if (LevyraIsPrism) {
+    if (PlayerPrismStyle) {
         PrismTransport(isPlaying, isResolving, shuffleOn, repeatMode, labels, onShuffle, onPrevious, onTogglePlay, onNext, onRepeat, modifier)
         return
     }

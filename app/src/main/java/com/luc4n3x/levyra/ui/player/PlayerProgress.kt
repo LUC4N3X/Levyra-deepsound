@@ -53,7 +53,7 @@ internal fun PlayerProgress(
     modifier: Modifier = Modifier,
     style: PlayerProgressStyle = PlayerProgressStyle.Classic
 ) {
-    if (LevyraIsPrism) {
+    if (PlayerPrismStyle) {
         PrismSeekbar(positionMs, bufferedPositionMs, durationMs, onSeek, modifier)
         return
     }
