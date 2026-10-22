@@ -425,7 +425,7 @@ internal fun YouTubeMusicShortcutTile(
     ) {
         Icon(icon, null, tint = YouTubeMusicDesign.text, modifier = Modifier.size(22.dp))
         Text(
-            label, color = YouTubeMusicDesign.text, style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp),
+            label, color = YouTubeMusicDesign.text, style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp, lineHeight = 21.sp),
             maxLines = 2, overflow = TextOverflow.Ellipsis
         )
     }

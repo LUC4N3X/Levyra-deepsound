@@ -67,7 +67,7 @@ internal object YouTubeMusicDesign {
     val navIcon = 24.dp
     val topBarHeight = 64.dp
     val avatar = 32.dp
-    val tileHeight = 101.dp
+    val tileHeight = 116.dp
     val tileCorner = 16.dp
     val collectionArtwork = 220.dp
     val collectionPlay = 64.dp
