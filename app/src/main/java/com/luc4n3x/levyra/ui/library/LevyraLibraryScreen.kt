@@ -647,7 +647,7 @@ internal fun LevyraLibraryScreen(
     BackHandler(enabled = !selectionActive && openSmartCollectionName != null) { openSmartCollectionName = null }
     BackHandler(enabled = selectionActive) { selectedKeys = emptySet() }
 
-    Box(modifier = Modifier.fillMaxSize().background(LevyraInk)) {
+    Box(modifier = Modifier.fillMaxSize().background(if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) com.luc4n3x.levyra.ui.theme.YouTubeMusicDesign.background else LevyraInk)) {
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
@@ -789,6 +789,37 @@ internal fun LevyraLibraryScreen(
                         strings = strings,
                         actions = overviewSearchActions
                     )
+                } else if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) {
+                    item(key = "ytm-library-chips") {
+                        YouTubeMusicLibraryChips(
+                            categories = librarySections.map { it.category to it.category.libraryLabel(strings) },
+                            onSelect = { switchCategory(it) }
+                        )
+                    }
+                    item(key = "ytm-library-rows") {
+                        YouTubeMusicLibraryOverview(
+                            favorites = state.favorites,
+                            playlists = visiblePlaylists,
+                            albums = catalog.albums,
+                            artists = catalog.artists,
+                            copy = YouTubeMusicLibraryRows(
+                                likedTitle = strings.favorites,
+                                likedSubtitle = strings.formatTrackCount(state.favorites.size),
+                                playlistLabel = strings.playlists,
+                                albumLabel = strings.albumsPlain.replaceFirstChar { it.uppercase() },
+                                artistLabel = strings.artists,
+                                moreLabel = strings.more,
+                                trackCount = strings::formatTrackCount
+                            ),
+                            actions = YouTubeMusicLibraryActions(
+                                onOpenLiked = { openSmartCollectionName = SMART_COLLECTION_FAVORITES },
+                                onOpenPlaylist = { viewModel.openPlaylist(it.id) },
+                                onPlaylistMore = { viewModel.openPlaylistStudio(it.id) },
+                                onOpenAlbum = { viewModel.openAlbum(it.toAlbumHit()) },
+                                onOpenArtist = { viewModel.openArtistReference(it.name, it.browseId, it.artworkUrl) }
+                            )
+                        )
+                    }
                 } else {
                     item(key = "overview-sections") {
                         LibrarySectionGrid(
@@ -1231,7 +1262,15 @@ internal fun LevyraLibraryScreen(
             )
         }
 
-        if (category == LibraryCategory.Playlists && !selectionActive && (state.playlists.isNotEmpty() || query.isNotBlank() || showHiddenPlaylists || selectedTagIds.isNotEmpty())) {
+        if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic && category == LibraryCategory.Overview && !selectionActive) {
+            YouTubeMusicNewButton(
+                label = strings.newPlaylist,
+                onClick = { viewModel.openPlaylistStudio() },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 16.dp, bottom = levyraTabContentBottomPadding(state.currentTrack != null) - 8.dp)
+            )
+        } else if (category == LibraryCategory.Playlists && !selectionActive && (state.playlists.isNotEmpty() || query.isNotBlank() || showHiddenPlaylists || selectedTagIds.isNotEmpty())) {
             FloatingActionButton(
                 onClick = { viewModel.openPlaylistStudio() },
                 containerColor = LevyraCyan,

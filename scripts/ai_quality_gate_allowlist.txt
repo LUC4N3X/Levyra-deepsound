@@ -216,3 +216,11 @@ docs/assets/apple-music-style/player.png
 docs/assets/apple-music-style/search.png
 docs/assets/apple-music-style/settings.png
 docs/assets/apple-music-style/skin-selector.png
+docs/assets/youtube-music-style/album.png
+docs/assets/youtube-music-style/artist.png
+docs/assets/youtube-music-style/explore.png
+docs/assets/youtube-music-style/home-videos.png
+docs/assets/youtube-music-style/home.png
+docs/assets/youtube-music-style/library.png
+docs/assets/youtube-music-style/player.png
+docs/assets/youtube-music-style/skin-selector.png

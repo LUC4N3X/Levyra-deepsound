@@ -1415,6 +1415,10 @@ internal fun ExploreDiscoveryCategoryCard(
     onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) {
+        YouTubeMusicMoodTile(title, (accentColors ?: exploreCategoryPalette(identity)).first, onClick, modifier, onLongClick)
+        return
+    }
     if (com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic) {
         AppleMusicCategoryTile(
             label = title, portrait = artworkUrl, active = false, onClick = onClick, onLongClick = onLongClick,
@@ -1578,7 +1582,7 @@ private fun ExploreDiscoveryCategoryPlaceholder(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun exploreCategoryPalette(identity: String): Pair<Color, Color> {
+internal fun exploreCategoryPalette(identity: String): Pair<Color, Color> {
     val palette = listOf(
         Color(0xFF7C3AED) to Color(0xFF4C1D95),
         Color(0xFFD81B60) to Color(0xFF7A1538),

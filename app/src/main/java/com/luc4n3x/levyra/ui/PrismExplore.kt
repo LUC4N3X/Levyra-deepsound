@@ -34,6 +34,7 @@ internal fun RowScope.PrismMoodTile(label: String, portrait: String, active: Boo
             onLongClick = onMix, onLongClickLabel = mixLabel.takeIf { onMix != null }, onArtworkError = onPortraitError, onClick = onClick
         )
         LevyraIsIvory -> IvoryMoodTile(label, portrait, active, onClick, onMix, mixLabel, onPortraitError)
+        LevyraIsYouTubeMusic -> YouTubeMusicMoodTile(label, exploreCategoryPalette(label).first, onClick, Modifier.weight(1f), onMix)
         LevyraIsAppleMusic -> AppleMusicCategoryTile(label, portrait, active, onClick, onMix, mixLabel, onPortraitError, Modifier.weight(1f))
         else -> PrismFacetMoodTile(label, portrait, active, onClick, onMix, mixLabel, onPortraitError)
     }

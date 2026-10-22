@@ -206,6 +206,9 @@ internal fun rememberMiniPlayerPalette(
     if (LevyraIsAppleMusic) {
         return MiniPlayerPalette(AppleMusicDesign.label, AppleMusicDesign.label, AppleMusicDesign.chrome, AppleMusicDesign.label, AppleMusicDesign.secondaryLabel, !LevyraActivePalette.isLight)
     }
+    if (LevyraIsYouTubeMusic) {
+        return MiniPlayerPalette(Color.White, Color.White, YouTubeMusicDesign.miniPlayer, YouTubeMusicDesign.text, YouTubeMusicDesign.textSecondary, true)
+    }
     if (LevyraIsIvory) {
         return MiniPlayerPalette(IvoryDesign.rose, IvoryDesign.ink, LevyraActivePalette.ink, scheme.onSurface, scheme.onSurfaceVariant, !LevyraActivePalette.isLight)
     }
@@ -944,6 +947,10 @@ private fun MiniStyledArtwork(
         Box(modifier.clip(AppleMusicDesign.thumbShape).background(AppleMusicDesign.placeholder)) { CoverImage(track, Modifier.fillMaxSize()) }
         return
     }
+    if (LevyraIsYouTubeMusic) {
+        Box(modifier.background(YouTubeMusicDesign.placeholder)) { CoverImage(track, Modifier.fillMaxSize()) }
+        return
+    }
     if (LevyraIsPrism) {
         SkinSpinningArtwork(track, playing, animated, modifier)
         return
@@ -999,7 +1006,7 @@ private fun MiniStyledMetadata(
             Text(
                 text = track.title,
                 color = palette.content,
-                style = if (LevyraIsSpotify) MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp, lineHeight = 17.sp) else if (LevyraIsAppleMusic) MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium, lineHeight = 16.sp) else miniTitleStyle(tuning.typography, compact),
+                style = if (LevyraIsSpotify) MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp, lineHeight = 17.sp) else if (LevyraIsYouTubeMusic) MaterialTheme.typography.titleMedium else if (LevyraIsAppleMusic) MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium, lineHeight = 16.sp) else miniTitleStyle(tuning.typography, compact),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.levyraMarquee(enabled = animated, repeatDelayMillis = 3_200)
@@ -1008,7 +1015,7 @@ private fun MiniStyledMetadata(
         Text(
             text = if (editorial) subtitle.uppercase() else subtitle,
             color = palette.contentMuted,
-            style = if (LevyraIsSpotify) MaterialTheme.typography.bodySmall else if (LevyraIsAppleMusic) MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Normal) else miniArtistStyle(tuning.typography, compact),
+            style = if (LevyraIsSpotify) MaterialTheme.typography.bodySmall else if (LevyraIsYouTubeMusic) MaterialTheme.typography.bodyLarge else if (LevyraIsAppleMusic) MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Normal) else miniArtistStyle(tuning.typography, compact),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = if (compact) Modifier else Modifier.dockFoldHeight(compaction)
@@ -1104,7 +1111,7 @@ private fun MiniEdgeProgress(progress: () -> Float, palette: MiniPlayerPalette, 
             .fillMaxWidth()
             .height(StyledMiniEdgeProgressHeight)
             .drawBehind {
-                drawRect(color = palette.content.copy(alpha = 0.18f))
+                drawRect(color = if (LevyraIsYouTubeMusic) YouTubeMusicDesign.divider else palette.content.copy(alpha = 0.18f))
                 val width = size.width * progress().coerceIn(0f, 1f)
                 val start = if (layoutDirection == LayoutDirection.Rtl) size.width - width else 0f
                 drawRect(color = palette.content, topLeft = Offset(start, 0f), size = Size(width, size.height))
