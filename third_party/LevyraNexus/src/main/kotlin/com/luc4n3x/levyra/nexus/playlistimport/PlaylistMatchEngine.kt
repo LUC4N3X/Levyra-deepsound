@@ -343,25 +343,13 @@ object PlaylistMatchEngine {
         val sourceFeatured = source.featuredArtists.flatMap(MusicIdentityText::artistNames).toSet() + sourceTitle.featuredArtists
         val primary = sourceNames.first()
         val candidatePrimary = normalizedArtists(candidate.artists)
-        val versionCredits = if (
-            sourceTitle.markers == candidateTitle.markers && versionLabels(sourceTitle) == versionLabels(candidateTitle) &&
-            TrackVersionMarker.REMIX in sourceTitle.markers
-        ) {
-            val remixers = versionLabels(sourceTitle).mapNotNull { label ->
-                remixCreditSuffix.find(label)?.let { MusicIdentityText.normalizeArtist(label.substring(0, it.range.first)) }
-            }.toSet()
-            (sourceNames.drop(1) + candidatePrimary.drop(1)).filter { name ->
-                name !in sourceFeatured && name !in candidateTitle.featuredArtists &&
-                    name in remixers
-            }.toSet()
-        } else emptySet()
+        val versionCredits = matchingRemixerCredits(sourceNames, sourceFeatured, sourceTitle, candidatePrimary, candidateTitle)
         val candidateAll = candidatePrimary.toSet() + candidateTitle.featuredArtists + versionCredits
         val expected = sourceNames.toSet() + sourceFeatured + versionCredits
         return when {
             primary in candidatePrimary -> {
                 val exact = candidatePrimary.firstOrNull() == primary &&
-                    candidateAll.all { name -> expected.any { it == name || compactEquals(it, name) } } &&
-                    expected.all { name -> candidateAll.any { it == name || compactEquals(it, name) } }
+                    sameArtistCredits(candidateAll, expected)
                 if (!exact) limit(79)
                 reasons += MatchReason(if (exact) MatchSignal.ARTIST_EXACT else MatchSignal.ARTIST_PRIMARY)
                 if (exact) 32 else 27
@@ -393,6 +381,28 @@ object PlaylistMatchEngine {
             }
         }
     }
+
+    private fun matchingRemixerCredits(
+        sourceNames: List<String>,
+        sourceFeatured: Set<String>,
+        sourceTitle: TitleIdentity,
+        candidateNames: List<String>,
+        candidateTitle: TitleIdentity
+    ): Set<String> = if (
+        sourceTitle.markers == candidateTitle.markers && versionLabels(sourceTitle) == versionLabels(candidateTitle) &&
+        TrackVersionMarker.REMIX in sourceTitle.markers
+    ) {
+        val remixers = versionLabels(sourceTitle).mapNotNull { label ->
+            remixCreditSuffix.find(label)?.let { MusicIdentityText.normalizeArtist(label.substring(0, it.range.first)) }
+        }.toSet()
+        (sourceNames.drop(1) + candidateNames.drop(1)).filter { name ->
+            name !in sourceFeatured && name !in candidateTitle.featuredArtists && name in remixers
+        }.toSet()
+    } else emptySet()
+
+    private fun sameArtistCredits(left: Set<String>, right: Set<String>): Boolean =
+        left.all { name -> right.any { it == name || compactEquals(it, name) } } &&
+            right.all { name -> left.any { it == name || compactEquals(it, name) } }
 
     private fun scoreVersion(
         sourceTitle: TitleIdentity,
