@@ -91,6 +91,7 @@ private fun RowScope.PlayerDockSegment(
     animated: Boolean
 ) {
     val interaction = remember { MutableInteractionSource() }
+    val prism = PlayerPrismStyle
     val outer = dockHeight(false) / 2
     val inner = levyraExpressiveCorner(
         interactionSource = interaction,
@@ -99,16 +100,16 @@ private fun RowScope.PlayerDockSegment(
         label = "player-dock-inner"
     )
     val fill by animateColorAsState(
-        targetValue = playerDockFill(action.active, surfaces),
+        targetValue = playerDockFill(action.active, surfaces, prism),
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(220)),
         label = "player-dock-fill"
     )
     val tint by animateColorAsState(
-        targetValue = playerDockTint(action.active, surfaces),
+        targetValue = playerDockTint(action.active, surfaces, prism),
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(220)),
         label = "player-dock-tint"
     )
-    val shape = if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism) RoundedCornerShape(com.luc4n3x.levyra.ui.theme.PrismDesign.controlCorner) else dockSegmentShape(first = first, last = last, outer = outer, inner = inner)
+    val shape = if (prism) RoundedCornerShape(com.luc4n3x.levyra.ui.theme.PrismDesign.controlCorner) else dockSegmentShape(first = first, last = last, outer = outer, inner = inner)
     Box(
         modifier = Modifier
             .weight(1f)
@@ -130,13 +131,13 @@ private fun RowScope.PlayerDockSegment(
     }
 }
 
-private fun playerDockFill(active: Boolean, surfaces: PlayerSurfaceTokens): Color =
-    if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism) {
+private fun playerDockFill(active: Boolean, surfaces: PlayerSurfaceTokens, prism: Boolean): Color =
+    if (prism) {
         if (active) com.luc4n3x.levyra.ui.theme.PrismAccent.Tint else Color.Transparent
     } else if (active) surfaces.hero else surfaces.tonal
 
-private fun playerDockTint(active: Boolean, surfaces: PlayerSurfaceTokens): Color =
-    if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism) {
+private fun playerDockTint(active: Boolean, surfaces: PlayerSurfaceTokens, prism: Boolean): Color =
+    if (prism) {
         if (active) surfaces.activeContent else surfaces.contentMuted
     } else if (active) surfaces.heroContent else surfaces.content
 

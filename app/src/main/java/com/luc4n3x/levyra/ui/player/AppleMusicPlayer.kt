@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.LevyraCanvasQuality
 import com.luc4n3x.levyra.domain.RepeatMode
+import com.luc4n3x.levyra.feature.motion.CommunityCanvasProvider
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
 import com.luc4n3x.levyra.ui.artwork.LivingArtworkColors
 import com.luc4n3x.levyra.domain.Track
@@ -46,9 +47,40 @@ import com.luc4n3x.levyra.ui.components.formatSeekbarMillis
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.rememberSpotifyCoverTone
 import com.luc4n3x.levyra.ui.theme.AppleMusicDesign
+import com.luc4n3x.levyra.ui.theme.AppleMusicShapes
+import com.luc4n3x.levyra.ui.theme.AppleMusicTypography
 import com.luc4n3x.levyra.ui.theme.AppleMusicVibrant
+import com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic
+import com.luc4n3x.levyra.ui.theme.LevyraIsPrism
+import com.luc4n3x.levyra.ui.theme.LevyraPalette
+import com.luc4n3x.levyra.ui.theme.appleMusicColorScheme
+import com.luc4n3x.levyra.ui.theme.appleMusicPalette
 
 private const val PausedArtworkScale = 0.82f
+private const val ImmersiveCanvasMinAspect = 1.4f
+
+internal val LocalAppleMusicPlayerPalette = staticCompositionLocalOf<LevyraPalette?> { null }
+
+internal val PlayerAppleMusicStyle: Boolean
+    @Composable @ReadOnlyComposable get() = LevyraIsAppleMusic || LocalAppleMusicPlayerPalette.current != null
+
+internal val PlayerPrismStyle: Boolean
+    @Composable @ReadOnlyComposable get() = LevyraIsPrism || LocalAppleMusicPlayerPalette.current != null
+
+@Composable
+internal fun AppleMusicPlayerStyleScope(enabled: Boolean, content: @Composable () -> Unit) {
+    if (!enabled) {
+        content()
+        return
+    }
+    val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
+    val palette = remember(systemDark) { appleMusicPalette(systemDark) }
+    val colorScheme = remember(palette) { appleMusicColorScheme(palette) }
+    CompositionLocalProvider(LocalAppleMusicPlayerPalette provides palette) {
+        MaterialTheme(colorScheme = colorScheme, typography = AppleMusicTypography, shapes = AppleMusicShapes, content = content)
+    }
+}
+
 @Immutable
 internal class AppleMusicCanvas(
     val artwork: MotionArtwork?,
@@ -59,23 +91,27 @@ internal class AppleMusicCanvas(
     val immersive: Boolean
         get() {
             val current = artwork ?: return false
-            val width = current.width ?: return false
-            val height = current.height ?: return false
+            val width = current.width
+            val height = current.height
+            if (width == null || height == null) return enabled && current.provider == CommunityCanvasProvider.PROVIDER_ID
             return enabled && height > width
         }
 }
+
+internal fun appleMusicCanvasImmersive(canvas: AppleMusicCanvas?, width: Dp, height: Dp, video: Boolean): Boolean =
+    height > width * ImmersiveCanvasMinAspect && !video && canvas?.immersive == true
 
 @Composable
 internal fun AppleMusicPlayerScene(
     track: Track, slots: PlayerDeckSlots, artworkCap: Dp, playing: Boolean,
     metadata: @Composable () -> Unit, transport: @Composable () -> Unit, modifier: Modifier = Modifier,
-    canvas: AppleMusicCanvas? = null
+    canvas: AppleMusicCanvas? = null, video: Boolean = false
 ) {
     val field by rememberSpotifyCoverTone(track, AppleMusicDesign::playerField)
     val deep by rememberSpotifyCoverTone(track, AppleMusicDesign::playerFieldDeep)
     BoxWithConstraints(modifier.fillMaxSize().background(Brush.verticalGradient(0f to field, 0.55f to lerpField(field, deep), 1f to deep))) {
         val landscape = maxWidth > maxHeight
-        val immersive = !landscape && canvas?.immersive == true
+        val immersive = appleMusicCanvasImmersive(canvas, maxWidth, maxHeight, video)
         val canvasAlpha by animateFloatAsState(if (immersive) 1f else 0f, label = "apple-player-canvas-alpha")
         if (canvas != null && canvasAlpha > 0f) {
             Box(Modifier.fillMaxSize().graphicsLayer { alpha = canvasAlpha }) {
@@ -83,12 +119,12 @@ internal fun AppleMusicPlayerScene(
             }
         }
         val artwork: @Composable (Dp) -> Unit = { size ->
-            AppleMusicPlayerArtwork(track, slots, size, playing, { canvasAlpha }, showStage = !immersive)
+            if (video) AppleMusicPlayerVideo(track, slots, size) else AppleMusicPlayerArtwork(track, slots, size, playing, { canvasAlpha }, showStage = !immersive)
         }
         if (landscape) {
             AppleMusicLandscapeDeck(track, slots, minOf(maxHeight - 34.dp, artworkCap), artwork, metadata, transport)
         } else {
-            AppleMusicPortraitDeck(track, slots, artworkCap, artwork, metadata, transport)
+            AppleMusicPortraitDeck(track, slots, if (video) maxWidth else artworkCap, immersive, artwork, metadata, transport)
         }
     }
 }
@@ -119,6 +155,17 @@ private fun AppleMusicPlayerArtwork(
 }
 
 @Composable
+private fun AppleMusicPlayerVideo(track: Track, slots: PlayerDeckSlots, width: Dp) {
+    Box(
+        Modifier.width(width).aspectRatio(16f / 9f)
+            .shadow(15.dp, RoundedCornerShape(AppleMusicDesign.cornerL), clip = false,
+                ambientColor = Color.Black.copy(alpha = 0.35f), spotColor = Color.Black.copy(alpha = 0.45f))
+    ) {
+        slots.stage(track, Modifier.fillMaxSize(), AppleMusicDesign.cornerL)
+    }
+}
+
+@Composable
 private fun AppleMusicGrabber() {
     Box(Modifier.fillMaxWidth().padding(top = 8.dp), contentAlignment = Alignment.Center) {
         Box(Modifier.width(36.dp).height(5.dp).clip(CircleShape).background(AppleMusicVibrant.secondary))
@@ -127,7 +174,7 @@ private fun AppleMusicGrabber() {
 
 @Composable
 private fun AppleMusicPortraitDeck(
-    track: Track, slots: PlayerDeckSlots, artworkCap: Dp, artwork: @Composable (Dp) -> Unit,
+    track: Track, slots: PlayerDeckSlots, artworkCap: Dp, immersive: Boolean, artwork: @Composable (Dp) -> Unit,
     metadata: @Composable () -> Unit, transport: @Composable () -> Unit
 ) {
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
@@ -138,7 +185,7 @@ private fun AppleMusicPortraitDeck(
             contentAlignment = Alignment.Center
         ) { artwork(minOf(maxWidth, maxHeight, artworkCap)) }
         Box(Modifier.padding(horizontal = AppleMusicDesign.playerMetadataInset - 16.dp).clipToBounds()) { metadata() }
-        Box(Modifier.padding(horizontal = AppleMusicDesign.playerMetadataInset - 16.dp)) { slots.engagement(track) }
+        if (!immersive) Box(Modifier.padding(horizontal = AppleMusicDesign.playerMetadataInset - 16.dp)) { slots.engagement(track) }
         Box(Modifier.padding(horizontal = AppleMusicDesign.playerSeekbarInset)) { slots.progress(PlayerProgressStyle.Classic) }
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Box(Modifier.padding(horizontal = 16.dp)) { transport() }
@@ -261,15 +308,44 @@ internal fun AppleMusicSeekbar(positionMs: Long, bufferedMs: Long, durationMs: L
                 }
             }
         )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             val timeStyle = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium, fontSize = 12.sp)
             val shown = dragging?.let { (durationMs * it).toLong() } ?: positionMs
             Text(formatSeekbarMillis(shown), style = timeStyle, color = if (dragging != null) AppleMusicVibrant.primary else AppleMusicVibrant.secondary)
+            AppleMusicAudioBadge(Modifier.weight(1f))
             Text(
                 if (durationMs > 0L) "-" + formatSeekbarMillis((durationMs - shown).coerceAtLeast(0L)) else formatSeekbarMillis(0L),
                 style = timeStyle, color = if (dragging != null) AppleMusicVibrant.primary else AppleMusicVibrant.secondary
             )
         }
+    }
+}
+
+@Composable
+private fun AppleMusicAudioBadge(modifier: Modifier = Modifier) {
+    val spec by rememberPlayerAudioSpec()
+    val label = remember(spec) { appleMusicAudioBadgeLabel(spec) }
+    Box(modifier, contentAlignment = Alignment.Center) {
+        if (label.isNotEmpty()) {
+            Text(
+                label, maxLines = 1,
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium, fontSize = 11.sp),
+                color = AppleMusicVibrant.secondary
+            )
+        }
+    }
+}
+
+internal fun appleMusicAudioBadgeLabel(spec: PlayerAudioSpec): String {
+    if (spec.isEmpty) return ""
+    val mime = spec.mimeType.lowercase(java.util.Locale.ROOT)
+    val codec = spec.codecString.lowercase(java.util.Locale.ROOT)
+    val lossless = spec.codec == "FLAC" || spec.codec == "ALAC" || spec.codec == "PCM"
+    return when {
+        mime == "audio/eac3-joc" || codec.startsWith("ec+3") -> "Dolby Atmos"
+        lossless && (spec.sampleRateHz ?: 0) > 48_000 -> "Hi-Res Lossless"
+        lossless -> "Lossless"
+        else -> listOfNotNull(spec.codec.ifEmpty { null }, spec.bitrateKbps?.takeIf { it > 0 }?.let { "$it kbps" }).joinToString(" · ")
     }
 }
 

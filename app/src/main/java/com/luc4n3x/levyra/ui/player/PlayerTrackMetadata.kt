@@ -76,8 +76,10 @@ internal fun PlayerTrackMetadata(
     onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val titleSize = metadataTitleSize(compact)
-    val artistSize = metadataArtistSize(compact)
+    val appleMusic = PlayerAppleMusicStyle
+    val prism = PlayerPrismStyle
+    val titleSize = metadataTitleSize(compact, appleMusic, prism)
+    val artistSize = metadataArtistSize(compact, appleMusic)
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -97,8 +99,8 @@ internal fun PlayerTrackMetadata(
                     color = surfaces.content,
                     fontSize = titleSize,
                     lineHeight = LevyraTypeRhythm.lineHeight(titleSize),
-                    fontWeight = metadataTitleWeight(),
-                    letterSpacing = if (LevyraIsSpotify) (-0.4).sp else if (LevyraIsYouTubeMusic) (-0.2).sp else if (LevyraIsAppleMusic) (-0.3).sp else (-0.8).sp,
+                    fontWeight = metadataTitleWeight(appleMusic, prism),
+                    letterSpacing = if (LevyraIsSpotify) (-0.4).sp else if (LevyraIsYouTubeMusic) (-0.2).sp else if (appleMusic) (-0.3).sp else (-0.8).sp,
                     maxLines = if (animationsEnabled) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.levyraMarquee(
@@ -113,7 +115,7 @@ internal fun PlayerTrackMetadata(
                         fontFamily = MaterialTheme.typography.titleMedium.fontFamily,
                         fontSize = artistSize,
                         lineHeight = LevyraTypeRhythm.lineHeight(artistSize),
-                        fontWeight = if (LevyraIsSpotify || LevyraIsAppleMusic || LevyraIsYouTubeMusic) FontWeight.Normal else FontWeight.Medium,
+                        fontWeight = if (LevyraIsSpotify || appleMusic || LevyraIsYouTubeMusic) FontWeight.Normal else FontWeight.Medium,
                         letterSpacing = (-0.1).sp
                     ),
                     onClickLabel = openArtistLabel,
@@ -134,29 +136,29 @@ internal fun PlayerTrackMetadata(
     }
 }
 
-private fun metadataTitleSize(compact: Boolean): TextUnit = when {
+private fun metadataTitleSize(compact: Boolean, appleMusic: Boolean, prism: Boolean): TextUnit = when {
     LevyraIsYouTubeMusic -> 24.sp
     LevyraIsSpotify -> 22.sp
-    LevyraIsAppleMusic -> 20.sp
-    LevyraIsPrism -> 23.sp
+    appleMusic -> 20.sp
+    prism -> 23.sp
     LevyraIsNocturne -> if (compact) 22.sp else 25.sp
     compact -> 23.sp
     else -> 27.sp
 }
 
-private fun metadataArtistSize(compact: Boolean): TextUnit = when {
+private fun metadataArtistSize(compact: Boolean, appleMusic: Boolean): TextUnit = when {
     LevyraIsYouTubeMusic -> 16.sp
     LevyraIsSpotify -> 16.sp
-    LevyraIsAppleMusic -> 20.sp
+    appleMusic -> 20.sp
     compact -> 15.sp
     else -> 16.5.sp
 }
 
-private fun metadataTitleWeight(): FontWeight = when {
+private fun metadataTitleWeight(appleMusic: Boolean, prism: Boolean): FontWeight = when {
     LevyraIsYouTubeMusic -> FontWeight.Bold
     LevyraIsSpotify -> FontWeight.Bold
-    LevyraIsAppleMusic -> FontWeight.Medium
-    LevyraIsNocturne || LevyraIsPrism -> FontWeight.Medium
+    appleMusic -> FontWeight.Medium
+    LevyraIsNocturne || prism -> FontWeight.Medium
     else -> FontWeight.ExtraBold
 }
 
@@ -178,7 +180,7 @@ internal fun PlayerFavoriteButton(
     when {
         LevyraIsSpotify -> SpotifyPlayerFavoriteButton(isFavorite, label, pop.value, handleToggle)
         LevyraIsYouTubeMusic -> YouTubeMusicPlayerFavoriteButton(isFavorite, label, pop.value, handleToggle)
-        LevyraIsAppleMusic -> AppleMusicPlayerFavoriteButton(isFavorite, label, pop.value, handleToggle)
+        PlayerAppleMusicStyle -> AppleMusicPlayerFavoriteButton(isFavorite, label, pop.value, handleToggle)
         else -> DefaultPlayerFavoriteButton(isFavorite, surfaces, label, animated, pop.value, handleToggle)
     }
 }
@@ -275,7 +277,7 @@ private fun DefaultPlayerFavoriteButton(
         fill = fill,
         borderTop = outline,
         borderBottom = outline,
-        shape = if (LevyraIsPrism) androidx.compose.foundation.shape.CircleShape else rememberLevyraFavoriteMorphShape(favorite = isFavorite, animated = animated),
+        shape = if (PlayerPrismStyle) androidx.compose.foundation.shape.CircleShape else rememberLevyraFavoriteMorphShape(favorite = isFavorite, animated = animated),
         modifier = Modifier
             .size(LevyraPlayerDesign.MinimumTouchTarget)
             .graphicsLayer {

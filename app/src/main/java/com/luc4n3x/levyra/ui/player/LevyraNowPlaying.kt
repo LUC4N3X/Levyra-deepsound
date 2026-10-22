@@ -206,6 +206,34 @@ fun LevyraNowPlaying(
     playlistDialogContent: (@Composable () -> Unit)? = null,
     onOpenPlaylistDialog: ((Track) -> Unit)? = null
 ) {
+    val velvet = !LevyraSkinManagesLayout && state.interfaceSettings.playerVisualMode == PlayerVisualMode.CanvasImmersive
+    AppleMusicPlayerStyleScope(velvet) {
+        LevyraNowPlayingContent(
+            viewModel, state, morphAnchors, morphActive, collapseActions, modifier, motionSuspended,
+            modeSwitchContent, videoSurfaceContent, gestureLayerContent, engagementContent,
+            similarSongsContent, errorContent, playlistDialogContent, onOpenPlaylistDialog
+        )
+    }
+}
+
+@Composable
+private fun LevyraNowPlayingContent(
+    viewModel: PlayerViewModel,
+    state: LevyraUiState,
+    morphAnchors: PlayerMorphAnchors,
+    morphActive: () -> Boolean,
+    collapseActions: PlayerCollapseActions,
+    modifier: Modifier,
+    motionSuspended: Boolean,
+    modeSwitchContent: (@Composable () -> Unit)?,
+    videoSurfaceContent: (@Composable (Track, Modifier) -> Unit)?,
+    gestureLayerContent: (@Composable (Track, PlayerGestureConfig, PlayerGestureMediaActions, PlayerGestureUiActions, androidx.compose.runtime.MutableState<PlayerVideoTransform>?, Modifier) -> Unit)?,
+    engagementContent: (@Composable (Track) -> Unit)?,
+    similarSongsContent: (@Composable (Track) -> Unit)?,
+    errorContent: (@Composable () -> Unit)?,
+    playlistDialogContent: (@Composable () -> Unit)?,
+    onOpenPlaylistDialog: ((Track) -> Unit)?
+) {
     val strings = LocalLevyraStrings.current
     val track = state.currentTrack
     val liveRadio = track?.isLiveRadio() == true
@@ -218,7 +246,11 @@ fun LevyraNowPlaying(
     val rightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl
     val artworkUrl = track?.let(::preferredPlayerArtworkUrl).orEmpty()
     val nocturne = LevyraIsNocturne
-    val visualMode = if (LevyraIsPrism) PlayerVisualMode.Artwork else state.interfaceSettings.playerVisualMode
+    val selectedVisualMode = if (LevyraIsPrism) PlayerVisualMode.Artwork else state.interfaceSettings.playerVisualMode
+    val appleMusicPalette = LocalAppleMusicPlayerPalette.current
+    val velvetAppleMusic = appleMusicPalette != null
+    val appleMusicPlayer = LevyraIsAppleMusic || velvetAppleMusic
+    val visualMode = if (velvetAppleMusic) PlayerVisualMode.Artwork else selectedVisualMode
     val backgroundMode = state.interfaceSettings.playerBackground.let { selected ->
         if (nocturne || selected == PlayerBackgroundMode.Dark && state.interfaceSettings.pureBlack) {
             PlayerBackgroundMode.PureBlack
@@ -252,7 +284,9 @@ fun LevyraNowPlaying(
     val paletteArtworkUrl = track?.let { current ->
         artworkUrl.ifBlank { current.largeThumbnailUrl.ifBlank { current.thumbnailUrl } }
     }.orEmpty()
-    val fixedAccents = if (LevyraIsPrism) PlayerAccentPair(LevyraCyan, LevyraViolet) else rememberPlayerFixedAccents(state.interfaceSettings)
+    val fixedAccents = if (appleMusicPalette != null) {
+        PlayerAccentPair(appleMusicPalette.cyan, appleMusicPalette.violet)
+    } else if (LevyraIsPrism) PlayerAccentPair(LevyraCyan, LevyraViolet) else rememberPlayerFixedAccents(state.interfaceSettings)
     val activePalette by rememberArtworkPalette(
         paletteKey = if (fixedAccents == null) paletteKey else "",
         artworkUrl = paletteArtworkUrl,
@@ -281,7 +315,7 @@ fun LevyraNowPlaying(
         label = "player-secondary-color"
     )
     val amoled = backgroundMode == PlayerBackgroundMode.PureBlack
-    val surfaces = if (LevyraIsPrism) prismPlayerSurfaces(LevyraActivePalette) else remember(primaryTarget, amoled, nocturne) { playerSurfaceTokens(primaryTarget, amoled, nocturne) }
+    val surfaces = if (appleMusicPalette != null) prismPlayerSurfaces(appleMusicPalette) else if (LevyraIsPrism) prismPlayerSurfaces(LevyraActivePalette) else remember(primaryTarget, amoled, nocturne) { playerSurfaceTokens(primaryTarget, amoled, nocturne) }
     val heroTone by animateColorAsState(
         targetValue = surfaces.hero,
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween()),
@@ -364,7 +398,7 @@ fun LevyraNowPlaying(
         }
     }
 
-    val artworkRestsFullBleed = nocturne || state.isPlaying ||
+    val artworkRestsFullBleed = nocturne || velvetAppleMusic || state.isPlaying ||
         state.interfaceSettings.playerVisualMode == PlayerVisualMode.Artwork ||
         state.interfaceSettings.playerVisualMode == PlayerVisualMode.Folio ||
         state.interfaceSettings.playerVisualMode == PlayerVisualMode.Flow ||
@@ -393,11 +427,14 @@ fun LevyraNowPlaying(
         val layoutMode = resolveLevyraLayoutMode(maxWidth.value, maxHeight.value)
         val compactLandscape = isLevyraCompactLandscape(maxWidth.value, maxHeight.value)
         val playerPane = resolveNowPlayingPane(maxWidth.value, maxHeight.value, state.isVideoMode)
+        val appleMusicCanvas = AppleMusicCanvas(state.motionArtwork, motionEnabled && !lyricsFlip.lyricsSettled, state.interfaceSettings.canvasQuality, livingArtwork)
+        val appleMusicImmersive = appleMusicPlayer && appleMusicCanvasImmersive(appleMusicCanvas, maxWidth, maxHeight, state.isVideoMode)
         val showTopArtistCluster = playerArtistHits.size > 1 &&
+            !appleMusicImmersive &&
             !liveRadio &&
             !state.isVideoMode &&
             playerPane != LevyraPlayerPane.SideBySide
-        val deckLayout = if (LevyraSkinManagesLayout) PlayerDeckLayout.Levyra else resolvePlayerDeckLayout(
+        val deckLayout = if (LevyraSkinManagesLayout || velvetAppleMusic) PlayerDeckLayout.Levyra else resolvePlayerDeckLayout(
             mode = visualMode,
             isVideoMode = state.isVideoMode,
             isLiveRadio = liveRadio,
@@ -792,7 +829,7 @@ fun LevyraNowPlaying(
                 if (state.isVideoMode && activeTrack.videoUrl.isNotBlank() && videoSurfaceContent != null) {
                     val zoom = videoTransform.value
                     if (!videoFullscreen) {
-                        val videoShape = RoundedCornerShape(LevyraPlayerDesign.CornerMd)
+                        val videoShape = RoundedCornerShape(cornerOverride ?: LevyraPlayerDesign.CornerMd)
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -1060,6 +1097,7 @@ fun LevyraNowPlaying(
                 state.isVideoMode,
                 state.isOfflineExporting,
                 isDownloaded,
+                selectedVisualMode,
                 visualMode,
                 nocturne,
                 LevyraSkinManagesLayout,
@@ -1070,7 +1108,8 @@ fun LevyraNowPlaying(
             ) {
                 playerDockActions(
                     strings = strings,
-                    visualMode = visualMode,
+                    visualMode = selectedVisualMode,
+                    presentedMode = visualMode,
                     showLyrics = state.showLyrics,
                     videoMode = state.isVideoMode,
                     isDownloaded = isDownloaded,
@@ -1158,18 +1197,19 @@ fun LevyraNowPlaying(
             .widthIn(max = detailMaxWidth)
             .align(Alignment.TopCenter)
 
-        if (LevyraIsPrism && track != null && !state.isVideoMode && !liveRadio && playerPane != LevyraPlayerPane.SideBySide) {
+        if ((LevyraIsPrism || velvetAppleMusic) && track != null && (!state.isVideoMode || appleMusicPlayer) && !liveRadio && (playerPane != LevyraPlayerPane.SideBySide || appleMusicPlayer)) {
             if (LevyraIsYouTubeMusic) {
                 YouTubeMusicPlayerScene(
                     track, deckSlots, artworkCap, state.isPlaying,
                     metadata = { metadataBlock(track) }, transport = transportBlock, modifier = deckModifier,
                     canvas = AppleMusicCanvas(state.motionArtwork, motionEnabled && !lyricsFlip.lyricsSettled, state.interfaceSettings.canvasQuality, livingArtwork)
                 )
-            } else             if (LevyraIsAppleMusic) {
+            } else             if (appleMusicPlayer) {
                 AppleMusicPlayerScene(
                     track, deckSlots, artworkCap, state.isPlaying,
                     metadata = { metadataBlock(track) }, transport = transportBlock, modifier = deckModifier,
-                    canvas = AppleMusicCanvas(state.motionArtwork, motionEnabled && !lyricsFlip.lyricsSettled, state.interfaceSettings.canvasQuality, livingArtwork)
+                    canvas = appleMusicCanvas,
+                    video = state.isVideoMode
                 )
             } else {
                 PrismPlayerScene(track, deckSlots, artworkCap, metadata = { metadataBlock(track) }, transport = transportBlock, modifier = deckModifier, playing = state.isPlaying)
@@ -1618,7 +1658,7 @@ fun LevyraNowPlaying(
 
         val captionWriters = creditWriters?.takeIf { it.first == track?.id }?.second.orEmpty()
         AnimatedVisibility(
-            visible = captionWriters.isNotEmpty() && !liveRadio &&
+            visible = captionWriters.isNotEmpty() && !liveRadio && !appleMusicImmersive &&
                 !state.isVideoMode && playerPane != LevyraPlayerPane.SideBySide &&
                 deckLayout != PlayerDeckLayout.Aura && deckLayout != PlayerDeckLayout.Pulse,
             enter = fadeIn(tween(if (animated) CreditsCaptionRevealMs else 0)),
@@ -1796,13 +1836,13 @@ fun LevyraNowPlaying(
             PlayerDeckSheet(
                 track = track,
                 artworkUrl = artworkUrl,
-                selected = visualMode,
+                selected = selectedVisualMode,
                 surfaces = surfaces,
                 accent = heroTone,
                 animated = animated,
                 background = backgroundMode,
                 onSelect = { mode ->
-                    if (mode != visualMode) {
+                    if (mode != selectedVisualMode) {
                         viewModel.setPlayerVisualMode(mode)
                         hapticFeedback.perform(LevyraHapticAction.Confirm)
                     }
@@ -1975,6 +2015,7 @@ private fun PlayerLiveRadioTransport(
 private fun playerDockActions(
     strings: LevyraStrings,
     visualMode: PlayerVisualMode,
+    presentedMode: PlayerVisualMode,
     showLyrics: Boolean,
     videoMode: Boolean,
     isDownloaded: Boolean,
@@ -2006,10 +2047,10 @@ private fun playerDockActions(
             add(
                 PlayerDockAction(
                     key = "visual-mode",
-                    icon = visualModeIcon(visualMode),
+                    icon = visualModeIcon(presentedMode),
                     label = if (LevyraSkinManagesLayout) LevyraSkinLabel else visualModeLabel(strings),
                     stateDescription = if (LevyraSkinManagesLayout) LevyraSkinLabel else visualModeStateDescription(visualMode, strings),
-                    active = visualMode != PlayerVisualMode.Artwork,
+                    active = presentedMode != PlayerVisualMode.Artwork,
                     toggle = false,
                     onClick = onOpenDeck
                 )

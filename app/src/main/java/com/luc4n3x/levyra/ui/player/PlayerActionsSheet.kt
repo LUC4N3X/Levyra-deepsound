@@ -47,6 +47,7 @@ import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -225,7 +226,7 @@ internal fun PlayerSheetFrame(
                     .fillMaxWidth()
                     .offset { IntOffset(0, (if (isDragging) dragY else settleAnim.value).roundToInt()) }
                     .clip(SheetShape)
-                    .background(playerSheetColor(surfaces))
+                    .background(playerSheetColor(surfaces, PlayerAppleMusicStyle))
                     .border(LevyraPlayerDesign.Hairline, playerSheetOutline(surfaces), SheetShape)
                     .pointerInput(Unit) { detectTapGestures { } }
                     .navigationBarsPadding()
@@ -308,8 +309,11 @@ private fun sheetBodyExit(animated: Boolean): ExitTransition =
         ExitTransition.None
     }
 
-internal fun playerSheetColor(surfaces: PlayerSurfaceTokens): Color =
-    if (com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic) {
+internal fun playerSheetColor(
+    surfaces: PlayerSurfaceTokens,
+    appleMusic: Boolean = com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic
+): Color =
+    if (appleMusic) {
         Color(0xFF2C2C2E)
     } else if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism) {
         com.luc4n3x.levyra.ui.theme.LevyraPanel
@@ -319,8 +323,10 @@ internal fun playerSheetColor(surfaces: PlayerSurfaceTokens): Color =
         surfaces.glow.playerMix(PlayerDarkSurface, SheetSurfaceTint)
     }
 
+@Composable
+@ReadOnlyComposable
 private fun playerSheetOutline(surfaces: PlayerSurfaceTokens): Color =
-    if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism || surfaces.amoled) surfaces.outline else Color.White.copy(alpha = 0.08f)
+    if (PlayerPrismStyle || surfaces.amoled) surfaces.outline else Color.White.copy(alpha = 0.08f)
 
 internal fun shouldDismissSheetOnDragEnd(
     dragOffsetPx: Float,
@@ -534,7 +540,7 @@ private fun PlayerSheetGrid(
     animated: Boolean,
     onPerform: (PlayerSheetAction) -> Unit
 ) {
-    if (com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic) {
+    if (PlayerAppleMusicStyle) {
         AppleMusicPlayerMenu(actions, onPerform)
         return
     }

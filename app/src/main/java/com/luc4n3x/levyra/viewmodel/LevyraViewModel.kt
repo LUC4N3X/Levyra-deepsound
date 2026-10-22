@@ -708,6 +708,11 @@ private val PLAYBACK_AUDIO_ONLY_MARKER = Regex(
 
 internal const val VIDEO_AUDIO_ONLY_PENALTY = 10_000
 
+private val PLAYBACK_FAN_UPLOAD_MARKER = Regex(
+    """\b(karaoke|legendad[oa]|tradu[cç][aã]o|traducida|traduzione|subtitulad[oa]|sub\s+espa[nñ]ol|letra|lyrics?|cover|reaction)\b""",
+    RegexOption.IGNORE_CASE
+)
+
 internal fun videoPlaybackCandidateScore(target: Track, candidate: Track): Int {
     val recordingScore = playbackCandidateScore(target, candidate, rewardDurationMatch = false)
     if (recordingScore == Int.MIN_VALUE) return Int.MIN_VALUE
@@ -721,9 +726,12 @@ internal fun videoPlaybackCandidateScore(target: Track, candidate: Track): Int {
     val officialChannel = target.artistBrowseIds.isNotEmpty() &&
         candidate.artistBrowseIds.any { it in target.artistBrowseIds }
     val audioOnlyUpload = PLAYBACK_AUDIO_ONLY_MARKER.containsMatchIn(candidate.title)
+    val fanUpload = PLAYBACK_FAN_UPLOAD_MARKER.containsMatchIn(candidate.title) &&
+        !PLAYBACK_FAN_UPLOAD_MARKER.containsMatchIn(target.title)
     return recordingScore + videoPreference +
         (if (officialChannel) 6_000 else 0) -
-        (if (audioOnlyUpload) VIDEO_AUDIO_ONLY_PENALTY else 0) +
+        (if (audioOnlyUpload) VIDEO_AUDIO_ONLY_PENALTY else 0) -
+        (if (fanUpload) VIDEO_AUDIO_ONLY_PENALTY else 0) +
         videoViewCountBonus(candidate.youtubeViewCount)
 }
 
@@ -1144,6 +1152,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var videoMetadataJob: Job? = null
     private var playJob: Job? = null
     private var modeSwitchJob: Job? = null
+    private var audioModeOrigin: Track? = null
     private var streamRecoveryJob: Job? = null
     private var alternateModePrefetchJob: Job? = null
     private val verifiedVideoIdentityCache = Collections.synchronizedMap(
@@ -4096,6 +4105,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (snapshot.isResolving) return
         val sourceMode = snapshot.isVideoMode
         val targetMode = !sourceMode
+        if (targetMode) audioModeOrigin = track
         val positionMs = player.positionMs.coerceAtLeast(0L)
         val shouldPlay = player.isPlaying || snapshot.isPlaying
         val transitionId = ++streamTransitionId
@@ -4115,7 +4125,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 val selectedSource = if (targetMode) {
                     preferredVideoPlaybackTrack(track)?.withPreservedAudioIdentity(track)
                 } else {
-                    youtubePlayableTrack(track)
+                    audioModeSource(track)
                 }
                 val baseTrack = selectedSource?.forModeResolution()
                     ?: throw IllegalStateException("Nessuna sorgente YouTube riproducibile per ${track.title}")
@@ -4436,12 +4446,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private fun audioModeSource(track: Track): Track? =
+        youtubePlayableTrack(audioModeOrigin?.takeIf { it.id == track.id } ?: track)
+
     private fun prefetchAlternateMode(track: Track, activeVideoMode: Boolean) {
         alternateModePrefetchJob?.cancel()
         if (track.source.equals("Offline", true)) return
         alternateModePrefetchJob = viewModelScope.launch(Dispatchers.IO) {
             val targetVideoMode = !activeVideoMode
-            val selectedSource = if (targetVideoMode) preferredVideoPlaybackTrack(track) else youtubePlayableTrack(track)
+            val selectedSource = if (targetVideoMode) preferredVideoPlaybackTrack(track) else audioModeSource(track)
             val cleanTrack = selectedSource?.forModeResolution()
                 ?: return@launch
             val resolved = resolver.prefetch(cleanTrack, targetVideoMode) ?: return@launch
