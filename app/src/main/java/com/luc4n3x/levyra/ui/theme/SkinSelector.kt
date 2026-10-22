@@ -88,6 +88,7 @@ private fun LevyraSkin.title(): String = when (this) {
     LevyraSkin.Ivory -> "Ivory"
     LevyraSkin.SpotifyStyle -> "Spotify Style"
     LevyraSkin.AppleMusicStyle -> "Apple Music Style"
+    LevyraSkin.YouTubeMusicStyle -> "YouTube Music Style"
 }
 
 @Composable
@@ -102,6 +103,7 @@ internal fun SkinSelector(selected: LevyraSkin, onSelect: (LevyraSkin) -> Unit) 
         LevyraSkin.Ivory -> LevyraPrismStrings.forCode(code).ivoryBody
         LevyraSkin.SpotifyStyle -> LevyraPrismStrings.forCode(code).spotifyBody
         LevyraSkin.AppleMusicStyle -> LevyraPrismStrings.forCode(code).appleMusicBody
+        LevyraSkin.YouTubeMusicStyle -> LevyraPrismStrings.forCode(code).youTubeMusicBody
     }
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         SkinStage(selected)
@@ -223,6 +225,7 @@ private fun skinStagePolygon(skin: LevyraSkin): RoundedPolygon = when (skin) {
     LevyraSkin.Ivory -> MaterialShapes.Flower
     LevyraSkin.SpotifyStyle -> MaterialShapes.Cookie12Sided
     LevyraSkin.AppleMusicStyle -> MaterialShapes.Pill
+    LevyraSkin.YouTubeMusicStyle -> MaterialShapes.Circle
 }
 
 private fun skinAccent(skin: LevyraSkin, primary: Color): Color =
@@ -256,6 +259,7 @@ private fun SkinPhonePreview(skin: LevyraSkin, corner: Dp, modifier: Modifier) {
             LevyraSkin.Ivory -> ivoryPreview(palette, w, h)
             LevyraSkin.SpotifyStyle -> spotifyPreview(palette, w, h)
             LevyraSkin.AppleMusicStyle -> appleMusicPreview(palette, w, h)
+            LevyraSkin.YouTubeMusicStyle -> youTubeMusicPreview(palette, w, h)
             else -> playerPreview(skin, palette, w, h)
         }
     }
@@ -307,6 +311,7 @@ private fun DrawScope.previewPlayButton(skin: LevyraSkin, palette: LevyraPalette
         LevyraSkin.Ivory -> drawRoundRect(palette.blue, center - Offset(radius * 2.4f, radius), Size(radius * 4.8f, radius * 2), CornerRadius(radius))
         LevyraSkin.SpotifyStyle -> drawCircle(palette.cyan, radius, center)
         LevyraSkin.AppleMusicStyle -> drawCircle(palette.panel, radius, center)
+        LevyraSkin.YouTubeMusicStyle -> drawCircle(YouTubeMusicDesign.red, radius, center)
     }
     val glyph = Path().apply {
         moveTo(center.x - radius * 0.32f, center.y - radius * 0.45f)
@@ -322,6 +327,7 @@ private fun DrawScope.previewPlayButton(skin: LevyraSkin, palette: LevyraPalette
         LevyraSkin.Ivory -> palette.black
         LevyraSkin.SpotifyStyle -> Color.Black
         LevyraSkin.AppleMusicStyle -> palette.text
+        LevyraSkin.YouTubeMusicStyle -> Color.White
     }
     drawPath(glyph, glyphColor, style = if (skin == LevyraSkin.Nocturne78) Stroke(1.2.dp.toPx()) else Fill)
 }
@@ -401,6 +407,32 @@ private fun DrawScope.spotifyPreview(palette: LevyraPalette, w: Float, h: Float)
     }
 }
 
+private fun DrawScope.youTubeMusicPreview(palette: LevyraPalette, w: Float, h: Float) {
+    val pad = w * 0.06f
+    drawRect(Brush.verticalGradient(listOf(Color(0xFF3A2A4A), palette.black), endY = h * 0.32f), size = Size(w, h * 0.32f))
+    drawCircle(YouTubeMusicDesign.red, 4.dp.toPx(), Offset(pad + 4.dp.toPx(), h * 0.07f))
+    previewLine(palette.text, pad + 11.dp.toPx(), h * 0.07f - 1.5.dp.toPx(), w * 0.2f, 3.dp.toPx())
+    repeat(3) { index -> drawRoundRect(YouTubeMusicDesign.chipFill, Offset(pad + index * w * 0.27f, h * 0.11f), Size(w * 0.24f, h * 0.035f), CornerRadius(2.dp.toPx())) }
+    previewLine(palette.text, pad, h * 0.18f, w * 0.38f, 3.5.dp.toPx())
+    repeat(4) { index ->
+        val y = h * 0.21f + index * h * 0.065f
+        drawRect(palette.panelSoft, Offset(pad, y), Size(h * 0.05f, h * 0.05f))
+        previewLine(palette.text, pad + h * 0.065f, y + h * 0.014f, w * 0.4f, 1.8.dp.toPx())
+        previewLine(palette.muted, pad + h * 0.065f, y + h * 0.034f, w * 0.3f, 1.2.dp.toPx())
+    }
+    previewLine(palette.text, pad, h * 0.5f, w * 0.34f, 3.dp.toPx())
+    repeat(3) { index -> drawRoundRect(palette.panelSoft, Offset(pad + index * w * 0.36f, h * 0.53f), Size(w * 0.32f, w * 0.32f), CornerRadius(1.dp.toPx())) }
+    val miniTop = h * 0.8f
+    drawRect(YouTubeMusicDesign.miniPlayer, Offset(0f, miniTop), Size(w, h * 0.06f))
+    drawRect(palette.panelSoft, Offset(pad, miniTop + h * 0.01f), Size(h * 0.04f, h * 0.04f))
+    drawRect(Color.White, Offset(0f, miniTop + h * 0.06f - 1.dp.toPx()), Size(w * 0.4f, 1.dp.toPx()))
+    repeat(3) { index ->
+        val x = w * (index + 0.5f) / 3f
+        drawCircle(if (index == 0) Color.White else palette.muted, 2.6.dp.toPx(), Offset(x, h * 0.9f))
+        previewLine(if (index == 0) Color.White else palette.muted, x - w * 0.05f, h * 0.925f, w * 0.1f, 1.dp.toPx())
+    }
+}
+
 private fun DrawScope.appleMusicPreview(palette: LevyraPalette, w: Float, h: Float) {
     val pad = w * 0.07f
     val gap = w * 0.04f
@@ -437,6 +469,7 @@ private fun skinPreviewPalette(skin: LevyraSkin): LevyraPalette = when (skin) {
     LevyraSkin.Ivory -> ivoryPalette()
     LevyraSkin.SpotifyStyle -> spotifyPalette()
     LevyraSkin.AppleMusicStyle -> appleMusicPalette()
+    LevyraSkin.YouTubeMusicStyle -> youTubeMusicPalette()
     LevyraSkin.Default -> LevyraThemes.levyraAura
 }
 
@@ -448,12 +481,13 @@ private fun skinPreviewArtBrush(skin: LevyraSkin, palette: LevyraPalette): Brush
     LevyraSkin.Ivory -> Brush.linearGradient(listOf(palette.panelSoft, palette.panel))
     LevyraSkin.SpotifyStyle -> Brush.linearGradient(listOf(palette.panelSoft, palette.panel))
     LevyraSkin.AppleMusicStyle -> Brush.linearGradient(listOf(palette.cyan, palette.panelSoft))
+    LevyraSkin.YouTubeMusicStyle -> Brush.linearGradient(listOf(Color(0xFF7B1F3A), palette.panelSoft))
 }
 
 private fun DrawScope.drawSkinPreviewWash(skin: LevyraSkin, palette: LevyraPalette, frame: CornerRadius) {
     when (skin) {
         LevyraSkin.Prism -> drawRoundRect(Brush.verticalGradient(listOf(palette.blue.copy(alpha = 0.22f), palette.black), endY = size.height * 0.6f), cornerRadius = frame)
         LevyraSkin.Default -> drawRoundRect(Brush.verticalGradient(listOf(palette.violet.copy(alpha = 0.28f), palette.black), endY = size.height * 0.7f), cornerRadius = frame)
-        LevyraSkin.Nocturne78, LevyraSkin.Torque, LevyraSkin.Ivory, LevyraSkin.SpotifyStyle, LevyraSkin.AppleMusicStyle -> Unit
+        LevyraSkin.Nocturne78, LevyraSkin.Torque, LevyraSkin.Ivory, LevyraSkin.SpotifyStyle, LevyraSkin.AppleMusicStyle, LevyraSkin.YouTubeMusicStyle -> Unit
     }
 }

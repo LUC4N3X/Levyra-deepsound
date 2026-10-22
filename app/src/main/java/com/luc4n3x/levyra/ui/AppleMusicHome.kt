@@ -66,8 +66,11 @@ internal class AppleMusicHomeData(
     val forgottenFavorites: List<Track>,
     val countryLabel: String = "",
     val charts: List<Track> = emptyList(),
-    val chartsTitle: String = ""
+    val chartsTitle: String = "",
+    val listener: HomeListener = HomeListener("", "", 0L, "")
 )
+
+internal class HomeListener(val name: String, val photoPath: String, val photoVersion: Long, val avatarUrl: String)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable

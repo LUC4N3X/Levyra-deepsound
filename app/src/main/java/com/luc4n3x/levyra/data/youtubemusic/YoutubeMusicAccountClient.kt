@@ -27,9 +27,10 @@ internal class YoutubeMusicAccountClient {
     suspend fun verify(session: YoutubeMusicSession, language: String): YoutubeMusicAccount =
         YoutubeMusicAccountParser.activeAccount(request(session, "youtubei/v1/account/account_menu", payload(language)), session.account)
 
-    suspend fun browse(session: YoutubeMusicSession, browseId: String, language: String, continuation: String = ""): JSONObject {
+    suspend fun browse(session: YoutubeMusicSession, browseId: String, language: String, continuation: String = "", params: String = ""): JSONObject {
         val body = payload(language)
         if (continuation.isNotBlank()) body.put("continuation", continuation) else body.put("browseId", browseId)
+        if (continuation.isBlank() && params.isNotBlank()) body.put("params", params)
         return request(session, "youtubei/v1/browse", body)
     }
 

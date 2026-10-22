@@ -7,6 +7,7 @@ import com.luc4n3x.levyra.data.YoutubeMusicPlaylistPageParser
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.YoutubeMusicHomeFeed
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -113,6 +114,16 @@ internal class YoutubeMusicAccountRepository(context: Context) {
             sections = sections.filterIndexed { index, _ -> index != orbitIndex },
             albums = parser.parseHomeAlbums(root)
         )
+    }
+
+    suspend fun homeFeed(
+        session: YoutubeMusicSession,
+        language: String,
+        params: String,
+        continuation: String,
+        browseId: String = "FEmusic_home"
+    ): YoutubeMusicHomeFeed = withContext(Dispatchers.IO) {
+        parser.parseHomeFeed(client.browse(session, browseId, language, continuation, params))
     }
 
     suspend fun libraryShelf(session: YoutubeMusicSession, language: String): YoutubeMusicLibraryShelf = coroutineScope {

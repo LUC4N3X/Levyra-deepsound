@@ -426,6 +426,10 @@ internal fun ImmersiveMediaActionRow(
     modifier: Modifier = Modifier,
     secondary: @Composable RowScope.() -> Unit = {}
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) {
+        YouTubeMusicMediaActionRow(primary, shuffleLabel, downloadLabel, shuffleEnabled, downloadEnabled, onShuffle, onDownload, modifier, secondary)
+        return
+    }
     if (com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic) {
         AppleMusicMediaActionRow(primary, shuffleLabel, downloadLabel, shuffleEnabled, downloadEnabled, onShuffle, onDownload, modifier, secondary)
         return
@@ -701,6 +705,7 @@ private fun SkinMediaHero(
 ): Boolean {
     when {
         LevyraIsTorque -> TorqueMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, onSubtitleClick, actions, artwork, modifier)
+        com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic -> YouTubeMusicMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, topBarHeight, onSubtitleClick, actions, artwork, modifier)
         com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic -> AppleMusicMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, topBarHeight, onSubtitleClick, actions, artwork, modifier)
         LevyraIsSpotify -> SpotifyMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, topBarHeight, onSubtitleClick, actions, artwork, modifier)
         LevyraIsIvory -> IvoryMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, topBarHeight, onSubtitleClick, actions, artwork, modifier)
