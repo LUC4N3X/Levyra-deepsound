@@ -1,6 +1,7 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.getValue
 import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.ui.components.levyraGroupedListShape
@@ -573,7 +574,7 @@ private fun YoutubeCommentActions(comment: YoutubeComment, secondary: Color, onT
 }
 
 @Composable
-private fun YoutubeCommentReplies(
+private fun ColumnScope.YoutubeCommentReplies(
     comment: YoutubeComment,
     primary: Color,
     moreLabel: String,
