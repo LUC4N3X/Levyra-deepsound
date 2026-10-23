@@ -9808,7 +9808,6 @@ private fun HomeScreen(
                     homeHeader()
                 }
             }
-            if (stagedSpotlight != null) discoverySection(homeDiscovery, HomeStyle.Original, classicDiscoverySpec, state.animationsEnabled)
             item(key = "home-genre-chips", contentType = "home-genre-chips") {
                 val chipZones = remember(strings) { ExploreCatalog.getZones(strings) }
                 HomeGenreChips(
@@ -9919,7 +9918,6 @@ private fun HomeScreen(
                     spotlightHero(null, 0.dp)
                 }
             }
-            if (stagedSpotlight == null) discoverySection(homeDiscovery, HomeStyle.Original, classicDiscoverySpec, state.animationsEnabled)
 
             if (state.interfaceSettings.showPersonalOrbit && visiblePersonalTracks.isEmpty() && renderSnapshot.orbitPending) {
                 item(key = "home-personal", contentType = "home-personal-orbit") {
@@ -9954,6 +9952,13 @@ private fun HomeScreen(
                 }
             }
 
+            discoverySection(
+                homeDiscovery,
+                HomeStyle.Original,
+                classicDiscoverySpec,
+                state.animationsEnabled,
+                Modifier.padding(top = LevyraHomeDesign.sectionLead(compactHome))
+            )
             favoriteRadioSection(homeRadio)
             youtubeMusicHome?.let { yourMusic ->
                 item(key = "home-your-music-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {

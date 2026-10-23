@@ -1,6 +1,12 @@
 package com.luc4n3x.levyra.ui.discovery
 
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -33,9 +39,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.Swipe
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.ButtonDefaults
@@ -56,7 +59,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -68,7 +73,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -81,6 +86,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.luc4n3x.levyra.domain.HomeStyle
 import com.luc4n3x.levyra.feature.discovery.DiscoveryCard
@@ -95,14 +101,21 @@ import com.luc4n3x.levyra.ui.components.rememberLevyraPlayMorphShape
 import com.luc4n3x.levyra.ui.i18n.DiscoveryCopy
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.discoveryCopy
+import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraText
+import com.luc4n3x.levyra.ui.theme.LevyraType
 import com.luc4n3x.levyra.viewmodel.DiscoveryFeedStatus
 import com.luc4n3x.levyra.viewmodel.DiscoveryUiState
+import com.materialkolor.hct.Hct
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
+import kotlin.math.abs
+import kotlin.math.floor
+import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 
 @Stable
@@ -215,109 +228,183 @@ private fun DiscoveryLeadLine(model: DiscoveryTeaserModel, color: Color, style: 
 @Composable
 private fun OriginalDiscoveryTeaser(model: DiscoveryTeaserModel, spec: HomeStyleSpec, animationsEnabled: Boolean) {
     val scheme = MaterialTheme.colorScheme
+    val isLight = LevyraIsLight
     val accent = discoveryAccent(model.lead)
-    val shape = RoundedCornerShape(topStart = 36.dp, topEnd = 20.dp, bottomEnd = 36.dp, bottomStart = 20.dp)
+    val action = remember(accent, isLight) { discoveryActionRole(accent, isLight) }
+    val shape = LevyraHomeDesign.HeroShape
     val morph = rememberLevyraPlayMorphShape(playing = false, animated = animationsEnabled)
-    val sway by rememberSway(animationsEnabled)
-    val blob by rememberSlowSpin(animationsEnabled, 40_000)
+    val coverBorder = scheme.surfaceContainer
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = spec.inset)
             .clip(shape)
-            .background(Brush.verticalGradient(listOf(lerp(scheme.surfaceContainer, accent, 0.3f), scheme.surfaceContainer)))
-            .border(1.dp, scheme.outlineVariant.copy(alpha = 0.45f), shape)
+            .background(Brush.verticalGradient(listOf(lerp(scheme.surfaceContainer, accent, 0.24f), scheme.surfaceContainer)))
+            .border(1.dp, scheme.outlineVariant.copy(alpha = 0.35f), shape)
             .discoveryEntry(model)
-            .padding(horizontal = 18.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+            .padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 model.copy.title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
+                style = LevyraType.sectionTitle,
                 color = LevyraText,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() }
             )
-            DiscoveryLeadLine(model, LevyraMuted)
+            Text(
+                if (model.loading && model.lead == null) model.copy.loading else model.copy.lead,
+                style = LevyraType.metadata,
+                color = LevyraMuted,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
         }
-        Box(Modifier.fillMaxWidth().height(190.dp), contentAlignment = Alignment.Center) {
-            Box(
-                Modifier.size(210.dp).graphicsLayer { rotationZ = blob }
-                    .clip(MaterialShapes.SoftBurst.toShape())
-                    .background(accent.copy(alpha = if (LevyraIsLight) 0.14f else 0.2f))
-            )
-            DiscoveryArtwork(
-                model.card(2),
-                Modifier.size(112.dp).graphicsLayer {
-                    translationX = -74.dp.toPx()
-                    translationY = 14.dp.toPx()
-                    rotationZ = -14f + sway * 2f
-                }.clip(RoundedCornerShape(22.dp)).border(2.dp, scheme.surfaceContainer, RoundedCornerShape(22.dp))
-            )
-            DiscoveryArtwork(
-                model.card(1),
-                Modifier.size(112.dp).graphicsLayer {
-                    translationX = 74.dp.toPx()
-                    translationY = 14.dp.toPx()
-                    rotationZ = 14f + sway * 2f
-                }.clip(RoundedCornerShape(22.dp)).border(2.dp, scheme.surfaceContainer, RoundedCornerShape(22.dp))
-            )
-            DiscoveryArtwork(
-                model.lead,
-                Modifier.size(150.dp).graphicsLayer {
-                    translationX = 16.dp.toPx() * sway
-                    rotationZ = 5f * sway
-                }.clip(RoundedCornerShape(30.dp)).border(3.dp, scheme.surfaceContainer, RoundedCornerShape(30.dp)),
-                highRes = true
-            )
-            DiscoveryHintBubble(Icons.Rounded.Close, scheme.surfaceContainerHighest, scheme.onSurfaceVariant, Modifier.align(Alignment.CenterStart).graphicsLayer {
-                translationX = -6.dp.toPx() * sway
-                alpha = 0.6f + 0.4f * (-sway).coerceAtLeast(0f)
-            })
-            DiscoveryHintBubble(Icons.Rounded.Favorite, scheme.surfaceContainerHighest, scheme.primary, Modifier.align(Alignment.CenterEnd).graphicsLayer {
-                translationX = 6.dp.toPx() * sway
-                alpha = 0.6f + 0.4f * sway.coerceAtLeast(0f)
-            })
-        }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.size(52.dp).clip(morph).background(scheme.primary), contentAlignment = Alignment.Center) {
-                if (model.loading && model.lead == null) LevyraLoadingIndicator(Modifier.size(24.dp), scheme.onPrimary)
-                else Icon(Icons.Rounded.PlayArrow, null, tint = scheme.onPrimary)
+        DiscoveryDeck(model, animationsEnabled, accent, action, coverBorder)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Box(Modifier.size(52.dp).clip(morph).background(action.container), contentAlignment = Alignment.Center) {
+                if (model.loading && model.lead == null) LevyraLoadingIndicator(Modifier.size(24.dp), action.content)
+                else Icon(Icons.Rounded.PlayArrow, null, tint = action.content, modifier = Modifier.size(28.dp))
             }
-            Column(Modifier.weight(1f)) {
-                Text(model.copy.start, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = scheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(model.copy.start, style = LevyraType.cardTitle.copy(fontWeight = FontWeight.Bold), color = LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(model.copy.swipeHint, style = MaterialTheme.typography.bodySmall, color = LevyraMuted, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
-            Icon(Icons.Rounded.Swipe, null, tint = scheme.primary, modifier = Modifier.size(26.dp).graphicsLayer { translationX = 4.dp.toPx() * sway })
         }
     }
 }
 
+private class DiscoveryActionRole(val container: Color, val content: Color)
+
+private fun discoveryActionRole(accent: Color, isLight: Boolean): DiscoveryActionRole {
+    val source = Hct.fromInt(accent.toArgb())
+    val chroma = source.chroma.coerceAtMost(48.0)
+    return DiscoveryActionRole(
+        container = Color(Hct.from(source.hue, chroma, if (isLight) 40.0 else 80.0).toInt()),
+        content = Color(Hct.from(source.hue, chroma, if (isLight) 100.0 else 20.0).toInt())
+    )
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun DiscoveryHintBubble(icon: ImageVector, container: Color, content: Color, modifier: Modifier) {
-    Box(
-        modifier.size(36.dp).clip(CircleShape).background(container.copy(alpha = 0.92f))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), CircleShape),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(icon, null, tint = content, modifier = Modifier.size(18.dp))
+private fun DiscoveryDeck(
+    model: DiscoveryTeaserModel,
+    animationsEnabled: Boolean,
+    accent: Color,
+    action: DiscoveryActionRole,
+    coverBorder: Color
+) {
+    val deckSize = model.cards.size.coerceAtMost(DeckMaxCards)
+    val turning = animationsEnabled && deckSize >= DeckMinCards
+    val turn = remember { Animatable(0f) }
+    LaunchedEffect(turning, deckSize) {
+        turn.snapTo(0f)
+        if (!turning) return@LaunchedEffect
+        repeat(deckSize * DeckLoops) {
+            delay(DeckHoldMillis)
+            turn.animateTo(turn.value.roundToInt() + 1f, tween(DeckTurnMillis, easing = DeckEasing))
+        }
+    }
+    val base by remember { derivedStateOf { floor(turn.value).toInt() } }
+    val front by remember { derivedStateOf { turn.value.roundToInt() } }
+    fun cardAt(index: Int): DiscoveryCard? =
+        if (deckSize >= DeckMinCards) model.cards[index.mod(deckSize)] else model.card(if (index < 0) 2 else index)
+    val isLight = LevyraIsLight
+    Box(Modifier.fillMaxWidth().height(164.dp), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier.size(184.dp).graphicsLayer { rotationZ = DeckBlobRest + DeckBlobStep * turn.value }
+                .clip(MaterialShapes.SoftBurst.toShape())
+                .background(accent.copy(alpha = if (isLight) 0.12f else 0.18f))
+        )
+        for (index in (base - 1)..(base + 2)) {
+            key(index) {
+                DiscoveryArtwork(
+                    cardAt(index),
+                    Modifier
+                        .zIndex(DeckFrontZ - abs(index - front))
+                        .size(DeckCoverSize)
+                        .graphicsLayer {
+                            val position = index - turn.value
+                            translationX = deckValue(position) { it.x }.dp.toPx()
+                            translationY = deckValue(position) { it.y }.dp.toPx()
+                            rotationZ = deckValue(position) { it.rotation }
+                            val scale = deckValue(position) { it.scale }
+                            scaleX = scale
+                            scaleY = scale
+                            alpha = deckValue(position) { it.alpha }
+                        }
+                        .clip(DeckCoverShape)
+                        .border(3.dp, coverBorder, DeckCoverShape),
+                    highRes = true
+                )
+            }
+        }
+        val frontCard = cardAt(front)
+        if (frontCard != null) {
+            Surface(
+                color = action.container,
+                contentColor = action.content,
+                shape = CircleShape,
+                modifier = Modifier.align(Alignment.BottomCenter).zIndex(DeckFrontZ + 1f).padding(horizontal = 24.dp)
+            ) {
+                Row(
+                    Modifier.padding(start = 8.dp, end = 12.dp, top = 4.dp, bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(Icons.Rounded.AutoAwesome, null, Modifier.size(14.dp))
+                    AnimatedContent(
+                        targetState = discoveryReasonLabel(frontCard, model.copy),
+                        transitionSpec = {
+                            (fadeIn(tween(220, delayMillis = 60)) + slideInVertically(tween(220, delayMillis = 60)) { it / 3 }) togetherWith
+                                fadeOut(tween(140))
+                        },
+                        label = "discovery-reason"
+                    ) { label ->
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
-@Composable
-private fun rememberSway(active: Boolean): State<Float> {
-    if (!active) return remember { mutableFloatStateOf(0f) }
-    val transition = rememberInfiniteTransition(label = "discovery-sway")
-    return transition.animateFloat(
-        initialValue = -1f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(2_600, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "discovery-sway-value"
-    )
+private class DeckSlot(val x: Float, val y: Float, val rotation: Float, val scale: Float, val alpha: Float)
+
+private val DeckSlots = listOf(
+    DeckSlot(-34f, 14f, -6f, 0.58f, 0f),
+    DeckSlot(-66f, 10f, -12f, 0.75f, 1f),
+    DeckSlot(0f, 0f, 0f, 1f, 1f),
+    DeckSlot(66f, 10f, 12f, 0.75f, 1f),
+    DeckSlot(34f, 14f, 6f, 0.58f, 0f)
+)
+
+private inline fun deckValue(position: Float, pick: (DeckSlot) -> Float): Float {
+    val offset = position.coerceIn(-2f, 2f) + 2f
+    val lower = floor(offset).toInt().coerceAtMost(DeckSlots.lastIndex - 1)
+    val fraction = offset - lower
+    val start = pick(DeckSlots[lower])
+    return start + (pick(DeckSlots[lower + 1]) - start) * fraction
 }
+
+private val DeckCoverSize = 128.dp
+private val DeckCoverShape = RoundedCornerShape(26.dp)
+private val DeckEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+private const val DeckMaxCards = 6
+private const val DeckMinCards = 3
+private const val DeckLoops = 2
+private const val DeckHoldMillis = 2_800L
+private const val DeckTurnMillis = 850
+private const val DeckFrontZ = 10f
+private const val DeckBlobRest = 18f
+private const val DeckBlobStep = 30f
 
 @Composable
 private fun rememberSlowSpin(active: Boolean, periodMillis: Int): State<Float> {
