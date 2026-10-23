@@ -11,6 +11,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okio.Buffer
@@ -44,6 +46,11 @@ internal enum class AppleCatalogPath(val segment: String) {
     TopCharts("new/top-charts")
 }
 
+internal enum class AppleCatalogCollection(val segment: String) {
+    Playlist("playlist"),
+    Album("album")
+}
+
 class AppleMusicEditorialRepository private constructor(context: Context) {
     private val appContext = context.applicationContext
     private val httpClient: OkHttpClient by lazy {
@@ -54,9 +61,22 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
             }
             .build()
     }
+    private val catalogApiClient: OkHttpClient by lazy {
+        LevyraHttpClientFactory.feeds(appContext).newBuilder()
+            .addNetworkInterceptor { chain ->
+                val url = chain.request().url
+                if (!url.isHttps || url.host != CATALOG_API_HOST) throw java.io.IOException("Apple catalog API redirect rejected")
+                chain.proceed(chain.request())
+            }
+            .build()
+    }
+    private val tokenProvider by lazy { AppleDeveloperTokenProvider.get(appContext) }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val pages = ConcurrentHashMap<String, AppleCatalogPage>()
     private val playlists = ConcurrentHashMap<String, AppleCatalogPlaylist>()
+    private val artists = object : LinkedHashMap<String, AppleArtistPage>(MAX_ARTIST_PAGES, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, AppleArtistPage>?): Boolean = size > MAX_ARTIST_PAGES
+    }
     private val inFlight = ConcurrentHashMap<String, Deferred<Any?>>()
     private val cacheDirectory by lazy { File(appContext.cacheDir, CACHE_DIRECTORY) }
     private val backoff = AppleCatalogBackoff()
@@ -70,16 +90,123 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
     suspend fun cachedTopCharts(storefront: String, language: String): AppleCatalogResult? = cachedPage(AppleCatalogPath.TopCharts, storefront, language)
 
     suspend fun playlist(storefront: String, playlistId: String, language: String): AppleCatalogPlaylist? {
+        val id = AppleCatalogIds.playlist(playlistId) ?: return null
+        return collection(AppleCatalogCollection.Playlist, storefront, id, language)
+    }
+
+    suspend fun album(storefront: String, albumId: String, language: String): AppleCatalogPlaylist? {
+        val id = AppleCatalogIds.album(albumId) ?: return null
+        return collection(AppleCatalogCollection.Album, storefront, id, language)
+    }
+
+    suspend fun artistHeader(storefront: String, artistName: String, language: String): AppleArtistPage? =
+        cachedArtist("artist-header", storefront, artistName, language) { front, name, lang -> searchArtist(front, name, lang) }
+
+    suspend fun artist(storefront: String, artistName: String, language: String): AppleArtistPage? =
+        cachedArtist("artist", storefront, artistName, language) { front, name, lang -> fetchArtist(front, name, lang) }
+
+    private suspend fun cachedArtist(
+        kind: String,
+        storefront: String,
+        artistName: String,
+        language: String,
+        load: suspend (String, String, String) -> AppleArtistPage?
+    ): AppleArtistPage? {
+        val name = artistName.trim().takeIf { it.length >= 2 } ?: return null
         val front = AppleStorefronts.normalize(storefront)
         val lang = AppleStorefronts.language(language)
-        val id = AppleCatalogIds.playlist(playlistId) ?: return null
-        val key = "playlist:$front:$lang:$id"
+        val key = "$kind:$front:$lang:${name.lowercase(Locale.ROOT)}"
+        synchronized(artists) { artists[key] }?.takeIf { System.currentTimeMillis() - it.fetchedAtMs < ARTIST_TTL_MS }?.let { return it }
+        @Suppress("UNCHECKED_CAST")
+        val shared = inFlight.computeIfAbsent(key) {
+            scope.async {
+                try {
+                    load(front, name, lang)?.also { page -> synchronized(artists) { artists[key] = page } }
+                } finally {
+                    inFlight.remove(key)
+                }
+            }
+        } as Deferred<AppleArtistPage?>
+        return awaitOrNull(shared) ?: synchronized(artists) { artists[key] }
+    }
+
+    private suspend fun fetchArtist(storefront: String, artistName: String, language: String): AppleArtistPage? {
+        val header = artistHeader(storefront, artistName, language) ?: return null
+        val html = fetchHtml("https://music.apple.com/$storefront/artist/levyra/${header.id}?l=$language") ?: return null
+        val page = AppleArtistPageParser.parse(html, System.currentTimeMillis()) ?: run {
+            Timber.w("Apple artist markup changed for %s", header.id)
+            return null
+        }
+        val topVideos = runCatching { topMusicVideos(storefront, header.id, language) }
+            .onFailure { if (it is CancellationException) throw it }
+            .getOrDefault(emptyList())
+        return page.copy(
+            artworkTemplate = page.artworkTemplate.ifBlank { header.artworkTemplate },
+            squareMotion = header.squareMotion ?: page.squareMotion,
+            wideMotion = header.wideMotion ?: page.wideMotion,
+            shelves = appleArtistShelvesWithTopVideos(page.shelves, topVideos),
+            info = header.info
+        )
+    }
+
+    private suspend fun topMusicVideos(storefront: String, artistId: String, language: String): List<AppleCatalogItem> {
+        val url = "$CATALOG_API_URL/v1/catalog/$storefront/artists/$artistId/view/top-music-videos".toHttpUrl().newBuilder()
+            .addQueryParameter("l", language)
+            .addQueryParameter("limit", TOP_VIDEOS_LIMIT.toString())
+            .addQueryParameter("extend", "editorialNotes")
+            .build()
+        val data = catalogJson(url, "Apple top videos")?.optJSONArray("data") ?: return emptyList()
+        return AppleArtistPageParser.topVideos(data)
+    }
+
+    private suspend fun catalogJson(url: HttpUrl, label: String): JSONObject? {
+        val developerToken = tokenProvider.getDeveloperToken() ?: return null
+        val request = Request.Builder().url(url)
+            .header("Authorization", "Bearer $developerToken")
+            .header("Origin", "https://music.apple.com")
+            .header("Accept", "application/json")
+            .build()
+        val body = catalogApiClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                Timber.w("%s HTTP %d", label, response.code)
+                return null
+            }
+            response.body.string()
+        }
+        return runCatching { JSONObject(body) }.getOrNull()
+    }
+
+    private suspend fun searchArtist(storefront: String, artistName: String, language: String): AppleArtistPage? {
+        val url = "$CATALOG_API_URL/v1/catalog/$storefront/search".toHttpUrl().newBuilder()
+            .addQueryParameter("term", artistName)
+            .addQueryParameter("types", "artists")
+            .addQueryParameter("limit", ARTIST_SEARCH_LIMIT.toString())
+            .addQueryParameter("l", language)
+            .addQueryParameter("extend", "origin,bornOrFormed,artistBio,genreNames,isGroup,editorialVideo,artwork")
+            .build()
+        val results = catalogJson(url, "Apple artist search")
+            ?.optJSONObject("results")?.optJSONObject("artists")?.optJSONArray("data") ?: return null
+        val candidates = (0 until results.length()).mapNotNull { index ->
+            val item = results.optJSONObject(index) ?: return@mapNotNull null
+            val attributes = item.optJSONObject("attributes") ?: return@mapNotNull null
+            val id = item.optString("id").trim().takeIf { it.all(Char::isDigit) && it.isNotEmpty() } ?: return@mapNotNull null
+            Triple(id, attributes.optString("name").trim(), attributes)
+        }
+        val chosen = selectAppleArtistCandidate(artistName, candidates.map { it.first to it.second }) ?: return null
+        val attributes = candidates.first { it.first == chosen }.third
+        return AppleArtistPageParser.header(chosen, attributes, System.currentTimeMillis())
+    }
+
+    private suspend fun collection(kind: AppleCatalogCollection, storefront: String, id: String, language: String): AppleCatalogPlaylist? {
+        val front = AppleStorefronts.normalize(storefront)
+        val lang = AppleStorefronts.language(language)
+        val key = "${kind.segment}:$front:$lang:$id"
         playlists[key]?.takeIf { System.currentTimeMillis() - it.fetchedAtMs < PLAYLIST_TTL_MS }?.let { return it }
         @Suppress("UNCHECKED_CAST")
         val shared = inFlight.computeIfAbsent(key) {
             scope.async {
                 try {
-                    fetchPlaylist(front, id, lang)?.also { playlists[key] = it }
+                    fetchCollection(kind, front, id, lang)?.also { playlists[key] = it }
                 } finally {
                     inFlight.remove(key)
                 }
@@ -138,11 +265,11 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
             }
     }
 
-    private fun fetchPlaylist(storefront: String, playlistId: String, language: String): AppleCatalogPlaylist? {
-        val html = fetchHtml("https://music.apple.com/$storefront/playlist/levyra/$playlistId?l=$language") ?: return null
+    private fun fetchCollection(kind: AppleCatalogCollection, storefront: String, id: String, language: String): AppleCatalogPlaylist? {
+        val html = fetchHtml("https://music.apple.com/$storefront/${kind.segment}/levyra/$id?l=$language") ?: return null
         val now = System.currentTimeMillis()
         val page = AppleCatalogPageParser.parse(html, storefront, now) ?: run {
-            Timber.w("Apple playlist markup changed for %s", playlistId)
+            Timber.w("Apple %s markup changed for %s", kind.segment, id)
             return null
         }
         val header = page.shelf { it.kind == AppleCatalogShelfKind.Header }?.items?.firstOrNull()
@@ -152,7 +279,7 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
             .distinctBy { it.id }
         if (tracks.isEmpty()) return null
         return AppleCatalogPlaylist(
-            id = playlistId,
+            id = id,
             title = header?.title.orEmpty(),
             curator = header?.subtitle.orEmpty(),
             description = header?.description.orEmpty(),
@@ -228,6 +355,12 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
         private const val READ_CHUNK_BYTES = 64L * 1024L
         private const val HTTP_TOO_MANY_REQUESTS = 429
         private const val PLAYLIST_ARTWORK_SIZE = 600
+        private const val ARTIST_TTL_MS = 6L * 60L * 60L * 1000L
+        private const val MAX_ARTIST_PAGES = 24
+        private const val ARTIST_SEARCH_LIMIT = 5
+        private const val TOP_VIDEOS_LIMIT = 12
+        private const val CATALOG_API_HOST = "amp-api.music.apple.com"
+        private const val CATALOG_API_URL = "https://$CATALOG_API_HOST"
 
         @Volatile
         private var instance: AppleMusicEditorialRepository? = null
@@ -278,11 +411,23 @@ internal object AppleStorefronts {
 
 internal object AppleCatalogIds {
     private val playlistId = Regex("^pl\\.[a-z0-9-]{8,64}$")
+    private val albumId = Regex("^[0-9]{5,15}$")
 
     fun playlist(value: String): String? = value.trim().lowercase(Locale.ROOT).takeIf(playlistId::matches)
 
+    fun album(value: String): String? = value.trim().takeIf(albumId::matches)
+
     fun playlistIdFromUrl(url: String): String? =
         url.substringAfterLast('/').substringBefore('?').let(::playlist)
+
+    fun albumFromUrl(url: String): Pair<String, String>? {
+        if (!isCatalogUrl(url)) return null
+        val segments = java.net.URI(url).path.split('/').filter(String::isNotBlank)
+        if (segments.size < 3 || segments[1] != AppleCatalogCollection.Album.segment) return null
+        val storefront = segments[0].lowercase(Locale.ROOT).takeIf { it.length == 2 && it.all { char -> char in 'a'..'z' } } ?: return null
+        val id = album(segments.last()) ?: return null
+        return storefront to id
+    }
 
     fun isCatalogUrl(url: String): Boolean {
         val parsed = runCatching { java.net.URI(url) }.getOrNull() ?: return false

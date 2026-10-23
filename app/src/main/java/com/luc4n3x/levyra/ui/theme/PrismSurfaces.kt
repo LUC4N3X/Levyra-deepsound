@@ -10,6 +10,7 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import com.luc4n3x.levyra.domain.PrismTranslucency
 import com.luc4n3x.levyra.ui.player.PlayerSurfaceTokens
 
@@ -65,6 +66,14 @@ internal fun prismPlayerSurfaces(palette: LevyraPalette): PlayerSurfaceTokens = 
 ) else PlayerSurfaceTokens(
     amoled = false, control = palette.panelSoft, controlQuiet = palette.panel, outline = palette.outline,
     active = palette.panelSoft, activeContent = palette.cyan, tonal = palette.panel,
-    hero = palette.cyan, heroContent = if (palette.id == IvoryPaletteId) palette.black else Color.White,
+    hero = palette.cyan, heroContent = prismHeroContent(palette),
     content = palette.text, contentMuted = palette.muted, contentFaint = palette.muted, glow = Color.Transparent
 )
+
+internal fun prismHeroContent(palette: LevyraPalette): Color = when {
+    palette.id == IvoryPaletteId -> palette.black
+    palette.cyan.luminance() > PrismHeroLightAccentLuminance -> Color.Black
+    else -> Color.White
+}
+
+private const val PrismHeroLightAccentLuminance = 0.5f

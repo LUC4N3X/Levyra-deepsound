@@ -13,6 +13,7 @@ object LevyraPersonalOrbit {
 
     private val artworkWidthHeightPattern = Regex("=w(\\d+)-h(\\d+)")
     private val artworkSizePattern = Regex("=s(\\d+)")
+    private val artworkOptionsPattern = Regex("=[a-z0-9-]+$")
     private val googleArtworkHosts = listOf("googleusercontent.com", "ggpht.com")
 
     private fun isGoogleArtworkUrl(url: String): Boolean {
@@ -346,6 +347,18 @@ object LevyraPersonalOrbit {
 
     fun youtubeHeroArtwork(track: Track): String? =
         youtubeVideoId(track)?.let { "https://i.ytimg.com/vi/$it/maxresdefault.jpg" }
+
+    fun croppedArtworkUrl(url: String, width: Int, height: Int, maxSize: Int = DEFAULT_ARTWORK_SIZE): String {
+        val clean = url.trim()
+        if (!isGoogleArtworkUrl(clean) || clean.indexOf('?') >= 0 || width <= 0 || height <= 0) return clean
+        val options = artworkOptionsPattern.find(clean) ?: return clean
+        if (options.range.first < clean.lastIndexOf('/')) return clean
+        val limit = maxSize.coerceIn(64, 4096)
+        val scale = minOf(1f, limit.toFloat() / maxOf(width, height))
+        val targetWidth = (width * scale).toInt().coerceAtLeast(1)
+        val targetHeight = (height * scale).toInt().coerceAtLeast(1)
+        return clean.replaceRange(options.range, "=w$targetWidth-h$targetHeight-p-l90-rj")
+    }
 
     fun upscaledArtworkUrl(url: String, size: Int = DEFAULT_ARTWORK_SIZE): String {
         val clean = url.trim()

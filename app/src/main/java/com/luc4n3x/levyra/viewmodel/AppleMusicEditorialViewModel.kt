@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.luc4n3x.levyra.data.apple.AppleArtistPage
 import com.luc4n3x.levyra.data.apple.AppleCatalogFreshness
 import com.luc4n3x.levyra.data.apple.AppleCatalogIds
 import com.luc4n3x.levyra.data.apple.AppleCatalogItem
@@ -28,7 +29,9 @@ data class AppleMusicEditorialUiState(
     val stale: Boolean = false,
     val loading: Boolean = false,
     val failed: Boolean = false,
-    val collection: AppleMusicCollectionUiState? = null
+    val collection: AppleMusicCollectionUiState? = null,
+    val artistKey: String = "",
+    val artist: AppleArtistPage? = null
 )
 
 @Immutable
@@ -51,6 +54,27 @@ class AppleMusicEditorialViewModel(application: Application) : AndroidViewModel(
     val state: StateFlow<AppleMusicEditorialUiState> = _state.asStateFlow()
     private var pageJob: Job? = null
     private var collectionJob: Job? = null
+    private var artistJob: Job? = null
+
+    suspend fun prefetchArtistHeader(artistName: String, storefront: String, language: String): AppleArtistPage? =
+        repository.artistHeader(storefront, artistName, language)
+
+    fun loadArtist(artistName: String, storefront: String, language: String) {
+        val key = appleArtistKey(artistName, storefront, language)
+        if (key.isBlank() || _state.value.artistKey == key) return
+        artistJob?.cancel()
+        _state.update { it.copy(artistKey = key, artist = null) }
+        artistJob = viewModelScope.launch {
+            val header = repository.artistHeader(storefront, artistName, language)
+            if (header == null) {
+                _state.update { state -> if (state.artistKey == key) state.copy(artistKey = "") else state }
+                return@launch
+            }
+            _state.update { state -> if (state.artistKey == key && state.artist == null) state.copy(artist = header) else state }
+            val page = repository.artist(storefront, artistName, language) ?: return@launch
+            _state.update { state -> if (state.artistKey == key) state.copy(artist = page) else state }
+        }
+    }
 
     fun load(storefront: String, language: String, force: Boolean = false) {
         val front = AppleStorefronts.normalize(storefront)
@@ -124,12 +148,18 @@ class AppleMusicEditorialViewModel(application: Application) : AndroidViewModel(
     }
 }
 
+internal fun appleArtistKey(artistName: String, storefront: String, language: String): String {
+    val name = artistName.trim().lowercase(java.util.Locale.ROOT)
+    if (name.length < 2) return ""
+    return "${AppleStorefronts.normalize(storefront)}:${AppleStorefronts.language(language)}:$name"
+}
+
 private fun AppleMusicEditorialUiState.isLoadedFor(front: String, lang: String): Boolean =
     storefront == front && language == lang && (loading || newMusic != null)
 
 private fun AppleMusicEditorialUiState.startLoading(front: String, lang: String): AppleMusicEditorialUiState =
     if (storefront == front && language == lang) copy(loading = true, failed = false)
-    else AppleMusicEditorialUiState(storefront = front, language = lang, loading = true, collection = collection)
+    else AppleMusicEditorialUiState(storefront = front, language = lang, loading = true, collection = collection, artistKey = artistKey, artist = artist)
 
 private fun AppleMusicEditorialUiState.withCached(news: AppleCatalogResult?, charts: AppleCatalogResult?): AppleMusicEditorialUiState {
     if (news == null && charts == null) return this

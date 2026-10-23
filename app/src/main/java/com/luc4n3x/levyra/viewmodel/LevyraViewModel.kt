@@ -1301,6 +1301,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         artistProfile = page.profile,
                         artistMotionArtwork = null,
                         artistListStateKey = page.listStateKey,
+                        artistRequestName = page.profile.name,
                         showAlbum = false,
                         albumLoading = false,
                         albumError = null,
@@ -7817,6 +7818,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 artistProfile = current.artistProfile?.takeIf { sameProfile && it.hasBio } ?: placeholder,
                 artistMotionArtwork = current.artistMotionArtwork.takeIf { sameProfile },
                 artistListStateKey = requestedArtistListStateKey,
+                artistRequestName = clean,
                 openPlaylist = null,
                 detailReturnTarget = DetailReturnTarget.None
             )
@@ -8024,7 +8026,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         albumJob = viewModelScope.launch {
             val languageCode = _state.value.languageCode
-            val detail = runCatching { repository.albumDetail(album, languageCode) }.getOrNull()
+            val providerDetail = runCatching { repository.albumDetail(album, languageCode) }.getOrNull()
+            if (!isActive) return@launch
+            val detail = if (providerDetail?.tracks.isNullOrEmpty()) {
+                appleCatalogAlbumDetail(album, languageCode) ?: providerDetail
+            } else {
+                providerDetail
+            }
             if (!isActive) return@launch
             if (detail == null || detail.tracks.isEmpty()) {
                 _state.update {
@@ -8066,6 +8074,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             LevyraArtworkCache.preloadPriority(getApplication<Application>().applicationContext, detail.tracks, 8)
             refreshOfficialMetadataBatch(detail.tracks, 12)
         }
+    }
+
+    private suspend fun appleCatalogAlbumDetail(album: AlbumHit, languageCode: String): AlbumDetail? {
+        val (storefront, albumId) = com.luc4n3x.levyra.data.apple.AppleCatalogIds.albumFromUrl(album.canonicalUrl) ?: return null
+        val collection = com.luc4n3x.levyra.data.apple.AppleMusicEditorialRepository.get(getApplication<Application>())
+            .album(storefront, albumId, languageCode) ?: return null
+        val tracks = collection.tracks.map { track -> track.copy(album = track.album.ifBlank { album.title }) }
+        return AlbumDetail(
+            album = album.copy(thumbnailUrl = album.thumbnailUrl.ifBlank { collection.artworkUrl }),
+            description = collection.description,
+            tracks = tracks
+        )
     }
 
     fun closeAlbum() {
@@ -8298,6 +8318,28 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     author = detail?.author.orEmpty(),
                     thumbnailUrl = detail?.thumbnailUrl.orEmpty(),
                     tracks = tracks
+                )
+                if (resolved == null) current else current.copy(playlistHitPreview = resolved)
+            }
+        }
+    }
+
+    fun openApplePlaylist(playlist: PlaylistHit, storefront: String) {
+        playerReturnDetail = null
+        val playlistId = playlist.playlistId.ifBlank { return }
+        playlistHitJob?.cancel()
+        _state.update { it.copy(playlistHitPreview = PlaylistHitPreview(hit = playlist)) }
+        playlistHitJob = viewModelScope.launch {
+            val collection = runCatchingPreservingCancellation {
+                com.luc4n3x.levyra.data.apple.AppleMusicEditorialRepository.get(getApplication<Application>())
+                    .playlist(storefront, playlistId, _state.value.languageCode)
+            }.onFailure { Timber.w(it, "Apple playlist preview lookup failed") }.getOrNull()
+            _state.update { current ->
+                val resolved = current.playlistHitPreview?.resolvedWith(
+                    playlistId = playlistId,
+                    author = collection?.curator.orEmpty(),
+                    thumbnailUrl = collection?.artworkUrl.orEmpty(),
+                    tracks = collection?.tracks.orEmpty()
                 )
                 if (resolved == null) current else current.copy(playlistHitPreview = resolved)
             }

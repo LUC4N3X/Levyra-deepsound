@@ -11,6 +11,7 @@ import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.ArtistRelease
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
+import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.artistIdentityKey
 import com.luc4n3x.levyra.domain.artistAudienceWeight
 import com.luc4n3x.levyra.domain.artistIdentityMatches
@@ -278,6 +279,18 @@ internal fun artistNameMatches(expectedName: String, resolvedName: String): Bool
  * A cached profile may only answer a request whose browseId and requested name both still point at
  * the same artist, so a warm entry can never be served for, or overwritten by, a different one.
  */
+internal data class ArtistPagePlaylists(
+    val byArtist: List<PlaylistHit>,
+    val featuredOn: List<PlaylistHit>
+)
+
+internal fun splitArtistPagePlaylists(playlists: List<PlaylistHit>, artistName: String, limit: Int): ArtistPagePlaylists {
+    val (byArtist, featuredOn) = playlists.partition { playlist ->
+        artistName.isNotBlank() && playlist.author.isNotBlank() && artistNameMatches(artistName, playlist.author)
+    }
+    return ArtistPagePlaylists(byArtist.take(limit), featuredOn.take(limit))
+}
+
 internal fun artistProfileMatchesRequest(
     profile: ArtistProfile,
     browseId: String,
@@ -747,7 +760,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         val videoPointer = findVideoPointer(root)
         val songs = mergeArtistSongs(extractTopSongs(root, name), expanded.songs)
         val mergedReleases = mergeReleases(
-            extractReleases(root, "Album") + extractReleases(root, "Singol"),
+            extractArtistPageReleases(root),
             expanded.albums + expanded.singles
         )
         val albums = mergedReleases
@@ -761,6 +774,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             .take(MAX_RELEASES_PER_SHELF)
         val videos = (extractVideos(root, name) + expanded.videos).distinctBy { it.id }.take(100)
         val related = extractRelatedArtists(root, name)
+        val playlists = splitArtistPagePlaylists(music.parseSearchOverview(root, name).playlists, name, MAX_FEATURED_PLAYLISTS)
         val seed = stableSeed(browseId + name)
         val accent = palette(seed)
         if (name.isBlank() && songs.isEmpty()) return null
@@ -791,7 +805,8 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             videosBrowseId = videoPointer?.browseId.orEmpty(),
             videosParams = videoPointer?.params.orEmpty(),
             compilations = compilations,
-            featuredPlaylists = music.parseSearchOverview(root, name).playlists.take(MAX_FEATURED_PLAYLISTS)
+            featuredPlaylists = playlists.featuredOn,
+            artistPlaylists = playlists.byArtist
         )
     }
 
@@ -969,6 +984,20 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             }
         }
         return tracks.values.take(20)
+    }
+
+    internal fun extractArtistPageReleases(root: JSONObject): List<ArtistRelease> {
+        val carousels = mutableListOf<JSONObject>()
+        collectByKey(root, "musicCarouselShelfRenderer", carousels)
+        val sectioned = carousels.flatMap { carousel ->
+            val sectionType = artistReleaseSectionType(sectionTitle(carousel)).takeIf { it != ReleaseType.Unknown }
+            if (sectionType == null) {
+                extractReleases(carousel, "Album") + extractReleases(carousel, "Singol")
+            } else {
+                extractReleases(carousel, "Album", inheritedSectionType = sectionType)
+            }
+        }
+        return mergeReleases(sectioned, extractReleases(root, "Album") + extractReleases(root, "Singol"))
     }
 
     private fun extractReleases(

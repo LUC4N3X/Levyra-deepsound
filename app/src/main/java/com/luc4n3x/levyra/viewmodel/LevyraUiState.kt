@@ -293,6 +293,7 @@ data class LevyraUiState(
     val artistProfile: ArtistProfile? = null,
     val artistMotionArtwork: MotionArtwork? = null,
     val artistListStateKey: String = "",
+    val artistRequestName: String = "",
     val searchData: SearchResults = SearchResults(),
     val searchFilter: SearchFilter = SearchFilter.All,
     val searchSectionContinuations: Map<SearchFilter, String> = emptyMap(),
