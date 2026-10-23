@@ -59,6 +59,7 @@ import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
+import androidx.media3.session.SessionError
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -125,6 +126,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.SupervisorJob
@@ -466,6 +469,9 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private val autoSearchRequests by lazy {
+        AndroidAutoSearchRequests<MediaSession.ControllerInfo, MediaItem>(serviceScope) { autoLibrary.search(it) }
+    }
     private val sleepTimer by lazy {
         PlaybackSleepTimer(
             scope = serviceScope,
@@ -1271,7 +1277,10 @@ class PlaybackService : MediaLibraryService() {
                 browser: MediaSession.ControllerInfo,
                 params: LibraryParams?
             ): ListenableFuture<LibraryResult<MediaItem>> {
-                return Futures.immediateFuture(LibraryResult.ofItem(autoLibrary.root(), params))
+                val rootParams = LibraryParams.Builder().setExtras(Bundle(params?.extras ?: Bundle.EMPTY).apply {
+                    putBoolean("android.media.browse.SEARCH_SUPPORTED", true)
+                }).build()
+                return Futures.immediateFuture(LibraryResult.ofItem(autoLibrary.root(), rootParams))
             }
 
             override fun onGetChildren(
@@ -1301,8 +1310,21 @@ class PlaybackService : MediaLibraryService() {
                 query: String,
                 params: LibraryParams?
             ): ListenableFuture<LibraryResult<Void>> {
-                autoLibrary.preloadSearch(query)
-                return Futures.immediateFuture(LibraryResult.ofVoid())
+                val request = autoSearchRequests.start(browser, query)
+                return autoLibraryFuture {
+                    val items = request.await()
+                    if (!autoSearchRequests.isCurrent(browser, query, request)) {
+                        throw CancellationException("Search superseded")
+                    }
+                    session.notifySearchResultChanged(browser, query, items.size, params)
+                    Timber.d("Android Auto search ready: items=%d", items.size)
+                    LibraryResult.ofVoid(params)
+                }
+            }
+
+            override fun onDisconnected(session: MediaSession, controller: MediaSession.ControllerInfo) {
+                autoSearchRequests.disconnect(controller)
+                super.onDisconnected(session, controller)
             }
 
             override fun onGetSearchResult(
@@ -1313,8 +1335,10 @@ class PlaybackService : MediaLibraryService() {
                 pageSize: Int,
                 params: LibraryParams?
             ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
-                return libraryListFuture(params) {
-                    paginate(autoLibrary.search(query), page, pageSize)
+                return autoLibraryFuture {
+                    val items = autoSearchRequests.result(browser, query)
+                        .androidAutoWindow(AndroidAutoPageWindow.of(page, pageSize, 100))
+                    LibraryResult.ofItemList(items, params)
                 }
             }
 
@@ -1324,6 +1348,33 @@ class PlaybackService : MediaLibraryService() {
                 mediaItems: List<MediaItem>
             ): ListenableFuture<List<MediaItem>> {
                 return mediaItemsFuture { autoLibrary.playableItems(mediaItems) }
+            }
+
+            override fun onSetMediaItems(
+                mediaSession: MediaSession,
+                controller: MediaSession.ControllerInfo,
+                mediaItems: MutableList<MediaItem>,
+                startIndex: Int,
+                startPositionMs: Long
+            ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+                if (mediaItems.none { it.mediaId.startsWith(AndroidAutoLibrary.ID_TRACK_PREFIX) }) {
+                    return super.onSetMediaItems(mediaSession, controller, mediaItems, startIndex, startPositionMs)
+                }
+                val future = SettableFuture.create<MediaSession.MediaItemsWithStartPosition>()
+                val job = serviceScope.launch {
+                    try {
+                        val selected = autoLibrary.playableSelection(mediaItems, startIndex)
+                        future.set(MediaSession.MediaItemsWithStartPosition(listOf(selected), 0, startPositionMs))
+                    } catch (cancelled: CancellationException) {
+                        future.cancel(false)
+                        throw cancelled
+                    } catch (error: Exception) {
+                        future.setException(error)
+                    }
+                }
+                future.addListener({ if (future.isCancelled) job.cancel() }, com.google.common.util.concurrent.MoreExecutors.directExecutor())
+                job.invokeOnCompletion { if (!future.isDone) future.cancel(false) }
+                return future
             }
         }
 
@@ -1370,6 +1421,59 @@ class PlaybackService : MediaLibraryService() {
             }
         })
         val forwardingPlayer = object : androidx.media3.common.ForwardingPlayer(sessionPlayer) {
+            private val commandListeners = java.util.IdentityHashMap<Player.Listener, Player.Listener>()
+
+            override fun addListener(listener: Player.Listener) {
+                val wrapped = commandListeners.getOrPut(listener) {
+                    object : Player.Listener {
+                        override fun onEvents(player: Player, events: Player.Events) = listener.onEvents(player, events)
+                        override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) = listener.onTimelineChanged(timeline, reason)
+                        override fun onTracksChanged(tracks: androidx.media3.common.Tracks) = listener.onTracksChanged(tracks)
+                        override fun onMediaMetadataChanged(mediaMetadata: androidx.media3.common.MediaMetadata) = listener.onMediaMetadataChanged(mediaMetadata)
+                        override fun onPlaylistMetadataChanged(mediaMetadata: androidx.media3.common.MediaMetadata) = listener.onPlaylistMetadataChanged(mediaMetadata)
+                        override fun onIsLoadingChanged(isLoading: Boolean) = listener.onIsLoadingChanged(isLoading)
+                        override fun onPlaybackStateChanged(playbackState: Int) = listener.onPlaybackStateChanged(playbackState)
+                        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) = listener.onPlayWhenReadyChanged(playWhenReady, reason)
+                        override fun onPlaybackSuppressionReasonChanged(playbackSuppressionReason: Int) = listener.onPlaybackSuppressionReasonChanged(playbackSuppressionReason)
+                        override fun onIsPlayingChanged(isPlaying: Boolean) = listener.onIsPlayingChanged(isPlaying)
+                        override fun onRepeatModeChanged(repeatMode: Int) = listener.onRepeatModeChanged(repeatMode)
+                        override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) = listener.onShuffleModeEnabledChanged(shuffleModeEnabled)
+                        override fun onPlayerError(error: PlaybackException) = listener.onPlayerError(error)
+                        override fun onPlayerErrorChanged(error: PlaybackException?) = listener.onPlayerErrorChanged(error)
+                        override fun onPositionDiscontinuity(oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) = listener.onPositionDiscontinuity(oldPosition, newPosition, reason)
+                        override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) = listener.onPlaybackParametersChanged(playbackParameters)
+                        override fun onSeekBackIncrementChanged(seekBackIncrementMs: Long) = listener.onSeekBackIncrementChanged(seekBackIncrementMs)
+                        override fun onSeekForwardIncrementChanged(seekForwardIncrementMs: Long) = listener.onSeekForwardIncrementChanged(seekForwardIncrementMs)
+                        override fun onMaxSeekToPreviousPositionChanged(maxSeekToPreviousPositionMs: Long) = listener.onMaxSeekToPreviousPositionChanged(maxSeekToPreviousPositionMs)
+                        override fun onTrackSelectionParametersChanged(parameters: androidx.media3.common.TrackSelectionParameters) = listener.onTrackSelectionParametersChanged(parameters)
+                        override fun onAudioSessionIdChanged(audioSessionId: Int) = listener.onAudioSessionIdChanged(audioSessionId)
+                        override fun onAudioAttributesChanged(audioAttributes: AudioAttributes) = listener.onAudioAttributesChanged(audioAttributes)
+                        override fun onVolumeChanged(volume: Float) = listener.onVolumeChanged(volume)
+                        override fun onSkipSilenceEnabledChanged(skipSilenceEnabled: Boolean) = listener.onSkipSilenceEnabledChanged(skipSilenceEnabled)
+                        override fun onSurfaceSizeChanged(width: Int, height: Int) = listener.onSurfaceSizeChanged(width, height)
+                        override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) = listener.onVideoSizeChanged(videoSize)
+                        override fun onRenderedFirstFrame() = listener.onRenderedFirstFrame()
+                        override fun onDeviceInfoChanged(deviceInfo: DeviceInfo) = listener.onDeviceInfoChanged(deviceInfo)
+                        override fun onDeviceVolumeChanged(volume: Int, muted: Boolean) = listener.onDeviceVolumeChanged(volume, muted)
+                        override fun onCues(cueGroup: androidx.media3.common.text.CueGroup) = listener.onCues(cueGroup)
+
+                        override fun onAvailableCommandsChanged(availableCommands: Player.Commands) {
+                            listener.onAvailableCommandsChanged(getAvailableCommands())
+                        }
+
+                        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                            listener.onMediaItemTransition(mediaItem, reason)
+                            listener.onAvailableCommandsChanged(getAvailableCommands())
+                        }
+                    }
+                }
+                super.addListener(wrapped)
+            }
+
+            override fun removeListener(listener: Player.Listener) {
+                commandListeners.remove(listener)?.let { super.removeListener(it) }
+            }
+
             override fun getDuration(): Long {
                 if (isLiveRadioMediaItem(currentMediaItem)) return androidx.media3.common.C.TIME_UNSET
                 val realDuration = super.getDuration()
@@ -3354,15 +3458,38 @@ class PlaybackService : MediaLibraryService() {
         params: LibraryParams?,
         block: suspend () -> List<MediaItem>
     ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
-        val future = SettableFuture.create<LibraryResult<ImmutableList<MediaItem>>>()
-        serviceScope.launch(Dispatchers.IO) {
-            val items = runCatching { block() }
-                .getOrElse { error ->
-                    Timber.w(error, "Android Auto children load failed")
-                    emptyList()
+        return autoLibraryFuture {
+            val items = withTimeout(15_000L) {
+                withContext(Dispatchers.IO) {
+                    com.luc4n3x.levyra.data.runCatchingPreservingCancellation { block() }.getOrThrow()
                 }
-            future.set(LibraryResult.ofItemList(ImmutableList.copyOf(items), params))
+            }
+            LibraryResult.ofItemList(items, params)
         }
+    }
+
+    private fun <T : Any> autoLibraryFuture(block: suspend () -> LibraryResult<T>): ListenableFuture<LibraryResult<T>> {
+        val future = SettableFuture.create<LibraryResult<T>>()
+        val job = serviceScope.launch {
+            try {
+                future.set(block())
+            } catch (timeout: TimeoutCancellationException) {
+                Timber.w("Android Auto library request timed out")
+                future.set(LibraryResult.ofError<T>(SessionError(SessionError.ERROR_IO,
+                    com.luc4n3x.levyra.ui.i18n.LevyraStrings.forCode(LevyraPreferences(this@PlaybackService).languageCode()).networkTestTimeout,
+                    Bundle().apply { putString(AndroidAutoLibrary.EXTRA_SEARCH_FAILURE, "timeout") })))
+            } catch (cancelled: CancellationException) {
+                future.cancel(false)
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w("Android Auto library request failed: %s", error.javaClass.simpleName)
+                future.set(LibraryResult.ofError<T>(SessionError(
+                    if (error is IllegalArgumentException) SessionError.ERROR_BAD_VALUE else SessionError.ERROR_IO,
+                    com.luc4n3x.levyra.ui.i18n.LevyraStrings.forCode(LevyraPreferences(this@PlaybackService).languageCode()).networkTestUnknown)))
+            }
+        }
+        future.addListener({ if (future.isCancelled) job.cancel() }, com.google.common.util.concurrent.MoreExecutors.directExecutor())
+        job.invokeOnCompletion { if (!future.isDone) future.cancel(false) }
         return future
     }
 

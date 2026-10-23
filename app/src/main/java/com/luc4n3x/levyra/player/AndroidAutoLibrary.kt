@@ -2,7 +2,6 @@ package com.luc4n3x.levyra.player
 
 import android.content.Context
 import android.os.Bundle
-import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import com.luc4n3x.levyra.R
@@ -19,26 +18,27 @@ import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.domain.LevyraContentLocales
+import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.SmartMusicProfile
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
 import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.LinkedHashMap
 import java.util.Locale
-import java.util.concurrent.ConcurrentHashMap
+
+private fun <T> autoCatalog(maxEntries: Int): MutableMap<String, T> =
+    java.util.Collections.synchronizedMap(object : LinkedHashMap<String, T>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, T>?): Boolean = size > maxEntries
+    })
 
 internal data class AndroidAutoPageWindow(val offset: Int, val limit: Int) {
     companion object {
@@ -71,24 +71,23 @@ class AndroidAutoLibrary(context: Context) {
     private val musicRepository = YoutubeMusicRepository(appContext)
     private val resolver = PlaybackResolver.getInstance(appContext)
     private val queueEngine = PersistentQueueEngine.get(appContext)
-    private val catalog = ConcurrentHashMap<String, Track>()
-    private val folders = ConcurrentHashMap<String, MediaItem>()
+    private val catalog = autoCatalog<Track>(1_024)
+    private val folders = autoCatalog<MediaItem>(2_048)
     @Volatile
     private var foldersLocale: Locale? = null
-    private val albumFolders = ConcurrentHashMap<String, Pair<String, String>>()
-    private val artistFolders = ConcurrentHashMap<String, String>()
+    private val albumFolders = autoCatalog<Pair<String, String>>(1_024)
+    private val artistFolders = autoCatalog<String>(1_024)
+    private val searchAlbums = autoCatalog<AlbumHit>(512)
     private val searchCacheLock = Any()
-    private val searchCache = object : LinkedHashMap<String, TimedTracks>(
+    private val searchCache = object : LinkedHashMap<String, TimedItems>(
         MAX_SEARCH_CACHE_ENTRIES,
         0.75f,
         true
     ) {
         override fun removeEldestEntry(
-            eldest: MutableMap.MutableEntry<String, TimedTracks>?
+            eldest: MutableMap.MutableEntry<String, TimedItems>?
         ): Boolean = size > MAX_SEARCH_CACHE_ENTRIES
     }
-    private val searchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val searchInFlight = ConcurrentHashMap<String, Deferred<List<Track>>>()
 
     fun root(): MediaItem = folder(
         ID_ROOT,
@@ -126,7 +125,7 @@ class AndroidAutoLibrary(context: Context) {
     }
 
     suspend fun item(mediaId: String): MediaItem = withContext(Dispatchers.IO) {
-        localizedFolders()[mediaId] ?: catalog[mediaId]?.let { trackItem(it, mediaId) } ?: when {
+        localizedFolders()[mediaId] ?: findTrack(mediaId)?.let { trackItem(it, mediaId) } ?: when {
             mediaId == ID_ROOT -> root()
             mediaId == ID_HOME -> folder(
                 ID_HOME,
@@ -216,53 +215,54 @@ class AndroidAutoLibrary(context: Context) {
         }
     }
 
-    fun preloadSearch(query: String) {
+    suspend fun search(query: String): List<MediaItem> = withContext(Dispatchers.IO) {
         val clean = query.voiceSearchQuery()
-        if (clean.isBlank() || cachedSearch(clean) != null) return
-        startOrJoinSearch(clean).invokeOnCompletion { error ->
-            if (error != null && error !is CancellationException) {
-                Timber.d(error, "Android Auto search preload failed")
+        if (clean.length < 2) return@withContext emptyList()
+        searchItems(clean)
+    }
+
+    fun close() {
+        synchronized(searchCacheLock) { searchCache.clear() }
+        catalog.clear()
+        searchAlbums.clear()
+        folders.clear()
+        albumFolders.clear()
+        artistFolders.clear()
+    }
+
+    suspend fun playableItems(mediaItems: List<MediaItem>): List<MediaItem> = withContext(Dispatchers.IO) {
+        mediaItems.mapNotNull { item ->
+            try {
+                playableItem(item)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w("Android Auto item resolution failed: %s", error.javaClass.simpleName)
+                null
             }
         }
     }
 
-    suspend fun search(query: String): List<MediaItem> = withContext(Dispatchers.IO) {
-        val clean = query.voiceSearchQuery()
-        if (clean.isBlank()) return@withContext flowTracks().map { trackItem(it) }
-        val tracks = cachedSearch(clean) ?: startOrJoinSearch(clean).await()
-        tracks.map { trackItem(it) }
-    }
-
-    fun close() {
-        searchInFlight.values.forEach { it.cancel() }
-        searchInFlight.clear()
-        searchScope.cancel()
-        synchronized(searchCacheLock) { searchCache.clear() }
-    }
-
-    private fun startOrJoinSearch(query: String): Deferred<List<Track>> {
-        searchInFlight[query]?.let { return it }
-        val deferred = searchScope.async(start = CoroutineStart.LAZY) {
-            searchTracks(query)
+    suspend fun playableSelection(mediaItems: List<MediaItem>, startIndex: Int): MediaItem = withContext(Dispatchers.IO) {
+        if (mediaItems.size == 1) return@withContext playableItem(mediaItems.single())
+        val index = startIndex.takeIf { it in mediaItems.indices } ?: 0
+        val tracks = mediaItems.map { item ->
+            findTrack(item.mediaId)
+                ?: item.mediaMetadata.extras?.getString(EXTRA_TRACK_PAYLOAD)?.let(TrackPayloadCodec::decode)
+                ?: throw IllegalArgumentException("Android Auto track unavailable")
         }
-        deferred.invokeOnCompletion {
-            searchInFlight.remove(query, deferred)
-        }
-        val existing = searchInFlight.putIfAbsent(query, deferred)
-        if (existing != null) {
-            deferred.cancel()
-            return existing
-        }
-        deferred.start()
-        return deferred
-    }
-
-    suspend fun playableItems(mediaItems: List<MediaItem>): List<MediaItem> = withContext(Dispatchers.IO) {
-        mediaItems.mapNotNull { mediaItem ->
-            runCatching { playableItem(mediaItem) }
-                .onFailure { Timber.w(it, "Android Auto playable item failed") }
-                .getOrNull()
-        }
+        val selected = tracks[index]
+        val ready = resolveAutoTrack(selected)
+        val normalized = tracks.toMutableList().apply { this[index] = ready }.distinctBy(::playbackQueueIdentity)
+        val selectedIndex = normalized.indexOfFirst { playbackQueueIdentity(it) == playbackQueueIdentity(ready) }
+        currentCoroutineContext().ensureActive()
+        queueEngine.replace(
+            tracks = normalized.toMutableList().apply { this[selectedIndex] = ready },
+            currentIndex = selectedIndex,
+            keepPlaybackModes = true,
+            radioEnabled = !ready.streamUrl.isLocalUri()
+        )
+        buildPlaybackItem(ready)
     }
 
     private fun rootChildren(): List<MediaItem> = listOf(
@@ -346,7 +346,7 @@ class AndroidAutoLibrary(context: Context) {
         )
     )
 
-    private fun localizedFolders(): ConcurrentHashMap<String, MediaItem> {
+    private fun localizedFolders(): MutableMap<String, MediaItem> {
         val locale = appContext.resources.configuration.locales[0]
         if (locale != foldersLocale) {
             folders.clear()
@@ -397,7 +397,7 @@ class AndroidAutoLibrary(context: Context) {
             .setDescription(track.source)
             .setIsBrowsable(false)
             .setIsPlayable(true)
-            .setDurationMs(track.durationMs.takeIf { it > 0L } ?: C.TIME_UNSET)
+            .setDurationMs(track.durationMs.takeIf { it > 0L })
             .setExtras(extras)
             .apply { mediaSessionArtworkUri(art)?.let(::setArtworkUri) }
             .build()
@@ -411,17 +411,13 @@ class AndroidAutoLibrary(context: Context) {
     private suspend fun playableItem(mediaItem: MediaItem): MediaItem {
         if (!mediaItem.mediaId.startsWith(ID_TRACK_PREFIX) && mediaItem.localConfiguration?.uri != null) return mediaItem
         val mediaId = mediaItem.mediaId
-        val track = catalog[mediaId]
+        val track = findTrack(mediaId)
             ?: mediaItem.mediaMetadata.extras?.getString(EXTRA_TRACK_PAYLOAD)?.let(TrackPayloadCodec::decode)
             ?: return mediaItem
         val queueSnapshot = queueEngine.state.value
         val queueIndex = queueSnapshot.tracks.indexOfFirst { playbackQueueIdentity(it) == playbackQueueIdentity(track) }
         if (queueIndex >= 0) queueEngine.select(queueIndex, positionMs = 0L, rememberCurrent = true)
-        val ready = when {
-            track.streamUrl.isLocalUri() -> track
-            track.isPersonalCollectionTrack() -> resolver.resolve(track)
-            else -> resolver.resolve(track.ensureYoutubeIdentity())
-        }
+        val ready = resolveAutoTrack(track)
         if (queueIndex >= 0) {
             queueEngine.updateTrackAt(queueIndex, ready)
         } else {
@@ -433,6 +429,12 @@ class AndroidAutoLibrary(context: Context) {
             )
         }
         return buildPlaybackItem(ready)
+    }
+
+    private suspend fun resolveAutoTrack(track: Track): Track = when {
+        track.streamUrl.isLocalUri() -> track
+        track.isPersonalCollectionTrack() -> resolver.resolve(track)
+        else -> resolver.resolve(track.ensureYoutubeIdentity())
     }
 
     private suspend fun Track.ensureYoutubeIdentity(): Track {
@@ -452,35 +454,31 @@ class AndroidAutoLibrary(context: Context) {
     }
 
     private fun buildPlaybackItem(track: Track): MediaItem {
-        val art = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }
-        val extras = Bundle().apply {
-            if (track.videoStreamUrl.isNotBlank()) {
-                putString(PlaybackService.EXTRA_VIDEO_URL, track.videoStreamUrl)
-                putString(PlaybackService.EXTRA_VIDEO_CACHE_KEY, LevyraPlaybackCacheKey.video(track))
-            }
-        }
-        val metadata = MediaMetadata.Builder()
-            .setTitle(track.title)
-            .setArtist(track.artist)
-            .setAlbumTitle(track.album)
-            .setSubtitle(track.artist)
-            .setIsBrowsable(false)
-            .setIsPlayable(true)
-            .setDurationMs(track.durationMs.takeIf { it > 0L } ?: C.TIME_UNSET)
-            .setExtras(extras)
-            .apply { mediaSessionArtworkUri(art)?.let(::setArtworkUri) }
-            .build()
-        return MediaItem.Builder()
-            .setUri(track.streamUrl)
-            .setMediaId(LevyraMediaItemFactory.mediaId(track))
-            .setMediaMetadata(metadata)
-            .apply { if (!track.streamUrl.isLocalUri()) setCustomCacheKey(LevyraPlaybackCacheKey.stream(track)) }
-            .build()
+        return LevyraMediaItemFactory.build(track)
     }
 
     private fun trackMediaId(track: Track): String {
-        val seed = listOf(track.id, track.title, track.artist, track.streamUrl.ifBlank { track.videoUrl }).joinToString("|")
-        return ID_TRACK_PREFIX + seed.sha256().take(24)
+        return ID_TRACK_PREFIX + playbackQueueIdentity(track).sha256().take(24)
+    }
+
+    private suspend fun findTrack(mediaId: String): Track? {
+        catalog[mediaId]?.let { return it }
+        if (!mediaId.startsWith(ID_TRACK_PREFIX)) return null
+        fun List<Track>.matching(): Track? = firstOrNull { trackMediaId(it) == mediaId }
+        val known = queueEngine.state.value.tracks.matching()
+            ?: musicRepository.cachedTracks().matching()
+            ?: favoritesStore.load().matching()
+            ?: preferences.loadRecentSearches().matching()
+            ?: playlistStore.loadAll().asSequence().flatMap { it.tracks.asSequence() }.firstOrNull { trackMediaId(it) == mediaId }
+        if (known != null) return known.also { catalog[mediaId] = it }
+        var offset = 0
+        while (true) {
+            currentCoroutineContext().ensureActive()
+            val page = downloads(AndroidAutoPageWindow(offset, MAX_PAGE_ITEMS))
+            page.matching()?.let { return it.also { track -> catalog[mediaId] = track } }
+            if (page.size < MAX_PAGE_ITEMS) return null
+            offset += MAX_PAGE_ITEMS
+        }
     }
 
     private suspend fun queueTracks(window: AndroidAutoPageWindow = DERIVED_WINDOW): List<Track> = withContext(Dispatchers.IO) {
@@ -551,35 +549,53 @@ class AndroidAutoLibrary(context: Context) {
         (local + fallback).distinctTracks().take(MAX_FOLDER_TRACKS)
     }
 
-    private suspend fun searchTracks(query: String): List<Track> = withContext(Dispatchers.IO) {
-        cachedSearch(query)?.let { return@withContext it }
-        val local = searchLocal(query)
+    private suspend fun searchItems(query: String): List<MediaItem> = withContext(Dispatchers.IO) {
         val languageCode = contentLanguage()
+        val cacheKey = "$languageCode\u001f${query.lowercase(Locale.ROOT)}"
+        cachedSearch(cacheKey)?.let { return@withContext it }
+        val local = searchLocal(query).map { trackItem(it) }
         val remote = try {
-            musicRepository.search(query, 30, languageCode)
+            val results = musicRepository.searchForAndroidAuto(query, languageCode)
+            buildList<MediaItem> {
+                addAll((results.songs + results.videos).distinctTracks().map { trackItem(it) })
+                results.artists.take(8).forEach { artist ->
+                    val id = ID_ARTIST_PREFIX + artist.name.lowercase(Locale.ROOT).sha256().take(22)
+                    artistFolders[id] = artist.name
+                    add(folder(id, artist.name, appContext.getString(R.string.car_artist_folder_subtitle)))
+                }
+                results.albums.take(8).forEach { album ->
+                    val id = ID_ALBUM_PREFIX + album.browseId.ifBlank { album.query }.sha256().take(22)
+                    searchAlbums[id] = album
+                    albumFolders[id] = album.title to album.artist
+                    add(folder(id, album.title, album.artist))
+                }
+            }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Exception) {
-            Timber.w(error, "Android Auto remote search failed")
-            return@withContext local.distinctTracks().take(MAX_FOLDER_TRACKS)
+            Timber.w("Android Auto remote search failed: %s at %s; local=%d", error.javaClass.simpleName,
+                error.stackTrace.firstOrNull { it.className.startsWith("com.luc4n3x.levyra") }, local.size)
+            if (local.isNotEmpty()) return@withContext local
+            throw error
         }
-        val result = (local + remote).distinctTracks().take(MAX_FOLDER_TRACKS)
-        cacheSearch(query, result)
+        val result = (local + remote).distinctBy { it.mediaId }.take(MAX_FOLDER_TRACKS)
+        currentCoroutineContext().ensureActive()
+        cacheSearch(cacheKey, result)
         result
     }
 
-    private fun cachedSearch(query: String): List<Track>? = synchronized(searchCacheLock) {
-        val now = System.currentTimeMillis()
+    private fun cachedSearch(query: String): List<MediaItem>? = synchronized(searchCacheLock) {
+        val now = android.os.SystemClock.elapsedRealtime()
         val iterator = searchCache.entries.iterator()
         while (iterator.hasNext()) {
             if (now - iterator.next().value.createdAt >= SEARCH_TTL_MS) iterator.remove()
         }
-        searchCache[query]?.tracks
+        searchCache[query]?.items
     }
 
-    private fun cacheSearch(query: String, tracks: List<Track>) {
+    private fun cacheSearch(query: String, items: List<MediaItem>) {
         synchronized(searchCacheLock) {
-            searchCache[query] = TimedTracks(tracks, System.currentTimeMillis())
+            searchCache[query] = TimedItems(items, android.os.SystemClock.elapsedRealtime())
         }
     }
 
@@ -677,6 +693,9 @@ class AndroidAutoLibrary(context: Context) {
     }
 
     private suspend fun albumTracks(parentId: String): List<Track> = withContext(Dispatchers.IO) {
+        searchAlbums[parentId]?.let { album ->
+            return@withContext musicRepository.albumDetail(album, contentLanguage()).tracks.take(MAX_FOLDER_TRACKS)
+        }
         val pair = albumFolders[parentId] ?: return@withContext emptyList()
         val local = buildList {
             addAll(downloads())
@@ -786,7 +805,7 @@ class AndroidAutoLibrary(context: Context) {
 
     private fun streamUrlForPayload(track: Track): String = if (track.streamUrl.isLocalUri()) track.streamUrl else ""
 
-    private data class TimedTracks(val tracks: List<Track>, val createdAt: Long)
+    private data class TimedItems(val items: List<MediaItem>, val createdAt: Long)
 
     companion object {
         const val ID_ROOT = "levyra:auto:root"
@@ -811,6 +830,7 @@ class AndroidAutoLibrary(context: Context) {
         const val ID_TRACK_PREFIX = "levyra:auto:track:"
         const val EXTRA_TRACK_PAYLOAD = "levyra.auto.TRACK_PAYLOAD"
         const val EXTRA_SOURCE = "levyra.auto.SOURCE"
+        const val EXTRA_SEARCH_FAILURE = "levyra.auto.SEARCH_FAILURE"
         private const val MAX_FOLDER_TRACKS = 80
         private const val MAX_PLAYLISTS = 60
         private const val MAX_PAGE_ITEMS = 100
