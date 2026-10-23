@@ -4,6 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -92,34 +95,43 @@ internal fun LazyListScope.appleMusicArtistClosingItems(
     artist: ArtistProfile,
     appleArtist: AppleArtistPage?,
     strings: LevyraStrings,
-    onOpenArtistByName: (String) -> Unit
+    onOpenArtistByName: (String) -> Unit,
+    bottomPadding: Dp
 ) {
     val info = appleArtist?.info
     val youtubeBio = artist.biography?.takeIf { artist.hasBio }
-    if (info?.bio?.isNotBlank() == true || youtubeBio != null) {
-        item(key = "apple-artist-about", contentType = "apple-artist-about") {
-            val copy = remember(strings.code) { appleArtistInfoCopy(strings.code) }
-            val body = remember(info, youtubeBio) {
-                info?.bio?.takeIf(String::isNotBlank)?.let(::appleBioText) ?: AnnotatedString(youtubeBio?.let(::artistBiographyBody).orEmpty())
-            }
-            val details = remember(info, copy) {
-                buildList {
-                    info?.origin?.takeIf(String::isNotBlank)?.let { add(copy.hometown to it) }
-                    info?.bornOrFormed?.takeIf(String::isNotBlank)?.let { add((if (info.isGroup) copy.formed else copy.born) to it) }
-                    info?.genres?.takeIf { it.isNotEmpty() }?.let { add(copy.genre to it.joinToString(", ")) }
-                }
-            }
-            AppleMusicArtistAbout(title = copy.about, body = body, details = details)
-        }
-    }
+    val hasAbout = info?.bio?.isNotBlank() == true || youtubeBio != null
     val appleSimilar = appleArtist?.shelves?.firstOrNull { it.style == AppleArtistShelfStyle.Artists }
     val bubbles = appleSimilar?.items?.map { AppleArtistBubble(it.title, it.artworkUrl(AppleBubbleArtworkPx)) }
         ?: artist.relatedArtists.map { AppleArtistBubble(it.name, it.thumbnailUrl) }
-    if (bubbles.isNotEmpty()) {
-        item(key = "apple-artist-similar-title", contentType = "apple-artist-shelf-title") {
-            AppleMusicArtistShelfTitle(appleSimilar?.title?.takeIf(String::isNotBlank) ?: strings.similarArtists)
+    if (!hasAbout && bubbles.isEmpty()) {
+        item(key = "apple-artist-bottom", contentType = "apple-artist-bottom") { Spacer(Modifier.height(bottomPadding)) }
+        return
+    }
+    item(key = "apple-artist-closing", contentType = "apple-artist-closing") {
+        Column(modifier = Modifier.fillMaxWidth().background(AppleMusicDesign.groupedBackground)) {
+            if (hasAbout) {
+                val copy = remember(strings.code) { appleArtistInfoCopy(strings.code) }
+                val body = remember(info, youtubeBio) {
+                    info?.bio?.takeIf(String::isNotBlank)?.let(::appleBioText) ?: AnnotatedString(youtubeBio?.let(::artistBiographyBody).orEmpty())
+                }
+                val details = remember(info, copy) {
+                    buildList {
+                        info?.origin?.takeIf(String::isNotBlank)?.let { add(copy.hometown to it) }
+                        info?.bornOrFormed?.takeIf(String::isNotBlank)?.let { add((if (info.isGroup) copy.formed else copy.born) to it) }
+                        info?.genres?.takeIf { it.isNotEmpty() }?.let { add(copy.genre to it.joinToString(", ")) }
+                    }
+                }
+                AppleMusicArtistAbout(title = copy.about, body = body, details = details)
+            }
+            if (bubbles.isNotEmpty()) {
+                if (!hasAbout) Spacer(Modifier.height(AppleMusicDesign.sectionGap))
+                AppleMusicArtistShelfTitle(appleSimilar?.title?.takeIf(String::isNotBlank) ?: strings.similarArtists)
+                Spacer(Modifier.height(AppleSimilarTitleGap))
+                AppleMusicArtistBubbles(bubbles, onOpenArtistByName)
+            }
+            Spacer(Modifier.height(AppleMusicDesign.sectionGap + bottomPadding))
         }
-        item(key = "apple-artist-similar", contentType = "apple-artist-similar") { AppleMusicArtistBubbles(bubbles, onOpenArtistByName) }
     }
 }
 
@@ -273,3 +285,4 @@ internal const val AppleHeroArtworkMaxPx = 1600
 internal const val AppleHeroWaitMs = 4_000L
 internal const val AppleReleaseArtworkPx = 400
 private const val AppleBubbleArtworkPx = 300
+private val AppleSimilarTitleGap = 14.dp

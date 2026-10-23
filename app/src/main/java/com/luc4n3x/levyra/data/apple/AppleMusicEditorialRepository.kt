@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -136,23 +137,30 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
             Timber.w("Apple artist markup changed for %s", header.id)
             return null
         }
+        val topVideos = runCatching { topMusicVideos(storefront, header.id, language) }
+            .onFailure { if (it is CancellationException) throw it }
+            .getOrDefault(emptyList())
         return page.copy(
             artworkTemplate = page.artworkTemplate.ifBlank { header.artworkTemplate },
             squareMotion = header.squareMotion ?: page.squareMotion,
             wideMotion = header.wideMotion ?: page.wideMotion,
+            shelves = appleArtistShelvesWithTopVideos(page.shelves, topVideos),
             info = header.info
         )
     }
 
-    private suspend fun searchArtist(storefront: String, artistName: String, language: String): AppleArtistPage? {
-        val developerToken = tokenProvider.getDeveloperToken() ?: return null
-        val url = "$CATALOG_API_URL/v1/catalog/$storefront/search".toHttpUrl().newBuilder()
-            .addQueryParameter("term", artistName)
-            .addQueryParameter("types", "artists")
-            .addQueryParameter("limit", ARTIST_SEARCH_LIMIT.toString())
+    private suspend fun topMusicVideos(storefront: String, artistId: String, language: String): List<AppleCatalogItem> {
+        val url = "$CATALOG_API_URL/v1/catalog/$storefront/artists/$artistId/view/top-music-videos".toHttpUrl().newBuilder()
             .addQueryParameter("l", language)
-            .addQueryParameter("extend", "origin,bornOrFormed,artistBio,genreNames,isGroup,editorialVideo,artwork")
+            .addQueryParameter("limit", TOP_VIDEOS_LIMIT.toString())
+            .addQueryParameter("extend", "editorialNotes")
             .build()
+        val data = catalogJson(url, "Apple top videos")?.optJSONArray("data") ?: return emptyList()
+        return AppleArtistPageParser.topVideos(data)
+    }
+
+    private suspend fun catalogJson(url: HttpUrl, label: String): JSONObject? {
+        val developerToken = tokenProvider.getDeveloperToken() ?: return null
         val request = Request.Builder().url(url)
             .header("Authorization", "Bearer $developerToken")
             .header("Origin", "https://music.apple.com")
@@ -160,12 +168,23 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
             .build()
         val body = catalogApiClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                Timber.w("Apple artist search HTTP %d", response.code)
+                Timber.w("%s HTTP %d", label, response.code)
                 return null
             }
             response.body.string()
         }
-        val results = runCatching { JSONObject(body) }.getOrNull()
+        return runCatching { JSONObject(body) }.getOrNull()
+    }
+
+    private suspend fun searchArtist(storefront: String, artistName: String, language: String): AppleArtistPage? {
+        val url = "$CATALOG_API_URL/v1/catalog/$storefront/search".toHttpUrl().newBuilder()
+            .addQueryParameter("term", artistName)
+            .addQueryParameter("types", "artists")
+            .addQueryParameter("limit", ARTIST_SEARCH_LIMIT.toString())
+            .addQueryParameter("l", language)
+            .addQueryParameter("extend", "origin,bornOrFormed,artistBio,genreNames,isGroup,editorialVideo,artwork")
+            .build()
+        val results = catalogJson(url, "Apple artist search")
             ?.optJSONObject("results")?.optJSONObject("artists")?.optJSONArray("data") ?: return null
         val candidates = (0 until results.length()).mapNotNull { index ->
             val item = results.optJSONObject(index) ?: return@mapNotNull null
@@ -339,6 +358,7 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
         private const val ARTIST_TTL_MS = 6L * 60L * 60L * 1000L
         private const val MAX_ARTIST_PAGES = 24
         private const val ARTIST_SEARCH_LIMIT = 5
+        private const val TOP_VIDEOS_LIMIT = 12
         private const val CATALOG_API_HOST = "amp-api.music.apple.com"
         private const val CATALOG_API_URL = "https://$CATALOG_API_HOST"
 

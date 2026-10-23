@@ -126,6 +126,49 @@ class AppleArtistPageTest {
     }
 
     @Test
+    fun topVideosCarryArtistYearAndEditorialNote() {
+        val data = org.json.JSONArray(
+            """
+            [{"id":"901","attributes":{"name":"Synthetic Kiss","artistName":"Producer & Synthetic Artist","releaseDate":"2018-05-01",
+              "editorialNotes":{"short":"Summer vibes."},"contentRating":"explicit","durationInMillis":223123,
+              "artwork":{"url":"https://is1-ssl.mzstatic.com/image/thumb/video/{w}x{h}bb.jpg"},
+              "url":"https://music.apple.com/it/music-video/synthetic-kiss/901"}},
+             {"id":"902","attributes":{"name":"Plain Video","artistName":"Synthetic Artist","releaseDate":"2023"}},
+             {"id":"903","attributes":{"name":""}}]
+            """.trimIndent()
+        )
+
+        val videos = AppleArtistPageParser.topVideos(data)
+
+        assertEquals(listOf("Synthetic Kiss", "Plain Video"), videos.map { it.title })
+        val first = videos.first()
+        assertEquals(AppleCatalogItemKind.Video, first.kind)
+        assertEquals("Producer & Synthetic Artist", first.subtitle)
+        assertEquals("2018", first.heading)
+        assertEquals("Summer vibes.", first.description)
+        assertTrue(first.explicit)
+        assertEquals(223123L, first.durationMs)
+        assertEquals("", videos[1].description)
+    }
+
+    @Test
+    fun topVideosReplaceTheWebVideoShelfInPlace() {
+        val webVideos = AppleArtistShelf("web-videos", "Video", AppleArtistShelfStyle.Video, listOf(AppleCatalogItem("1", AppleCatalogItemKind.Video, "Old", "2026")))
+        val albums = AppleArtistShelf("albums", "Albums", AppleArtistShelfStyle.Square, listOf(AppleCatalogItem("2", AppleCatalogItemKind.Album, "Album", "2024")))
+        val similar = AppleArtistShelf("similar", "Similar", AppleArtistShelfStyle.Artists, listOf(AppleCatalogItem("3", AppleCatalogItemKind.Artist, "Other", "")))
+        val top = listOf(AppleCatalogItem("9", AppleCatalogItemKind.Video, "New", "Artist", heading = "2018"))
+
+        val replaced = appleArtistShelvesWithTopVideos(listOf(albums, webVideos, similar), top)
+        val inserted = appleArtistShelvesWithTopVideos(listOf(albums, similar), top)
+        val untouched = appleArtistShelvesWithTopVideos(listOf(albums, webVideos), emptyList())
+
+        assertEquals(listOf("albums", APPLE_TOP_VIDEOS_SHELF_ID, "similar"), replaced.map { it.id })
+        assertEquals(listOf("New"), replaced[1].items.map { it.title })
+        assertEquals(listOf("albums", APPLE_TOP_VIDEOS_SHELF_ID, "similar"), inserted.map { it.id })
+        assertEquals(listOf("albums", "web-videos"), untouched.map { it.id })
+    }
+
+    @Test
     fun biographyMarkupKeepsItalicRunsAndDecodesEntities() {
         val runs = AppleArtistPageParser.styledText("Before <i>Future &amp; Past</i>, after<br/>end")
 

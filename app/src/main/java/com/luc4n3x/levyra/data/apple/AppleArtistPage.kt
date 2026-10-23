@@ -37,6 +37,17 @@ data class AppleArtistPage(
     val fetchedAtMs: Long
 )
 
+internal const val APPLE_TOP_VIDEOS_SHELF_ID = "apple-top-videos"
+
+internal fun appleArtistShelvesWithTopVideos(shelves: List<AppleArtistShelf>, videos: List<AppleCatalogItem>): List<AppleArtistShelf> {
+    if (videos.isEmpty()) return shelves
+    val topVideos = AppleArtistShelf(APPLE_TOP_VIDEOS_SHELF_ID, "", AppleArtistShelfStyle.Video, videos)
+    val webVideos = shelves.indexOfFirst { shelf -> shelf.style == AppleArtistShelfStyle.Video && shelf.items.any { it.kind == AppleCatalogItemKind.Video } }
+    if (webVideos >= 0) return shelves.toMutableList().apply { set(webVideos, topVideos) }
+    val similar = shelves.indexOfFirst { it.style == AppleArtistShelfStyle.Artists }
+    return shelves.toMutableList().apply { add(if (similar >= 0) similar else size, topVideos) }
+}
+
 internal fun selectAppleArtistCandidate(requested: String, candidates: List<Pair<String, String>>): String? {
     val key = appleArtistNameKey(requested)
     if (key.isBlank()) return null
@@ -157,6 +168,25 @@ internal object AppleArtistPageParser {
         if (item.kind != AppleCatalogItemKind.Album) return null
         return AppleArtistLatestRelease(item, detail.optString("headline").trim(), detail.optString("subtitle").trim())
     }
+
+    fun topVideos(data: JSONArray): List<AppleCatalogItem> =
+        (0 until minOf(data.length(), MAX_SHELF_ITEMS)).mapNotNull { index ->
+            val node = data.optJSONObject(index) ?: return@mapNotNull null
+            val attributes = node.optJSONObject("attributes") ?: return@mapNotNull null
+            val title = attributes.optString("name").trim().ifBlank { return@mapNotNull null }
+            AppleCatalogItem(
+                id = node.optString("id").trim().ifBlank { return@mapNotNull null },
+                kind = AppleCatalogItemKind.Video,
+                title = title,
+                subtitle = attributes.optString("artistName").trim(),
+                heading = attributes.optString("releaseDate").trim().take(4).takeIf { it.length == 4 && it.all(Char::isDigit) }.orEmpty(),
+                description = attributes.optJSONObject("editorialNotes")?.optString("short").orEmpty().trim(),
+                artworkTemplate = attributes.optJSONObject("artwork")?.optString("url").orEmpty().takeIf { it.startsWith("https://") }.orEmpty(),
+                url = attributes.optString("url").takeIf { it.startsWith("https://music.apple.com/") }.orEmpty(),
+                explicit = attributes.optString("contentRating") == "explicit",
+                durationMs = attributes.optLong("durationInMillis", 0L)
+            )
+        }.distinctBy { it.id }
 
     fun header(id: String, attributes: JSONObject, fetchedAtMs: Long): AppleArtistPage? {
         val name = attributes.optString("name").trim().ifBlank { return null }

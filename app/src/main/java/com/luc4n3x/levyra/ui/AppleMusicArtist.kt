@@ -87,6 +87,7 @@ import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LevyraAppleMusicStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.appleArtistInfoCopy
 import com.luc4n3x.levyra.ui.theme.AppleMusicDesign
 import com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
@@ -340,7 +341,11 @@ internal fun AppleArtistPage.heroArtworkUrl(size: Int): String =
 
 internal fun LazyListScope.appleMusicArtistShelves(page: AppleArtistPage, actions: AppleArtistActions) {
     page.shelves.filter { it.style != AppleArtistShelfStyle.Artists }.forEach { shelf ->
-        item(key = "apple-shelf-title-${shelf.id}", contentType = "apple-artist-shelf-title") { AppleMusicArtistShelfTitle(shelf.title) }
+        item(key = "apple-shelf-title-${shelf.id}", contentType = "apple-artist-shelf-title") {
+            val code = LocalLevyraStrings.current.code
+            val title = if (shelf.style == AppleArtistShelfStyle.Video) remember(code) { appleArtistInfoCopy(code).topVideos } else shelf.title
+            AppleMusicArtistShelfTitle(title)
+        }
         item(key = "apple-shelf-${shelf.id}", contentType = "apple-artist-shelf-${shelf.style.name}") { AppleMusicArtistShelfRow(shelf, actions) }
     }
 }
@@ -406,8 +411,16 @@ private fun AppleMusicArtistCard(item: AppleCatalogItem, width: Dp, aspect: Floa
         )
         Spacer(Modifier.height(4.dp))
         AppleMusicTitle(item.title, item.explicit, MaterialTheme.typography.bodyMedium)
-        if (item.subtitle.isNotBlank()) {
-            Text(item.subtitle, color = AppleMusicDesign.secondaryLabel, style = MaterialTheme.typography.bodyMedium, maxLines = subtitleLines, overflow = TextOverflow.Ellipsis)
+        val secondary = if (item.kind == AppleCatalogItemKind.Video) {
+            listOf(item.subtitle, item.heading).filter(String::isNotBlank).joinToString(" • ")
+        } else {
+            item.subtitle
+        }
+        if (secondary.isNotBlank()) {
+            Text(secondary, color = AppleMusicDesign.secondaryLabel, style = MaterialTheme.typography.bodyMedium, maxLines = subtitleLines, overflow = TextOverflow.Ellipsis)
+        }
+        if (item.kind == AppleCatalogItemKind.Video && item.description.isNotBlank()) {
+            Text(item.description, color = AppleMusicDesign.secondaryLabel, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
 }

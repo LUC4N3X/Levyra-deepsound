@@ -768,6 +768,7 @@ import androidx.compose.ui.window.DialogProperties
 
 import com.luc4n3x.levyra.ui.theme.glassmorphism
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.appleArtistInfoCopy
 import com.luc4n3x.levyra.ui.i18n.searchDiscographyCopy
 import com.luc4n3x.levyra.ui.i18n.BulkLinkCaptureCopy
 import com.luc4n3x.levyra.ui.i18n.bulkLinkCaptureCopy
@@ -5381,10 +5382,12 @@ private fun ArtistOverlay(
             derivedStateOf { collapse() >= ArtistTitleDockStart }
         }
 
+        val artistBottomPadding = levyraTabContentBottomPadding(state.currentTrack != null)
+        val appleClosingOwnsBottom = LevyraIsAppleMusic && profile != null
         LazyColumn(
             state = artistListState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = levyraTabContentBottomPadding(state.currentTrack != null)),
+            contentPadding = PaddingValues(bottom = if (appleClosingOwnsBottom) 0.dp else artistBottomPadding),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             when {
@@ -5519,9 +5522,10 @@ private fun ArtistOverlay(
                             )
                         }
                     }
+                    val videoTitle = if (LevyraIsAppleMusic) appleArtistInfoCopy(strings.code).topVideos else strings.video
                     val videoItems: LazyListScope.() -> Unit = {
                         if (artist.videos.isNotEmpty()) {
-                            item(key = "artist-videos-title", contentType = "artist-section-title") { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.video) } }
+                            item(key = "artist-videos-title", contentType = "artist-section-title") { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(videoTitle) } }
                             item(key = "artist-videos", contentType = "artist-video-row") {
                                 LazyRow(
                                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -5570,7 +5574,7 @@ private fun ArtistOverlay(
                         artistPlaylistItems(artist, strings, onOpenPlaylist)
                         videoItems()
                     }
-                    artistClosingItems(artist, heroArtwork, strings, onOpenArtist, appleArtist, onOpenArtistByName)
+                    artistClosingItems(artist, heroArtwork, strings, onOpenArtist, appleArtist, onOpenArtistByName, artistBottomPadding)
                 }
             }
         }
@@ -5689,7 +5693,8 @@ private fun LazyListScope.artistClosingItems(
     strings: LevyraStrings,
     onOpenArtist: (ArtistHit) -> Unit,
     appleArtist: AppleArtistPage? = null,
-    onOpenArtistByName: (String) -> Unit = {}
+    onOpenArtistByName: (String) -> Unit = {},
+    bottomPadding: Dp = 0.dp
 ) {
     if (LevyraIsSpotify) {
         item(key = "spotify-artist-about", contentType = "spotify-artist-about") {
@@ -5707,7 +5712,7 @@ private fun LazyListScope.artistClosingItems(
         return
     }
     if (LevyraIsAppleMusic) {
-        appleMusicArtistClosingItems(artist, appleArtist, strings, onOpenArtistByName)
+        appleMusicArtistClosingItems(artist, appleArtist, strings, onOpenArtistByName, bottomPadding)
         return
     }
     if (artist.relatedArtists.isNotEmpty()) {
