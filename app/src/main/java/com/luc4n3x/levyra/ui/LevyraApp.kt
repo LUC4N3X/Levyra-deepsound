@@ -27334,28 +27334,44 @@ private fun ExploreMoodCollectionDestination(
             )
             return
         }
-        val isActive = state.exploreCategoryParams == providerCategory.params
-        val tracks = if (isActive) state.exploreTracks else emptyList()
-        LaunchedEffect(providerCategory.params, state.languageCode, isActive) {
-            if (!isActive) viewModel.selectExploreCategory(activeCategory)
+        val categoryTracks: @Composable () -> Unit = {
+            val isActive = state.exploreCategoryParams == providerCategory.params
+            val tracks = if (isActive) state.exploreTracks else emptyList()
+            LaunchedEffect(providerCategory.params, state.languageCode, isActive) {
+                if (!isActive) viewModel.selectExploreCategory(activeCategory)
+            }
+            ExploreCollectionDestinationScreen(
+                identity = providerCategory.params,
+                title = activeCategory.title,
+                subtitle = activeCategory.section.ifBlank { strings.exploreMoods },
+                zone = null,
+                tracks = tracks,
+                isLoading = state.isExploreLoading || !isActive,
+                currentTrackId = state.currentTrack?.id,
+                isPlaying = state.isPlaying,
+                strings = strings,
+                backEnabled = backEnabled,
+                onBack = { onDestinationChange(returnDestination) },
+                onPlayAll = { tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } },
+                onPlayTrack = { track -> viewModel.playFrom(tracks, track) },
+                onRequestTrackArtwork = viewModel::ensureExploreTrackArtwork,
+                bottomInset = exploreDestinationBottomInset(state)
+            )
         }
-        ExploreCollectionDestinationScreen(
-            identity = providerCategory.params,
-            title = activeCategory.title,
-            subtitle = activeCategory.section.ifBlank { strings.exploreMoods },
-            zone = null,
-            tracks = tracks,
-            isLoading = state.isExploreLoading || !isActive,
-            currentTrackId = state.currentTrack?.id,
-            isPlaying = state.isPlaying,
-            strings = strings,
-            backEnabled = backEnabled,
-            onBack = { onDestinationChange(returnDestination) },
-            onPlayAll = { tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } },
-            onPlayTrack = { track -> viewModel.playFrom(tracks, track) },
-            onRequestTrackArtwork = viewModel::ensureExploreTrackArtwork,
-            bottomInset = exploreDestinationBottomInset(state)
-        )
+        if (LevyraIsSpotify) {
+            SpotifyGenreScreen(
+                title = activeCategory.title,
+                params = providerCategory.params,
+                languageCode = state.languageCode,
+                bottomInset = exploreDestinationBottomInset(state),
+                backEnabled = backEnabled,
+                onBack = { onDestinationChange(returnDestination) },
+                onOpenPlaylist = viewModel::openPlaylistHit,
+                fallback = categoryTracks
+            )
+        } else {
+            categoryTracks()
+        }
         return
     }
 
