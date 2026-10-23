@@ -31,7 +31,11 @@ data class AppleMusicEditorialUiState(
     val failed: Boolean = false,
     val collection: AppleMusicCollectionUiState? = null,
     val artistKey: String = "",
-    val artist: AppleArtistPage? = null
+    val artist: AppleArtistPage? = null,
+    val genreKey: String = "",
+    val genrePage: AppleCatalogPage? = null,
+    val genreLoading: Boolean = false,
+    val genreFailed: Boolean = false
 )
 
 @Immutable
@@ -55,6 +59,27 @@ class AppleMusicEditorialViewModel(application: Application) : AndroidViewModel(
     private var pageJob: Job? = null
     private var collectionJob: Job? = null
     private var artistJob: Job? = null
+    private var genreJob: Job? = null
+
+    fun loadGenre(title: String, storefront: String, language: String, force: Boolean = false) {
+        val front = AppleStorefronts.normalize(storefront)
+        val lang = AppleStorefronts.language(language)
+        val key = "$front:$lang:$title"
+        if (!force && _state.value.genreKey == key) return
+        genreJob?.cancel()
+        _state.update { current -> current.copy(
+            genreKey = key, genrePage = current.genrePage.takeIf { current.genreKey == key },
+            genreLoading = true, genreFailed = false, storefront = front, language = lang
+        ) }
+        genreJob = viewModelScope.launch {
+            val page = repository.genre(title, front, lang)
+            _state.update { current ->
+                if (current.genreKey != key) current else current.copy(
+                    genrePage = page ?: current.genrePage, genreLoading = false, genreFailed = page == null
+                )
+            }
+        }
+    }
 
     suspend fun prefetchArtistHeader(artistName: String, storefront: String, language: String): AppleArtistPage? =
         repository.artistHeader(storefront, artistName, language)

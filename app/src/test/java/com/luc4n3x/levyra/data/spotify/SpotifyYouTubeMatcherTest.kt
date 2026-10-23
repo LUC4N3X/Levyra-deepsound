@@ -41,6 +41,20 @@ class SpotifyYouTubeMatcherTest {
     )
 
     @Test
+    fun classicalComposerAndPerformerCreditsMatchTheSameRecording() {
+        val catalog = sampleTrack(
+            "sp:classical", "Tales of Hoffmann: Barcarolle",
+            "Jacques Offenbach, Arthur Fiedler, Boston Pops Orchestra", durationMs = 215_000L
+        )
+        val youtube = sampleTrack(
+            "yt:classical", "Tales of Hoffmann: Barcarolle",
+            "Arthur Fiedler, Boston Pops Orchestra, Jacques Offenbach", durationMs = 216_000L
+        ).copy(videoType = "MUSIC_VIDEO_TYPE_ATV")
+
+        assertTrue(SpotifyYouTubeMatcher.scoreMatch(catalog, youtube) >= SpotifyYouTubeMatcher.DEFAULT_CONFIDENCE_THRESHOLD)
+    }
+
+    @Test
     fun exactMatchYieldsHighConfidence() {
         val spotifyTrack = sampleTrack("sp:1", "Blinding Lights", "The Weeknd", durationMs = 200_000L)
         val ytTrack = sampleTrack("yt:1", "Blinding Lights", "The Weeknd", durationMs = 202_000L, viewCount = 3_000_000_000L)

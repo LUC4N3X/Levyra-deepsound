@@ -367,6 +367,53 @@ class YoutubeMusicAlbumArtistIdentityTest {
     }
 
     @Test
+    fun emptyAlbumFilterRecoversAnAlbumFromSongMetadata() {
+        val requests = mutableListOf<String>()
+        val songs = JSONObject("""{
+            "musicResponsiveListItemRenderer": {
+                "flexColumns": [{"musicResponsiveListItemFlexColumnRenderer": {"text": {"runs": [
+                    {"text": "Song title"},
+                    ${artistRun("Artist One", "UC_SYNTH_ONE")},
+                    {"text": "SYNTH RELEASE", "navigationEndpoint": {"browseEndpoint": {
+                        "browseId": "MPRE_RECOVERED",
+                        "browseEndpointContextSupportedConfigs": {"browseEndpointContextMusicConfig": {
+                            "pageType": "MUSIC_PAGE_TYPE_ALBUM"
+                        }}
+                    }}}
+                ]}}}]
+            }
+        }""")
+
+        val albumOnly = YoutubeMusicRepository().searchAlbumHits("SYNTH RELEASE Artist One", "en", 12) { _, _, params ->
+            requests += params
+            if (params == YOUTUBE_MUSIC_SONG_SEARCH_PARAMS) songs else JSONObject()
+        }
+        assertTrue(albumOnly.isEmpty())
+        assertEquals(listOf(YOUTUBE_MUSIC_ALBUM_SEARCH_PARAMS), requests)
+        requests.clear()
+
+        val hits = YoutubeMusicRepository().searchAlbumHits(
+            "SYNTH RELEASE Artist One", "en", 12, ALBUM_RESOLUTION_RELEASE_TYPES
+        ) { _, _, params ->
+            requests += params
+            if (params == YOUTUBE_MUSIC_SONG_SEARCH_PARAMS) songs else JSONObject()
+        }
+
+        assertEquals(listOf(YOUTUBE_MUSIC_ALBUM_SEARCH_PARAMS, YOUTUBE_MUSIC_SONG_SEARCH_PARAMS), requests)
+        assertEquals("MPRE_RECOVERED", hits.single().browseId)
+        assertEquals("SYNTH RELEASE", hits.single().title)
+        assertEquals("Artist One", hits.single().artist)
+        assertEquals("UC_SYNTH_ONE", hits.single().artistBrowseId)
+    }
+
+    @Test
+    fun songRowsWithoutAlbumLinksAreNotAlbumCandidates() {
+        val hits = YoutubeMusicRepository().parseSongRowAlbumHits(searchPage("Song"), 12)
+
+        assertTrue(hits.isEmpty())
+    }
+
+    @Test
     fun albumCandidateSearchAsksForAlbumsOnly() {
         val requestedParams = mutableListOf<String>()
 
