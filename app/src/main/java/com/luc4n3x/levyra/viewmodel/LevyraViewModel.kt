@@ -13446,6 +13446,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private suspend fun resolveForPlayback(track: Track): Track {
         if (track.isPersonalCollectionTrack()) return resolver.resolve(track)
         if (isYoutubeShortTrack(track)) return resolvePlayableTrack(track)
+        if (com.luc4n3x.levyra.data.needsCatalogYoutubeIdentity(track)) return resolvePlayableTrack(track)
         val errors = mutableListOf<String>()
         try {
             return preserveEditorialArtwork(track, resolvePlayableTrack(track))

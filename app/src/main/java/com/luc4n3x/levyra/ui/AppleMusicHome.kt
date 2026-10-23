@@ -375,7 +375,7 @@ private fun soundtrackBlock(hero: StudioHero?): AppleHomeBlock? {
     }
 }
 @Composable
-private fun AppleMusicEditorialShelf(
+internal fun AppleMusicEditorialShelf(
     homeShelf: AppleHomeShelf,
     currentId: String?,
     explicitLabel: String,
@@ -434,7 +434,7 @@ private fun AppleMusicEditorialShelf(
 }
 
 @Composable
-private fun AppleMusicShelfScreen(
+internal fun AppleMusicShelfScreen(
     homeShelf: AppleHomeShelf,
     currentId: String?,
     explicitLabel: String,

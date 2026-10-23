@@ -41,9 +41,13 @@ data class AppleCatalogPlaylist(
     val fetchedAtMs: Long
 )
 
-internal enum class AppleCatalogPath(val segment: String) {
-    New("new"),
-    TopCharts("new/top-charts")
+internal data class AppleCatalogPath(val segment: String, val cacheName: String) {
+    companion object {
+        val New = AppleCatalogPath("new", "new")
+        val TopCharts = AppleCatalogPath("new/top-charts", "topcharts")
+        val Genres = AppleCatalogPath("room/1654814539", "genres")
+        val Moods = AppleCatalogPath("room/1654813864", "moods")
+    }
 }
 
 internal enum class AppleCatalogCollection(val segment: String) {
@@ -72,7 +76,9 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
     }
     private val tokenProvider by lazy { AppleDeveloperTokenProvider.get(appContext) }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val pages = ConcurrentHashMap<String, AppleCatalogPage>()
+    private val pages = java.util.Collections.synchronizedMap(object : LinkedHashMap<String, AppleCatalogPage>(MAX_MEMORY_PAGES, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, AppleCatalogPage>?): Boolean = size > MAX_MEMORY_PAGES
+    })
     private val playlists = ConcurrentHashMap<String, AppleCatalogPlaylist>()
     private val artists = object : LinkedHashMap<String, AppleArtistPage>(MAX_ARTIST_PAGES, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, AppleArtistPage>?): Boolean = size > MAX_ARTIST_PAGES
@@ -84,6 +90,17 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
     suspend fun newMusic(storefront: String, language: String): AppleCatalogResult? = page(AppleCatalogPath.New, storefront, language)
 
     suspend fun topCharts(storefront: String, language: String): AppleCatalogResult? = page(AppleCatalogPath.TopCharts, storefront, language)
+
+    suspend fun genre(title: String, storefront: String, language: String): AppleCatalogPage? {
+        for (directory in listOf(AppleCatalogPath.Genres, AppleCatalogPath.Moods)) {
+            val items = page(directory, storefront, language)?.page?.shelves.orEmpty().flatMap { it.items }
+            val curator = AppleExploreCatalog.findCurator(title, items)
+                ?: AppleExploreCatalog.findCurator(title, page(directory, "us", "en")?.page?.shelves.orEmpty().flatMap { it.items })
+                ?: continue
+            return page(AppleCatalogPath("curator/levyra/${curator.id}", "curator-${curator.id}"), storefront, language)?.page
+        }
+        return null
+    }
 
     suspend fun cachedNewMusic(storefront: String, language: String): AppleCatalogResult? = cachedPage(AppleCatalogPath.New, storefront, language)
 
@@ -325,7 +342,7 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
     private fun freshnessOf(page: AppleCatalogPage, now: Long): AppleCatalogFreshness =
         if (now - page.fetchedAtMs < PAGE_TTL_MS) AppleCatalogFreshness.Fresh else AppleCatalogFreshness.Stale
 
-    private fun pageKey(path: AppleCatalogPath, storefront: String, language: String): String = "${path.name.lowercase(Locale.ROOT)}-$storefront-$language"
+    private fun pageKey(path: AppleCatalogPath, storefront: String, language: String): String = "${path.cacheName}-$storefront-$language"
 
     private fun readStored(key: String, storefront: String): AppleCatalogPage? = runCatching {
         val file = File(cacheDirectory, "$key.json")
@@ -343,11 +360,15 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
                 target.delete()
                 temporary.renameTo(target)
             }
+            cacheDirectory.listFiles { file -> file.name.endsWith(".json") }
+                ?.sortedByDescending { it.lastModified() }?.drop(MAX_STORED_PAGES)?.forEach { it.delete() }
         }.onFailure { Timber.w(it, "Apple catalog cache write failed") }
     }
 
     companion object {
         private const val CACHE_DIRECTORY = "apple_catalog"
+        private const val MAX_MEMORY_PAGES = 12
+        private const val MAX_STORED_PAGES = 40
         private const val PAGE_TTL_MS = 6L * 60L * 60L * 1000L
         private const val MAX_STALE_MS = 7L * 24L * 60L * 60L * 1000L
         private const val PLAYLIST_TTL_MS = 3L * 60L * 60L * 1000L

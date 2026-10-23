@@ -195,6 +195,10 @@ internal suspend fun <T> withinPlaybackResolveBudget(timeoutMs: Long, block: sus
     return outcome.getOrThrow()
 }
 
+internal fun needsCatalogYoutubeIdentity(track: Track): Boolean =
+    !track.isPersonalCollectionTrack() && !track.source.equals("Offline", ignoreCase = true) && track.streamUrl.isBlank() &&
+        PlaybackSourceIdentity.sourceVideoId(track).isBlank()
+
 private const val YOUTUBE_NONCE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 private const val MAX_YOUTUBE_JSON_RESPONSE_BYTES = 8L * 1024L * 1024L
 private val youtubeNonceRandom = SecureRandom()
@@ -1053,8 +1057,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
-    private suspend fun resolveSpotifyTrackIfUnmatched(track: Track): Track {
-        if (!track.id.startsWith("spotify:") || track.counterpartVideoId.isNotBlank() || track.audioVideoId.isNotBlank()) {
+    private suspend fun resolveCatalogTrackIfUnmatched(track: Track): Track {
+        if (!needsCatalogYoutubeIdentity(track)) {
             return track
         }
         val cacheMatch = com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatchCache.get(context).get(track.id)
@@ -1064,7 +1068,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 counterpartVideoId = cacheMatch.videoId,
                 audioVideoId = cacheMatch.audioVideoId.ifBlank { cacheMatch.videoId },
                 videoType = cacheMatch.videoType.ifBlank { track.videoType },
-                source = "spotify_youtube",
+                source = if (track.id.startsWith("spotify:")) "spotify_youtube" else "catalog_youtube",
                 youtubeViewCount = maxOf(track.youtubeViewCount, cacheMatch.youtubeViewCount)
             )
         }
@@ -1080,16 +1084,16 @@ class PlaybackResolver private constructor(private val context: Context) {
                 counterpartVideoId = matchedYt.counterpartVideoId.ifBlank { videoId },
                 audioVideoId = videoId,
                 videoType = matchedYt.videoType.ifBlank { track.videoType },
-                source = "spotify_youtube",
+                source = if (track.id.startsWith("spotify:")) "spotify_youtube" else "catalog_youtube",
                 youtubeViewCount = maxOf(track.youtubeViewCount, matchedYt.youtubeViewCount)
             )
         }
         throw PlaybackBlockedException("Stream non disponibile")
     }
 
-    private suspend fun resolveSpotifyIdentityWithinBudget(track: Track): Track =
-        if (track.id.startsWith("spotify:") && track.counterpartVideoId.isBlank() && track.audioVideoId.isBlank()) {
-            withinPlaybackResolveBudget(3_500L) { resolveSpotifyTrackIfUnmatched(track) }
+    private suspend fun resolveCatalogIdentityWithinBudget(track: Track): Track =
+        if (needsCatalogYoutubeIdentity(track)) {
+            withinPlaybackResolveBudget(3_500L) { resolveCatalogTrackIfUnmatched(track) }
         } else track
 
     suspend fun resolve(track: Track, isVideoMode: Boolean = false): Track {
@@ -1102,10 +1106,10 @@ class PlaybackResolver private constructor(private val context: Context) {
                 .queryFor(requestTrack, isVideoMode, selectedAudioQuality)
                 ?.takeIf { hasInternetCapableNetwork() }
             if (alternativeQuery == null) {
-                resolveForPlayback(resolveSpotifyIdentityWithinBudget(requestTrack), isVideoMode)
+                resolveForPlayback(resolveCatalogIdentityWithinBudget(requestTrack), isVideoMode)
             } else {
                 highQualityPlayback.resolve(requestTrack, alternativeQuery, ::basePlaybackProvenance) {
-                    resolveForPlayback(resolveSpotifyIdentityWithinBudget(requestTrack), isVideoMode)
+                    resolveForPlayback(resolveCatalogIdentityWithinBudget(requestTrack), isVideoMode)
                 }
             }
         }
@@ -1124,7 +1128,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     suspend fun resolveForOffline(track: Track, audioQualityOverride: String? = null): Track {
         if (track.isPersonalCollectionTrack()) return personalCollections.resolveForDownload(track)
-        val targetTrack = resolveSpotifyIdentityWithinBudget(track)
+        val targetTrack = resolveCatalogIdentityWithinBudget(track)
         val quality = normalizeAudioQuality(audioQualityOverride ?: selectedAudioQuality)
         val resolved = resolveWithLanguageRevisionRetry(targetTrack) { requestTrack, preferredLanguage ->
             val reel = if (preferredLanguage.isBlank()) {

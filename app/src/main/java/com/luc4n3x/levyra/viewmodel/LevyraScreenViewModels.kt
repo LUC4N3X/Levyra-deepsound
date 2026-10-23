@@ -306,6 +306,7 @@ class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::sea
 }
 
 class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::exploreProjection) {
+    fun playVideoFrom(list: List<Track>, track: Track) = root.playVideoFrom(list, track)
     fun consumeExploreOpenRequest() = root.consumeExploreOpenRequest()
     private var mixPresentationJob: Job? = null
 

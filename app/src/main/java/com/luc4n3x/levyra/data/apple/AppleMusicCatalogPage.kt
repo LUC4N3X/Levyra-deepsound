@@ -97,10 +97,10 @@ object AppleCatalogPageParser {
     private fun parseShelf(section: JSONObject): AppleCatalogShelf? {
         val itemKind = section.optString("itemKind")
         val kind = when (itemKind) {
-            "containerDetailHeaderLockup" -> AppleCatalogShelfKind.Header
+            "containerDetailHeaderLockup", "headerComponentModel" -> AppleCatalogShelfKind.Header
             "flowcaseLockup" -> AppleCatalogShelfKind.Hero
             "trackLockup" -> AppleCatalogShelfKind.Songs
-            "squareLockup" -> AppleCatalogShelfKind.Grid
+            "squareLockup", "bubbleLockup", "mixedContentTypeLockup" -> AppleCatalogShelfKind.Grid
             "verticalVideoLockup", "horizontalLockup" -> AppleCatalogShelfKind.Videos
             else -> return null
         }
