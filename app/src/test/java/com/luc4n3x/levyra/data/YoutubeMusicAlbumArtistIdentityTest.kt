@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data
 
 import com.luc4n3x.levyra.domain.AlbumHit
+import com.luc4n3x.levyra.domain.ReleaseType
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -382,5 +383,40 @@ class YoutubeMusicAlbumArtistIdentityTest {
         assertEquals("MPRE_SYNTH_TRUE", hits.singleOrNull()?.browseId)
         assertEquals("Artist One, Artist Two", hits.singleOrNull()?.artist)
         assertEquals("UC_SYNTH_ONE", hits.singleOrNull()?.artistBrowseId)
+    }
+
+    @Test
+    fun albumShelvesStillSkipEpsByDefault() {
+        val hits = YoutubeMusicRepository().searchAlbumHits(query = "SYNTH RELEASE", languageCode = "en", limit = 12) { _, _, _ ->
+            searchPage("EP")
+        }
+
+        assertTrue(hits.isEmpty())
+    }
+
+    @Test
+    fun albumResolutionFindsAReleaseTheCatalogLabelsAsEp() {
+        val hits = YoutubeMusicRepository().searchAlbumHits(
+            query = "SYNTH RELEASE Artist One",
+            languageCode = "en",
+            limit = 12,
+            releaseTypes = ALBUM_RESOLUTION_RELEASE_TYPES
+        ) { _, _, _ -> searchPage("EP") }
+
+        val candidates = albumResolutionCandidates(seed(artist = "Artist One"), hits)
+
+        assertEquals("MPRE_SYNTH_TRUE", candidates.singleOrNull()?.browseId)
+        assertEquals(ReleaseType.Ep, candidates.singleOrNull()?.releaseType)
+        assertEquals("MPRE_SYNTH_TRUE", selectResolvedAlbumCandidate(seed(artist = "Artist One, Artist Two"), candidates)?.browseId)
+    }
+
+    @Test
+    fun albumResolutionIgnoresEpsWithADifferentTitle() {
+        val ep = seed(title = "Another Release", artist = "Artist One", browseId = "MPRE_OTHER_EP").copy(releaseType = ReleaseType.Ep)
+        val album = seed(title = "Older Album", artist = "Artist One", browseId = "MPRE_ALBUM").copy(releaseType = ReleaseType.Album)
+
+        val candidates = albumResolutionCandidates(seed(artist = "Artist One"), listOf(ep, album))
+
+        assertEquals(listOf("MPRE_ALBUM"), candidates.map { it.browseId })
     }
 }

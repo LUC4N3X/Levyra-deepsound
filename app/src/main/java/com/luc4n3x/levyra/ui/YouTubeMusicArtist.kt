@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.ArtistRelease
+import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.SpeedDial
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.likedTracksByArtist
@@ -69,6 +70,7 @@ import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LevyraYouTubeMusicSkinStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.YouTubeMusicSkinCopy
+import com.luc4n3x.levyra.ui.i18n.searchDiscographyCopy
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
 import com.luc4n3x.levyra.ui.theme.YouTubeMusicDesign
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
@@ -219,24 +221,9 @@ private fun LazyListScope.youTubeMusicArtistItems(
             }
         }
     }
-    if (artist.featuredPlaylists.isNotEmpty()) {
-        item(key = "ytm-artist-playlists", contentType = "ytm-artist-cards") {
-            val playlists = artist.featuredPlaylists
-            ArtistSection(copy.playlistsBy(artist.name)) {
-                YouTubeMusicCardCarousel(
-                    remember(playlists) {
-                        playlists.map { playlist ->
-                            YouTubeMusicCardModel(
-                                "playlist-${playlist.playlistId.ifBlank { playlist.browseId.ifBlank { playlist.title } }}", playlist.title,
-                                listOf(playlist.author, playlist.trackCountLabel).filter(String::isNotBlank).joinToString(" • "),
-                                playlist.thumbnailUrl,
-                                onClick = { viewModel.openPlaylistHit(playlist) }
-                            )
-                        }
-                    }
-                )
-            }
-        }
+    playlistShelf("ytm-artist-playlists", artist.artistPlaylists, viewModel) { copy.playlistsBy(artist.name) }
+    playlistShelf("ytm-artist-featured-on", artist.featuredPlaylists, viewModel) {
+        searchDiscographyCopy(LocalLevyraStrings.current.code).featuredOn
     }
     if (artist.relatedArtists.isNotEmpty()) {
         item(key = "ytm-artist-fans", contentType = "ytm-artist-cards") {
@@ -255,6 +242,31 @@ private fun LazyListScope.youTubeMusicArtistItems(
     }
     if (artist.hasBio) {
         item(key = "ytm-artist-about", contentType = "ytm-artist-about") { YouTubeMusicArtistAbout(copy.about, artist.bio) }
+    }
+}
+
+private fun LazyListScope.playlistShelf(
+    key: String,
+    playlists: List<PlaylistHit>,
+    viewModel: LevyraViewModel,
+    title: @Composable () -> String
+) {
+    if (playlists.isEmpty()) return
+    item(key = key, contentType = "ytm-artist-cards") {
+        ArtistSection(title()) {
+            YouTubeMusicCardCarousel(
+                remember(playlists) {
+                    playlists.map { playlist ->
+                        YouTubeMusicCardModel(
+                            "playlist-${playlist.playlistId.ifBlank { playlist.browseId.ifBlank { playlist.title } }}", playlist.title,
+                            listOf(playlist.author, playlist.trackCountLabel).filter(String::isNotBlank).joinToString(" • "),
+                            playlist.thumbnailUrl,
+                            onClick = { viewModel.openPlaylistHit(playlist) }
+                        )
+                    }
+                }
+            )
+        }
     }
 }
 

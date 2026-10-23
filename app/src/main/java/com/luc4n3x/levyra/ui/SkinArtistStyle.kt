@@ -39,7 +39,7 @@ internal fun artistHeroOverlineColor(): Color = when {
 
 @Composable
 internal fun artistPortraitFrame(): Modifier {
-    if (LevyraIsTorque || LevyraIsSpotify || LevyraIsYouTubeMusic || !LevyraSkinManagesLayout) return Modifier
+    if (LevyraIsTorque || LevyraIsSpotify || LevyraIsYouTubeMusic || LevyraIsAppleMusic || !LevyraSkinManagesLayout) return Modifier
     if (LevyraIsNocturne) {
         val shape = RoundedCornerShape(Nocturne78Design.artworkCorner)
         return Modifier.statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 144.dp)

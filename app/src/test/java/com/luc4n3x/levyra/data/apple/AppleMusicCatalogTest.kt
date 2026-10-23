@@ -97,6 +97,19 @@ class AppleMusicCatalogTest {
     }
 
     @Test
+    fun albumUrlKeepsStorefrontAndCatalogId() {
+        assertEquals(
+            "us" to "6822944288",
+            AppleCatalogIds.albumFromUrl("https://music.apple.com/us/album/young-manhood-and-other-donatable-organs/6822944288")
+        )
+        assertEquals("it" to "1440857781", AppleCatalogIds.albumFromUrl("https://music.apple.com/it/album/x/1440857781?i=1440857782"))
+        assertNull(AppleCatalogIds.albumFromUrl("https://music.apple.com/us/playlist/today/pl.f4d106fed2bd41149aaacabb233eb5eb"))
+        assertNull(AppleCatalogIds.albumFromUrl("https://music.apple.com.evil.example/us/album/x/6822944288"))
+        assertNull(AppleCatalogIds.albumFromUrl("https://music.apple.com/us/album/x/not-an-id"))
+        assertNull(AppleCatalogIds.albumFromUrl(""))
+    }
+
+    @Test
     fun codecRoundTripsPage() {
         val parsed = AppleCatalogPageParser.parse(page(listOf(hero, songs, charts).joinToString(",")), "it", 99L)!!
         val decoded = AppleCatalogPageCodec.decode(AppleCatalogPageCodec.encode(parsed), "it")
