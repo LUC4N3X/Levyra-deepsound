@@ -874,13 +874,13 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         selectCandidates: (List<Track>) -> List<Track> = { it }
     ): List<Track> {
         val songs = try {
-            searchSongsPage(query, languageCode).items.take(limit)
+            searchSongsPage(query, languageCode).items
         } catch (error: CancellationException) {
             throw error
         } catch (_: Exception) {
             emptyList()
         }
-        return selectCandidates(songs).ifEmpty { selectCandidates(search(query, limit, languageCode)) }
+        return selectCandidates(songs).take(limit).ifEmpty { selectCandidates(search(query, limit, languageCode)).take(limit) }
     }
 
     /** YouTube Music video-filtered search, with a bounded generic-search fallback. */
@@ -2522,10 +2522,16 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
                     .orEmpty()
                 return pageType to endpoint.optString("browseId").trim()
             }
-            val albumRun = runs.firstOrNull { pageTypeOf(it).first == MUSIC_PAGE_TYPE_ALBUM } ?: return@forEach
+            val albumRun = runs.firstOrNull {
+                val (pageType, id) = pageTypeOf(it)
+                pageType == MUSIC_PAGE_TYPE_ALBUM || (pageType.isBlank() && id.startsWith("MPRE", ignoreCase = true))
+            } ?: return@forEach
             val browseId = pageTypeOf(albumRun).second.takeIf { it.startsWith("MPRE", ignoreCase = true) } ?: return@forEach
             val title = albumRun.optString("text").trim().takeIf(::isPlausibleYoutubeMusicAlbumTitle) ?: return@forEach
-            val artistRuns = runs.filter { pageTypeOf(it).first == MUSIC_PAGE_TYPE_ARTIST }
+            val artistRuns = runs.filter {
+                val (pageType, id) = pageTypeOf(it)
+                pageType == MUSIC_PAGE_TYPE_ARTIST || (pageType.isBlank() && id.startsWith("MPLA", ignoreCase = true))
+            }
             val artist = artistRuns.map { it.optString("text").trim() }.filter(String::isNotBlank).distinct().joinToString(", ")
             if (artist.isBlank() || albums.containsKey(browseId)) return@forEach
             albums[browseId] = AlbumHit(

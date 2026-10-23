@@ -2524,7 +2524,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 .forEach { candidate ->
                     output.putIfAbsent(candidate.id, candidate.copy(streamUrl = "", videoStreamUrl = ""))
                 }
-            if (output.isNotEmpty() && (spotifyIdentityOnly || PlaybackSourceIdentity.sourceVideoId(track).isBlank()) || output.size >= 4) break
+            if (spotifyIdentityOnly && output.isNotEmpty() || output.size >= 4) break
         }
         output.values
             .sortedByDescending { scoreAlternativeCandidate(track, it) }

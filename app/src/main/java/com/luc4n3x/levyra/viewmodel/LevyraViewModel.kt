@@ -13455,31 +13455,36 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         } catch (error: Throwable) {
             error.message?.takeIf(String::isNotBlank)?.let(errors::add)
         }
-        val candidates = searchPlayableCandidates(track)
-        if (candidates.isEmpty()) throw IllegalStateException("Nessun risultato YouTube per ${track.title}")
-        for (candidate in candidates) {
-            val carried = LevyraPersonalOrbit.preferAlbumArtwork(candidate, track)
-            val selected = if (_state.value.isVideoMode) {
-                youtubePlayableTrack(carried, preferVideo = true) ?: youtubePlayableTrack(carried) ?: carried
-            } else {
-                youtubePlayableTrack(carried) ?: carried
-            }
-            try {
-                return preserveEditorialArtwork(track, resolvePlayableTrack(selected))
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                error.message
-                    ?.takeIf(String::isNotBlank)
-                    ?.let { errors += "${candidate.title} - ${candidate.artist}: $it" }
-                resolver.invalidate(selected, _state.value.isVideoMode)
+        val attemptedCandidates = mutableSetOf(track.id)
+        for (genericOnly in listOf(false, true)) {
+            if (genericOnly && _state.value.isVideoMode) break
+            val candidates = searchPlayableCandidates(track, genericOnly)
+            if (!genericOnly && candidates.isEmpty()) break
+            for (candidate in candidates) {
+                if (!attemptedCandidates.add(candidate.id)) continue
+                val carried = LevyraPersonalOrbit.preferAlbumArtwork(candidate, track)
+                val selected = if (_state.value.isVideoMode) {
+                    youtubePlayableTrack(carried, preferVideo = true) ?: youtubePlayableTrack(carried) ?: carried
+                } else {
+                    youtubePlayableTrack(carried) ?: carried
+                }
+                try {
+                    return preserveEditorialArtwork(track, resolvePlayableTrack(selected))
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Throwable) {
+                    error.message
+                        ?.takeIf(String::isNotBlank)
+                        ?.let { errors += "${candidate.title} - ${candidate.artist}: $it" }
+                    resolver.invalidate(selected, _state.value.isVideoMode)
+                }
             }
         }
         val reason = errors.firstOrNull() ?: "YouTube non ha fornito uno stream audio riproducibile per ${track.title}"
         throw IllegalStateException(reason)
     }
 
-    private suspend fun searchPlayableCandidates(track: Track): List<Track> {
+    private suspend fun searchPlayableCandidates(track: Track, genericOnly: Boolean = false): List<Track> {
         val base = "${track.title} ${track.artist}".trim()
         val queries = if (_state.value.isVideoMode) {
             listOf("$base official music video", "$base official video", "$base music video", base)
@@ -13490,6 +13495,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         for (query in queries) {
             val matches = if (_state.value.isVideoMode) {
                 repository.searchMusicVideos(query, 8, _state.value.languageCode)
+            } else if (genericOnly) {
+                repository.search(query, 8, _state.value.languageCode)
             } else {
                 repository.searchForPlayback(query, 8, _state.value.languageCode) { candidates ->
                     candidates.filter { isPlaybackCandidateCompatible(track, it) }
