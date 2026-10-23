@@ -237,6 +237,7 @@ internal class YoutubeMusicResilienceClient(
         var lastFailure: Throwable? = null
 
         for (profile in orderedProfiles) {
+            if (Thread.currentThread().isInterrupted) return null
             val remainingMs = deadline - monotonicClock()
             if (remainingMs <= 0L) {
                 lastFailure = IOException("YouTube Music fallback deadline exceeded")
@@ -260,7 +261,8 @@ internal class YoutubeMusicResilienceClient(
             val response = try {
                 transport.execute(request)
             } catch (error: Exception) {
-                if (error is InterruptedException) {
+                if (error is InterruptedException || Thread.currentThread().isInterrupted ||
+                    currentPlaybackCancellationJob()?.isActive == false) {
                     Thread.currentThread().interrupt()
                     return null
                 }
@@ -750,15 +752,19 @@ private class OkHttpYoutubeMusicTransport(context: Context?) : YoutubeMusicTrans
 
         val httpRequest = GoogleApiKeyHeaders.applyTo(builder, appContext).build()
         val startedAt = System.nanoTime()
-        return client.newCall(httpRequest)
+        val call = client.newCall(httpRequest)
             .apply { timeout().timeout(request.timeoutMs, TimeUnit.MILLISECONDS) }
-            .execute()
-            .use { response ->
+        val cancellation = watchPlaybackCancellation(call::cancel)
+        return try {
+            call.execute().use { response ->
                 YoutubeMusicTransportResponse(
                     code = response.code,
                     body = response.body.string(),
                     latencyMs = ((System.nanoTime() - startedAt) / 1_000_000L).coerceAtLeast(1L)
                 )
             }
+        } finally {
+            cancellation.close()
+        }
     }
 }

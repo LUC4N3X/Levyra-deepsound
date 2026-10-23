@@ -936,6 +936,33 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         bestSongMatch(title, artist, search(query, SONG_MATCH_CANDIDATE_LIMIT, languageCode))
     }
 
+    suspend fun searchForAndroidAuto(query: String, languageCode: String): SearchResults =
+        withContext(Dispatchers.IO) {
+            runCatchingPreservingCancellation {
+                kotlinx.coroutines.runInterruptible {
+                    val clean = query.trim()
+                    if (clean.length < 2) return@runInterruptible SearchResults()
+                    val root = searchInnerTubeRaw(clean, languageCode)
+                    if (Thread.currentThread().isInterrupted) throw InterruptedException("Android Auto search cancelled")
+                    if (root == null) {
+                        val songs = try {
+                            searchYoutubeExtractor(clean, 30)
+                        } catch (error: org.schabi.newpipe.extractor.exceptions.ParsingException) {
+                            if (Thread.currentThread().isInterrupted) throw InterruptedException("Android Auto search cancelled")
+                            searchYoutubeExtractor(clean, 30, musicOnly = false)
+                        }
+                        rememberSearchTracks(songs)
+                        return@runInterruptible SearchResults(songs = songs)
+                    }
+                    val parsed = parseSearchOverview(root, clean)
+                    val songs = parsed.songs.ifEmpty { parseLegacyVideoRenderers(root, clean) }
+                    rememberSearchTracks(songs)
+                    rememberSearchTracks(parsed.videos)
+                    parsed.copy(songs = songs.take(30), videos = parsed.videos.take(10))
+                }
+            }.getOrThrow()
+        }
+
     suspend fun searchEverything(query: String, languageCode: String = LevyraLanguageCatalog.deviceDefault()): SearchResults = withContext(Dispatchers.IO) {
         val cleanQuery = query.trim()
         if (cleanQuery.length < 2) return@withContext SearchResults()
