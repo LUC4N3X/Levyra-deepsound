@@ -206,7 +206,8 @@ object PlaylistMatchEngine {
         val cleanRecording = MatchSignal.TITLE_EXACT in signals && durationCorroborated &&
             MatchSignal.VERSION_CONFLICT !in signals && MatchSignal.EXPLICIT_CONFLICT !in signals
         if (reasons.any { it.detail == INCOMPLETE_CREDITS_DETAIL } &&
-            !(cleanRecording && candidate.kind == CandidateKind.SONG && MatchSignal.ALBUM_SAME in signals)
+            !(cleanRecording && candidate.kind == CandidateKind.SONG &&
+                (MatchSignal.ALBUM_SAME in signals || MatchSignal.ALBUM_EDITION in signals))
         ) {
             limit(79)
         }
@@ -313,12 +314,13 @@ object PlaylistMatchEngine {
         if (leftIsrc.isNotEmpty() && leftIsrc == normalizeIsrc(right.isrc)) return true
         val a = MusicIdentityText.title(left.title)
         val b = MusicIdentityText.title(right.title)
-        val leftArtist = normalizedArtists(left.artists).firstOrNull() ?: return false
+        val leftCredits = normalizedArtists(left.artists).toSet() + a.featuredArtists
+        if (leftCredits.isEmpty()) return false
         val durationsCompatible = left.durationMs <= 0L || right.durationMs <= 0L ||
             abs(left.durationMs - right.durationMs) <= SAME_RECORDING_DURATION_MS
         return a.core == b.core &&
             versionIdentity(a) == versionIdentity(b) &&
-            leftArtist in normalizedArtists(right.artists) &&
+            leftCredits.any { it in normalizedArtists(right.artists) || it in b.featuredArtists } &&
             durationsCompatible
     }
 
@@ -370,7 +372,8 @@ object PlaylistMatchEngine {
                 other.score >= MatchConfidence.AUTO_ACCEPT_SCORE &&
                 !sameRecording(selected.candidate, other.candidate) &&
                 !(source.durationMs <= 0L && sameWork(selected.candidate, other.candidate)) &&
-                !durationDecides(source, selected.candidate, other.candidate)
+                !durationDecides(source, selected.candidate, other.candidate) &&
+                !(provisional(other) && !provisional(selected))
         }
     }
 
@@ -418,18 +421,18 @@ object PlaylistMatchEngine {
         return when {
             primary in candidatePrimary -> {
                 val leading = candidatePrimary.firstOrNull() == primary
-                val exact = leading && sameArtistCredits(candidateAll, expected)
-                val onlyMissing = leading && !exact && containsCredits(expected, candidateAll) &&
+                val exact = sameArtistCredits(candidateAll, expected)
+                val differentCredits = leading && !exact &&
                     expected.none { name -> name in sourceTitle.featuredArtists && !containsCredits(candidateAll, setOf(name)) }
                 when {
                     exact -> Unit
-                    onlyMissing -> limit(84)
+                    differentCredits -> limit(84)
                     else -> limit(79)
                 }
                 reasons += if (exact) {
                     MatchReason(MatchSignal.ARTIST_EXACT)
                 } else {
-                    MatchReason(MatchSignal.ARTIST_PRIMARY, detail = if (onlyMissing) INCOMPLETE_CREDITS_DETAIL else "")
+                    MatchReason(MatchSignal.ARTIST_PRIMARY, detail = if (differentCredits) INCOMPLETE_CREDITS_DETAIL else "")
                 }
                 if (exact) 32 else 27
             }
@@ -520,7 +523,7 @@ object PlaylistMatchEngine {
             score -= 40
             limit(50)
         }
-        val differingLabels = (sourceLabels - candidateLabels) + (candidateLabels - sourceLabels)
+        val differingLabels = sourceLabels - candidateLabels + (candidateLabels - sourceLabels)
         val radioEditOnly = medium.isNotEmpty() && TrackVersionMarker.RADIO_EDIT in medium &&
             medium.all { it == TrackVersionMarker.RADIO_EDIT || it == TrackVersionMarker.EDIT }
         val releaseContextOnly = medium.all { it == TrackVersionMarker.VERSION } && differingLabels.isNotEmpty() &&

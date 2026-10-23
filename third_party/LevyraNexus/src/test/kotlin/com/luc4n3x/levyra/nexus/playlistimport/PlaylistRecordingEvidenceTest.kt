@@ -39,7 +39,51 @@ class PlaylistRecordingEvidenceTest {
         assertFalse(PlaylistMatchEngine.evaluate(source, song.copy(album = "")).confidence.autoAccepted)
         assertFalse(PlaylistMatchEngine.evaluate(source, song.copy(durationMs = 206_000)).confidence.autoAccepted)
         assertFalse(PlaylistMatchEngine.evaluate(source, song.copy(kind = CandidateKind.UNKNOWN)).confidence.autoAccepted)
-        assertFalse(PlaylistMatchEngine.evaluate(source, song.copy(artists = listOf("Trinity FM", "Guest"))).confidence.autoAccepted)
+        assertFalse(PlaylistMatchEngine.evaluate(source, song.copy(artists = listOf("Trinity FM", "Guest"), album = "")).confidence.autoAccepted)
+        assertFalse(PlaylistMatchEngine.evaluate(source, song.copy(artists = listOf("Guest", "Trinity FM"))).confidence.autoAccepted)
+    }
+
+    @Test
+    fun uploadsAndReorderedCreditsDoNotMakeTheOfficialTrackAmbiguous() {
+        val source = ImportedTrackIdentity(0, "Stars", listOf("Vijay & Sofia Zlatko", "Mauro Valdemi", "Tania Zygar"),
+            album = "Stars", durationMs = 172_317)
+        val official = MatchCandidate("official", "Stars (feat. Tania Zygar)", listOf("Vijay & Sofia, Mauro Valdemi"),
+            album = "Stars", durationMs = 173_000, kind = CandidateKind.SONG)
+        val upload = MatchCandidate("upload", "Vijay & Sofia Zlatko & Mauro Valdemi - Stars (ft. Tania Zygar)", listOf("Freetones"),
+            durationMs = 173_000)
+        val outcome = PlaylistMatchEngine.select(source, listOf(upload, official))
+        assertEquals("official", outcome.selected?.candidate?.id)
+        assertFalse(outcome.ambiguous)
+
+        val single = MatchCandidate("single", "Labour", listOf("GuitK, Vijay & Sofia Zlatko"), album = "Labour", durationMs = 205_000,
+            kind = CandidateKind.SONG)
+        val featured = MatchCandidate("featured", "Labour (feat. GuitK)", listOf("Vijay & Sofia Zlatko"), durationMs = 205_000,
+            kind = CandidateKind.SONG)
+        assertTrue(PlaylistMatchEngine.sameRecording(single, featured))
+        assertFalse(PlaylistMatchEngine.sameRecording(single, featured.copy(title = "Labour (Extended Mix) (feat. GuitK)")))
+    }
+
+    @Test
+    fun creditOrderDoesNotMatter() {
+        val source = ImportedTrackIdentity(0, "Echoes - Radio Edit", listOf("Oliver Koletzki", "Fran"), durationMs = 198_000)
+        val song = MatchCandidate("song", "Echoes (Radio Edit)", listOf("Fran", "Oliver Koletzki"), durationMs = 198_500, kind = CandidateKind.SONG)
+        val evaluation = PlaylistMatchEngine.evaluate(source, song)
+        assertTrue(evaluation.reasons.any { it.signal == MatchSignal.ARTIST_EXACT })
+        assertTrue(evaluation.confidence.autoAccepted)
+    }
+
+    @Test
+    fun extraCreditOnTheSameAlbumTrackIsTheSameRecording() {
+        val source = ImportedTrackIdentity(0, "Bottles & Bay", listOf("Panuma", "Nina Carr"), album = "Bottles & Bay", durationMs = 336_000)
+        val song = MatchCandidate("song", "Bottles & Bay", listOf("Panuma", "Lennart Rau", "Nina Carr"),
+            album = "Bottles & Bay", durationMs = 336_400, kind = CandidateKind.SONG)
+        assertEquals(MatchConfidence.GOOD, PlaylistMatchEngine.evaluate(source, song).confidence)
+        assertFalse(PlaylistMatchEngine.evaluate(source, song.copy(album = "Other Album")).confidence.autoAccepted)
+        assertFalse(PlaylistMatchEngine.evaluate(source, song.copy(durationMs = 345_000)).confidence.autoAccepted)
+        val edition = ImportedTrackIdentity(0, "Full Capacity", listOf("Infinity Ink", "Ali Love"), album = "House Of Infinity", durationMs = 205_700)
+        val track = MatchCandidate("track", "Full Capacity", listOf("Infinity Ink"), album = "House Of Infinity (Deluxe)",
+            durationMs = 206_000, kind = CandidateKind.SONG)
+        assertEquals(MatchConfidence.GOOD, PlaylistMatchEngine.evaluate(edition, track).confidence)
     }
 
     @Test
