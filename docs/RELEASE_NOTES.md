@@ -1,68 +1,66 @@
-# Levyra 3.0.0
+# Levyra 3.0.1
 
 ## Highlights
 
-This is the biggest update Levyra has had so far, which is why it's called 3.0.0.
+A smaller release after 3.0.0, mostly made of things you told me about. Home gets a calmer Discover card, the Spotify Style and YouTube Music Style skins finally have proper mood and genre pages, and thirteen languages that were quietly showing English almost everywhere now speak their own language.
 
-The headline is skins. Until now you could change colours, player styles and a lot of small details, but the app always kept the same basic shape. Skins change that. Each one restyles Home, Explore, Library, Settings, the mini player and the full player, so switching skin feels like switching to a different app that still has all your music in it.
+## Discover for you
 
-There's also personalised discovery on Home, a much better radio section, smarter matching when you import playlists from other services, and a player that handles Canvas and video more gracefully.
+The Discover card on Home used to sit right under My soundtrack and fight it for attention, with its own blue button, two fake save and skip bubbles you couldn't actually tap, and an animation that never stopped.
 
-## Seven new skins
+It's been redrawn to match the rest of Home. The colours now come from the cover at the front, the reason a song was picked (a new release, an artist you follow) sits in a small label on that cover, and the covers turn like a deck a couple of times and then settle down. If you've turned animations off, nothing moves.
 
-You'll find them under Settings → Design → Skin. Levyra Default is still the default, and your customisations are kept when you switch back and forth.
+It also moved further down, after Your orbit. That puts the genre chips (New releases and the rest) back under My soundtrack, where they used to be.
 
-- Nocturne 78 brings the warmth of a vintage hi-fi.
-- Prism pairs deep black with raspberry accents.
-- Torque goes for bold graphite shapes and sharp angles.
-- Ivory is soft and bright, with a dark mode of its own.
-- Spotify Style, Apple Music Style and YouTube Music Style follow the layouts people already know from those apps.
+## Mood and genre pages in two skins
 
-## The player
+Opening a mood or genre in the Spotify Style skin now shows the page that skin is known for: a coloured header, a big title and rows of playlist covers grouped by theme, with the artists underneath.
 
-Velvet, in the Default skin, now uses the same player as Apple Music Style: same artwork, controls, spacing and motion, in portrait, in landscape and on the inner screen of a foldable.
+The YouTube Music Style skin gets its own version, with section titles you can open to see every playlist in that group. Before this release, tapping a mood in that skin loaded the songs in the background but never actually opened a page.
 
-When a song has a vertical Canvas, it now plays full screen behind the controls on phones. Before, this only worked when the Canvas came with its size already known, which wasn't often. Songs without a Canvas keep the classic artwork view. Under the seek bar you'll now see the format that is actually playing, such as AAC and its bitrate, or Dolby Atmos and Lossless when the stream really is one of those.
+If a category can't be loaded, you still get the usual list of songs instead of an empty screen.
 
-Video mode follows the same layout too. Switching from video back to the song now returns to the audio source the song was using before, for example JioSaavn, instead of looking for a new one. When Levyra looks for a music video, it now prefers the official one over fan uploads with lyrics or translations on top.
+## Languages
 
-## Home, radio and search
+Slovak, Croatian, Serbian, Albanian, Bulgarian, Hungarian, Norwegian, Catalan, Kazakh, Persian, Traditional Chinese, Bengali and Malay only had their welcome screens and tab names translated. Settings, the player, your library, search and downloads were all in English. Those parts are now translated in all thirteen. A few feature screens, like the audio tools and playlist import, are still in English for these languages and will follow.
 
-Home can now suggest new music around your taste in every Default home style, and it can greet you by name. Radio supports your own stream URLs, paginated search and favourite stations on Home. Search can browse an artist's full discography with paging, and your YouTube Music library can show up on Home.
+A Russian user also noticed that the "LEVYRA is up to date" message stayed in Italian whatever language you picked. That message, the "new version available" one and the error you see when the check fails now follow your language in all 41 languages Levyra supports.
 
-## Imports and matching
+## Also in this release
 
-Playlist imports and song matching across providers have had a lot of work, including fixes that came straight from real Spotify playlists that didn't import cleanly before.
+These were fixed on the main branch after 3.0.0 and ship with this version:
 
-## Smaller things
-
-The launcher icon has a refined background, Settings hides the bottom navigation while keeping the mini player, the compact Settings cards keep their titles readable, and the Italian Android Auto plural forms are complete.
+- Albums that YouTube Music labels as an EP or a single open correctly, and artist pages show both the artist's own playlists and the ones they appear on.
+- In the YouTube Music Style skin, live radio shows its play and pause button again.
+- Playback from Explore is more reliable, and the Apple Music Style skin has editorial genre pages.
+- Playlist imports find the right version of a song more often, by looking at the original album, ISRC codes and matching lengths.
+- Android Auto search results can be cancelled cleanly and no longer reset the queue you were listening to.
 
 ## Validation
 
-This release gathers the Android changes merged after 2.6.10, plus the player work in this release's pull request.
+Focused unit tests passed locally for the new mood and genre page parser and for localization, and the debug build was installed on a Samsung Galaxy S25+ over wireless debugging. On that phone I checked the new Home order and the Discover card layout. The turning animation, the two new mood and genre pages, the light theme, large text and TalkBack still need a proper look on a device.
 
-For the player changes, focused unit tests passed locally and the debug build was checked by hand on a foldable emulator (Android 37): portrait on the cover screen, the unfolded inner screen in both orientations, full-screen Canvas, song to video to song with JioSaavn audio, and a full scroll of Home. Video frames could not be checked on the emulator because its H.264 decoder fails, so video playback on a real phone still needs a check.
+The translations were written and reviewed by me, not by native speakers, so corrections from people who speak these languages are very welcome.
 
 A full local release build, a physical-device regression run and final signing verification have not been done while writing these notes. The GitHub release workflow still has to pass release lint, build and sign the APK, check the version and certificate, create the SHA-256 checksum and verify the published files.
 
 ## Versioning
 
-- Version name: `3.0.0`
-- Version code: `3000000`
+- Version name: `3.0.1`
+- Version code: `3000100`
 
 This is an Android release. The separately versioned Windows app is not part of it.
 
 ## Upgrade notes
 
-You don't need to do anything special to update. Your library, downloads, listening history, playlists and appearance settings keep using their normal storage. Levyra Default stays selected unless you pick a skin, and the player style you chose before is still yours.
+Nothing special to do. Your library, downloads, history, playlists and settings stay where they are, and your skin and player style don't change.
 
-Some search, video, Canvas, credits and provider features depend on external services and on what your device can decode.
+Mood and genre pages, search and video depend on external services, so what you see can vary by region.
 
 The signed APK and checksum will appear on the GitHub release page once the publishing workflow succeeds. F-Droid and other channels may update on their own schedule.
 
 ## Final note
 
-Skins started as a small experiment and turned into the thing I've enjoyed building most. I hope at least one of them feels like home to you. If something looks off or a song plays the wrong way, tell me. Most of what's in this release started with one of your reports.
+Most of this release came from your messages, including the one about the update toast in the wrong language. Keep them coming, and if your language still shows English somewhere, tell me where.
 
 Thanks for sticking with Levyra.
