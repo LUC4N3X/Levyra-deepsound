@@ -36,6 +36,19 @@ class PlaylistRecordingEvidenceTest {
     }
 
     @Test
+    fun sameSongUploadedByDifferentChannelsIsNotAmbiguous() {
+        val source = ImportedTrackIdentity(0, "Burattino Telecomandato", listOf("Pupo"), durationMs = 181_000)
+        val first = MatchCandidate("first", "Pupo - Burattino Telecomandato", listOf("Gridas1"), durationMs = 181_000)
+        val second = MatchCandidate("second", "PUPO - Burattino telecomandato", listOf("Other Channel"), durationMs = 181_500)
+        val outcome = PlaylistMatchEngine.select(source, listOf(first, second))
+        assertFalse(outcome.ambiguous)
+        assertTrue(outcome.confidence.autoAccepted)
+        val longer = PlaylistMatchEngine.select(source, listOf(first, second.copy(durationMs = 186_000)))
+        assertEquals("first", longer.selected?.candidate?.id)
+        assertFalse(PlaylistMatchEngine.evaluate(source, second.copy(durationMs = 186_000)).confidence.autoAccepted)
+    }
+
+    @Test
     fun multiArtistUploadTitleKeepsEveryCredit() {
         val source = ImportedTrackIdentity(0, "In the Mood", listOf("Nick Schwenderling", "Tube & Berger"), durationMs = 230_000)
         val upload = MatchCandidate("upload", "Nick Schwenderling, Tube & Berger - In the Mood", listOf("ZEHN Records"),

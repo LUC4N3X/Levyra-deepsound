@@ -376,9 +376,13 @@ object PlaylistMatchEngine {
                 !sameRecording(selected.candidate, other.candidate) &&
                 !(source.durationMs <= 0L && sameWork(selected.candidate, other.candidate)) &&
                 !durationDecides(source, selected.candidate, other.candidate) &&
-                !(provisional(other) && !provisional(selected))
+                !(provisional(other) && !provisional(selected)) &&
+                !(provisional(other) && provisional(selected) && sameRecording(credited(source, selected.candidate), credited(source, other.candidate)))
         }
     }
+
+    private fun credited(source: ImportedTrackIdentity, candidate: MatchCandidate): MatchCandidate =
+        uploadTitleCredit(source, candidate) ?: candidate
 
     private fun durationDelta(source: ImportedTrackIdentity, candidate: MatchCandidate): Long =
         if (source.durationMs <= 0L || candidate.durationMs <= 0L) Long.MAX_VALUE else abs(source.durationMs - candidate.durationMs)
