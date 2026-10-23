@@ -21,6 +21,7 @@ def resolve_screenshot_path(filename):
         os.path.join(r"C:\Users\Luca Drogo\Desktop\screenshots", filename),
         os.path.join(r"C:\Users\Luca Drogo\Downloads", filename),
         os.path.join(r"C:\Users\Luca Drogo\Pictures\levyra\screenshots", filename),
+        os.path.join(r"C:\Users\Luca Drogo\Desktop\Nuova cartella", filename),
         os.path.join(r"C:\Users\Luca Drogo\Downloads\Nuova cartella", filename),
         os.path.join("docs", "screenshots", filename),
     ]
@@ -871,7 +872,7 @@ def render_readme_light_dark_pair(left_spec, right_spec):
     return left_card.convert("RGB"), right_card.convert("RGB")
 
 def render_readme_card(spec, index):
-    theme_order = [0, 1, 2, 3, 3, 2, 1, 2, 1, 2, 3, 1, 2, 3, 1, 2, 2, 0, 3, 0]
+    theme_order = [0, 1, 2, 3, 3, 2, 1, 2, 1, 2, 3, 1, 2, 3, 1, 2, 2, 0, 3, 2]
     variant_order = [0, 1, 2, 3, 2, 3, 0, 1, 1, 0, 3, 2, 3, 2, 1, 0, 0, 1, 1, 2]
     theme = README_CARD_THEMES[theme_order[index]]
     variant = variant_order[index]
