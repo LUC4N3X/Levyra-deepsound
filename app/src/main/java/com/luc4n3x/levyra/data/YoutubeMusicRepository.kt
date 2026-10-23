@@ -844,6 +844,12 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         searchYoutubeExtractor(clean, limit.coerceIn(1, 16), musicOnly = false).also(::rememberSearchTracks)
     }
 
+    suspend fun searchAlbumsForImport(query: String, languageCode: String): List<AlbumHit> =
+        searchAlbumsPage(query.trim(), languageCode).items
+
+    suspend fun albumTracksForImport(album: AlbumHit, languageCode: String): List<Track> =
+        albumDetail(album, languageCode).tracks
+
     open suspend fun search(query: String, limit: Int = 36, languageCode: String = LevyraLanguageCatalog.deviceDefault()): List<Track> = withContext(Dispatchers.IO) {
         val cleanQuery = query.trim()
         if (cleanQuery.length < 2) return@withContext emptyList()

@@ -287,7 +287,7 @@ class PlaylistImportHealerTest {
     @Test
     fun commitIncludesOnlyConfirmedMatchesInOrder() {
         val matched = resolve(identity(0, "Song One"), listOf(candidate("a", "Song One")))
-        val review = resolve(identity(1, "Song Two"), listOf(candidate("b", "Song Two (Radio Edit)")))
+        val review = resolve(identity(1, "Song Two"), listOf(candidate("b", "Song Two (Radio Edit)", durationMs = 188_000L)))
         val missing = resolve(identity(2, "Song Three"), emptyList())
         val entries = listOf(matched, review, missing)
         assertEquals(ImportEntryStatus.REVIEW, review.status)

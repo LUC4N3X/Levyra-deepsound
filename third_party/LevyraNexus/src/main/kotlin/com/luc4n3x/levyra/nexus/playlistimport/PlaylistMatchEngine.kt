@@ -134,6 +134,11 @@ object PlaylistMatchEngine {
     private val channelSuffix = Regex("\\s*(?:-\\s*topic|vevo)$", RegexOption.IGNORE_CASE)
     private val remixCreditSuffix = Regex("\\s+(?:(?:extended|club|radio|original|dub)\\s+)*(?:remix|mix|remixed|rework|bootleg|mashup)$")
     private val untrustedAlbums = setOf("", "levyra", "youtube", "youtube music", "unknown", "unknown album", "single", "singles")
+    private val uploadTitleSeparator = Regex("\\s+[-–—]\\s+")
+    private val releaseContextLabel = Regex("(?:^|\\s)(?:soundtrack|film|movie|ost|single|album|original)\\s+version$")
+    private const val TITLE_CREDIT_DETAIL = "title-credit"
+    private const val INCOMPLETE_CREDITS_DETAIL = "incomplete-credits"
+    private const val CORROBORATED_DURATION_MS = 2_000L
 
     fun evaluate(source: ImportedTrackIdentity, candidate: MatchCandidate): MatchEvaluation {
         if (!candidate.available) {
@@ -147,7 +152,27 @@ object PlaylistMatchEngine {
         if (sourceIsrc.isNotEmpty() && sourceIsrc == candidateIsrc) {
             return MatchEvaluation(candidate, 100, listOf(MatchReason(MatchSignal.ISRC_MATCH)))
         }
+        val direct = evaluateMetadata(source, candidate, titleCredit = false)
+        val credited = uploadTitleCredit(source, candidate) ?: return direct
+        val reread = evaluateMetadata(source, credited, titleCredit = true)
+        return if (reread.score > direct.score) reread.copy(candidate = candidate) else direct
+    }
 
+    private fun uploadTitleCredit(source: ImportedTrackIdentity, candidate: MatchCandidate): MatchCandidate? {
+        if (candidate.kind == CandidateKind.SONG || source.artists.isEmpty()) return null
+        val separator = uploadTitleSeparator.find(candidate.title) ?: return null
+        val prefixNames = MusicIdentityText.artistNames(candidate.title.substring(0, separator.range.first))
+        val sourceNames = normalizedArtists(source.artists)
+        val primary = sourceNames.firstOrNull() ?: return null
+        if (prefixNames.none { it == primary || compactEquals(it, primary) }) return null
+        val remainder = candidate.title.substring(separator.range.last + 1).trim()
+        if (remainder.isBlank()) return null
+        return candidate.copy(title = remainder, artists = prefixNames)
+    }
+
+    private fun evaluateMetadata(source: ImportedTrackIdentity, candidate: MatchCandidate, titleCredit: Boolean): MatchEvaluation {
+        val sourceIsrc = normalizeIsrc(source.isrc)
+        val candidateIsrc = normalizeIsrc(candidate.isrc)
         val reasons = ArrayList<MatchReason>()
         var score = 0
         var cap = 100
@@ -164,8 +189,10 @@ object PlaylistMatchEngine {
         val titleScore = scoreTitle(sourceTitle, candidateTitle, reasons, limit)
             ?: return MatchEvaluation(candidate, score.coerceIn(0, 20), reasons)
         score += titleScore
+        val durationCorroborated = source.durationMs > 0L && candidate.durationMs > 0L &&
+            abs(source.durationMs - candidate.durationMs) <= CORROBORATED_DURATION_MS
         score += scoreArtists(source, sourceTitle, candidate, candidateTitle, reasons, limit)
-        score += scoreVersion(sourceTitle, candidateTitle, reasons, limit)
+        score += scoreVersion(sourceTitle, candidateTitle, durationCorroborated, reasons, limit)
         score += scoreExplicit(
             source.explicit ?: sourceTitle.explicitHint,
             candidate.explicit ?: candidateTitle.explicitHint,
@@ -175,6 +202,18 @@ object PlaylistMatchEngine {
         score += scoreDuration(source.durationMs, candidate.durationMs, reasons, limit)
         score += scoreAlbum(source, sourceTitle, candidate, candidateTitle, reasons)
         score += scoreKind(candidate, reasons, limit)
+        val signals = reasons.map { it.signal }.toSet()
+        val cleanRecording = MatchSignal.TITLE_EXACT in signals && durationCorroborated &&
+            MatchSignal.VERSION_CONFLICT !in signals && MatchSignal.EXPLICIT_CONFLICT !in signals
+        if (reasons.any { it.detail == INCOMPLETE_CREDITS_DETAIL } &&
+            !(cleanRecording && candidate.kind == CandidateKind.SONG && MatchSignal.ALBUM_SAME in signals)
+        ) {
+            limit(79)
+        }
+        if (titleCredit) {
+            reasons += MatchReason(MatchSignal.VIDEO_UPLOAD, detail = TITLE_CREDIT_DETAIL)
+            limit(if (cleanRecording && MatchSignal.ARTIST_EXACT in signals) 84 else 79)
+        }
         return MatchEvaluation(candidate, score.coerceIn(0, cap), reasons)
     }
 
@@ -195,6 +234,8 @@ object PlaylistMatchEngine {
                 42
             }
             similarity >= 0.85 && !short -> 32.also { reasons += MatchReason(MatchSignal.TITLE_CLOSE) }
+            spellingVariant(sourceTitle.core, candidateTitle.core) ->
+                32.also { reasons += MatchReason(MatchSignal.TITLE_CLOSE, detail = "spelling") }
             similarity >= 0.6 && !short -> {
                 reasons += MatchReason(MatchSignal.TITLE_WEAK)
                 limit(79)
@@ -237,10 +278,16 @@ object PlaylistMatchEngine {
         candidates: List<MatchCandidate>,
         preference: ResolutionPreference = ResolutionPreference.SMART
     ): MatchOutcome {
+        val sourceTitle = MusicIdentityText.title(source.title).fullNormalized
         val evaluations = candidates
             .distinctBy { it.id }
             .map { evaluate(source, it) }
-            .sortedWith(compareByDescending<MatchEvaluation> { it.score }.thenBy { kindRank(it.candidate.kind) })
+            .sortedWith(
+                compareByDescending<MatchEvaluation> { it.score }
+                    .thenByDescending { tokenSimilarity(sourceTitle, MusicIdentityText.title(it.candidate.title).fullNormalized) }
+                    .thenBy { durationDelta(source, it.candidate) }
+                    .thenBy { kindRank(it.candidate.kind) }
+            )
         if (evaluations.isEmpty()) return MatchOutcome(null, MatchConfidence.UNRESOLVED, emptyList(), false)
         val preferred = applyPreference(evaluations, preference)
         val ambiguous = isAmbiguous(source, preferred, evaluations)
@@ -284,6 +331,18 @@ object PlaylistMatchEngine {
         return "meta:${title.core}|$artist|$signature|${MusicIdentityText.album(identity.album).core}|${identity.durationMs}"
     }
 
+    fun provisional(evaluation: MatchEvaluation): Boolean = evaluation.reasons.any { it.detail == TITLE_CREDIT_DETAIL }
+
+    fun isrcSearchCorroborates(source: ImportedTrackIdentity, candidate: MatchCandidate): Boolean {
+        if (normalizeIsrc(source.isrc).isEmpty() || candidate.kind != CandidateKind.SONG) return false
+        val signals = evaluateMetadata(source.copy(isrc = ""), candidate.copy(isrc = ""), titleCredit = false)
+            .reasons.map { it.signal }.toSet()
+        return MatchSignal.TITLE_EXACT in signals &&
+            (MatchSignal.ARTIST_EXACT in signals || MatchSignal.ARTIST_PRIMARY in signals) &&
+            MatchSignal.VERSION_CONFLICT !in signals && MatchSignal.EXPLICIT_CONFLICT !in signals &&
+            MatchSignal.DURATION_FAR !in signals && MatchSignal.DURATION_DRIFT !in signals
+    }
+
     fun normalizeIsrc(value: String): String =
         value.uppercase(Locale.ROOT).filter { it in 'A'..'Z' || it in '0'..'9' }.takeIf { it.length == 12 }.orEmpty()
 
@@ -310,8 +369,18 @@ object PlaylistMatchEngine {
                 other.score >= selected.score - AMBIGUITY_MARGIN &&
                 other.score >= MatchConfidence.AUTO_ACCEPT_SCORE &&
                 !sameRecording(selected.candidate, other.candidate) &&
-                !(source.durationMs <= 0L && sameWork(selected.candidate, other.candidate))
+                !(source.durationMs <= 0L && sameWork(selected.candidate, other.candidate)) &&
+                !durationDecides(source, selected.candidate, other.candidate)
         }
+    }
+
+    private fun durationDelta(source: ImportedTrackIdentity, candidate: MatchCandidate): Long =
+        if (source.durationMs <= 0L || candidate.durationMs <= 0L) Long.MAX_VALUE else abs(source.durationMs - candidate.durationMs)
+
+    private fun durationDecides(source: ImportedTrackIdentity, selected: MatchCandidate, other: MatchCandidate): Boolean {
+        val chosen = durationDelta(source, selected)
+        val rival = durationDelta(source, other)
+        return chosen <= CORROBORATED_DURATION_MS && rival != Long.MAX_VALUE && rival >= chosen + 3_000L
     }
 
     private fun sameWork(left: MatchCandidate, right: MatchCandidate): Boolean {
@@ -348,10 +417,20 @@ object PlaylistMatchEngine {
         val expected = sourceNames.toSet() + sourceFeatured + versionCredits
         return when {
             primary in candidatePrimary -> {
-                val exact = candidatePrimary.firstOrNull() == primary &&
-                    sameArtistCredits(candidateAll, expected)
-                if (!exact) limit(79)
-                reasons += MatchReason(if (exact) MatchSignal.ARTIST_EXACT else MatchSignal.ARTIST_PRIMARY)
+                val leading = candidatePrimary.firstOrNull() == primary
+                val exact = leading && sameArtistCredits(candidateAll, expected)
+                val onlyMissing = leading && !exact && containsCredits(expected, candidateAll) &&
+                    expected.none { name -> name in sourceTitle.featuredArtists && !containsCredits(candidateAll, setOf(name)) }
+                when {
+                    exact -> Unit
+                    onlyMissing -> limit(84)
+                    else -> limit(79)
+                }
+                reasons += if (exact) {
+                    MatchReason(MatchSignal.ARTIST_EXACT)
+                } else {
+                    MatchReason(MatchSignal.ARTIST_PRIMARY, detail = if (onlyMissing) INCOMPLETE_CREDITS_DETAIL else "")
+                }
                 if (exact) 32 else 27
             }
             primary in candidateTitle.featuredArtists -> {
@@ -373,6 +452,12 @@ object PlaylistMatchEngine {
                 reasons += MatchReason(MatchSignal.ARTIST_PARTIAL)
                 limit(84)
                 18
+            }
+            candidatePrimary.firstOrNull()?.let { nameAlias(primary, it) } == true &&
+                (sourceNames.drop(1) + sourceFeatured).any { it in candidateAll } -> {
+                reasons += MatchReason(MatchSignal.ARTIST_PARTIAL, detail = "alias")
+                limit(84)
+                26
             }
             else -> {
                 reasons += MatchReason(MatchSignal.ARTIST_MISMATCH)
@@ -401,12 +486,24 @@ object PlaylistMatchEngine {
     } else emptySet()
 
     private fun sameArtistCredits(left: Set<String>, right: Set<String>): Boolean =
-        left.all { name -> right.any { it == name || compactEquals(it, name) } } &&
-            right.all { name -> left.any { it == name || compactEquals(it, name) } }
+        containsCredits(right, left) && containsCredits(left, right)
+
+    private fun containsCredits(all: Set<String>, required: Set<String>): Boolean =
+        required.all { name -> all.any { it == name || compactEquals(it, name) } }
+
+    private fun nameAlias(left: String, right: String): Boolean {
+        val a = left.split(' ').filter(String::isNotBlank)
+        val b = right.split(' ').filter(String::isNotBlank)
+        if (a.size < 2 || b.size < 2 || a.last() != b.last() || a.last().length < 3) return false
+        val first = a.first()
+        val other = b.first()
+        return first.length >= 3 && other.length >= 3 && first.take(3) == other.take(3)
+    }
 
     private fun scoreVersion(
         sourceTitle: TitleIdentity,
         candidateTitle: TitleIdentity,
+        durationCorroborated: Boolean,
         reasons: MutableList<MatchReason>,
         limit: (Int) -> Unit
     ): Int {
@@ -414,14 +511,27 @@ object PlaylistMatchEngine {
         val hard = difference.filter { it in hardMarkers }
         val medium = difference.filter { it in mediumMarkers }
         val soft = difference.filter { it in softMarkers }
-        val labelsDiffer = versionLabels(sourceTitle) != versionLabels(candidateTitle)
+        val sourceLabels = versionLabels(sourceTitle)
+        val candidateLabels = versionLabels(candidateTitle)
+        val labelsDiffer = sourceLabels != candidateLabels
         var score = 0
         if (hard.isNotEmpty()) {
             reasons += MatchReason(MatchSignal.VERSION_CONFLICT, detail = versionDetail(hard, candidateTitle.markers))
             score -= 40
             limit(50)
         }
-        if (medium.isNotEmpty() || labelsDiffer) {
+        val differingLabels = (sourceLabels - candidateLabels) + (candidateLabels - sourceLabels)
+        val radioEditOnly = medium.isNotEmpty() && TrackVersionMarker.RADIO_EDIT in medium &&
+            medium.all { it == TrackVersionMarker.RADIO_EDIT || it == TrackVersionMarker.EDIT }
+        val releaseContextOnly = medium.all { it == TrackVersionMarker.VERSION } && differingLabels.isNotEmpty() &&
+            differingLabels.all { releaseContextLabel.containsMatchIn(it) }
+        val sameAudioEdit = durationCorroborated && hard.isEmpty() &&
+            (radioEditOnly && !labelsDiffer || releaseContextOnly)
+        if ((medium.isNotEmpty() || labelsDiffer) && sameAudioEdit) {
+            reasons += MatchReason(MatchSignal.VERSION_SOFT_DIFFERENCE, detail = versionDetail(medium, candidateTitle.markers))
+            limit(84)
+            score -= 4
+        } else if (medium.isNotEmpty() || labelsDiffer) {
             val detail = versionDetail(medium, candidateTitle.markers).ifBlank { candidateTitle.versionLabels.joinToString("+") }
             reasons += MatchReason(MatchSignal.VERSION_CONFLICT, detail = detail)
             score -= 15
@@ -519,6 +629,31 @@ object PlaylistMatchEngine {
         val longer = if (a.length <= b.length) b else a
         if (shorter.length < 4) return 0.0
         return if (" $longer ".contains(" $shorter ")) 0.7 else 0.0
+    }
+
+    private fun spellingVariant(a: String, b: String): Boolean {
+        val left = a.replace(" ", "")
+        val right = b.replace(" ", "")
+        if (min(left.length, right.length) < 8 || abs(left.length - right.length) > 2) return false
+        if (left == right) return true
+        if (left.any(Char::isDigit) || right.any(Char::isDigit)) return false
+        return editDistance(left, right, 2) <= 2
+    }
+
+    private fun editDistance(a: String, b: String, limit: Int): Int {
+        var previous = IntArray(b.length + 1) { it }
+        for (i in a.indices) {
+            val current = IntArray(b.length + 1)
+            current[0] = i + 1
+            var rowMin = current[0]
+            for (j in b.indices) {
+                current[j + 1] = minOf(previous[j + 1] + 1, current[j] + 1, previous[j] + if (a[i] == b[j]) 0 else 1)
+                rowMin = min(rowMin, current[j + 1])
+            }
+            if (rowMin > limit) return rowMin
+            previous = current
+        }
+        return previous[b.length]
     }
 
     private fun compactEquals(a: String, b: String): Boolean {

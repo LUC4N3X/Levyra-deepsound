@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data.playlistimport
 
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
+import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.nexus.identity.MusicIdentityText
 import com.luc4n3x.levyra.nexus.playlistimport.CandidateKind
@@ -42,10 +43,28 @@ interface PlaylistCandidateProvider {
     }
 }
 
+interface ImportAlbumSource {
+    suspend fun albums(query: String, languageCode: String): List<AlbumHit>
+
+    suspend fun tracks(album: AlbumHit, languageCode: String): List<Track>
+}
+
 internal const val LOCAL_TRACK_PREFIX = "local:"
+private const val ALBUM_CACHE_ENTRIES = 128
+private const val MAX_ALBUM_BROWSES = 2
+private const val MAX_ISRC_RESULTS = 5
+private const val MIN_ALBUM_TRACK_SCORE = 40
+private const val FALLBACK_SEARCH_LANGUAGE = "en"
+private val untrustedAlbumTitles = setOf("single", "singles", "unknown", "unknown album", "youtube", "youtube music")
+private val compilationArtists = setOf("various artists", "various", "verschiedene interpreten", "artisti vari", "сборник")
+
+private fun <T> boundedCache(entries: Int) = object : LinkedHashMap<String, List<T>>(entries, 0.75f, true) {
+    override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<T>>): Boolean = size > entries
+}
 private val youtubeVideoId = Regex("^[A-Za-z0-9_-]{11}$")
 private val artistTitleSeparator = Regex("\\s+(?:--|-|–|—)\\s+")
 private val channelSuffix = Regex("\\s*(?:-\\s*topic|vevo)$", RegexOption.IGNORE_CASE)
+private val topicChannel = Regex("\\s-\\s*topic$", RegexOption.IGNORE_CASE)
 
 internal fun trackKindRank(track: Track): Int {
     val type = track.videoType.uppercase()
@@ -101,7 +120,7 @@ internal fun Track.toMatchCandidate(): CatalogCandidate {
     val type = videoType.uppercase()
     val kind = when {
         local -> CandidateKind.UNKNOWN
-        "ATV" in type -> CandidateKind.SONG
+        "ATV" in type || topicChannel.containsMatchIn(artist) -> CandidateKind.SONG
         "OMV" in type -> CandidateKind.OFFICIAL_VIDEO
         "UGC" in type -> CandidateKind.USER_VIDEO
         else -> CandidateKind.UNKNOWN
@@ -160,7 +179,8 @@ class PlaylistImportCatalog(
     private val localTracks: suspend () -> List<Track>,
     private val languageCode: () -> String,
     private val metadataSearch: suspend (ImportedTrackIdentity) -> List<MatchCandidate> = { emptyList() },
-    private val youtubeSearch: (suspend (String) -> List<Track>)? = null
+    private val youtubeSearch: (suspend (String) -> List<Track>)? = null,
+    private val albumSource: ImportAlbumSource? = null
 ) : PlaylistCandidateProvider {
     private val localMutex = Mutex()
     private var localIndex: Map<String, List<Track>>? = null
@@ -169,6 +189,9 @@ class PlaylistImportCatalog(
     private val lookupCache = object : LinkedHashMap<ImportedTrackIdentity, CatalogResolution>(256, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<ImportedTrackIdentity, CatalogResolution>): Boolean = size > 256
     }
+    private val albumLocks = Array(32) { Mutex() }
+    private val albumSearches = boundedCache<AlbumHit>(ALBUM_CACHE_ENTRIES)
+    private val albumTrackLists = boundedCache<Track>(ALBUM_CACHE_ENTRIES)
 
     override suspend fun refreshLocal() {
         localMutex.withLock {
@@ -250,12 +273,16 @@ class PlaylistImportCatalog(
             listOfNotNull(creditedQuery?.let { it to false }) +
             listOfNotNull((normalized to false).takeUnless { normalized.equals(originalQuery, ignoreCase = true) })
         if (lookup.searchUntilReliable(direct)) return lookup.result()
+        lookup.searchAlbum()
+        if (lookup.reliable()) return lookup.result()
         if (identity.durationMs > 0L && identity.album.isNotBlank()) {
             lookup.searchYoutube(originalQuery)
             if (lookup.reliable()) return lookup.result()
         }
         val metadata = safeMetadata(identity)
         lookup.reference = corroborateImportIdentity(identity, metadata)
+        if (lookup.reliable()) return lookup.result()
+        lookup.searchIsrc()
         if (lookup.reliable()) return lookup.result()
         val fallback = (metadataQueries(identity, metadata) + ImportTransliteration.latinQuery(normalized)).distinct()
         if (lookup.searchUntilReliable(fallback.map { it to false })) return lookup.result()
@@ -294,7 +321,9 @@ class PlaylistImportCatalog(
             return CatalogResolution(unique, PlaylistMatchEngine.select(reference, unique.map { it.candidate }, preference))
         }
 
-        fun reliable(): Boolean = result().outcome.confidence.autoAccepted
+        fun reliable(): Boolean = result().outcome.let { outcome ->
+            outcome.confidence.autoAccepted && outcome.selected?.let(PlaylistMatchEngine::provisional) != true
+        }
 
         suspend fun searchUntilReliable(queries: List<Pair<String, Boolean>>): Boolean {
             for ((query, mixed) in queries) {
@@ -314,6 +343,39 @@ class PlaylistImportCatalog(
                 found += it.take(20).map(Track::toMatchCandidate)
             }.onFailure { failure = it }
             if (response.isFailure && !mixed) search(query, true)
+            if (!mixed && response.getOrNull()?.isEmpty() == true && !language.equals(FALLBACK_SEARCH_LANGUAGE, ignoreCase = true) &&
+                queried.add("song-$FALLBACK_SEARCH_LANGUAGE:${query.lowercase(java.util.Locale.ROOT)}")
+            ) {
+                runSearch { retrying { songs(query, FALLBACK_SEARCH_LANGUAGE) } }
+                    .onSuccess { found += it.take(20).map(Track::toMatchCandidate) }
+            }
+        }
+
+        suspend fun searchAlbum() {
+            if (!queried.add("album")) return
+            val response = runSearch { albumTracks(reference, language) }
+            response.onSuccess { tracks ->
+                tracks.map(Track::toMatchCandidate)
+                    .map { item -> if (item.candidate.kind == CandidateKind.UNKNOWN) item.copy(candidate = item.candidate.copy(kind = CandidateKind.SONG)) else item }
+                    .filter { PlaylistMatchEngine.evaluate(reference, it.candidate).score >= MIN_ALBUM_TRACK_SCORE }
+                    .forEach { found += it }
+            }.onFailure { failure = it }
+        }
+
+        suspend fun searchIsrc() {
+            val isrc = PlaylistMatchEngine.normalizeIsrc(reference.isrc)
+            if (isrc.isEmpty() || !queried.add("isrc:$isrc")) return
+            val response = runSearch { retrying { songs(isrc, language) } }
+            response.onSuccess { tracks ->
+                tracks.take(MAX_ISRC_RESULTS).map(Track::toMatchCandidate).forEach { result ->
+                    if (PlaylistMatchEngine.isrcSearchCorroborates(reference, result.candidate)) {
+                        found.removeAll { it.candidate.id == result.candidate.id }
+                        found += result.copy(candidate = result.candidate.copy(isrc = isrc))
+                    } else {
+                        found += result
+                    }
+                }
+            }.onFailure { failure = it }
         }
 
         suspend fun searchYoutube(query: String) {
@@ -362,6 +424,35 @@ class PlaylistImportCatalog(
         } catch (error: CancellationException) {
             throw error
         }
+    }
+
+    private suspend fun albumTracks(identity: ImportedTrackIdentity, language: String): List<Track> {
+        val source = albumSource ?: return emptyList()
+        val album = MusicIdentityText.album(identity.album).core
+        val primary = MusicIdentityText.normalizeArtist(identity.primaryArtist)
+        if (album.length < 2 || album in untrustedAlbumTitles || primary.isBlank()) return emptyList()
+        val query = "${identity.album} ${identity.primaryArtist}".trim()
+        val hits = cachedAlbumValue(albumSearches, query.lowercase(java.util.Locale.ROOT)) {
+            retrying { source.albums(query, language) }
+        }.filter { hit ->
+            val names = MusicIdentityText.artistNames(hit.artist)
+            MusicIdentityText.album(hit.title).core == album &&
+                (primary in names || names.isEmpty() || names.any { it in compilationArtists })
+        }.distinctBy { it.browseId.ifBlank { it.title } }.take(MAX_ALBUM_BROWSES)
+        return hits.flatMap { hit ->
+            cachedAlbumValue(albumTrackLists, hit.browseId.ifBlank { "${hit.title}|${hit.artist}" }) {
+                source.tracks(hit, language)
+            }
+        }
+    }
+
+    private suspend fun <T> cachedAlbumValue(
+        cache: LinkedHashMap<String, List<T>>,
+        key: String,
+        load: suspend () -> List<T>
+    ): List<T> = albumLocks[(key.hashCode() and Int.MAX_VALUE) % albumLocks.size].withLock {
+        synchronized(cache) { cache[key] }?.let { return@withLock it }
+        load().also { value -> if (value.isNotEmpty()) synchronized(cache) { cache[key] = value } }
     }
 
     private suspend fun ensureLocalIndex(): Map<String, List<Track>> = localMutex.withLock {

@@ -50,9 +50,11 @@ internal fun corroborateImportIdentity(identity: ImportedTrackIdentity, metadata
             album = identity.album.ifBlank { best.candidate.album }
         )
     }
+    val isrcs = plausible.map { PlaylistMatchEngine.normalizeIsrc(it.candidate.isrc) }.filter(String::isNotEmpty).toSet()
     return identity.copy(
         durationMs = identity.durationMs.takeIf { it > 0 } ?: best.candidate.durationMs,
-        album = identity.album.ifBlank { best.candidate.album }
+        album = identity.album.ifBlank { best.candidate.album },
+        isrc = identity.isrc.ifBlank { isrcs.singleOrNull().orEmpty() }
     )
 }
 

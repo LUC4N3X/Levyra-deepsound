@@ -101,8 +101,22 @@ class PlaylistMatchEngineTest {
 
     @Test
     fun radioEditGoesToReview() {
-        val result = PlaylistMatchEngine.evaluate(source("Song Name"), candidate("a", "Song Name (Radio Edit)"))
+        val result = PlaylistMatchEngine.evaluate(source("Song Name"), candidate("a", "Song Name (Radio Edit)", durationMs = 188_000L))
         assertEquals(MatchConfidence.REVIEW, result.confidence)
+        assertEquals(MatchConfidence.REVIEW, PlaylistMatchEngine.evaluate(source("Song Name"), candidate("b", "Song Name (Edited)")).confidence)
+        assertEquals(MatchConfidence.REVIEW, PlaylistMatchEngine.evaluate(source("Song Name"), candidate("c", "Song Name (Spanish Version)")).confidence)
+    }
+
+    @Test
+    fun radioEditOrReleaseContextWithTheSameLengthIsTheSameAudio() {
+        val radio = PlaylistMatchEngine.evaluate(source("Song Name"), candidate("a", "Song Name (Radio Edit)", durationMs = 201_000L))
+        assertEquals(MatchConfidence.GOOD, radio.confidence)
+        val soundtrack = PlaylistMatchEngine.evaluate(
+            source("Bailamos - Wild Wild West/Soundtrack Version"), candidate("b", "Bailamos (From \"Wild Wild West\")", durationMs = 199_000L)
+        )
+        assertEquals(MatchConfidence.GOOD, soundtrack.confidence)
+        val live = PlaylistMatchEngine.evaluate(source("Song Name"), candidate("c", "Song Name (Live Radio Edit)"))
+        assertFalse(live.confidence.autoAccepted)
     }
 
     @Test

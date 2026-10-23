@@ -1,0 +1,107 @@
+package com.luc4n3x.levyra.nexus.playlistimport
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class PlaylistRecordingEvidenceTest {
+    @Test
+    fun artistTitleUploadFromAnotherChannelIsReadFromTheVideoTitle() {
+        val source = ImportedTrackIdentity(0, "The Child", listOf("Out Of Sight"), album = "Wandering Thoughts", durationMs = 227_426)
+        val upload = MatchCandidate("upload", "Out Of Sight - The Child (Original Mix)", listOf("MURAT OZSAHIN"),
+            durationMs = 228_000, kind = CandidateKind.UNKNOWN)
+        val evaluation = PlaylistMatchEngine.evaluate(source, upload)
+        assertEquals(MatchConfidence.GOOD, evaluation.confidence)
+        assertEquals("Out Of Sight - The Child (Original Mix)", evaluation.candidate.title)
+        assertFalse(PlaylistMatchEngine.evaluate(source, upload.copy(durationMs = 236_000)).confidence.autoAccepted)
+        assertFalse(PlaylistMatchEngine.evaluate(source, upload.copy(title = "Out Of Sight - The Child (Live)")).confidence.autoAccepted)
+        assertFalse(PlaylistMatchEngine.evaluate(source, upload.copy(title = "Other Band - The Child")).confidence.autoAccepted)
+        assertFalse(PlaylistMatchEngine.evaluate(source, upload.copy(kind = CandidateKind.SONG)).confidence.autoAccepted)
+    }
+
+    @Test
+    fun multiArtistUploadTitleKeepsEveryCredit() {
+        val source = ImportedTrackIdentity(0, "In the Mood", listOf("Nick Schwenderling", "Tube & Berger"), durationMs = 230_000)
+        val upload = MatchCandidate("upload", "Nick Schwenderling, Tube & Berger - In the Mood", listOf("ZEHN Records"),
+            durationMs = 231_000, kind = CandidateKind.UNKNOWN)
+        assertTrue(PlaylistMatchEngine.evaluate(source, upload).confidence.autoAccepted)
+        assertFalse(PlaylistMatchEngine.evaluate(source, upload.copy(title = "Nick Schwenderling - In the Mood")).confidence.autoAccepted)
+    }
+
+    @Test
+    fun missingSecondaryCreditNeedsTheSameAlbumAndLength() {
+        val source = ImportedTrackIdentity(0, "The Sound of Silence - Sos Retter LeBlanc Version",
+            listOf("Trinity FM", "Retter LeBlanc"), album = "The Sound of Silence (Sos Retter LeBlanc Version)", durationMs = 197_647)
+        val song = MatchCandidate("song", "The Sound of Silence (Sos Retter LeBlanc Version)", listOf("Trinity FM"),
+            album = "The Sound of Silence (Sos Retter LeBlanc Version)", durationMs = 198_000, kind = CandidateKind.SONG)
+        assertEquals(MatchConfidence.GOOD, PlaylistMatchEngine.evaluate(source, song).confidence)
+        assertFalse(PlaylistMatchEngine.evaluate(source, song.copy(album = "")).confidence.autoAccepted)
+        assertFalse(PlaylistMatchEngine.evaluate(source, song.copy(durationMs = 206_000)).confidence.autoAccepted)
+        assertFalse(PlaylistMatchEngine.evaluate(source, song.copy(kind = CandidateKind.UNKNOWN)).confidence.autoAccepted)
+        assertFalse(PlaylistMatchEngine.evaluate(source, song.copy(artists = listOf("Trinity FM", "Guest"))).confidence.autoAccepted)
+    }
+
+    @Test
+    fun guestNamedInTheSourceTitleMustStillBePresent() {
+        val source = ImportedTrackIdentity(0, "Song (feat. Guest)", listOf("Main", "Guest"), album = "Album", durationMs = 200_000)
+        val solo = MatchCandidate("solo", "Song", listOf("Main"), album = "Album", durationMs = 200_000, kind = CandidateKind.SONG)
+        assertFalse(PlaylistMatchEngine.evaluate(source, solo).confidence.autoAccepted)
+    }
+
+    @Test
+    fun isrcSearchResultMustAgreeWithTheRecording() {
+        val source = ImportedTrackIdentity(0, "Hurricane", listOf("Bob Dylan"), durationMs = 512_609, isrc = "USSM17500001")
+        val song = MatchCandidate("song", "Hurricane", listOf("Bob Dylan"), durationMs = 513_000, kind = CandidateKind.SONG)
+        assertTrue(PlaylistMatchEngine.isrcSearchCorroborates(source, song))
+        assertFalse(PlaylistMatchEngine.isrcSearchCorroborates(source, song.copy(title = "Hurricane (Live)")))
+        assertFalse(PlaylistMatchEngine.isrcSearchCorroborates(source, song.copy(artists = listOf("Covers Band"))))
+        assertFalse(PlaylistMatchEngine.isrcSearchCorroborates(source, song.copy(durationMs = 470_000)))
+        assertFalse(PlaylistMatchEngine.isrcSearchCorroborates(source, song.copy(kind = CandidateKind.USER_VIDEO)))
+        assertFalse(PlaylistMatchEngine.isrcSearchCorroborates(source.copy(isrc = ""), song))
+    }
+
+    @Test
+    fun uploadTitleCreditIsProvisionalEvidence() {
+        val source = ImportedTrackIdentity(0, "If You Were Me", listOf("Mike D' Jais"), durationMs = 300_000)
+        val upload = MatchCandidate("upload", "Mike D' Jais - If You Were Me", listOf("PureDeepMusic"), durationMs = 301_000)
+        val evaluation = PlaylistMatchEngine.evaluate(source, upload)
+        assertTrue(evaluation.confidence.autoAccepted)
+        assertTrue(PlaylistMatchEngine.provisional(evaluation))
+        val official = MatchCandidate("official", "If You Were Me", listOf("Mike D' Jais"), durationMs = 300_000, kind = CandidateKind.SONG)
+        assertFalse(PlaylistMatchEngine.provisional(PlaylistMatchEngine.evaluate(source, official)))
+        assertEquals("official", PlaylistMatchEngine.select(source, listOf(upload, official)).selected?.candidate?.id)
+    }
+
+    @Test
+    fun closerLengthBreaksATieBetweenSaturatedScores() {
+        val source = ImportedTrackIdentity(0, "Puttin' on the Ritz", listOf("Taco"), album = "After Eight", durationMs = 281_000)
+        val far = MatchCandidate("far", "Puttin' On The Ritz", listOf("Taco"), album = "After Eight", durationMs = 277_000, kind = CandidateKind.SONG)
+        val close = MatchCandidate("close", "Puttin' on the Ritz", listOf("Taco"), album = "After Eight", durationMs = 282_000, kind = CandidateKind.SONG)
+        val outcome = PlaylistMatchEngine.select(source, listOf(far, close))
+        assertEquals("close", outcome.selected?.candidate?.id)
+        assertFalse(outcome.ambiguous)
+        val undecided = PlaylistMatchEngine.select(source, listOf(far, close.copy(durationMs = 284_000)))
+        assertTrue(undecided.ambiguous)
+    }
+
+    @Test
+    fun smallSpellingDifferencesInLongTitlesStillMatch() {
+        val source = ImportedTrackIdentity(0, "Shala-Lala-La", listOf("Waldeck"), durationMs = 200_000)
+        val candidate = MatchCandidate("song", "Shalalala", listOf("Waldeck"), durationMs = 200_500, kind = CandidateKind.SONG)
+        assertTrue(PlaylistMatchEngine.evaluate(source, candidate).confidence.autoAccepted)
+        val numbered = ImportedTrackIdentity(0, "Symphony No 5", listOf("Orchestra"), durationMs = 200_000)
+        assertFalse(PlaylistMatchEngine.evaluate(numbered, candidate.copy(title = "Symphony No 6", artists = listOf("Orchestra"))).confidence.autoAccepted)
+    }
+
+    @Test
+    fun artistNameAliasNeedsAnotherMatchingCredit() {
+        val source = ImportedTrackIdentity(0, "Lily Was Here (feat. Candy Dulfer) - DNA Remix",
+            listOf("Dave Stewart", "Candy Dulfer"), durationMs = 267_000)
+        val candidate = MatchCandidate("song", "Lily Was Here (DNA Remix) (feat. Candy Dulfer)", listOf("David A. Stewart"),
+            durationMs = 268_000, kind = CandidateKind.SONG)
+        assertTrue(PlaylistMatchEngine.evaluate(source, candidate).confidence.autoAccepted)
+        assertFalse(PlaylistMatchEngine.evaluate(source, candidate.copy(title = "Lily Was Here (DNA Remix)")).confidence.autoAccepted)
+        assertFalse(PlaylistMatchEngine.evaluate(source, candidate.copy(artists = listOf("Rod Stewart"))).confidence.autoAccepted)
+    }
+}
