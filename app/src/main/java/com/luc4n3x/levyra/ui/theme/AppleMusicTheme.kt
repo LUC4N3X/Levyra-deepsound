@@ -59,7 +59,7 @@ internal object AppleMusicDesign {
     val categoryTileAspect = 1.777f
     val pillHeight = 44.dp
     val collectionArtworkInset = 72.dp
-    val artistHeroAspect = 1.562f
+    val artistHeroAspect = 1.15f
     val playerArtworkInset = 24.dp
     val playerMetadataInset = 32.dp
     val playerSeekbarInset = 32.dp

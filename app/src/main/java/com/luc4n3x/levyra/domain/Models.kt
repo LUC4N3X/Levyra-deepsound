@@ -403,7 +403,8 @@ data class ArtistProfile(
     val videosBrowseId: String = "",
     val videosParams: String = "",
     val compilations: List<ArtistRelease> = emptyList(),
-    val featuredPlaylists: List<PlaylistHit> = emptyList()
+    val featuredPlaylists: List<PlaylistHit> = emptyList(),
+    val artistPlaylists: List<PlaylistHit> = emptyList()
 ) {
     val bio: String
         get() = biography?.text.orEmpty()

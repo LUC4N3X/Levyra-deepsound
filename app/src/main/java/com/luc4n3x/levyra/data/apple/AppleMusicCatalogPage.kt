@@ -63,10 +63,7 @@ object AppleCatalogPageParser {
     private const val MAX_ITEMS = 100
 
     fun parse(html: String, storefront: String, fetchedAtMs: Long): AppleCatalogPage? {
-        val payload = serverData.find(html)?.groupValues?.get(1)?.let(::decodeEntities) ?: return null
-        val root = runCatching { JSONObject(payload) }.getOrNull() ?: return null
-        val page = pageNode(root) ?: return null
-        val sections = page.optJSONArray("sections") ?: return null
+        val sections = sections(html) ?: return null
         val shelves = ArrayList<AppleCatalogShelf>()
         for (index in 0 until minOf(sections.length(), MAX_SHELVES)) {
             val section = sections.optJSONObject(index) ?: continue
@@ -74,6 +71,12 @@ object AppleCatalogPageParser {
         }
         if (shelves.isEmpty()) return null
         return AppleCatalogPage(storefront, shelves, fetchedAtMs)
+    }
+
+    internal fun sections(html: String): JSONArray? {
+        val payload = serverData.find(html)?.groupValues?.get(1)?.let(::decodeEntities) ?: return null
+        val root = runCatching { JSONObject(payload) }.getOrNull() ?: return null
+        return pageNode(root)?.optJSONArray("sections")
     }
 
     private fun pageNode(root: JSONObject): JSONObject? {
@@ -101,9 +104,7 @@ object AppleCatalogPageParser {
             "verticalVideoLockup", "horizontalLockup" -> AppleCatalogShelfKind.Videos
             else -> return null
         }
-        val title = section.optJSONObject("header")?.optJSONObject("item")?.let { header ->
-            header.optJSONObject("titleLink")?.optString("title").orEmpty().ifBlank { header.optString("title") }
-        }.orEmpty().trim()
+        val title = sectionTitle(section)
         val items = section.optJSONArray("items") ?: return null
         val parsed = ArrayList<AppleCatalogItem>()
         for (index in 0 until minOf(items.length(), MAX_ITEMS)) {
@@ -116,7 +117,12 @@ object AppleCatalogPageParser {
         return AppleCatalogShelf(section.optString("id"), title, kind, distinct, rows.coerceIn(1, 4))
     }
 
-    private fun parseItem(item: JSONObject): AppleCatalogItem? {
+    internal fun sectionTitle(section: JSONObject): String =
+        section.optJSONObject("header")?.optJSONObject("item")?.let { header ->
+            header.optJSONObject("titleLink")?.optString("title").orEmpty().ifBlank { header.optString("title") }
+        }.orEmpty().trim()
+
+    internal fun parseItem(item: JSONObject): AppleCatalogItem? {
         val title = item.optJSONArray("titleLinks")?.firstTitle().orEmpty().ifBlank { item.optString("title") }.trim()
         if (title.isBlank()) return null
         val descriptor = descriptorOf(item)

@@ -15,7 +15,10 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBackIos
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonColors
 import androidx.compose.material3.IconButtonDefaults
@@ -43,7 +46,11 @@ internal fun LevyraBackButton(
         shapes = IconButtonDefaults.shapes(),
         modifier = modifier.size(size)
     ) {
-        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = contentDescription)
+        Icon(
+            if (LevyraIsAppleMusic) Icons.AutoMirrored.Rounded.ArrowBackIos else Icons.AutoMirrored.Rounded.ArrowBack,
+            contentDescription = contentDescription,
+            modifier = if (LevyraIsAppleMusic) Modifier.padding(start = 6.dp) else Modifier
+        )
     }
 }
 

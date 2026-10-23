@@ -55,6 +55,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlaybackException
 import androidx.media3.exoplayer.ExoPlayer
@@ -735,7 +736,7 @@ private fun MotionArtworkVideo(
     var surfaceSize by remember { mutableStateOf(IntSize.Zero) }
     val maxZoom = motionArtworkMaxZoom(presentation)
     val player = remember(artwork.identityKey, artwork.url, artwork.mimeType, presentation, profile, decoderRetries) {
-        ExoPlayer.Builder(context, canvasRenderersFactory(context, artwork.url)).build().apply {
+        ExoPlayer.Builder(context, canvasRenderersFactory(context, artwork.url)).setLoadControl(canvasLoadControl()).build().apply {
             repeatMode = Player.REPEAT_MODE_ONE
             volume = 0f
             trackSelectionParameters = trackSelectionParameters.buildUpon()
@@ -894,7 +895,7 @@ private const val STATIC_ARTWORK_MOTION_ENTER_MS = 360
 private const val STATIC_ARTWORK_MOTION_EXIT_MS = 220
 private const val STATIC_ARTWORK_BED_FADE_MS = 420
 private const val PAGE_STATIC_FALLBACK_FADE_MS = 180
-private const val VIDEO_FADE_IN_MS = 620
+private const val VIDEO_FADE_IN_MS = 320
 private const val VIDEO_FIRST_FRAME_TIMEOUT_MS = 9_000L
 private const val VIDEO_RETRY_DELAY_MS = 4_000L
 private const val MAX_VIDEO_RETRIES = 1
@@ -928,6 +929,21 @@ private fun canvasRenderersFactory(context: Context, artworkKey: String): Defaul
         .setEnableDecoderFallback(true)
         .setMediaCodecSelector(CanvasDecoderBlocklist.selectorFor(artworkKey))
 
+private fun canvasLoadControl(): DefaultLoadControl =
+    DefaultLoadControl.Builder()
+        .setBufferDurationsMs(
+            CANVAS_MIN_BUFFER_MS,
+            CANVAS_MAX_BUFFER_MS,
+            CANVAS_BUFFER_FOR_PLAYBACK_MS,
+            CANVAS_BUFFER_AFTER_REBUFFER_MS
+        )
+        .setPrioritizeTimeOverSizeThresholds(true)
+        .build()
+
+private const val CANVAS_MIN_BUFFER_MS = 2_000
+private const val CANVAS_MAX_BUFFER_MS = 8_000
+private const val CANVAS_BUFFER_FOR_PLAYBACK_MS = 250
+private const val CANVAS_BUFFER_AFTER_REBUFFER_MS = 750
 private const val MAX_CANVAS_DECODER_RETRIES = 2
 private const val DYNAMIC_BACKDROP_SAMPLE_SIZE = 24
 private const val DYNAMIC_BACKDROP_INITIAL_DELAY_MS = 240L

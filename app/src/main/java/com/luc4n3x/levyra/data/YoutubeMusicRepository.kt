@@ -560,6 +560,8 @@ private const val HOMOGENEOUS_RADIO_TOP_ARTIST_SHARE = 0.3
 internal const val YOUTUBE_MUSIC_VIDEO_SEARCH_PARAMS = "EgWKAQIQAWoMEA4QChADEAQQCRAF"
 internal const val YOUTUBE_MUSIC_SONG_SEARCH_PARAMS = "EgWKAQIIAWoMEA4QChADEAQQCRAF"
 internal const val YOUTUBE_MUSIC_ALBUM_SEARCH_PARAMS = "EgWKAQIYAWoMEA4QChADEAQQCRAF"
+internal val FULL_ALBUM_RELEASE_TYPES = setOf(ReleaseType.Album)
+internal val ALBUM_RESOLUTION_RELEASE_TYPES = setOf(ReleaseType.Album, ReleaseType.Ep, ReleaseType.Single)
 internal const val YOUTUBE_MUSIC_ARTIST_SEARCH_PARAMS = "EgWKAQIgAWoMEA4QChADEAQQCRAF"
 internal const val YOUTUBE_MUSIC_PLAYLIST_SEARCH_PARAMS = "EgWKAQIoAWoMEA4QChADEAQQCRAF"
 
@@ -765,6 +767,14 @@ internal fun selectResolvedAlbumCandidate(
     } ?: candidates.firstOrNull { candidate ->
         titleMatches(candidate) &&
             albumArtistCompatibility(album, candidate) != AlbumArtistCompatibility.Conflicting
+    }
+}
+
+internal fun albumResolutionCandidates(album: AlbumHit, candidates: List<AlbumHit>): List<AlbumHit> {
+    val titleKey = albumRecommendationTextKey(album.title)
+    return candidates.filter { candidate ->
+        candidate.releaseType in FULL_ALBUM_RELEASE_TYPES ||
+            (titleKey.isNotBlank() && albumRecommendationTextKey(candidate.title) == titleKey)
     }
 }
 
@@ -1808,7 +1818,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         if (!isPlausibleYoutubeMusicAlbumTitle(album.title)) return emptyList()
         val query = album.query.ifBlank { "${album.title} ${album.artist}" }.trim()
         if (query.length < 2) return emptyList()
-        val candidates = searchAlbumHits(query, languageCode, 12)
+        val candidates = searchAlbumHits(query, languageCode, 12, ALBUM_RESOLUTION_RELEASE_TYPES)
         return selectAlbumRecoveryCandidates(album, candidates, excludedBrowseIds)
     }
 
@@ -2454,6 +2464,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         query: String,
         languageCode: String,
         limit: Int,
+        releaseTypes: Set<ReleaseType> = FULL_ALBUM_RELEASE_TYPES,
         fetchSearchRoot: (String, String, String) -> JSONObject? = { text, language, params ->
             searchInnerTubeRaw(text, language, params)
         }
@@ -2463,14 +2474,14 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         val renderers = mutableListOf<JSONObject>()
         collectObjectsByKey(root, "musicResponsiveListItemRenderer", renderers)
         renderers.forEach { renderer ->
-            val album = parseAlbumHit(renderer) ?: return@forEach
+            val album = parseAlbumHit(renderer, releaseTypes) ?: return@forEach
             val key = "${album.title.lowercase()}|${album.artist.lowercase()}"
             if (!albums.containsKey(key)) albums[key] = album.copy(query = "${album.title} ${album.artist}")
         }
         val twoRows = mutableListOf<JSONObject>()
         collectObjectsByKey(root, "musicTwoRowItemRenderer", twoRows)
         twoRows.forEach { renderer ->
-            val album = parseTwoRowAlbumHit(renderer) ?: return@forEach
+            val album = parseTwoRowAlbumHit(renderer, releaseTypes) ?: return@forEach
             val key = "${album.title.lowercase()}|${album.artist.lowercase()}"
             if (!albums.containsKey(key)) albums[key] = album.copy(query = "${album.title} ${album.artist}")
         }
@@ -2483,14 +2494,14 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         return parseTwoRowAlbumHit(two)
     }
 
-    private fun parseTwoRowAlbumHit(two: JSONObject): AlbumHit? {
+    private fun parseTwoRowAlbumHit(two: JSONObject, releaseTypes: Set<ReleaseType> = FULL_ALBUM_RELEASE_TYPES): AlbumHit? {
         val title = two.optJSONObject("title")?.optJSONArray("runs")?.joinText().orEmpty().trim()
         if (!isPlausibleYoutubeMusicAlbumTitle(title)) return null
         val subtitle = two.optJSONObject("subtitle")?.optJSONArray("runs")?.joinText().orEmpty()
         val tokens = subtitle.split(" • ", " · ", " - ").map { it.trim() }.filter { it.isNotBlank() }
         val kind = tokens.firstOrNull().orEmpty()
         val releaseType = levyraReleaseType(kind)
-        if (releaseType != ReleaseType.Album) return null
+        if (releaseType !in releaseTypes) return null
         val artist = tokens.drop(1).firstOrNull { isAlbumArtistToken(it) } ?: return null
         val year = tokens.firstNotNullOfOrNull { Regex("""\b(19|20)\d{2}\b""").find(it)?.value }.orEmpty()
         val thumbnail = findBestThumbnail(two)
@@ -2510,14 +2521,14 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         )
     }
 
-    private fun parseAlbumHit(renderer: JSONObject): AlbumHit? {
+    private fun parseAlbumHit(renderer: JSONObject, releaseTypes: Set<ReleaseType> = FULL_ALBUM_RELEASE_TYPES): AlbumHit? {
         val lines = extractFlexLines(renderer)
         val title = lines.firstOrNull()?.takeIf { it.isNotBlank() } ?: return null
         if (!isPlausibleYoutubeMusicAlbumTitle(title)) return null
         val tokens = lines.drop(1).flatMap { it.split(" • ", " · ", " - ") }.map { it.trim() }.filter { it.isNotBlank() }
         val kind = tokens.firstOrNull().orEmpty()
         val releaseType = levyraReleaseType(kind)
-        if (releaseType != ReleaseType.Album) return null
+        if (releaseType !in releaseTypes) return null
         val artist = tokens.drop(1).firstOrNull { isAlbumArtistToken(it) } ?: return null
         val year = tokens.firstNotNullOfOrNull { Regex("""\b(19|20)\d{2}\b""").find(it)?.value }.orEmpty()
         val thumbnail = findBestThumbnail(renderer)
@@ -2562,8 +2573,9 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             return album.copy(title = album.title.takeIf(::isPlausibleYoutubeMusicAlbumTitle).orEmpty())
         }
 
-        val candidates = searchAlbumHits(query, languageCode, 12)
+        val candidates = searchAlbumHits(query, languageCode, 12, ALBUM_RESOLUTION_RELEASE_TYPES)
             .filter { it.browseId.isNotBlank() && isPlausibleYoutubeMusicAlbumTitle(it.title) }
+            .let { found -> albumResolutionCandidates(album, found) }
         val found = selectResolvedAlbumCandidate(album, candidates)
         return found?.let {
             album.copy(
