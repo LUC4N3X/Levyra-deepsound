@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.CircularWavyProgressIndicator
 import com.luc4n3x.levyra.domain.ChartMarketDirectory
+import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.domain.SpeedDial
 import com.luc4n3x.levyra.domain.RecommendationFeedbackKind
 import com.luc4n3x.levyra.domain.isExcludableArtist
@@ -26930,7 +26931,14 @@ private fun ExploreScreen(
             .background(Color.Transparent)
     ) {
         if (LevyraIsYouTubeMusic) {
-            YouTubeMusicExploreScreen(viewModel, listState, state.currentTrack?.id, exploreBottomInset, availableAnchors, onShortcut, onOpenJam, onLiveRadioOpenChange) { addToPlaylistTarget = it }
+            YouTubeMusicExploreScreen(
+                viewModel, listState, state.currentTrack?.id, exploreBottomInset, availableAnchors, onShortcut, onOpenJam, onLiveRadioOpenChange,
+                onOpenMood = { title, params ->
+                    samplesStartIndex = null
+                    exploreMoodReturn = null
+                    exploreDestination = exploreCategoryDestination(ExploreCategory(title, params))
+                }
+            ) { addToPlaylistTarget = it }
         } else LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
