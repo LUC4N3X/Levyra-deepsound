@@ -123,7 +123,11 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
 <br />
 <div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-04-spaced.webp" width="900" align="top" alt="Levyra showcase: settings, new releases, artists, and Jam" /></div>
 <br />
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-05-spaced.webp" width="900" align="top" alt="Levyra showcase: light theme, dark theme, top charts, and Year in Music" /></div>
+<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-05-spaced.webp?v=2" width="900" align="top" alt="Levyra showcase: light theme, dark theme, top charts, and Year in Music" /></div>
+<br />
+<p align="center"><b>Global skins · Choose your streaming layout</b><br>
+<sub>Want Spotify? Here's Spotify. &nbsp;·&nbsp; Want Apple Music? Here's Apple. &nbsp;·&nbsp; Want YouTube Music? Here it is.</sub></p>
+<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-06-skins-spaced.webp?v=2" width="900" align="top" alt="Levyra showcase: Skin Studio, Spotify Style, Apple Music Style, and YouTube Music Style" /></div>
 </div>
 
 </div>
