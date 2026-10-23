@@ -2254,19 +2254,19 @@ class LevyraStrings private constructor(
                 "he" to bundle("he", heLocalizationEntries()),
                 "fi" to bundle("fi", fiLocalizationEntries()),
                 "et" to bundle("et", etLocalizationEntries()),
-                "zh-Hant" to bundle("zh-Hant", enEntries() + newLocaleCoreOverrides("zh-Hant")),
-                "hu" to bundle("hu", enEntries() + newLocaleCoreOverrides("hu")),
-                "bg" to bundle("bg", enEntries() + newLocaleCoreOverrides("bg")),
-                "nb" to bundle("nb", enEntries() + newLocaleCoreOverrides("nb")),
-                "ca" to bundle("ca", enEntries() + newLocaleCoreOverrides("ca")),
-                "bn" to bundle("bn", enEntries() + newLocaleCoreOverrides("bn")),
-                "kk" to bundle("kk", enEntries() + newLocaleCoreOverrides("kk")),
-                "sr" to bundle("sr", enEntries() + newLocaleCoreOverrides("sr")),
-                "sq" to bundle("sq", enEntries() + newLocaleCoreOverrides("sq")),
-                "hr" to bundle("hr", enEntries() + newLocaleCoreOverrides("hr")),
-                "sk" to bundle("sk", enEntries() + newLocaleCoreOverrides("sk")),
-                "ms" to bundle("ms", enEntries() + newLocaleCoreOverrides("ms")),
-                "fa" to bundle("fa", enEntries() + newLocaleCoreOverrides("fa"))
+                "zh-Hant" to bundle("zh-Hant", enEntries() + newLocaleCoreOverrides("zh-Hant") + zhHantLocalizationEntries()),
+                "hu" to bundle("hu", enEntries() + newLocaleCoreOverrides("hu") + huLocalizationEntries()),
+                "bg" to bundle("bg", enEntries() + newLocaleCoreOverrides("bg") + bgLocalizationEntries()),
+                "nb" to bundle("nb", enEntries() + newLocaleCoreOverrides("nb") + nbLocalizationEntries()),
+                "ca" to bundle("ca", enEntries() + newLocaleCoreOverrides("ca") + caLocalizationEntries()),
+                "bn" to bundle("bn", enEntries() + newLocaleCoreOverrides("bn") + bnLocalizationEntries()),
+                "kk" to bundle("kk", enEntries() + newLocaleCoreOverrides("kk") + kkLocalizationEntries()),
+                "sr" to bundle("sr", enEntries() + newLocaleCoreOverrides("sr") + srLocalizationEntries()),
+                "sq" to bundle("sq", enEntries() + newLocaleCoreOverrides("sq") + sqLocalizationEntries()),
+                "hr" to bundle("hr", enEntries() + newLocaleCoreOverrides("hr") + hrLocalizationEntries()),
+                "sk" to bundle("sk", enEntries() + newLocaleCoreOverrides("sk") + skLocalizationEntries()),
+                "ms" to bundle("ms", enEntries() + newLocaleCoreOverrides("ms") + msLocalizationEntries()),
+                "fa" to bundle("fa", enEntries() + newLocaleCoreOverrides("fa") + faLocalizationEntries())
             )
         }
 
