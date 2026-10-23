@@ -21,6 +21,21 @@ class PlaylistRecordingEvidenceTest {
     }
 
     @Test
+    fun unlabeledUploadWithoutLengthIsProvisionalGood() {
+        val source = ImportedTrackIdentity(0, "Tripping Out", listOf("Deelicious"), album = "Neon Disco", durationMs = 372_000)
+        val upload = MatchCandidate("upload", "Deelicious - Tripping Out", listOf("MBience"), kind = CandidateKind.USER_VIDEO)
+        val evaluation = PlaylistMatchEngine.evaluate(source, upload)
+        assertEquals(MatchConfidence.GOOD, evaluation.confidence)
+        assertTrue(PlaylistMatchEngine.provisional(evaluation))
+        listOf("Deelicious - Tripping Out (Live)", "Deelicious - Tripping Out (Sped Up)", "Deelicious - Tripping Out (Remix)",
+            "Deelicious - Tripping Out (Radio Edit)", "Deelicious - Tripping Out @ Club 2022", "Other - Tripping Out").forEach { title ->
+            assertFalse(title, PlaylistMatchEngine.evaluate(source, upload.copy(title = title)).confidence.autoAccepted)
+        }
+        val remix = ImportedTrackIdentity(0, "Mind If I Stay (Astero Remix)", listOf("Kadebostany"), durationMs = 192_000)
+        assertFalse(PlaylistMatchEngine.evaluate(remix, upload.copy(title = "Kadebostany - Mind If I Stay (Astero Remix)")).confidence.autoAccepted)
+    }
+
+    @Test
     fun multiArtistUploadTitleKeepsEveryCredit() {
         val source = ImportedTrackIdentity(0, "In the Mood", listOf("Nick Schwenderling", "Tube & Berger"), durationMs = 230_000)
         val upload = MatchCandidate("upload", "Nick Schwenderling, Tube & Berger - In the Mood", listOf("ZEHN Records"),

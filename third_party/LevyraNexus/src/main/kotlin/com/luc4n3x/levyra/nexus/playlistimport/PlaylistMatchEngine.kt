@@ -213,7 +213,10 @@ object PlaylistMatchEngine {
         }
         if (titleCredit) {
             reasons += MatchReason(MatchSignal.VIDEO_UPLOAD, detail = TITLE_CREDIT_DETAIL)
-            limit(if (cleanRecording && MatchSignal.ARTIST_EXACT in signals) 84 else 79)
+            val unlabeledUpload = MatchSignal.TITLE_EXACT in signals && MatchSignal.DURATION_UNKNOWN in signals &&
+                MatchSignal.VERSION_CONFLICT !in signals && MatchSignal.VERSION_SOFT_DIFFERENCE !in signals &&
+                MatchSignal.EXPLICIT_CONFLICT !in signals && sourceTitle.markers.isEmpty() && candidateTitle.markers.isEmpty()
+            limit(if ((cleanRecording || unlabeledUpload) && MatchSignal.ARTIST_EXACT in signals) 84 else 79)
         }
         return MatchEvaluation(candidate, score.coerceIn(0, cap), reasons)
     }
