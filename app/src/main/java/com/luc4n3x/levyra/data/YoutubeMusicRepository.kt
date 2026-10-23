@@ -850,6 +850,10 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
     suspend fun albumTracksForImport(album: AlbumHit, languageCode: String): List<Track> =
         albumDetail(album, languageCode).tracks
 
+    suspend fun videoDurationForImport(videoId: String, languageCode: String): Long =
+        watchRepository.getWatchPlaylist(videoId, languageCode, limit = 1).tracks
+            .firstOrNull { it.videoId == videoId }?.durationMs ?: 0L
+
     open suspend fun search(query: String, limit: Int = 36, languageCode: String = LevyraLanguageCatalog.deviceDefault()): List<Track> = withContext(Dispatchers.IO) {
         val cleanQuery = query.trim()
         if (cleanQuery.length < 2) return@withContext emptyList()

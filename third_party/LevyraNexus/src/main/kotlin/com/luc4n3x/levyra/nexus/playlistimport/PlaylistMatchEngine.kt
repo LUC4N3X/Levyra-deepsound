@@ -205,9 +205,11 @@ object PlaylistMatchEngine {
         val signals = reasons.map { it.signal }.toSet()
         val cleanRecording = MatchSignal.TITLE_EXACT in signals && durationCorroborated &&
             MatchSignal.VERSION_CONFLICT !in signals && MatchSignal.EXPLICIT_CONFLICT !in signals
+        val namedVersion = versionLabels(sourceTitle).isNotEmpty() && versionLabels(sourceTitle) == versionLabels(candidateTitle)
         if (reasons.any { it.detail == INCOMPLETE_CREDITS_DETAIL } &&
             !(cleanRecording && candidate.kind == CandidateKind.SONG &&
-                (MatchSignal.ALBUM_SAME in signals || MatchSignal.ALBUM_EDITION in signals))
+                (MatchSignal.ALBUM_SAME in signals || MatchSignal.ALBUM_EDITION in signals)) &&
+            !(cleanRecording && titleCredit && namedVersion)
         ) {
             limit(79)
         }
@@ -216,7 +218,9 @@ object PlaylistMatchEngine {
             val unlabeledUpload = MatchSignal.TITLE_EXACT in signals && MatchSignal.DURATION_UNKNOWN in signals &&
                 MatchSignal.VERSION_CONFLICT !in signals && MatchSignal.VERSION_SOFT_DIFFERENCE !in signals &&
                 MatchSignal.EXPLICIT_CONFLICT !in signals && sourceTitle.markers.isEmpty() && candidateTitle.markers.isEmpty()
-            limit(if ((cleanRecording || unlabeledUpload) && MatchSignal.ARTIST_EXACT in signals) 84 else 79)
+            val credited = MatchSignal.ARTIST_EXACT in signals ||
+                namedVersion && reasons.any { it.detail == INCOMPLETE_CREDITS_DETAIL }
+            limit(if (cleanRecording && credited || unlabeledUpload && MatchSignal.ARTIST_EXACT in signals) 84 else 79)
         }
         return MatchEvaluation(candidate, score.coerceIn(0, cap), reasons)
     }

@@ -131,6 +131,9 @@ class PlaylistImportSnapshotLiveTest {
                                     trace.tracks(identity.position, "album", album.browseId.ifBlank { "${album.title}|${album.artist}" }) {
                                         repository.albumTracksForImport(album, languageCode)
                                     }
+                            },
+                            durationLookup = { videoId, languageCode ->
+                                trace.duration(identity.position, videoId) { repository.videoDurationForImport(videoId, languageCode) }
                             })
                         val before = calls
                         val beforeMetadata = metadataCalls
@@ -271,6 +274,9 @@ internal class PlaylistTraceRecorder(private val file: File) {
                 }
             })
         }, block)
+
+    suspend fun duration(position: Int, videoId: String, block: suspend () -> Long): Long =
+        record(position, "duration", videoId, { 1 }, { JSONObject().put("durationMs", it) }, block)
 
     suspend fun page(position: Int, query: String, block: suspend () -> SearchPage<Track>): SearchPage<Track> =
         record(position, "songs", query, { it.items.size }, { page ->

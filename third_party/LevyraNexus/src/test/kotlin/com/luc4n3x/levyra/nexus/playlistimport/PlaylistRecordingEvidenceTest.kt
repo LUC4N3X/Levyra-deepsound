@@ -49,6 +49,20 @@ class PlaylistRecordingEvidenceTest {
     }
 
     @Test
+    fun namedRemixUploadWithExactLengthToleratesAMissingCredit() {
+        val source = ImportedTrackIdentity(0, "Fou de Toi - Parallells Remix", listOf("Pupkulies & Rebecca", "Parallells", "Guest Singer"),
+            durationMs = 371_000)
+        val upload = MatchCandidate("upload", "Pupkulies & Rebecca - Fou de Toi (Parallells Remix)", listOf("House Me Up"),
+            durationMs = 372_000)
+        assertEquals(MatchConfidence.GOOD, PlaylistMatchEngine.evaluate(source, upload).confidence)
+        assertFalse(PlaylistMatchEngine.evaluate(source, upload.copy(durationMs = 380_000)).confidence.autoAccepted)
+        assertFalse(PlaylistMatchEngine.evaluate(source, upload.copy(durationMs = 0)).confidence.autoAccepted)
+        assertFalse(PlaylistMatchEngine.evaluate(source, upload.copy(title = "Pupkulies & Rebecca - Fou de Toi (Other Remix)")).confidence.autoAccepted)
+        val unnamed = ImportedTrackIdentity(0, "Fou de Toi", listOf("Pupkulies & Rebecca", "Guest Singer"), durationMs = 371_000)
+        assertFalse(PlaylistMatchEngine.evaluate(unnamed, upload.copy(title = "Pupkulies & Rebecca - Fou de Toi")).confidence.autoAccepted)
+    }
+
+    @Test
     fun multiArtistUploadTitleKeepsEveryCredit() {
         val source = ImportedTrackIdentity(0, "In the Mood", listOf("Nick Schwenderling", "Tube & Berger"), durationMs = 230_000)
         val upload = MatchCandidate("upload", "Nick Schwenderling, Tube & Berger - In the Mood", listOf("ZEHN Records"),

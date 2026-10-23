@@ -8,6 +8,7 @@ import com.luc4n3x.levyra.nexus.playlistimport.CandidateKind
 import com.luc4n3x.levyra.nexus.playlistimport.CandidateOrigin
 import com.luc4n3x.levyra.nexus.playlistimport.ImportedTrackIdentity
 import com.luc4n3x.levyra.nexus.playlistimport.MatchCandidate
+import com.luc4n3x.levyra.nexus.playlistimport.MatchConfidence
 import com.luc4n3x.levyra.nexus.playlistimport.PlaylistMatchEngine
 import com.luc4n3x.levyra.nexus.playlistimport.ImportTransliteration
 import com.luc4n3x.levyra.nexus.playlistimport.MatchOutcome
@@ -53,6 +54,7 @@ internal const val LOCAL_TRACK_PREFIX = "local:"
 private const val ALBUM_CACHE_ENTRIES = 128
 private const val MAX_ALBUM_BROWSES = 2
 private const val MAX_ISRC_RESULTS = 5
+private const val MAX_DURATION_LOOKUPS = 2
 private const val MIN_ALBUM_TRACK_SCORE = 40
 private const val FALLBACK_SEARCH_LANGUAGE = "en"
 private val untrustedAlbumTitles = setOf("single", "singles", "unknown", "unknown album", "youtube", "youtube music")
@@ -180,7 +182,8 @@ class PlaylistImportCatalog(
     private val languageCode: () -> String,
     private val metadataSearch: suspend (ImportedTrackIdentity) -> List<MatchCandidate> = { emptyList() },
     private val youtubeSearch: (suspend (String) -> List<Track>)? = null,
-    private val albumSource: ImportAlbumSource? = null
+    private val albumSource: ImportAlbumSource? = null,
+    private val durationLookup: (suspend (String, String) -> Long)? = null
 ) : PlaylistCandidateProvider {
     private val localMutex = Mutex()
     private var localIndex: Map<String, List<Track>>? = null
@@ -288,6 +291,7 @@ class PlaylistImportCatalog(
         if (lookup.searchUntilReliable(fallback.map { it to false })) return lookup.result()
         lookup.search(normalized, true)
         if (!lookup.reliable()) lookup.searchYoutube(originalQuery)
+        lookup.verifyUnknownDurations()
         return lookup.finish()
     }
 
@@ -376,6 +380,27 @@ class PlaylistImportCatalog(
                     }
                 }
             }.onFailure { failure = it }
+        }
+
+        suspend fun verifyUnknownDurations() {
+            val lookupDuration = durationLookup ?: return
+            if (reference.durationMs <= 0L || reliable()) return
+            result().outcome.alternatives
+                .filter { it.candidate.durationMs <= 0L && it.score >= MatchConfidence.REVIEW_SCORE }
+                .take(MAX_DURATION_LOOKUPS)
+                .forEach { evaluation ->
+                    val id = evaluation.candidate.id
+                    if (!queried.add("duration:$id")) return@forEach
+                    val duration = runSearch { listOf(lookupDuration(id, language)) }.getOrNull()?.firstOrNull() ?: 0L
+                    val index = found.indexOfFirst { it.candidate.id == id }
+                    if (duration > 0L && index >= 0) {
+                        val known = found[index]
+                        found[index] = known.copy(
+                            candidate = known.candidate.copy(durationMs = duration),
+                            track = known.track.copy(durationMs = duration)
+                        )
+                    }
+                }
         }
 
         suspend fun searchYoutube(query: String) {
