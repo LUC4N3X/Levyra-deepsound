@@ -5689,8 +5689,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         showUpdatePrompt = info.isNewer && (!silent || dismissed != info.latestVersionName),
                         updateMessage = when {
                             silent -> null
-                            info.isNewer -> "LEVYRA ${info.latestVersionName} è disponibile"
-                            else -> "LEVYRA è già aggiornata"
+                            info.isNewer -> LevyraStrings.forCode(it.languageCode).appUpdateAvailable(info.latestVersionName)
+                            else -> LevyraStrings.forCode(it.languageCode).appUpToDate
                         }
                     )
                 }
@@ -5699,7 +5699,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 _state.update {
                     it.copy(
                         isCheckingUpdates = false,
-                        updateMessage = if (silent) null else error.message ?: "Controllo aggiornamenti non riuscito"
+                        updateMessage = if (silent) null else LevyraStrings.forCode(it.languageCode).appUpdateCheckFailed
                     )
                 }
             }

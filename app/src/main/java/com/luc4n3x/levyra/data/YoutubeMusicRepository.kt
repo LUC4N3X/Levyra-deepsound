@@ -64,6 +64,11 @@ data class YoutubeMusicMoodPlaylist(
     val thumbnailUrl: String
 )
 
+data class YoutubeMusicMoodSection(
+    val title: String,
+    val playlists: List<YoutubeMusicMoodPlaylist>
+)
+
 data class YoutubeMusicExplore(
     val newReleases: List<AlbumHit> = emptyList(),
     val topSongs: List<Track> = emptyList(),
@@ -1449,6 +1454,15 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         parseMoodPlaylists(root).take(limit.coerceIn(1, 100))
     }
 
+    suspend fun moodPlaylistSections(
+        params: String,
+        languageCode: String = LevyraLanguageCatalog.deviceDefault()
+    ): List<YoutubeMusicMoodSection> = withContext(Dispatchers.IO) {
+        if (params.isBlank()) return@withContext emptyList()
+        val root = requestMusicBrowseRoot(languageCode, "FEmusic_moods_and_genres_category", params) ?: return@withContext emptyList()
+        parseMoodPlaylistSections(root)
+    }
+
     suspend fun moodCategoryArtwork(
         params: String,
         languageCode: String = LevyraLanguageCatalog.deviceDefault(),
@@ -2057,28 +2071,45 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         collectObjectsByKey(root, "musicTwoRowItemRenderer", cards)
         val result = LinkedHashMap<String, YoutubeMusicMoodPlaylist>()
         cards.forEach { card ->
-            val title = card.optJSONObject("title")?.optJSONArray("runs")?.joinText().orEmpty().trim()
-            if (title.isBlank()) return@forEach
-            val browseEndpoint = card.optJSONObject("navigationEndpoint")?.optJSONObject("browseEndpoint")
-            val watchEndpoint = card.optJSONObject("navigationEndpoint")?.optJSONObject("watchEndpoint")
-            val browseId = browseEndpoint?.optString("browseId").orEmpty()
-            val playlistId = watchEndpoint?.optString("playlistId").orEmpty()
-                .ifBlank { browseId.removePrefix("VL").takeIf { browseId.startsWith("VL") }.orEmpty() }
-            if (playlistId.isBlank() && browseId.isBlank()) return@forEach
-            val subtitle = card.optJSONObject("subtitle")?.optJSONArray("runs")?.joinText().orEmpty().trim()
-            val key = playlistId.ifBlank { browseId }
-            result.putIfAbsent(
-                key,
-                YoutubeMusicMoodPlaylist(
-                    title = title,
-                    playlistId = playlistId,
-                    browseId = browseId,
-                    description = subtitle,
-                    thumbnailUrl = upgradeThumbnail(findBestThumbnail(card))
-                )
-            )
+            val playlist = parseMoodPlaylistCard(card) ?: return@forEach
+            result.putIfAbsent(playlist.playlistId.ifBlank { playlist.browseId }, playlist)
         }
         return result.values.toList()
+    }
+
+    internal fun parseMoodPlaylistSections(root: JSONObject): List<YoutubeMusicMoodSection> {
+        val shelves = mutableListOf<JSONObject>()
+        collectObjectsByKeys(root, MOOD_SECTION_RENDERERS, shelves)
+        val seen = HashSet<String>()
+        return shelves.mapNotNull { shelf ->
+            val header = shelf.optJSONObject("header")
+            val title = MOOD_SECTION_HEADERS.firstNotNullOfOrNull { key ->
+                header?.optJSONObject(key)?.optJSONObject("title")?.optJSONArray("runs")?.joinText()?.trim()?.takeIf(String::isNotBlank)
+            } ?: return@mapNotNull null
+            val cards = mutableListOf<JSONObject>()
+            collectObjectsByKey(shelf.optJSONArray("items") ?: shelf.optJSONArray("contents"), "musicTwoRowItemRenderer", cards)
+            val playlists = cards.mapNotNull(::parseMoodPlaylistCard)
+                .filter { playlist -> seen.add(title + "|" + playlist.playlistId.ifBlank { playlist.browseId }) }
+            playlists.takeIf { it.isNotEmpty() }?.let { YoutubeMusicMoodSection(title, it) }
+        }
+    }
+
+    private fun parseMoodPlaylistCard(card: JSONObject): YoutubeMusicMoodPlaylist? {
+        val title = card.optJSONObject("title")?.optJSONArray("runs")?.joinText().orEmpty().trim()
+        if (title.isBlank()) return null
+        val browseEndpoint = card.optJSONObject("navigationEndpoint")?.optJSONObject("browseEndpoint")
+        val watchEndpoint = card.optJSONObject("navigationEndpoint")?.optJSONObject("watchEndpoint")
+        val browseId = browseEndpoint?.optString("browseId").orEmpty()
+        val playlistId = watchEndpoint?.optString("playlistId").orEmpty()
+            .ifBlank { browseId.removePrefix("VL").takeIf { browseId.startsWith("VL") }.orEmpty() }
+        if (playlistId.isBlank() && browseId.isBlank()) return null
+        return YoutubeMusicMoodPlaylist(
+            title = title,
+            playlistId = playlistId,
+            browseId = browseId,
+            description = card.optJSONObject("subtitle")?.optJSONArray("runs")?.joinText().orEmpty().trim(),
+            thumbnailUrl = upgradeThumbnail(findBestThumbnail(card))
+        )
     }
 
     private fun parseExplore(root: JSONObject): YoutubeMusicExplore {
@@ -2475,6 +2506,8 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
     private companion object {
         const val MAX_BROWSE_CONTINUATIONS = 8
         const val MAX_HOME_SHELF_ITEMS = 24
+        val MOOD_SECTION_RENDERERS = setOf("gridRenderer", "musicCarouselShelfRenderer")
+        val MOOD_SECTION_HEADERS = listOf("gridHeaderRenderer", "musicCarouselShelfBasicHeaderRenderer")
     }
 
     private val excludedTypes = setOf(
@@ -3651,6 +3684,24 @@ return Track(
                 }
             }
             is JSONArray -> for (i in 0 until value.length()) collectObjectsByKey(value.opt(i), key, out)
+        }
+    }
+
+    private fun collectObjectsByKeys(value: Any?, keys: Set<String>, out: MutableList<JSONObject>) {
+        when (value) {
+            is JSONObject -> {
+                val names = value.keys()
+                while (names.hasNext()) {
+                    val current = names.next()
+                    val child = value.opt(current)
+                    if (current in keys && child is JSONObject) {
+                        out += child
+                    } else {
+                        collectObjectsByKeys(child, keys, out)
+                    }
+                }
+            }
+            is JSONArray -> for (i in 0 until value.length()) collectObjectsByKeys(value.opt(i), keys, out)
         }
     }
 

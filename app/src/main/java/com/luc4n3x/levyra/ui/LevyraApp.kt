@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.CircularWavyProgressIndicator
 import com.luc4n3x.levyra.domain.ChartMarketDirectory
+import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.domain.SpeedDial
 import com.luc4n3x.levyra.domain.RecommendationFeedbackKind
 import com.luc4n3x.levyra.domain.isExcludableArtist
@@ -9808,7 +9809,6 @@ private fun HomeScreen(
                     homeHeader()
                 }
             }
-            if (stagedSpotlight != null) discoverySection(homeDiscovery, HomeStyle.Original, classicDiscoverySpec, state.animationsEnabled)
             item(key = "home-genre-chips", contentType = "home-genre-chips") {
                 val chipZones = remember(strings) { ExploreCatalog.getZones(strings) }
                 HomeGenreChips(
@@ -9919,7 +9919,6 @@ private fun HomeScreen(
                     spotlightHero(null, 0.dp)
                 }
             }
-            if (stagedSpotlight == null) discoverySection(homeDiscovery, HomeStyle.Original, classicDiscoverySpec, state.animationsEnabled)
 
             if (state.interfaceSettings.showPersonalOrbit && visiblePersonalTracks.isEmpty() && renderSnapshot.orbitPending) {
                 item(key = "home-personal", contentType = "home-personal-orbit") {
@@ -9954,6 +9953,13 @@ private fun HomeScreen(
                 }
             }
 
+            discoverySection(
+                homeDiscovery,
+                HomeStyle.Original,
+                classicDiscoverySpec,
+                state.animationsEnabled,
+                Modifier.padding(top = LevyraHomeDesign.sectionLead(compactHome))
+            )
             favoriteRadioSection(homeRadio)
             youtubeMusicHome?.let { yourMusic ->
                 item(key = "home-your-music-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
@@ -26925,7 +26931,14 @@ private fun ExploreScreen(
             .background(Color.Transparent)
     ) {
         if (LevyraIsYouTubeMusic) {
-            YouTubeMusicExploreScreen(viewModel, listState, state.currentTrack?.id, exploreBottomInset, availableAnchors, onShortcut, onOpenJam, onLiveRadioOpenChange) { addToPlaylistTarget = it }
+            YouTubeMusicExploreScreen(
+                viewModel, listState, state.currentTrack?.id, exploreBottomInset, availableAnchors, onShortcut, onOpenJam, onLiveRadioOpenChange,
+                onOpenMood = { title, params ->
+                    samplesStartIndex = null
+                    exploreMoodReturn = null
+                    exploreDestination = exploreCategoryDestination(ExploreCategory(title, params))
+                }
+            ) { addToPlaylistTarget = it }
         } else LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
@@ -27334,28 +27347,56 @@ private fun ExploreMoodCollectionDestination(
             )
             return
         }
-        val isActive = state.exploreCategoryParams == providerCategory.params
-        val tracks = if (isActive) state.exploreTracks else emptyList()
-        LaunchedEffect(providerCategory.params, state.languageCode, isActive) {
-            if (!isActive) viewModel.selectExploreCategory(activeCategory)
+        val categoryTracks: @Composable () -> Unit = {
+            val isActive = state.exploreCategoryParams == providerCategory.params
+            val tracks = if (isActive) state.exploreTracks else emptyList()
+            LaunchedEffect(providerCategory.params, state.languageCode, isActive) {
+                if (!isActive) viewModel.selectExploreCategory(activeCategory)
+            }
+            ExploreCollectionDestinationScreen(
+                identity = providerCategory.params,
+                title = activeCategory.title,
+                subtitle = activeCategory.section.ifBlank { strings.exploreMoods },
+                zone = null,
+                tracks = tracks,
+                isLoading = state.isExploreLoading || !isActive,
+                currentTrackId = state.currentTrack?.id,
+                isPlaying = state.isPlaying,
+                strings = strings,
+                backEnabled = backEnabled,
+                onBack = { onDestinationChange(returnDestination) },
+                onPlayAll = { tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } },
+                onPlayTrack = { track -> viewModel.playFrom(tracks, track) },
+                onRequestTrackArtwork = viewModel::ensureExploreTrackArtwork,
+                bottomInset = exploreDestinationBottomInset(state)
+            )
         }
-        ExploreCollectionDestinationScreen(
-            identity = providerCategory.params,
-            title = activeCategory.title,
-            subtitle = activeCategory.section.ifBlank { strings.exploreMoods },
-            zone = null,
-            tracks = tracks,
-            isLoading = state.isExploreLoading || !isActive,
-            currentTrackId = state.currentTrack?.id,
-            isPlaying = state.isPlaying,
-            strings = strings,
-            backEnabled = backEnabled,
-            onBack = { onDestinationChange(returnDestination) },
-            onPlayAll = { tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } },
-            onPlayTrack = { track -> viewModel.playFrom(tracks, track) },
-            onRequestTrackArtwork = viewModel::ensureExploreTrackArtwork,
-            bottomInset = exploreDestinationBottomInset(state)
-        )
+        if (LevyraIsSpotify) {
+            SpotifyGenreScreen(
+                title = activeCategory.title,
+                params = providerCategory.params,
+                languageCode = state.languageCode,
+                bottomInset = exploreDestinationBottomInset(state),
+                backEnabled = backEnabled,
+                onBack = { onDestinationChange(returnDestination) },
+                onOpenPlaylist = viewModel::openPlaylistHit,
+                fallback = categoryTracks
+            )
+        } else if (LevyraIsYouTubeMusic) {
+            YouTubeMusicGenreScreen(
+                title = activeCategory.title,
+                params = providerCategory.params,
+                languageCode = state.languageCode,
+                bottomInset = exploreDestinationBottomInset(state),
+                backEnabled = backEnabled,
+                onBack = { onDestinationChange(returnDestination) },
+                onSearch = viewModel::openSearch,
+                onOpenPlaylist = viewModel::openPlaylistHit,
+                fallback = categoryTracks
+            )
+        } else {
+            categoryTracks()
+        }
         return
     }
 

@@ -188,10 +188,6 @@ internal fun youTubeMusicExploreActions(
     openSearch = viewModel::openSearch
 )
 
-internal fun youTubeMusicOpenMood(viewModel: com.luc4n3x.levyra.viewmodel.ExploreViewModel): (String, String) -> Unit = { title, params ->
-    viewModel.selectExploreCategory(com.luc4n3x.levyra.domain.ExploreCategory(title, params))
-}
-
 @Composable
 internal fun YouTubeMusicExploreScreen(
     viewModel: com.luc4n3x.levyra.viewmodel.ExploreViewModel,
@@ -202,6 +198,7 @@ internal fun YouTubeMusicExploreScreen(
     onShortcut: (ExploreShortcut) -> Unit,
     onOpenJam: () -> Unit,
     onLiveRadioOpenChange: (Boolean) -> Unit,
+    onOpenMood: (String, String) -> Unit,
     onTrackActions: (Track) -> Unit
 ) {
     YouTubeMusicExploreContent(
@@ -209,7 +206,7 @@ internal fun YouTubeMusicExploreScreen(
         currentId = currentId,
         bottomInset = bottomInset,
         actions = remember(viewModel, onTrackActions) { youTubeMusicExploreActions(viewModel, onTrackActions) },
-        onOpenMood = remember(viewModel) { youTubeMusicOpenMood(viewModel) },
+        onOpenMood = onOpenMood,
         shortcuts = {
             ExplorePrimaryShortcuts(
                 availableAnchors = availableAnchors,
