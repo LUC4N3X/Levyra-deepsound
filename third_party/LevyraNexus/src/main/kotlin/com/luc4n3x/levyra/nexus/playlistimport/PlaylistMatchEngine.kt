@@ -216,26 +216,37 @@ object PlaylistMatchEngine {
         reasons: MutableList<MatchReason>
     ): Int {
         val signals = reasons.map { it.signal }.toSet()
-        val details = reasons.map { it.detail }.toSet()
         val cleanRecording = MatchSignal.TITLE_EXACT in signals && durationCorroborated &&
             MatchSignal.VERSION_CONFLICT !in signals && MatchSignal.EXPLICIT_CONFLICT !in signals
         val namedVersion = versionLabels(sourceTitle).isNotEmpty() && versionLabels(sourceTitle) == versionLabels(candidateTitle)
-        val missingOnly = MISSING_CREDITS_DETAIL in details
-        val creditsDiffer = missingOnly || INCOMPLETE_CREDITS_DETAIL in details
+        val namedRemixUpload = cleanRecording && titleCredit && namedVersion && reasons.any { it.detail == MISSING_CREDITS_DETAIL }
+        val creditCap = creditCap(signals, reasons, candidate, cleanRecording, namedRemixUpload)
+        if (!titleCredit) return creditCap
+        reasons += MatchReason(MatchSignal.VIDEO_UPLOAD, detail = TITLE_CREDIT_DETAIL)
+        val exactCredits = MatchSignal.ARTIST_EXACT in signals
+        val verified = cleanRecording && (exactCredits || namedRemixUpload)
+        val unlabeled = exactCredits && unlabeledUpload(signals, sourceTitle, candidateTitle)
+        return min(creditCap, if (verified || unlabeled) 84 else 79)
+    }
+
+    private fun creditCap(
+        signals: Set<MatchSignal>,
+        reasons: List<MatchReason>,
+        candidate: MatchCandidate,
+        cleanRecording: Boolean,
+        namedRemixUpload: Boolean
+    ): Int {
+        val creditsDiffer = reasons.any { it.detail == MISSING_CREDITS_DETAIL || it.detail == INCOMPLETE_CREDITS_DETAIL }
+        if (!creditsDiffer || namedRemixUpload) return 100
         val sameAlbumTrack = cleanRecording && candidate.kind == CandidateKind.SONG &&
             (MatchSignal.ALBUM_SAME in signals || MatchSignal.ALBUM_EDITION in signals)
-        val namedRemixUpload = cleanRecording && titleCredit && namedVersion && missingOnly
-        var cap = if (creditsDiffer && !sameAlbumTrack && !namedRemixUpload) 79 else 100
-        if (titleCredit) {
-            reasons += MatchReason(MatchSignal.VIDEO_UPLOAD, detail = TITLE_CREDIT_DETAIL)
-            val unlabeledUpload = MatchSignal.TITLE_EXACT in signals && MatchSignal.DURATION_UNKNOWN in signals &&
-                MatchSignal.VERSION_CONFLICT !in signals && MatchSignal.VERSION_SOFT_DIFFERENCE !in signals &&
-                MatchSignal.EXPLICIT_CONFLICT !in signals && sourceTitle.markers.isEmpty() && candidateTitle.markers.isEmpty()
-            val exactCredits = MatchSignal.ARTIST_EXACT in signals
-            cap = min(cap, if (cleanRecording && (exactCredits || namedRemixUpload) || unlabeledUpload && exactCredits) 84 else 79)
-        }
-        return cap
+        return if (sameAlbumTrack) 100 else 79
     }
+
+    private fun unlabeledUpload(signals: Set<MatchSignal>, sourceTitle: TitleIdentity, candidateTitle: TitleIdentity): Boolean =
+        MatchSignal.TITLE_EXACT in signals && MatchSignal.DURATION_UNKNOWN in signals &&
+            MatchSignal.VERSION_CONFLICT !in signals && MatchSignal.VERSION_SOFT_DIFFERENCE !in signals &&
+            MatchSignal.EXPLICIT_CONFLICT !in signals && sourceTitle.markers.isEmpty() && candidateTitle.markers.isEmpty()
 
     private fun scoreTitle(
         sourceTitle: TitleIdentity,

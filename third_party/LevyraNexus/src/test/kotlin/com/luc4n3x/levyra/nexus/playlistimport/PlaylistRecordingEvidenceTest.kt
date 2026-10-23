@@ -106,6 +106,15 @@ class PlaylistRecordingEvidenceTest {
     }
 
     @Test
+    fun greekLookalikeLettersInsideLatinNamesAreFolded() {
+        val source = ImportedTrackIdentity(0, "The Owner", listOf("NTEIBINT", "Σtella"), album = "The Owner", durationMs = 233_000)
+        val song = MatchCandidate("song", "The Owner", listOf("Stella, NTEIBINT"), album = "The Owner", durationMs = 234_000,
+            kind = CandidateKind.SONG)
+        assertTrue(PlaylistMatchEngine.evaluate(source, song).confidence.autoAccepted)
+        assertEquals("σαν", com.luc4n3x.levyra.nexus.identity.MusicIdentityText.normalize("Σαν"))
+    }
+
+    @Test
     fun creditOrderDoesNotMatter() {
         val source = ImportedTrackIdentity(0, "Echoes - Radio Edit", listOf("Oliver Koletzki", "Fran"), durationMs = 198_000)
         val song = MatchCandidate("song", "Echoes (Radio Edit)", listOf("Fran", "Oliver Koletzki"), durationMs = 198_500, kind = CandidateKind.SONG)

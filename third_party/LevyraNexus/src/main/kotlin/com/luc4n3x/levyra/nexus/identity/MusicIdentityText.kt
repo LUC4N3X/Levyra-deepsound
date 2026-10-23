@@ -228,7 +228,21 @@ object MusicIdentityText {
             .replace(nonWord, " ")
             .replace(whitespace, " ")
             .trim()
+            .split(' ')
+            .joinToString(" ", transform = ::foldMixedGreek)
     }
+
+    private fun foldMixedGreek(word: String): String {
+        val greek = word.any { Character.UnicodeScript.of(it.code) == Character.UnicodeScript.GREEK }
+        val latin = word.any { it in 'a'..'z' }
+        if (!greek || !latin) return word
+        return word.map { greekLookalikes[it] ?: it }.joinToString("")
+    }
+
+    private val greekLookalikes = mapOf(
+        'α' to 'a', 'β' to 'b', 'ε' to 'e', 'ι' to 'i', 'κ' to 'k', 'ν' to 'v', 'ο' to 'o',
+        'ρ' to 'p', 'σ' to 's', 'ς' to 's', 'τ' to 't', 'υ' to 'u', 'χ' to 'x', 'η' to 'n'
+    )
 
     fun normalizeArtist(value: String): String = normalize(value).replace(leadingArticle, "")
 
