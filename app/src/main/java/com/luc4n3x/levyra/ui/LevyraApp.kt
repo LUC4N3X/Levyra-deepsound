@@ -27374,6 +27374,18 @@ private fun ExploreMoodCollectionDestination(
                 onOpenPlaylist = viewModel::openPlaylistHit,
                 fallback = categoryTracks
             )
+        } else if (LevyraIsYouTubeMusic) {
+            YouTubeMusicGenreScreen(
+                title = activeCategory.title,
+                params = providerCategory.params,
+                languageCode = state.languageCode,
+                bottomInset = exploreDestinationBottomInset(state),
+                backEnabled = backEnabled,
+                onBack = { onDestinationChange(returnDestination) },
+                onSearch = viewModel::openSearch,
+                onOpenPlaylist = viewModel::openPlaylistHit,
+                fallback = categoryTracks
+            )
         } else {
             categoryTracks()
         }

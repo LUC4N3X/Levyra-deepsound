@@ -358,7 +358,7 @@ private fun DiscoveryDeck(
                     AnimatedContent(
                         targetState = discoveryReasonLabel(frontCard, model.copy),
                         transitionSpec = {
-                            (fadeIn(tween(220, delayMillis = 60)) + slideInVertically(tween(220, delayMillis = 60)) { it / 3 }) togetherWith
+                            fadeIn(tween(220, delayMillis = 60)) + slideInVertically(tween(220, delayMillis = 60)) { it / 3 } togetherWith
                                 fadeOut(tween(140))
                         },
                         label = "discovery-reason"
