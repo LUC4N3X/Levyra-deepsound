@@ -13462,26 +13462,31 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             if (!genericOnly && candidates.isEmpty()) break
             for (candidate in candidates) {
                 if (!attemptedCandidates.add(candidate.id)) continue
-                val carried = LevyraPersonalOrbit.preferAlbumArtwork(candidate, track)
-                val selected = if (_state.value.isVideoMode) {
-                    youtubePlayableTrack(carried, preferVideo = true) ?: youtubePlayableTrack(carried) ?: carried
-                } else {
-                    youtubePlayableTrack(carried) ?: carried
-                }
-                try {
-                    return preserveEditorialArtwork(track, resolvePlayableTrack(selected))
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (error: Throwable) {
-                    error.message
-                        ?.takeIf(String::isNotBlank)
-                        ?.let { errors += "${candidate.title} - ${candidate.artist}: $it" }
-                    resolver.invalidate(selected, _state.value.isVideoMode)
-                }
+                tryPlayableCandidate(track, candidate, errors)?.let { return it }
             }
         }
         val reason = errors.firstOrNull() ?: "YouTube non ha fornito uno stream audio riproducibile per ${track.title}"
         throw IllegalStateException(reason)
+    }
+
+    private suspend fun tryPlayableCandidate(track: Track, candidate: Track, errors: MutableList<String>): Track? {
+        val carried = LevyraPersonalOrbit.preferAlbumArtwork(candidate, track)
+        val selected = if (_state.value.isVideoMode) {
+            youtubePlayableTrack(carried, preferVideo = true) ?: youtubePlayableTrack(carried) ?: carried
+        } else {
+            youtubePlayableTrack(carried) ?: carried
+        }
+        return try {
+            preserveEditorialArtwork(track, resolvePlayableTrack(selected))
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            error.message
+                ?.takeIf(String::isNotBlank)
+                ?.let { errors += "${candidate.title} - ${candidate.artist}: $it" }
+            resolver.invalidate(selected, _state.value.isVideoMode)
+            null
+        }
     }
 
     private suspend fun searchPlayableCandidates(track: Track, genericOnly: Boolean = false): List<Track> {
