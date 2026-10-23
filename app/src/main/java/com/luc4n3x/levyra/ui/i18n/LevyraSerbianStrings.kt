@@ -364,7 +364,7 @@ internal fun srLocalizationEntries(): Map<String, String> = mapOf(
     "timer" to "Тајмер",
     "normalizationShort" to "Норм.",
     "coverAndTags" to "омот и ознаке",
-    "madeWithBy" to "Направљено са ❤️ –",
+    "madeWithBy" to "Са ❤️ израдио",
     "activeIndicator" to "УКЉ.",
     "batteryUnrestricted" to "Неограничена репродукција у позадини",
     "batteryUnrestrictedSubtitle" to "Изузми Levyra из оптимизације батерије да би музика свирала и са угашеним екраном",

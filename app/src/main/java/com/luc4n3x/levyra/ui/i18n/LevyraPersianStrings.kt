@@ -142,7 +142,7 @@ internal fun faLocalizationEntries(): Map<String, String> = mapOf(
     "voiceSearchUnsupported" to "جستجوی صوتی پشتیبانی نمی‌شود",
     "musicFiltersComingSoon" to "فیلترهای موسیقی به‌زودی می‌آیند!",
     "recentSearches" to "جستجوهای اخیر",
-    "actions" to "کارها",
+    "actions" to "اقدامات",
     "removeFromFavorites" to "حذف از علاقه‌مندی‌ها",
     "addToFavorites" to "افزودن به علاقه‌مندی‌ها",
     "playNext" to "پخش بعدی",

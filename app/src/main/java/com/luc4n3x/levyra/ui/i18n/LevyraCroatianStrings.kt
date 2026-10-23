@@ -364,7 +364,7 @@ internal fun hrLocalizationEntries(): Map<String, String> = mapOf(
     "timer" to "Mjerač vremena",
     "normalizationShort" to "Norm.",
     "coverAndTags" to "omot i oznake",
-    "madeWithBy" to "Napravljeno s ❤️ –",
+    "madeWithBy" to "S ❤️ izradio",
     "activeIndicator" to "UKLJ.",
     "batteryUnrestricted" to "Neograničena reprodukcija u pozadini",
     "batteryUnrestrictedSubtitle" to "Izuzmi Levyra iz optimizacije baterije kako bi glazba svirala i s ugašenim zaslonom",

@@ -364,7 +364,7 @@ internal fun zhHantLocalizationEntries(): Map<String, String> = mapOf(
     "timer" to "計時器",
     "normalizationShort" to "標準化",
     "coverAndTags" to "封面與標籤",
-    "madeWithBy" to "用 ❤️ 打造，作者",
+    "madeWithBy" to "用 ❤️ 打造，出自",
     "activeIndicator" to "開啟",
     "batteryUnrestricted" to "不受限制的背景播放",
     "batteryUnrestrictedSubtitle" to "將 Levyra 排除在電池最佳化之外，螢幕關閉時音樂也能繼續播放",

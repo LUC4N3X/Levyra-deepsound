@@ -223,7 +223,7 @@ internal fun huLocalizationEntries(): Map<String, String> = mapOf(
     "playAll" to "Összes lejátszása",
     "playingFrom" to "LEJÁTSZÁS INNEN",
     "closePlayer" to "Lejátszó bezárása",
-    "options" to "Beállítások",
+    "options" to "Lehetőségek",
     "showLyrics" to "Dalszöveg megjelenítése",
     "shuffle" to "Keverés",
     "previous" to "Előző",
