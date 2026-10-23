@@ -34,6 +34,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaBrowser
 import androidx.media3.session.MediaController
+import androidx.media3.session.LibraryResult
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import androidx.media3.session.SessionToken
@@ -158,6 +159,10 @@ private class LevyraCarSession : Session() {
                 playbackTokenRegistered = true
                 reconnectAttempts = 0
                 invalidatePlaybackScreen()
+            } catch (timeout: TimeoutCancellationException) {
+                playbackTokenRegistered = false
+                Timber.w("Android Auto MediaBrowser connection timed out")
+                scheduleReconnect()
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
@@ -441,7 +446,7 @@ private class LevyraSearchCarScreen(
     private var searchJob: Job? = null
     private var generation = 0L
     private var searching = false
-    private var searchFailed = false
+    private var failureMessage: String? = null
     private var results: List<MediaItem>? = null
 
     init {
@@ -452,22 +457,37 @@ private class LevyraSearchCarScreen(
 
     override fun onGetTemplate(): Template {
         val builder = SearchTemplate.Builder(object : SearchTemplate.SearchCallback {
-            override fun onSearchTextChanged(searchText: String) = Unit
+            override fun onSearchTextChanged(searchText: String) {
+                ++generation
+                searchJob?.cancel()
+                searching = false
+                results = null
+                failureMessage = null
+                invalidate()
+            }
             override fun onSearchSubmitted(searchText: String) = search(searchText)
         }).setHeaderAction(Action.BACK)
             .setSearchHint(carContext.getString(R.string.car_search_tracks))
             .setShowKeyboardByDefault(results == null)
         if (searching) return builder.setLoading(true).build()
         results?.let { items ->
-            val emptyMessage = if (searchFailed) R.string.car_content_unavailable else R.string.car_no_results
-            val list = ItemList.Builder().setNoItemsMessage(carContext.getString(emptyMessage))
+            val emptyMessage = failureMessage ?: carContext.getString(R.string.car_no_results)
+            val list = ItemList.Builder().setNoItemsMessage(emptyMessage)
             items.take(80).forEach { item ->
                 list.addItem(Row.Builder()
                     .setTitle(item.mediaMetadata.title?.toString().orEmpty().ifBlank { item.mediaId })
-                    .apply { item.mediaMetadata.artist?.toString()?.takeIf(String::isNotBlank)?.let(::addText) }
+                    .apply {
+                        (item.mediaMetadata.subtitle ?: item.mediaMetadata.artist)?.toString()?.takeIf(String::isNotBlank)?.let(::addText)
+                        setBrowsable(item.mediaMetadata.isBrowsable == true)
+                    }
                     .setOnClickListener {
-                        playItem(carContext, browserProvider, item, items)
-                        screenManager.push(LevyraNowPlayingCarScreen(carContext, browserProvider, playbackReady))
+                        if (item.mediaMetadata.isBrowsable == true) {
+                            screenManager.push(LevyraBrowseCarScreen(carContext, browserProvider, playbackReady,
+                                item.mediaId, item.mediaMetadata.title?.toString().orEmpty()))
+                        } else {
+                            playItem(carContext, browserProvider, item, items)
+                            screenManager.push(LevyraNowPlayingCarScreen(carContext, browserProvider, playbackReady))
+                        }
                     }.build())
             }
             builder.setItemList(list.build())
@@ -481,24 +501,29 @@ private class LevyraSearchCarScreen(
         val requestGeneration = ++generation
         searchJob?.cancel()
         searching = true
-        searchFailed = false
+        failureMessage = null
+        results = null
         invalidate()
         searchJob = scope.launch {
             val found = try {
-                val browser = browserProvider().awaitCarFuture(CAR_CONNECTION_TIMEOUT_MS)
-                browser.search(clean, null).awaitCarFuture(CAR_SEARCH_TIMEOUT_MS)
-                browser.getSearchResult(clean, 0, 80, null)
-                    .awaitCarFuture(CAR_SEARCH_TIMEOUT_MS)
-                    .value?.toList().orEmpty()
+                withTimeout(CAR_SEARCH_TIMEOUT_MS) {
+                    val browser = browserProvider().awaitCarFuture(CAR_CONNECTION_TIMEOUT_MS)
+                    browser.search(clean, null).awaitCarFuture(CAR_SEARCH_TIMEOUT_MS, cancelOnCancellation = true).requireCarSuccess()
+                    browser.getSearchResult(clean, 0, 80, null)
+                        .awaitCarFuture(CAR_SEARCH_TIMEOUT_MS, cancelOnCancellation = true)
+                        .requireCarSuccess().value?.toList().orEmpty()
+                }
             } catch (timeout: TimeoutCancellationException) {
                 Timber.w(timeout, "Android Auto template search timed out")
-                searchFailed = true
+                if (requestGeneration == generation) failureMessage = timeoutMessage()
                 emptyList()
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                Timber.w(error, "Android Auto template search failed")
-                searchFailed = true
+                Timber.w("Android Auto template search failed: %s", error.javaClass.simpleName)
+                if (requestGeneration == generation) failureMessage = if (error is CarLibraryException && error.timedOut)
+                    timeoutMessage() else com.luc4n3x.levyra.ui.i18n.LevyraStrings.forCode(
+                        com.luc4n3x.levyra.data.LevyraPreferences(carContext).languageCode()).networkTestUnknown
                 emptyList()
             }
             if (requestGeneration == generation) {
@@ -508,6 +533,10 @@ private class LevyraSearchCarScreen(
             }
         }
     }
+
+    private fun timeoutMessage(): String = com.luc4n3x.levyra.ui.i18n.LevyraStrings.forCode(
+        com.luc4n3x.levyra.data.LevyraPreferences(carContext).languageCode()
+    ).networkTestTimeout
 }
 
 @UnstableApi
@@ -553,7 +582,8 @@ private suspend fun loadChildren(
 ): CarBrowseResult = try {
     val browser = browserProvider().awaitCarFuture(CAR_CONNECTION_TIMEOUT_MS)
     val items = browser.getChildren(parentId, 0, 80, null)
-        .awaitCarFuture(CAR_BROWSE_TIMEOUT_MS)
+        .awaitCarFuture(CAR_BROWSE_TIMEOUT_MS, cancelOnCancellation = true)
+        .requireCarSuccess()
         .value?.toList().orEmpty()
     CarBrowseResult.Success(items)
 } catch (timeout: TimeoutCancellationException) {
@@ -566,8 +596,19 @@ private suspend fun loadChildren(
     CarBrowseResult.Failure
 }
 
-private suspend fun <T> ListenableFuture<T>.awaitCarFuture(timeoutMs: Long): T = withTimeout(timeoutMs) {
+private class CarLibraryException(val timedOut: Boolean) : Exception("Car library request failed")
+
+@UnstableApi
+private fun <T> LibraryResult<T>.requireCarSuccess(): LibraryResult<T> {
+    if (resultCode != LibraryResult.RESULT_SUCCESS) {
+        throw CarLibraryException(sessionError?.extras?.getString(AndroidAutoLibrary.EXTRA_SEARCH_FAILURE) == "timeout")
+    }
+    return this
+}
+
+private suspend fun <T> ListenableFuture<T>.awaitCarFuture(timeoutMs: Long, cancelOnCancellation: Boolean = false): T = withTimeout(timeoutMs) {
     suspendCancellableCoroutine { continuation ->
+        if (cancelOnCancellation) continuation.invokeOnCancellation { cancel(false) }
         addListener({
             if (!continuation.isActive) return@addListener
             try {
@@ -583,7 +624,7 @@ private suspend fun <T> ListenableFuture<T>.awaitCarFuture(timeoutMs: Long): T =
 
 private const val CAR_CONNECTION_TIMEOUT_MS = 8_000L
 private const val CAR_BROWSE_TIMEOUT_MS = 15_000L
-private const val CAR_SEARCH_TIMEOUT_MS = 20_000L
+private const val CAR_SEARCH_TIMEOUT_MS = 15_000L
 private const val CAR_COMMAND_TIMEOUT_MS = 8_000L
 
 @UnstableApi
