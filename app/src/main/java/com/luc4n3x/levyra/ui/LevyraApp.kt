@@ -27203,6 +27203,7 @@ private fun ExploreOverlays(
     onMoodReturnChange: (String?) -> Unit,
     onLiveRadioOpenChange: (Boolean) -> Unit
 ) {
+    val appleStyle = LevyraIsAppleMusic
     addToPlaylistTarget?.let { target ->
         AddToPlaylistDialog(
             track = target,
@@ -27243,7 +27244,7 @@ private fun ExploreOverlays(
                 onDestinationChange(exploreMoodDestination(zone.id))
             },
             onOpenCategory = { category ->
-                viewModel.selectExploreCategory(category)
+                if (!appleStyle) viewModel.selectExploreCategory(category)
                 onMoodReturnChange(ExploreMoodsDestination)
                 onDestinationChange(exploreCategoryDestination(category))
             },
@@ -27257,6 +27258,7 @@ private fun ExploreOverlays(
             state = state,
             strings = strings,
             viewModel = viewModel,
+            onTrackActions = onAddToPlaylistTargetChange,
             backEnabled = backEnabled,
             onDestinationChange = onDestinationChange
         )
@@ -27272,6 +27274,7 @@ private fun ExploreOverlays(
                 isVideoMode = state.isVideoMode,
                 isLoading = state.isSamplesLoading,
                 loadFailed = state.samplesLoadFailed,
+                playbackError = state.playerError,
                 favoriteIds = state.favoriteIds,
                 strings = strings,
                 backEnabled = backEnabled,
@@ -27309,6 +27312,7 @@ private fun ExploreMoodCollectionDestination(
     state: LevyraUiState,
     strings: LevyraStrings,
     viewModel: ExploreViewModel,
+    onTrackActions: (Track) -> Unit,
     backEnabled: Boolean,
     onDestinationChange: (String?) -> Unit
 ) {
@@ -27317,6 +27321,19 @@ private fun ExploreMoodCollectionDestination(
         val activeCategory = state.exploreCategories
             .firstOrNull { category -> category.params == providerCategory.params }
             ?: providerCategory
+        if (LevyraIsAppleMusic) {
+            AppleMusicGenreScreen(
+                title = activeCategory.title,
+                storefront = ChartsCatalog.region(state.selectedChartId).country,
+                currentId = state.currentTrack?.id,
+                bottomInset = exploreDestinationBottomInset(state),
+                exploreViewModel = viewModel,
+                onTrackActions = onTrackActions,
+                backEnabled = backEnabled,
+                onBack = { onDestinationChange(returnDestination) }
+            )
+            return
+        }
         val isActive = state.exploreCategoryParams == providerCategory.params
         val tracks = if (isActive) state.exploreTracks else emptyList()
         LaunchedEffect(providerCategory.params, state.languageCode, isActive) {

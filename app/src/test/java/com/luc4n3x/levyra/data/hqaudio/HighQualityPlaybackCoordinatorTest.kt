@@ -60,6 +60,36 @@ class HighQualityPlaybackCoordinatorTest {
     }
 
     @Test
+    fun verifiedJioSaavnStreamStartsWithoutWaitingForYoutube() {
+        var youtubeRequested = false
+        val result = coordinator(exactProvider()).play {
+            youtubeRequested = true
+            normalTrack()
+        }
+        assertFalse(youtubeRequested)
+        assertEquals(320, result.playbackManifest?.alternativeSource?.bitrateKbps)
+    }
+
+    @Test
+    fun lowerTierProviderDoesNotReplaceAHigherQualityNormalStream() {
+        val normal = normalTrack(averageBitrate = 256_000)
+        val result = coordinator(exactProvider(AudioQualityTier.KBPS_160, estimatedKbps = 192)).play { normal }
+
+        assertSame(normal, result)
+    }
+
+    @Test
+    fun providerMissFinishesBeforeYoutubeFallbackStarts() {
+        val provider = FakeHighQualityProvider()
+        val normal = normalTrack()
+        val result = coordinator(provider).play {
+            assertFalse(provider.searches.isEmpty())
+            normal
+        }
+        assertSame(normal, result)
+    }
+
+    @Test
     fun importedPlaylistTracksCanUseTheVerifiedJioSaavnStream() {
         val requested = playbackTrack().copy(source = "Imported playlist", streamUrl = "")
         val result = coordinator(exactProvider()).play(requested)

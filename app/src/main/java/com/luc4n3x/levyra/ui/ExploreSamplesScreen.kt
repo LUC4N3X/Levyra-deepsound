@@ -87,6 +87,7 @@ internal fun ExploreSamplesScreen(
     isVideoMode: Boolean,
     isLoading: Boolean,
     loadFailed: Boolean,
+    playbackError: String?,
     favoriteIds: Set<String>,
     strings: LevyraStrings,
     backEnabled: Boolean,
@@ -146,10 +147,13 @@ internal fun ExploreSamplesScreen(
                 isCurrent = isCurrent,
                 isPlaying = isPlaying && isCurrent,
                 isResolving = isResolving && isCurrent,
+                playbackError = playbackError.takeIf { isCurrent },
                 showVideo = isCurrent && isVideoMode,
                 isFavorite = track.id in favoriteIds,
                 strings = strings,
-                onTogglePlay = onTogglePlay,
+                onTogglePlay = {
+                    if (isCurrent && playbackError != null) onPlaySample(samples, track) else onTogglePlay()
+                },
                 onToggleFavorite = { onToggleFavorite(track) }
             )
         }
@@ -314,6 +318,7 @@ private fun ExploreSamplePage(
     isCurrent: Boolean,
     isPlaying: Boolean,
     isResolving: Boolean,
+    playbackError: String?,
     showVideo: Boolean,
     isFavorite: Boolean,
     strings: LevyraStrings,
@@ -361,6 +366,24 @@ private fun ExploreSamplePage(
                 strokeWidth = 3.dp,
                 modifier = Modifier.align(Alignment.Center).size(42.dp)
             )
+        } else if (playbackError != null) {
+            Column(
+                modifier = Modifier.align(Alignment.Center).padding(horizontal = 72.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = playbackError,
+                    color = Color.White,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+                SampleActionButton(
+                    icon = Icons.Rounded.Refresh,
+                    label = strings.exploreSamplesRetry,
+                    onClick = onTogglePlay
+                )
+            }
         } else if (isCurrent && !isPlaying) {
             Box(
                 modifier = Modifier
