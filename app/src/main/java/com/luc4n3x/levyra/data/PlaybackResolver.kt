@@ -2503,23 +2503,24 @@ class PlaybackResolver private constructor(private val context: Context) {
         val queries = playbackAlternativeSearchQueries(track)
         val repository = YoutubeMusicRepository(context)
         for (query in queries) {
-            val searchResults = runCatchingPreservingCancellation {
-                repository.search(query, 8, userPreferences.languageCode())
-            }.getOrDefault(emptyList())
-            val candidates = if (spotifyIdentityOnly) {
-                searchResults.filter { candidate ->
-                    com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher.scoreMatch(track, candidate) >=
-                        com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher.DEFAULT_CONFIDENCE_THRESHOLD
+            val candidates = runCatchingPreservingCancellation {
+                repository.searchForPlayback(query, 8, userPreferences.languageCode()) { searchResults ->
+                    val matched = if (spotifyIdentityOnly) {
+                        searchResults.filter { candidate ->
+                            com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher.scoreMatch(track, candidate) >=
+                                com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher.DEFAULT_CONFIDENCE_THRESHOLD
+                        }
+                    } else trustedPlaybackFallbackCandidates(track, searchResults)
+                    matched.filterNot { sameVideoIdentity(track, it) }
                 }
-            } else trustedPlaybackFallbackCandidates(track, searchResults)
+            }.getOrDefault(emptyList())
             candidates.asSequence()
                 .filter { it.id.isNotBlank() }
-                .filter { !sameVideoIdentity(track, it) }
                 .sortedByDescending { scoreAlternativeCandidate(track, it) }
                 .forEach { candidate ->
                     output.putIfAbsent(candidate.id, candidate.copy(streamUrl = "", videoStreamUrl = ""))
                 }
-            if (spotifyIdentityOnly && output.isNotEmpty() || output.size >= 4) break
+            if (output.isNotEmpty() && (spotifyIdentityOnly || PlaybackSourceIdentity.sourceVideoId(track).isBlank()) || output.size >= 4) break
         }
         output.values
             .sortedByDescending { scoreAlternativeCandidate(track, it) }

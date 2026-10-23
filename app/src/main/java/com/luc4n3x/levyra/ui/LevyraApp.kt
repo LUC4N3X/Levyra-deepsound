@@ -27272,6 +27272,7 @@ private fun ExploreOverlays(
                 isVideoMode = state.isVideoMode,
                 isLoading = state.isSamplesLoading,
                 loadFailed = state.samplesLoadFailed,
+                playbackError = state.playerError,
                 favoriteIds = state.favoriteIds,
                 strings = strings,
                 backEnabled = backEnabled,

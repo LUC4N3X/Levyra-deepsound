@@ -576,6 +576,7 @@ private const val MUSIC_PAGE_TYPE_ALBUM = "MUSIC_PAGE_TYPE_ALBUM"
 private const val MUSIC_PAGE_TYPE_ARTIST = "MUSIC_PAGE_TYPE_ARTIST"
 private const val MUSIC_PAGE_TYPE_PLAYLIST = "MUSIC_PAGE_TYPE_PLAYLIST"
 private const val SEARCH_OVERVIEW_SONG_LIMIT = 20
+private const val SEARCH_ALBUM_FALLBACK_LIMIT = 20
 private const val SEARCH_OVERVIEW_VIDEO_LIMIT = 10
 private const val SEARCH_OVERVIEW_ARTIST_LIMIT = 8
 private const val SEARCH_OVERVIEW_ALBUM_LIMIT = 10
@@ -866,6 +867,22 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         }.also { items -> items.forEach { memory[it.id] = it } }
     }
 
+    open suspend fun searchForPlayback(
+        query: String,
+        limit: Int,
+        languageCode: String,
+        selectCandidates: (List<Track>) -> List<Track> = { it }
+    ): List<Track> {
+        val songs = try {
+            searchSongsPage(query, languageCode).items.take(limit)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            emptyList()
+        }
+        return selectCandidates(songs).ifEmpty { selectCandidates(search(query, limit, languageCode)) }
+    }
+
     /** YouTube Music video-filtered search, with a bounded generic-search fallback. */
     suspend fun searchMusicVideos(
         query: String,
@@ -951,8 +968,12 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         continuation: String = ""
     ): SearchPage<AlbumHit> = withContext(Dispatchers.IO) {
         val root = searchSectionRoot(query, languageCode, YOUTUBE_MUSIC_ALBUM_SEARCH_PARAMS, continuation)
-            ?: return@withContext SearchPage()
-        SearchPage(parseSearchOverview(root, query.trim()).albums, findSearchContinuation(root))
+        val albums = root?.let { parseSearchOverview(it, query.trim()).albums }.orEmpty()
+        if (albums.isNotEmpty() || continuation.isNotBlank()) {
+            return@withContext SearchPage(albums, root?.let(::findSearchContinuation).orEmpty())
+        }
+        val songs = searchSectionRoot(query, languageCode, YOUTUBE_MUSIC_SONG_SEARCH_PARAMS, "") ?: return@withContext SearchPage()
+        SearchPage(parseSongRowAlbumHits(songs, SEARCH_ALBUM_FALLBACK_LIMIT), "")
     }
 
     suspend fun searchArtistsPage(
@@ -2469,7 +2490,58 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             searchInnerTubeRaw(text, language, params)
         }
     ): List<AlbumHit> {
-        val root = fetchSearchRoot(query, languageCode, YOUTUBE_MUSIC_ALBUM_SEARCH_PARAMS) ?: return emptyList()
+        val filtered = fetchSearchRoot(query, languageCode, YOUTUBE_MUSIC_ALBUM_SEARCH_PARAMS)
+            ?.let { root -> parseAlbumSearchHits(root, limit, releaseTypes) }
+            .orEmpty()
+        if (filtered.isNotEmpty()) return filtered
+        if (releaseTypes != ALBUM_RESOLUTION_RELEASE_TYPES) return emptyList()
+        return fetchSearchRoot(query, languageCode, YOUTUBE_MUSIC_SONG_SEARCH_PARAMS)
+            ?.let { root -> parseSongRowAlbumHits(root, limit) }
+            .orEmpty()
+    }
+
+    internal fun parseSongRowAlbumHits(root: JSONObject, limit: Int): List<AlbumHit> {
+        val renderers = mutableListOf<JSONObject>()
+        collectObjectsByKey(root, "musicResponsiveListItemRenderer", renderers)
+        val albums = LinkedHashMap<String, AlbumHit>()
+        renderers.forEach { renderer ->
+            val runs = renderer.optJSONArray("flexColumns")?.let { columns ->
+                (0 until columns.length()).flatMap { index ->
+                    val textRuns = columns.optJSONObject(index)
+                        ?.optJSONObject("musicResponsiveListItemFlexColumnRenderer")
+                        ?.optJSONObject("text")
+                        ?.optJSONArray("runs")
+                    (0 until (textRuns?.length() ?: 0)).mapNotNull { textRuns?.optJSONObject(it) }
+                }
+            }.orEmpty()
+            fun pageTypeOf(run: JSONObject): Pair<String, String> {
+                val endpoint = run.optJSONObject("navigationEndpoint")?.optJSONObject("browseEndpoint") ?: return "" to ""
+                val pageType = endpoint.optJSONObject("browseEndpointContextSupportedConfigs")
+                    ?.optJSONObject("browseEndpointContextMusicConfig")
+                    ?.optString("pageType")
+                    .orEmpty()
+                return pageType to endpoint.optString("browseId").trim()
+            }
+            val albumRun = runs.firstOrNull { pageTypeOf(it).first == MUSIC_PAGE_TYPE_ALBUM } ?: return@forEach
+            val browseId = pageTypeOf(albumRun).second.takeIf { it.startsWith("MPRE", ignoreCase = true) } ?: return@forEach
+            val title = albumRun.optString("text").trim().takeIf(::isPlausibleYoutubeMusicAlbumTitle) ?: return@forEach
+            val artistRuns = runs.filter { pageTypeOf(it).first == MUSIC_PAGE_TYPE_ARTIST }
+            val artist = artistRuns.map { it.optString("text").trim() }.filter(String::isNotBlank).distinct().joinToString(", ")
+            if (artist.isBlank() || albums.containsKey(browseId)) return@forEach
+            albums[browseId] = AlbumHit(
+                title = title,
+                artist = artist,
+                year = "",
+                thumbnailUrl = findBestThumbnail(renderer),
+                query = "$title $artist",
+                browseId = browseId,
+                artistBrowseId = artistRuns.firstNotNullOfOrNull { run -> pageTypeOf(run).second.takeIf(String::isNotBlank) }.orEmpty()
+            )
+        }
+        return albums.values.take(limit).toList()
+    }
+
+    private fun parseAlbumSearchHits(root: JSONObject, limit: Int, releaseTypes: Set<ReleaseType>): List<AlbumHit> {
         val albums = LinkedHashMap<String, AlbumHit>()
         val renderers = mutableListOf<JSONObject>()
         collectObjectsByKey(root, "musicResponsiveListItemRenderer", renderers)

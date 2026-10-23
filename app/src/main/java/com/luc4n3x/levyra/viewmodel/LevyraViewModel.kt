@@ -587,10 +587,14 @@ internal fun shouldReuseFreshCurrentsRequest(
 
 internal fun selectYoutubeShortSample(list: List<Track>, requested: Track): Track? {
     if (list.isEmpty()) return null
-    val requestedIdentity = playbackIdentity(requested)
-    val selected = list.firstOrNull { candidate -> playbackIdentity(candidate) == requestedIdentity }
+    val selected = list.firstOrNull { candidate -> sameYoutubeShortSample(candidate, requested) }
         ?: requested
     return selected.takeIf(::isYoutubeShortTrack)
+}
+
+internal fun sameYoutubeShortSample(left: Track, right: Track): Boolean {
+    val videoId = PlaybackSourceIdentity.sourceVideoId(left)
+    return videoId.isNotBlank() && videoId == PlaybackSourceIdentity.sourceVideoId(right)
 }
 
 
@@ -10096,8 +10100,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
 
         beginSamplesPlayback()
-        val alreadyActive = currentState.currentTrack?.let { current -> samePlayableTrack(current, selected) } == true &&
-            currentState.isVideoMode
+        val alreadyActive = currentState.currentTrack?.let { current -> sameYoutubeShortSample(current, selected) } == true &&
+            currentState.isVideoMode && currentState.playerError == null
 
         loopCurrentQueueOnCompletion = false
         val session = samplesPlaybackSession ?: return
@@ -10287,7 +10291,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     ) {
         val requestId = request.id
         val requestedVideoMode = _state.value.isVideoMode
-        val playableTrack = if (requestedVideoMode) preferredVideoPlaybackTrack(track) else youtubePlayableTrack(track)
+        val playableTrack = if (requestedVideoMode && !isYoutubeShortTrack(track)) {
+            preferredVideoPlaybackTrack(track)
+        } else {
+            youtubePlayableTrack(track)
+        }
         val selectedTrack = playableTrack ?: track
         if (isUnavailableLocalTrack(track)) {
             if (!isCurrentPlaybackRequest(requestId)) return
@@ -13437,6 +13445,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private suspend fun resolveForPlayback(track: Track): Track {
         if (track.isPersonalCollectionTrack()) return resolver.resolve(track)
+        if (isYoutubeShortTrack(track)) return resolvePlayableTrack(track)
         val errors = mutableListOf<String>()
         try {
             return preserveEditorialArtwork(track, resolvePlayableTrack(track))
@@ -13481,7 +13490,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val matches = if (_state.value.isVideoMode) {
                 repository.searchMusicVideos(query, 8, _state.value.languageCode)
             } else {
-                repository.search(query, 8, _state.value.languageCode)
+                repository.searchForPlayback(query, 8, _state.value.languageCode) { candidates ->
+                    candidates.filter { isPlaybackCandidateCompatible(track, it) }
+                }
             }
             matches.forEach { candidate ->
                 if (candidate.id.isNotBlank() && !candidates.containsKey(candidate.id)) candidates[candidate.id] = candidate

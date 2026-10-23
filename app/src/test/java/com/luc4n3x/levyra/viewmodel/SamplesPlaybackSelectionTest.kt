@@ -3,10 +3,20 @@ package com.luc4n3x.levyra.viewmodel
 import com.luc4n3x.levyra.data.YOUTUBE_SHORTS_SOURCE
 import com.luc4n3x.levyra.domain.Track
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 class SamplesPlaybackSelectionTest {
+    @Test
+    fun shortsWithIdenticalMetadataRemainDifferentPlaybackSelections() {
+        val first = track("shortvideo1", YOUTUBE_SHORTS_SOURCE, "https://www.youtube.com/shorts/shortvideo1", "SHORTS")
+        val second = track("shortvideo2", YOUTUBE_SHORTS_SOURCE, "https://www.youtube.com/shorts/shortvideo2", "SHORTS")
+
+        assertEquals(second, selectYoutubeShortSample(listOf(first, second), second))
+        assertFalse(sameYoutubeShortSample(first, second))
+    }
+
     @Test
     fun rejectedNonShortDoesNotCaptureBeforeFollowingValidShort() {
         val ordinaryVideo = track(

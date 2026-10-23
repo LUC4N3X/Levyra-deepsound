@@ -47,6 +47,14 @@ class HighQualityPlaybackCoordinator(
     ): Track {
         val startedAt = clock()
         val upfront = query.takeIf { it.durationMs > 0L }?.let { resolver.begin(identityKey(track), it) }
+        val initialResolution = upfront?.let { resolver.await(it, waitBudgetMs(resolver.mode, 0L, true)) }
+        if (initialResolution is HighQualityResolution.Selected &&
+            initialResolution.stream.tier == AudioQualityTier.KBPS_320 &&
+            HighQualityTierPolicy.accepts(initialResolution.stream.deliveredKbps, null, true)
+        ) {
+            HighQualityAudioDiagnostics.selected(initialResolution.stream, initialResolution.evaluation, clock() - startedAt)
+            return applyStream(track, null, initialResolution, provenance())
+        }
         val normal = runCatchingPreservingCancellation { resolveNormal() }
         val normalTrack = normal.getOrNull()
         if (normalTrack?.playbackManifest?.alternativeSource != null) return normalTrack
