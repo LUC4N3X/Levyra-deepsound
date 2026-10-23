@@ -138,6 +138,7 @@ object PlaylistMatchEngine {
     private val releaseContextLabel = Regex("(?:^|\\s)(?:soundtrack|film|movie|ost|single|album|original)\\s+version$")
     private const val TITLE_CREDIT_DETAIL = "title-credit"
     private const val INCOMPLETE_CREDITS_DETAIL = "incomplete-credits"
+    private const val MISSING_CREDITS_DETAIL = "missing-credits"
     private const val CORROBORATED_DURATION_MS = 2_000L
 
     fun evaluate(source: ImportedTrackIdentity, candidate: MatchCandidate): MatchEvaluation {
@@ -202,27 +203,38 @@ object PlaylistMatchEngine {
         score += scoreDuration(source.durationMs, candidate.durationMs, reasons, limit)
         score += scoreAlbum(source, sourceTitle, candidate, candidateTitle, reasons)
         score += scoreKind(candidate, reasons, limit)
+        limit(evidenceCap(sourceTitle, candidateTitle, candidate, titleCredit, durationCorroborated, reasons))
+        return MatchEvaluation(candidate, score.coerceIn(0, cap), reasons)
+    }
+
+    private fun evidenceCap(
+        sourceTitle: TitleIdentity,
+        candidateTitle: TitleIdentity,
+        candidate: MatchCandidate,
+        titleCredit: Boolean,
+        durationCorroborated: Boolean,
+        reasons: MutableList<MatchReason>
+    ): Int {
         val signals = reasons.map { it.signal }.toSet()
+        val details = reasons.map { it.detail }.toSet()
         val cleanRecording = MatchSignal.TITLE_EXACT in signals && durationCorroborated &&
             MatchSignal.VERSION_CONFLICT !in signals && MatchSignal.EXPLICIT_CONFLICT !in signals
         val namedVersion = versionLabels(sourceTitle).isNotEmpty() && versionLabels(sourceTitle) == versionLabels(candidateTitle)
-        if (reasons.any { it.detail == INCOMPLETE_CREDITS_DETAIL } &&
-            !(cleanRecording && candidate.kind == CandidateKind.SONG &&
-                (MatchSignal.ALBUM_SAME in signals || MatchSignal.ALBUM_EDITION in signals)) &&
-            !(cleanRecording && titleCredit && namedVersion)
-        ) {
-            limit(79)
-        }
+        val missingOnly = MISSING_CREDITS_DETAIL in details
+        val creditsDiffer = missingOnly || INCOMPLETE_CREDITS_DETAIL in details
+        val sameAlbumTrack = cleanRecording && candidate.kind == CandidateKind.SONG &&
+            (MatchSignal.ALBUM_SAME in signals || MatchSignal.ALBUM_EDITION in signals)
+        val namedRemixUpload = cleanRecording && titleCredit && namedVersion && missingOnly
+        var cap = if (creditsDiffer && !sameAlbumTrack && !namedRemixUpload) 79 else 100
         if (titleCredit) {
             reasons += MatchReason(MatchSignal.VIDEO_UPLOAD, detail = TITLE_CREDIT_DETAIL)
             val unlabeledUpload = MatchSignal.TITLE_EXACT in signals && MatchSignal.DURATION_UNKNOWN in signals &&
                 MatchSignal.VERSION_CONFLICT !in signals && MatchSignal.VERSION_SOFT_DIFFERENCE !in signals &&
                 MatchSignal.EXPLICIT_CONFLICT !in signals && sourceTitle.markers.isEmpty() && candidateTitle.markers.isEmpty()
-            val credited = MatchSignal.ARTIST_EXACT in signals ||
-                namedVersion && reasons.any { it.detail == INCOMPLETE_CREDITS_DETAIL }
-            limit(if (cleanRecording && credited || unlabeledUpload && MatchSignal.ARTIST_EXACT in signals) 84 else 79)
+            val exactCredits = MatchSignal.ARTIST_EXACT in signals
+            cap = min(cap, if (cleanRecording && (exactCredits || namedRemixUpload) || unlabeledUpload && exactCredits) 84 else 79)
         }
-        return MatchEvaluation(candidate, score.coerceIn(0, cap), reasons)
+        return cap
     }
 
     private fun scoreTitle(
@@ -349,6 +361,7 @@ object PlaylistMatchEngine {
         return MatchSignal.TITLE_EXACT in signals &&
             (MatchSignal.ARTIST_EXACT in signals || MatchSignal.ARTIST_PRIMARY in signals) &&
             MatchSignal.VERSION_CONFLICT !in signals && MatchSignal.EXPLICIT_CONFLICT !in signals &&
+            MatchSignal.DURATION_CLOSE in signals &&
             MatchSignal.DURATION_FAR !in signals && MatchSignal.DURATION_DRIFT !in signals
     }
 
@@ -443,7 +456,11 @@ object PlaylistMatchEngine {
                 reasons += if (exact) {
                     MatchReason(MatchSignal.ARTIST_EXACT)
                 } else {
-                    MatchReason(MatchSignal.ARTIST_PRIMARY, detail = if (differentCredits) INCOMPLETE_CREDITS_DETAIL else "")
+                    MatchReason(MatchSignal.ARTIST_PRIMARY, detail = when {
+                        !differentCredits -> ""
+                        containsCredits(expected, candidateAll) -> MISSING_CREDITS_DETAIL
+                        else -> INCOMPLETE_CREDITS_DETAIL
+                    })
                 }
                 if (exact) 32 else 27
             }
