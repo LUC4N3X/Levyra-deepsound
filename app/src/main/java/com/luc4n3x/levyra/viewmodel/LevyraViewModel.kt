@@ -921,7 +921,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             localTracks = { localLibrary.availableMedia.first().map { it.toLocalTrack() } },
             languageCode = { _state.value.languageCode },
             metadataSearch = metadata::search,
-            youtubeSearch = { query -> repository.searchYoutubeForImport(query, 12) }
+            youtubeSearch = { query -> repository.searchYoutubeForImport(query, 12) },
+            albumSource = object : com.luc4n3x.levyra.data.playlistimport.ImportAlbumSource {
+                override suspend fun albums(query: String, languageCode: String) =
+                    repository.searchAlbumsForImport(query, languageCode)
+
+                override suspend fun tracks(album: com.luc4n3x.levyra.domain.AlbumHit, languageCode: String) =
+                    repository.albumTracksForImport(album, languageCode)
+            },
+            durationLookup = { videoId, languageCode -> repository.videoDurationForImport(videoId, languageCode) }
         )
     }
     val playlistImport: PlaylistImportController by lazy {
