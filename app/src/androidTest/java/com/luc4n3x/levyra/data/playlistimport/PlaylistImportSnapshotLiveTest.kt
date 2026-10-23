@@ -56,13 +56,13 @@ class PlaylistImportSnapshotLiveTest {
                 listOf(row.title, row.artistLine, row.album, "Temporary catalog validation", "Playlist", row.isrc,
                     row.durationMs.toString(), row.sourceTrackId).joinToString(",", transform = ::csv)
             }
-        File(context.filesDir, "requested-playlist.csv").writeText(fixture)
+        File(context.filesDir, "${playlistName(args)}.csv").writeText(fixture)
         val parsed = PlaylistTextParsers.parse(PlaylistTextFormat.CSV, fixture)
         assertEquals(rows.map { it.title }, parsed.tracks.map { it.title })
         assertEquals(rows.map { it.artists }, parsed.tracks.map { it.artists })
         assertEquals(rows.map { it.durationMs }, parsed.tracks.map { it.durationMs })
         assertEquals(rows.map { it.sourceTrackId }, parsed.tracks.map { it.sourceTrackId })
-        File(context.filesDir, "requested-playlist-access.json").writeText(
+        File(context.filesDir, "${playlistName(args)}-access.json").writeText(
             JSONObject().put("retrieved", rows.size).put("declared", source.descriptor.declaredTrackCount)
                 .put("completeness", source.completeness.toString()).put("requests", requests)
                 .put("csvRoundTrip", true).toString(2)
@@ -74,7 +74,7 @@ class PlaylistImportSnapshotLiveTest {
         val args = InstrumentationRegistry.getArguments()
         assumeTrue(args.getString("playlistLive") == "true")
         val context = ApplicationProvider.getApplicationContext<Context>()
-        val file = File(context.filesDir, "requested-playlist.csv")
+        val file = File(context.filesDir, "${playlistName(args)}.csv")
         assumeTrue(file.isFile)
         val identities = PlaylistTextParsers.parse(PlaylistTextFormat.CSV, file.readText()).tracks
         val start = args.getString("playlistStart")?.toInt() ?: 0
@@ -92,6 +92,7 @@ class PlaylistImportSnapshotLiveTest {
         val batch = if (positions == null) identities.drop(start).take(count) else identities.filter { it.position in positions }
         val slots = Semaphore((args.getString("playlistConcurrency")?.toInt() ?: 1).coerceIn(1, 4))
         val resultLock = Mutex()
+        val trace = PlaylistTraceRecorder(File(context.filesDir, "$reportName-trace.jsonl"))
         coroutineScope {
             batch.filter { it.position !in done }.map { identity ->
                 async {
@@ -102,26 +103,38 @@ class PlaylistImportSnapshotLiveTest {
                             override suspend fun searchYoutubeForImport(query: String, limit: Int): List<Track> {
                                 calls++
                                 queries.put(JSONObject().put("kind", "youtube").put("query", query))
-                                return super.searchYoutubeForImport(query, limit)
+                                return trace.tracks(identity.position, "youtube", query) { super.searchYoutubeForImport(query, limit) }
                             }
 
                             override suspend fun searchSongsPage(query: String, languageCode: String, continuation: String): SearchPage<Track> {
                                 calls++
                                 queries.put(JSONObject().put("kind", "songs").put("query", query))
-                                return super.searchSongsPage(query, languageCode, continuation)
+                                return trace.page(identity.position, query) { super.searchSongsPage(query, languageCode, continuation) }
                             }
 
                             override suspend fun searchForImport(query: String, limit: Int, languageCode: String): List<Track> {
                                 calls++
                                 queries.put(JSONObject().put("kind", "mixed").put("query", query))
-                                return super.searchForImport(query, limit, languageCode)
+                                return trace.tracks(identity.position, "mixed", query) { super.searchForImport(query, limit, languageCode) }
                             }
                         }
                         var metadataCalls = 0
                         val catalog = PlaylistImportCatalog(repository, { emptyList() }, { "en" }, metadataSearch = { identity ->
                             metadataCalls++
-                            metadata.search(identity)
-                        }, youtubeSearch = { query -> repository.searchYoutubeForImport(query, 12) })
+                            trace.metadata(identity.position) { metadata.search(identity) }
+                        }, youtubeSearch = { query -> repository.searchYoutubeForImport(query, 12) },
+                            albumSource = object : ImportAlbumSource {
+                                override suspend fun albums(query: String, languageCode: String) =
+                                    trace.albums(identity.position, query) { repository.searchAlbumsForImport(query, languageCode) }
+
+                                override suspend fun tracks(album: com.luc4n3x.levyra.domain.AlbumHit, languageCode: String) =
+                                    trace.tracks(identity.position, "album", album.browseId.ifBlank { "${album.title}|${album.artist}" }) {
+                                        repository.albumTracksForImport(album, languageCode)
+                                    }
+                            },
+                            durationLookup = { videoId, languageCode ->
+                                trace.duration(identity.position, videoId) { repository.videoDurationForImport(videoId, languageCode) }
+                            })
                         val before = calls
                         val beforeMetadata = metadataCalls
                         val queryStart = queries.length()
@@ -168,7 +181,7 @@ class PlaylistImportSnapshotLiveTest {
         require(positions.size <= 10)
         val context = ApplicationProvider.getApplicationContext<Context>()
         val identities = PlaylistTextParsers.parse(PlaylistTextFormat.CSV,
-            File(context.filesDir, "requested-playlist.csv").readText()).tracks
+            File(context.filesDir, "${playlistName(args)}.csv").readText()).tracks
         val repository = YoutubeMusicRepository(context)
         val results = JSONArray()
         positions.forEach { position ->
@@ -203,9 +216,9 @@ class PlaylistImportSnapshotLiveTest {
         require(positions.size <= 25)
         val context = ApplicationProvider.getApplicationContext<Context>()
         val identities = PlaylistTextParsers.parse(PlaylistTextFormat.CSV,
-            File(context.filesDir, "requested-playlist.csv").readText()).tracks
+            File(context.filesDir, "${playlistName(args)}.csv").readText()).tracks
         val catalog = PlaylistImportCatalog(YoutubeMusicRepository(context), { emptyList() }, { "en" })
-        val output = File(context.filesDir, "requested-playlist-diagnostics.json")
+        val output = File(context.filesDir, "${playlistName(args)}-diagnostics.json")
         val results = if (output.isFile) JSONArray(output.readText()) else JSONArray()
         positions.forEach { position ->
             val identity = identities[position]
@@ -238,5 +251,82 @@ class PlaylistImportSnapshotLiveTest {
         val temporary = File(parentFile, "$name.tmp")
         temporary.writeText(value)
         check(temporary.renameTo(this))
+    }
+
+    private fun playlistName(args: android.os.Bundle): String =
+        (args.getString("playlistName") ?: "requested-playlist").also { require(it.matches(Regex("[A-Za-z0-9-]+"))) }
+}
+
+internal class PlaylistTraceRecorder(private val file: File) {
+    suspend fun tracks(position: Int, kind: String, query: String, block: suspend () -> List<Track>): List<Track> =
+        record(position, kind, query, { it.size }, { items -> JSONObject().put("items", trackArray(items)) }, block)
+
+    suspend fun albums(
+        position: Int,
+        query: String,
+        block: suspend () -> List<com.luc4n3x.levyra.domain.AlbumHit>
+    ): List<com.luc4n3x.levyra.domain.AlbumHit> =
+        record(position, "albums", query, { it.size }, { items ->
+            JSONObject().put("items", JSONArray().also { list ->
+                items.forEach { hit ->
+                    list.put(JSONObject().put("title", hit.title).put("artist", hit.artist).put("year", hit.year)
+                        .put("browseId", hit.browseId))
+                }
+            })
+        }, block)
+
+    suspend fun duration(position: Int, videoId: String, block: suspend () -> Long): Long =
+        record(position, "duration", videoId, { 1 }, { JSONObject().put("durationMs", it) }, block)
+
+    suspend fun page(position: Int, query: String, block: suspend () -> SearchPage<Track>): SearchPage<Track> =
+        record(position, "songs", query, { it.items.size }, { page ->
+            JSONObject().put("items", trackArray(page.items)).put("failed", page.failed)
+        }, block)
+
+    suspend fun metadata(
+        position: Int,
+        block: suspend () -> List<com.luc4n3x.levyra.nexus.playlistimport.MatchCandidate>
+    ): List<com.luc4n3x.levyra.nexus.playlistimport.MatchCandidate> =
+        record(position, "metadata", "", { it.size }, { items ->
+            JSONObject().put("items", JSONArray().also { list ->
+                items.forEach { item ->
+                    list.put(JSONObject().put("id", item.id).put("title", item.title).put("artists", JSONArray(item.artists))
+                        .put("album", item.album).put("durationMs", item.durationMs).put("isrc", item.isrc)
+                        .put("explicit", item.explicit == true).put("kind", item.kind.name))
+                }
+            })
+        }, block)
+
+    private suspend fun <T> record(
+        position: Int,
+        kind: String,
+        query: String,
+        size: (T) -> Int,
+        encode: (T) -> JSONObject,
+        block: suspend () -> T
+    ): T {
+        val started = System.nanoTime()
+        val line = JSONObject().put("position", position).put("kind", kind).put("query", query)
+        return try {
+            block().also { value ->
+                encode(value).let { body -> body.keys().forEach { key -> line.put(key, body.get(key)) } }
+                line.put("count", size(value))
+            }
+        } catch (error: Exception) {
+            line.put("error", error.javaClass.simpleName)
+            throw error
+        } finally {
+            line.put("elapsedMs", (System.nanoTime() - started) / 1_000_000)
+            synchronized(this) { file.appendText(line.toString() + "\n") }
+        }
+    }
+
+    private fun trackArray(items: List<Track>): JSONArray = JSONArray().also { list ->
+        items.forEach { track ->
+            list.put(JSONObject().put("id", track.id).put("title", track.title).put("artist", track.artist)
+                .put("album", track.album).put("durationMs", track.durationMs).put("isrc", track.isrc)
+                .put("explicit", track.explicit).put("videoType", track.videoType).put("source", track.source)
+                .put("albumBrowseId", track.albumBrowseId))
+        }
     }
 }
