@@ -35,7 +35,7 @@ internal class HighQualityProviderLane(
         }
         return when (val outcome = provider.lookup(mapping.providerTrackId)) {
             is ProviderLookupOutcome.Found -> {
-                val evaluation = matcher.evaluate(query, outcome.candidate)
+                val evaluation = matcher.evaluateReadings(query, outcome.candidate)
                 val unchanged = AlternativeTrackFingerprint.of(outcome.candidate) == mapping.candidateFingerprint
                 if (!unchanged || !evaluation.accepted) {
                     HighQualityAudioDiagnostics.staleMapping(
@@ -114,7 +114,7 @@ internal class HighQualityProviderLane(
             ProviderLookupOutcome.Missing -> refuse(searched, "MISSING", "details missing or restricted")
             is ProviderLookupOutcome.Found -> {
                 val details = outcome.candidate
-                val evaluation = matcher.evaluate(query, details)
+                val evaluation = matcher.evaluateReadings(query, details)
                 val sameTrack = details.providerId == searched.providerId &&
                     details.providerTrackId == searched.providerTrackId
                 if (sameTrack && evaluation.accepted) {

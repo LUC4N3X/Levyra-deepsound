@@ -35,7 +35,17 @@ class HighQualityPlaybackCoordinator(
             album = track.album,
             durationMs = track.durationMs.coerceAtLeast(0L),
             explicit = if (track.explicit) true else null,
-            isrc = track.isrc
+            isrc = track.isrc,
+            alternateReading = recording.alternate?.let { alternate ->
+                AlternativeTrackQuery(
+                    title = alternate.title,
+                    artist = alternate.artist,
+                    album = track.album,
+                    durationMs = track.durationMs.coerceAtLeast(0L),
+                    explicit = if (track.explicit) true else null,
+                    isrc = track.isrc
+                )
+            }
         )
     }
 
@@ -60,7 +70,10 @@ class HighQualityPlaybackCoordinator(
         if (normalTrack?.playbackManifest?.alternativeSource != null) return normalTrack
         val pending = upfront
             ?: normalTrack?.durationMs?.takeIf { it > 0L }?.let { verified ->
-                resolver.begin(identityKey(track), query.copy(durationMs = verified))
+                resolver.begin(
+                    identityKey(track),
+                    query.copy(durationMs = verified, alternateReading = query.alternateReading?.copy(durationMs = verified))
+                )
             }
             ?: return normal.getOrThrow()
         val waitMs = waitBudgetMs(resolver.mode, clock() - startedAt, normalTrack != null)

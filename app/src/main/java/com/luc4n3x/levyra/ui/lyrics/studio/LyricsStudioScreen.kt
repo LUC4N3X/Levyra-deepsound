@@ -205,6 +205,31 @@ internal fun LyricsStudioOverlay(
                 )
             }
 
+            item(contentType = "studio-viewer-style") {
+                val copy = com.luc4n3x.levyra.ui.i18n.appleLyricsCopy(strings.code)
+                StudioCard {
+                    Text(
+                        text = copy.lyricsStyle,
+                        color = LevyraText,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 10.dp)
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        com.luc4n3x.levyra.domain.LyricsViewerStyle.entries.forEach { style ->
+                            StudioChoiceChip(
+                                label = when (style) {
+                                    com.luc4n3x.levyra.domain.LyricsViewerStyle.SKIN_DEFAULT -> copy.skinDefault
+                                    com.luc4n3x.levyra.domain.LyricsViewerStyle.APPLE_MUSIC -> com.luc4n3x.levyra.ui.i18n.APPLE_MUSIC_LYRICS_STYLE_LABEL
+                                },
+                                selected = settings.viewerStyle == style,
+                                onClick = { onUpdateSettings(settings.copy(viewerStyle = style)) }
+                            )
+                        }
+                    }
+                }
+            }
+
             // Presets Selector (5 Stili di Testi)
             item(contentType = "studio-presets") {
                 StudioSectionHeader(
