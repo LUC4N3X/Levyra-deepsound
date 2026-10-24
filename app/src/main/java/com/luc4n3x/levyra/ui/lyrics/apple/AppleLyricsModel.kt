@@ -54,33 +54,50 @@ sealed interface AppleLyricsRow {
 
 fun appleLyricsRows(lines: List<LyricLine>, synced: Boolean, showSecondaryVoices: Boolean): List<AppleLyricsRow> {
     if (lines.none { !it.isMetadata && it.text.isNotBlank() }) return emptyList()
+    val vocals = appleVocalRows(lines, synced, showSecondaryVoices)
+    return if (synced) appleRowsWithInstrumentals(vocals) else vocals
+}
+
+private fun LyricLine.skippedByAppleLyrics(synced: Boolean): Boolean =
+    isMetadata || isInstrumental || text.isMusicNoteOnly() || (synced && text.isBlank())
+
+private fun appleVocalRows(lines: List<LyricLine>, synced: Boolean, showSecondaryVoices: Boolean): List<AppleLyricsRow.Vocal> {
     val duet = lines.any { it.role == LyricVocalRole.DUET_LEFT || it.role == LyricVocalRole.DUET_RIGHT }
     val vocals = ArrayList<AppleLyricsRow.Vocal>(lines.size)
     val pendingBackground = ArrayList<LyricLine>()
     lines.forEachIndexed { index, line ->
-        if (line.isMetadata || line.isInstrumental || line.text.isMusicNoteOnly()) return@forEachIndexed
-        if (synced && line.text.isBlank()) return@forEachIndexed
-        if (line.role == LyricVocalRole.BACKGROUND) {
-            if (!showSecondaryVoices) return@forEachIndexed
-            val owner = vocals.lastOrNull()
-            if (synced && owner != null && line.startMs <= owner.main.endMs + APPLE_LYRICS_BACKGROUND_ATTACH_SLACK_MS) {
-                vocals[vocals.lastIndex] = owner.copy(background = owner.background + line)
-            } else if (synced) {
-                pendingBackground += line
-            } else {
-                vocals += appleVocalRow(line, index, emptyList(), duet)
-            }
-            return@forEachIndexed
-        }
-        vocals += appleVocalRow(line, index, pendingBackground.toList(), duet)
-        pendingBackground.clear()
-    }
-    if (pendingBackground.isNotEmpty()) {
-        pendingBackground.forEachIndexed { offset, line ->
-            vocals += appleVocalRow(line, lines.indexOf(line).takeIf { it >= 0 } ?: (lines.size + offset), emptyList(), duet)
+        if (line.skippedByAppleLyrics(synced)) return@forEachIndexed
+        if (line.role != LyricVocalRole.BACKGROUND) {
+            vocals += appleVocalRow(line, index, pendingBackground.toList(), duet)
+            pendingBackground.clear()
+        } else if (showSecondaryVoices) {
+            placeBackgroundLine(vocals, pendingBackground, line, index, synced, duet)
         }
     }
-    if (!synced) return vocals
+    pendingBackground.forEachIndexed { offset, line ->
+        vocals += appleVocalRow(line, lines.indexOf(line).takeIf { it >= 0 } ?: (lines.size + offset), emptyList(), duet)
+    }
+    return vocals
+}
+
+private fun placeBackgroundLine(
+    vocals: MutableList<AppleLyricsRow.Vocal>,
+    pending: MutableList<LyricLine>,
+    line: LyricLine,
+    index: Int,
+    synced: Boolean,
+    duet: Boolean
+) {
+    val owner = vocals.lastOrNull()
+    when {
+        !synced -> vocals += appleVocalRow(line, index, emptyList(), duet)
+        owner != null && line.startMs <= owner.main.endMs + APPLE_LYRICS_BACKGROUND_ATTACH_SLACK_MS ->
+            vocals[vocals.lastIndex] = owner.copy(background = owner.background + line)
+        else -> pending += line
+    }
+}
+
+private fun appleRowsWithInstrumentals(vocals: List<AppleLyricsRow.Vocal>): List<AppleLyricsRow> {
     val sorted = vocals.sortedBy { it.startMs }
     val rows = ArrayList<AppleLyricsRow>(sorted.size + 4)
     val first = sorted.firstOrNull()
@@ -131,7 +148,7 @@ fun appleLyricsFocusIndex(rows: List<AppleLyricsRow>, leads: LongArray, position
     var high = rows.lastIndex
     var candidate = -1
     while (low <= high) {
-        val middle = (low + high) ushr 1
+        val middle = low + high ushr 1
         if (rows[middle].startMs - leads[middle] <= positionMs) {
             candidate = middle
             low = middle + 1
@@ -155,7 +172,7 @@ fun appleLyricsConcurrentIndices(rows: List<AppleLyricsRow>, focus: Int, positio
 fun appleLyricsStaggerDelayMs(rowIndex: Int, focusIndex: Int): Long {
     if (focusIndex < 0 || rowIndex <= focusIndex) return 0L
     val steps = minOf(rowIndex - focusIndex, APPLE_LYRICS_STAGGER_MAX_STEPS)
-    val weight = 5.0 * steps - (steps * (steps + 1)) / 2.0
+    val weight = 5.0 * steps - steps * (steps + 1) / 2.0
     return (APPLE_LYRICS_STAGGER_BASE_MS * 0.25 * weight).roundToLong()
 }
 

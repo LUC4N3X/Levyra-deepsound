@@ -155,43 +155,52 @@ class LyricsRepository(context: Context? = null) {
         val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate) ?: return@channelFlow
         if (emitSelectedResult(query) { send(it) }) return@channelFlow
         val (cached, restored) = restoreCachedResult(query) { send(it) }
-        var current = restored
         if (cached.negative) return@channelFlow
         if (!cached.refreshRequired) return@channelFlow
 
-        var attempted = false
-        var transientFailure = false
-        for (attempt in listOf(query) + embeddedTitleArtistQueries(query)) {
-            val outcome = fetchNetworkProgressive(attempt) { candidate ->
-                val previous = current
-                if (shouldUpgrade(previous, candidate)) {
-                    val stable = candidate.copy(cached = false)
-                    current = stable
-                    memoryPut(query.key, stable, System.currentTimeMillis())
-                    persistPositive(query, stable)
-                    send(stable)
-                }
-            }
-
-            val final = outcome.best
-            if (final != null && shouldUpgrade(current, final)) {
-                val stable = final.copy(cached = false)
-                current = stable
-                memoryPut(query.key, stable, System.currentTimeMillis())
-                persistPositive(query, stable)
-                send(stable)
-            } else if (final != null) {
-                current?.let { persistPositive(query, it.copy(cached = false)) }
-            }
-            attempted = attempted || outcome.attempted
-            transientFailure = transientFailure || outcome.hadTransientFailure
-            if (current != null) break
-        }
-
-        if (current == null && attempted && !transientFailure) {
+        val observed = ObservedLyrics(restored)
+        if (fetchAllReadings(query, observed) { send(it) }) {
             persistNegative(query)
         }
     }.flowOn(Dispatchers.IO)
+
+    private class ObservedLyrics(var current: LyricsResult?)
+
+    private suspend fun fetchAllReadings(
+        query: QuerySpec,
+        observed: ObservedLyrics,
+        emit: suspend (LyricsResult) -> Unit
+    ): Boolean {
+        var attempted = false
+        var transientFailure = false
+        for (attempt in listOf(query) + embeddedTitleArtistQueries(query)) {
+            val outcome = fetchNetworkProgressive(attempt) { candidate -> publishUpgrade(query, observed, candidate, emit) }
+            val final = outcome.best
+            if (final != null && shouldUpgrade(observed.current, final)) {
+                publishUpgrade(query, observed, final, emit)
+            } else if (final != null) {
+                observed.current?.let { persistPositive(query, it.copy(cached = false)) }
+            }
+            attempted = attempted || outcome.attempted
+            transientFailure = transientFailure || outcome.hadTransientFailure
+            if (observed.current != null) break
+        }
+        return observed.current == null && attempted && !transientFailure
+    }
+
+    private suspend fun publishUpgrade(
+        query: QuerySpec,
+        observed: ObservedLyrics,
+        candidate: LyricsResult,
+        emit: suspend (LyricsResult) -> Unit
+    ) {
+        if (!shouldUpgrade(observed.current, candidate)) return
+        val stable = candidate.copy(cached = false)
+        observed.current = stable
+        memoryPut(query.key, stable, System.currentTimeMillis())
+        persistPositive(query, stable)
+        emit(stable)
+    }
 
     private suspend fun emitSelectedResult(
         query: QuerySpec,

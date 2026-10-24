@@ -112,7 +112,7 @@ private fun boxBlurHorizontal(source: IntArray, target: IntArray, width: Int, he
             a += p ushr 24; r += (p shr 16) and 0xFF; g += (p shr 8) and 0xFF; b += p and 0xFF
         }
         for (x in 0 until width) {
-            target[row + x] = ((a / window) shl 24) or ((r / window) shl 16) or ((g / window) shl 8) or (b / window)
+            target[row + x] = (a / window shl 24) or (r / window shl 16) or (g / window shl 8) or b / window
             val outgoing = source[row + (x - radius).coerceIn(0, width - 1)]
             val incoming = source[row + (x + radius + 1).coerceIn(0, width - 1)]
             a += (incoming ushr 24) - (outgoing ushr 24)
@@ -132,7 +132,7 @@ private fun boxBlurVertical(source: IntArray, target: IntArray, width: Int, heig
             a += p ushr 24; r += (p shr 16) and 0xFF; g += (p shr 8) and 0xFF; b += p and 0xFF
         }
         for (y in 0 until height) {
-            target[y * width + x] = ((a / window) shl 24) or ((r / window) shl 16) or ((g / window) shl 8) or (b / window)
+            target[y * width + x] = (a / window shl 24) or (r / window shl 16) or (g / window shl 8) or b / window
             val outgoing = source[(y - radius).coerceIn(0, height - 1) * width + x]
             val incoming = source[(y + radius + 1).coerceIn(0, height - 1) * width + x]
             a += (incoming ushr 24) - (outgoing ushr 24)

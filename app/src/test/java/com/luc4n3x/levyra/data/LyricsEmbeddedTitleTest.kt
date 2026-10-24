@@ -22,5 +22,7 @@ class LyricsEmbeddedTitleTest {
     fun plainTitlesHaveNoAlternates() {
         assertTrue(embeddedTitleArtistCandidates("Blinding Lights", "The Weeknd").isEmpty())
         assertTrue(embeddedTitleArtistCandidates("A - B - C", "X").isEmpty())
+        assertTrue(embeddedTitleArtistCandidates("Bohemian Rhapsody - Remastered 2011", "Queen").isEmpty())
+        assertTrue(embeddedTitleArtistCandidates("Blinding Lights - Live at the Kia Forum", "The Weeknd").isEmpty())
     }
 }

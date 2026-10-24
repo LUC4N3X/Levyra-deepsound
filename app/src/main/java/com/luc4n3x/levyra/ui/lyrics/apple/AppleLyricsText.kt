@@ -197,6 +197,21 @@ internal fun AppleLyricText(
     }
 }
 
+private class AppleKaraokeFrame(
+    val layout: TextLayoutResult,
+    val plan: AppleKaraokePlan,
+    val now: Long,
+    val lit: Color,
+    val dim: Color,
+    val focus: Float,
+    val animations: Boolean,
+    val feather: Float,
+    val liftPx: Float,
+    val glowPx: Float
+) {
+    val slack: Float = liftPx * 2f + glowPx * 2f
+}
+
 private fun DrawScope.drawKaraoke(
     layout: TextLayoutResult,
     plan: AppleKaraokePlan,
@@ -207,40 +222,46 @@ private fun DrawScope.drawKaraoke(
     animations: Boolean,
     metrics: FloatArray
 ) {
-    val feather = metrics[0]
-    val liftPx = metrics[1]
-    val glowPx = metrics[2]
-    val slack = liftPx * 2f + glowPx * 2f
-    val segments = plan.segments
-    for (s in segments.indices) {
-        val segment = segments[s]
+    val frame = AppleKaraokeFrame(layout, plan, now, lit, dim, focus, animations, metrics[0], metrics[1], metrics[2])
+    for (segment in plan.segments) {
         val word = if (segment.word >= 0) plan.words[segment.word] else null
-        if (word == null) {
-            val previous = if (segment.previousWord >= 0) plan.words[segment.previousWord] else null
-            val color = if (previous != null && now >= previous.endMs) lit else dim
-            clipRect(segment.left, segment.top - slack, segment.right, segment.bottom + slack) {
-                drawText(layout, color = color)
-            }
-            continue
-        }
-        val progress = when {
-            now <= word.startMs -> 0f
-            now >= word.endMs -> 1f
-            else -> (now - word.startMs).toFloat() / (word.endMs - word.startMs).coerceAtLeast(1L)
-        }
-        val lift = if (animations && now > word.startMs) -liftPx * appleLyricsLiftFraction(now - word.startMs) * focus else 0f
-        if (word.emphasized && animations && focus > 0f && now > word.startMs && progress > 0f) {
-            drawEmphasized(layout, plan, segment, word, now, lit, dim, progress, lift, feather, glowPx, focus)
-            continue
-        }
-        clipRect(segment.left, segment.top - slack, segment.right, segment.bottom + slack) {
-            translate(0f, lift) {
-                val local = ((progress - segment.fillStart) / (segment.fillEnd - segment.fillStart).coerceAtLeast(0.0001f)).coerceIn(0f, 1f)
-                when {
-                    local >= 1f -> drawText(layout, color = lit)
-                    local <= 0f -> drawText(layout, color = dim)
-                    else -> drawText(layout, brush = fillBrush(segment, local, feather, lit, dim))
-                }
+        if (word == null) drawGapSegment(frame, segment) else drawWordSegment(frame, segment, word)
+    }
+}
+
+private fun DrawScope.drawGapSegment(frame: AppleKaraokeFrame, segment: AppleKaraokeSegment) {
+    val previous = if (segment.previousWord >= 0) frame.plan.words[segment.previousWord] else null
+    val color = if (previous != null && frame.now >= previous.endMs) frame.lit else frame.dim
+    clipRect(segment.left, segment.top - frame.slack, segment.right, segment.bottom + frame.slack) {
+        drawText(frame.layout, color = color)
+    }
+}
+
+private fun wordProgress(word: AppleKaraokeWord, now: Long): Float = when {
+    now <= word.startMs -> 0f
+    now >= word.endMs -> 1f
+    else -> (now - word.startMs).toFloat() / (word.endMs - word.startMs).coerceAtLeast(1L)
+}
+
+private fun segmentProgress(segment: AppleKaraokeSegment, progress: Float): Float =
+    ((progress - segment.fillStart) / (segment.fillEnd - segment.fillStart).coerceAtLeast(0.0001f)).coerceIn(0f, 1f)
+
+private fun DrawScope.drawWordSegment(frame: AppleKaraokeFrame, segment: AppleKaraokeSegment, word: AppleKaraokeWord) {
+    val now = frame.now
+    val progress = wordProgress(word, now)
+    val started = now > word.startMs
+    val lift = if (frame.animations && started) -frame.liftPx * appleLyricsLiftFraction(now - word.startMs) * frame.focus else 0f
+    if (word.emphasized && frame.animations && frame.focus > 0f && started && progress > 0f) {
+        drawEmphasized(frame, segment, word, progress, lift)
+        return
+    }
+    clipRect(segment.left, segment.top - frame.slack, segment.right, segment.bottom + frame.slack) {
+        translate(0f, lift) {
+            val local = segmentProgress(segment, progress)
+            when {
+                local >= 1f -> drawText(frame.layout, color = frame.lit)
+                local <= 0f -> drawText(frame.layout, color = frame.dim)
+                else -> drawText(frame.layout, brush = fillBrush(segment, local, frame.feather, frame.lit, frame.dim))
             }
         }
     }
@@ -257,58 +278,65 @@ private fun fillBrush(segment: AppleKaraokeSegment, local: Float, feather: Float
     }
 }
 
+private fun fillSpread(frame: AppleKaraokeFrame, word: AppleKaraokeWord, count: Int) {
+    val plan = frame.plan
+    for (i in word.firstChar until word.lastChar) {
+        val envelope = appleLyricsEmphasisEnvelope(frame.now, word.startMs, word.endMs, i - word.firstChar, count) * frame.focus
+        plan.spread[i] = (word.emphasisScale - 1f) * envelope * (plan.charRight[i] - plan.charLeft[i]) / 2f
+    }
+}
+
+private fun emphasisOffset(spread: FloatArray, first: Int, index: Int, center: Float): Float {
+    if (index.toFloat() == center) return 0f
+    var offset = spread[first + index] * 0.5f
+    if (index > center) {
+        var j = index - 1
+        while (j > center) {
+            offset += spread[first + j]
+            j--
+        }
+        return offset
+    }
+    var j = index + 1
+    while (j < center) {
+        offset += spread[first + j]
+        j++
+    }
+    return -offset
+}
+
 private fun DrawScope.drawEmphasized(
-    layout: TextLayoutResult,
-    plan: AppleKaraokePlan,
+    frame: AppleKaraokeFrame,
     segment: AppleKaraokeSegment,
     word: AppleKaraokeWord,
-    now: Long,
-    lit: Color,
-    dim: Color,
     progress: Float,
-    lift: Float,
-    feather: Float,
-    glowPx: Float,
-    focus: Float
+    lift: Float
 ) {
+    val plan = frame.plan
     val first = word.firstChar
-    val last = word.lastChar
-    val count = (last - first).coerceAtLeast(1)
-    val spread = plan.spread
-    for (i in first until last) {
-        val envelope = appleLyricsEmphasisEnvelope(now, word.startMs, word.endMs, i - first, count) * focus
-        spread[i] = (word.emphasisScale - 1f) * envelope * (plan.charRight[i] - plan.charLeft[i]) / 2f
-    }
+    val count = (word.lastChar - first).coerceAtLeast(1)
+    fillSpread(frame, word, count)
     val center = (count - 1) / 2f
-    val local = ((progress - segment.fillStart) / (segment.fillEnd - segment.fillStart).coerceAtLeast(0.0001f)).coerceIn(0f, 1f)
-    val brush = if (local in 0.0001f..0.9999f) fillBrush(segment, local, feather, lit, dim) else null
-    val solid = if (local >= 1f) lit else dim
-    for (i in first until last) {
+    val local = segmentProgress(segment, progress)
+    val brush = if (local in 0.0001f..0.9999f) fillBrush(segment, local, frame.feather, frame.lit, frame.dim) else null
+    val solid = if (local >= 1f) frame.lit else frame.dim
+    for (i in first until word.lastChar) {
         val left = plan.charLeft[i]
         val right = plan.charRight[i]
-        if (right <= left || left < segment.left - 0.5f || right > segment.right + 0.5f) continue
+        val outside = right <= left || left < segment.left - 0.5f || right > segment.right + 0.5f
+        if (outside) continue
         val index = i - first
-        var offset = spread[i] * 0.5f
-        if (index > center) {
-            var j = index - 1
-            while (j > center) { offset += spread[first + j]; j-- }
-        } else if (index < center) {
-            var j = index + 1
-            while (j < center) { offset += spread[first + j]; j++ }
-            offset = -offset
-        } else {
-            offset = 0f
-        }
-        val envelope = appleLyricsEmphasisEnvelope(now, word.startMs, word.endMs, index, count) * focus
+        val offset = emphasisOffset(plan.spread, first, index, center)
+        val envelope = appleLyricsEmphasisEnvelope(frame.now, word.startMs, word.endMs, index, count) * frame.focus
         val scale = 1f + (word.emphasisScale - 1f) * envelope
         val pivot = Offset((left + right) / 2f, plan.charBaseline[i])
-        val shadow = if (envelope > 0.01f) Shadow(Color.White.copy(alpha = 0.5f * envelope), Offset.Zero, glowPx) else null
+        val shadow = if (envelope > 0.01f) Shadow(Color.White.copy(alpha = 0.5f * envelope), Offset.Zero, frame.glowPx) else null
         withTransform({
             translate(if (segment.rtl) -offset else offset, lift)
             scale(scale, scale, pivot)
         }) {
-            clipRect(left, plan.charTop[i] - glowPx, right, plan.charBottom[i] + glowPx) {
-                if (brush != null) drawText(layout, brush = brush, shadow = shadow) else drawText(layout, color = solid, shadow = shadow)
+            clipRect(left, plan.charTop[i] - frame.glowPx, right, plan.charBottom[i] + frame.glowPx) {
+                if (brush != null) drawText(frame.layout, brush = brush, shadow = shadow) else drawText(frame.layout, color = solid, shadow = shadow)
             }
         }
     }
