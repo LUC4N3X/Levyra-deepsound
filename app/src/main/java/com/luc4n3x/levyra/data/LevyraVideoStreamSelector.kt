@@ -260,7 +260,9 @@ internal class LevyraVideoStreamSelector(context: Context) {
             family = family,
             supported = compatible.isNotEmpty(),
             hardware = compatible.any { it.hardware },
-            smooth = compatible.isEmpty() || compatible.any { it.sustains(candidate) }
+            smooth = compatible.filter { it.hardware }.ifEmpty { compatible }.let { preferred ->
+                preferred.isEmpty() || preferred.any { it.sustains(candidate) }
+            }
         )
     }
 
@@ -356,6 +358,8 @@ internal class LevyraVideoStreamSelector(context: Context) {
             if (candidate.width <= 0 || candidate.height <= 0 || candidate.fps <= 0) return true
             val measured = runCatching {
                 capabilities.getAchievableFrameRatesFor(candidate.width, candidate.height)?.upper
+            }.getOrNull() ?: runCatching {
+                capabilities.getAchievableFrameRatesFor(candidate.height, candidate.width)?.upper
             }.getOrNull()
             return measuredFrameRateSustains(measured, candidate.fps.toDouble())
         }

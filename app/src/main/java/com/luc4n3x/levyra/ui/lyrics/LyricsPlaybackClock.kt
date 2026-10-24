@@ -105,8 +105,8 @@ fun rememberLyricsPlaybackClock(
         while (true) {
             withFrameNanos { }
             val now = SystemClock.elapsedRealtime()
-            if (livePositionMs != null) clock.sync(livePositionMs(), playing = true, speed = speed, nowRealtimeMs = now)
             clock.advance(now)
+            if (livePositionMs != null) clock.sync(livePositionMs(), playing = true, speed = speed, nowRealtimeMs = now)
         }
     }
 

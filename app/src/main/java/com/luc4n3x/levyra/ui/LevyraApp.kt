@@ -8185,7 +8185,7 @@ private fun LyricsOverlay(
                 trackKey = track?.id.orEmpty(),
                 accentStart = accentStart,
                 accentEnd = accentEnd,
-                motionEnabled = LocalLevyraVisualCapabilities.current.decorativeMotion
+                motionEnabled = LocalLevyraVisualCapabilities.current.decorativeMotion && state.isPlaying
             )
         } else {
             LevyraBackground()

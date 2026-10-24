@@ -534,7 +534,7 @@ internal fun snapSleepTimerMinutes(value: Float): Int {
 }
 
 internal fun isCustomSleepTimerMinutes(minutes: Int): Boolean =
-    minutes > 0 && minutes !in SleepTimerPresetMinutes
+    minutes in SLEEP_TIMER_CUSTOM_MIN_MINUTES..SLEEP_TIMER_CUSTOM_MAX_MINUTES && minutes !in SleepTimerPresetMinutes
 
 private fun timerRemainingSeconds(deadlineElapsedRealtimeMs: Long): Long =
     if (deadlineElapsedRealtimeMs > 0L) {

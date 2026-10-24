@@ -1003,6 +1003,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val localIntelligence = LevyraLocalIntelligence()
     private val backupManager = LevyraBackupManager(application.applicationContext)
     private val player = LevyraPlayer(application.applicationContext)
+    private val videoFrameDropHandler: () -> Unit = { onVideoSustainedFrameDrops() }
     private val playbackWarmup = PlaybackWarmup(application.applicationContext)
     private val adaptivePlaybackPolicy = AdaptivePlaybackPolicy(application.applicationContext)
     private val queueEngine = PersistentQueueEngine.get(application.applicationContext)
@@ -1880,7 +1881,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         player.onVideoStall = { onVideoMidPlayStall() }
-        VideoFrameDropMonitor.Shared.onSustainedFrameDrops = { onVideoSustainedFrameDrops() }
+        VideoFrameDropMonitor.Shared.onSustainedFrameDrops = videoFrameDropHandler
         player.onUnavailableRemoteTrack = { track -> skipUnavailableCollectionTrack(track) }
         player.onPersonalCollectionError = { denial ->
             if (denial != null) {
@@ -14028,7 +14029,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     override fun onCleared() {
-        VideoFrameDropMonitor.Shared.onSustainedFrameDrops = null
+        if (VideoFrameDropMonitor.Shared.onSustainedFrameDrops === videoFrameDropHandler) {
+            VideoFrameDropMonitor.Shared.onSustainedFrameDrops = null
+        }
         LevyraWidgetBridge.clear()
         if (recognitionCollectorJob != null) {
             recognitionCollectorJob?.cancel()

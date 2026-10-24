@@ -94,16 +94,30 @@ class LyricsPlaybackClockTest {
 
     @Test
     fun `live sampling every frame keeps the rendered clock on the player position`() {
+        assertFrameLoopTracksPlayer(frameMs = 16L, speed = 1f)
+    }
+
+    @Test
+    fun `fast playback at a low frame rate does not fall behind`() {
+        assertFrameLoopTracksPlayer(frameMs = 33L, speed = 2f)
+    }
+
+    @Test
+    fun `janky frames at normal speed do not fall behind`() {
+        assertFrameLoopTracksPlayer(frameMs = 67L, speed = 1f)
+    }
+
+    private fun assertFrameLoopTracksPlayer(frameMs: Long, speed: Float) {
         val clock = LyricsPlaybackClock(0L)
         var playerMs = 30_000L
         var nowMs = 1_000L
-        clock.sync(playerMs, playing = true, speed = 1f, nowRealtimeMs = nowMs)
-        repeat(120) {
-            nowMs += 16L
-            playerMs += 16L
-            clock.sync(playerMs, playing = true, speed = 1f, nowRealtimeMs = nowMs)
+        clock.sync(playerMs, playing = true, speed = speed, nowRealtimeMs = nowMs)
+        repeat(300) {
+            nowMs += frameMs
+            playerMs += (frameMs * speed).toLong()
             clock.advance(nowMs)
-            assertEquals(playerMs, clock.positionMs)
+            clock.sync(playerMs, playing = true, speed = speed, nowRealtimeMs = nowMs)
+            assertTrue("lag ${playerMs - clock.positionMs}", kotlin.math.abs(playerMs - clock.positionMs) <= 1L)
         }
     }
 
@@ -112,11 +126,11 @@ class LyricsPlaybackClockTest {
         val clock = LyricsPlaybackClock(0L)
         clock.sync(30_000L, playing = true, speed = 1f, nowRealtimeMs = 1_000L)
         clock.advance(1_000L)
-        clock.sync(95_000L, playing = true, speed = 1f, nowRealtimeMs = 1_016L)
         clock.advance(1_016L)
+        clock.sync(95_000L, playing = true, speed = 1f, nowRealtimeMs = 1_016L)
         assertEquals(95_000L, clock.positionMs)
-        clock.sync(12_000L, playing = true, speed = 1f, nowRealtimeMs = 1_032L)
         clock.advance(1_032L)
+        clock.sync(12_000L, playing = true, speed = 1f, nowRealtimeMs = 1_032L)
         assertEquals(12_000L, clock.positionMs)
     }
 

@@ -32,4 +32,10 @@ class SleepTimerCustomDurationTest {
         assertTrue(isCustomSleepTimerMinutes(90))
         assertTrue(isCustomSleepTimerMinutes(240))
     }
+
+    @Test
+    fun `timers extended past the slider range are not shown as slider values`() {
+        assertFalse(isCustomSleepTimerMinutes(255))
+        assertFalse(isCustomSleepTimerMinutes(3))
+    }
 }
