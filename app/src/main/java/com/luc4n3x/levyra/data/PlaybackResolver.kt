@@ -1098,6 +1098,9 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     suspend fun resolve(track: Track, isVideoMode: Boolean = false): Track {
         if (track.isPersonalCollectionTrack()) return personalCollections.resolveForPlayback(track)
+        if (!hasInternetCapableNetwork()) {
+            cached(track, isVideoMode)?.let { return preserveEditorialArtwork(track, it) }
+        }
         val resolved = resolveWithLanguageRevisionRetry(
             originalTrack = track,
             acceptAcrossLanguageChange = { it.playbackManifest?.alternativeSource != null }
