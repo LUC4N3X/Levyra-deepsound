@@ -11,8 +11,8 @@ import com.luc4n3x.levyra.domain.DownloadOwnership
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.canRepairDownload
 import com.luc4n3x.levyra.domain.downloadAudioHealth
+import com.luc4n3x.levyra.domain.downloadRepairTaskKey
 import com.luc4n3x.levyra.player.offline.work.OfflineExportWorker
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -82,7 +82,8 @@ class DownloadHealthRepository(
         val verified = inspect(current)
         if (!verified.repairable) return@withContext false
         val tasks = database.offlineDownloadTasksDao()
-        if (tasks.active().any { it.trackId == current.trackId }) return@withContext false
+        val taskKey = downloadRepairTaskKey(current.id)
+        if (tasks.active().any { it.taskKey == taskKey }) return@withContext false
         val previous = tasks.byKey(current.trackId)
         val track = previous?.payload?.let(TrackPayloadCodec::decode) ?: Track(
             id = current.trackId, title = current.title, artist = current.artist, album = current.album,
@@ -91,7 +92,7 @@ class DownloadHealthRepository(
             accentStart = 0, accentEnd = 0
         )
         OfflineExportWorker.enqueue(
-            context, current.trackId, TrackPayloadCodec.encode(track),
+            context, taskKey, TrackPayloadCodec.encode(track),
             ownership = DownloadOwnership.fromStorage(current.ownership), repairDownloadId = current.id
         )
         true

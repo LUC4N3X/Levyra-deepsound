@@ -206,7 +206,7 @@ internal fun rememberExploreMoodArtworkUrl(zone: ExploreZone): String {
     }
     val hardFallbackPortraitUrl = remember(zone.id) { exploreMoodHardFallbackPortraitUrl(zone.id) }
     val cacheKey = remember(zone.id, strings.code) { "${strings.code}:${zone.id}" }
-    var artworkUrl by rememberSaveable(portraitCandidates, hardFallbackPortraitUrl) {
+    var artworkUrl by rememberSaveable(cacheKey, portraitCandidates, hardFallbackPortraitUrl) {
         mutableStateOf(
             ExploreMoodArtworkCache.peek(cacheKey)?.url
                 ?: portraitCandidates.firstNotNullOfOrNull { candidate ->
@@ -215,7 +215,7 @@ internal fun rememberExploreMoodArtworkUrl(zone: ExploreZone): String {
         )
     }
 
-    LaunchedEffect(portraitCandidates, spotifyRepository, appleRepository, fallbackRepository, hardFallbackPortraitUrl) {
+    LaunchedEffect(cacheKey, portraitCandidates, spotifyRepository, appleRepository, fallbackRepository, hardFallbackPortraitUrl) {
         if (portraitCandidates.isEmpty()) return@LaunchedEffect
         val cached = ExploreMoodArtworkCache.load(context.applicationContext, cacheKey)
         if (cached != null) {

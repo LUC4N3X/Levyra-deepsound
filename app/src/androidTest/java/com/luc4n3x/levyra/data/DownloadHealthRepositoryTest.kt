@@ -49,6 +49,13 @@ class DownloadHealthRepositoryTest {
                 fail("Cancellation was swallowed")
             } catch (_: CancellationException) { }
             assertEquals(4, database.downloadedTracksDao().all().size)
+            val dao = database.downloadedTracksDao()
+            val original = results.getValue("missing.m4a").download
+            assertFalse(dao.completeRepair(original, "content://missing-replacement"))
+            assertEquals(original, dao.byId(original.id))
+            assertTrue(dao.completeRepair(original, results.getValue("healthy.wav").download.uri))
+            assertEquals(null, dao.byId(original.id))
+            assertArrayEquals(originalBytes, healthy.readBytes())
         } finally {
             database.close()
             directory.listFiles()?.forEach { it.delete() }
