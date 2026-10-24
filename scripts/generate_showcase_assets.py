@@ -813,7 +813,7 @@ README_CARD_SPECS = [
         "21_spotify_style",
         "Spotify Style",
         "Familiar dark surfaces, green accents and artist glow",
-        "Screenshot_20261024_201452_Levyra.jpg",
+        "Screenshot_20261024_213852_Levyra.jpg",
         (236, 253, 245),
         (209, 250, 229),
         (30, 215, 96),
@@ -826,12 +826,12 @@ README_CARD_SPECS = [
         "Apple Music Style",
         "Editorial white surfaces, album shelves and bold type",
         "Screenshot_20261024_201549_Levyra.jpg",
-        (255, 241, 242),
-        (255, 228, 230),
-        (250, 45, 72),
-        (254, 205, 211),
-        (76, 5, 25),
-        (190, 18, 60),
+        (255, 255, 255),
+        (241, 245, 249),
+        (251, 113, 133),
+        (226, 232, 240),
+        (15, 23, 42),
+        (71, 85, 105),
     ),
     (
         "23_youtube_music_style",
@@ -1178,6 +1178,49 @@ def render_readme_centered_card(spec):
     canvas.putalpha(mask)
     return canvas
 
+def render_readme_floating_card(spec, angle=0.0):
+    card_id, title, subtitle, screenshot_name, top_rgb, bot_rgb, bloom_rgb, border_rgb, ink_rgb, sub_rgb = spec
+    canvas = create_readme_card_background(CARD_W, CARD_H, top_rgb, bot_rgb, bloom_rgb, bloom_opacity=130)
+    draw = ImageDraw.Draw(canvas)
+
+    title_font = get_font(56, bold=True)
+    sub_font = get_font(28, bold=False)
+
+    title_bbox = draw.textbbox((0, 0), title, font=title_font)
+    title_w = title_bbox[2] - title_bbox[0]
+    title_x = (CARD_W - title_w) // 2
+    title_y = 110
+    draw.text((title_x, title_y), title, font=title_font, fill=ink_rgb + (255,))
+
+    sub_bbox = draw.textbbox((0, 0), subtitle, font=sub_font)
+    sub_w = sub_bbox[2] - sub_bbox[0]
+    sub_x = (CARD_W - sub_w) // 2
+    sub_y = title_y + (title_bbox[3] - title_bbox[0]) + 18
+    draw.text((sub_x, sub_y), subtitle, font=sub_font, fill=sub_rgb + (255,))
+
+    dev_w = 660
+    device = make_campaign_device(screenshot_name, dev_w)
+
+    rot_dev = device.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
+
+    shadow = Image.new("RGBA", rot_dev.size, (15, 23, 42, 0))
+    shadow_alpha = rot_dev.getchannel("A").filter(ImageFilter.GaussianBlur(40))
+    shadow_alpha = ImageEnhance.Brightness(shadow_alpha).enhance(0.35)
+    shadow.putalpha(shadow_alpha)
+
+    dev_x = (CARD_W - rot_dev.width) // 2
+    dev_y = 360
+
+    canvas.alpha_composite(shadow, (dev_x, dev_y + 32))
+    canvas.alpha_composite(rot_dev, (dev_x, dev_y))
+
+    mask = Image.new("L", (CARD_W, CARD_H), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, CARD_W - 1, CARD_H - 1), radius=44, fill=255)
+
+    draw_readme_card_frame(canvas, border_rgb, radius=44)
+    canvas.putalpha(mask)
+    return canvas
+
 def render_readme_skins_fanout_stage():
     w, h = 3696, 1800
     base = Image.new("RGBA", (w, h), (10, 13, 20, 255))
@@ -1292,31 +1335,10 @@ def generate_readme_cards():
         artwork.save(out_path, "WEBP", quality=95, method=6)
         print(f"Saved README editorial card at {artwork.size}: {out_path}")
 
-    # 3. Render Cards 05 through 20 (Rows 2, 3, 4, and 5 as clean centered cards!)
-    for index in range(4, 20):
+    # 3. Render Cards 05 through 24 (Rows 2, 3, 4, 5, and 6 as cohesive centered cards)
+    for index in range(4, len(README_CARD_SPECS)):
         spec = README_CARD_SPECS[index]
         artwork = render_readme_centered_card(spec)
-        cards.append(artwork)
-        out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
-        artwork.save(out_path, "WEBP", quality=95, method=6)
-        print(f"Saved README editorial card at {artwork.size}: {out_path}")
-
-    # 4. Render Row 6 Skins diptychs (Cards 21 & 22 Spotify/Apple and 23 & 24 YTM/Signature)
-    skins_left, skins_right = render_readme_hero_diptych(
-        README_CARD_SPECS[20],
-        README_CARD_SPECS[21],
-    )
-    for artwork, spec in ((skins_left, README_CARD_SPECS[20]), (skins_right, README_CARD_SPECS[21])):
-        cards.append(artwork)
-        out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
-        artwork.save(out_path, "WEBP", quality=95, method=6)
-        print(f"Saved README editorial card at {artwork.size}: {out_path}")
-
-    sig_left, sig_right = render_readme_theme_diptych(
-        README_CARD_SPECS[22],
-        README_CARD_SPECS[23],
-    )
-    for artwork, spec in ((sig_left, README_CARD_SPECS[22]), (sig_right, README_CARD_SPECS[23])):
         cards.append(artwork)
         out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
         artwork.save(out_path, "WEBP", quality=95, method=6)
