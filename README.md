@@ -115,19 +115,19 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
 <a href="docs/assets/showcase/00_levyra_hero_urban_monochrome_centered.webp"><img src="docs/assets/showcase/00_levyra_hero_urban_monochrome_centered.webp" width="100%" alt="Levyra music player for Android and Windows" /></a>
 
 <div align="center">
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-01-spaced.webp" width="900" align="top" alt="Levyra showcase: radio, now playing, lyrics, and offline albums" /></div>
+<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-01-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: radio, now playing, lyrics, and offline albums" /></div>
 <br />
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-02-spaced.webp" width="900" align="top" alt="Levyra showcase: discovery, mixes, moods, and audio controls" /></div>
+<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-02-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: discovery, mixes, moods, and audio controls" /></div>
 <br />
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-03-spaced.webp?v=2" width="900" align="top" alt="Levyra showcase: library, collections, insights, and home" /></div>
+<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-03-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: library, collections, insights, and home" /></div>
 <br />
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-04-spaced.webp" width="900" align="top" alt="Levyra showcase: settings, new releases, artists, and Jam" /></div>
+<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-04-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: settings, new releases, artists, and Jam" /></div>
 <br />
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-05-spaced.webp?v=3" width="900" align="top" alt="Levyra showcase: light theme, dark theme, discovery, and Year in Music" /></div>
+<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-05-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: light theme, dark theme, discovery, and Year in Music" /></div>
 <br />
 <p align="center"><b>Global skins · Choose your streaming layout</b><br>
 <sub>Want Spotify? Here's Spotify. &nbsp;·&nbsp; Want Apple Music? Here's Apple. &nbsp;·&nbsp; Want YouTube Music? Here it is.</sub></p>
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-06-skins-spaced.webp?v=2" width="900" align="top" alt="Levyra showcase: Skin Studio, Spotify Style, Apple Music Style, and YouTube Music Style" /></div>
+<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-06-skins-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: Skin Studio, Spotify Style, Apple Music Style, and YouTube Music Style" /></div>
 </div>
 
 </div>
