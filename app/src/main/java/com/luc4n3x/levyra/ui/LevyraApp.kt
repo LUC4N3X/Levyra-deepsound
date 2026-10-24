@@ -8179,7 +8179,7 @@ private fun LyricsOverlay(
                         )
                     )
             )
-        } else if (!LevyraSkinManagesLayout && studioSettings.backgroundMode == LyricsBackgroundMode.ORIGINAL) {
+        } else if (lyricsAmbientSkinActive() && studioSettings.backgroundMode == LyricsBackgroundMode.ORIGINAL) {
             LyricsAmbientBackdrop(
                 artworkUrl = track?.let { it.largeThumbnailUrl.ifBlank { it.thumbnailUrl } },
                 trackKey = track?.id.orEmpty(),
@@ -9150,6 +9150,9 @@ private const val INLINE_LYRICS_AUTOSCROLL_RESUME_MS = 3_500L
 internal const val LYRICS_HORIZONTAL_GUTTER_DP = 48
 internal const val LYRICS_ACTIVE_LINE_SCALE = 1.025f
 internal const val LYRICS_COMPACT_ACTIVE_LINE_SCALE = 1.018f
+
+private fun lyricsAmbientSkinActive(): Boolean =
+    !LevyraIsIvory && !LevyraIsSpotify && !LevyraIsAppleMusic && !LevyraIsYouTubeMusic
 
 private const val KARAOKE_FILL_FEATHER_EM = 0.55f
 
