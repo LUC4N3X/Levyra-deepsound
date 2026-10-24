@@ -27335,19 +27335,6 @@ private fun ExploreMoodCollectionDestination(
         val activeCategory = state.exploreCategories
             .firstOrNull { category -> category.params == providerCategory.params }
             ?: providerCategory
-        if (LevyraIsAppleMusic) {
-            AppleMusicGenreScreen(
-                title = activeCategory.title,
-                storefront = ChartsCatalog.region(state.selectedChartId).country,
-                currentId = state.currentTrack?.id,
-                bottomInset = exploreDestinationBottomInset(state),
-                exploreViewModel = viewModel,
-                onTrackActions = onTrackActions,
-                backEnabled = backEnabled,
-                onBack = { onDestinationChange(returnDestination) }
-            )
-            return
-        }
         val categoryTracks: @Composable () -> Unit = {
             val isActive = state.exploreCategoryParams == providerCategory.params
             val tracks = if (isActive) state.exploreTracks else emptyList()
@@ -27372,7 +27359,22 @@ private fun ExploreMoodCollectionDestination(
                 bottomInset = exploreDestinationBottomInset(state)
             )
         }
-        if (LevyraIsSpotify) {
+        if (LevyraIsAppleMusic) {
+            AppleMusicGenreScreen(
+                title = activeCategory.title,
+                categoryParams = providerCategory.params,
+                languageCode = state.languageCode,
+                storefront = ChartsCatalog.region(state.selectedChartId).country,
+                currentId = state.currentTrack?.id,
+                bottomInset = exploreDestinationBottomInset(state),
+                exploreViewModel = viewModel,
+                onTrackActions = onTrackActions,
+                onOpenPlaylist = viewModel::openPlaylistHit,
+                backEnabled = backEnabled,
+                onBack = { onDestinationChange(returnDestination) },
+                fallback = categoryTracks
+            )
+        } else if (LevyraIsSpotify) {
             SpotifyGenreScreen(
                 title = activeCategory.title,
                 params = providerCategory.params,

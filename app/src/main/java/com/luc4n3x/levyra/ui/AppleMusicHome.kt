@@ -212,12 +212,6 @@ private fun appleMusicItemOpener(
     }
 }
 
-private fun AppleCatalogItem.toAlbumHit(): AlbumHit = AlbumHit(
-    title = title, artist = subtitle, year = "", thumbnailUrl = coverUrl(600),
-    query = "$title $subtitle".trim(), explicit = explicit,
-    canonicalUrl = url, metadataProvider = AppleCatalogTracks.SOURCE
-)
-
 private fun AppleMusicHomeActions.playShuffled(tracks: List<Track>) {
     val shuffled = tracks.shuffled()
     shuffled.firstOrNull()?.let { first -> playFrom(shuffled, first) }

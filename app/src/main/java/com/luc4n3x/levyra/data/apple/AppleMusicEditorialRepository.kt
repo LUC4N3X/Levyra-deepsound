@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.data.apple
 import android.content.Context
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -80,6 +81,7 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, AppleCatalogPage>?): Boolean = size > MAX_MEMORY_PAGES
     })
     private val playlists = ConcurrentHashMap<String, AppleCatalogPlaylist>()
+    private val chartAlbums = ConcurrentHashMap<String, Pair<Long, List<AlbumHit>>>()
     private val artists = object : LinkedHashMap<String, AppleArtistPage>(MAX_ARTIST_PAGES, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, AppleArtistPage>?): Boolean = size > MAX_ARTIST_PAGES
     }
@@ -91,16 +93,51 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
 
     suspend fun topCharts(storefront: String, language: String): AppleCatalogResult? = page(AppleCatalogPath.TopCharts, storefront, language)
 
-    suspend fun genre(title: String, storefront: String, language: String): AppleCatalogPage? {
+    suspend fun newReleaseAlbums(storefront: String, language: String, limit: Int): List<AlbumHit> =
+        appleNewReleaseAlbums(newMusic(storefront, language)?.page, limit)
+
+    suspend fun recentChartAlbums(storefront: String, language: String, limit: Int): List<AlbumHit> {
+        val front = AppleStorefronts.normalize(storefront)
+        val lang = AppleStorefronts.language(language)
+        val key = "chart-albums:$front:$lang"
+        chartAlbums[key]?.takeIf { System.currentTimeMillis() - it.first < PLAYLIST_TTL_MS }?.let { return it.second.take(limit) }
+        @Suppress("UNCHECKED_CAST")
+        val shared = inFlight.computeIfAbsent(key) {
+            scope.async {
+                try {
+                    val url = "$CATALOG_API_URL/v1/catalog/$front/charts".toHttpUrl().newBuilder()
+                        .addQueryParameter("types", "albums")
+                        .addQueryParameter("limit", CHART_ALBUMS_LIMIT.toString())
+                        .addQueryParameter("l", lang)
+                        .build()
+                    val now = System.currentTimeMillis()
+                    appleChartReleaseAlbums(catalogJson(url, "Apple album charts"), now, CHART_ALBUMS_LIMIT)
+                        .also { albums -> if (albums.isNotEmpty()) chartAlbums[key] = now to albums }
+                } finally {
+                    inFlight.remove(key)
+                }
+            }
+        } as Deferred<List<AlbumHit>?>
+        return (awaitOrNull(shared) ?: chartAlbums[key]?.second).orEmpty().take(limit)
+    }
+
+    suspend fun genre(title: String, categoryParams: String, storefront: String, language: String): AppleCatalogPage? {
+        val mappedCuratorId = AppleExploreCatalog.curatorId(categoryParams)
+        mappedCuratorId?.let { id -> curatorPage(id, storefront, language)?.let { return it } }
         for (directory in listOf(AppleCatalogPath.Genres, AppleCatalogPath.Moods)) {
             val items = page(directory, storefront, language)?.page?.shelves.orEmpty().flatMap { it.items }
             val curator = AppleExploreCatalog.findCurator(title, items)
                 ?: AppleExploreCatalog.findCurator(title, page(directory, "us", "en")?.page?.shelves.orEmpty().flatMap { it.items })
                 ?: continue
-            return page(AppleCatalogPath("curator/levyra/${curator.id}", "curator-${curator.id}"), storefront, language)?.page
+            if (curator.id == mappedCuratorId) continue
+            return curatorPage(curator.id, storefront, language)
         }
         return null
     }
+
+    private suspend fun curatorPage(curatorId: String, storefront: String, language: String): AppleCatalogPage? =
+        page(AppleCatalogPath("curator/levyra/$curatorId", "curator-$curatorId"), storefront, language)?.page
+            ?.takeIf { page -> page.shelves.any { shelf -> shelf.items.isNotEmpty() } }
 
     suspend fun cachedNewMusic(storefront: String, language: String): AppleCatalogResult? = cachedPage(AppleCatalogPath.New, storefront, language)
 
@@ -372,6 +409,7 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
         private const val PAGE_TTL_MS = 6L * 60L * 60L * 1000L
         private const val MAX_STALE_MS = 7L * 24L * 60L * 60L * 1000L
         private const val PLAYLIST_TTL_MS = 3L * 60L * 60L * 1000L
+        private const val CHART_ALBUMS_LIMIT = 50
         private const val MAX_PAGE_BYTES = 6L * 1024L * 1024L
         private const val READ_CHUNK_BYTES = 64L * 1024L
         private const val HTTP_TOO_MANY_REQUESTS = 429

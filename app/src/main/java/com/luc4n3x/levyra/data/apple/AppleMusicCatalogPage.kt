@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.data.apple
 
+import com.luc4n3x.levyra.domain.AlbumHit
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -27,7 +28,66 @@ data class AppleCatalogItem(
     fun coverUrl(size: Int): String = AppleCatalogArtwork.url(coverArtworkTemplate.ifBlank { artworkTemplate }, size, size)
 
     fun heroUrl(width: Int): String = AppleCatalogArtwork.url(artworkTemplate, width, (width / 1.5f).toInt())
+
+    fun toAlbumHit(): AlbumHit = AlbumHit(
+        title = title, artist = subtitle, year = "", thumbnailUrl = coverUrl(600),
+        query = "$title $subtitle".trim(), explicit = explicit,
+        canonicalUrl = url, metadataProvider = AppleCatalogTracks.SOURCE
+    )
 }
+
+internal fun appleNewReleaseAlbums(page: AppleCatalogPage?, limit: Int): List<AlbumHit> {
+    val shelves = page?.shelves.orEmpty()
+    val newSongsIndex = shelves.indexOfFirst { shelf -> shelf.kind == AppleCatalogShelfKind.Songs }
+    if (newSongsIndex < 0) return emptyList()
+    return shelves.drop(newSongsIndex + 1)
+        .takeWhile { shelf ->
+            shelf.kind == AppleCatalogShelfKind.Grid && shelf.items.isNotEmpty() &&
+                shelf.items.all { item -> item.kind == AppleCatalogItemKind.Album }
+        }
+        .take(MAX_NEW_RELEASE_SHELVES)
+        .asSequence()
+        .flatMap { shelf -> shelf.items.asSequence() }
+        .filter { item ->
+            item.kind == AppleCatalogItemKind.Album && item.title.isNotBlank() && item.subtitle.isNotBlank() &&
+                AppleCatalogIds.albumFromUrl(item.url) != null
+        }
+        .distinctBy { item -> AppleCatalogIds.albumFromUrl(item.url)?.second }
+        .map(AppleCatalogItem::toAlbumHit)
+        .take(limit.coerceIn(1, 80))
+        .toList()
+}
+
+internal fun appleChartReleaseAlbums(root: JSONObject?, nowMs: Long, limit: Int): List<AlbumHit> {
+    val charts = root?.optJSONObject("results")?.optJSONArray("albums") ?: return emptyList()
+    val today = java.time.LocalDate.ofEpochDay(Math.floorDiv(nowMs, DAY_MS))
+    val earliest = today.minusDays(MAX_CHART_RELEASE_AGE_DAYS).toString()
+    val latest = today.toString()
+    val albums = ArrayList<AlbumHit>()
+    for (chartIndex in 0 until charts.length()) {
+        val data = charts.optJSONObject(chartIndex)?.optJSONArray("data") ?: continue
+        for (index in 0 until data.length()) {
+            val attributes = data.optJSONObject(index)?.optJSONObject("attributes") ?: continue
+            val releaseDate = attributes.optString("releaseDate").trim().take(10)
+            if (releaseDate.length != 10 || releaseDate < earliest || releaseDate > latest) continue
+            val title = attributes.optString("name").trim()
+            val artist = attributes.optString("artistName").trim()
+            val url = attributes.optString("url").trim()
+            if (title.isBlank() || artist.isBlank() || AppleCatalogIds.albumFromUrl(url) == null) continue
+            albums += AlbumHit(
+                title = title, artist = artist, year = releaseDate.take(4),
+                thumbnailUrl = AppleCatalogArtwork.url(attributes.optJSONObject("artwork")?.optString("url").orEmpty(), 600, 600),
+                query = "$title $artist", explicit = attributes.optString("contentRating") == "explicit",
+                releaseDate = releaseDate, canonicalUrl = url, metadataProvider = AppleCatalogTracks.SOURCE
+            )
+        }
+    }
+    return albums.distinctBy { AppleCatalogIds.albumFromUrl(it.canonicalUrl)?.second }.take(limit.coerceIn(1, 80))
+}
+
+private const val MAX_NEW_RELEASE_SHELVES = 2
+private const val MAX_CHART_RELEASE_AGE_DAYS = 60L
+private const val DAY_MS = 24L * 60L * 60L * 1000L
 
 data class AppleCatalogShelf(
     val id: String,

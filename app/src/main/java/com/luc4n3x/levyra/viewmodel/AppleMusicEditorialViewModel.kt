@@ -61,18 +61,19 @@ class AppleMusicEditorialViewModel(application: Application) : AndroidViewModel(
     private var artistJob: Job? = null
     private var genreJob: Job? = null
 
-    fun loadGenre(title: String, storefront: String, language: String, force: Boolean = false) {
+    fun loadGenre(title: String, categoryParams: String, storefront: String, language: String, force: Boolean = false) {
         val front = AppleStorefronts.normalize(storefront)
         val lang = AppleStorefronts.language(language)
-        val key = "$front:$lang:$title"
-        if (!force && _state.value.genreKey == key) return
+        val key = appleGenreKey(front, lang, title, categoryParams)
+        val current = _state.value
+        if (!force && current.genreKey == key && (current.genreLoading || current.genrePage != null)) return
         genreJob?.cancel()
         _state.update { current -> current.copy(
             genreKey = key, genrePage = current.genrePage.takeIf { current.genreKey == key },
             genreLoading = true, genreFailed = false, storefront = front, language = lang
         ) }
         genreJob = viewModelScope.launch {
-            val page = repository.genre(title, front, lang)
+            val page = repository.genre(title, categoryParams, front, lang)
             _state.update { current ->
                 if (current.genreKey != key) current else current.copy(
                     genrePage = page ?: current.genrePage, genreLoading = false, genreFailed = page == null
@@ -172,6 +173,9 @@ class AppleMusicEditorialViewModel(application: Application) : AndroidViewModel(
         const val COLLECTION_ARTWORK_SIZE = 600
     }
 }
+
+internal fun appleGenreKey(storefront: String, language: String, title: String, categoryParams: String): String =
+    "${AppleStorefronts.normalize(storefront)}:${AppleStorefronts.language(language)}:${categoryParams.trim().ifBlank { title.trim() }}"
 
 internal fun appleArtistKey(artistName: String, storefront: String, language: String): String {
     val name = artistName.trim().lowercase(java.util.Locale.ROOT)

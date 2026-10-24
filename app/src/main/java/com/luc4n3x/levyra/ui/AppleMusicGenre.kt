@@ -33,24 +33,30 @@ import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.luc4n3x.levyra.data.apple.*
-import com.luc4n3x.levyra.domain.AlbumHit
+import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LevyraAppleMusicStrings
 import com.luc4n3x.levyra.ui.theme.AppleMusicDesign
 import com.luc4n3x.levyra.viewmodel.AppleMusicEditorialViewModel
 import com.luc4n3x.levyra.viewmodel.ExploreViewModel
+import com.luc4n3x.levyra.viewmodel.MoodGenrePageViewModel
+import com.luc4n3x.levyra.viewmodel.appleGenreKey
 
 @Composable
 internal fun AppleMusicGenreScreen(
     title: String,
+    categoryParams: String,
+    languageCode: String,
     storefront: String,
     currentId: String?,
     bottomInset: Dp,
     exploreViewModel: ExploreViewModel,
     onTrackActions: (Track) -> Unit,
+    onOpenPlaylist: (PlaylistHit) -> Unit,
     backEnabled: Boolean,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    fallback: @Composable () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraAppleMusicStrings.forCode(strings.code) }
@@ -58,14 +64,27 @@ internal fun AppleMusicGenreScreen(
     val state by editorialViewModel.state.collectAsStateWithLifecycle()
     val front = remember(storefront) { AppleStorefronts.normalize(storefront) }
     val language = remember(strings.code) { AppleStorefronts.language(strings.code) }
-    val key = "$front:$language:$title"
+    val key = appleGenreKey(front, language, title, categoryParams)
     val page = state.genrePage.takeIf { state.genreKey == key }
-    LaunchedEffect(key) { editorialViewModel.loadGenre(title, front, language) }
+    LaunchedEffect(key) { editorialViewModel.loadGenre(title, categoryParams, front, language) }
     DisposableEffect(key) { onDispose { editorialViewModel.closeCollection() } }
+    val shelves = remember(page) { appleGenreShelves(page) }
+    val appleSettledEmpty = state.genreKey == key && !state.genreLoading && shelves.isEmpty()
+    val moodFallbackActive = appleSettledEmpty && categoryParams.isNotBlank()
+    val moodViewModel = viewModel<MoodGenrePageViewModel>()
+    val moodState by moodViewModel.state.collectAsStateWithLifecycle()
+    val moodKey = "$languageCode:$categoryParams"
+    LaunchedEffect(moodFallbackActive, moodKey) {
+        if (moodFallbackActive) moodViewModel.load(categoryParams, languageCode)
+    }
+    if (moodFallbackActive && moodState.key == moodKey && moodState.failed) {
+        fallback()
+        return
+    }
+    val moodSections = moodState.sections.takeIf { moodFallbackActive && moodState.key == moodKey }.orEmpty()
     BackHandler(enabled = backEnabled, onBack = onBack)
     var seeAllId by rememberSaveable(key) { mutableStateOf<String?>(null) }
     var menuOpen by remember(key) { mutableStateOf(false) }
-    val shelves = remember(page) { appleGenreShelves(page) }
     val songs = remember(page) { page?.shelves.orEmpty().flatMap { shelf ->
         shelf.items.mapNotNull(AppleCatalogTracks::fromItem)
     }.distinctBy { it.id } }
@@ -75,11 +94,7 @@ internal fun AppleMusicGenreScreen(
     val collapsed by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
     val openItem: (AppleCatalogItem, List<Track>) -> Unit = { item, siblings ->
         when (item.kind) {
-            AppleCatalogItemKind.Album -> exploreViewModel.openAlbum(AlbumHit(
-                title = item.title, artist = item.subtitle, year = "", thumbnailUrl = item.coverUrl(600),
-                query = "${item.title} ${item.subtitle}", explicit = item.explicit,
-                canonicalUrl = item.url, metadataProvider = AppleCatalogTracks.SOURCE
-            ))
+            AppleCatalogItemKind.Album -> exploreViewModel.openAlbum(item.toAlbumHit())
             AppleCatalogItemKind.Playlist -> editorialViewModel.openCollection(item)
             AppleCatalogItemKind.Artist -> exploreViewModel.openArtistByName(item.title)
             AppleCatalogItemKind.Song -> AppleCatalogTracks.fromItem(item)?.let { track ->
@@ -108,15 +123,34 @@ internal fun AppleMusicGenreScreen(
                     modifier = Modifier.padding(horizontal = AppleMusicDesign.gutter).semantics { heading() }
                 )
             }
-            if (shelves.isEmpty()) {
+            if (moodSections.isNotEmpty()) {
+                moodSections.forEachIndexed { index, section ->
+                    item(key = "genre-mood-$index", contentType = "genre-mood") {
+                        Column {
+                            AppleMusicSectionHeader(section.title)
+                            AppleMusicCardCarousel(remember(section) {
+                                section.playlists.map { playlist ->
+                                    AppleMusicCardModel(
+                                        key = playlist.playlistId.ifBlank { playlist.browseId },
+                                        title = playlist.title,
+                                        subtitle = playlist.description,
+                                        artworkUrl = playlist.thumbnailUrl,
+                                        onClick = { onOpenPlaylist(playlist.toHit()) }
+                                    )
+                                }
+                            })
+                        }
+                    }
+                }
+            } else if (shelves.isEmpty()) {
                 item(key = "genre-status") {
-                    if (state.genreKey != key || state.genreLoading) {
+                    if (!appleSettledEmpty || moodFallbackActive) {
                         Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(color = AppleMusicDesign.accent)
                         }
                     } else {
                         AppleMusicNotice(copy.editorialUnavailable, copy.editorialRetry) {
-                            editorialViewModel.loadGenre(title, front, language, force = true)
+                            editorialViewModel.loadGenre(title, categoryParams, front, language, force = true)
                         }
                     }
                 }
