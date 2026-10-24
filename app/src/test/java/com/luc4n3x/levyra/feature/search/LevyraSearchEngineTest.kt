@@ -354,16 +354,19 @@ class LevyraSearchEngineTest {
     }
 
     @Test
-    fun `albums filter pages search albums beyond the verified discography`() = runBlocking {
+    fun `albums filter shows only the verified discography while paging search albums`() = runBlocking {
         backend.exactArtist = { searchTestArtist("Coldplay", "UCcold", officialArtwork = true) }
         backend.officialDiscography = { artist ->
-            SearchArtistDiscography(artist, albums = listOf(searchTestAlbum("Moon Music", "Coldplay", "MPRE_moon")))
+            SearchArtistDiscography(
+                artist,
+                albums = listOf(searchTestAlbum("Moon Music", "Coldplay", "MPRE_moon"), searchTestAlbum("X&Y", "Coldplay", "MPRE_xy"))
+            )
         }
         backend.section = { filter, _, continuation ->
             when {
                 filter != SearchFilter.Albums -> SearchSectionPage()
                 continuation.isBlank() -> SearchSectionPage(
-                    albums = listOf(searchTestAlbum("Parachutes", "Coldplay", "MPRE_para")),
+                    albums = listOf(searchTestAlbum("Coldplay Covers", "Tribute Band", "MPRE_cover")),
                     continuation = "page2"
                 )
                 else -> SearchSectionPage(albums = listOf(searchTestAlbum("X&Y", "Coldplay", "MPRE_xy")))
@@ -375,14 +378,13 @@ class LevyraSearchEngineTest {
         engine.awaitState { it.verified && it.settled }
 
         engine.selectFilter(SearchFilter.Albums)
-        val first = engine.awaitState { snapshot -> snapshot.results.albums.any { it.browseId == "MPRE_para" } }
-        assertEquals("page2", first.sectionContinuations[SearchFilter.Albums])
+        val first = engine.awaitState { snapshot -> snapshot.sectionContinuations[SearchFilter.Albums] == "page2" }
+        assertEquals(listOf("MPRE_moon", "MPRE_xy"), first.results.albums.map { it.browseId })
         engine.awaitState { SearchFilter.Albums !in it.sectionLoading }
         engine.loadMore(SearchFilter.Albums)
-        val second = engine.awaitState { snapshot -> snapshot.results.albums.any { it.browseId == "MPRE_xy" } }
+        val second = engine.awaitState { snapshot -> snapshot.sectionContinuations[SearchFilter.Albums] == "" }
 
-        assertEquals(listOf("MPRE_moon", "MPRE_para", "MPRE_xy"), second.results.albums.map { it.browseId })
-        assertEquals("", second.sectionContinuations[SearchFilter.Albums])
+        assertEquals(listOf("MPRE_moon", "MPRE_xy"), second.results.albums.map { it.browseId })
     }
 
     @Test
