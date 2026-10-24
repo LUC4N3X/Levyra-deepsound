@@ -4330,6 +4330,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun onVideoSustainedFrameDrops() {
+        if (!player.isPlaying) return
         val snapshot = _state.value
         val track = automaticVideoDowngradeTrack(snapshot) ?: return
         videoRebufferPolicy.reset()

@@ -9,12 +9,14 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.withFrameNanos
+import kotlinx.coroutines.delay
 import kotlin.math.abs
 
 const val LYRICS_CLOCK_RESYNC_THRESHOLD_MS = 320L
 const val LYRICS_CLOCK_MAX_CONVERGENCE_MS = 48L
 const val LYRICS_CLOCK_MIN_SPEED = 0.25f
 const val LYRICS_CLOCK_MAX_SPEED = 4f
+const val LYRICS_CLOCK_STEPPED_SAMPLE_MS = 100L
 
 fun projectedLyricsPositionMs(
     anchorPositionMs: Long,
@@ -101,7 +103,14 @@ fun rememberLyricsPlaybackClock(
     }
 
     LaunchedEffect(clock, isPlaying, speed, smoothingEnabled, livePositionMs) {
-        if (!smoothingEnabled || !isPlaying) return@LaunchedEffect
+        if (!isPlaying) return@LaunchedEffect
+        if (!smoothingEnabled) {
+            if (livePositionMs == null) return@LaunchedEffect
+            while (true) {
+                delay(LYRICS_CLOCK_STEPPED_SAMPLE_MS)
+                clock.sync(livePositionMs(), playing = false, speed = speed, nowRealtimeMs = SystemClock.elapsedRealtime())
+            }
+        }
         while (true) {
             withFrameNanos { }
             val now = SystemClock.elapsedRealtime()

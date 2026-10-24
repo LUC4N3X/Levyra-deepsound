@@ -388,6 +388,7 @@ private fun SleepTimerCustomDuration(
                 onValueChange = { minutes = snapSleepTimerMinutes(it) },
                 onValueChangeFinished = { onSelectMinutes(minutes) },
                 valueRange = SLEEP_TIMER_CUSTOM_MIN_MINUTES.toFloat()..SLEEP_TIMER_CUSTOM_MAX_MINUTES.toFloat(),
+                steps = SLEEP_TIMER_CUSTOM_SLIDER_STEPS,
                 colors = SliderDefaults.colors(
                     thumbColor = LevyraCyan,
                     activeTrackColor = LevyraCyan,
@@ -527,6 +528,8 @@ internal const val SLEEP_TIMER_CUSTOM_MIN_MINUTES = 5
 internal const val SLEEP_TIMER_CUSTOM_MAX_MINUTES = 240
 internal const val SLEEP_TIMER_CUSTOM_STEP_MINUTES = 5
 private const val SLEEP_TIMER_CUSTOM_DEFAULT_MINUTES = 90
+internal const val SLEEP_TIMER_CUSTOM_SLIDER_STEPS =
+    (SLEEP_TIMER_CUSTOM_MAX_MINUTES - SLEEP_TIMER_CUSTOM_MIN_MINUTES) / SLEEP_TIMER_CUSTOM_STEP_MINUTES - 1
 
 internal fun snapSleepTimerMinutes(value: Float): Int {
     val stepped = Math.round(value / SLEEP_TIMER_CUSTOM_STEP_MINUTES) * SLEEP_TIMER_CUSTOM_STEP_MINUTES

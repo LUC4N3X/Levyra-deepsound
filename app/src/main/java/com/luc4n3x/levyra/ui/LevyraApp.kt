@@ -9138,7 +9138,7 @@ internal fun KaraokeWordTimedText(
                             clipPath(path) {
                                 this@drawWithContent.drawContent()
                             }
-                            if (fillFront.active) drawKaraokeFillFeather(fillFront, featherPx)
+                            if (fillFront.active) drawKaraokeFillFeather(fillFront)
                         }
                 )
             }
@@ -9162,10 +9162,12 @@ private class KaraokeFillFront {
     var top = 0f
     var bottom = 0f
     var rtl = false
+    var feather = 0f
 }
 
-private fun DrawScope.drawKaraokeFillFeather(front: KaraokeFillFront, featherPx: Float) {
-    if (featherPx <= 0f || front.bottom <= front.top) return
+private fun DrawScope.drawKaraokeFillFeather(front: KaraokeFillFront) {
+    val featherPx = front.feather
+    if (featherPx <= 0.5f || front.bottom <= front.top) return
     val from = front.x - featherPx
     val to = front.x + featherPx
     val colors = if (front.rtl) KaraokeFeatherRtl else KaraokeFeatherLtr
@@ -9176,6 +9178,9 @@ private fun DrawScope.drawKaraokeFillFeather(front: KaraokeFillFront, featherPx:
         blendMode = BlendMode.DstIn
     )
 }
+
+internal fun karaokeFeatherWidth(featherPx: Float, remainingToLineEndPx: Float): Float =
+    minOf(featherPx, remainingToLineEndPx).coerceAtLeast(0f)
 
 private val KaraokeFeatherLtr = listOf(Color.White, Color.Transparent)
 private val KaraokeFeatherRtl = listOf(Color.Transparent, Color.White)
@@ -9228,13 +9233,16 @@ private fun buildKaraokeGlyphPath(
             layoutResult.getHorizontalPosition(nextOffset, usePrimaryDirection = true)
         }
         val currentX = charStart + (charEnd - charStart) * fraction
-        val reachX = if (isRtl) currentX - featherPx else currentX + featherPx
+        val lineEndX = if (isRtl) layoutResult.getLineLeft(activeLine) else layoutResult.getLineRight(activeLine)
+        val feather = karaokeFeatherWidth(featherPx, kotlin.math.abs(lineEndX - currentX))
+        val reachX = if (isRtl) currentX - feather else currentX + feather
         path.addRectangle(minOf(startX, reachX), top, maxOf(startX, reachX), bottom)
         front.active = true
         front.x = currentX
         front.top = top
         front.bottom = bottom
         front.rtl = isRtl
+        front.feather = feather
     }
     return path
 }
@@ -19572,6 +19580,9 @@ private fun PlayerAdvancedControlsPanel(
                 lyrics = state.lyrics,
                 lyricsLoading = state.lyricsLoading,
                 positionMs = state.positionMs,
+                isPlaying = state.isPlaying,
+                playbackSpeed = state.audioSettings.playbackSpeed,
+                synced = state.lyricsSynced,
                 durationMs = state.durationMs,
                 primaryContent = primaryContent,
                 compact = compact,
@@ -19900,6 +19911,9 @@ private fun PlayerInlineLyricsSection(
     lyrics: List<com.luc4n3x.levyra.domain.LyricLine>,
     lyricsLoading: Boolean,
     positionMs: Long,
+    isPlaying: Boolean,
+    playbackSpeed: Float,
+    synced: Boolean,
     durationMs: Long,
     primaryContent: Color,
     compact: Boolean,
@@ -19954,7 +19968,16 @@ private fun PlayerInlineLyricsSection(
         lyrics.isNotEmpty() -> {
             val listState = rememberLazyListState()
             val lyricsAnimationsEnabled = LocalAnimationsEnabled.current
-            val visualActiveIndex = remember(lyrics, positionMs) { activeLyricIndex(positionMs, lyrics) }
+            val inlineClock = rememberLyricsPlaybackClock(
+                trackKey = trackId,
+                reportedPositionMs = positionMs,
+                isPlaying = isPlaying,
+                speed = playbackSpeed,
+                smoothingEnabled = synced && lyricsAnimationsEnabled
+            )
+            val visualActiveIndex by remember(lyrics, inlineClock) {
+                derivedStateOf { activeLyricIndex(inlineClock.positionMs, lyrics) }
+            }
             var inlineAutoScroll by remember(trackId) { mutableStateOf(true) }
             var inlineAutoScrolling by remember(trackId) { mutableStateOf(false) }
 

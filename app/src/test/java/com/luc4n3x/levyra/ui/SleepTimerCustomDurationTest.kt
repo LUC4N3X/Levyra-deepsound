@@ -21,6 +21,11 @@ class SleepTimerCustomDurationTest {
     }
 
     @Test
+    fun `slider steps match five minute increments`() {
+        assertEquals(46, SLEEP_TIMER_CUSTOM_SLIDER_STEPS)
+    }
+
+    @Test
     fun `preset durations are not custom`() {
         listOf(15, 30, 45, 60).forEach { assertFalse(isCustomSleepTimerMinutes(it)) }
         assertFalse(isCustomSleepTimerMinutes(0))

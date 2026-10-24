@@ -139,8 +139,9 @@ internal class LevyraVideoStreamSelector(context: Context) {
         }
         val compatibleMuxed = compatibleCandidates(rawMuxed).ifEmpty { conservativeVideoFallbackCandidates(rawMuxed) }
         val compatibleVideoOnly = compatibleCandidates(rawVideoOnly).ifEmpty { conservativeVideoFallbackCandidates(rawVideoOnly) }
-        val usableMuxed = stableAndroidVideoCandidates(compatibleMuxed, targetHeight)
-        val usableVideoOnly = stableAndroidVideoCandidates(compatibleVideoOnly, targetHeight)
+        val automatic = qualityTarget == VideoQualityTarget.AUTO
+        val usableMuxed = preferSustainable(stableAndroidVideoCandidates(compatibleMuxed, targetHeight), automatic)
+        val usableVideoOnly = preferSustainable(stableAndroidVideoCandidates(compatibleVideoOnly, targetHeight), automatic)
         val bestMuxed = usableMuxed.maxByOrNull { score(it, targetHeight) }
         val bestVideoOnly = usableVideoOnly.maxByOrNull { score(it, targetHeight) }
         val chosen = if (qualityTarget == VideoQualityTarget.AUTO) {
@@ -158,6 +159,9 @@ internal class LevyraVideoStreamSelector(context: Context) {
         }
         return LevyraVideoSelection(chosen, targetHeight, hardware, reason)
     }
+
+    private fun preferSustainable(candidates: List<LevyraVideoCandidate>, automatic: Boolean): List<LevyraVideoCandidate> =
+        if (automatic) candidates.filter { decoderSupport(it).smooth }.ifEmpty { candidates } else candidates
 
     private fun isRejected(url: String): Boolean {
         val until = rejectedUrls[url] ?: return false
