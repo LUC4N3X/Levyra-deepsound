@@ -115,6 +115,7 @@ import com.luc4n3x.levyra.domain.batchDownloadKey
 import com.luc4n3x.levyra.domain.batchDownloadKindOf
 import com.luc4n3x.levyra.domain.batchDownloadProgress
 import com.luc4n3x.levyra.domain.batchDownloadState
+import com.luc4n3x.levyra.player.VideoFrameDropMonitor
 import com.luc4n3x.levyra.player.offline.work.OfflineDownloadBatchRef
 import com.luc4n3x.levyra.domain.artistCredits
 import com.luc4n3x.levyra.domain.artistDisplayCandidates
@@ -1879,6 +1880,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         player.onVideoStall = { onVideoMidPlayStall() }
+        VideoFrameDropMonitor.Shared.onSustainedFrameDrops = { onVideoSustainedFrameDrops() }
         player.onUnavailableRemoteTrack = { track -> skipUnavailableCollectionTrack(track) }
         player.onPersonalCollectionError = { denial ->
             if (denial != null) {
@@ -4318,16 +4320,32 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun onVideoMidPlayStall() {
         val snapshot = _state.value
-        if (!snapshot.isVideoMode) return
-        val track = snapshot.currentTrack ?: return
-        if (track.isLiveRadio() || isLocalPlaybackTrack(track)) return
-        if (snapshot.isResolving || snapshot.videoQuality.switching) return
-        val ladder = snapshot.videoQuality.ladder
-        if (ladder.isEmpty()) return
+        val track = automaticVideoDowngradeTrack(snapshot) ?: return
         val nowMs = System.currentTimeMillis()
         videoRebufferPolicy.onMidPlayStall(nowMs)
         if (!videoRebufferPolicy.shouldDowngrade(nowMs)) return
         videoRebufferPolicy.reset()
+        stepDownVideoQuality(snapshot, track)
+    }
+
+    private fun onVideoSustainedFrameDrops() {
+        val snapshot = _state.value
+        val track = automaticVideoDowngradeTrack(snapshot) ?: return
+        videoRebufferPolicy.reset()
+        stepDownVideoQuality(snapshot, track)
+    }
+
+    private fun automaticVideoDowngradeTrack(snapshot: LevyraUiState): Track? {
+        if (!snapshot.isVideoMode) return null
+        val track = snapshot.currentTrack ?: return null
+        if (track.isLiveRadio() || isLocalPlaybackTrack(track)) return null
+        if (snapshot.isResolving || snapshot.videoQuality.switching) return null
+        if (snapshot.videoQuality.ladder.isEmpty()) return null
+        return track
+    }
+
+    private fun stepDownVideoQuality(snapshot: LevyraUiState, track: Track) {
+        val ladder = snapshot.videoQuality.ladder
         val activeLabel = snapshot.videoQuality.activeLabel
             ?: VideoQualityLadder.activeLabelFor(track, ladder)
         VideoQualityLadder.rungBelow(ladder, activeLabel)?.let { below ->
@@ -14007,6 +14025,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     override fun onCleared() {
+        VideoFrameDropMonitor.Shared.onSustainedFrameDrops = null
         LevyraWidgetBridge.clear()
         if (recognitionCollectorJob != null) {
             recognitionCollectorJob?.cancel()
