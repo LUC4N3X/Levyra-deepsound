@@ -1344,6 +1344,27 @@ def generate_readme_cards():
         artwork.save(out_path, "WEBP", quality=95, method=6)
         print(f"Saved README editorial card at {artwork.size}: {out_path}")
 
+    # 4. Render Row 6 Skins diptychs (Cards 21 & 22 Spotify/Apple and 23 & 24 YTM/Signature)
+    skins_left, skins_right = render_readme_hero_diptych(
+        README_CARD_SPECS[20],
+        README_CARD_SPECS[21],
+    )
+    for artwork, spec in ((skins_left, README_CARD_SPECS[20]), (skins_right, README_CARD_SPECS[21])):
+        cards.append(artwork)
+        out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
+        artwork.save(out_path, "WEBP", quality=95, method=6)
+        print(f"Saved README editorial card at {artwork.size}: {out_path}")
+
+    sig_left, sig_right = render_readme_theme_diptych(
+        README_CARD_SPECS[22],
+        README_CARD_SPECS[23],
+    )
+    for artwork, spec in ((sig_left, README_CARD_SPECS[22]), (sig_right, README_CARD_SPECS[23])):
+        cards.append(artwork)
+        out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
+        artwork.save(out_path, "WEBP", quality=95, method=6)
+        print(f"Saved README editorial card at {artwork.size}: {out_path}")
+
     # 4. Assemble Rows (01 to 06)
     row_count = len(README_CARD_SPECS) // 4
     for row_index in range(row_count):
