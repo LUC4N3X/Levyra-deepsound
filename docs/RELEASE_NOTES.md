@@ -1,66 +1,68 @@
-# Levyra 3.0.1
+# Levyra 3.0.2
 
 ## Highlights
 
-A smaller release after 3.0.0, mostly made of things you told me about. Home gets a calmer Discover card, the Spotify Style and YouTube Music Style skins finally have proper mood and genre pages, and thirteen languages that were quietly showing English almost everywhere now speak their own language.
+There's a lot more to this update than the version number suggests. Lyrics have a new way to come alive, your listening history has a story of its own, and the downloads you keep for offline days are easier to check and repair.
 
-## Discover for you
+We've also spent time on the quieter annoyances: a lyric line that feels a little late, a video that asks too much of a modest phone, an album that won't open in your region, or a Back gesture that takes you somewhere unexpected. Those things matter every time you listen.
 
-The Discover card on Home used to sit right under My soundtrack and fight it for attention, with its own blue button, two fake save and skip bubbles you couldn't actually tap, and an animation that never stopped.
+## ✦ Lyrics that feel closer to the music
 
-It's been redrawn to match the rest of Home. The colours now come from the cover at the front, the reason a song was picked (a new release, an artist you follow) sits in a small label on that cover, and the covers turn like a deck a couple of times and then settle down. If you've turned animations off, nothing moves.
+There's now an Apple Music-style lyrics experience with a dedicated full-screen layout, word-level karaoke where timing is available, and controls that stay out of the way when you don't need them. It's the default lyrics view in the Apple Music Style skin, but you can choose it in the other skins too. The choice is saved in Lyrics Studio, so you don't have to set it again.
 
-It also moved further down, after Your orbit. That puts the genre chips (New releases and the rest) back under My soundtrack, where they used to be.
+You can adjust automatic scrolling, original lyrics and romanization from the lyrics options. A song uploaded under a channel name instead of its real artist also has a better chance of finding the right lyrics: Levyra can read titles written as either “Song - Artist” or “Artist - Song”, without confusing a remaster label for an artist.
 
-## Mood and genre pages in two skins
+The existing lyrics view hasn't been left behind. During playback, synchronized lines follow the player's live position more closely. The default skin, Nocturne 78, Prism and Torque now have a softer artwork-coloured backdrop. Text is kept readable, decorative movement respects your animation setting, and blur is reduced on devices where it would be expensive.
 
-Opening a mood or genre in the Spotify Style skin now shows the page that skin is known for: a coloured header, a big title and rows of playlist covers grouped by theme, with the artists underneath.
+## ✦ Your year, in your own music
 
-The YouTube Music Style skin gets its own version, with section titles you can open to see every playlist in that group. Before this release, tapping a mood in that skin loaded the songs in the background but never actually opened a page.
+Levyra Rewind turns the listening history already on your device into a sequence you can browse. There's time listened, favourite artists, tracks and albums, listening rhythms, an activity timeline and a closing poster you can share.
 
-If a category can't be loaded, you still get the usual list of songs instead of an empty screen.
+It uses the local listening records Levyra already keeps. If there isn't enough history for a meaningful recap, it doesn't pretend otherwise. You can change the year and move through the chapters at your own pace.
 
-## Languages
+## ✦ Downloads you can trust
 
-Slovak, Croatian, Serbian, Albanian, Bulgarian, Hungarian, Norwegian, Catalan, Kazakh, Persian, Traditional Chinese, Bengali and Malay only had their welcome screens and tab names translated. Settings, the player, your library, search and downloads were all in English. Those parts are now translated in all thirteen. A few feature screens, like the audio tools and playlist import, are still in English for these languages and will follow.
+The new Download Health Center checks your offline library for missing, empty, unreadable or incomplete audio files, and makes problems visible instead of leaving you to discover them when you press Play.
 
-A Russian user also noticed that the "LEVYRA is up to date" message stayed in Italian whatever language you picked. That message, the "new version available" one and the error you see when the check fails now follow your language in all 41 languages Levyra supports.
+You can scan the library, see which items need attention and confirm a repair for one download or several. Repair uses the existing download queue, with progress, retry and cancellation controls. If storage access is the problem, Levyra points you toward the relevant settings rather than promising a repair it can't perform.
 
-## Also in this release
+## ✦ The everyday fixes
 
-These were fixed on the main branch after 3.0.0 and ship with this version:
+A few changes are less visible, but worth calling out:
 
-- Albums that YouTube Music labels as an EP or a single open correctly, and artist pages show both the artist's own playlists and the ones they appear on.
-- In the YouTube Music Style skin, live radio shows its play and pause button again.
-- Playback from Explore is more reliable, and the Apple Music Style skin has editorial genre pages.
-- Playlist imports find the right version of a song more often, by looking at the original album, ISRC codes and matching lengths.
-- Android Auto search results can be cancelled cleanly and no longer reset the queue you were listening to.
+- The sleep timer now lets you pick a duration between 5 minutes and 4 hours, in five-minute steps, alongside the familiar presets.
+- Automatic video quality takes lower-memory phones and sustained dropped frames into account, rather than waiting for repeated buffering. Manually selected quality remains your choice.
+- Exact artist searches can show a fuller verified discography. New-release albums and editorial categories do a better job using the right regional catalogue, with a fallback when a source can't provide the page.
+- Moving between Library categories no longer leaves stale rows behind or lets a Library Back handler steal a gesture from an open player.
+- When a prefetched high-quality track is already cached, Levyra can reuse that source without requiring a fresh network lookup. This is not a replacement for downloading music for offline use.
+
+There's also a small detail you may notice before any of the above: the Android launcher now says “Levyra”, not “LEVYRA”.
 
 ## Validation
 
-Focused unit tests passed locally for the new mood and genre page parser and for localization, and the debug build was installed on a Samsung Galaxy S25+ over wireless debugging. On that phone I checked the new Home order and the Discover card layout. The turning animation, the two new mood and genre pages, the light theme, large text and TalkBack still need a proper look on a device.
+These notes cover changes already committed to main since the published 3.0.1 release. They describe the code and its intended behavior; they are not a claim that the 3.0.2 APK has already passed release testing.
 
-The translations were written and reviewed by me, not by native speakers, so corrections from people who speak these languages are very welcome.
+New automated test coverage has been added for Rewind data, download health and repair, and the new lyrics behavior. During preparation of these notes, I did not run the repository's local fast or full AI quality gate, an Android release build, a physical-device regression pass, Android Auto checks or signing verification. Their status is unverified, not passed.
 
-A full local release build, a physical-device regression run and final signing verification have not been done while writing these notes. The GitHub release workflow still has to pass release lint, build and sign the APK, check the version and certificate, create the SHA-256 checksum and verify the published files.
+The GitHub release workflow must still pass its release-note checks and Android lint, build and sign the APK, verify the version and signing certificate, generate the SHA-256 checksum and publish the checked files. A GitHub release and a downloadable APK should only be treated as available after that workflow succeeds.
 
 ## Versioning
 
-- Version name: `3.0.1`
-- Version code: `3000100`
+- Version name: `3.0.2`
+- Version code: `3000200`
 
-This is an Android release. The separately versioned Windows app is not part of it.
+This is an Android release. Levyra Desktop is versioned and released separately; this update does not change the Windows app.
 
 ## Upgrade notes
 
-Nothing special to do. Your library, downloads, history, playlists and settings stay where they are, and your skin and player style don't change.
+No manual migration is expected. Your existing music library, playlists, favourites, downloads, listening history, settings, selected skin and player style stay in place. Rewind builds its story from the listening history available locally, so its results will depend on what you've already played.
 
-Mood and genre pages, search and video depend on external services, so what you see can vary by region.
+Music catalogues, regional releases, lyrics, search and streaming video rely in part on external services; results and availability can vary by region. Repairing a damaged download may require network access or storage permission.
 
-The signed APK and checksum will appear on the GitHub release page once the publishing workflow succeeds. F-Droid and other channels may update on their own schedule.
+Once the publishing workflow finishes successfully, the signed Android APK and its checksum will be on the GitHub release page. F-Droid and other distribution channels may update later.
 
 ## Final note
 
-Most of this release came from your messages, including the one about the update toast in the wrong language. Keep them coming, and if your language still shows English somewhere, tell me where.
+3.0.2 is about making Levyra feel more like your own place to listen. The lyrics can look the way you want. The hours you've spent with music have somewhere to live. And when something doesn't work, from a download to an album page, the app should give you a better way forward.
 
-Thanks for sticking with Levyra.
+Thanks for listening, and for pointing out the little things worth fixing.
