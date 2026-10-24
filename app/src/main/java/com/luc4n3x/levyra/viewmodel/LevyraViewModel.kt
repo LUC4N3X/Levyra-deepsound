@@ -8038,7 +8038,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         albumJob = viewModelScope.launch {
             val languageCode = _state.value.languageCode
-            val providerDetail = runCatching { repository.albumDetail(album, languageCode) }.getOrNull()
+            val providerResult = runCatchingPreservingCancellation { repository.albumDetail(album, languageCode) }
+                .onFailure { Timber.w(it, "Album detail lookup failed") }
+            val providerDetail = providerResult.getOrNull()
             if (!isActive) return@launch
             val detail = if (providerDetail?.tracks.isNullOrEmpty()) {
                 appleCatalogAlbumDetail(album, languageCode) ?: providerDetail
@@ -8047,10 +8049,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
             if (!isActive) return@launch
             if (detail == null || detail.tracks.isEmpty()) {
+                val transientFailure = providerResult.isFailure || !hasInternetCapableNetwork()
                 _state.update {
+                    val strings = LevyraStrings.forCode(it.languageCode)
                     it.copy(
                         albumLoading = false,
-                        albumError = LevyraStrings.forCode(it.languageCode).albumTracksUnavailable,
+                        albumError = if (transientFailure) strings.albumTracksLoadFailed else strings.albumTracksUnavailable,
                         albumDetail = detail ?: AlbumDetail(album, "", emptyList())
                     )
                 }
@@ -10776,12 +10780,24 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         )
     }
 
+    private suspend fun newReleaseSource(label: String, load: suspend () -> List<AlbumHit>): List<AlbumHit> =
+        try {
+            load()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.w(error, "New releases source failed: %s", label)
+            emptyList()
+        }
+
     private fun ensureOfficialNewReleasesLoaded(force: Boolean = false) {
         val snapshot = _state.value
         val languageCode = snapshot.languageCode
         val preferredArtists = discoveryPreferredArtists(snapshot, 24)
+        val storefront = ChartsCatalog.region(snapshot.selectedChartId).country
         val profileSignature = buildString {
             append(LevyraLanguageCatalog.normalize(languageCode))
+            append('|').append(storefront)
             append('|').append(preferredArtists.joinToString("|"))
         }
         val sameActiveRequest = newReleasesRequestLanguage == languageCode &&
@@ -10813,31 +10829,28 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         newReleasesJob = viewModelScope.launch {
             try {
-                val market = ChartsCatalog.defaultRegionForLanguage(languageCode).country
-                val editorialReleases = try {
-                    chartsRepository.newReleaseAlbums(country = market, limit = 48)
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (error: Throwable) {
-                    Timber.w(error, "Localized editorial releases failed for %s", market)
-                    emptyList()
-                }
-                val releases = prioritizeNewReleasesForUser(
-                    releases = editorialReleases,
-                    preferredArtists = preferredArtists,
-                    limit = 48
-                ).ifEmpty {
-                    try {
-                        repository.newReleases(
-                            languageCode = languageCode,
-                            limit = 48,
-                            preferredArtists = preferredArtists
-                        )
-                    } catch (error: CancellationException) {
-                        throw error
-                    } catch (error: Throwable) {
-                        Timber.w(error, "Personalized new releases fallback failed for %s", languageCode)
-                        emptyList()
+                val appleCatalog = com.luc4n3x.levyra.data.apple.AppleMusicEditorialRepository.get(getApplication<Application>())
+                val releases = newReleaseSource("storefront $storefront") {
+                    val storefrontReleases = appleCatalog.newReleaseAlbums(storefront, languageCode, limit = 48)
+                    prioritizeNewReleasesForUser(storefrontReleases, preferredArtists, limit = 48)
+                }.ifEmpty {
+                    newReleaseSource("storefront charts $storefront") {
+                        val chartReleases = appleCatalog.recentChartAlbums(storefront, languageCode, limit = 48)
+                        prioritizeNewReleasesForUser(chartReleases, preferredArtists, limit = 48)
+                    }
+                }.ifEmpty {
+                    newReleaseSource("native editorial $storefront") {
+                        val editorial = chartsRepository.newReleaseAlbums(country = storefront, limit = 48, nativeOnly = true)
+                        prioritizeNewReleasesForUser(editorial, preferredArtists, limit = 48)
+                    }
+                }.ifEmpty {
+                    newReleaseSource("personalized $languageCode") {
+                        repository.newReleases(languageCode = languageCode, limit = 48, preferredArtists = preferredArtists)
+                    }
+                }.ifEmpty {
+                    newReleaseSource("editorial $storefront") {
+                        val editorial = chartsRepository.newReleaseAlbums(country = storefront, limit = 48)
+                        prioritizeNewReleasesForUser(editorial, preferredArtists, limit = 48)
                     }
                 }
                 if (newReleasesRequestGeneration != requestGeneration || _state.value.languageCode != languageCode) return@launch

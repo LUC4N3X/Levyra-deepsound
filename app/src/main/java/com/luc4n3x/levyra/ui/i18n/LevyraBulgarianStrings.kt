@@ -244,6 +244,7 @@ internal fun bgLocalizationEntries(): Map<String, String> = mapOf(
     "shareDiagnostics" to "Сподели диагностиката",
     "albumUnavailable" to "Албумът не е наличен",
     "albumTracksUnavailable" to "Песните от албума не са налични",
+    "albumTracksLoadFailed" to "Песните от албума не можаха да се заредят. Проверете връзката и опитайте отново.",
     "showLess" to "Покажи по-малко",
     "showMore" to "Покажи повече",
     "playing" to "Свири",

@@ -244,6 +244,7 @@ internal fun zhHantLocalizationEntries(): Map<String, String> = mapOf(
     "shareDiagnostics" to "分享診斷資料",
     "albumUnavailable" to "無法取得專輯",
     "albumTracksUnavailable" to "無法取得專輯曲目",
+    "albumTracksLoadFailed" to "無法載入專輯曲目。請檢查網路連線後再試一次。",
     "showLess" to "顯示較少",
     "showMore" to "顯示更多",
     "playing" to "播放中",

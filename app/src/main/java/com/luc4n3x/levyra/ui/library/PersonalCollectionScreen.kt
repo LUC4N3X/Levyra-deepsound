@@ -106,6 +106,7 @@ internal fun PersonalCollectionScreen(
     state: LevyraUiState,
     viewModel: LibraryViewModel,
     collectionStrings: LevyraPersonalCollectionStrings,
+    backEnabled: Boolean = true,
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -138,8 +139,8 @@ internal fun PersonalCollectionScreen(
     PersonalCollectionEventEffect(collection, controller.events, collectionStrings, snackbar) {
         haptics.performHapticFeedback(it)
     }
-    BackHandler(enabled = selection.isActive) { selection.exit() }
-    BackHandler(enabled = !selection.isActive) { onClose() }
+    BackHandler(enabled = backEnabled && selection.isActive) { selection.exit() }
+    BackHandler(enabled = backEnabled && !selection.isActive) { onClose() }
 
     fun play(list: List<Track>, start: Track) = viewModel.playLocalTracks(list, start)
 

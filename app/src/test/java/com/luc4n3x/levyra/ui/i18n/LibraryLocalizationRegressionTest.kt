@@ -52,4 +52,11 @@ class LibraryLocalizationRegressionTest {
         assertEquals("1 h 30 min", strings.formatLibraryDuration(90L * 60_000L))
         assertEquals("1,5 GB", strings.formatLibraryBytes((1.5 * 1024 * 1024 * 1024).toLong()))
     }
+
+    @Test
+    fun russianDurationsUseRussianUnitsInsteadOfUkrainianOnes() {
+        assertEquals("44 мин", LevyraStrings.forCode("ru").formatLibraryDuration(44L * 60_000L))
+        assertEquals("1 ч 5 мин", LevyraStrings.forCode("ru").formatLibraryDuration(65L * 60_000L))
+        assertEquals("44 хв", LevyraStrings.forCode("uk").formatLibraryDuration(44L * 60_000L))
+    }
 }

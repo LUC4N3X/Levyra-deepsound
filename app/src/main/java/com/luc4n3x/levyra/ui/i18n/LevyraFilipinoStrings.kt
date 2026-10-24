@@ -244,6 +244,7 @@ internal fun filLocalizationEntries(): Map<String, String> = mapOf(
     "shareDiagnostics" to "Ibahagi ang diagnostics",
     "albumUnavailable" to "Hindi available ang album",
     "albumTracksUnavailable" to "Hindi available ang mga kanta ng album",
+    "albumTracksLoadFailed" to "Hindi ma-load ang mga kanta ng album. Tingnan ang iyong koneksyon at subukang muli.",
     "showLess" to "Mas kaunti",
     "showMore" to "Higit pa",
     "playing" to "Tumutugtog",

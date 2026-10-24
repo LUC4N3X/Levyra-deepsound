@@ -170,9 +170,9 @@ class ChartsRepository(context: Context) {
             .mapKeys { (market, _) -> market.lowercase() }
     }
 
-    suspend fun newReleaseAlbums(country: String, limit: Int = 40): List<AlbumHit> = withContext(Dispatchers.IO) {
+    suspend fun newReleaseAlbums(country: String, limit: Int = 40, nativeOnly: Boolean = false): List<AlbumHit> = withContext(Dispatchers.IO) {
         val safeLimit = limit.coerceIn(1, 80)
-        val tracks = editorialCharts.cachedNewReleaseTracks(country, safeLimit * 3)
+        val tracks = editorialCharts.cachedNewReleaseTracks(country, safeLimit * 3, nativeOnly)
         tracks.asSequence()
             .filter { track ->
                 track.title.isNotBlank() &&

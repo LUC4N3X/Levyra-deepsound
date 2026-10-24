@@ -244,6 +244,7 @@ internal fun huLocalizationEntries(): Map<String, String> = mapOf(
     "shareDiagnostics" to "Diagnosztika megosztása",
     "albumUnavailable" to "Az album nem érhető el",
     "albumTracksUnavailable" to "Az album dalai nem érhetők el",
+    "albumTracksLoadFailed" to "Az album dalait nem sikerült betölteni. Ellenőrizd a kapcsolatot, és próbáld újra.",
     "showLess" to "Kevesebb",
     "showMore" to "Több",
     "playing" to "Szól",

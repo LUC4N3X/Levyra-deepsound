@@ -9,7 +9,7 @@ private val ARTIST_NON_ALPHANUMERIC = Regex("""[^\p{L}\p{N}]+""")
 private val ARTIST_WHITESPACE = Regex("""\s+""")
 private val ARTIST_EXPLICIT_SEPARATOR =
     Regex("""(?i)\s+(?:feat(?:uring)?\.?|ft\.?|with|con|vs\.?)\s+|,\s*|;\s*|\s+[x×/]\s+""")
-private val ARTIST_JOINED_SEPARATOR = Regex("""(?i)\s+(?:&|and|e|y|et|und)\s+""")
+private val ARTIST_JOINED_SEPARATOR = Regex("""(?i)\s+(?:&|and|e|y|et|und|и|і)\s+""")
 private val ARTIST_YEAR_TOKEN = Regex("""\b(?:19|20)\d{2}\b""")
 private val ARTIST_AUDIENCE_PATTERN =
     Regex("""(\d[\d.,\s\u00A0]*)\s*(k|m|b|mln|mld|mrd|mio|mila|tys)?""", RegexOption.IGNORE_CASE)

@@ -44,6 +44,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyListLayoutInfo
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -74,6 +75,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -278,7 +280,8 @@ internal fun LevyraLibraryScreen(
     state: LevyraUiState,
     onOpenDownloads: () -> Unit,
     youtubeMusicAccount: com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicAccount? = null,
-    onOpenYoutubeMusic: () -> Unit = {}
+    onOpenYoutubeMusic: () -> Unit = {},
+    backEnabled: Boolean = true
 ) {
     val strings = LocalLevyraStrings.current
     val colors = MaterialTheme.colorScheme
@@ -342,8 +345,20 @@ internal fun LevyraLibraryScreen(
     }
     var selectedTagIds by rememberSaveable { mutableStateOf(emptySet<String>()) }
     var showHiddenPlaylists by rememberSaveable { mutableStateOf(false) }
-    val listState = rememberLazyListState()
-    val scrollPositions = remember { mutableStateMapOf<String, Pair<Int, Int>>() }
+    val scrollPositions = rememberSaveable(
+        saver = listSaver<SnapshotStateMap<String, Pair<Int, Int>>, Any>(
+            save = { positions -> positions.flatMap { (name, position) -> listOf(name, position.first, position.second) } },
+            restore = { saved ->
+                mutableStateMapOf<String, Pair<Int, Int>>().apply {
+                    saved.chunked(3).forEach { (name, index, offset) -> put(name as String, index as Int to offset as Int) }
+                }
+            }
+        )
+    ) { mutableStateMapOf() }
+    val listState = rememberSaveable(categoryName, saver = LazyListState.Saver) {
+        val position = scrollPositions[categoryName] ?: (0 to 0)
+        LazyListState(position.first, position.second)
+    }
 
     fun switchCategory(next: LibraryCategory) {
         if (next == category) return
@@ -354,11 +369,6 @@ internal fun LevyraLibraryScreen(
             selectedTagIds = emptySet()
             showHiddenPlaylists = false
         }
-    }
-
-    LaunchedEffect(categoryName) {
-        val position = scrollPositions[categoryName] ?: (0 to 0)
-        runCatching { listState.scrollToItem(position.first, position.second) }
     }
 
     val hiddenPlaylistCount = remember(state.playlists) { state.playlists.count { it.hidden } }
@@ -639,13 +649,13 @@ internal fun LevyraLibraryScreen(
     )
 
     BackHandler(
-        enabled = !selectionActive && openSmartCollectionName == null && openCollection == null &&
+        enabled = backEnabled && !selectionActive && openSmartCollectionName == null && openCollection == null &&
             category != LibraryCategory.Overview
     ) {
         switchCategory(LibraryCategory.Overview)
     }
-    BackHandler(enabled = !selectionActive && openSmartCollectionName != null) { openSmartCollectionName = null }
-    BackHandler(enabled = selectionActive) { selectedKeys = emptySet() }
+    BackHandler(enabled = backEnabled && !selectionActive && openSmartCollectionName != null) { openSmartCollectionName = null }
+    BackHandler(enabled = backEnabled && selectionActive) { selectedKeys = emptySet() }
 
     Box(modifier = Modifier.fillMaxSize().background(if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) com.luc4n3x.levyra.ui.theme.YouTubeMusicDesign.background else LevyraInk)) {
         LazyColumn(
@@ -1291,6 +1301,7 @@ internal fun LevyraLibraryScreen(
                 state = state,
                 viewModel = viewModel,
                 collectionStrings = collectionStrings,
+                backEnabled = backEnabled,
                 onClose = { openCollectionId = null }
             )
         }
