@@ -2529,7 +2529,8 @@ fun LevyraApp(
                             LevyraLibraryScreen(
                                 libraryViewModel, screenState, onOpenDownloads = { showDownloadsFolder = true },
                                 youtubeMusicAccount = youtubeMusicState.active,
-                                onOpenYoutubeMusic = { showYoutubeMusic = true }
+                                onOpenYoutubeMusic = { showYoutubeMusic = true },
+                                backEnabled = !rootOverlayOpen && state.selectedTab == LevyraTab.Library
                             )
                         }
                         LevyraTab.Player -> Unit
