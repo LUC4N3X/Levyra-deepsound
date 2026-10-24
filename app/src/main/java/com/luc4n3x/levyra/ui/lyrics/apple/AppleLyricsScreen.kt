@@ -659,9 +659,7 @@ private fun AppleVocalRow(
     Box(modifier.fillMaxWidth().padding(horizontal = AppleLyricsTokens.rowMargin), contentAlignment = if (end) Alignment.CenterEnd else Alignment.CenterStart) {
         Column(
             Modifier
-                .fillMaxWidth(if (row.duet) AppleLyricsTokens.DUET_WIDTH else 1f)
-                .clip(RoundedCornerShape(AppleLyricsTokens.rippleCorner))
-                .background(if (selected) AppleLyricsTokens.quaternary else Color.Transparent)
+                .appleVocalSurface(row.duet, selected)
                 .combinedClickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = ripple(color = Color.White),
@@ -673,19 +671,30 @@ private fun AppleVocalRow(
                     start = AppleLyricsTokens.textPaddingHorizontal, end = AppleLyricsTokens.textPaddingHorizontal,
                     top = AppleLyricsTokens.textPaddingTop, bottom = AppleLyricsTokens.textPaddingBottom
                 )
-                .graphicsLayer {
-                    val scale = AppleLyricsTokens.INACTIVE_SCALE + (1f - AppleLyricsTokens.INACTIVE_SCALE) * focusState.value
-                    scaleX = scale
-                    scaleY = scale
-                    transformOrigin = TransformOrigin(pivotX, 0.5f)
-                    val radius = blurState.value.dp.toPx()
-                    renderEffect = if (radius > 0.5f) BlurEffect(radius, radius, TileMode.Decal) else null
-                },
+                .appleVocalLayer(focusState, blurState, pivotX),
             horizontalAlignment = if (end) Alignment.End else Alignment.Start
         ) {
             AppleVocalLines(row, content, text)
         }
     }
+}
+
+private fun Modifier.appleVocalSurface(duet: Boolean, selected: Boolean): Modifier =
+    fillMaxWidth(if (duet) AppleLyricsTokens.DUET_WIDTH else 1f)
+        .clip(RoundedCornerShape(AppleLyricsTokens.rippleCorner))
+        .background(if (selected) AppleLyricsTokens.quaternary else Color.Transparent)
+
+private fun Modifier.appleVocalLayer(
+    focus: androidx.compose.runtime.State<Float>,
+    blur: androidx.compose.runtime.State<Float>,
+    pivotX: Float
+): Modifier = graphicsLayer {
+    val scale = AppleLyricsTokens.INACTIVE_SCALE + (1f - AppleLyricsTokens.INACTIVE_SCALE) * focus.value
+    scaleX = scale
+    scaleY = scale
+    transformOrigin = TransformOrigin(pivotX, 0.5f)
+    val radius = blur.value.dp.toPx()
+    renderEffect = if (radius > 0.5f) BlurEffect(radius, radius, TileMode.Decal) else null
 }
 
 @Stable
@@ -738,28 +747,54 @@ private val AppleMainColors = AppleLineColors(AppleLyricsTokens.primary, AppleLy
 private val AppleSecondaryColors = AppleLineColors(AppleLyricsTokens.secondary, AppleLyricsTokens.tertiary)
 private val AppleBackgroundColors = AppleLineColors(AppleLyricsTokens.backgroundActive, AppleLyricsTokens.tertiary)
 
+private suspend fun animateAppleDots(focused: Boolean, animations: Boolean, exit: Animatable<Float, *>, appear: Animatable<Float, *>) {
+    if (focused) {
+        exit.snapTo(0f)
+        appear.snapTo(if (animations) 0f else 1f)
+        if (animations) {
+            appear.animateTo(1f, tween(AppleLyricsTokens.DOT_APPEAR_MS + AppleLyricsTokens.DOT_STAGGER_MS * 2, easing = LinearEasing))
+        }
+        return
+    }
+    if (exit.value >= 1f) return
+    if (animations) {
+        exit.animateTo(1f, tween(AppleLyricsTokens.DOT_GROW_MS + AppleLyricsTokens.DOT_SHRINK_MS, easing = LinearEasing))
+    } else {
+        exit.snapTo(1f)
+    }
+}
+
+private fun appleBreathingScale(now: Long, row: AppleLyricsRow.Instrumental, animations: Boolean): Float {
+    if (!animations) return 1f
+    val cycle = appleLyricsBreathingCycleMs((row.endMs - row.startMs).coerceAtLeast(1L))
+    val phase = ((now - row.startMs).coerceAtLeast(0L) % cycle).toFloat() / cycle
+    val eased = phase * phase * (3f - 2f * phase)
+    val amplitude = AppleLyricsTokens.BREATHING_SCALE - 1f
+    return if (eased < 0.5f) 1f + amplitude * eased * 2f else AppleLyricsTokens.BREATHING_SCALE - amplitude * (eased - 0.5f) * 2f
+}
+
+private fun appleDotsTransform(exit: Float, breathe: Float): Pair<Float, Float> {
+    val exitMs = exit * (AppleLyricsTokens.DOT_GROW_MS + AppleLyricsTokens.DOT_SHRINK_MS)
+    return when {
+        exit <= 0f -> breathe to 1f
+        exitMs < AppleLyricsTokens.DOT_GROW_MS -> {
+            val t = AppleLyricsEase.transform(exitMs / AppleLyricsTokens.DOT_GROW_MS)
+            breathe + (AppleLyricsTokens.BREATHING_SCALE - breathe) * t to 1f
+        }
+        exit >= 1f -> AppleLyricsTokens.EXIT_SCALE to 0f
+        else -> {
+            val t = AppleLyricsExitEase.transform((exitMs - AppleLyricsTokens.DOT_GROW_MS) / AppleLyricsTokens.DOT_SHRINK_MS)
+            AppleLyricsTokens.BREATHING_SCALE + (AppleLyricsTokens.EXIT_SCALE - AppleLyricsTokens.BREATHING_SCALE) * t to 1f - t
+        }
+    }
+}
+
 @Composable
 private fun AppleInstrumentalRow(row: AppleLyricsRow.Instrumental, focused: Boolean, position: () -> Long, animations: Boolean, modifier: Modifier) {
     val exit = remember(row.key) { Animatable(1f) }
     val appear = remember(row.key) { Animatable(0f) }
-    LaunchedEffect(focused, animations) {
-        if (focused) {
-            exit.snapTo(0f)
-            if (animations) {
-                appear.snapTo(0f)
-                appear.animateTo(1f, tween(AppleLyricsTokens.DOT_APPEAR_MS + AppleLyricsTokens.DOT_STAGGER_MS * 2, easing = LinearEasing))
-            } else {
-                appear.snapTo(1f)
-            }
-        } else if (exit.value < 1f) {
-            if (animations) {
-                exit.animateTo(1f, tween(AppleLyricsTokens.DOT_GROW_MS + AppleLyricsTokens.DOT_SHRINK_MS, easing = LinearEasing))
-            } else {
-                exit.snapTo(1f)
-            }
-        }
-    }
-    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    LaunchedEffect(focused, animations) { animateAppleDots(focused, animations, exit, appear) }
+    val pivotX = if (LocalLayoutDirection.current == LayoutDirection.Rtl) 1f else 0f
     Row(
         modifier.fillMaxWidth()
             .padding(horizontal = AppleLyricsTokens.rowMargin)
@@ -769,54 +804,36 @@ private fun AppleInstrumentalRow(row: AppleLyricsRow.Instrumental, focused: Bool
             )
             .height(AppleLyricsTokens.dotSize + 16.dp)
             .graphicsLayer {
-                val now = position()
-                val gap = (row.endMs - row.startMs).coerceAtLeast(1L)
-                val cycle = appleLyricsBreathingCycleMs(gap)
-                val phase = ((now - row.startMs).coerceAtLeast(0L) % cycle).toFloat() / cycle
-                val breathingEase = phase * phase * (3f - 2f * phase)
-                val breathe = if (animations) {
-                    if (breathingEase < 0.5f) 1f + (AppleLyricsTokens.BREATHING_SCALE - 1f) * breathingEase * 2f
-                    else AppleLyricsTokens.BREATHING_SCALE - (AppleLyricsTokens.BREATHING_SCALE - 1f) * (breathingEase - 0.5f) * 2f
-                } else 1f
-                val exitMs = exit.value * (AppleLyricsTokens.DOT_GROW_MS + AppleLyricsTokens.DOT_SHRINK_MS)
-                val (scale, alpha) = when {
-                    exit.value <= 0f -> breathe to 1f
-                    exitMs < AppleLyricsTokens.DOT_GROW_MS -> {
-                        val t = AppleLyricsEase.transform(exitMs / AppleLyricsTokens.DOT_GROW_MS)
-                        breathe + (AppleLyricsTokens.BREATHING_SCALE - breathe) * t to 1f
-                    }
-                    exit.value >= 1f -> AppleLyricsTokens.EXIT_SCALE to 0f
-                    else -> {
-                        val t = AppleLyricsExitEase.transform((exitMs - AppleLyricsTokens.DOT_GROW_MS) / AppleLyricsTokens.DOT_SHRINK_MS)
-                        AppleLyricsTokens.BREATHING_SCALE + (AppleLyricsTokens.EXIT_SCALE - AppleLyricsTokens.BREATHING_SCALE) * t to 1f - t
-                    }
-                }
+                val (scale, alpha) = appleDotsTransform(exit.value, appleBreathingScale(position(), row, animations))
                 scaleX = scale
                 scaleY = scale
                 this.alpha = alpha
-                transformOrigin = TransformOrigin(if (rtl) 1f else 0f, 0.5f)
+                transformOrigin = TransformOrigin(pivotX, 0.5f)
             },
         horizontalArrangement = Arrangement.spacedBy(AppleLyricsTokens.dotGap),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        repeat(3) { dot ->
-            Box(
-                Modifier.padding(start = if (dot == 0) AppleLyricsTokens.dotGap else 0.dp).size(AppleLyricsTokens.dotSize)
-                    .graphicsLayer {
-                        val stagger = AppleLyricsTokens.DOT_STAGGER_MS * dot
-                        val total = AppleLyricsTokens.DOT_APPEAR_MS + AppleLyricsTokens.DOT_STAGGER_MS * 2f
-                        val local = ((appear.value * total - stagger) / AppleLyricsTokens.DOT_APPEAR_MS).coerceIn(0f, 1f)
-                        alpha = AppleLyricsAccelerate.transform(local)
-                    }
-                    .drawWithCache {
-                        onDrawBehind {
-                            val fill = AppleLyricsDotEase.transform(appleLyricsDotFill(position(), row, dot))
-                            drawCircle(lerp(AppleLyricsTokens.tertiary, AppleLyricsTokens.primary, fill))
-                        }
-                    }
-            )
-        }
+        repeat(3) { dot -> AppleBreathingDot(row, dot, position, appear) }
     }
+}
+
+@Composable
+private fun AppleBreathingDot(row: AppleLyricsRow.Instrumental, dot: Int, position: () -> Long, appear: Animatable<Float, *>) {
+    Box(
+        Modifier.padding(start = if (dot == 0) AppleLyricsTokens.dotGap else 0.dp).size(AppleLyricsTokens.dotSize)
+            .graphicsLayer {
+                val stagger = AppleLyricsTokens.DOT_STAGGER_MS * dot
+                val total = AppleLyricsTokens.DOT_APPEAR_MS + AppleLyricsTokens.DOT_STAGGER_MS * 2f
+                val local = ((appear.value * total - stagger) / AppleLyricsTokens.DOT_APPEAR_MS).coerceIn(0f, 1f)
+                alpha = AppleLyricsAccelerate.transform(local)
+            }
+            .drawWithCache {
+                onDrawBehind {
+                    val fill = AppleLyricsDotEase.transform(appleLyricsDotFill(position(), row, dot))
+                    drawCircle(lerp(AppleLyricsTokens.tertiary, AppleLyricsTokens.primary, fill))
+                }
+            }
+    )
 }
 
 @Composable
@@ -842,21 +859,7 @@ private fun AppleLyricsControls(
             Modifier.fillMaxSize().graphicsLayer { this.alpha = alpha }.navigationBarsPadding(),
             verticalArrangement = Arrangement.Bottom
         ) {
-            if (translationAvailable) {
-                Box(
-                    Modifier.padding(start = AppleLyricsTokens.seekbarInset - 10.dp, bottom = 4.dp)
-                        .size(48.dp).clip(CircleShape)
-                        .clickable(enabled = visible, role = Role.Switch, onClick = actions.onToggleTranslation)
-                        .semantics { contentDescription = labels.translation },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Rounded.Translate, null,
-                        tint = if (showTranslation) AppleLyricsTokens.primary else AppleLyricsTokens.secondary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
+            if (translationAvailable) AppleTranslationToggle(visible, showTranslation, labels.translation, actions.onToggleTranslation)
             Spacer(Modifier.weight(1f))
             AppleMusicSeekbar(
                 positionMs = reportedPositionMs,
@@ -866,49 +869,76 @@ private fun AppleLyricsControls(
                 modifier = Modifier.padding(horizontal = AppleLyricsTokens.seekbarInset),
                 verifiedKbps = verifiedKbps
             )
-            Row(
-                Modifier.fillMaxWidth().height(80.dp),
-                horizontalArrangement = Arrangement.spacedBy(AppleLyricsTokens.transportGap, Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = actions.onPrevious, enabled = visible, modifier = Modifier.size(AppleLyricsTokens.skipIcon + AppleLyricsTokens.controlPadding * 2)) {
-                    Icon(Icons.Rounded.FastRewind, labels.previous, tint = AppleLyricsTokens.primary, modifier = Modifier.size(AppleLyricsTokens.skipIcon))
-                }
-                Box(
-                    Modifier.size(AppleLyricsTokens.playIcon + AppleLyricsTokens.controlPadding * 2).clip(CircleShape)
-                        .clickable(enabled = visible, role = Role.Button, onClick = actions.onTogglePlay)
-                        .semantics { contentDescription = if (playing) labels.pause else labels.play },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (resolving) LevyraLoadingIndicator(color = AppleLyricsTokens.primary, modifier = Modifier.size(30.dp))
-                    else Icon(
-                        if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null,
-                        tint = AppleLyricsTokens.primary, modifier = Modifier.size(AppleLyricsTokens.playIcon + 10.dp)
-                    )
-                }
-                IconButton(onClick = actions.onNext, enabled = visible, modifier = Modifier.size(AppleLyricsTokens.skipIcon + AppleLyricsTokens.controlPadding * 2)) {
-                    Icon(Icons.Rounded.FastForward, labels.next, tint = AppleLyricsTokens.primary, modifier = Modifier.size(AppleLyricsTokens.skipIcon))
-                }
-            }
-            Row(Modifier.fillMaxWidth().padding(horizontal = AppleLyricsTokens.seekbarInset - AppleLyricsTokens.dockPadding, vertical = 0.dp).padding(bottom = AppleLyricsTokens.dockBottom)) {
-                Box(
-                    Modifier.size(AppleLyricsTokens.dockIcon + AppleLyricsTokens.dockPadding * 2)
-                        .clip(RoundedCornerShape(7.dp))
-                        .clickable(enabled = visible, role = Role.Button, onClick = actions.onClose)
-                        .semantics { contentDescription = labels.close },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(
-                        Modifier.size(AppleLyricsTokens.dockIcon + 8.dp).clip(RoundedCornerShape(7.dp)).background(AppleLyricsTokens.primary),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Rounded.FormatQuote, null, tint = Color.Black.copy(alpha = 0.78f), modifier = Modifier.size(AppleLyricsTokens.dockIcon - 4.dp))
-                    }
-                }
-            }
+            AppleLyricsTransport(visible, playing, resolving, labels, actions)
+            AppleLyricsDock(visible, labels.close, actions.onClose)
         }
         if (!visible) {
             Box(Modifier.fillMaxSize().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onReveal))
+        }
+    }
+}
+
+@Composable
+private fun AppleTranslationToggle(enabled: Boolean, active: Boolean, label: String, onToggle: () -> Unit) {
+    Box(
+        Modifier.padding(start = AppleLyricsTokens.seekbarInset - 10.dp, bottom = 4.dp)
+            .size(48.dp).clip(CircleShape)
+            .clickable(enabled = enabled, role = Role.Switch, onClick = onToggle)
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            Icons.Rounded.Translate, null,
+            tint = if (active) AppleLyricsTokens.primary else AppleLyricsTokens.secondary,
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}
+
+@Composable
+private fun AppleLyricsTransport(enabled: Boolean, playing: Boolean, resolving: Boolean, labels: AppleLyricsLabels, actions: AppleLyricsActions) {
+    Row(
+        Modifier.fillMaxWidth().height(80.dp),
+        horizontalArrangement = Arrangement.spacedBy(AppleLyricsTokens.transportGap, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(onClick = actions.onPrevious, enabled = enabled, modifier = Modifier.size(AppleLyricsTokens.skipIcon + AppleLyricsTokens.controlPadding * 2)) {
+            Icon(Icons.Rounded.FastRewind, labels.previous, tint = AppleLyricsTokens.primary, modifier = Modifier.size(AppleLyricsTokens.skipIcon))
+        }
+        Box(
+            Modifier.size(AppleLyricsTokens.playIcon + AppleLyricsTokens.controlPadding * 2).clip(CircleShape)
+                .clickable(enabled = enabled, role = Role.Button, onClick = actions.onTogglePlay)
+                .semantics { contentDescription = if (playing) labels.pause else labels.play },
+            contentAlignment = Alignment.Center
+        ) {
+            if (resolving) LevyraLoadingIndicator(color = AppleLyricsTokens.primary, modifier = Modifier.size(30.dp))
+            else Icon(
+                if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null,
+                tint = AppleLyricsTokens.primary, modifier = Modifier.size(AppleLyricsTokens.playIcon + 10.dp)
+            )
+        }
+        IconButton(onClick = actions.onNext, enabled = enabled, modifier = Modifier.size(AppleLyricsTokens.skipIcon + AppleLyricsTokens.controlPadding * 2)) {
+            Icon(Icons.Rounded.FastForward, labels.next, tint = AppleLyricsTokens.primary, modifier = Modifier.size(AppleLyricsTokens.skipIcon))
+        }
+    }
+}
+
+@Composable
+private fun AppleLyricsDock(enabled: Boolean, closeLabel: String, onClose: () -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = AppleLyricsTokens.seekbarInset - AppleLyricsTokens.dockPadding).padding(bottom = AppleLyricsTokens.dockBottom)) {
+        Box(
+            Modifier.size(AppleLyricsTokens.dockIcon + AppleLyricsTokens.dockPadding * 2)
+                .clip(RoundedCornerShape(7.dp))
+                .clickable(enabled = enabled, role = Role.Button, onClick = onClose)
+                .semantics { contentDescription = closeLabel },
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                Modifier.size(AppleLyricsTokens.dockIcon + 8.dp).clip(RoundedCornerShape(7.dp)).background(AppleLyricsTokens.primary),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.FormatQuote, null, tint = Color.Black.copy(alpha = 0.78f), modifier = Modifier.size(AppleLyricsTokens.dockIcon - 4.dp))
+            }
         }
     }
 }
