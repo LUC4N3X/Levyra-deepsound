@@ -588,39 +588,39 @@ README_CARD_SPECS = [
         (254, 240, 138),
         (234, 179, 8),
         (253, 224, 71),
-        (69, 26, 3),
+        (66, 32, 6),
         (161, 98, 7),
     ),
     (
         "04_midnight_obsidian",
         "Midnight Obsidian",
-        "Deep contrast and true black for late-night sessions",
-        "Screenshot_20261017_134057_LEVYRA.jpg",
+        "Deep obsidian surfaces with vibrant high-contrast accents",
+        "Screenshot_20261024_145933_Levyra.jpg",
         (241, 245, 249),
-        (226, 232, 240),
-        (100, 116, 139),
         (203, 213, 225),
+        (239, 68, 68),
+        (248, 113, 113),
         (15, 23, 42),
-        (71, 85, 105),
+        (220, 38, 38),
     ),
 
-    # Row 2: Exploration & Audio Precision
+    # Row 2: Discovery & Exploration
     (
         "05_fresh_currents",
-        "Fresh Currents",
-        "Explore global new releases without the scroll fatigue",
-        "Screenshot_20261010_132210_LEVYRA.jpg",
-        (240, 249, 255),
-        (224, 242, 254),
-        (14, 165, 233),
-        (186, 230, 253),
-        (12, 74, 110),
-        (2, 132, 199),
+        "Instant Search",
+        "Find any track, album or artist in real time",
+        "Screenshot_20261024_144737_Levyra.jpg",
+        (240, 244, 255),
+        (224, 231, 255),
+        (59, 130, 246),
+        (191, 219, 254),
+        (30, 58, 138),
+        (37, 99, 235),
     ),
     (
         "06_built_for_your_taste",
         "Built for Your Taste",
-        "A dynamic mix shaped around your listening moments",
+        "Your personalized mix refreshed daily",
         "Screenshot_20261015_144159_LEVYRA.jpg",
         (253, 242, 248),
         (252, 231, 243),
@@ -644,14 +644,14 @@ README_CARD_SPECS = [
     (
         "08_acoustic_precision",
         "Acoustic Precision",
-        "10-band equalizer and AutoEQ headphone profiles",
-        "Screenshot_20261010_190726_LEVYRA.jpg",
-        (245, 243, 255),
-        (237, 233, 254),
-        (139, 92, 246),
-        (221, 214, 254),
-        (46, 16, 101),
-        (109, 40, 217),
+        "High-fidelity 320 kbps streaming with lossless output",
+        "Screenshot_20261024_150113_Levyra.jpg",
+        (239, 246, 255),
+        (219, 234, 254),
+        (59, 130, 246),
+        (147, 197, 253),
+        (30, 58, 138),
+        (37, 99, 235),
     ),
 
     # Row 3: Library & Insights
@@ -682,96 +682,96 @@ README_CARD_SPECS = [
     (
         "11_your_rhythm",
         "Listening Insights",
-        "See the patterns and artists behind your plays",
-        "Screenshot_20260927_131943_LEVYRA.jpg",
-        (245, 243, 255),
-        (238, 242, 255),
-        (124, 58, 237),
-        (216, 180, 254),
-        (59, 7, 100),
-        (126, 34, 206),
+        "Personal stats, listening habits and receipt computed on device",
+        "Screenshot_20261024_144829_Levyra.jpg",
+        (240, 249, 255),
+        (224, 242, 254),
+        (14, 165, 233),
+        (186, 230, 253),
+        (12, 74, 96),
+        (2, 132, 199),
     ),
     (
         "12_in_your_orbit",
         "In Your Orbit",
-        "Keep your top artists, albums and tracks close at hand",
+        "Your soundtrack loop and most-played artists",
         "Screenshot_20261010_132103_LEVYRA.jpg",
-        (240, 253, 244),
-        (220, 252, 231),
-        (34, 197, 94),
-        (187, 247, 208),
-        (20, 83, 45),
-        (21, 128, 61),
+        (245, 243, 255),
+        (237, 233, 254),
+        (139, 92, 246),
+        (221, 214, 254),
+        (46, 16, 101),
+        (109, 40, 217),
     ),
 
-    # Row 4: Personalization & Jam
+    # Row 4: Personalization & Artists
     (
         "13_tailor_every_detail",
         "Make Levyra Yours",
-        "Theme, navigation, player and audio—fully customizable",
+        "Custom accent themes, surface tones, and corner radius",
         "Screenshot_20261015_205614_LEVYRA.jpg",
-        (250, 245, 255),
-        (243, 232, 255),
-        (168, 85, 247),
-        (233, 213, 255),
-        (59, 7, 100),
-        (126, 34, 206),
+        (254, 242, 242),
+        (254, 226, 226),
+        (239, 68, 68),
+        (254, 202, 202),
+        (69, 10, 10),
+        (185, 28, 28),
     ),
     (
         "14_fresh_off_the_stage",
-        "Fresh Releases",
-        "The latest drops from your favorite artists, uncluttered",
-        "Screenshot_20261010_144144_LEVYRA.jpg",
-        (238, 242, 255),
-        (224, 231, 255),
-        (79, 70, 229),
-        (199, 210, 254),
-        (30, 27, 75),
-        (67, 56, 202),
+        "Live Radio",
+        "Thousands of live stations from around the globe",
+        "Screenshot_20261024_145819_Levyra.jpg",
+        (254, 242, 242),
+        (254, 226, 226),
+        (239, 68, 68),
+        (254, 202, 202),
+        (69, 10, 10),
+        (185, 28, 28),
     ),
     (
         "15_meet_the_artist",
         "Meet the Artist",
-        "Deep-dive into discographies, top tracks and singles",
-        "Screenshot_20261010_143646_LEVYRA.jpg",
-        (255, 241, 242),
-        (255, 228, 230),
-        (244, 63, 94),
-        (254, 205, 211),
-        (76, 5, 25),
-        (190, 18, 60),
+        "Artist biographies, monthly audience, and complete discography",
+        "Screenshot_20261024_145036_Levyra.jpg",
+        (245, 243, 255),
+        (237, 233, 254),
+        (139, 92, 246),
+        (221, 214, 254),
+        (46, 16, 101),
+        (109, 40, 217),
     ),
     (
         "16_listen_together",
         "Levyra Jam",
-        "One shared room, one unified queue, everyone connected",
+        "Real-time collaborative listening queue with friends",
         "Screenshot_20261011_133434_LEVYRA.jpg",
-        (236, 254, 255),
-        (207, 250, 254),
-        (6, 182, 212),
-        (165, 243, 252),
-        (22, 78, 99),
-        (14, 116, 144),
+        (236, 253, 245),
+        (209, 250, 229),
+        (16, 185, 129),
+        (167, 243, 208),
+        (6, 78, 59),
+        (5, 150, 105),
     ),
 
-    # Row 5: Lyrics, Offline, Discovery & Year in Music
+    # Row 5: Interactive Discovery & Personal Highlights
     (
         "17_sing_along",
         "Synced Lyrics",
-        "Word-by-word timing, romanization and live translation",
+        "Real-time lyrics with tap-to-seek and translation",
         "screen-lyrics.jpg",
         (255, 251, 235),
-        (254, 243, 199),
+        (254, 240, 138),
         (245, 158, 11),
-        (253, 230, 138),
+        (253, 224, 71),
         (69, 26, 3),
         (180, 83, 9),
     ),
     (
         "18_open_the_album",
         "Offline Music",
-        "Keep your favorite albums saved directly on your device",
-        "Screenshot_20260926_194706_LEVYRA.jpg",
+        "Download full albums and singles directly to device storage",
+        "Screenshot_20261024_145347_Levyra.jpg",
         (236, 253, 245),
         (209, 250, 229),
         (16, 185, 129),
@@ -784,12 +784,12 @@ README_CARD_SPECS = [
         "Discover for You",
         "Swipe right to save, swipe left to discover next",
         "Screenshot_20261024_130435_Levyra.jpg",
-        (254, 242, 242),
+        (255, 241, 242),
         (254, 226, 226),
-        (239, 68, 68),
-        (254, 202, 202),
-        (69, 10, 10),
-        (185, 28, 28),
+        (244, 63, 94),
+        (254, 205, 211),
+        (76, 5, 25),
+        (159, 18, 57),
     ),
     (
         "20_your_year_in_music",
@@ -804,9 +804,21 @@ README_CARD_SPECS = [
         (162, 28, 175),
     ),
 
-    # Row 6: Global Skins (3 Iconic Streaming Themes)
+    # Row 6: Global Skins (4 Centered Cards)
     (
-        "21_spotify_style",
+        "21_skin_studio",
+        "Skin Studio",
+        "Seven complete looks. Switch layout in one tap",
+        "Screenshot_20261023_212906_LEVYRA.jpg",
+        (245, 243, 255),
+        (237, 233, 254),
+        (139, 92, 246),
+        (221, 214, 254),
+        (46, 16, 101),
+        (109, 40, 217),
+    ),
+    (
+        "22_spotify_style",
         "Spotify Style",
         "Familiar green accents, shortcuts and artist glow",
         "Screenshot_20261023_212929_LEVYRA.jpg",
@@ -818,7 +830,7 @@ README_CARD_SPECS = [
         (22, 101, 52),
     ),
     (
-        "22_apple_music_style",
+        "23_apple_music_style",
         "Apple Music Style",
         "Editorial white surfaces, album shelves and bold type",
         "Screenshot_20261023_212956_LEVYRA.jpg",
@@ -830,7 +842,7 @@ README_CARD_SPECS = [
         (190, 18, 60),
     ),
     (
-        "23_youtube_music_style",
+        "24_youtube_music_style",
         "YouTube Music Style",
         "Familiar mood chips, clean cards and daily charts",
         "Screenshot_20261023_213023_LEVYRA.jpg",
@@ -840,8 +852,7 @@ README_CARD_SPECS = [
         (254, 202, 202),
         (69, 10, 10),
         (185, 28, 28),
-    ),
-]
+    ),]
 
 def make_campaign_device(filename, width):
     screenshot_path = resolve_screenshot_path(filename)
@@ -1253,8 +1264,8 @@ def generate_readme_cards():
         artwork.save(out_path, "WEBP", quality=95, method=6)
         print(f"Saved README editorial card at {artwork.size}: {out_path}")
 
-    # 3. Render Cards 05 through 20 (Rows 2, 3, 4, 5)
-    for index in range(4, 20):
+    # 3. Render Cards 05 through 24 (Rows 2, 3, 4, 5, and 6 as clean centered cards!)
+    for index in range(4, len(README_CARD_SPECS)):
         spec = README_CARD_SPECS[index]
         artwork = render_readme_centered_card(spec)
         cards.append(artwork)
@@ -1262,16 +1273,9 @@ def generate_readme_cards():
         artwork.save(out_path, "WEBP", quality=95, method=6)
         print(f"Saved README editorial card at {artwork.size}: {out_path}")
 
-    # 4. Render Row 6 Individual Skin Cards (Cards 21, 22, 23)
-    for index in range(20, len(README_CARD_SPECS)):
-        spec = README_CARD_SPECS[index]
-        artwork = render_readme_centered_card(spec)
-        out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
-        artwork.save(out_path, "WEBP", quality=95, method=6)
-        print(f"Saved README editorial card at {artwork.size}: {out_path}")
-
-    # 5. Assemble Rows 01 to 05
-    for row_index in range(5):
+    # 4. Assemble Rows (01 to 06)
+    row_count = len(README_CARD_SPECS) // 4
+    for row_index in range(row_count):
         row = Image.new("RGB", (3600, 1800))
         spaced_row = Image.new("RGBA", (3696, 1800), (0, 0, 0, 0))
         for col in range(4):
@@ -1279,30 +1283,25 @@ def generate_readme_cards():
             row.paste(card.convert("RGB"), (col * 900, 0))
             spaced_row.paste(card, (col * (900 + 32), 0), card)
 
-        idx_str = f"{row_index + 1:02d}"
-        spaced_path = os.path.join(README_CARD_DIR, f"editorial-grid-row-{idx_str}-spaced.webp")
-        row_path = os.path.join(README_CARD_DIR, f"editorial-grid-row-{idx_str}.webp")
-        uniform_name = (
-            "editorial-grid-row-01-orbit-reference.webp"
-            if row_index == 0
-            else f"editorial-grid-row-{idx_str}-uniform-centered.webp"
-        )
-        uniform_path = os.path.join(README_CARD_DIR, uniform_name)
+        if row_index == 5:
+            spaced_path = os.path.join(README_CARD_DIR, "editorial-grid-row-06-skins-spaced.webp")
+            row_path = os.path.join(README_CARD_DIR, "editorial-grid-row-06-skins.webp")
+            uniform_path = os.path.join(README_CARD_DIR, "editorial-grid-row-06-skins-uniform-centered.webp")
+        else:
+            idx_str = f"{row_index + 1:02d}"
+            spaced_path = os.path.join(README_CARD_DIR, f"editorial-grid-row-{idx_str}-spaced.webp")
+            row_path = os.path.join(README_CARD_DIR, f"editorial-grid-row-{idx_str}.webp")
+            uniform_name = (
+                "editorial-grid-row-01-orbit-reference.webp"
+                if row_index == 0
+                else f"editorial-grid-row-{idx_str}-uniform-centered.webp"
+            )
+            uniform_path = os.path.join(README_CARD_DIR, uniform_name)
 
         spaced_row.save(spaced_path, "WEBP", quality=95, method=6)
         row.save(row_path, "WEBP", quality=95, method=6)
         row.save(uniform_path, "WEBP", quality=95, method=6)
         print(f"Saved row {row_index + 1}: {spaced_path}")
-
-    # 6. Render Row 6: Global Skins 3-Phone Fan-Out Stage
-    skins_stage = render_readme_skins_fanout_stage()
-    spaced_path = os.path.join(README_CARD_DIR, "editorial-grid-row-06-skins-spaced.webp")
-    row_path = os.path.join(README_CARD_DIR, "editorial-grid-row-06-skins.webp")
-    uniform_path = os.path.join(README_CARD_DIR, "editorial-grid-row-06-skins-uniform-centered.webp")
-    skins_stage.save(spaced_path, "WEBP", quality=95, method=6)
-    skins_stage.save(row_path, "WEBP", quality=95, method=6)
-    skins_stage.save(uniform_path, "WEBP", quality=95, method=6)
-    print(f"Saved row 6 skins fan-out stage at {skins_stage.size}: {spaced_path}")
 
 if __name__ == "__main__":
     generate_hero_panoramic_showcase()
