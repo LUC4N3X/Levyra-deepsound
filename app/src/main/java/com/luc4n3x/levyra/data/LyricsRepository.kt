@@ -159,29 +159,36 @@ class LyricsRepository(context: Context? = null) {
         if (cached.negative) return@channelFlow
         if (!cached.refreshRequired) return@channelFlow
 
-        val outcome = fetchNetworkProgressive(query) { candidate ->
-            val previous = current
-            if (shouldUpgrade(previous, candidate)) {
-                val stable = candidate.copy(cached = false)
+        var attempted = false
+        var transientFailure = false
+        for (attempt in listOf(query) + embeddedTitleArtistQueries(query)) {
+            val outcome = fetchNetworkProgressive(attempt) { candidate ->
+                val previous = current
+                if (shouldUpgrade(previous, candidate)) {
+                    val stable = candidate.copy(cached = false)
+                    current = stable
+                    memoryPut(query.key, stable, System.currentTimeMillis())
+                    persistPositive(query, stable)
+                    send(stable)
+                }
+            }
+
+            val final = outcome.best
+            if (final != null && shouldUpgrade(current, final)) {
+                val stable = final.copy(cached = false)
                 current = stable
                 memoryPut(query.key, stable, System.currentTimeMillis())
                 persistPositive(query, stable)
                 send(stable)
+            } else if (final != null) {
+                current?.let { persistPositive(query, it.copy(cached = false)) }
             }
+            attempted = attempted || outcome.attempted
+            transientFailure = transientFailure || outcome.hadTransientFailure
+            if (current != null) break
         }
 
-        val final = outcome.best
-        if (final != null && shouldUpgrade(current, final)) {
-            val stable = final.copy(cached = false)
-            current = stable
-            memoryPut(query.key, stable, System.currentTimeMillis())
-            persistPositive(query, stable)
-            send(stable)
-        } else if (final != null) {
-            current?.let { persistPositive(query, it.copy(cached = false)) }
-        }
-
-        if (current == null && outcome.attempted && !outcome.hadTransientFailure) {
+        if (current == null && attempted && !transientFailure) {
             persistNegative(query)
         }
     }.flowOn(Dispatchers.IO)
@@ -1344,6 +1351,11 @@ class LyricsRepository(context: Context? = null) {
         .replace(Regex("(?i)\\s*-\\s*(official|video|audio|lyrics).*$"), "")
         .trim()
 
+    private fun embeddedTitleArtistQueries(query: QuerySpec): List<QuerySpec> =
+        embeddedTitleArtistCandidates(query.queryTitle, query.queryArtist).map { (title, artist) ->
+            query.copy(queryTitle = cleanTitle(title), queryArtist = cleanArtist(artist))
+        }
+
     private fun cleanArtist(artist: String): String = artist
         .replace(Regex("(?i)\\s*VEVO$"), "")
         .trim()
@@ -1378,7 +1390,7 @@ class LyricsRepository(context: Context? = null) {
             videoId,
             languageCode,
             translate,
-            providerOrdering
+            if (embeddedTitleArtistCandidates(queryTitle, queryArtist).isEmpty()) providerOrdering else "$providerOrdering|embedded"
         )
         return QuerySpec(
             requestedTitle = requestedTitle,
