@@ -280,32 +280,34 @@ def crop_to_fill(source, width, height):
     return resized.crop((left, top, left + width, top + height))
 
 def create_s26_ultra_mockup(source, size=(720, 1500)):
-    frame = 13
+    frame = 9
     outer_w, outer_h = size
     inner_w, inner_h = outer_w - frame * 2, outer_h - frame * 2
     phone = Image.new("RGBA", size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(phone)
+    radius = 18
+    screen_radius = 12
     draw.rounded_rectangle(
         (0, 0, outer_w - 1, outer_h - 1),
-        radius=54,
-        fill=(28, 29, 34, 255),
-        outline=(120, 121, 128, 220),
-        width=3,
+        radius=radius,
+        fill=(25, 27, 33, 255),
+        outline=(185, 190, 202, 255),
+        width=2,
     )
     screenshot = crop_to_fill(source, inner_w, inner_h)
     mask = Image.new("L", (inner_w, inner_h), 0)
     mask_draw = ImageDraw.Draw(mask)
-    mask_draw.rounded_rectangle((0, 0, inner_w - 1, inner_h - 1), radius=42, fill=255)
+    mask_draw.rounded_rectangle((0, 0, inner_w - 1, inner_h - 1), radius=screen_radius, fill=255)
     phone.paste(screenshot, (frame, frame), mask)
     draw.rounded_rectangle(
         (frame, frame, outer_w - frame - 1, outer_h - frame - 1),
-        radius=42,
-        outline=(8, 9, 12, 245),
-        width=4,
+        radius=screen_radius,
+        outline=(10, 11, 14, 255),
+        width=2,
     )
-    camera_radius = 9
+    camera_radius = 7
     camera_x = outer_w // 2
-    camera_y = frame + 22
+    camera_y = frame + 14
     draw.ellipse(
         (
             camera_x - camera_radius,
@@ -316,16 +318,16 @@ def create_s26_ultra_mockup(source, size=(720, 1500)):
         fill=(4, 5, 8, 255),
     )
     draw.ellipse(
-        (camera_x - 4, camera_y - 4, camera_x + 3, camera_y + 3),
-        fill=(35, 58, 88, 230),
+        (camera_x - 3, camera_y - 3, camera_x + 1, camera_y + 1),
+        fill=(32, 54, 85, 220),
     )
     draw.rounded_rectangle(
-        (outer_w // 2 - 28, 3, outer_w // 2 + 28, 7),
-        radius=2,
-        fill=(54, 55, 61, 255),
+        (outer_w // 2 - 28, 2, outer_w // 2 + 28, 5),
+        radius=1,
+        fill=(65, 68, 76, 255),
     )
-    draw.line((outer_w - 2, 285, outer_w - 2, 395), fill=(75, 77, 85, 255), width=4)
-    draw.line((outer_w - 2, 435, outer_w - 2, 545), fill=(75, 77, 85, 255), width=4)
+    draw.line((outer_w - 2, 285, outer_w - 2, 395), fill=(115, 120, 130, 255), width=3)
+    draw.line((outer_w - 2, 435, outer_w - 2, 525), fill=(115, 120, 130, 255), width=3)
     return phone
 
 def paste_editorial_phone(canvas, spec, card_index, placement, gutter, pair_index):
@@ -583,7 +585,7 @@ README_CARD_SPECS = [
         "03_daylight_expressive",
         "Daylight Expressive",
         "Every curve and color tuned for bright daylight clarity",
-        "Screenshot_20261017_133945_LEVYRA.jpg",
+        "Screenshot_20261024_204745_Levyra.jpg",
         (255, 251, 235),
         (254, 240, 138),
         (234, 179, 8),
@@ -862,10 +864,13 @@ def make_campaign_device(filename, width):
         screenshot = enhance_screenshot(screenshot_source).convert("RGBA")
 
     outer_width = width
-    outer_height = round(width * 2.13)
-    padding = max(18, round(width * 0.03))
-    frame = max(11, round(width * 0.02))
-    radius = max(26, round(width * 0.042))
+    outer_height = round(width * 2.10)
+    padding = max(16, round(width * 0.025))
+    frame = max(8, round(width * 0.013))
+    # S25 Ultra signature softened ergonomic corners
+    radius = max(17, round(width * 0.027))
+    screen_radius = max(11, round(width * 0.018))
+
     device = Image.new(
         "RGBA",
         (outer_width + padding * 2, outer_height + padding * 2),
@@ -873,30 +878,41 @@ def make_campaign_device(filename, width):
     )
     draw = ImageDraw.Draw(device)
     body = (padding, padding, padding + outer_width - 1, padding + outer_height - 1)
+
+    # 1. Titanium Frame Base (Sleek dark titanium)
     draw.rounded_rectangle(
         body,
         radius=radius,
-        fill=(18, 19, 23, 255),
-        outline=(164, 165, 171, 255),
-        width=max(4, round(width * 0.007)),
-    )
-    inner_edge = max(4, round(width * 0.007))
-    draw.rounded_rectangle(
-        (
-            body[0] + inner_edge,
-            body[1] + inner_edge,
-            body[2] - inner_edge,
-            body[3] - inner_edge,
-        ),
-        radius=radius - inner_edge,
-        outline=(54, 56, 63, 255),
-        width=max(2, round(width * 0.004)),
+        fill=(25, 27, 33, 255),
     )
 
+    # 2. Outer Chamfer / Metallic Titanium Rim
+    draw.rounded_rectangle(
+        body,
+        radius=radius,
+        outline=(185, 190, 202, 255),
+        width=max(2, round(width * 0.0035)),
+    )
+
+    # 3. Inner frame depth
+    inner_edge = max(2, round(width * 0.003))
+    inner_body = (
+        body[0] + inner_edge,
+        body[1] + inner_edge,
+        body[2] - inner_edge,
+        body[3] - inner_edge,
+    )
+    draw.rounded_rectangle(
+        inner_body,
+        radius=radius - inner_edge,
+        outline=(48, 51, 60, 255),
+        width=1,
+    )
+
+    # 4. Screen
     screen_width = outer_width - frame * 2
     screen_height = outer_height - frame * 2
     screen = crop_to_fill(screenshot, screen_width, screen_height)
-    screen_radius = max(38, radius - frame)
     screen_mask = Image.new("L", (screen_width, screen_height), 0)
     ImageDraw.Draw(screen_mask).rounded_rectangle(
         (0, 0, screen_width - 1, screen_height - 1),
@@ -906,16 +922,19 @@ def make_campaign_device(filename, width):
     screen_x = padding + frame
     screen_y = padding + frame
     device.paste(screen, (screen_x, screen_y), screen_mask)
+
+    # 5. Screen inner hairline border
     draw.rounded_rectangle(
         (screen_x, screen_y, screen_x + screen_width - 1, screen_y + screen_height - 1),
         radius=screen_radius,
-        outline=(5, 6, 9, 255),
-        width=max(3, round(width * 0.006)),
+        outline=(10, 11, 14, 255),
+        width=max(2, round(width * 0.003)),
     )
 
+    # 6. S25 Ultra Infinity-O punch-hole selfie camera
     camera_x = padding + outer_width // 2
-    camera_y = screen_y + max(17, round(width * 0.033))
-    camera_radius = max(8, round(width * 0.014))
+    camera_y = screen_y + max(13, round(width * 0.022))
+    camera_radius = max(6, round(width * 0.010))
     draw.ellipse(
         (
             camera_x - camera_radius,
@@ -923,32 +942,39 @@ def make_campaign_device(filename, width):
             camera_x + camera_radius,
             camera_y + camera_radius,
         ),
-        fill=(3, 4, 7, 255),
+        fill=(4, 5, 8, 255),
     )
+    glint = max(2, round(camera_radius * 0.38))
     draw.ellipse(
-        (camera_x - 4, camera_y - 4, camera_x + 4, camera_y + 4),
-        fill=(27, 49, 77, 240),
-    )
-    speaker_half = max(22, round(width * 0.045))
-    draw.rounded_rectangle(
-        (camera_x - speaker_half, padding + 4, camera_x + speaker_half, padding + 8),
-        radius=2,
-        fill=(70, 71, 77, 255),
+        (camera_x - glint, camera_y - glint, camera_x + 1, camera_y + 1),
+        fill=(32, 54, 85, 220),
     )
 
-    button_width = max(4, round(width * 0.008))
+    # 7. Micro-slit earpiece speaker at top rim
+    speaker_half = max(26, round(width * 0.055))
+    draw.rounded_rectangle(
+        (camera_x - speaker_half, padding + 2, camera_x + speaker_half, padding + 5),
+        radius=1,
+        fill=(65, 68, 76, 255),
+    )
+
+    # 8. Titanium buttons (Right side: Volume rocker and Power key)
+    button_width = max(3, round(width * 0.006))
     button_x = padding + outer_width - 1
-    for top_ratio, bottom_ratio in ((0.20, 0.31), (0.35, 0.44)):
-        draw.rounded_rectangle(
-            (
-                button_x,
-                padding + round(outer_height * top_ratio),
-                button_x + button_width,
-                padding + round(outer_height * bottom_ratio),
-            ),
-            radius=button_width // 2,
-            fill=(91, 93, 101, 255),
-        )
+    v_top = padding + round(outer_height * 0.22)
+    v_bot = padding + round(outer_height * 0.33)
+    draw.rounded_rectangle(
+        (button_x, v_top, button_x + button_width, v_bot),
+        radius=button_width // 2,
+        fill=(115, 120, 130, 255),
+    )
+    p_top = padding + round(outer_height * 0.38)
+    p_bot = padding + round(outer_height * 0.45)
+    draw.rounded_rectangle(
+        (button_x, p_top, button_x + button_width, p_bot),
+        radius=button_width // 2,
+        fill=(115, 120, 130, 255),
+    )
     return device
 
 def create_readme_card_background(w, h, top_rgb, bot_rgb, bloom_rgb, bloom_opacity=110):
