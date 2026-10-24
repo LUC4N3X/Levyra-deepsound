@@ -350,7 +350,7 @@ internal fun LevyraLibraryScreen(
             save = { positions -> positions.flatMap { (name, position) -> listOf(name, position.first, position.second) } },
             restore = { saved ->
                 mutableStateMapOf<String, Pair<Int, Int>>().apply {
-                    saved.chunked(3).forEach { (name, index, offset) -> put(name as String, (index as Int) to (offset as Int)) }
+                    saved.chunked(3).forEach { (name, index, offset) -> put(name as String, index as Int to offset as Int) }
                 }
             }
         )
