@@ -804,21 +804,9 @@ README_CARD_SPECS = [
         (162, 28, 175),
     ),
 
-    # Row 6: Global Skins
+    # Row 6: Global Skins (3 Iconic Streaming Themes)
     (
-        "21_skin_studio",
-        "Skin Studio",
-        "Seven complete looks. Switch layout in one tap",
-        "Screenshot_20261023_212906_LEVYRA.jpg",
-        (245, 243, 255),
-        (237, 233, 254),
-        (139, 92, 246),
-        (221, 214, 254),
-        (46, 16, 101),
-        (109, 40, 217),
-    ),
-    (
-        "22_spotify_style",
+        "21_spotify_style",
         "Spotify Style",
         "Familiar green accents, shortcuts and artist glow",
         "Screenshot_20261023_212929_LEVYRA.jpg",
@@ -830,7 +818,7 @@ README_CARD_SPECS = [
         (22, 101, 52),
     ),
     (
-        "23_apple_music_style",
+        "22_apple_music_style",
         "Apple Music Style",
         "Editorial white surfaces, album shelves and bold type",
         "Screenshot_20261023_212956_LEVYRA.jpg",
@@ -842,7 +830,7 @@ README_CARD_SPECS = [
         (190, 18, 60),
     ),
     (
-        "24_youtube_music_style",
+        "23_youtube_music_style",
         "YouTube Music Style",
         "Familiar mood chips, clean cards and daily charts",
         "Screenshot_20261023_213023_LEVYRA.jpg",
@@ -1151,6 +1139,94 @@ def render_readme_centered_card(spec):
     canvas.putalpha(mask)
     return canvas
 
+def render_readme_skins_fanout_stage():
+    w, h = 3696, 1800
+    base = Image.new("RGBA", (w, h), (10, 13, 20, 255))
+
+    # Ambient Blooms
+    blooms = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    bdraw = ImageDraw.Draw(blooms)
+    # Left: Spotify emerald
+    bdraw.ellipse((948 - 650, 1050 - 500, 948 + 650, 1050 + 500), fill=(30, 215, 96, 75))
+    # Center: Apple Music soft white/rose
+    bdraw.ellipse((1848 - 600, 950 - 550, 1848 + 600, 950 + 550), fill=(250, 45, 72, 65))
+    # Right: YouTube Music ruby
+    bdraw.ellipse((2748 - 650, 1050 - 500, 2748 + 650, 1050 + 500), fill=(255, 20, 20, 75))
+    blooms = blooms.filter(ImageFilter.GaussianBlur(170))
+    base.alpha_composite(blooms)
+
+    # Devices: width 620
+    dev_w = 620
+    dev_spot = make_campaign_device("Screenshot_20261023_212929_LEVYRA.jpg", dev_w)
+    dev_apple = make_campaign_device("Screenshot_20261023_212956_LEVYRA.jpg", dev_w)
+    dev_yt = make_campaign_device("Screenshot_20261023_213023_LEVYRA.jpg", dev_w)
+
+    cx = (w - dev_w) // 2
+    cy = 430
+
+    angle_spot = -10.5
+    spot_rot = dev_spot.rotate(angle_spot, resample=Image.Resampling.BICUBIC, expand=True)
+    spot_shadow = Image.new("RGBA", spot_rot.size, (4, 8, 15, 0))
+    s_alpha = spot_rot.getchannel("A").filter(ImageFilter.GaussianBlur(36))
+    s_alpha = ImageEnhance.Brightness(s_alpha).enhance(0.40)
+    spot_shadow.putalpha(s_alpha)
+    sx = cx - 740
+    sy = cy + 45
+
+    angle_yt = 10.5
+    yt_rot = dev_yt.rotate(angle_yt, resample=Image.Resampling.BICUBIC, expand=True)
+    yt_shadow = Image.new("RGBA", yt_rot.size, (4, 8, 15, 0))
+    y_alpha = yt_rot.getchannel("A").filter(ImageFilter.GaussianBlur(36))
+    y_alpha = ImageEnhance.Brightness(y_alpha).enhance(0.40)
+    yt_shadow.putalpha(y_alpha)
+    yx = cx + 580
+    yy = cy + 45
+
+    apple_shadow = Image.new("RGBA", dev_apple.size, (2, 5, 10, 0))
+    a_alpha = dev_apple.getchannel("A").filter(ImageFilter.GaussianBlur(48))
+    a_alpha = ImageEnhance.Brightness(a_alpha).enhance(0.65)
+    apple_shadow.putalpha(a_alpha)
+
+    base.alpha_composite(spot_shadow, (sx + 20, sy + 35))
+    base.alpha_composite(spot_rot, (sx, sy))
+
+    base.alpha_composite(yt_shadow, (yx - 20, yy + 35))
+    base.alpha_composite(yt_rot, (yx, yy))
+
+    base.alpha_composite(apple_shadow, (cx, cy + 35))
+    base.alpha_composite(dev_apple, (cx, cy))
+
+    draw = ImageDraw.Draw(base)
+    title_font = get_font(54, bold=True)
+    sub_font = get_font(26, bold=False)
+
+    spot_center_x = sx + spot_rot.width // 2 - 20
+    t1 = "Spotify Style"
+    s1 = "Familiar green accents, shortcuts & artist glow"
+    tb1 = draw.textbbox((0, 0), t1, font=title_font)
+    sb1 = draw.textbbox((0, 0), s1, font=sub_font)
+    draw.text((spot_center_x - (tb1[2]-tb1[0])//2, 120), t1, font=title_font, fill=(30, 215, 96, 255))
+    draw.text((spot_center_x - (sb1[2]-sb1[0])//2, 195), s1, font=sub_font, fill=(167, 243, 208, 255))
+
+    apple_center_x = cx + dev_apple.width // 2
+    t2 = "Apple Music Style"
+    s2 = "Editorial white surfaces, album shelves & bold type"
+    tb2 = draw.textbbox((0, 0), t2, font=title_font)
+    sb2 = draw.textbbox((0, 0), s2, font=sub_font)
+    draw.text((apple_center_x - (tb2[2]-tb2[0])//2, 110), t2, font=title_font, fill=(255, 241, 242, 255))
+    draw.text((apple_center_x - (sb2[2]-sb2[0])//2, 185), s2, font=sub_font, fill=(254, 205, 211, 255))
+
+    yt_center_x = yx + yt_rot.width // 2 + 20
+    t3 = "YouTube Music Style"
+    s3 = "Familiar mood chips, clean cards & daily charts"
+    tb3 = draw.textbbox((0, 0), t3, font=title_font)
+    sb3 = draw.textbbox((0, 0), s3, font=sub_font)
+    draw.text((yt_center_x - (tb3[2]-tb3[0])//2, 120), t3, font=title_font, fill=(255, 60, 60, 255))
+    draw.text((yt_center_x - (sb3[2]-sb3[0])//2, 195), s3, font=sub_font, fill=(254, 202, 202, 255))
+
+    draw_readme_card_frame(base, (51, 65, 85), radius=44)
+    return base
+
 def generate_readme_cards():
     os.makedirs(README_CARD_DIR, exist_ok=True)
     cards = []
@@ -1186,29 +1262,16 @@ def generate_readme_cards():
         artwork.save(out_path, "WEBP", quality=95, method=6)
         print(f"Saved README editorial card at {artwork.size}: {out_path}")
 
-    # 4. Render Row 6 Skins Diptychs (Cards 21 & 22: Studio & Spotify, Cards 23 & 24: Apple & YouTube)
-    skin_p1_left, skin_p1_right = render_readme_theme_diptych(
-        README_CARD_SPECS[20],
-        README_CARD_SPECS[21],
-    )
-    skin_p2_left, skin_p2_right = render_readme_theme_diptych(
-        README_CARD_SPECS[22],
-        README_CARD_SPECS[23],
-    )
-    for artwork, spec in (
-        (skin_p1_left, README_CARD_SPECS[20]),
-        (skin_p1_right, README_CARD_SPECS[21]),
-        (skin_p2_left, README_CARD_SPECS[22]),
-        (skin_p2_right, README_CARD_SPECS[23]),
-    ):
-        cards.append(artwork)
+    # 4. Render Row 6 Individual Skin Cards (Cards 21, 22, 23)
+    for index in range(20, len(README_CARD_SPECS)):
+        spec = README_CARD_SPECS[index]
+        artwork = render_readme_centered_card(spec)
         out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
         artwork.save(out_path, "WEBP", quality=95, method=6)
         print(f"Saved README editorial card at {artwork.size}: {out_path}")
 
-    # 5. Assemble Rows (01 to 06)
-    row_count = len(README_CARD_SPECS) // 4
-    for row_index in range(row_count):
+    # 5. Assemble Rows 01 to 05
+    for row_index in range(5):
         row = Image.new("RGB", (3600, 1800))
         spaced_row = Image.new("RGBA", (3696, 1800), (0, 0, 0, 0))
         for col in range(4):
@@ -1216,25 +1279,30 @@ def generate_readme_cards():
             row.paste(card.convert("RGB"), (col * 900, 0))
             spaced_row.paste(card, (col * (900 + 32), 0), card)
 
-        if row_index == 5:
-            spaced_path = os.path.join(README_CARD_DIR, "editorial-grid-row-06-skins-spaced.webp")
-            row_path = os.path.join(README_CARD_DIR, "editorial-grid-row-06-skins.webp")
-            uniform_path = os.path.join(README_CARD_DIR, "editorial-grid-row-06-skins-uniform-centered.webp")
-        else:
-            idx_str = f"{row_index + 1:02d}"
-            spaced_path = os.path.join(README_CARD_DIR, f"editorial-grid-row-{idx_str}-spaced.webp")
-            row_path = os.path.join(README_CARD_DIR, f"editorial-grid-row-{idx_str}.webp")
-            uniform_name = (
-                "editorial-grid-row-01-orbit-reference.webp"
-                if row_index == 0
-                else f"editorial-grid-row-{idx_str}-uniform-centered.webp"
-            )
-            uniform_path = os.path.join(README_CARD_DIR, uniform_name)
+        idx_str = f"{row_index + 1:02d}"
+        spaced_path = os.path.join(README_CARD_DIR, f"editorial-grid-row-{idx_str}-spaced.webp")
+        row_path = os.path.join(README_CARD_DIR, f"editorial-grid-row-{idx_str}.webp")
+        uniform_name = (
+            "editorial-grid-row-01-orbit-reference.webp"
+            if row_index == 0
+            else f"editorial-grid-row-{idx_str}-uniform-centered.webp"
+        )
+        uniform_path = os.path.join(README_CARD_DIR, uniform_name)
 
         spaced_row.save(spaced_path, "WEBP", quality=95, method=6)
         row.save(row_path, "WEBP", quality=95, method=6)
         row.save(uniform_path, "WEBP", quality=95, method=6)
         print(f"Saved row {row_index + 1}: {spaced_path}")
+
+    # 6. Render Row 6: Global Skins 3-Phone Fan-Out Stage
+    skins_stage = render_readme_skins_fanout_stage()
+    spaced_path = os.path.join(README_CARD_DIR, "editorial-grid-row-06-skins-spaced.webp")
+    row_path = os.path.join(README_CARD_DIR, "editorial-grid-row-06-skins.webp")
+    uniform_path = os.path.join(README_CARD_DIR, "editorial-grid-row-06-skins-uniform-centered.webp")
+    skins_stage.save(spaced_path, "WEBP", quality=95, method=6)
+    skins_stage.save(row_path, "WEBP", quality=95, method=6)
+    skins_stage.save(uniform_path, "WEBP", quality=95, method=6)
+    print(f"Saved row 6 skins fan-out stage at {skins_stage.size}: {spaced_path}")
 
 if __name__ == "__main__":
     generate_hero_panoramic_showcase()

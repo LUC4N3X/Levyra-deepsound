@@ -127,7 +127,7 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
 <br />
 <p align="center"><b>Global skins · Choose your streaming layout</b><br>
 <sub>Want Spotify? Here's Spotify. &nbsp;·&nbsp; Want Apple Music? Here's Apple. &nbsp;·&nbsp; Want YouTube Music? Here it is.</sub></p>
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-06-skins-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: Skin Studio, Spotify Style, Apple Music Style, and YouTube Music Style" /></div>
+<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-06-skins-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: Spotify Style, Apple Music Style, and YouTube Music Style" /></div>
 </div>
 
 </div>
