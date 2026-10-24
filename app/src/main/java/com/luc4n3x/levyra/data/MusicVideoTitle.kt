@@ -3,7 +3,7 @@ package com.luc4n3x.levyra.data
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.nexus.identity.MusicIdentityText
 
-internal data class MusicVideoRecording(val title: String, val artist: String)
+internal data class MusicVideoRecording(val title: String, val artist: String, val alternate: MusicVideoRecording? = null)
 
 internal object MusicVideoTitle {
     private val decorationSeparator = Regex("\\s+(?:\\||/)\\s+")
@@ -39,7 +39,16 @@ internal object MusicVideoTitle {
         if (left.isBlank() || right.isBlank() || describesVersionOnly(left, right)) {
             return MusicVideoRecording(title, rawArtist)
         }
-        return MusicVideoRecording(title = right, artist = left)
+        val channel = MusicIdentityText.normalize(rawArtist)
+        if (channel.isNotBlank() && channel !in MusicIdentityText.normalize(left) && channel in MusicIdentityText.normalize(right)) {
+            return MusicVideoRecording(title = left, artist = right)
+        }
+        val channelNamed = channel.isNotBlank() && channel in MusicIdentityText.normalize(left)
+        return MusicVideoRecording(
+            title = right,
+            artist = left,
+            alternate = if (channelNamed) null else MusicVideoRecording(title = left, artist = right)
+        )
     }
 
     private fun describesVersionOnly(left: String, right: String): Boolean =

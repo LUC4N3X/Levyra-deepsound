@@ -283,7 +283,7 @@ private fun AppleMusicModeToggle(icon: ImageVector, label: String, active: Boole
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun AppleMusicSeekbar(positionMs: Long, bufferedMs: Long, durationMs: Long, onSeek: (Float) -> Unit, modifier: Modifier = Modifier) {
+internal fun AppleMusicSeekbar(positionMs: Long, bufferedMs: Long, durationMs: Long, onSeek: (Float) -> Unit, modifier: Modifier = Modifier, verifiedKbps: Int? = null) {
     var dragging by remember(durationMs) { mutableStateOf<Float?>(null) }
     val fraction = if (durationMs > 0L) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
     val sliderState = rememberSliderState(value = dragging ?: fraction, trackRange = 0f..1f)
@@ -312,7 +312,7 @@ internal fun AppleMusicSeekbar(positionMs: Long, bufferedMs: Long, durationMs: L
             val timeStyle = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium, fontSize = 12.sp)
             val shown = dragging?.let { (durationMs * it).toLong() } ?: positionMs
             Text(formatSeekbarMillis(shown), style = timeStyle, color = if (dragging != null) AppleMusicVibrant.primary else AppleMusicVibrant.secondary)
-            AppleMusicAudioBadge(Modifier.weight(1f))
+            AppleMusicAudioBadge(Modifier.weight(1f), verifiedKbps)
             Text(
                 if (durationMs > 0L) "-" + formatSeekbarMillis((durationMs - shown).coerceAtLeast(0L)) else formatSeekbarMillis(0L),
                 style = timeStyle, color = if (dragging != null) AppleMusicVibrant.primary else AppleMusicVibrant.secondary
@@ -322,9 +322,11 @@ internal fun AppleMusicSeekbar(positionMs: Long, bufferedMs: Long, durationMs: L
 }
 
 @Composable
-private fun AppleMusicAudioBadge(modifier: Modifier = Modifier) {
+private fun AppleMusicAudioBadge(modifier: Modifier = Modifier, verifiedKbps: Int? = null) {
     val spec by rememberPlayerAudioSpec()
-    val label = remember(spec) { appleMusicAudioBadgeLabel(spec) }
+    val label = remember(spec, verifiedKbps) {
+        appleMusicAudioBadgeLabel(verifiedKbps?.takeIf { it > 0 }?.let { spec.copy(bitrateKbps = it) } ?: spec)
+    }
     Box(modifier, contentAlignment = Alignment.Center) {
         if (label.isNotEmpty()) {
             Text(

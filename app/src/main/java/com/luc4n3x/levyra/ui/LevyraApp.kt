@@ -3105,6 +3105,8 @@ fun LevyraApp(
                     onTogglePlay = viewModel::togglePlay,
                     onNext = viewModel::next,
                     onOpenLyricsStudio = viewModel::openLyricsStudio,
+                    onUpdateLyricsStudio = viewModel::setLyricsStudioSettings,
+                    onSeekFraction = { fraction -> viewModel.seekTo(fraction) },
                     onClose = viewModel::closeLyrics
                 )
             }
@@ -7841,12 +7843,15 @@ private fun LyricsOverlay(
     onTogglePlay: () -> Unit,
     onNext: () -> Unit,
     onOpenLyricsStudio: () -> Unit = {},
+    onUpdateLyricsStudio: (com.luc4n3x.levyra.domain.LevyraLyricsStudioSettings) -> Unit = {},
+    onSeekFraction: (Float) -> Unit = {},
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val track = state.currentTrack
+    val appleLyrics = state.lyricsStudioSettings.usesAppleMusicLyrics(LevyraIsAppleMusic)
     val overlayConfiguration = LocalConfiguration.current
-    val landscapeLayout = lyricsLandscapeLayoutActive(overlayConfiguration)
+    val landscapeLayout = !appleLyrics && lyricsLandscapeLayoutActive(overlayConfiguration)
     val landscapeMetrics = if (landscapeLayout) {
         lyricsLandscapeMetrics(
             widthDp = overlayConfiguration.screenWidthDp.toFloat(),
@@ -7968,6 +7973,28 @@ private fun LyricsOverlay(
             selectedRange = null
         }
     }
+    fun onLyricLineClick(index: Int, line: LyricLine) {
+        if (selectionMode) {
+            selectedRange = toggleLyricsShareSelection(selectedRange, index, visibleLyrics)
+            haptics.perform(LevyraHapticAction.TrackSwipe)
+        } else if (calibrateMode && state.lyricsSynced) {
+            track?.id?.let { trackId ->
+                onSetTrackOffset(trackId, calibratedLyricsTrackOffset(lyricsClock.positionMs, line.startMs, latencyOffsetMs))
+            }
+            calibrateMode = false
+            haptics.perform(LevyraHapticAction.TrackSwipe)
+        } else if (state.lyricsSynced) {
+            onSeekToMs((line.startMs + lyricsOffsetMs).coerceAtLeast(0L))
+        }
+    }
+    fun onLyricLineLongClick(index: Int, line: LyricLine) {
+        if (isLyricsShareSelectable(line)) {
+            selectionMode = true
+            calibrateMode = false
+            selectedRange = toggleLyricsShareSelection(selectedRange, index, visibleLyrics)
+            haptics.perform(LevyraHapticAction.TrackSwipe)
+        }
+    }
     val backgroundActiveIndex = remember(visibleLyrics, backgroundLineIndices, syncedLyrics, lyricsPositionProvider) {
         derivedStateOf {
             if (!syncedLyrics || backgroundLineIndices.isEmpty()) {
@@ -8057,8 +8084,8 @@ private fun LyricsOverlay(
 
     val followActiveLine = lyricsShouldFollowActiveLine(autoScrollEnabled, selectionMode)
 
-    LaunchedEffect(scrollFocusIndex, lyricsStartIndex, followActiveLine, viewMode, visibleLyrics.size, landscapeLayout) {
-        if (scrollFocusIndex >= 0 && followActiveLine) {
+    LaunchedEffect(scrollFocusIndex, lyricsStartIndex, followActiveLine, viewMode, visibleLyrics.size, landscapeLayout, appleLyrics) {
+        if (scrollFocusIndex >= 0 && followActiveLine && !appleLyrics) {
             runCatching {
                 val targetIndex = lyricsStartIndex + scrollFocusIndex
                 val targetVisible = listState.layoutInfo.visibleItemsInfo.any { it.index == targetIndex }
@@ -8163,6 +8190,28 @@ private fun LyricsOverlay(
         val lyricsDepthBlur = lyricsAnimationsEnabled &&
             studioSettings.blurEnabled &&
             LocalLevyraVisualCapabilities.current.heavyBlur
+        if (appleLyrics) {
+            AppleLyricsOverlayScreen(
+                state = state,
+                lines = visibleLyrics,
+                position = lyricsPositionProvider,
+                showTranslation = showTranslation,
+                showSecondaryVoices = showSecondaryVoices,
+                animations = lyricsAnimationsEnabled,
+                heavyBlur = LocalLevyraVisualCapabilities.current.heavyBlur,
+                selectionMode = selectionMode,
+                selectedRange = selectedRange,
+                onLineClick = { index, line -> onLyricLineClick(index, line) },
+                onLineLongClick = { index, line -> onLyricLineLongClick(index, line) },
+                onSeekFraction = onSeekFraction,
+                onPrevious = onPrevious,
+                onTogglePlay = onTogglePlay,
+                onNext = onNext,
+                onTranslation = onTranslation,
+                onOptions = { showLyricsOptions = true },
+                onClose = onClose
+            )
+        } else {
         if (studioSettings.spotifyLyricsApplies()) {
             SpotifyLyricsBackdrop(track)
         } else if (landscapeLayout && studioSettings.backgroundMode !in setOf(
@@ -8518,6 +8567,7 @@ private fun LyricsOverlay(
                 )
             }
         }
+        }
         AnimatedVisibility(
             visible = showSyncBar && state.lyricsSynced && track != null && !selectionMode,
             enter = fadeIn() + slideInVertically { it / 2 },
@@ -8582,7 +8632,42 @@ private fun LyricsOverlay(
             }
         )
     }
-    if (showLyricsOptions) {
+    if (showLyricsOptions && appleLyrics) {
+        AppleLyricsOverlayOptions(
+            state = state,
+            lines = visibleLyrics,
+            hasRomanization = hasRomanization,
+            hasMultipleVoices = hasMultipleVoices,
+            showSecondaryVoices = showSecondaryVoices,
+            canShareLyrics = canShareLyrics,
+            trackOffsetMs = trackLyricsOffsetMs,
+            capabilities = LocalLevyraVisualCapabilities.current,
+            onTranslation = onTranslation,
+            onUpdateStudio = onUpdateLyricsStudio,
+            onSecondaryVoices = { showSecondaryVoices = it },
+            onAction = { action ->
+                showLyricsOptions = false
+                when (action) {
+                    AppleLyricsOverlayAction.CHANGE_LYRICS -> {
+                        showVersions = true
+                        onLoadVersions()
+                    }
+                    AppleLyricsOverlayAction.SHARE -> toggleShareMode()
+                    AppleLyricsOverlayAction.SYNC -> showSyncSheet = true
+                    AppleLyricsOverlayAction.CALIBRATE -> {
+                        calibrateMode = !calibrateMode
+                        if (calibrateMode) {
+                            selectionMode = false
+                            selectedRange = null
+                        }
+                    }
+                    AppleLyricsOverlayAction.ANALYSIS -> showIntelligenceDialog = true
+                    AppleLyricsOverlayAction.STUDIO -> onOpenLyricsStudio()
+                }
+            },
+            onDismiss = { showLyricsOptions = false }
+        )
+    } else if (showLyricsOptions) {
         ModalBottomSheet(
             onDismissRequest = { showLyricsOptions = false },
             sheetState = rememberBottomSheetState(
@@ -8644,6 +8729,15 @@ private fun LyricsOverlay(
                     onClick = {
                         showLyricsOptions = false
                         onOpenLyricsStudio()
+                    }
+                )
+                LyricsControlChip(
+                    label = appleLyricsStyleChipLabel(strings.code),
+                    selected = false,
+                    icon = Icons.Rounded.FormatQuote,
+                    onClick = {
+                        showLyricsOptions = false
+                        onUpdateLyricsStudio(state.lyricsStudioSettings.withAppleMusicViewer())
                     }
                 )
                 LyricsControlChip(
@@ -8779,213 +8873,6 @@ private fun LyricsOverlay(
             },
             onDismiss = { showVersions = false }
         )
-    }
-}
-
-@Composable
-private fun LyricsShareBar(
-    selectedCount: Int,
-    maxCount: Int,
-    canContinue: Boolean,
-    accent: Color,
-    onCopy: () -> Unit,
-    onCancel: () -> Unit,
-    onContinue: () -> Unit
-) {
-    val strings = LocalLevyraStrings.current
-    Surface(
-        color = Color.Black.copy(alpha = 0.78f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
-        shape = RoundedCornerShape(26.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier.padding(start = 18.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .semantics { liveRegion = LiveRegionMode.Polite }
-            ) {
-                if (selectedCount == 0) {
-                    Text(
-                        text = strings.shareLyricsHint,
-                        color = Color.White.copy(alpha = 0.78f),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                } else {
-                    Text(
-                        text = "$selectedCount/$maxCount",
-                        color = Color.White,
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                    Text(
-                        text = strings.linesLabel,
-                        color = Color.White.copy(alpha = 0.62f),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-            if (selectedCount > 0) {
-                CircleIconButton(
-                    icon = Icons.Rounded.ContentCopy,
-                    tint = Color.White,
-                    background = Color.White.copy(alpha = 0.13f),
-                    onClick = onCopy,
-                    contentDescription = strings.copyVerses
-                )
-            }
-            CircleIconButton(
-                icon = Icons.Rounded.Close,
-                tint = Color.White,
-                background = Color.White.copy(alpha = 0.13f),
-                onClick = onCancel,
-                contentDescription = strings.cancel
-            )
-            Button(
-                onClick = onContinue,
-                enabled = canContinue,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = LevyraCyan,
-                    contentColor = LevyraOnAccent,
-                    disabledContainerColor = Color.White.copy(alpha = 0.10f),
-                    disabledContentColor = Color.White.copy(alpha = 0.40f)
-                ),
-                shape = CircleShape,
-                modifier = Modifier.heightIn(min = 46.dp)
-            ) {
-                Text(strings.shareLyricsContinue, fontWeight = FontWeight.Black, maxLines = 1)
-            }
-        }
-    }
-}
-
-@Composable
-private fun LyricsVersionDialog(
-    versions: List<com.luc4n3x.levyra.data.LyricsRepository.LyricsVersion>,
-    loading: Boolean,
-    strings: LevyraStrings,
-    onAutomatic: () -> Unit,
-    onSelect: (com.luc4n3x.levyra.data.LyricsRepository.LyricsVersion) -> Unit,
-    onDismiss: () -> Unit
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            color = Color(0xFF11131C),
-            shape = RoundedCornerShape(30.dp),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
-            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.82f)
-        ) {
-            Column(
-                modifier = Modifier.padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(strings.lyricsVersions, color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.Black)
-                        Text(strings.changeLyrics, color = Color.White.copy(alpha = 0.58f), fontSize = 12.sp)
-                    }
-                    CircleIconButton(
-                        icon = Icons.Rounded.Close,
-                        tint = Color.White,
-                        background = Color.White.copy(alpha = 0.10f),
-                        onClick = onDismiss,
-                        contentDescription = strings.close
-                    )
-                }
-                Surface(
-                    color = LevyraCyan.copy(alpha = 0.14f),
-                    shape = RoundedCornerShape(18.dp),
-                    border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.28f)),
-                    modifier = Modifier.fillMaxWidth().pressable(onClick = onAutomatic)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Icon(Icons.Rounded.Refresh, null, tint = LevyraCyan)
-                        Text(strings.automaticLyrics, color = Color.White, fontWeight = FontWeight.Black)
-                    }
-                }
-                when {
-                    loading && versions.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = LevyraCyan)
-                    }
-                    versions.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(strings.lyricsUnavailable, color = Color.White.copy(alpha = 0.64f))
-                    }
-                    else -> LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(9.dp),
-                        contentPadding = PaddingValues(bottom = 8.dp)
-                    ) {
-                        items(versions, key = { it.id }) { version ->
-                            val preview = version.result.lines
-                                .asSequence()
-                                .filterNot { it.isMetadata || it.isInstrumental }
-                                .take(2)
-                                .joinToString(" · ") { it.text }
-                            Surface(
-                                color = if (version.selected) LevyraViolet.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.05f),
-                                shape = RoundedCornerShape(20.dp),
-                                border = BorderStroke(
-                                    1.dp,
-                                    if (version.selected) LevyraViolet.copy(alpha = 0.40f) else Color.White.copy(alpha = 0.07f)
-                                ),
-                                modifier = Modifier.fillMaxWidth().pressable { onSelect(version) }
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(14.dp),
-                                    verticalArrangement = Arrangement.spacedBy(5.dp)
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            version.result.provider,
-                                            color = if (version.selected) LevyraViolet else Color.White,
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Black,
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                        Text(
-                                            buildString {
-                                                append(if (version.result.synced) strings.synced else strings.lyrics)
-                                                append(" · ").append(version.result.confidence).append('%')
-                                            },
-                                            color = Color.White.copy(alpha = 0.56f),
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                    Text(
-                                        "${version.title} — ${version.artist}",
-                                        color = Color.White.copy(alpha = 0.76f),
-                                        fontSize = 12.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    if (preview.isNotBlank()) {
-                                        Text(
-                                            preview,
-                                            color = Color.White.copy(alpha = 0.48f),
-                                            fontSize = 11.sp,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -9279,96 +9166,6 @@ private fun Path.addRectangle(left: Float, top: Float, right: Float, bottom: Flo
     close()
 }
 
-
-@Composable
-private fun LyricsIntelligenceDialog(
-    summary: com.luc4n3x.levyra.domain.LevyraIntelligenceSummary,
-    onDismiss: () -> Unit,
-    onJumpToChorus: (() -> Unit)?
-) {
-    val strings = LocalLevyraStrings.current
-    val repeatedPhrase = summary.repeatedPhrases.firstOrNull()
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = Color(0xFF11131C),
-        icon = {
-            Icon(
-                imageVector = Icons.Rounded.Insights,
-                contentDescription = null,
-                tint = LevyraViolet,
-                modifier = Modifier.size(24.dp)
-            )
-        },
-        title = {
-            Text(
-                text = strings.openLyricsAnalysis,
-                color = LevyraText,
-                fontWeight = FontWeight.Black
-            )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (summary.mood.isNotBlank()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(strings.atmosphere, color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        Text(summary.mood, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-                if (summary.themes.isNotEmpty()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(strings.themes, color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        Text(
-                            text = summary.themes.take(4).joinToString(" · "),
-                            color = LevyraText,
-                            fontSize = 14.sp,
-                            lineHeight = 19.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-                if (!repeatedPhrase.isNullOrBlank()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(strings.chorusDetected, color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        Text(
-                            text = "“$repeatedPhrase”",
-                            color = LevyraText.copy(alpha = 0.9f),
-                            fontSize = 14.sp,
-                            lineHeight = 19.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 3,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-                Text(
-                    text = strings.formatLyricsAnalysis(summary.lineCount, summary.wordCount),
-                    color = LevyraMuted.copy(alpha = 0.82f),
-                    fontSize = 11.sp,
-                    lineHeight = 15.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        },
-        confirmButton = {
-            if (onJumpToChorus != null) {
-                TextButton(onClick = onJumpToChorus) {
-                    Text(strings.goToChorus, color = LevyraCyan, fontWeight = FontWeight.Black)
-                }
-            } else {
-                TextButton(onClick = onDismiss) {
-                    Text(strings.close, color = LevyraCyan, fontWeight = FontWeight.Black)
-                }
-            }
-        },
-        dismissButton = {
-            if (onJumpToChorus != null) {
-                TextButton(onClick = onDismiss) {
-                    Text(strings.close, color = LevyraMuted, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-    )
-}
 
 private const val LIVE_TRANSLATE_SETTINGS_ACTION = "com.android.settings.action.live_translate"
 
@@ -26741,7 +26538,7 @@ private fun GradientButton(text: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun CircleIconButton(
+internal fun CircleIconButton(
     icon: ImageVector,
     tint: Color,
     background: Color,

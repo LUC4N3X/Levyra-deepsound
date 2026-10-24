@@ -11,7 +11,8 @@ data class AlternativeTrackQuery(
     val album: String,
     val durationMs: Long,
     val explicit: Boolean?,
-    val isrc: String = ""
+    val isrc: String = "",
+    val alternateReading: AlternativeTrackQuery? = null
 )
 
 data class AlternativeTrackCandidate(
@@ -85,6 +86,13 @@ sealed interface AlternativeMatchSelection {
 }
 
 class AlternativeTrackMatcher {
+    fun evaluateReadings(query: AlternativeTrackQuery, candidate: AlternativeTrackCandidate): AlternativeMatchEvaluation {
+        val primary = evaluate(query, candidate)
+        if (primary.accepted) return primary
+        val alternate = query.alternateReading ?: return primary
+        return evaluate(alternate, candidate).takeIf { it.accepted } ?: primary
+    }
+
     fun evaluate(query: AlternativeTrackQuery, candidate: AlternativeTrackCandidate): AlternativeMatchEvaluation {
         val expectedTitle = AlternativeTrackText.title(query.title)
         val candidateTitle = AlternativeTrackText.title(candidate.title)
@@ -189,7 +197,7 @@ class AlternativeTrackMatcher {
     fun select(query: AlternativeTrackQuery, candidates: List<AlternativeTrackCandidate>): AlternativeMatchSelection {
         val evaluations = candidates
             .distinctBy { it.providerId to it.providerTrackId }
-            .map { evaluate(query, it) }
+            .map { evaluateReadings(query, it) }
         val accepted = evaluations
             .filter { it.accepted }
             .sortedWith(

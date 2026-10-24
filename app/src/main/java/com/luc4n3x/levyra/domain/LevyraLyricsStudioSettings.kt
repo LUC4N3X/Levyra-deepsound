@@ -103,6 +103,16 @@ enum class LyricsGlowEffect {
     }
 }
 
+enum class LyricsViewerStyle {
+    SKIN_DEFAULT,
+    APPLE_MUSIC;
+
+    companion object {
+        fun from(value: String?): LyricsViewerStyle =
+            entries.firstOrNull { it.name.equals(value?.trim(), ignoreCase = true) } ?: SKIN_DEFAULT
+    }
+}
+
 data class LevyraLyricsStudioSettings(
     val stylePreset: LyricsStylePreset = LyricsStylePreset.LEVYRA_ORIGINAL,
     val fontPreset: LevyraFontPreset = LevyraFontPreset.Outfit,
@@ -117,14 +127,32 @@ data class LevyraLyricsStudioSettings(
     val glowEffect: LyricsGlowEffect = LyricsGlowEffect.OFF,
     val backgroundMode: LyricsBackgroundMode = LyricsBackgroundMode.ORIGINAL,
     val progressiveKaraokeEnabled: Boolean = true,
-    val blurEnabled: Boolean = true
+    val blurEnabled: Boolean = true,
+    val viewerStyle: LyricsViewerStyle = LyricsViewerStyle.SKIN_DEFAULT,
+    val autoScrollEnabled: Boolean = true,
+    val showOriginalLyrics: Boolean = true,
+    val romanizationEnabled: Boolean = true,
+    val appleBlurEnabled: Boolean = false
 ) {
     fun normalized(): LevyraLyricsStudioSettings = copy(
         inactiveOpacity = inactiveOpacity.coerceIn(0.15f, 0.90f),
         inactiveScale = inactiveScale.coerceIn(0.70f, 1.0f)
     )
 
-    fun applyPreset(preset: LyricsStylePreset): LevyraLyricsStudioSettings = when (preset) {
+    fun usesAppleMusicLyrics(appleMusicSkin: Boolean): Boolean = when (viewerStyle) {
+        LyricsViewerStyle.APPLE_MUSIC -> true
+        LyricsViewerStyle.SKIN_DEFAULT -> appleMusicSkin
+    }
+
+    fun applyPreset(preset: LyricsStylePreset): LevyraLyricsStudioSettings = presetBase(preset).copy(
+        viewerStyle = viewerStyle,
+        autoScrollEnabled = autoScrollEnabled,
+        showOriginalLyrics = showOriginalLyrics,
+        romanizationEnabled = romanizationEnabled,
+        appleBlurEnabled = appleBlurEnabled
+    )
+
+    private fun presetBase(preset: LyricsStylePreset): LevyraLyricsStudioSettings = when (preset) {
         LyricsStylePreset.LEVYRA_ORIGINAL -> LevyraLyricsStudioSettings(
             stylePreset = LyricsStylePreset.LEVYRA_ORIGINAL,
             fontPreset = LevyraFontPreset.Outfit,
@@ -222,6 +250,11 @@ data class LevyraLyricsStudioSettings(
         put("backgroundMode", backgroundMode.name)
         put("progressiveKaraokeEnabled", progressiveKaraokeEnabled)
         put("blurEnabled", blurEnabled)
+        put("viewerStyle", viewerStyle.name)
+        put("autoScrollEnabled", autoScrollEnabled)
+        put("showOriginalLyrics", showOriginalLyrics)
+        put("romanizationEnabled", romanizationEnabled)
+        put("appleBlurEnabled", appleBlurEnabled)
     }.toString()
 
     companion object {
@@ -243,7 +276,12 @@ data class LevyraLyricsStudioSettings(
                     glowEffect = LyricsGlowEffect.from(json.optString("glowEffect")),
                     backgroundMode = LyricsBackgroundMode.from(json.optString("backgroundMode")),
                     progressiveKaraokeEnabled = json.optBoolean("progressiveKaraokeEnabled", true),
-                    blurEnabled = json.optBoolean("blurEnabled", true)
+                    blurEnabled = json.optBoolean("blurEnabled", true),
+                    viewerStyle = LyricsViewerStyle.from(json.optString("viewerStyle")),
+                    autoScrollEnabled = json.optBoolean("autoScrollEnabled", true),
+                    showOriginalLyrics = json.optBoolean("showOriginalLyrics", true),
+                    romanizationEnabled = json.optBoolean("romanizationEnabled", true),
+                    appleBlurEnabled = json.optBoolean("appleBlurEnabled", false)
                 ).normalized()
             }.getOrDefault(LevyraLyricsStudioSettings())
         }

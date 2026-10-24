@@ -50,8 +50,25 @@ class MusicVideoTitleTest {
     @Test
     fun `label channel upload takes the artists from the video title`() {
         assertEquals(
-            MusicVideoRecording("Базовый минимум", "Sabi, MIA BOYKA"),
+            MusicVideoRecording(
+                "Базовый минимум", "Sabi, MIA BOYKA",
+                alternate = MusicVideoRecording("Sabi, MIA BOYKA", "Базовый минимум")
+            ),
             MusicVideoTitle.recording("Sabi, MIA BOYKA - Базовый минимум (Премьера клипа)", "Sputnik Records")
+        )
+    }
+
+    @Test
+    fun `channel upload keeps the song first reading as an alternate`() {
+        val recording = MusicVideoTitle.recording("Blinding Lights - The Weeknd", "FitDance")
+        assertEquals(MusicVideoRecording("Blinding Lights", "The Weeknd"), recording.alternate)
+    }
+
+    @Test
+    fun `artist named after the dash is read as song then artist`() {
+        assertEquals(
+            MusicVideoRecording("Blinding Lights", "The Weeknd"),
+            MusicVideoTitle.recording("Blinding Lights - The Weeknd", "The Weeknd")
         )
     }
 
