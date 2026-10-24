@@ -13,6 +13,8 @@ docs/assets/showcase/apple_music_loft_dancer_bg.jpg
 docs/assets/showcase/levyra_editorial_ribbon.png
 docs/assets/showcase/editorial-cards/01_pure_listening.webp
 docs/assets/showcase/editorial-cards/02_stay_with_the_song.webp
+docs/assets/showcase/editorial-cards/03_daylight_expressive.webp
+docs/assets/showcase/editorial-cards/04_midnight_obsidian.webp
 docs/assets/showcase/editorial-cards/03_sing_along.webp
 docs/assets/showcase/editorial-cards/04_open_the_album.webp
 docs/assets/showcase/editorial-cards/05_fresh_currents.webp
@@ -27,6 +29,8 @@ docs/assets/showcase/editorial-cards/13_tailor_every_detail.webp
 docs/assets/showcase/editorial-cards/14_fresh_off_the_stage.webp
 docs/assets/showcase/editorial-cards/15_meet_the_artist.webp
 docs/assets/showcase/editorial-cards/16_listen_together.webp
+docs/assets/showcase/editorial-cards/17_sing_along.webp
+docs/assets/showcase/editorial-cards/18_open_the_album.webp
 docs/assets/showcase/editorial-cards/17_daylight_expressive.webp
 docs/assets/showcase/editorial-cards/18_midnight_obsidian.webp
 docs/assets/showcase/editorial-cards/19_top_charts.webp
@@ -230,11 +234,14 @@ app/src/main/res/mipmap-xhdpi/ic_launcher_background.png
 app/src/main/res/mipmap-xxhdpi/ic_launcher_background.png
 app/src/main/res/mipmap-xxxhdpi/ic_launcher_background.png
 docs/branding/launcher-icon-before-after.png
-docs/assets/showcase/editorial-cards/21_skin_studio.webp
-docs/assets/showcase/editorial-cards/22_spotify_style.webp
-docs/assets/showcase/editorial-cards/23_apple_music_style.webp
-docs/assets/showcase/editorial-cards/24_youtube_music_style.webp
+docs/assets/showcase/editorial-cards/21_spotify_style.webp
+docs/assets/showcase/editorial-cards/22_apple_music_style.webp
+docs/assets/showcase/editorial-cards/23_youtube_music_style.webp
 docs/assets/showcase/editorial-cards/editorial-grid-row-06-skins-spaced.webp
 docs/assets/showcase/editorial-cards/editorial-grid-row-06-skins.webp
 docs/assets/showcase/editorial-cards/editorial-grid-row-06-skins-uniform-centered.webp
 docs/assets/showcase/editorial-cards/19_discover_for_you.webp
+docs/assets/showcase/editorial-cards/21_skin_studio.webp
+docs/assets/showcase/editorial-cards/22_spotify_style.webp
+docs/assets/showcase/editorial-cards/23_apple_music_style.webp
+docs/assets/showcase/editorial-cards/24_youtube_music_style.webp
