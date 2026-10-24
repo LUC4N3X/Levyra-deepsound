@@ -1177,8 +1177,8 @@ def generate_readme_cards():
         artwork.save(out_path, "WEBP", quality=95, method=6)
         print(f"Saved README editorial card at {artwork.size}: {out_path}")
 
-    # 3. Render Cards 05 through 24
-    for index in range(4, len(README_CARD_SPECS)):
+    # 3. Render Cards 05 through 20 (Rows 2, 3, 4, 5)
+    for index in range(4, 20):
         spec = README_CARD_SPECS[index]
         artwork = render_readme_centered_card(spec)
         cards.append(artwork)
@@ -1186,7 +1186,27 @@ def generate_readme_cards():
         artwork.save(out_path, "WEBP", quality=95, method=6)
         print(f"Saved README editorial card at {artwork.size}: {out_path}")
 
-    # 4. Assemble Rows (01 to 06)
+    # 4. Render Row 6 Skins Diptychs (Cards 21 & 22: Studio & Spotify, Cards 23 & 24: Apple & YouTube)
+    skin_p1_left, skin_p1_right = render_readme_theme_diptych(
+        README_CARD_SPECS[20],
+        README_CARD_SPECS[21],
+    )
+    skin_p2_left, skin_p2_right = render_readme_theme_diptych(
+        README_CARD_SPECS[22],
+        README_CARD_SPECS[23],
+    )
+    for artwork, spec in (
+        (skin_p1_left, README_CARD_SPECS[20]),
+        (skin_p1_right, README_CARD_SPECS[21]),
+        (skin_p2_left, README_CARD_SPECS[22]),
+        (skin_p2_right, README_CARD_SPECS[23]),
+    ):
+        cards.append(artwork)
+        out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
+        artwork.save(out_path, "WEBP", quality=95, method=6)
+        print(f"Saved README editorial card at {artwork.size}: {out_path}")
+
+    # 5. Assemble Rows (01 to 06)
     row_count = len(README_CARD_SPECS) // 4
     for row_index in range(row_count):
         row = Image.new("RGB", (3600, 1800))
