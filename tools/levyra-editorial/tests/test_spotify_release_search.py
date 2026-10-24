@@ -34,3 +34,35 @@ def test_selector_rejects_non_spotify_owner() -> None:
         )
         is None
     )
+
+
+def test_selector_never_borrows_another_market_playlist() -> None:
+    items = [
+        playlist("italiaplaylist0000000001", "New Music Friday Italia"),
+        playlist("globalplaylist0000000001", "New Music Friday"),
+    ]
+
+    assert (
+        select_official_spotify_playlist_id(
+            items,
+            "New Music Friday Russia",
+            ["New Music Friday Russia"],
+        )
+        is None
+    )
+
+
+def test_selector_accepts_a_localized_suffix_of_the_market_playlist() -> None:
+    items = [
+        playlist("italiaplaylist0000000001", "New Music Friday Italia"),
+        playlist("mexicoplaylist0000000001", "New Music Friday México 2026"),
+    ]
+
+    assert (
+        select_official_spotify_playlist_id(
+            items,
+            "New Music Friday México",
+            ["New Music Friday México", "New Music Friday Mexico"],
+        )
+        == "mexicoplaylist0000000001"
+    )

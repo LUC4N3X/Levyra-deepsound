@@ -244,6 +244,7 @@ internal fun bnLocalizationEntries(): Map<String, String> = mapOf(
     "shareDiagnostics" to "ডায়াগনস্টিক শেয়ার করুন",
     "albumUnavailable" to "অ্যালবাম পাওয়া যাচ্ছে না",
     "albumTracksUnavailable" to "অ্যালবামের গান পাওয়া যাচ্ছে না",
+    "albumTracksLoadFailed" to "অ্যালবামের গান লোড করা যায়নি। সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।",
     "showLess" to "কম দেখান",
     "showMore" to "আরও দেখান",
     "playing" to "বাজছে",

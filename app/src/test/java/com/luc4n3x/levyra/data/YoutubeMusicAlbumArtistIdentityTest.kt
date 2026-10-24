@@ -335,6 +335,21 @@ class YoutubeMusicAlbumArtistIdentityTest {
     }
 
     @Test
+    fun resolvedAlbumCandidateAcceptsACyrillicJoinedCollaborativeCredit() {
+        val album = seed(title = "Amateur", artist = "Cesare Cremonini, Salmo")
+        val unrelated = seed(title = "Amateur", artist = "Unrelated Person", browseId = "MPRE_WRONG")
+        val russianCredit = seed(title = "Amateur", artist = "Cesare Cremonini и Salmo", browseId = "MPRE_RIGHT")
+        val ukrainianCredit = seed(title = "Amateur", artist = "Cesare Cremonini і Salmo", browseId = "MPRE_RIGHT_UK")
+
+        assertEquals("MPRE_RIGHT", selectResolvedAlbumCandidate(album, listOf(unrelated, russianCredit))?.browseId)
+        assertEquals("MPRE_RIGHT_UK", selectResolvedAlbumCandidate(album, listOf(unrelated, ukrainianCredit))?.browseId)
+        assertEquals(
+            listOf("MPRE_RIGHT"),
+            selectAlbumRecoveryCandidates(album, listOf(unrelated, russianCredit)).map { it.browseId }
+        )
+    }
+
+    @Test
     fun resolvedAlbumCandidateRejectsASameTitledReleaseByAnotherArtist() {
         val album = seed(artist = "Artist One")
         val unrelated = seed(artist = "Unrelated Person", browseId = "MPRE_WRONG")
@@ -465,5 +480,13 @@ class YoutubeMusicAlbumArtistIdentityTest {
         val candidates = albumResolutionCandidates(seed(artist = "Artist One"), listOf(ep, album))
 
         assertEquals(listOf("MPRE_ALBUM"), candidates.map { it.browseId })
+    }
+
+    @Test
+    fun regionalAlbumLookupsRetryOnceWithTheNeutralMetadataLocale() {
+        assertEquals("en", albumMetadataFallbackLanguage("ru-ru"))
+        assertEquals("en", albumMetadataFallbackLanguage("it-IT"))
+        assertNull(albumMetadataFallbackLanguage("en-us"))
+        assertNull(albumMetadataFallbackLanguage(" EN-US "))
     }
 }

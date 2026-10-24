@@ -92,7 +92,7 @@ internal class EditorialChartsRepository private constructor(context: Context) {
         snapshot.tracks(country, limit)
     }
 
-    suspend fun cachedNewReleaseTracks(country: String, limit: Int): List<Track> = withContext(Dispatchers.IO) {
+    suspend fun cachedNewReleaseTracks(country: String, limit: Int, nativeOnly: Boolean = false): List<Track> = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         val snapshot = usableSnapshot(now)
         if (snapshot == null) {
@@ -100,7 +100,7 @@ internal class EditorialChartsRepository private constructor(context: Context) {
             return@withContext emptyList()
         }
         if (snapshot.needsRefresh(now)) warm()
-        snapshot.newReleases(country, limit)
+        snapshot.newReleases(country, limit, nativeOnly)
     }
 
     suspend fun cachedExploreCollection(params: String, limit: Int): EditorialExploreCollection? =
@@ -368,10 +368,10 @@ internal data class CatalogSnapshot(
         return byMarket[market].orEmpty().take(limit.coerceIn(1, MAX_TRACKS_PER_MARKET))
     }
 
-    fun newReleases(country: String, limit: Int): List<Track> {
+    fun newReleases(country: String, limit: Int, nativeOnly: Boolean = false): List<Track> {
         val market = country.trim().uppercase(Locale.ROOT).takeIf { it.length == 2 } ?: DEFAULT_MARKET
         val localized = releaseByMarket[market].orEmpty()
-        val fallback = releaseByMarket["US"].orEmpty()
+        val fallback = if (nativeOnly) emptyList() else releaseByMarket["US"].orEmpty()
         return localized.ifEmpty { fallback }.take(limit.coerceIn(1, MAX_TRACKS_PER_MARKET))
     }
 

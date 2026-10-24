@@ -244,6 +244,7 @@ internal fun srLocalizationEntries(): Map<String, String> = mapOf(
     "shareDiagnostics" to "Подели дијагностику",
     "albumUnavailable" to "Албум није доступан",
     "albumTracksUnavailable" to "Песме са албума нису доступне",
+    "albumTracksLoadFailed" to "Песме са албума није могуће учитати. Провери везу и покушај поново.",
     "showLess" to "Прикажи мање",
     "showMore" to "Прикажи више",
     "playing" to "Свира",

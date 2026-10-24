@@ -341,6 +341,16 @@ def select_official_spotify_playlist_id(
         name_key = _normalize_playlist_title(str(item.get("name") or ""))
         if not playlist_id.isalnum() or len(playlist_id) not in range(10, 80) or not name_key:
             continue
+        name_tokens = set(name_key.split())
+        if not any(
+            hint
+            and (
+                hint in name_key
+                or {token for token in hint.split() if len(token) >= 3} <= name_tokens
+            )
+            for hint in hints
+        ):
+            continue
 
         score = 0
         if name_key in hints:
@@ -353,7 +363,6 @@ def select_official_spotify_playlist_id(
             elif hint in name_key:
                 score += 8_000 - hint_index * 80
             hint_tokens = {token for token in hint.split() if len(token) >= 3}
-            name_tokens = set(name_key.split())
             score += len(hint_tokens & name_tokens) * 350
         if "new music friday" in name_key:
             score += 4_000

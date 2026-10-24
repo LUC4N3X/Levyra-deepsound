@@ -316,6 +316,8 @@ internal class YoutubeMusicResilienceClient(
                             latencyMs = response.latencyMs,
                             now = clock()
                         )
+                    } else if (kind == YoutubeMusicRequestKind.SEARCH && isConclusiveEmptySearch(root)) {
+                        recordSuccess(profile, response.latencyMs, clock())
                     } else {
                         recordFailure(profile, response.code, "empty response", response.latencyMs, clock())
                     }
@@ -584,6 +586,12 @@ internal class YoutubeMusicResilienceClient(
             "musicCardShelfRenderer",
             "playlistPanelVideoRenderer"
         )
+        fun isConclusiveEmptySearch(root: JSONObject): Boolean {
+            if (root.has("error")) return false
+            val raw = root.toString()
+            return raw.contains("sectionListRenderer") && raw.contains("messageRenderer") &&
+                SEARCH_MARKERS.none(raw::contains)
+        }
         val SEARCH_SUGGESTION_MARKERS = arrayOf(
             "searchSuggestionsSectionRenderer",
             "searchSuggestionRenderer",

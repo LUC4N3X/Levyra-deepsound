@@ -244,6 +244,7 @@ internal fun sqLocalizationEntries(): Map<String, String> = mapOf(
     "shareDiagnostics" to "Ndaj diagnostikimin",
     "albumUnavailable" to "Albumi nuk është i disponueshëm",
     "albumTracksUnavailable" to "Këngët e albumit nuk janë të disponueshme",
+    "albumTracksLoadFailed" to "Këngët e albumit nuk u ngarkuan. Kontrollo lidhjen dhe provo sërish.",
     "showLess" to "Shfaq më pak",
     "showMore" to "Shfaq më shumë",
     "playing" to "Po luhet",

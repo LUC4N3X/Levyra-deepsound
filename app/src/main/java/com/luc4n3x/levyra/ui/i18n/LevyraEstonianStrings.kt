@@ -244,6 +244,7 @@ internal fun etLocalizationEntries(): Map<String, String> = mapOf(
     "shareDiagnostics" to "Jaga diagnostikat",
     "albumUnavailable" to "Album pole saadaval",
     "albumTracksUnavailable" to "Albumi lood pole saadaval",
+    "albumTracksLoadFailed" to "Albumi lugusid ei õnnestunud laadida. Kontrolli ühendust ja proovi uuesti.",
     "showLess" to "Näita vähem",
     "showMore" to "Näita rohkem",
     "playing" to "Esitatakse",

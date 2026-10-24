@@ -244,6 +244,7 @@ internal fun nbLocalizationEntries(): Map<String, String> = mapOf(
     "shareDiagnostics" to "Del diagnostikk",
     "albumUnavailable" to "Albumet er ikke tilgjengelig",
     "albumTracksUnavailable" to "Albumsporene er ikke tilgjengelige",
+    "albumTracksLoadFailed" to "Albumets låter kunne ikke lastes inn. Sjekk tilkoblingen og prøv igjen.",
     "showLess" to "Vis mindre",
     "showMore" to "Vis mer",
     "playing" to "Spilles",

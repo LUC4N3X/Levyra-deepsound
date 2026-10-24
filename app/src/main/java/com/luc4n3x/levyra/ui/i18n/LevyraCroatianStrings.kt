@@ -244,6 +244,7 @@ internal fun hrLocalizationEntries(): Map<String, String> = mapOf(
     "shareDiagnostics" to "Podijeli dijagnostiku",
     "albumUnavailable" to "Album nije dostupan",
     "albumTracksUnavailable" to "Pjesme albuma nisu dostupne",
+    "albumTracksLoadFailed" to "Pjesme s albuma nije moguće učitati. Provjeri vezu i pokušaj ponovno.",
     "showLess" to "Prikaži manje",
     "showMore" to "Prikaži više",
     "playing" to "Svira",

@@ -244,6 +244,7 @@ internal fun kkLocalizationEntries(): Map<String, String> = mapOf(
     "shareDiagnostics" to "Диагностикамен бөлісу",
     "albumUnavailable" to "Альбом қолжетімсіз",
     "albumTracksUnavailable" to "Альбом әндері қолжетімсіз",
+    "albumTracksLoadFailed" to "Альбом тректерін жүктеу мүмкін болмады. Байланысты тексеріп, қайталап көріңіз.",
     "showLess" to "Азырақ көрсету",
     "showMore" to "Көбірек көрсету",
     "playing" to "Ойнап тұр",

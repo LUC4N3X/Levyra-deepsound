@@ -229,7 +229,7 @@ private fun YouTubeMusicGenrePlaceholderRow() {
     }
 }
 
-private fun YoutubeMusicMoodPlaylist.toHit() = PlaylistHit(
+internal fun YoutubeMusicMoodPlaylist.toHit() = PlaylistHit(
     title = title,
     author = description,
     thumbnailUrl = thumbnailUrl,

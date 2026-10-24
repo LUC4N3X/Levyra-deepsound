@@ -244,6 +244,7 @@ internal fun heLocalizationEntries(): Map<String, String> = mapOf(
     "shareDiagnostics" to "שיתוף אבחון",
     "albumUnavailable" to "האלבום אינו זמין",
     "albumTracksUnavailable" to "שירי האלבום אינם זמינים",
+    "albumTracksLoadFailed" to "לא ניתן לטעון את רצועות האלבום. בדקו את החיבור ונסו שוב.",
     "showLess" to "הצג פחות",
     "showMore" to "הצג עוד",
     "playing" to "מתנגן",
