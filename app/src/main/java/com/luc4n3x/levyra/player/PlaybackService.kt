@@ -942,6 +942,7 @@ class PlaybackService : MediaLibraryService() {
             }
         )
         player.addAnalyticsListener(audioOffloadController)
+        player.addAnalyticsListener(VideoFrameDropMonitor.Shared)
         RuntimeHooks.attachPlayer(player)
         RuntimeHooks.player(RuntimeSignal.PLAYER_CREATED)
         RuntimeHooks.hot(RuntimeSignal.HOT_PLAYER_CREATE)

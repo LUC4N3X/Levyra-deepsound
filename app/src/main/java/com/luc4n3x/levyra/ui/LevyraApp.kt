@@ -143,7 +143,8 @@ import com.luc4n3x.levyra.ui.lyrics.lyricsOffsetPosition
 import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalDotIntensity
 import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalGaps
 import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalProgress
-import com.luc4n3x.levyra.ui.lyrics.lyricsLineFocusPositionMs
+import com.luc4n3x.levyra.ui.lyrics.LocalLivePlaybackPosition
+import com.luc4n3x.levyra.ui.lyrics.LyricsAmbientBackdrop
 import com.luc4n3x.levyra.ui.lyrics.rememberLyricsPlaybackClock
 import com.luc4n3x.levyra.ui.lyrics.LYRICS_LANDSCAPE_CHROME_HEIGHT_DP
 import com.luc4n3x.levyra.ui.lyrics.LYRICS_LANDSCAPE_PANE_GAP_DP
@@ -535,6 +536,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Path
@@ -2219,8 +2221,10 @@ fun LevyraApp(
         enabled = navigationStudio.visible ||
             navigationStudio.settings.activeTuning().colorSource == NavColorSource.Artwork
     )
+    val livePlaybackPosition = remember(viewModel) { viewModel::livePlaybackPositionMs }
     CompositionLocalProvider(
         LocalAnimationsEnabled provides state.animationsEnabled,
+        LocalLivePlaybackPosition provides livePlaybackPosition,
         LocalLevyraVisualCapabilities provides visualCapabilities,
         LocalLevyraStrings provides currentStrings,
         LocalLevyraHaptics provides rememberLevyraHaptics(state.interfaceSettings.hapticFeedback),
@@ -7943,18 +7947,6 @@ private fun LyricsOverlay(
             selectedRange = null
         }
     }
-    val visualActiveIndex = remember(visibleLyrics, syncedLyrics, lyricsAnimationsEnabled, lyricsPositionProvider) {
-        derivedStateOf {
-            if (syncedLyrics) {
-                activeLyricIndex(
-                    lyricsLineFocusPositionMs(lyricsPositionProvider(), lyricsAnimationsEnabled),
-                    visibleLyrics
-                )
-            } else {
-                -1
-            }
-        }
-    }.value
     val backgroundActiveIndex = remember(visibleLyrics, backgroundLineIndices, syncedLyrics, lyricsPositionProvider) {
         derivedStateOf {
             if (!syncedLyrics || backgroundLineIndices.isEmpty()) {
@@ -8040,7 +8032,7 @@ private fun LyricsOverlay(
         }
     }
 
-    val scrollFocusIndex = instrumentalGap?.nextLineIndex ?: visualActiveIndex
+    val scrollFocusIndex = instrumentalGap?.nextLineIndex ?: timedActiveIndex
 
     val followActiveLine = lyricsShouldFollowActiveLine(autoScrollEnabled, selectionMode)
 
@@ -8147,6 +8139,9 @@ private fun LyricsOverlay(
             .consumeOverlayTouches()
     ) {
         val studioSettings = state.lyricsStudioSettings
+        val lyricsDepthBlur = lyricsAnimationsEnabled &&
+            studioSettings.blurEnabled &&
+            LocalLevyraVisualCapabilities.current.heavyBlur
         if (studioSettings.spotifyLyricsApplies()) {
             SpotifyLyricsBackdrop(track)
         } else if (landscapeLayout && studioSettings.backgroundMode !in setOf(
@@ -8183,6 +8178,16 @@ private fun LyricsOverlay(
                             )
                         )
                     )
+            )
+        } else if (lyricsAmbientSkinActive() && studioSettings.backgroundMode == LyricsBackgroundMode.ORIGINAL) {
+            LyricsAmbientBackdrop(
+                artworkUrl = track?.let { it.largeThumbnailUrl.ifBlank { it.thumbnailUrl } },
+                trackKey = track?.id.orEmpty(),
+                accentStart = accentStart,
+                accentEnd = accentEnd,
+                motionEnabled = lyricsAnimationsEnabled &&
+                    LocalLevyraVisualCapabilities.current.decorativeMotion &&
+                    state.isPlaying
             )
         } else {
             LevyraBackground()
@@ -8423,18 +8428,18 @@ private fun LyricsOverlay(
                         positionProvider = lyricsPositionProvider,
                         instrumentalGap = lineInstrumentalGap,
                         isActive = timedActive,
-                        isPrimaryActive = index == visualActiveIndex,
+                        isPrimaryActive = index == timedActiveIndex,
                         synced = state.lyricsSynced,
                         viewMode = viewMode,
                         distanceFromActive = when {
                             !followActiveLine -> 0
                             lineInstrumentalGap != null -> 0
-                            visualActiveIndex >= 0 -> kotlin.math.abs(index - visualActiveIndex)
+                            timedActiveIndex >= 0 -> kotlin.math.abs(index - timedActiveIndex)
                             else -> 0
                         },
                         focusMode = lyricsFocusMode,
                         layoutWidthDp = landscapeMetrics?.lyricsPaneWidthDp?.toInt(),
-                        blurEnabled = lyricsAnimationsEnabled,
+                        blurEnabled = lyricsDepthBlur,
                         animationsEnabled = lyricsAnimationsEnabled,
                         sectionLabel = sectionStarts[index]?.let { lyricSectionLabel(strings, it) },
                         showRomanization = showRomanization,
@@ -8452,7 +8457,7 @@ private fun LyricsOverlay(
                                 track?.id?.let { trackId ->
                                     onSetTrackOffset(
                                         trackId,
-                                        calibratedLyricsTrackOffset(state.positionMs, line.startMs, latencyOffsetMs)
+                                        calibratedLyricsTrackOffset(lyricsClock.positionMs, line.startMs, latencyOffsetMs)
                                     )
                                 }
                                 calibrateMode = false
@@ -9076,6 +9081,7 @@ internal fun KaraokeWordTimedText(
     val timedText = remember(lineText, words) { buildTimedLyricText(lineText, words) }
     val karaokeEasing = remember { CubicBezierEasing(0.18f, 0f, 0.20f, 1f) }
     val clipPath = remember { Path() }
+    val fillFront = remember { KaraokeFillFront() }
     val contentAlignment = when (textAlign) {
         TextAlign.Center -> Alignment.Center
         TextAlign.End, TextAlign.Right -> Alignment.CenterEnd
@@ -9113,6 +9119,7 @@ internal fun KaraokeWordTimedText(
                     style = TextStyle(shadow = shadow),
                     modifier = Modifier
                         .matchParentSize()
+                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                         .drawWithContent {
                             val layoutResult = textLayoutResult ?: return@drawWithContent
                             val characterProgress = karaokeCharacterProgress(
@@ -9121,15 +9128,19 @@ internal fun KaraokeWordTimedText(
                                 easing = karaokeEasing
                             )
                             if (characterProgress <= 0f) return@drawWithContent
+                            val featherPx = fontSize.toPx() * KARAOKE_FILL_FEATHER_EM
                             val path = buildKaraokeGlyphPath(
                                 path = clipPath,
                                 layoutResult = layoutResult,
                                 textLength = timedText.text.length,
-                                characterProgress = characterProgress
+                                characterProgress = characterProgress,
+                                featherPx = featherPx,
+                                front = fillFront
                             )
                             clipPath(path) {
                                 this@drawWithContent.drawContent()
                             }
+                            if (fillFront.active) drawKaraokeFillFeather(fillFront)
                         }
                 )
             }
@@ -9142,13 +9153,50 @@ internal const val LYRICS_HORIZONTAL_GUTTER_DP = 48
 internal const val LYRICS_ACTIVE_LINE_SCALE = 1.025f
 internal const val LYRICS_COMPACT_ACTIVE_LINE_SCALE = 1.018f
 
+private fun lyricsAmbientSkinActive(): Boolean =
+    !LevyraIsIvory && !LevyraIsSpotify && !LevyraIsAppleMusic && !LevyraIsYouTubeMusic
+
+private const val KARAOKE_FILL_FEATHER_EM = 0.55f
+
+private class KaraokeFillFront {
+    var active = false
+    var x = 0f
+    var top = 0f
+    var bottom = 0f
+    var rtl = false
+    var feather = 0f
+}
+
+private fun DrawScope.drawKaraokeFillFeather(front: KaraokeFillFront) {
+    val featherPx = front.feather
+    if (featherPx <= 0.5f || front.bottom <= front.top) return
+    val from = front.x - featherPx
+    val to = front.x + featherPx
+    val colors = if (front.rtl) KaraokeFeatherRtl else KaraokeFeatherLtr
+    drawRect(
+        brush = Brush.horizontalGradient(colors, startX = from, endX = to),
+        topLeft = Offset(from, front.top),
+        size = Size(to - from, front.bottom - front.top),
+        blendMode = BlendMode.DstIn
+    )
+}
+
+internal fun karaokeFeatherWidth(featherPx: Float, remainingToLineEndPx: Float): Float =
+    minOf(featherPx, remainingToLineEndPx).coerceAtLeast(0f)
+
+private val KaraokeFeatherLtr = listOf(Color.White, Color.Transparent)
+private val KaraokeFeatherRtl = listOf(Color.Transparent, Color.White)
+
 private fun buildKaraokeGlyphPath(
     path: Path,
     layoutResult: TextLayoutResult,
     textLength: Int,
-    characterProgress: Float
+    characterProgress: Float,
+    featherPx: Float,
+    front: KaraokeFillFront
 ): Path {
     path.reset()
+    front.active = false
     if (textLength == 0 || characterProgress <= 0f) return path
     val boundedProgress = characterProgress.coerceIn(0f, textLength.toFloat())
     val completedCharacters = boundedProgress.toInt().coerceIn(0, textLength)
@@ -9187,7 +9235,16 @@ private fun buildKaraokeGlyphPath(
             layoutResult.getHorizontalPosition(nextOffset, usePrimaryDirection = true)
         }
         val currentX = charStart + (charEnd - charStart) * fraction
-        path.addRectangle(minOf(startX, currentX), top, maxOf(startX, currentX), bottom)
+        val lineEndX = if (isRtl) layoutResult.getLineLeft(activeLine) else layoutResult.getLineRight(activeLine)
+        val feather = karaokeFeatherWidth(featherPx, kotlin.math.abs(lineEndX - currentX))
+        val reachX = if (isRtl) currentX - feather else currentX + feather
+        path.addRectangle(minOf(startX, reachX), top, maxOf(startX, reachX), bottom)
+        front.active = true
+        front.x = currentX
+        front.top = top
+        front.bottom = bottom
+        front.rtl = isRtl
+        front.feather = feather
     }
     return path
 }
@@ -19525,6 +19582,9 @@ private fun PlayerAdvancedControlsPanel(
                 lyrics = state.lyrics,
                 lyricsLoading = state.lyricsLoading,
                 positionMs = state.positionMs,
+                isPlaying = state.isPlaying,
+                playbackSpeed = state.audioSettings.playbackSpeed,
+                synced = state.lyricsSynced,
                 durationMs = state.durationMs,
                 primaryContent = primaryContent,
                 compact = compact,
@@ -19853,6 +19913,9 @@ private fun PlayerInlineLyricsSection(
     lyrics: List<com.luc4n3x.levyra.domain.LyricLine>,
     lyricsLoading: Boolean,
     positionMs: Long,
+    isPlaying: Boolean,
+    playbackSpeed: Float,
+    synced: Boolean,
     durationMs: Long,
     primaryContent: Color,
     compact: Boolean,
@@ -19907,11 +19970,15 @@ private fun PlayerInlineLyricsSection(
         lyrics.isNotEmpty() -> {
             val listState = rememberLazyListState()
             val lyricsAnimationsEnabled = LocalAnimationsEnabled.current
-            val visualActiveIndex = remember(lyrics, positionMs, lyricsAnimationsEnabled) {
-                activeLyricIndex(
-                    lyricsLineFocusPositionMs(positionMs, lyricsAnimationsEnabled),
-                    lyrics
-                )
+            val inlineClock = rememberLyricsPlaybackClock(
+                trackKey = trackId,
+                reportedPositionMs = positionMs,
+                isPlaying = isPlaying,
+                speed = playbackSpeed,
+                smoothingEnabled = synced && lyricsAnimationsEnabled
+            )
+            val visualActiveIndex by remember(lyrics, inlineClock) {
+                derivedStateOf { activeLyricIndex(inlineClock.positionMs, lyrics) }
             }
             var inlineAutoScroll by remember(trackId) { mutableStateOf(true) }
             var inlineAutoScrolling by remember(trackId) { mutableStateOf(false) }

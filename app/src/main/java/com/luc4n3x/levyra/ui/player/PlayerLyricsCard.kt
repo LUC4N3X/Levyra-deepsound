@@ -54,7 +54,6 @@ import com.luc4n3x.levyra.domain.LyricVocalRole
 import com.luc4n3x.levyra.ui.components.PlayerGlassIconButton
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.lyrics.activeLyricIndex
-import com.luc4n3x.levyra.ui.lyrics.lyricsLineFocusPositionMs
 import com.luc4n3x.levyra.ui.lyrics.lyricsOffsetPosition
 import com.luc4n3x.levyra.ui.lyrics.rememberLyricsAudioOutputRoute
 import com.luc4n3x.levyra.ui.lyrics.rememberLyricsPlaybackClock
@@ -113,11 +112,11 @@ internal fun PlayerLyricsCard(
         speed = playbackSpeed,
         smoothingEnabled = synced && animated
     )
-    val activeIndex by remember(cardLines, synced, clock, animated) {
+    val activeIndex by remember(cardLines, synced, clock) {
         derivedStateOf {
             if (synced) {
                 activeLyricIndex(
-                    lyricsLineFocusPositionMs(lyricsOffsetPosition(clock.positionMs, currentOffsetMs), animated),
+                    lyricsOffsetPosition(clock.positionMs, currentOffsetMs),
                     cardLines
                 )
             } else {
