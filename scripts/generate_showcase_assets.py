@@ -813,7 +813,7 @@ README_CARD_SPECS = [
         "21_spotify_style",
         "Spotify Style",
         "Familiar dark surfaces, green accents and artist glow",
-        "Screenshot_20261024_201452_Levyra.jpg",
+        "Screenshot_20261024_213852_Levyra.jpg",
         (236, 253, 245),
         (209, 250, 229),
         (30, 215, 96),
@@ -826,12 +826,12 @@ README_CARD_SPECS = [
         "Apple Music Style",
         "Editorial white surfaces, album shelves and bold type",
         "Screenshot_20261024_201549_Levyra.jpg",
-        (255, 241, 242),
-        (255, 228, 230),
-        (250, 45, 72),
-        (254, 205, 211),
-        (76, 5, 25),
-        (190, 18, 60),
+        (255, 255, 255),
+        (241, 245, 249),
+        (251, 113, 133),
+        (226, 232, 240),
+        (15, 23, 42),
+        (71, 85, 105),
     ),
     (
         "23_youtube_music_style",
@@ -1335,20 +1335,10 @@ def generate_readme_cards():
         artwork.save(out_path, "WEBP", quality=95, method=6)
         print(f"Saved README editorial card at {artwork.size}: {out_path}")
 
-    # 3. Render Cards 05 through 20 (Rows 2, 3, 4, 5 as clean centered cards)
-    for index in range(4, 20):
+    # 3. Render Cards 05 through 24 (Rows 2, 3, 4, 5, and 6 as cohesive centered cards)
+    for index in range(4, len(README_CARD_SPECS)):
         spec = README_CARD_SPECS[index]
         artwork = render_readme_centered_card(spec)
-        cards.append(artwork)
-        out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
-        artwork.save(out_path, "WEBP", quality=95, method=6)
-        print(f"Saved README editorial card at {artwork.size}: {out_path}")
-
-    # 4. Render Row 6 Streaming Skins with floating harmonic 3D tilt
-    skin_angles = [-3.8, 3.8, -3.8, 3.8]
-    for i, index in enumerate(range(20, 24)):
-        spec = README_CARD_SPECS[index]
-        artwork = render_readme_floating_card(spec, angle=skin_angles[i])
         cards.append(artwork)
         out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
         artwork.save(out_path, "WEBP", quality=95, method=6)
