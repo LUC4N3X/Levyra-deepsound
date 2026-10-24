@@ -62,6 +62,15 @@ internal fun stableAndroidVideoCandidates(
     return avc.ifEmpty { candidates }
 }
 
+internal const val BUDGET_VIDEO_DEVICE_MAX_RAM_BYTES = 4_500L * 1024L * 1024L
+internal const val MEASURED_FRAME_RATE_TOLERANCE = 0.9
+
+internal fun isBudgetVideoDevice(lowRamDevice: Boolean, totalMemoryBytes: Long): Boolean =
+    lowRamDevice || totalMemoryBytes in 1..BUDGET_VIDEO_DEVICE_MAX_RAM_BYTES
+
+internal fun measuredFrameRateSustains(measuredUpperFps: Double?, requestedFps: Double): Boolean =
+    measuredUpperFps == null || requestedFps <= 0.0 || measuredUpperFps >= requestedFps * MEASURED_FRAME_RATE_TOLERANCE
+
 internal fun reliableVideoCandidate(
     muxed: LevyraVideoCandidate?,
     videoOnly: LevyraVideoCandidate?
@@ -89,6 +98,12 @@ internal class LevyraVideoStreamSelector(context: Context) {
     private val powerManager = appContext.getSystemService(Context.POWER_SERVICE) as PowerManager
     private val preferences = LevyraPreferences(appContext)
     private val decoderCapabilities by lazy { readDecoderCapabilities() }
+    private val budgetDevice by lazy {
+        isBudgetVideoDevice(
+            lowRamDevice = activityManager.isLowRamDevice,
+            totalMemoryBytes = ActivityManager.MemoryInfo().also(activityManager::getMemoryInfo).totalMem
+        )
+    }
     private val rejectedUrls = ConcurrentHashMap<String, Long>()
     private val rejectedUrlsMutationLock = Any()
 
@@ -166,7 +181,7 @@ internal class LevyraVideoStreamSelector(context: Context) {
         val metrics = appContext.resources.displayMetrics
         val displayShortSide = minOf(metrics.widthPixels, metrics.heightPixels)
         return VideoQualityLadder.autoTargetHeight(
-            lowRam = lowRam,
+            lowRam = lowRam || budgetDevice,
             powerSave = powerSave,
             unmetered = unmetered,
             fastTransport = fastTransport,
@@ -224,11 +239,12 @@ internal class LevyraVideoStreamSelector(context: Context) {
         val fpsScore = when {
             candidate.fps <= 0 -> 0
             candidate.fps <= 30 -> 250
-            support.hardware && !activityManager.isLowRamDevice -> 500
+            support.hardware && !budgetDevice -> 500
             else -> -800
         }
+        val smoothnessScore = if (support.smooth) 0 else -5_000
         val bitrateScore = (candidate.bitrate / 250_000).coerceIn(0, 900)
-        return qualityScore + codecScore + containerScore + startScore + fpsScore + bitrateScore
+        return qualityScore + codecScore + containerScore + startScore + fpsScore + bitrateScore + smoothnessScore
     }
 
     private fun decoderSupport(candidate: LevyraVideoCandidate): DecoderSupport {
@@ -243,7 +259,8 @@ internal class LevyraVideoStreamSelector(context: Context) {
         return DecoderSupport(
             family = family,
             supported = compatible.isNotEmpty(),
-            hardware = compatible.any { it.hardware }
+            hardware = compatible.any { it.hardware },
+            smooth = compatible.isEmpty() || compatible.any { it.sustains(candidate) }
         )
     }
 
@@ -306,7 +323,8 @@ internal class LevyraVideoStreamSelector(context: Context) {
     private data class DecoderSupport(
         val family: CodecFamily,
         val supported: Boolean,
-        val hardware: Boolean
+        val hardware: Boolean,
+        val smooth: Boolean
     )
 
     private data class CodecCapability(
@@ -331,6 +349,15 @@ internal class LevyraVideoStreamSelector(context: Context) {
                 }.getOrDefault(false)
             }
             return supportsSize(width, height) || supportsSize(height, width)
+        }
+
+        fun sustains(candidate: LevyraVideoCandidate): Boolean {
+            val capabilities = videoCapabilities ?: return true
+            if (candidate.width <= 0 || candidate.height <= 0 || candidate.fps <= 0) return true
+            val measured = runCatching {
+                capabilities.getAchievableFrameRatesFor(candidate.width, candidate.height)?.upper
+            }.getOrNull()
+            return measuredFrameRateSustains(measured, candidate.fps.toDouble())
         }
     }
 
