@@ -37,6 +37,25 @@ class LyricsFocusTest {
     }
 
     @Test
+    fun `the reading window around the active line is never blurred`() {
+        assertEquals(0f, lyricsFocusBlurDp(2, focusMode = true, synced = true, blurEnabled = true), 0.0001f)
+        assertTrue(lyricsFocusBlurDp(3, focusMode = true, synced = true, blurEnabled = true) > 0f)
+    }
+
+    @Test
+    fun `dimmed lines stay readable`() {
+        assertTrue(lyricsFocusAlpha(9, focusMode = true, compact = false, synced = true) >= 0.3f)
+        assertTrue(lyricsFocusAlpha(9, focusMode = true, compact = true, synced = true) >= 0.25f)
+    }
+
+    @Test
+    fun `karaoke feather collapses as the fill reaches the line end`() {
+        assertEquals(30f, karaokeFeatherWidth(featherPx = 30f, remainingToLineEndPx = 200f), 0.0001f)
+        assertEquals(12f, karaokeFeatherWidth(featherPx = 30f, remainingToLineEndPx = 12f), 0.0001f)
+        assertEquals(0f, karaokeFeatherWidth(featherPx = 30f, remainingToLineEndPx = 0f), 0.0001f)
+    }
+
+    @Test
     fun `negative distances are treated as the active line`() {
         assertEquals(1f, lyricsFocusAlpha(-3, focusMode = true, compact = true, synced = true), 0.0001f)
         assertEquals(0f, lyricsFocusBlurDp(-3, focusMode = true, synced = true, blurEnabled = true), 0.0001f)
