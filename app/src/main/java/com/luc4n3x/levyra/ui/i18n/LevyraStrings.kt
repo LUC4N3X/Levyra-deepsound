@@ -1013,6 +1013,7 @@ class LevyraStrings private constructor(
     val shareDiagnostics: String get() = value("shareDiagnostics")
     val albumUnavailable: String get() = value("albumUnavailable")
     val albumTracksUnavailable: String get() = value("albumTracksUnavailable")
+    val albumTracksLoadFailed: String get() = value("albumTracksLoadFailed")
     val showLess: String get() = value("showLess")
     val showMore: String get() = value("showMore")
     val playing: String get() = value("playing")
@@ -2009,7 +2010,7 @@ class LevyraStrings private constructor(
     fun formatPauseDownload(title: String): String = "$pauseDownload ${directionalValue(title)}"
 
     companion object {
-        private val requiredKeys = setOf("welcomeBadge", "welcomeTitle", "languageQuestion", "nameQuestion", "namePlaceholder", "tasteQuestion", "skipAndContinue", "startListening", "settings", "settingsSubtitle", "design", "playback", "preferences", "app", "animations", "animationsSubtitle", "dynamicColor", "dynamicColorSubtitle", "sponsorBlock", "sponsorBlockSubtitle", "skipSilence", "skipSilenceSubtitle", "redoQuestionnaire", "redoQuestionnaireSubtitle", "language", "languageSubtitle", "home", "search", "library", "player", "queue", "lyrics", "related", "song", "video", "nowPlaying", "emptyPlayer", "phoneSpeaker", "connected", "volume", "audioQuality", "done", "queueEmpty", "lyricsUnavailable", "synced", "libraryTitle", "librarySubtitle", "playlists", "newItem", "downloads", "favorites", "recent", "quickPicks", "play", "newReleases", "albumsForYou", "top50Unavailable", "artists", "albumsAndSingles", "songs", "searchPlaceholder", "back", "clear", "voice", "createPlaylistHint", "selectLanguagePrompt", "explore", "exploreTitle", "exploreSubtitle", "exploreMoods", "exploreSamples", "exploreSamplesSubtitle", "exploreSamplesError", "exploreSamplesRetry", "exploreFresh", "exploreNewVideos", "exploreEmpty", "localWaveName", "localWaveEmoji", "localWaveQuery", "exploreNewReleases", "exploreRapDrill", "exploreElectronic", "explorePopGlobal", "exploreRnbSoul", "exploreRockAlt", "exploreLatino", "exploreLofiChill", "exploreJpopAnime", "followArtist", "followingArtist", "releaseRadar", "similarArtists", "similarToFollowed", "theme", "themeSubtitle", "personalOrbitTitle", "personalOrbitSubtitle", "voicesTitle", "voicesSubtitle", "totalComments", "engagement", "audioEngine", "audioEngineSubtitle", "equalizer", "equalizerSubtitle", "preset", "bassBoost", "virtualizer", "crossfade", "djSoft", "replayGain", "tempo", "pitch", "gapless", "restartRequiredTitle", "restartRequiredBody", "restartNow", "later", "audioQualityAuto", "audioQualityHigh", "audioQualityLow", "pulseSectionBand", "pulseTitle", "pulseSubtitle", "followedArtistsTitle", "followedArtistsSubtitle", "listeningHistoryEmptyTitle", "listeningHistoryEmptyDetail", "pulseMinutes", "pulseMinuteShort", "pulsePlays", "pulseStreak", "pulseCompletion", "pulseTopArtists", "pulseWeek", "pulsePeakHour", "pulseEmpty", "listeningHistory", "listeningHistorySubtitle", "listeningPrompt", "voiceSearchUnsupported", "musicFiltersComingSoon", "recentSearches", "actions", "removeFromFavorites", "addToFavorites", "playNext", "addToQueue", "addToPlaylist", "alreadyOffline", "download", "openArtist", "openAlbum", "deleteDownload", "share", "shareSong", "removeFromRecentSearches", "songOptions", "goToPlayer", "saveOffline", "favorite", "downloaded", "remove", "youMightAlsoLike", "topResult", "currentlyPlaying", "artistLabel", "playNow", "biography", "newUpdate", "updateDescription", "whatsNew", "update", "updateRetry", "updateDownloading", "updatePreparing", "updateInstalling", "updateReadyToInstall", "updateFailed", "updateAllowInstalls", "updateLinkUnavailable", "cannotOpenDownload", "externalLinkUnavailable", "cannotOpenExternalLink", "continuousRadio", "continuousRadioSubtitle", "artistsLabelPlural", "albumMood", "openLyricsAnalysis", "closeLyrics", "lyricsDuet", "lyricsCinema", "lyricsPage", "lyricsRomanization", "lyricsCompact", "changeLyrics", "automaticLyrics", "selectVerses", "copyVerses", "shareVerses", "lyricsVersions", "lyricsSections", "lyricsSectionIntro", "lyricsSectionVerse", "lyricsSectionPreChorus", "lyricsSectionChorus", "lyricsSectionBridge", "lyricsSectionInstrumental", "lyricsSectionOutro", "automaticTranslation", "automaticTranslationSubtitle", "atmosphere", "themes", "chorusDetected", "goToChorus", "close", "complete", "delete", "newPlaylist", "playlistName", "create", "cancel", "newPlaylistName", "createNewPlaylist", "createAndAdd", "downloadPlaylist", "playAll", "playingFrom", "closePlayer", "options", "showLyrics", "shuffle", "previous", "next", "repeat", "persistentQueue", "continueListening", "favoritesPlain", "offline", "more", "mix", "mixForYou", "genres", "smartMusicProfile", "flow", "pictureInPicture", "discoveryFlow", "shareDiagnostics", "albumUnavailable", "albumTracksUnavailable", "showLess", "showMore", "playing", "artistProfileUnavailable", "popularTracks", "showAll", "versionLabel", "generalImprovements", "historyLabel", "undoRemoval", "lyricsAnalysis", "linesLabel", "wordsLabel", "localAnalysis", "open", "newRelease", "newReleaseSubtitle", "saved", "save", "noOfflineDownloads", "createFirstPlaylist", "createFirstPlaylistSubtitle", "downloadTrackHint", "savedTracks", "favoritesEmpty", "playlistEmpty", "showPersonalListening", "showRecentReleases", "showRecommendedAlbums", "showDiscoveredArtists", "showChartsCountry", "partialDownloadResume", "lyricsAnalysisSection", "lyricsAnalysisCompact", "lyricsAnalysisCompactSubtitle", "createDataBackup", "createDataBackupSubtitle", "updateAvailable", "updates", "checkingLatestVersion", "latestVersionReady", "latestInstalled", "checkNewVersions", "releasePageReady", "installedVersion", "openPlayer", "searchSongsArtists", "songsPlain", "shareVia", "emptySearchPrompt", "cancelDownload", "readAll", "singlesAndEps", "tapHeartToAdd", "all", "automaticResume", "simultaneousDownloads", "simultaneousDownloadsSubtitle", "backupRestoreSection", "restoreBackup", "restoreBackupSubtitle", "playbackResilienceSection", "exportSafeDiagnostics", "generateResolverTrace", "safeDiagnosticsSubtitle", "check", "checking", "dragToReorder", "homeInterfaceSection", "compactHome", "compactHomeSubtitle", "yourOrbitSetting", "voicesSetting", "voicesSettingSubtitle", "newReleasesSetting", "albumsForYouSetting", "trendingArtists", "top50Charts", "mobilePlayerSection", "advancedGestures", "advancedGesturesSubtitle", "pureBlack", "pureBlackSubtitle", "hapticFeedback", "hapticFeedbackSubtitle", "doubleTapSeek", "doubleTapSeekSubtitle", "longPress", "longPressSubtitle", "downloadEngineSection", "wifiOnly", "wifiOnlySubtitle", "chargingOnly", "chargingOnlySubtitle", "resumeDownload", "pauseDownload", "signedApkReady", "downloadsInProgress", "downloadInProgress", "newAlbums", "newSingles", "newAlbum", "downloadsFolder", "offlineDownloadsPlain", "personalPlaylists", "searchingYouTubeMusic", "searchingLyrics", "pause", "newSingle", "albumsPlain", "albumPlain", "singlePlain", "playlistsPlain", "profileActive", "profileLearning", "newBadge", "brightness", "timer", "normalizationShort", "coverAndTags", "madeWithBy", "activeIndicator", "batteryUnrestricted", "batteryUnrestrictedSubtitle", "batteryUnrestrictedActive", "levyraSelection", "releasedToday", "justReleased", "chartTrending", "selectedForYou", "availableToday", "releasedThisWeek", "popularInCharts", "collectionsTitle", "collectionsSubtitle", "collectionFresh", "collectionLocal", "collectionWorkout", "collectionChill", "collectionFocus", "collectionParty", "collectionRap", "collectionPop", "collectionDiscovery", "collectionUpdatedToday", "collectionEditorial", "collectionCharts", "collectionRepeat", "collectionThrowback", "collectionGems", "downloadQualityPreset", "downloadQualityPresetSubtitle", "downloadPresetAutomatic", "downloadPresetHighQuality", "downloadPresetDataSaver", "downloadFolderOrganization", "downloadFolderOrganizationSubtitle", "downloadFolderArtist", "downloadFolderArtistAlbum", "downloadSpeedLimit", "downloadSpeedLimitSubtitle", "downloadSpeedUnlimited", "downloadEmbedMetadata", "downloadEmbedMetadataSubtitle", "downloadEmbedArtwork", "downloadEmbedArtworkSubtitle", "downloadVerifyFile", "downloadVerifyFileSubtitle", "downloadSkipDuplicates", "downloadSkipDuplicatesSubtitle", "trailTitle", "trailPlays", "trailUnique", "trailLastPlayed", "statPlays", "statArtists", "statTracks", "introHeadline", "introBody", "introFeatureSound", "introFeatureLyrics", "introFeatureOffline", "introStart", "expandPlayer", "collapsePlayer", "lyricsFocus")
+        private val requiredKeys = setOf("welcomeBadge", "welcomeTitle", "languageQuestion", "nameQuestion", "namePlaceholder", "tasteQuestion", "skipAndContinue", "startListening", "settings", "settingsSubtitle", "design", "playback", "preferences", "app", "animations", "animationsSubtitle", "dynamicColor", "dynamicColorSubtitle", "sponsorBlock", "sponsorBlockSubtitle", "skipSilence", "skipSilenceSubtitle", "redoQuestionnaire", "redoQuestionnaireSubtitle", "language", "languageSubtitle", "home", "search", "library", "player", "queue", "lyrics", "related", "song", "video", "nowPlaying", "emptyPlayer", "phoneSpeaker", "connected", "volume", "audioQuality", "done", "queueEmpty", "lyricsUnavailable", "synced", "libraryTitle", "librarySubtitle", "playlists", "newItem", "downloads", "favorites", "recent", "quickPicks", "play", "newReleases", "albumsForYou", "top50Unavailable", "artists", "albumsAndSingles", "songs", "searchPlaceholder", "back", "clear", "voice", "createPlaylistHint", "selectLanguagePrompt", "explore", "exploreTitle", "exploreSubtitle", "exploreMoods", "exploreSamples", "exploreSamplesSubtitle", "exploreSamplesError", "exploreSamplesRetry", "exploreFresh", "exploreNewVideos", "exploreEmpty", "localWaveName", "localWaveEmoji", "localWaveQuery", "exploreNewReleases", "exploreRapDrill", "exploreElectronic", "explorePopGlobal", "exploreRnbSoul", "exploreRockAlt", "exploreLatino", "exploreLofiChill", "exploreJpopAnime", "followArtist", "followingArtist", "releaseRadar", "similarArtists", "similarToFollowed", "theme", "themeSubtitle", "personalOrbitTitle", "personalOrbitSubtitle", "voicesTitle", "voicesSubtitle", "totalComments", "engagement", "audioEngine", "audioEngineSubtitle", "equalizer", "equalizerSubtitle", "preset", "bassBoost", "virtualizer", "crossfade", "djSoft", "replayGain", "tempo", "pitch", "gapless", "restartRequiredTitle", "restartRequiredBody", "restartNow", "later", "audioQualityAuto", "audioQualityHigh", "audioQualityLow", "pulseSectionBand", "pulseTitle", "pulseSubtitle", "followedArtistsTitle", "followedArtistsSubtitle", "listeningHistoryEmptyTitle", "listeningHistoryEmptyDetail", "pulseMinutes", "pulseMinuteShort", "pulsePlays", "pulseStreak", "pulseCompletion", "pulseTopArtists", "pulseWeek", "pulsePeakHour", "pulseEmpty", "listeningHistory", "listeningHistorySubtitle", "listeningPrompt", "voiceSearchUnsupported", "musicFiltersComingSoon", "recentSearches", "actions", "removeFromFavorites", "addToFavorites", "playNext", "addToQueue", "addToPlaylist", "alreadyOffline", "download", "openArtist", "openAlbum", "deleteDownload", "share", "shareSong", "removeFromRecentSearches", "songOptions", "goToPlayer", "saveOffline", "favorite", "downloaded", "remove", "youMightAlsoLike", "topResult", "currentlyPlaying", "artistLabel", "playNow", "biography", "newUpdate", "updateDescription", "whatsNew", "update", "updateRetry", "updateDownloading", "updatePreparing", "updateInstalling", "updateReadyToInstall", "updateFailed", "updateAllowInstalls", "updateLinkUnavailable", "cannotOpenDownload", "externalLinkUnavailable", "cannotOpenExternalLink", "continuousRadio", "continuousRadioSubtitle", "artistsLabelPlural", "albumMood", "openLyricsAnalysis", "closeLyrics", "lyricsDuet", "lyricsCinema", "lyricsPage", "lyricsRomanization", "lyricsCompact", "changeLyrics", "automaticLyrics", "selectVerses", "copyVerses", "shareVerses", "lyricsVersions", "lyricsSections", "lyricsSectionIntro", "lyricsSectionVerse", "lyricsSectionPreChorus", "lyricsSectionChorus", "lyricsSectionBridge", "lyricsSectionInstrumental", "lyricsSectionOutro", "automaticTranslation", "automaticTranslationSubtitle", "atmosphere", "themes", "chorusDetected", "goToChorus", "close", "complete", "delete", "newPlaylist", "playlistName", "create", "cancel", "newPlaylistName", "createNewPlaylist", "createAndAdd", "downloadPlaylist", "playAll", "playingFrom", "closePlayer", "options", "showLyrics", "shuffle", "previous", "next", "repeat", "persistentQueue", "continueListening", "favoritesPlain", "offline", "more", "mix", "mixForYou", "genres", "smartMusicProfile", "flow", "pictureInPicture", "discoveryFlow", "shareDiagnostics", "albumUnavailable", "albumTracksUnavailable", "albumTracksLoadFailed", "showLess", "showMore", "playing", "artistProfileUnavailable", "popularTracks", "showAll", "versionLabel", "generalImprovements", "historyLabel", "undoRemoval", "lyricsAnalysis", "linesLabel", "wordsLabel", "localAnalysis", "open", "newRelease", "newReleaseSubtitle", "saved", "save", "noOfflineDownloads", "createFirstPlaylist", "createFirstPlaylistSubtitle", "downloadTrackHint", "savedTracks", "favoritesEmpty", "playlistEmpty", "showPersonalListening", "showRecentReleases", "showRecommendedAlbums", "showDiscoveredArtists", "showChartsCountry", "partialDownloadResume", "lyricsAnalysisSection", "lyricsAnalysisCompact", "lyricsAnalysisCompactSubtitle", "createDataBackup", "createDataBackupSubtitle", "updateAvailable", "updates", "checkingLatestVersion", "latestVersionReady", "latestInstalled", "checkNewVersions", "releasePageReady", "installedVersion", "openPlayer", "searchSongsArtists", "songsPlain", "shareVia", "emptySearchPrompt", "cancelDownload", "readAll", "singlesAndEps", "tapHeartToAdd", "all", "automaticResume", "simultaneousDownloads", "simultaneousDownloadsSubtitle", "backupRestoreSection", "restoreBackup", "restoreBackupSubtitle", "playbackResilienceSection", "exportSafeDiagnostics", "generateResolverTrace", "safeDiagnosticsSubtitle", "check", "checking", "dragToReorder", "homeInterfaceSection", "compactHome", "compactHomeSubtitle", "yourOrbitSetting", "voicesSetting", "voicesSettingSubtitle", "newReleasesSetting", "albumsForYouSetting", "trendingArtists", "top50Charts", "mobilePlayerSection", "advancedGestures", "advancedGesturesSubtitle", "pureBlack", "pureBlackSubtitle", "hapticFeedback", "hapticFeedbackSubtitle", "doubleTapSeek", "doubleTapSeekSubtitle", "longPress", "longPressSubtitle", "downloadEngineSection", "wifiOnly", "wifiOnlySubtitle", "chargingOnly", "chargingOnlySubtitle", "resumeDownload", "pauseDownload", "signedApkReady", "downloadsInProgress", "downloadInProgress", "newAlbums", "newSingles", "newAlbum", "downloadsFolder", "offlineDownloadsPlain", "personalPlaylists", "searchingYouTubeMusic", "searchingLyrics", "pause", "newSingle", "albumsPlain", "albumPlain", "singlePlain", "playlistsPlain", "profileActive", "profileLearning", "newBadge", "brightness", "timer", "normalizationShort", "coverAndTags", "madeWithBy", "activeIndicator", "batteryUnrestricted", "batteryUnrestrictedSubtitle", "batteryUnrestrictedActive", "levyraSelection", "releasedToday", "justReleased", "chartTrending", "selectedForYou", "availableToday", "releasedThisWeek", "popularInCharts", "collectionsTitle", "collectionsSubtitle", "collectionFresh", "collectionLocal", "collectionWorkout", "collectionChill", "collectionFocus", "collectionParty", "collectionRap", "collectionPop", "collectionDiscovery", "collectionUpdatedToday", "collectionEditorial", "collectionCharts", "collectionRepeat", "collectionThrowback", "collectionGems", "downloadQualityPreset", "downloadQualityPresetSubtitle", "downloadPresetAutomatic", "downloadPresetHighQuality", "downloadPresetDataSaver", "downloadFolderOrganization", "downloadFolderOrganizationSubtitle", "downloadFolderArtist", "downloadFolderArtistAlbum", "downloadSpeedLimit", "downloadSpeedLimitSubtitle", "downloadSpeedUnlimited", "downloadEmbedMetadata", "downloadEmbedMetadataSubtitle", "downloadEmbedArtwork", "downloadEmbedArtworkSubtitle", "downloadVerifyFile", "downloadVerifyFileSubtitle", "downloadSkipDuplicates", "downloadSkipDuplicatesSubtitle", "trailTitle", "trailPlays", "trailUnique", "trailLastPlayed", "statPlays", "statArtists", "statTracks", "introHeadline", "introBody", "introFeatureSound", "introFeatureLyrics", "introFeatureOffline", "introStart", "expandPlayer", "collapsePlayer", "lyricsFocus")
         private val motionArtworkKeys = setOf("motionArtwork", "motionArtworkSubtitle")
         private val exploreSectionKeys = setOf("exploreMoodSection", "exploreAfrobeats")
         private val freshCurrentsKeys = setOf("freshScopeWorld", "freshMomentTitle")
@@ -2530,6 +2531,7 @@ class LevyraStrings private constructor(
             "shareDiagnostics" to "Share diagnostics",
             "albumUnavailable" to "Album unavailable",
             "albumTracksUnavailable" to "Album tracks unavailable",
+            "albumTracksLoadFailed" to "Couldn't load the album tracks. Check your connection and try again.",
             "showLess" to "Show less",
             "showMore" to "Show more",
             "playing" to "Playing",
@@ -2928,6 +2930,7 @@ class LevyraStrings private constructor(
             "shareDiagnostics" to "Condividi diagnostica",
             "albumUnavailable" to "Album non disponibile",
             "albumTracksUnavailable" to "Brani dell'album non disponibili",
+            "albumTracksLoadFailed" to "Impossibile caricare i brani dell'album. Controlla la connessione e riprova.",
             "showLess" to "Mostra meno",
             "showMore" to "Mostra altro",
             "playing" to "In riproduzione",
@@ -3326,6 +3329,7 @@ class LevyraStrings private constructor(
             "shareDiagnostics" to "Compartir diagnóstico",
             "albumUnavailable" to "Álbum no disponible",
             "albumTracksUnavailable" to "Las canciones del álbum no están disponibles",
+            "albumTracksLoadFailed" to "No se pudieron cargar las canciones del álbum. Revisa la conexión e inténtalo de nuevo.",
             "showLess" to "Mostrar menos",
             "showMore" to "Mostrar más",
             "playing" to "Reproduciendo",
@@ -3724,6 +3728,7 @@ class LevyraStrings private constructor(
             "shareDiagnostics" to "Partager le diagnostic",
             "albumUnavailable" to "Album indisponible",
             "albumTracksUnavailable" to "Titres de l'album indisponibles",
+            "albumTracksLoadFailed" to "Impossible de charger les titres de l'album. Vérifie ta connexion et réessaie.",
             "showLess" to "Afficher moins",
             "showMore" to "Afficher plus",
             "playing" to "En cours de lecture",
@@ -4122,6 +4127,7 @@ class LevyraStrings private constructor(
             "shareDiagnostics" to "Diagnose teilen",
             "albumUnavailable" to "Album nicht verfügbar",
             "albumTracksUnavailable" to "Albumtitel nicht verfügbar",
+            "albumTracksLoadFailed" to "Die Albumtitel konnten nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.",
             "showLess" to "Weniger anzeigen",
             "showMore" to "Mehr anzeigen",
             "playing" to "Wird abgespielt",
@@ -4520,6 +4526,7 @@ class LevyraStrings private constructor(
             "shareDiagnostics" to "Partilhar diagnóstico",
             "albumUnavailable" to "Álbum indisponível",
             "albumTracksUnavailable" to "Músicas do álbum indisponíveis",
+            "albumTracksLoadFailed" to "Não foi possível carregar as músicas do álbum. Verifique a conexão e tente novamente.",
             "showLess" to "Mostrar menos",
             "showMore" to "Mostrar mais",
             "playing" to "A reproduzir",
@@ -4918,6 +4925,7 @@ class LevyraStrings private constructor(
             "shareDiagnostics" to "Diagnostiek delen",
             "albumUnavailable" to "Album niet beschikbaar",
             "albumTracksUnavailable" to "Albumnummers niet beschikbaar",
+            "albumTracksLoadFailed" to "De albumnummers konden niet worden geladen. Controleer je verbinding en probeer het opnieuw.",
             "showLess" to "Minder tonen",
             "showMore" to "Meer tonen",
             "playing" to "Wordt afgespeeld",
@@ -5316,6 +5324,7 @@ class LevyraStrings private constructor(
             "shareDiagnostics" to "Udostępnij diagnostykę",
             "albumUnavailable" to "Album jest niedostępny",
             "albumTracksUnavailable" to "Utwory z albumu są niedostępne",
+            "albumTracksLoadFailed" to "Nie udało się wczytać utworów z albumu. Sprawdź połączenie i spróbuj ponownie.",
             "showLess" to "Pokaż mniej",
             "showMore" to "Pokaż więcej",
             "playing" to "Odtwarzanie",
@@ -5714,6 +5723,7 @@ class LevyraStrings private constructor(
             "shareDiagnostics" to "Distribuie diagnosticul",
             "albumUnavailable" to "Album indisponibil",
             "albumTracksUnavailable" to "Piesele albumului nu sunt disponibile",
+            "albumTracksLoadFailed" to "Piesele albumului nu au putut fi încărcate. Verifică conexiunea și încearcă din nou.",
             "showLess" to "Afișează mai puțin",
             "showMore" to "Afișează mai mult",
             "playing" to "Se redă",
@@ -6112,6 +6122,7 @@ class LevyraStrings private constructor(
             "shareDiagnostics" to "Κοινοποίηση διαγνωστικών",
             "albumUnavailable" to "Το άλμπουμ δεν είναι διαθέσιμο",
             "albumTracksUnavailable" to "Τα κομμάτια του άλμπουμ δεν είναι διαθέσιμα",
+            "albumTracksLoadFailed" to "Δεν ήταν δυνατή η φόρτωση των κομματιών του άλμπουμ. Έλεγξε τη σύνδεση και δοκίμασε ξανά.",
             "showLess" to "Εμφάνιση λιγότερων",
             "showMore" to "Εμφάνιση περισσότερων",
             "playing" to "Αναπαραγωγή",
@@ -6510,6 +6521,7 @@ class LevyraStrings private constructor(
             "shareDiagnostics" to "Dela diagnostik",
             "albumUnavailable" to "Albumet är inte tillgängligt",
             "albumTracksUnavailable" to "Albumets låtar är inte tillgängliga",
+            "albumTracksLoadFailed" to "Det gick inte att läsa in albumets låtar. Kontrollera anslutningen och försök igen.",
             "showLess" to "Visa mindre",
             "showMore" to "Visa fler",
             "playing" to "Spelas",
@@ -6908,6 +6920,7 @@ class LevyraStrings private constructor(
             "shareDiagnostics" to "Del diagnostik",
             "albumUnavailable" to "Albummet er ikke tilgængeligt",
             "albumTracksUnavailable" to "Albummets sange er ikke tilgængelige",
+            "albumTracksLoadFailed" to "Albummets sange kunne ikke indlæses. Tjek forbindelsen, og prøv igen.",
             "showLess" to "Vis mindre",
             "showMore" to "Vis flere",
             "playing" to "Afspilles",
@@ -7306,6 +7319,7 @@ class LevyraStrings private constructor(
             "shareDiagnostics" to "Sdílet diagnostiku",
             "albumUnavailable" to "Album není dostupné",
             "albumTracksUnavailable" to "Skladby alba nejsou dostupné",
+            "albumTracksLoadFailed" to "Skladby alba se nepodařilo načíst. Zkontroluj připojení a zkus to znovu.",
             "showLess" to "Zobrazit méně",
             "showMore" to "Zobrazit více",
             "playing" to "Přehrává se",
@@ -7704,6 +7718,7 @@ class LevyraStrings private constructor(
             "shareDiagnostics" to "Поділитися діагностикою",
             "albumUnavailable" to "Альбом недоступний",
             "albumTracksUnavailable" to "Треки альбому недоступні",
+            "albumTracksLoadFailed" to "Не вдалося завантажити треки альбому. Перевірте з'єднання та спробуйте ще раз.",
             "showLess" to "Показати менше",
             "showMore" to "Показати більше",
             "playing" to "Відтворюється",
@@ -8102,6 +8117,7 @@ class LevyraStrings private constructor(
             "shareDiagnostics" to "Поделиться диагностикой",
             "albumUnavailable" to "Альбом недоступен",
             "albumTracksUnavailable" to "Треки альбома недоступны",
+            "albumTracksLoadFailed" to "Не удалось загрузить треки альбома. Проверьте соединение и попробуйте ещё раз.",
             "showLess" to "Показать меньше",
             "showMore" to "Показать больше",
             "playing" to "Воспроизводится",
@@ -8500,6 +8516,7 @@ class LevyraStrings private constructor(
             "shareDiagnostics" to "Tanılamayı paylaş",
             "albumUnavailable" to "Albüm kullanılamıyor",
             "albumTracksUnavailable" to "Albümdeki şarkılar kullanılamıyor",
+            "albumTracksLoadFailed" to "Albümdeki şarkılar yüklenemedi. Bağlantını kontrol edip tekrar dene.",
             "showLess" to "Daha az göster",
             "showMore" to "Daha fazla göster",
             "playing" to "Oynatılıyor",
@@ -8898,6 +8915,7 @@ class LevyraStrings private constructor(
             "shareDiagnostics" to "مشاركة التشخيصات",
             "albumUnavailable" to "الألبوم غير متاح",
             "albumTracksUnavailable" to "مقاطع الألبوم غير متاحة",
+            "albumTracksLoadFailed" to "تعذّر تحميل مقاطع الألبوم. تحقّق من الاتصال وحاول مرة أخرى.",
             "showLess" to "عرض أقل",
             "showMore" to "عرض المزيد",
             "playing" to "قيد التشغيل",
@@ -9296,6 +9314,7 @@ class LevyraStrings private constructor(
             "shareDiagnostics" to "分享诊断信息",
             "albumUnavailable" to "专辑不可用",
             "albumTracksUnavailable" to "专辑曲目不可用",
+            "albumTracksLoadFailed" to "无法加载专辑曲目。请检查网络连接后重试。",
             "showLess" to "收起",
             "showMore" to "显示更多",
             "playing" to "正在播放",

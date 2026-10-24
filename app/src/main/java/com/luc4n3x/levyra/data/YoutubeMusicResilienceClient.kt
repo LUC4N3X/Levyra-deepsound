@@ -308,7 +308,9 @@ internal class YoutubeMusicResilienceClient(
             }
             if (!isUseful(kind, root)) {
                 if (affectsProfileHealth) {
-                    if (isRequestScopedDenial(response.code, response.body)) {
+                    if (kind == YoutubeMusicRequestKind.SEARCH && isConclusiveEmptySearch(root)) {
+                        recordSuccess(profile, response.latencyMs, clock())
+                    } else if (isRequestScopedDenial(response.code, response.body)) {
                         deferredDenials += YoutubeMusicDeferredFailure(
                             profile = profile,
                             statusCode = response.code,
@@ -584,6 +586,12 @@ internal class YoutubeMusicResilienceClient(
             "musicCardShelfRenderer",
             "playlistPanelVideoRenderer"
         )
+        fun isConclusiveEmptySearch(root: JSONObject): Boolean {
+            if (root.has("error")) return false
+            val raw = root.toString()
+            return raw.contains("sectionListRenderer") && raw.contains("messageRenderer") &&
+                SEARCH_MARKERS.none(raw::contains)
+        }
         val SEARCH_SUGGESTION_MARKERS = arrayOf(
             "searchSuggestionsSectionRenderer",
             "searchSuggestionRenderer",

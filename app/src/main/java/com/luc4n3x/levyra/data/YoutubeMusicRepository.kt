@@ -279,7 +279,7 @@ private val RECOMMENDATION_CREDIT_SUFFIX =
     Regex("""(?i)\b(feat|featuring|ft|with|prod|official|audio|video|lyrics)\b.*$""")
 
 private val ALBUM_RECOMMENDATION_ARTIST_SEPARATOR =
-    Regex("(?i)\\s*(?:,|;|&|\\bfeat(?:uring)?\\b|\\bft\\b|\\s+[x×]\\s+)\\s*")
+    Regex("(?i)\\s*(?:,|;|&|\\bfeat(?:uring)?\\b|\\bft\\b|\\s+[x×]\\s+|\\s+[иі]\\s+)\\s*")
 
 private val ALBUM_RECOMMENDATION_EDITION_SUFFIX = Regex(
     """(?i)\s+(?:deluxe(?: edition)?|expanded(?: edition)?|anniversary(?: edition)?|remaster(?:ed)?(?: edition)?|bonus(?: track)?s?|special edition|collector(?:s)? edition|legacy edition|tour edition|digital edition|international edition|explicit edition|explicit version)\b.*$"""
@@ -774,6 +774,11 @@ internal fun selectResolvedAlbumCandidate(
         titleMatches(candidate) &&
             albumArtistCompatibility(album, candidate) != AlbumArtistCompatibility.Conflicting
     }
+}
+
+internal fun albumMetadataFallbackLanguage(requestScope: String): String? {
+    val neutralScope = "${YoutubeRegionProfile.US_HL}-${YoutubeRegionProfile.US_GL}".lowercase(Locale.ROOT)
+    return YoutubeRegionProfile.US_HL.takeUnless { requestScope.trim().lowercase(Locale.ROOT) == neutralScope }
 }
 
 internal fun albumResolutionCandidates(album: AlbumHit, candidates: List<AlbumHit>): List<AlbumHit> {
@@ -1789,8 +1794,17 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         album: AlbumHit,
         languageCode: String = LevyraLanguageCatalog.deviceDefault()
     ): AlbumDetail = withContext(Dispatchers.IO) {
+        val localized = albumDetailForLanguage(album, languageCode)
+        if (localized.tracks.isNotEmpty()) return@withContext localized
+        val fallbackLanguage = albumMetadataFallbackLanguage(YoutubeRegionProfile.cacheScope(languageCode))
+            ?: return@withContext localized
+        val neutral = albumDetailForLanguage(album, fallbackLanguage)
+        if (neutral.tracks.isNotEmpty()) neutral else localized
+    }
+
+    private suspend fun albumDetailForLanguage(album: AlbumHit, languageCode: String): AlbumDetail {
         val initial = loadAlbumDetailOnce(album, languageCode)
-        if (initial.tracks.isNotEmpty()) return@withContext initial
+        if (initial.tracks.isNotEmpty()) return initial
 
         val attemptedBrowseIds = setOf(album.browseId, initial.album.browseId)
             .map(String::trim)
@@ -1804,9 +1818,9 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
 
         recoveryCandidates.forEach { recovery ->
             val recovered = loadAlbumDetailOnce(recovery, languageCode)
-            if (recovered.tracks.isNotEmpty()) return@withContext recovered
+            if (recovered.tracks.isNotEmpty()) return recovered
         }
-        initial
+        return initial
     }
 
     private suspend fun loadAlbumDetailOnce(album: AlbumHit, languageCode: String): AlbumDetail {

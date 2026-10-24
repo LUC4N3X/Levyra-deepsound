@@ -244,6 +244,7 @@ internal fun caLocalizationEntries(): Map<String, String> = mapOf(
     "shareDiagnostics" to "Comparteix el diagnòstic",
     "albumUnavailable" to "Àlbum no disponible",
     "albumTracksUnavailable" to "Les cançons de l'àlbum no estan disponibles",
+    "albumTracksLoadFailed" to "No s'han pogut carregar les cançons de l'àlbum. Comprova la connexió i torna-ho a provar.",
     "showLess" to "Mostra'n menys",
     "showMore" to "Mostra'n més",
     "playing" to "Sonant",

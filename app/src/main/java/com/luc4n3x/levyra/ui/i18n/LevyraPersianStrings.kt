@@ -244,6 +244,7 @@ internal fun faLocalizationEntries(): Map<String, String> = mapOf(
     "shareDiagnostics" to "اشتراک‌گذاری عیب‌یابی",
     "albumUnavailable" to "آلبوم در دسترس نیست",
     "albumTracksUnavailable" to "آهنگ‌های آلبوم در دسترس نیستند",
+    "albumTracksLoadFailed" to "بارگیری قطعه‌های آلبوم ممکن نشد. اتصال را بررسی کنید و دوباره تلاش کنید.",
     "showLess" to "نمایش کمتر",
     "showMore" to "نمایش بیشتر",
     "playing" to "در حال پخش",

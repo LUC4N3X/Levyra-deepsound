@@ -4546,7 +4546,7 @@ private fun AlbumOverlay(
             }
             album != null && !state.albumLoading -> item(key = "album-no-tracks") {
                 Box(modifier = Modifier.padding(horizontal = gutter, vertical = 8.dp)) {
-                    AlbumTracksUnavailableState(strings.albumTracksUnavailable)
+                    AlbumTracksUnavailableState(state.albumError ?: strings.albumTracksUnavailable)
                 }
             }
         }

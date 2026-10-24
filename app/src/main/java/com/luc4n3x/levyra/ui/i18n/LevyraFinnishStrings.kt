@@ -244,6 +244,7 @@ internal fun fiLocalizationEntries(): Map<String, String> = mapOf(
     "shareDiagnostics" to "Jaa diagnostiikka",
     "albumUnavailable" to "Albumi ei ole saatavilla",
     "albumTracksUnavailable" to "Albumin kappaleet eivät ole saatavilla",
+    "albumTracksLoadFailed" to "Albumin kappaleita ei voitu ladata. Tarkista yhteys ja yritä uudelleen.",
     "showLess" to "Näytä vähemmän",
     "showMore" to "Näytä lisää",
     "playing" to "Toistetaan",

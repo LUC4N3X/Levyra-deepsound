@@ -244,6 +244,7 @@ internal fun skLocalizationEntries(): Map<String, String> = mapOf(
     "shareDiagnostics" to "Zdieľať diagnostiku",
     "albumUnavailable" to "Album nie je k dispozícii",
     "albumTracksUnavailable" to "Skladby albumu nie sú k dispozícii",
+    "albumTracksLoadFailed" to "Skladby albumu sa nepodarilo načítať. Skontroluj pripojenie a skús to znova.",
     "showLess" to "Zobraziť menej",
     "showMore" to "Zobraziť viac",
     "playing" to "Hrá",

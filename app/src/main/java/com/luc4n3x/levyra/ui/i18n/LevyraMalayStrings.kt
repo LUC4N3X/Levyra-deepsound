@@ -244,6 +244,7 @@ internal fun msLocalizationEntries(): Map<String, String> = mapOf(
     "shareDiagnostics" to "Kongsi diagnostik",
     "albumUnavailable" to "Album tidak tersedia",
     "albumTracksUnavailable" to "Lagu album tidak tersedia",
+    "albumTracksLoadFailed" to "Lagu album tidak dapat dimuatkan. Semak sambungan anda dan cuba lagi.",
     "showLess" to "Tunjukkan kurang",
     "showMore" to "Tunjukkan lagi",
     "playing" to "Dimainkan",

@@ -190,6 +190,31 @@ class YoutubeMusicResilienceClientTest {
     }
 
     @Test
+    fun conclusiveNoResultsSearchDoesNotBlockTheProfileForLaterQueries() {
+        val noResults =
+            """{"contents":{"tabbedSearchResultsRenderer":{"tabs":[{"tabRenderer":{"content":{"sectionListRenderer":{"contents":[{"itemSectionRenderer":{"contents":[{"messageRenderer":{"text":{"runs":[{"text":"No results"}]}}}]}}]}}}}]}}}"""
+        val calls = mutableListOf<String>()
+        val client = client { request ->
+            val query = JSONObject(request.payload).optString("query")
+            calls += "${request.profile.id}:$query"
+            if (query.startsWith("missing")) {
+                YoutubeMusicTransportResponse(200, noResults, 10L)
+            } else {
+                YoutubeMusicTransportResponse(200, validSearch(), 10L)
+            }
+        }
+
+        assertNull(client.search("missing one", "ru", params = "EgWKAQIYAWoMEA4QChADEAQQCRAF"))
+        assertNull(client.search("missing two", "ru", params = "EgWKAQIYAWoMEA4QChADEAQQCRAF"))
+        val webRemix = client.diagnostics().getValue("web-remix")
+        assertEquals(0, webRemix.consecutiveFailures)
+        assertEquals(0L, webRemix.blockedUntilMs)
+
+        assertNotNull(client.search("present", "ru", params = "EgWKAQIYAWoMEA4QChADEAQQCRAF"))
+        assertEquals("web-remix:present", calls.last())
+    }
+
+    @Test
     fun searchAcceptsTabbedSearchResultsRendererCarryingResults() {
         val client = client { _ ->
             YoutubeMusicTransportResponse(
