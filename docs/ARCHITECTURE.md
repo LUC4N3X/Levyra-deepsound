@@ -931,6 +931,12 @@ New features should preserve these invariants:
 - low-RAM plans must remain bounded;
 - every resolver or navigation change should include a regression test.
 
+## Local music experiences
+
+`RewindViewModel` loads calendar years through `RewindRepository`, reusing `ListeningInsightsRepository.yearSnapshot` and the existing listening-event DAO. Album rankings and monthly listening are aggregated from saved events without another store or a schema change. The chapter presentation uses the current skin, Material shapes and motion scheme, and the existing Listening Receipt renderer for export. Saved-history coverage is shown explicitly.
+
+`DownloadHealthViewModel` owns cancellable, sequential scans through `DownloadHealthRepository` on the I/O dispatcher. The scan opens saved URIs and inspects audio tracks without changing files. Repairs use `OfflineExportWorker` with an explicit repair target, bypassing the ordinary skip-existing shortcut. The original record is removed only after a replacement is saved successfully; the original file is retained. The durable task payload preserves the repair target through pause, resume and WorkManager pruning. Separate saved copies use separate repair task keys. Scanning verifies container readability and duration plausibility, not a full decode or a stored checksum.
+
 ## Optional YouTube Music Account Library
 
 `YoutubeMusicAccountViewModel` owns an isolated state flow for the optional account overlay. It coordinates `YoutubeMusicAccountRepository` and the existing playlist/favorite stores; the root ViewModel refreshes its local playlist projection after an import. Settings launches the account screen, and a connected account exposes a Library shortcut.

@@ -124,6 +124,7 @@ internal fun SpotifyHomeHeader(
             Box(Modifier.size(48.dp).clip(CircleShape).levyraPressable(onClick = onSettings, onClickLabel = strings.settings, role = Role.Button), contentAlignment = Alignment.Center) {
                 SpotifyAvatar(name, 32.dp, Modifier.clip(CircleShape))
             }
+            com.luc4n3x.levyra.ui.rewind.RewindEntry()
             LazyRow(
                 Modifier.weight(1f),
                 contentPadding = PaddingValues(start = 4.dp, end = inset),

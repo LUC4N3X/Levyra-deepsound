@@ -73,6 +73,7 @@ internal fun PrismHomeHeader(
     val strings = LocalLevyraStrings.current
     Column(Modifier.fillMaxWidth().padding(horizontal = inset)) {
         val actions: @Composable RowScope.() -> Unit = {
+            com.luc4n3x.levyra.ui.rewind.RewindEntry()
             IconButton(onClick = onSearch, modifier = Modifier.size(48.dp)) { Icon(Icons.Outlined.Search, strings.search, tint = LevyraText) }
             IconButton(onClick = onSettings, modifier = Modifier.size(48.dp)) { Icon(Icons.Outlined.Settings, strings.settings, tint = LevyraText) }
         }

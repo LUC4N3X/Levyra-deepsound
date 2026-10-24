@@ -220,7 +220,10 @@ private fun AppleMusicHomeActions.playShuffled(tracks: List<Track>) {
 @Composable
 private fun AppleMusicHomeTitle(title: String, moreLabel: String, countryLabel: String, actions: AppleMusicHomeActions) {
     Column {
-        AppleMusicLargeTitle(title, moreLabel, actions.openSettings)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AppleMusicLargeTitle(title, moreLabel, actions.openSettings, Modifier.weight(1f))
+            com.luc4n3x.levyra.ui.rewind.RewindEntry()
+        }
         if (countryLabel.isNotBlank()) AppleMusicCountryChip(countryLabel, actions.pickCountry)
     }
 }

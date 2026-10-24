@@ -8,6 +8,33 @@ import androidx.room.Query
 
 @Dao
 interface ListenEventsDao {
+    @Query("SELECT DISTINCT CAST(strftime('%Y', startedAt / 1000, 'unixepoch', 'localtime') AS INTEGER) FROM listen_events WHERE listenedMs >= :minimumEventMs ORDER BY 1 DESC")
+    suspend fun rewindYears(minimumEventMs: Long): List<Int>
+
+    @Query(
+        """
+        SELECT MAX(album) AS title, MAX(artist) AS artist,
+               MAX(CASE WHEN largeThumbnailUrl != '' THEN largeThumbnailUrl ELSE thumbnailUrl END) AS artworkUrl,
+               SUM(listenedMs) AS listenedMs,
+               SUM(CASE WHEN listenedMs >= :countedPlayMs THEN 1
+                   WHEN completed = 1 AND durationMs > 0 AND durationMs < :countedPlayMs
+                       AND listenedMs * :completionDenominator >= durationMs * :completionNumerator THEN 1
+                   ELSE 0 END) AS plays
+        FROM listen_events
+        WHERE startedAt >= :fromMs AND startedAt < :toMs AND listenedMs >= :minimumEventMs AND trim(album) != ''
+        GROUP BY lower(trim(album)), lower(trim(artist))
+        ORDER BY listenedMs DESC, plays DESC, title ASC, artist ASC LIMIT 5
+        """
+    )
+    suspend fun rewindAlbums(
+        fromMs: Long,
+        toMs: Long,
+        minimumEventMs: Long,
+        countedPlayMs: Long,
+        completionNumerator: Long,
+        completionDenominator: Long
+    ): List<RewindAlbumRow>
+
     @Insert
     suspend fun insert(event: ListenEventEntity)
 

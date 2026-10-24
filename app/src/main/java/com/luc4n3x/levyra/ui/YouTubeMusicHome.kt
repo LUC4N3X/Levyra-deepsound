@@ -124,7 +124,8 @@ private fun LazyListScope.youTubeMusicHomeHeaders(
     item(key = "ytm-home-bar", contentType = "ytm-bar") {
         YouTubeMusicTopBar(
             title = "Levyra", searchLabel = copy.search, settingsLabel = copy.settings,
-            onSearch = actions.openSearch, onSettings = actions.home.openSettings
+            onSearch = actions.openSearch, onSettings = actions.home.openSettings,
+            trailing = { com.luc4n3x.levyra.ui.rewind.RewindEntry() }
         )
     }
     if (chips.isNotEmpty()) {
