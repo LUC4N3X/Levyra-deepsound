@@ -245,6 +245,7 @@ docs/assets/showcase/editorial-cards/21_skin_studio.webp
 docs/assets/showcase/editorial-cards/22_spotify_style.webp
 docs/assets/showcase/editorial-cards/23_apple_music_style.webp
 docs/assets/showcase/editorial-cards/24_youtube_music_style.webp
+docs/assets/showcase/editorial-cards/24_signature_looks.webp
 docs/assets/showcase/editorial-cards/{21_spotify_style.webp => 22_spotify_style.webp}
 docs/assets/showcase/editorial-cards/{22_apple_music_style.webp => 23_apple_music_style.webp}
 docs/assets/showcase/editorial-cards/{23_youtube_music_style.webp => 24_youtube_music_style.webp}

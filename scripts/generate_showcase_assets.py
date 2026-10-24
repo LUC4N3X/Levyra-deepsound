@@ -621,13 +621,13 @@ README_CARD_SPECS = [
         "06_built_for_your_taste",
         "Player Styles",
         "Choose from multiple player layouts, controls and stream modes",
-        "Screenshot_20261024_193852_Levyra.jpg",
-        (240, 249, 255),
-        (224, 242, 254),
-        (14, 165, 233),
-        (186, 230, 253),
-        (12, 74, 96),
-        (2, 132, 199),
+        "Screenshot_20261024_203401_Levyra.jpg",
+        (254, 250, 242),
+        (250, 240, 222),
+        (217, 119, 6),
+        (245, 222, 179),
+        (69, 45, 12),
+        (180, 83, 9),
     ),
     (
         "07_every_genre",
@@ -707,7 +707,7 @@ README_CARD_SPECS = [
     # Row 4: Personalization & Artists
     (
         "13_tailor_every_detail",
-        "Make Levyra Yours",
+        "Skin Studio",
         "Custom accent themes, surface tones, and corner radius",
         "Screenshot_20261015_205614_LEVYRA.jpg",
         (254, 242, 242),
@@ -804,24 +804,12 @@ README_CARD_SPECS = [
         (162, 28, 175),
     ),
 
-    # Row 6: Global Skins (4 Centered Cards)
+    # Row 6: Global Streaming Skins (Dual Dynamic Diptych Cuts)
     (
-        "21_skin_studio",
-        "Skin Studio",
-        "Seven complete looks. Switch layout in one tap",
-        "Screenshot_20261023_212906_LEVYRA.jpg",
-        (245, 243, 255),
-        (237, 233, 254),
-        (139, 92, 246),
-        (221, 214, 254),
-        (46, 16, 101),
-        (109, 40, 217),
-    ),
-    (
-        "22_spotify_style",
+        "21_spotify_style",
         "Spotify Style",
-        "Familiar green accents, shortcuts and artist glow",
-        "Screenshot_20261023_212929_LEVYRA.jpg",
+        "Familiar dark surfaces, green accents and artist glow",
+        "Screenshot_20261024_201452_Levyra.jpg",
         (236, 253, 245),
         (209, 250, 229),
         (30, 215, 96),
@@ -830,10 +818,10 @@ README_CARD_SPECS = [
         (22, 101, 52),
     ),
     (
-        "23_apple_music_style",
+        "22_apple_music_style",
         "Apple Music Style",
         "Editorial white surfaces, album shelves and bold type",
-        "Screenshot_20261023_212956_LEVYRA.jpg",
+        "Screenshot_20261024_201549_Levyra.jpg",
         (255, 241, 242),
         (255, 228, 230),
         (250, 45, 72),
@@ -842,16 +830,28 @@ README_CARD_SPECS = [
         (190, 18, 60),
     ),
     (
-        "24_youtube_music_style",
+        "23_youtube_music_style",
         "YouTube Music Style",
-        "Familiar mood chips, clean cards and daily charts",
-        "Screenshot_20261023_213023_LEVYRA.jpg",
+        "Dynamic chip filters, charts and pure black backdrop",
+        "Screenshot_20261024_201709_Levyra.jpg",
         (254, 242, 242),
         (254, 226, 226),
         (255, 0, 0),
         (254, 202, 202),
         (69, 10, 10),
         (185, 28, 28),
+    ),
+    (
+        "24_signature_looks",
+        "Signature Looks",
+        "From retro hi-fi warmth to modern tactile glass",
+        "Screenshot_20261024_201753_Levyra.jpg",
+        (250, 245, 255),
+        (243, 232, 255),
+        (168, 85, 247),
+        (233, 213, 255),
+        (59, 7, 100),
+        (126, 34, 206),
     ),]
 
 def make_campaign_device(filename, width):
@@ -1264,10 +1264,31 @@ def generate_readme_cards():
         artwork.save(out_path, "WEBP", quality=95, method=6)
         print(f"Saved README editorial card at {artwork.size}: {out_path}")
 
-    # 3. Render Cards 05 through 24 (Rows 2, 3, 4, 5, and 6 as clean centered cards!)
-    for index in range(4, len(README_CARD_SPECS)):
+    # 3. Render Cards 05 through 20 (Rows 2, 3, 4, and 5 as clean centered cards!)
+    for index in range(4, 20):
         spec = README_CARD_SPECS[index]
         artwork = render_readme_centered_card(spec)
+        cards.append(artwork)
+        out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
+        artwork.save(out_path, "WEBP", quality=95, method=6)
+        print(f"Saved README editorial card at {artwork.size}: {out_path}")
+
+    # 4. Render Row 6 Skins diptychs (Cards 21 & 22 Spotify/Apple and 23 & 24 YTM/Signature)
+    skins_left, skins_right = render_readme_hero_diptych(
+        README_CARD_SPECS[20],
+        README_CARD_SPECS[21],
+    )
+    for artwork, spec in ((skins_left, README_CARD_SPECS[20]), (skins_right, README_CARD_SPECS[21])):
+        cards.append(artwork)
+        out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
+        artwork.save(out_path, "WEBP", quality=95, method=6)
+        print(f"Saved README editorial card at {artwork.size}: {out_path}")
+
+    sig_left, sig_right = render_readme_theme_diptych(
+        README_CARD_SPECS[22],
+        README_CARD_SPECS[23],
+    )
+    for artwork, spec in ((sig_left, README_CARD_SPECS[22]), (sig_right, README_CARD_SPECS[23])):
         cards.append(artwork)
         out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
         artwork.save(out_path, "WEBP", quality=95, method=6)
