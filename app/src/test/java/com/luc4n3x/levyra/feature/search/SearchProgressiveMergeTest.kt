@@ -169,7 +169,48 @@ class SearchProgressiveMergeTest {
     }
 
     @Test
-    fun `official albums keep already paged albums`() = runBlocking {
+    fun `official discography is not truncated for prolific artists`() = runBlocking {
+        val albums = (1..24).map { index -> searchTestAlbum("Album $index", "Drake", "MPRE_$index") }
+        val refinement = refineSearchAlbums("drake", listOf(searchTestArtist("Drake", "UCdrake"))) {
+            SearchArtistDiscography(artist = searchTestArtist("Drake", "UCdrake"), albums = albums)
+        }
+
+        val refined = session("drake").withAlbumRefinement(refinement)
+
+        assertEquals(albums.map { it.browseId }, refined.results.albums.map { it.browseId })
+    }
+
+    @Test
+    fun `verified artist albums drop homonymous search pages`() = runBlocking {
+        val drake = searchTestArtist("Drake", "UCdrake")
+        val official = listOf(searchTestAlbum("Views", "Drake", "MPRE_views"), searchTestAlbum("Scorpion", "Drake", "MPRE_scorpion"))
+        val refinement = refineSearchAlbums("drake", listOf(drake)) {
+            SearchArtistDiscography(artist = drake, albums = official)
+        }
+        val snapshot = session("drake").copy(
+            results = SearchResults(albums = listOf(searchTestAlbum("Drake da Sul", "MC Saci", "MPRE_sul"))),
+            sectionContinuations = mapOf(SearchFilter.Albums to "tok")
+        )
+
+        val refined = snapshot.withAlbumRefinement(refinement)
+        val paged = refined.withSectionPage(
+            SearchFilter.Albums,
+            SearchSectionPage(
+                albums = listOf(
+                    searchTestAlbum("Drake Milligan - EP", "Drake Milligan", "MPRE_milligan"),
+                    searchTestAlbum("Johnson & Drake", "Johnson & Drake", "MPRE_johnson"),
+                    searchTestAlbum("Drake Hits", "Drake", "MPRE_hits").copy(artistBrowseId = "UCdrake"),
+                    searchTestAlbum("Scorpion", "Drake", "MPRE_scorpion")
+                )
+            ),
+            nextContinuation = ""
+        )
+
+        assertEquals(listOf("MPRE_views", "MPRE_scorpion"), paged.results.albums.map { it.browseId })
+    }
+
+    @Test
+    fun `official albums replace unverified paged albums`() = runBlocking {
         val paged = searchTestAlbum("Live", "Adele", "MPRE_live")
         val official = searchTestAlbum("25", "Adele", "MPRE_official")
         val refinement = refineSearchAlbums("adele", listOf(searchTestArtist("Adele", "UCadele"))) { adeleDiscography(albums = listOf(official)) }
@@ -179,7 +220,7 @@ class SearchProgressiveMergeTest {
         )
 
         assertEquals(
-            listOf("MPRE_official", "MPRE_live"),
+            listOf("MPRE_official"),
             snapshot.withAlbumRefinement(refinement).results.albums.map { it.browseId }
         )
     }
@@ -223,14 +264,14 @@ class SearchProgressiveMergeTest {
 
         val refined = session("adele").withAlbumRefinement(refinement)
 
-        assertEquals(listOf("MPRE_25"), refined.results.albums.map { it.browseId })
+        assertEquals(listOf("MPRE_25", "MPRE_easy"), refined.results.albums.map { it.browseId })
         val discography = requireNotNull(refined.results.discography)
         assertEquals(listOf("MPRE_easy"), discography.singles.map { it.browseId })
         assertEquals(listOf("RDadele"), discography.playlists.map { it.playlistId })
     }
 
     @Test
-    fun `singles only discography keeps search albums and still offers the discography`() = runBlocking {
+    fun `singles only discography replaces search albums with verified singles`() = runBlocking {
         val single = searchTestAlbum("Easy On Me", "Adele", "MPRE_easy").copy(releaseType = ReleaseType.Single)
         val refinement = refineSearchAlbums("adele", listOf(searchTestArtist("Adele", "UCadele"))) {
             adeleDiscography(singles = listOf(single))
@@ -238,8 +279,8 @@ class SearchProgressiveMergeTest {
         val searchAlbum = searchTestAlbum("30", "Adele", "MPRE_30")
         val refined = session("adele").copy(results = SearchResults(albums = listOf(searchAlbum))).withAlbumRefinement(refinement)
 
-        assertTrue(refinement is SearchAlbumRefinement.DropSongTitleEchoes)
-        assertEquals(listOf("MPRE_30"), refined.results.albums.map { it.browseId })
+        assertTrue(refinement is SearchAlbumRefinement.Official)
+        assertEquals(listOf("MPRE_easy"), refined.results.albums.map { it.browseId })
         assertEquals(listOf("MPRE_easy"), refined.results.discography?.singles?.map { it.browseId })
     }
 

@@ -218,7 +218,7 @@ private fun mergeSectionPage(base: SearchResults, filter: SearchFilter, page: Se
             songs = mergeSearchSongs(base.songs, page.songs)
         )
         SearchFilter.Videos -> base.copy(videos = mergeSearchSongs(base.videos, page.videos))
-        SearchFilter.Albums -> base.copy(albums = mergeSearchAlbums(base.albums, page.albums))
+        SearchFilter.Albums -> base.copy(albums = mergeSearchAlbums(base.albums, page.albums.verifiedBy(base.discography)))
         SearchFilter.Artists -> base.copy(artists = mergeSearchArtists(base.artists, page.artists))
         SearchFilter.Playlists -> base.copy(playlists = mergeSearchPlaylists(base.playlists, page.playlists))
         SearchFilter.All -> base
@@ -268,12 +268,7 @@ internal suspend fun refineSearchAlbums(
     val discography = searchCatching { officialDiscography(exactArtist) }
         .getOrNull()
         ?.takeUnless(SearchArtistDiscography::isEmpty)
-    val official = discography?.albums.orEmpty()
-        .asSequence()
-        .filter { album -> album.title.isNotBlank() && album.browseId.isNotBlank() }
-        .distinctBy(::searchAlbumTextKey)
-        .take(SEARCH_ALBUM_LIMIT)
-        .toList()
+    val official = discography?.verifiedReleases().orEmpty()
     return if (official.isNotEmpty()) {
         SearchAlbumRefinement.Official(official, discography)
     } else {
@@ -286,17 +281,24 @@ internal fun SearchSessionSnapshot.withAlbumRefinement(refinement: SearchAlbumRe
     val albums = when (refinement) {
         SearchAlbumRefinement.Keep -> base.albums
         is SearchAlbumRefinement.DropSongTitleEchoes -> albumsWithoutSongTitleEchoes(base.albums, base.songs)
-        is SearchAlbumRefinement.Official -> if (SearchFilter.Albums in sectionContinuations) {
-            mergeSearchAlbums(refinement.albums, base.albums)
-        } else {
-            refinement.albums
-        }
+        is SearchAlbumRefinement.Official -> refinement.albums
     }
     return copy(
         results = base.copy(albums = albums, discography = refinement.discography),
         carriedOver = false,
         verified = true
     )
+}
+
+private fun SearchArtistDiscography.verifiedReleases(): List<AlbumHit> =
+    (albums + compilations + singles)
+        .filter { album -> album.title.isNotBlank() && album.browseId.isNotBlank() }
+        .distinctBy(::searchAlbumTextKey)
+
+private fun List<AlbumHit>.verifiedBy(discography: SearchArtistDiscography?): List<AlbumHit> {
+    discography ?: return this
+    val verifiedIds = discography.verifiedReleases().mapTo(HashSet()) { it.browseId.lowercase() }
+    return filter { album -> album.browseId.lowercase() in verifiedIds }
 }
 
 internal fun albumsWithoutSongTitleEchoes(albums: List<AlbumHit>, songs: List<Track>): List<AlbumHit> {
