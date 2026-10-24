@@ -33,6 +33,8 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -40,8 +42,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +55,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -310,7 +316,7 @@ private fun SleepTimerPresets(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            listOf(15, 30, 45, 60).forEach { minutes ->
+            SleepTimerPresetMinutes.forEach { minutes ->
                 SleepPreset(
                     label = minutes.toString(),
                     suffix = copy.sleepMinuteUnit,
@@ -320,6 +326,12 @@ private fun SleepTimerPresets(
                 )
             }
         }
+        SleepTimerCustomDuration(
+            selectedMinutes = selectedMinutes,
+            endOfTrack = endOfTrack,
+            unit = copy.sleepMinuteUnit,
+            onSelectMinutes = onSelectMinutes
+        )
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
@@ -337,6 +349,54 @@ private fun SleepTimerPresets(
                 Spacer(Modifier.width(12.dp))
                 Text(strings.sleepTimerEndOfTrack, color = LevyraText, fontWeight = FontWeight.SemiBold)
             }
+        }
+    }
+}
+
+@Composable
+private fun SleepTimerCustomDuration(
+    selectedMinutes: Int,
+    endOfTrack: Boolean,
+    unit: String,
+    onSelectMinutes: (Int) -> Unit
+) {
+    val customActive = !endOfTrack && isCustomSleepTimerMinutes(selectedMinutes)
+    var minutes by rememberSaveable(customActive, selectedMinutes) {
+        mutableIntStateOf(if (customActive) selectedMinutes else SLEEP_TIMER_CUSTOM_DEFAULT_MINUTES)
+    }
+    val label = "$minutes $unit"
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = if (customActive) LevyraCyan.copy(alpha = 0.11f) else LevyraBlack.copy(alpha = 0.3f),
+        border = BorderStroke(1.dp, if (customActive) LevyraCyan.copy(alpha = 0.35f) else LevyraGlassBorder)
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 16.dp, end = 12.dp, top = 4.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Rounded.Timer, contentDescription = null, tint = if (customActive) LevyraCyan else LevyraMuted)
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = label,
+                color = if (customActive) LevyraCyan else LevyraText,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.width(72.dp)
+            )
+            Slider(
+                value = minutes.toFloat(),
+                onValueChange = { minutes = snapSleepTimerMinutes(it) },
+                onValueChangeFinished = { onSelectMinutes(minutes) },
+                valueRange = SLEEP_TIMER_CUSTOM_MIN_MINUTES.toFloat()..SLEEP_TIMER_CUSTOM_MAX_MINUTES.toFloat(),
+                colors = SliderDefaults.colors(
+                    thumbColor = LevyraCyan,
+                    activeTrackColor = LevyraCyan,
+                    inactiveTrackColor = LevyraGlassBorder
+                ),
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics { stateDescription = label }
+            )
         }
     }
 }
@@ -461,6 +521,20 @@ private fun SleepAutomationToggle(
         Switch(checked = checked, onCheckedChange = onChecked)
     }
 }
+
+private val SleepTimerPresetMinutes = listOf(15, 30, 45, 60)
+internal const val SLEEP_TIMER_CUSTOM_MIN_MINUTES = 5
+internal const val SLEEP_TIMER_CUSTOM_MAX_MINUTES = 240
+internal const val SLEEP_TIMER_CUSTOM_STEP_MINUTES = 5
+private const val SLEEP_TIMER_CUSTOM_DEFAULT_MINUTES = 90
+
+internal fun snapSleepTimerMinutes(value: Float): Int {
+    val stepped = Math.round(value / SLEEP_TIMER_CUSTOM_STEP_MINUTES) * SLEEP_TIMER_CUSTOM_STEP_MINUTES
+    return stepped.coerceIn(SLEEP_TIMER_CUSTOM_MIN_MINUTES, SLEEP_TIMER_CUSTOM_MAX_MINUTES)
+}
+
+internal fun isCustomSleepTimerMinutes(minutes: Int): Boolean =
+    minutes > 0 && minutes !in SleepTimerPresetMinutes
 
 private fun timerRemainingSeconds(deadlineElapsedRealtimeMs: Long): Long =
     if (deadlineElapsedRealtimeMs > 0L) {
