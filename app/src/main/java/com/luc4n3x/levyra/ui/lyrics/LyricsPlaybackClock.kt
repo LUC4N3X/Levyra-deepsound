@@ -7,6 +7,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.withFrameNanos
 import kotlin.math.abs
 
@@ -42,7 +43,7 @@ fun convergedLyricsAnchorMs(renderedMs: Long, reportedMs: Long): Long {
 class LyricsPlaybackClock internal constructor(initialPositionMs: Long) {
     private val renderedMs = mutableLongStateOf(initialPositionMs.coerceAtLeast(0L))
     private var anchorPositionMs = initialPositionMs.coerceAtLeast(0L)
-    private var anchorRealtimeMs = SystemClock.elapsedRealtime()
+    private var anchorRealtimeMs = 0L
     private var playing = false
     private var speed = 1f
 
@@ -75,6 +76,14 @@ class LyricsPlaybackClock internal constructor(initialPositionMs: Long) {
     }
 }
 
+val LocalLivePlaybackPosition = staticCompositionLocalOf<(() -> Long)?> { null }
+
+fun lyricsClockSourcePositionMs(
+    reportedPositionMs: Long,
+    isPlaying: Boolean,
+    livePositionMs: (() -> Long)?
+): Long = if (isPlaying && livePositionMs != null) livePositionMs() else reportedPositionMs
+
 @Composable
 fun rememberLyricsPlaybackClock(
     trackKey: String,
@@ -84,20 +93,20 @@ fun rememberLyricsPlaybackClock(
     smoothingEnabled: Boolean
 ): LyricsPlaybackClock {
     val clock = remember(trackKey) { LyricsPlaybackClock(reportedPositionMs) }
+    val livePositionMs = LocalLivePlaybackPosition.current
 
-    LaunchedEffect(clock, reportedPositionMs, isPlaying, speed, smoothingEnabled) {
-        if (smoothingEnabled) {
-            clock.sync(reportedPositionMs, isPlaying, speed, SystemClock.elapsedRealtime())
-        } else {
-            clock.sync(reportedPositionMs, playing = false, speed = speed, nowRealtimeMs = SystemClock.elapsedRealtime())
-        }
+    LaunchedEffect(clock, reportedPositionMs, isPlaying, speed, smoothingEnabled, livePositionMs) {
+        val sourceMs = lyricsClockSourcePositionMs(reportedPositionMs, isPlaying, livePositionMs)
+        clock.sync(sourceMs, playing = smoothingEnabled && isPlaying, speed = speed, nowRealtimeMs = SystemClock.elapsedRealtime())
     }
 
-    LaunchedEffect(clock, isPlaying, smoothingEnabled) {
+    LaunchedEffect(clock, isPlaying, speed, smoothingEnabled, livePositionMs) {
         if (!smoothingEnabled || !isPlaying) return@LaunchedEffect
         while (true) {
             withFrameNanos { }
-            clock.advance(SystemClock.elapsedRealtime())
+            val now = SystemClock.elapsedRealtime()
+            if (livePositionMs != null) clock.sync(livePositionMs(), playing = true, speed = speed, nowRealtimeMs = now)
+            clock.advance(now)
         }
     }
 
@@ -105,7 +114,6 @@ fun rememberLyricsPlaybackClock(
 }
 
 const val KARAOKE_VISUAL_LEAD_MS = 55L
-const val LYRICS_LINE_LINGER_MS = 90L
 const val LYRICS_INSTRUMENTAL_DOT_COUNT = 3
 const val LYRICS_INSTRUMENTAL_CYCLES = 6f
 
@@ -120,9 +128,6 @@ data class TimedLyricWord(
     val startMs: Long,
     val endMs: Long
 )
-
-fun lyricsLineFocusPositionMs(positionMs: Long, smoothingEnabled: Boolean): Long =
-    (positionMs - if (smoothingEnabled) LYRICS_LINE_LINGER_MS else 0L).coerceAtLeast(0L)
 
 fun Char.isPunctuationWithoutLeadingSpace(): Boolean =
     this in charArrayOf(',', '.', ';', ':', '!', '?', ')', ']', '}', '’', '\'', '…')

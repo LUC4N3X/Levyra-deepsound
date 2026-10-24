@@ -143,7 +143,7 @@ import com.luc4n3x.levyra.ui.lyrics.lyricsOffsetPosition
 import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalDotIntensity
 import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalGaps
 import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalProgress
-import com.luc4n3x.levyra.ui.lyrics.lyricsLineFocusPositionMs
+import com.luc4n3x.levyra.ui.lyrics.LocalLivePlaybackPosition
 import com.luc4n3x.levyra.ui.lyrics.rememberLyricsPlaybackClock
 import com.luc4n3x.levyra.ui.lyrics.LYRICS_LANDSCAPE_CHROME_HEIGHT_DP
 import com.luc4n3x.levyra.ui.lyrics.LYRICS_LANDSCAPE_PANE_GAP_DP
@@ -2219,8 +2219,10 @@ fun LevyraApp(
         enabled = navigationStudio.visible ||
             navigationStudio.settings.activeTuning().colorSource == NavColorSource.Artwork
     )
+    val livePlaybackPosition = remember(viewModel) { viewModel::livePlaybackPositionMs }
     CompositionLocalProvider(
         LocalAnimationsEnabled provides state.animationsEnabled,
+        LocalLivePlaybackPosition provides livePlaybackPosition,
         LocalLevyraVisualCapabilities provides visualCapabilities,
         LocalLevyraStrings provides currentStrings,
         LocalLevyraHaptics provides rememberLevyraHaptics(state.interfaceSettings.hapticFeedback),
@@ -7943,18 +7945,6 @@ private fun LyricsOverlay(
             selectedRange = null
         }
     }
-    val visualActiveIndex = remember(visibleLyrics, syncedLyrics, lyricsAnimationsEnabled, lyricsPositionProvider) {
-        derivedStateOf {
-            if (syncedLyrics) {
-                activeLyricIndex(
-                    lyricsLineFocusPositionMs(lyricsPositionProvider(), lyricsAnimationsEnabled),
-                    visibleLyrics
-                )
-            } else {
-                -1
-            }
-        }
-    }.value
     val backgroundActiveIndex = remember(visibleLyrics, backgroundLineIndices, syncedLyrics, lyricsPositionProvider) {
         derivedStateOf {
             if (!syncedLyrics || backgroundLineIndices.isEmpty()) {
@@ -8040,7 +8030,7 @@ private fun LyricsOverlay(
         }
     }
 
-    val scrollFocusIndex = instrumentalGap?.nextLineIndex ?: visualActiveIndex
+    val scrollFocusIndex = instrumentalGap?.nextLineIndex ?: timedActiveIndex
 
     val followActiveLine = lyricsShouldFollowActiveLine(autoScrollEnabled, selectionMode)
 
@@ -8147,6 +8137,9 @@ private fun LyricsOverlay(
             .consumeOverlayTouches()
     ) {
         val studioSettings = state.lyricsStudioSettings
+        val lyricsDepthBlur = lyricsAnimationsEnabled &&
+            studioSettings.blurEnabled &&
+            LocalLevyraVisualCapabilities.current.heavyBlur
         if (studioSettings.spotifyLyricsApplies()) {
             SpotifyLyricsBackdrop(track)
         } else if (landscapeLayout && studioSettings.backgroundMode !in setOf(
@@ -8423,18 +8416,18 @@ private fun LyricsOverlay(
                         positionProvider = lyricsPositionProvider,
                         instrumentalGap = lineInstrumentalGap,
                         isActive = timedActive,
-                        isPrimaryActive = index == visualActiveIndex,
+                        isPrimaryActive = index == timedActiveIndex,
                         synced = state.lyricsSynced,
                         viewMode = viewMode,
                         distanceFromActive = when {
                             !followActiveLine -> 0
                             lineInstrumentalGap != null -> 0
-                            visualActiveIndex >= 0 -> kotlin.math.abs(index - visualActiveIndex)
+                            timedActiveIndex >= 0 -> kotlin.math.abs(index - timedActiveIndex)
                             else -> 0
                         },
                         focusMode = lyricsFocusMode,
                         layoutWidthDp = landscapeMetrics?.lyricsPaneWidthDp?.toInt(),
-                        blurEnabled = lyricsAnimationsEnabled,
+                        blurEnabled = lyricsDepthBlur,
                         animationsEnabled = lyricsAnimationsEnabled,
                         sectionLabel = sectionStarts[index]?.let { lyricSectionLabel(strings, it) },
                         showRomanization = showRomanization,
@@ -8452,7 +8445,7 @@ private fun LyricsOverlay(
                                 track?.id?.let { trackId ->
                                     onSetTrackOffset(
                                         trackId,
-                                        calibratedLyricsTrackOffset(state.positionMs, line.startMs, latencyOffsetMs)
+                                        calibratedLyricsTrackOffset(lyricsClock.positionMs, line.startMs, latencyOffsetMs)
                                     )
                                 }
                                 calibrateMode = false
@@ -19907,12 +19900,7 @@ private fun PlayerInlineLyricsSection(
         lyrics.isNotEmpty() -> {
             val listState = rememberLazyListState()
             val lyricsAnimationsEnabled = LocalAnimationsEnabled.current
-            val visualActiveIndex = remember(lyrics, positionMs, lyricsAnimationsEnabled) {
-                activeLyricIndex(
-                    lyricsLineFocusPositionMs(positionMs, lyricsAnimationsEnabled),
-                    lyrics
-                )
-            }
+            val visualActiveIndex = remember(lyrics, positionMs) { activeLyricIndex(positionMs, lyrics) }
             var inlineAutoScroll by remember(trackId) { mutableStateOf(true) }
             var inlineAutoScrolling by remember(trackId) { mutableStateOf(false) }
 

@@ -13390,6 +13390,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun livePlaybackPositionMs(): Long =
+        if (!player.isPlaying && player.positionMs == 0L && pendingSeekMs > 0L) {
+            pendingSeekMs
+        } else {
+            player.positionMs
+        }
+
     private fun startTicker() {
         viewModelScope.launch {
             var lastBackgroundUiUpdateMs = 0L
@@ -13421,11 +13428,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 listenTickElapsedMs = nowElapsed
 
-                val position = if (!player.isPlaying && player.positionMs == 0L && pendingSeekMs > 0L) {
-                    pendingSeekMs
-                } else {
-                    player.positionMs
-                }
+                val position = livePlaybackPositionMs()
                 val buffered = (player.bufferedPositionMs / 1_000L) * 1_000L
                 val active = lyricsEngine.currentLine(position, snapshot.lyrics)
                 val playbackStateChanged = snapshot.isPlaying != player.isPlaying

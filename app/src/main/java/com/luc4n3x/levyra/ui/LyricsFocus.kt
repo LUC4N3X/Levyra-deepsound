@@ -11,10 +11,10 @@ fun lyricsFocusAlpha(
     val steps = distance.coerceAtLeast(0)
     return when (steps) {
         0 -> 1f
-        1 -> if (compact) 0.58f else 0.62f
-        2 -> if (compact) 0.25f else 0.34f
-        3 -> 0.18f
-        else -> if (compact) 0.10f else 0.12f
+        1 -> if (compact) 0.70f else 0.78f
+        2 -> if (compact) 0.46f else 0.56f
+        3 -> if (compact) 0.34f else 0.42f
+        else -> if (compact) 0.26f else 0.32f
     }
 }
 
@@ -26,10 +26,9 @@ fun lyricsFocusBlurDp(
 ): Float {
     if (!focusMode || !synced || !blurEnabled) return 0f
     return when (distance.coerceAtLeast(0)) {
-        0, 1 -> 0f
-        2 -> 0.8f
-        3 -> 1.6f
-        else -> 2.4f
+        0, 1, 2 -> 0f
+        3 -> 0.8f
+        else -> 1.6f
     }
 }
 
