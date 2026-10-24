@@ -144,6 +144,7 @@ import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalDotIntensity
 import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalGaps
 import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalProgress
 import com.luc4n3x.levyra.ui.lyrics.LocalLivePlaybackPosition
+import com.luc4n3x.levyra.ui.lyrics.LyricsAmbientBackdrop
 import com.luc4n3x.levyra.ui.lyrics.rememberLyricsPlaybackClock
 import com.luc4n3x.levyra.ui.lyrics.LYRICS_LANDSCAPE_CHROME_HEIGHT_DP
 import com.luc4n3x.levyra.ui.lyrics.LYRICS_LANDSCAPE_PANE_GAP_DP
@@ -535,6 +536,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Path
@@ -8177,6 +8179,14 @@ private fun LyricsOverlay(
                         )
                     )
             )
+        } else if (!LevyraSkinManagesLayout && studioSettings.backgroundMode == LyricsBackgroundMode.ORIGINAL) {
+            LyricsAmbientBackdrop(
+                artworkUrl = track?.let { it.largeThumbnailUrl.ifBlank { it.thumbnailUrl } },
+                trackKey = track?.id.orEmpty(),
+                accentStart = accentStart,
+                accentEnd = accentEnd,
+                motionEnabled = LocalLevyraVisualCapabilities.current.decorativeMotion
+            )
         } else {
             LevyraBackground()
             Box(
@@ -9069,6 +9079,7 @@ internal fun KaraokeWordTimedText(
     val timedText = remember(lineText, words) { buildTimedLyricText(lineText, words) }
     val karaokeEasing = remember { CubicBezierEasing(0.18f, 0f, 0.20f, 1f) }
     val clipPath = remember { Path() }
+    val fillFront = remember { KaraokeFillFront() }
     val contentAlignment = when (textAlign) {
         TextAlign.Center -> Alignment.Center
         TextAlign.End, TextAlign.Right -> Alignment.CenterEnd
@@ -9106,6 +9117,7 @@ internal fun KaraokeWordTimedText(
                     style = TextStyle(shadow = shadow),
                     modifier = Modifier
                         .matchParentSize()
+                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                         .drawWithContent {
                             val layoutResult = textLayoutResult ?: return@drawWithContent
                             val characterProgress = karaokeCharacterProgress(
@@ -9114,15 +9126,19 @@ internal fun KaraokeWordTimedText(
                                 easing = karaokeEasing
                             )
                             if (characterProgress <= 0f) return@drawWithContent
+                            val featherPx = fontSize.toPx() * KARAOKE_FILL_FEATHER_EM
                             val path = buildKaraokeGlyphPath(
                                 path = clipPath,
                                 layoutResult = layoutResult,
                                 textLength = timedText.text.length,
-                                characterProgress = characterProgress
+                                characterProgress = characterProgress,
+                                featherPx = featherPx,
+                                front = fillFront
                             )
                             clipPath(path) {
                                 this@drawWithContent.drawContent()
                             }
+                            if (fillFront.active) drawKaraokeFillFeather(fillFront, featherPx)
                         }
                 )
             }
@@ -9135,13 +9151,42 @@ internal const val LYRICS_HORIZONTAL_GUTTER_DP = 48
 internal const val LYRICS_ACTIVE_LINE_SCALE = 1.025f
 internal const val LYRICS_COMPACT_ACTIVE_LINE_SCALE = 1.018f
 
+private const val KARAOKE_FILL_FEATHER_EM = 0.55f
+
+private class KaraokeFillFront {
+    var active = false
+    var x = 0f
+    var top = 0f
+    var bottom = 0f
+    var rtl = false
+}
+
+private fun DrawScope.drawKaraokeFillFeather(front: KaraokeFillFront, featherPx: Float) {
+    if (featherPx <= 0f || front.bottom <= front.top) return
+    val from = front.x - featherPx
+    val to = front.x + featherPx
+    val colors = if (front.rtl) KaraokeFeatherRtl else KaraokeFeatherLtr
+    drawRect(
+        brush = Brush.horizontalGradient(colors, startX = from, endX = to),
+        topLeft = Offset(from, front.top),
+        size = Size(to - from, front.bottom - front.top),
+        blendMode = BlendMode.DstIn
+    )
+}
+
+private val KaraokeFeatherLtr = listOf(Color.White, Color.Transparent)
+private val KaraokeFeatherRtl = listOf(Color.Transparent, Color.White)
+
 private fun buildKaraokeGlyphPath(
     path: Path,
     layoutResult: TextLayoutResult,
     textLength: Int,
-    characterProgress: Float
+    characterProgress: Float,
+    featherPx: Float,
+    front: KaraokeFillFront
 ): Path {
     path.reset()
+    front.active = false
     if (textLength == 0 || characterProgress <= 0f) return path
     val boundedProgress = characterProgress.coerceIn(0f, textLength.toFloat())
     val completedCharacters = boundedProgress.toInt().coerceIn(0, textLength)
@@ -9180,7 +9225,13 @@ private fun buildKaraokeGlyphPath(
             layoutResult.getHorizontalPosition(nextOffset, usePrimaryDirection = true)
         }
         val currentX = charStart + (charEnd - charStart) * fraction
-        path.addRectangle(minOf(startX, currentX), top, maxOf(startX, currentX), bottom)
+        val reachX = if (isRtl) currentX - featherPx else currentX + featherPx
+        path.addRectangle(minOf(startX, reachX), top, maxOf(startX, reachX), bottom)
+        front.active = true
+        front.x = currentX
+        front.top = top
+        front.bottom = bottom
+        front.rtl = isRtl
     }
     return path
 }

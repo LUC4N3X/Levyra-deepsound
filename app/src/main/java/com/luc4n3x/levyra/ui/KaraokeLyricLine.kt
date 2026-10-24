@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalConfiguration
@@ -447,7 +448,9 @@ private fun lyricMainColor(active: Boolean, primary: Boolean, activeColor: Color
     if (active || primary) activeColor else inactiveColor
 
 private fun lyricSectionColor(spotify: Boolean, accent: Color, primary: Boolean): Color =
-    (if (spotify) Color.White else accent).copy(alpha = if (primary) 0.92f else 0.56f)
+    (if (spotify) Color.White else lerp(accent, Color.White, LYRICS_SECTION_LABEL_LIFT)).copy(alpha = if (primary) 0.92f else 0.62f)
+
+private const val LYRICS_SECTION_LABEL_LIFT = 0.55f
 
 private fun lyricRomanizationColor(active: Boolean): Color =
     Color.White.copy(alpha = if (active) 0.76f else 0.40f)
