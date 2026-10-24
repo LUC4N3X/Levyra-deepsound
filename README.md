@@ -115,7 +115,7 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
 <a href="docs/assets/showcase/00_levyra_hero_urban_monochrome_centered.webp"><img src="docs/assets/showcase/00_levyra_hero_urban_monochrome_centered.webp" width="100%" alt="Levyra music player for Android and Windows" /></a>
 
 <div align="center">
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-01-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: radio, now playing, lyrics, and offline albums" /></div>
+<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-01-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: radio, now playing, light theme, and dark theme" /></div>
 <br />
 <div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-02-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: discovery, mixes, moods, and audio controls" /></div>
 <br />
@@ -123,7 +123,7 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
 <br />
 <div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-04-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: settings, new releases, artists, and Jam" /></div>
 <br />
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-05-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: light theme, dark theme, discovery, and Year in Music" /></div>
+<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-05-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: synced lyrics, offline albums, discovery, and Year in Music" /></div>
 <br />
 <p align="center"><b>Global skins · Choose your streaming layout</b><br>
 <sub>Want Spotify? Here's Spotify. &nbsp;·&nbsp; Want Apple Music? Here's Apple. &nbsp;·&nbsp; Want YouTube Music? Here it is.</sub></p>

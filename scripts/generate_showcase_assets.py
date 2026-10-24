@@ -554,34 +554,54 @@ CARD_W, CARD_H = 900, 1800
 GAP = 32
 
 README_CARD_SPECS = [
-    # Row 1: Flagship Experience
+    # Row 1: Flagship Experience & Dual Theme Cut
     (
         "01_pure_listening",
         "Pure Listening",
         "Smart radio crafted around your sound.\nZero ads, zero interruptions.",
         "Screenshot_20261016_223653_LEVYRA.jpg",
-        (210, 230, 255),
+        (240, 244, 255),
+        (224, 231, 255),
+        (99, 102, 241),
+        (199, 210, 254),
+        (30, 27, 75),
+        (79, 70, 229),
     ),
     (
         "02_stay_with_the_song",
         "Stay with the Song",
         "Immersive fullscreen playback\nwith live synced lyrics.",
         "Screenshot_20261016_135636_LEVYRA.jpg",
-        (220, 225, 255),
+        (255, 241, 242),
+        (254, 226, 226),
+        (244, 63, 94),
+        (254, 205, 211),
+        (76, 5, 25),
+        (159, 18, 57),
     ),
     (
-        "03_sing_along",
-        "Synced Lyrics",
-        "Word-by-word timing, romanization and live translation",
-        "screen-lyrics.jpg",
-        (210, 225, 250),
+        "03_daylight_expressive",
+        "Daylight Expressive",
+        "Every curve and color tuned for bright daylight clarity",
+        "Screenshot_20261017_133945_LEVYRA.jpg",
+        (255, 251, 235),
+        (254, 240, 138),
+        (234, 179, 8),
+        (253, 224, 71),
+        (69, 26, 3),
+        (161, 98, 7),
     ),
     (
-        "04_open_the_album",
-        "Offline Music",
-        "Keep your favorite albums saved directly on your device",
-        "Screenshot_20260926_194706_LEVYRA.jpg",
-        (230, 220, 245),
+        "04_midnight_obsidian",
+        "Midnight Obsidian",
+        "Deep contrast and true black for late-night sessions",
+        "Screenshot_20261017_134057_LEVYRA.jpg",
+        (241, 245, 249),
+        (226, 232, 240),
+        (100, 116, 139),
+        (203, 213, 225),
+        (15, 23, 42),
+        (71, 85, 105),
     ),
 
     # Row 2: Exploration & Audio Precision
@@ -590,28 +610,48 @@ README_CARD_SPECS = [
         "Fresh Currents",
         "Explore global new releases without the scroll fatigue",
         "Screenshot_20261010_132210_LEVYRA.jpg",
-        (200, 225, 250),
+        (240, 249, 255),
+        (224, 242, 254),
+        (14, 165, 233),
+        (186, 230, 253),
+        (12, 74, 110),
+        (2, 132, 199),
     ),
     (
         "06_built_for_your_taste",
         "Built for Your Taste",
         "A dynamic mix shaped around your listening moments",
         "Screenshot_20261015_144159_LEVYRA.jpg",
-        (240, 220, 230),
+        (253, 242, 248),
+        (252, 231, 243),
+        (217, 70, 239),
+        (245, 208, 254),
+        (74, 4, 78),
+        (162, 28, 175),
     ),
     (
         "07_every_genre",
         "Every Mood and Genre",
         "Browse by energy, place or atmosphere in one tap",
         "Screenshot_20261015_140910_LEVYRA.jpg",
-        (210, 240, 230),
+        (240, 253, 250),
+        (204, 251, 241),
+        (20, 184, 166),
+        (153, 246, 228),
+        (19, 78, 74),
+        (13, 148, 136),
     ),
     (
         "08_acoustic_precision",
         "Acoustic Precision",
         "10-band equalizer and AutoEQ headphone profiles",
         "Screenshot_20261010_190726_LEVYRA.jpg",
-        (220, 225, 250),
+        (245, 243, 255),
+        (237, 233, 254),
+        (139, 92, 246),
+        (221, 214, 254),
+        (46, 16, 101),
+        (109, 40, 217),
     ),
 
     # Row 3: Library & Insights
@@ -620,28 +660,48 @@ README_CARD_SPECS = [
         "Unified Library",
         "Streamed tracks and local files together in one home",
         "Screenshot_20261020_142741_LEVYRA.jpg",
-        (210, 235, 245),
+        (239, 246, 255),
+        (219, 234, 254),
+        (59, 130, 246),
+        (191, 219, 254),
+        (30, 58, 138),
+        (29, 78, 216),
     ),
     (
         "10_curated_for_you",
         "Curated Collections",
         "Instant shortcuts, custom playlists and quick picks",
         "Screenshot_20261017_143917_LEVYRA.jpg",
-        (245, 225, 220),
+        (255, 247, 237),
+        (254, 237, 213),
+        (249, 115, 22),
+        (254, 215, 170),
+        (67, 20, 7),
+        (194, 65, 12),
     ),
     (
         "11_your_rhythm",
         "Listening Insights",
         "See the patterns and artists behind your plays",
         "Screenshot_20260927_131943_LEVYRA.jpg",
-        (220, 225, 250),
+        (245, 243, 255),
+        (238, 242, 255),
+        (124, 58, 237),
+        (216, 180, 254),
+        (59, 7, 100),
+        (126, 34, 206),
     ),
     (
         "12_in_your_orbit",
         "In Your Orbit",
         "Keep your top artists, albums and tracks close at hand",
         "Screenshot_20261010_132103_LEVYRA.jpg",
-        (215, 235, 230),
+        (240, 253, 244),
+        (220, 252, 231),
+        (34, 197, 94),
+        (187, 247, 208),
+        (20, 83, 45),
+        (21, 128, 61),
     ),
 
     # Row 4: Personalization & Jam
@@ -650,58 +710,98 @@ README_CARD_SPECS = [
         "Make Levyra Yours",
         "Theme, navigation, player and audio—fully customizable",
         "Screenshot_20261015_205614_LEVYRA.jpg",
-        (230, 225, 245),
+        (250, 245, 255),
+        (243, 232, 255),
+        (168, 85, 247),
+        (233, 213, 255),
+        (59, 7, 100),
+        (126, 34, 206),
     ),
     (
         "14_fresh_off_the_stage",
         "Fresh Releases",
         "The latest drops from your favorite artists, uncluttered",
         "Screenshot_20261010_144144_LEVYRA.jpg",
-        (210, 230, 250),
+        (238, 242, 255),
+        (224, 231, 255),
+        (79, 70, 229),
+        (199, 210, 254),
+        (30, 27, 75),
+        (67, 56, 202),
     ),
     (
         "15_meet_the_artist",
         "Meet the Artist",
         "Deep-dive into discographies, top tracks and singles",
         "Screenshot_20261010_143646_LEVYRA.jpg",
-        (240, 225, 225),
+        (255, 241, 242),
+        (255, 228, 230),
+        (244, 63, 94),
+        (254, 205, 211),
+        (76, 5, 25),
+        (190, 18, 60),
     ),
     (
         "16_listen_together",
         "Levyra Jam",
         "One shared room, one unified queue, everyone connected",
         "Screenshot_20261011_133434_LEVYRA.jpg",
-        (215, 240, 235),
+        (236, 254, 255),
+        (207, 250, 254),
+        (6, 182, 212),
+        (165, 243, 252),
+        (22, 78, 99),
+        (14, 116, 144),
     ),
 
-    # Row 5: Themes & Discovery
+    # Row 5: Lyrics, Offline, Discovery & Year in Music
     (
-        "17_daylight_expressive",
-        "Daylight Expressive",
-        "Every curve and color tuned for bright daylight clarity",
-        "Screenshot_20261017_133945_LEVYRA.jpg",
-        (255, 240, 225),
+        "17_sing_along",
+        "Synced Lyrics",
+        "Word-by-word timing, romanization and live translation",
+        "screen-lyrics.jpg",
+        (255, 251, 235),
+        (254, 243, 199),
+        (245, 158, 11),
+        (253, 230, 138),
+        (69, 26, 3),
+        (180, 83, 9),
     ),
     (
-        "18_midnight_obsidian",
-        "Midnight Obsidian",
-        "Deep contrast and true black for late-night sessions",
-        "Screenshot_20261017_134057_LEVYRA.jpg",
-        (210, 220, 245),
+        "18_open_the_album",
+        "Offline Music",
+        "Keep your favorite albums saved directly on your device",
+        "Screenshot_20260926_194706_LEVYRA.jpg",
+        (236, 253, 245),
+        (209, 250, 229),
+        (16, 185, 129),
+        (167, 243, 208),
+        (6, 78, 59),
+        (5, 150, 105),
     ),
     (
         "19_discover_for_you",
         "Discover for You",
         "Swipe right to save, swipe left to discover next",
         "Screenshot_20261024_130435_Levyra.jpg",
-        (220, 230, 250),
+        (254, 242, 242),
+        (254, 226, 226),
+        (239, 68, 68),
+        (254, 202, 202),
+        (69, 10, 10),
+        (185, 28, 28),
     ),
     (
         "20_your_year_in_music",
         "Your Year in Music",
         "A personal recap of your year, computed right on device",
         "Screenshot_20261016_223757_LEVYRA.jpg",
-        (240, 220, 235),
+        (253, 244, 255),
+        (250, 232, 255),
+        (192, 38, 211),
+        (240, 171, 252),
+        (74, 4, 78),
+        (162, 28, 175),
     ),
 
     # Row 6: Global Skins
@@ -710,28 +810,48 @@ README_CARD_SPECS = [
         "Skin Studio",
         "Seven complete looks. Switch layout in one tap",
         "Screenshot_20261023_212906_LEVYRA.jpg",
-        (225, 225, 250),
+        (245, 243, 255),
+        (237, 233, 254),
+        (139, 92, 246),
+        (221, 214, 254),
+        (46, 16, 101),
+        (109, 40, 217),
     ),
     (
         "22_spotify_style",
         "Spotify Style",
         "Familiar green accents, shortcuts and artist glow",
         "Screenshot_20261023_212929_LEVYRA.jpg",
-        (200, 240, 220),
+        (236, 253, 245),
+        (209, 250, 229),
+        (30, 215, 96),
+        (167, 243, 208),
+        (6, 78, 59),
+        (22, 101, 52),
     ),
     (
         "23_apple_music_style",
         "Apple Music Style",
         "Editorial white surfaces, album shelves and bold type",
         "Screenshot_20261023_212956_LEVYRA.jpg",
-        (235, 235, 245),
+        (255, 241, 242),
+        (255, 228, 230),
+        (250, 45, 72),
+        (254, 205, 211),
+        (76, 5, 25),
+        (190, 18, 60),
     ),
     (
         "24_youtube_music_style",
         "YouTube Music Style",
         "Familiar mood chips, clean cards and daily charts",
         "Screenshot_20261023_213023_LEVYRA.jpg",
-        (245, 225, 225),
+        (254, 242, 242),
+        (254, 226, 226),
+        (255, 0, 0),
+        (254, 202, 202),
+        (69, 10, 10),
+        (185, 28, 28),
     ),
 ]
 
@@ -832,77 +952,68 @@ def make_campaign_device(filename, width):
         )
     return device
 
-def create_readme_card_background(w, h, glow_color=(200, 225, 250)):
+def create_readme_card_background(w, h, top_rgb, bot_rgb, bloom_rgb, bloom_opacity=110):
     base = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(base)
-    top_color = (250, 251, 253)
-    bot_color = (237, 242, 247)
     for y in range(h):
         ratio = y / h
-        r = int(top_color[0] + (bot_color[0] - top_color[0]) * ratio)
-        g = int(top_color[1] + (bot_color[1] - top_color[1]) * ratio)
-        b = int(top_color[2] + (bot_color[2] - top_color[2]) * ratio)
+        r = int(top_rgb[0] + (bot_rgb[0] - top_rgb[0]) * ratio)
+        g = int(top_rgb[1] + (bot_rgb[1] - top_rgb[1]) * ratio)
+        b = int(top_rgb[2] + (bot_rgb[2] - top_rgb[2]) * ratio)
         draw.line([(0, y), (w, y)], fill=(r, g, b, 255))
 
     glow = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     glow_draw = ImageDraw.Draw(glow)
-    cx, cy = w // 2, int(h * 0.62)
-    rx, ry = int(w * 0.50), int(h * 0.35)
+    cx, cy = w // 2, int(h * 0.60)
+    rx, ry = int(w * 0.55), int(h * 0.40)
     glow_draw.ellipse(
         (cx - rx, cy - ry, cx + rx, cy + ry),
-        fill=glow_color + (55,),
+        fill=bloom_rgb + (bloom_opacity,),
     )
-    glow = glow.filter(ImageFilter.GaussianBlur(140))
+    glow = glow.filter(ImageFilter.GaussianBlur(150))
     base.alpha_composite(glow)
     return base
 
-def draw_readme_card_frame(canvas, radius=44):
+def draw_readme_card_frame(canvas, border_rgb, radius=44):
     w, h = canvas.size
     border = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(border)
     draw.rounded_rectangle(
         (0, 0, w - 1, h - 1),
         radius=radius,
-        outline=(210, 218, 230, 255),
+        outline=border_rgb + (255,),
         width=2,
     )
     canvas.alpha_composite(border)
 
 def render_readme_hero_diptych(left_spec, right_spec):
     pair_w = CARD_W * 2 + GAP
-    canvas_0 = create_readme_card_background(CARD_W, CARD_H, left_spec[4])
-    canvas_1 = create_readme_card_background(CARD_W, CARD_H, right_spec[4])
+    canvas_0 = create_readme_card_background(CARD_W, CARD_H, left_spec[4], left_spec[5], left_spec[6], bloom_opacity=110)
+    canvas_1 = create_readme_card_background(CARD_W, CARD_H, right_spec[4], right_spec[5], right_spec[6], bloom_opacity=110)
 
     pair_canvas = Image.new("RGBA", (pair_w, CARD_H), (0, 0, 0, 0))
     pair_canvas.paste(canvas_0, (0, 0))
     pair_canvas.paste(canvas_1, (CARD_W + GAP, 0))
 
-    center_x = pair_w // 2
-    center_y = CARD_H // 2
+    # Left phone: Radio screen, width=720, angle=13, top_left=(220, -150)
+    left_dev = make_campaign_device(left_spec[3], width=720)
+    rot_left = left_dev.rotate(13, resample=Image.Resampling.BICUBIC, expand=True)
+    shadow_left = Image.new("RGBA", rot_left.size, (15, 23, 42, 0))
+    shadow_left_alpha = rot_left.getchannel("A").filter(ImageFilter.GaussianBlur(48))
+    shadow_left_alpha = ImageEnhance.Brightness(shadow_left_alpha).enhance(0.35)
+    shadow_left.putalpha(shadow_left_alpha)
+    pair_canvas.alpha_composite(shadow_left, (220 + 24, -150 + 42))
+    pair_canvas.alpha_composite(rot_left, (220, -150))
 
-    halo = Image.new("RGBA", (pair_w, CARD_H), (0, 0, 0, 0))
-    halo_draw = ImageDraw.Draw(halo)
-    halo_draw.ellipse(
-        (center_x - 600, center_y - 600, center_x + 600, center_y + 600),
-        fill=(190, 220, 255, 90),
-    )
-    halo = halo.filter(ImageFilter.GaussianBlur(180))
-    pair_canvas.alpha_composite(halo)
-
-    phone_w = 720
-    device = make_campaign_device("Screenshot_20261016_135636_LEVYRA.jpg", phone_w)
-    rotated_device = device.rotate(36, resample=Image.Resampling.BICUBIC, expand=True)
-
-    shadow = Image.new("RGBA", rotated_device.size, (15, 23, 42, 0))
-    shadow_alpha = rotated_device.getchannel("A").filter(ImageFilter.GaussianBlur(50))
-    shadow_alpha = ImageEnhance.Brightness(shadow_alpha).enhance(0.35)
-    shadow.putalpha(shadow_alpha)
-
-    dev_x = round(center_x - rotated_device.width / 2)
-    dev_y = round(center_y - rotated_device.height / 2)
-
-    pair_canvas.alpha_composite(shadow, (dev_x + 24, dev_y + 40))
-    pair_canvas.alpha_composite(rotated_device, (dev_x, dev_y))
+    # Right phone: Now Playing screen, width=720, angle=-8.5, top_left=(CARD_W + GAP + 200, 370)
+    right_dev = make_campaign_device(right_spec[3], width=720)
+    rot_right = right_dev.rotate(-8.5, resample=Image.Resampling.BICUBIC, expand=True)
+    shadow_right = Image.new("RGBA", rot_right.size, (15, 23, 42, 0))
+    shadow_right_alpha = rot_right.getchannel("A").filter(ImageFilter.GaussianBlur(48))
+    shadow_right_alpha = ImageEnhance.Brightness(shadow_right_alpha).enhance(0.35)
+    shadow_right.putalpha(shadow_right_alpha)
+    pair_canvas.alpha_composite(shadow_right, (CARD_W + GAP + 200 + 24, 370 + 42))
+    pair_canvas.alpha_composite(rot_right, (CARD_W + GAP + 200, 370))
 
     left_card = pair_canvas.crop((0, 0, CARD_W, CARD_H))
     right_card = pair_canvas.crop((CARD_W + GAP, 0, pair_w, CARD_H))
@@ -911,41 +1022,97 @@ def render_readme_hero_diptych(left_spec, right_spec):
     title_font = get_font(56, bold=True)
     sub_font = get_font(28, bold=False)
 
-    left_x = 72
-    left_y = 1460
-    draw_left.text((left_x, left_y), left_spec[1], font=title_font, fill=(15, 23, 42, 255))
-    draw_left.text((left_x, left_y + 75), left_spec[2], font=sub_font, fill=(100, 116, 139, 255), spacing=8)
+    # Left card text (bottom-left)
+    draw_left.text((72, 1420), left_spec[1], font=title_font, fill=left_spec[8] + (255,))
+    draw_left.text((72, 1420 + 75), left_spec[2], font=sub_font, fill=left_spec[9] + (255,), spacing=8)
 
+    # Right card text (top-right)
     draw_right = ImageDraw.Draw(right_card)
     title_right = right_spec[1]
     sub_right = right_spec[2]
-
     t_bbox = draw_right.textbbox((0, 0), title_right, font=title_font)
     t_w = t_bbox[2] - t_bbox[0]
-    right_x = CARD_W - 72 - t_w
-    right_y = 110
-    draw_right.text((right_x, right_y), title_right, font=title_font, fill=(15, 23, 42, 255))
-
+    draw_right.text((CARD_W - 72 - t_w, 100), title_right, font=title_font, fill=right_spec[8] + (255,))
     for i, line in enumerate(sub_right.split("\n")):
         s_bbox = draw_right.textbbox((0, 0), line, font=sub_font)
         s_w = s_bbox[2] - s_bbox[0]
-        s_x = CARD_W - 72 - s_w
-        s_y = right_y + 75 + i * 38
-        draw_right.text((s_x, s_y), line, font=sub_font, fill=(100, 116, 139, 255))
+        draw_right.text((CARD_W - 72 - s_w, 100 + 75 + i * 38), line, font=sub_font, fill=right_spec[9] + (255,))
 
     mask = Image.new("L", (CARD_W, CARD_H), 0)
     ImageDraw.Draw(mask).rounded_rectangle((0, 0, CARD_W - 1, CARD_H - 1), radius=44, fill=255)
 
-    draw_readme_card_frame(left_card)
-    draw_readme_card_frame(right_card)
+    draw_readme_card_frame(left_card, left_spec[7])
+    draw_readme_card_frame(right_card, right_spec[7])
+
+    left_card.putalpha(mask)
+    right_card.putalpha(mask)
+    return left_card, right_card
+
+def render_readme_theme_diptych(left_spec, right_spec):
+    pair_w = CARD_W * 2 + GAP
+    canvas_0 = create_readme_card_background(CARD_W, CARD_H, left_spec[4], left_spec[5], left_spec[6], bloom_opacity=110)
+    canvas_1 = create_readme_card_background(CARD_W, CARD_H, right_spec[4], right_spec[5], right_spec[6], bloom_opacity=110)
+
+    pair_canvas = Image.new("RGBA", (pair_w, CARD_H), (0, 0, 0, 0))
+    pair_canvas.paste(canvas_0, (0, 0))
+    pair_canvas.paste(canvas_1, (CARD_W + GAP, 0))
+
+    # Left phone: Light theme, width=720, angle=-10.5, pos=(120, 310)
+    left_dev = make_campaign_device(left_spec[3], width=720)
+    rot_left = left_dev.rotate(-10.5, resample=Image.Resampling.BICUBIC, expand=True)
+    shadow_left = Image.new("RGBA", rot_left.size, (15, 23, 42, 0))
+    shadow_left_alpha = rot_left.getchannel("A").filter(ImageFilter.GaussianBlur(48))
+    shadow_left_alpha = ImageEnhance.Brightness(shadow_left_alpha).enhance(0.35)
+    shadow_left.putalpha(shadow_left_alpha)
+    pair_canvas.alpha_composite(shadow_left, (120 + 24, 310 + 42))
+    pair_canvas.alpha_composite(rot_left, (120, 310))
+
+    # Right phone: Dark theme, width=720, angle=11.0, pos=(CARD_W + GAP - 30, 390)
+    right_dev = make_campaign_device(right_spec[3], width=720)
+    rot_right = right_dev.rotate(11.0, resample=Image.Resampling.BICUBIC, expand=True)
+    shadow_right = Image.new("RGBA", rot_right.size, (15, 23, 42, 0))
+    shadow_right_alpha = rot_right.getchannel("A").filter(ImageFilter.GaussianBlur(48))
+    shadow_right_alpha = ImageEnhance.Brightness(shadow_right_alpha).enhance(0.40)
+    shadow_right.putalpha(shadow_right_alpha)
+    pair_canvas.alpha_composite(shadow_right, (CARD_W + GAP - 30 + 24, 390 + 42))
+    pair_canvas.alpha_composite(rot_right, (CARD_W + GAP - 30, 390))
+
+    left_card = pair_canvas.crop((0, 0, CARD_W, CARD_H))
+    right_card = pair_canvas.crop((CARD_W + GAP, 0, pair_w, CARD_H))
+
+    title_font = get_font(56, bold=True)
+    sub_font = get_font(28, bold=False)
+
+    # Left card text (top-left)
+    draw_left = ImageDraw.Draw(left_card)
+    draw_left.text((72, 100), left_spec[1], font=title_font, fill=left_spec[8] + (255,))
+    draw_left.text((72, 100 + 75), left_spec[2], font=sub_font, fill=left_spec[9] + (255,), spacing=8)
+
+    # Right card text (top-right)
+    draw_right = ImageDraw.Draw(right_card)
+    title_right = right_spec[1]
+    sub_right = right_spec[2]
+    t_bbox = draw_right.textbbox((0, 0), title_right, font=title_font)
+    t_w = t_bbox[2] - t_bbox[0]
+    draw_right.text((CARD_W - 72 - t_w, 100), title_right, font=title_font, fill=right_spec[8] + (255,))
+    for i, line in enumerate(sub_right.split("\n")):
+        s_bbox = draw_right.textbbox((0, 0), line, font=sub_font)
+        s_w = s_bbox[2] - s_bbox[0]
+        draw_right.text((CARD_W - 72 - s_w, 100 + 75 + i * 38), line, font=sub_font, fill=right_spec[9] + (255,))
+
+    mask = Image.new("L", (CARD_W, CARD_H), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, CARD_W - 1, CARD_H - 1), radius=44, fill=255)
+
+    draw_readme_card_frame(left_card, left_spec[7])
+    draw_readme_card_frame(right_card, right_spec[7])
 
     left_card.putalpha(mask)
     right_card.putalpha(mask)
     return left_card, right_card
 
 def render_readme_centered_card(spec):
-    card_id, title, subtitle, screenshot_name, glow_color = spec
-    canvas = create_readme_card_background(CARD_W, CARD_H, glow_color)
+    card_id, title, subtitle, screenshot_name, top_rgb, bot_rgb, bloom_rgb, border_rgb, ink_rgb, sub_rgb = spec
+    canvas = create_readme_card_background(CARD_W, CARD_H, top_rgb, bot_rgb, bloom_rgb, bloom_opacity=110)
     draw = ImageDraw.Draw(canvas)
 
     title_font = get_font(56, bold=True)
@@ -955,13 +1122,13 @@ def render_readme_centered_card(spec):
     title_w = title_bbox[2] - title_bbox[0]
     title_x = (CARD_W - title_w) // 2
     title_y = 110
-    draw.text((title_x, title_y), title, font=title_font, fill=(15, 23, 42, 255))
+    draw.text((title_x, title_y), title, font=title_font, fill=ink_rgb + (255,))
 
     sub_bbox = draw.textbbox((0, 0), subtitle, font=sub_font)
     sub_w = sub_bbox[2] - sub_bbox[0]
     sub_x = (CARD_W - sub_w) // 2
     sub_y = title_y + (title_bbox[3] - title_bbox[0]) + 18
-    draw.text((sub_x, sub_y), subtitle, font=sub_font, fill=(100, 116, 139, 255))
+    draw.text((sub_x, sub_y), subtitle, font=sub_font, fill=sub_rgb + (255,))
 
     dev_w = 640
     device = make_campaign_device(screenshot_name, dev_w)
@@ -980,7 +1147,7 @@ def render_readme_centered_card(spec):
     mask = Image.new("L", (CARD_W, CARD_H), 0)
     ImageDraw.Draw(mask).rounded_rectangle((0, 0, CARD_W - 1, CARD_H - 1), radius=44, fill=255)
 
-    draw_readme_card_frame(canvas, radius=44)
+    draw_readme_card_frame(canvas, border_rgb, radius=44)
     canvas.putalpha(mask)
     return canvas
 
@@ -988,7 +1155,7 @@ def generate_readme_cards():
     os.makedirs(README_CARD_DIR, exist_ok=True)
     cards = []
 
-    # 1. Render Hero diptych (Cards 01 and 02)
+    # 1. Render Hero diptych (Cards 01 and 02) with dynamic original cut
     left_card, right_card = render_readme_hero_diptych(
         README_CARD_SPECS[0],
         README_CARD_SPECS[1],
@@ -999,8 +1166,19 @@ def generate_readme_cards():
         artwork.save(out_path, "WEBP", quality=95, method=6)
         print(f"Saved README editorial card at {artwork.size}: {out_path}")
 
-    # 2. Render Cards 03 through 24
-    for index in range(2, len(README_CARD_SPECS)):
+    # 2. Render Theme diptych (Cards 03 and 04) with dynamic light/dark interlocking cut
+    theme_left, theme_right = render_readme_theme_diptych(
+        README_CARD_SPECS[2],
+        README_CARD_SPECS[3],
+    )
+    for artwork, spec in ((theme_left, README_CARD_SPECS[2]), (theme_right, README_CARD_SPECS[3])):
+        cards.append(artwork)
+        out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
+        artwork.save(out_path, "WEBP", quality=95, method=6)
+        print(f"Saved README editorial card at {artwork.size}: {out_path}")
+
+    # 3. Render Cards 05 through 24
+    for index in range(4, len(README_CARD_SPECS)):
         spec = README_CARD_SPECS[index]
         artwork = render_readme_centered_card(spec)
         cards.append(artwork)
@@ -1008,7 +1186,7 @@ def generate_readme_cards():
         artwork.save(out_path, "WEBP", quality=95, method=6)
         print(f"Saved README editorial card at {artwork.size}: {out_path}")
 
-    # 3. Assemble Rows (01 to 06)
+    # 4. Assemble Rows (01 to 06)
     row_count = len(README_CARD_SPECS) // 4
     for row_index in range(row_count):
         row = Image.new("RGB", (3600, 1800))
