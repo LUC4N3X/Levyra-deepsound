@@ -601,7 +601,7 @@ README_CARD_SPECS = [
     ("16_listen_together", "LEVYRA JAM", "Listen\ntogether.", "One room. One queue. Everyone in.", "Screenshot_20261011_133434_LEVYRA.jpg"),
     ("17_daylight_expressive", "LIGHT THEME", "Bask in\nthe light.", "Every curve and color tuned for daylight.", "Screenshot_20261017_133945_LEVYRA.jpg"),
     ("18_midnight_obsidian", "DARK THEME", "Into the\ndark.", "Deep contrast for midnight listening.", "Screenshot_20261017_134057_LEVYRA.jpg"),
-    ("19_top_charts", "CHARTS", "Pulse of\nthe charts.", "What the world is playing right now.", "Screenshot_20261017_123908_LEVYRA.jpg"),
+    ("19_discover_for_you", "DISCOVERY", "Discover\nfor you.", "Swipe right to save, left to skip.", "Screenshot_20261024_130435_Levyra.jpg"),
     ("20_your_year_in_music", "YEAR IN MUSIC", "Your year\nin sound.", "A story of your year, made on this device.", "Screenshot_20261016_223757_LEVYRA.jpg"),
 ]
 

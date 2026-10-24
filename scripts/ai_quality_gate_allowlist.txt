@@ -237,3 +237,4 @@ docs/assets/showcase/editorial-cards/24_youtube_music_style.webp
 docs/assets/showcase/editorial-cards/editorial-grid-row-06-skins-spaced.webp
 docs/assets/showcase/editorial-cards/editorial-grid-row-06-skins.webp
 docs/assets/showcase/editorial-cards/editorial-grid-row-06-skins-uniform-centered.webp
+docs/assets/showcase/editorial-cards/19_discover_for_you.webp
