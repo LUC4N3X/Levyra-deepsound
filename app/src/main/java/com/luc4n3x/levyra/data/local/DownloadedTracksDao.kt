@@ -40,6 +40,17 @@ interface DownloadedTracksDao {
     @Query("SELECT * FROM downloaded_tracks WHERE id = :id LIMIT 1")
     suspend fun byId(id: Long): DownloadEntity?
 
+    @Query("SELECT * FROM downloaded_tracks WHERE uri = :uri ORDER BY savedAt DESC LIMIT 1")
+    suspend fun byUri(uri: String): DownloadEntity?
+
+    @Transaction
+    suspend fun completeRepair(original: DownloadEntity, replacementUri: String): Boolean {
+        val replacement = byUri(replacementUri) ?: return false
+        if (replacement.trackId != original.trackId || replacement.id == original.id) return false
+        if (byId(original.id) == original) deleteById(original.id)
+        return true
+    }
+
     @Query("SELECT * FROM downloaded_tracks WHERE ownership = 'SMART_OFFLINE' ORDER BY savedAt DESC")
     suspend fun smartOffline(): List<DownloadEntity>
 

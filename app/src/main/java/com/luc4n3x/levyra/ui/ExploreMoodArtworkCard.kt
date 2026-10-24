@@ -52,6 +52,8 @@ import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.data.AppleArtistArtworkRepository
 import com.luc4n3x.levyra.data.ArtistPortraitFallbackRepository
 import com.luc4n3x.levyra.data.SpotifyArtistArtworkRepository
+import com.luc4n3x.levyra.data.ExploreMoodArtwork
+import com.luc4n3x.levyra.data.ExploreMoodArtworkCache
 import com.luc4n3x.levyra.domain.ExploreCatalog
 import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
@@ -203,16 +205,26 @@ internal fun rememberExploreMoodArtworkUrl(zone: ExploreZone): String {
         )
     }
     val hardFallbackPortraitUrl = remember(zone.id) { exploreMoodHardFallbackPortraitUrl(zone.id) }
-    var artworkUrl by rememberSaveable(portraitCandidates, hardFallbackPortraitUrl) {
+    val cacheKey = remember(zone.id, strings.code) { "${strings.code}:${zone.id}" }
+    var artworkUrl by rememberSaveable(cacheKey, portraitCandidates, hardFallbackPortraitUrl) {
         mutableStateOf(
-            portraitCandidates.firstOrNull()
-                ?.let(spotifyRepository::cachedArtistPortrait)
-                .orEmpty()
+            ExploreMoodArtworkCache.peek(cacheKey)?.url
+                ?: portraitCandidates.firstNotNullOfOrNull { candidate ->
+                    spotifyRepository.cachedArtistPortrait(candidate).takeIf(String::isNotBlank)
+                }.orEmpty()
         )
     }
 
-    LaunchedEffect(portraitCandidates, spotifyRepository, appleRepository, fallbackRepository, hardFallbackPortraitUrl) {
-        if (artworkUrl.isNotBlank()) return@LaunchedEffect
+    LaunchedEffect(cacheKey, portraitCandidates, spotifyRepository, appleRepository, fallbackRepository, hardFallbackPortraitUrl) {
+        if (portraitCandidates.isEmpty()) return@LaunchedEffect
+        val cached = ExploreMoodArtworkCache.load(context.applicationContext, cacheKey)
+        if (cached != null) {
+            artworkUrl = cached.url
+            if (cached.rotation == rotationBucket) return@LaunchedEffect
+        } else if (artworkUrl.isNotBlank()) {
+            ExploreMoodArtworkCache.store(context.applicationContext, cacheKey, ExploreMoodArtwork(artworkUrl, rotationBucket))
+            return@LaunchedEffect
+        }
         val resolved = ExploreMoodPortraitLookupSemaphore.withPermit {
             resolveExploreMoodPortrait(
                 candidates = portraitCandidates,
@@ -225,7 +237,12 @@ internal fun rememberExploreMoodArtworkUrl(zone: ExploreZone): String {
                 )
             )
         }
-        artworkUrl = resolved.ifBlank { hardFallbackPortraitUrl }
+        if (resolved.isNotBlank()) {
+            ExploreMoodArtworkCache.store(context.applicationContext, cacheKey, ExploreMoodArtwork(resolved, rotationBucket))
+            artworkUrl = resolved
+        } else if (artworkUrl.isBlank()) {
+            artworkUrl = hardFallbackPortraitUrl
+        }
     }
 
     return artworkUrl

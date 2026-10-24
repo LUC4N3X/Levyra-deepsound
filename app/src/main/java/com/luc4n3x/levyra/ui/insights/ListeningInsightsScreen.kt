@@ -216,7 +216,6 @@ internal fun ListeningInsightsScreen(
                     wrappedYear = wrappedYear,
                     onOpenReceipt = { receiptVisible = true },
                     onOpenWrapped = {
-                        viewModel.loadWrapped(wrappedYear)
                         wrappedVisible = true
                     }
                 )
@@ -247,9 +246,7 @@ internal fun ListeningInsightsScreen(
             )
         }
         if (wrappedVisible) {
-            ListeningWrappedStory(
-                state = state.wrapped,
-                accent = accent,
+            com.luc4n3x.levyra.ui.rewind.RewindScreen(
                 onClose = { wrappedVisible = false }
             )
         }
@@ -684,7 +681,7 @@ private fun ListeningShareEntries(
     onOpenReceipt: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
-    val wrappedTitle = strings.wrappedEntryTitle.replace("%s", year.toString())
+    val wrappedTitle = "Levyra Rewind"
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -711,7 +708,7 @@ private fun ListeningShareEntries(
                 letterSpacing = (-1.2).sp
             )
             Text(
-                strings.wrappedYearInMusic,
+                wrappedTitle,
                 color = Color.White,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Black,

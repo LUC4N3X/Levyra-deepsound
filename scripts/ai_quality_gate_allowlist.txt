@@ -248,3 +248,30 @@ docs/assets/showcase/editorial-cards/24_youtube_music_style.webp
 docs/assets/showcase/editorial-cards/{21_spotify_style.webp => 22_spotify_style.webp}
 docs/assets/showcase/editorial-cards/{22_apple_music_style.webp => 23_apple_music_style.webp}
 docs/assets/showcase/editorial-cards/{23_youtube_music_style.webp => 24_youtube_music_style.webp}
+
+docs/assets/rewind-health/default-0-Overture.png
+docs/assets/rewind-health/default-1-Time.png
+docs/assets/rewind-health/default-2-Artists.png
+docs/assets/rewind-health/default-3-Tracks.png
+docs/assets/rewind-health/default-4-Albums.png
+docs/assets/rewind-health/default-5-Rhythm.png
+docs/assets/rewind-health/default-6-Timeline.png
+docs/assets/rewind-health/default-7-Poster.png
+docs/assets/rewind-health/default-health.png
+docs/assets/rewind-health/health-empty.png
+docs/assets/rewind-health/rewind-empty.png
+docs/assets/rewind-health/rewind-error.png
+docs/assets/rewind-health/skin-AppleMusicStyle-health.png
+docs/assets/rewind-health/skin-AppleMusicStyle-rewind.png
+docs/assets/rewind-health/skin-Ivory-health.png
+docs/assets/rewind-health/skin-Ivory-rewind.png
+docs/assets/rewind-health/skin-Nocturne78-health.png
+docs/assets/rewind-health/skin-Nocturne78-rewind.png
+docs/assets/rewind-health/skin-Prism-health.png
+docs/assets/rewind-health/skin-Prism-rewind.png
+docs/assets/rewind-health/skin-SpotifyStyle-health.png
+docs/assets/rewind-health/skin-SpotifyStyle-rewind.png
+docs/assets/rewind-health/skin-Torque-health.png
+docs/assets/rewind-health/skin-Torque-rewind.png
+docs/assets/rewind-health/skin-YouTubeMusicStyle-health.png
+docs/assets/rewind-health/skin-YouTubeMusicStyle-rewind.png
