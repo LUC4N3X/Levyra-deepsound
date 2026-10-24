@@ -159,6 +159,8 @@ M3_MARKETING_COPY = {
     "Screenshot_20260927_131943_LEVYRA.jpg": "See when and how you listen.",
     "Screenshot_20261012_193022_LEVYRA.jpg": "Your most-played music, always close.",
     "Screenshot_20261020_142741_LEVYRA.jpg": "Listening insights that stay on-device.",
+    "Screenshot_20261024_210317_Levyra.jpg": "Listening insights that stay on-device.",
+    "Screenshot_20261024_210532_Levyra.jpg": "Handpicked collections and gems revolving around what you love.",
     "Screenshot_20261010_144048_LEVYRA.jpg": "Essential sets for every artist.",
     "Screenshot_20261010_140700_LEVYRA.jpg": "Design, audio, gestures, and local backups.",
     "Screenshot_20261015_205614_LEVYRA.jpg": "Theme, home, player, and audio in one place.",
@@ -418,7 +420,7 @@ M3_SHOWCASE_SPECS = [
      (110, 50, 185), ["10_search.webp"]),
 
     # Card 11: Collections
-    ("Screenshot_20261010_132136_LEVYRA.jpg", "CURATED PLAYLISTS", "Curated for you.",
+    ("Screenshot_20261024_210532_Levyra.jpg", "CURATED PLAYLISTS", "Curated for you.",
      "Handpicked collections and gems\nrevolving around what you love.",
      (145, 45, 160), ["11_collections.webp"]),
 
@@ -433,7 +435,7 @@ M3_SHOWCASE_SPECS = [
      (105, 45, 195), ["13_your_orbit.webp"]),
 
     # Card 14: Private Listening Stats
-    ("Screenshot_20261020_142741_LEVYRA.jpg", "ON-DEVICE STATS", "Keep it personal.",
+    ("Screenshot_20261024_210317_Levyra.jpg", "ON-DEVICE STATS", "Keep it personal.",
      "Private listening stats and charts,\ncomputed strictly on your device.",
      (110, 55, 180), ["14_listening_pulse.webp"]),
 
@@ -685,7 +687,7 @@ README_CARD_SPECS = [
         "11_your_rhythm",
         "Listening Insights",
         "Personal stats, listening habits and receipt computed on device",
-        "Screenshot_20261024_144829_Levyra.jpg",
+        "Screenshot_20261024_210317_Levyra.jpg",
         (240, 249, 255),
         (224, 242, 254),
         (14, 165, 233),
@@ -695,9 +697,9 @@ README_CARD_SPECS = [
     ),
     (
         "12_in_your_orbit",
-        "In Your Orbit",
-        "Your soundtrack loop and most-played artists",
-        "Screenshot_20261010_132103_LEVYRA.jpg",
+        "Levyra Collections",
+        "Handpicked playlists and gems revolving around what you love",
+        "Screenshot_20261024_210532_Levyra.jpg",
         (245, 243, 255),
         (237, 233, 254),
         (139, 92, 246),

@@ -119,7 +119,7 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
 <br />
 <div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-02-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: discovery, player styles, moods, and audio controls" /></div>
 <br />
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-03-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: library, curated search, insights, and orbit" /></div>
+<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-03-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: library, curated search, listening insights, and collections" /></div>
 <br />
 <div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-04-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: settings, new releases, artists, and Jam" /></div>
 <br />
