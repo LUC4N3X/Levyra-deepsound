@@ -360,11 +360,10 @@ internal class LevyraVideoStreamSelector(context: Context) {
         fun sustains(candidate: LevyraVideoCandidate): Boolean {
             val capabilities = videoCapabilities ?: return true
             if (candidate.width <= 0 || candidate.height <= 0 || candidate.fps <= 0) return true
-            val measured = runCatching {
-                capabilities.getAchievableFrameRatesFor(candidate.width, candidate.height)?.upper
-            }.getOrNull() ?: runCatching {
-                capabilities.getAchievableFrameRatesFor(candidate.height, candidate.width)?.upper
-            }.getOrNull()
+            val measured = listOfNotNull(
+                runCatching { capabilities.getAchievableFrameRatesFor(candidate.width, candidate.height)?.upper }.getOrNull(),
+                runCatching { capabilities.getAchievableFrameRatesFor(candidate.height, candidate.width)?.upper }.getOrNull()
+            ).maxOrNull()
             return measuredFrameRateSustains(measured, candidate.fps.toDouble())
         }
     }
