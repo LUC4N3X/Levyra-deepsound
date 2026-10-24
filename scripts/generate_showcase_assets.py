@@ -597,13 +597,13 @@ README_CARD_SPECS = [
         "04_midnight_obsidian",
         "Midnight Obsidian",
         "Deep obsidian surfaces with vibrant high-contrast accents",
-        "Screenshot_20261024_145933_Levyra.jpg",
+        "Screenshot_20261024_205815_Levyra.jpg",
         (241, 245, 249),
         (203, 213, 225),
-        (239, 68, 68),
-        (248, 113, 113),
+        (56, 128, 158),
+        (186, 230, 253),
         (15, 23, 42),
-        (220, 38, 38),
+        (12, 74, 96),
     ),
 
     # Row 2: Discovery & Exploration
@@ -1155,7 +1155,7 @@ def render_readme_centered_card(spec):
     sub_y = title_y + (title_bbox[3] - title_bbox[0]) + 18
     draw.text((sub_x, sub_y), subtitle, font=sub_font, fill=sub_rgb + (255,))
 
-    dev_w = 640
+    dev_w = 705
     device = make_campaign_device(screenshot_name, dev_w)
 
     shadow = Image.new("RGBA", device.size, (15, 23, 42, 0))
@@ -1164,7 +1164,7 @@ def render_readme_centered_card(spec):
     shadow.putalpha(shadow_alpha)
 
     dev_x = (CARD_W - device.width) // 2
-    dev_y = 390
+    dev_y = 350
 
     canvas.alpha_composite(shadow, (dev_x, dev_y + 36))
     canvas.alpha_composite(device, (dev_x, dev_y))
