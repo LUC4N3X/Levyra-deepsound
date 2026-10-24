@@ -308,9 +308,7 @@ internal class YoutubeMusicResilienceClient(
             }
             if (!isUseful(kind, root)) {
                 if (affectsProfileHealth) {
-                    if (kind == YoutubeMusicRequestKind.SEARCH && isConclusiveEmptySearch(root)) {
-                        recordSuccess(profile, response.latencyMs, clock())
-                    } else if (isRequestScopedDenial(response.code, response.body)) {
+                    if (isRequestScopedDenial(response.code, response.body)) {
                         deferredDenials += YoutubeMusicDeferredFailure(
                             profile = profile,
                             statusCode = response.code,
@@ -318,6 +316,8 @@ internal class YoutubeMusicResilienceClient(
                             latencyMs = response.latencyMs,
                             now = clock()
                         )
+                    } else if (kind == YoutubeMusicRequestKind.SEARCH && isConclusiveEmptySearch(root)) {
+                        recordSuccess(profile, response.latencyMs, clock())
                     } else {
                         recordFailure(profile, response.code, "empty response", response.latencyMs, clock())
                     }

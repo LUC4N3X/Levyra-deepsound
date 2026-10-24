@@ -112,7 +112,10 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
                         .build()
                     val now = System.currentTimeMillis()
                     appleChartReleaseAlbums(catalogJson(url, "Apple album charts"), now, CHART_ALBUMS_LIMIT)
-                        .also { albums -> if (albums.isNotEmpty()) chartAlbums[key] = now to albums }
+                        .also { albums ->
+                            chartAlbums.entries.removeIf { now - it.value.first >= PLAYLIST_TTL_MS }
+                            if (albums.isNotEmpty()) chartAlbums[key] = now to albums
+                        }
                 } finally {
                     inFlight.remove(key)
                 }
@@ -130,7 +133,7 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
                 ?: AppleExploreCatalog.findCurator(title, page(directory, "us", "en")?.page?.shelves.orEmpty().flatMap { it.items })
                 ?: continue
             if (curator.id == mappedCuratorId) continue
-            return curatorPage(curator.id, storefront, language)
+            curatorPage(curator.id, storefront, language)?.let { return it }
         }
         return null
     }

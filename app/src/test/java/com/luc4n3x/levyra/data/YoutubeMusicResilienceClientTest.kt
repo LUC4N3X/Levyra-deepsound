@@ -215,6 +215,16 @@ class YoutubeMusicResilienceClientTest {
     }
 
     @Test
+    fun signInMessagePageIsNotTreatedAsAConclusiveEmptySearch() {
+        val signIn =
+            """{"contents":{"sectionListRenderer":{"contents":[{"itemSectionRenderer":{"contents":[{"messageRenderer":{"text":{"runs":[{"text":"Sign in to continue"}]}}}]}}]}}}"""
+        val client = client { _ -> YoutubeMusicTransportResponse(200, signIn, 10L) }
+
+        assertNull(client.search("needs account", "it", params = "EgWKAQIYAWoMEA4QChADEAQQCRAF"))
+        assertEquals(0, client.diagnostics().getValue("web-remix").successes)
+    }
+
+    @Test
     fun searchAcceptsTabbedSearchResultsRendererCarryingResults() {
         val client = client { _ ->
             YoutubeMusicTransportResponse(

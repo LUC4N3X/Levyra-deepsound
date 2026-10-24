@@ -75,6 +75,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -344,7 +345,16 @@ internal fun LevyraLibraryScreen(
     }
     var selectedTagIds by rememberSaveable { mutableStateOf(emptySet<String>()) }
     var showHiddenPlaylists by rememberSaveable { mutableStateOf(false) }
-    val scrollPositions = remember { mutableStateMapOf<String, Pair<Int, Int>>() }
+    val scrollPositions = rememberSaveable(
+        saver = listSaver<SnapshotStateMap<String, Pair<Int, Int>>, Any>(
+            save = { positions -> positions.flatMap { (name, position) -> listOf(name, position.first, position.second) } },
+            restore = { saved ->
+                mutableStateMapOf<String, Pair<Int, Int>>().apply {
+                    saved.chunked(3).forEach { (name, index, offset) -> put(name as String, (index as Int) to (offset as Int)) }
+                }
+            }
+        )
+    ) { mutableStateMapOf() }
     val listState = rememberSaveable(categoryName, saver = LazyListState.Saver) {
         val position = scrollPositions[categoryName] ?: (0 to 0)
         LazyListState(position.first, position.second)
