@@ -8,6 +8,7 @@ import androidx.compose.animation.core.snap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -100,29 +101,14 @@ internal fun RewindPresentation(state: RewindState, onClose: () -> Unit, onYear:
                 IconButton(onClick = onClose) { Icon(Icons.Rounded.Close, strings.close) }
             }
             if (summary == null || !summary.snapshot.hasSignal) {
-                Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.Center) {
-                    Text("Levyra\nRewind", style = MaterialTheme.typography.displayLargeEmphasized, color = style.accent)
-                    Spacer(Modifier.height(24.dp))
-                    when {
-                        state.loading -> LoadingIndicator(color = style.accent, modifier = Modifier.size(72.dp))
-                        state.failed -> {
-                            Text(strings.insightsError, style = MaterialTheme.typography.titleLarge)
-                            Button(onClick = onRetry) { Text(strings.updateRetry) }
-                        }
-                        else -> {
-                            Text(strings.insightsEmpty, style = MaterialTheme.typography.headlineMedium)
-                            Spacer(Modifier.height(16.dp))
-                            Text(strings.musicExperience(MusicExperienceText.Private), color = style.muted)
-                        }
-                    }
-                }
+                RewindPlaceholder(state, style, strings, onRetry, Modifier.weight(1f))
             } else {
                 HorizontalPager(
                     state = pager,
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                     key = { chapters[it] }
                 ) { index ->
-                    val offset = ((pager.currentPage - index) + pager.currentPageOffsetFraction).absoluteValue
+                    val offset = (pager.currentPage - index + pager.currentPageOffsetFraction).absoluteValue
                     Box(Modifier.fillMaxSize().graphicsLayer {
                         if (animated) {
                             val scale = 1f - 0.06f * offset.coerceIn(0f, 1f)
@@ -134,34 +120,68 @@ internal fun RewindPresentation(state: RewindState, onClose: () -> Unit, onYear:
                         RewindChapterContent(chapters[index], summary, style, active = pager.settledPage == index)
                     }
                 }
-                Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = { scope.launch { if (animated) pager.animateScrollToPage(pager.currentPage - 1) else pager.scrollToPage(pager.currentPage - 1) } },
-                        enabled = pager.currentPage > 0
-                    ) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, strings.back) }
-                    TextButton(onClick = { chaptersVisible = true }, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Rounded.ViewCarousel, null, tint = style.accent)
-                        Spacer(Modifier.width(8.dp))
-                        Text("${pager.currentPage + 1} / ${chapters.size}", color = style.text)
-                    }
-                    FilledIconButton(
-                        onClick = { scope.launch { if (animated) pager.animateScrollToPage(pager.currentPage + 1) else pager.scrollToPage(pager.currentPage + 1) } },
-                        enabled = pager.currentPage < chapters.lastIndex,
-                        colors = IconButtonDefaults.filledIconButtonColors(containerColor = style.accent, contentColor = style.onAccent),
-                        shapes = IconButtonDefaults.shapes(), modifier = Modifier.size(52.dp).testTag("rewind-next")
-                    ) { Icon(Icons.AutoMirrored.Rounded.ArrowForward, strings.next) }
-                }
+                RewindControls(pager, chapters.size, animated, style, strings, onChapters = { chaptersVisible = true })
             }
         }
     }
     if (chaptersVisible) {
-        ModalBottomSheet(onDismissRequest = { chaptersVisible = false }, containerColor = style.background) {
-            Column(Modifier.verticalScroll(rememberScrollState()).navigationBarsPadding().padding(16.dp)) {
-                Text(strings.musicExperience(MusicExperienceText.Chapters), style = MaterialTheme.typography.headlineMedium, color = style.text, modifier = Modifier.semantics { heading() })
-                chapters.forEachIndexed { index, chapter ->
-                    TextButton(onClick = { chaptersVisible = false; scope.launch { pager.scrollToPage(index) } }, modifier = Modifier.fillMaxWidth()) {
-                        Text("${index + 1} / ${rewindChapterLabel(chapter, strings)}", color = if (index == pager.currentPage) style.accent else style.text, modifier = Modifier.fillMaxWidth())
-                    }
+        RewindChapterSheet(chapters, pager, style, strings, onDismiss = { chaptersVisible = false })
+    }
+}
+
+@Composable
+private fun RewindPlaceholder(state: RewindState, style: MusicExperienceStyle, strings: LevyraStrings, onRetry: () -> Unit, modifier: Modifier) {
+    Column(modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.Center) {
+        Text("Levyra\nRewind", style = MaterialTheme.typography.displayLargeEmphasized, color = style.accent)
+        Spacer(Modifier.height(24.dp))
+        when {
+            state.loading -> LoadingIndicator(color = style.accent, modifier = Modifier.size(72.dp))
+            state.failed -> {
+                Text(strings.insightsError, style = MaterialTheme.typography.titleLarge)
+                Button(onClick = onRetry) { Text(strings.updateRetry) }
+            }
+            else -> {
+                Text(strings.insightsEmpty, style = MaterialTheme.typography.headlineMedium)
+                Spacer(Modifier.height(16.dp))
+                Text(strings.musicExperience(MusicExperienceText.Private), color = style.muted)
+            }
+        }
+    }
+}
+
+@Composable
+private fun RewindControls(
+    pager: PagerState, count: Int, animated: Boolean, style: MusicExperienceStyle, strings: LevyraStrings, onChapters: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    fun go(page: Int) = scope.launch { if (animated) pager.animateScrollToPage(page) else pager.scrollToPage(page) }
+    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = { go(pager.currentPage - 1) }, enabled = pager.currentPage > 0) {
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, strings.back)
+        }
+        TextButton(onClick = onChapters, modifier = Modifier.weight(1f)) {
+            Icon(Icons.Rounded.ViewCarousel, null, tint = style.accent)
+            Spacer(Modifier.width(8.dp))
+            Text("${pager.currentPage + 1} / $count", color = style.text)
+        }
+        FilledIconButton(
+            onClick = { go(pager.currentPage + 1) },
+            enabled = pager.currentPage < count - 1,
+            colors = IconButtonDefaults.filledIconButtonColors(containerColor = style.accent, contentColor = style.onAccent),
+            shapes = IconButtonDefaults.shapes(), modifier = Modifier.size(52.dp).testTag("rewind-next")
+        ) { Icon(Icons.AutoMirrored.Rounded.ArrowForward, strings.next) }
+    }
+}
+
+@Composable
+private fun RewindChapterSheet(chapters: List<RewindChapter>, pager: PagerState, style: MusicExperienceStyle, strings: LevyraStrings, onDismiss: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = style.background) {
+        Column(Modifier.verticalScroll(rememberScrollState()).navigationBarsPadding().padding(16.dp)) {
+            Text(strings.musicExperience(MusicExperienceText.Chapters), style = MaterialTheme.typography.headlineMedium, color = style.text, modifier = Modifier.semantics { heading() })
+            chapters.forEachIndexed { index, chapter ->
+                TextButton(onClick = { onDismiss(); scope.launch { pager.scrollToPage(index) } }, modifier = Modifier.fillMaxWidth()) {
+                    Text("${index + 1} / ${rewindChapterLabel(chapter, strings)}", color = if (index == pager.currentPage) style.accent else style.text, modifier = Modifier.fillMaxWidth())
                 }
             }
         }

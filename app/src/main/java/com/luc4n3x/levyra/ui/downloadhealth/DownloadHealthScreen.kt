@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.luc4n3x.levyra.data.DownloadHealthResult
+import com.luc4n3x.levyra.data.local.OfflineDownloadTaskSummaryRow
 import com.luc4n3x.levyra.domain.DownloadHealth
 import com.luc4n3x.levyra.ui.experiences.LocalMusicExperiences
 import com.luc4n3x.levyra.ui.experiences.MusicExperienceStyle
@@ -97,33 +98,10 @@ internal fun DownloadHealthPresentation(state: DownloadHealthState, onClose: () 
             item(key = "health-orbit") {
                 HealthOverview(state, healthy, style, number, strings)
             }
-            item(key = "actions") {
-                if (state.scanning) {
-                    LinearWavyProgressIndicator(progress = { if (state.total > 0) state.scanned.toFloat() / state.total else 0f }, modifier = Modifier.fillMaxWidth(), color = style.accent)
-                    Text("${number.format(state.scanned)} / ${number.format(state.total)}", color = style.muted)
-                    TextButton(onClick = actions.cancelScan) { Text(strings.cancel) }
-                } else {
-                    Button(onClick = actions.scan, shapes = if (style.expressive) ButtonDefaults.shapes() else ButtonDefaults.shapes(shape = style.shape, pressedShape = style.shape), modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = style.accent, contentColor = style.onAccent)) {
-                        Text(strings.musicExperience(MusicExperienceText.Scan))
-                    }
-                }
-                if (state.failed) Text(strings.operationFailed, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp))
-                Text(strings.musicExperience(MusicExperienceText.ScanHint), style = MaterialTheme.typography.bodySmall, color = style.muted, modifier = Modifier.padding(top = 12.dp))
-            }
+            item(key = "actions") { HealthScanControls(state, style, number, strings, actions) }
             if (state.tasks.isNotEmpty()) {
                 item(key = "tasks-heading") { Text(strings.downloadsInProgress, style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() }) }
-                items(state.tasks, key = { "task:${it.taskKey}" }) { task ->
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(task.title, style = MaterialTheme.typography.titleMedium)
-                        Text(if (task.state == "FAILED") strings.updateFailed else strings.downloadInProgress, color = style.muted)
-                        LinearProgressIndicator(progress = { task.progress / 100f }, modifier = Modifier.fillMaxWidth(), color = style.accent)
-                        Row {
-                            if (task.state in setOf("FAILED", "PAUSED")) TextButton(onClick = { actions.retry(task.taskKey) }) { Text(strings.resumeDownload) }
-                            TextButton(onClick = { actions.cancel(task.taskKey) }) { Text(strings.cancelDownload) }
-                        }
-                    }
-                }
+                items(state.tasks, key = { "task:${it.taskKey}" }) { task -> HealthTaskRow(task, style, strings, actions) }
             }
             if (state.finished) {
                 item(key = "filters") {
@@ -147,13 +125,48 @@ internal fun DownloadHealthPresentation(state: DownloadHealthState, onClose: () 
         }
     }
     if (repairIds.isNotEmpty()) {
-        AlertDialog(onDismissRequest = { repairIds = emptyList() }, title = { Text(strings.musicExperience(MusicExperienceText.Repair)) },
-            text = { Text(strings.musicExperience(MusicExperienceText.RepairBody)) },
-            confirmButton = { TextButton(onClick = {
-                actions.repair(state.results.filter { it.download.id in repairIds }); repairIds = emptyList()
-            }) { Text(strings.musicExperience(MusicExperienceText.Repair)) } },
-            dismissButton = { TextButton(onClick = { repairIds = emptyList() }) { Text(strings.cancel) } })
+        HealthRepairDialog(strings, onDismiss = { repairIds = emptyList() },
+            onConfirm = { actions.repair(state.results.filter { it.download.id in repairIds }); repairIds = emptyList() })
     }
+}
+
+@Composable
+private fun HealthScanControls(state: DownloadHealthState, style: MusicExperienceStyle, number: NumberFormat, strings: LevyraStrings, actions: HealthActions) {
+    Column {
+        if (state.scanning) {
+            LinearWavyProgressIndicator(progress = { if (state.total > 0) state.scanned.toFloat() / state.total else 0f }, modifier = Modifier.fillMaxWidth(), color = style.accent)
+            Text("${number.format(state.scanned)} / ${number.format(state.total)}", color = style.muted)
+            TextButton(onClick = actions.cancelScan) { Text(strings.cancel) }
+        } else {
+            Button(onClick = actions.scan, shapes = if (style.expressive) ButtonDefaults.shapes() else ButtonDefaults.shapes(shape = style.shape, pressedShape = style.shape), modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = style.accent, contentColor = style.onAccent)) {
+                Text(strings.musicExperience(MusicExperienceText.Scan))
+            }
+        }
+        if (state.failed) Text(strings.operationFailed, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp))
+        Text(strings.musicExperience(MusicExperienceText.ScanHint), style = MaterialTheme.typography.bodySmall, color = style.muted, modifier = Modifier.padding(top = 12.dp))
+    }
+}
+
+@Composable
+private fun HealthTaskRow(task: OfflineDownloadTaskSummaryRow, style: MusicExperienceStyle, strings: LevyraStrings, actions: HealthActions) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(task.title, style = MaterialTheme.typography.titleMedium)
+        Text(if (task.state == "FAILED") strings.updateFailed else strings.downloadInProgress, color = style.muted)
+        LinearProgressIndicator(progress = { task.progress / 100f }, modifier = Modifier.fillMaxWidth(), color = style.accent)
+        Row {
+            if (task.state in setOf("FAILED", "PAUSED")) TextButton(onClick = { actions.retry(task.taskKey) }) { Text(strings.resumeDownload) }
+            TextButton(onClick = { actions.cancel(task.taskKey) }) { Text(strings.cancelDownload) }
+        }
+    }
+}
+
+@Composable
+private fun HealthRepairDialog(strings: LevyraStrings, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(strings.musicExperience(MusicExperienceText.Repair)) },
+        text = { Text(strings.musicExperience(MusicExperienceText.RepairBody)) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(strings.musicExperience(MusicExperienceText.Repair)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(strings.cancel) } })
 }
 
 @Composable

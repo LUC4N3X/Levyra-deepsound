@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.luc4n3x.levyra.domain.ListeningInsightsTrack
 import com.luc4n3x.levyra.domain.RewindSummary
 import com.luc4n3x.levyra.ui.experiences.ExperienceArtwork
 import com.luc4n3x.levyra.ui.experiences.MusicExperienceStyle
@@ -62,8 +63,16 @@ internal fun ColumnScope.RewindTracks(summary: RewindSummary, style: MusicExperi
     var selected by rememberSaveable(summary.year) { mutableIntStateOf(0) }
     val tracks = summary.snapshot.topTracks.take(5)
     val selectedTrack = tracks.getOrElse(selected) { tracks.first() }
-    val animations = LocalAnimationsEnabled.current
     RewindEyebrow(strings.topTracksTitle, style)
+    RewindTrackCollage(tracks, selected, style, reveal) { selected = it }
+    Text(selectedTrack.title, style = MaterialTheme.typography.headlineLargeEmphasized, color = style.text)
+    Text(selectedTrack.artist, style = MaterialTheme.typography.titleLarge, color = style.muted)
+    Text("${number.format(selectedTrack.plays)} ${strings.statPlays} · ${number.format(selectedTrack.listenedMs / 60_000L)} ${strings.recapUnitMinutes}", color = style.accent, style = MaterialTheme.typography.titleMedium)
+    RewindTrackList(tracks, selected, style, number) { selected = it }
+}
+
+@Composable
+private fun ColumnScope.RewindTrackCollage(tracks: List<ListeningInsightsTrack>, selected: Int, style: MusicExperienceStyle, reveal: Float, onSelect: (Int) -> Unit) {
     BoxWithConstraints(Modifier.widthIn(max = 400.dp).fillMaxWidth().align(Alignment.CenterHorizontally).aspectRatio(1.05f)) {
         val lead = maxWidth * 0.61f
         tracks.take(4).reversed().forEachIndexed { reverseIndex, track ->
@@ -82,16 +91,18 @@ internal fun ColumnScope.RewindTracks(summary: RewindSummary, style: MusicExperi
                         scaleX = if (active) 1f else 0.94f
                         scaleY = scaleX
                     }
-                    .clickable(role = Role.Button, onClickLabel = track.title) { selected = index }, shape)
+                    .clickable(role = Role.Button, onClickLabel = track.title) { onSelect(index) }, shape)
         }
     }
-    Text(selectedTrack.title, style = MaterialTheme.typography.headlineLargeEmphasized, color = style.text)
-    Text(selectedTrack.artist, style = MaterialTheme.typography.titleLarge, color = style.muted)
-    Text("${number.format(selectedTrack.plays)} ${strings.statPlays} · ${number.format(selectedTrack.listenedMs / 60_000L)} ${strings.recapUnitMinutes}", color = style.accent, style = MaterialTheme.typography.titleMedium)
+}
+
+@Composable
+private fun RewindTrackList(tracks: List<ListeningInsightsTrack>, selected: Int, style: MusicExperienceStyle, number: NumberFormat, onSelect: (Int) -> Unit) {
+    val animations = LocalAnimationsEnabled.current
     val motion = MaterialTheme.motionScheme.defaultSpatialSpec<androidx.compose.ui.unit.IntSize>()
     Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.animateContentSize(if (animations) motion else snap())) {
         tracks.forEachIndexed { index, track ->
-            Surface(onClick = { selected = index }, color = if (selected == index) style.accent else style.surface,
+            Surface(onClick = { onSelect(index) }, color = if (selected == index) style.accent else style.surface,
                 contentColor = if (selected == index) style.onAccent else style.text, shape = MaterialTheme.shapes.large) {
                 Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(number.format(index + 1), fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
