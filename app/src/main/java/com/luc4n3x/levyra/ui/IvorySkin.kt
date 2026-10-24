@@ -120,6 +120,7 @@ internal fun IvoryHomeHeader(
                 }
                 IvoryInkTab(start = false, Modifier.height(64.dp)) {
                     Row(Modifier.padding(start = 6.dp, end = inset - 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        com.luc4n3x.levyra.ui.rewind.RewindEntry(tint = IvoryDesign.onInk)
                         IconButton(onClick = onSearch, modifier = Modifier.size(48.dp)) { Icon(Icons.Outlined.Search, strings.search, tint = IvoryDesign.onInk) }
                         IconButton(onClick = onSettings, modifier = Modifier.size(48.dp)) { Icon(Icons.Outlined.Settings, strings.settings, tint = IvoryDesign.onInk) }
                     }

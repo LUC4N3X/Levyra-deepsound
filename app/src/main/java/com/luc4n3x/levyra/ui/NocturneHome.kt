@@ -80,6 +80,7 @@ internal fun NocturneHomeHeader(
                     greeting, color = p.text, fontFamily = FontFamily.Serif, fontWeight = FontWeight.Normal,
                     fontSize = 27.sp, lineHeight = 32.sp, modifier = Modifier.weight(1f).semantics { heading() }
                 )
+                com.luc4n3x.levyra.ui.rewind.RewindEntry()
                 IconButton(onClick = onSearch, modifier = Modifier.size(48.dp)) {
                     Icon(Icons.Outlined.Search, contentDescription = strings.search, tint = p.text)
                 }

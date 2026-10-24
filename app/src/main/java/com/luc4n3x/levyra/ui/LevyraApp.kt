@@ -672,6 +672,12 @@ import com.luc4n3x.levyra.domain.ListeningPulse
 import com.luc4n3x.levyra.ui.pulse.ListeningPulseProCard
 import com.luc4n3x.levyra.ui.recap.LevyraListeningRecapOverlay
 import com.luc4n3x.levyra.ui.insights.ListeningInsightsScreen
+import com.luc4n3x.levyra.ui.rewind.RewindScreen
+import com.luc4n3x.levyra.ui.rewind.RewindEntry
+import com.luc4n3x.levyra.ui.downloadhealth.DownloadHealthScreen
+import com.luc4n3x.levyra.ui.downloadhealth.DownloadHealthEntry
+import com.luc4n3x.levyra.ui.experiences.LocalMusicExperiences
+import com.luc4n3x.levyra.ui.experiences.MusicExperienceNavigation
 import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.LyricSection
 import com.luc4n3x.levyra.domain.LyricSectionType
@@ -876,7 +882,6 @@ private val CompactNumberTrailingZeroPattern = Regex("[,.]0$")
 private val CommentCountBadgePattern = Regex("""\d[\d\s.,]*(?:[KMBkmb])?""")
 private val TrackRowShape = RoundedCornerShape(18.dp)
 private val TrackRowArtworkShape = RoundedCornerShape(12.dp)
-private val DownloadRowArtworkShape = RoundedCornerShape(8.dp)
 private val TrackRowTransparentBrush: Brush = SolidColor(Color.Transparent)
 private val CinematicPlum = Color(0xFF2A1738)
 private val CinematicGold = Color(0xFFFFC46B)
@@ -1855,7 +1860,7 @@ private fun HomeTrackColumnsShelf(
 }
 
 @Composable
-private fun EmptyState(text: String) {
+internal fun EmptyState(text: String) {
     Surface(
         color = CinematicGlass.copy(alpha = 0.66f),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
@@ -1958,6 +1963,7 @@ fun LevyraApp(
     var showLanguageRestartDialog by remember { mutableStateOf(false) }
     var showPlaybackDiagnostics by remember { mutableStateOf(false) }
     var showDownloadsFolder by remember { mutableStateOf(false) }
+    var musicExperience by rememberSaveable { mutableStateOf<String?>(null) }
     var liveRadioOpen by rememberSaveable { mutableStateOf(false) }
     var discoveryOpen by rememberSaveable { mutableStateOf(false) }
     var trackActionTarget by remember { mutableStateOf<Track?>(null) }
@@ -2173,10 +2179,12 @@ fun LevyraApp(
         }
     }
     val otherRootOverlayOpen = showYoutubeMusic || showLanguageRestartDialog || state.youtubeEngagement.comments.visible || state.showRecognition || state.showJam || state.showThemeStudio || state.showLyricsStudio || state.showHomeStudio || miniPlayerStudio.visible || navigationStudio.visible || state.showYourSound || state.showListeningInsights || state.showListeningRecap || state.sharedMediaPreview != null || showDownloadsFolder || state.playlistHitPreview != null || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showAudioQualityPanel
-    val rootOverlayOpen = otherRootOverlayOpen || state.showSettings
+    val rootOverlayOpen = otherRootOverlayOpen || state.showSettings || musicExperience != null
     val settingsDockVisible = state.showSettings && !otherRootOverlayOpen
     BackHandler(enabled = rootOverlayOpen || state.selectedTab != LevyraTab.Home) {
-        if (showYoutubeMusic) {
+        if (musicExperience != null) {
+            musicExperience = null
+        } else if (showYoutubeMusic) {
             if (youtubeMusicState.showLogin) youtubeMusicViewModel.cancelLogin()
             else if (youtubeMusicState.detail != null) youtubeMusicViewModel.closeDetail()
             else showYoutubeMusic = false
@@ -2223,6 +2231,9 @@ fun LevyraApp(
     )
     val livePlaybackPosition = remember(viewModel) { viewModel::livePlaybackPositionMs }
     CompositionLocalProvider(
+        LocalMusicExperiences provides MusicExperienceNavigation(
+            rewind = { musicExperience = "rewind" }, health = { musicExperience = "health" }
+        ),
         LocalAnimationsEnabled provides state.animationsEnabled,
         LocalLivePlaybackPosition provides livePlaybackPosition,
         LocalLevyraVisualCapabilities provides visualCapabilities,
@@ -2363,7 +2374,7 @@ fun LevyraApp(
                 !state.showAudioQualityPanel &&
                 !state.youtubeEngagement.comments.visible &&
                 !state.showYourSound &&
-                !state.showListeningInsights &&
+                !state.showListeningInsights && musicExperience == null &&
                 !state.showListeningRecap &&
                 !state.showJam &&
                 !state.showRecognition &&
@@ -3529,6 +3540,16 @@ fun LevyraApp(
                     capture = viewModel::capturePlaybackDiagnostics,
                     onDismiss = { showPlaybackDiagnostics = false }
                 )
+            }
+
+            if (musicExperience == "rewind") {
+                RewindScreen(onClose = { musicExperience = null })
+            } else if (musicExperience == "health") {
+                DownloadHealthScreen(onClose = { musicExperience = null }, onSettings = {
+                    musicExperience = null
+                    showDownloadsFolder = false
+                    viewModel.openSettings()
+                })
             }
 
             if (showLanguageRestartDialog) {
@@ -17191,75 +17212,6 @@ private fun DownloadsFolderCard(count: Int, onClick: () -> Unit) {
 }
 
 @Composable
-private fun DownloadsFolderOverlay(
-    state: LevyraUiState,
-    viewModel: LevyraViewModel,
-    onClose: () -> Unit
-) {
-    val strings = LocalLevyraStrings.current
-    val downloadsAccent = rememberNowPlayingAccent(state.currentTrack, LevyraCyan)
-    val downloadsStyle = LevyraConnectedDefaults.style(accent = downloadsAccent)
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(LevyraInk)
-    ) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = levyraTabContentBottomPadding(state.currentTrack != null)),
-            verticalArrangement = Arrangement.spacedBy(downloadsStyle.gap)
-        ) {
-            item(contentType = "downloads-header") {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 18.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    LevyraBackButton(onClick = onClose, contentDescription = LocalLevyraStrings.current.back)
-                    Spacer(Modifier.width(8.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = LocalLevyraStrings.current.offlineDownloadsPlain,
-                            color = LevyraText,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Black
-                        )
-                        Text(
-                            text = strings.formatSavedTrackCount(state.downloads.size),
-                            color = LevyraMuted,
-                            fontSize = 14.sp
-                        )
-                    }
-                }
-            }
-            if (state.downloads.isEmpty()) {
-                item {
-                    EmptyState(strings.noOfflineDownloads)
-                }
-            } else {
-                itemsIndexed(
-                    state.downloads,
-                    key = { _, download -> "dlfolder-${download.id}" },
-                    contentType = { _, _ -> "download-saved" }
-                ) { downloadIndex, download ->
-                    DownloadRow(
-                        download = download,
-                        isCurrent = download.trackId == state.currentTrack?.id,
-                        isPlaying = state.isPlaying,
-                        position = LevyraConnectedPosition.of(downloadIndex, state.downloads.size),
-                        style = downloadsStyle,
-                        accent = downloadsAccent,
-                        onPlay = { viewModel.playDownloaded(download) },
-                        onDelete = { viewModel.deleteDownload(download) }
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun LibraryScreen(
     viewModel: LibraryViewModel,
     state: LevyraUiState,
@@ -18282,66 +18234,6 @@ private fun LibraryEmptyState(
 
 private fun cleanLibraryLabel(value: String): String {
     return value.dropWhile { !it.isLetterOrDigit() }.trim()
-}
-
-@Composable
-private fun DownloadRow(
-    download: DownloadedTrack,
-    isCurrent: Boolean,
-    isPlaying: Boolean,
-    position: LevyraConnectedPosition,
-    style: LevyraConnectedStyle,
-    accent: Color,
-    onPlay: () -> Unit,
-    onDelete: () -> Unit
-) {
-    val strings = LocalLevyraStrings.current
-    val artworkBrush = remember(accent) {
-        Brush.linearGradient(listOf(accent.copy(alpha = 0.32f), LevyraViolet.copy(alpha = 0.28f)))
-    }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .levyraConnectedSurface(position, style, selected = isCurrent)
-            .levyraPressable(onClick = onPlay, pressedScale = LevyraPressScale.Row)
-            .padding(horizontal = 10.dp, vertical = 9.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(54.dp)
-                .clip(DownloadRowArtworkShape)
-                .background(artworkBrush),
-            contentAlignment = Alignment.Center
-        ) {
-            if (isCurrent) {
-                LevyraPlayingIndicator(
-                    playing = isPlaying,
-                    color = accent,
-                    size = 20.dp,
-                    contentDescription = strings.playing
-                )
-            } else {
-                Icon(Icons.Rounded.DownloadDone, null, tint = accent, modifier = Modifier.size(24.dp))
-            }
-        }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(download.title, color = if (isCurrent) accent else LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(download.artist, color = LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(
-                if (download.embeddedMetadata) "Music/Levyra · ${LocalLevyraStrings.current.coverAndTags}" else "Music/Levyra",
-                color = LevyraMuted.copy(alpha = 0.7f),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        IconButton(onClick = onDelete) {
-            Icon(Icons.Rounded.Delete, contentDescription = LocalLevyraStrings.current.remove, tint = LevyraMuted, modifier = Modifier.size(22.dp))
-        }
-    }
 }
 
 @Composable
@@ -23783,6 +23675,7 @@ private fun GreetingBar(
                 modifier = Modifier.weight(1f)
             )
         }
+        RewindEntry()
         HomeHeaderIconButton(
             icon = Icons.Rounded.Search,
             contentDescription = strings.search,

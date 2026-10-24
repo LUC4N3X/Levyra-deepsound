@@ -1114,6 +1114,9 @@ internal fun LevyraLibraryScreen(
                 )
 
                 LibraryCategory.Offline -> {
+                    item(key = "download-health-entry") {
+                        com.luc4n3x.levyra.ui.downloadhealth.DownloadHealthEntry()
+                    }
                     item(key = "offline-storage") {
                         val showSmartOffline = state.smartOfflineSettings.enabled || smartOfflineSummary.first > 0
                         val groupCount = if (showSmartOffline) 2 else 1

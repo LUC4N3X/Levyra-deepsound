@@ -25,6 +25,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import androidx.room.withTransaction
 import com.luc4n3x.levyra.data.collections.CollectionAccessDeniedException
 import com.luc4n3x.levyra.data.collections.PersonalCollectionUnavailableException
 import com.luc4n3x.levyra.player.offline.PERSONAL_COLLECTION_NOT_AUDIO
@@ -54,6 +55,7 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
@@ -107,7 +109,10 @@ class OfflineExportWorker(
         val settings = preferences.downloadSettings()
         val downloadQualityKey = settings.storedQualityKey(preferences.audioQuality())
         val workId = id.toString()
-        if (settings.skipExisting && track.id.isNotBlank()) {
+        val repairId = inputData.getLong(KEY_REPAIR_DOWNLOAD_ID, 0L)
+        val downloads = LevyraDatabase.get(applicationContext).downloadedTracksDao()
+        val repairTarget = if (repairId > 0L) downloads.byId(repairId) else null
+        if (settings.skipExisting && repairId == 0L && track.id.isNotBlank()) {
             val existing = LevyraDatabase.get(applicationContext).downloadedTracksDao().byTrackIdAndProfile(
                 trackId = track.id,
                 downloadPreset = settings.storedPresetKey,
@@ -194,6 +199,11 @@ class OfflineExportWorker(
             }
             if (taskDao.updateStateForWork(taskKey, workId, "SUCCEEDED", 100, "", System.currentTimeMillis()) == 0) {
                 return Result.failure(errorData(ERROR_SUPERSEDED))
+            }
+            if (repairTarget != null && repairTarget.uri != result.uri.toString()) {
+                LevyraDatabase.get(applicationContext).withTransaction {
+                    if (downloads.byId(repairTarget.id) == repairTarget) downloads.deleteById(repairTarget.id)
+                }
             }
             Result.success(
                 workDataOf(
@@ -388,6 +398,8 @@ class OfflineExportWorker(
         const val KEY_ERROR = "error"
         const val KEY_PROGRESS = "progress"
         const val KEY_OWNERSHIP = "ownership"
+        const val KEY_REPAIR_DOWNLOAD_ID = "repair_download_id"
+        private const val REPAIR_TAG_PREFIX = "levyra_health_repair_"
         const val ERROR_SUPERSEDED = "task_superseded"
         private const val CHANNEL_ID = "levyra_offline_downloads"
         private const val PROGRESS_PERSIST_STEP = 3
@@ -403,7 +415,8 @@ class OfflineExportWorker(
             trackId: String,
             trackPayload: String,
             batch: OfflineDownloadBatchRef? = null,
-            ownership: DownloadOwnership = DownloadOwnership.MANUAL
+            ownership: DownloadOwnership = DownloadOwnership.MANUAL,
+            repairDownloadId: Long = 0L
         ): UUID {
             val appContext = context.applicationContext
             val workManager = WorkManager.getInstance(appContext)
@@ -433,7 +446,8 @@ class OfflineExportWorker(
                     workDataOf(
                         KEY_TRACK_PAYLOAD to trackPayload,
                         KEY_TASK_KEY to trackId,
-                        KEY_OWNERSHIP to ownership.name
+                        KEY_OWNERSHIP to ownership.name,
+                        KEY_REPAIR_DOWNLOAD_ID to repairDownloadId
                     )
                 )
                 .setConstraints(
@@ -446,6 +460,7 @@ class OfflineExportWorker(
                 .addTag("levyra_offline_export")
                 .addTag("levyra_offline_${ownership.name.lowercase()}")
                 .addTag(uniqueName)
+                .apply { if (repairDownloadId > 0L) addTag("$REPAIR_TAG_PREFIX$repairDownloadId") }
                 .build()
             val track = TrackPayloadCodec.decode(trackPayload)
             val retainedBatch = previous
@@ -496,11 +511,18 @@ class OfflineExportWorker(
             val appContext = context.applicationContext
             val task = LevyraDatabase.get(appContext).offlineDownloadTasksDao().byKey(taskKey) ?: return null
             if (task.state !in setOf("PAUSED", "FAILED", "RETRYING")) return null
+            val previousId = try { UUID.fromString(task.workId) } catch (_: IllegalArgumentException) { null }
+            val repairId = previousId?.let {
+                WorkManager.getInstance(appContext).getWorkInfoByIdFlow(it).first()?.tags
+                    ?.firstOrNull { tag -> tag.startsWith(REPAIR_TAG_PREFIX) }
+                    ?.removePrefix(REPAIR_TAG_PREFIX)?.toLongOrNull()
+            } ?: 0L
             return enqueue(
                 context = appContext,
                 trackId = taskKey,
                 trackPayload = task.payload,
-                ownership = DownloadOwnership.fromStorage(task.ownership)
+                ownership = DownloadOwnership.fromStorage(task.ownership),
+                repairDownloadId = repairId
             )
         }
 

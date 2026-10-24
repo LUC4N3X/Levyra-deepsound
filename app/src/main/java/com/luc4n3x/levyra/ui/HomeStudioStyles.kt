@@ -1213,6 +1213,7 @@ private fun StudioHeaderActions(style: HomeStyle, isResolving: Boolean, onSearch
     val strings = LocalLevyraStrings.current
     if (style == HomeStyle.ExpressiveMax) {
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            com.luc4n3x.levyra.ui.rewind.RewindEntry()
             FilledTonalIconButton(onClick = onSearch, shapes = IconButtonDefaults.shapes(), modifier = Modifier.size(52.dp)) {
                 Icon(Icons.Rounded.Search, contentDescription = strings.search)
             }
@@ -1226,6 +1227,7 @@ private fun StudioHeaderActions(style: HomeStyle, isResolving: Boolean, onSearch
         }
     } else {
         Row {
+            com.luc4n3x.levyra.ui.rewind.RewindEntry()
             IconButton(onClick = onSearch) {
                 Icon(Icons.Rounded.Search, contentDescription = strings.search, tint = LevyraText)
             }
@@ -3581,6 +3583,7 @@ private fun MxBleedGreeting(
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            com.luc4n3x.levyra.ui.rewind.RewindEntry(tint = buttonContent)
             FilledTonalIconButton(
                 onClick = onSearch,
                 shapes = IconButtonDefaults.shapes(),
@@ -3825,6 +3828,7 @@ private fun MxGreetingRow(
             )
         }
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            com.luc4n3x.levyra.ui.rewind.RewindEntry(tint = LocalContentColor.current)
             FilledIconButton(onClick = onSearch, shapes = IconButtonDefaults.shapes(), modifier = Modifier.size(52.dp)) {
                 Icon(Icons.Rounded.Search, contentDescription = searchLabel)
             }
