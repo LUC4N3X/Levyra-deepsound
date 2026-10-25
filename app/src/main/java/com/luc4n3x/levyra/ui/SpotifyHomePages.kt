@@ -206,6 +206,7 @@ private fun SpotifyFollowArtistPicker(state: LevyraUiState, viewModel: HomeViewM
     val strings = LocalLevyraStrings.current
     val chart = remember(strings.code) { com.luc4n3x.levyra.ui.i18n.LevyraSpotifyChartStrings.forCode(strings.code) }
     var query by remember { mutableStateOf("") }
+    val selected = remember { mutableStateMapOf<String, Boolean>() }
     val artists = remember(state.homeArtists, state.similarArtists, state.followedArtists, query) {
         (state.homeArtists + state.similarArtists).filter { it.browseId.isNotBlank() }.distinctBy { it.browseId }
             .filter { query.isBlank() || it.name.contains(query.trim(), ignoreCase = true) }
@@ -247,27 +248,14 @@ private fun SpotifyFollowArtistPicker(state: LevyraUiState, viewModel: HomeViewM
                         }
                     }
                 }
-                artists.forEachIndexed { index, artist ->
-                    if (index == 5 && query.isBlank()) item(key = "picker-more") {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Box(
-                                Modifier.fillMaxWidth().padding(horizontal = 6.dp).aspectRatio(1f).clip(CircleShape).background(Color(0xFF2D46B9))
-                                    .levyraPressable(onClick = viewModel::refreshHomeArtists, onClickLabel = com.luc4n3x.levyra.ui.i18n.LevyraSpotifyChartStrings.pickerMore(strings.code), role = Role.Button)
-                                    .padding(10.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    com.luc4n3x.levyra.ui.i18n.LevyraSpotifyChartStrings.pickerMore(strings.code), color = Color.White,
-                                    fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
-                                    maxLines = 3, overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-                    }
+                artists.forEach { artist ->
                     item(key = "picker-${artist.browseId}") {
-                        val followed = state.followedArtists.any { it.browseId == artist.browseId }
+                        val followed = selected[artist.browseId] ?: state.followedArtists.any { it.browseId == artist.browseId || it.name.equals(artist.name, ignoreCase = true) }
                         Column(
-                            Modifier.levyraPressable(onClick = { viewModel.toggleFollowArtist(artist) },
+                            Modifier.levyraPressable(onClick = {
+                                selected[artist.browseId] = !followed
+                                viewModel.toggleFollowArtist(artist)
+                            },
                                 onClickLabel = if (followed) strings.followingArtist else strings.followArtist, role = Role.Checkbox),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
@@ -285,6 +273,22 @@ private fun SpotifyFollowArtistPicker(state: LevyraUiState, viewModel: HomeViewM
                             Text(
                                 artist.name, color = Color.White, fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.Bold,
                                 textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp)
+                            )
+                        }
+                    }
+                }
+                if (query.isBlank()) item(key = "picker-more") {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(
+                            Modifier.fillMaxWidth().padding(horizontal = 6.dp).aspectRatio(1f).clip(CircleShape).background(Color(0xFF2D46B9))
+                                .levyraPressable(onClick = viewModel::refreshHomeArtists, onClickLabel = com.luc4n3x.levyra.ui.i18n.LevyraSpotifyChartStrings.pickerMore(strings.code), role = Role.Button)
+                                .padding(10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                com.luc4n3x.levyra.ui.i18n.LevyraSpotifyChartStrings.pickerMore(strings.code), color = Color.White,
+                                fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
+                                maxLines = 3, overflow = TextOverflow.Ellipsis
                             )
                         }
                     }

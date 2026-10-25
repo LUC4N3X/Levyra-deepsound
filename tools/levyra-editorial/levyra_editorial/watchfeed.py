@@ -51,7 +51,11 @@ def _messages(payload: bytes, number: int) -> list[bytes]:
         fields = _iter_protobuf_fields(payload)
     except SourceApiError:
         return []
-    return [value for field, wire, value in fields if field == number and wire == 2 and isinstance(value, bytes)]
+    return [
+        value
+        for field, wire, value in fields
+        if field == number and wire == 2 and isinstance(value, bytes)
+    ]
 
 
 def _text(payload: bytes, number: int) -> str:

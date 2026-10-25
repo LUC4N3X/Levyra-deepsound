@@ -278,22 +278,7 @@ internal fun SpotifyPlaylistPage(
         ) {
             item(key = "chart-header") {
                 Column(Modifier.fillMaxWidth().then(if (heroBehindTopBar) Modifier else Modifier.statusBarsPadding().padding(top = SpotifyChartTopBar))) {
-                    if (showFindBar) Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(36.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Row(
-                            Modifier.weight(1f).height(36.dp).clip(RoundedCornerShape(4.dp)).background(Color.White.copy(alpha = 0.12f)).padding(horizontal = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Rounded.Search, null, tint = Color.White, modifier = Modifier.size(18.dp))
-                            Text(copy.findInPlaylist, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp), maxLines = 1)
-                        }
-                        Box(
-                            Modifier.height(36.dp).clip(RoundedCornerShape(4.dp)).background(Color.White.copy(alpha = 0.12f)).padding(horizontal = 12.dp),
-                            contentAlignment = Alignment.Center
-                        ) { Text(copy.sort, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold) }
-                    }
+                    if (showFindBar) SpotifyPlaylistFindBar(copy.findInPlaylist, copy.sort)
                     hero(headerScroll, coverProgress)
                     if (descriptionContent != null) descriptionContent() else Text(
                         description, color = Color.White.copy(alpha = 0.7f), fontSize = 14.sp, lineHeight = 20.sp,
@@ -307,84 +292,144 @@ internal fun SpotifyPlaylistPage(
                         meta,
                         color = Color.White.copy(alpha = 0.7f), fontSize = 14.sp, modifier = Modifier.padding(start = 16.dp, top = 8.dp)
                     )
-                    Row(
-                        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp).height(56.dp)
-                            .onGloballyPositioned { playRowY = it.positionInRoot().y.toInt() },
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(Modifier.size(width = 28.dp, height = 36.dp)) {
-                            StableRemoteArtwork(
-                                thumbUrl, contentDescription = null, contentScale = ContentScale.Crop,
-                                modifier = Modifier.offset(x = 4.dp).size(width = 24.dp, height = 34.dp).clip(RoundedCornerShape(3.dp)).graphicsLayer { alpha = 0.6f }
-                            )
-                            StableRemoteArtwork(
-                                tracks.firstOrNull()?.thumbnailUrl.orEmpty(), contentDescription = null, contentScale = ContentScale.Crop,
-                                modifier = Modifier.size(width = 24.dp, height = 36.dp).clip(RoundedCornerShape(3.dp))
-                            )
-                        }
-                        Spacer(Modifier.width(20.dp))
-                        listOf(Icons.Rounded.AddCircleOutline, Icons.Rounded.ArrowCircleDown, Icons.Rounded.Share).forEach { icon ->
-                            Icon(icon, null, tint = SpotifyDesign.subdued, modifier = Modifier.padding(end = 20.dp).size(26.dp))
-                        }
-                        Spacer(Modifier.weight(1f))
-                        Box(
-                            Modifier.size(48.dp).levyraPressable(onClick = {
-                                val shuffled = tracks.shuffled()
-                                shuffled.firstOrNull()?.let { onPlay(shuffled, it) }
-                            }, onClickLabel = strings.shuffle, role = Role.Button),
-                            contentAlignment = Alignment.Center
-                        ) { Icon(Icons.Rounded.Shuffle, strings.shuffle, tint = SpotifyDesign.green, modifier = Modifier.size(28.dp)) }
-                        Spacer(Modifier.width(8.dp))
-                        SpotifyChartPlayButton(Modifier.graphicsLayer { alpha = if (pinned) 0f else 1f }, strings.playAll, playTracks)
-                    }
+                    SpotifyPlaylistActions(thumbUrl, tracks, pinned, onPlay, playTracks) { playRowY = it }
                 }
             }
             itemsIndexed(tracks, key = { index, track -> "chart-row-$index-${track.id}" }) { index, track ->
                 val active = track.id == currentId
-                Row(
-                    Modifier.fillMaxWidth().height(64.dp).levyraPressable(onClick = { onPlay(tracks, track) }, onClickLabel = track.title, role = Role.Button)
-                        .padding(start = 16.dp, end = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(Modifier.width(28.dp), contentAlignment = Alignment.CenterStart) {
-                        if (active) LevyraPlayingIndicator(playing = isPlaying, color = SpotifyDesign.green, size = 12.dp)
-                        else Text((index + 1).toString(), color = SpotifyDesign.text, fontSize = 15.sp)
-                    }
-                    Box(Modifier.size(48.dp).background(SpotifyDesign.placeholder)) { CoverImage(track, Modifier.fillMaxSize()) }
-                    Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(track.title, color = if (active) SpotifyDesign.greenText else SpotifyDesign.text, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(track.artist, color = SpotifyDesign.subdued, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                    Box(
-                        Modifier.size(48.dp).levyraPressable(onClick = { onTrackActions(track) }, onClickLabel = strings.options, role = Role.Button),
-                        contentAlignment = Alignment.Center
-                    ) { Icon(Icons.Rounded.MoreVert, strings.options, tint = SpotifyDesign.subdued) }
-                }
+                SpotifyPlaylistTrackRow(index, track, active, isPlaying, onPlay = { onPlay(tracks, track) }, onActions = { onTrackActions(track) })
             }
         }
-        Box(
-            Modifier.fillMaxWidth().background(lerp(tone, Color.Black, 0.45f).copy(alpha = barAlpha))
-                .onGloballyPositioned { statusBarPx = it.positionInRoot().y.toInt() }
-                .statusBarsPadding().height(SpotifyChartTopBar)
+        SpotifyPlaylistTopBar(title, tone, barAlpha, pinned, playTracks, onDismiss) { statusBarPx = it }
+    }
+}
+
+@Composable
+private fun SpotifyPlaylistFindBar(findLabel: String, sortLabel: String) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(36.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            Modifier.weight(1f).height(36.dp).clip(RoundedCornerShape(4.dp)).background(Color.White.copy(alpha = 0.12f)).padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                Modifier.padding(start = 12.dp).align(Alignment.CenterStart).size(40.dp).clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.35f * (1f - barAlpha))).levyraPressable(onClick = onDismiss, onClickLabel = strings.back, role = Role.Button),
-                contentAlignment = Alignment.Center
-            ) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, strings.back, tint = Color.White) }
-            Text(
-                title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.align(Alignment.CenterStart).padding(start = 64.dp, end = 120.dp).graphicsLayer { alpha = barAlpha }
+            Icon(Icons.Rounded.Search, null, tint = Color.White, modifier = Modifier.size(18.dp))
+            Text(findLabel, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp), maxLines = 1)
+        }
+        Box(
+            Modifier.height(36.dp).clip(RoundedCornerShape(4.dp)).background(Color.White.copy(alpha = 0.12f)).padding(horizontal = 12.dp),
+            contentAlignment = Alignment.Center
+        ) { Text(sortLabel, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold) }
+    }
+}
+
+@Composable
+private fun SpotifyPlaylistActions(
+    thumbUrl: String,
+    tracks: List<Track>,
+    pinned: Boolean,
+    onPlay: (List<Track>, Track) -> Unit,
+    playTracks: () -> Unit,
+    onRowPositioned: (Int) -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    Row(
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp).height(56.dp)
+            .onGloballyPositioned { onRowPositioned(it.positionInRoot().y.toInt()) },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(Modifier.size(width = 28.dp, height = 36.dp)) {
+            StableRemoteArtwork(
+                thumbUrl, contentDescription = null, contentScale = ContentScale.Crop,
+                modifier = Modifier.offset(x = 4.dp).size(width = 24.dp, height = 34.dp).clip(RoundedCornerShape(3.dp)).graphicsLayer { alpha = 0.6f }
             )
-            Box(
-                Modifier.padding(end = 12.dp).align(Alignment.CenterEnd).size(40.dp).clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.35f * (1f - barAlpha))),
-                contentAlignment = Alignment.Center
-            ) { Icon(Icons.Rounded.MoreVert, strings.options, tint = Color.White) }
-            if (pinned) SpotifyChartPlayButton(
-                Modifier.align(Alignment.BottomEnd).padding(end = 16.dp).offset(y = 28.dp), strings.playAll, playTracks
+            StableRemoteArtwork(
+                tracks.firstOrNull()?.thumbnailUrl.orEmpty(), contentDescription = null, contentScale = ContentScale.Crop,
+                modifier = Modifier.size(width = 24.dp, height = 36.dp).clip(RoundedCornerShape(3.dp))
             )
         }
+        Spacer(Modifier.width(20.dp))
+        listOf(Icons.Rounded.AddCircleOutline, Icons.Rounded.ArrowCircleDown, Icons.Rounded.Share).forEach { icon ->
+            Icon(icon, null, tint = SpotifyDesign.subdued, modifier = Modifier.padding(end = 20.dp).size(26.dp))
+        }
+        Spacer(Modifier.weight(1f))
+        Box(
+            Modifier.size(48.dp).levyraPressable(onClick = {
+                val shuffled = tracks.shuffled()
+                shuffled.firstOrNull()?.let { onPlay(shuffled, it) }
+            }, onClickLabel = strings.shuffle, role = Role.Button),
+            contentAlignment = Alignment.Center
+        ) { Icon(Icons.Rounded.Shuffle, strings.shuffle, tint = SpotifyDesign.green, modifier = Modifier.size(28.dp)) }
+        Spacer(Modifier.width(8.dp))
+        SpotifyChartPlayButton(Modifier.graphicsLayer { alpha = if (pinned) 0f else 1f }, strings.playAll, playTracks)
+    }
+}
+
+@Composable
+private fun SpotifyPlaylistTrackRow(
+    index: Int,
+    track: Track,
+    active: Boolean,
+    isPlaying: Boolean,
+    onPlay: () -> Unit,
+    onActions: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    Row(
+        Modifier.fillMaxWidth().height(64.dp).levyraPressable(onClick = onPlay, onClickLabel = track.title, role = Role.Button)
+            .padding(start = 16.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(Modifier.width(28.dp), contentAlignment = Alignment.CenterStart) {
+            if (active) LevyraPlayingIndicator(playing = isPlaying, color = SpotifyDesign.green, size = 12.dp)
+            else Text((index + 1).toString(), color = SpotifyDesign.text, fontSize = 15.sp)
+        }
+        Box(Modifier.size(48.dp).background(SpotifyDesign.placeholder)) { CoverImage(track, Modifier.fillMaxSize()) }
+        Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(track.title, color = if (active) SpotifyDesign.greenText else SpotifyDesign.text, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(track.artist, color = SpotifyDesign.subdued, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Box(
+            Modifier.size(48.dp).levyraPressable(onClick = onActions, onClickLabel = strings.options, role = Role.Button),
+            contentAlignment = Alignment.Center
+        ) { Icon(Icons.Rounded.MoreVert, strings.options, tint = SpotifyDesign.subdued) }
+    }
+}
+
+@Composable
+private fun SpotifyPlaylistTopBar(
+    title: String,
+    tone: Color,
+    barAlpha: Float,
+    pinned: Boolean,
+    playTracks: () -> Unit,
+    onDismiss: () -> Unit,
+    onPositioned: (Int) -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    Box(
+        Modifier.fillMaxWidth().background(lerp(tone, Color.Black, 0.45f).copy(alpha = barAlpha))
+            .onGloballyPositioned { onPositioned(it.positionInRoot().y.toInt()) }
+            .statusBarsPadding().height(SpotifyChartTopBar)
+    ) {
+        Box(
+            Modifier.padding(start = 12.dp).align(Alignment.CenterStart).size(40.dp).clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.35f * (1f - barAlpha))).levyraPressable(onClick = onDismiss, onClickLabel = strings.back, role = Role.Button),
+            contentAlignment = Alignment.Center
+        ) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, strings.back, tint = Color.White) }
+        Text(
+            title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.align(Alignment.CenterStart).padding(start = 64.dp, end = 120.dp).graphicsLayer { alpha = barAlpha }
+        )
+        Box(
+            Modifier.padding(end = 12.dp).align(Alignment.CenterEnd).size(40.dp).clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.35f * (1f - barAlpha))),
+            contentAlignment = Alignment.Center
+        ) { Icon(Icons.Rounded.MoreVert, strings.options, tint = Color.White) }
+        if (pinned) SpotifyChartPlayButton(
+            Modifier.align(Alignment.BottomEnd).padding(end = 16.dp).offset(y = 28.dp), strings.playAll, playTracks
+        )
     }
 }
 
@@ -399,13 +444,12 @@ private fun SpotifyChartPlayButton(modifier: Modifier, label: String, onClick: (
 
 @Composable
 private fun SpotifyLogoBadge(modifier: Modifier) {
-    Box(modifier.clip(CircleShape).background(SpotifyDesign.green), contentAlignment = Alignment.Center) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            listOf(0.62f, 0.5f, 0.38f).forEach { width ->
-                Box(Modifier.width(24.dp * width).height(2.dp).clip(CircleShape).background(Color.Black))
-            }
-        }
-    }
+    androidx.compose.foundation.Image(
+        painter = androidx.compose.ui.res.painterResource(com.luc4n3x.levyra.R.drawable.levyra_logo),
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        modifier = modifier.clip(CircleShape)
+    )
 }
 
 @Composable

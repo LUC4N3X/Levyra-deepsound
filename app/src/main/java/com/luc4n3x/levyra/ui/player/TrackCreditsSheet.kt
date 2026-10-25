@@ -578,16 +578,9 @@ private fun SpotifyTrackCreditsSheet(
                 is TrackCreditsLoad.Ready -> {
                     val display = remember(load.credits, artistNames) { TrackCreditsParser.withArtists(load.credits, artistNames) }
                     display.sections.forEach { section ->
-                        val language = LocalLevyraStrings.current.code.substringBefore('-')
-                        val title = when (section.group) {
-                            TrackCreditGroup.Artists -> when (language) { "it" -> "Artista"; "en" -> "Artist"; else -> copy.artists }
-                            TrackCreditGroup.Performance -> copy.performance
-                            TrackCreditGroup.Composition -> when (language) { "it" -> "Composizione e testo"; "en" -> "Composition & Lyrics"; else -> copy.composition }
-                            TrackCreditGroup.Production -> when (language) { "it" -> "Produzione e ingegnerizzazione"; "en" -> "Production & Engineering"; else -> copy.production }
-                            TrackCreditGroup.Other -> when (language) { "it" -> "Altri ruoli"; "en" -> "Additional Credits"; else -> section.title.ifBlank { copy.otherCredits } }
-                        }
                         Text(
-                            title, color = androidx.compose.ui.graphics.Color.White, fontSize = 22.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold,
+                            spotifyCreditsSectionTitle(section, copy, LocalLevyraStrings.current.code), color = androidx.compose.ui.graphics.Color.White,
+                            fontSize = 22.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 4.dp).semantics { heading() }
                         )
                         section.people.forEachIndexed { index, person ->
@@ -597,41 +590,71 @@ private fun SpotifyTrackCreditsSheet(
                                 else -> copy.participatingArtist
                             }
                             val linked = person.linkedArtistIndex
-                            Row(
-                                Modifier.fillMaxWidth()
-                                    .then(if (linked != null) Modifier.clickable(onClickLabel = copy.openArtist, role = Role.Button) { onOpenArtist(linked) } else Modifier)
-                                    .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text(person.name, color = androidx.compose.ui.graphics.Color.White, fontSize = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                    if (roles.isNotBlank()) Text(roles, color = subdued, fontSize = 15.sp, lineHeight = 20.sp)
-                                }
-                                if (section.group == TrackCreditGroup.Artists && linked != null && onToggleFollow != null) {
-                                    val active = followed[linked] ?: isFollowed(linked)
-                                    Box(
-                                        Modifier.padding(start = 12.dp).height(32.dp).clip(RoundedCornerShape(16.dp))
-                                            .border(1.dp, if (active) androidx.compose.ui.graphics.Color.White else subdued, RoundedCornerShape(16.dp))
-                                            .clickable(role = Role.Button) {
-                                                followed[linked] = !active
-                                                onToggleFollow(linked)
-                                            }
-                                            .padding(horizontal = 16.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            if (active) LocalLevyraStrings.current.followingArtist else LocalLevyraStrings.current.followArtist,
-                                            color = androidx.compose.ui.graphics.Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                } else if (linked != null) {
-                                    Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = subdued, modifier = Modifier.padding(start = 8.dp).size(28.dp))
-                                }
-                            }
+                            val followToggle = if (section.group == TrackCreditGroup.Artists && linked != null && onToggleFollow != null) {
+                                { followed[linked] = !(followed[linked] ?: isFollowed(linked)); onToggleFollow(linked) }
+                            } else null
+                            SpotifyCreditsPersonRow(
+                                name = person.name,
+                                roles = roles,
+                                openLabel = copy.openArtist,
+                                following = linked?.let { followed[it] ?: isFollowed(it) } ?: false,
+                                onOpen = linked?.let { index -> { onOpenArtist(index) } },
+                                onToggleFollow = followToggle
+                            )
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+private fun spotifyCreditsSectionTitle(section: TrackCreditSection, copy: TrackCreditsCopy, code: String): String {
+    val language = code.substringBefore('-')
+    return when (section.group) {
+        TrackCreditGroup.Artists -> when (language) { "it" -> "Artista"; "en" -> "Artist"; else -> copy.artists }
+        TrackCreditGroup.Performance -> copy.performance
+        TrackCreditGroup.Composition -> when (language) { "it" -> "Composizione e testo"; "en" -> "Composition & Lyrics"; else -> copy.composition }
+        TrackCreditGroup.Production -> when (language) { "it" -> "Produzione e ingegnerizzazione"; "en" -> "Production & Engineering"; else -> copy.production }
+        TrackCreditGroup.Other -> when (language) { "it" -> "Altri ruoli"; "en" -> "Additional Credits"; else -> section.title.ifBlank { copy.otherCredits } }
+    }
+}
+
+@Composable
+private fun SpotifyCreditsPersonRow(
+    name: String,
+    roles: String,
+    openLabel: String,
+    following: Boolean,
+    onOpen: (() -> Unit)?,
+    onToggleFollow: (() -> Unit)?
+) {
+    val subdued = androidx.compose.ui.graphics.Color(0xFFB3B3B3)
+    Row(
+        Modifier.fillMaxWidth()
+            .then(if (onOpen != null) Modifier.clickable(onClickLabel = openLabel, role = Role.Button, onClick = onOpen) else Modifier)
+            .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(name, color = androidx.compose.ui.graphics.Color.White, fontSize = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (roles.isNotBlank()) Text(roles, color = subdued, fontSize = 15.sp, lineHeight = 20.sp)
+        }
+        if (onToggleFollow != null) {
+            Box(
+                Modifier.padding(start = 12.dp).height(32.dp).clip(RoundedCornerShape(16.dp))
+                    .border(1.dp, if (following) androidx.compose.ui.graphics.Color.White else subdued, RoundedCornerShape(16.dp))
+                    .clickable(role = Role.Button, onClick = onToggleFollow)
+                    .padding(horizontal = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    if (following) LocalLevyraStrings.current.followingArtist else LocalLevyraStrings.current.followArtist,
+                    color = androidx.compose.ui.graphics.Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold
+                )
+            }
+        } else if (onOpen != null) {
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = subdued, modifier = Modifier.padding(start = 8.dp).size(28.dp))
         }
     }
 }
