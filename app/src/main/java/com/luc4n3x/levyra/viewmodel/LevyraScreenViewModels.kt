@@ -638,6 +638,7 @@ private fun LevyraUiState.withFrozenHomeContent(previous: LevyraUiState): Levyra
         tracks = previous.tracks.ifEmpty { tracks },
         recentSearches = previous.recentSearches,
         recentListens = previous.recentListens,
+        mostPlayedTracks = previous.mostPlayedTracks,
         favorites = previous.favorites,
         charts = keepWhen(keepCharts, previous.charts, charts),
         homeSections = keepWhen(keepSections, previous.homeSections, homeSections),
@@ -1242,7 +1243,8 @@ internal data class HomeProjection(
     val profilePhotoVersion: Long,
     val interfaceSettings: LevyraInterfaceSettings,
     val speedDialPins: List<com.luc4n3x.levyra.domain.SpeedDialPin>,
-    val localSongs: List<Track>?
+    val localSongs: List<Track>?,
+    val mostPlayedTracks: List<Track> = emptyList()
 )
 
 internal fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjection(
@@ -1275,6 +1277,7 @@ internal fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjecti
     personalOrbitTracks = state.personalOrbitTracks,
     playlists = state.playlists,
     recentListens = state.recentListens,
+    mostPlayedTracks = state.mostPlayedTracks,
     recentSearches = state.recentSearches,
     releaseRadar = state.releaseRadar,
     selectedChartId = state.selectedChartId,

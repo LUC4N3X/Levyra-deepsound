@@ -88,6 +88,28 @@ class HomeRenderSnapshotTest {
     }
 
     @Test
+    fun listeningFrequencyChangesInvalidateHomeWithoutPlaybackTicks() {
+        val initial = LevyraUiState(mostPlayedTracks = listOf(track("aaaaaaaaaaa")))
+        val updated = initial.copy(mostPlayedTracks = listOf(track("bbbbbbbbbbb")))
+
+        assertNotEquals(homeProjection(initial), homeProjection(updated))
+        assertEquals(homeProjection(initial), homeProjection(initial.copy(positionMs = 10_000L)))
+    }
+
+    @Test
+    fun frequencyShelfWaitsForHomeScrollToSettle() {
+        val initial = LevyraUiState(mostPlayedTracks = listOf(track("aaaaaaaaaaa")))
+        val previous = buildHomeRenderSnapshot(initial)
+        val updated = initial.copy(mostPlayedTracks = listOf(track("bbbbbbbbbbb")))
+
+        val frozen = buildStableHomeRenderSnapshot(updated, previous, freezeContent = true)
+        val published = buildStableHomeRenderSnapshot(updated, frozen, freezeContent = false)
+
+        assertSame(initial.mostPlayedTracks, frozen.state.mostPlayedTracks)
+        assertEquals(updated.mostPlayedTracks, published.state.mostPlayedTracks)
+    }
+
+    @Test
     fun artistExclusionChangesHomeProjectionImmediately() {
         val initial = LevyraUiState()
         val excluded = ExcludedArtist("", "Blocked Artist", 1L)

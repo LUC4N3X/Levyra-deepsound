@@ -1076,7 +1076,8 @@ internal fun StudioHomeHeader(
     onSettings: () -> Unit,
     hero: StudioHero? = null,
     topBleed: Dp = 0.dp,
-    onOpenZone: (ExploreZone) -> Unit = {}
+    onOpenZone: (ExploreZone) -> Unit = {},
+    onHome: () -> Unit = onSearch
 ) {
     val strings = LocalLevyraStrings.current
     val greetingHour by rememberCurrentGreetingHour()
@@ -1091,7 +1092,7 @@ internal fun StudioHomeHeader(
     val topKicker = if (name.isNotBlank()) dayPart else today
     val mainHeading = if (name.isNotBlank()) name else dayPart
     if (LevyraIsPrism) {
-        PrismHomeHeader(greeting, today.takeIf { name.isBlank() }.orEmpty(), hero, spec.inset, onSearch, onSettings, dayPart, name, onOpenZone)
+        PrismHomeHeader(greeting, today.takeIf { name.isBlank() }.orEmpty(), hero, spec.inset, onSearch, onSettings, dayPart, name, onOpenZone, onHome)
         return
     }
     if (LevyraIsNocturne) {

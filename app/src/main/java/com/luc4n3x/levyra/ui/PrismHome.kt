@@ -60,10 +60,10 @@ internal fun PrismPlayDisc(playing: Boolean, resolving: Boolean, size: Dp, modif
 @Composable
 internal fun PrismHomeHeader(
     greeting: String, date: String, hero: StudioHero?, inset: Dp, onSearch: () -> Unit, onSettings: () -> Unit,
-    dayPart: String = "", name: String = "", onOpenZone: (ExploreZone) -> Unit = {}
+    dayPart: String = "", name: String = "", onOpenZone: (ExploreZone) -> Unit = {}, onHome: () -> Unit = onSearch
 ) {
     if (LevyraIsSpotify) {
-        SpotifyHomeHeader(hero, inset, onSettings, name, onOpenZone)
+        SpotifyHomeHeader(inset, onSettings, onHome, onOpenZone)
         return
     }
     if (LevyraIsIvory) {

@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -100,54 +101,37 @@ internal fun SpotifyAvatar(name: String, size: Dp, modifier: Modifier = Modifier
 
 @Composable
 internal fun SpotifyHomeHeader(
-    hero: StudioHero?, inset: Dp, onSettings: () -> Unit, name: String, onOpenZone: (ExploreZone) -> Unit
+    inset: Dp, onSettings: () -> Unit, onAll: () -> Unit, onOpenZone: (ExploreZone) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val zones = remember(strings) { ExploreCatalog.getZones(strings) }
     val allLabel = remember(strings.code) { LevyraSpotifySkinStrings.forCode(strings.code).all }
-    val tint = hero?.let { Color(it.track.accentStart) }
-    val top = remember(tint) { tint?.let { SpotifyDesign.wash(SpotifyDesign.heroSurface(it), 0.55f) } ?: SpotifyDesign.base }
-    val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    Column(
-        Modifier.fillMaxWidth().drawBehind {
-            val lift = statusTop.toPx()
-            drawRect(
-                Brush.verticalGradient(listOf(top, SpotifyDesign.base), startY = -lift, endY = size.height),
-                topLeft = Offset(0f, -lift), size = Size(size.width, size.height + lift)
-            )
-        }
-    ) {
+    Column(Modifier.fillMaxWidth().background(SpotifyDesign.base)) {
         Row(
             Modifier.fillMaxWidth().padding(start = inset, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(Modifier.size(48.dp).clip(CircleShape).levyraPressable(onClick = onSettings, onClickLabel = strings.settings, role = Role.Button), contentAlignment = Alignment.Center) {
-                SpotifyAvatar(name, 32.dp, Modifier.clip(CircleShape))
+            IconButton(onClick = onSettings, modifier = Modifier.size(48.dp)) {
+                Icon(Icons.Outlined.Settings, strings.settings, tint = SpotifyDesign.text, modifier = Modifier.size(24.dp))
             }
-            com.luc4n3x.levyra.ui.rewind.RewindEntry()
             LazyRow(
                 Modifier.weight(1f),
                 contentPadding = PaddingValues(start = 4.dp, end = inset),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 item(key = "spotify-chip-all") {
-                    com.luc4n3x.levyra.ui.components.LevyraFilterPill(label = allLabel, selected = true, onClick = {})
+                    com.luc4n3x.levyra.ui.components.LevyraFilterPill(label = allLabel, selected = true, onClick = onAll)
                 }
                 items(zones, key = { zone -> "spotify-chip-${zone.id}" }) { zone ->
                     com.luc4n3x.levyra.ui.components.LevyraFilterPill(label = zone.label, selected = false, onClick = { onOpenZone(zone) }, role = Role.Button)
                 }
             }
         }
-        if (hero != null) {
-            SpotifySectionTitle(hero.label, inset)
-            SpotifyPickedCard(hero, strings.play, inset)
-            Spacer(Modifier.height(8.dp))
-        }
     }
 }
 
 @Composable
-private fun SpotifyPickedCard(hero: StudioHero, playLabel: String, inset: Dp) {
+internal fun SpotifyPickedCard(hero: StudioHero, playLabel: String, inset: Dp) {
     val playing = hero.isCurrent && hero.isPlaying
     Row(
         Modifier.padding(horizontal = inset).fillMaxWidth().height(152.dp).clip(RoundedCornerShape(SpotifyDesign.cornerLarge))
@@ -370,10 +354,10 @@ internal fun SpotifyNowPlayingBar(
     val strings = LocalLevyraStrings.current
     val surface by rememberSpotifyCoverTone(track, SpotifyDesign::miniSurface)
     Box(
-        modifier.fillMaxWidth().height(SpotifyDesign.miniHeight).clip(SpotifyDesign.tileShape).background(surface)
+        modifier.fillMaxWidth().heightIn(min = SpotifyDesign.miniHeight).clip(RoundedCornerShape(SpotifyDesign.cornerLarge)).background(surface)
             .levyraPressable(onClick = onOpen, onClickLabel = strings.expandPlayer, role = Role.Button)
     ) {
-        Row(Modifier.fillMaxSize().padding(start = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().heightIn(min = SpotifyDesign.miniHeight).padding(start = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(40.dp).clip(SpotifyDesign.coverShape).background(SpotifyDesign.placeholder)) { CoverImage(track, Modifier.fillMaxSize()) }
             Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
                 Text(track.title, color = SpotifyDesign.text, style = MaterialTheme.typography.labelLarge, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -504,7 +488,7 @@ internal fun SpotifyBottomTabs(
         modifier.fillMaxWidth().drawBehind {
             val reach = SpotifyDesign.dockGap.toPx()
             drawRect(
-                Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.72f), Color.Black.copy(alpha = 0.9f)), startY = -reach, endY = size.height),
+                Brush.verticalGradient(listOf(SpotifyDesign.base, Color.Black), startY = -reach, endY = size.height),
                 topLeft = Offset(0f, -reach), size = Size(size.width, size.height + reach)
             )
         }

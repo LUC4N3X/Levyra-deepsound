@@ -13,6 +13,7 @@ internal data class SpotifySkinCopy(
 )
 
 internal object LevyraSpotifySkinStrings {
+    const val orbitTitle = "Your Orbit"
     private val copies = mapOf(
         "en" to SpotifySkinCopy("All", "Popular", "Popular releases", "Latest release", "Show discography", "About", "Fans also like"),
         "it" to SpotifySkinCopy("Tutti", "Popolare", "Uscite popolari", "Ultima uscita", "Vedi discografia", "Informazioni", "I fan apprezzano anche"),

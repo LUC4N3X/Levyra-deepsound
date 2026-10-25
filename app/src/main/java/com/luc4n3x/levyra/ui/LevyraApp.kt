@@ -7846,7 +7846,7 @@ private fun LyricsOverlay(
 ) {
     val strings = LocalLevyraStrings.current
     val track = state.currentTrack
-    val appleLyrics = state.lyricsStudioSettings.usesAppleMusicLyrics(LevyraIsAppleMusic)
+    val appleLyrics = !LevyraIsSpotify && state.lyricsStudioSettings.usesAppleMusicLyrics(LevyraIsAppleMusic)
     val overlayConfiguration = LocalConfiguration.current
     val landscapeLayout = !appleLyrics && lyricsLandscapeLayoutActive(overlayConfiguration)
     val landscapeMetrics = if (landscapeLayout) {
@@ -8184,7 +8184,7 @@ private fun LyricsOverlay(
             .consumeOverlayTouches()
     ) {
         val studioSettings = state.lyricsStudioSettings
-        val lyricsDepthBlur = lyricsAnimationsEnabled &&
+        val lyricsDepthBlur = !LevyraIsSpotify && lyricsAnimationsEnabled &&
             studioSettings.blurEnabled &&
             LocalLevyraVisualCapabilities.current.heavyBlur
         if (appleLyrics) {
@@ -8516,6 +8516,7 @@ private fun LyricsOverlay(
                         selected = selected,
                         selectable = isLyricsShareSelectable(line),
                         studioSettings = studioSettings,
+                        isPast = syncedLyrics && timedActiveIndex >= 0 && index < timedActiveIndex,
                         onClick = {
                             if (selectionMode) {
                                 selectedRange = toggleLyricsShareSelection(selectedRange, index, visibleLyrics)
@@ -10646,8 +10647,10 @@ private fun rememberStudioHomeLook(homeStudio: LevyraHomeStudioSettings, state: 
     }
     val nowPlayingAccent = rememberNowPlayingAccent(state.currentTrack, LevyraCyan)
     val homeAccent = if (studioLayout.dynamicPalette) nowPlayingAccent else LevyraCyan
-    val flowShortcutTracks = remember(homeStyle, state.recentListens) {
-        if (homeStyle == HomeStyle.Flow) {
+    val flowShortcutTracks = remember(homeStyle, spotifyHome, state.recentListens) {
+        if (spotifyHome) {
+            LevyraPersonalOrbit.distinctRecordings(state.recentListens).take(8)
+        } else if (homeStyle == HomeStyle.Flow) {
             LevyraPersonalOrbit.distinctRecordings(state.recentListens).take(HOME_FLOW_SHORTCUT_LIMIT)
         } else {
             emptyList()
@@ -11020,7 +11023,7 @@ private fun StudioHomeContent(
                     ),
                     verticalArrangement = Arrangement.spacedBy(homeSectionGap)
                 ) {
-                    studioHomeHeaderItems(c, flowShortcutTracks, statusBarTop, homeTopPadding)
+                    studioHomeHeaderItems(c, flowShortcutTracks, statusBarTop, homeTopPadding, onPullRefresh)
                     if (c.stagedSpotlight != null && !c.studioLayout.isHidden(HomeSectionId.Discovery)) {
                         discoverySection(homeDiscovery, c.homeStyle, c.styleSpec, c.homeAnimationsEnabled)
                     }
@@ -11049,7 +11052,8 @@ private fun LazyListScope.studioHomeHeaderItems(
     c: StudioHomeContext,
     flowShortcutTracks: List<Track>,
     statusBarTop: Dp,
-    homeTopPadding: Dp
+    homeTopPadding: Dp,
+    onRefresh: () -> Unit
 ) {
     with(c) {
         if (homeStyle == HomeStyle.Original) {
@@ -11083,8 +11087,13 @@ private fun LazyListScope.studioHomeHeaderItems(
                         onSettings = viewModel::openSettings,
                         hero = mergedStudioHero(),
                         topBleed = statusBarTop + homeTopPadding,
-                        onOpenZone = viewModel::openExploreZone
+                        onOpenZone = viewModel::openExploreZone,
+                        onHome = onRefresh
                     )
+                    if (LevyraIsSpotify && flowShortcutTracks.isNotEmpty()) {
+                        SpotifyRecentShortcuts(flowShortcutTracks, state.currentTrack?.id, state.isPlaying, styleSpec.inset,
+                            { track -> viewModel.playFrom(flowShortcutTracks, track) }, onTrackActions)
+                    }
                     if (homeStyle == HomeStyle.Flow && flowShortcutTracks.isNotEmpty()) {
                         StudioFlowShortcuts(
                             spec = styleSpec,
@@ -11112,6 +11121,9 @@ private fun LazyListScope.studioHomeSections(
     with(c) {
         var offlineEmitted = false
         var yourMusicEmitted = youtubeMusicHome == null
+        if (LevyraIsSpotify) {
+            spotifyPersonalShelves(state, strings, viewModel::playFrom, viewModel::playAll, onTrackActions)
+        }
         homeRenderOrder.forEach { sectionId ->
             if (!offlineEmitted && sectionId !in HomeSectionId.QuickAccess) {
                 homeStudioOfflineSection(c)
@@ -11262,6 +11274,10 @@ private fun LazyListScope.homeStudioSectionSpeedDial(c: StudioHomeContext) {
 
 private fun LazyListScope.homeStudioSectionSpotlight(c: StudioHomeContext) {
     with(c) {
+            if (LevyraIsSpotify) {
+                spotifySpotlight(mergedStudioHero(), strings.play, styleSpec.inset)
+                return
+            }
             if (homeStyle != HomeStyle.Original) {
                 val studioHero = spotlightHeroData
                 if (studioHero != null && homeStyle != HomeStyle.MaterialExpressive && !LevyraSkinManagesLayout) {
@@ -14311,6 +14327,10 @@ private fun StudioHomeOrbitHeader(
     onPlayAll: (() -> Unit)?
 ) {
     val strings = LocalLevyraStrings.current
+    if (LevyraIsSpotify) {
+        SpotifyOrbitHeader(onPlayAll)
+        return
+    }
     val displayName = userName.trim()
     val initial = remember(displayName) { homePersonalOrbitInitial(displayName) }
     val compactPlayAll = style != HomeStyle.Original && style != HomeStyle.MaterialExpressive
@@ -22306,7 +22326,7 @@ private fun settingsHubGroupTitle(group: SettingsHubGroup, strings: LevyraString
     }
 ]
 
-private class SettingsStudioEntry(
+internal class SettingsStudioEntry(
     val id: String,
     val title: String,
     val icon: ImageVector,
@@ -22333,6 +22353,10 @@ private fun SettingsHubGroupLabel(text: String) {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SettingsStudioShelf(title: String, subtitle: String, entries: List<SettingsStudioEntry>) {
+    if (LevyraIsSpotify) {
+        SpotifySettingsStudioShelf(title, entries)
+        return
+    }
     Column(modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
         Text(
             title,
@@ -22395,6 +22419,10 @@ private fun SettingsStudioShelf(title: String, subtitle: String, entries: List<S
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SettingsCategoryCard(meta: SettingsCategoryMeta, index: Int, count: Int, onClick: () -> Unit) {
+    if (LevyraIsSpotify) {
+        SpotifySettingsCategoryRow(meta.title, meta.summary, meta.icon, onClick)
+        return
+    }
     SettingsTile(
         onClick = onClick,
         groupIndex = index,
@@ -22472,6 +22500,7 @@ private fun SettingsTile(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SettingsTileIcon(icon: ImageVector, accent: Color, shape: Shape = MaterialShapes.Cookie4Sided.toShape()) {
+    if (LevyraIsSpotify) return
     Box(
         modifier = Modifier
             .size(if (LevyraIsAppleMusic) 30.dp else 44.dp)
@@ -22496,7 +22525,7 @@ private fun SettingsTileText(
             title,
             color = LevyraText,
             fontSize = if (LevyraIsAppleMusic) 17.sp else 16.sp,
-            fontWeight = if (LevyraIsAppleMusic) FontWeight.Normal else if (SkinChrome.active) FontWeight.Medium else FontWeight.Bold,
+            fontWeight = if (LevyraIsAppleMusic || LevyraIsSpotify) FontWeight.Normal else if (SkinChrome.active) FontWeight.Medium else FontWeight.Bold,
             maxLines = maxTitleLines,
             overflow = TextOverflow.Ellipsis
         )
@@ -22506,7 +22535,7 @@ private fun SettingsTileText(
                 color = LevyraMuted,
                 fontSize = 13.sp,
                 lineHeight = 18.sp,
-                fontWeight = FontWeight.Medium,
+                fontWeight = if (LevyraIsSpotify) FontWeight.Normal else FontWeight.Medium,
                 maxLines = maxSubtitleLines,
                 overflow = TextOverflow.Ellipsis
             )
@@ -22517,6 +22546,10 @@ private fun SettingsTileText(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SettingsDetailHeader(title: String, summary: String, icon: ImageVector, accent: Color, onBack: () -> Unit) {
+    if (LevyraIsSpotify) {
+        SpotifySettingsHeader(title, onBack)
+        return
+    }
     if (SkinChrome.active) {
         Column {
             LevyraBackButton(onClick = onBack, contentDescription = LocalLevyraStrings.current.back)
@@ -28190,6 +28223,10 @@ private fun searchFocusRing(scheme: androidx.compose.material3.ColorScheme, focu
 @Composable
 private fun SettingsHubHeader(onClose: () -> Unit) {
     val strings = LocalLevyraStrings.current
+    if (LevyraIsSpotify) {
+        SpotifySettingsHeader(strings.settings, onClose)
+        return
+    }
     if (SkinChrome.active) PrismPageHeader(strings.settings, strings.settingsSubtitle) {
         IconButton(onClick = onClose, modifier = Modifier.size(48.dp)) { Icon(Icons.Rounded.Close, strings.close, tint = LevyraText) }
     } else Row(

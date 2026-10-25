@@ -109,11 +109,13 @@ internal fun KaraokeLyricLine(
     selected: Boolean,
     selectable: Boolean,
     studioSettings: LevyraLyricsStudioSettings = LevyraLyricsStudioSettings(),
+    isPast: Boolean = false,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
     val cinema = viewMode == LyricsViewMode.CINEMA
     val compact = viewMode == LyricsViewMode.COMPACT
+    val spotifyLyrics = studioSettings.spotifyLyricsApplies()
     val strings = LocalLevyraStrings.current
     val currentLongClick by rememberUpdatedState(onLongClick)
     val selectionIndicator = rememberVectorPainter(Icons.Rounded.CheckCircle)
@@ -122,12 +124,12 @@ internal fun KaraokeLyricLine(
     }
     val sectionLocale = remember(strings.code) { Locale.forLanguageTag(strings.code.replace('_', '-')) }
     val lyricLayoutDirection = LocalLayoutDirection.current
-    val alignment = lyricLineAlignment(line.role, studioSettings.alignment)
-    val textAlign = lyricLineTextAlign(line.role, studioSettings.alignment)
+    val alignment = if (spotifyLyrics) Alignment.Start else lyricLineAlignment(line.role, studioSettings.alignment)
+    val textAlign = if (spotifyLyrics) TextAlign.Start else lyricLineTextAlign(line.role, studioSettings.alignment)
     val roleScale = lyricRoleScale(line.role, compact)
-    val maxActiveScale = lyricMaxActiveScale(compact)
+    val maxActiveScale = if (spotifyLyrics) 1f else lyricMaxActiveScale(compact)
     val activeScale by animateFloatAsState(
-        targetValue = lyricActiveScale(isPrimaryActive, compact, studioSettings.inactiveScale),
+        targetValue = if (spotifyLyrics) 1f else lyricActiveScale(isPrimaryActive, compact, studioSettings.inactiveScale),
         animationSpec = LevyraMotion.physics(animationsEnabled, LevyraMotion.spatial),
         label = "lyrics-line-scale"
     )
@@ -138,16 +140,16 @@ internal fun KaraokeLyricLine(
         synced = synced
     )
     val lineAlpha by animateFloatAsState(
-        targetValue = targetAlpha,
+        targetValue = if (spotifyLyrics) 1f else targetAlpha,
         animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
         label = "lyrics-line-alpha"
     )
     val lineBlur by animateDpAsState(
-        targetValue = lyricsFocusBlurDp(distanceFromActive, focusMode, synced, blurEnabled).dp,
+        targetValue = if (spotifyLyrics) 0.dp else lyricsFocusBlurDp(distanceFromActive, focusMode, synced, blurEnabled).dp,
         animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short + 20, easing = LevyraMotion.Easings.Standard)),
         label = "lyrics-line-blur"
     )
-    val baseFontSizeSp = lyricBaseFontSizeSp(compact, cinema, isPrimaryActive) * roleScale * studioSettings.textSize.scale
+    val baseFontSizeSp = (if (spotifyLyrics) 28f else lyricBaseFontSizeSp(compact, cinema, isPrimaryActive)) * roleScale * studioSettings.textSize.scale
     val configuration = LocalConfiguration.current
     val fontScale = LocalDensity.current.fontScale
     val lineWidthDp = layoutWidthDp ?: configuration.screenWidthDp
@@ -166,8 +168,7 @@ internal fun KaraokeLyricLine(
             fontScale = fontScale
         )
     }
-    val spotifyLyrics = studioSettings.spotifyLyricsApplies()
-    val inactiveColor = lyricInactiveColor(spotifyLyrics, isActive, synced, compact, studioSettings.inactiveOpacity)
+    val inactiveColor = if (spotifyLyrics && isPast) Color.White else lyricInactiveColor(spotifyLyrics, isActive, synced, compact, studioSettings.inactiveOpacity)
     val activeTextColor = lyricActiveTextColor(spotifyLyrics, studioSettings, accentEnd)
     val colorSpec = LevyraMotion.spec(animationsEnabled, tween<Color>(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate))
     val animatedMainColor by animateColorAsState(
@@ -233,7 +234,7 @@ internal fun KaraokeLyricLine(
         horizontalAlignment = alignment,
         verticalArrangement = Arrangement.spacedBy(lyricLineGap(compact))
     ) {
-        LyricLineSectionLabel(sectionLabel, sectionLocale, animatedSectionColor, compact, textAlign)
+        if (!spotifyLyrics) LyricLineSectionLabel(sectionLabel, sectionLocale, animatedSectionColor, compact, textAlign)
         if (instrumentalGap != null) {
             LyricsInstrumentalPulse(
                 gap = instrumentalGap,

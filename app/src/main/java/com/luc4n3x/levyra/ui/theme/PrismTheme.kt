@@ -188,7 +188,7 @@ internal fun prismMiniSettings(saved: LevyraMiniPlayerStudioSettings): LevyraMin
 
 private fun spotifyMiniSettings(saved: LevyraMiniPlayerStudioSettings): LevyraMiniPlayerStudioSettings {
     val tuning = LevyraMiniPlayerStudioSettings.spec(MiniPlayerStyle.Floating).defaults.copy(
-        cornerDp = 6, heightDp = 56, insetDp = 8, artworkDp = 40, shadow = 0, glow = 0,
+        cornerDp = 8, heightDp = 56, insetDp = 8, artworkDp = 40, shadow = 0, glow = 0,
         artworkShape = MiniArtworkShape.Rounded, progress = MiniProgressStyle.Line,
         buttons = MiniButtonStyle.Plain, colorMode = MiniColorMode.Artwork,
         background = MiniBackground.Solid, motion = MiniMotion.Normal,

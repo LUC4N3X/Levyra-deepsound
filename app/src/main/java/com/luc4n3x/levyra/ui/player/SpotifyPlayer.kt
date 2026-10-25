@@ -79,7 +79,7 @@ internal fun SpotifyTransport(
     Row(modifier.fillMaxWidth().height(88.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
         SpotifyModeToggle(Icons.Rounded.Shuffle, labels.shuffle, shuffle, onShuffle)
         IconButton(onClick = onPrevious, modifier = Modifier.size(56.dp)) {
-            Icon(Icons.Rounded.SkipPrevious, labels.previous, tint = SpotifyDesign.text, modifier = Modifier.size(40.dp))
+            Icon(Icons.Rounded.SkipPrevious, labels.previous, tint = SpotifyDesign.text, modifier = Modifier.size(32.dp))
         }
         Box(
             Modifier.size(64.dp).clip(CircleShape).background(Color.White).clickable(role = Role.Button, onClick = onToggle)
@@ -90,7 +90,7 @@ internal fun SpotifyTransport(
             else Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(36.dp))
         }
         IconButton(onClick = onNext, modifier = Modifier.size(56.dp)) {
-            Icon(Icons.Rounded.SkipNext, labels.next, tint = SpotifyDesign.text, modifier = Modifier.size(40.dp))
+            Icon(Icons.Rounded.SkipNext, labels.next, tint = SpotifyDesign.text, modifier = Modifier.size(32.dp))
         }
         SpotifyModeToggle(
             if (repeat == RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat, labels.repeat, repeat != RepeatMode.Off, onRepeat,
@@ -113,7 +113,7 @@ private fun SpotifyModeToggle(icon: ImageVector, label: String, active: Boolean,
             },
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
     ) {
-        Icon(icon, null, tint = if (active) SpotifyDesign.green else SpotifyDesign.text, modifier = Modifier.size(26.dp))
+        Icon(icon, null, tint = if (active) SpotifyDesign.green else SpotifyDesign.text, modifier = Modifier.size(24.dp))
         Box(Modifier.padding(top = 3.dp).size(4.dp).clip(CircleShape).background(if (active) SpotifyDesign.green else Color.Transparent))
     }
 }
@@ -127,17 +127,18 @@ internal fun SpotifySeekbar(positionMs: Long, bufferedMs: Long, durationMs: Long
     val seekLabel = LocalLevyraStrings.current.gestureActionSeek
     val shape = RoundedCornerShape(2.dp)
     SideEffect { sliderState.value = dragging ?: fraction }
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
     Column(modifier.fillMaxWidth()) {
         Slider(
             state = sliderState, onValueChange = { dragging = it },
             onValueChangeFinished = { dragging?.let(onSeek); dragging = null },
             enabled = durationMs > 0L, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics { contentDescription = seekLabel },
-            thumb = { Box(Modifier.size(if (dragging != null) 16.dp else 12.dp).clip(CircleShape).background(Color.White)) },
+            thumb = { Box(Modifier.size(8.dp).clip(CircleShape).background(Color.White)) },
             track = { state ->
-                Box(Modifier.fillMaxWidth().height(4.dp).clip(shape).background(Color.White.copy(alpha = 0.3f))) {
+                Box(Modifier.fillMaxWidth().height(3.dp).clip(shape).background(Color.White.copy(alpha = 0.3f))) {
                     val buffered = if (durationMs > 0L) (bufferedMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
                     Box(Modifier.fillMaxWidth(buffered).fillMaxHeight().background(Color.White.copy(alpha = 0.12f)))
-                    Box(Modifier.fillMaxWidth(state.value.coerceIn(0f, 1f)).fillMaxHeight().clip(shape).background(if (dragging != null) SpotifyDesign.green else Color.White))
+                    Box(Modifier.fillMaxWidth(state.value.coerceIn(0f, 1f)).fillMaxHeight().clip(shape).background(Color.White))
                 }
             }
         )
@@ -145,5 +146,6 @@ internal fun SpotifySeekbar(positionMs: Long, bufferedMs: Long, durationMs: Long
             Text(formatSeekbarMillis(dragging?.let { (durationMs * it).toLong() } ?: positionMs), style = MaterialTheme.typography.labelSmall, fontSize = 11.sp, color = SpotifyDesign.subdued)
             Text(formatSeekbarMillis(durationMs), style = MaterialTheme.typography.labelSmall, fontSize = 11.sp, color = SpotifyDesign.subdued)
         }
+    }
     }
 }
