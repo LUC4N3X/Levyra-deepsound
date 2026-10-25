@@ -19,7 +19,7 @@
   <text x="51" y="183" class="hero">41</text>
   <text x="58" y="218" class="hero-label">languages</text>
   <text x="58" y="252" class="meta">Five writing systems</text>
-  <text x="58" y="272" class="meta">1,158+ app strings</text>
+  <text x="58" y="272" class="meta">1,173+ app strings</text>
   <circle cx="280" cy="315" r="49" fill="#DFC1D2"/>
   <text x="280" y="311" text-anchor="middle" class="status">100%</text>
   <text x="280" y="329" text-anchor="middle" class="footer">COMPLETE</text>
