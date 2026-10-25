@@ -115,6 +115,7 @@ internal fun navigationStyleName(style: NavStyle): String = when (style) {
     NavStyle.YtMusic -> "YT Music"
     NavStyle.SplitDock -> "Split Floating Dock"
     NavStyle.ConnectedDock -> "Connected Dock"
+    NavStyle.LiquidCapsule -> "Liquid Capsule"
 }
 
 private fun navigationStyleDescription(style: NavStyle, copy: NavigationStudioCopy): String = when (style) {
@@ -127,6 +128,7 @@ private fun navigationStyleDescription(style: NavStyle, copy: NavigationStudioCo
     NavStyle.YtMusic -> copy[NavStudioText.DescYtMusic]
     NavStyle.SplitDock -> copy[NavStudioText.DescSplitDock]
     NavStyle.ConnectedDock -> copy[NavStudioText.DescConnectedDock]
+    NavStyle.LiquidCapsule -> copy[NavStudioText.DescLiquidCapsule]
 }
 
 internal fun navReorderStep(

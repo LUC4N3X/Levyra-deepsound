@@ -12,9 +12,13 @@ enum class NavStyle(val storageId: String) {
     LiquidGlass("liquid_glass"),
     YtMusic("yt_music"),
     SplitDock("split_dock"),
-    ConnectedDock("connected_dock");
+    ConnectedDock("connected_dock"),
+    LiquidCapsule("liquid_capsule");
 
-    val floating: Boolean get() = this == FloatingDock || this == LiquidGlass || this == SplitDock || this == ConnectedDock
+    val floating: Boolean
+        get() = this == FloatingDock || this == LiquidGlass || this == SplitDock || this == ConnectedDock || this == LiquidCapsule
+
+    val separatesSearch: Boolean get() = this == SplitDock || this == LiquidCapsule
 
     companion object {
         fun from(value: String?): NavStyle = entries.firstOrNull { it.storageId == value } ?: Original
@@ -376,6 +380,20 @@ data class LevyraNavigationStudioSettings(
             )
         )
 
+        private val liquidCapsuleSpec = liquidGlassSpec.copy(
+            height = 60..76,
+            corner = 28..40,
+            defaults = liquidGlassSpec.defaults.copy(
+                labels = NavLabelMode.Always,
+                indicator = NavIndicator.Floating,
+                indicatorTone = NavIndicatorTone.Neutral,
+                heightDp = 66,
+                opacity = 58,
+                cornerDp = 40,
+                paddingDp = 5
+            )
+        )
+
         private val ytMusicSpec = NavStyleSpec(
             height = 56..72,
             corner = 0..0,
@@ -442,6 +460,7 @@ data class LevyraNavigationStudioSettings(
             NavStyle.YtMusic -> ytMusicSpec
             NavStyle.SplitDock -> splitDockSpec
             NavStyle.ConnectedDock -> connectedDockSpec
+            NavStyle.LiquidCapsule -> liquidCapsuleSpec
         }
 
         fun decode(raw: String?): LevyraNavigationStudioSettings {

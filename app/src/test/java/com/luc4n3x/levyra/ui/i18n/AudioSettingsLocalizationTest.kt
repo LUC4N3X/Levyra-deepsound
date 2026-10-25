@@ -32,7 +32,7 @@ class AudioSettingsLocalizationTest {
         LevyraStrings.all().forEach { strings ->
             val copy = strings.speedDialCopy()
             val values = listOf(
-                copy.title, copy.addToHome, copy.removeFromHome, copy.homeFull, copy.moveEarlier, copy.moveLater,
+                copy.title, copy.addToHome, copy.removeFromHome, copy.moveEarlier, copy.moveLater,
                 copy.song, copy.album, copy.artist, copy.playlist, copy.reorderHint
             )
             assertTrue(strings.code, values.all(String::isNotBlank))

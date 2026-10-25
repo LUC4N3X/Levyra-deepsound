@@ -256,6 +256,12 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_TORQUE_ACCENT] = normalizedInterface.torque.accent.name
             mutable[KEY_IVORY_APPEARANCE] = normalizedInterface.ivory.appearance.name
             mutable[KEY_UI_HAPTIC_FEEDBACK] = normalizedInterface.hapticFeedback
+            mutable[KEY_UI_IMMERSIVE_HIDE_STATUS] = normalizedInterface.immersive.hideStatusBar
+            mutable[KEY_UI_IMMERSIVE_HIDE_NAVIGATION] = normalizedInterface.immersive.hideNavigationBar
+            mutable[KEY_UI_IMMERSIVE_FULL] = normalizedInterface.immersive.fullImmersive
+            mutable[KEY_UI_IMMERSIVE_EVERYWHERE] = normalizedInterface.immersive.everywhere
+            mutable[KEY_UI_MUSIC_VIDEO_PREFERENCE] = normalizedInterface.musicVideoPreference.storageValue
+            mutable[KEY_UI_LAST_MUSIC_VIDEO_MODE] = normalizedInterface.lastMusicVideoMode
             mutable[KEY_UI_PLAYER_VISUAL_MODE] = normalizedInterface.playerVisualMode.name
             mutable[KEY_UI_PLAYER_BACKGROUND] = normalizedInterface.playerBackground.name
             mutable[KEY_UI_REACTIVE_AURA_PRESET] = normalizedInterface.reactiveAuraPreset.name
@@ -438,6 +444,12 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_TORQUE_ACCENT] = normalized.torque.accent.name
             it[KEY_IVORY_APPEARANCE] = normalized.ivory.appearance.name
             it[KEY_UI_HAPTIC_FEEDBACK] = normalized.hapticFeedback
+            it[KEY_UI_IMMERSIVE_HIDE_STATUS] = normalized.immersive.hideStatusBar
+            it[KEY_UI_IMMERSIVE_HIDE_NAVIGATION] = normalized.immersive.hideNavigationBar
+            it[KEY_UI_IMMERSIVE_FULL] = normalized.immersive.fullImmersive
+            it[KEY_UI_IMMERSIVE_EVERYWHERE] = normalized.immersive.everywhere
+            it[KEY_UI_MUSIC_VIDEO_PREFERENCE] = normalized.musicVideoPreference.storageValue
+            it[KEY_UI_LAST_MUSIC_VIDEO_MODE] = normalized.lastMusicVideoMode
             it[KEY_UI_PLAYER_VISUAL_MODE] = normalized.playerVisualMode.name
             it[KEY_UI_PLAYER_BACKGROUND] = normalized.playerBackground.name
             it[KEY_UI_REACTIVE_AURA_PRESET] = normalized.reactiveAuraPreset.name
@@ -890,6 +902,16 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             torque = com.luc4n3x.levyra.domain.TorqueSettings.from(preferences[KEY_TORQUE_ACCENT].orEmpty()),
             ivory = com.luc4n3x.levyra.domain.IvorySettings.from(preferences[KEY_IVORY_APPEARANCE].orEmpty()),
             hapticFeedback = preferences[KEY_UI_HAPTIC_FEEDBACK] ?: true,
+            immersive = com.luc4n3x.levyra.domain.LevyraImmersiveSettings(
+                hideStatusBar = preferences[KEY_UI_IMMERSIVE_HIDE_STATUS] ?: false,
+                hideNavigationBar = preferences[KEY_UI_IMMERSIVE_HIDE_NAVIGATION] ?: false,
+                fullImmersive = preferences[KEY_UI_IMMERSIVE_FULL] ?: false,
+                everywhere = preferences[KEY_UI_IMMERSIVE_EVERYWHERE] ?: false
+            ),
+            musicVideoPreference = com.luc4n3x.levyra.domain.MusicVideoPlaybackPreference.fromStorage(
+                preferences[KEY_UI_MUSIC_VIDEO_PREFERENCE]
+            ),
+            lastMusicVideoMode = preferences[KEY_UI_LAST_MUSIC_VIDEO_MODE] ?: false,
             playerVisualMode = visualMode,
             playerBackground = background,
             reactiveAuraPreset = ReactiveAuraPreset.from(preferences[KEY_UI_REACTIVE_AURA_PRESET].orEmpty()),
@@ -1375,6 +1397,12 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_TORQUE_ACCENT = stringPreferencesKey("torque_accent")
         val KEY_IVORY_APPEARANCE = stringPreferencesKey("ivory_appearance")
         val KEY_UI_HAPTIC_FEEDBACK = booleanPreferencesKey("ui_haptic_feedback")
+        val KEY_UI_IMMERSIVE_HIDE_STATUS = booleanPreferencesKey("ui_immersive_hide_status")
+        val KEY_UI_IMMERSIVE_HIDE_NAVIGATION = booleanPreferencesKey("ui_immersive_hide_navigation")
+        val KEY_UI_IMMERSIVE_FULL = booleanPreferencesKey("ui_immersive_full")
+        val KEY_UI_IMMERSIVE_EVERYWHERE = booleanPreferencesKey("ui_immersive_everywhere")
+        val KEY_UI_MUSIC_VIDEO_PREFERENCE = stringPreferencesKey("ui_music_video_preference")
+        val KEY_UI_LAST_MUSIC_VIDEO_MODE = booleanPreferencesKey("ui_last_music_video_mode")
         val KEY_UI_DOUBLE_TAP_SECONDS = intPreferencesKey("ui_double_tap_seconds")
         val KEY_UI_LONG_PRESS_ACTION = stringPreferencesKey("ui_long_press_action")
         val KEY_UI_LONG_PRESS_SPEED = floatPreferencesKey("ui_long_press_speed")

@@ -67,6 +67,26 @@ class LevyraNewFeatureLocalizationTest {
     }
 
     @Test
+    fun immersiveAndMusicVideoSettingsCoverEveryCatalogLanguage() {
+        val codes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        assertEquals(codes, immersiveModeLocalizationCodes())
+        assertEquals(codes, musicVideoPreferenceLocalizationCodes())
+        val englishImmersive = immersiveModeLocalizationEntries("en")
+        val englishVideo = musicVideoPreferenceLocalizationEntries("en")
+        codes.forEach { code ->
+            val immersive = immersiveModeLocalizationEntries(code)
+            val video = musicVideoPreferenceLocalizationEntries(code)
+            assertEquals(immersiveModeKeys, immersive.keys)
+            assertEquals(musicVideoPreferenceKeys, video.keys)
+            (immersive + video).forEach { (key, value) -> assertTrue("$code/$key is blank", value.isNotBlank()) }
+            if (code != "en") {
+                assertNotEquals("$code immersive", englishImmersive.getValue("immersiveFullSubtitle"), immersive.getValue("immersiveFullSubtitle"))
+                assertNotEquals("$code music video", englishVideo.getValue("musicVideoPreferenceSubtitle"), video.getValue("musicVideoPreferenceSubtitle"))
+            }
+        }
+    }
+
+    @Test
     fun liquidGlassCoversEveryCatalogLanguageWithoutEnglishFallback() {
         val codes = LevyraLanguageCatalog.languages.map { it.code }
         assertEquals(codes.toSet(), liquidGlassLocalizationCodes())

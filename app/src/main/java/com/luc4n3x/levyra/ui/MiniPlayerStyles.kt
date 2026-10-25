@@ -134,6 +134,14 @@ private val FullRingProgress: () -> Float = { 1f }
 private val StyledMiniTrayTop = 4.dp
 private val StyledMiniTrayBottom = 10.dp
 private val StyledMiniFloatingBottom = 12.dp
+private val LiquidCapsuleMiniBottom = 10.dp
+private val LiquidCapsuleElevation = 10.dp
+
+internal fun liquidCapsuleRim(onDark: Boolean): Brush = Brush.linearGradient(
+    0f to Color.White.copy(alpha = if (onDark) 0.42f else 0.85f),
+    0.45f to Color.White.copy(alpha = if (onDark) 0.10f else 0.35f),
+    1f to Color.White.copy(alpha = if (onDark) 0.22f else 0.60f)
+)
 private val StyledMiniGutter = 12.dp
 private val StyledMiniCompactShrink = 14.dp
 private val StyledMiniMinHeight = 48.dp
@@ -250,7 +258,7 @@ private fun rememberTunedMiniPlayerPalette(
     val surface = when (style) {
         MiniPlayerStyle.Floating -> scheme.surfaceContainerHigh.playerMix(accent, 0.08f)
         MiniPlayerStyle.UltraCompact -> scheme.surfaceContainerHighest.playerMix(accent, 0.06f)
-        MiniPlayerStyle.LiquidGlass -> scheme.surfaceContainerHighest
+        MiniPlayerStyle.LiquidGlass, MiniPlayerStyle.LiquidCapsule -> scheme.surfaceContainerHighest
         MiniPlayerStyle.YtMusic -> StyledMiniYtMusicSurface
         MiniPlayerStyle.Connected -> scheme.surfaceContainerHigh.playerMix(accent, 0.12f)
         else -> StyledMiniDarkBase
@@ -320,12 +328,13 @@ private class StyledMiniLayout(style: MiniPlayerStyle, tuning: MiniPlayerTuning)
     val artworkCompact = (artworkSize * 0.8f).coerceAtMost(compactHeight - 8.dp)
     val gutter = when (style) {
         MiniPlayerStyle.Floating, MiniPlayerStyle.LiquidGlass, MiniPlayerStyle.SuperExpressive, MiniPlayerStyle.YtMusic,
-        MiniPlayerStyle.Connected -> tuning.insetDp.dp
+        MiniPlayerStyle.Connected, MiniPlayerStyle.LiquidCapsule -> tuning.insetDp.dp
         else -> StyledMiniGutter
     }
     val topGap = if (style == MiniPlayerStyle.YtMusic) 0.dp else StyledMiniTrayTop
     val bottomGap = when (style) {
         MiniPlayerStyle.Floating, MiniPlayerStyle.LiquidGlass -> StyledMiniFloatingBottom
+        MiniPlayerStyle.LiquidCapsule -> LiquidCapsuleMiniBottom
         MiniPlayerStyle.YtMusic, MiniPlayerStyle.Connected -> 0.dp
         else -> StyledMiniTrayBottom
     }
@@ -808,6 +817,12 @@ private fun Modifier.miniDepth(
             ambientColor = palette.accent.copy(alpha = 0.28f),
             spotColor = palette.accent.copy(alpha = 0.36f)
         )
+        MiniPlayerStyle.LiquidCapsule -> shadow(
+            elevation = LiquidCapsuleElevation,
+            shape = shape,
+            ambientColor = Color.Black.copy(alpha = 0.16f),
+            spotColor = Color.Black.copy(alpha = 0.30f)
+        )
         MiniPlayerStyle.ArtworkFocus -> if (tuning.shadow == 0) this else shadow(
             elevation = shadowElevation,
             shape = shape,
@@ -830,15 +845,18 @@ private fun Modifier.miniBackground(
     glass: GlassBackdropState?,
     shape: Shape
 ): Modifier = when (style) {
-    MiniPlayerStyle.LiquidGlass -> {
-        val tint = palette.surface.playerMix(palette.accent, 0.10f)
+    MiniPlayerStyle.LiquidGlass, MiniPlayerStyle.LiquidCapsule -> {
+        val capsule = style == MiniPlayerStyle.LiquidCapsule
+        val tint = palette.surface.playerMix(palette.accent, if (capsule) 0.04f else 0.10f)
         val alpha = tuning.opacity / 100f
         val solidAlpha = (alpha + 0.32f).coerceAtMost(0.96f)
-        val sheen = Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.10f), Color.Transparent))
+        val sheen = Brush.verticalGradient(
+            listOf(Color.White.copy(alpha = if (capsule && !palette.onDark) 0.30f else 0.10f), Color.Transparent)
+        )
         if (glass != null) {
             glassFrost(
                 state = glass,
-                blurRadius = 24.dp,
+                blurRadius = if (capsule) 30.dp else 24.dp,
                 refractionShape = shape,
                 onDrawFrosted = {
                     drawRect(tint.copy(alpha = alpha))
@@ -907,6 +925,11 @@ private fun Modifier.miniOutline(style: MiniPlayerStyle, palette: MiniPlayerPale
             brush = Brush.verticalGradient(
                 listOf(Color.White.copy(alpha = 0.30f), Color.White.copy(alpha = 0.05f))
             ),
+            shape = shape
+        )
+        MiniPlayerStyle.LiquidCapsule -> border(
+            width = 1.dp,
+            brush = liquidCapsuleRim(palette.onDark),
             shape = shape
         )
         MiniPlayerStyle.Floating -> if (LevyraIsSpotify) this else if (LevyraIsAppleMusic) border(0.5.dp, AppleMusicDesign.chromeStroke, shape) else border(

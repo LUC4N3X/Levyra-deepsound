@@ -464,7 +464,6 @@ private fun YouTubeMusicArtistMenu(
     val speedDialCopy = remember(strings) { strings.speedDialCopy() }
     val excluded = state.artistExclusions.excludesBrowseId(artist.browseId) || state.artistExclusions.excludesArtistName(artist.name)
     val pinned = SpeedDial.artistKey(artist.name, artist.browseId)?.let { key -> state.speedDialPins.any { it.key == key } } == true
-    val full = state.speedDialPins.size >= SpeedDial.MAX_PINS
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss, containerColor = YouTubeMusicDesign.surface) {
         DropdownMenuItem(
             text = { Text(if (excluded) strings.includeArtist else strings.excludeArtist, color = YouTubeMusicDesign.text) },
@@ -477,16 +476,11 @@ private fun YouTubeMusicArtistMenu(
         DropdownMenuItem(
             text = {
                 Text(
-                    when {
-                        pinned -> speedDialCopy.removeFromHome
-                        full -> speedDialCopy.homeFull
-                        else -> speedDialCopy.addToHome
-                    },
+                    if (pinned) speedDialCopy.removeFromHome else speedDialCopy.addToHome,
                     color = YouTubeMusicDesign.text
                 )
             },
             leadingIcon = { Icon(Icons.Rounded.PushPin, null, tint = YouTubeMusicDesign.text) },
-            enabled = pinned || !full,
             onClick = {
                 onDismiss()
                 viewModel.toggleSpeedDialArtist(artist.name, artist.browseId, artist.thumbnailUrl)

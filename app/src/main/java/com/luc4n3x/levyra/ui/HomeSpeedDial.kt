@@ -26,7 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -135,9 +135,8 @@ internal fun HomeSpeedDialStrip(
             horizontalArrangement = Arrangement.spacedBy(SpeedDialTileGap),
             userScrollEnabled = reorder.draggingKey == null
         ) {
-            items(displayedPins, key = { it.key }, contentType = { "speed-dial-tile" }) { pin ->
+            itemsIndexed(displayedPins, key = { _, pin -> pin.key }, contentType = { _, _ -> "speed-dial-tile" }) { index, pin ->
                 val dragging = reorder.draggingKey == pin.key
-                val index = displayedPins.indexOf(pin)
                 val moveBy: (Int) -> Unit = { step ->
                     movedSpeedDialKeys(displayedPins.map { it.key }, index, step)?.let(latestOnReorder)
                 }

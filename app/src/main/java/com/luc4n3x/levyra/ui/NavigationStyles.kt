@@ -141,6 +141,7 @@ internal fun navDockExtraClearance(style: NavStyle, tuning: NavTuning): Dp {
 
 private val SplitDockJoinedGap = 4.dp
 private val SplitDockDetachedGap = 10.dp
+private val LiquidCapsuleOrbGap = 10.dp
 private val SplitDockInnerCorner = 8.dp
 private val SplitOrbMarkInset = 5.dp
 private val SplitOrbRingStroke = 2.dp
@@ -671,7 +672,7 @@ internal fun StyledBottomTabs(
     val visibleEntries = remember(allEntries, tuning.order, tuning.hidden) {
         tuning.visibleOrder().mapNotNull { tab -> allEntries.firstOrNull { it.tab == tab } }
     }
-    val searchEntry = if (style == NavStyle.SplitDock) visibleEntries.firstOrNull { it.tab == LevyraTab.Search } else null
+    val searchEntry = if (style.separatesSearch) visibleEntries.firstOrNull { it.tab == LevyraTab.Search } else null
     val entries = remember(visibleEntries, searchEntry) {
         if (searchEntry == null) visibleEntries else visibleEntries.filterNot { it.tab == LevyraTab.Search }
     }
@@ -706,6 +707,7 @@ internal fun StyledBottomTabs(
     Column(modifier = Modifier.fillMaxWidth()) {
         if (searchEntry != null) {
             SplitDockRow(
+                style = style,
                 entries = entries,
                 searchEntry = searchEntry,
                 selected = selected,
@@ -839,6 +841,7 @@ private fun StyledTabCapsule(
 
 @Composable
 private fun SplitDockRow(
+    style: NavStyle,
     entries: List<LevyraTabEntry>,
     searchEntry: LevyraTabEntry,
     selected: LevyraTab,
@@ -861,10 +864,15 @@ private fun SplitDockRow(
         animationSpec = motion.position,
         label = "split-dock-detach"
     )
-    val capsuleSurface = remember(colors, tuning.background, tuning.opacity, glass, depth, outer, detach) {
-        Modifier
-            .dockLinkedClip((6f + 12f * depth).dp, colors.rim) { splitCapsuleShape(outer, detach.value) }
-            .navBackground(tuning.background, colors, tuning.opacity, glass)
+    val liquid = style == NavStyle.LiquidCapsule
+    val capsuleSurface = remember(liquid, colors, tuning.background, tuning.opacity, glass, depth, outer, detach) {
+        if (liquid) {
+            Modifier.navLiquidGlass(colors, tuning.opacity, glass, RoundedCornerShape(outer), depth)
+        } else {
+            Modifier
+                .dockLinkedClip((6f + 12f * depth).dp, colors.rim) { splitCapsuleShape(outer, detach.value) }
+                .navBackground(tuning.background, colors, tuning.opacity, glass)
+        }
     }
     Row(
         modifier = Modifier
@@ -893,10 +901,11 @@ private fun SplitDockRow(
         )
         Spacer(
             modifier = Modifier.dockGapWidth {
-                lerp(SplitDockJoinedGap, SplitDockDetachedGap, detach.value.coerceIn(0f, 1f))
+                if (liquid) LiquidCapsuleOrbGap else lerp(SplitDockJoinedGap, SplitDockDetachedGap, detach.value.coerceIn(0f, 1f))
             }
         )
         SplitSearchOrb(
+            liquid = liquid,
             entry = searchEntry,
             isSelected = searchSelected,
             detach = detach,
@@ -914,6 +923,7 @@ private fun SplitDockRow(
 
 @Composable
 private fun SplitSearchOrb(
+    liquid: Boolean,
     entry: LevyraTabEntry,
     isSelected: Boolean,
     detach: State<Float>,
@@ -949,10 +959,14 @@ private fun SplitSearchOrb(
         animationSpec = motion.scale,
         label = "split-orb-bloom"
     )
-    val surface = remember(colors, tuning.background, tuning.opacity, glass, depth, detach) {
-        Modifier
-            .dockLinkedClip((6f + 12f * depth).dp, colors.rim) { splitOrbShape(detach.value) }
-            .navBackground(tuning.background, colors, tuning.opacity, glass)
+    val surface = remember(liquid, colors, tuning.background, tuning.opacity, glass, depth, detach) {
+        if (liquid) {
+            Modifier.navLiquidGlass(colors, tuning.opacity, glass, CircleShape, depth)
+        } else {
+            Modifier
+                .dockLinkedClip((6f + 12f * depth).dp, colors.rim) { splitOrbShape(detach.value) }
+                .navBackground(tuning.background, colors, tuning.opacity, glass)
+        }
     }
     val filled = tuning.indicator.filled
     Box(
@@ -1391,7 +1405,7 @@ internal fun navExpansion(style: NavStyle): NavExpansion = when (style) {
     NavStyle.FloatingDock -> NavExpansion(1.10f, 12.sp, 6.dp, 44.dp, 4.dp, morph = false, glass = false)
     NavStyle.SplitDock -> NavExpansion(1.00f, 12.sp, 6.dp, 44.dp, 4.dp, morph = false, glass = false)
     NavStyle.ConnectedDock -> NavExpansion(0.95f, 12.sp, 6.dp, 40.dp, 4.dp, morph = false, glass = false)
-    NavStyle.LiquidGlass -> NavExpansion(1.00f, 12.sp, 6.dp, 44.dp, 4.dp, morph = false, glass = true)
+    NavStyle.LiquidGlass, NavStyle.LiquidCapsule -> NavExpansion(1.00f, 12.sp, 6.dp, 44.dp, 4.dp, morph = false, glass = true)
     NavStyle.Minimal -> NavExpansion(0.70f, 11.sp, 6.dp, 36.dp, 6.dp, morph = false, glass = false)
     NavStyle.ExpressiveCompact -> NavExpansion(0.60f, 11.sp, 4.dp, 34.dp, 3.dp, morph = true, glass = false)
     NavStyle.Original, NavStyle.YtMusic -> NavExpansion(0.80f, 12.sp, 6.dp, 40.dp, 4.dp, morph = false, glass = false)
