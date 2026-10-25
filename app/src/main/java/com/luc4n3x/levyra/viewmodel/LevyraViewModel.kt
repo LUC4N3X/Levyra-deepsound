@@ -4516,6 +4516,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         return youtubePlayableTrack(if (preference.pairsArtTrackAudio) track.withPairedArtTrackAudio() else track)
     }
 
+    private suspend fun withCatalogArtTrack(track: Track): Track {
+        if (_state.value.interfaceSettings.musicVideoPreference != MusicVideoPlaybackPreference.PreferAudio) return track
+        if (!YoutubeMusicVideoType.isVideo(track.videoType)) return track
+        if (track.audioVideoId.isNotBlank() || track.counterpartVideoId.isNotBlank()) return track
+        val ownId = track.id.trim()
+        val playlist = runCatchingPreservingCancellation {
+            withTimeoutOrNull(CATALOG_ART_TRACK_LOOKUP_TIMEOUT_MS) {
+                repository.getWatchPlaylist(track, _state.value.languageCode, limit = 3)
+            }
+        }.getOrNull()
+        val artTrackId = catalogArtTrackId(ownId, playlist) ?: return track
+        return track.copy(counterpartVideoId = artTrackId)
+    }
+
     private fun musicVideoStartMode(track: Track, requestedVideoMode: Boolean): Boolean {
         val settings = _state.value.interfaceSettings
         return settings.musicVideoPreference.startsInVideo(track, requestedVideoMode, settings.lastMusicVideoMode)
@@ -10376,7 +10390,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val playableTrack = if (requestedVideoMode && !isYoutubeShortTrack(track)) {
             preferredVideoPlaybackTrack(track)
         } else {
-            audioPlaybackTrack(track)
+            audioPlaybackTrack(withCatalogArtTrack(track))
         }
         val selectedTrack = playableTrack ?: track
         if (isUnavailableLocalTrack(track)) {
@@ -14043,6 +14057,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         private const val HOME_ARTIST_FAST_TIMEOUT_MS = 5_200L
         private const val HOME_ARTIST_TOTAL_TIMEOUT_MS = 18_000L
         private const val VIDEO_IDENTITY_LOOKUP_TIMEOUT_MS = 9_000L
+        private const val CATALOG_ART_TRACK_LOOKUP_TIMEOUT_MS = 2_500L
         private const val VERIFIED_VIDEO_IDENTITY_CACHE_SIZE = 64
         private const val HOME_ARTIST_STARTUP_GRACE_MS = 850L
         private const val HOME_STARTUP_STREAM_PREFETCH_COUNT = 2
@@ -14581,6 +14596,14 @@ internal fun queueSpaceDisplayName(space: QueueSpaceSummary?, strings: LevyraStr
     space?.name?.trim()?.takeIf { it.isNotEmpty() } ?: strings.queueSpaceDefaultName
 
 internal fun duplicatedQueueSpaceName(name: String): String = "$name 2"
+
+internal fun catalogArtTrackId(ownId: String, playlist: com.luc4n3x.levyra.data.YoutubeMusicWatchPlaylist?): String? =
+    playlist?.tracks
+        ?.firstOrNull { it.videoId == ownId }
+        ?.counterpart
+        ?.takeIf { YoutubeMusicVideoType.isArtTrack(it.videoType) }
+        ?.videoId
+        ?.takeIf { it.isNotBlank() && it != ownId }
 
 internal fun youtubePlayableTrack(track: Track, preferVideo: Boolean = false): Track? {
     val counterpart = track.counterpartVideoId.trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
