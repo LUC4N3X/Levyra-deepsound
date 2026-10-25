@@ -134,7 +134,7 @@ internal fun SpotifyRadioPage(
     currentId: String?,
     isPlaying: Boolean,
     bottomInset: Dp,
-    onPlay: (Track) -> Unit,
+    onPlay: (List<Track>, Track) -> Unit,
     onTrackActions: (Track) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -152,7 +152,8 @@ internal fun SpotifyRadioPage(
         fallbackTone = lerp(pastel, Color.Black, 0.62f),
         heroCollapsePx = heroPx,
         showFindBar = false,
-        description = com.luc4n3x.levyra.ui.i18n.LevyraSpotifyChartStrings.radioWithMany(strings.code, artists),
+        description = if (artists.isBlank()) com.luc4n3x.levyra.ui.i18n.LevyraSpotifyChartStrings.radioMadeForYou(strings.code)
+        else com.luc4n3x.levyra.ui.i18n.LevyraSpotifyChartStrings.radioWithMany(strings.code, artists),
         ownerLabel = com.luc4n3x.levyra.ui.i18n.LevyraSpotifyChartStrings.radioMadeForYou(strings.code),
         meta = duration,
         thumbUrl = tracks.firstOrNull()?.thumbnailUrl.orEmpty(),
@@ -160,7 +161,7 @@ internal fun SpotifyRadioPage(
         currentId = currentId,
         isPlaying = isPlaying,
         bottomInset = bottomInset,
-        onPlay = { _, track -> onPlay(track) },
+        onPlay = onPlay,
         onTrackActions = onTrackActions,
         onDismiss = onDismiss,
         heroBehindTopBar = true
@@ -225,7 +226,7 @@ internal fun SpotifyRadioOverlay(viewModel: com.luc4n3x.levyra.viewmodel.HomeVie
         currentId = currentId,
         isPlaying = isPlaying,
         bottomInset = bottomInset,
-        onPlay = { track -> viewModel.playFrom(tracks, track) },
+        onPlay = { list, track -> viewModel.playFrom(list, track) },
         onTrackActions = onTrackActions,
         onDismiss = SpotifyRadioNavigator::close
     )

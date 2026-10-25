@@ -64,8 +64,8 @@ internal object SpotifyClipCanvasRegistry {
         val id = track?.id ?: return ""
         canvasByTrackId[id]?.let { return it }
         if (!id.startsWith(SPOTIFY_CLIP_ID_PREFIX) || bundledLoaded) return ""
-        bundledLoaded = true
         val context = bundledSource ?: return ""
+        bundledLoaded = true
         runCatching {
             context.assets.open(CLIPS_ASSET).bufferedReader().use { parseSpotifyClips(it.readText()) }
         }.getOrNull()?.let { catalog ->
@@ -185,10 +185,11 @@ internal fun rankSpotifyClips(
     val byGenre = catalog.clips.groupBy { it.genre }.mapValues { (_, clips) ->
         clips.shuffled(random).sortedByDescending(::affinity).toMutableList()
     }
-    val genreOrder = byGenre.keys.sortedByDescending { genre ->
+    val genreScores = byGenre.mapValues { (genre, genreClips) ->
         val languageScore = if (language in catalog.genreLanguages[genre].orEmpty()) 6 else 0
-        languageScore + byGenre.getValue(genre).sumOf(::affinity) * 2 + random.nextInt(3)
+        languageScore + genreClips.sumOf(::affinity) * 2 + random.nextInt(3)
     }
+    val genreOrder = byGenre.keys.sortedByDescending { genreScores.getValue(it) }
     val weights = genreOrder.mapIndexed { index, genre -> genre to if (index < 3) 2 else 1 }
     val result = mutableListOf<SpotifyClip>()
     while (result.size < limit && byGenre.values.any { it.isNotEmpty() }) {

@@ -124,7 +124,7 @@ internal fun TrackCreditsSheet(
     }
 
     if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) {
-        SpotifyTrackCreditsSheet(track, artists, load, copy, sheetState, onOpenArtist, onDismiss, onToggleFollow, isFollowed)
+        SpotifyTrackCreditsSheet(track, artists, load, copy, sheetState, onOpenArtist, onDismiss, onToggleFollow, isFollowed) { retryCount++ }
         return
     }
     ModalBottomSheet(
@@ -547,7 +547,8 @@ private fun SpotifyTrackCreditsSheet(
     onOpenArtist: (Int) -> Unit,
     onDismiss: () -> Unit,
     onToggleFollow: ((Int) -> Unit)?,
-    isFollowed: (Int) -> Boolean
+    isFollowed: (Int) -> Boolean,
+    onRetry: () -> Unit
 ) {
     val surface = androidx.compose.ui.graphics.Color(0xFF212121)
     val subdued = androidx.compose.ui.graphics.Color(0xFFB3B3B3)
@@ -601,6 +602,11 @@ private fun SpotifyTrackCreditsSheet(
                                 onOpen = linked?.let { index -> { onOpenArtist(index) } },
                                 onToggleFollow = followToggle
                             )
+                        }
+                    }
+                    if (load.credits.isEmpty || !load.credits.remoteResolved) {
+                        Box(Modifier.padding(16.dp)) {
+                            TrackCreditsNotice(remoteResolved = load.credits.remoteResolved, copy = copy, onRetry = onRetry)
                         }
                     }
                 }

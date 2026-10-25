@@ -24,8 +24,10 @@ private val PODCAST_VIDEO_ID = Regex("^[A-Za-z0-9_-]{11}$")
 
 internal data class PodcastShelf(val title: String, val episodes: List<Track>)
 
+private val podcastShelvesCache = ConcurrentHashMap<String, List<PodcastShelf>>()
+
 internal class YoutubePodcastsRepository(private val context: Context) {
-    private val cache = ConcurrentHashMap<String, List<PodcastShelf>>()
+    private val cache = podcastShelvesCache
 
     suspend fun shelves(languageCode: String): List<PodcastShelf> = withContext(Dispatchers.IO) {
         cache[languageCode]?.let { return@withContext it }

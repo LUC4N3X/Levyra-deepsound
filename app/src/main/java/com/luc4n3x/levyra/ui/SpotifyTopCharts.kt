@@ -262,7 +262,7 @@ internal fun SpotifyPlaylistPage(
     var playRowY by remember { mutableIntStateOf(Int.MAX_VALUE) }
     val topBarPx = with(density) { SpotifyChartTopBar.toPx() }
     var statusBarPx by remember { mutableIntStateOf(0) }
-    val pinned = playRowY <= topBarPx + statusBarPx
+    val pinned = listState.firstVisibleItemIndex > 0 || playRowY <= topBarPx + statusBarPx
     val barAlpha = ((headerScroll - coverPx * 0.6f) / (coverPx * 0.4f)).coerceIn(0f, 1f)
     val playTracks: () -> Unit = { tracks.firstOrNull()?.let { onPlay(tracks, it) } }
 

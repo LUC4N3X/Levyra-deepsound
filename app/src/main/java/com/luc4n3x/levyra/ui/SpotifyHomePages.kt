@@ -307,12 +307,29 @@ private fun SpotifyFollowArtistPicker(state: LevyraUiState, viewModel: HomeViewM
 private fun SpotifyPodcastsPage(state: LevyraUiState, viewModel: HomeViewModel) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val repository = remember(context) { com.luc4n3x.levyra.data.YoutubePodcastsRepository(context.applicationContext) }
-    val shelves by androidx.compose.runtime.produceState(emptyList<com.luc4n3x.levyra.data.PodcastShelf>(), state.languageCode) {
-        value = runCatching { repository.shelves(state.languageCode) }.getOrDefault(emptyList())
+    var attempt by remember { mutableIntStateOf(0) }
+    val loaded by androidx.compose.runtime.produceState<List<com.luc4n3x.levyra.data.PodcastShelf>?>(null, state.languageCode, attempt) {
+        value = null
+        value = try {
+            repository.shelves(state.languageCode)
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            emptyList()
+        }
     }
+    val shelves = loaded
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        if (shelves.isEmpty()) Text(LocalLevyraStrings.current.searchingYouTubeMusic, color = SpotifyDesign.subdued, modifier = Modifier.padding(16.dp))
-        shelves.forEach { shelf ->
+        when {
+            shelves == null -> Text(LocalLevyraStrings.current.searchingYouTubeMusic, color = SpotifyDesign.subdued, modifier = Modifier.padding(16.dp))
+            shelves.isEmpty() -> Box(
+                Modifier.padding(16.dp).height(40.dp).clip(CircleShape).background(Color.White)
+                    .levyraPressable(onClick = { attempt++ }, onClickLabel = LocalLevyraStrings.current.exploreSamplesRetry, role = Role.Button)
+                    .padding(horizontal = 20.dp),
+                contentAlignment = Alignment.Center
+            ) { Text(LocalLevyraStrings.current.exploreSamplesRetry, color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.Bold) }
+        }
+        shelves.orEmpty().forEach { shelf ->
             SpotifyHomeShelf(shelf.title) {
                 items(shelf.episodes, key = { "podcast-${shelf.title}-${it.id}" }) { episode ->
                     SpotifyHomeCoverCard(episode.title, episode.artist, episode.thumbnailUrl) { viewModel.playFrom(shelf.episodes, episode) }

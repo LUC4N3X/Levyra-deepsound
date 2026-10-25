@@ -1829,7 +1829,10 @@ private fun LevyraNowPlayingContent(
                         ?: viewModel.openArtist(track, artistIndex)
                 },
                 onDismiss = { showTrackCredits = false },
-                onToggleFollow = { artistIndex -> playerArtistHits.getOrNull(artistIndex)?.let(viewModel::toggleFollowArtist) }
+                onToggleFollow = { artistIndex -> playerArtistHits.getOrNull(artistIndex)?.let(viewModel::toggleFollowArtist) },
+                isFollowed = { artistIndex ->
+                    playerArtistHits.getOrNull(artistIndex)?.let { hit -> state.followedArtists.any { it.browseId == hit.browseId } } ?: false
+                }
             )
         }
 

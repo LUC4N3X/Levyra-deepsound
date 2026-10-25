@@ -95,23 +95,26 @@ internal class YoutubeShortsRepository(private val context: Context) {
                 async { gate.withPermit { nativeSamples(code, limit) } }
             }.awaitAll().flatten()
         }
-        val tracks = rankYoutubeShortDiscovery(native, emptyList(), seeds, preferredArtists, limit)
+        val tracks = rankYoutubeShortDiscovery(clips + native, emptyList(), seeds, preferredArtists, limit)
         YoutubeShortsFeedResult(tracks, completedQueries = if (tracks.isEmpty()) 0 else 1, failedQueries = if (tracks.isEmpty()) 1 else 0)
     }
 
-    private suspend fun nativeSamples(languageCode: String, limit: Int): List<Track> = try {
-        withShortsSearchTimeout(SAMPLES_TIMEOUT_MS) { youtubeMusicSamples(languageCode, limit) }
-    } catch (timeout: TimeoutCancellationException) {
-        Timber.w(timeout, "YouTube Music Samples timed out")
-        emptyList()
-    } catch (cancelled: CancellationException) {
-        throw cancelled
-    } catch (error: Exception) {
-        Timber.w(error, "YouTube Music Samples failed")
-        emptyList()
+    private suspend fun nativeSamples(languageCode: String, limit: Int): List<Track> {
+        val collected = LinkedHashMap<String, Track>()
+        return try {
+            withShortsSearchTimeout(SAMPLES_TIMEOUT_MS) { youtubeMusicSamples(languageCode, limit, collected) }
+        } catch (timeout: TimeoutCancellationException) {
+            Timber.w(timeout, "YouTube Music Samples timed out")
+            collected.values.take(limit)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Timber.w(error, "YouTube Music Samples failed")
+            collected.values.take(limit)
+        }
     }
 
-    private suspend fun youtubeMusicSamples(languageCode: String, limit: Int): List<Track> {
+    private suspend fun youtubeMusicSamples(languageCode: String, limit: Int, tracks: LinkedHashMap<String, Track>): List<Track> {
         val locale = YoutubeRegionProfile.effectiveLocale(languageCode)
         val client = JSONObject()
             .put("clientName", "ANDROID_MUSIC")
@@ -120,7 +123,6 @@ internal class YoutubeShortsRepository(private val context: Context) {
             .put("platform", "MOBILE")
             .put("hl", locale.hl)
             .put("gl", locale.gl)
-        val tracks = LinkedHashMap<String, Track>()
         val requestedContinuations = mutableSetOf<String>()
         var continuation = ""
         repeat(SAMPLES_MAX_PAGES) {

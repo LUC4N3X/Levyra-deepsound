@@ -126,7 +126,7 @@ internal fun PlayerArtworkHero(
 private fun rememberTrackChangeScale(trackId: String, animationsEnabled: Boolean, staticPresentation: Boolean): Animatable<Float, AnimationVector1D> {
     val trackChangeScale = remember { Animatable(1f) }
     var settledTrackId by remember { mutableStateOf(trackId) }
-    LaunchedEffect(trackId, animationsEnabled) {
+    LaunchedEffect(trackId, animationsEnabled, staticPresentation) {
         val trackChanged = settledTrackId != trackId
         settledTrackId = trackId
         if (!trackChanged || !animationsEnabled || staticPresentation) {

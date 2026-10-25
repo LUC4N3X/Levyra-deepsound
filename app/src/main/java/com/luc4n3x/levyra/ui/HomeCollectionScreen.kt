@@ -113,7 +113,12 @@ internal fun HomeCollectionScreen(
         return
     }
     if (LevyraIsSpotify) {
-        SpotifyRadioPage(title, tracks, accentStart, currentId, isPlaying, bottomInset, onPlay, onTrackActions, onDismiss)
+        SpotifyRadioPage(
+            title, tracks, accentStart, currentId, isPlaying, bottomInset,
+            onPlay = { list, track -> if (list == tracks) onPlay(track) else onShuffle() },
+            onTrackActions = onTrackActions,
+            onDismiss = onDismiss
+        )
         return
     }
     BackHandler(onBack = onDismiss)

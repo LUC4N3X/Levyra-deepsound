@@ -60,8 +60,9 @@ private const val SAMPLES_HINT_TIMEOUT_MS = 6_000L
 internal fun SamplesSwipeHint(pagerState: PagerState, languageCode: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val prefs = remember(context) { context.getSharedPreferences(SAMPLES_HINT_PREFS, Context.MODE_PRIVATE) }
-    var visible by remember { mutableStateOf(!prefs.getBoolean(SAMPLES_HINT_SEEN, false)) }
-    if (!visible && prefs.getBoolean(SAMPLES_HINT_SEEN, false)) return
+    val seenAtStart = remember(prefs) { prefs.getBoolean(SAMPLES_HINT_SEEN, false) }
+    if (seenAtStart) return
+    var visible by remember { mutableStateOf(true) }
     val dismiss = {
         visible = false
         prefs.edit().putBoolean(SAMPLES_HINT_SEEN, true).apply()
