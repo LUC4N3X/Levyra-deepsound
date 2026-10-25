@@ -410,6 +410,11 @@ import androidx.compose.material.icons.rounded.OfflinePin
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
 import androidx.compose.material.icons.rounded.HighQuality
+import androidx.compose.material.icons.rounded.MusicVideo
+import androidx.compose.material.icons.rounded.Fullscreen
+import androidx.compose.material.icons.rounded.VerticalAlignTop
+import androidx.compose.material.icons.rounded.VerticalAlignBottom
+import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.LibraryAdd
 import androidx.compose.material.icons.rounded.Source
 import androidx.compose.material.icons.rounded.Wifi
@@ -834,6 +839,8 @@ import com.luc4n3x.levyra.domain.LevyraAmbientMode
 import com.luc4n3x.levyra.domain.LevyraAmbientSettings
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.LevyraImmersiveSettings
+import com.luc4n3x.levyra.domain.MusicVideoPlaybackPreference
 import com.luc4n3x.levyra.ui.player.PlayerDragEvent
 import com.luc4n3x.levyra.ui.player.PlayerGestureZone
 import com.luc4n3x.levyra.ui.player.PlayerMorphAnchors
@@ -2306,6 +2313,7 @@ fun LevyraApp(
             val expansionProvider: () -> Float = { playerExpansion.value }
             val chromeVisible by remember { derivedStateOf { playerExpansion.value < 1f } }
             val playerVisible by remember { derivedStateOf { playerExpansion.value > 0f } }
+            HideSystemBars(state.interfaceSettings.immersive.hiddenBars(fullPlayerVisible = !chromeVisible && !rootOverlayOpen))
             val morphAllowed = state.animationsEnabled && !state.isVideoMode
             val artworkMorphActive by remember(morphAllowed) {
                 derivedStateOf {
@@ -3634,7 +3642,6 @@ fun LevyraApp(
                         )
                     },
                     isPinnedToHome = SpeedDial.songKey(target)?.let { key -> state.speedDialPins.any { it.key == key } } == true,
-                    homePinsFull = state.speedDialPins.size >= SpeedDial.MAX_PINS,
                     onTogglePinToHome = { viewModel.toggleSpeedDialTrack(target) }
                 )
             }
@@ -4794,15 +4801,10 @@ private fun AlbumOverlay(
                                 text = {
                                     val copy = strings.speedDialCopy()
                                     Text(
-                                        when {
-                                            albumPinned -> copy.removeFromHome
-                                            state.speedDialPins.size >= SpeedDial.MAX_PINS -> copy.homeFull
-                                            else -> copy.addToHome
-                                        }
+                                        if (albumPinned) copy.removeFromHome else copy.addToHome
                                     )
                                 },
                                 leadingIcon = { Icon(Icons.Rounded.PushPin, null) },
-                                enabled = albumPinned || state.speedDialPins.size < SpeedDial.MAX_PINS,
                                 onClick = {
                                     albumMenuExpanded = false
                                     onTogglePinToHome(album)
@@ -5304,7 +5306,6 @@ private fun ArtistOverlay(
     BackHandler(enabled = selection.isActive) { selection.exit() }
     val pinnedToHome = profile != null && SpeedDial.artistKey(profile.name, profile.browseId)
         ?.let { key -> state.speedDialPins.any { it.key == key } } == true
-    val homePinsFull = state.speedDialPins.size >= SpeedDial.MAX_PINS
     val isFollowed = profile != null && (
         (profile.browseId.isNotBlank() && profile.browseId in state.followedArtistKeys) ||
             profile.name.trim().lowercase() in state.followedArtistKeys
@@ -5493,7 +5494,6 @@ private fun ArtistOverlay(
                                 isExcluded = isExcluded,
                                 onToggleExclude = { onToggleExclude(artist.browseId, artist.name) },
                                 isPinnedToHome = pinnedToHome,
-                                homePinsFull = homePinsFull,
                                 onTogglePinToHome = { onTogglePinToHome(artist) }
                             )
                             if (artist.hasBio && !LevyraIsSpotify && !LevyraIsAppleMusic) {
@@ -5705,7 +5705,6 @@ private fun ArtistOverlay(
                             isExcluded = isExcluded,
                             onToggleExclude = { onToggleExclude(profile.browseId, profile.name) },
                             isPinnedToHome = pinnedToHome,
-                            homePinsFull = homePinsFull,
                             onTogglePinToHome = { onTogglePinToHome(profile) },
                             onShuffle = profile.topSongs.takeIf { it.size > 1 }?.let { songs -> { onPlayAll(songs.shuffled()) } }
                         )
@@ -6462,7 +6461,6 @@ private fun ArtistActionBar(
     isExcluded: Boolean,
     onToggleExclude: () -> Unit,
     isPinnedToHome: Boolean,
-    homePinsFull: Boolean,
     onTogglePinToHome: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -6508,7 +6506,6 @@ private fun ArtistActionBar(
                 isExcluded = isExcluded,
                 onToggleExclude = onToggleExclude,
                 isPinnedToHome = isPinnedToHome,
-                homePinsFull = homePinsFull,
                 onTogglePinToHome = onTogglePinToHome
             )
         }
@@ -21177,6 +21174,28 @@ private fun SettingsOverlay(
                                     onSelect = { value -> onVideoQualityTarget(VideoQualityTarget.fromStorage(value)) }
                                 )
                             }
+                            item {
+                                SettingsChoiceRow(
+                                    icon = Icons.Rounded.MusicVideo,
+                                    title = strings.musicVideoPreference,
+                                    subtitle = strings.musicVideoPreferenceSubtitle,
+                                    options = MusicVideoPlaybackPreference.entries.map { preference ->
+                                        preference.storageValue to when (preference) {
+                                            MusicVideoPlaybackPreference.Automatic -> strings.musicVideoAutomatic
+                                            MusicVideoPlaybackPreference.PreferAudio -> strings.musicVideoPreferAudio
+                                            MusicVideoPlaybackPreference.PreferVideo -> strings.musicVideoPreferVideo
+                                            MusicVideoPlaybackPreference.RememberLast -> strings.musicVideoRememberLast
+                                        }
+                                    },
+                                    selected = interfaceSettings.musicVideoPreference.storageValue,
+                                    onSelect = { value ->
+                                        onInterfaceSettings(
+                                            interfaceSettings.copy(musicVideoPreference = MusicVideoPlaybackPreference.fromStorage(value))
+                                        )
+                                    }
+                                )
+                            }
+                            immersiveModeSettingsItems(interfaceSettings, strings, onInterfaceSettings)
                             skinSettingsItems(interfaceSettings.skin, defaults = {
                             item {
                                 SettingsChoiceRow(
@@ -28044,6 +28063,76 @@ private fun formatDuration(ms: Long): String {
     val minutes = totalSeconds / 60L
     val seconds = totalSeconds % 60L
     return "$minutes:${seconds.toString().padStart(2, '0')}"
+}
+
+private fun SettingsGroupCollector.immersiveModeSettingsItems(
+    interfaceSettings: LevyraInterfaceSettings,
+    strings: LevyraStrings,
+    onInterfaceSettings: (LevyraInterfaceSettings) -> Unit
+) {
+    val immersive = interfaceSettings.immersive
+    fun update(value: LevyraImmersiveSettings) = onInterfaceSettings(interfaceSettings.copy(immersive = value))
+    standaloneItem { SettingsSectionLabel(strings.immersiveSection) }
+    item {
+        SettingsToggle(
+            icon = Icons.Rounded.VerticalAlignTop,
+            title = strings.immersiveHideStatusBar,
+            subtitle = strings.immersiveHideStatusBarSubtitle,
+            checked = immersive.statusBarHidden,
+            onCheckedChange = { hidden ->
+                update(
+                    immersive.copy(
+                        hideStatusBar = hidden,
+                        hideNavigationBar = immersive.navigationBarHidden,
+                        fullImmersive = hidden && immersive.fullImmersive
+                    )
+                )
+            }
+        )
+    }
+    item {
+        SettingsToggle(
+            icon = Icons.Rounded.VerticalAlignBottom,
+            title = strings.immersiveHideNavigationBar,
+            subtitle = strings.immersiveHideNavigationBarSubtitle,
+            checked = immersive.navigationBarHidden,
+            onCheckedChange = { hidden ->
+                update(
+                    immersive.copy(
+                        hideStatusBar = immersive.statusBarHidden,
+                        hideNavigationBar = hidden,
+                        fullImmersive = hidden && immersive.fullImmersive
+                    )
+                )
+            }
+        )
+    }
+    item {
+        SettingsToggle(
+            icon = Icons.Rounded.Fullscreen,
+            title = strings.immersiveFull,
+            subtitle = strings.immersiveFullSubtitle,
+            checked = immersive.fullImmersive,
+            onCheckedChange = { full ->
+                update(
+                    if (full) {
+                        immersive.copy(fullImmersive = true)
+                    } else {
+                        immersive.copy(fullImmersive = false, hideStatusBar = false, hideNavigationBar = false)
+                    }
+                )
+            }
+        )
+    }
+    item {
+        SettingsToggle(
+            icon = Icons.Rounded.Apps,
+            title = strings.immersiveEverywhere,
+            subtitle = strings.immersiveEverywhereSubtitle,
+            checked = immersive.everywhere,
+            onCheckedChange = { update(immersive.copy(everywhere = it)) }
+        )
+    }
 }
 
 private fun LazyListScope.skinSettingsItems(

@@ -159,7 +159,6 @@ internal fun LevyraTrackActionSheet(
     onLessLikeThis: () -> Unit,
     onToggleExcludeArtist: () -> Unit,
     isPinnedToHome: Boolean = false,
-    homePinsFull: Boolean = false,
     onTogglePinToHome: (() -> Unit)? = null
 ) {
     val strings = LocalLevyraStrings.current
@@ -409,13 +408,8 @@ internal fun LevyraTrackActionSheet(
                             if (onTogglePinToHome != null) {
                                 TrackActionRow(
                                     icon = Icons.Rounded.PushPin,
-                                    label = when {
-                                        isPinnedToHome -> speedDialCopy.removeFromHome
-                                        homePinsFull -> speedDialCopy.homeFull
-                                        else -> speedDialCopy.addToHome
-                                    },
+                                    label = if (isPinnedToHome) speedDialCopy.removeFromHome else speedDialCopy.addToHome,
                                     tint = if (isPinnedToHome) LevyraCyan else LevyraText,
-                                    enabled = isPinnedToHome || !homePinsFull,
                                     onClick = { perform(onTogglePinToHome) }
                                 )
                             }

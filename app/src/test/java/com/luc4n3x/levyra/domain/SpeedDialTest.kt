@@ -53,10 +53,33 @@ class SpeedDialTest {
     }
 
     @Test
-    fun toggleRespectsTheLimit() {
-        val full = (0 until SpeedDial.MAX_PINS).mapNotNull { SpeedDial.song(track("t$it"), it.toLong()) }
-        val extra = requireNotNull(SpeedDial.song(track("extra"), 99L))
-        assertEquals(full.map { it.key }, SpeedDial.toggle(full, extra).map { it.key })
+    fun toggleAndSanitizeKeepEveryPinBeyondTheOldLimit() {
+        val many = (0 until 250).mapNotNull { SpeedDial.artist("Artist $it", "UC$it", "", it.toLong()) }
+        val extra = requireNotNull(SpeedDial.playlist(playlist("p-extra"), 999L))
+        val toggled = SpeedDial.toggle(many, extra)
+        assertEquals(listOf(extra.key) + many.map { it.key }, toggled.map { it.key })
+        assertEquals(toggled.map { it.key }, SpeedDial.sanitize(toggled + many).map { it.key })
+    }
+
+    @Test
+    fun missingArtistArtworkIsFilledOnlyFromExactMatches() {
+        fun hit(name: String, browseId: String, thumb: String) =
+            ArtistHit(name = name, subscribers = "", thumbnailUrl = thumb, accentStart = 0, accentEnd = 0, browseId = browseId)
+        val byName = requireNotNull(SpeedDial.artist("Coldplay", "", "", 1L))
+        val byId = requireNotNull(SpeedDial.artist("Muse", "UCmuse", "", 2L))
+        val withArt = requireNotNull(SpeedDial.artist("Adele", "UCadele", "https://img/adele", 3L))
+        val pins = listOf(byName, byId, withArt)
+        assertEquals(listOf(byName.key, byId.key), SpeedDial.artistsMissingArtwork(pins).map { it.key })
+
+        val nameHits = listOf(hit("Coldplay Tribute", "UCx", "https://img/wrong"), hit("coldplay", "UCcold", "https://img/cold"))
+        assertEquals("https://img/cold", SpeedDial.matchingArtistArtwork(byName, nameHits))
+        assertEquals(null, SpeedDial.matchingArtistArtwork(byName, listOf(hit("Coldplay Tribute", "UCx", "https://img/wrong"))))
+        assertEquals(null, SpeedDial.matchingArtistArtwork(byId, listOf(hit("Muse", "UCother", "https://img/other"))))
+        assertEquals("https://img/muse", SpeedDial.matchingArtistArtwork(byId, listOf(hit("MUSE (band)", "UCmuse", "https://img/muse"))))
+
+        val filled = SpeedDial.withArtwork(pins, mapOf(byName.key to "https://img/cold", withArt.key to "https://img/new"))
+        assertEquals(listOf("https://img/cold", "", "https://img/adele"), filled.map { it.artworkUrl })
+        assertEquals(pins.map { it.key }, filled.map { it.key })
     }
 
     @Test

@@ -10,7 +10,8 @@ enum class MiniPlayerStyle(val storageId: String) {
     UltraCompact("ultra_compact"),
     ArtworkFocus("artwork_focus"),
     YtMusic("yt_music"),
-    Connected("connected");
+    Connected("connected"),
+    LiquidCapsule("liquid_capsule");
 
     companion object {
         fun from(value: String?): MiniPlayerStyle = entries.firstOrNull { it.storageId == value } ?: Original
@@ -416,6 +417,23 @@ data class LevyraMiniPlayerStudioSettings(
             )
         )
 
+        private val liquidCapsuleSpec = liquidGlassSpec.copy(
+            height = 60..76,
+            corner = 30..38,
+            defaults = liquidGlassSpec.defaults.copy(
+                heightDp = 68,
+                cornerDp = 34,
+                insetDp = 14,
+                artworkShape = MiniArtworkShape.Square,
+                artworkDp = 48,
+                glow = 0,
+                opacity = 42,
+                progress = MiniProgressStyle.Hidden,
+                buttons = MiniButtonStyle.Plain,
+                showClose = false
+            )
+        )
+
         private val ultraCompactSpec = MiniPlayerSpec(
             options = setOf(
                 MiniTuningOption.Height,
@@ -576,6 +594,7 @@ data class LevyraMiniPlayerStudioSettings(
             MiniPlayerStyle.ArtworkFocus -> artworkFocusSpec
             MiniPlayerStyle.YtMusic -> ytMusicSpec
             MiniPlayerStyle.Connected -> connectedSpec
+            MiniPlayerStyle.LiquidCapsule -> liquidCapsuleSpec
         }
 
         fun decode(raw: String?): LevyraMiniPlayerStudioSettings {

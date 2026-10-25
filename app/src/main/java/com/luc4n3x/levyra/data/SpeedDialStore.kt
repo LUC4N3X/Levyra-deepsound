@@ -61,7 +61,7 @@ internal fun decodeSpeedDialPins(raw: String?): List<SpeedDialPin> {
         Timber.w(error, "Speed dial payload is unreadable")
         return emptyList()
     }
-    val decoded = ArrayList<SpeedDialPin>(minOf(array.length(), SpeedDial.MAX_PINS))
+    val decoded = ArrayList<SpeedDialPin>(array.length())
     for (index in 0 until array.length()) {
         val pin = runCatching { array.optJSONObject(index)?.let(::speedDialPinFromJson) }.getOrNull() ?: continue
         decoded += pin

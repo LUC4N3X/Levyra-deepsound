@@ -86,6 +86,14 @@ internal fun Track.hasVerifiedYoutubeMusicVideoPairing(): Boolean {
     return selectedVideo == video
 }
 
+internal fun Track.withPairedArtTrackAudio(): Track {
+    if (!YoutubeMusicVideoType.isVideo(videoType) || audioVideoId.isNotBlank()) return this
+    val ownId = id.trim()
+    val counterpart = counterpartVideoId.trim()
+    if (!YOUTUBE_VIDEO_ID.matches(ownId) || !YOUTUBE_VIDEO_ID.matches(counterpart) || ownId == counterpart) return this
+    return copy(audioVideoId = counterpart, counterpartVideoId = ownId)
+}
+
 internal fun Track.hasVideoPlaybackPayload(): Boolean {
     if (streamUrl.isBlank() || !hasVerifiedYoutubeMusicVideoPairing()) return false
     if (videoStreamUrl.isNotBlank()) return true
