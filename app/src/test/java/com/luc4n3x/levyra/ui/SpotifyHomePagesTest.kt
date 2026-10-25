@@ -9,8 +9,8 @@ import org.junit.Test
 
 class SpotifyHomePagesTest {
     @Test
-    fun radioRemainsAvailableWithoutSavedStations() {
-        assertTrue(SpotifyHomeFilter.Radio in SpotifyHomeFilter.available(emptyList()))
+    fun musicTabRemainsAvailableWithoutSavedStations() {
+        assertTrue(SpotifyHomeFilter.Music in SpotifyHomeFilter.available(emptyList()))
     }
 
     @Test
