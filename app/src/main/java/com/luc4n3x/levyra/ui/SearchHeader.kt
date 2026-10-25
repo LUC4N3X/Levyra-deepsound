@@ -395,12 +395,38 @@ private fun SearchHeaderTextField(query: String, placeholder: String, animatePla
     )
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SearchHeaderActionButtons(query: String, isSearching: Boolean, fieldFocused: Boolean, recognitionAvailable: Boolean, recognitionBusy: Boolean, onClear: () -> Unit, launchVoiceSearch: () -> Unit, toggleRecognition: () -> Unit) {
-    val animationsEnabled = LocalAnimationsEnabled.current
     val strings = LocalLevyraStrings.current
     val scheme = MaterialTheme.colorScheme
+    SearchHeaderClearAction(query, isSearching, onClear)
+
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(scheme.surfaceContainerHighest.copy(alpha = if (fieldFocused) 0.9f else 0.6f)),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+    IconButton(
+        onClick = launchVoiceSearch,
+        modifier = Modifier.size(38.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Mic,
+            contentDescription = strings.voice,
+            tint = scheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+
+    if (recognitionAvailable) SearchHeaderRecognitionButton(recognitionBusy, toggleRecognition)
+    }
+}
+
+@Composable
+private fun SearchHeaderClearAction(query: String, isSearching: Boolean, onClear: () -> Unit) {
+    val animationsEnabled = LocalAnimationsEnabled.current
+    val strings = LocalLevyraStrings.current
     if (isSearching) {
         LevyraLoadingIndicator(
             modifier = Modifier.size(24.dp),
@@ -425,56 +451,42 @@ private fun SearchHeaderActionButtons(query: String, isSearching: Boolean, field
             }
         }
     }
+}
 
-    Row(
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SearchHeaderRecognitionButton(recognitionBusy: Boolean, toggleRecognition: () -> Unit) {
+    val animationsEnabled = LocalAnimationsEnabled.current
+    val strings = LocalLevyraStrings.current
+    val scheme = MaterialTheme.colorScheme
+    val recognitionRotation = if (recognitionBusy && animationsEnabled) {
+        val spin = rememberInfiniteTransition(label = "search-recognition-spin")
+        spin.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(tween(2_400, easing = LinearEasing)),
+            label = "search-recognition-rotation"
+        ).value
+    } else {
+        0f
+    }
+    Box(
+        contentAlignment = Alignment.Center,
         modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .background(scheme.surfaceContainerHighest.copy(alpha = if (fieldFocused) 0.9f else 0.6f)),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-    IconButton(
-        onClick = launchVoiceSearch,
-        modifier = Modifier.size(38.dp)
+            .padding(4.dp)
+            .size(40.dp)
+            .graphicsLayer { rotationZ = recognitionRotation }
+            .clip(MaterialShapes.Cookie9Sided.toShape())
+            .background(if (recognitionBusy) scheme.primary else scheme.primaryContainer)
+            .clickable(onClickLabel = strings.recognizeMusic, role = Role.Button, onClick = toggleRecognition)
     ) {
         Icon(
-            imageVector = Icons.Rounded.Mic,
-            contentDescription = strings.voice,
-            tint = scheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp)
-        )
-    }
-
-    if (recognitionAvailable) {
-        val recognitionRotation = if (recognitionBusy && animationsEnabled) {
-            val spin = rememberInfiniteTransition(label = "search-recognition-spin")
-            spin.animateFloat(
-                initialValue = 0f,
-                targetValue = 360f,
-                animationSpec = infiniteRepeatable(tween(2_400, easing = LinearEasing)),
-                label = "search-recognition-rotation"
-            ).value
-        } else {
-            0f
-        }
-        Box(
-            contentAlignment = Alignment.Center,
+            imageVector = Icons.Rounded.GraphicEq,
+            contentDescription = strings.recognizeMusic,
+            tint = if (recognitionBusy) scheme.onPrimary else scheme.onPrimaryContainer,
             modifier = Modifier
-                .padding(4.dp)
-                .size(40.dp)
-                .graphicsLayer { rotationZ = recognitionRotation }
-                .clip(MaterialShapes.Cookie9Sided.toShape())
-                .background(if (recognitionBusy) scheme.primary else scheme.primaryContainer)
-                .clickable(onClickLabel = strings.recognizeMusic, role = Role.Button, onClick = toggleRecognition)
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.GraphicEq,
-                contentDescription = strings.recognizeMusic,
-                tint = if (recognitionBusy) scheme.onPrimary else scheme.onPrimaryContainer,
-                modifier = Modifier
-                    .size(19.dp)
-                    .graphicsLayer { rotationZ = -recognitionRotation }
-            )
-        }
-    }
+                .size(19.dp)
+                .graphicsLayer { rotationZ = -recognitionRotation }
+        )
     }
 }

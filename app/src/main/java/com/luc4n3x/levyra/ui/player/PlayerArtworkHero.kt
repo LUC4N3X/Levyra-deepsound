@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui.player
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
@@ -85,21 +86,7 @@ internal fun PlayerArtworkHero(
     )
     val landing by rememberArtworkLanding(morphActive(), animationsEnabled)
     val landedShadow = lerp(PlayerMorphFlightShadow, artworkShadow, landing)
-    val trackChangeScale = remember { Animatable(1f) }
-    var settledTrackId by remember { mutableStateOf(track.id) }
-    LaunchedEffect(track.id, animationsEnabled) {
-        val trackChanged = settledTrackId != track.id
-        settledTrackId = track.id
-        if (!trackChanged || !animationsEnabled || staticPresentation) {
-            trackChangeScale.snapTo(1f)
-            return@LaunchedEffect
-        }
-        trackChangeScale.animateTo(
-            LevyraPlayerDesign.ArtworkTrackChangeScale,
-            tween(LevyraMotion.Durations.Quick, easing = LevyraMotion.Easings.Accelerate)
-        )
-        trackChangeScale.animateTo(1f, LevyraMotion.spatial.spec())
-    }
+    val trackChangeScale = rememberTrackChangeScale(track.id, animationsEnabled, staticPresentation)
     val artworkShape = RoundedCornerShape(nonNegativeCornerRadius(cornerRadius))
 
     Box(
@@ -113,68 +100,127 @@ internal fun PlayerArtworkHero(
                 translationY = artOffset.toPx()
                 alpha = if (morphActive()) 0f else 1f
             }
-            .drawBehind {
-                if (staticPresentation || glowColor.alpha <= 0f) return@drawBehind
-                val radius = size.minDimension * ArtworkGlowReach
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            glowColor.copy(alpha = glowAlpha * landing),
-                            glowColor.copy(alpha = glowAlpha * landing * 0.32f),
-                            Color.Transparent
-                        ),
-                        center = center.copy(y = center.y + size.height * ArtworkGlowDrop),
-                        radius = radius
-                    ),
-                    radius = radius,
-                    center = center.copy(y = center.y + size.height * ArtworkGlowDrop)
-                )
-            },
+            .artworkGlow(staticPresentation, glowColor) { glowAlpha * landing },
         contentAlignment = Alignment.Center
     ) {
+        PlayerArtworkHeroSurface(
+            track = track,
+            artworkUrl = artworkUrl,
+            motionArtwork = motionArtwork,
+            livingArtwork = livingArtwork,
+            motionEnabled = motionEnabled,
+            isPlaying = isPlaying,
+            cornerRadius = cornerRadius,
+            canvasQuality = canvasQuality,
+            artworkShape = artworkShape,
+            elevation = landedShadow,
+            glowColor = glowColor,
+            dynamicBackdropEnabled = dynamicBackdropEnabled,
+            onDynamicBackdropPalette = onDynamicBackdropPalette,
+            staticPresentation = staticPresentation
+        )
+    }
+}
+
+@Composable
+private fun rememberTrackChangeScale(trackId: String, animationsEnabled: Boolean, staticPresentation: Boolean): Animatable<Float, AnimationVector1D> {
+    val trackChangeScale = remember { Animatable(1f) }
+    var settledTrackId by remember { mutableStateOf(trackId) }
+    LaunchedEffect(trackId, animationsEnabled) {
+        val trackChanged = settledTrackId != trackId
+        settledTrackId = trackId
+        if (!trackChanged || !animationsEnabled || staticPresentation) {
+            trackChangeScale.snapTo(1f)
+            return@LaunchedEffect
+        }
+        trackChangeScale.animateTo(
+            LevyraPlayerDesign.ArtworkTrackChangeScale,
+            tween(LevyraMotion.Durations.Quick, easing = LevyraMotion.Easings.Accelerate)
+        )
+        trackChangeScale.animateTo(1f, LevyraMotion.spatial.spec())
+    }
+    return trackChangeScale
+}
+
+private fun Modifier.artworkGlow(staticPresentation: Boolean, glowColor: Color, strength: () -> Float): Modifier =
+    drawBehind {
+        if (staticPresentation || glowColor.alpha <= 0f) return@drawBehind
+        val alpha = strength()
+        val radius = size.minDimension * ArtworkGlowReach
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    glowColor.copy(alpha = alpha),
+                    glowColor.copy(alpha = alpha * 0.32f),
+                    Color.Transparent
+                ),
+                center = center.copy(y = center.y + size.height * ArtworkGlowDrop),
+                radius = radius
+            ),
+            radius = radius,
+            center = center.copy(y = center.y + size.height * ArtworkGlowDrop)
+        )
+    }
+
+@Composable
+private fun PlayerArtworkHeroSurface(
+    track: Track,
+    artworkUrl: String,
+    motionArtwork: MotionArtwork?,
+    livingArtwork: LivingArtworkColors?,
+    motionEnabled: Boolean,
+    isPlaying: Boolean,
+    cornerRadius: Dp,
+    canvasQuality: LevyraCanvasQuality,
+    artworkShape: RoundedCornerShape,
+    elevation: Dp,
+    glowColor: Color,
+    dynamicBackdropEnabled: Boolean,
+    onDynamicBackdropPalette: (MotionBackdropPalette?) -> Unit,
+    staticPresentation: Boolean
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .shadow(
+                elevation = elevation,
+                shape = artworkShape,
+                clip = false,
+                ambientColor = glowColor.copy(alpha = 0.42f),
+                spotColor = Color.Black.copy(alpha = 0.80f)
+            )
+            .clip(artworkShape)
+            .background(Color.Black.copy(alpha = 0.24f), artworkShape)
+    ) {
+        if (track.isLiveRadio()) {
+            LiveRadioLogoArtwork(track = track, artworkUrl = artworkUrl)
+        } else {
+            MotionArtworkLayer(
+                artwork = motionArtwork,
+                enabled = motionEnabled && !staticPresentation,
+                isPlaying = isPlaying,
+                cornerRadius = cornerRadius,
+                presentation = MotionArtworkPresentation.Card,
+                quality = canvasQuality,
+                livingArtwork = livingArtwork.takeUnless { staticPresentation },
+                dynamicBackdropEnabled = dynamicBackdropEnabled,
+                onDynamicBackdropPalette = onDynamicBackdropPalette,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                SeamlessArtworkImage(url = artworkUrl, modifier = Modifier.fillMaxSize()) {
+                    InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
+                }
+            }
+        }
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .shadow(
-                    elevation = landedShadow,
-                    shape = artworkShape,
-                    clip = false,
-                    ambientColor = glowColor.copy(alpha = 0.42f),
-                    spotColor = Color.Black.copy(alpha = 0.80f)
+                .border(
+                    width = LevyraPlayerDesign.Hairline,
+                    color = Color.White.copy(alpha = 0.10f),
+                    shape = artworkShape
                 )
-                .clip(artworkShape)
-                .background(Color.Black.copy(alpha = 0.24f), artworkShape)
-        ) {
-            if (track.isLiveRadio()) {
-                LiveRadioLogoArtwork(track = track, artworkUrl = artworkUrl)
-            } else {
-                MotionArtworkLayer(
-                    artwork = motionArtwork,
-                    enabled = motionEnabled && !staticPresentation,
-                    isPlaying = isPlaying,
-                    cornerRadius = cornerRadius,
-                    presentation = MotionArtworkPresentation.Card,
-                    quality = canvasQuality,
-                    livingArtwork = livingArtwork.takeUnless { staticPresentation },
-                    dynamicBackdropEnabled = dynamicBackdropEnabled,
-                    onDynamicBackdropPalette = onDynamicBackdropPalette,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    SeamlessArtworkImage(url = artworkUrl, modifier = Modifier.fillMaxSize()) {
-                        InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
-                    }
-                }
-            }
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .border(
-                        width = LevyraPlayerDesign.Hairline,
-                        color = Color.White.copy(alpha = 0.10f),
-                        shape = artworkShape
-                    )
-            )
-        }
+        )
     }
 }
 
