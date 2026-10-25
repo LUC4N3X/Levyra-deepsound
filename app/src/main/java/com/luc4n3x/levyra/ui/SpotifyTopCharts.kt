@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.data.EditorialChartsRepository
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.ui.components.LevyraPlayingIndicator
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LevyraSpotifyChartStrings
@@ -105,12 +106,12 @@ private fun rememberSpotifyTopCharts(): Map<String, List<Track>> {
     return charts
 }
 
-private fun orderedMarkets(markets: Set<String>): List<String> {
-    val home = Locale.getDefault().country.uppercase(Locale.ROOT)
+internal fun orderedMarkets(markets: Set<String>, languageCode: String): List<String> {
+    val preferred = LevyraContentLocales.forLanguage(languageCode).chartCountry.uppercase(Locale.ROOT)
     return buildList {
-        if (home in markets) add(home)
+        if (preferred in markets) add(preferred)
         if (GLOBAL_MARKET in markets) add(GLOBAL_MARKET)
-        markets.filterNot { it == home || it == GLOBAL_MARKET }.forEach(::add)
+        markets.filterNot { it == preferred || it == GLOBAL_MARKET }.sorted().forEach(::add)
     }
 }
 
@@ -120,10 +121,10 @@ internal fun SpotifyTopChartsShelf(title: String, inset: Dp) {
     if (charts.isEmpty()) return
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraSpotifyChartStrings.forCode(strings.code) }
-    val markets = remember(charts.keys) { orderedMarkets(charts.keys) }
+    val markets = remember(charts.keys, strings.code) { orderedMarkets(charts.keys, strings.code) }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
-            title, color = SpotifyDesign.text, fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Bold,
+            strings.top50Charts.ifBlank { title }, color = SpotifyDesign.text, fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = inset).semantics { heading() }
         )
         LazyRow(contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(16.dp)) {

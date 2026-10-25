@@ -10242,7 +10242,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
 
         if (alreadyActive) {
-            if (!currentState.isPlaying) togglePlay()
+            if (!currentState.isPlaying && !currentState.isResolving) togglePlay()
             return
         }
         pendingSeekMs = 0L
