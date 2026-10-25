@@ -190,7 +190,8 @@ internal class PlayerArtistPanel(
     val onOpenArtist: () -> Unit,
     val onOpenRelated: (com.luc4n3x.levyra.domain.ArtistHit) -> Unit,
     val onSongRadio: () -> Unit,
-    val onCredits: () -> Unit
+    val onCredits: () -> Unit,
+    val songRadioEnabled: Boolean = true
 )
 
 internal class PlayerLyricsPreview(

@@ -57,6 +57,7 @@ import androidx.media3.ui.PlayerView
 import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.R
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.data.SpotifyClipCanvasRegistry
 import com.luc4n3x.levyra.player.PlaybackService
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
@@ -158,6 +159,8 @@ internal fun ExploreSamplesScreen(
             )
         }
 
+        SamplesSwipeHint(pagerState, strings.code, Modifier.fillMaxSize())
+
         Row(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -182,7 +185,7 @@ internal fun ExploreSamplesScreen(
                 )
             }
             Text(
-                text = strings.exploreSamples,
+                text = SpotifyClipCanvasRegistry.feedTitle(samples.getOrNull(pagerState.currentPage)).ifBlank { strings.exploreSamples },
                 color = Color.White,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Black,
@@ -338,7 +341,9 @@ private fun ExploreSamplePage(
             )
         }
 
-        if (showVideo) {
+        if (SpotifyClipCanvasRegistry.canvasUrl(track).isNotBlank()) {
+            if (isCurrent) SpotifyCanvasLoop(track, Modifier.fillMaxSize())
+        } else if (showVideo) {
             ExploreSampleVideoSurface(
                 isPlaying = isPlaying,
                 modifier = Modifier.fillMaxSize()

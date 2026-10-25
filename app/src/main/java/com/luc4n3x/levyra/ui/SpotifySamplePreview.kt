@@ -18,12 +18,14 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.media3.common.C
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import com.luc4n3x.levyra.data.SamplePreviewLoader
+import com.luc4n3x.levyra.data.SpotifyClipCanvasRegistry
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.motion.MotionArtworkNetworkPolicy
@@ -45,7 +47,10 @@ internal fun SpotifySamplePreview(track: Track) {
         if (!enabled || !visible) return@LaunchedEffect
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             try {
-                if (MotionArtworkNetworkPolicy.canUseMotionArtwork(context)) preview = loader.load(track)
+                if (MotionArtworkNetworkPolicy.canUseMotionArtwork(context)) {
+                    val canvas = SpotifyClipCanvasRegistry.canvasUrl(track)
+                    preview = if (canvas.isNotBlank()) track.copy(streamUrl = canvas, videoStreamUrl = canvas) else loader.load(track)
+                }
                 awaitCancellation()
             } finally {
                 preview = null
@@ -56,17 +61,27 @@ internal fun SpotifySamplePreview(track: Track) {
         val bounds = coordinates.boundsInWindow()
         visible = bounds.width > 0f && bounds.height > 0f && bounds.bottom > 0f && bounds.top < view.height && bounds.right > 0f && bounds.left < view.width
     }) {
-        preview?.let { SpotifySamplePreviewVideo(it) }
+        preview?.let { SpotifySamplePreviewVideo(it, canvas = SpotifyClipCanvasRegistry.canvasUrl(track)) }
     }
 }
 
 @Composable
-private fun SpotifySamplePreviewVideo(track: Track) {
+internal fun SpotifyCanvasLoop(track: Track?, modifier: Modifier = Modifier) {
+    val canvas = SpotifyClipCanvasRegistry.canvasUrl(track)
+    if (track == null || canvas.isBlank()) return
+    Box(modifier) { SpotifySamplePreviewVideo(track, canvas) }
+}
+
+@Composable
+private fun SpotifySamplePreviewVideo(track: Track, canvas: String = "") {
     val context = LocalContext.current
     var ready by remember(track.id) { mutableStateOf(false) }
-    val player = remember(track.id, track.streamUrl) {
-        val factory = LevyraYoutubeDataSource.Factory(OkHttpDataSource.Factory(LevyraHttpClientFactory.media(context)))
-        ExoPlayer.Builder(context).setMediaSourceFactory(DefaultMediaSourceFactory(factory))
+    var attempt by remember(track.id, canvas) { mutableStateOf(0) }
+    val player = remember(track.id, track.streamUrl, canvas, attempt) {
+        val http = OkHttpDataSource.Factory(LevyraHttpClientFactory.media(context))
+        val factory = if (canvas.isNotBlank()) http else LevyraYoutubeDataSource.Factory(http)
+        val builder = if (canvas.isNotBlank()) ExoPlayer.Builder(context, canvasRenderersFactory(context, canvas)) else ExoPlayer.Builder(context)
+        builder.setMediaSourceFactory(DefaultMediaSourceFactory(factory))
             .setLoadControl(DefaultLoadControl.Builder().setBufferDurationsMs(1_000, 5_000, 500, 500).setTargetBufferBytes(6 * 1024 * 1024).build()).build().apply {
                 volume = 0f
                 repeatMode = Player.REPEAT_MODE_ONE
@@ -80,11 +95,15 @@ private fun SpotifySamplePreviewVideo(track: Track) {
         val listener = object : Player.Listener {
             override fun onRenderedFirstFrame() { ready = true }
             override fun onVideoSizeChanged(size: androidx.media3.common.VideoSize) { videoSize = size }
-            override fun onPlayerError(error: androidx.media3.common.PlaybackException) { ready = false; player.stop() }
+            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                ready = false
+                player.stop()
+                if (canvas.isNotBlank() && attempt < 2 && CanvasDecoderBlocklist.recordFailure(canvas, error)) attempt++
+            }
         }
         player.addListener(listener)
         player.setVideoTextureView(texture)
-        player.setMediaItem(LevyraMediaItemFactory.build(track, videoMode = true))
+        player.setMediaItem(if (canvas.isNotBlank()) MediaItem.fromUri(canvas) else LevyraMediaItemFactory.build(track, videoMode = true))
         player.prepare()
         player.playWhenReady = true
         onDispose {

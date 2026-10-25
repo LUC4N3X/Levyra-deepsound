@@ -112,6 +112,10 @@ internal fun HomeCollectionScreen(
         )
         return
     }
+    if (LevyraIsSpotify) {
+        SpotifyRadioPage(title, tracks, accentStart, currentId, isPlaying, bottomInset, onPlay, onTrackActions, onDismiss)
+        return
+    }
     BackHandler(onBack = onDismiss)
     val strings = LocalLevyraStrings.current
     val animationsEnabled = LocalAnimationsEnabled.current

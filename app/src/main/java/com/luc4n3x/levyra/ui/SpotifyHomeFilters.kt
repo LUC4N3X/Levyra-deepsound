@@ -37,21 +37,22 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.luc4n3x.levyra.domain.HomeSectionId
 import com.luc4n3x.levyra.ui.components.levyraPressable
+import com.luc4n3x.levyra.ui.i18n.LevyraSpotifyChartStrings
 import com.luc4n3x.levyra.ui.i18n.LevyraSpotifySkinStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.SpotifyDesign
 
 internal enum class SpotifyHomeFilter {
-    All, Music, Following, Videos, Radio;
+    All, Music, Following, Videos, Podcasts;
 
     val parent: SpotifyHomeFilter? get() = if (this == Following) Music else null
 
     fun accepts(id: HomeSectionId): Boolean = when (this) {
         All -> true
-        Music -> id != HomeSectionId.FavoriteRadio && id != HomeSectionId.MusicVideos
+        Music -> id != HomeSectionId.MusicVideos
         Following -> id == HomeSectionId.ReleaseRadar || id == HomeSectionId.SimilarArtists
         Videos -> id == HomeSectionId.MusicVideos
-        Radio -> id == HomeSectionId.FavoriteRadio
+        Podcasts -> false
     }
 
     companion object {
@@ -59,7 +60,7 @@ internal enum class SpotifyHomeFilter {
             add(All)
             add(Music)
             if (HomeSectionId.MusicVideos in order) add(Videos)
-            add(Radio)
+            add(Podcasts)
         }
 
         fun from(name: String): SpotifyHomeFilter = entries.firstOrNull { it.name == name } ?: All
@@ -98,7 +99,7 @@ internal fun SpotifyHomeFilterBar(
         SpotifyHomeFilter.Music -> copy.music
         SpotifyHomeFilter.Following -> copy.following
         SpotifyHomeFilter.Videos -> strings.video
-        SpotifyHomeFilter.Radio -> copy.radio
+        SpotifyHomeFilter.Podcasts -> LevyraSpotifyChartStrings.forCode(strings.code).podcasts
     }
     Box(modifier.fillMaxWidth().background(SpotifyDesign.base).statusBarsPadding().height(SpotifyDesign.filterRowHeight)) {
         LazyRow(

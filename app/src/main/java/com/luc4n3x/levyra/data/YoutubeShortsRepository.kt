@@ -71,6 +71,8 @@ private sealed interface ShortsSourceResult {
 }
 
 internal class YoutubeShortsRepository(private val context: Context) {
+    private val spotifyClips = SpotifyClipsRepository(context)
+
     suspend fun feed(
         seeds: List<Track>,
         languageCode: String,
@@ -79,6 +81,11 @@ internal class YoutubeShortsRepository(private val context: Context) {
         limit: Int = 24
     ): YoutubeShortsFeedResult = withContext(Dispatchers.IO) {
         if (limit <= 0) return@withContext YoutubeShortsFeedResult(emptyList(), 0, 0)
+
+        val clips = spotifyClips.feed(languageCode, preferredArtists + seeds.map { it.artist }, limit)
+        if (clips.size >= minOf(limit, 10)) {
+            return@withContext YoutubeShortsFeedResult(clips, completedQueries = 1, failedQueries = 0)
+        }
 
         val local = nativeSamples(languageCode, limit)
         val native = if (local.size >= minOf(limit, 10)) local else coroutineScope {

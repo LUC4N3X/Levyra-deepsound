@@ -281,36 +281,6 @@ internal fun SpotifyTrackCarousel(
 }
 
 @Composable
-internal fun SpotifyChartShelf(ranked: List<IndexedValue<Track>>, currentId: String?, playing: Boolean, inset: Dp, onPlay: (Track) -> Unit) {
-    val pages = remember(ranked) { ranked.chunked(4) }
-    LazyRow(contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(SpotifyDesign.gutter)) {
-        itemsIndexed(pages, key = { index, _ -> "chart-page-$index" }) { _, page ->
-            Column(Modifier.width(304.dp)) {
-                page.forEach { (index, track) -> SpotifyRankedRow(index + 1, track, track.id == currentId, playing) { onPlay(track) } }
-            }
-        }
-    }
-}
-
-@Composable
-internal fun SpotifyRankedRow(rank: Int, track: Track, current: Boolean, playing: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Row(
-        modifier.fillMaxWidth().heightIn(min = 64.dp).levyraPressable(onClick = onClick, onClickLabel = track.title, role = Role.Button),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(Modifier.width(28.dp), contentAlignment = Alignment.CenterStart) {
-            if (current) LevyraPlayingIndicator(playing = playing, color = SpotifyDesign.green, size = 12.dp)
-            else Text(rank.toString(), color = SpotifyDesign.text, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
-        }
-        Box(Modifier.size(SpotifyDesign.rowCover).clip(RoundedCornerShape(2.dp)).background(SpotifyDesign.placeholder)) { CoverImage(track, Modifier.fillMaxSize()) }
-        Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(track.title, color = if (current) SpotifyDesign.greenText else SpotifyDesign.text, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(track.artist, color = SpotifyDesign.subdued, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-    }
-}
-
-@Composable
 internal fun SpotifyMixCard(collection: StudioCollection, tracks: List<Track>, onOpen: (String) -> Unit) {
     SpotifyRadioCard(collection.title, collection.subtitle, collection.accent, tracks) { onOpen(collection.id) }
 }

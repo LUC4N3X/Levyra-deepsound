@@ -8,12 +8,16 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -50,7 +54,7 @@ internal fun LazyListScope.spotifyHomeFilterItems(
 ) {
     when (filter) {
         SpotifyHomeFilter.Following -> item(key = "spotify-following") { SpotifyFollowingPage(state, viewModel) }
-        SpotifyHomeFilter.Radio -> item(key = "spotify-radio-page") { SpotifyArtistRadios(state, releases, viewModel) }
+        SpotifyHomeFilter.Podcasts -> item(key = "spotify-podcasts-page") { SpotifyPodcastsPage(state, viewModel) }
         SpotifyHomeFilter.Music -> spotifyMusicItems(state, albums, releases, viewModel, onActions)
         else -> Unit
     }
@@ -129,14 +133,12 @@ private fun SpotifyHomeCoverCard(title: String, subtitle: String, url: String, r
 private fun SpotifyArtistRadios(state: LevyraUiState, releases: List<Track>, viewModel: HomeViewModel) {
     val strings = LocalLevyraStrings.current
     val seeds = remember(state.recentListens, state.mostPlayedTracks, state.charts, releases) { spotifyArtistRadioSeeds(state, releases) }
+    if (seeds.isEmpty()) return
     SpotifyHomeShelf(LevyraSpotifyHomeStrings.forCode(strings.code).popularRadio) {
-        if (seeds.isEmpty()) item(key = "radio-loading") {
-            Text(strings.searchingYouTubeMusic, color = SpotifyDesign.subdued, modifier = Modifier.padding(vertical = 32.dp))
-        }
         items(seeds, key = Track::id) { track ->
             val name = spotifyRadioArtist(track)
             val portrait = state.homeArtists.firstOrNull { artistIdentityKey(it.name) == artistIdentityKey(name) }?.thumbnailUrl ?: track.thumbnailUrl
-            SpotifyArtistRadioCard(name, portrait, track.artist) { viewModel.startSongRadioFrom(track) }
+            SpotifyArtistRadioCard(name, portrait, track.artist) { SpotifyRadioNavigator.open(name, track) }
         }
     }
 }
@@ -202,25 +204,116 @@ private fun SpotifyFollowingPortraits(artists: List<ArtistHit>) {
 @Composable
 private fun SpotifyFollowArtistPicker(state: LevyraUiState, viewModel: HomeViewModel, onDismiss: () -> Unit) {
     val strings = LocalLevyraStrings.current
-    val artists = remember(state.homeArtists, state.similarArtists) {
+    val chart = remember(strings.code) { com.luc4n3x.levyra.ui.i18n.LevyraSpotifyChartStrings.forCode(strings.code) }
+    var query by remember { mutableStateOf("") }
+    val artists = remember(state.homeArtists, state.similarArtists, state.followedArtists, query) {
         (state.homeArtists + state.similarArtists).filter { it.browseId.isNotBlank() }.distinctBy { it.browseId }
+            .filter { query.isBlank() || it.name.contains(query.trim(), ignoreCase = true) }
     }
-    LaunchedEffect(Unit) { if (artists.isEmpty()) viewModel.refreshHomeArtists() }
-    Dialog(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().heightIn(max = 600.dp).clip(RoundedCornerShape(16.dp)).background(SpotifyDesign.tinted).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(LevyraSpotifyHomeStrings.forCode(strings.code).chooseArtists, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-            LazyColumn(Modifier.weight(1f, fill = false)) {
-                items(artists, key = ArtistHit::browseId) { artist ->
-                    val followed = state.followedArtists.any { it.browseId == artist.browseId }
-                    Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).levyraPressable(onClick = { viewModel.toggleFollowArtist(artist) },
-                        onClickLabel = if (followed) strings.followingArtist else strings.followArtist, role = Role.Checkbox).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        StableRemoteArtwork(artist.thumbnailUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(48.dp).clip(CircleShape))
-                        Text(artist.name, color = Color.White, modifier = Modifier.weight(1f).padding(horizontal = 12.dp))
-                        androidx.compose.material3.Checkbox(checked = followed, onCheckedChange = null)
+    LaunchedEffect(Unit) { if (state.homeArtists.isEmpty()) viewModel.refreshHomeArtists() }
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+    ) {
+        Box(Modifier.fillMaxSize().background(SpotifyDesign.base)) {
+            androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(3),
+                modifier = Modifier.fillMaxSize().statusBarsPadding(),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 120.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                item(key = "picker-title", span = { androidx.compose.foundation.lazy.grid.GridItemSpan(3) }) {
+                    Text(
+                        com.luc4n3x.levyra.ui.i18n.LevyraSpotifyChartStrings.pickerTitle(strings.code), color = Color.White,
+                        fontSize = 30.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.6).sp,
+                        modifier = Modifier.padding(top = 20.dp).semantics { heading() }
+                    )
+                }
+                item(key = "picker-search", span = { androidx.compose.foundation.lazy.grid.GridItemSpan(3) }) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(bottom = 16.dp).height(44.dp).clip(RoundedCornerShape(4.dp)).background(Color.White).padding(horizontal = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        androidx.compose.material3.Icon(Icons.Rounded.Search, null, tint = Color.Black, modifier = Modifier.size(24.dp))
+                        Box(Modifier.weight(1f).padding(start = 10.dp)) {
+                            if (query.isEmpty()) Text(chart.search, color = Color.Black, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            androidx.compose.foundation.text.BasicTextField(
+                                value = query, onValueChange = { query = it }, singleLine = true,
+                                textStyle = androidx.compose.ui.text.TextStyle(color = Color.Black, fontSize = 16.sp, fontWeight = FontWeight.Bold),
+                                cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+                artists.forEachIndexed { index, artist ->
+                    if (index == 5 && query.isBlank()) item(key = "picker-more") {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(
+                                Modifier.fillMaxWidth().padding(horizontal = 6.dp).aspectRatio(1f).clip(CircleShape).background(Color(0xFF2D46B9))
+                                    .levyraPressable(onClick = viewModel::refreshHomeArtists, onClickLabel = com.luc4n3x.levyra.ui.i18n.LevyraSpotifyChartStrings.pickerMore(strings.code), role = Role.Button)
+                                    .padding(10.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    com.luc4n3x.levyra.ui.i18n.LevyraSpotifyChartStrings.pickerMore(strings.code), color = Color.White,
+                                    fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
+                                    maxLines = 3, overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                    item(key = "picker-${artist.browseId}") {
+                        val followed = state.followedArtists.any { it.browseId == artist.browseId }
+                        Column(
+                            Modifier.levyraPressable(onClick = { viewModel.toggleFollowArtist(artist) },
+                                onClickLabel = if (followed) strings.followingArtist else strings.followArtist, role = Role.Checkbox),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Box(Modifier.fillMaxWidth().padding(horizontal = 6.dp).aspectRatio(1f)) {
+                                StableRemoteArtwork(
+                                    artist.thumbnailUrl, contentDescription = null, contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape).background(SpotifyDesign.placeholder)
+                                        .graphicsLayer { alpha = if (followed) 0.6f else 1f }
+                                )
+                                if (followed) Box(
+                                    Modifier.align(Alignment.TopEnd).size(28.dp).clip(CircleShape).background(Color.White),
+                                    contentAlignment = Alignment.Center
+                                ) { androidx.compose.material3.Icon(Icons.Rounded.Check, null, tint = Color.Black, modifier = Modifier.size(20.dp)) }
+                            }
+                            Text(
+                                artist.name, color = Color.White, fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp)
+                            )
+                        }
                     }
                 }
             }
-            androidx.compose.material3.TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) { Text(strings.done, color = SpotifyDesign.green) }
+            Box(
+                Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 24.dp).height(56.dp).clip(CircleShape).background(Color.White)
+                    .levyraPressable(onClick = onDismiss, onClickLabel = chart.done, role = Role.Button).padding(horizontal = 36.dp),
+                contentAlignment = Alignment.Center
+            ) { Text(chart.done, color = Color.Black, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+        }
+    }
+}
+
+@Composable
+private fun SpotifyPodcastsPage(state: LevyraUiState, viewModel: HomeViewModel) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val repository = remember(context) { com.luc4n3x.levyra.data.YoutubePodcastsRepository(context.applicationContext) }
+    val shelves by androidx.compose.runtime.produceState(emptyList<com.luc4n3x.levyra.data.PodcastShelf>(), state.languageCode) {
+        value = runCatching { repository.shelves(state.languageCode) }.getOrDefault(emptyList())
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+        if (shelves.isEmpty()) Text(LocalLevyraStrings.current.searchingYouTubeMusic, color = SpotifyDesign.subdued, modifier = Modifier.padding(16.dp))
+        shelves.forEach { shelf ->
+            SpotifyHomeShelf(shelf.title) {
+                items(shelf.episodes, key = { "podcast-${shelf.title}-${it.id}" }) { episode ->
+                    SpotifyHomeCoverCard(episode.title, episode.artist, episode.thumbnailUrl) { viewModel.playFrom(shelf.episodes, episode) }
+                }
+            }
         }
     }
 }

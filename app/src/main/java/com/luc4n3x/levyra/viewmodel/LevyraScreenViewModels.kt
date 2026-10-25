@@ -189,6 +189,7 @@ class HomeViewModel internal constructor(
     fun openReleaseRadarEntry(entry: ReleaseRadarEntry) = root.openReleaseRadarEntry(entry)
     fun toggleFollowArtist(artist: ArtistHit) = root.toggleFollowArtist(artist)
     fun startSongRadioFrom(track: Track) = root.startSongRadioFrom(track)
+    suspend fun artistRadioTracks(track: Track) = root.artistRadioTracks(track)
     fun openListeningRecap() = root.openListeningRecap()
     fun openArtistByName(name: String) = root.openArtistByName(name)
     fun openArtistFromHit(hit: ArtistHit) = root.openArtistFromHit(hit)
@@ -494,6 +495,7 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
 }
 
 class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::playerProjection) {
+    fun toggleFollowArtist(artist: com.luc4n3x.levyra.domain.ArtistHit) = root.toggleFollowArtist(artist)
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
     fun addToQueue(track: Track) = root.addToQueue(track)
     fun closePlayer() = root.closePlayer()

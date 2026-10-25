@@ -924,7 +924,7 @@ internal object CanvasDecoderBlocklist {
     }
 }
 
-private fun canvasRenderersFactory(context: Context, artworkKey: String): DefaultRenderersFactory =
+internal fun canvasRenderersFactory(context: Context, artworkKey: String): DefaultRenderersFactory =
     DefaultRenderersFactory(context)
         .setEnableDecoderFallback(true)
         .setMediaCodecSelector(CanvasDecoderBlocklist.selectorFor(artworkKey))

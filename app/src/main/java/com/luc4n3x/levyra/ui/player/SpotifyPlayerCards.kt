@@ -116,7 +116,7 @@ private fun SpotifyExploreCard(
             ) { modifier ->
                 if (related.thumbnailUrl.isNotBlank()) StableRemoteArtwork(related.thumbnailUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = modifier)
             }
-            SpotifyExploreTile(similarFormat.format(panel.trackTitle), tileModifier, onClick = panel.onSongRadio) { modifier ->
+            if (panel.songRadioEnabled) SpotifyExploreTile(similarFormat.format(panel.trackTitle), tileModifier, onClick = panel.onSongRadio) { modifier ->
                 CoverImage(track, modifier, highRes = true)
             }
         }

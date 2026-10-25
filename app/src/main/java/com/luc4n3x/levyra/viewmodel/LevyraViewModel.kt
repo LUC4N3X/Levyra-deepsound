@@ -410,7 +410,7 @@ private const val RADIO_TAIL_MAX_APPEND_ROUNDS = 3
 private const val RADIO_MIX_LIMIT = 15
 private const val RADIO_START_TRACKS = 20
 private const val RADIO_START_FETCH = 30
-private const val EXPLORE_SHORTS_FEED_LIMIT = 24
+private const val EXPLORE_SHORTS_FEED_LIMIT = 60
 private const val ONBOARDING_ARTWORK_PARALLELISM = 4
 private const val ONBOARDING_ARTWORK_SEARCH_LIMIT = 12
 private const val ONBOARDING_ARTWORK_ARTISTS = 3
@@ -7062,6 +7062,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         playFrom(listOf(track), track)
         startSongRadio()
     }
+
+    suspend fun artistRadioTracks(track: Track): List<Track> =
+        listOf(track) + repository.radio(track, _state.value.languageCode, 30, diversify = true).filterNot { it.id == track.id }
 
     fun playSimilarSong(track: Track) {
         val jam = _state.value.jam

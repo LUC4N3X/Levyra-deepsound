@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -67,6 +68,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.data.credits.TrackCreditGroup
 import com.luc4n3x.levyra.data.credits.TrackCreditPerson
 import com.luc4n3x.levyra.data.credits.TrackCreditSection
@@ -105,7 +107,9 @@ internal fun TrackCreditsSheet(
     animated: Boolean,
     loadCredits: suspend (Track, Boolean) -> TrackCredits,
     onOpenArtist: (Int) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onToggleFollow: ((Int) -> Unit)? = null,
+    isFollowed: (Int) -> Boolean = { false }
 ) {
     val copy = LocalLevyraStrings.current.trackCreditsCopy()
     val languageCode = LocalLevyraStrings.current.code
@@ -119,6 +123,10 @@ internal fun TrackCreditsSheet(
         load = TrackCreditsLoad.Ready(currentLoadCredits(track, retryCount > 0))
     }
 
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) {
+        SpotifyTrackCreditsSheet(track, artists, load, copy, sheetState, onOpenArtist, onDismiss, onToggleFollow, isFollowed)
+        return
+    }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -526,4 +534,104 @@ private fun formatReleaseDate(raw: String, languageCode: String): String {
         LocalDate.parse(trimmed.take(10))
             .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).withLocale(Locale.forLanguageTag(languageCode)))
     }.getOrDefault(trimmed)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SpotifyTrackCreditsSheet(
+    track: Track,
+    artists: List<ArtistHit>,
+    load: TrackCreditsLoad,
+    copy: TrackCreditsCopy,
+    sheetState: androidx.compose.material3.SheetState,
+    onOpenArtist: (Int) -> Unit,
+    onDismiss: () -> Unit,
+    onToggleFollow: ((Int) -> Unit)?,
+    isFollowed: (Int) -> Boolean
+) {
+    val surface = androidx.compose.ui.graphics.Color(0xFF212121)
+    val subdued = androidx.compose.ui.graphics.Color(0xFFB3B3B3)
+    val artistNames = remember(artists, track.artist) { artists.map(ArtistHit::name).ifEmpty { listOf(track.artist) } }
+    val followed = remember(track.id) { androidx.compose.runtime.mutableStateMapOf<Int, Boolean>() }
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = surface,
+        contentColor = androidx.compose.ui.graphics.Color.White,
+        dragHandle = {
+            Box(Modifier.padding(top = 12.dp, bottom = 8.dp).size(width = 36.dp, height = 4.dp).clip(RoundedCornerShape(2.dp)).background(androidx.compose.ui.graphics.Color(0xFF7F7F7F)))
+        }
+    ) {
+        Column(Modifier.fillMaxWidth().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+            Text(
+                track.title, color = androidx.compose.ui.graphics.Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, maxLines = 1,
+                overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 2.dp).semantics { heading() }
+            )
+            Text(
+                track.artist, color = subdued, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
+            )
+            Box(Modifier.padding(top = 16.dp).fillMaxWidth().height(1.dp).background(androidx.compose.ui.graphics.Color(0xFF3E3E3E)))
+            when (load) {
+                TrackCreditsLoad.Loading -> TrackCreditsSkeleton(copy.loading)
+                is TrackCreditsLoad.Ready -> {
+                    val display = remember(load.credits, artistNames) { TrackCreditsParser.withArtists(load.credits, artistNames) }
+                    display.sections.forEach { section ->
+                        val language = LocalLevyraStrings.current.code.substringBefore('-')
+                        val title = when (section.group) {
+                            TrackCreditGroup.Artists -> when (language) { "it" -> "Artista"; "en" -> "Artist"; else -> copy.artists }
+                            TrackCreditGroup.Performance -> copy.performance
+                            TrackCreditGroup.Composition -> when (language) { "it" -> "Composizione e testo"; "en" -> "Composition & Lyrics"; else -> copy.composition }
+                            TrackCreditGroup.Production -> when (language) { "it" -> "Produzione e ingegnerizzazione"; "en" -> "Production & Engineering"; else -> copy.production }
+                            TrackCreditGroup.Other -> when (language) { "it" -> "Altri ruoli"; "en" -> "Additional Credits"; else -> section.title.ifBlank { copy.otherCredits } }
+                        }
+                        Text(
+                            title, color = androidx.compose.ui.graphics.Color.White, fontSize = 22.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 4.dp).semantics { heading() }
+                        )
+                        section.people.forEachIndexed { index, person ->
+                            val roles = when {
+                                section.group != TrackCreditGroup.Artists -> person.roles.joinToString(" \u2022 ")
+                                index == 0 -> copy.mainArtist
+                                else -> copy.participatingArtist
+                            }
+                            val linked = person.linkedArtistIndex
+                            Row(
+                                Modifier.fillMaxWidth()
+                                    .then(if (linked != null) Modifier.clickable(onClickLabel = copy.openArtist, role = Role.Button) { onOpenArtist(linked) } else Modifier)
+                                    .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text(person.name, color = androidx.compose.ui.graphics.Color.White, fontSize = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                    if (roles.isNotBlank()) Text(roles, color = subdued, fontSize = 15.sp, lineHeight = 20.sp)
+                                }
+                                if (section.group == TrackCreditGroup.Artists && linked != null && onToggleFollow != null) {
+                                    val active = followed[linked] ?: isFollowed(linked)
+                                    Box(
+                                        Modifier.padding(start = 12.dp).height(32.dp).clip(RoundedCornerShape(16.dp))
+                                            .border(1.dp, if (active) androidx.compose.ui.graphics.Color.White else subdued, RoundedCornerShape(16.dp))
+                                            .clickable(role = Role.Button) {
+                                                followed[linked] = !active
+                                                onToggleFollow(linked)
+                                            }
+                                            .padding(horizontal = 16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            if (active) LocalLevyraStrings.current.followingArtist else LocalLevyraStrings.current.followArtist,
+                                            color = androidx.compose.ui.graphics.Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                } else if (linked != null) {
+                                    Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = subdued, modifier = Modifier.padding(start = 8.dp).size(28.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

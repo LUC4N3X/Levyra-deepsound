@@ -150,7 +150,7 @@ internal fun PlayerArtworkHero(
             } else {
                 MotionArtworkLayer(
                     artwork = motionArtwork,
-                    enabled = motionEnabled,
+                    enabled = motionEnabled && !staticPresentation,
                     isPlaying = isPlaying,
                     cornerRadius = cornerRadius,
                     presentation = MotionArtworkPresentation.Card,

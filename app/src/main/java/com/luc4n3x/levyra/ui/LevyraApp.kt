@@ -11160,6 +11160,8 @@ private fun LazyListScope.studioHomeSections(
 @Composable
 private fun StudioHomeOverlays(c: StudioHomeContext, homeBottomInset: Dp) {
     with(c) {
+        if (LevyraIsSpotify) SpotifyTopChartOverlay(state.currentTrack?.id, state.isPlaying, homeBottomInset, viewModel::playFrom, onTrackActions)
+        if (LevyraIsSpotify) SpotifyRadioOverlay(viewModel, state.currentTrack?.id, state.isPlaying, homeBottomInset, onTrackActions)
         if (chartMarketSheetOpen) {
             ChartMarketSheet(
                 regions = state.chartRegions,
@@ -28040,7 +28042,7 @@ private fun artistBiographyBackground(accentBrush: Brush): Modifier =
         .then(if (LevyraSkinManagesLayout) Modifier else Modifier.background(accentBrush))
 
 private fun LazyListScope.studioHomeFilteredSections(c: StudioHomeContext, flowShortcutTracks: List<Track>, statusBarTop: Dp, homeTopPadding: Dp, spotifyFilter: SpotifyHomeFilter, shownOrder: List<HomeSectionId>, youtubeMusicHome: com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi?, homeRadio: HomeRadioState, homeDiscovery: DiscoveryHomeHandle?, spotify: Boolean) {
-    if (spotify && spotifyFilter in setOf(SpotifyHomeFilter.Music, SpotifyHomeFilter.Following, SpotifyHomeFilter.Radio)) {
+    if (spotify && spotifyFilter in setOf(SpotifyHomeFilter.Music, SpotifyHomeFilter.Following, SpotifyHomeFilter.Podcasts)) {
         spotifyHomeFilterItems(spotifyFilter, c.state, c.homeAlbums, c.newReleases?.tracks.orEmpty(), c.viewModel, c.onTrackActions)
         return
     }

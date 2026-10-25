@@ -192,6 +192,110 @@
       "title": "Top 50 ישראל"
     },
     {
+      "id": "top-50-global",
+      "kind": "chart",
+      "market": "GLOBAL",
+      "playlistId": "37i9dQZEVXbMDoHDwVN2tF",
+      "title": "Top 50 Global",
+      "optional": true
+    },
+    {
+      "id": "top-50-ar",
+      "kind": "chart",
+      "market": "AR",
+      "playlistId": "37i9dQZEVXbMMy2roB9myp",
+      "title": "Top 50 Argentina",
+      "optional": true
+    },
+    {
+      "id": "top-50-au",
+      "kind": "chart",
+      "market": "AU",
+      "playlistId": "37i9dQZEVXbJPcfkRz0wJ0",
+      "title": "Top 50 Australia",
+      "optional": true
+    },
+    {
+      "id": "top-50-at",
+      "kind": "chart",
+      "market": "AT",
+      "playlistId": "37i9dQZEVXbKNHh6NIXu36",
+      "title": "Top 50 Österreich",
+      "optional": true
+    },
+    {
+      "id": "top-50-bg",
+      "kind": "chart",
+      "market": "BG",
+      "playlistId": "37i9dQZEVXbNfM2w2mq1B8",
+      "title": "Top 50 България",
+      "optional": true
+    },
+    {
+      "id": "top-50-ca",
+      "kind": "chart",
+      "market": "CA",
+      "playlistId": "37i9dQZEVXbKj23U1GF4IR",
+      "title": "Top 50 Canada",
+      "optional": true
+    },
+    {
+      "id": "top-50-co",
+      "kind": "chart",
+      "market": "CO",
+      "playlistId": "37i9dQZEVXbOa2lmxNORXQ",
+      "title": "Top 50 Colombia",
+      "optional": true
+    },
+    {
+      "id": "top-50-ec",
+      "kind": "chart",
+      "market": "EC",
+      "playlistId": "37i9dQZEVXbJlM6nvL1nD1",
+      "title": "Top 50 Ecuador",
+      "optional": true
+    },
+    {
+      "id": "top-50-fi",
+      "kind": "chart",
+      "market": "FI",
+      "playlistId": "37i9dQZEVXbMxcczTSoGwZ",
+      "title": "Top 50 Suomi",
+      "optional": true
+    },
+    {
+      "id": "top-50-gt",
+      "kind": "chart",
+      "market": "GT",
+      "playlistId": "37i9dQZEVXbJHSzlHx2ZJU",
+      "title": "Top 50 Guatemala",
+      "optional": true
+    },
+    {
+      "id": "top-50-ng",
+      "kind": "chart",
+      "market": "NG",
+      "playlistId": "37i9dQZEVXbKY7jLzlJ11V",
+      "title": "Top 50 Nigeria",
+      "optional": true
+    },
+    {
+      "id": "top-50-pk",
+      "kind": "chart",
+      "market": "PK",
+      "playlistId": "37i9dQZEVXbJkgIdfsJyTw",
+      "title": "Top 50 Pakistan",
+      "optional": true
+    },
+    {
+      "id": "top-50-ve",
+      "kind": "chart",
+      "market": "VE",
+      "playlistId": "37i9dQZEVXbNLrliB10ZnX",
+      "title": "Top 50 Venezuela",
+      "optional": true
+    },
+    {
       "id": "new-releases-us",
       "kind": "release",
       "market": "US",
@@ -558,5 +662,94 @@
   "exploreDiscovery": {
     "enabled": true,
     "trackLimit": 16
+  },
+  "watchFeedClips": {
+    "enabled": true,
+    "genres": [
+      {
+        "id": "rap",
+        "playlistId": "37i9dQZF1DX0XUsuxWHRQd",
+        "languages": []
+      },
+      {
+        "id": "latino",
+        "playlistId": "37i9dQZF1DX10zKzsJ2jva",
+        "languages": [
+          "es",
+          "pt",
+          "it"
+        ]
+      },
+      {
+        "id": "reggaeton",
+        "playlistId": "37i9dQZF1DWY7IeIP1cdjF",
+        "languages": [
+          "es",
+          "pt"
+        ]
+      },
+      {
+        "id": "rnb",
+        "playlistId": "37i9dQZF1DX4SBhb3fqCJd",
+        "languages": []
+      },
+      {
+        "id": "dance-party",
+        "playlistId": "37i9dQZF1DXaXB8fQg7xif",
+        "languages": []
+      },
+      {
+        "id": "house",
+        "playlistId": "37i9dQZF1DX4dyzvuaRJ0n",
+        "languages": []
+      },
+      {
+        "id": "edm",
+        "playlistId": "37i9dQZF1DX5Q27plkaOQ3",
+        "languages": []
+      },
+      {
+        "id": "uk-rap",
+        "playlistId": "37i9dQZF1DX6PKX5dyBKeq",
+        "languages": [
+          "en"
+        ]
+      },
+      {
+        "id": "pop",
+        "playlistId": "37i9dQZF1DXcBWIGoYBM5M",
+        "languages": []
+      },
+      {
+        "id": "afro",
+        "playlistId": "37i9dQZF1DWYkaDif7Ztbp",
+        "languages": [
+          "fr",
+          "en"
+        ]
+      },
+      {
+        "id": "k-pop",
+        "playlistId": "37i9dQZF1DX9tPFwDMOaN1",
+        "languages": [
+          "ko",
+          "ja"
+        ]
+      },
+      {
+        "id": "fr-rap",
+        "playlistId": "37i9dQZF1DWU4xkXueiKGW",
+        "languages": [
+          "fr"
+        ]
+      },
+      {
+        "id": "de-rap",
+        "playlistId": "37i9dQZF1DWSTqUqJcxFk6",
+        "languages": [
+          "de"
+        ]
+      }
+    ]
   }
 }

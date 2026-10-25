@@ -1213,7 +1213,8 @@ private fun LevyraNowPlayingContent(
                     onOpenArtist = { viewModel.openArtist(current) },
                     onOpenRelated = { hit -> viewModel.openArtist(hit) },
                     onSongRadio = viewModel::startSongRadio,
-                    onCredits = { showTrackCredits = true }
+                    onCredits = { showTrackCredits = true },
+                    songRadioEnabled = !state.jam.isActive || state.jam.isHost
                 )
             }
         )
@@ -1827,7 +1828,8 @@ private fun LevyraNowPlayingContent(
                     playerArtistHits.getOrNull(artistIndex)?.let(viewModel::openArtist)
                         ?: viewModel.openArtist(track, artistIndex)
                 },
-                onDismiss = { showTrackCredits = false }
+                onDismiss = { showTrackCredits = false },
+                onToggleFollow = { artistIndex -> playerArtistHits.getOrNull(artistIndex)?.let(viewModel::toggleFollowArtist) }
             )
         }
 
