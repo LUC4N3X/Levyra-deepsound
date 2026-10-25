@@ -10,25 +10,27 @@ import org.junit.Test
 
 class YoutubeShortsDiscoveryTest {
     @Test
-    fun previewDiscoveryHasEnoughDistinctArtistsAndKeepsLanguageAndTaste() {
-        val artists = musicPreviewArtists(listOf("Ernia", "Drake"), "it")
-        assertTrue(artists.size >= 10)
-        assertEquals(artists.size, artists.distinct().size)
-        assertTrue(artists.contains("Drake"))
-        assertTrue(artists.contains("Geolier"))
-        val french = musicPreviewArtists(emptyList(), "fr")
-        assertTrue(french.contains("Aya Nakamura"))
-        assertTrue(french.none { it == "Geolier" || it == "Ernia" })
+    fun streamResolutionPreservesNativeClipBoundaries() {
+        val presented = sample("abcdefghijk", "Artist").copy(
+            videoUrl = "https://www.youtube.com/shorts/abcdefghijk?clipStartMs=59000&clipEndMs=88000",
+            durationMs = 29_000L
+        )
+        val resolved = presented.copy(album = "Album", videoType = "MUSIC_VIDEO_TYPE_OMV", durationMs = 180_000L,
+            videoUrl = "https://www.youtube.com/watch?v=abcdefghijk", streamUrl = "https://example.com/media")
+        val actual = preserveNativeSampleClip(presented, resolved)
+        assertEquals(resolved.streamUrl, actual.streamUrl)
+        assertEquals(29_000L, actual.durationMs)
+        assertEquals(59_000L, LevyraMediaItemFactory.samplesClipping(actual, true)!!.startPositionMs)
+        assertEquals(88_000L, LevyraMediaItemFactory.samplesClipping(actual, true)!!.endPositionMs)
+        assertEquals(resolved, preserveNativeSampleClip(resolved, resolved))
     }
 
     @Test
-    fun musicPreviewsFillTenCardsWithDifferentArtists() {
-        val candidates = List(12) { index -> musicVideoPreview(sample("clip$index", "Artist $index").copy(durationMs = 180_000L)) }
-        val result = rankYoutubeShortDiscovery(emptyList(), candidates, emptyList(), emptyList(), 12)
+    fun nativeSamplesFillTenCardsWithoutRepeatingArtists() {
+        val clips = List(12) { index -> sample("clip$index", "Artist $index") }
+        val result = rankYoutubeShortDiscovery(clips, emptyList(), emptyList(), emptyList(), 12)
         assertEquals(12, result.size)
         assertEquals(12, result.map { it.artist }.distinct().size)
-        assertEquals(30_000L, result.first().durationMs)
-        assertEquals(45_000L, LevyraMediaItemFactory.samplesClipping(result.first(), true)!!.startPositionMs)
     }
 
     @Test
@@ -48,7 +50,7 @@ class YoutubeShortsDiscoveryTest {
         val drake = sample("drake", "DrakeVEVO")
         val result = rankYoutubeShortDiscovery(listOf(generic), listOf(drake), emptyList(), listOf("Drake"), 8)
 
-        assertEquals(listOf(drake), result)
+        assertEquals(listOf(drake, generic), result)
     }
 
     @Test
@@ -64,8 +66,8 @@ class YoutubeShortsDiscoveryTest {
     fun changingTasteChangesRecommendationsWithoutHardcodedArtists() {
         val candidates = listOf(sample("one", "Drake"), sample("two", "Stromae"))
 
-        assertEquals("Drake", rankYoutubeShortDiscovery(candidates, emptyList(), emptyList(), listOf("Drake"), 8).single().artist)
-        assertEquals("Stromae", rankYoutubeShortDiscovery(candidates, emptyList(), emptyList(), listOf("Stromae"), 8).single().artist)
+        assertEquals("Drake", rankYoutubeShortDiscovery(candidates, emptyList(), emptyList(), listOf("Drake"), 8).first().artist)
+        assertEquals("Stromae", rankYoutubeShortDiscovery(candidates, emptyList(), emptyList(), listOf("Stromae"), 8).first().artist)
         assertTrue(rankYoutubeShortDiscovery(candidates, emptyList(), emptyList(), listOf("Drake"), 0).isEmpty())
     }
 

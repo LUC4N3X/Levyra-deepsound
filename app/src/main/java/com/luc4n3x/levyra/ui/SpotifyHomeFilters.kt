@@ -65,6 +65,9 @@ internal enum class SpotifyHomeFilter {
         }
 
         fun from(name: String): SpotifyHomeFilter = entries.firstOrNull { it.name == name } ?: All
+
+        fun selected(name: String, filters: List<SpotifyHomeFilter>): SpotifyHomeFilter =
+            from(name).takeIf { it == Following || it in filters } ?: All
     }
 }
 

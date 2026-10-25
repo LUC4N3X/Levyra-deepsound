@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -114,36 +115,8 @@ private fun SpotifyLyricsScreen(
 ) {
     val strings = LocalLevyraStrings.current
     val tone by rememberSpotifyCoverTone(track, SpotifyDesign::lyricsSurface)
-    var active by remember(lines, synced) { mutableIntStateOf(-1) }
-    LaunchedEffect(lines, synced) {
-        if (!synced || lines.isEmpty()) return@LaunchedEffect
-        while (true) {
-            withFrameMillis { }
-            active = activeLyricIndex(position(), lines)
-        }
-    }
-    val listState = rememberLazyListState()
-    var manualUntil by remember { mutableLongStateOf(0L) }
-    var dragging by remember { mutableStateOf(false) }
-    LaunchedEffect(listState) {
-        listState.interactionSource.interactions.collect { interaction ->
-            when (interaction) {
-                is DragInteraction.Start -> dragging = true
-                is DragInteraction.Stop, is DragInteraction.Cancel -> {
-                    dragging = false
-                    manualUntil = android.os.SystemClock.elapsedRealtime() + SpotifyLyricsManualHoldMs
-                }
-                else -> Unit
-            }
-        }
-    }
-    LaunchedEffect(active, manualUntil, dragging) {
-        if (active < 0 || dragging) return@LaunchedEffect
-        val hold = manualUntil - android.os.SystemClock.elapsedRealtime()
-        if (hold > 0) kotlinx.coroutines.delay(hold)
-        val anchor = (listState.layoutInfo.viewportSize.height * SpotifyLyricsAnchorFraction).toInt()
-        if (animations) listState.animateScrollToItem(active, -anchor) else listState.scrollToItem(active, -anchor)
-    }
+    val active = rememberSpotifyLyricIndex(lines, synced, position)
+    val listState = rememberSpotifyLyricScroll(active, animations)
     Box(
         Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(tone, lerp(tone, Color.White, 0.06f))))
     ) {
@@ -158,58 +131,8 @@ private fun SpotifyLyricsScreen(
                 }
                 Spacer(Modifier.size(56.dp))
             }
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-                when {
-                    lines.isNotEmpty() -> LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        itemsIndexed(lines, key = { index, line -> "$index-${line.startMs}" }) { index, line ->
-                            SpotifyLyricRow(
-                                line = line,
-                                current = synced && index == active,
-                                emphasized = !synced || index == active,
-                                selected = selectionMode && isSelected(index),
-                                animations = animations,
-                                onClick = { actions.onLineClick(index, line) }
-                            )
-                        }
-                    }
-                    loading -> LevyraLoadingIndicator(color = SpotifyDesign.text, modifier = Modifier.align(Alignment.Center).size(32.dp))
-                    else -> Text(
-                        strings.lyricsUnavailable, color = SpotifyDesign.text, fontSize = 18.sp, fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center, modifier = Modifier.align(Alignment.Center).padding(32.dp)
-                    )
-                }
-                Box(
-                    Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(72.dp)
-                        .background(Brush.verticalGradient(listOf(Color.Transparent, lerp(tone, Color.White, 0.06f))))
-                )
-            }
-            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                val share = actions.onShare
-                if (share != null) IconButton(onClick = share, modifier = Modifier.size(48.dp)) {
-                    Icon(Icons.Rounded.Share, strings.shareLyrics, tint = if (selectionMode) SpotifyDesign.green else SpotifyDesign.text, modifier = Modifier.size(26.dp))
-                }
-                Spacer(Modifier.weight(1f))
-                IconButton(onClick = actions.onOptions, modifier = Modifier.size(48.dp)) {
-                    Icon(Icons.Rounded.MoreVert, strings.options, tint = SpotifyDesign.text, modifier = Modifier.size(26.dp))
-                }
-            }
-            SpotifySeekbar(positionMs, bufferedMs, durationMs, actions.onSeekFraction, Modifier.padding(horizontal = 24.dp))
-            Box(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 16.dp), contentAlignment = Alignment.Center) {
-                Box(
-                    Modifier.size(64.dp).clip(CircleShape).background(Color.White)
-                        .clickable(role = Role.Button, onClick = actions.onTogglePlay)
-                        .semantics { contentDescription = if (playing) strings.pause else strings.play },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (resolving) LevyraLoadingIndicator(color = Color.Black, modifier = Modifier.size(28.dp))
-                    else Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(36.dp))
-                }
-            }
+            SpotifyLyricsBody(lines, synced, loading, active, listState, selectionMode, isSelected, animations, actions, tone, Modifier.weight(1f).fillMaxWidth())
+            SpotifyLyricsControls(positionMs, bufferedMs, durationMs, playing, resolving, selectionMode, actions)
         }
     }
 }
@@ -242,4 +165,106 @@ private fun SpotifyLyricRow(
                 transformOrigin = TransformOrigin(0f, 0f)
             }
     )
+}
+
+@Composable
+private fun rememberSpotifyLyricIndex(lines: List<LyricLine>, synced: Boolean, position: () -> Long): Int {
+    var active by remember(lines, synced) { mutableIntStateOf(-1) }
+    LaunchedEffect(lines, synced) {
+        if (!synced || lines.isEmpty()) return@LaunchedEffect
+        while (true) {
+            withFrameMillis { }
+            active = activeLyricIndex(position(), lines)
+        }
+    }
+    return active
+}
+
+@Composable
+private fun rememberSpotifyLyricScroll(active: Int, animations: Boolean): LazyListState {
+    val listState = rememberLazyListState()
+    var manualUntil by remember { mutableLongStateOf(0L) }
+    var dragging by remember { mutableStateOf(false) }
+    LaunchedEffect(listState) {
+        listState.interactionSource.interactions.collect { interaction ->
+            when (interaction) {
+                is DragInteraction.Start -> dragging = true
+                is DragInteraction.Stop, is DragInteraction.Cancel -> {
+                    dragging = false
+                    manualUntil = android.os.SystemClock.elapsedRealtime() + SpotifyLyricsManualHoldMs
+                }
+                else -> Unit
+            }
+        }
+    }
+    LaunchedEffect(active, manualUntil, dragging) {
+        if (active < 0 || dragging) return@LaunchedEffect
+        val hold = manualUntil - android.os.SystemClock.elapsedRealtime()
+        if (hold > 0) kotlinx.coroutines.delay(hold)
+        val anchor = (listState.layoutInfo.viewportSize.height * SpotifyLyricsAnchorFraction).toInt()
+        if (animations) listState.animateScrollToItem(active, -anchor) else listState.scrollToItem(active, -anchor)
+    }
+    return listState
+}
+
+@Composable
+private fun SpotifyLyricsBody(lines: List<LyricLine>, synced: Boolean, loading: Boolean, active: Int, listState: LazyListState, selectionMode: Boolean, isSelected: (Int) -> Boolean, animations: Boolean, actions: SpotifyLyricsActions, tone: Color, modifier: Modifier) {
+    val strings = LocalLevyraStrings.current
+    Box(modifier) {
+        when {
+            lines.isNotEmpty() -> LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                itemsIndexed(lines, key = { index, line -> "$index-${line.startMs}" }) { index, line ->
+                    SpotifyLyricRow(
+                        line = line,
+                        current = synced && index == active,
+                        emphasized = !synced || index == active,
+                        selected = selectionMode && isSelected(index),
+                        animations = animations,
+                        onClick = { actions.onLineClick(index, line) }
+                    )
+                }
+            }
+            loading -> LevyraLoadingIndicator(color = SpotifyDesign.text, modifier = Modifier.align(Alignment.Center).size(32.dp))
+            else -> Text(
+                strings.lyricsUnavailable, color = SpotifyDesign.text, fontSize = 18.sp, fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center, modifier = Modifier.align(Alignment.Center).padding(32.dp)
+            )
+        }
+        Box(
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(72.dp)
+                .background(Brush.verticalGradient(listOf(Color.Transparent, lerp(tone, Color.White, 0.06f))))
+        )
+    }
+}
+
+@Composable
+private fun SpotifyLyricsControls(positionMs: Long, bufferedMs: Long, durationMs: Long, playing: Boolean, resolving: Boolean, selectionMode: Boolean, actions: SpotifyLyricsActions) {
+    val strings = LocalLevyraStrings.current
+    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        val share = actions.onShare
+        if (share != null) IconButton(onClick = share, modifier = Modifier.size(48.dp)) {
+            Icon(Icons.Rounded.Share, strings.shareLyrics, tint = if (selectionMode) SpotifyDesign.green else SpotifyDesign.text, modifier = Modifier.size(26.dp))
+        }
+        Spacer(Modifier.weight(1f))
+        IconButton(onClick = actions.onOptions, modifier = Modifier.size(48.dp)) {
+            Icon(Icons.Rounded.MoreVert, strings.options, tint = SpotifyDesign.text, modifier = Modifier.size(26.dp))
+        }
+    }
+    SpotifySeekbar(positionMs, bufferedMs, durationMs, actions.onSeekFraction, Modifier.padding(horizontal = 24.dp))
+    Box(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 16.dp), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier.size(64.dp).clip(CircleShape).background(Color.White)
+                .clickable(role = Role.Button, onClick = actions.onTogglePlay)
+                .semantics { contentDescription = if (playing) strings.pause else strings.play },
+            contentAlignment = Alignment.Center
+        ) {
+            if (resolving) LevyraLoadingIndicator(color = Color.Black, modifier = Modifier.size(28.dp))
+            else Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(36.dp))
+        }
+    }
 }

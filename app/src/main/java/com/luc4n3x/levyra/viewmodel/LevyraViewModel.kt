@@ -79,6 +79,7 @@ import com.luc4n3x.levyra.data.YoutubeMusicWatchTrack
 import com.luc4n3x.levyra.data.YoutubeShortsRepository
 import com.luc4n3x.levyra.data.YoutubeShortsCache
 import com.luc4n3x.levyra.data.isYoutubeShortTrack
+import com.luc4n3x.levyra.data.preserveNativeSampleClip
 import com.luc4n3x.levyra.data.youtubeShortsRetryDelayMs
 import com.luc4n3x.levyra.data.LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE
 import com.luc4n3x.levyra.data.levyraAlbumRecommendationMatchScore
@@ -881,7 +882,7 @@ internal fun canPublishAlbumMotionArtwork(
 
 class LevyraViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = YoutubeMusicRepository(application.applicationContext)
-    private val shortsRepository = YoutubeShortsRepository(application.applicationContext, repository)
+    private val shortsRepository = YoutubeShortsRepository(application.applicationContext)
     private val shortsCache = YoutubeShortsCache(application.applicationContext)
     private val artistRepository = ArtistRepository(repository, application.applicationContext)
     private val chartsRepository = ChartsRepository(application.applicationContext)
@@ -10421,7 +10422,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val instant = localDownloadedTrack(track) ?: resolver.cached(selectedTrack, requestedVideoMode)
         if (instant != null) {
             if (!isCurrentPlaybackRequest(requestId)) return
-            startPlayback(preserveEditorialArtwork(track, instant), request)
+            startPlayback(preserveNativeSampleClip(track, preserveEditorialArtwork(track, instant)), request)
             prefetchAround(instant)
             return
         }
@@ -10429,7 +10430,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         try {
             val playable = resolveForPlayback(selectedTrack)
             if (!isCurrentPlaybackRequest(requestId)) return
-            startPlayback(playable, request)
+            startPlayback(preserveNativeSampleClip(track, playable), request)
             prefetchAround(playable)
         } catch (error: Throwable) {
             if (error is CancellationException) throw error

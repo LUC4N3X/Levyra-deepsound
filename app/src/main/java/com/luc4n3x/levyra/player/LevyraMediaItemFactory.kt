@@ -43,7 +43,7 @@ object LevyraMediaItemFactory {
     }
 
     internal fun samplesClipping(track: Track, videoMode: Boolean): MediaItem.ClippingConfiguration? {
-        if (!videoMode || track.album !in setOf("YouTube Music Samples", "YouTube Music previews") || track.videoType != "SHORTS") return null
+        if (!videoMode || track.album != "YouTube Music Samples" || track.videoType != "SHORTS") return null
         val url = track.videoUrl.toHttpUrlOrNull() ?: return null
         val startMs = url.queryParameter("clipStartMs")?.toLongOrNull() ?: return null
         val endMs = url.queryParameter("clipEndMs")?.toLongOrNull() ?: return null

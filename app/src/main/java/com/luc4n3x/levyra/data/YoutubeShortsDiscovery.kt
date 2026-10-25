@@ -13,6 +13,16 @@ private fun shortsArtistKey(artist: String): String =
 private fun shortsArtistKeys(artist: String): Set<String> =
     (listOf(artist) + artistDisplayCandidates(artist)).map(::shortsArtistKey).filter(String::isNotBlank).toSet()
 
+internal fun preserveNativeSampleClip(presented: Track, resolved: Track): Track {
+    if (presented.album != "YouTube Music Samples" || !presented.videoUrl.contains("?clipStartMs=")) return resolved
+    return resolved.copy(
+        album = presented.album,
+        videoUrl = presented.videoUrl,
+        videoType = presented.videoType,
+        durationMs = presented.durationMs
+    )
+}
+
 internal fun youtubeShortGenreTag(tags: Set<String>): String? {
     val normalized = tags.map { it.lowercase(Locale.ROOT) }
     return listOf("rap", "phonk", "rnb", "rock", "electronic", "afrobeats", "reggaeton", "jazz", "pop", "chill").firstOrNull { genre ->
@@ -43,15 +53,13 @@ internal fun rankYoutubeShortDiscovery(
         val artistAffinity = when {
             artists.any(preferred::contains) -> 4
             artists.any(seedTags::containsKey) -> 2
-            track.album == "YouTube Music previews" -> 1
             else -> 0
         }
         val songAffinity = if (artistAffinity > 0 && titles.any(title::contains)) 3 else 0
         val tags = artists.flatMap { seedTags[it].orEmpty() }.toSet()
         Triple(track.copy(moodTags = track.moodTags + tags), artists, artistAffinity + songAffinity)
     }.sortedByDescending { it.third }
-    val relevant = ranked.filter { it.third > 0 }
-    val pool = relevant.ifEmpty { ranked.filter { it.first.album == "YouTube Music Samples" } }
+    val pool = ranked.filter { it.first.album == "YouTube Music Samples" || it.third > 0 }
     val shownArtists = mutableSetOf<String>()
     return pool.mapNotNull { (track, artists, _) ->
         if (artists.isEmpty() || artists.any(shownArtists::contains)) null else track.also { shownArtists.addAll(artists) }

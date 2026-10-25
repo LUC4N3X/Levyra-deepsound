@@ -120,6 +120,52 @@ internal fun SearchHeader(
     val context = LocalContext.current
     val strings = LocalLevyraStrings.current
 
+    val (launchVoiceSearch, toggleRecognition) = rememberSearchVoiceActions(recognitionBusy, onRecognize, onCancelRecognition, onQuery, onSearch)
+    if (LevyraIsYouTubeMusic) {
+        YouTubeMusicSearchHeader(
+            query = query,
+            placeholder = placeholder,
+            isSearching = isSearching,
+            recognitionAvailable = recognitionAvailable,
+            recognitionBusy = recognitionBusy,
+            onQuery = onQuery,
+            onSearch = { text ->
+                focusManager.clearFocus()
+                keyboardController?.hide()
+                onSearch(text)
+            },
+            onClear = onClear,
+            onBack = {
+                if (query.isBlank()) onBack() else onClear()
+                focusManager.clearFocus()
+                keyboardController?.hide()
+            },
+            onVoice = launchVoiceSearch,
+            onRecognize = toggleRecognition
+        )
+        return
+    }
+    if (LevyraIsSpotify) {
+        SpotifySearchHeader(
+            userName, query, recognitionAvailable, recognitionBusy, onSettings, onQuery,
+            onSearch, onClear, launchVoiceSearch, toggleRecognition, spotifyFocus
+        )
+        return
+    }
+
+    DefaultSearchHeader(query, placeholder, animatePlaceholder, isSearching, recognitionAvailable, recognitionBusy,
+        onQuery, onClear, onBack, launchVoiceSearch, toggleRecognition)
+}
+
+private data class SearchVoiceActions(val voice: () -> Unit, val recognize: () -> Unit)
+
+@Composable
+private fun rememberSearchVoiceActions(
+    recognitionBusy: Boolean, onRecognize: () -> Unit, onCancelRecognition: () -> Unit,
+    onQuery: (String) -> Unit, onSearch: (String) -> Unit
+): SearchVoiceActions {
+    val context = LocalContext.current
+    val strings = LocalLevyraStrings.current
     val speechRecognizerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -159,71 +205,24 @@ internal fun SearchHeader(
             microphonePermission.launch(Manifest.permission.RECORD_AUDIO)
         }
     }
-    if (LevyraIsYouTubeMusic) {
-        YouTubeMusicSearchHeader(
-            query = query,
-            placeholder = placeholder,
-            isSearching = isSearching,
-            recognitionAvailable = recognitionAvailable,
-            recognitionBusy = recognitionBusy,
-            onQuery = onQuery,
-            onSearch = { text ->
-                focusManager.clearFocus()
-                keyboardController?.hide()
-                onSearch(text)
-            },
-            onClear = onClear,
-            onBack = {
-                if (query.isBlank()) onBack() else onClear()
-                focusManager.clearFocus()
-                keyboardController?.hide()
-            },
-            onVoice = launchVoiceSearch,
-            onRecognize = toggleRecognition
-        )
-        return
-    }
-    if (LevyraIsSpotify) {
-        SpotifySearchHeader(
-            userName, query, recognitionAvailable, recognitionBusy, onSettings, onQuery,
-            onSearch, onClear, launchVoiceSearch, toggleRecognition, spotifyFocus
-        )
-        return
-    }
+    return SearchVoiceActions(launchVoiceSearch, toggleRecognition)
+}
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun DefaultSearchHeader(
+    query: String, placeholder: String, animatePlaceholder: Boolean, isSearching: Boolean,
+    recognitionAvailable: Boolean, recognitionBusy: Boolean, onQuery: (String) -> Unit,
+    onClear: () -> Unit, onBack: () -> Unit, launchVoiceSearch: () -> Unit, toggleRecognition: () -> Unit
+) {
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val strings = LocalLevyraStrings.current
     val animationsEnabled = LocalAnimationsEnabled.current
     val fieldInteraction = remember { MutableInteractionSource() }
     val fieldFocused by fieldInteraction.collectIsFocusedAsState()
     val scheme = MaterialTheme.colorScheme
-    val fieldContainer by animateColorAsState(
-        targetValue = searchFieldContainer(fieldFocused, scheme),
-        animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
-        label = "search-field-container"
-    )
-    val focusRingAlpha by animateFloatAsState(
-        targetValue = if (fieldFocused) 1f else 0f,
-        animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
-        label = "search-field-ring"
-    )
-    val searchBadgeColor by animateColorAsState(
-        targetValue = if ((fieldFocused || query.isNotEmpty()) && !LevyraIsPrism) scheme.primaryContainer else Color.Transparent,
-        animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
-        label = "search-field-badge"
-    )
-    val focusRing = remember(scheme.primary, scheme.tertiary, focusRingAlpha) {
-        searchFocusRing(scheme, focusRingAlpha)
-    }
-    val searchIconTint by animateColorAsState(
-        targetValue = searchFieldIconTint(fieldFocused || query.isNotEmpty(), scheme),
-        animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
-        label = "search-field-icon"
-    )
-    val fieldCorner = levyraExpressiveToggleCorner(
-        checked = fieldFocused,
-        unchecked = searchFieldCorner(28.dp),
-        checkedCorner = searchFieldCorner(20.dp),
-        label = "search-field-corner"
-    )
+    val (fieldContainer, searchBadgeColor, focusRing, searchIconTint, fieldCorner) = rememberSearchHeaderAppearance(fieldFocused, query, animationsEnabled, scheme)
 
     Row(
         modifier = Modifier
@@ -270,125 +269,14 @@ internal fun SearchHeader(
                     )
                 }
 
-                BasicTextField(
-                    value = query,
-                    onValueChange = onQuery,
-                    modifier = Modifier.weight(1f).padding(start = 4.dp),
-                    interactionSource = fieldInteraction,
-                    singleLine = true,
-                    textStyle = TextStyle(
-                        color = if (LevyraIsTorque) Color(0xFF111111) else if (LevyraIsSpotify) SpotifyDesign.searchFieldText else LevyraText,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 16.sp,
-                        letterSpacing = (-0.1).sp
-                    ),
-                    cursorBrush = SolidColor(if (LevyraIsTorque) LevyraActivePalette.blue else if (LevyraIsSpotify) SpotifyDesign.greenPress else LevyraCyan),
-                    decorationBox = { innerTextField ->
-                        Box(contentAlignment = Alignment.CenterStart) {
-                            if (query.isEmpty()) {
-                                Crossfade(
-                                    targetState = placeholder,
-                                    animationSpec = if (animatePlaceholder) tween(360) else snap(),
-                                    label = "search-taste-placeholder"
-                                ) { text ->
-                                    BasicText(
-                                        text = text,
-                                        style = TextStyle(
-                                            color = if (LevyraIsTorque || LevyraIsSpotify) Color(0xFF5A5A5A) else LevyraMuted.copy(alpha = 0.82f),
-                                            fontWeight = FontWeight.Medium,
-                                            fontSize = 15.sp
-                                        ),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 15.sp)
-                                    )
-                                }
-                            }
-                            innerTextField()
-                        }
-                    }
-                )
+                SearchHeaderTextField(query, placeholder, animatePlaceholder, fieldInteraction, onQuery, Modifier.weight(1f).padding(start = 4.dp))
 
-                if (isSearching) {
-                    LevyraLoadingIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = LevyraCyan
-                    )
-                } else {
-                    AnimatedVisibility(
-                        visible = query.isNotEmpty(),
-                        enter = if (animationsEnabled) fadeIn() + scaleIn(initialScale = 0.7f) else fadeIn(snap()),
-                        exit = if (animationsEnabled) fadeOut() + scaleOut(targetScale = 0.7f) else fadeOut(snap())
-                    ) {
-                        IconButton(
-                            onClick = onClear,
-                            modifier = Modifier.size(38.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Close,
-                                contentDescription = strings.clear,
-                                tint = LevyraMuted,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                }
-
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(scheme.surfaceContainerHighest.copy(alpha = if (fieldFocused) 0.9f else 0.6f)),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                IconButton(
-                    onClick = launchVoiceSearch,
-                    modifier = Modifier.size(38.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Mic,
-                        contentDescription = strings.voice,
-                        tint = scheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                if (recognitionAvailable) {
-                    val recognitionRotation = if (recognitionBusy && animationsEnabled) {
-                        val spin = rememberInfiniteTransition(label = "search-recognition-spin")
-                        spin.animateFloat(
-                            initialValue = 0f,
-                            targetValue = 360f,
-                            animationSpec = infiniteRepeatable(tween(2_400, easing = LinearEasing)),
-                            label = "search-recognition-rotation"
-                        ).value
-                    } else {
-                        0f
-                    }
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .padding(4.dp)
-                            .size(40.dp)
-                            .graphicsLayer { rotationZ = recognitionRotation }
-                            .clip(MaterialShapes.Cookie9Sided.toShape())
-                            .background(if (recognitionBusy) scheme.primary else scheme.primaryContainer)
-                            .clickable(onClickLabel = strings.recognizeMusic, role = Role.Button, onClick = toggleRecognition)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.GraphicEq,
-                            contentDescription = strings.recognizeMusic,
-                            tint = if (recognitionBusy) scheme.onPrimary else scheme.onPrimaryContainer,
-                            modifier = Modifier
-                                .size(19.dp)
-                                .graphicsLayer { rotationZ = -recognitionRotation }
-                        )
-                    }
-                }
-                }
+                SearchHeaderActionButtons(query, isSearching, fieldFocused, recognitionAvailable, recognitionBusy, onClear, launchVoiceSearch, toggleRecognition)
             }
         }
     }
 }
+
 
 internal fun searchFieldContainer(focused: Boolean, scheme: androidx.compose.material3.ColorScheme): Color = when {
     LevyraIsTorque -> Color(0xFFF1F1F1)
@@ -427,3 +315,166 @@ internal fun searchFocusRing(scheme: androidx.compose.material3.ColorScheme, foc
             scheme.primary.copy(alpha = 0.35f * focusRingAlpha)
         )
     )
+
+private data class SearchHeaderAppearance(val container: Color, val badge: Color, val ring: Brush, val icon: Color, val corner: Dp)
+
+@Composable
+private fun rememberSearchHeaderAppearance(fieldFocused: Boolean, query: String, animationsEnabled: Boolean, scheme: androidx.compose.material3.ColorScheme): SearchHeaderAppearance {
+    val fieldContainer by animateColorAsState(
+        targetValue = searchFieldContainer(fieldFocused, scheme),
+        animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
+        label = "search-field-container"
+    )
+    val focusRingAlpha by animateFloatAsState(
+        targetValue = if (fieldFocused) 1f else 0f,
+        animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
+        label = "search-field-ring"
+    )
+    val searchBadgeColor by animateColorAsState(
+        targetValue = if ((fieldFocused || query.isNotEmpty()) && !LevyraIsPrism) scheme.primaryContainer else Color.Transparent,
+        animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
+        label = "search-field-badge"
+    )
+    val focusRing = remember(scheme.primary, scheme.tertiary, focusRingAlpha) {
+        searchFocusRing(scheme, focusRingAlpha)
+    }
+    val searchIconTint by animateColorAsState(
+        targetValue = searchFieldIconTint(fieldFocused || query.isNotEmpty(), scheme),
+        animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
+        label = "search-field-icon"
+    )
+    val fieldCorner = levyraExpressiveToggleCorner(
+        checked = fieldFocused,
+        unchecked = searchFieldCorner(28.dp),
+        checkedCorner = searchFieldCorner(20.dp),
+        label = "search-field-corner"
+    )
+
+    return SearchHeaderAppearance(fieldContainer, searchBadgeColor, focusRing, searchIconTint, fieldCorner)
+}
+
+@Composable
+private fun SearchHeaderTextField(query: String, placeholder: String, animatePlaceholder: Boolean, fieldInteraction: MutableInteractionSource, onQuery: (String) -> Unit, modifier: Modifier) {
+    BasicTextField(
+        value = query,
+        onValueChange = onQuery,
+        modifier = modifier,
+        interactionSource = fieldInteraction,
+        singleLine = true,
+        textStyle = TextStyle(
+            color = if (LevyraIsTorque) Color(0xFF111111) else if (LevyraIsSpotify) SpotifyDesign.searchFieldText else LevyraText,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 16.sp,
+            letterSpacing = (-0.1).sp
+        ),
+        cursorBrush = SolidColor(if (LevyraIsTorque) LevyraActivePalette.blue else if (LevyraIsSpotify) SpotifyDesign.greenPress else LevyraCyan),
+        decorationBox = { innerTextField ->
+            Box(contentAlignment = Alignment.CenterStart) {
+                if (query.isEmpty()) {
+                    Crossfade(
+                        targetState = placeholder,
+                        animationSpec = if (animatePlaceholder) tween(360) else snap(),
+                        label = "search-taste-placeholder"
+                    ) { text ->
+                        BasicText(
+                            text = text,
+                            style = TextStyle(
+                                color = if (LevyraIsTorque || LevyraIsSpotify) Color(0xFF5A5A5A) else LevyraMuted.copy(alpha = 0.82f),
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 15.sp
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 15.sp)
+                        )
+                    }
+                }
+                innerTextField()
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SearchHeaderActionButtons(query: String, isSearching: Boolean, fieldFocused: Boolean, recognitionAvailable: Boolean, recognitionBusy: Boolean, onClear: () -> Unit, launchVoiceSearch: () -> Unit, toggleRecognition: () -> Unit) {
+    val animationsEnabled = LocalAnimationsEnabled.current
+    val strings = LocalLevyraStrings.current
+    val scheme = MaterialTheme.colorScheme
+    if (isSearching) {
+        LevyraLoadingIndicator(
+            modifier = Modifier.size(24.dp),
+            color = LevyraCyan
+        )
+    } else {
+        AnimatedVisibility(
+            visible = query.isNotEmpty(),
+            enter = if (animationsEnabled) fadeIn() + scaleIn(initialScale = 0.7f) else fadeIn(snap()),
+            exit = if (animationsEnabled) fadeOut() + scaleOut(targetScale = 0.7f) else fadeOut(snap())
+        ) {
+            IconButton(
+                onClick = onClear,
+                modifier = Modifier.size(38.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Close,
+                    contentDescription = strings.clear,
+                    tint = LevyraMuted,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+    }
+
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(scheme.surfaceContainerHighest.copy(alpha = if (fieldFocused) 0.9f else 0.6f)),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+    IconButton(
+        onClick = launchVoiceSearch,
+        modifier = Modifier.size(38.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Mic,
+            contentDescription = strings.voice,
+            tint = scheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+
+    if (recognitionAvailable) {
+        val recognitionRotation = if (recognitionBusy && animationsEnabled) {
+            val spin = rememberInfiniteTransition(label = "search-recognition-spin")
+            spin.animateFloat(
+                initialValue = 0f,
+                targetValue = 360f,
+                animationSpec = infiniteRepeatable(tween(2_400, easing = LinearEasing)),
+                label = "search-recognition-rotation"
+            ).value
+        } else {
+            0f
+        }
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .padding(4.dp)
+                .size(40.dp)
+                .graphicsLayer { rotationZ = recognitionRotation }
+                .clip(MaterialShapes.Cookie9Sided.toShape())
+                .background(if (recognitionBusy) scheme.primary else scheme.primaryContainer)
+                .clickable(onClickLabel = strings.recognizeMusic, role = Role.Button, onClick = toggleRecognition)
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.GraphicEq,
+                contentDescription = strings.recognizeMusic,
+                tint = if (recognitionBusy) scheme.onPrimary else scheme.onPrimaryContainer,
+                modifier = Modifier
+                    .size(19.dp)
+                    .graphicsLayer { rotationZ = -recognitionRotation }
+            )
+        }
+    }
+    }
+}

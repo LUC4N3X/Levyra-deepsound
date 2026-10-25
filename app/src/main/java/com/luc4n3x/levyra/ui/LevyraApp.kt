@@ -10977,38 +10977,10 @@ private fun StudioHomeContent(
         val spotifyFilters = remember(homeRenderOrder, studioLayout) {
             SpotifyHomeFilter.available(homeRenderOrder.filterNot(studioLayout::isHidden))
         }
-        val spotifyFilter = SpotifyHomeFilter.from(spotifyFilterName).takeIf { it == SpotifyHomeFilter.Following || it in spotifyFilters }
-            ?: SpotifyHomeFilter.All
+        val spotifyFilter = SpotifyHomeFilter.selected(spotifyFilterName, spotifyFilters)
         val shownOrder = if (LevyraIsSpotify) homeRenderOrder.filter(spotifyFilter::accepts) else homeRenderOrder
         val homeLocalAnimations = LocalAnimationsEnabled.current && studioLayout.motion != HomeMotion.Reduced
-        // One continuous pixel offset survives LazyColumn item changes.
-        // Keep its value out of composition: the portrait reads it in graphicsLayer.
-        val portraitScroll = rememberSaveable {
-            mutableFloatStateOf(
-                if (homeListState.firstVisibleItemIndex == 0) {
-                    homeListState.firstVisibleItemScrollOffset.toFloat()
-                } else {
-                    10_000f
-                }
-            )
-        }
-        val portraitScrollConnection = remember(homeListState, homeStyle) {
-            object : NestedScrollConnection {
-                override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                    if (homeStyle == HomeStyle.ExpressiveMax && consumed.y != 0f) {
-                        portraitScroll.floatValue = (portraitScroll.floatValue - consumed.y).coerceAtLeast(0f)
-                    }
-                    return Offset.Zero
-                }
-            }
-        }
-        LaunchedEffect(homeListState) {
-            snapshotFlow {
-                homeListState.firstVisibleItemIndex == 0 && homeListState.firstVisibleItemScrollOffset == 0
-            }.distinctUntilChanged().collect { atTop ->
-                if (atTop) portraitScroll.floatValue = 0f
-            }
-        }
+        val portrait = rememberStudioHomePortraitScroll(homeListState, homeStyle)
         CompositionLocalProvider(
             LocalHomeCompactDensity provides compactHome,
             LocalAnimationsEnabled provides homeLocalAnimations
@@ -11024,13 +10996,13 @@ private fun StudioHomeContent(
                     showExpressivePortrait = homeStyle == HomeStyle.ExpressiveMax &&
                         spotlightHeroData != null &&
                         !studioLayout.isHidden(HomeSectionId.Spotlight),
-                    expressiveScrollPx = { portraitScroll.floatValue }
+                    expressiveScrollPx = { portrait.position.floatValue }
                 )
                 LazyColumn(
                     state = homeListState,
                     modifier = Modifier
                         .fillMaxSize()
-                        .nestedScroll(portraitScrollConnection)
+                        .nestedScroll(portrait.connection)
                         .pullToRefresh(isRefreshing = homeRefreshing, state = homePullState, onRefresh = onPullRefresh),
                     contentPadding = PaddingValues(
                         top = statusBarTop + homeTopPadding,
@@ -11038,13 +11010,7 @@ private fun StudioHomeContent(
                     ),
                     verticalArrangement = Arrangement.spacedBy(homeSectionGap)
                 ) {
-                    studioHomeHeaderItems(c, flowShortcutTracks, statusBarTop, homeTopPadding, spotifyFilter.accepts(HomeSectionId.Spotlight))
-                    if (c.stagedSpotlight != null && !c.studioLayout.isHidden(HomeSectionId.Discovery) &&
-                        (!LevyraIsSpotify || spotifyFilter.accepts(HomeSectionId.Discovery))
-                    ) {
-                        discoverySection(homeDiscovery, c.homeStyle, c.styleSpec, c.homeAnimationsEnabled)
-                    }
-                    studioHomeSections(c, shownOrder, youtubeMusicHome, homeRadio, homeDiscovery)
+                    studioHomeFilteredSections(c, flowShortcutTracks, statusBarTop, homeTopPadding, spotifyFilter, shownOrder, youtubeMusicHome, homeRadio, homeDiscovery, LevyraIsSpotify)
                 }
                 if (LevyraIsSpotify) {
                     SpotifyHomeFilterBar(
@@ -28074,3 +28040,13 @@ private fun artistBiographyBackground(accentBrush: Brush): Modifier =
     Modifier.clip(if (LevyraSkinManagesLayout) RoundedCornerShape(SkinChrome.outerCorner) else ArtistBiographyShape)
         .background(LevyraPanel)
         .then(if (LevyraSkinManagesLayout) Modifier else Modifier.background(accentBrush))
+
+private fun LazyListScope.studioHomeFilteredSections(c: StudioHomeContext, flowShortcutTracks: List<Track>, statusBarTop: Dp, homeTopPadding: Dp, spotifyFilter: SpotifyHomeFilter, shownOrder: List<HomeSectionId>, youtubeMusicHome: com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi?, homeRadio: HomeRadioState, homeDiscovery: DiscoveryHomeHandle?, spotify: Boolean) {
+    studioHomeHeaderItems(c, flowShortcutTracks, statusBarTop, homeTopPadding, spotifyFilter.accepts(HomeSectionId.Spotlight))
+    if (c.stagedSpotlight != null && !c.studioLayout.isHidden(HomeSectionId.Discovery) &&
+        (!spotify || spotifyFilter.accepts(HomeSectionId.Discovery))
+    ) {
+        discoverySection(homeDiscovery, c.homeStyle, c.styleSpec, c.homeAnimationsEnabled)
+    }
+    studioHomeSections(c, shownOrder, youtubeMusicHome, homeRadio, homeDiscovery)
+}

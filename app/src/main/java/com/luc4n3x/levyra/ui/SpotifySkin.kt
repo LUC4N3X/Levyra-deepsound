@@ -220,13 +220,7 @@ internal fun SpotifyCard(item: StudioShelfItem, isPlaying: Boolean, width: Dp = 
         Modifier.width(width).levyraPressable(onClick = item.onClick, onLongClick = item.onLongClick, onClickLabel = item.title, role = Role.Button),
         horizontalAlignment = if (item.round) Alignment.CenterHorizontally else Alignment.Start
     ) {
-        Box(Modifier.size(width).clip(if (item.round) CircleShape else SpotifyDesign.coverShape).background(SpotifyDesign.placeholder)) {
-            item.artwork(Modifier.fillMaxSize(), item.round)
-            if (item.current) Box(
-                Modifier.align(if (item.round) Alignment.BottomCenter else Alignment.BottomEnd).padding(8.dp).size(32.dp).clip(CircleShape).background(SpotifyDesign.green),
-                contentAlignment = Alignment.Center
-            ) { LevyraPlayingIndicator(playing = isPlaying, color = Color.Black, size = 12.dp) }
-        }
+        SpotifyCardArtwork(item, isPlaying, width)
         Spacer(Modifier.height(if (item.round) 12.dp else 10.dp))
         Text(
             item.title, color = if (item.current) SpotifyDesign.greenText else SpotifyDesign.text,
@@ -238,6 +232,17 @@ internal fun SpotifyCard(item: StudioShelfItem, isPlaying: Boolean, width: Dp = 
             Spacer(Modifier.height(4.dp))
             Text(item.subtitle, color = SpotifyDesign.subdued, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
+    }
+}
+
+@Composable
+private fun SpotifyCardArtwork(item: StudioShelfItem, isPlaying: Boolean, width: Dp) {
+    Box(Modifier.size(width).clip(if (item.round) CircleShape else SpotifyDesign.coverShape).background(SpotifyDesign.placeholder)) {
+        item.artwork(Modifier.fillMaxSize(), item.round)
+        if (item.current) Box(
+            Modifier.align(if (item.round) Alignment.BottomCenter else Alignment.BottomEnd).padding(8.dp).size(32.dp).clip(CircleShape).background(SpotifyDesign.green),
+            contentAlignment = Alignment.Center
+        ) { LevyraPlayingIndicator(playing = isPlaying, color = Color.Black, size = 12.dp) }
     }
 }
 

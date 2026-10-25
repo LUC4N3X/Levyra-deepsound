@@ -70,7 +70,7 @@ private sealed interface ShortsSourceResult {
     data class Failure(val error: Throwable) : ShortsSourceResult
 }
 
-internal class YoutubeShortsRepository(private val context: Context, private val musicRepository: YoutubeMusicRepository) {
+internal class YoutubeShortsRepository(private val context: Context) {
     suspend fun feed(
         seeds: List<Track>,
         languageCode: String,
@@ -80,64 +80,28 @@ internal class YoutubeShortsRepository(private val context: Context, private val
     ): YoutubeShortsFeedResult = withContext(Dispatchers.IO) {
         if (limit <= 0) return@withContext YoutubeShortsFeedResult(emptyList(), 0, 0)
 
-        val samplesRequest = async {
-            try {
-                withShortsSearchTimeout(SAMPLES_TIMEOUT_MS) { youtubeMusicSamples(languageCode, limit) }
-            } catch (timeout: TimeoutCancellationException) {
-                Timber.w(timeout, "YouTube Music Samples timed out")
-                emptyList()
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Exception) {
-                Timber.w(error, "YouTube Music Samples failed")
-                emptyList()
-            }
+        val local = nativeSamples(languageCode, limit)
+        val native = if (local.size >= minOf(limit, 10)) local else coroutineScope {
+            val gate = Semaphore(2)
+            val alternatives = listOf("en", "es", "fr", "de").filterNot { it == languageCode }
+            local + alternatives.map { code ->
+                async { gate.withPermit { nativeSamples(code, limit) } }
+            }.awaitAll().flatten()
         }
-        val previews = discoverMusicPreviews(musicRepository, preferredArtists, languageCode)
-        val samples = samplesRequest.await()
-        val musicTracks = rankYoutubeShortDiscovery(samples, previews, seeds, preferredArtists, limit)
-        if (musicTracks.size >= minOf(limit, 10)) {
-            return@withContext YoutubeShortsFeedResult(musicTracks, completedQueries = 1, failedQueries = 0)
-        }
+        val tracks = rankYoutubeShortDiscovery(native, emptyList(), seeds, preferredArtists, limit)
+        YoutubeShortsFeedResult(tracks, completedQueries = if (tracks.isEmpty()) 0 else 1, failedQueries = if (tracks.isEmpty()) 1 else 0)
+    }
 
-        val queries = youtubeShortQueries(seeds, preferredArtists, languageCode)
-            .take(MAX_SHORT_QUERIES)
-        val channelLookupQueries = youtubeShortChannelLookupQueries(seeds, preferredArtists)
-        val directChannelUrls = youtubeShortChannelUrls(seeds, preferredChannelIds)
-        val (directChannelResults, searchResults, channelLookupResults) = coroutineScope {
-            val channels = async { runChannelDiscovery(directChannelUrls) }
-            val searches = async { runSearchDiscovery(queries) }
-            val channelLookups = async { runChannelLookupDiscovery(channelLookupQueries) }
-            Triple(channels.await(), searches.await(), channelLookups.await())
-        }
-        val successfulSearches = searchResults.filterIsInstance<ShortsSourceResult.Success>()
-        val successfulChannelLookups = channelLookupResults.filterIsInstance<ShortsSourceResult.Success>()
-        val discoveredChannelUrls = youtubeShortDiscoveredChannelUrls(
-            directChannelUrls = directChannelUrls,
-            discoveredChannelUrls = buildList {
-                successfulChannelLookups.forEach { result -> addAll(result.discovery.channelUrls) }
-                successfulSearches.forEach { result -> addAll(result.discovery.channelUrls) }
-            },
-            limit = MAX_SHORT_CHANNELS
-        )
-        val discoveredChannelResults = runChannelDiscovery(discoveredChannelUrls)
-        val channelResults = directChannelResults + discoveredChannelResults
-        val successfulChannels = channelResults.filterIsInstance<ShortsSourceResult.Success>()
-        val personalized = mergeShortTracks(
-            channelResults = successfulChannels,
-            searchResults = successfulSearches,
-            limit = MAX_SHORT_CHANNELS * SHORTS_PER_CHANNEL + MAX_SHORT_QUERIES * SHORTS_PER_QUERY
-        )
-        val tracks = rankYoutubeShortDiscovery(samples, previews + personalized, seeds, preferredArtists, limit)
-
-        YoutubeShortsFeedResult(
-            tracks = tracks,
-            completedQueries = successfulSearches.size + successfulChannelLookups.size + successfulChannels.size +
-                if (samples.isNotEmpty()) 1 else 0,
-            failedQueries = searchResults.count { it is ShortsSourceResult.Failure } +
-                channelLookupResults.count { it is ShortsSourceResult.Failure } +
-                channelResults.count { it is ShortsSourceResult.Failure }
-        )
+    private suspend fun nativeSamples(languageCode: String, limit: Int): List<Track> = try {
+        withShortsSearchTimeout(SAMPLES_TIMEOUT_MS) { youtubeMusicSamples(languageCode, limit) }
+    } catch (timeout: TimeoutCancellationException) {
+        Timber.w(timeout, "YouTube Music Samples timed out")
+        emptyList()
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Exception) {
+        Timber.w(error, "YouTube Music Samples failed")
+        emptyList()
     }
 
     private suspend fun youtubeMusicSamples(languageCode: String, limit: Int): List<Track> {
@@ -600,6 +564,7 @@ private fun youtubeMusicSampleTrack(renderer: JSONObject): Track? {
     val clipStartMs = endpoint.optLong("startTimeSeconds").coerceAtLeast(0L) * 1_000L
     val clipEndMs = endpoint.optLong("endTimeSeconds").coerceAtLeast(0L) * 1_000L
     val clipDurationMs = (clipEndMs - clipStartMs).coerceAtLeast(0L)
+    if (clipDurationMs !in 1L..180_000L) return null
     val (accentStart, accentEnd) = shortPalette(id)
     return Track(
         id = id,
