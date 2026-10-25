@@ -5,9 +5,36 @@ import com.luc4n3x.levyra.domain.Track
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SamplesPlaybackSelectionTest {
+    @Test
+    fun canvasSampleUsesMainPlayerForAudioOnly() {
+        val clip = track("spotify-clip-ashe", YOUTUBE_SHORTS_SOURCE, "", "SHORTS")
+
+        assertFalse(samplePlaybackVideoMode(clip))
+        assertEquals(clip, selectYoutubeShortSample(listOf(clip), clip))
+    }
+
+    @Test
+    fun nativeSampleKeepsMainPlayerVideoAndAudio() {
+        val clip = track("shortvideo1", YOUTUBE_SHORTS_SOURCE, "https://www.youtube.com/shorts/shortvideo1", "SHORTS")
+
+        assertTrue(samplePlaybackVideoMode(clip))
+    }
+
+    @Test
+    fun canvasSelectionSurvivesAudioResolutionAddingYoutubeIdentity() {
+        val clip = track("spotify-clip-ashe", YOUTUBE_SHORTS_SOURCE, "", "SHORTS")
+        val resolved = clip.copy(videoUrl = "https://www.youtube.com/watch?v=shortvideo1", audioVideoId = "shortvideo1")
+        val other = clip.copy(id = "spotify-clip-other")
+
+        assertTrue(sameYoutubeShortSample(clip, resolved))
+        assertFalse(sameYoutubeShortSample(clip, other))
+        assertEquals(clip, selectYoutubeShortSample(listOf(other, clip), resolved))
+    }
+
     @Test
     fun shortsWithIdenticalMetadataRemainDifferentPlaybackSelections() {
         val first = track("shortvideo1", YOUTUBE_SHORTS_SOURCE, "https://www.youtube.com/shorts/shortvideo1", "SHORTS")

@@ -66,6 +66,7 @@ import com.luc4n3x.levyra.data.LyricsRepository
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.NewPipeRuntime
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
+import com.luc4n3x.levyra.data.SPOTIFY_CLIP_ID_PREFIX
 import com.luc4n3x.levyra.data.preserveEditorialArtwork
 import com.luc4n3x.levyra.data.ReturnYoutubeDislikeRepository
 import com.luc4n3x.levyra.data.ReturnYoutubeDislikeResult
@@ -598,9 +599,14 @@ internal fun selectYoutubeShortSample(list: List<Track>, requested: Track): Trac
 }
 
 internal fun sameYoutubeShortSample(left: Track, right: Track): Boolean {
+    if (left.id.startsWith(SPOTIFY_CLIP_ID_PREFIX) || right.id.startsWith(SPOTIFY_CLIP_ID_PREFIX)) {
+        return left.id == right.id
+    }
     val videoId = PlaybackSourceIdentity.sourceVideoId(left)
     return videoId.isNotBlank() && videoId == PlaybackSourceIdentity.sourceVideoId(right)
 }
+
+internal fun samplePlaybackVideoMode(track: Track): Boolean = !track.id.startsWith(SPOTIFY_CLIP_ID_PREFIX)
 
 
 internal fun monotonicDownloadProgress(current: Int?, incoming: Int): Int {
@@ -10226,8 +10232,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
 
         beginSamplesPlayback()
+        val videoMode = samplePlaybackVideoMode(selected)
         val alreadyActive = currentState.currentTrack?.let { current -> sameYoutubeShortSample(current, selected) } == true &&
-            currentState.isVideoMode && currentState.playerError == null
+            currentState.isVideoMode == videoMode && currentState.playerError == null
 
         loopCurrentQueueOnCompletion = false
         val session = samplesPlaybackSession ?: return
@@ -10238,7 +10245,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         queueIndex = 0
         _state.update { current ->
-            current.copy(isVideoMode = true, isSamplesOpen = true)
+            current.copy(isVideoMode = videoMode, isSamplesOpen = true)
         }
 
         if (alreadyActive) {
