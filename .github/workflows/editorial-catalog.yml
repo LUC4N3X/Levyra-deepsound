@@ -119,7 +119,7 @@ jobs:
       (github.actor == github.repository_owner && github.triggering_actor == github.repository_owner))
     needs: verify
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: read
     env:

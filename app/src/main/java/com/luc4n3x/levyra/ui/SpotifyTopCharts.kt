@@ -362,7 +362,8 @@ private fun SpotifyPlaylistActions(
             contentAlignment = Alignment.Center
         ) { Icon(Icons.Rounded.Shuffle, strings.shuffle, tint = SpotifyDesign.green, modifier = Modifier.size(28.dp)) }
         Spacer(Modifier.width(8.dp))
-        SpotifyChartPlayButton(Modifier.graphicsLayer { alpha = if (pinned) 0f else 1f }, strings.playAll, playTracks)
+        if (!pinned) SpotifyChartPlayButton(Modifier, strings.playAll, playTracks)
+        else Spacer(Modifier.size(56.dp))
     }
 }
 

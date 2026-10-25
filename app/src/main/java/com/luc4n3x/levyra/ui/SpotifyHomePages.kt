@@ -250,7 +250,7 @@ private fun SpotifyFollowArtistPicker(state: LevyraUiState, viewModel: HomeViewM
                 }
                 artists.forEach { artist ->
                     item(key = "picker-${artist.browseId}") {
-                        val followed = selected[artist.browseId] ?: state.followedArtists.any { it.browseId == artist.browseId || it.name.equals(artist.name, ignoreCase = true) }
+                        val followed = selected[artist.browseId] ?: state.followedArtists.any { it.browseId == artist.browseId || (it.browseId.isBlank() && it.name.equals(artist.name, ignoreCase = true)) }
                         Column(
                             Modifier.levyraPressable(onClick = {
                                 selected[artist.browseId] = !followed

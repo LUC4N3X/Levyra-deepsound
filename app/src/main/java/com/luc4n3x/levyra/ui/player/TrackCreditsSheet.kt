@@ -591,7 +591,7 @@ private fun SpotifyTrackCreditsSheet(
                                 else -> copy.participatingArtist
                             }
                             val linked = person.linkedArtistIndex
-                            val followToggle = if (section.group == TrackCreditGroup.Artists && linked != null && onToggleFollow != null) {
+                            val followToggle = if (section.group == TrackCreditGroup.Artists && linked != null && linked in artists.indices && onToggleFollow != null) {
                                 { followed[linked] = !(followed[linked] ?: isFollowed(linked)); onToggleFollow(linked) }
                             } else null
                             SpotifyCreditsPersonRow(
