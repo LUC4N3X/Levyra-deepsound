@@ -4181,9 +4181,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 val baseTrack = selectedSource?.forModeResolution()
                     ?: throw IllegalStateException("Nessuna sorgente YouTube riproducibile per ${track.title}")
-                val resolved = withContext(Dispatchers.IO) {
+                val resolved = preserveNativeSampleClip(track, withContext(Dispatchers.IO) {
                     resolver.cached(baseTrack, targetMode) ?: providerRouter.resolve(baseTrack, targetMode)
-                }
+                })
                 if (!isActive || transitionId != streamTransitionId) return@launch
                 val currentIndex = queueEngine.state.value.currentIndex
                 if (currentIndex >= 0) queueEngine.updateTrackAt(currentIndex, resolved)
@@ -4464,7 +4464,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 val baseTrack = selectedSource?.forModeResolution()
                     ?: failedTrack.forModeResolution()
-                val resolved = withContext(Dispatchers.IO) { providerRouter.resolve(baseTrack, videoMode) }
+                val resolved = preserveNativeSampleClip(failedTrack, withContext(Dispatchers.IO) { providerRouter.resolve(baseTrack, videoMode) })
                 if (!isActive || transitionId != streamTransitionId) return@launch
                 val currentIndex = queueEngine.state.value.currentIndex
                 if (currentIndex >= 0) queueEngine.updateTrackAt(currentIndex, resolved)
@@ -10578,7 +10578,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun ensureMusicVideosLoaded(force: Boolean = false) {
         val snapshot = _state.value
-        if (!force && snapshot.isSamplesOpen && snapshot.exploreSamples.isNotEmpty()) return
+        if (!force && snapshot.isSamplesOpen && snapshot.exploreSamples.isNotEmpty() && musicVideosLoadedLanguage == snapshot.languageCode) return
         val languageCode = snapshot.languageCode
         val profileSignature = samplesDiscoveryProfileSignature(snapshot)
         val sameActiveRequest = musicVideosRequestLanguage == languageCode &&
