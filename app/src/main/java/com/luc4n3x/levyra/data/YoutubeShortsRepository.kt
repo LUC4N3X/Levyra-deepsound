@@ -13,13 +13,21 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import com.luc4n3x.levyra.data.network.YoutubeRegionProfile
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
+import org.json.JSONObject
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.channel.ChannelInfoItem
 import org.schabi.newpipe.extractor.channel.ChannelTabInfo
 import org.schabi.newpipe.extractor.search.SearchInfo
 import org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQueryHandlerFactory
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
+import timber.log.Timber
 import java.util.Locale
 
 internal const val YOUTUBE_SHORTS_SOURCE = "YouTube Shorts"
@@ -34,6 +42,12 @@ private const val MAX_SHORT_DURATION_SECONDS = 180L
 private const val SHORTS_SEARCH_TIMEOUT_MS = 12_000L
 private const val SHORTS_CHANNEL_TIMEOUT_MS = 15_000L
 private const val YOUTUBE_FRONTEND = "https://www.youtube.com"
+private const val SAMPLES_ENDPOINT = "https://music.youtube.com/youtubei/v1/browse?prettyPrint=false"
+private const val SAMPLES_BROWSE_ID = "FEmusic_immersive"
+private const val SAMPLES_CLIENT_VERSION = "7.21.50"
+private const val SAMPLES_MAX_PAGES = 6
+private const val SAMPLES_TIMEOUT_MS = 15_000L
+private val SAMPLES_JSON = "application/json".toMediaType()
 private val YOUTUBE_CHANNEL_HOSTS = setOf("youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com")
 private val YOUTUBE_CHANNEL_PATH_PREFIXES = setOf("channel", "c", "user")
 
@@ -56,7 +70,7 @@ private sealed interface ShortsSourceResult {
     data class Failure(val error: Throwable) : ShortsSourceResult
 }
 
-internal class YoutubeShortsRepository(private val context: Context) {
+internal class YoutubeShortsRepository(private val context: Context, private val musicRepository: YoutubeMusicRepository) {
     suspend fun feed(
         seeds: List<Track>,
         languageCode: String,
@@ -65,6 +79,26 @@ internal class YoutubeShortsRepository(private val context: Context) {
         limit: Int = 24
     ): YoutubeShortsFeedResult = withContext(Dispatchers.IO) {
         if (limit <= 0) return@withContext YoutubeShortsFeedResult(emptyList(), 0, 0)
+
+        val samplesRequest = async {
+            try {
+                withShortsSearchTimeout(SAMPLES_TIMEOUT_MS) { youtubeMusicSamples(languageCode, limit) }
+            } catch (timeout: TimeoutCancellationException) {
+                Timber.w(timeout, "YouTube Music Samples timed out")
+                emptyList()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "YouTube Music Samples failed")
+                emptyList()
+            }
+        }
+        val previews = discoverMusicPreviews(musicRepository, preferredArtists, languageCode)
+        val samples = samplesRequest.await()
+        val musicTracks = rankYoutubeShortDiscovery(samples, previews, seeds, preferredArtists, limit)
+        if (musicTracks.size >= minOf(limit, 10)) {
+            return@withContext YoutubeShortsFeedResult(musicTracks, completedQueries = 1, failedQueries = 0)
+        }
 
         val queries = youtubeShortQueries(seeds, preferredArtists, languageCode)
             .take(MAX_SHORT_QUERIES)
@@ -89,19 +123,60 @@ internal class YoutubeShortsRepository(private val context: Context) {
         val discoveredChannelResults = runChannelDiscovery(discoveredChannelUrls)
         val channelResults = directChannelResults + discoveredChannelResults
         val successfulChannels = channelResults.filterIsInstance<ShortsSourceResult.Success>()
-        val tracks = mergeShortTracks(
+        val personalized = mergeShortTracks(
             channelResults = successfulChannels,
             searchResults = successfulSearches,
-            limit = limit
+            limit = MAX_SHORT_CHANNELS * SHORTS_PER_CHANNEL + MAX_SHORT_QUERIES * SHORTS_PER_QUERY
         )
+        val tracks = rankYoutubeShortDiscovery(samples, previews + personalized, seeds, preferredArtists, limit)
 
         YoutubeShortsFeedResult(
             tracks = tracks,
-            completedQueries = successfulSearches.size + successfulChannelLookups.size + successfulChannels.size,
+            completedQueries = successfulSearches.size + successfulChannelLookups.size + successfulChannels.size +
+                if (samples.isNotEmpty()) 1 else 0,
             failedQueries = searchResults.count { it is ShortsSourceResult.Failure } +
                 channelLookupResults.count { it is ShortsSourceResult.Failure } +
                 channelResults.count { it is ShortsSourceResult.Failure }
         )
+    }
+
+    private suspend fun youtubeMusicSamples(languageCode: String, limit: Int): List<Track> {
+        val locale = YoutubeRegionProfile.effectiveLocale(languageCode)
+        val client = JSONObject()
+            .put("clientName", "ANDROID_MUSIC")
+            .put("clientVersion", SAMPLES_CLIENT_VERSION)
+            .put("androidSdkVersion", 35)
+            .put("platform", "MOBILE")
+            .put("hl", locale.hl)
+            .put("gl", locale.gl)
+        val tracks = LinkedHashMap<String, Track>()
+        val requestedContinuations = mutableSetOf<String>()
+        var continuation = ""
+        repeat(SAMPLES_MAX_PAGES) {
+            if (continuation.isNotBlank() && !requestedContinuations.add(continuation)) return tracks.values.take(limit)
+            val payload = JSONObject().put("context", JSONObject().put("client", client))
+            if (continuation.isBlank()) payload.put("browseId", SAMPLES_BROWSE_ID) else payload.put("continuation", continuation)
+            val root = postSamples(payload)
+            parseYoutubeMusicSamples(root).forEach { track -> tracks.putIfAbsent(track.id, track) }
+            continuation = youtubeMusicSamplesContinuation(root)
+            if (tracks.size >= limit || continuation.isBlank()) return tracks.values.take(limit)
+        }
+        return tracks.values.take(limit)
+    }
+
+    private suspend fun postSamples(payload: JSONObject): JSONObject = runInterruptible {
+        val request = Request.Builder()
+            .url(SAMPLES_ENDPOINT)
+            .header("User-Agent", "com.google.android.apps.youtube.music/$SAMPLES_CLIENT_VERSION (Linux; U; Android 14) gzip")
+            .header("X-YouTube-Client-Name", "21")
+            .header("X-YouTube-Client-Version", SAMPLES_CLIENT_VERSION)
+            .post(payload.toString().toRequestBody(SAMPLES_JSON))
+            .build()
+        LevyraHttpClientFactory.general(context).newCall(request).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            check(response.isSuccessful && body.isNotBlank()) { "Samples request failed: ${response.code}" }
+            JSONObject(body)
+        }
     }
 
     private fun mergeShortTracks(
@@ -479,3 +554,72 @@ private fun shortPalette(id: String): Pair<Int, Int> {
 
 private val YOUTUBE_VIDEO_ID_REGEX =
     Regex("(?:v=|/shorts/|youtu\\.be/|/embed/)([A-Za-z0-9_-]{11})")
+
+internal fun parseYoutubeMusicSamples(root: JSONObject): List<Track> {
+    val renderers = mutableListOf<JSONObject>()
+    collectSamplesRenderers(root, renderers)
+    return renderers.mapNotNull(::youtubeMusicSampleTrack)
+}
+
+internal fun youtubeMusicSamplesContinuation(root: JSONObject): String =
+    findInJson(root) { node -> node.optJSONObject("nextContinuationData")?.optString("continuation")?.takeIf(String::isNotBlank) }.orEmpty()
+
+private fun collectSamplesRenderers(value: Any?, into: MutableList<JSONObject>) {
+    when (value) {
+        is JSONObject -> {
+            val renderer = value.optJSONObject("musicImmersiveVideoRenderer")
+            if (renderer != null) into += renderer
+            value.keys().forEach { key -> if (key != "musicImmersiveVideoRenderer") collectSamplesRenderers(value.opt(key), into) }
+        }
+        is JSONArray -> for (index in 0 until value.length()) collectSamplesRenderers(value.opt(index), into)
+    }
+}
+
+private fun <T> findInJson(value: Any?, pick: (JSONObject) -> T?): T? {
+    when (value) {
+        is JSONObject -> {
+            pick(value)?.let { return it }
+            value.keys().forEach { key -> findInJson(value.opt(key), pick)?.let { return it } }
+        }
+        is JSONArray -> for (index in 0 until value.length()) findInJson(value.opt(index), pick)?.let { return it }
+    }
+    return null
+}
+
+private fun youtubeMusicSampleTrack(renderer: JSONObject): Track? {
+    val endpoint = findInJson(renderer.optJSONObject("inlinePlaybackCommand")) { node -> node.takeIf { it.optString("videoId").length == 11 } } ?: return null
+    val id = endpoint.optString("videoId")
+    val metadata = findInJson(renderer.optJSONObject("overlay")) { node -> node.optJSONObject("trackMetadataOverlayData") }
+    val title = metadata?.optString("trackTitle").orEmpty().ifBlank {
+        renderer.optJSONObject("accessibilityData")?.optString("label").orEmpty()
+    }.trim()
+    if (title.isBlank()) return null
+    val artist = metadata?.optString("artistName").orEmpty().trim().ifBlank { "YouTube Music" }
+    val frame = renderer.optJSONObject("thumbnail")?.optJSONArray("thumbnails")?.optJSONObject(0)?.optString("url").orEmpty()
+    val thumbnail = frame.ifBlank { "https://i.ytimg.com/vi/$id/hqdefault.jpg" }
+    val clipStartMs = endpoint.optLong("startTimeSeconds").coerceAtLeast(0L) * 1_000L
+    val clipEndMs = endpoint.optLong("endTimeSeconds").coerceAtLeast(0L) * 1_000L
+    val clipDurationMs = (clipEndMs - clipStartMs).coerceAtLeast(0L)
+    val (accentStart, accentEnd) = shortPalette(id)
+    return Track(
+        id = id,
+        title = title,
+        artist = artist,
+        album = "YouTube Music Samples",
+        durationMs = clipDurationMs,
+        streamUrl = "",
+        videoUrl = "$YOUTUBE_FRONTEND/shorts/$id?clipStartMs=$clipStartMs&clipEndMs=$clipEndMs",
+        thumbnailUrl = thumbnail,
+        largeThumbnailUrl = thumbnail,
+        source = YOUTUBE_SHORTS_SOURCE,
+        moodTags = setOf("shorts", "video"),
+        energy = 72,
+        vocal = 64,
+        replayScore = 82,
+        cacheScore = 70,
+        accentStart = accentStart,
+        accentEnd = accentEnd,
+        counterpartVideoId = id,
+        videoType = "SHORTS"
+    )
+}

@@ -364,6 +364,13 @@ private fun LevyraNowPlayingContent(
         playerArtistHits = viewModel.playerArtistHits(activeTrack, resolveArtwork = true)
         if (playerArtistHits.size < 2) showArtistPicker = false
     }
+    var spotifyArtistProfile by remember(track?.id) { mutableStateOf<com.luc4n3x.levyra.domain.ArtistProfile?>(null) }
+    LaunchedEffect(track?.id, LevyraIsSpotify) {
+        val activeTrack = track
+        if (LevyraIsSpotify && activeTrack != null && !activeTrack.isLiveRadio()) {
+            spotifyArtistProfile = viewModel.playerArtistProfile(activeTrack)
+        }
+    }
     LaunchedEffect(state.isVideoMode, track == null) {
         if (state.isVideoMode || track == null) {
             showDeck = false
@@ -398,7 +405,7 @@ private fun LevyraNowPlayingContent(
         }
     }
 
-    val artworkRestsFullBleed = nocturne || velvetAppleMusic || state.isPlaying ||
+    val artworkRestsFullBleed = nocturne || velvetAppleMusic || LevyraIsSpotify || state.isPlaying ||
         state.interfaceSettings.playerVisualMode == PlayerVisualMode.Artwork ||
         state.interfaceSettings.playerVisualMode == PlayerVisualMode.Folio ||
         state.interfaceSettings.playerVisualMode == PlayerVisualMode.Flow ||
@@ -882,7 +889,8 @@ private fun LevyraNowPlayingContent(
                             ),
                         dynamicBackdropEnabled = backgroundMode == PlayerBackgroundMode.Dynamic &&
                             motionBackdropVisible,
-                        onDynamicBackdropPalette = acceptDynamicBackdropPalette
+                        onDynamicBackdropPalette = acceptDynamicBackdropPalette,
+                        staticPresentation = LevyraIsSpotify
                     )
                     if (lyricsFlipAvailable && lyricsFlip.lyricsComposed) {
                         PlayerLyricsCard(
@@ -1183,13 +1191,29 @@ private fun LevyraNowPlayingContent(
             },
             dock = dockBlock,
             dockActions = dockActionsFor,
-            creditsEyebrow = creditWriters?.takeIf { it.second.isNotEmpty() }?.let { (id, writers) ->
+            creditsEyebrow = creditWriters?.takeIf { it.second.isNotEmpty() && !LevyraIsSpotify }?.let { (id, writers) ->
                 PlayerCreditsEyebrow(
                     trackId = id,
                     heading = strings.trackCreditsCopy().writtenBy,
                     names = writers,
                     contentDescription = strings.trackCreditsCopy().title,
                     onClick = { showTrackCredits = true }
+                )
+            },
+            lyricsPreview = track?.takeIf { LevyraIsSpotify && state.lyrics.isNotEmpty() }?.let { current ->
+                PlayerLyricsPreview(current.id, state.lyrics, state.lyricsSynced, state.positionMs, viewModel::openLyrics)
+            },
+            artistPanel = track?.takeIf { LevyraIsSpotify && !it.isLiveRadio() }?.let { current ->
+                PlayerArtistPanel(
+                    trackId = current.id,
+                    trackTitle = current.title,
+                    artistName = playerArtistHits.firstOrNull()?.name ?: current.artist,
+                    profile = spotifyArtistProfile,
+                    writers = creditWriters?.takeIf { it.first == current.id }?.second.orEmpty(),
+                    onOpenArtist = { viewModel.openArtist(current) },
+                    onOpenRelated = { hit -> viewModel.openArtist(hit) },
+                    onSongRadio = viewModel::startSongRadio,
+                    onCredits = { showTrackCredits = true }
                 )
             }
         )
@@ -1658,7 +1682,7 @@ private fun LevyraNowPlayingContent(
 
         val captionWriters = creditWriters?.takeIf { it.first == track?.id }?.second.orEmpty()
         AnimatedVisibility(
-            visible = captionWriters.isNotEmpty() && !liveRadio && !appleMusicImmersive &&
+            visible = captionWriters.isNotEmpty() && !liveRadio && !appleMusicImmersive && !LevyraIsSpotify &&
                 !state.isVideoMode && playerPane != LevyraPlayerPane.SideBySide &&
                 deckLayout != PlayerDeckLayout.Aura && deckLayout != PlayerDeckLayout.Pulse,
             enter = fadeIn(tween(if (animated) CreditsCaptionRevealMs else 0)),

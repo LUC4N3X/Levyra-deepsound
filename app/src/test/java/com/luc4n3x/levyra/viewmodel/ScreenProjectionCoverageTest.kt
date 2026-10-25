@@ -15,6 +15,17 @@ class ScreenProjectionCoverageTest {
     private val base = LevyraUiState()
 
     @Test
+    fun spotifySearchRefreshesWhenDiscoveryOrProfileArrives() {
+        assertNotEquals(searchProjection(base), searchProjection(base.copy(exploreSamples = listOf(similarTrack()))))
+        assertNotEquals(searchProjection(base), searchProjection(base.copy(userName = "Luca")))
+        assertNotEquals(searchProjection(base), searchProjection(base.copy(exploreCategoryArtwork = mapOf("gospel" to "artwork"))))
+        assertNotEquals(
+            searchProjection(base),
+            searchProjection(base.copy(exploreCategories = listOf(com.luc4n3x.levyra.domain.ExploreCategory("Workout", "workout"))))
+        )
+    }
+
+    @Test
     fun `search projection reacts to section loading state`() {
         assertNotEquals(
             searchProjection(base),

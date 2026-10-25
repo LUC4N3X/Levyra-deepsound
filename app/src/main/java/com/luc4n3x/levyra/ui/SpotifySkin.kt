@@ -1,9 +1,5 @@
 package com.luc4n3x.levyra.ui
 
-import androidx.compose.foundation.lazy.items
-import com.luc4n3x.levyra.ui.i18n.LevyraSpotifySkinStrings
-import com.luc4n3x.levyra.domain.ExploreCatalog
-import com.luc4n3x.levyra.domain.ExploreZone
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -14,6 +10,8 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AddCircleOutline
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
@@ -99,49 +97,27 @@ internal fun SpotifyAvatar(name: String, size: Dp, modifier: Modifier = Modifier
 }
 
 @Composable
-internal fun SpotifyHomeHeader(
-    hero: StudioHero?, inset: Dp, onSettings: () -> Unit, name: String, onOpenZone: (ExploreZone) -> Unit
-) {
+internal fun SpotifyHomeHeader(hero: StudioHero?, inset: Dp) {
     val strings = LocalLevyraStrings.current
-    val zones = remember(strings) { ExploreCatalog.getZones(strings) }
-    val allLabel = remember(strings.code) { LevyraSpotifySkinStrings.forCode(strings.code).all }
-    val tint = hero?.let { Color(it.track.accentStart) }
-    val top = remember(tint) { tint?.let { SpotifyDesign.wash(SpotifyDesign.heroSurface(it), 0.55f) } ?: SpotifyDesign.base }
-    val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    Column(
-        Modifier.fillMaxWidth().drawBehind {
-            val lift = statusTop.toPx()
-            drawRect(
-                Brush.verticalGradient(listOf(top, SpotifyDesign.base), startY = -lift, endY = size.height),
-                topLeft = Offset(0f, -lift), size = Size(size.width, size.height + lift)
-            )
-        }
-    ) {
-        Row(
-            Modifier.fillMaxWidth().padding(start = inset, top = 8.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+    if (hero == null) return
+    Column(Modifier.fillMaxWidth()) {
+        SpotifySectionTitle(hero.label, inset)
+        SpotifyPickedCard(hero, strings.play, inset)
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+internal const val SpotifyOrbitTitle = "Your Orbit"
+
+@Composable
+internal fun SpotifyOrbitHeader(onPlayAll: (() -> Unit)?) {
+    val strings = LocalLevyraStrings.current
+    SpotifySectionTitle(SpotifyOrbitTitle, SpotifyDesign.gutter) {
+        if (onPlayAll != null) Box(
+            Modifier.heightIn(min = 48.dp).levyraPressable(onClick = onPlayAll, onClickLabel = strings.playAll, role = Role.Button).padding(horizontal = 8.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Box(Modifier.size(48.dp).clip(CircleShape).levyraPressable(onClick = onSettings, onClickLabel = strings.settings, role = Role.Button), contentAlignment = Alignment.Center) {
-                SpotifyAvatar(name, 32.dp, Modifier.clip(CircleShape))
-            }
-            com.luc4n3x.levyra.ui.rewind.RewindEntry()
-            LazyRow(
-                Modifier.weight(1f),
-                contentPadding = PaddingValues(start = 4.dp, end = inset),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                item(key = "spotify-chip-all") {
-                    com.luc4n3x.levyra.ui.components.LevyraFilterPill(label = allLabel, selected = true, onClick = {})
-                }
-                items(zones, key = { zone -> "spotify-chip-${zone.id}" }) { zone ->
-                    com.luc4n3x.levyra.ui.components.LevyraFilterPill(label = zone.label, selected = false, onClick = { onOpenZone(zone) }, role = Role.Button)
-                }
-            }
-        }
-        if (hero != null) {
-            SpotifySectionTitle(hero.label, inset)
-            SpotifyPickedCard(hero, strings.play, inset)
-            Spacer(Modifier.height(8.dp))
+            Text(strings.playAll, color = SpotifyDesign.subdued, style = MaterialTheme.typography.titleSmall, maxLines = 1)
         }
     }
 }
@@ -251,15 +227,16 @@ internal fun SpotifyCard(item: StudioShelfItem, isPlaying: Boolean, width: Dp = 
                 contentAlignment = Alignment.Center
             ) { LevyraPlayingIndicator(playing = isPlaying, color = Color.Black, size = 12.dp) }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(if (item.round) 12.dp else 10.dp))
         Text(
             item.title, color = if (item.current) SpotifyDesign.greenText else SpotifyDesign.text,
-            style = MaterialTheme.typography.labelLarge, textAlign = if (item.round) TextAlign.Center else TextAlign.Start,
-            maxLines = if (item.round) 1 else 2, overflow = TextOverflow.Ellipsis
+            style = MaterialTheme.typography.titleSmall, textAlign = if (item.round) TextAlign.Center else TextAlign.Start,
+            maxLines = if (item.round) 1 else 2, overflow = TextOverflow.Ellipsis,
+            modifier = if (item.round) Modifier.fillMaxWidth() else Modifier
         )
         if (item.subtitle.isNotBlank() && !item.round) {
-            Spacer(Modifier.height(2.dp))
-            Text(item.subtitle, color = SpotifyDesign.subdued, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(4.dp))
+            Text(item.subtitle, color = SpotifyDesign.subdued, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -289,9 +266,10 @@ internal fun SpotifyTrackCarousel(
                         else LevyraPlayingIndicator(playing = playing, color = Color.Black, size = 12.dp)
                     }
                 }
-                Spacer(Modifier.height(8.dp))
-                Text(track.title, color = if (current) SpotifyDesign.greenText else SpotifyDesign.text, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(track.artist, color = SpotifyDesign.subdued, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.height(10.dp))
+                Text(track.title, color = if (current) SpotifyDesign.greenText else SpotifyDesign.text, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.height(4.dp))
+                Text(track.artist, color = SpotifyDesign.subdued, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -370,7 +348,7 @@ internal fun SpotifyNowPlayingBar(
     val strings = LocalLevyraStrings.current
     val surface by rememberSpotifyCoverTone(track, SpotifyDesign::miniSurface)
     Box(
-        modifier.fillMaxWidth().height(SpotifyDesign.miniHeight).clip(SpotifyDesign.tileShape).background(surface)
+        modifier.fillMaxWidth().height(SpotifyDesign.miniHeight).clip(RoundedCornerShape(SpotifyDesign.cornerLarge)).background(surface)
             .levyraPressable(onClick = onOpen, onClickLabel = strings.expandPlayer, role = Role.Button)
     ) {
         Row(Modifier.fillMaxSize().padding(start = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -389,6 +367,35 @@ internal fun SpotifyNowPlayingBar(
         }
         if (progress >= 0f) Box(Modifier.align(Alignment.BottomCenter).padding(horizontal = 8.dp).fillMaxWidth().height(2.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.3f))) {
             Box(Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).fillMaxHeight().background(Color.White))
+        }
+    }
+}
+
+@Composable
+internal fun SpotifyMiniControls(playing: Boolean, resolving: Boolean, favorite: Boolean, onFavorite: () -> Unit, onToggle: () -> Unit) {
+    val strings = LocalLevyraStrings.current
+    Row(Modifier.padding(end = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier.size(48.dp).clip(CircleShape)
+                .levyraPressable(onClick = onFavorite, role = Role.Switch, haptic = LevyraHapticAction.Confirm)
+                .semantics {
+                    contentDescription = if (favorite) strings.removeFromFavorites else strings.addToFavorites
+                    toggleableState = ToggleableState(favorite)
+                    role = Role.Switch
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            if (favorite) Box(Modifier.size(24.dp).clip(CircleShape).background(SpotifyDesign.green), contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.Check, null, tint = Color.Black, modifier = Modifier.size(16.dp))
+            } else Icon(Icons.Outlined.AddCircleOutline, null, tint = SpotifyDesign.text, modifier = Modifier.size(28.dp))
+        }
+        Box(
+            Modifier.size(48.dp).clip(CircleShape)
+                .levyraPressable(onClick = onToggle, enabled = !resolving, onClickLabel = if (playing) strings.pause else strings.play, role = Role.Button),
+            contentAlignment = Alignment.Center
+        ) {
+            if (resolving) LevyraLoadingIndicator(color = Color.White, modifier = Modifier.size(22.dp))
+            else Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (playing) strings.pause else strings.play, tint = SpotifyDesign.text, modifier = Modifier.size(32.dp))
         }
     }
 }
@@ -502,9 +509,13 @@ internal fun SpotifyBottomTabs(
 ) {
     Column(
         modifier.fillMaxWidth().drawBehind {
-            val reach = SpotifyDesign.dockGap.toPx()
+            val reach = SpotifyDesign.miniHeight.toPx() + SpotifyDesign.dockGap.toPx() * 2
             drawRect(
-                Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.72f), Color.Black.copy(alpha = 0.9f)), startY = -reach, endY = size.height),
+                Brush.verticalGradient(
+                    0f to Color.Transparent, 0.35f to SpotifyDesign.navScrim.copy(alpha = 0.45f),
+                    0.7f to SpotifyDesign.navScrim, 1f to SpotifyDesign.navScrim,
+                    startY = -reach, endY = size.height
+                ),
                 topLeft = Offset(0f, -reach), size = Size(size.width, size.height + reach)
             )
         }
@@ -518,7 +529,7 @@ internal fun SpotifyBottomTabs(
                 ) {
                     Icon(
                         if (active) entry.selectedIcon else entry.unselectedIcon, null,
-                        tint = if (active) SpotifyDesign.text else SpotifyDesign.subdued, modifier = Modifier.size(26.dp)
+                        tint = if (active) SpotifyDesign.text else SpotifyDesign.subdued, modifier = Modifier.size(24.dp)
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(

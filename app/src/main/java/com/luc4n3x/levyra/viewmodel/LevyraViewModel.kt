@@ -99,6 +99,7 @@ import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraAudioQuality
 import com.luc4n3x.levyra.domain.ArtistProfile
+import com.luc4n3x.levyra.domain.EXPLORE_SAMPLES_REQUEST
 import com.luc4n3x.levyra.domain.ArtistRelease
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.AlbumRecommendationSeed
@@ -880,7 +881,7 @@ internal fun canPublishAlbumMotionArtwork(
 
 class LevyraViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = YoutubeMusicRepository(application.applicationContext)
-    private val shortsRepository = YoutubeShortsRepository(application.applicationContext)
+    private val shortsRepository = YoutubeShortsRepository(application.applicationContext, repository)
     private val shortsCache = YoutubeShortsCache(application.applicationContext)
     private val artistRepository = ArtistRepository(repository, application.applicationContext)
     private val chartsRepository = ChartsRepository(application.applicationContext)
@@ -7747,6 +7748,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     suspend fun trackCredits(track: Track, retry: Boolean = false): TrackCredits =
         trackCreditsRepository.load(track, retry)
 
+    suspend fun playerArtistProfile(track: Track): ArtistProfile? {
+        if (track.isLiveRadio()) return null
+        val credit = withContext(Dispatchers.Default) { artistCredits(track.artist, track.artistBrowseIds).firstOrNull() }
+        val name = credit?.name?.takeIf { it.isNotBlank() } ?: track.artist
+        return try {
+            artistRepository.profile(credit?.browseId.orEmpty(), name)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Timber.w(error, "Player artist profile failed for %s", name)
+            null
+        }
+    }
+
     suspend fun playerArtistHits(track: Track, resolveArtwork: Boolean): List<ArtistHit> {
         if (track.isLiveRadio()) return emptyList()
         val (credits, displayCandidates) = withContext(Dispatchers.Default) {
@@ -9020,6 +9035,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun openExploreZone(zone: ExploreZone) {
         selectExploreZone(zone)
         _state.update { current -> current.copy(exploreOpenRequest = zone.id) }
+        selectTab(LevyraTab.Explore)
+    }
+
+    fun openExploreSamples(index: Int) {
+        _state.update { current -> current.copy(exploreOpenRequest = "$EXPLORE_SAMPLES_REQUEST${index.coerceAtLeast(0)}") }
         selectTab(LevyraTab.Explore)
     }
 
@@ -10537,22 +10557,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         .take(limit)
 
     private fun samplesDiscoveryProfileSignature(snapshot: LevyraUiState): String {
-        val artists = discoveryPreferredArtists(snapshot, 16)
-        val trackIds = buildList {
-            snapshot.currentTrack?.id?.let(::add)
-            addAll(snapshot.recentListens.take(8).map { track -> track.id })
-            addAll(snapshot.favorites.take(8).map { track -> track.id })
-            addAll(snapshot.personalOrbitTracks.take(8).map { track -> track.id })
-        }.filter(String::isNotBlank).distinct()
+        val input = samplesDiscoveryInput(snapshot)
         return buildString {
             append(LevyraLanguageCatalog.normalize(snapshot.languageCode))
-            append('|').append(artists.joinToString("|"))
-            append('|').append(trackIds.joinToString("|"))
+            append('|').append(input.preferredArtists.joinToString("|"))
+            append('|').append(input.seeds.take(24).joinToString("|") { it.id })
+            append('|').append(preferences.tastes().sorted().joinToString("|"))
         }
     }
 
     private fun ensureMusicVideosLoaded(force: Boolean = false) {
         val snapshot = _state.value
+        if (!force && snapshot.isSamplesOpen && snapshot.exploreSamples.isNotEmpty()) return
         val languageCode = snapshot.languageCode
         val profileSignature = samplesDiscoveryProfileSignature(snapshot)
         val sameActiveRequest = musicVideosRequestLanguage == languageCode &&
@@ -10668,7 +10684,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun samplesDiscoveryInput(snapshot: LevyraUiState): SamplesDiscoveryInput {
         val seeds = buildList {
-            snapshot.currentTrack?.let { track -> add(track) }
+            (samplesPlaybackSession?.currentTrack ?: snapshot.currentTrack)?.let { track -> add(track) }
             addAll(snapshot.recentListens)
             addAll(snapshot.favorites)
             addAll(snapshot.personalOrbitTracks)
@@ -10678,6 +10694,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             snapshot.homeSections.forEach { section -> addAll(section.tracks) }
             addAll(snapshot.tracks)
         }
+            .filterNot(::isYoutubeShortTrack)
             .distinctBy { track -> track.id }
             .take(48)
         val preferredChannelIds = buildList {
@@ -10690,7 +10707,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             .take(20)
         return SamplesDiscoveryInput(
             seeds = seeds,
-            preferredArtists = discoveryPreferredArtists(snapshot, 16),
+            preferredArtists = (snapshot.followedArtists.map { it.name } + seeds.map { it.artist })
+                .map(String::trim).filter(String::isNotBlank)
+                .distinctBy { it.lowercase(java.util.Locale.ROOT) }.take(16),
             preferredChannelIds = preferredChannelIds
         )
     }

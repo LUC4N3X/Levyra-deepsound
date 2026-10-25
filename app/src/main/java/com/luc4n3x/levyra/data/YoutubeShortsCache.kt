@@ -8,7 +8,7 @@ import org.json.JSONObject
 import timber.log.Timber
 import java.util.Locale
 
-private const val SHORTS_CACHE_NAME = "levyra_shorts_cache"
+private const val SHORTS_CACHE_NAME = "levyra_shorts_discovery_v3_cache"
 private const val SHORTS_CACHE_LIMIT = 24
 private const val SHORTS_CACHE_MAX_AGE_MS = 6L * 60L * 60L * 1_000L
 

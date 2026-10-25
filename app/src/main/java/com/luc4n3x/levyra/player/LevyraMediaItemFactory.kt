@@ -9,6 +9,7 @@ import com.luc4n3x.levyra.data.collections.isPersonalCollectionTrack
 import com.luc4n3x.levyra.data.locallibrary.mediaSessionArtworkUri
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 object LevyraMediaItemFactory {
     fun metadataOnly(track: Track): MediaItem {
@@ -33,11 +34,21 @@ object LevyraMediaItemFactory {
             builder.setLiveConfiguration(MediaItem.LiveConfiguration.Builder().build())
         }
         customCacheKey?.let(builder::setCustomCacheKey)
+        samplesClipping(track, videoMode)?.let(builder::setClippingConfiguration)
         streamMimeType?.let { builder.setMimeType(it) }
         subtitleConfigurations(track, videoMode).takeIf { it.isNotEmpty() }?.let(builder::setSubtitleConfigurations)
         val mediaItem = builder.build()
         rememberCacheHint(track, videoMode, liveRadio, personalCollection, cacheReadSpec, customCacheKey, streamMimeType)
         return mediaItem
+    }
+
+    internal fun samplesClipping(track: Track, videoMode: Boolean): MediaItem.ClippingConfiguration? {
+        if (!videoMode || track.album !in setOf("YouTube Music Samples", "YouTube Music previews") || track.videoType != "SHORTS") return null
+        val url = track.videoUrl.toHttpUrlOrNull() ?: return null
+        val startMs = url.queryParameter("clipStartMs")?.toLongOrNull() ?: return null
+        val endMs = url.queryParameter("clipEndMs")?.toLongOrNull() ?: return null
+        if (startMs < 0 || endMs <= startMs || endMs - startMs > 180_000L) return null
+        return MediaItem.ClippingConfiguration.Builder().setStartPositionMs(startMs).setEndPositionMs(endMs).build()
     }
 
     private fun cacheKey(

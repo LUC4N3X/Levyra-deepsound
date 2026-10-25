@@ -70,10 +70,11 @@ internal fun PlayerArtworkHero(
     glowColor: Color,
     modifier: Modifier = Modifier,
     dynamicBackdropEnabled: Boolean = false,
-    onDynamicBackdropPalette: (MotionBackdropPalette?) -> Unit = {}
+    onDynamicBackdropPalette: (MotionBackdropPalette?) -> Unit = {},
+    staticPresentation: Boolean = false
 ) {
     val artworkShadow by animateDpAsState(
-        targetValue = if (isPlaying) 28.dp else 12.dp,
+        targetValue = if (isPlaying && !staticPresentation) 28.dp else 12.dp,
         animationSpec = LevyraPlayerDesign.motion(animationsEnabled, LevyraPlayerDesign.emphasizedTween(420)),
         label = "player-artwork-hero-shadow"
     )
@@ -89,7 +90,7 @@ internal fun PlayerArtworkHero(
     LaunchedEffect(track.id, animationsEnabled) {
         val trackChanged = settledTrackId != track.id
         settledTrackId = track.id
-        if (!trackChanged || !animationsEnabled) {
+        if (!trackChanged || !animationsEnabled || staticPresentation) {
             trackChangeScale.snapTo(1f)
             return@LaunchedEffect
         }
@@ -113,7 +114,7 @@ internal fun PlayerArtworkHero(
                 alpha = if (morphActive()) 0f else 1f
             }
             .drawBehind {
-                if (glowColor.alpha <= 0f) return@drawBehind
+                if (staticPresentation || glowColor.alpha <= 0f) return@drawBehind
                 val radius = size.minDimension * ArtworkGlowReach
                 drawCircle(
                     brush = Brush.radialGradient(
@@ -154,7 +155,7 @@ internal fun PlayerArtworkHero(
                     cornerRadius = cornerRadius,
                     presentation = MotionArtworkPresentation.Card,
                     quality = canvasQuality,
-                    livingArtwork = livingArtwork,
+                    livingArtwork = livingArtwork.takeUnless { staticPresentation },
                     dynamicBackdropEnabled = dynamicBackdropEnabled,
                     onDynamicBackdropPalette = onDynamicBackdropPalette,
                     modifier = Modifier.fillMaxSize()

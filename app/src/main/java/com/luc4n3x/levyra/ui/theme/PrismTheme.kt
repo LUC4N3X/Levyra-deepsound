@@ -188,7 +188,7 @@ internal fun prismMiniSettings(saved: LevyraMiniPlayerStudioSettings): LevyraMin
 
 private fun spotifyMiniSettings(saved: LevyraMiniPlayerStudioSettings): LevyraMiniPlayerStudioSettings {
     val tuning = LevyraMiniPlayerStudioSettings.spec(MiniPlayerStyle.Floating).defaults.copy(
-        cornerDp = 6, heightDp = 56, insetDp = 8, artworkDp = 40, shadow = 0, glow = 0,
+        cornerDp = 8, heightDp = 56, insetDp = 8, artworkDp = 40, shadow = 0, glow = 0,
         artworkShape = MiniArtworkShape.Rounded, progress = MiniProgressStyle.Line,
         buttons = MiniButtonStyle.Plain, colorMode = MiniColorMode.Artwork,
         background = MiniBackground.Solid, motion = MiniMotion.Normal,
@@ -225,7 +225,7 @@ internal fun skinMiniPlayerCorner(tuning: MiniPlayerTuning): Dp =
         LevyraIsYouTubeMusic -> 0.dp
         LevyraIsTorque -> 2.dp
         LevyraIsIvory -> 26.dp
-        LevyraIsSpotify -> SpotifyDesign.corner
+        LevyraIsSpotify -> SpotifyDesign.cornerLarge
         LevyraIsAppleMusic -> AppleMusicDesign.miniHeight / 2
         LevyraIsNocturne -> 10.dp
         else -> tuning.cornerDp.dp

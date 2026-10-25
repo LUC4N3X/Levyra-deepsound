@@ -176,7 +176,29 @@ internal class PlayerDeckSlots(
     val progress: @Composable (style: PlayerProgressStyle) -> Unit,
     val dock: @Composable (Track) -> Unit,
     val dockActions: @Composable (Track) -> List<PlayerDockAction>,
-    val creditsEyebrow: PlayerCreditsEyebrow? = null
+    val creditsEyebrow: PlayerCreditsEyebrow? = null,
+    val lyricsPreview: PlayerLyricsPreview? = null,
+    val artistPanel: PlayerArtistPanel? = null
+)
+
+internal class PlayerArtistPanel(
+    val trackId: String,
+    val trackTitle: String,
+    val artistName: String,
+    val profile: com.luc4n3x.levyra.domain.ArtistProfile?,
+    val writers: List<String>,
+    val onOpenArtist: () -> Unit,
+    val onOpenRelated: (com.luc4n3x.levyra.domain.ArtistHit) -> Unit,
+    val onSongRadio: () -> Unit,
+    val onCredits: () -> Unit
+)
+
+internal class PlayerLyricsPreview(
+    val trackId: String,
+    val lines: List<com.luc4n3x.levyra.domain.LyricLine>,
+    val synced: Boolean,
+    val positionMs: Long,
+    val onOpen: () -> Unit
 )
 
 internal class PlayerCreditsEyebrow(
