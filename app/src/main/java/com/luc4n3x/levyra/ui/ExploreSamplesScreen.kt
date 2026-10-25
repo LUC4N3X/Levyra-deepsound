@@ -341,15 +341,13 @@ private fun ExploreSamplePage(
             )
         }
 
-        // The decorative Canvas player is intentionally silent. Once opened,
-        // attach the main playback service video so its audio can be heard.
-        if (showVideo) {
+        if (SpotifyClipCanvasRegistry.canvasUrl(track).isNotBlank()) {
+            if (isCurrent) SpotifyCanvasLoop(track, Modifier.fillMaxSize())
+        } else if (showVideo) {
             ExploreSampleVideoSurface(
                 isPlaying = isPlaying,
                 modifier = Modifier.fillMaxSize()
             )
-        } else if (isCurrent && SpotifyClipCanvasRegistry.canvasUrl(track).isNotBlank()) {
-            SpotifyCanvasLoop(track, Modifier.fillMaxSize())
         }
 
         Box(
