@@ -9,10 +9,17 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.HomeStyle
 import com.luc4n3x.levyra.ui.components.LevyraSectionPlayAll
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.theme.SpotifyDesign
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
+
+internal fun homeShortcutTracks(style: HomeStyle, spotify: Boolean, recent: List<Track>, flowLimit: Int): List<Track> = when {
+    spotify -> LevyraPersonalOrbit.distinctRecordings(recent).take(8)
+    style == HomeStyle.Flow -> LevyraPersonalOrbit.distinctRecordings(recent).take(flowLimit)
+    else -> emptyList()
+}
 
 @Composable
 internal fun SpotifyRecentShortcuts(tracks: List<Track>, currentId: String?, playing: Boolean, inset: Dp,

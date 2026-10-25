@@ -124,32 +124,33 @@ internal fun KaraokeLyricLine(
     }
     val sectionLocale = remember(strings.code) { Locale.forLanguageTag(strings.code.replace('_', '-')) }
     val lyricLayoutDirection = LocalLayoutDirection.current
-    val alignment = if (spotifyLyrics) Alignment.Start else lyricLineAlignment(line.role, studioSettings.alignment)
-    val textAlign = if (spotifyLyrics) TextAlign.Start else lyricLineTextAlign(line.role, studioSettings.alignment)
+    val alignment = lyricLineAlignment(line.role, studioSettings.alignment, spotifyLyrics)
+    val textAlign = lyricLineTextAlign(line.role, studioSettings.alignment, spotifyLyrics)
     val roleScale = lyricRoleScale(line.role, compact)
-    val maxActiveScale = if (spotifyLyrics) 1f else lyricMaxActiveScale(compact)
+    val maxActiveScale = lyricMaxActiveScale(compact, spotifyLyrics)
     val activeScale by animateFloatAsState(
-        targetValue = if (spotifyLyrics) 1f else lyricActiveScale(isPrimaryActive, compact, studioSettings.inactiveScale),
+        targetValue = lyricActiveScale(isPrimaryActive, compact, studioSettings.inactiveScale, spotifyLyrics),
         animationSpec = LevyraMotion.physics(animationsEnabled, LevyraMotion.spatial),
         label = "lyrics-line-scale"
     )
-    val targetAlpha = lyricsFocusAlpha(
+    val targetAlpha = lyricLineAlpha(
         distance = distanceFromActive,
         focusMode = focusMode,
         compact = compact,
-        synced = synced
+        synced = synced,
+        spotify = spotifyLyrics
     )
     val lineAlpha by animateFloatAsState(
-        targetValue = if (spotifyLyrics) 1f else targetAlpha,
+        targetValue = targetAlpha,
         animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
         label = "lyrics-line-alpha"
     )
     val lineBlur by animateDpAsState(
-        targetValue = if (spotifyLyrics) 0.dp else lyricsFocusBlurDp(distanceFromActive, focusMode, synced, blurEnabled).dp,
+        targetValue = lyricLineBlurTarget(distanceFromActive, focusMode, synced, blurEnabled, spotifyLyrics),
         animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short + 20, easing = LevyraMotion.Easings.Standard)),
         label = "lyrics-line-blur"
     )
-    val baseFontSizeSp = (if (spotifyLyrics) 28f else lyricBaseFontSizeSp(compact, cinema, isPrimaryActive)) * roleScale * studioSettings.textSize.scale
+    val baseFontSizeSp = lyricBaseFontSizeSp(compact, cinema, isPrimaryActive, spotifyLyrics) * roleScale * studioSettings.textSize.scale
     val configuration = LocalConfiguration.current
     val fontScale = LocalDensity.current.fontScale
     val lineWidthDp = layoutWidthDp ?: configuration.screenWidthDp
@@ -168,7 +169,7 @@ internal fun KaraokeLyricLine(
             fontScale = fontScale
         )
     }
-    val inactiveColor = if (spotifyLyrics && isPast) Color.White else lyricInactiveColor(spotifyLyrics, isActive, synced, compact, studioSettings.inactiveOpacity)
+    val inactiveColor = lyricInactiveColor(spotifyLyrics, isActive, synced, compact, studioSettings.inactiveOpacity, isPast)
     val activeTextColor = lyricActiveTextColor(spotifyLyrics, studioSettings, accentEnd)
     val colorSpec = LevyraMotion.spec(animationsEnabled, tween<Color>(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate))
     val animatedMainColor by animateColorAsState(
@@ -234,7 +235,7 @@ internal fun KaraokeLyricLine(
         horizontalAlignment = alignment,
         verticalArrangement = Arrangement.spacedBy(lyricLineGap(compact))
     ) {
-        if (!spotifyLyrics) LyricLineSectionLabel(sectionLabel, sectionLocale, animatedSectionColor, compact, textAlign)
+        LyricLineSectionLabel(sectionLabel.takeUnless { spotifyLyrics }, sectionLocale, animatedSectionColor, compact, textAlign)
         if (instrumentalGap != null) {
             LyricsInstrumentalPulse(
                 gap = instrumentalGap,
@@ -439,11 +440,23 @@ private fun lyricShareActions(label: String, selectable: Boolean, onShare: () ->
         emptyList()
     }
 
-private fun lyricMaxActiveScale(compact: Boolean): Float =
-    if (compact) LYRICS_COMPACT_ACTIVE_LINE_SCALE else LYRICS_ACTIVE_LINE_SCALE
+private fun lyricMaxActiveScale(compact: Boolean, spotify: Boolean = false): Float = when {
+    spotify -> 1f
+    compact -> LYRICS_COMPACT_ACTIVE_LINE_SCALE
+    else -> LYRICS_ACTIVE_LINE_SCALE
+}
 
-private fun lyricActiveScale(primary: Boolean, compact: Boolean, inactiveScale: Float): Float =
-    if (primary) lyricMaxActiveScale(compact) else inactiveScale
+private fun lyricActiveScale(primary: Boolean, compact: Boolean, inactiveScale: Float, spotify: Boolean): Float = when {
+    spotify -> 1f
+    primary -> lyricMaxActiveScale(compact)
+    else -> inactiveScale
+}
+
+private fun lyricLineAlpha(distance: Int, focusMode: Boolean, compact: Boolean, synced: Boolean, spotify: Boolean): Float =
+    if (spotify) 1f else lyricsFocusAlpha(distance, focusMode, compact, synced)
+
+private fun lyricLineBlurTarget(distance: Int, focusMode: Boolean, synced: Boolean, blurEnabled: Boolean, spotify: Boolean): Dp =
+    if (spotify) 0.dp else lyricsFocusBlurDp(distance, focusMode, synced, blurEnabled).dp
 
 private fun lyricMainColor(active: Boolean, primary: Boolean, activeColor: Color, inactiveColor: Color): Color =
     if (active || primary) activeColor else inactiveColor
@@ -470,7 +483,7 @@ private fun lyricLineGap(compact: Boolean): Dp = if (compact) 2.dp else 4.dp
 private fun lyricUsesWordTiming(line: LyricLine, synced: Boolean, progressive: Boolean): Boolean =
     line.words.isNotEmpty() && synced && progressive
 
-private fun lyricLineAlignment(role: LyricVocalRole, alignment: LyricsAlignment): Alignment.Horizontal = when (role) {
+private fun lyricLineAlignment(role: LyricVocalRole, alignment: LyricsAlignment, spotify: Boolean): Alignment.Horizontal = if (spotify) Alignment.Start else when (role) {
     LyricVocalRole.DUET_RIGHT -> Alignment.End
     LyricVocalRole.BACKGROUND -> Alignment.CenterHorizontally
     else -> when (alignment) {
@@ -480,7 +493,7 @@ private fun lyricLineAlignment(role: LyricVocalRole, alignment: LyricsAlignment)
     }
 }
 
-private fun lyricLineTextAlign(role: LyricVocalRole, alignment: LyricsAlignment): TextAlign = when (role) {
+private fun lyricLineTextAlign(role: LyricVocalRole, alignment: LyricsAlignment, spotify: Boolean): TextAlign = if (spotify) TextAlign.Start else when (role) {
     LyricVocalRole.DUET_RIGHT -> TextAlign.End
     LyricVocalRole.BACKGROUND -> TextAlign.Center
     else -> alignment.textAlign
@@ -492,7 +505,8 @@ private fun lyricRoleScale(role: LyricVocalRole, compact: Boolean): Float = when
     LyricVocalRole.MAIN -> 1f
 }
 
-private fun lyricBaseFontSizeSp(compact: Boolean, cinema: Boolean, primary: Boolean): Float = when {
+private fun lyricBaseFontSizeSp(compact: Boolean, cinema: Boolean, primary: Boolean, spotify: Boolean): Float = when {
+    spotify -> 28f
     compact && primary -> 22f
     compact -> 17f
     cinema && primary -> 29f
@@ -501,7 +515,8 @@ private fun lyricBaseFontSizeSp(compact: Boolean, cinema: Boolean, primary: Bool
     else -> 21f
 }
 
-private fun lyricInactiveColor(spotify: Boolean, active: Boolean, synced: Boolean, compact: Boolean, inactiveOpacity: Float): Color = when {
+private fun lyricInactiveColor(spotify: Boolean, active: Boolean, synced: Boolean, compact: Boolean, inactiveOpacity: Float, isPast: Boolean): Color = when {
+    spotify && isPast -> Color.White
     spotify && !active && synced -> SpotifyLyricsPending
     active -> Color.White.copy(alpha = 0.76f)
     synced -> Color.White.copy(alpha = if (compact) (inactiveOpacity + 0.10f).coerceAtMost(0.90f) else inactiveOpacity)

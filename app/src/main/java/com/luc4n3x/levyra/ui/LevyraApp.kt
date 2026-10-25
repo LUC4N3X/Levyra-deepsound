@@ -10648,13 +10648,7 @@ private fun rememberStudioHomeLook(homeStudio: LevyraHomeStudioSettings, state: 
     val nowPlayingAccent = rememberNowPlayingAccent(state.currentTrack, LevyraCyan)
     val homeAccent = if (studioLayout.dynamicPalette) nowPlayingAccent else LevyraCyan
     val flowShortcutTracks = remember(homeStyle, spotifyHome, state.recentListens) {
-        if (spotifyHome) {
-            LevyraPersonalOrbit.distinctRecordings(state.recentListens).take(8)
-        } else if (homeStyle == HomeStyle.Flow) {
-            LevyraPersonalOrbit.distinctRecordings(state.recentListens).take(HOME_FLOW_SHORTCUT_LIMIT)
-        } else {
-            emptyList()
-        }
+        homeShortcutTracks(homeStyle, spotifyHome, state.recentListens, HOME_FLOW_SHORTCUT_LIMIT)
     }
     val compactHome = when (studioLayout.density) {
         HomeDensity.Compact -> true
