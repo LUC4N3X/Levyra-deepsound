@@ -1825,6 +1825,12 @@ internal fun backupInterfaceSettingsToJson(value: LevyraInterfaceSettings): JSON
     .put("torqueAccent", value.torque.accent.name)
     .put("ivoryAppearance", value.ivory.appearance.name)
     .put("hapticFeedback", value.hapticFeedback)
+    .put("immersiveHideStatusBar", value.immersive.hideStatusBar)
+    .put("immersiveHideNavigationBar", value.immersive.hideNavigationBar)
+    .put("immersiveFull", value.immersive.fullImmersive)
+    .put("immersiveEverywhere", value.immersive.everywhere)
+    .put("musicVideoPreference", value.musicVideoPreference.storageValue)
+    .put("lastMusicVideoMode", value.lastMusicVideoMode)
     .put("playerVisualMode", value.playerVisualMode.name)
     .put("playerBackground", value.playerBackground.name)
     .put("reactiveAuraPreset", value.reactiveAuraPreset.name)
@@ -1886,6 +1892,16 @@ internal fun backupInterfaceSettingsFromJson(
         torque = com.luc4n3x.levyra.domain.TorqueSettings.from(json.optString("torqueAccent")),
         ivory = com.luc4n3x.levyra.domain.IvorySettings.from(json.optString("ivoryAppearance")),
         hapticFeedback = json.optBoolean("hapticFeedback", true),
+        immersive = com.luc4n3x.levyra.domain.LevyraImmersiveSettings(
+            hideStatusBar = json.optBoolean("immersiveHideStatusBar", false),
+            hideNavigationBar = json.optBoolean("immersiveHideNavigationBar", false),
+            fullImmersive = json.optBoolean("immersiveFull", false),
+            everywhere = json.optBoolean("immersiveEverywhere", false)
+        ),
+        musicVideoPreference = com.luc4n3x.levyra.domain.MusicVideoPlaybackPreference.fromStorage(
+            json.optString("musicVideoPreference")
+        ),
+        lastMusicVideoMode = json.optBoolean("lastMusicVideoMode", false),
         playerVisualMode = visualMode,
         playerBackground = backgroundMode,
         reactiveAuraPreset = ReactiveAuraPreset.from(json.optString("reactiveAuraPreset")),

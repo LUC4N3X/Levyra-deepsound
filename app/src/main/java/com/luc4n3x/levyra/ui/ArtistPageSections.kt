@@ -142,7 +142,6 @@ internal fun ArtistOptionsMenu(
     isExcluded: Boolean,
     onToggleExclude: () -> Unit,
     isPinnedToHome: Boolean,
-    homePinsFull: Boolean,
     onTogglePinToHome: () -> Unit,
     onShuffle: (() -> Unit)? = null
 ) {
@@ -180,15 +179,10 @@ internal fun ArtistOptionsMenu(
         DropdownMenuItem(
             text = {
                 Text(
-                    when {
-                        isPinnedToHome -> speedDialCopy.removeFromHome
-                        homePinsFull -> speedDialCopy.homeFull
-                        else -> speedDialCopy.addToHome
-                    }
+                    if (isPinnedToHome) speedDialCopy.removeFromHome else speedDialCopy.addToHome
                 )
             },
             leadingIcon = { Icon(Icons.Rounded.PushPin, contentDescription = null) },
-            enabled = isPinnedToHome || !homePinsFull,
             onClick = {
                 onDismiss()
                 onTogglePinToHome()

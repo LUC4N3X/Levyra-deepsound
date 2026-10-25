@@ -212,6 +212,8 @@ import com.luc4n3x.levyra.domain.LyricsTranslationState
 import com.luc4n3x.levyra.domain.Mood
 import com.luc4n3x.levyra.domain.MoodEngine
 import com.luc4n3x.levyra.domain.MixLabCandidate
+import com.luc4n3x.levyra.domain.MusicVideoPlaybackPreference
+import com.luc4n3x.levyra.domain.withPairedArtTrackAudio
 import com.luc4n3x.levyra.domain.OfflineDownloadTask
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.RepeatMode
@@ -1026,6 +1028,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val followedArtistsStore = FollowedArtistsStore(application.applicationContext)
     private val speedDialStore = SpeedDialStore(application.applicationContext)
     private val speedDialLoaded = CompletableDeferred<Unit>()
+    private val speedDialArtworkAttempted = HashSet<String>()
+    private var speedDialArtworkJob: Job? = null
     private val excludedArtistsStore = com.luc4n3x.levyra.data.ExcludedArtistsStore(application.applicationContext)
     private val recommendationFeedbackStore =
         com.luc4n3x.levyra.data.RecommendationFeedbackStore(application.applicationContext)
@@ -1940,6 +1944,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             } finally {
                 speedDialLoaded.complete(Unit)
             }
+            backfillSpeedDialArtistArtwork()
         }
         val followedLoadGeneration = followedArtistsGeneration
         viewModelScope.launch(Dispatchers.IO) {
@@ -2084,7 +2089,30 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun toggleSpeedDialPin(pin: SpeedDialPin) = mutateSpeedDial { pins -> SpeedDial.toggle(pins, pin) }
+    private fun toggleSpeedDialPin(pin: SpeedDialPin) {
+        mutateSpeedDial { pins -> SpeedDial.toggle(pins, pin) }
+        if (pin.kind == SpeedDialKind.ARTIST && pin.artworkUrl.isBlank()) backfillSpeedDialArtistArtwork()
+    }
+
+    private fun backfillSpeedDialArtistArtwork() {
+        if (speedDialArtworkJob?.isActive == true) return
+        speedDialArtworkJob = viewModelScope.launch {
+            speedDialLoaded.await()
+            while (true) {
+                val missing = SpeedDial.artistsMissingArtwork(_state.value.speedDialPins)
+                    .filter { speedDialArtworkAttempted.add(it.key) }
+                if (missing.isEmpty()) return@launch
+                val found = LinkedHashMap<String, String>()
+                missing.forEach { pin ->
+                    val hits = runCatchingPreservingCancellation {
+                        repository.searchArtistsPage(pin.title, _state.value.languageCode).items
+                    }.getOrNull().orEmpty()
+                    SpeedDial.matchingArtistArtwork(pin, hits)?.let { found[pin.key] = it }
+                }
+                if (found.isNotEmpty()) mutateSpeedDial { pins -> SpeedDial.withArtwork(pins, found) }
+            }
+        }
+    }
 
     private fun pruneMissingLocalSpeedDialPins(localIds: Set<String>) {
         mutateSpeedDial { pins -> SpeedDial.withoutMissingLocalTracks(pins, localIds) }
@@ -4182,6 +4210,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 } else {
                     refreshMotionArtworkAround(resolved)
                 }
+                rememberMusicVideoMode(targetMode)
                 refreshVideoQualityState(resolved)
                 prefetchAlternateMode(resolved, targetMode)
                 refreshQueuePrefetch()
@@ -4480,7 +4509,24 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun audioModeSource(track: Track): Track? =
-        youtubePlayableTrack(audioModeOrigin?.takeIf { it.id == track.id } ?: track)
+        audioPlaybackTrack(audioModeOrigin?.takeIf { it.id == track.id } ?: track)
+
+    private fun audioPlaybackTrack(track: Track): Track? {
+        val preference = _state.value.interfaceSettings.musicVideoPreference
+        return youtubePlayableTrack(if (preference.pairsArtTrackAudio) track.withPairedArtTrackAudio() else track)
+    }
+
+    private fun musicVideoStartMode(track: Track, requestedVideoMode: Boolean): Boolean {
+        val settings = _state.value.interfaceSettings
+        return settings.musicVideoPreference.startsInVideo(track, requestedVideoMode, settings.lastMusicVideoMode)
+    }
+
+    private fun rememberMusicVideoMode(videoMode: Boolean) {
+        val settings = _state.value.interfaceSettings
+        if (settings.musicVideoPreference != MusicVideoPlaybackPreference.RememberLast) return
+        if (settings.lastMusicVideoMode == videoMode) return
+        setInterfaceSettings(settings.copy(lastMusicVideoMode = videoMode))
+    }
 
     private fun prefetchAlternateMode(track: Track, activeVideoMode: Boolean) {
         alternateModePrefetchJob?.cancel()
@@ -9962,12 +10008,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val index = list.indexOfFirst { samePlayableTrack(it, track) }.coerceAtLeast(0)
         queueEngine.replace(list, index, keepPlaybackModes = true, radioEnabled = queueEngine.state.value.radioEnabled)
         queueIndex = index
-        startResolve(list.getOrElse(index) { track })
+        val start = list.getOrElse(index) { track }
+        if (YoutubeMusicVideoType.isVideo(start.videoType)) {
+            _state.update { current -> current.withExplicitPlaybackMode(musicVideoStartMode(start, current.isVideoMode)) }
+        }
+        startResolve(start)
     }
 
     fun playAudioFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) {
         if (list.isEmpty()) return
-        _state.update { current -> current.withExplicitPlaybackMode(videoMode = false) }
+        _state.update { current -> current.withExplicitPlaybackMode(videoMode = musicVideoStartMode(track, requestedVideoMode = false)) }
         playFrom(list, track, loopOnCompletion)
     }
 
@@ -10103,7 +10153,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun playVideoFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) {
         if (list.isEmpty()) return
-        _state.update { current -> current.withExplicitPlaybackMode(videoMode = true) }
+        _state.update { current -> current.withExplicitPlaybackMode(videoMode = musicVideoStartMode(track, requestedVideoMode = true)) }
         playFrom(list, track, loopOnCompletion)
     }
 
@@ -10326,7 +10376,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val playableTrack = if (requestedVideoMode && !isYoutubeShortTrack(track)) {
             preferredVideoPlaybackTrack(track)
         } else {
-            youtubePlayableTrack(track)
+            audioPlaybackTrack(track)
         }
         val selectedTrack = playableTrack ?: track
         if (isUnavailableLocalTrack(track)) {
@@ -12488,7 +12538,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private suspend fun resolveQueuePrefetchTrack(track: Track, videoMode: Boolean): Track? {
-        val youtube = youtubePlayableTrack(track)
+        val youtube = if (videoMode) youtubePlayableTrack(track) else audioPlaybackTrack(track)
         return if (youtube != null) {
             resolver.prefetch(youtube, videoMode)
         } else {
@@ -13017,7 +13067,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private suspend fun warmTrack(track: Track, prime: Boolean) {
         val videoMode = _state.value.isVideoMode
-        val youtube = youtubePlayableTrack(track)
+        val youtube = if (videoMode) youtubePlayableTrack(track) else audioPlaybackTrack(track)
         val resolved = if (youtube != null) {
             resolver.prefetch(youtube, videoMode)
         } else {

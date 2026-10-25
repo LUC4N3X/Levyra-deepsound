@@ -818,7 +818,6 @@ internal fun PlaylistDetailTopActions(
     onEditTags: () -> Unit,
     onToggleHidden: () -> Unit,
     isPinnedToHome: Boolean,
-    homePinsFull: Boolean,
     onTogglePinToHome: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -881,15 +880,10 @@ internal fun PlaylistDetailTopActions(
             DropdownMenuItem(
                 text = {
                     Text(
-                        when {
-                            isPinnedToHome -> speedDialCopy.removeFromHome
-                            homePinsFull -> speedDialCopy.homeFull
-                            else -> speedDialCopy.addToHome
-                        }
+                        if (isPinnedToHome) speedDialCopy.removeFromHome else speedDialCopy.addToHome
                     )
                 },
                 leadingIcon = { Icon(Icons.Rounded.PushPin, null) },
-                enabled = isPinnedToHome || !homePinsFull,
                 onClick = { menuExpanded = false; onTogglePinToHome() }
             )
             DropdownMenuItem(

@@ -3,7 +3,8 @@ package com.luc4n3x.levyra.domain
 object LevyraYtMusicPairing {
     private val pairs: Map<NavStyle, MiniPlayerStyle> = mapOf(
         NavStyle.YtMusic to MiniPlayerStyle.YtMusic,
-        NavStyle.ConnectedDock to MiniPlayerStyle.Connected
+        NavStyle.ConnectedDock to MiniPlayerStyle.Connected,
+        NavStyle.LiquidCapsule to MiniPlayerStyle.LiquidCapsule
     )
 
     private fun navPartner(mini: MiniPlayerStyle): NavStyle? = pairs.entries.firstOrNull { it.value == mini }?.key

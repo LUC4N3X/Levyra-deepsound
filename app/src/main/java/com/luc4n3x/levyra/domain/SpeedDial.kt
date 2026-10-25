@@ -31,7 +31,6 @@ data class SpeedDialPin(
 fun speedDialKey(kind: SpeedDialKind, targetId: String): String = "${kind.storageCode}:$targetId"
 
 object SpeedDial {
-    const val MAX_PINS = 24
     const val MAX_TEXT_CHARS = 160
     const val MAX_TARGET_ID_CHARS = 256
 
@@ -102,7 +101,6 @@ object SpeedDial {
     fun toggle(pins: List<SpeedDialPin>, pin: SpeedDialPin): List<SpeedDialPin> {
         val current = sanitize(pins)
         if (current.any { it.key == pin.key }) return current.filterNot { it.key == pin.key }
-        if (current.size >= MAX_PINS) return current
         return listOf(pin) + current
     }
 
@@ -116,7 +114,7 @@ object SpeedDial {
     }
 
     fun sanitize(pins: List<SpeedDialPin>): List<SpeedDialPin> =
-        pins.mapNotNull { it.sanitized() }.distinctBy { it.key }.take(MAX_PINS)
+        pins.mapNotNull { it.sanitized() }.distinctBy { it.key }
 
     fun visible(
         pins: List<SpeedDialPin>,
@@ -142,6 +140,28 @@ object SpeedDial {
             }
         }
     }
+
+    fun artistsMissingArtwork(pins: List<SpeedDialPin>): List<SpeedDialPin> =
+        pins.filter { it.kind == SpeedDialKind.ARTIST && it.artworkUrl.isBlank() }
+
+    fun matchingArtistArtwork(pin: SpeedDialPin, hits: List<ArtistHit>): String? {
+        if (pin.kind != SpeedDialKind.ARTIST) return null
+        val browseId = artistBrowseId(pin)
+        val name = pin.title.trim().lowercase(Locale.ROOT)
+        val withArtwork = hits.filter { it.thumbnailUrl.isNotBlank() }
+        val match = if (browseId.isNotEmpty()) {
+            withArtwork.firstOrNull { it.browseId.trim() == browseId }
+        } else {
+            withArtwork.firstOrNull { it.name.trim().lowercase(Locale.ROOT) == name }
+        }
+        return match?.thumbnailUrl?.trim()
+    }
+
+    fun withArtwork(pins: List<SpeedDialPin>, artworkByKey: Map<String, String>): List<SpeedDialPin> =
+        pins.map { pin ->
+            val artwork = artworkByKey[pin.key]
+            if (artwork != null && pin.artworkUrl.isBlank()) pin.copy(artworkUrl = artwork) else pin
+        }
 
     fun withoutMissingLocalTracks(pins: List<SpeedDialPin>, localTrackIds: Set<String>): List<SpeedDialPin> =
         pins.filterNot { pin ->

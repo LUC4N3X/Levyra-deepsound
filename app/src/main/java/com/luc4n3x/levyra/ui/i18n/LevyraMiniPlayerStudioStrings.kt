@@ -14,7 +14,7 @@ enum class MiniStudioText {
     Typography, TypoStandard, TypoBold, TypoEditorial,
     Background, BgGradient, BgSolid, BgArtwork,
     ResetStyle, RestoreDefault, RestoreConfirm, DemoTitle, DemoArtist,
-    DescYtMusic, DescConnected
+    DescYtMusic, DescConnected, DescLiquidCapsule
 }
 
 class MiniPlayerStudioCopy internal constructor(private val texts: Map<MiniStudioText, String>) {
@@ -43,7 +43,8 @@ private val englishMiniStudio: Map<MiniStudioText, String> = miniStudio(
     "The mini player returns to Levyra's original design and every customization is removed.",
     "Your next track", "Levyra",
     "Full-width player docked to the bar, paired with its navigation bar",
-    "Joined to the navigation bar, with progress along the seam"
+    "Joined to the navigation bar, with progress along the seam",
+    "Blurred glass capsule with cover and quick controls"
 )
 
 private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
@@ -67,7 +68,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "Il mini player torna al design originale di Levyra e ogni personalizzazione viene rimossa.",
         "Il tuo prossimo brano", "Levyra",
         "Player a tutta larghezza agganciato alla barra, abbinato alla sua barra di navigazione",
-        "Unito alla barra di navigazione, con l'avanzamento lungo la giunzione"
+        "Unito alla barra di navigazione, con l'avanzamento lungo la giunzione",
+        "Capsula di vetro sfocato con copertina e controlli rapidi"
     ),
     "es" to miniStudio(
         "Minirreproductor", "Estilos, formas y controles", "Estilo", "Predeterminado", "Seleccionado",
@@ -88,7 +90,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "El minirreproductor vuelve al diseño original de Levyra y se eliminan todas las personalizaciones.",
         "Tu próxima canción", "Levyra",
         "Reproductor a todo lo ancho unido a la barra, a juego con su barra de navegación",
-        "Unido a la barra de navegación, con el progreso a lo largo de la unión"
+        "Unido a la barra de navegación, con el progreso a lo largo de la unión",
+        "Cápsula de cristal difuminado con portada y controles rápidos"
     ),
     "fr" to miniStudio(
         "Mini-lecteur", "Styles, formes et commandes", "Style", "Par défaut", "Sélectionné",
@@ -109,7 +112,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "Le mini-lecteur revient au design d'origine de Levyra et toutes les personnalisations sont supprimées.",
         "Votre prochain titre", "Levyra",
         "Lecteur pleine largeur accolé à la barre, assorti à sa barre de navigation",
-        "Relié à la barre de navigation, avec la progression le long de la jointure"
+        "Relié à la barre de navigation, avec la progression le long de la jointure",
+        "Capsule de verre flouté avec pochette et commandes rapides"
     ),
     "de" to miniStudio(
         "Miniplayer", "Stile, Formen und Steuerung", "Stil", "Standard", "Ausgewählt",
@@ -130,7 +134,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "Der Miniplayer kehrt zum Originaldesign von Levyra zurück und alle Anpassungen werden entfernt.",
         "Dein nächster Titel", "Levyra",
         "Player in voller Breite direkt an der Leiste, passend zur Navigationsleiste",
-        "Mit der Navigationsleiste verbunden, Fortschritt entlang der Naht"
+        "Mit der Navigationsleiste verbunden, Fortschritt entlang der Naht",
+        "Kapsel aus mattem Glas mit Cover und Schnellsteuerung"
     ),
     "pt" to miniStudio(
         "Minileitor", "Estilos, formas e controles", "Estilo", "Padrão", "Selecionado",
@@ -151,7 +156,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "O minileitor volta ao design original do Levyra e todas as personalizações são removidas.",
         "Sua próxima faixa", "Levyra",
         "Player de largura total junto à barra, combinado com a sua barra de navegação",
-        "Ligado à barra de navegação, com o progresso ao longo da junção"
+        "Ligado à barra de navegação, com o progresso ao longo da junção",
+        "Cápsula de vidro desfocado com capa e controlos rápidos"
     ),
     "nl" to miniStudio(
         "Minispeler", "Stijlen, vormen en bediening", "Stijl", "Standaard", "Geselecteerd",
@@ -172,7 +178,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "De minispeler keert terug naar het originele ontwerp van Levyra en alle aanpassingen worden verwijderd.",
         "Je volgende nummer", "Levyra",
         "Speler over de volle breedte tegen de balk, passend bij de navigatiebalk",
-        "Verbonden met de navigatiebalk, met voortgang langs de naad"
+        "Verbonden met de navigatiebalk, met voortgang langs de naad",
+        "Capsule van mat glas met hoes en snelle bediening"
     ),
     "pl" to miniStudio(
         "Miniodtwarzacz", "Style, kształty i sterowanie", "Styl", "Domyślny", "Wybrany",
@@ -193,7 +200,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "Miniodtwarzacz wraca do oryginalnego projektu Levyra, a wszystkie zmiany zostają usunięte.",
         "Twój następny utwór", "Levyra",
         "Odtwarzacz na całą szerokość przy pasku, w parze z paskiem nawigacji",
-        "Połączony z paskiem nawigacji, z postępem wzdłuż złącza"
+        "Połączony z paskiem nawigacji, z postępem wzdłuż złącza",
+        "Kapsuła z rozmytego szkła z okładką i szybkimi przyciskami"
     ),
     "ro" to miniStudio(
         "Mini player", "Stiluri, forme și comenzi", "Stil", "Implicit", "Selectat",
@@ -214,7 +222,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "Mini playerul revine la designul original Levyra și toate personalizările sunt eliminate.",
         "Următoarea ta piesă", "Levyra",
         "Player pe toată lățimea lipit de bară, asortat cu bara de navigare",
-        "Unit cu bara de navigare, cu progresul de-a lungul îmbinării"
+        "Unit cu bara de navigare, cu progresul de-a lungul îmbinării",
+        "Capsulă de sticlă estompată cu copertă și comenzi rapide"
     ),
     "el" to miniStudio(
         "Μίνι πρόγραμμα αναπαραγωγής", "Στιλ, σχήματα και χειριστήρια", "Στιλ", "Προεπιλογή", "Επιλεγμένο",
@@ -235,7 +244,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "Το μίνι πρόγραμμα επιστρέφει στον αρχικό σχεδιασμό του Levyra και αφαιρούνται όλες οι προσαρμογές.",
         "Το επόμενο κομμάτι σου", "Levyra",
         "Player σε όλο το πλάτος κολλημένο στη γραμμή, σε συνδυασμό με τη γραμμή πλοήγησης",
-        "Ενωμένο με τη γραμμή πλοήγησης, με την πρόοδο κατά μήκος της ένωσης"
+        "Ενωμένο με τη γραμμή πλοήγησης, με την πρόοδο κατά μήκος της ένωσης",
+        "Κάψουλα από θολό γυαλί με εξώφυλλο και γρήγορα χειριστήρια"
     ),
     "sv" to miniStudio(
         "Minispelare", "Stilar, former och kontroller", "Stil", "Standard", "Vald",
@@ -256,7 +266,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "Minispelaren återgår till Levyras ursprungliga design och alla anpassningar tas bort.",
         "Ditt nästa spår", "Levyra",
         "Spelare i full bredd mot fältet, matchar sitt navigeringsfält",
-        "Sammanfogad med navigeringsfältet, med förlopp längs skarven"
+        "Sammanfogad med navigeringsfältet, med förlopp längs skarven",
+        "Kapsel av frostat glas med omslag och snabbkontroller"
     ),
     "da" to miniStudio(
         "Miniafspiller", "Stilarter, former og knapper", "Stil", "Standard", "Valgt",
@@ -277,7 +288,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "Miniafspilleren vender tilbage til Levyras oprindelige design, og alle tilpasninger fjernes.",
         "Dit næste nummer", "Levyra",
         "Afspiller i fuld bredde op ad bjælken, matcher sin navigationsbjælke",
-        "Forbundet med navigationslinjen, med fremskridt langs samlingen"
+        "Forbundet med navigationslinjen, med fremskridt langs samlingen",
+        "Kapsel af frostet glas med cover og hurtige knapper"
     ),
     "cs" to miniStudio(
         "Minipřehrávač", "Styly, tvary a ovládání", "Styl", "Výchozí", "Vybráno",
@@ -298,7 +310,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "Minipřehrávač se vrátí k původnímu designu Levyra a všechna přizpůsobení budou odstraněna.",
         "Vaše další skladba", "Levyra",
         "Přehrávač přes celou šířku u lišty, ladí se svou navigační lištou",
-        "Spojený s navigační lištou, průběh vede podél spoje"
+        "Spojený s navigační lištou, průběh vede podél spoje",
+        "Kapsle z matného skla s obalem a rychlým ovládáním"
     ),
     "sk" to miniStudio(
         "Miniprehrávač", "Štýly, tvary a ovládanie", "Štýl", "Predvolený", "Vybraný",
@@ -319,7 +332,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "Miniprehrávač sa vráti k pôvodnému dizajnu Levyra a všetky úpravy sa odstránia.",
         "Vaša ďalšia skladba", "Levyra",
         "Prehrávač cez celú šírku pri lište, ladí so svojou navigačnou lištou",
-        "Spojený s navigačným panelom, priebeh vedie pozdĺž spoja"
+        "Spojený s navigačným panelom, priebeh vedie pozdĺž spoja",
+        "Kapsula z matného skla s obalom a rýchlym ovládaním"
     ),
     "bn" to miniStudio(
         "মিনি প্লেয়ার", "স্টাইল, আকার ও কন্ট্রোল", "স্টাইল", "ডিফল্ট", "নির্বাচিত",
@@ -340,7 +354,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "মিনি প্লেয়ার Levyra-র আসল ডিজাইনে ফিরে যাবে এবং সব কাস্টমাইজেশন মুছে যাবে।",
         "আপনার পরের গান", "Levyra",
         "বারের সঙ্গে লাগানো পূর্ণ-প্রস্থের প্লেয়ার, নিজস্ব নেভিগেশন বারের সঙ্গে মিলিয়ে",
-        "নেভিগেশন বারের সাথে যুক্ত, সংযোগ রেখা বরাবর অগ্রগতি"
+        "নেভিগেশন বারের সাথে যুক্ত, সংযোগ রেখা বরাবর অগ্রগতি",
+        "কভার ও দ্রুত নিয়ন্ত্রণসহ ঝাপসা কাচের ক্যাপসুল"
     ),
     "kk" to miniStudio(
         "Шағын ойнатқыш", "Стильдер, пішіндер және басқару", "Стиль", "Әдепкі", "Таңдалған",
@@ -361,7 +376,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "Шағын ойнатқыш Levyra-ның түпнұсқа дизайнына оралады және барлық баптаулар жойылады.",
         "Келесі әніңіз", "Levyra",
         "Жолаққа бекітілген толық енді ойнатқыш, өз навигация жолағымен үйлеседі",
-        "Навигация жолағымен біріккен, барысы түйіскен жер бойымен"
+        "Навигация жолағымен біріккен, барысы түйіскен жер бойымен",
+        "Мұқабасы мен жылдам басқаруы бар күңгірт әйнек капсула"
     ),
     "sr" to miniStudio(
         "Мини плејер", "Стилови, облици и контроле", "Стил", "Подразумевано", "Изабрано",
@@ -382,7 +398,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "Мини плејер се враћа на оригинални Levyra дизајн и сва прилагођавања се уклањају.",
         "Ваша следећа песма", "Levyra",
         "Плејер пуне ширине уз траку, усклађен са својом траком за навигацију",
-        "Спојен са траком за навигацију, напредак тече дуж споја"
+        "Спојен са траком за навигацију, напредак тече дуж споја",
+        "Kapsula od zamagljenog stakla sa omotom i brzim kontrolama"
     ),
     "sq" to miniStudio(
         "Mini luajtësi", "Stile, forma dhe kontrolle", "Stili", "I parazgjedhur", "I zgjedhur",
@@ -403,7 +420,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "Mini luajtësi kthehet te dizajni origjinal i Levyra dhe çdo personalizim hiqet.",
         "Kënga jote e radhës", "Levyra",
         "Luajtës me gjerësi të plotë ngjitur me shiritin, në çift me shiritin e vet të navigimit",
-        "I bashkuar me shiritin e navigimit, me ecurinë përgjatë bashkimit"
+        "I bashkuar me shiritin e navigimit, me ecurinë përgjatë bashkimit",
+        "Kapsulë xhami të turbullt me kopertinë dhe kontrolle të shpejta"
     ),
     "hr" to miniStudio(
         "Mini player", "Stilovi, oblici i kontrole", "Stil", "Zadano", "Odabrano",
@@ -424,7 +442,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "Mini player vraća se na izvorni Levyra dizajn i sve prilagodbe se uklanjaju.",
         "Vaša sljedeća pjesma", "Levyra",
         "Player pune širine uz traku, usklađen sa svojom navigacijskom trakom",
-        "Spojen s navigacijskom trakom, napredak teče duž spoja"
+        "Spojen s navigacijskom trakom, napredak teče duž spoja",
+        "Kapsula od zamućenog stakla s omotom i brzim kontrolama"
     ),
     "bg" to miniStudio(
         "Мини плейър", "Стилове, форми и контроли", "Стил", "По подразбиране", "Избран",
@@ -445,7 +464,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "Мини плейърът се връща към оригиналния дизайн на Levyra и всички персонализации се премахват.",
         "Следващата ви песен", "Levyra",
         "Плейър на цяла ширина до лентата, в комплект със своята лента за навигация",
-        "Свързан с лентата за навигация, с напредъка по шева"
+        "Свързан с лентата за навигация, с напредъка по шева",
+        "Капсула от матово стъкло с обложка и бързи контроли"
     ),
     "hu" to miniStudio(
         "Minilejátszó", "Stílusok, formák és vezérlők", "Stílus", "Alapértelmezett", "Kiválasztva",
@@ -466,7 +486,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "A minilejátszó visszatér a Levyra eredeti dizájnjához, és minden testreszabás törlődik.",
         "A következő dalod", "Levyra",
         "Teljes szélességű lejátszó a sávhoz illesztve, a saját navigációs sávjához illik",
-        "A navigációs sávhoz kapcsolódik, a haladás az illesztés mentén fut"
+        "A navigációs sávhoz kapcsolódik, a haladás az illesztés mentén fut",
+        "Homályos üvegkapszula borítóval és gyors vezérlőkkel"
     ),
     "fi" to miniStudio(
         "Minisoitin", "Tyylit, muodot ja säätimet", "Tyyli", "Oletus", "Valittu",
@@ -487,7 +508,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "Minisoitin palaa Levyran alkuperäiseen muotoiluun ja kaikki mukautukset poistetaan.",
         "Seuraava kappaleesi", "Levyra",
         "Koko leveyden soitin palkkiin kiinnitettynä, sopii yhteen navigointipalkkinsa kanssa",
-        "Liitetty navigointipalkkiin, edistyminen kulkee saumaa pitkin"
+        "Liitetty navigointipalkkiin, edistyminen kulkee saumaa pitkin",
+        "Huurrettu lasikapseli kansikuvalla ja pikasäätimillä"
     ),
     "et" to miniStudio(
         "Minimängija", "Stiilid, kujud ja nupud", "Stiil", "Vaikimisi", "Valitud",
@@ -508,7 +530,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "Minimängija naaseb Levyra algse kujunduse juurde ja kõik kohandused eemaldatakse.",
         "Su järgmine lugu", "Levyra",
         "Täislaiuses mängija riba küljes, sobib oma navigeerimisribaga",
-        "Ühendatud navigeerimisribaga, edenemine kulgeb mööda liitekohta"
+        "Ühendatud navigeerimisribaga, edenemine kulgeb mööda liitekohta",
+        "Hägusast klaasist kapsel kaanepildi ja kiirnuppudega"
     ),
     "nb" to miniStudio(
         "Minispiller", "Stiler, former og kontroller", "Stil", "Standard", "Valgt",
@@ -529,7 +552,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "Minispilleren går tilbake til Levyras opprinnelige design, og alle tilpasninger fjernes.",
         "Ditt neste spor", "Levyra",
         "Spiller i full bredde inntil linjen, matcher sin navigasjonslinje",
-        "Koblet til navigasjonslinjen, med fremdrift langs skjøten"
+        "Koblet til navigasjonslinjen, med fremdrift langs skjøten",
+        "Kapsel av frostet glass med omslag og hurtigkontroller"
     ),
     "ca" to miniStudio(
         "Minireproductor", "Estils, formes i controls", "Estil", "Predeterminat", "Seleccionat",
@@ -550,7 +574,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "El minireproductor torna al disseny original de Levyra i s'eliminen totes les personalitzacions.",
         "La teva propera cançó", "Levyra",
         "Reproductor a tota l'amplada enganxat a la barra, conjuntat amb la seva barra de navegació",
-        "Unit a la barra de navegació, amb el progrés al llarg de la junta"
+        "Unit a la barra de navegació, amb el progrés al llarg de la junta",
+        "Càpsula de vidre difuminat amb portada i controls ràpids"
     ),
     "uk" to miniStudio(
         "Мініплеєр", "Стилі, форми та керування", "Стиль", "За замовчуванням", "Вибрано",
@@ -571,7 +596,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "Мініплеєр повернеться до оригінального дизайну Levyra, а всі налаштування буде видалено.",
         "Ваш наступний трек", "Levyra",
         "Плеєр на всю ширину біля панелі, у парі зі своєю панеллю навігації",
-        "З'єднаний із панеллю навігації, прогрес іде вздовж шва"
+        "З'єднаний із панеллю навігації, прогрес іде вздовж шва",
+        "Капсула з матового скла з обкладинкою та швидкими кнопками"
     ),
     "ru" to miniStudio(
         "Мини-плеер", "Стили, формы и управление", "Стиль", "По умолчанию", "Выбран",
@@ -592,7 +618,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "Мини-плеер вернётся к оригинальному дизайну Levyra, а все настройки будут удалены.",
         "Ваш следующий трек", "Levyra",
         "Плеер на всю ширину у панели, в паре со своей панелью навигации",
-        "Соединён с панелью навигации, прогресс идёт вдоль шва"
+        "Соединён с панелью навигации, прогресс идёт вдоль шва",
+        "Капсула из матового стекла с обложкой и быстрыми кнопками"
     ),
     "tr" to miniStudio(
         "Mini oynatıcı", "Stiller, şekiller ve kontroller", "Stil", "Varsayılan", "Seçili",
@@ -613,7 +640,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "Mini oynatıcı Levyra'nın orijinal tasarımına döner ve tüm özelleştirmeler kaldırılır.",
         "Sıradaki parçan", "Levyra",
         "Çubuğa yaslanan tam genişlikte oynatıcı, kendi gezinme çubuğuyla uyumlu",
-        "Gezinme çubuğuna bağlı, ilerleme birleşim çizgisi boyunca"
+        "Gezinme çubuğuna bağlı, ilerleme birleşim çizgisi boyunca",
+        "Kapak ve hızlı kontrollerle buzlu cam kapsül"
     ),
     "ar" to miniStudio(
         "المشغّل المصغّر", "أنماط وأشكال وعناصر تحكم", "النمط", "الافتراضي", "المحدد",
@@ -634,7 +662,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "يعود المشغّل المصغّر إلى تصميم Levyra الأصلي وتُزال كل التخصيصات.",
         "مقطعك التالي", "Levyra",
         "مشغّل بعرض كامل ملتصق بالشريط، متناسق مع شريط التنقل الخاص به",
-        "متصل بشريط التنقل، مع شريط التقدم على امتداد خط الوصل"
+        "متصل بشريط التنقل، مع شريط التقدم على امتداد خط الوصل",
+        "كبسولة زجاج ضبابي مع الغلاف وعناصر تحكم سريعة"
     ),
     "fa" to miniStudio(
         "پخش‌کننده کوچک", "سبک‌ها، شکل‌ها و کنترل‌ها", "سبک", "پیش‌فرض", "انتخاب‌شده",
@@ -655,7 +684,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "پخش‌کننده کوچک به طراحی اصلی Levyra برمی‌گردد و همه سفارشی‌سازی‌ها حذف می‌شوند.",
         "آهنگ بعدی شما", "Levyra",
         "پخش‌کننده تمام‌عرض چسبیده به نوار، هماهنگ با نوار پیمایش خود",
-        "متصل به نوار پیمایش، با نمایش پیشرفت در امتداد محل اتصال"
+        "متصل به نوار پیمایش، با نمایش پیشرفت در امتداد محل اتصال",
+        "کپسول شیشه مات با کاور و کنترل‌های سریع"
     ),
     "zh" to miniStudio(
         "迷你播放器", "风格、形状与控件", "风格", "默认", "已选择",
@@ -676,7 +706,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "迷你播放器将恢复为 Levyra 原版设计，并移除所有自定义设置。",
         "你的下一首", "Levyra",
         "贴合导航栏的全宽播放器，与配套导航栏搭配",
-        "与导航栏相连，进度沿接缝显示"
+        "与导航栏相连，进度沿接缝显示",
+        "带封面和快捷控制的毛玻璃胶囊"
     ),
     "zh-Hant" to miniStudio(
         "迷你播放器", "風格、形狀與控制項", "風格", "預設", "已選取",
@@ -697,7 +728,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "迷你播放器將還原為 Levyra 原版設計，並移除所有自訂設定。",
         "你的下一首", "Levyra",
         "貼合導覽列的全寬播放器，與配套導覽列搭配",
-        "與導覽列相連，進度沿接縫顯示"
+        "與導覽列相連，進度沿接縫顯示",
+        "附封面與快速控制的毛玻璃膠囊"
     ),
     "ja" to miniStudio(
         "ミニプレーヤー", "スタイル・形・コントロール", "スタイル", "デフォルト", "選択中",
@@ -718,7 +750,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "ミニプレーヤーは Levyra のオリジナルデザインに戻り、すべてのカスタマイズが削除されます。",
         "次の曲", "Levyra",
         "バーにぴったり付く全幅プレーヤー。専用のナビゲーションバーとセット",
-        "ナビゲーションバーとつながり、継ぎ目に沿って進行状況を表示"
+        "ナビゲーションバーとつながり、継ぎ目に沿って進行状況を表示",
+        "カバーとクイック操作付きのすりガラスカプセル"
     ),
     "ko" to miniStudio(
         "미니 플레이어", "스타일, 모양 및 컨트롤", "스타일", "기본값", "선택됨",
@@ -739,7 +772,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "미니 플레이어가 Levyra 오리지널 디자인으로 돌아가고 모든 맞춤 설정이 삭제됩니다.",
         "다음 트랙", "Levyra",
         "바에 붙는 전체 너비 플레이어, 전용 탐색 바와 한 세트",
-        "내비게이션 바와 연결되어 이음새를 따라 진행률 표시"
+        "내비게이션 바와 연결되어 이음새를 따라 진행률 표시",
+        "커버와 빠른 컨트롤이 있는 반투명 유리 캡슐"
     ),
     "hi" to miniStudio(
         "मिनी प्लेयर", "स्टाइल, आकार और कंट्रोल", "स्टाइल", "डिफ़ॉल्ट", "चुना गया",
@@ -760,7 +794,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "मिनी प्लेयर Levyra के मूल डिज़ाइन पर लौट आएगा और सभी कस्टमाइज़ेशन हट जाएँगे।",
         "आपका अगला गाना", "Levyra",
         "बार से जुड़ा पूरी चौड़ाई वाला प्लेयर, अपनी नेविगेशन बार के साथ जोड़ी",
-        "नेविगेशन बार से जुड़ा, जोड़ के साथ प्रगति दिखती है"
+        "नेविगेशन बार से जुड़ा, जोड़ के साथ प्रगति दिखती है",
+        "कवर और त्वरित नियंत्रणों वाला धुंधला काँच कैप्सूल"
     ),
     "id" to miniStudio(
         "Pemutar mini", "Gaya, bentuk, dan kontrol", "Gaya", "Default", "Dipilih",
@@ -781,7 +816,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "Pemutar mini kembali ke desain asli Levyra dan semua penyesuaian dihapus.",
         "Lagu berikutnya", "Levyra",
         "Pemutar selebar layar yang menempel di bilah, serasi dengan bilah navigasinya",
-        "Tersambung ke bilah navigasi, dengan progres di sepanjang sambungan"
+        "Tersambung ke bilah navigasi, dengan progres di sepanjang sambungan",
+        "Kapsul kaca buram dengan sampul dan kontrol cepat"
     ),
     "ms" to miniStudio(
         "Pemain mini", "Gaya, bentuk dan kawalan", "Gaya", "Lalai", "Dipilih",
@@ -802,7 +838,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "Pemain mini kembali kepada reka bentuk asal Levyra dan semua penyesuaian dibuang.",
         "Lagu seterusnya", "Levyra",
         "Pemain lebar penuh yang melekat pada bar, sepadan dengan bar navigasinya",
-        "Bercantum dengan bar navigasi, dengan kemajuan di sepanjang sambungan"
+        "Bercantum dengan bar navigasi, dengan kemajuan di sepanjang sambungan",
+        "Kapsul kaca kabur dengan kulit album dan kawalan pantas"
     ),
     "vi" to miniStudio(
         "Trình phát mini", "Kiểu, hình dạng và điều khiển", "Kiểu", "Mặc định", "Đã chọn",
@@ -823,7 +860,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "Trình phát mini trở về thiết kế gốc của Levyra và mọi tùy chỉnh sẽ bị xóa.",
         "Bài tiếp theo của bạn", "Levyra",
         "Trình phát toàn chiều rộng gắn liền với thanh, đi cùng thanh điều hướng của nó",
-        "Gắn liền với thanh điều hướng, tiến trình chạy dọc đường nối"
+        "Gắn liền với thanh điều hướng, tiến trình chạy dọc đường nối",
+        "Viên nang kính mờ với ảnh bìa và điều khiển nhanh"
     ),
     "th" to miniStudio(
         "มินิเพลเยอร์", "สไตล์ รูปทรง และปุ่มควบคุม", "สไตล์", "ค่าเริ่มต้น", "เลือกอยู่",
@@ -844,7 +882,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "มินิเพลเยอร์จะกลับไปใช้ดีไซน์ดั้งเดิมของ Levyra และการปรับแต่งทั้งหมดจะถูกลบ",
         "เพลงถัดไปของคุณ", "Levyra",
         "เพลเยอร์เต็มความกว้างติดกับแถบ คู่กับแถบนำทางของตัวเอง",
-        "เชื่อมกับแถบนำทาง พร้อมแถบความคืบหน้าตามรอยต่อ"
+        "เชื่อมกับแถบนำทาง พร้อมแถบความคืบหน้าตามรอยต่อ",
+        "แคปซูลกระจกฝ้าพร้อมปกและปุ่มควบคุมด่วน"
     ),
     "fil" to miniStudio(
         "Mini player", "Mga istilo, hugis at kontrol", "Istilo", "Default", "Napili",
@@ -865,7 +904,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "Babalik ang mini player sa orihinal na disenyo ng Levyra at aalisin ang lahat ng customization.",
         "Ang susunod mong kanta", "Levyra",
         "Player na buong lapad na nakadikit sa bar, kapares ng sarili nitong navigation bar",
-        "Nakakabit sa navigation bar, may progreso sa kahabaan ng dugtungan"
+        "Nakakabit sa navigation bar, may progreso sa kahabaan ng dugtungan",
+        "Capsule na malabong salamin na may cover at mabilis na kontrol"
     ),
     "he" to miniStudio(
         "נגן מוקטן", "סגנונות, צורות ופקדים", "סגנון", "ברירת מחדל", "נבחר",
@@ -886,7 +926,8 @@ private val miniStudioCopies: Map<String, Map<MiniStudioText, String>> = mapOf(
         "הנגן המוקטן יחזור לעיצוב המקורי של Levyra וכל ההתאמות האישיות יוסרו.",
         "השיר הבא שלך", "Levyra",
         "נגן ברוחב מלא הצמוד לפס, בהתאמה לסרגל הניווט שלו",
-        "מחובר לסרגל הניווט, עם התקדמות לאורך התפר"
+        "מחובר לסרגל הניווט, עם התקדמות לאורך התפר",
+        "קפסולת זכוכית מטושטשת עם עטיפה ופקדים מהירים"
     )
 )
 

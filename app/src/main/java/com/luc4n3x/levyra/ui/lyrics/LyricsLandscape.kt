@@ -1,8 +1,5 @@
 package com.luc4n3x.levyra.ui.lyrics
 
-import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
 import android.content.res.Configuration
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -29,7 +26,6 @@ import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -46,7 +42,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -56,15 +51,14 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.luc4n3x.levyra.domain.LevyraCanvasQuality
+import com.luc4n3x.levyra.domain.ImmersiveBars
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
+import com.luc4n3x.levyra.ui.HideSystemBars
 import com.luc4n3x.levyra.ui.InstantArtworkPlaceholder
 import com.luc4n3x.levyra.ui.MotionArtworkLayer
 import com.luc4n3x.levyra.ui.MotionArtworkPresentation
@@ -132,25 +126,7 @@ internal fun lyricsLandscapeMetrics(widthDp: Float, heightDp: Float): LyricsLand
 
 @Composable
 internal fun LyricsImmersiveSystemBars(active: Boolean) {
-    val view = LocalView.current
-    DisposableEffect(view, active) {
-        val window = view.context.findActivity()?.window
-        if (!active || window == null) return@DisposableEffect onDispose {}
-        val controller = WindowCompat.getInsetsController(window, view)
-        val previousBehavior = controller.systemBarsBehavior
-        controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        controller.hide(WindowInsetsCompat.Type.systemBars())
-        onDispose {
-            controller.show(WindowInsetsCompat.Type.systemBars())
-            controller.systemBarsBehavior = previousBehavior
-        }
-    }
-}
-
-private tailrec fun Context.findActivity(): Activity? = when (this) {
-    is Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
+    HideSystemBars(if (active) ImmersiveBars.All else ImmersiveBars.None)
 }
 
 @Composable
