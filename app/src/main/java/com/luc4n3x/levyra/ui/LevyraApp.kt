@@ -11022,8 +11022,6 @@ private fun StudioHomeContent(
                             spotifyScope.launch { homeListState.scrollToItem(0) }
                         },
                         onSettings = viewModel::openSettings,
-                        onOpenZone = viewModel::openExploreZone,
-                        onRewind = experiences.rewind,
                         modifier = Modifier.align(Alignment.TopCenter)
                     )
                 }
@@ -28042,6 +28040,10 @@ private fun artistBiographyBackground(accentBrush: Brush): Modifier =
         .then(if (LevyraSkinManagesLayout) Modifier else Modifier.background(accentBrush))
 
 private fun LazyListScope.studioHomeFilteredSections(c: StudioHomeContext, flowShortcutTracks: List<Track>, statusBarTop: Dp, homeTopPadding: Dp, spotifyFilter: SpotifyHomeFilter, shownOrder: List<HomeSectionId>, youtubeMusicHome: com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi?, homeRadio: HomeRadioState, homeDiscovery: DiscoveryHomeHandle?, spotify: Boolean) {
+    if (spotify && spotifyFilter in setOf(SpotifyHomeFilter.Music, SpotifyHomeFilter.Following, SpotifyHomeFilter.Radio)) {
+        spotifyHomeFilterItems(spotifyFilter, c.state, c.homeAlbums, c.newReleases?.tracks.orEmpty(), c.viewModel, c.onTrackActions)
+        return
+    }
     studioHomeHeaderItems(c, flowShortcutTracks, statusBarTop, homeTopPadding, spotifyFilter.accepts(HomeSectionId.Spotlight))
     if (c.stagedSpotlight != null && !c.studioLayout.isHidden(HomeSectionId.Discovery) &&
         (!spotify || spotifyFilter.accepts(HomeSectionId.Discovery))

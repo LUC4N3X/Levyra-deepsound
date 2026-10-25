@@ -187,6 +187,9 @@ class HomeViewModel internal constructor(
     fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
     fun openAlbum(album: AlbumHit) = root.openAlbum(album)
     fun openReleaseRadarEntry(entry: ReleaseRadarEntry) = root.openReleaseRadarEntry(entry)
+    fun toggleFollowArtist(artist: ArtistHit) = root.toggleFollowArtist(artist)
+    fun startSongRadioFrom(track: Track) = root.startSongRadioFrom(track)
+    fun openListeningRecap() = root.openListeningRecap()
     fun openArtistByName(name: String) = root.openArtistByName(name)
     fun openArtistFromHit(hit: ArtistHit) = root.openArtistFromHit(hit)
     fun openSettings() = root.openSettings()
@@ -1309,6 +1312,7 @@ internal fun LocalLibraryUiState.completedScanSongs(): List<Track>? =
 
 internal data class SearchProjection(
     val currentTrack: Track?,
+    val isVideoMode: Boolean,
     val userName: String,
     val exploreSamples: List<Track>,
     val exploreCategories: List<ExploreCategory>,
@@ -1345,6 +1349,7 @@ internal data class SearchProjection(
 
 internal fun searchProjection(state: LevyraUiState): SearchProjection = SearchProjection(
     currentTrack = state.currentTrack,
+    isVideoMode = state.isVideoMode,
     userName = state.userName,
     exploreSamples = state.exploreSamples,
     exploreCategories = state.exploreCategories,

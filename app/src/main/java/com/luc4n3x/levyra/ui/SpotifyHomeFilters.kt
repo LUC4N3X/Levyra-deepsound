@@ -35,8 +35,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import com.luc4n3x.levyra.domain.ExploreCatalog
-import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.HomeSectionId
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LevyraSpotifySkinStrings
@@ -61,7 +59,7 @@ internal enum class SpotifyHomeFilter {
             add(All)
             add(Music)
             if (HomeSectionId.MusicVideos in order) add(Videos)
-            if (HomeSectionId.FavoriteRadio in order) add(Radio)
+            add(Radio)
         }
 
         fun from(name: String): SpotifyHomeFilter = entries.firstOrNull { it.name == name } ?: All
@@ -81,13 +79,10 @@ internal fun SpotifyHomeFilterBar(
     filters: List<SpotifyHomeFilter>,
     onSelect: (SpotifyHomeFilter) -> Unit,
     onSettings: () -> Unit,
-    onOpenZone: (ExploreZone) -> Unit,
-    onRewind: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraSpotifySkinStrings.forCode(strings.code) }
-    val zones = remember(strings) { ExploreCatalog.getZones(strings) }
     val animate = LocalAnimationsEnabled.current
     val listState = rememberLazyListState()
     val density = LocalDensity.current
@@ -125,12 +120,6 @@ internal fun SpotifyHomeFilterBar(
                 } else {
                     SpotifyFilterChip(label(filter), selected == filter, onClick = { onSelect(if (selected == filter) SpotifyHomeFilter.All else filter) })
                 }
-            }
-            items(zones, key = { "spotify-zone-${it.id}" }) { zone ->
-                SpotifyFilterChip(zone.label, false, role = Role.Button, onClick = { onOpenZone(zone) })
-            }
-            item(key = "spotify-rewind") {
-                SpotifyFilterChip("Rewind", false, role = Role.Button, onClick = onRewind)
             }
         }
         Box(

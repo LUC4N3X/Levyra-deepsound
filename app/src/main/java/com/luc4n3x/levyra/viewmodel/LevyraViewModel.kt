@@ -2133,16 +2133,22 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun toggleFollowArtist() {
         val profile = _state.value.artistProfile ?: return
-        val browseId = profile.browseId.trim()
+        toggleFollowArtist(profile.browseId, profile.name, profile.thumbnailUrl)
+    }
+
+    fun toggleFollowArtist(artist: ArtistHit) = toggleFollowArtist(artist.browseId, artist.name, artist.thumbnailUrl)
+
+    private fun toggleFollowArtist(artistBrowseId: String, artistName: String, thumbnailUrl: String) {
+        val browseId = artistBrowseId.trim()
         if (browseId.isBlank()) return
-        val name = profile.name.trim()
+        val name = artistName.trim()
         if (name.isBlank()) return
         val current = _state.value.followedArtists
         val exists = current.any { sameArtist(it, browseId, name) }
         val updated = if (exists) {
             current.filterNot { sameArtist(it, browseId, name) }
         } else {
-            listOf(FollowedArtist(browseId, name, profile.thumbnailUrl, System.currentTimeMillis())) +
+            listOf(FollowedArtist(browseId, name, thumbnailUrl, System.currentTimeMillis())) +
                 current.filterNot { it.browseId.isBlank() && it.name.equals(name, ignoreCase = true) }
         }
         followedArtistsGeneration++

@@ -140,6 +140,7 @@ internal fun spotifyBrowseEntries(
 internal fun SpotifySearchBrowse(
     entries: List<SpotifyBrowseEntry>,
     shorts: List<Track>,
+    previewEnabled: Boolean = true,
     onShort: (Track) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -163,7 +164,7 @@ internal fun SpotifySearchBrowse(
                 horizontalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 items(shorts.take(SpotifyShortCount), key = { "spotify-short-${it.id}" }) { track ->
-                    SpotifyShortCard(spotifyShortTag(track, copy.music), track, onClick = { onShort(track) })
+                    SpotifyShortCard(spotifyShortTag(track, copy.music), track, previewEnabled && track.id == shorts.firstOrNull()?.id, onClick = { onShort(track) })
                 }
             }
         }
@@ -214,12 +215,13 @@ private fun SpotifySearchTile(entry: SpotifyBrowseEntry, modifier: Modifier, onC
 }
 
 @Composable
-internal fun SpotifyShortCard(tag: String, track: Track, onClick: () -> Unit) {
+internal fun SpotifyShortCard(tag: String, track: Track, preview: Boolean = false, onClick: () -> Unit) {
     Box(
         Modifier.width(128.dp).height(192.dp).clip(RoundedCornerShape(SpotifyDesign.cornerLarge)).background(SpotifyDesign.placeholder)
             .clickable(onClickLabel = track.title, role = Role.Button, onClick = onClick)
     ) {
         CoverImage(track, Modifier.fillMaxSize(), highRes = true)
+        if (preview) SpotifySamplePreview(track)
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.6f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.55f))))
         Text(
             tag, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -242,7 +244,7 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.spotifySearchBrowseI
         val entries = remember(zones, categories, categoryArtwork) {
             spotifyBrowseEntries(zones, categories, categoryArtwork, viewModel::openExploreZone, viewModel::openExploreCategory)
         }
-        SpotifySearchBrowse(entries, shorts) { track ->
+        SpotifySearchBrowse(entries, shorts, previewEnabled = !state.isVideoMode && !state.isResolving) { track ->
             viewModel.openExploreSamples(shorts.indexOf(track))
         }
     }
