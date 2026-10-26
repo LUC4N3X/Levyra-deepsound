@@ -237,13 +237,13 @@ Contributions and bug reports are welcome. Technical documentation and architect
   <picture>
     <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-creator-badge-light.svg">
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-creator-badge-dark.svg">
-    <img src="docs/assets/levyra-creator-badge-dark.svg" width="220" height="38" alt="Creator &amp; Maintainer">
+    <img src="docs/assets/levyra-creator-badge-dark.svg" width="298" height="56" alt="Creator &amp; Maintainer">
   </picture>
 </p>
 
 <p>
-  <strong>Building Levyra for Android &amp; Windows.</strong><br>
-  <sub>Open-source music software focused on reliable playback, thoughtful design, and user control.</sub>
+  I build Android apps and backend tools to solve problems I run into myself.<br>
+  I spend a lot of time tracking down odd bugs and cutting out unnecessary code.
 </p>
 
 <p>
