@@ -232,11 +232,14 @@ Contributions and bug reports are welcome. Technical documentation and architect
 </a>
 
 ### LUC4N3X
-<p><b>Creator &amp; Maintainer</b></p>
 
 <p>
-  I created Levyra and actively build and maintain the project for Android and Windows.<br>
-  I review community pull requests, fix bugs, and publish each release.
+  <img src="https://img.shields.io/badge/Creator_%26_Maintainer-7C3AED?style=for-the-badge&amp;logo=github&amp;logoColor=white" alt="Creator &amp; Maintainer" />
+</p>
+
+<p>
+  I develop and maintain Levyra, an open-source music player for Android and Windows,<br>
+  with a focus on reliable playback, clean architecture, and continuous improvement.
 </p>
 
 <p>
