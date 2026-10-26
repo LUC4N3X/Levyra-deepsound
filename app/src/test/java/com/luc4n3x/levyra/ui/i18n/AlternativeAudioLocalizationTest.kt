@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.ui.i18n
 
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -17,6 +18,9 @@ class AlternativeAudioLocalizationTest {
             assertTrue(strings.code, strings.alternativeAudioAutomatic.isNotBlank())
             assertTrue(strings.code, strings.alternativeAudioPrefer320.contains("320"))
             assertTrue(strings.code, strings.alternativeAudioPreferLossless.contains("FLAC"))
+            if (strings.code != "en") {
+                assertNotEquals(strings.code, "Prefer FLAC lossless", strings.alternativeAudioPreferLossless)
+            }
         }
     }
 

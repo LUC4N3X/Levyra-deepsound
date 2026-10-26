@@ -243,10 +243,30 @@ private val alternativeAudioBundles: Map<String, Map<String, String>> = mapOf(
     )
 )
 
-internal fun alternativeAudioLocalizationEntries(code: String): Map<String, String> =
-    localizedBundleOrEnglish(alternativeAudioBundles, code)
+private val additionalLosslessLabels = mapOf(
+    "sk" to "Uprednostniť bezstratový FLAC",
+    "hr" to "Prednost FLAC-u bez gubitaka",
+    "sr" to "Предност FLAC-у без губитака",
+    "sq" to "Prefero FLAC pa humbje",
+    "bg" to "Предпочитане на FLAC без загуби",
+    "hu" to "Veszteségmentes FLAC előnyben",
+    "nb" to "Foretrekk tapsfri FLAC",
+    "ca" to "Prefereix FLAC sense pèrdua",
+    "kk" to "Жоғалтусыз FLAC пішімін таңдау",
+    "fa" to "ترجیح FLAC بدون افت کیفیت",
+    "zh-Hant" to "優先使用 FLAC 無損音訊",
+    "bn" to "ক্ষতিহীন FLAC অগ্রাধিকার দিন",
+    "ms" to "Utamakan FLAC tanpa kehilangan kualiti"
+)
 
-internal fun alternativeAudioLocalizationCodes(): Set<String> = supportedLocalizationCodes()
+internal fun alternativeAudioLocalizationEntries(code: String): Map<String, String> {
+    val bundle = localizedBundleOrEnglish(alternativeAudioBundles, code)
+    val lossless = additionalLosslessLabels[code] ?: return bundle
+    return bundle + ("alternativeAudioPreferLossless" to lossless)
+}
+
+internal fun alternativeAudioLocalizationCodes(): Set<String> =
+    alternativeAudioBundles.keys + additionalLosslessLabels.keys
 
 internal val alternativeAudioKeys: Set<String> = setOf(
     "alternativeAudioTitle",
