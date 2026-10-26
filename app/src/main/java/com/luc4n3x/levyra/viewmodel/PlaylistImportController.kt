@@ -547,6 +547,11 @@ class PlaylistImportController(
             }
             resolvePositions(pending, broad = false, runGeneration = runGeneration)
             if (runGeneration != generation) return
+            val failedLookups = pending.filter { working[it].lookupFailed }
+            if (failedLookups.isNotEmpty()) {
+                resolvePositions(failedLookups, broad = false, runGeneration = runGeneration)
+                if (runGeneration != generation) return
+            }
             _state.update { it.copy(activity = PlaylistImportActivity.CHECKING) }
             val healed = heal()
             if (healed.isNotEmpty()) {

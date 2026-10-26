@@ -942,7 +942,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 override suspend fun tracks(album: com.luc4n3x.levyra.domain.AlbumHit, languageCode: String) =
                     repository.albumTracksForImport(album, languageCode)
             },
-            durationLookup = { videoId, languageCode -> repository.videoDurationForImport(videoId, languageCode) }
+            durationLookup = { videoId, languageCode -> repository.videoDurationForImport(videoId, languageCode) },
+            searchBackoff = com.luc4n3x.levyra.data.playlistimport.ImportSearchBackoff()
         )
     }
     val playlistImport: PlaylistImportController by lazy {
