@@ -111,7 +111,8 @@ internal fun buildExploreRows(
     hasFreshTracks: Boolean,
     hasFreshScopes: Boolean = false,
     hasFreshMoment: Boolean = false,
-    spotifyStyle: Boolean = false
+    spotifyStyle: Boolean = false,
+    moodsInSearch: Boolean = spotifyStyle
 ): List<ExploreRow> {
     val rows = mutableListOf<ExploreRow>()
     rows += ExploreRow.Shortcuts
@@ -128,7 +129,7 @@ internal fun buildExploreRows(
     }
 
     val distinctZones = zones.distinctBy { it.id }
-    if (distinctZones.isNotEmpty() && !spotifyStyle) {
+    if (distinctZones.isNotEmpty() && !moodsInSearch) {
         rows += ExploreRow.Header(ExploreAnchor.Moods)
         rows += ExploreRow.MoodRail(distinctZones)
     }

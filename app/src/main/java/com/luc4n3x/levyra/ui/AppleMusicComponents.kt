@@ -504,17 +504,23 @@ internal fun AppleMusicCategoryTile(
     longClickLabel: String,
     onPortraitError: () -> Unit,
     modifier: Modifier = Modifier,
-    tint: Color? = null
+    tint: Color? = null,
+    toned: Boolean = false
 ) {
     val seed = remember(label) { label.hashCode().absoluteValue }
     val fill = tint ?: remember(seed) { Color.hsv((seed % 360).toFloat(), 0.62f, 0.86f) }
     val grayscale = remember { androidx.compose.ui.graphics.ColorFilter.colorMatrix(androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(0f) }) }
     Box(
-        modifier.aspectRatio(AppleMusicDesign.categoryTileAspect).clip(AppleMusicDesign.artworkShape).background(fill)
-            .then(if (active) Modifier.border(2.dp, AppleMusicDesign.accent, AppleMusicDesign.artworkShape) else Modifier)
+        modifier.aspectRatio(AppleMusicDesign.categoryTileAspect).clip(AppleMusicDesign.categoryTileShape).background(fill)
+            .then(if (active) Modifier.border(2.dp, AppleMusicDesign.accent, AppleMusicDesign.categoryTileShape) else Modifier)
             .levyraPressable(onClick = onClick, onClickLabel = label, role = Role.Button, onLongClick = onLongClick, onLongClickLabel = longClickLabel.takeIf { onLongClick != null })
     ) {
-        if (portrait.isNotBlank()) {
+        if (portrait.isNotBlank() && toned) {
+            coil3.compose.AsyncImage(
+                portrait, null, contentScale = ContentScale.Crop,
+                onError = { onPortraitError() }, modifier = Modifier.fillMaxSize()
+            )
+        } else if (portrait.isNotBlank()) {
             Box(
                 Modifier.fillMaxSize()
                     .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
@@ -530,9 +536,10 @@ internal fun AppleMusicCategoryTile(
             }
         }
         Text(
-            label, color = Color.White, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+            label, color = Color.White,
+            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.Medium),
             maxLines = 2, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.align(Alignment.BottomStart).padding(horizontal = 10.dp, vertical = 8.dp)
+            modifier = Modifier.align(Alignment.BottomStart).padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
         )
     }
 }
