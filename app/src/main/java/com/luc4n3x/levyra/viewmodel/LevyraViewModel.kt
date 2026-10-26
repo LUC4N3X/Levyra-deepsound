@@ -1258,7 +1258,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val radioSession = AtomicReference<RadioSession?>(null)
     private var sponsorSegments: List<SponsorSegment> = emptyList()
     private val sponsorSkipTracker = SponsorBlockSkipOnceTracker()
-    private val tabBackStack = ArrayDeque<LevyraTab>()
+    private val tabBackStack = TabBackStack()
 
     private sealed interface DetailPage {
         data class AlbumPage(val detail: AlbumDetail) : DetailPage
@@ -9119,25 +9119,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun moveToTab(tab: LevyraTab, rememberCurrent: Boolean) {
         val current = _state.value.selectedTab
         if (current == tab) return
-        if (rememberCurrent) {
-            tabBackStack.remove(tab)
-            tabBackStack.remove(current)
-            tabBackStack.addLast(current)
-            while (tabBackStack.size > 8) {
-                tabBackStack.removeFirst()
-            }
-        }
+        if (rememberCurrent) tabBackStack.rememberTransition(current, tab)
         _state.update { it.copy(selectedTab = tab) }
         if (current == LevyraTab.Player) restorePlayerReturnDetail()
     }
 
-    private fun previousTab(current: LevyraTab): LevyraTab {
-        while (tabBackStack.isNotEmpty()) {
-            val candidate = tabBackStack.removeLast()
-            if (candidate != current) return candidate
-        }
-        return LevyraTab.Home
-    }
+    private fun previousTab(current: LevyraTab): LevyraTab = tabBackStack.pop(current)
 
     fun selectMood(mood: Mood) {
         moveToTab(LevyraTab.Home, rememberCurrent = true)
