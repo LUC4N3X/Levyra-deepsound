@@ -237,7 +237,7 @@ Contributions and bug reports are welcome. Technical documentation and architect
   <picture>
     <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-creator-badge-light.svg">
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-creator-badge-dark.svg">
-    <img src="docs/assets/levyra-creator-badge-dark.svg" width="252" height="46" alt="Creator &amp; Maintainer">
+    <img src="docs/assets/levyra-creator-badge-dark.svg" width="224" height="46" alt="Creator &amp; Maintainer">
   </picture>
 </p>
 
