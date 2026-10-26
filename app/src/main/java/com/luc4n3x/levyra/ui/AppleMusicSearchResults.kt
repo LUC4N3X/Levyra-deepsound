@@ -205,6 +205,46 @@ private fun AppleSearchTabs(filters: List<SearchFilter>, selected: SearchFilter,
     }
 }
 
+private class AppleResultRowModel(
+    val title: String,
+    val subtitle: String,
+    val artwork: String,
+    val track: Track?,
+    val artworkWidth: Dp,
+    val circular: Boolean,
+    val onClick: () -> Unit
+)
+
+private fun appleResultSubtitle(kind: String, owner: String): String =
+    listOf(kind, owner).filter(String::isNotBlank).joinToString(" · ")
+
+private fun appleResultRowModel(
+    result: AppleSearchResult,
+    copy: AppleSearchCopy,
+    songs: List<Track>,
+    videos: List<Track>,
+    actions: YouTubeMusicSearchActions
+): AppleResultRowModel = when (result) {
+    is AppleSearchResult.Song -> AppleResultRowModel(
+        title = result.track.title,
+        subtitle = appleResultSubtitle(if (result.video) copy.musicVideo else copy.song, result.track.artist),
+        artwork = result.track.largeThumbnailUrl.ifBlank { result.track.thumbnailUrl },
+        track = result.track,
+        artworkWidth = if (result.video) AppleResultVideoWidth else AppleResultArtwork,
+        circular = false,
+        onClick = { actions.playSong(if (result.video) videos else songs, result.track) }
+    )
+    is AppleSearchResult.Artist -> AppleResultRowModel(
+        result.hit.name, copy.artist, result.hit.thumbnailUrl, null, AppleResultArtwork, true
+    ) { actions.openArtist(result.hit) }
+    is AppleSearchResult.Album -> AppleResultRowModel(
+        result.hit.title, appleResultSubtitle(copy.album, result.hit.artist), result.hit.thumbnailUrl, null, AppleResultArtwork, false
+    ) { actions.openAlbum(result.hit) }
+    is AppleSearchResult.Playlist -> AppleResultRowModel(
+        result.hit.title, appleResultSubtitle(copy.playlist, result.hit.author), result.hit.thumbnailUrl, null, AppleResultArtwork, false
+    ) { actions.openPlaylist(result.hit) }
+}
+
 @Composable
 private fun AppleSearchResultRow(
     result: AppleSearchResult,
@@ -215,68 +255,17 @@ private fun AppleSearchResultRow(
 ) {
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { appleSearchCopy(strings.code) }
-    val title: String
-    val subtitle: String
-    val artwork: String
-    var artworkWidth = AppleResultArtwork
-    var circular = false
-    var track: Track? = null
-    val onClick: () -> Unit
-    when (result) {
-        is AppleSearchResult.Song -> {
-            track = result.track
-            title = result.track.title
-            subtitle = listOf(if (result.video) copy.musicVideo else copy.song, result.track.artist).filter(String::isNotBlank).joinToString(" · ")
-            artwork = result.track.largeThumbnailUrl.ifBlank { result.track.thumbnailUrl }
-            if (result.video) artworkWidth = AppleResultVideoWidth
-            onClick = { actions.playSong(if (result.video) videos else songs, result.track) }
-        }
-        is AppleSearchResult.Artist -> {
-            title = result.hit.name
-            subtitle = copy.artist
-            artwork = result.hit.thumbnailUrl
-            circular = true
-            onClick = { actions.openArtist(result.hit) }
-        }
-        is AppleSearchResult.Album -> {
-            title = result.hit.title
-            subtitle = listOf(copy.album, result.hit.artist).filter(String::isNotBlank).joinToString(" · ")
-            artwork = result.hit.thumbnailUrl
-            onClick = { actions.openAlbum(result.hit) }
-        }
-        is AppleSearchResult.Playlist -> {
-            title = result.hit.title
-            subtitle = listOf(copy.playlist, result.hit.author).filter(String::isNotBlank).joinToString(" · ")
-            artwork = result.hit.thumbnailUrl
-            onClick = { actions.openPlaylist(result.hit) }
-        }
-    }
-    val shape = if (circular) CircleShape else AppleMusicDesign.thumbShape
+    val model = appleResultRowModel(result, copy, songs, videos, actions)
+    val track = model.track
     Column(Modifier.fillMaxWidth().appleGutterBleed()) {
         Row(
-            Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onClick)
+            Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = model.onClick)
                 .padding(start = AppleResultInset, top = 10.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                Modifier.size(width = artworkWidth, height = AppleResultArtwork).clip(shape)
-                    .background(AppleMusicDesign.placeholder).border(0.5.dp, AppleMusicDesign.artworkStroke, shape)
-            ) {
-                if (track != null && artwork.isBlank()) CoverImage(track, Modifier.fillMaxSize())
-                else if (artwork.isNotBlank()) StableRemoteArtwork(artwork, null, Modifier.fillMaxSize(), ContentScale.Crop)
-            }
+            AppleResultArtworkBox(model)
             Spacer(Modifier.width(AppleResultTextGap))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    title, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    color = if (track != null && track.id == currentTrackId) AppleMusicDesign.accent else AppleMusicDesign.label,
-                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, lineHeight = 22.sp)
-                )
-                Text(
-                    subtitle, maxLines = 1, overflow = TextOverflow.Ellipsis, color = AppleSearchMutedText,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp, lineHeight = 20.sp)
-                )
-            }
+            AppleResultTexts(model.title, model.subtitle, track != null && track.id == currentTrackId, Modifier.weight(1f))
             if (track != null) Box(
                 Modifier.size(width = 44.dp, height = AppleResultArtwork).clickable(role = Role.Button) { actions.trackActions(track) },
                 contentAlignment = Alignment.Center
@@ -285,5 +274,33 @@ private fun AppleSearchResultRow(
             } else Spacer(Modifier.width(44.dp))
         }
         HorizontalDivider(Modifier.padding(start = AppleResultInset), thickness = 0.5.dp, color = AppleMusicDesign.opaqueSeparator)
+    }
+}
+
+@Composable
+private fun AppleResultArtworkBox(model: AppleResultRowModel) {
+    val shape = if (model.circular) CircleShape else AppleMusicDesign.thumbShape
+    Box(
+        Modifier.size(width = model.artworkWidth, height = AppleResultArtwork).clip(shape)
+            .background(AppleMusicDesign.placeholder).border(0.5.dp, AppleMusicDesign.artworkStroke, shape)
+    ) {
+        val track = model.track
+        if (model.artwork.isNotBlank()) StableRemoteArtwork(model.artwork, null, Modifier.fillMaxSize(), ContentScale.Crop)
+        else if (track != null) CoverImage(track, Modifier.fillMaxSize())
+    }
+}
+
+@Composable
+private fun AppleResultTexts(title: String, subtitle: String, current: Boolean, modifier: Modifier) {
+    Column(modifier) {
+        Text(
+            title, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            color = if (current) AppleMusicDesign.accent else AppleMusicDesign.label,
+            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, lineHeight = 22.sp)
+        )
+        Text(
+            subtitle, maxLines = 1, overflow = TextOverflow.Ellipsis, color = AppleSearchMutedText,
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp, lineHeight = 20.sp)
+        )
     }
 }
