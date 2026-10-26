@@ -35,7 +35,10 @@ data class AppleMusicEditorialUiState(
     val genreKey: String = "",
     val genrePage: AppleCatalogPage? = null,
     val genreLoading: Boolean = false,
-    val genreFailed: Boolean = false
+    val genreFailed: Boolean = false,
+    val browseKey: String = "",
+    val browse: List<AppleCatalogItem> = emptyList(),
+    val browseLoading: Boolean = false
 )
 
 @Immutable
@@ -60,6 +63,7 @@ class AppleMusicEditorialViewModel(application: Application) : AndroidViewModel(
     private var collectionJob: Job? = null
     private var artistJob: Job? = null
     private var genreJob: Job? = null
+    private var browseJob: Job? = null
 
     fun loadGenre(title: String, categoryParams: String, storefront: String, language: String, force: Boolean = false) {
         val front = AppleStorefronts.normalize(storefront)
@@ -79,6 +83,20 @@ class AppleMusicEditorialViewModel(application: Application) : AndroidViewModel(
                     genrePage = page ?: current.genrePage, genreLoading = false, genreFailed = page == null
                 )
             }
+        }
+    }
+
+    fun loadBrowse(storefront: String, language: String) {
+        val key = "${AppleStorefronts.normalize(storefront)}:${AppleStorefronts.language(language)}"
+        val current = _state.value
+        if (current.browseKey == key && (current.browseLoading || current.browse.isNotEmpty())) return
+        browseJob?.cancel()
+        _state.update { state ->
+            state.copy(browseKey = key, browse = if (state.browseKey == key) state.browse else emptyList(), browseLoading = true)
+        }
+        browseJob = viewModelScope.launch {
+            val items = repository.browseCategories(storefront, language)
+            _state.update { state -> if (state.browseKey == key) state.copy(browse = items, browseLoading = false) else state }
         }
     }
 
@@ -188,7 +206,10 @@ private fun AppleMusicEditorialUiState.isLoadedFor(front: String, lang: String):
 
 private fun AppleMusicEditorialUiState.startLoading(front: String, lang: String): AppleMusicEditorialUiState =
     if (storefront == front && language == lang) copy(loading = true, failed = false)
-    else AppleMusicEditorialUiState(storefront = front, language = lang, loading = true, collection = collection, artistKey = artistKey, artist = artist)
+    else AppleMusicEditorialUiState(
+        storefront = front, language = lang, loading = true, collection = collection, artistKey = artistKey, artist = artist,
+        browseKey = browseKey, browse = browse, browseLoading = browseLoading
+    )
 
 private fun AppleMusicEditorialUiState.withCached(news: AppleCatalogResult?, charts: AppleCatalogResult?): AppleMusicEditorialUiState {
     if (news == null && charts == null) return this

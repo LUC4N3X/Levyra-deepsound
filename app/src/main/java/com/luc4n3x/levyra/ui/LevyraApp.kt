@@ -2533,7 +2533,13 @@ fun LevyraApp(
                         LevyraTab.Search -> {
                             val searchViewModel: SearchViewModel = composeViewModel(key = "levyra-search", factory = screenViewModelFactory)
                             val screenState by searchViewModel.state.collectAsStateWithLifecycle()
-                            SearchScreen(searchViewModel, screenState) { track -> trackActionTarget = track }
+                            val appleExploreViewModel: ExploreViewModel? = if (LevyraIsAppleMusic) {
+                                composeViewModel(key = "levyra-explore", factory = screenViewModelFactory)
+                            } else null
+                            SearchScreen(
+                                searchViewModel, screenState, appleExploreViewModel,
+                                backEnabled = !rootOverlayOpen && state.selectedTab == LevyraTab.Search
+                            ) { track -> trackActionTarget = track }
                         }
                         LevyraTab.Explore -> {
                             val exploreViewModel: ExploreViewModel = composeViewModel(key = "levyra-explore", factory = screenViewModelFactory)
@@ -14809,7 +14815,7 @@ private fun BoxScope.StudioPersonalOrbitOverlayTitle(track: Track, isCurrent: Bo
     )
 }
 
-private fun trackAlbumHit(track: Track): AlbumHit = AlbumHit(
+internal fun trackAlbumHit(track: Track): AlbumHit = AlbumHit(
     title = track.album.trim(),
     artist = track.artist.trim(),
     year = track.year.ifBlank { track.releaseDate.take(4).takeIf { it.toIntOrNull() != null }.orEmpty() },
@@ -15561,7 +15567,13 @@ private fun TrackOverflowMenu(
 }
 
 @Composable
-private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState, onTrackActions: (Track) -> Unit = {}) {
+private fun SearchScreen(
+    viewModel: SearchViewModel,
+    state: LevyraUiState,
+    appleExploreViewModel: ExploreViewModel? = null,
+    backEnabled: Boolean = false,
+    onTrackActions: (Track) -> Unit = {}
+) {
     val strings = LocalLevyraStrings.current
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -15628,13 +15640,17 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState, onTra
         viewModel.refreshArtistSuggestions()
     }
     val spotifySearchFocus = remember { mutableStateOf(false) }
+    val appleCatalog = appleExploreViewModel?.let { rememberAppleMusicSearchCatalog(state, viewModel::ensureExplore) }
+    var appleDestination by rememberSaveable { mutableStateOf<String?>(null) }
+    val appleLanding = appleCatalog != null && queryClean.isEmpty() && !spotifySearchFocus.value
+    val appleColumns = appleMusicSearchColumns()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
-            .padding(horizontal = if (LevyraIsSpotify) SpotifyDesign.gutter else 18.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .padding(horizontal = if (LevyraIsSpotify) SpotifyDesign.gutter else if (appleCatalog != null) AppleMusicDesign.gutter else 18.dp),
+        verticalArrangement = Arrangement.spacedBy(if (appleCatalog != null) 0.dp else 8.dp)
     ) {
         SearchHeader(
             query = state.query,
@@ -15729,6 +15745,37 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState, onTra
         LaunchedEffect(selectableIds) { selection.retainAvailable(selectableIds) }
         BackHandler(enabled = selection.isActive) { selection.exit() }
 
+        val searchActions = YouTubeMusicSearchActions(
+            playSong = { context, track ->
+                focusManager.clearFocus()
+                keyboardController?.hide()
+                viewModel.playFrom(deduplicateSearchSongs(listOf(track) + context), track)
+            },
+            openArtist = { hit ->
+                focusManager.clearFocus()
+                keyboardController?.hide()
+                viewModel.openArtistFromHit(hit)
+            },
+            openTopResult = openTopResult,
+            shuffle = shuffleTopResult,
+            mix = mixTopResult,
+            openPlaylist = { playlist ->
+                focusManager.clearFocus()
+                keyboardController?.hide()
+                viewModel.openPlaylistHit(playlist)
+            },
+            openAlbum = { album ->
+                focusManager.clearFocus()
+                keyboardController?.hide()
+                viewModel.openAlbum(album)
+            },
+            trackActions = onTrackActions
+        )
+        val appleFilters = remember(data) { appleSearchFilters(data) }
+        val appleFilter = filter.takeIf { it in appleFilters } ?: SearchFilter.All
+        val appleResults = remember(appleFilter, visibleSongs, topResultTracks, topResultArtist, data, appleCatalog != null) {
+            if (appleCatalog == null) emptyList() else appleSearchResults(appleFilter, deduplicateSearchSongs(topResultTracks + visibleSongs), topResultArtist, data)
+        }
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -15737,10 +15784,16 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState, onTra
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = levyraTabContentBottomPadding(state.currentTrack != null)),
-            verticalArrangement = Arrangement.spacedBy(3.dp)
+            verticalArrangement = Arrangement.spacedBy(if (appleLanding) AppleSearchGridGap else if (appleCatalog != null && !data.isEmpty) 0.dp else 3.dp)
         ) {
             if (queryClean.isEmpty() && LevyraIsSpotify && !spotifySearchFocus.value) {
                 spotifySearchBrowseItem(state, viewModel)
+            } else if (appleLanding && appleCatalog != null) {
+                appleMusicSearchLanding(
+                    appleCatalog, appleColumns,
+                    onOpen = { tile -> appleDestination = tile.destination },
+                    onRequestArtwork = { params -> appleExploreViewModel?.ensureExploreCategoryArtwork(params, false) }
+                )
             } else if (queryClean.isEmpty()) {
                 item(key = "search-taste-hints", contentType = "search-taste-hints") {
                     SearchTasteHints(
@@ -15805,7 +15858,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState, onTra
                     )
                 }
             } else {
-                if (querySuggestions.isNotEmpty() && !(LevyraIsYouTubeMusic && !data.isEmpty)) {
+                if (querySuggestions.isNotEmpty() && !((LevyraIsYouTubeMusic || appleCatalog != null) && !data.isEmpty)) {
                     item(key = "search-query-suggestions", contentType = "search-query-suggestions") {
                         SearchQueryChips(
                             query = state.query,
@@ -15820,6 +15873,28 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState, onTra
                     }
                 }
                 when {
+                    !data.isEmpty && appleCatalog != null -> {
+                        appleMusicSearchResults(
+                            filters = appleFilters,
+                            selected = appleFilter,
+                            results = appleResults,
+                            currentTrackId = state.currentTrack?.id,
+                            onSelect = viewModel::setSearchFilter,
+                            actions = searchActions
+                        )
+                        if (appleFilter != SearchFilter.All) {
+                            item(key = "search-section-footer", contentType = "search-section-footer") {
+                                SearchSectionGap()
+                                SearchSectionFooter(
+                                    loading = appleFilter in state.searchSectionLoading,
+                                    failed = appleFilter in data.failedSections,
+                                    canLoadMore = state.searchSectionContinuations[appleFilter].orEmpty().isNotBlank(),
+                                    autoLoadKey = data.sectionSize(appleFilter),
+                                    onLoadMore = { viewModel.loadMoreSearchSection(appleFilter) }
+                                )
+                            }
+                        }
+                    }
                     !data.isEmpty && LevyraIsYouTubeMusic -> {
                         item(key = "search-filters", contentType = "search-filters") {
                             SearchSectionGap()
@@ -15843,32 +15918,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState, onTra
                             playsLabel = { track ->
                                 formatSearchViewCount(track.youtubeViewCount, strings.code).takeIf(String::isNotBlank)?.let { "$it ${strings.pulsePlays}" }.orEmpty()
                             },
-                            actions = YouTubeMusicSearchActions(
-                                playSong = { context, track ->
-                                    focusManager.clearFocus()
-                                    keyboardController?.hide()
-                                    viewModel.playFrom(deduplicateSearchSongs(listOf(track) + context), track)
-                                },
-                                openArtist = { hit ->
-                                    focusManager.clearFocus()
-                                    keyboardController?.hide()
-                                    viewModel.openArtistFromHit(hit)
-                                },
-                                openTopResult = openTopResult,
-                                shuffle = shuffleTopResult,
-                                mix = mixTopResult,
-                                openPlaylist = { playlist ->
-                                    focusManager.clearFocus()
-                                    keyboardController?.hide()
-                                    viewModel.openPlaylistHit(playlist)
-                                },
-                                openAlbum = { album ->
-                                    focusManager.clearFocus()
-                                    keyboardController?.hide()
-                                    viewModel.openAlbum(album)
-                                },
-                                trackActions = onTrackActions
-                            )
+                            actions = searchActions
                         )
                         if (filter != SearchFilter.All) {
                             item(key = "search-section-footer", contentType = "search-section-footer") {
@@ -16275,6 +16325,10 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState, onTra
                     )
             )
         }
+    }
+
+    appleExploreViewModel?.let { exploreViewModel ->
+        AppleMusicSearchDestination(appleDestination, exploreViewModel, backEnabled, onTrackActions) { appleDestination = null }
     }
 
     addTarget?.let { track ->
@@ -26366,9 +26420,11 @@ private fun ExploreScreen(
         ExploreFreshSection(freshScopes, freshFeed, momentPages, freshRegionLabel)
     }
     val spotifyExplore = LevyraIsSpotify
+    val moodsInSearch = spotifyExplore || LevyraIsAppleMusic
     val rows = remember(
         zones,
         spotifyExplore,
+        moodsInSearch,
         state.isFreshCurrentsLoading,
         freshFeed.spotlight.isNotEmpty(),
         freshScopes.size > 1,
@@ -26380,7 +26436,8 @@ private fun ExploreScreen(
             hasFreshTracks = freshFeed.spotlight.isNotEmpty(),
             hasFreshScopes = freshScopes.size > 1,
             hasFreshMoment = momentPages.isNotEmpty(),
-            spotifyStyle = spotifyExplore
+            spotifyStyle = spotifyExplore,
+            moodsInSearch = moodsInSearch
         )
     }
     val availableAnchors = remember(rows) { exploreAvailableAnchors(rows) }
@@ -26949,7 +27006,7 @@ private fun ExploreMoodCollectionDestination(
 }
 
 @Composable
-private fun exploreDestinationBottomInset(state: LevyraUiState): Dp = tabBarBottomContentInset(
+internal fun exploreDestinationBottomInset(state: LevyraUiState): Dp = tabBarBottomContentInset(
     miniPlayerVisible = state.currentTrack != null,
     animationsEnabled = state.animationsEnabled
 )

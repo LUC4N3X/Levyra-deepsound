@@ -9,8 +9,9 @@ internal object AppleExploreCatalog {
     private val aliases = mapOf(
         "commute" to "commuting", "energize" to "motivation", "workout" to "fitness",
         "relax" to "chill", "classica" to "classical", "musica classica" to "classical",
-        "musica latina" to "latin", "latin music" to "latin", "hip hop rap" to "hip hop",
-        "r b soul" to "r b", "indie alternative" to "alternative", "dance electronic" to "dance"
+        "musica latina" to "latin", "latin music" to "latin", "latino" to "latin", "hip hop rap" to "hip hop",
+        "r b soul" to "r b", "r b e soul" to "r b", "indie alternative" to "alternative", "dance electronic" to "dance",
+        "musica di natale" to "natale", "christmas music" to "christmas"
     )
     private val curatorsByCategoryParams = mapOf(
         "ggMPOg1uX044Z2o5WERLckpU" to "1558257238",
@@ -55,13 +56,13 @@ internal object AppleExploreCatalog {
     fun findCurator(title: String, items: List<AppleCatalogItem>): AppleCatalogItem? {
         val key = identity(title)
         if (key.isBlank()) return null
-        return items.firstOrNull { item ->
-            item.id.isNotBlank() && item.id.all(Char::isDigit) &&
-                item.url.contains("/curator/") && identity(item.title) == key
-        }
+        return items.firstOrNull { item -> isCategory(item) && identity(item.title) == key }
     }
 
-    private fun identity(title: String): String {
+    fun isCategory(item: AppleCatalogItem): Boolean =
+        item.id.isNotBlank() && item.id.all(Char::isDigit) && item.url.contains("/curator/")
+
+    fun identity(title: String): String {
         val normalized = separators.replace(
             marks.replace(Normalizer.normalize(title.lowercase(Locale.ROOT), Normalizer.Form.NFD), ""), " "
         ).trim().removePrefix("apple music ")

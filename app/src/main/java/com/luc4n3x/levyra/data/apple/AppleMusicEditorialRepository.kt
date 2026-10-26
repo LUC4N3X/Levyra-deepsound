@@ -138,6 +138,12 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
         return null
     }
 
+    suspend fun browseCategories(storefront: String, language: String): List<AppleCatalogItem> =
+        listOf(AppleCatalogPath.Genres, AppleCatalogPath.Moods)
+            .flatMap { directory -> page(directory, storefront, language)?.page?.shelves.orEmpty().flatMap { it.items } }
+            .filter(AppleExploreCatalog::isCategory)
+            .distinctBy { it.id }
+
     private suspend fun curatorPage(curatorId: String, storefront: String, language: String): AppleCatalogPage? =
         page(AppleCatalogPath("curator/levyra/$curatorId", "curator-$curatorId"), storefront, language)?.page
             ?.takeIf { page -> page.shelves.any { shelf -> shelf.items.isNotEmpty() } }

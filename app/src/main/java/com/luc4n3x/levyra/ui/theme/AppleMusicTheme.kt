@@ -77,6 +77,7 @@ internal object AppleMusicDesign {
     val cornerXl = 14.dp
 
     val artworkShape: Shape = RoundedCornerShape(cornerL)
+    val categoryTileShape: Shape = RoundedCornerShape(cornerM)
     val thumbShape: Shape = RoundedCornerShape(cornerS)
     val pillShape: Shape = CircleShape
 

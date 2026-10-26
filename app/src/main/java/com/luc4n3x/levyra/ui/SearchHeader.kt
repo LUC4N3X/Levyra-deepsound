@@ -145,6 +145,13 @@ internal fun SearchHeader(
         )
         return
     }
+    if (LevyraIsAppleMusic) {
+        AppleMusicSearchHeader(
+            query, recognitionAvailable, recognitionBusy, onQuery, onSearch, onClear,
+            onSettings, launchVoiceSearch, toggleRecognition, spotifyFocus
+        )
+        return
+    }
     if (LevyraIsSpotify) {
         SpotifySearchHeader(
             userName, query, recognitionAvailable, recognitionBusy, onSettings, onQuery,
