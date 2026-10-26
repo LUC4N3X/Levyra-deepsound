@@ -23,6 +23,7 @@ private const val CLIPS_REMOTE_TTL_MS = 6 * 60 * 60 * 1_000L
 private val CANVAS_URL_REGEX = Regex("^https://canvaz\\.scdn\\.co/[A-Za-z0-9/_.\\-]+\\.cnvs\\.mp4$")
 private val ARTWORK_URL_REGEX = Regex("^https://i\\.scdn\\.co/image/[A-Za-z0-9]+$")
 private val VIDEO_ID_REGEX = Regex("^[A-Za-z0-9_-]{11}$")
+private val SPOTIFY_TRACK_ID_REGEX = Regex("^[A-Za-z0-9]{22}$")
 
 internal data class SpotifyClip(
     val id: String,
@@ -31,7 +32,9 @@ internal data class SpotifyClip(
     val artist: String,
     val artworkUrl: String,
     val canvasUrl: String,
-    val audioVideoId: String
+    val audioVideoId: String,
+    val spotifyTrackId: String = "",
+    val audioPreviewUrl: String = ""
 )
 
 internal data class SpotifyClipsCatalog(
@@ -43,6 +46,8 @@ internal data class SpotifyClipsCatalog(
 internal object SpotifyClipCanvasRegistry {
     private val canvasByTrackId = ConcurrentHashMap<String, String>()
     private val titleByTrackId = ConcurrentHashMap<String, String>()
+    private val audioByTrackId = ConcurrentHashMap<String, SpotifySampleAudio>()
+    private val bundledLoadLock = Any()
     @Volatile private var bundledSource: Context? = null
     @Volatile private var bundledLoaded = false
 
@@ -50,9 +55,34 @@ internal object SpotifyClipCanvasRegistry {
         bundledSource = context.applicationContext
     }
 
-    fun register(trackId: String, canvasUrl: String, feedTitle: String) {
+    fun register(trackId: String, canvasUrl: String, feedTitle: String, spotifyTrackId: String = "", audioPreviewUrl: String = "") {
         canvasByTrackId[trackId] = canvasUrl
         if (feedTitle.isNotBlank()) titleByTrackId[trackId] = feedTitle
+        registerAudio(trackId, spotifyTrackId, audioPreviewUrl)
+    }
+
+    private fun registerAudio(trackId: String, spotifyTrackId: String, audioPreviewUrl: String) {
+        if (SPOTIFY_TRACK_ID_REGEX.matches(spotifyTrackId) && isSpotifySampleAudioUrl(audioPreviewUrl)) {
+            if (audioByTrackId.size >= 512 && !audioByTrackId.containsKey(trackId)) {
+                audioByTrackId.keys.firstOrNull()?.let(audioByTrackId::remove)
+            }
+            audioByTrackId[trackId] = SpotifySampleAudio(spotifyTrackId, audioPreviewUrl)
+        } else {
+            audioByTrackId.remove(trackId)
+        }
+    }
+
+    fun audio(track: Track): SpotifySampleAudio? {
+        audioByTrackId[track.id]?.let { return it }
+        loadBundled()
+        return audioByTrackId[track.id]
+    }
+
+    fun restore(trackId: String, canvasUrl: String, feedTitle: String, spotifyTrackId: String, audioPreviewUrl: String) {
+        if (!trackId.startsWith(SPOTIFY_CLIP_ID_PREFIX) || !CANVAS_URL_REGEX.matches(canvasUrl) ||
+            !SPOTIFY_TRACK_ID_REGEX.matches(spotifyTrackId) || !isSpotifySampleAudioUrl(audioPreviewUrl)
+        ) return
+        register(trackId, canvasUrl, feedTitle, spotifyTrackId, audioPreviewUrl)
     }
 
     fun feedTitle(track: Track?): String {
@@ -64,17 +94,25 @@ internal object SpotifyClipCanvasRegistry {
         val id = track?.id ?: return ""
         canvasByTrackId[id]?.let { return it }
         if (!id.startsWith(SPOTIFY_CLIP_ID_PREFIX) || bundledLoaded) return ""
-        val context = bundledSource ?: return ""
-        bundledLoaded = true
+        loadBundled()
+        return canvasByTrackId[id].orEmpty()
+    }
+
+    private fun loadBundled() = synchronized(bundledLoadLock) {
+        if (bundledLoaded) return@synchronized
+        val context = bundledSource ?: return@synchronized
         runCatching {
             context.assets.open(CLIPS_ASSET).bufferedReader().use { parseSpotifyClips(it.readText()) }
         }.getOrNull()?.let { catalog ->
             catalog.clips.forEach { clip ->
                 canvasByTrackId.putIfAbsent(SPOTIFY_CLIP_ID_PREFIX + clip.id, clip.canvasUrl)
                 catalog.genreTitles[clip.genre]?.let { titleByTrackId.putIfAbsent(SPOTIFY_CLIP_ID_PREFIX + clip.id, it) }
+                if (!audioByTrackId.containsKey(SPOTIFY_CLIP_ID_PREFIX + clip.id)) {
+                    registerAudio(SPOTIFY_CLIP_ID_PREFIX + clip.id, clip.spotifyTrackId, clip.audioPreviewUrl)
+                }
             }
         }
-        return canvasByTrackId[id].orEmpty()
+        bundledLoaded = true
     }
 }
 
@@ -162,7 +200,9 @@ internal fun parseSpotifyClips(raw: String): SpotifyClipsCatalog? {
                     artist = artist,
                     artworkUrl = item.optString("artworkUrl").takeIf(ARTWORK_URL_REGEX::matches).orEmpty(),
                     canvasUrl = canvas,
-                    audioVideoId = item.optString("audioVideoId").takeIf(VIDEO_ID_REGEX::matches).orEmpty()
+                    audioVideoId = item.optString("audioVideoId").takeIf(VIDEO_ID_REGEX::matches).orEmpty(),
+                    spotifyTrackId = item.optString("spotifyTrackId").takeIf(SPOTIFY_TRACK_ID_REGEX::matches).orEmpty(),
+                    audioPreviewUrl = item.optString("audioPreviewUrl").takeIf(::isSpotifySampleAudioUrl).orEmpty()
                 )
             )
         }
@@ -182,7 +222,9 @@ internal fun rankSpotifyClips(
     val preferred = preferredArtists.flatMap(::clipArtistKeys).toSet()
     fun affinity(clip: SpotifyClip) = if (clipArtistKeys(clip.artist).any(preferred::contains)) 1 else 0
     val random = Random(daySeed)
-    val byGenre = catalog.clips.groupBy { it.genre }.mapValues { (_, clips) ->
+    val byGenre = catalog.clips
+        .filter { SPOTIFY_TRACK_ID_REGEX.matches(it.spotifyTrackId) && isSpotifySampleAudioUrl(it.audioPreviewUrl) }
+        .groupBy { it.genre }.mapValues { (_, clips) ->
         clips.shuffled(random).sortedByDescending(::affinity).toMutableList()
     }
     val genreScores = byGenre.mapValues { (genre, genreClips) ->
@@ -207,7 +249,7 @@ private fun clipArtistKeys(value: String): List<String> =
 
 private fun SpotifyClip.toTrack(feedTitle: String): Track {
     val trackId = SPOTIFY_CLIP_ID_PREFIX + id
-    SpotifyClipCanvasRegistry.register(trackId, canvasUrl, feedTitle)
+    SpotifyClipCanvasRegistry.register(trackId, canvasUrl, feedTitle, spotifyTrackId, audioPreviewUrl)
     val palette = arrayOf(
         0xFF1ED760.toInt() to 0xFF0B5C2A.toInt(),
         0xFFE91429.toInt() to 0xFF5C0B12.toInt(),
@@ -221,7 +263,9 @@ private fun SpotifyClip.toTrack(feedTitle: String): Track {
         album = "",
         durationMs = 0L,
         streamUrl = "",
-        videoUrl = audioVideoId.takeIf(String::isNotBlank)?.let { "https://www.youtube.com/watch?v=$it" }.orEmpty(),
+        videoUrl = spotifyTrackId.takeIf(SPOTIFY_TRACK_ID_REGEX::matches)
+            ?.let { "https://open.spotify.com/track/$it" }
+            ?: audioVideoId.takeIf(String::isNotBlank)?.let { "https://www.youtube.com/watch?v=$it" }.orEmpty(),
         thumbnailUrl = artworkUrl,
         largeThumbnailUrl = artworkUrl,
         source = YOUTUBE_SHORTS_SOURCE,

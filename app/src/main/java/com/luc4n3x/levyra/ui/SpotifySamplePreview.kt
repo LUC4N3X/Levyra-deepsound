@@ -31,6 +31,8 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.motion.MotionArtworkNetworkPolicy
 import com.luc4n3x.levyra.player.LevyraMediaItemFactory
 import com.luc4n3x.levyra.player.LevyraYoutubeDataSource
+import com.luc4n3x.levyra.player.PlaybackService
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
 import kotlinx.coroutines.awaitCancellation
 
@@ -66,14 +68,33 @@ internal fun SpotifySamplePreview(track: Track) {
 }
 
 @Composable
-internal fun SpotifyCanvasLoop(track: Track?, modifier: Modifier = Modifier) {
+internal fun SpotifyCanvasLoop(track: Track?, modifier: Modifier = Modifier, syncToAudio: Boolean = false) {
     val canvas = SpotifyClipCanvasRegistry.canvasUrl(track)
     if (track == null || canvas.isBlank()) return
-    Box(modifier) { SpotifySamplePreviewVideo(track, canvas) }
+    val playWhenReady = if (syncToAudio) sampleAudioIsPlaying(track.id) else true
+    Box(modifier) { SpotifySamplePreviewVideo(track, canvas, playWhenReady) }
 }
 
 @Composable
-private fun SpotifySamplePreviewVideo(track: Track, canvas: String = "") {
+private fun sampleAudioIsPlaying(trackId: String): Boolean {
+    val player = PlaybackService.activePlayerFlow.collectAsStateWithLifecycle().value
+    var playing by remember(player, trackId) {
+        mutableStateOf(player?.isPlaying == true && player.currentMediaItem?.mediaId == trackId)
+    }
+    DisposableEffect(player, trackId) {
+        val listener = object : Player.Listener {
+            override fun onEvents(active: Player, events: Player.Events) {
+                playing = active.isPlaying && active.currentMediaItem?.mediaId == trackId
+            }
+        }
+        player?.addListener(listener)
+        onDispose { player?.removeListener(listener) }
+    }
+    return playing
+}
+
+@Composable
+private fun SpotifySamplePreviewVideo(track: Track, canvas: String = "", playWhenReady: Boolean = true) {
     val context = LocalContext.current
     var ready by remember(track.id) { mutableStateOf(false) }
     var attempt by remember(track.id, canvas) { mutableStateOf(0) }
@@ -105,12 +126,15 @@ private fun SpotifySamplePreviewVideo(track: Track, canvas: String = "") {
         player.setVideoTextureView(texture)
         player.setMediaItem(if (canvas.isNotBlank()) MediaItem.fromUri(canvas) else LevyraMediaItemFactory.build(track, videoMode = true))
         player.prepare()
-        player.playWhenReady = true
+        player.playWhenReady = playWhenReady
         onDispose {
             player.removeListener(listener)
             player.clearVideoTextureView(texture)
             player.release()
         }
+    }
+    LaunchedEffect(player, playWhenReady) {
+        player.playWhenReady = playWhenReady
     }
     AndroidView(factory = { texture }, update = { surface ->
         if (viewSize.width > 0 && viewSize.height > 0 && videoSize.width > 0 && videoSize.height > 0) {

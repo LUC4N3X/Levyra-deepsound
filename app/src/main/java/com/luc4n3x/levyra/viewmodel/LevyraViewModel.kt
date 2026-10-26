@@ -67,6 +67,8 @@ import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.NewPipeRuntime
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
 import com.luc4n3x.levyra.data.SPOTIFY_CLIP_ID_PREFIX
+import com.luc4n3x.levyra.data.SpotifyClipCanvasRegistry
+import com.luc4n3x.levyra.data.withSpotifySampleAudio
 import com.luc4n3x.levyra.data.preserveEditorialArtwork
 import com.luc4n3x.levyra.data.ReturnYoutubeDislikeRepository
 import com.luc4n3x.levyra.data.ReturnYoutubeDislikeResult
@@ -4470,7 +4472,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 val baseTrack = selectedSource?.forModeResolution()
                     ?: failedTrack.forModeResolution()
-                val resolved = preserveNativeSampleClip(failedTrack, withContext(Dispatchers.IO) { providerRouter.resolve(baseTrack, videoMode) })
+                val resolved = if (_state.value.isSamplesOpen && failedTrack.id.startsWith(SPOTIFY_CLIP_ID_PREFIX)) {
+                    originalSpotifySample(failedTrack)
+                } else {
+                    preserveNativeSampleClip(failedTrack, withContext(Dispatchers.IO) { providerRouter.resolve(baseTrack, videoMode) })
+                }
                 if (!isActive || transitionId != streamTransitionId) return@launch
                 val currentIndex = queueEngine.state.value.currentIndex
                 if (currentIndex >= 0) queueEngine.updateTrackAt(currentIndex, resolved)
@@ -10392,11 +10398,30 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         request: PlaybackResolveRequest,
         autoRetryWhenOffline: Boolean
     ) {
+        if (_state.value.isSamplesOpen && track.id.startsWith(SPOTIFY_CLIP_ID_PREFIX)) {
+            player.stop()
+            try {
+                val playable = originalSpotifySample(track)
+                if (isCurrentPlaybackRequest(request.id)) startPlayback(playable, request)
+            } catch (error: Throwable) {
+                if (error is CancellationException) throw error
+                if (isCurrentPlaybackRequest(request.id)) {
+                    publishResolveFailure(track, error, request.id, autoRetryWhenOffline = false)
+                }
+            }
+            return
+        }
         if (track.isPersonalCollectionTrack()) {
             resolvePersonalCollectionPlayback(track, request)
             return
         }
         resolveStandardPlayback(track, request, autoRetryWhenOffline)
+    }
+
+    private suspend fun originalSpotifySample(track: Track): Track {
+        val audio = withContext(Dispatchers.IO) { SpotifyClipCanvasRegistry.audio(track) }
+            ?: throw IllegalStateException("Stream non disponibile")
+        return track.withSpotifySampleAudio(audio)
     }
 
     private suspend fun CoroutineScope.resolvePersonalCollectionPlayback(

@@ -8,7 +8,7 @@ import org.json.JSONObject
 import timber.log.Timber
 import java.util.Locale
 
-private const val SHORTS_CACHE_NAME = "levyra_spotify_clips_v1_cache"
+private const val SHORTS_CACHE_NAME = "levyra_spotify_clips_v2_cache"
 private const val SHORTS_CACHE_LIMIT = 24
 private const val SHORTS_CACHE_MAX_AGE_MS = 6L * 60L * 60L * 1_000L
 
@@ -40,7 +40,7 @@ internal class YoutubeShortsCache(context: Context) {
                 val tracks = buildList {
                     for (index in 0 until items.length()) {
                         items.optJSONObject(index)
-                            ?.let(TrackJson::fromJson)
+                            ?.let(::shortTrackFromCacheJson)
                             ?.takeIf(::isYoutubeShortTrack)
                             ?.let(::add)
                     }
@@ -72,7 +72,7 @@ internal class YoutubeShortsCache(context: Context) {
             .toList()
         if (verified.isEmpty()) return
         val array = JSONArray().apply {
-            verified.forEach { track -> put(TrackJson.toJson(track)) }
+            verified.forEach { track -> put(shortTrackCacheJson(track)) }
         }
         val root = JSONObject()
             .put("savedAtMs", savedAtMs.coerceAtLeast(0L))
@@ -88,5 +88,25 @@ internal class YoutubeShortsCache(context: Context) {
         val normalized = profileSignature.trim().lowercase(Locale.ROOT)
         if (normalized.isBlank()) return "default"
         return normalized.hashCode().toUInt().toString(16)
+    }
+}
+
+internal fun shortTrackCacheJson(track: Track): JSONObject = TrackJson.toJson(track).apply {
+    if (track.id.startsWith(SPOTIFY_CLIP_ID_PREFIX)) {
+        SpotifyClipCanvasRegistry.audio(track)?.let { audio ->
+            put("spotifyTrackId", audio.trackId)
+            put("spotifyAudioPreviewUrl", audio.url)
+            put("spotifyCanvasUrl", SpotifyClipCanvasRegistry.canvasUrl(track))
+            put("spotifyFeedTitle", SpotifyClipCanvasRegistry.feedTitle(track))
+        }
+    }
+}
+
+internal fun shortTrackFromCacheJson(json: JSONObject): Track? = TrackJson.fromJson(json)?.also { track ->
+    if (track.id.startsWith(SPOTIFY_CLIP_ID_PREFIX)) {
+        SpotifyClipCanvasRegistry.restore(
+            track.id, json.optString("spotifyCanvasUrl"), json.optString("spotifyFeedTitle"),
+            json.optString("spotifyTrackId"), json.optString("spotifyAudioPreviewUrl")
+        )
     }
 }

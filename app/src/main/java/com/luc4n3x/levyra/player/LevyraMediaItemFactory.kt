@@ -6,6 +6,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
 import com.luc4n3x.levyra.data.collections.isPersonalCollectionTrack
+import com.luc4n3x.levyra.data.isSpotifySampleAudioUrl
 import com.luc4n3x.levyra.data.locallibrary.mediaSessionArtworkUri
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
@@ -110,6 +111,7 @@ object LevyraMediaItemFactory {
         val isContentUri = clean.startsWith("content://")
         val isExtensionlessFileUri = clean.startsWith("file://") && !path.substringAfterLast('/').contains('.')
         return when {
+            isSpotifySampleAudioUrl(url) -> "audio/mpeg"
             isContentUri || isExtensionlessFileUri -> null
             path.endsWith(".m3u8") || path.contains("/hls_playlist") || path.contains("/manifest/hls") || clean.contains("mime=application%2fx-mpegurl") || clean.contains("mime=application/vnd.apple.mpegurl") || clean.contains("type=application%2fx-mpegurl") -> "application/x-mpegURL"
             path.endsWith(".mpd") || clean.contains("mime=application%2fdash+xml") || clean.contains("mime=application/dash+xml") -> "application/dash+xml"
