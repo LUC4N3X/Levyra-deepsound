@@ -234,12 +234,16 @@ Contributions and bug reports are welcome. Technical documentation and architect
 ### LUC4N3X
 
 <p>
-  <img src="https://img.shields.io/badge/Creator_%26_Maintainer-7C3AED?style=for-the-badge&amp;logo=github&amp;logoColor=white" alt="Creator &amp; Maintainer" />
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-creator-badge-light.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-creator-badge-dark.svg">
+    <img src="docs/assets/levyra-creator-badge-dark.svg" width="220" height="38" alt="Creator &amp; Maintainer">
+  </picture>
 </p>
 
 <p>
-  I develop and maintain Levyra, an open-source music player for Android and Windows,<br>
-  with a focus on reliable playback, clean architecture, and continuous improvement.
+  <strong>Building Levyra for Android &amp; Windows.</strong><br>
+  <sub>Open-source music software focused on reliable playback, thoughtful design, and user control.</sub>
 </p>
 
 <p>
