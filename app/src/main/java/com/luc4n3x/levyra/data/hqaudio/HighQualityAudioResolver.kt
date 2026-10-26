@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withTimeoutOrNull
@@ -38,15 +39,31 @@ sealed interface HighQualityResolution {
 }
 
 class HighQualityAudioResolver(
-    private val provider: HighQualityAudioProvider,
+    private val providers: List<HighQualityAudioProvider>,
     private val mappingStore: HighQualityMappingStore,
     private val scope: CoroutineScope,
     matcher: AlternativeTrackMatcher = AlternativeTrackMatcher(),
     private val clock: () -> Long = System::currentTimeMillis,
-    private val lookupBudgetMs: Long = LOOKUP_BUDGET_MS
+    private val lookupBudgetMs: Long = LOOKUP_BUDGET_MS,
+    private val losslessLaneBudgetMs: Long = LOSSLESS_LANE_BUDGET_MS
 ) {
-    private val lane = HighQualityProviderLane(provider, mappingStore, matcher, clock) { providerTrackId ->
-        isQuarantined(quarantinedProviderTracks, providerTrackId)
+    constructor(
+        provider: HighQualityAudioProvider,
+        mappingStore: HighQualityMappingStore,
+        scope: CoroutineScope,
+        matcher: AlternativeTrackMatcher = AlternativeTrackMatcher(),
+        clock: () -> Long = System::currentTimeMillis,
+        lookupBudgetMs: Long = LOOKUP_BUDGET_MS
+    ) : this(listOf(provider), mappingStore, scope, matcher, clock, lookupBudgetMs)
+
+    init {
+        require(providers.isNotEmpty()) { "At least one provider is required" }
+    }
+
+    private val lanes = providers.map { provider ->
+        HighQualityProviderLane(provider, mappingStore, matcher, clock) { providerTrackId ->
+            isQuarantined(quarantinedProviderTracks, trackKey(provider.id, providerTrackId))
+        }
     }
     private val streams = ConcurrentHashMap<String, HighQualityResolution.Selected>()
     private val quarantinedIdentities = ConcurrentHashMap<String, Long>()
@@ -58,23 +75,29 @@ class HighQualityAudioResolver(
     @Volatile
     var mode: HighQualityAudioMode = HighQualityAudioMode.OFF
         set(value) {
-            field = value
-            if (!value.enabled) streams.clear()
+            synchronized(inFlightLock) {
+                val losslessChanged = field.lossless != value.lossless
+                field = value
+                if (!value.enabled || losslessChanged) {
+                    streams.clear()
+                    inFlight.values.forEach { it.cancel() }
+                    inFlight.clear()
+                }
+                if (losslessChanged) unmatchedIdentities.clear()
+            }
         }
 
-    val providerId: String
-        get() = provider.id
+    fun providerName(providerId: String): String =
+        providers.firstOrNull { it.id == providerId }?.displayName ?: providers.first().displayName
 
-    val providerName: String
-        get() = provider.displayName
-
-    fun providerHealth(): List<ProviderBackendHealth> = provider.health()
+    fun providerHealth(): List<ProviderBackendHealth> = providers.flatMap { it.health() }
 
     fun cachedSelection(identityKey: String): HighQualityResolution.Selected? {
         if (!mode.enabled || isQuarantined(quarantinedIdentities, identityKey)) return null
         val cached = streams[identityKey] ?: return null
         val usable = cached.stream.isFresh(clock(), STREAM_REFRESH_MARGIN_MS) &&
-            !isQuarantined(quarantinedProviderTracks, cached.stream.providerTrackId)
+            (mode.lossless || !cached.stream.tier.lossless) &&
+            !isQuarantined(quarantinedProviderTracks, trackKey(cached.stream.providerId, cached.stream.providerTrackId))
         if (!usable) {
             streams.remove(identityKey, cached)
             return null
@@ -125,24 +148,71 @@ class HighQualityAudioResolver(
         HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "lookup cancelled")
     }
 
-    fun reportPlaybackFailure(identityKey: String, providerTrackId: String, reason: String) {
+    fun reportPlaybackFailure(
+        identityKey: String,
+        providerTrackId: String,
+        reason: String,
+        providerId: String = providers.first().id
+    ) {
         val until = clock() + FAILURE_QUARANTINE_MS
         streams.remove(identityKey)
-        quarantine(quarantinedIdentities, identityKey, until)
-        if (providerTrackId.isNotBlank()) quarantine(quarantinedProviderTracks, providerTrackId, until)
-        mappingStore.remove(identityKey, provider.id)
+        val failedLossless = providers.firstOrNull { it.id == providerId }?.lossless == true
+        if (!failedLossless || providerTrackId.isBlank()) quarantine(quarantinedIdentities, identityKey, until)
+        if (providerTrackId.isNotBlank()) quarantine(quarantinedProviderTracks, trackKey(providerId, providerTrackId), until)
+        mappingStore.remove(identityKey, providerId)
         HighQualityAudioDiagnostics.fallback(HighQualityFallbackReason.QUARANTINED, "playback failure: ${reason.take(80)}", providerTrackId)
     }
 
     private suspend fun lookup(identityKey: String, query: AlternativeTrackQuery): HighQualityResolution {
-        val resolution = withTimeoutOrNull(lookupBudgetMs) { lane.resolve(identityKey, query) }
+        val active = lanes.filter { mode.lossless || !it.provider.lossless }
+        if (active.isEmpty()) return HighQualityResolution.Fallback(HighQualityFallbackReason.DISABLED)
+        val resolution = withTimeoutOrNull(lookupBudgetMs) { resolveByPriority(identityKey, query, active) }
             ?: HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "lookup budget")
-        if (resolution is HighQualityResolution.Selected && mode.enabled) rememberStream(identityKey, resolution)
-        if (resolution is HighQualityResolution.Fallback && resolution.reason in DEFINITIVE_MISSES) {
-            quarantine(unmatchedIdentities, identityKey, clock() + UNMATCHED_MEMORY_MS)
+        val lookupContext = currentCoroutineContext()
+        synchronized(inFlightLock) {
+            lookupContext.ensureActive()
+            if (resolution is HighQualityResolution.Selected && mode.enabled) rememberStream(identityKey, resolution)
+            if (resolution is HighQualityResolution.Fallback && resolution.reason in DEFINITIVE_MISSES) {
+                quarantine(unmatchedIdentities, identityKey, clock() + UNMATCHED_MEMORY_MS)
+            }
         }
         return resolution
     }
+
+    private suspend fun resolveByPriority(
+        identityKey: String,
+        query: AlternativeTrackQuery,
+        active: List<HighQualityProviderLane>
+    ): HighQualityResolution = coroutineScope {
+        val attempts = active.map { lane -> async { resolveLane(lane, identityKey, query) } }
+        val fallbacks = ArrayList<HighQualityResolution.Fallback>(attempts.size)
+        for (attempt in attempts) {
+            when (val resolution = attempt.await()) {
+                is HighQualityResolution.Selected -> {
+                    attempts.forEach { it.cancel() }
+                    return@coroutineScope resolution
+                }
+                is HighQualityResolution.Fallback -> fallbacks += resolution
+            }
+        }
+        fallbacks.firstOrNull { it.reason !in DEFINITIVE_MISSES } ?: fallbacks.first()
+    }
+
+    private suspend fun resolveLane(
+        lane: HighQualityProviderLane,
+        identityKey: String,
+        query: AlternativeTrackQuery
+    ): HighQualityResolution {
+        if (!lane.provider.lossless) return lane.resolve(identityKey, query)
+        val resolution = withTimeoutOrNull(losslessLaneBudgetMs) { lane.resolve(identityKey, query) }
+            ?: HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "${lane.provider.id} lane budget")
+        if (resolution is HighQualityResolution.Fallback) {
+            HighQualityAudioDiagnostics.fallback(resolution.reason, "${lane.provider.id}: ${resolution.detail}", query.title)
+        }
+        return resolution
+    }
+
+    private fun trackKey(providerId: String, providerTrackId: String): String = "$providerId:$providerTrackId"
 
     private fun rememberStream(identityKey: String, selection: HighQualityResolution.Selected) {
         if (streams.size >= MAX_CACHED_STREAMS) {
@@ -178,6 +248,7 @@ class HighQualityAudioResolver(
 
     companion object {
         const val LOOKUP_BUDGET_MS = 8_000L
+        const val LOSSLESS_LANE_BUDGET_MS = 4_000L
         const val STREAM_REFRESH_MARGIN_MS = 90_000L
         const val FAILURE_QUARANTINE_MS = 30L * 60L * 1_000L
         const val UNMATCHED_MEMORY_MS = 30L * 60L * 1_000L

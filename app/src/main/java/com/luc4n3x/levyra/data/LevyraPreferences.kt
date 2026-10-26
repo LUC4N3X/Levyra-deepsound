@@ -110,7 +110,7 @@ data class LevyraPreferencesSnapshot(
     val backupSettings: LevyraBackupSettings,
     val automationSettings: LevyraAutomationSettings = LevyraAutomationSettings(),
     val jamDisplayName: String = "",
-    val highQualityAudioMode: HighQualityAudioMode = HighQualityAudioMode.PREFER_320,
+    val highQualityAudioMode: HighQualityAudioMode = HighQualityAudioMode.DEFAULT,
     val lyricsLatencyProfiles: LyricsLatencyProfiles = LyricsLatencyProfiles(),
     val videoQualityTarget: VideoQualityTarget = VideoQualityTarget.AUTO,
     val lyricsProviderOrdering: LyricsProviderOrdering = LyricsProviderOrdering(),

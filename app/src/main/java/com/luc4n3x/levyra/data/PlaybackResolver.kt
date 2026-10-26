@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.data
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.os.Build
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
 import com.luc4n3x.levyra.data.collections.PersonalCollectionRepository
@@ -14,13 +15,16 @@ import com.luc4n3x.levyra.data.network.YoutubeClientIdentityInterceptor
 import com.luc4n3x.levyra.data.network.YoutubeRegionProfile
 import com.luc4n3x.levyra.data.network.YoutubeStreamClientIdentity
 import com.luc4n3x.levyra.data.network.YoutubeStreamClientIdentityRegistry
+import com.luc4n3x.levyra.data.hqaudio.HighQualityAudioProvider
 import com.luc4n3x.levyra.data.hqaudio.HighQualityAudioResolver
 import com.luc4n3x.levyra.data.hqaudio.HighQualityMappingStore
 import com.luc4n3x.levyra.data.hqaudio.HighQualityPlaybackCoordinator
 import com.luc4n3x.levyra.data.hqaudio.HighQualityProviderHttpClient
 import com.luc4n3x.levyra.data.hqaudio.OkHttpProviderExchange
+import com.luc4n3x.levyra.data.hqaudio.ProviderHttpExchange
 import com.luc4n3x.levyra.data.hqaudio.SharedPreferencesMappingStorage
 import com.luc4n3x.levyra.data.hqaudio.jiosaavn.JioSaavnAudioProvider
+import com.luc4n3x.levyra.data.hqaudio.lossless.MonochromeAudioProvider
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.LevyraAudioQuality
 import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
@@ -390,11 +394,18 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val sourceMatchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val highQualityPlayback = HighQualityPlaybackCoordinator(
         HighQualityAudioResolver(
-            provider = JioSaavnAudioProvider(OkHttpProviderExchange(HighQualityProviderHttpClient::client)),
+            providers = highQualityProviders(OkHttpProviderExchange(HighQualityProviderHttpClient::client)),
             mappingStore = HighQualityMappingStore(SharedPreferencesMappingStorage(context)),
             scope = resolveScope
         )
     ).apply { mode = userPreferences.highQualityAudioMode() }
+
+    private fun highQualityProviders(exchange: ProviderHttpExchange): List<HighQualityAudioProvider> = buildList {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            add(MonochromeAudioProvider(exchange))
+        }
+        add(JioSaavnAudioProvider(exchange))
+    }
     private val fallbackTtlMs = 90L * 60L * 1000L
     private val maxTtlMs = 5L * 60L * 60L * 1000L
     private val youtubeEngagementTtlMs = 12L * 60L * 60L * 1000L

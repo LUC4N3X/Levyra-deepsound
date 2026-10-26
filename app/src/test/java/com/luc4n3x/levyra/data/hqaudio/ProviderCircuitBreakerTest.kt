@@ -28,6 +28,21 @@ class ProviderCircuitBreakerTest {
     }
 
     @Test
+    fun rateLimitImmediatelyOpensAndSurvivesAConcurrentSearchSuccess() {
+        val olderSearch = breaker.acquire()
+
+        breaker.onRateLimited(180_000L)
+        breaker.onSuccess(olderSearch)
+
+        assertEquals(State.OPEN, breaker.currentState)
+        assertEquals("HTTP_429", breaker.snapshot("monochrome").lastFailure)
+        clockMs += 179_999L
+        assertEquals(Permit.REJECTED, breaker.acquire())
+        clockMs += 1L
+        assertEquals(Permit.PROBE, breaker.acquire())
+    }
+
+    @Test
     fun successResetsTheConsecutiveFailureCount() {
         repeat(ProviderCircuitBreaker.DEFAULT_FAILURE_THRESHOLD - 1) { breaker.onFailure(breaker.acquire()) }
         breaker.onSuccess(breaker.acquire())

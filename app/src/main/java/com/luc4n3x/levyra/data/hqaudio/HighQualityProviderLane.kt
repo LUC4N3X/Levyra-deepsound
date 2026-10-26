@@ -15,7 +15,7 @@ internal class HighQualityProviderLane(
 ) {
     suspend fun resolve(identityKey: String, query: AlternativeTrackQuery): HighQualityResolution = try {
         val queryFingerprint = AlternativeTrackFingerprint.of(query)
-        val stored = mappingStore.load(identityKey, provider.id, queryFingerprint)
+        val stored = if (provider.supportsLookup) mappingStore.load(identityKey, provider.id, queryFingerprint) else null
         val refreshed = stored?.let { refreshStoredMapping(identityKey, query, it) }
         refreshed ?: searchAndResolve(identityKey, query, queryFingerprint)
     } catch (error: CancellationException) {
@@ -107,6 +107,7 @@ internal class HighQualityProviderLane(
 
     private suspend fun hydrate(query: AlternativeTrackQuery, selected: AlternativeMatchEvaluation): Hydration {
         val searched = selected.candidate
+        if (!provider.supportsLookup) return Hydration.Ready(selected)
         val outcome = withTimeoutOrNull(HYDRATION_TIMEOUT_MS) { provider.lookup(searched.providerTrackId) }
         return when (outcome) {
             null -> keepSearched(selected, "TIMEOUT", "${HYDRATION_TIMEOUT_MS}ms")
@@ -224,7 +225,7 @@ internal class HighQualityProviderLane(
 
     private fun isDecisive(selection: AlternativeMatchSelection, index: Int): Boolean = when (selection) {
         is AlternativeMatchSelection.Accepted ->
-            selection.evaluation.verdict == AlternativeMatchVerdict.EXACT ||
+            !provider.supportsLookup || selection.evaluation.verdict == AlternativeMatchVerdict.EXACT ||
                 selection.evaluation.confidence >= ISRC_CONFIRMED_CONFIDENCE ||
                 index >= 1
         is AlternativeMatchSelection.Rejected -> selection.reason == MatchRejection.AMBIGUOUS
@@ -236,7 +237,7 @@ internal class HighQualityProviderLane(
         queryFingerprint: String
     ): HighQualityResolution = when (val outcome = provider.resolveStream(evaluation.candidate)) {
         is ProviderStreamOutcome.Resolved -> {
-            mappingStore.save(
+            if (provider.supportsLookup) mappingStore.save(
                 identityKey,
                 StoredAlternativeMapping(
                     providerId = provider.id,

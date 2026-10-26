@@ -294,7 +294,8 @@ internal fun AudioSettingsPanel(
                         options = listOf(
                             HighQualityAudioMode.OFF to strings.alternativeAudioOff,
                             HighQualityAudioMode.AUTOMATIC to strings.alternativeAudioAutomatic,
-                            HighQualityAudioMode.PREFER_320 to strings.alternativeAudioPrefer320
+                            HighQualityAudioMode.PREFER_320 to strings.alternativeAudioPrefer320,
+                            HighQualityAudioMode.PREFER_LOSSLESS to strings.alternativeAudioPreferLossless
                         ),
                         onSelect = onHighQualityAudioMode
                     )

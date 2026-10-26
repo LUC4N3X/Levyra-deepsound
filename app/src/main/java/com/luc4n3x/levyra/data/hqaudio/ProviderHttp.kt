@@ -45,7 +45,7 @@ fun interface ProviderHttpExchange {
 }
 
 internal object ProviderDestinationPolicy {
-    private val allowedDomains = setOf("jiosaavn.com", "saavncdn.com")
+    private val allowedDomains = setOf("jiosaavn.com", "saavncdn.com", "tracks.monochrome.st")
 
     fun allows(url: HttpUrl): Boolean {
         if (!url.isHttps) return false
@@ -95,6 +95,8 @@ internal class OkHttpProviderExchange(
         }
 
     private fun Response.toProviderResponse(maxBodyBytes: Int): ProviderHttpResponse {
+        val headerValues = headers.names().associateWith { name -> headers[name].orEmpty() }
+        if (!isSuccessful) return ProviderHttpResponse(code, headerValues, ByteArray(0))
         val source = body.source()
         val buffer = Buffer()
         var remaining = maxBodyBytes.toLong()
@@ -103,7 +105,6 @@ internal class OkHttpProviderExchange(
             if (read == -1L) break
             remaining -= read
         }
-        val headerValues = headers.names().associateWith { name -> headers[name].orEmpty() }
         return ProviderHttpResponse(code, headerValues, buffer.readByteArray())
     }
 }

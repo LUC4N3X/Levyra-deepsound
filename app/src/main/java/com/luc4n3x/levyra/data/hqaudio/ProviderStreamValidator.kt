@@ -11,7 +11,8 @@ enum class StreamRejection {
     NOT_AUDIO,
     UNSUPPORTED_CONTAINER,
     UNKNOWN_LENGTH,
-    BITRATE_MISMATCH
+    BITRATE_MISMATCH,
+    DURATION_MISMATCH
 }
 
 sealed interface StreamValidation {
@@ -21,7 +22,9 @@ sealed interface StreamValidation {
         val container: String,
         val codec: String,
         val contentLength: Long,
-        val estimatedKbps: Int
+        val estimatedKbps: Int,
+        val bitDepth: Int = 0,
+        val sampleRateHz: Int = 0
     ) : StreamValidation
 
     data class Invalid(
@@ -33,6 +36,9 @@ sealed interface StreamValidation {
 
 internal object ProviderStreamValidator {
     const val PROBE_BYTES = 8_192
+    const val FLAC_MIME_TYPE = "audio/flac"
+    private const val CD_BIT_DEPTH = 16
+    private const val CD_MAX_SAMPLE_RATE_HZ = 48_000
     private const val LOWER_BITRATE_RATIO = 0.85
     private const val UPPER_BITRATE_RATIO = 1.15
     private const val UPPER_BITRATE_SLACK_KBPS = 8
@@ -75,6 +81,35 @@ internal object ProviderStreamValidator {
             codec = if (contains(body, aacSampleEntry)) "mp4a" else "",
             contentLength = totalBytes,
             estimatedKbps = estimatedKbps
+        )
+    }
+
+    fun validateLossless(response: ProviderHttpResponse, durationSeconds: Int): StreamValidation {
+        if (response.code != 200 && response.code != 206) {
+            return StreamValidation.Invalid(StreamRejection.HTTP_STATUS, response.code)
+        }
+        val body = response.body
+        if (body.isEmpty()) return StreamValidation.Invalid(StreamRejection.EMPTY_BODY, response.code)
+        val info = FlacStreamInfo.parse(body)
+            ?: return StreamValidation.Invalid(StreamRejection.UNSUPPORTED_CONTAINER, response.code)
+        val totalBytes = totalLength(response)
+        if (totalBytes == null || totalBytes <= 0L || durationSeconds <= 0) {
+            return StreamValidation.Invalid(StreamRejection.UNKNOWN_LENGTH, response.code)
+        }
+        if (!info.durationMatches(durationSeconds)) {
+            return StreamValidation.Invalid(StreamRejection.DURATION_MISMATCH, response.code)
+        }
+        val estimatedKbps = (totalBytes * 8.0 / durationSeconds / 1000.0).roundToInt()
+        val hiRes = info.bitsPerSample > CD_BIT_DEPTH || info.sampleRateHz > CD_MAX_SAMPLE_RATE_HZ
+        return StreamValidation.Valid(
+            tier = if (hiRes) AudioQualityTier.LOSSLESS_HI_RES else AudioQualityTier.LOSSLESS,
+            mimeType = FLAC_MIME_TYPE,
+            container = "flac",
+            codec = "flac",
+            contentLength = totalBytes,
+            estimatedKbps = estimatedKbps,
+            bitDepth = info.bitsPerSample,
+            sampleRateHz = info.sampleRateHz
         )
     }
 

@@ -1070,7 +1070,7 @@ class LevyraBackupManager(private val context: Context) {
             skipSilence = json.optBoolean("skipSilence", false),
             audioQuality = backupAudioQualityFromJson(json),
             highQualityAudioMode = HighQualityAudioMode.fromStorage(
-                json.optString("highQualityAudioMode", HighQualityAudioMode.PREFER_320.storageValue)
+                json.optString("highQualityAudioMode", HighQualityAudioMode.DEFAULT.storageValue)
             ),
             dismissedUpdateVersion = preferences.dismissedUpdateVersion(),
             lastTrack = json.optJSONObject("lastTrack")?.let(TrackJson::fromJson),

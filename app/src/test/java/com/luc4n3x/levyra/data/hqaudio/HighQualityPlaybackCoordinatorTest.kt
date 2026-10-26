@@ -9,7 +9,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -68,6 +71,48 @@ class HighQualityPlaybackCoordinatorTest {
         }
         assertFalse(youtubeRequested)
         assertEquals(320, result.playbackManifest?.alternativeSource?.bitrateKbps)
+    }
+
+    @Test
+    fun readyAlternativeDoesNotWaitForAStalledNormalResolverInLosslessMode() = runBlocking {
+        val provider = exactProvider().apply {
+            streamOutcome = {
+                delay(1_500L)
+                ProviderStreamOutcome.Resolved(resolvedStream(it))
+            }
+        }
+        val coordinator = coordinator(provider, HighQualityAudioMode.PREFER_LOSSLESS)
+        val requested = playbackTrack()
+        val query = coordinator.queryFor(requested, false, "Auto")!!
+        var normalCancelled = false
+
+        val result = withTimeout(4_000L) {
+            coordinator.resolve(requested, query, provenance) {
+                try {
+                    awaitCancellation()
+                } finally {
+                    normalCancelled = true
+                }
+            }
+        }
+
+        assertEquals("jiosaavn", result.playbackManifest?.alternativeSource?.providerId)
+        assertTrue(normalCancelled)
+    }
+
+    @Test
+    fun losslessCanUpgradeATrackPreviouslyResolvedTo320() {
+        val cached320 = coordinator(exactProvider(), HighQualityAudioMode.PREFER_320).play()
+        val provider = exactProvider().apply {
+            streamOutcome = { ProviderStreamOutcome.Resolved(resolvedStream(it).copy(
+                tier = AudioQualityTier.LOSSLESS, mimeType = "audio/flac", container = "flac", codec = "flac",
+                estimatedKbps = 250, bitDepth = 16, sampleRateHz = 44_100
+            )) }
+        }
+
+        val upgraded = coordinator(provider, HighQualityAudioMode.PREFER_LOSSLESS).play(cached320) { cached320 }
+
+        assertEquals("audio/flac", upgraded.playbackManifest?.streams?.single()?.mimeType)
     }
 
     @Test

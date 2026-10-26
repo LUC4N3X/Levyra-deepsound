@@ -16,13 +16,15 @@ class AlternativeAudioLocalizationTest {
             assertTrue(strings.code, strings.alternativeAudioOff.isNotBlank())
             assertTrue(strings.code, strings.alternativeAudioAutomatic.isNotBlank())
             assertTrue(strings.code, strings.alternativeAudioPrefer320.contains("320"))
+            assertTrue(strings.code, strings.alternativeAudioPreferLossless.contains("FLAC"))
         }
     }
 
     @Test
     fun modeLabelsStayDistinctInsideOneBundle() {
         LevyraStrings.all().forEach { strings ->
-            val labels = listOf(strings.alternativeAudioOff, strings.alternativeAudioAutomatic, strings.alternativeAudioPrefer320)
+            val labels = listOf(strings.alternativeAudioOff, strings.alternativeAudioAutomatic,
+                strings.alternativeAudioPrefer320, strings.alternativeAudioPreferLossless)
             assertEquals(strings.code, labels.size, labels.toSet().size)
         }
     }

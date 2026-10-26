@@ -1,12 +1,16 @@
 package com.luc4n3x.levyra.data.hqaudio
 
-enum class AudioQualityTier(val kbps: Int) {
+import java.util.Locale
+
+enum class AudioQualityTier(val kbps: Int, val lossless: Boolean = false) {
+    LOSSLESS_HI_RES(2_304, lossless = true),
+    LOSSLESS(1_411, lossless = true),
     KBPS_320(320),
     KBPS_160(160),
     KBPS_96(96);
 
     companion object {
-        fun fromKbps(value: Int): AudioQualityTier? = entries.firstOrNull { it.kbps == value }
+        fun fromKbps(value: Int): AudioQualityTier? = entries.firstOrNull { !it.lossless && it.kbps == value }
     }
 }
 
@@ -57,7 +61,9 @@ data class ResolvedHighQualityStream(
     val codec: String,
     val contentLength: Long,
     val estimatedKbps: Int,
-    val expiresAtMs: Long
+    val expiresAtMs: Long,
+    val bitDepth: Int = 0,
+    val sampleRateHz: Int = 0
 ) {
     val host: String
         get() = url.substringAfter("://", "").substringBefore('/').substringBefore('?')
@@ -69,10 +75,24 @@ data class ResolvedHighQualityStream(
         get() = if (matchesNominalTier) tier.kbps else estimatedKbps
 
     val qualityLabel: String
-        get() = if (matchesNominalTier) "${tier.kbps} kbps" else "~$estimatedKbps kbps"
+        get() = when {
+            tier.lossless -> losslessLabel()
+            matchesNominalTier -> "${tier.kbps} kbps"
+            else -> "~$estimatedKbps kbps"
+        }
 
     private val matchesNominalTier: Boolean
-        get() = estimatedKbps <= 0 || ProviderStreamValidator.bitrateMatches(estimatedKbps, tier)
+        get() = !tier.lossless && (estimatedKbps <= 0 || ProviderStreamValidator.bitrateMatches(estimatedKbps, tier))
+
+    private fun losslessLabel(): String {
+        if (bitDepth <= 0 || sampleRateHz <= 0) return "FLAC"
+        val rate = if (sampleRateHz % 1_000 == 0) {
+            "${sampleRateHz / 1_000}"
+        } else {
+            String.format(Locale.ROOT, "%.1f", sampleRateHz / 1_000.0)
+        }
+        return "FLAC $bitDepth-bit/$rate kHz"
+    }
 
     fun isFresh(nowMs: Long, marginMs: Long): Boolean = url.isNotBlank() && nowMs + marginMs < expiresAtMs
 }
@@ -92,6 +112,10 @@ data class ProviderBackendHealth(
 interface HighQualityAudioProvider {
     val id: String
     val displayName: String
+    val lossless: Boolean
+        get() = false
+    val supportsLookup: Boolean
+        get() = true
 
     suspend fun search(query: String, page: Int = 1): ProviderSearchOutcome
 
