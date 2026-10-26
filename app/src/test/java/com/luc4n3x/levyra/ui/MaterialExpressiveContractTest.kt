@@ -120,7 +120,7 @@ class MaterialExpressiveContractTest {
             "../gradle/libs.versions.toml"
         )
 
-        assertTrue(versions.contains("material3Expressive = \"1.5.0-beta01\""))
+        assertTrue(versions.contains("material3Expressive = \"1.5.0-beta02\""))
     }
 
     private fun source(vararg candidates: String): String {
