@@ -76,7 +76,7 @@ class ImportSearchBackoff(private val clock: () -> Long = { System.nanoTime() / 
     fun failed() {
         synchronized(this) {
             level = (level + 1).coerceAtMost(SEARCH_BACKOFF_MAX_LEVEL)
-            val pauseMs = (SEARCH_BACKOFF_BASE_MS shl (level - 1)).coerceAtMost(SEARCH_BACKOFF_MAX_MS)
+            val pauseMs = (SEARCH_BACKOFF_BASE_MS shl level - 1).coerceAtMost(SEARCH_BACKOFF_MAX_MS)
             openAtMs = maxOf(openAtMs, clock() + pauseMs)
         }
     }
