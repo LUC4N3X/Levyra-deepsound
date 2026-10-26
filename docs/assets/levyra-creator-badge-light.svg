@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="38" viewBox="0 0 220 38" role="img" aria-label="Creator &amp; Maintainer">
+  <title>Creator &amp; Maintainer</title>
+  <defs>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#9360F6"/>
+      <stop offset="1" stop-color="#6841CB"/>
+    </linearGradient>
+  </defs>
+  <rect x=".75" y=".75" width="218.5" height="36.5" rx="18.25" fill="#FCFAFF" stroke="#C7B2EF" stroke-width="1.5"/>
+  <circle cx="21" cy="19" r="12.5" fill="#F0E8FF"/>
+  <path d="M21 10.8L23.8 16.2L29.2 19L23.8 21.8L21 27.2L18.2 21.8L12.8 19L18.2 16.2Z" fill="url(#accent)"/>
+  <text x="42" y="23.5" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="13.5" font-weight="600" fill="#392451">Creator <tspan fill="#8967B8">&amp;</tspan> Maintainer</text>
+</svg>
