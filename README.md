@@ -232,7 +232,14 @@ Contributions and bug reports are welcome. Technical documentation and architect
 </a>
 
 ### LUC4N3X
-<p><b>Creator &amp; Maintainer</b></p>
+
+<p>
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-creator-badge-light.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-creator-badge-dark.svg">
+    <img src="docs/assets/levyra-creator-badge-dark.svg" width="208" height="34" alt="Creator &amp; Maintainer">
+  </picture>
+</p>
 
 <p>
   I created Levyra and actively build and maintain the project for Android and Windows.<br>
