@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
 import sys
@@ -24,6 +25,7 @@ from .collector import (
 from .explore import collect_spotify_explore_collections
 from .models import Catalog, Collection
 from .spotify import EditorialSourceError, SourceApiError, SpotifyWebClient
+from .watchfeed import build_watch_feed_clips, validate_watch_feed_clips, write_watch_feed_clips
 from .youtube_music import YoutubeMusicError, YoutubeMusicWebClient
 
 LOGGER = logging.getLogger(__name__)
@@ -154,6 +156,7 @@ def run_collection(
     canvas_output_path: Path | None = None,
     require_canvas: bool = False,
     paxsenix_canvas_only: bool = False,
+    clips_output_path: Path | None = None,
 ) -> None:
     """Execute one resilient collector run using the repository Actions secret."""
     config = load_config(config_path)
@@ -211,6 +214,18 @@ def run_collection(
                     "Spotify Canvas refresh skipped; the last published source remains active: %s",
                     type(error).__name__,
                 )
+        clips_config = config.get("watchFeedClips")
+        if (
+            clips_output_path is not None
+            and isinstance(clips_config, Mapping)
+            and clips_config.get("enabled") is True
+        ):
+            try:
+                clips = build_watch_feed_clips(spotify, clips_config.get("genres") or [], youtube_music)
+                write_watch_feed_clips(clips, clips_output_path)
+                LOGGER.info("Watch feed clips written with %d item(s).", len(clips["items"]))
+            except (EditorialSourceError, OSError, ValueError) as error:
+                LOGGER.warning("Watch feed clips refresh skipped: %s", type(error).__name__)
     finally:
         client.close()
     LOGGER.info(
@@ -259,6 +274,16 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional path for the best-effort sanitized Spotify Canvas catalog.",
     )
     parser.add_argument(
+        "--clips-output",
+        type=Path,
+        help="Optional path for the sanitized Spotify watch feed clips catalog.",
+    )
+    validation.add_argument(
+        "--validate-clips",
+        type=Path,
+        help="Validate an existing sanitized watch feed clips catalog.",
+    )
+    parser.add_argument(
         "--require-canvas",
         action="store_true",
         help="Fail when live Canvas verification cannot produce a sanitized catalog.",
@@ -302,6 +327,9 @@ def main(argv: list[str] | None = None) -> int:
         elif args.validate_canvas:
             validate_spotify_canvas_file(args.validate_canvas)
             LOGGER.info("Spotify Canvas validation succeeded: %s", args.validate_canvas)
+        elif args.validate_clips:
+            validate_watch_feed_clips(json.loads(args.validate_clips.read_text(encoding="utf-8")))
+            LOGGER.info("Watch feed clips validation succeeded: %s", args.validate_clips)
         elif args.serve:
             from .resolver import CanvasResolverService, create_resolver_server
 
@@ -328,6 +356,7 @@ def main(argv: list[str] | None = None) -> int:
                 canvas_output_path=args.canvas_output,
                 require_canvas=args.require_canvas,
                 paxsenix_canvas_only=args.paxsenix_canvas_only,
+                clips_output_path=args.clips_output,
             )
         return 0
     except (EditorialSourceError, OSError, ValueError) as error:

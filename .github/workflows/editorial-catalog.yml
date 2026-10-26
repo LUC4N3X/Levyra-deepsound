@@ -119,7 +119,7 @@ jobs:
       (github.actor == github.repository_owner && github.triggering_actor == github.repository_owner))
     needs: verify
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: read
     env:
@@ -149,7 +149,7 @@ jobs:
       - name: Generate and Validate Live Catalog
         run: |
           set -euo pipefail
-          timeout --foreground 360s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json --canvas-output build/editorial/spotify-canvas.json --require-canvas --paxsenix-canvas-only
+          timeout --foreground 600s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json --canvas-output build/editorial/spotify-canvas.json --clips-output build/editorial/spotify-clips.json --require-canvas --paxsenix-canvas-only
           levyra-editorial --validate build/editorial/catalog.json
           test "$(jq '.collections | length' build/editorial/catalog.json)" -ge 26
           if jq -e 'any(.. | objects; has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' build/editorial/catalog.json >/dev/null; then
@@ -187,6 +187,13 @@ jobs:
           else
             echo "::warning::Spotify Canvas was unavailable; validating static provider fallback"
           fi
+          if [ -f build/editorial/spotify-clips.json ]; then
+            levyra-editorial --validate-clips build/editorial/spotify-clips.json
+            if grep -qiE 'sp_dc=|authorization:|bearer |spotify:' build/editorial/spotify-clips.json; then
+              echo "::error::Watch feed clips contain credential-related material"
+              exit 1
+            fi
+          fi
           sha256sum build/editorial/catalog.json > build/editorial/catalog.sha256
       - name: Upload Pull Request Diagnostics
         uses: actions/upload-artifact@v7
@@ -196,6 +203,7 @@ jobs:
             build/editorial/catalog.json
             build/editorial/catalog.sha256
             build/editorial/spotify-canvas.json
+            build/editorial/spotify-clips.json
           if-no-files-found: error
           retention-days: 7
 
@@ -421,7 +429,7 @@ jobs:
         if: steps.availability.outputs.available == 'true'
         run: |
           set -euo pipefail
-          if ! timeout --foreground 360s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json --canvas-output build/editorial/spotify-canvas.json; then
+          if ! timeout --foreground 600s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json --canvas-output build/editorial/spotify-canvas.json --clips-output build/editorial/spotify-clips.json; then
             echo "::warning::Editorial refresh failed; preserving the last valid catalogs"
             echo "ready=false" >> "${GITHUB_OUTPUT}"
             exit 0
@@ -454,6 +462,13 @@ jobs:
           else
             echo "::warning::Spotify Canvas refresh unavailable; preserving the last valid catalog"
           fi
+          if [ -f build/editorial/spotify-clips.json ]; then
+            levyra-editorial --validate-clips build/editorial/spotify-clips.json
+            if grep -qiE 'sp_dc=|authorization:|bearer |spotify:' build/editorial/spotify-clips.json; then
+              echo "::error::Watch feed clips contain credential-related material"
+              exit 1
+            fi
+          fi
           sha256sum build/editorial/catalog.json > build/editorial/catalog.sha256
           echo "ready=true" >> "${GITHUB_OUTPUT}"
       - name: Upload Diagnostics
@@ -465,6 +480,7 @@ jobs:
             build/editorial/catalog.json
             build/editorial/catalog.sha256
             build/editorial/spotify-canvas.json
+            build/editorial/spotify-clips.json
           if-no-files-found: error
           retention-days: 14
       - name: Publish Last Valid Catalog
@@ -476,6 +492,9 @@ jobs:
           cp build/editorial/catalog.json /tmp/editorial.json
           if [ -f build/editorial/spotify-canvas.json ]; then
             cp build/editorial/spotify-canvas.json /tmp/spotify-canvas.json
+          fi
+          if [ -f build/editorial/spotify-clips.json ]; then
+            cp build/editorial/spotify-clips.json /tmp/spotify-clips.json
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -500,6 +519,9 @@ jobs:
                 changed=1
               fi
             fi
+            if [ -f /tmp/spotify-clips.json ] && ! cmp -s /tmp/spotify-clips.json catalog/spotify-clips.json; then
+              changed=1
+            fi
             if [ "${changed}" -eq 0 ]; then
               echo "Editorial and Spotify Canvas content are unchanged; publication skipped."
               git switch --detach "${source_ref}"
@@ -514,6 +536,10 @@ jobs:
           cp /tmp/editorial.json catalog/editorial.json
           if [ -f /tmp/spotify-canvas.json ]; then
             cp /tmp/spotify-canvas.json catalog/spotify-canvas.json
+          fi
+          if [ -f /tmp/spotify-clips.json ]; then
+            cp /tmp/spotify-clips.json catalog/spotify-clips.json
+            git add catalog/spotify-clips.json
           fi
           git add catalog/editorial.json
           if [ -f catalog/spotify-canvas.json ]; then

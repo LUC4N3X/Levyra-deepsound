@@ -6,9 +6,11 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
 import com.luc4n3x.levyra.data.collections.isPersonalCollectionTrack
+import com.luc4n3x.levyra.data.isSpotifySampleAudioUrl
 import com.luc4n3x.levyra.data.locallibrary.mediaSessionArtworkUri
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 object LevyraMediaItemFactory {
     fun metadataOnly(track: Track): MediaItem {
@@ -33,11 +35,21 @@ object LevyraMediaItemFactory {
             builder.setLiveConfiguration(MediaItem.LiveConfiguration.Builder().build())
         }
         customCacheKey?.let(builder::setCustomCacheKey)
+        samplesClipping(track, videoMode)?.let(builder::setClippingConfiguration)
         streamMimeType?.let { builder.setMimeType(it) }
         subtitleConfigurations(track, videoMode).takeIf { it.isNotEmpty() }?.let(builder::setSubtitleConfigurations)
         val mediaItem = builder.build()
         rememberCacheHint(track, videoMode, liveRadio, personalCollection, cacheReadSpec, customCacheKey, streamMimeType)
         return mediaItem
+    }
+
+    internal fun samplesClipping(track: Track, videoMode: Boolean): MediaItem.ClippingConfiguration? {
+        if (!videoMode || track.album != "YouTube Music Samples" || track.videoType != "SHORTS") return null
+        val url = track.videoUrl.toHttpUrlOrNull() ?: return null
+        val startMs = url.queryParameter("clipStartMs")?.toLongOrNull() ?: return null
+        val endMs = url.queryParameter("clipEndMs")?.toLongOrNull() ?: return null
+        if (startMs < 0 || endMs <= startMs || endMs - startMs > 180_000L) return null
+        return MediaItem.ClippingConfiguration.Builder().setStartPositionMs(startMs).setEndPositionMs(endMs).build()
     }
 
     private fun cacheKey(
@@ -99,6 +111,7 @@ object LevyraMediaItemFactory {
         val isContentUri = clean.startsWith("content://")
         val isExtensionlessFileUri = clean.startsWith("file://") && !path.substringAfterLast('/').contains('.')
         return when {
+            isSpotifySampleAudioUrl(url) -> "audio/mpeg"
             isContentUri || isExtensionlessFileUri -> null
             path.endsWith(".m3u8") || path.contains("/hls_playlist") || path.contains("/manifest/hls") || clean.contains("mime=application%2fx-mpegurl") || clean.contains("mime=application/vnd.apple.mpegurl") || clean.contains("type=application%2fx-mpegurl") -> "application/x-mpegURL"
             path.endsWith(".mpd") || clean.contains("mime=application%2fdash+xml") || clean.contains("mime=application/dash+xml") -> "application/dash+xml"

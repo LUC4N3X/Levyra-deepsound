@@ -6,6 +6,16 @@ import org.junit.Test
 
 class LevyraMediaItemFactoryTest {
     @Test
+    fun spotifyPreviewUsesMp3DespiteHavingNoExtension() {
+        assertEquals(
+            "audio/mpeg",
+            LevyraMediaItemFactory.mimeTypeFor(
+                "https://p.scdn.co/mp3-preview/35fc7456c892c11867fe1513b92dc44e9664eaba", false
+            )
+        )
+    }
+
+    @Test
     fun detectsHlsAcrossSupportedUrlForms() {
         assertEquals("application/x-mpegURL", LevyraMediaItemFactory.mimeTypeFor("https://example.com/live.m3u8", true))
         assertEquals("application/x-mpegURL", LevyraMediaItemFactory.mimeTypeFor("https://example.com/videoplayback?mime=application%2Fx-mpegurl", true))

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -21,10 +22,15 @@ import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -118,4 +124,110 @@ internal fun SpotifyCollectionHero(
             }
         }
     }
+}
+
+@Composable
+internal fun SpotifyRadioPage(
+    title: String,
+    tracks: List<Track>,
+    accent: Color,
+    currentId: String?,
+    isPlaying: Boolean,
+    bottomInset: Dp,
+    onPlay: (List<Track>, Track) -> Unit,
+    onTrackActions: (Track) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val strings = com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings.current
+    val pastel = spotifyRadioPastel(accent)
+    val circles = remember(tracks) { tracks.distinctBy { it.artist.substringBefore(',').trim().lowercase() }.take(3) }
+    val artists = remember(circles, tracks) {
+        tracks.map { it.artist.substringBefore(',').trim() }.filter(String::isNotBlank).distinct().drop(1).take(3).joinToString(", ")
+    }
+    val duration = remember(tracks) { spotifyRadioDuration(tracks.sumOf { it.durationMs }) }
+    val heroPx = with(androidx.compose.ui.platform.LocalDensity.current) { 300.dp.toPx() }
+    SpotifyPlaylistPage(
+        title = title,
+        toneTrack = null,
+        fallbackTone = lerp(pastel, Color.Black, 0.62f),
+        heroCollapsePx = heroPx,
+        showFindBar = false,
+        description = if (artists.isBlank()) com.luc4n3x.levyra.ui.i18n.LevyraSpotifyChartStrings.radioMadeForYou(strings.code)
+        else com.luc4n3x.levyra.ui.i18n.LevyraSpotifyChartStrings.radioWithMany(strings.code, artists),
+        ownerLabel = com.luc4n3x.levyra.ui.i18n.LevyraSpotifyChartStrings.radioMadeForYou(strings.code),
+        meta = duration,
+        thumbUrl = tracks.firstOrNull()?.thumbnailUrl.orEmpty(),
+        tracks = tracks,
+        currentId = currentId,
+        isPlaying = isPlaying,
+        bottomInset = bottomInset,
+        onPlay = onPlay,
+        onTrackActions = onTrackActions,
+        onDismiss = onDismiss,
+        heroBehindTopBar = true
+    ) { headerScroll, progress ->
+        Column(
+            Modifier.fillMaxWidth()
+                .background(Brush.verticalGradient(0f to pastel, 0.72f to pastel, 1f to lerp(pastel, Color.Black, 0.35f)))
+                .statusBarsPadding()
+                .padding(top = 8.dp, bottom = 12.dp)
+        ) {
+            SpotifyRadioCircles(
+                circles, pastel, 200.dp,
+                Modifier.graphicsLayer {
+                    translationY = headerScroll.coerceAtMost(heroPx) * 0.5f
+                    alpha = 1f - progress
+                }
+            )
+            Text(
+                title, color = Color.White, fontSize = 46.sp, lineHeight = 48.sp, fontWeight = FontWeight.Black, letterSpacing = (-1.4).sp,
+                maxLines = 2, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = SpotifyDesign.gutter).offset(y = (-28).dp).semantics { heading() }
+            )
+        }
+    }
+}
+
+private fun spotifyRadioDuration(totalMs: Long): String {
+    val minutes = totalMs / 60_000L
+    val hours = minutes / 60L
+    return if (hours > 0) "$hours h ${minutes % 60L} min" else "$minutes min"
+}
+
+internal object SpotifyRadioNavigator {
+    var artist by androidx.compose.runtime.mutableStateOf<String?>(null)
+    var seed by androidx.compose.runtime.mutableStateOf<Track?>(null)
+
+    fun open(name: String, track: Track) {
+        artist = name
+        seed = track
+    }
+
+    fun close() {
+        artist = null
+        seed = null
+    }
+}
+
+@Composable
+internal fun SpotifyRadioOverlay(viewModel: com.luc4n3x.levyra.viewmodel.HomeViewModel, currentId: String?, isPlaying: Boolean, bottomInset: Dp, onTrackActions: (Track) -> Unit) {
+    val seed = SpotifyRadioNavigator.seed ?: return
+    val artist = SpotifyRadioNavigator.artist.orEmpty()
+    val strings = com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings.current
+    val tracks by androidx.compose.runtime.produceState(listOf(seed), seed.id) {
+        value = runCatching { viewModel.artistRadioTracks(seed) }.getOrDefault(listOf(seed))
+    }
+    val palette = listOf(Color(0xFFF59DD2), Color(0xFFCF9CF5), Color(0xFF95E0CD), Color(0xFFECB66D))
+    val accent = palette[(artist.hashCode() and Int.MAX_VALUE) % palette.size]
+    SpotifyRadioPage(
+        title = com.luc4n3x.levyra.ui.i18n.LevyraSpotifyChartStrings.radioTitle(strings.code, artist),
+        tracks = tracks,
+        accent = accent,
+        currentId = currentId,
+        isPlaying = isPlaying,
+        bottomInset = bottomInset,
+        onPlay = { list, track -> viewModel.playFrom(list, track) },
+        onTrackActions = onTrackActions,
+        onDismiss = SpotifyRadioNavigator::close
+    )
 }
