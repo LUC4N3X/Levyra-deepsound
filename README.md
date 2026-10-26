@@ -237,13 +237,13 @@ Contributions and bug reports are welcome. Technical documentation and architect
   <picture>
     <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-creator-badge-light.svg">
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-creator-badge-dark.svg">
-    <img src="docs/assets/levyra-creator-badge-dark.svg" width="298" height="56" alt="Creator &amp; Maintainer">
+    <img src="docs/assets/levyra-creator-badge-dark.svg" width="208" height="34" alt="Creator &amp; Maintainer">
   </picture>
 </p>
 
 <p>
-  I build Android apps and backend tools to solve problems I run into myself.<br>
-  I spend a lot of time tracking down odd bugs and cutting out unnecessary code.
+  I created Levyra and actively build and maintain the project for Android and Windows.<br>
+  I review community pull requests, fix bugs, and publish each release.
 </p>
 
 <p>
