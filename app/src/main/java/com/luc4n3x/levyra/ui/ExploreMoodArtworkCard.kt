@@ -74,7 +74,7 @@ private val ExploreMoodGlobalArtistPools = mapOf(
     "elettronica" to listOf("Fred again..", "Peggy Gou", "Calvin Harris", "David Guetta"),
     "pop-global" to listOf("Dua Lipa", "Billie Eilish", "Sabrina Carpenter", "Ariana Grande"),
     "rnb-soul" to listOf("SZA", "The Weeknd", "Brent Faiyaz", "Tems"),
-    "rock-alt" to listOf("Måneskin", "Arctic Monkeys", "Paramore", "Linkin Park"),
+    "rock-alt" to listOf("Arctic Monkeys", "Paramore", "Linkin Park", "Foo Fighters"),
     "latino" to listOf("Bad Bunny", "KAROL G", "Rauw Alejandro", "Feid"),
     "lofi-chill" to listOf("Joji", "Laufey", "beabadoobee", "keshi"),
     "anime-jpop" to listOf("Ado", "YOASOBI", "LiSA", "Kenshi Yonezu"),

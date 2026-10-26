@@ -69,6 +69,10 @@ import com.luc4n3x.levyra.MainActivity
 import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.PlaybackResolver
+import com.luc4n3x.levyra.data.SPOTIFY_CLIP_ID_PREFIX
+import com.luc4n3x.levyra.data.SpotifyClipCanvasRegistry
+import com.luc4n3x.levyra.data.isSpotifySampleAudioUrl
+import com.luc4n3x.levyra.data.withSpotifySampleAudio
 import com.luc4n3x.levyra.data.collections.PersonalCollectionHttp
 import com.luc4n3x.levyra.data.collections.PersonalCollectionNetworkPolicy
 import com.luc4n3x.levyra.data.collections.personalCollectionIdOf
@@ -1969,6 +1973,14 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private suspend fun resolveQueueTrack(track: com.luc4n3x.levyra.domain.Track): com.luc4n3x.levyra.domain.Track {
+        if (track.id.startsWith(SPOTIFY_CLIP_ID_PREFIX) && track.source == "Spotify Samples") {
+            if (isSpotifySampleAudioUrl(track.streamUrl)) return track
+            return withContext(Dispatchers.IO) {
+                SpotifyClipCanvasRegistry.attach(this@PlaybackService)
+                val audio = SpotifyClipCanvasRegistry.audio(track) ?: throw IOException("Stream non disponibile")
+                track.withSpotifySampleAudio(audio)
+            }
+        }
         if (track.isPersonalCollectionTrack()) return resolver.resolve(track)
         if (isLocalPlaybackTrack(track)) {
             if (!isLocalPlaybackUri(track.streamUrl)) {

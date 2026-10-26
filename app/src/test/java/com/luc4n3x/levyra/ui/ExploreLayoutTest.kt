@@ -13,6 +13,16 @@ import org.junit.Test
 
 class ExploreLayoutTest {
     @Test
+    fun spotifyDiscoveryReplacesMoodGridWithSamplesAndRemovesItsShortcut() {
+        val rows = buildExploreRows(zones(4), false, true, spotifyStyle = true)
+
+        assertTrue(rows.contains(ExploreRow.Samples))
+        assertTrue(rows.none { it is ExploreRow.MoodRail })
+        assertFalse(ExploreAnchor.Moods in exploreAvailableAnchors(rows))
+        assertTrue(ExploreAnchor.Fresh in exploreAvailableAnchors(rows))
+    }
+
+    @Test
     fun discoveryContentPrecedesAdvancedMixControls() {
         val rows = buildExploreRows(zones(4), false, true)
 

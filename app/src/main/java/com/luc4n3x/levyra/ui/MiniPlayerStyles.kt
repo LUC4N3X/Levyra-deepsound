@@ -493,6 +493,7 @@ internal fun StyledMiniPlayer(
                     animated = animated,
                     compaction = dockCompaction,
                     playbackActions = playbackActions,
+                    isFavorite = model.isFavorite,
                     onToggle = {
                         if (tuning.motion == MiniMotion.Expressive) haptics.perform(LevyraHapticAction.Transport)
                         playbackActions.toggle()
@@ -1172,9 +1173,14 @@ private fun MiniStyledControls(
     animated: Boolean,
     compaction: () -> Float,
     playbackActions: MiniPlayerPlaybackActions,
+    isFavorite: Boolean,
     onToggle: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    if (LevyraIsSpotify && !liveRadio) {
+        SpotifyMiniControls(isPlaying, isResolving, isFavorite, playbackActions.favorite, onToggle)
+        return
+    }
     val skipSize = 38.dp * (tuning.controlScale / 100f)
     val skipBackground = when (tuning.buttons) {
         MiniButtonStyle.Plain, MiniButtonStyle.Outlined -> Color.Transparent

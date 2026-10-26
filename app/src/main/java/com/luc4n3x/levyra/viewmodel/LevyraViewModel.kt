@@ -66,6 +66,9 @@ import com.luc4n3x.levyra.data.LyricsRepository
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.NewPipeRuntime
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
+import com.luc4n3x.levyra.data.SPOTIFY_CLIP_ID_PREFIX
+import com.luc4n3x.levyra.data.SpotifyClipCanvasRegistry
+import com.luc4n3x.levyra.data.withSpotifySampleAudio
 import com.luc4n3x.levyra.data.preserveEditorialArtwork
 import com.luc4n3x.levyra.data.ReturnYoutubeDislikeRepository
 import com.luc4n3x.levyra.data.ReturnYoutubeDislikeResult
@@ -79,6 +82,7 @@ import com.luc4n3x.levyra.data.YoutubeMusicWatchTrack
 import com.luc4n3x.levyra.data.YoutubeShortsRepository
 import com.luc4n3x.levyra.data.YoutubeShortsCache
 import com.luc4n3x.levyra.data.isYoutubeShortTrack
+import com.luc4n3x.levyra.data.preserveNativeSampleClip
 import com.luc4n3x.levyra.data.youtubeShortsRetryDelayMs
 import com.luc4n3x.levyra.data.LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE
 import com.luc4n3x.levyra.data.levyraAlbumRecommendationMatchScore
@@ -99,6 +103,7 @@ import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraAudioQuality
 import com.luc4n3x.levyra.domain.ArtistProfile
+import com.luc4n3x.levyra.domain.EXPLORE_SAMPLES_REQUEST
 import com.luc4n3x.levyra.domain.ArtistRelease
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.AlbumRecommendationSeed
@@ -408,7 +413,7 @@ private const val RADIO_TAIL_MAX_APPEND_ROUNDS = 3
 private const val RADIO_MIX_LIMIT = 15
 private const val RADIO_START_TRACKS = 20
 private const val RADIO_START_FETCH = 30
-private const val EXPLORE_SHORTS_FEED_LIMIT = 24
+private const val EXPLORE_SHORTS_FEED_LIMIT = 60
 private const val ONBOARDING_ARTWORK_PARALLELISM = 4
 private const val ONBOARDING_ARTWORK_SEARCH_LIMIT = 12
 private const val ONBOARDING_ARTWORK_ARTISTS = 3
@@ -596,9 +601,14 @@ internal fun selectYoutubeShortSample(list: List<Track>, requested: Track): Trac
 }
 
 internal fun sameYoutubeShortSample(left: Track, right: Track): Boolean {
+    if (left.id.startsWith(SPOTIFY_CLIP_ID_PREFIX) || right.id.startsWith(SPOTIFY_CLIP_ID_PREFIX)) {
+        return left.id == right.id
+    }
     val videoId = PlaybackSourceIdentity.sourceVideoId(left)
     return videoId.isNotBlank() && videoId == PlaybackSourceIdentity.sourceVideoId(right)
 }
+
+internal fun samplePlaybackVideoMode(track: Track): Boolean = !track.id.startsWith(SPOTIFY_CLIP_ID_PREFIX)
 
 
 internal fun monotonicDownloadProgress(current: Int?, incoming: Int): Int {
@@ -2131,16 +2141,22 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun toggleFollowArtist() {
         val profile = _state.value.artistProfile ?: return
-        val browseId = profile.browseId.trim()
+        toggleFollowArtist(profile.browseId, profile.name, profile.thumbnailUrl)
+    }
+
+    fun toggleFollowArtist(artist: ArtistHit) = toggleFollowArtist(artist.browseId, artist.name, artist.thumbnailUrl)
+
+    private fun toggleFollowArtist(artistBrowseId: String, artistName: String, thumbnailUrl: String) {
+        val browseId = artistBrowseId.trim()
         if (browseId.isBlank()) return
-        val name = profile.name.trim()
+        val name = artistName.trim()
         if (name.isBlank()) return
         val current = _state.value.followedArtists
         val exists = current.any { sameArtist(it, browseId, name) }
         val updated = if (exists) {
             current.filterNot { sameArtist(it, browseId, name) }
         } else {
-            listOf(FollowedArtist(browseId, name, profile.thumbnailUrl, System.currentTimeMillis())) +
+            listOf(FollowedArtist(browseId, name, thumbnailUrl, System.currentTimeMillis())) +
                 current.filterNot { it.browseId.isBlank() && it.name.equals(name, ignoreCase = true) }
         }
         followedArtistsGeneration++
@@ -4173,9 +4189,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 val baseTrack = selectedSource?.forModeResolution()
                     ?: throw IllegalStateException("Nessuna sorgente YouTube riproducibile per ${track.title}")
-                val resolved = withContext(Dispatchers.IO) {
+                val resolved = preserveNativeSampleClip(track, withContext(Dispatchers.IO) {
                     resolver.cached(baseTrack, targetMode) ?: providerRouter.resolve(baseTrack, targetMode)
-                }
+                })
                 if (!isActive || transitionId != streamTransitionId) return@launch
                 val currentIndex = queueEngine.state.value.currentIndex
                 if (currentIndex >= 0) queueEngine.updateTrackAt(currentIndex, resolved)
@@ -4456,7 +4472,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 val baseTrack = selectedSource?.forModeResolution()
                     ?: failedTrack.forModeResolution()
-                val resolved = withContext(Dispatchers.IO) { providerRouter.resolve(baseTrack, videoMode) }
+                val resolved = if (_state.value.isSamplesOpen && failedTrack.id.startsWith(SPOTIFY_CLIP_ID_PREFIX)) {
+                    originalSpotifySample(failedTrack)
+                } else {
+                    preserveNativeSampleClip(failedTrack, withContext(Dispatchers.IO) { providerRouter.resolve(baseTrack, videoMode) })
+                }
                 if (!isActive || transitionId != streamTransitionId) return@launch
                 val currentIndex = queueEngine.state.value.currentIndex
                 if (currentIndex >= 0) queueEngine.updateTrackAt(currentIndex, resolved)
@@ -7055,6 +7075,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         startSongRadio()
     }
 
+    suspend fun artistRadioTracks(track: Track): List<Track> =
+        listOf(track) + repository.radio(track, _state.value.languageCode, 30, diversify = true).filterNot { it.id == track.id }
+
     fun playSimilarSong(track: Track) {
         val jam = _state.value.jam
         if (jam.role != JamRole.Guest) {
@@ -7746,6 +7769,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     suspend fun trackCredits(track: Track, retry: Boolean = false): TrackCredits =
         trackCreditsRepository.load(track, retry)
+
+    suspend fun playerArtistProfile(track: Track): ArtistProfile? {
+        if (track.isLiveRadio()) return null
+        val credit = withContext(Dispatchers.Default) { artistCredits(track.artist, track.artistBrowseIds).firstOrNull() }
+        val name = credit?.name?.takeIf { it.isNotBlank() } ?: track.artist
+        return try {
+            artistRepository.profile(credit?.browseId.orEmpty(), name)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Timber.w(error, "Player artist profile failed for %s", name)
+            null
+        }
+    }
 
     suspend fun playerArtistHits(track: Track, resolveArtwork: Boolean): List<ArtistHit> {
         if (track.isLiveRadio()) return emptyList()
@@ -9023,6 +9060,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         selectTab(LevyraTab.Explore)
     }
 
+    fun openExploreSamples(index: Int) {
+        _state.update { current -> current.copy(exploreOpenRequest = "$EXPLORE_SAMPLES_REQUEST${index.coerceAtLeast(0)}") }
+        selectTab(LevyraTab.Explore)
+    }
+
     fun consumeExploreOpenRequest() {
         _state.update { current -> current.copy(exploreOpenRequest = null) }
     }
@@ -10196,8 +10238,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
 
         beginSamplesPlayback()
+        val videoMode = samplePlaybackVideoMode(selected)
         val alreadyActive = currentState.currentTrack?.let { current -> sameYoutubeShortSample(current, selected) } == true &&
-            currentState.isVideoMode && currentState.playerError == null
+            currentState.isVideoMode == videoMode && currentState.playerError == null
 
         loopCurrentQueueOnCompletion = false
         val session = samplesPlaybackSession ?: return
@@ -10208,7 +10251,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         queueIndex = 0
         _state.update { current ->
-            current.copy(isVideoMode = true, isSamplesOpen = true)
+            current.copy(isVideoMode = videoMode, isSamplesOpen = true)
         }
 
         if (alreadyActive) {
@@ -10355,11 +10398,30 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         request: PlaybackResolveRequest,
         autoRetryWhenOffline: Boolean
     ) {
+        if (_state.value.isSamplesOpen && track.id.startsWith(SPOTIFY_CLIP_ID_PREFIX)) {
+            player.stop()
+            try {
+                val playable = originalSpotifySample(track)
+                if (isCurrentPlaybackRequest(request.id)) startPlayback(playable, request)
+            } catch (error: Throwable) {
+                if (error is CancellationException) throw error
+                if (isCurrentPlaybackRequest(request.id)) {
+                    publishResolveFailure(track, error, request.id, autoRetryWhenOffline = false)
+                }
+            }
+            return
+        }
         if (track.isPersonalCollectionTrack()) {
             resolvePersonalCollectionPlayback(track, request)
             return
         }
         resolveStandardPlayback(track, request, autoRetryWhenOffline)
+    }
+
+    private suspend fun originalSpotifySample(track: Track): Track {
+        val audio = withContext(Dispatchers.IO) { SpotifyClipCanvasRegistry.audio(track) }
+            ?: throw IllegalStateException("Stream non disponibile")
+        return track.withSpotifySampleAudio(audio)
     }
 
     private suspend fun CoroutineScope.resolvePersonalCollectionPlayback(
@@ -10401,7 +10463,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val instant = localDownloadedTrack(track) ?: resolver.cached(selectedTrack, requestedVideoMode)
         if (instant != null) {
             if (!isCurrentPlaybackRequest(requestId)) return
-            startPlayback(preserveEditorialArtwork(track, instant), request)
+            startPlayback(preserveNativeSampleClip(track, preserveEditorialArtwork(track, instant)), request)
             prefetchAround(instant)
             return
         }
@@ -10409,7 +10471,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         try {
             val playable = resolveForPlayback(selectedTrack)
             if (!isCurrentPlaybackRequest(requestId)) return
-            startPlayback(playable, request)
+            startPlayback(preserveNativeSampleClip(track, playable), request)
             prefetchAround(playable)
         } catch (error: Throwable) {
             if (error is CancellationException) throw error
@@ -10537,22 +10599,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         .take(limit)
 
     private fun samplesDiscoveryProfileSignature(snapshot: LevyraUiState): String {
-        val artists = discoveryPreferredArtists(snapshot, 16)
-        val trackIds = buildList {
-            snapshot.currentTrack?.id?.let(::add)
-            addAll(snapshot.recentListens.take(8).map { track -> track.id })
-            addAll(snapshot.favorites.take(8).map { track -> track.id })
-            addAll(snapshot.personalOrbitTracks.take(8).map { track -> track.id })
-        }.filter(String::isNotBlank).distinct()
+        val input = samplesDiscoveryInput(snapshot)
         return buildString {
             append(LevyraLanguageCatalog.normalize(snapshot.languageCode))
-            append('|').append(artists.joinToString("|"))
-            append('|').append(trackIds.joinToString("|"))
+            append('|').append(input.preferredArtists.joinToString("|"))
+            append('|').append(input.seeds.take(24).joinToString("|") { it.id })
+            append('|').append(preferences.tastes().sorted().joinToString("|"))
         }
     }
 
     private fun ensureMusicVideosLoaded(force: Boolean = false) {
         val snapshot = _state.value
+        if (!force && snapshot.isSamplesOpen && snapshot.exploreSamples.isNotEmpty() && musicVideosLoadedLanguage == snapshot.languageCode) return
         val languageCode = snapshot.languageCode
         val profileSignature = samplesDiscoveryProfileSignature(snapshot)
         val sameActiveRequest = musicVideosRequestLanguage == languageCode &&
@@ -10668,7 +10726,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun samplesDiscoveryInput(snapshot: LevyraUiState): SamplesDiscoveryInput {
         val seeds = buildList {
-            snapshot.currentTrack?.let { track -> add(track) }
+            (samplesPlaybackSession?.currentTrack ?: snapshot.currentTrack)?.let { track -> add(track) }
             addAll(snapshot.recentListens)
             addAll(snapshot.favorites)
             addAll(snapshot.personalOrbitTracks)
@@ -10678,6 +10736,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             snapshot.homeSections.forEach { section -> addAll(section.tracks) }
             addAll(snapshot.tracks)
         }
+            .filterNot(::isYoutubeShortTrack)
             .distinctBy { track -> track.id }
             .take(48)
         val preferredChannelIds = buildList {
@@ -10690,7 +10749,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             .take(20)
         return SamplesDiscoveryInput(
             seeds = seeds,
-            preferredArtists = discoveryPreferredArtists(snapshot, 16),
+            preferredArtists = (snapshot.followedArtists.map { it.name } + seeds.map { it.artist })
+                .map(String::trim).filter(String::isNotBlank)
+                .distinctBy { it.lowercase(java.util.Locale.ROOT) }.take(16),
             preferredChannelIds = preferredChannelIds
         )
     }

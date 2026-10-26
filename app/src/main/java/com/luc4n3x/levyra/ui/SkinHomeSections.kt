@@ -94,6 +94,10 @@ internal fun SkinChartSection(
     playAllLabel: String, changeMarketLabel: String, inset: Dp,
     onPlay: (Track) -> Unit, onPlayAll: () -> Unit, onChangeMarket: () -> Unit, modifier: Modifier = Modifier
 ) {
+    if (LevyraIsSpotify) {
+        Box(modifier.fillMaxWidth()) { SpotifyTopChartsShelf(title, inset) }
+        return
+    }
     val torque = LevyraIsTorque
     val ranked = remember(tracks) { tracks.take(50).withIndex().toList() }
     val pages = remember(ranked) { ranked.chunked(5) }
@@ -106,8 +110,7 @@ internal fun SkinChartSection(
             ) { Icon(Icons.Rounded.Public, null, tint = LevyraMuted) }
             SkinPlayAll(playAllLabel, onPlayAll)
         }
-        if (LevyraIsSpotify) SpotifyChartShelf(ranked, currentId, isPlaying, inset, onPlay)
-        else if (LevyraIsIvory) IvoryChartShelf(ranked, currentId, isPlaying, inset, onPlay)
+        if (LevyraIsIvory) IvoryChartShelf(ranked, currentId, isPlaying, inset, onPlay)
         else LazyRow(contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             itemsIndexed(pages, key = { index, _ -> "chart-page-$index" }) { _, page ->
                 if (torque) Column(Modifier.width(318.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
