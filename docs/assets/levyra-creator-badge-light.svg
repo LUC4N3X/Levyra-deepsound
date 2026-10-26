@@ -1,13 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="220" height="38" viewBox="0 0 220 38" role="img" aria-label="Creator &amp; Maintainer">
+<svg xmlns="http://www.w3.org/2000/svg" width="298" height="56" viewBox="0 0 298 56" role="img" aria-label="Creator and Maintainer">
   <title>Creator &amp; Maintainer</title>
   <defs>
-    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#9360F6"/>
-      <stop offset="1" stop-color="#6841CB"/>
+    <linearGradient id="edge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C49CFF"/>
+      <stop offset="1" stop-color="#7448E5"/>
     </linearGradient>
   </defs>
-  <rect x=".75" y=".75" width="218.5" height="36.5" rx="18.25" fill="#FCFAFF" stroke="#C7B2EF" stroke-width="1.5"/>
-  <circle cx="21" cy="19" r="12.5" fill="#F0E8FF"/>
-  <path d="M21 10.8L23.8 16.2L29.2 19L23.8 21.8L21 27.2L18.2 21.8L12.8 19L18.2 16.2Z" fill="url(#accent)"/>
-  <text x="42" y="23.5" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="13.5" font-weight="600" fill="#392451">Creator <tspan fill="#8967B8">&amp;</tspan> Maintainer</text>
+  <rect x="0.75" y="0.75" width="296.5" height="54.5" rx="12" fill="#FBF9FE" stroke="#CFBFE5" stroke-width="1.5"/>
+  <path d="M12 1 H58" stroke="url(#edge)" stroke-width="2" stroke-linecap="round"/>
+  <rect x="11.5" y="10.5" width="37" height="35" rx="8" fill="#F0E8FC" stroke="#D9C5F5"/>
+  <path d="M25.3 21L19.5 28L25.3 35 M35.3 21L41.1 28L35.3 35" fill="none" stroke="#7544DA" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M33 19.5L27.3 36.5" stroke="#7544DA" stroke-opacity=".72" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M62.5 13 V43" stroke="#D7C7EA"/>
+  <text x="77" y="21" fill="#705A8C" font-family="Arial,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing="1.65">PROJECT ROLE</text>
+  <text x="77" y="40" fill="#28203A" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="700" letter-spacing=".1">Creator &amp; Maintainer</text>
 </svg>
