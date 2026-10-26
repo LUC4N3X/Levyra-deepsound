@@ -23,6 +23,17 @@ class ExploreLayoutTest {
     }
 
     @Test
+    fun appleSearchOwnsMoodsWithoutSpotifySamples() {
+        val rows = buildExploreRows(zones(4), false, true, moodsInSearch = true)
+
+        assertFalse(rows.contains(ExploreRow.Samples))
+        assertTrue(rows.none { it is ExploreRow.MoodRail })
+        assertFalse(ExploreAnchor.Moods in exploreAvailableAnchors(rows))
+        assertTrue(rows.contains(ExploreRow.FreshSpotlight))
+        assertEquals(ExploreRow.MixTools, rows.last())
+    }
+
+    @Test
     fun discoveryContentPrecedesAdvancedMixControls() {
         val rows = buildExploreRows(zones(4), false, true)
 
