@@ -57,6 +57,37 @@ private const val MAX_ISRC_RESULTS = 5
 private const val MAX_DURATION_LOOKUPS = 2
 private const val MIN_ALBUM_TRACK_SCORE = 40
 private const val FALLBACK_SEARCH_LANGUAGE = "en"
+private const val SEARCH_BACKOFF_BASE_MS = 500L
+private const val SEARCH_BACKOFF_MAX_MS = 8_000L
+private const val SEARCH_BACKOFF_MAX_LEVEL = 5
+
+class ImportSearchBackoff(private val clock: () -> Long = { System.nanoTime() / 1_000_000L }) {
+    private var level = 0
+    private var openAtMs = 0L
+
+    suspend fun await() {
+        while (true) {
+            val waitMs = synchronized(this) { openAtMs - clock() }
+            if (waitMs <= 0L) return
+            delay(waitMs)
+        }
+    }
+
+    fun failed() {
+        synchronized(this) {
+            level = (level + 1).coerceAtMost(SEARCH_BACKOFF_MAX_LEVEL)
+            val pauseMs = (SEARCH_BACKOFF_BASE_MS shl (level - 1)).coerceAtMost(SEARCH_BACKOFF_MAX_MS)
+            openAtMs = maxOf(openAtMs, clock() + pauseMs)
+        }
+    }
+
+    fun succeeded() {
+        synchronized(this) { level = 0 }
+    }
+
+    internal fun pendingMs(): Long = synchronized(this) { (openAtMs - clock()).coerceAtLeast(0L) }
+}
+
 private val untrustedAlbumTitles = setOf("single", "singles", "unknown", "unknown album", "youtube", "youtube music")
 private val compilationArtists = setOf("various artists", "various", "verschiedene interpreten", "artisti vari", "сборник")
 
@@ -183,7 +214,8 @@ class PlaylistImportCatalog(
     private val metadataSearch: suspend (ImportedTrackIdentity) -> List<MatchCandidate> = { emptyList() },
     private val youtubeSearch: (suspend (String) -> List<Track>)? = null,
     private val albumSource: ImportAlbumSource? = null,
-    private val durationLookup: (suspend (String, String) -> Long)? = null
+    private val durationLookup: (suspend (String, String) -> Long)? = null,
+    private val searchBackoff: ImportSearchBackoff? = null
 ) : PlaylistCandidateProvider {
     private val localMutex = Mutex()
     private var localIndex: Map<String, List<Track>>? = null
@@ -249,10 +281,12 @@ class PlaylistImportCatalog(
     }
 
     private suspend fun <T> runSearch(block: suspend () -> List<T>): Result<List<T>> = try {
-        Result.success(block())
+        searchBackoff?.await()
+        Result.success(block()).also { searchBackoff?.succeeded() }
     } catch (error: CancellationException) {
         throw error
     } catch (error: Exception) {
+        searchBackoff?.failed()
         Timber.w(error, "Playlist import online search branch failed")
         Result.failure(error)
     }

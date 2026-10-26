@@ -97,17 +97,47 @@ class PlaylistImportControllerTest {
             assertEquals((0 until size).toList(), review.entries.map { it.identity.position })
             assertEquals((size + 9) / 10, review.counts.errors)
             assertEquals(0, review.counts.missing)
-            assertEquals(size, calls.get())
+            assertEquals(size + review.counts.errors, calls.get())
             assertTrue(peak.get() <= PlaylistImportController.RESOLUTION_WORKERS)
             offline = false
             withContext(main) { subject.retryUnresolved() }
             val recovered = withTimeout(30_000) { subject.state.first { it.step == PlaylistImportStep.REVIEW } }
             assertEquals(size, recovered.counts.matched)
             assertEquals(0, recovered.counts.errors)
-            assertEquals(size + review.counts.errors, calls.get())
+            assertEquals(size + 2 * review.counts.errors, calls.get())
             println("IMPORT_LOAD size=$size calls=${calls.get()} peak=${peak.get()} elapsedMs=${(System.nanoTime() - started) / 1_000_000}")
             withContext(main) { subject.finish() }
         }
+    }
+
+    @Test
+    fun `transient lookup failures are retried once before review without losing or duplicating tracks`() = runBlocking {
+        val size = 40
+        val attempts = java.util.concurrent.ConcurrentHashMap<Int, java.util.concurrent.atomic.AtomicInteger>()
+        val adapter = object : PlaylistImportSourceAdapter {
+            override val sources = setOf(PlaylistImportSource.SPOTIFY)
+            override suspend fun read(input: PlaylistImportInput, detected: DetectedPlaylistInput, progress: PlaylistReadProgress): PlaylistSourceResult {
+                val rows = List(size) { ImportedTrackIdentity(it, "Song $it", listOf("Artist"), durationMs = 200_000) }
+                return PlaylistSourceResult(ParsedPlaylist(ImportedPlaylistDescriptor(PlaylistImportSource.SPOTIFY, title = "Transient"), rows, PlaylistImportCompleteness.Complete))
+            }
+        }
+        val catalog = object : PlaylistCandidateProvider {
+            override suspend fun candidates(identity: ImportedTrackIdentity, broad: Boolean): List<CatalogCandidate> {
+                val attempt = attempts.getOrPut(identity.position) { java.util.concurrent.atomic.AtomicInteger() }.incrementAndGet()
+                if (identity.position % 3 == 0 && attempt == 1) throw java.io.IOException("Throttled")
+                val id = "track-${identity.position}"
+                return listOf(CatalogCandidate(MatchCandidate(id, identity.title, identity.artists, durationMs = 200_000, kind = CandidateKind.SONG), track(id, identity.title)))
+            }
+            override suspend fun search(query: String, origin: CandidateOrigin) = emptyList<CatalogCandidate>()
+        }
+        val subject = PlaylistImportController(scope, listOf(adapter), catalog, PlaylistImportSessionStore(folder.newFolder("transient")), gateway)
+        withContext(main) { subject.open(); subject.updateInput(PLAYLIST_A); subject.start() }
+        val review = withTimeout(30_000) { subject.state.first { it.step == PlaylistImportStep.REVIEW } }
+        assertEquals((0 until size).toList(), review.entries.map { it.identity.position })
+        assertEquals(size, review.counts.matched)
+        assertEquals(0, review.counts.errors)
+        assertEquals((0 until size).map { "track-$it" }, review.entries.map { it.selected?.candidate?.id })
+        assertTrue(attempts.values.all { it.get() <= 2 })
     }
 
     @Test
