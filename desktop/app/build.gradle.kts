@@ -60,6 +60,7 @@ kotlin {
             exclude("com/luc4n3x/levyra/ui/i18n/LevyraPersonalizedSearchStrings.kt")
             exclude("com/luc4n3x/levyra/ui/i18n/LevyraPersonalCollectionStrings.kt")
             exclude("com/luc4n3x/levyra/ui/i18n/LevyraSmartOfflineCount.kt")
+            exclude("com/luc4n3x/levyra/ui/i18n/LevyraRadioLibraryStrings.kt")
         }
         kotlin.source(sharedAndroidSources)
     }
