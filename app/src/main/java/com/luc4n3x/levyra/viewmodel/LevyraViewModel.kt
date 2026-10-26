@@ -9108,8 +9108,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 true
             }
             snapshot.selectedTab != LevyraTab.Home -> {
-                val previous = previousTab(snapshot.selectedTab)
-                moveToTab(previous, rememberCurrent = false)
+                when (val action = tabBackStack.back(snapshot.selectedTab, snapshot.query)) {
+                    TabBackAction.ClearSearch -> setQuery("")
+                    is TabBackAction.ShowTab -> moveToTab(action.tab, rememberCurrent = false)
+                }
                 true
             }
             else -> false
