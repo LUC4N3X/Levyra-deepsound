@@ -813,7 +813,7 @@ README_CARD_SPECS = [
         "21_spotify_style",
         "Spotify Style",
         "Familiar dark surfaces, green accents and artist glow",
-        "Screenshot_20261024_213852_Levyra.jpg",
+        "Screenshot_20261026_204307_Levyra.jpg",
         (236, 253, 245),
         (209, 250, 229),
         (30, 215, 96),
