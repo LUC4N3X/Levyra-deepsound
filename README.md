@@ -82,13 +82,13 @@ Want to dig deeper into how Levyra works? The full documentation covers setup, f
 
 [**Open the full Levyra documentation →**](https://levyra.dpdns.org/docs/)
 
-## ✦ High-quality audio · JioSaavn & experimental FLAC
+## ✦ High-quality audio · JioSaavn & FLAC
 
 When high-quality audio is enabled, Levyra can use JioSaavn as another source for the same track. The track in your library does not change.
 
 Before switching sources, Levyra checks that it found the right recording and that the stream matches the quality it claims to have. It can try the available 320, 160 and 96 kbps versions. If a stream is advertised as 320 kbps but measures below that range, Levyra does not show it as 320 kbps.
 
-I've also added FLAC support through Monochrome and Arcod. It's still experimental, and I'm not sure yet how stable it will be in everyday use.
+Levyra can also play FLAC. That part is still experimental, so I can't promise yet how stable it will be in everyday use.
 
 The JioSaavn match uses more than the song title. Levyra also checks performers and artist roles, album and release details, duration, explicit status, language, featured artists and version markers. When needed, it compares a search result with JioSaavn's track details so it can tell an original recording from a compilation, reissue or alternate version.
 

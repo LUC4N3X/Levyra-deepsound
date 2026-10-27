@@ -28,7 +28,9 @@ internal class LosslessProviderSupport(
         data class Failed(val failure: ProviderFailure) : Fetch
     }
 
-    suspend fun api(url: String): Fetch = when (val fetch = fetch(url, JSON_HEADERS, MAX_API_BODY_BYTES)) {
+    private val apiPacer = ProviderRequestPacer(API_SPACING_MS, API_MAX_CONCURRENT, clock)
+
+    suspend fun api(url: String): Fetch = when (val fetch = apiPacer.paced { fetch(url, JSON_HEADERS, MAX_API_BODY_BYTES) }) {
         is Fetch.Failed -> fetch
         is Fetch.Received -> if (fetch.response.isSuccessful) fetch else Fetch.Failed(failureFor(fetch.response.code))
     }
@@ -39,7 +41,7 @@ internal class LosslessProviderSupport(
         expiresAtMs: Long,
         route: String
     ): ProviderStreamOutcome {
-        val response = when (val fetch = fetch(url, PROBE_HEADERS, ProviderStreamValidator.PROBE_BYTES)) {
+        val response = when (val fetch = apiPacer.paced { fetch(url, PROBE_HEADERS, ProviderStreamValidator.PROBE_BYTES) }) {
             is Fetch.Failed -> return ProviderStreamOutcome.Failed(fetch.failure)
             is Fetch.Received -> fetch.response
         }
@@ -102,7 +104,7 @@ internal class LosslessProviderSupport(
             settled = true
             val failed = fetch is Fetch.Failed || (fetch is Fetch.Received && isTransient(fetch.response.code))
             if (fetch is Fetch.Received && fetch.response.code == HTTP_TOO_MANY_REQUESTS) {
-                circuitBreaker.onRateLimited(retryAfterMs(fetch.response))
+                circuitBreaker.onRateLimitedAdaptive(retryAfterMs(fetch.response))
             } else if (failed) {
                 val cause = (fetch as? Fetch.Failed)?.failure?.name ?: "HTTP_${(fetch as Fetch.Received).response.code}"
                 circuitBreaker.onFailure(permit, cause)
@@ -117,14 +119,14 @@ internal class LosslessProviderSupport(
 
     private fun isTransient(code: Int): Boolean = code == HTTP_TOO_MANY_REQUESTS || code >= HTTP_SERVER_ERROR
 
-    private fun retryAfterMs(response: ProviderHttpResponse): Long {
+    private fun retryAfterMs(response: ProviderHttpResponse): Long? {
         val value = response.header("Retry-After").orEmpty().trim()
+        if (value.isEmpty()) return null
         val seconds = value.toLongOrNull()?.takeIf { it in 0L..86_400L }
         if (seconds != null) return seconds * 1_000L
         return runCatching {
             ZonedDateTime.parse(value, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant().toEpochMilli() - clock()
-        }.getOrDefault(ProviderCircuitBreaker.DEFAULT_OPEN_MS)
-            .coerceIn(0L, 86_400_000L)
+        }.getOrNull()?.coerceIn(0L, 86_400_000L)
     }
 
     private fun failureFor(code: Int): ProviderFailure = when {
@@ -137,6 +139,8 @@ internal class LosslessProviderSupport(
     companion object {
         const val MAX_API_BODY_BYTES = 1_048_576
         const val SEARCH_RESULT_LIMIT = 10
+        const val API_SPACING_MS = 150L
+        const val API_MAX_CONCURRENT = 4
         private const val HTTP_UNAUTHORIZED = 401
         private const val HTTP_FORBIDDEN = 403
         private const val HTTP_NOT_FOUND = 404

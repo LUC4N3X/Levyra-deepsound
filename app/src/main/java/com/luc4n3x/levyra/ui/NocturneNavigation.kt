@@ -23,6 +23,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.luc4n3x.levyra.ui.components.LocalDockMorph
+import com.luc4n3x.levyra.ui.components.dockMorphTray
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.NavTuning
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
@@ -47,7 +49,8 @@ internal fun NocturneBottomTabs(tuning: NavTuning, selected: LevyraTab, onSelect
         Row(
             modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)
                 .onSizeChanged { size -> measuredHeight?.value = with(density) { size.height.toDp() } }
-                .selectableGroup(),
+                .selectableGroup()
+                .dockMorphTray(LocalDockMorph.current, entries.size, entries.indexOfFirst { it.tab == selected }),
             verticalAlignment = Alignment.CenterVertically
         ) {
             entries.forEach { entry ->

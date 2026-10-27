@@ -52,6 +52,7 @@ import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraSmartOfflineSettings
 import com.luc4n3x.levyra.domain.DownloadOwnership
 import com.luc4n3x.levyra.domain.LevyraFontPreset
+import com.luc4n3x.levyra.domain.DockScrollEffect
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.LevyraCustomThemes
 import com.luc4n3x.levyra.domain.LevyraHomeStudioSettings
@@ -1802,6 +1803,7 @@ internal fun backupInterfaceSettingsToJson(value: LevyraInterfaceSettings): JSON
     .put("fontPreset", value.fontPreset.name)
     .put("playerGesturesEnabled", value.playerGesturesEnabled)
     .put("swipeTrackChangeEnabled", value.swipeTrackChangeEnabled)
+    .put("dockScrollEffect", value.dockScrollEffect.storageId)
     .put("doubleTapAction", value.doubleTapAction.name)
     .put("doubleTapSeekSeconds", value.doubleTapSeekSeconds)
     .put("longPressAction", value.longPressAction.name)
@@ -1867,6 +1869,7 @@ internal fun backupInterfaceSettingsFromJson(
         fontPreset = LevyraFontPreset.from(json.optString("fontPreset")),
         playerGesturesEnabled = json.optBoolean("playerGesturesEnabled", true),
         swipeTrackChangeEnabled = json.optBoolean("swipeTrackChangeEnabled", true),
+        dockScrollEffect = DockScrollEffect.from(json.optString("dockScrollEffect")),
         doubleTapAction = PlayerDoubleTapAction.from(json.optString("doubleTapAction")),
         doubleTapSeekSeconds = json.optInt("doubleTapSeekSeconds", 10),
         longPressAction = PlayerLongPressAction.from(json.optString("longPressAction")),

@@ -50,6 +50,14 @@ import androidx.compose.runtime.key
 import com.luc4n3x.levyra.ui.components.LevyraPlayPauseGlyph
 import com.luc4n3x.levyra.ui.artwork.ArtworkBackdropWash
 import com.luc4n3x.levyra.ui.components.LevyraAdaptiveDockSurface
+import com.luc4n3x.levyra.ui.components.LocalDockMorph
+import com.luc4n3x.levyra.ui.components.dockMorphHeight
+import com.luc4n3x.levyra.ui.components.dockMorphPadding
+import com.luc4n3x.levyra.ui.components.dockMorphTray
+import com.luc4n3x.levyra.domain.dockMorphActive
+import com.luc4n3x.levyra.domain.DockScrollEffect
+import com.luc4n3x.levyra.domain.effectiveDockScrollEffect
+import com.luc4n3x.levyra.domain.supportsDockMorph
 import com.luc4n3x.levyra.ui.components.animatedCompaction
 import com.luc4n3x.levyra.ui.components.dockClipHeight
 import com.luc4n3x.levyra.ui.components.dockFade
@@ -2262,7 +2270,7 @@ fun LevyraApp(
                     .fillMaxSize()
                     .background(LevyraBlack)
             ) {
-            val dockState = rememberLevyraDockState()
+            val dockState = rememberLevyraDockState(enabled = state.interfaceSettings.effectiveDockScrollEffect() != DockScrollEffect.Off)
             val glassBlurAllowed = rememberGlassBlurAllowed()
             val dockGlass = rememberGlassBackdropState(
                 enabled = !LevyraSkinManagesLayout && state.interfaceSettings.liquidGlassEnabled &&
@@ -2589,12 +2597,17 @@ fun LevyraApp(
                     val dockCompaction = dockState.animatedCompaction(state.animationsEnabled)
                     val compactionProvider: () -> Float = { dockCompaction.value }
                     val miniPlayerVisible = state.currentTrack != null && !state.isSamplesOpen
-                    val dockLink = rememberConnectedDockLink(
+                    val dockMorph = rememberDockMorph(
+                        active = state.interfaceSettings.dockMorphActive() && !dockSideBySide && !state.showSettings,
+                        miniVisible = miniPlayerVisible,
+                        compaction = dockCompaction
+                    )
+                    val dockLink = rememberMorphedDockLink(rememberConnectedDockLink(
                         navigation = navigationStudio.settings,
                         attached = miniPlayerVisible && !dockSideBySide && !state.showSettings,
                         compaction = dockCompaction,
                         animated = state.animationsEnabled
-                    )
+                    ), dockMorph)
                     val miniPlayerSlot: @Composable () -> Unit = {
                         AnimatedVisibility(
                             visible = miniPlayerVisible,
@@ -2677,6 +2690,7 @@ fun LevyraApp(
                     val bottomTabsSlot: @Composable () -> Unit = {
                         val selectDockTab: (LevyraTab) -> Unit = { tab ->
                             if (state.showSettings) viewModel.closeSettings()
+                            if (dockMorph != null) dockState.expand()
                             viewModel.selectTab(tab)
                         }
                         Box(
@@ -2710,9 +2724,6 @@ fun LevyraApp(
                         miniPlayerSlot()
                         Spacer(modifier = Modifier.navigationBarsPadding())
                     } else {
-                        if (!dockSideBySide) {
-                            miniPlayerSlot()
-                        }
                         val dockModifier = if (miniMaxWidth.isFinite()) {
                             Modifier.widthIn(max = miniMaxWidth.dp)
                         } else {
@@ -2731,17 +2742,23 @@ fun LevyraApp(
                                 bottomTabsSlot()
                             }
                         }
-                        if (skinNavigationSettings(navigationStudio.settings).style == NavStyle.Original) {
-                            LevyraAdaptiveDockSurface(glass = dockGlass, modifier = dockModifier, content = dockContent)
-                        } else {
-                            StyledDockSurface(
-                                style = skinNavigationSettings(navigationStudio.settings).style,
-                                tuning = skinNavigationSettings(navigationStudio.settings).activeTuning(),
-                                glass = dockGlass,
-                                modifier = dockModifier,
-                                content = dockContent
-                            )
+                        val dockSurfaceSlot: @Composable () -> Unit = {
+                            if (skinNavigationSettings(navigationStudio.settings).style == NavStyle.Original) {
+                                LevyraAdaptiveDockSurface(glass = dockGlass, modifier = dockModifier, content = dockContent)
+                            } else {
+                                StyledDockSurface(
+                                    style = skinNavigationSettings(navigationStudio.settings).style,
+                                    tuning = skinNavigationSettings(navigationStudio.settings).activeTuning(),
+                                    glass = dockGlass,
+                                    modifier = dockModifier,
+                                    content = dockContent
+                                )
+                            }
                         }
+                        LevyraDockStack(
+                            dockMorph, dockSideBySide, miniPlayerSlot, dockSurfaceSlot,
+                            DockSearchRoute(state.interfaceSettings.skin, navigationStudio.settings, backgroundTab, dockState, viewModel::selectTab)
+                        )
                     }
                 }
             }
@@ -3499,7 +3516,9 @@ fun LevyraApp(
                     progress = progressOf(state.positionMs, state.durationMs),
                     animated = state.animationsEnabled,
                     onUpdate = viewModel::setMiniPlayerStudioSettings,
-                    onClose = viewModel::closeMiniPlayerStudio
+                    onClose = viewModel::closeMiniPlayerStudio,
+                    scrollEffect = state.interfaceSettings.dockScrollEffect,
+                    onScrollEffect = { viewModel.setInterfaceSettings(state.interfaceSettings.copy(dockScrollEffect = it)) }
                 )
             }
 
@@ -20722,6 +20741,9 @@ private fun SettingsOverlay(
                                     onClick = onOpenNavigationStudio
                                 )
                             }
+                            if (interfaceSettings.skin.supportsDockMorph && interfaceSettings.skin != LevyraSkin.Default) {
+                                item { DockScrollEffectSkinRow(interfaceSettings, onInterfaceSettings) }
+                            }
                             item {
                                 val widgetStudioContext = LocalContext.current
                                 SettingsButton(
@@ -22690,7 +22712,7 @@ private fun String.smartOfflineEntries(): Set<String> = split(',')
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SettingsChoiceRow(
+internal fun SettingsChoiceRow(
     icon: ImageVector,
     title: String,
     subtitle: String,
@@ -22957,7 +22979,7 @@ private fun SettingsSectionLabel(text: String) {
 }
 
 @Composable
-private fun SettingsToggle(icon: ImageVector, title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+internal fun SettingsToggle(icon: ImageVector, title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     SettingsTile(checked = checked, onCheckedChange = onCheckedChange) {
         Row(
             modifier = Modifier.padding(start = 14.dp, end = 16.dp, top = 14.dp, bottom = 14.dp),
@@ -26024,11 +26046,13 @@ internal fun MiniPlayer(
         liveRadio = liveRadio
     )
 
+    val dockMorph = LocalDockMorph.current
     Box(modifier = Modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(
+                .dockMorphPadding(
+                    dockMorph,
                     start = MiniPlayerCardGutter,
                     end = MiniPlayerCardGutter,
                     top = MiniPlayerTrayTop,
@@ -26038,7 +26062,7 @@ internal fun MiniPlayer(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .dockLerpHeight(compaction, LevyraPlayerDesign.MiniHeight, LevyraPlayerDesign.MiniHeightCompact)
+                    .dockMorphHeight(dockMorph, compaction, LevyraPlayerDesign.MiniHeight, LevyraPlayerDesign.MiniHeightCompact)
                     .playerMorphAnchor(morphAnchors, PlayerMorphSlot.MiniCard)
                     .shadow(
                         elevation = MiniPlayerGlowElevation,
@@ -27490,6 +27514,7 @@ internal fun BottomTabs(
         label = "tab-indicator-position"
     )
     val indicatorColor = selectedTint.copy(alpha = if (isLight) 0.08f else 0.11f)
+    val dockMorph = LocalDockMorph.current
 
     Column(modifier = Modifier.fillMaxWidth()) {
             BoxWithConstraints(
@@ -27497,6 +27522,7 @@ internal fun BottomTabs(
                     .dockClipHeight(compaction, LevyraTabBarHeight - LevyraTabBarCompactHeight)
                     .fillMaxWidth()
                     .height(LevyraTabBarHeight)
+                    .dockMorphTray(dockMorph, entries.size, selectedIndex)
             ) {
                 val slotWidth = maxWidth / entries.size
                 val indicatorWidth = (slotWidth - 34.dp).coerceIn(40.dp, 52.dp)
@@ -27514,7 +27540,7 @@ internal fun BottomTabs(
                             )
                         }
                         .size(width = indicatorWidth, height = LevyraTabIndicatorHeight)
-                        .background(indicatorColor, LevyraTabIndicatorShape)
+                        .dockMorphAnchorBackground(dockMorph, indicatorColor, LevyraTabIndicatorShape)
                 )
 
                 Row(

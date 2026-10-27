@@ -28,6 +28,49 @@ class ProviderCircuitBreakerTest {
     }
 
     @Test
+    fun adaptiveRateLimitHonoursRetryAfterInsteadOfTheLongCooldown() {
+        breaker.onRateLimitedAdaptive(2_000L)
+
+        assertEquals(Permit.REJECTED, breaker.acquire())
+        clockMs += 2_000L
+        assertEquals(Permit.PROBE, breaker.acquire())
+    }
+
+    @Test
+    fun adaptiveRateLimitWithoutRetryAfterBacksOffAndResetsAfterRecovery() {
+        breaker.onRateLimitedAdaptive(null)
+        clockMs += ProviderCircuitBreaker.RATE_LIMIT_BASE_MS - 1
+        assertEquals(Permit.REJECTED, breaker.acquire())
+        clockMs += 1L
+        val firstProbe = breaker.acquire()
+        assertEquals(Permit.PROBE, firstProbe)
+
+        breaker.onRateLimitedAdaptive(null)
+        clockMs += ProviderCircuitBreaker.RATE_LIMIT_BASE_MS * 2 - 1
+        assertEquals(Permit.REJECTED, breaker.acquire())
+        clockMs += 1L
+        val recoveryProbe = breaker.acquire()
+        breaker.onSuccess(recoveryProbe)
+        assertEquals(State.CLOSED, breaker.currentState)
+
+        breaker.onRateLimitedAdaptive(null)
+        clockMs += ProviderCircuitBreaker.RATE_LIMIT_BASE_MS
+        assertEquals(Permit.PROBE, breaker.acquire())
+    }
+
+    @Test
+    fun adaptiveRateLimitNeverExceedsTheRegularCooldownWithoutRetryAfter() {
+        repeat(12) {
+            breaker.onRateLimitedAdaptive(null)
+            clockMs += ProviderCircuitBreaker.DEFAULT_OPEN_MS
+            breaker.release(breaker.acquire())
+        }
+        breaker.onRateLimitedAdaptive(null)
+        clockMs += ProviderCircuitBreaker.DEFAULT_OPEN_MS
+        assertEquals(Permit.PROBE, breaker.acquire())
+    }
+
+    @Test
     fun rateLimitImmediatelyOpensAndSurvivesAConcurrentSearchSuccess() {
         val olderSearch = breaker.acquire()
 

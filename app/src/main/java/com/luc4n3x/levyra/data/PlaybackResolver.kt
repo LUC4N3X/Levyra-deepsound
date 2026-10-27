@@ -18,6 +18,7 @@ import com.luc4n3x.levyra.data.network.YoutubeStreamClientIdentityRegistry
 import com.luc4n3x.levyra.data.hqaudio.HighQualityAudioProvider
 import com.luc4n3x.levyra.data.hqaudio.HighQualityAudioResolver
 import com.luc4n3x.levyra.data.hqaudio.HighQualityMappingStore
+import com.luc4n3x.levyra.data.hqaudio.HighQualityBackgroundLookup
 import com.luc4n3x.levyra.data.hqaudio.HighQualityPlaybackCoordinator
 import com.luc4n3x.levyra.data.hqaudio.HighQualityProviderHttpClient
 import com.luc4n3x.levyra.data.hqaudio.OkHttpProviderExchange
@@ -1343,7 +1344,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             if (!canReuseProvidedPlayback(track)) {
                 if (!hasInternetCapableNetwork()) return null
                 val unresolved = track.copy(streamUrl = "", videoStreamUrl = "", playbackManifest = null)
-                return runCatchingPreservingCancellation { resolve(unresolved, isVideoMode) }.getOrNull()
+                return runCatchingPreservingCancellation { resolveInBackground(unresolved, isVideoMode) }.getOrNull()
             }
             if (streamStillFresh(track.streamUrl)) {
                 store(track, track, isVideoMode, expectedGeneration = resolverGeneration.get())
@@ -1353,8 +1354,11 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
         cached(track, isVideoMode)?.let { return it }
         if (!hasInternetCapableNetwork()) return null
-        return runCatchingPreservingCancellation { resolve(track, isVideoMode) }.getOrNull()
+        return runCatchingPreservingCancellation { resolveInBackground(track, isVideoMode) }.getOrNull()
     }
+
+    private suspend fun resolveInBackground(track: Track, isVideoMode: Boolean): Track =
+        withContext(HighQualityBackgroundLookup()) { resolve(track, isVideoMode) }
 
     private suspend fun resolveUncached(
         track: Track,
