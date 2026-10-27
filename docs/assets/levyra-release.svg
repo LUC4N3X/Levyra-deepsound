@@ -1,10 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="145" height="42" viewBox="0 0 145 42" role="img" aria-label="LATEST v3.0.2">
 <title>LATEST v3.0.2</title>
-<rect x=".75" y=".75" width="143.5" height="40.5" rx="13.5" fill="#292239" stroke="#68517E" stroke-width="1.5"/>
-<path d="M105 1h23q16 0 16 16v9c-12-3-19-9-25-15-4-5-9-8-14-10Z" fill="#DDC1FF" opacity=".08"/>
-<rect x="5" y="5" width="32" height="32" rx="11.5" fill="#634881"/>
-<path d="M16 14h10l6 6-11 11-10-10v-6Z" fill="none" stroke="#DDC1FF" stroke-width="2.1" stroke-linejoin="round"/><circle cx="25.5" cy="19.5" r="1.8" fill="#DDC1FF"/>
-<text x="45" y="16" fill="#D7CADA" font-family="Roboto,'Segoe UI',Arial,sans-serif" font-size="8.6" font-weight="750" letter-spacing="1">LATEST</text>
-<text x="45" y="31" fill="#FFF9FF" font-family="Roboto,'Segoe UI',Arial,sans-serif" font-size="15.3" font-weight="760">v3.0.2</text>
-<circle cx="132" cy="30" r="2.5" fill="#DDC1FF" opacity=".85"/>
+<rect width="145" height="42" rx="12" fill="#30293B"/>
+<path d="M14 14h10l5 5-10 10-8-8v-5Z" fill="none" stroke="#CBB9EA" stroke-width="2" stroke-linejoin="round"/><circle cx="22.5" cy="19" r="1.55" fill="#CBB9EA"/>
+<text x="42" y="16" fill="#AEB0BA" font-family="Arial,'Segoe UI',sans-serif" font-size="8" font-weight="600" letter-spacing=".7">LATEST</text>
+<text x="42" y="31" fill="#F6F5F8" font-family="Arial,'Segoe UI',sans-serif" font-size="15" font-weight="700">v3.0.2</text>
 </svg>

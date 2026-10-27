@@ -1,10 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="145" height="42" viewBox="0 0 145 42" role="img" aria-label="DOCS Open docs">
-<title>DOCS Open docs</title>
-<rect x=".75" y=".75" width="143.5" height="40.5" rx="13.5" fill="#3A2934" stroke="#986779" stroke-width="1.5"/>
-<path d="M105 1h23q16 0 16 16v9c-12-3-19-9-25-15-4-5-9-8-14-10Z" fill="#FBC7CE" opacity=".08"/>
-<rect x="5" y="5" width="32" height="32" rx="11.5" fill="#7B4A5D"/>
-<path d="M14 11h13l5 5v17H14zM27 11v5h5M18 22h10M18 27h8" fill="none" stroke="#FBC7CE" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/>
-<text x="45" y="16" fill="#D7CADA" font-family="Roboto,'Segoe UI',Arial,sans-serif" font-size="8.6" font-weight="750" letter-spacing="1">DOCS</text>
-<text x="45" y="31" fill="#FFF9FF" font-family="Roboto,'Segoe UI',Arial,sans-serif" font-size="15.3" font-weight="760">Open</text>
-<path d="M120 24h12m-4-4 4 4-4 4" fill="none" stroke="#FBC7CE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="145" height="42" viewBox="0 0 145 42" role="img" aria-label="DOCS Open">
+<title>DOCS Open</title>
+<rect width="145" height="42" rx="12" fill="#22242A"/>
+<path d="M13 11h12l5 5v15H13zM25 11v5h5M17 21h9M17 26h8" fill="none" stroke="#F6F5F8" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="42" y="16" fill="#AEB0BA" font-family="Arial,'Segoe UI',sans-serif" font-size="8" font-weight="600" letter-spacing=".7">DOCS</text>
+<text x="42" y="31" fill="#F6F5F8" font-family="Arial,'Segoe UI',sans-serif" font-size="15" font-weight="700">Open</text>
 </svg>

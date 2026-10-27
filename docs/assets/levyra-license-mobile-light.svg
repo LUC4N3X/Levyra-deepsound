@@ -1,10 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="126" height="36.5" viewBox="0 0 145 42" role="img" aria-label="LICENSE GPL-3.0">
 <title>LICENSE GPL-3.0</title>
-<rect x=".75" y=".75" width="143.5" height="40.5" rx="13.5" fill="#E8F6F1" stroke="#467A78" stroke-width="1.5"/>
-<path d="M105 1h23q16 0 16 16v9c-12-3-19-9-25-15-4-5-9-8-14-10Z" fill="#FFFFFF" opacity=".35"/>
-<rect x="5" y="5" width="32" height="32" rx="11.5" fill="#AFE7D8"/>
-<path d="M21 11l10 4v7c0 7-4.4 10.8-10 13-5.6-2.2-10-6-10-13v-7Z" transform="translate(0 -3) scale(1 .92)" fill="none" stroke="#42304F" stroke-width="2" stroke-linejoin="round"/><path d="m16 22 3.4 3.3 6.8-7" fill="none" stroke="#42304F" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="45" y="16" fill="#625568" font-family="Roboto,'Segoe UI',Arial,sans-serif" font-size="8.6" font-weight="750" letter-spacing="1">LICENSE</text>
-<text x="45" y="31" fill="#282331" font-family="Roboto,'Segoe UI',Arial,sans-serif" font-size="15.3" font-weight="760">GPL-3.0</text>
-<circle cx="132" cy="30" r="2.5" fill="#42304F" opacity=".85"/>
+<rect width="145" height="42" rx="12" fill="#F0F1F4"/>
+<path d="M20 11l9 4v7c0 5-4 8-9 10-5-2-9-5-9-10v-7Z" fill="none" stroke="#24262C" stroke-width="2" stroke-linejoin="round"/><path d="m16 21 3 3 5-5" fill="none" stroke="#24262C" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="42" y="16" fill="#666975" font-family="Arial,'Segoe UI',sans-serif" font-size="8" font-weight="600" letter-spacing=".7">LICENSE</text>
+<text x="42" y="31" fill="#24262C" font-family="Arial,'Segoe UI',sans-serif" font-size="15" font-weight="700">GPL-3.0</text>
 </svg>

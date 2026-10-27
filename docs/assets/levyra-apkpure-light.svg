@@ -1,10 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="184" height="57.5" viewBox="0 0 160 50" role="img" aria-label="GET IT ON APKPure">
 <title>GET IT ON APKPure</title>
-<rect x=".75" y=".75" width="158.5" height="48.5" rx="14" fill="#EBF8EF" stroke="#55967C" stroke-width="1.5"/>
-<path d="M105 1H145Q159 1 159 15V35C147 34 138 27 131 18 125 10 115 5 105 1Z" fill="#FFFFFF" opacity=".28"/>
-<path d="M7 18C8 10 15 6 25 6 37 6 44 13 44 25S36 44 25 44C14 44 6 38 7 27Z" fill="#A8E9C3"/>
+<rect width="160" height="50" rx="14" fill="#F0F1F4"/>
 <rect x="10" y="9" width="32" height="32" rx="8" fill="#24CD77"/>
-  <g transform="translate(10 9) scale(.03)" fill="#FFFFFF">
+<g transform="translate(10 9) scale(.03)" fill="#FFFFFF">
     <path d="M892.99993 611.72969 970.85741 611.77319 929.89641 688.37305Z"/>
     <path d="M794.99333 672 929.08802 671.54855 861.16069 803Z"/>
     <path d="M768.29222 932.79238 669 732.66606 867.96047 731.35091 770.04312 933.29238Z"/>
@@ -12,9 +10,6 @@
     <path d="M458 289.69993 563.68924 73.231804 771.26447 497.72405 662.00331 710Z"/>
     <path d="M254 710.5329 358.22025 498H546.80163L650 710.63348Z"/>
   </g>
-<text x="52" y="19" fill="#62596D" font-family="Roboto,'Segoe UI',Arial,sans-serif" font-size="7.3" font-weight="700" letter-spacing=".75">GET IT ON</text>
-<text x="52" y="36" fill="#262433" font-family="Roboto,'Segoe UI',Arial,sans-serif" font-size="15.1" font-weight="750">APKPure</text>
-<circle cx="143" cy="25" r="10.5" fill="#A8E9C3"/>
-<path d="M143 19v12m-4.5-4.5 4.5 4.5 4.5-4.5M137.5 34h11" fill="none" stroke="#3A3250" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M16 3H127" fill="none" stroke="#FFFFFF" stroke-opacity=".47" stroke-linecap="round"/>
+<text x="50" y="19" fill="#666975" font-family="Arial,'Segoe UI',sans-serif" font-size="7.3" font-weight="600" letter-spacing=".65">GET IT ON</text>
+<text x="50" y="36" fill="#24262C" font-family="Arial,'Segoe UI',sans-serif" font-size="15.2" font-weight="700">APKPure</text>
 </svg>
