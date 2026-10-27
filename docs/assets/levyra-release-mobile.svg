@@ -1,7 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="126" height="36.5" viewBox="0 0 145 42" role="img" aria-label="LATEST v3.0.2">
 <title>LATEST v3.0.2</title>
-<rect width="145" height="42" rx="12" fill="#E7B5D3"/>
-<path d="M14 14h10l5 5-10 10-8-8v-5Z" fill="none" stroke="#713C5E" stroke-width="2" stroke-linejoin="round"/><circle cx="22.5" cy="19" r="1.55" fill="#713C5E"/>
+<path d="M22 1C34 1 38 7 43 7C50 7 54 4 65 4L119 2C136 1 144 10 144 21C144 32 136 42 120 41L65 39C53 39 49 35 43 35C36 35 33 41 22 41C10 41 1 33 1 21C1 9 10 1 22 1Z" fill="#CFCBFF"/>
+<path d="M20 3C31 3 39 10 39 21C39 32 31 39 20 39C10 39 3 32 3 21C3 10 10 3 20 3Z" fill="#A4A3F4"/>
+<path d="M14 14h10l5 5-10 10-8-8v-5Z" fill="none" stroke="#48449A" stroke-width="2" stroke-linejoin="round"/><circle cx="22.5" cy="19" r="1.55" fill="#48449A"/>
 <text x="42" y="16" fill="#493741" font-family="Arial,'Segoe UI',sans-serif" font-size="8" font-weight="600" letter-spacing=".7">LATEST</text>
 <text x="42" y="31" fill="#241923" font-family="Arial,'Segoe UI',sans-serif" font-size="15" font-weight="700">v3.0.2</text>
 </svg>

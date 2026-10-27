@@ -1,7 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="126" height="36.5" viewBox="0 0 145 42" role="img" aria-label="DOCS Open">
 <title>DOCS Open</title>
-<rect width="145" height="42" rx="12" fill="#C9CCF5"/>
-<path d="M13 11h12l5 5v15H13zM25 11v5h5M17 21h9M17 26h8" fill="none" stroke="#555B8B" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M23 1C35 1 39 7 45 8C51 9 55 4 65 3L118 2C135 2 144 11 144 22S133 41 119 40L66 39C54 39 50 34 45 35C37 37 34 41 21 41C9 41 1 32 1 20C1 9 9 1 23 1Z" fill="#BCE9FF"/>
+<path d="M20 3C31 3 39 10 39 21C39 32 31 39 20 39C10 39 3 32 3 21C3 10 10 3 20 3Z" fill="#76C9EE"/>
+<path d="M13 11h12l5 5v15H13zM25 11v5h5M17 21h9M17 26h8" fill="none" stroke="#216B94" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
 <text x="42" y="16" fill="#493741" font-family="Arial,'Segoe UI',sans-serif" font-size="8" font-weight="600" letter-spacing=".7">DOCS</text>
 <text x="42" y="31" fill="#241923" font-family="Arial,'Segoe UI',sans-serif" font-size="15" font-weight="700">Open</text>
 </svg>

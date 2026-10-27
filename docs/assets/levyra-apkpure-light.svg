@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="184" height="57.5" viewBox="0 0 160 50" role="img" aria-label="GET IT ON APKPure">
 <title>GET IT ON APKPure</title>
-<rect width="160" height="50" rx="14" fill="#D7EDE3"/>
+<path d="M24 2C36 2 42 10 49 10C57 10 62 4 75 4L131 2C147 1 158 11 159 24C159 38 147 48 132 48L75 46C60 45 56 39 49 40C42 42 36 48 23 48C10 48 2 38 2 25C2 12 10 2 24 2Z" fill="#E1F9EB"/>
+<path d="M24 4C36 3 45 11 45 24C45 37 35 46 23 46C11 46 4 36 4 24C4 12 12 4 24 4Z" fill="#A5ECCB"/>
 <rect x="10" y="9" width="32" height="32" rx="8" fill="#24CD77"/>
 <g transform="translate(10 9) scale(.03)" fill="#FFFFFF">
     <path d="M892.99993 611.72969 970.85741 611.77319 929.89641 688.37305Z"/>

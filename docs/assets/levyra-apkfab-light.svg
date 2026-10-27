@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="184" height="57.5" viewBox="0 0 160 50" role="img" aria-label="GET IT ON APKFab">
 <title>GET IT ON APKFab</title>
-<rect width="160" height="50" rx="14" fill="#EAE0F6"/>
+<path d="M25 1C38 1 41 8 48 8C55 8 59 3 72 3L133 2C150 2 159 10 159 24C159 38 150 49 133 48L72 47C60 47 56 42 48 42C39 42 36 49 24 49C10 49 1 38 1 25C1 11 10 1 25 1Z" fill="#E8E2FF"/>
+<path d="M24 4C36 3 45 11 45 24C45 37 35 46 23 46C11 46 4 36 4 24C4 12 12 4 24 4Z" fill="#C9B7FC"/>
 <defs>
     <linearGradient id="apkfabGradient" x1="10" y1="9" x2="42" y2="41" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#8B2CF5"/>

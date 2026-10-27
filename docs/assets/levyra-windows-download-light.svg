@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="184" height="57.5" viewBox="0 0 160 50" role="img" aria-label="DOWNLOAD FOR Windows">
 <title>DOWNLOAD FOR Windows</title>
-<rect width="160" height="50" rx="14" fill="#F7DED1"/>
+<path d="M24 1C37 1 42 6 47 7C55 9 59 5 71 4L131 2C149 1 159 13 159 26C159 39 148 49 132 48L72 46C58 45 52 40 47 41C40 43 36 49 22 49C10 49 1 39 1 24C1 12 10 1 24 1Z" fill="#E0F0FF"/>
+<path d="M24 4C36 3 45 11 45 24C45 37 35 46 23 46C11 46 4 36 4 24C4 12 12 4 24 4Z" fill="#ACD8FF"/>
 <g transform="translate(11.5 10.5) scale(0.56)" fill="#0078D4"><rect x="0" y="0" width="24" height="24" rx="2.5"/><rect x="28" y="0" width="24" height="24" rx="2.5"/><rect x="0" y="28" width="24" height="24" rx="2.5"/><rect x="28" y="28" width="24" height="24" rx="2.5"/></g>
 <text x="50" y="19" fill="#493741" font-family="Arial,'Segoe UI',sans-serif" font-size="7.3" font-weight="600" letter-spacing=".65">DOWNLOAD FOR</text>
 <text x="50" y="36" fill="#241923" font-family="Arial,'Segoe UI',sans-serif" font-size="15.2" font-weight="700">Windows</text>
