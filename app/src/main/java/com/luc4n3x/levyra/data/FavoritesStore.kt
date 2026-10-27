@@ -59,14 +59,15 @@ class FavoritesStore(context: Context) {
         favoritesStoreMutationMutex.withLock { saveAndCompleteMigration(tracks) }
     }
 
-    suspend fun addFavorites(tracks: List<Track>): List<Track> = withContext(Dispatchers.IO) {
+    suspend fun addFavorites(tracks: List<Track>): List<Track> = addMissingFavorites(tracks).favorites
+
+    internal suspend fun addMissingFavorites(tracks: List<Track>): FavoriteAddition = withContext(Dispatchers.IO) {
         favoritesStoreMutationMutex.withLock {
             val current = loadInternal(failOnReadError = true)
-            val existingKeys = current.mapTo(hashSetOf(), ::favoriteTrackKey)
-            val added = tracks.filter { it.id.isNotBlank() && existingKeys.add(favoriteTrackKey(it)) }
+            val added = missingFavoriteTracks(current, tracks)
             val updated = added + current
             if (added.isNotEmpty()) saveAndCompleteMigration(updated)
-            updated
+            FavoriteAddition(updated, added)
         }
     }
 
@@ -216,6 +217,13 @@ internal fun toggleFavoriteTracks(current: List<Track>, targets: List<Track>): L
     } else {
         current.filterNot { favoriteTrackKey(it) in targetsByKey }
     }
+}
+
+internal data class FavoriteAddition(val favorites: List<Track>, val added: List<Track>)
+
+internal fun missingFavoriteTracks(current: List<Track>, targets: List<Track>): List<Track> {
+    val existingKeys = current.mapTo(hashSetOf(), ::favoriteTrackKey)
+    return targets.filter { it.id.isNotBlank() && existingKeys.add(favoriteTrackKey(it)) }
 }
 
 internal fun areAllFavoriteTracks(current: List<Track>, targets: List<Track>): Boolean {

@@ -88,6 +88,8 @@ import com.luc4n3x.levyra.ui.i18n.LevyraPersonalCollectionStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.selection.TrackSelectionActions
 import com.luc4n3x.levyra.ui.selection.TrackSelectionBar
+import com.luc4n3x.levyra.ui.selection.TrackSelectionBarListClearance
+import com.luc4n3x.levyra.ui.selection.trackSelectionBarTabClearance
 import com.luc4n3x.levyra.ui.selection.TrackSelectionState
 import com.luc4n3x.levyra.ui.selection.rememberTrackSelectionState
 import com.luc4n3x.levyra.ui.selection.resolveSelected
@@ -152,7 +154,8 @@ internal fun PersonalCollectionScreen(
                     start = 16.dp,
                     end = 16.dp,
                     top = 8.dp,
-                    bottom = if (selection.isActive) 230.dp else levyraTabContentBottomPadding(state.currentTrack != null)
+                    bottom = levyraTabContentBottomPadding(state.currentTrack != null) +
+                        if (selection.isActive) TrackSelectionBarListClearance else 0.dp
                 ),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -551,7 +554,7 @@ private fun BoxScope.PersonalCollectionSelectionBar(
         ),
         modifier = Modifier
             .align(Alignment.BottomCenter)
-            .padding(start = 12.dp, end = 12.dp, bottom = if (hasCurrentTrack) 84.dp else 12.dp)
+            .padding(start = 12.dp, end = 12.dp, bottom = trackSelectionBarTabClearance(hasCurrentTrack))
     )
 }
 
