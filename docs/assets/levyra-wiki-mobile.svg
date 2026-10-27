@@ -1,10 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="126" height="31.0154" viewBox="0 0 130 32" role="img" aria-label="DOCS Open →">
-  <title>DOCS Open →</title>
-  <rect x=".75" y=".75" width="128.5" height="30.5" rx="8" fill="#0D1117" stroke="#30363D" stroke-width="1.5"/>
-  <rect x="4" y="4" width="24" height="24" rx="6" fill="#161B22" stroke="#30363D" stroke-width="1"/>
-  <g transform="translate(16 16)" style="color:#FB7185;">
-    <path d="M-5 -7 h7 l4 4 v10 h-11 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M2 -7 v4 h4 M-2 1 h5 M-2 5 h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-  </g>
-  <text x="35" y="12.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="7.2" font-weight="700" letter-spacing=".75">DOCS</text>
-  <text x="35" y="24.5" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="700">Open →</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="126" height="36.5" viewBox="0 0 145 42" role="img" aria-label="DOCS Open docs">
+<title>DOCS Open docs</title>
+<rect x=".75" y=".75" width="143.5" height="40.5" rx="13.5" fill="#3A2934" stroke="#986779" stroke-width="1.5"/>
+<path d="M105 1h23q16 0 16 16v9c-12-3-19-9-25-15-4-5-9-8-14-10Z" fill="#FBC7CE" opacity=".08"/>
+<rect x="5" y="5" width="32" height="32" rx="11.5" fill="#7B4A5D"/>
+<path d="M14 11h13l5 5v17H14zM27 11v5h5M18 22h10M18 27h8" fill="none" stroke="#FBC7CE" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="45" y="16" fill="#D7CADA" font-family="Roboto,'Segoe UI',Arial,sans-serif" font-size="8.6" font-weight="750" letter-spacing="1">DOCS</text>
+<text x="45" y="31" fill="#FFF9FF" font-family="Roboto,'Segoe UI',Arial,sans-serif" font-size="15.3" font-weight="760">Open</text>
+<path d="M120 24h12m-4-4 4 4-4 4" fill="none" stroke="#FBC7CE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

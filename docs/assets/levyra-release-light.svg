@@ -1,10 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="130" height="32" viewBox="0 0 130 32" role="img" aria-label="LATEST v3.0.2">
-  <title>LATEST v3.0.2</title>
-  <rect x=".75" y=".75" width="128.5" height="30.5" rx="8" fill="#FFFFFF" stroke="#D0D7DE" stroke-width="1.5"/>
-  <rect x="4" y="4" width="24" height="24" rx="6" fill="#F6F8FA" stroke="#D0D7DE" stroke-width="1"/>
-  <g transform="translate(16 16)" style="color:#7C3AED;">
-    <path d="M-4 -8 h6 l5 5 -9 9 -6 -6 v-4 Z M1 -5 a1.5 1.5 0 1 0 0 3 A1.5 1.5 0 0 0 1 -5 Z" fill="currentColor"/>
-  </g>
-  <text x="35" y="12.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="7.2" font-weight="700" letter-spacing=".75">LATEST</text>
-  <text x="35" y="24.5" fill="#1F2328" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="700">v3.0.2</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="145" height="42" viewBox="0 0 145 42" role="img" aria-label="LATEST v3.0.2">
+<title>LATEST v3.0.2</title>
+<rect x=".75" y=".75" width="143.5" height="40.5" rx="13.5" fill="#F2EAFB" stroke="#68517E" stroke-width="1.5"/>
+<path d="M105 1h23q16 0 16 16v9c-12-3-19-9-25-15-4-5-9-8-14-10Z" fill="#FFFFFF" opacity=".35"/>
+<rect x="5" y="5" width="32" height="32" rx="11.5" fill="#DDC1FF"/>
+<path d="M16 14h10l6 6-11 11-10-10v-6Z" fill="none" stroke="#42304F" stroke-width="2.1" stroke-linejoin="round"/><circle cx="25.5" cy="19.5" r="1.8" fill="#42304F"/>
+<text x="45" y="16" fill="#625568" font-family="Roboto,'Segoe UI',Arial,sans-serif" font-size="8.6" font-weight="750" letter-spacing="1">LATEST</text>
+<text x="45" y="31" fill="#282331" font-family="Roboto,'Segoe UI',Arial,sans-serif" font-size="15.3" font-weight="760">v3.0.2</text>
+<circle cx="132" cy="30" r="2.5" fill="#42304F" opacity=".85"/>
 </svg>
