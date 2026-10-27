@@ -21,6 +21,7 @@ internal class ProviderCircuitBreaker(
     private var lastFailureAtMs = 0L
     private var lastFailure = ""
     private var lastLatencyMs = -1L
+    private var rateLimitStrikes = 0
 
     val currentState: State
         get() = synchronized(lock) { state }
@@ -75,6 +76,7 @@ internal class ProviderCircuitBreaker(
                     state = State.CLOSED
                     consecutiveFailures = 0
                     openDurationMs = baseOpenMs
+                    rateLimitStrikes = 0
                     probeInFlight = false
                     true
                 }
@@ -123,6 +125,24 @@ internal class ProviderCircuitBreaker(
         HighQualityAudioDiagnostics.circuit(providerId, State.OPEN.name, "openMs=$durationMs cause=HTTP_429")
     }
 
+    fun onRateLimitedAdaptive(retryAfterMs: Long?) {
+        val durationMs = synchronized(lock) {
+            val now = clock()
+            lastFailureAtMs = now
+            lastFailure = "HTTP_429"
+            rateLimitStrikes += 1
+            val backoffMs = (RATE_LIMIT_BASE_MS shl (rateLimitStrikes - 1).coerceAtMost(RATE_LIMIT_MAX_SHIFT))
+                .coerceAtMost(baseOpenMs)
+            val waitMs = retryAfterMs?.coerceIn(RATE_LIMIT_MIN_MS, maxOpenMs) ?: backoffMs
+            openUntilMs = maxOf(openUntilMs, now + waitMs)
+            state = State.OPEN
+            consecutiveFailures = 0
+            probeInFlight = false
+            openUntilMs - now
+        }
+        HighQualityAudioDiagnostics.circuit(providerId, State.OPEN.name, "openMs=$durationMs cause=HTTP_429")
+    }
+
     fun release(permit: Permit) {
         synchronized(lock) {
             if (permit == Permit.PROBE && state == State.HALF_OPEN) probeInFlight = false
@@ -141,5 +161,8 @@ internal class ProviderCircuitBreaker(
         const val DEFAULT_FAILURE_THRESHOLD = 3
         const val DEFAULT_OPEN_MS = 90_000L
         const val MAX_OPEN_MS = 10L * 60L * 1_000L
+        const val RATE_LIMIT_BASE_MS = 5_000L
+        const val RATE_LIMIT_MIN_MS = 1_000L
+        private const val RATE_LIMIT_MAX_SHIFT = 5
     }
 }

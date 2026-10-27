@@ -35,6 +35,7 @@ class SettingsSearchCatalogTest {
         assertEquals("audio.autoeq", topId("autoeq"))
         assertEquals("audio.equalizer", topId("equalizer"))
         assertEquals("design.liquid_glass", topId("glass"))
+        assertEquals("design.dock_morph", topId("dock"))
         assertEquals("audio.preload", topId("cache"))
     }
 

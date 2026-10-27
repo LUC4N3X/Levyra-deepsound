@@ -19,6 +19,8 @@ import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.LevyraLyricsStudioSettings
 import com.luc4n3x.levyra.domain.LyricsAlignment
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.LevyraSkin
+import com.luc4n3x.levyra.domain.DockScrollEffect
 import com.luc4n3x.levyra.domain.LevyraVisualPerformance
 import com.luc4n3x.levyra.domain.PlayerDoubleTapAction
 import com.luc4n3x.levyra.domain.PlayerLongPressAction
@@ -307,6 +309,22 @@ class LevyraPreferencesStoreTest {
         flush(store)
 
         assertEquals(configured, reopen().interfaceSettings())
+    }
+
+    @Test
+    fun dockScrollEffectStartsTideAndSurvivesRecreationAndSkinChanges() {
+        val (store, preferences) = open()
+        flush(store)
+        assertEquals(DockScrollEffect.Tide, reopen().interfaceSettings().dockScrollEffect)
+
+        preferences.setInterfaceSettings(LevyraInterfaceSettings(dockScrollEffect = DockScrollEffect.Merge))
+        flush(store)
+        preferences.setInterfaceSettings(reopen().interfaceSettings().copy(skin = LevyraSkin.Prism))
+        flush(store)
+
+        val restored = reopen().interfaceSettings()
+        assertEquals(DockScrollEffect.Merge, restored.dockScrollEffect)
+        assertEquals(LevyraSkin.Prism, restored.skin)
     }
 
     @Test

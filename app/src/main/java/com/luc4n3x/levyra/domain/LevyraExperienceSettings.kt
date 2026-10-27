@@ -190,6 +190,27 @@ enum class LevyraSkin {
     }
 }
 
+val LevyraSkin.supportsDockMorph: Boolean
+    get() = when (this) {
+        LevyraSkin.Default, LevyraSkin.Nocturne78, LevyraSkin.Prism, LevyraSkin.Torque, LevyraSkin.Ivory -> true
+        LevyraSkin.SpotifyStyle, LevyraSkin.AppleMusicStyle, LevyraSkin.YouTubeMusicStyle -> false
+    }
+
+enum class DockScrollEffect(val storageId: String) {
+    Tide("tide"),
+    Merge("merge"),
+    Off("off");
+
+    companion object {
+        fun from(value: String?): DockScrollEffect = entries.firstOrNull { it.storageId == value } ?: Tide
+    }
+}
+
+fun LevyraInterfaceSettings.effectiveDockScrollEffect(): DockScrollEffect =
+    if (skin.supportsDockMorph) dockScrollEffect else DockScrollEffect.Tide
+
+fun LevyraInterfaceSettings.dockMorphActive(): Boolean = effectiveDockScrollEffect() == DockScrollEffect.Merge
+
 data class LevyraInterfaceSettings(
     val compactHome: Boolean = false,
     val showPersonalOrbit: Boolean = true,
@@ -202,6 +223,7 @@ data class LevyraInterfaceSettings(
     val fontPreset: LevyraFontPreset = LevyraFontPreset.Outfit,
     val playerGesturesEnabled: Boolean = true,
     val swipeTrackChangeEnabled: Boolean = true,
+    val dockScrollEffect: DockScrollEffect = DockScrollEffect.Tide,
     val doubleTapAction: PlayerDoubleTapAction = PlayerDoubleTapAction.Seek,
     val doubleTapSeekSeconds: Int = 10,
     val longPressAction: PlayerLongPressAction = PlayerLongPressAction.Speed,

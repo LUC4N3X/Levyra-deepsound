@@ -102,7 +102,13 @@ import com.luc4n3x.levyra.domain.NavMotion
 import com.luc4n3x.levyra.domain.NavStyle
 import com.luc4n3x.levyra.domain.NavSurfaceTone
 import com.luc4n3x.levyra.domain.NavTuning
+import com.luc4n3x.levyra.ui.components.DockMorphFrame
+import com.luc4n3x.levyra.ui.components.DockMorphRow
+import com.luc4n3x.levyra.ui.components.DockMorphSlots
+import com.luc4n3x.levyra.ui.components.LocalDockMorph
 import com.luc4n3x.levyra.ui.components.dockClipHeight
+import com.luc4n3x.levyra.ui.components.dockMorphFrame
+import com.luc4n3x.levyra.ui.components.dockMorphReveal
 import com.luc4n3x.levyra.ui.components.dockLerpHeight
 import com.luc4n3x.levyra.ui.components.dockLerpSize
 import com.luc4n3x.levyra.ui.components.levyraPressable
@@ -149,6 +155,9 @@ private const val SplitOrbTilt = -14f
 private val DockLinkSeamCorner = 10.dp
 private val DockLinkFusedCorner = 4.dp
 private val ConnectedPreviewHeight = 64.dp
+private val NavMorphTrayInset = 8.dp
+private val NavMorphTrayMinRow = 40.dp
+private const val NavMorphBadgeScale = 0.84f
 
 @Stable
 internal class DockLink(
@@ -643,6 +652,33 @@ private fun Modifier.navDockSizing(floating: Boolean, compaction: () -> Float, g
         dockClipHeight(compaction, geometry.height - geometry.compactHeight).height(geometry.height)
     }
 
+private fun navMorphRow(floating: Boolean, tuning: NavTuning, geometry: NavDockGeometry, orbReserve: Dp, gap: Dp): DockMorphRow =
+    if (floating) {
+        DockMorphRow(
+            leading = StyledNavFloatingGutter,
+            trailing = StyledNavFloatingGutter + orbReserve,
+            height = geometry.compactHeight,
+            bottom = StyledNavFloatingBottom,
+            gap = gap
+        )
+    } else {
+        DockMorphRow(
+            leading = 0.dp,
+            trailing = maxOf(tuning.paddingDp.dp, NavMorphTrayInset),
+            height = (geometry.compactHeight - NavMorphTrayInset).coerceAtLeast(NavMorphTrayMinRow),
+            gap = NavMorphTrayInset
+        )
+    }
+
+private fun navMorphSlots(count: Int, index: Int, tuning: NavTuning, expansion: NavExpansion?): DockMorphSlots =
+    DockMorphSlots(
+        count = count,
+        index = index,
+        padding = tuning.paddingDp.dp,
+        spacing = tuning.spacingDp.dp,
+        selectedWeight = expansion?.let { 1f + it.grow } ?: 1f
+    )
+
 private fun Modifier.dockGapWidth(gap: () -> Dp): Modifier = layout { measurable, _ ->
     val width = gap().roundToPx().coerceAtLeast(0)
     val placeable = measurable.measure(Constraints.fixed(width, 0))
@@ -703,6 +739,8 @@ internal fun StyledBottomTabs(
     val expansion = remember(style, tuning.labels) {
         if (tuning.labels == NavLabelMode.Expanding) navExpansion(style) else null
     }
+    val morph = LocalDockMorph.current
+    val morphFrame = remember { DockMorphFrame() }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         if (searchEntry != null) {
@@ -733,8 +771,15 @@ internal fun StyledBottomTabs(
                 modifier = Modifier
                     .navFloatingInset(floating)
                     .fillMaxWidth()
+                    .then(if (floating) Modifier.dockMorphFrame(morph, morphFrame, geometry.compactHeight) else Modifier)
                     .navDockSizing(floating, compaction, geometry)
-                    .then(surface),
+                    .then(surface)
+                    .dockMorphReveal(
+                        morph = morph,
+                        slots = navMorphSlots(entries.size, restingIndex, tuning, expansion),
+                        row = navMorphRow(floating, tuning, geometry, 0.dp, LiquidCapsuleOrbGap),
+                        frame = morphFrame.takeIf { floating }
+                    ),
                 entries = entries,
                 selected = selected,
                 indicatorIndex = selectedIndex,
@@ -747,7 +792,8 @@ internal fun StyledBottomTabs(
                 floating = floating,
                 compaction = compaction,
                 expansion = expansion,
-                onSelect = onSelect
+                onSelect = onSelect,
+                badge = style != NavStyle.LiquidCapsule
             )
         }
         if (applySystemInset) {
@@ -771,10 +817,12 @@ private fun StyledTabCapsule(
     floating: Boolean,
     compaction: () -> Float,
     expansion: NavExpansion?,
-    onSelect: (LevyraTab) -> Unit
+    onSelect: (LevyraTab) -> Unit,
+    badge: Boolean = false
 ) {
     val padding = tuning.paddingDp.dp
     val spacing = tuning.spacingDp.dp
+    val morph = LocalDockMorph.current.takeIf { badge }
     BoxWithConstraints(modifier = modifier) {
         val slotWidth = ((maxWidth - padding * 2 - spacing * (entries.size - 1)) / entries.size).coerceAtLeast(0.dp)
         Box(
@@ -822,6 +870,19 @@ private fun StyledTabCapsule(
                                 stretch = motion.stretch,
                                 colors = colors
                             )
+                            if (morph != null) {
+                                val slotPx = slotWidth.toPx()
+                                val leading = padding.toPx() + (slotPx + spacing.toPx()) * indicatorIndex + slotPx / 2f
+                                drawDockMorphBadge(
+                                    center = Offset(
+                                        if (layoutDirection == LayoutDirection.Rtl) size.width - leading else leading,
+                                        geometry.iconTop.toPx() + StyledNavIconBox.toPx() / 2f
+                                    ),
+                                    diameter = minOf(slotPx, geometry.compactHeight.toPx()) * NavMorphBadgeScale,
+                                    fraction = morph.fraction,
+                                    color = colors.indicator
+                                )
+                            }
                         }
                 )
                 StyledTabRow(
@@ -865,6 +926,13 @@ private fun SplitDockRow(
         label = "split-dock-detach"
     )
     val liquid = style == NavStyle.LiquidCapsule
+    val morph = LocalDockMorph.current
+    val morphFrame = remember { DockMorphFrame() }
+    val orbGap = when {
+        liquid -> LiquidCapsuleOrbGap
+        searchSelected -> SplitDockDetachedGap
+        else -> SplitDockJoinedGap
+    }
     val capsuleSurface = remember(liquid, colors, tuning.background, tuning.opacity, glass, depth, outer, detach) {
         if (liquid) {
             Modifier.navLiquidGlass(colors, tuning.opacity, glass, RoundedCornerShape(outer), depth)
@@ -883,8 +951,15 @@ private fun SplitDockRow(
         StyledTabCapsule(
             modifier = Modifier
                 .weight(1f)
+                .dockMorphFrame(morph, morphFrame, geometry.compactHeight)
                 .navDockSizing(true, compaction, geometry)
-                .then(capsuleSurface),
+                .then(capsuleSurface)
+                .dockMorphReveal(
+                    morph = morph,
+                    slots = navMorphSlots(entries.size, restingIndex, tuning, expansion),
+                    row = navMorphRow(true, tuning, geometry, geometry.compactHeight + orbGap, orbGap),
+                    frame = morphFrame
+                ),
             entries = entries,
             selected = selected,
             indicatorIndex = restingIndex,
@@ -897,7 +972,8 @@ private fun SplitDockRow(
             floating = true,
             compaction = compaction,
             expansion = expansion,
-            onSelect = onSelect
+            onSelect = onSelect,
+            badge = !liquid
         )
         Spacer(
             modifier = Modifier.dockGapWidth {

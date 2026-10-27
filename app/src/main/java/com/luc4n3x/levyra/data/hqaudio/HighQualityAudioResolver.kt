@@ -12,7 +12,15 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.coroutines.AbstractCoroutineContextElement
+import kotlin.coroutines.CoroutineContext
+
+class HighQualityBackgroundLookup : AbstractCoroutineContextElement(Key) {
+    companion object Key : CoroutineContext.Key<HighQualityBackgroundLookup>
+}
 
 enum class HighQualityFallbackReason {
     DISABLED,
@@ -72,6 +80,10 @@ class HighQualityAudioResolver(
     private val unmatchedIdentities = ConcurrentHashMap<String, Long>()
     private val inFlight = ConcurrentHashMap<String, Deferred<HighQualityResolution>>()
     private val inFlightLock = Any()
+    private val backgroundLookups = ConcurrentHashMap.newKeySet<String>()
+    private val queuedBackground = ConcurrentHashMap.newKeySet<String>()
+    private val backgroundGate = Semaphore(MAX_BACKGROUND_LOOKUPS)
+    private val backgroundStarts = ArrayDeque<Long>()
 
     @Volatile
     var mode: HighQualityAudioMode = HighQualityAudioMode.OFF
@@ -83,6 +95,8 @@ class HighQualityAudioResolver(
                     streams.clear()
                     inFlight.values.forEach { it.cancel() }
                     inFlight.clear()
+                    backgroundLookups.clear()
+                    queuedBackground.clear()
                 }
                 if (losslessChanged) unmatchedIdentities.clear()
             }
@@ -113,24 +127,54 @@ class HighQualityAudioResolver(
         if (isQuarantined(unmatchedIdentities, identityKey)) return false
         if (cachedSelection(identityKey) != null) return false
         return synchronized(inFlightLock) {
-            inFlight.containsKey(identityKey) || inFlight.size < MAX_IN_FLIGHT_LOOKUPS
+            inFlight.containsKey(identityKey) || inFlight.size - backgroundLookups.size < MAX_IN_FLIGHT_LOOKUPS
         }
     }
 
-    fun begin(identityKey: String, query: AlternativeTrackQuery): Deferred<HighQualityResolution> {
+    fun begin(
+        identityKey: String,
+        query: AlternativeTrackQuery,
+        background: Boolean = false
+    ): Deferred<HighQualityResolution> {
         if (!mode.enabled) return completed(HighQualityFallbackReason.DISABLED)
         if (isQuarantined(quarantinedIdentities, identityKey)) return completed(HighQualityFallbackReason.QUARANTINED)
         if (isQuarantined(unmatchedIdentities, identityKey)) return completed(HighQualityFallbackReason.NO_MATCH)
         cachedSelection(identityKey)?.let { return CompletableDeferred(it) }
+        val queued = background && mode.lossless
         val lookup = synchronized(inFlightLock) {
-            inFlight[identityKey]?.let { return it }
-            if (inFlight.size >= MAX_IN_FLIGHT_LOOKUPS) return completed(HighQualityFallbackReason.BUSY)
-            scope.async(start = CoroutineStart.LAZY) { lookup(identityKey, query) }
-                .also { inFlight[identityKey] = it }
+            inFlight[identityKey]?.let { existing ->
+                if (queued || !queuedBackground.remove(identityKey)) return existing
+                existing.cancel()
+                inFlight.remove(identityKey, existing)
+                backgroundLookups.remove(identityKey)
+            }
+            val busy = if (queued) {
+                inFlight.size >= MAX_IN_FLIGHT_LOOKUPS
+            } else {
+                inFlight.size - backgroundLookups.size >= MAX_IN_FLIGHT_LOOKUPS
+            }
+            if (busy) return completed(HighQualityFallbackReason.BUSY)
+            if (queued && !admitBackgroundLookup()) return completed(HighQualityFallbackReason.BUSY)
+            val created = if (queued) {
+                backgroundLookups += identityKey
+                queuedBackground += identityKey
+                scope.async(start = CoroutineStart.LAZY) {
+                    backgroundGate.withPermit {
+                        queuedBackground.remove(identityKey)
+                        lookup(identityKey, query)
+                    }
+                }
+            } else {
+                scope.async(start = CoroutineStart.LAZY) { lookup(identityKey, query) }
+            }
+            created.also { inFlight[identityKey] = it }
         }
         lookup.invokeOnCompletion {
             synchronized(inFlightLock) {
-                inFlight.remove(identityKey, lookup)
+                if (inFlight.remove(identityKey, lookup) && queued) {
+                    backgroundLookups.remove(identityKey)
+                    queuedBackground.remove(identityKey)
+                }
             }
         }
         lookup.start()
@@ -274,6 +318,16 @@ class HighQualityAudioResolver(
         return false
     }
 
+    private fun admitBackgroundLookup(): Boolean {
+        val now = clock()
+        while (backgroundStarts.isNotEmpty() && now - backgroundStarts.first() >= BACKGROUND_WINDOW_MS) {
+            backgroundStarts.removeFirst()
+        }
+        if (backgroundStarts.size >= MAX_BACKGROUND_LOOKUPS_PER_WINDOW) return false
+        backgroundStarts.addLast(now)
+        return true
+    }
+
     private fun completed(reason: HighQualityFallbackReason): Deferred<HighQualityResolution> =
         CompletableDeferred(HighQualityResolution.Fallback(reason))
 
@@ -286,6 +340,9 @@ class HighQualityAudioResolver(
         const val UNMATCHED_MEMORY_MS = 30L * 60L * 1_000L
         private val DEFINITIVE_MISSES = setOf(HighQualityFallbackReason.NO_MATCH, HighQualityFallbackReason.AMBIGUOUS)
         const val MAX_IN_FLIGHT_LOOKUPS = 4
+        const val MAX_BACKGROUND_LOOKUPS = 1
+        const val MAX_BACKGROUND_LOOKUPS_PER_WINDOW = 6
+        const val BACKGROUND_WINDOW_MS = 60_000L
         const val MAX_CACHED_STREAMS = 64
         const val MAX_QUARANTINE_ENTRIES = 256
     }

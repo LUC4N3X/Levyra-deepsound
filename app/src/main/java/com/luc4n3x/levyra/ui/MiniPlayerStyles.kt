@@ -107,7 +107,13 @@ import com.luc4n3x.levyra.ui.components.LevyraPlayPauseGlyph
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.dockFoldHeight
 import com.luc4n3x.levyra.ui.components.dockFoldWidth
+import com.luc4n3x.levyra.ui.components.DockMorph
+import com.luc4n3x.levyra.ui.components.LocalDockMorph
+import com.luc4n3x.levyra.ui.components.levyraCookieLandingShape
 import com.luc4n3x.levyra.ui.components.dockLerpHeight
+import com.luc4n3x.levyra.ui.components.dockMorphHeight
+import com.luc4n3x.levyra.ui.components.dockMorphPadding
+import com.luc4n3x.levyra.ui.components.morphedCompaction
 import com.luc4n3x.levyra.ui.components.dockLerpSize
 import com.luc4n3x.levyra.ui.components.levyraMarquee
 import com.luc4n3x.levyra.ui.components.levyraPressable
@@ -135,6 +141,8 @@ private val StyledMiniTrayTop = 4.dp
 private val StyledMiniTrayBottom = 10.dp
 private val StyledMiniFloatingBottom = 12.dp
 private val LiquidCapsuleMiniBottom = 10.dp
+private const val MiniEclipseSpin = -40f
+private val MiniEclipseShape: Shape by lazy { levyraCookieLandingShape(1f) }
 private val LiquidCapsuleElevation = 10.dp
 
 internal fun liquidCapsuleRim(onDark: Boolean): Brush = Brush.linearGradient(
@@ -415,7 +423,8 @@ internal fun StyledMiniPlayer(
     val progress: () -> Float = { progressState.value }
     val swipe = rememberPlayerSwipeMotion(animated)
     val layout = remember(style, tuning) { StyledMiniLayout(style, tuning) }
-    val dockCompaction = miniDockCompaction(style, compaction)
+    val morph = LocalDockMorph.current
+    val dockCompaction = morph.morphedCompaction(miniDockCompaction(style, compaction))
     val containerShape = rememberMiniContainerShape(style, tuning, layout.height, model.isPlaying, animated)
     val interaction = rememberMiniInteraction(interactive, model, liveRadio, playbackActions, expansionActions, swipe)
     val connected = style == MiniPlayerStyle.Connected
@@ -434,13 +443,13 @@ internal fun StyledMiniPlayer(
                     Modifier
                 }
             )
-            .padding(start = layout.gutter, end = layout.gutter, top = layout.topGap, bottom = layout.bottomGap)
-            .then(if (seam != null) Modifier.dockBottomGap(seam) else Modifier)
+            .dockMorphPadding(morph, layout.gutter, layout.gutter, layout.topGap, layout.bottomGap)
+            .then(if (seam != null) Modifier.dockBottomGap(morphedSeam(morph, seam)) else Modifier)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .dockLerpHeight(dockCompaction, layout.height, layout.compactHeight)
+                .dockMorphHeight(morph, dockCompaction, layout.height, layout.compactHeight)
                 .morphAnchorWhen(interactive, morphAnchors, PlayerMorphSlot.MiniCard)
                 .then(
                     if (connected) {
@@ -584,6 +593,9 @@ private fun Modifier.connectedSeamBridge(
         )
     }
 }
+
+private fun morphedSeam(morph: DockMorph?, seam: () -> Dp): () -> Dp =
+    if (morph == null) seam else { { seam() * (1f - morph.fraction) } }
 
 private fun miniDockCompaction(style: MiniPlayerStyle, compaction: () -> Float): () -> Float =
     if (style == MiniPlayerStyle.YtMusic || LevyraIsAppleMusic) StyledMiniFixedDock else compaction
@@ -998,6 +1010,40 @@ private fun MiniStyledArtwork(
         return
     }
     val shape = miniArtworkShape(tuning.artworkShape)
+    val morph = LocalDockMorph.current.takeIf { style != MiniPlayerStyle.LiquidCapsule }
+    if (morph != null) {
+        Box(modifier = modifier) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .graphicsLayer { alpha = 1f - morph.fraction }
+                    .clip(shape)
+                    .background(palette.accent.copy(alpha = 0.20f))
+            ) {
+                CoverImage(track, Modifier.fillMaxSize())
+            }
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .graphicsLayer {
+                        val bloom = morph.fraction
+                        alpha = bloom
+                        rotationZ = MiniEclipseSpin * (1f - bloom)
+                        this.shape = MiniEclipseShape
+                        clip = true
+                    }
+                    .background(palette.accent.copy(alpha = 0.20f))
+            ) {
+                CoverImage(
+                    track,
+                    Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { rotationZ = -MiniEclipseSpin * (1f - morph.fraction) }
+                )
+            }
+        }
+        return
+    }
     Box(
         modifier = modifier
             .then(

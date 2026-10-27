@@ -33,6 +33,7 @@ import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraSmartOfflineSettings
 import com.luc4n3x.levyra.domain.LevyraAmbientMode
 import com.luc4n3x.levyra.domain.LevyraAmbientSettings
+import com.luc4n3x.levyra.domain.DockScrollEffect
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.LevyraCustomTheme
 import com.luc4n3x.levyra.domain.LevyraCustomThemes
@@ -233,6 +234,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_UI_FONT_PRESET] = normalizedInterface.fontPreset.name
             mutable[KEY_UI_PLAYER_GESTURES] = normalizedInterface.playerGesturesEnabled
             mutable[KEY_UI_SWIPE_TRACK_CHANGE] = normalizedInterface.swipeTrackChangeEnabled
+            mutable[KEY_UI_DOCK_SCROLL_EFFECT] = normalizedInterface.dockScrollEffect.storageId
             mutable[KEY_UI_DOUBLE_TAP_ACTION] = normalizedInterface.doubleTapAction.name
             mutable[KEY_UI_DOUBLE_TAP_SECONDS] = normalizedInterface.doubleTapSeekSeconds
             mutable[KEY_UI_LONG_PRESS_ACTION] = normalizedInterface.longPressAction.name
@@ -421,6 +423,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_UI_FONT_PRESET] = normalized.fontPreset.name
             it[KEY_UI_PLAYER_GESTURES] = normalized.playerGesturesEnabled
             it[KEY_UI_SWIPE_TRACK_CHANGE] = normalized.swipeTrackChangeEnabled
+            it[KEY_UI_DOCK_SCROLL_EFFECT] = normalized.dockScrollEffect.storageId
             it[KEY_UI_DOUBLE_TAP_ACTION] = normalized.doubleTapAction.name
             it[KEY_UI_DOUBLE_TAP_SECONDS] = normalized.doubleTapSeekSeconds
             it[KEY_UI_LONG_PRESS_ACTION] = normalized.longPressAction.name
@@ -877,6 +880,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             fontPreset = LevyraFontPreset.from(preferences[KEY_UI_FONT_PRESET].orEmpty()),
             playerGesturesEnabled = preferences[KEY_UI_PLAYER_GESTURES] ?: true,
             swipeTrackChangeEnabled = preferences[KEY_UI_SWIPE_TRACK_CHANGE] ?: true,
+            dockScrollEffect = DockScrollEffect.from(preferences[KEY_UI_DOCK_SCROLL_EFFECT]),
             doubleTapAction = PlayerDoubleTapAction.from(preferences[KEY_UI_DOUBLE_TAP_ACTION].orEmpty()),
             doubleTapSeekSeconds = preferences[KEY_UI_DOUBLE_TAP_SECONDS] ?: 10,
             longPressAction = PlayerLongPressAction.from(preferences[KEY_UI_LONG_PRESS_ACTION].orEmpty()),
@@ -1388,6 +1392,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_UI_FONT_PRESET = stringPreferencesKey("ui_font_preset")
         val KEY_UI_PLAYER_GESTURES = booleanPreferencesKey("ui_player_gestures")
         val KEY_UI_SWIPE_TRACK_CHANGE = booleanPreferencesKey("ui_swipe_track_change")
+        val KEY_UI_DOCK_SCROLL_EFFECT = stringPreferencesKey("ui_dock_scroll_effect")
         val KEY_UI_DOUBLE_TAP_ACTION = stringPreferencesKey("ui_double_tap_action")
         val KEY_UI_PURE_BLACK = booleanPreferencesKey("ui_pure_black")
         val KEY_UI_SKIN = stringPreferencesKey("ui_skin")
