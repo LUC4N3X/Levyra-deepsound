@@ -11472,6 +11472,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun dispatchPlaybackStartSideEffects(track: Track) {
         if (track.isLiveRadio()) return
+        if (samplesPlaybackSession != null) {
+            flushListenSession()
+            return
+        }
         recordPlaybackHistory(track)
         beginListenSession(track)
         recordSmartPlayback(track)
