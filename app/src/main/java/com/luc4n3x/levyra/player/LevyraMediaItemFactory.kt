@@ -26,7 +26,7 @@ object LevyraMediaItemFactory {
         val personalCollection = isPersonalCollectionStream(track)
         val cacheReadSpec = if (personalCollection) null else playbackCacheReadSpec(streamUrl)
         val customCacheKey = cacheKey(track, videoMode, liveRadio, personalCollection, cacheReadSpec)
-        val streamMimeType = streamMimeType(streamUrl, videoMode, liveRadio, personalCollection, cacheReadSpec)
+        val streamMimeType = streamMimeType(track, videoMode, liveRadio, personalCollection, cacheReadSpec)
         val builder = MediaItem.Builder()
             .setUri(streamUrl)
             .setMediaId(mediaId(track))
@@ -67,16 +67,26 @@ object LevyraMediaItemFactory {
     }
 
     private fun streamMimeType(
-        streamUrl: String,
+        track: Track,
         videoMode: Boolean,
         liveRadio: Boolean,
         personalCollection: Boolean,
         cacheReadSpec: PlaybackCacheReadSpec?
     ): String? = when {
-        liveRadio -> liveRadioMimeTypeFor(streamUrl)
-        personalCollection -> personalCollectionMimeTypeFor(streamUrl)
+        liveRadio -> liveRadioMimeTypeFor(track.streamUrl)
+        personalCollection -> personalCollectionMimeTypeFor(track.streamUrl)
         cacheReadSpec != null -> cacheReadSpec.mimeType.takeIf(String::isNotBlank)
-        else -> mimeTypeFor(streamUrl, videoMode)
+        else -> losslessAlternativeMimeType(track, videoMode) ?: mimeTypeFor(track.streamUrl, videoMode)
+    }
+
+    internal fun losslessAlternativeMimeType(track: Track, videoMode: Boolean): String? {
+        if (videoMode) return null
+        val manifest = track.playbackManifest ?: return null
+        if (manifest.alternativeSource == null || manifest.selectedAudioUrl != track.streamUrl) return null
+        return manifest.streams
+            .firstOrNull { it.selected && it.url == manifest.selectedAudioUrl }
+            ?.mimeType
+            ?.takeIf { it == MimeTypes.AUDIO_FLAC }
     }
 
     private fun subtitleConfigurations(track: Track, videoMode: Boolean): List<MediaItem.SubtitleConfiguration> {
