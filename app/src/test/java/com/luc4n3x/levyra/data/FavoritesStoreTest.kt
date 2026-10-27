@@ -72,6 +72,21 @@ class FavoritesStoreTest {
     }
 
     @Test
+    fun likeAllAddsOnlyMissingTracksWithoutDuplicates() {
+        val liked = track("liked", "Liked")
+        val fresh = track("fresh", "Fresh")
+        val noId = track("", "No id")
+
+        val added = missingFavoriteTracks(
+            current = listOf(liked),
+            targets = listOf(liked.copy(id = " LIKED "), fresh, fresh, noId)
+        )
+
+        assertEquals(listOf("fresh"), added.map { it.id })
+        assertTrue(missingFavoriteTracks(listOf(liked, fresh), listOf(fresh, liked)).isEmpty())
+    }
+
+    @Test
     fun membershipUsesFavoriteIdentityRules() {
         val byId = track("Abc", "Title")
         val byMetadata = track("", "Song", artist = "Artist")

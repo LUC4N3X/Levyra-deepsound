@@ -82,6 +82,8 @@ import com.luc4n3x.levyra.feature.cast.CastRouteButton
 import com.luc4n3x.levyra.ui.components.PremiumSeekbar
 import com.luc4n3x.levyra.ui.selection.TrackSelectionActions
 import com.luc4n3x.levyra.ui.selection.TrackSelectionBar
+import com.luc4n3x.levyra.ui.selection.TrackSelectionBarListClearance
+import com.luc4n3x.levyra.ui.selection.trackSelectionBarTabClearance
 import com.luc4n3x.levyra.ui.selection.TrackSelectionState
 import com.luc4n3x.levyra.ui.selection.resolveSelected
 import com.luc4n3x.levyra.ui.selection.rememberTrackSelectionState
@@ -3318,7 +3320,15 @@ fun LevyraApp(
                         onDownloadTrack = viewModel::exportTrack,
                         onQueueTrack = viewModel::addToQueue,
                         onTogglePlayback = viewModel::togglePlay,
-                        onOpenPlayer = viewModel::openPlayerScreen
+                        onOpenPlayer = viewModel::openPlayerScreen,
+                        onLikeAll = { viewModel.likeAllTracks(preview.tracks) },
+                        playlists = state.playlists,
+                        onLikeTracks = viewModel::likeAllTracks,
+                        onPlayTracksNext = viewModel::playTracksNext,
+                        onAddTracksToQueue = viewModel::addTracksToQueue,
+                        onAddTracksToPlaylist = viewModel::addTracksToPlaylist,
+                        onCreatePlaylistWithTracks = viewModel::createPlaylistWithTracks,
+                        onDownloadTracks = { tracks -> viewModel.exportTracks(tracks, currentStrings.offline) }
                     )
                 }
             }
@@ -15783,7 +15793,10 @@ private fun SearchScreen(
         ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = levyraTabContentBottomPadding(state.currentTrack != null)),
+            contentPadding = PaddingValues(
+                bottom = levyraTabContentBottomPadding(state.currentTrack != null) +
+                    if (selection.isActive) TrackSelectionBarListClearance else 0.dp
+            ),
             verticalArrangement = Arrangement.spacedBy(if (appleLanding) AppleSearchGridGap else if (appleCatalog != null && !data.isEmpty) 0.dp else 3.dp)
         ) {
             if (queryClean.isEmpty() && LevyraIsSpotify && !spotifySearchFocus.value) {
@@ -16321,7 +16334,7 @@ private fun SearchScreen(
                     .padding(
                         start = 12.dp,
                         end = 12.dp,
-                        bottom = if (state.currentTrack != null) 88.dp else 12.dp
+                        bottom = trackSelectionBarTabClearance(state.currentTrack != null)
                     )
             )
         }

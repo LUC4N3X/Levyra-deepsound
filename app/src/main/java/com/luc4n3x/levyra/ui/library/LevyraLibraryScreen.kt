@@ -1808,7 +1808,14 @@ internal fun LevyraPlaylistDetailScreen(
                     onEditTags = { tagEditorOpen = true },
                     onToggleHidden = { viewModel.setPlaylistHidden(playlist.id, !playlist.hidden) },
                     isPinnedToHome = SpeedDial.playlistKey(playlist.id)?.let { key -> state.speedDialPins.any { it.key == key } } == true,
-                    onTogglePinToHome = { viewModel.toggleSpeedDialPlaylist(playlist) }
+                    onTogglePinToHome = { viewModel.toggleSpeedDialPlaylist(playlist) },
+                    onLikeAll = { viewModel.likeAllTracks(playlist.tracks) },
+                    onSelectAll = {
+                        searchActive = false
+                        query = ""
+                        selectionMode = true
+                        selectedKeys = selectAllPlaylistTrackKeys(orderedTracks)
+                    }
                 )
             }
         )
@@ -1848,6 +1855,11 @@ internal fun LevyraPlaylistDetailScreen(
                     !state.jam.isActive ||
                         state.jam.canAddTracks && (selectedTracks.size == 1 || state.jam.supportsBatchAddTracks)
                     ),
+                onFavorite = {
+                    viewModel.likeAllTracks(selectedTracks)
+                    selectedKeys = clearPlaylistTrackSelection()
+                    selectionMode = false
+                },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
