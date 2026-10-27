@@ -1,15 +1,13 @@
 package com.luc4n3x.levyra.ui.selection
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
@@ -29,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.ui.components.LevyraExpressiveIconButton
@@ -65,66 +64,71 @@ internal fun TrackSelectionBar(
             .fillMaxWidth()
             .navigationBarsPadding()
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            SelectionAction(
-                label = strings.close,
-                icon = { Icon(Icons.Rounded.Close, contentDescription = null) },
-                onClick = state::exit
-            )
-            Text(
-                text = strings.formatTrackCount(state.count),
-                color = LevyraText,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 4.dp)
-            )
-            SelectionAction(
-                label = strings.selectAll,
-                icon = { Icon(Icons.Rounded.SelectAll, contentDescription = null) },
-                onClick = { state.toggleSelectAll(allVisibleIds) }
-            )
-            Spacer(Modifier.size(2.dp))
-            actions.onPlayNext?.let {
+        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 SelectionAction(
-                    label = strings.playNext,
-                    icon = { Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, contentDescription = null) },
-                    onClick = it
+                    label = strings.close,
+                    icon = { Icon(Icons.Rounded.Close, contentDescription = null) },
+                    onClick = state::exit
+                )
+                Text(
+                    text = strings.formatTrackCount(state.count),
+                    color = LevyraText,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).padding(horizontal = 4.dp)
+                )
+                SelectionAction(
+                    label = strings.selectAll,
+                    icon = { Icon(Icons.Rounded.SelectAll, contentDescription = null) },
+                    onClick = { state.toggleSelectAll(allVisibleIds) }
                 )
             }
-            actions.onAddToQueue?.let {
-                SelectionAction(
-                    label = strings.addToQueue,
-                    icon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null) },
-                    onClick = it
-                )
-            }
-            actions.onAddToPlaylist?.let {
-                SelectionAction(
-                    label = strings.addToPlaylist,
-                    icon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null) },
-                    onClick = it
-                )
-            }
-            actions.onFavorite?.let {
-                SelectionAction(
-                    label = strings.favorite,
-                    icon = { Icon(Icons.Rounded.Favorite, contentDescription = null) },
-                    onClick = it
-                )
-            }
-            actions.onDownload?.let {
-                SelectionAction(
-                    label = strings.download,
-                    icon = { Icon(Icons.Rounded.Download, contentDescription = null) },
-                    onClick = it
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                actions.onPlayNext?.let {
+                    SelectionAction(
+                        label = strings.playNext,
+                        icon = { Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, contentDescription = null) },
+                        onClick = it
+                    )
+                }
+                actions.onAddToQueue?.let {
+                    SelectionAction(
+                        label = strings.addToQueue,
+                        icon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null) },
+                        onClick = it
+                    )
+                }
+                actions.onAddToPlaylist?.let {
+                    SelectionAction(
+                        label = strings.addToPlaylist,
+                        icon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null) },
+                        onClick = it
+                    )
+                }
+                actions.onFavorite?.let {
+                    SelectionAction(
+                        label = strings.favorite,
+                        icon = { Icon(Icons.Rounded.Favorite, contentDescription = null) },
+                        onClick = it
+                    )
+                }
+                actions.onDownload?.let {
+                    SelectionAction(
+                        label = strings.download,
+                        icon = { Icon(Icons.Rounded.Download, contentDescription = null) },
+                        onClick = it
+                    )
+                }
             }
         }
     }
