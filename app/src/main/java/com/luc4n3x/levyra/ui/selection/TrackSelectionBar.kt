@@ -1,6 +1,34 @@
 package com.luc4n3x.levyra.ui.selection
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextAlign
+import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
+import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+import com.luc4n3x.levyra.ui.theme.LevyraIsPrism
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -53,6 +81,10 @@ internal fun TrackSelectionBar(
     modifier: Modifier = Modifier
 ) {
     if (!state.isActive) return
+    if (!LevyraIsPrism && !LevyraIsNocturne) {
+        ExpressiveTrackSelectionBar(state, allVisibleIds, actions, modifier)
+        return
+    }
     val strings = LocalLevyraStrings.current
 
     Surface(
@@ -150,3 +182,161 @@ private fun SelectionAction(
         icon()
     }
 }
+
+@Composable
+private fun ExpressiveTrackSelectionBar(
+    state: TrackSelectionState,
+    allVisibleIds: List<String>,
+    actions: TrackSelectionActions,
+    modifier: Modifier
+) {
+    val strings = LocalLevyraStrings.current
+    val animated = LocalAnimationsEnabled.current
+    val scheme = MaterialTheme.colorScheme
+    val selectableIds = remember(allVisibleIds) {
+        allVisibleIds.mapNotNullTo(LinkedHashSet()) { id -> id.trim().takeIf(String::isNotBlank) }
+    }
+    val allSelected = selectableIds.isNotEmpty() && state.selectedIds.containsAll(selectableIds)
+    val entrance = remember { MutableTransitionState(!animated).apply { targetState = true } }
+
+    AnimatedVisibility(
+        visibleState = entrance,
+        enter = slideInVertically(
+            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)
+        ) { height -> height / 2 } + fadeIn(),
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+    ) {
+        Surface(
+            color = scheme.surfaceContainerHigh,
+            contentColor = scheme.onSurface,
+            shape = RoundedCornerShape(ExpressiveSelectionCorner),
+            tonalElevation = 6.dp,
+            shadowElevation = 16.dp,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 10.dp)
+                    .animateContentSize(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    LevyraExpressiveIconButton(
+                        onClick = state::exit,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .semantics { contentDescription = strings.close },
+                        colors = IconButtonDefaults.filledTonalIconButtonColors()
+                    ) {
+                        Icon(Icons.Rounded.Close, contentDescription = null)
+                    }
+                    AnimatedContent(
+                        targetState = state.count,
+                        transitionSpec = {
+                            val rising = targetState > initialState
+                            (slideInVertically { height -> if (rising) height else -height } + fadeIn()) togetherWith
+                                (slideOutVertically { height -> if (rising) -height else height } + fadeOut())
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 12.dp),
+                        label = "selection-count"
+                    ) { count ->
+                        Text(
+                            text = strings.formatTrackCount(count),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Black,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    AnimatedVisibility(
+                        visible = !allSelected,
+                        enter = fadeIn() + scaleIn(initialScale = 0.8f) + expandHorizontally(),
+                        exit = fadeOut() + scaleOut(targetScale = 0.8f) + shrinkHorizontally()
+                    ) {
+                        Button(
+                            onClick = { state.selectAll(selectableIds) },
+                            shape = CircleShape,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = scheme.primary,
+                                contentColor = scheme.onPrimary
+                            ),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Icon(Icons.Rounded.SelectAll, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(strings.selectAll, fontWeight = FontWeight.Bold, maxLines = 1)
+                        }
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    actions.onPlayNext?.let {
+                        ExpressiveSelectionAction(strings.playNext, Icons.AutoMirrored.Rounded.PlaylistPlay, it)
+                    }
+                    actions.onAddToQueue?.let {
+                        ExpressiveSelectionAction(strings.addToQueue, Icons.AutoMirrored.Rounded.QueueMusic, it)
+                    }
+                    actions.onAddToPlaylist?.let {
+                        ExpressiveSelectionAction(strings.addToPlaylist, Icons.AutoMirrored.Rounded.PlaylistAdd, it)
+                    }
+                    actions.onFavorite?.let {
+                        ExpressiveSelectionAction(strings.favorite, Icons.Rounded.Favorite, it, emphasized = true)
+                    }
+                    actions.onDownload?.let {
+                        ExpressiveSelectionAction(strings.download, Icons.Rounded.Download, it)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExpressiveSelectionAction(
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    emphasized: Boolean = false
+) {
+    Column(
+        modifier = Modifier.width(ExpressiveSelectionActionWidth),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        LevyraExpressiveIconButton(
+            onClick = onClick,
+            modifier = Modifier
+                .size(width = 56.dp, height = 44.dp)
+                .semantics { contentDescription = label },
+            colors = if (emphasized) {
+                IconButtonDefaults.filledIconButtonColors()
+            } else {
+                IconButtonDefaults.filledTonalIconButtonColors()
+            }
+        ) {
+            Icon(icon, contentDescription = null)
+        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+private val ExpressiveSelectionCorner = 32.dp
+private val ExpressiveSelectionActionWidth = 64.dp
