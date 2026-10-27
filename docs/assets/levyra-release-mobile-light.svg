@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="126" height="36.5" viewBox="0 0 145 42" role="img" aria-label="LATEST v3.0.2">
 <title>LATEST v3.0.2</title>
-<rect width="145" height="42" rx="12" fill="#EAE5F3"/>
-<path d="M14 14h10l5 5-10 10-8-8v-5Z" fill="none" stroke="#6E578E" stroke-width="2" stroke-linejoin="round"/><circle cx="22.5" cy="19" r="1.55" fill="#6E578E"/>
-<text x="42" y="16" fill="#666975" font-family="Arial,'Segoe UI',sans-serif" font-size="8" font-weight="600" letter-spacing=".7">LATEST</text>
-<text x="42" y="31" fill="#24262C" font-family="Arial,'Segoe UI',sans-serif" font-size="15" font-weight="700">v3.0.2</text>
+<rect width="145" height="42" rx="12" fill="#F2D7E6"/>
+<path d="M14 14h10l5 5-10 10-8-8v-5Z" fill="none" stroke="#713C5E" stroke-width="2" stroke-linejoin="round"/><circle cx="22.5" cy="19" r="1.55" fill="#713C5E"/>
+<text x="42" y="16" fill="#493741" font-family="Arial,'Segoe UI',sans-serif" font-size="8" font-weight="600" letter-spacing=".7">LATEST</text>
+<text x="42" y="31" fill="#241923" font-family="Arial,'Segoe UI',sans-serif" font-size="15" font-weight="700">v3.0.2</text>
 </svg>
