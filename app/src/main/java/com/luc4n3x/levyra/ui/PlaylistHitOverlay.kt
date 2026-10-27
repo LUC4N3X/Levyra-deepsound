@@ -216,7 +216,9 @@ internal fun PlaylistHitOverlay(
             selection = selection
         )
         PlaylistHitTopBar(
-            preview, colors, collapsedState, topBarHeight, animationsEnabled, onClose, onLikeAll,
+            preview, colors, collapsedState, topBarHeight, animationsEnabled,
+            onClose = { if (selection.isActive) selection.exit() else onClose() },
+            onLikeAll = onLikeAll,
             onSelectAll = { selection.selectAll(selectableIds) }
         )
         if (selection.isActive) {
