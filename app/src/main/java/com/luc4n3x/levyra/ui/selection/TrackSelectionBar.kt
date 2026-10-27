@@ -3,6 +3,8 @@ package com.luc4n3x.levyra.ui.selection
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.Spring
@@ -31,6 +33,8 @@ import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 import com.luc4n3x.levyra.ui.theme.LevyraIsPrism
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -73,6 +77,7 @@ internal data class TrackSelectionActions(
     val onDownload: (() -> Unit)? = null
 )
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun TrackSelectionBar(
     state: TrackSelectionState,
@@ -121,9 +126,8 @@ internal fun TrackSelectionBar(
                     onClick = { state.toggleSelectAll(allVisibleIds) }
                 )
             }
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 actions.onPlayNext?.let {
@@ -183,6 +187,7 @@ private fun SelectionAction(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ExpressiveTrackSelectionBar(
     state: TrackSelectionState,
@@ -219,7 +224,7 @@ private fun ExpressiveTrackSelectionBar(
             Column(
                 modifier = Modifier
                     .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 10.dp)
-                    .animateContentSize(),
+                    .then(if (animated) Modifier.animateContentSize() else Modifier),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Row(
@@ -239,8 +244,12 @@ private fun ExpressiveTrackSelectionBar(
                         targetState = state.count,
                         transitionSpec = {
                             val rising = targetState > initialState
-                            (slideInVertically { height -> if (rising) height else -height } + fadeIn()) togetherWith
-                                (slideOutVertically { height -> if (rising) -height else height } + fadeOut())
+                            if (animated) {
+                                slideInVertically { height -> if (rising) height else -height } + fadeIn() togetherWith
+                                    slideOutVertically { height -> if (rising) -height else height } + fadeOut()
+                            } else {
+                                EnterTransition.None togetherWith ExitTransition.None
+                            }
                         },
                         modifier = Modifier
                             .weight(1f)
@@ -257,8 +266,16 @@ private fun ExpressiveTrackSelectionBar(
                     }
                     AnimatedVisibility(
                         visible = !allSelected,
-                        enter = fadeIn() + scaleIn(initialScale = 0.8f) + expandHorizontally(),
-                        exit = fadeOut() + scaleOut(targetScale = 0.8f) + shrinkHorizontally()
+                        enter = if (animated) {
+                            fadeIn() + scaleIn(initialScale = 0.8f) + expandHorizontally()
+                        } else {
+                            EnterTransition.None
+                        },
+                        exit = if (animated) {
+                            fadeOut() + scaleOut(targetScale = 0.8f) + shrinkHorizontally()
+                        } else {
+                            ExitTransition.None
+                        }
                     ) {
                         Button(
                             onClick = { state.selectAll(selectableIds) },
@@ -275,10 +292,10 @@ private fun ExpressiveTrackSelectionBar(
                         }
                     }
                 }
-                Row(
+                FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Top,
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     actions.onPlayNext?.let {
                         ExpressiveSelectionAction(strings.playNext, Icons.AutoMirrored.Rounded.PlaylistPlay, it)

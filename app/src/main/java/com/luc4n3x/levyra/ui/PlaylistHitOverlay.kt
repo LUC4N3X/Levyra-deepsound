@@ -333,7 +333,7 @@ private fun PlaylistHitList(
         state = state,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
-            bottom = if (selection.isActive) 120.dp else levyraTabContentBottomPadding(currentTrack != null)
+            bottom = if (selection.isActive) 230.dp else levyraTabContentBottomPadding(currentTrack != null)
         )
     ) {
         item(key = "playlist-hit-hero", contentType = "playlist-hit-hero") {
