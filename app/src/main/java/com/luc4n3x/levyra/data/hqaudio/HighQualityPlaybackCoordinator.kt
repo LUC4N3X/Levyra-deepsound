@@ -14,6 +14,7 @@ import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.selects.select
 
 class HighQualityPlaybackCoordinator(
@@ -60,7 +61,8 @@ class HighQualityPlaybackCoordinator(
         resolveNormal: suspend () -> Track
     ): Track {
         val startedAt = clock()
-        val upfront = query.takeIf { it.durationMs > 0L }?.let { resolver.begin(identityKey(track), it) }
+        val background = currentCoroutineContext()[HighQualityBackgroundLookup] != null
+        val upfront = query.takeIf { it.durationMs > 0L }?.let { resolver.begin(identityKey(track), it, background) }
         val initialResolution = upfront?.let { resolver.await(it, minOf(AUTOMATIC_GRACE_MS, waitBudgetMs(resolver.mode, 0L, true))) }
         if (initialResolution is HighQualityResolution.Selected &&
             (initialResolution.stream.tier == AudioQualityTier.KBPS_320 || initialResolution.stream.tier.lossless) &&
@@ -80,7 +82,8 @@ class HighQualityPlaybackCoordinator(
             ?: normalTrack?.durationMs?.takeIf { it > 0L }?.let { verified ->
                 resolver.begin(
                     identityKey(track),
-                    query.copy(durationMs = verified, alternateReading = query.alternateReading?.copy(durationMs = verified))
+                    query.copy(durationMs = verified, alternateReading = query.alternateReading?.copy(durationMs = verified)),
+                    background
                 )
             }
             ?: return normal.getOrThrow()

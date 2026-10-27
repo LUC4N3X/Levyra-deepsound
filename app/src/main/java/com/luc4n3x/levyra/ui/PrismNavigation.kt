@@ -20,6 +20,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.luc4n3x.levyra.ui.components.LocalDockMorph
+import com.luc4n3x.levyra.ui.components.dockMorphTray
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.NavTuning
 import com.luc4n3x.levyra.ui.theme.*
@@ -49,7 +51,7 @@ internal fun PrismBottomTabs(tuning: NavTuning, selected: LevyraTab, onSelect: (
             border = if (LevyraActivePalette.isLight) BorderStroke(PrismDesign.hairline, PrismAccent.Hairline) else null
         ) {
             Column {
-            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).selectableGroup().padding(horizontal = 6.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).selectableGroup().padding(horizontal = 6.dp, vertical = 4.dp).dockMorphTray(LocalDockMorph.current, entries.size, entries.indexOfFirst { it.tab == selected }, leading = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 entries.forEach { entry ->
                     val active = entry.tab == selected
                     PrismNavigationTab(entry, active) {
@@ -108,7 +110,7 @@ private fun IvoryBottomTabs(
 ) {
     Column(modifier.fillMaxWidth().background(LevyraActivePalette.ink)) {
         Box(Modifier.fillMaxWidth().height(PrismDesign.hairline).background(LevyraActivePalette.outline))
-        Row(Modifier.fillMaxWidth().height(66.dp).selectableGroup().padding(horizontal = 4.dp), verticalAlignment = Alignment.Bottom) {
+        Row(Modifier.fillMaxWidth().height(66.dp).selectableGroup().padding(horizontal = 4.dp).dockMorphTray(LocalDockMorph.current, entries.size, entries.indexOfFirst { it.tab == selected }, leading = 4.dp), verticalAlignment = Alignment.Bottom) {
             entries.forEach { entry ->
                 val active = entry.tab == selected
                 Box(

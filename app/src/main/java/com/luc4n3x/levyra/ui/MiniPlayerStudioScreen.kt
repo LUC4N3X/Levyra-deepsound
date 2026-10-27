@@ -86,6 +86,7 @@ import com.luc4n3x.levyra.domain.MiniColorMode
 import com.luc4n3x.levyra.domain.MiniControlSet
 import com.luc4n3x.levyra.domain.MiniMotion
 import com.luc4n3x.levyra.domain.MiniPlayerSpec
+import com.luc4n3x.levyra.domain.DockScrollEffect
 import com.luc4n3x.levyra.domain.MiniPlayerStyle
 import com.luc4n3x.levyra.domain.MiniPlayerTuning
 import com.luc4n3x.levyra.domain.MiniProgressStyle
@@ -159,7 +160,9 @@ internal fun MiniPlayerStudioOverlay(
     progress: Float,
     animated: Boolean,
     onUpdate: (LevyraMiniPlayerStudioSettings) -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    scrollEffect: DockScrollEffect = DockScrollEffect.Tide,
+    onScrollEffect: (DockScrollEffect) -> Unit = {}
 ) {
     val strings = LocalLevyraStrings.current
     val copy = strings.miniPlayerStudioCopy
@@ -223,6 +226,7 @@ internal fun MiniPlayerStudioOverlay(
                         onUpdate(latestSettings.resetStyle(latestSettings.style))
                     }
                 )
+                item(key = "dock-scroll-effect") { DockScrollEffectGroup(selected = scrollEffect, onSelect = onScrollEffect) }
             }
             Column(modifier = Modifier.fillMaxSize()) {
                 MiniStudioHeader(
@@ -489,7 +493,7 @@ private fun LazyListScope.miniStudioItems(
     }
     item(key = "mini-styles", contentType = "styles") {
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(MiniPlayerStyle.entries, key = { it.storageId }) { option ->
+            items(MiniPlayerStyle.studioOrder, key = { it.storageId }) { option ->
                 MiniStyleCard(
                     style = option,
                     selected = option == style,

@@ -387,6 +387,97 @@ class HighQualityAudioResolverTest {
     }
 
     @Test
+    fun backgroundLookupsNeverStarveTheTrackTheUserPlays() {
+        val provider = FakeHighQualityProvider(searchOutcome = { title ->
+            if (title.contains("Warm")) delay(5_000L)
+            ProviderSearchOutcome.Found(listOf(candidate()))
+        }, lookupOutcome = { ProviderLookupOutcome.Found(candidate()) })
+        val resolver = resolver(provider, mode = HighQualityAudioMode.PREFER_LOSSLESS)
+        val warming = (0 until HighQualityAudioResolver.MAX_IN_FLIGHT_LOOKUPS)
+            .map { index -> resolver.begin("$identity-warm-$index", query(title = "Warm $index"), background = true) }
+
+        assertTrue(resolver.upgradePending(identity))
+        val played = runBlocking { resolver.await(resolver.begin(identity, query()), 2_000L) }
+
+        assertTrue(played is HighQualityResolution.Selected)
+        warming.forEach { it.cancel() }
+    }
+
+    @Test
+    fun outsideFlacModeBackgroundLookupsKeepThePreviousConcurrency() {
+        val provider = FakeHighQualityProvider(searchOutcome = {
+            delay(5_000L)
+            ProviderSearchOutcome.Found(emptyList())
+        })
+        val resolver = resolver(provider, mode = HighQualityAudioMode.PREFER_320)
+        val warming = (0 until 3).map { index ->
+            resolver.begin("$identity-warm-$index", query(title = "Warm $index"), background = true)
+        }
+        runBlocking { delay(300L) }
+
+        assertEquals(3, provider.searches.map { it.substringBefore(" The Weeknd") }.distinct().size)
+        warming.forEach { it.cancel() }
+    }
+
+    @Test
+    fun backgroundLookupsReachProvidersOneAtATime() {
+        val provider = FakeHighQualityProvider(searchOutcome = {
+            delay(5_000L)
+            ProviderSearchOutcome.Found(emptyList())
+        })
+        val resolver = resolver(provider, mode = HighQualityAudioMode.PREFER_LOSSLESS)
+        val warming = (0 until 3).map { index ->
+            resolver.begin("$identity-warm-$index", query(title = "Warm $index"), background = true)
+        }
+        runBlocking { delay(300L) }
+
+        assertEquals(1, provider.searches.map { it.substringBefore(" The Weeknd") }.distinct().size)
+        warming.forEach { it.cancel() }
+    }
+
+    @Test
+    fun largePrefetchWindowsStayWithinTheBackgroundBudget() {
+        var nowMs = 0L
+        val provider = FakeHighQualityProvider(searchOutcome = { ProviderSearchOutcome.Found(emptyList()) })
+        val resolver = HighQualityAudioResolver(
+            provider = provider,
+            mappingStore = HighQualityMappingStore(storage),
+            scope = scope,
+            clock = { nowMs }
+        ).apply { mode = HighQualityAudioMode.PREFER_LOSSLESS }
+
+        val outcomes = (0 until 30).map { index ->
+            runBlocking { resolver.await(resolver.begin("$identity-$index", query(title = "Warm $index"), background = true), 2_000L) }
+        }
+        val rejected = outcomes.count { (it as? HighQualityResolution.Fallback)?.reason == HighQualityFallbackReason.BUSY }
+
+        assertEquals(30 - HighQualityAudioResolver.MAX_BACKGROUND_LOOKUPS_PER_WINDOW, rejected)
+        assertTrue(provider.searches.size <= HighQualityAudioResolver.MAX_BACKGROUND_LOOKUPS_PER_WINDOW * 4)
+        val played = runBlocking { resolver.await(resolver.begin(identity, query()), 2_000L) }
+        assertTrue((played as? HighQualityResolution.Fallback)?.reason != HighQualityFallbackReason.BUSY)
+        nowMs += HighQualityAudioResolver.BACKGROUND_WINDOW_MS
+        val refreshed = runBlocking { resolver.await(resolver.begin("$identity-later", query(title = "Later"), background = true), 2_000L) }
+        assertTrue((refreshed as? HighQualityResolution.Fallback)?.reason != HighQualityFallbackReason.BUSY)
+    }
+
+    @Test
+    fun playingAQueuedBackgroundTrackStartsItsLookupImmediately() {
+        val provider = FakeHighQualityProvider(searchOutcome = { title ->
+            if (title.contains("Slow")) delay(5_000L)
+            ProviderSearchOutcome.Found(listOf(candidate()))
+        }, lookupOutcome = { ProviderLookupOutcome.Found(candidate()) })
+        val resolver = resolver(provider, mode = HighQualityAudioMode.PREFER_LOSSLESS)
+        val blocker = resolver.begin("$identity-slow", query(title = "Slow"), background = true)
+        val queued = resolver.begin(identity, query(), background = true)
+
+        val played = runBlocking { resolver.await(resolver.begin(identity, query()), 2_000L) }
+
+        assertTrue(played is HighQualityResolution.Selected)
+        assertTrue(queued.isCancelled)
+        blocker.cancel()
+    }
+
+    @Test
     fun exactIsrcMatchIsDecisiveEvenOnACompilationAlbum() {
         val provider = FakeHighQualityProvider(
             searchOutcome = {

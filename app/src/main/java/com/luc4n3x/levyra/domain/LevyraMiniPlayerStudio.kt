@@ -15,6 +15,8 @@ enum class MiniPlayerStyle(val storageId: String) {
 
     companion object {
         fun from(value: String?): MiniPlayerStyle = entries.firstOrNull { it.storageId == value } ?: Original
+
+        val studioOrder: List<MiniPlayerStyle> = listOf(Original, LiquidCapsule) + entries.filterNot { it == Original || it == LiquidCapsule }
     }
 }
 

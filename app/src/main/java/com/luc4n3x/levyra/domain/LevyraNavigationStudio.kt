@@ -22,6 +22,8 @@ enum class NavStyle(val storageId: String) {
 
     companion object {
         fun from(value: String?): NavStyle = entries.firstOrNull { it.storageId == value } ?: Original
+
+        val studioOrder: List<NavStyle> = listOf(Original, LiquidCapsule) + entries.filterNot { it == Original || it == LiquidCapsule }
     }
 }
 
