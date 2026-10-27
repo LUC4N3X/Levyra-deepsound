@@ -96,6 +96,7 @@ import androidx.graphics.shapes.Morph
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.luc4n3x.levyra.data.ArtworkPalette
 import com.luc4n3x.levyra.domain.DownloadQualityChoice
+import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.player.offline.DownloadQualityOption
 import com.luc4n3x.levyra.player.offline.DownloadQualityPhase
 import com.luc4n3x.levyra.player.offline.DownloadQualityTier
@@ -468,64 +469,78 @@ private fun QualityDragHandle(style: QualitySheetStyle) {
 
 @Composable
 private fun QualityHeader(state: DownloadQualityPickerState, copy: DownloadQualityCopy, style: QualitySheetStyle) {
-    val track = state.track
     val expressive = style.skin == DownloadQualitySkin.Expressive
-    val glow = if (expressive) {
-        val fallback = remember(style.accent) { ArtworkPalette(style.accent.toArgb(), style.accent.toArgb()) }
-        val palette by rememberArtworkPalette(
-            paletteKey = "download-quality:${track.id}",
-            artworkUrl = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
-            fallback = fallback
-        )
-        Color(palette.start)
-    } else {
-        Color.Transparent
-    }
-    val locale = Locale.getDefault()
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(contentAlignment = Alignment.Center) {
-            if (expressive) {
-                Canvas(Modifier.size(104.dp)) {
-                    drawCircle(
-                        brush = Brush.radialGradient(listOf(glow.copy(alpha = 0.45f), Color.Transparent)),
-                        radius = size.minDimension / 2f
-                    )
-                }
-            }
-            CoverImage(
-                track = track,
-                modifier = Modifier
-                    .size(if (expressive) 76.dp else 64.dp)
-                    .clip(style.coverShape)
-            )
-        }
+        HeaderCover(state.track, style, expressive)
         Spacer(Modifier.width(if (expressive) 8.dp else 16.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = if (style.uppercase) copy.title.uppercase(locale) else copy.title,
-                color = if (style.skin == DownloadQualitySkin.Spotify || style.skin == DownloadQualitySkin.YouTube) style.muted else style.accent,
-                style = MaterialTheme.typography.labelMedium,
-                letterSpacing = if (style.uppercase) 1.4.sp else 0.2.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.semantics { heading() }
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = track.title,
-                color = style.content,
-                style = if (expressive) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge,
-                fontWeight = if (expressive) FontWeight.ExtraBold else FontWeight.Bold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = track.artist,
-                color = style.muted,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
+        HeaderTitles(state.track, copy, style, expressive, Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun HeaderCover(track: Track, style: QualitySheetStyle, expressive: Boolean) {
+    Box(contentAlignment = Alignment.Center) {
+        if (expressive) ArtworkGlow(track, style.accent)
+        CoverImage(
+            track = track,
+            modifier = Modifier
+                .size(if (expressive) 76.dp else 64.dp)
+                .clip(style.coverShape)
+        )
+    }
+}
+
+@Composable
+private fun ArtworkGlow(track: Track, accent: Color) {
+    val fallback = remember(accent) { ArtworkPalette(accent.toArgb(), accent.toArgb()) }
+    val palette by rememberArtworkPalette(
+        paletteKey = "download-quality:${track.id}",
+        artworkUrl = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
+        fallback = fallback
+    )
+    val glow = Color(palette.start)
+    Canvas(Modifier.size(104.dp)) {
+        drawCircle(
+            brush = Brush.radialGradient(listOf(glow.copy(alpha = 0.45f), Color.Transparent)),
+            radius = size.minDimension / 2f
+        )
+    }
+}
+
+@Composable
+private fun HeaderTitles(
+    track: Track,
+    copy: DownloadQualityCopy,
+    style: QualitySheetStyle,
+    expressive: Boolean,
+    modifier: Modifier
+) {
+    val neutralOverline = style.skin == DownloadQualitySkin.Spotify || style.skin == DownloadQualitySkin.YouTube
+    Column(modifier) {
+        Text(
+            text = label(copy.title, style),
+            color = if (neutralOverline) style.muted else style.accent,
+            style = MaterialTheme.typography.labelMedium,
+            letterSpacing = if (style.uppercase) 1.4.sp else 0.2.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.semantics { heading() }
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = track.title,
+            color = style.content,
+            style = if (expressive) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge,
+            fontWeight = if (expressive) FontWeight.ExtraBold else FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = track.artist,
+            color = style.muted,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -655,25 +670,15 @@ private fun ExpressiveOption(
     val scheme = MaterialTheme.colorScheme
     val progress = animatedProgress(selected)
     val lossless = option.lossless
-    val container = animatedColor(
-        when {
-            selected && lossless -> scheme.tertiaryContainer
-            selected -> style.cardSelected
-            else -> style.cardIdle
-        }
-    )
-    val onContainer = animatedColor(
-        when {
-            selected && lossless -> scheme.onTertiaryContainer
-            selected -> style.onCardSelected
-            else -> style.content
-        }
-    )
-    val large = 20.dp + 12.dp * progress
-    val small = 20.dp - 8.dp * progress
-    val shape = RoundedCornerShape(topStart = large, topEnd = small, bottomEnd = large, bottomStart = small)
+    val container = animatedColor(expressiveContainer(selected, lossless, style, scheme.tertiaryContainer))
+    val onContainer = animatedColor(expressiveOnContainer(selected, lossless, style, scheme.onTertiaryContainer))
     val badgeColor = if (lossless) scheme.tertiary else scheme.primary
     val onBadge = if (lossless) scheme.onTertiary else scheme.onPrimary
+    val background = if (selected && lossless) {
+        Brush.linearGradient(listOf(container, lerp(container, scheme.primaryContainer, 0.55f)))
+    } else {
+        SolidColor(container)
+    }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -684,82 +689,119 @@ private fun ExpressiveOption(
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(shape)
-            .background(
-                if (selected && lossless) {
-                    Brush.linearGradient(listOf(container, lerp(container, scheme.primaryContainer, 0.55f)))
-                } else {
-                    SolidColor(container)
-                }
-            )
+            .clip(expressiveCardShape(progress))
+            .background(background)
             .optionSelectable(selected, onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(48.dp)
-                .clip(LevyraMorphShape(if (lossless) LosslessBadgeMorph else LossyBadgeMorph, progress, 30f * progress))
-                .background(lerp(badgeColor.copy(alpha = 0.16f), badgeColor, progress))
-        ) {
-            Icon(
-                imageVector = tierIcon(option.tier),
-                contentDescription = null,
-                tint = lerp(badgeColor, onBadge, progress),
-                modifier = Modifier.size(24.dp)
-            )
-        }
+        ExpressiveBadge(option, progress, badgeColor, onBadge)
         Spacer(Modifier.width(14.dp))
-        Column(Modifier.weight(1f)) {
-            if (best) {
-                Text(
-                    text = copy.best,
-                    color = if (selected) onContainer else badgeColor,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = tierTitle(option.tier, copy),
-                    color = onContainer,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false)
-                )
-                if (lossless) {
-                    Spacer(Modifier.width(8.dp))
-                    SpectrumGlyph(active = selected, color = onContainer)
-                }
-            }
-            Text(
-                text = technicalLine(option, copy),
-                color = onContainer.copy(alpha = 0.78f),
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
+        ExpressiveLabels(option, best, selected, copy, onContainer, badgeColor, Modifier.weight(1f))
         Spacer(Modifier.width(10.dp))
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(28.dp)) {
-            Box(
-                Modifier
-                    .size(22.dp)
-                    .border(2.dp, style.muted.copy(alpha = 1f - progress), CircleShape)
-            )
-            Icon(
-                imageVector = Icons.Rounded.CheckCircle,
-                contentDescription = null,
-                tint = if (lossless) scheme.tertiary else scheme.primary,
-                modifier = Modifier
-                    .size(28.dp)
-                    .graphicsLayer {
-                        scaleX = progress
-                        scaleY = progress
-                        alpha = progress
-                    }
+        ExpressiveCheck(progress, badgeColor, style.muted)
+    }
+}
+
+private fun expressiveContainer(selected: Boolean, lossless: Boolean, style: QualitySheetStyle, losslessContainer: Color): Color =
+    when {
+        selected && lossless -> losslessContainer
+        selected -> style.cardSelected
+        else -> style.cardIdle
+    }
+
+private fun expressiveOnContainer(selected: Boolean, lossless: Boolean, style: QualitySheetStyle, onLosslessContainer: Color): Color =
+    when {
+        selected && lossless -> onLosslessContainer
+        selected -> style.onCardSelected
+        else -> style.content
+    }
+
+private fun expressiveCardShape(progress: Float): Shape {
+    val large = 20.dp + 12.dp * progress
+    val small = 20.dp - 8.dp * progress
+    return RoundedCornerShape(topStart = large, topEnd = small, bottomEnd = large, bottomStart = small)
+}
+
+@Composable
+private fun ExpressiveBadge(option: DownloadQualityOption, progress: Float, badgeColor: Color, onBadge: Color) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(48.dp)
+            .clip(LevyraMorphShape(if (option.lossless) LosslessBadgeMorph else LossyBadgeMorph, progress, 30f * progress))
+            .background(lerp(badgeColor.copy(alpha = 0.16f), badgeColor, progress))
+    ) {
+        Icon(
+            imageVector = tierIcon(option.tier),
+            contentDescription = null,
+            tint = lerp(badgeColor, onBadge, progress),
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}
+
+@Composable
+private fun ExpressiveLabels(
+    option: DownloadQualityOption,
+    best: Boolean,
+    selected: Boolean,
+    copy: DownloadQualityCopy,
+    onContainer: Color,
+    badgeColor: Color,
+    modifier: Modifier
+) {
+    Column(modifier) {
+        if (best) {
+            Text(
+                text = copy.best,
+                color = if (selected) onContainer else badgeColor,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold
             )
         }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = tierTitle(option.tier, copy),
+                color = onContainer,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            if (option.lossless) {
+                Spacer(Modifier.width(8.dp))
+                SpectrumGlyph(active = selected, color = onContainer)
+            }
+        }
+        Text(
+            text = technicalLine(option, copy),
+            color = onContainer.copy(alpha = 0.78f),
+            style = MaterialTheme.typography.bodySmall
+        )
+    }
+}
+
+@Composable
+private fun ExpressiveCheck(progress: Float, tint: Color, idle: Color) {
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(28.dp)) {
+        Box(
+            Modifier
+                .size(22.dp)
+                .border(2.dp, idle.copy(alpha = 1f - progress), CircleShape)
+        )
+        Icon(
+            imageVector = Icons.Rounded.CheckCircle,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier
+                .size(28.dp)
+                .graphicsLayer {
+                    scaleX = progress
+                    scaleY = progress
+                    alpha = progress
+                }
+        )
     }
 }
 

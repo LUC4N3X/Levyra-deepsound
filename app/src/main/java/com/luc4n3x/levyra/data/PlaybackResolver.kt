@@ -1168,6 +1168,19 @@ class PlaybackResolver private constructor(private val context: Context) {
     private fun supportsLosslessDownloads(): Boolean =
         highQualityPlayback.mode.lossless && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1
 
+    private suspend fun resolveAlternativeDownloadSource(track: Track, qualitySource: DownloadQualitySource?): Track? =
+        when (qualitySource) {
+            DownloadQualitySource.Lossless -> (
+                if (supportsLosslessDownloads()) {
+                    highQualityDownloads.resolveLosslessDownload(track, LevyraAudioQuality.HIGH, ::basePlaybackProvenance)
+                } else null
+            ) ?: throw DownloadQualityUnavailableException()
+            DownloadQualitySource.HighBitrate -> highQualityPlayback
+                .resolveLossyDownload(track, LevyraAudioQuality.HIGH, ::basePlaybackProvenance)
+                ?: throw DownloadQualityUnavailableException()
+            DownloadQualitySource.Standard, null -> null
+        }
+
     suspend fun resolveForOffline(
         track: Track,
         audioQualityOverride: String? = null,
@@ -1179,17 +1192,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         val resolved = resolveWithLanguageRevisionRetry(targetTrack,
             acceptAcrossLanguageChange = { it.playbackManifest?.alternativeSource != null }
         ) { requestTrack, preferredLanguage ->
-            when (qualitySource) {
-                DownloadQualitySource.Lossless -> return@resolveWithLanguageRevisionRetry (
-                    if (supportsLosslessDownloads()) {
-                        highQualityDownloads.resolveLosslessDownload(requestTrack, LevyraAudioQuality.HIGH, ::basePlaybackProvenance)
-                    } else null
-                ) ?: throw DownloadQualityUnavailableException()
-                DownloadQualitySource.HighBitrate -> return@resolveWithLanguageRevisionRetry highQualityPlayback
-                    .resolveLossyDownload(requestTrack, LevyraAudioQuality.HIGH, ::basePlaybackProvenance)
-                    ?: throw DownloadQualityUnavailableException()
-                DownloadQualitySource.Standard, null -> Unit
-            }
+            resolveAlternativeDownloadSource(requestTrack, qualitySource)?.let { return@resolveWithLanguageRevisionRetry it }
             val lossless = if (qualitySource == null && supportsLosslessDownloads()) {
                 highQualityDownloads.resolveLosslessDownload(requestTrack, quality, ::basePlaybackProvenance)
             } else null
